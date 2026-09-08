@@ -1,0 +1,766 @@
+{
+  "measurements": [
+    {
+      "test": "directional_gradient",
+      "model": "cubic",
+      "maximum_relative_error": 7.295858369695081e-10
+    },
+    {
+      "test": "directional_gradient",
+      "model": "exact",
+      "maximum_relative_error": 7.748597710035399e-10
+    },
+    {
+      "test": "directional_gradient",
+      "model": "kirchhoff",
+      "maximum_relative_error": 4.732841677267344e-10
+    },
+    {
+      "test": "signed_symmetry",
+      "lambda": 0,
+      "maximum_displacement_sum_m": 0,
+      "maximum_force_sum_n": 0,
+      "maximum_auxiliary_difference": 0
+    },
+    {
+      "test": "signed_symmetry",
+      "lambda": 1000,
+      "maximum_displacement_sum_m": 0,
+      "maximum_force_sum_n": 0,
+      "maximum_auxiliary_difference": 0
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "cubic",
+      "height_m": 0.01,
+      "intervals": 25,
+      "relative_energy_error": 3.3306690738754696e-15,
+      "relative_gradient_error": 1.256174316070217e-15
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "cubic",
+      "height_m": 0.01,
+      "intervals": 48,
+      "relative_energy_error": 2.4424906541753444e-15,
+      "relative_gradient_error": 1.35053451812542e-15
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "cubic",
+      "height_m": 0.01,
+      "intervals": 96,
+      "relative_energy_error": 2.6645352591003757e-15,
+      "relative_gradient_error": 1.2386936125650664e-15
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "cubic",
+      "height_m": 0.01,
+      "intervals": 192,
+      "relative_energy_error": 3.3306690738754696e-15,
+      "relative_gradient_error": 1.4409210232453798e-15
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "cubic",
+      "height_m": 0.1,
+      "intervals": 25,
+      "relative_energy_error": 2.220446049250313e-16,
+      "relative_gradient_error": 1.2399860154574115e-15
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "cubic",
+      "height_m": 0.1,
+      "intervals": 48,
+      "relative_energy_error": 9.992007221626409e-16,
+      "relative_gradient_error": 1.1256814006548738e-15
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "cubic",
+      "height_m": 0.1,
+      "intervals": 96,
+      "relative_energy_error": 1.2212453270876722e-15,
+      "relative_gradient_error": 1.402864544384956e-15
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "cubic",
+      "height_m": 0.1,
+      "intervals": 192,
+      "relative_energy_error": 8.881784197001252e-16,
+      "relative_gradient_error": 1.0667042627877386e-15
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "exact",
+      "height_m": 0.01,
+      "intervals": 25,
+      "relative_energy_error": 8.803289359038402e-05,
+      "relative_gradient_error": 0.0003825869410075743
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "exact",
+      "height_m": 0.01,
+      "intervals": 48,
+      "relative_energy_error": 1.9643175974692895e-12,
+      "relative_gradient_error": 2.4055663398194248e-11
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "exact",
+      "height_m": 0.01,
+      "intervals": 96,
+      "relative_energy_error": 3.219646771412954e-15,
+      "relative_gradient_error": 1.0500842323793e-15
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "exact",
+      "height_m": 0.01,
+      "intervals": 192,
+      "relative_energy_error": 4.551914400963142e-15,
+      "relative_gradient_error": 1.3068124556602288e-15
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "exact",
+      "height_m": 0.1,
+      "intervals": 25,
+      "relative_energy_error": 0.0019121598268108109,
+      "relative_gradient_error": 0.0105235853882292
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "exact",
+      "height_m": 0.1,
+      "intervals": 48,
+      "relative_energy_error": 2.9774021206296908e-06,
+      "relative_gradient_error": 6.463996202125721e-05
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "exact",
+      "height_m": 0.1,
+      "intervals": 96,
+      "relative_energy_error": 7.611500318915887e-11,
+      "relative_gradient_error": 1.4298270210306532e-09
+    },
+    {
+      "test": "spatial_quadrature",
+      "model": "exact",
+      "height_m": 0.1,
+      "intervals": 192,
+      "relative_energy_error": 0,
+      "relative_gradient_error": 1.197940644551499e-15
+    },
+    {
+      "test": "zero_state_and_cfl",
+      "zero_displacement": true,
+      "energy_roundoff_j": -3.519521198874155e-29,
+      "invalid_rate_rejected": true
+    },
+    {
+      "test": "linear",
+      "rate": 48000,
+      "max_displacement_error_m": 1.4414314430193941e-16,
+      "physical_frequency_error_cents": 0.047490216089534916
+    },
+    {
+      "test": "linear",
+      "rate": 96000,
+      "max_displacement_error_m": 8.082316304769443e-16,
+      "physical_frequency_error_cents": 0.011872016652530357
+    },
+    {
+      "test": "linear",
+      "rate": 192000,
+      "max_displacement_error_m": 8.850438757109065e-16,
+      "physical_frequency_error_cents": 0.0029679705804497394
+    },
+    {
+      "test": "lossless_single_mode",
+      "model": "cubic",
+      "lambda": 0.0,
+      "balance_relative": 2.601536450030056e-13,
+      "drift_energy_relative": 3.6356985985785277e-06,
+      "minimum_energy_j": 0.00353907970370284,
+      "minimum_psi": 6.48911610703264e-07,
+      "minimum_rank_denominator": 1.0000000000002243,
+      "maximum_rank_denominator": 1.0000064203221022,
+      "displacement_rms_m": 0.002578032086908534,
+      "force_rms_n": 0.7971766104987875,
+      "finite_window_dc_db": -54.0708704539296,
+      "mode3_peak_energy_fraction": 0.03923443584854476,
+      "final_energy_fraction": 0.9999999999997643
+    },
+    {
+      "test": "lossless_single_mode",
+      "model": "cubic",
+      "lambda": 1000.0,
+      "balance_relative": 1.5832242550347772e-13,
+      "drift_energy_relative": 5.616873605019237e-07,
+      "minimum_energy_j": 0.0035390797037032004,
+      "minimum_psi": 6.983124209227538e-07,
+      "minimum_rank_denominator": 1.0000000000002442,
+      "maximum_rank_denominator": 1.0000064193611362,
+      "displacement_rms_m": 0.0025780212313355404,
+      "force_rms_n": 0.7971761964135522,
+      "finite_window_dc_db": -54.071313309723635,
+      "mode3_peak_energy_fraction": 0.039251849802807395,
+      "final_energy_fraction": 0.9999999999999476
+    },
+    {
+      "test": "lossless_single_mode",
+      "model": "exact",
+      "lambda": 0.0,
+      "balance_relative": 1.6138600219584486e-13,
+      "drift_energy_relative": 3.640349484743915e-06,
+      "minimum_energy_j": 0.003539078338232589,
+      "minimum_psi": 6.490518018245157e-07,
+      "minimum_rank_denominator": 1.0000000000002243,
+      "maximum_rank_denominator": 1.0000064158791322,
+      "displacement_rms_m": 0.002578047862284459,
+      "force_rms_n": 0.7971759348486639,
+      "finite_window_dc_db": -54.069120098743156,
+      "mode3_peak_energy_fraction": 0.03920777092727332,
+      "final_energy_fraction": 0.9999999999999517
+    },
+    {
+      "test": "lossless_single_mode",
+      "model": "exact",
+      "lambda": 1000.0,
+      "balance_relative": 5.160185689041023e-13,
+      "drift_energy_relative": 5.615284345806638e-07,
+      "minimum_energy_j": 0.0035390783382330073,
+      "minimum_psi": 6.983107309807459e-07,
+      "minimum_rank_denominator": 1.0000000000002471,
+      "maximum_rank_denominator": 1.000006415487189,
+      "displacement_rms_m": 0.002578037358005511,
+      "force_rms_n": 0.7971758313425672,
+      "finite_window_dc_db": -54.06937729141478,
+      "mode3_peak_energy_fraction": 0.03922518740117762,
+      "final_energy_fraction": 1.0000000000003142
+    },
+    {
+      "test": "lossless_single_mode",
+      "model": "kirchhoff",
+      "lambda": 0.0,
+      "balance_relative": 3.205859593059476e-13,
+      "drift_energy_relative": 4.978833079441563e-07,
+      "minimum_energy_j": 0.0035361554635915966,
+      "minimum_psi": 5.662314755521576e-07,
+      "minimum_rank_denominator": 1,
+      "maximum_rank_denominator": 1.0000010911430102,
+      "displacement_rms_m": 0.002597336910416862,
+      "force_rms_n": 0.7960969039494116,
+      "finite_window_dc_db": -51.5480109663978,
+      "mode3_peak_energy_fraction": 0,
+      "final_energy_fraction": 0.999999999999681
+    },
+    {
+      "test": "lossless_single_mode",
+      "model": "kirchhoff",
+      "lambda": 1000.0,
+      "balance_relative": 3.208312431309713e-13,
+      "drift_energy_relative": 4.65022404014044e-06,
+      "minimum_energy_j": 0.003536155463592026,
+      "minimum_psi": 5.317675016819961e-07,
+      "minimum_rank_denominator": 1,
+      "maximum_rank_denominator": 1.0000028018035745,
+      "displacement_rms_m": 0.0025973372010865046,
+      "force_rms_n": 0.7960969934837737,
+      "finite_window_dc_db": -51.549852220355476,
+      "mode3_peak_energy_fraction": 0,
+      "final_energy_fraction": 1.0000000000002083
+    },
+    {
+      "test": "amplitude_limit",
+      "height_m": 0.0001,
+      "relative_displacement_error": 0.0002307206476897893
+    },
+    {
+      "test": "amplitude_limit",
+      "height_m": 5e-05,
+      "relative_displacement_error": 5.7747846599374996e-05
+    },
+    {
+      "test": "amplitude_limit",
+      "height_m": 2.5e-05,
+      "relative_displacement_error": 1.444681660266039e-05
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "cubic",
+      "rate": 48000,
+      "height_m": 0.001,
+      "linear_frequency_hz": 196.01530329292933,
+      "frequency_hz": 196.03814104314472,
+      "shift_cents": 0.20169439341926193,
+      "weak_theory_shift_cents": 0.2017489756166537
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "cubic",
+      "rate": 48000,
+      "height_m": 0.002,
+      "linear_frequency_hz": 196.01530329292933,
+      "frequency_hz": 196.10661542069056,
+      "shift_cents": 0.806293451021575,
+      "weak_theory_shift_cents": 0.8068548761803244
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "cubic",
+      "rate": 48000,
+      "height_m": 0.004,
+      "linear_frequency_hz": 196.01530329292933,
+      "frequency_hz": 196.380484977021,
+      "shift_cents": 3.2223340158849356,
+      "weak_theory_shift_cents": 3.225165710002182
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "exact",
+      "rate": 48000,
+      "height_m": 0.001,
+      "linear_frequency_hz": 196.01530329292933,
+      "frequency_hz": 196.03814079261446,
+      "shift_cents": 0.20169218095938143,
+      "weak_theory_shift_cents": 0.2017489756166537
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "exact",
+      "rate": 48000,
+      "height_m": 0.002,
+      "linear_frequency_hz": 196.01530329292933,
+      "frequency_hz": 196.1066120142531,
+      "shift_cents": 0.8062633789072975,
+      "weak_theory_shift_cents": 0.8068548761803244
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "exact",
+      "rate": 48000,
+      "height_m": 0.004,
+      "linear_frequency_hz": 196.01530329292933,
+      "frequency_hz": 196.38012017025744,
+      "shift_cents": 3.2191179810682766,
+      "weak_theory_shift_cents": 3.225165710002182
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "kirchhoff",
+      "rate": 48000,
+      "height_m": 0.001,
+      "linear_frequency_hz": 196.01530329292933,
+      "frequency_hz": 196.03052899043018,
+      "shift_cents": 0.13447022657509802,
+      "weak_theory_shift_cents": 0.13450192935195318
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "kirchhoff",
+      "rate": 48000,
+      "height_m": 0.002,
+      "linear_frequency_hz": 196.01530329292933,
+      "frequency_hz": 196.07620291664728,
+      "shift_cents": 0.5377902930002146,
+      "weak_theory_shift_cents": 0.5379450309437329
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "kirchhoff",
+      "rate": 48000,
+      "height_m": 0.004,
+      "linear_frequency_hz": 196.01530329292933,
+      "frequency_hz": 196.25876051894232,
+      "shift_cents": 2.1489133856317766,
+      "weak_theory_shift_cents": 2.1507779188611704
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "cubic",
+      "rate": 192000,
+      "height_m": 0.001,
+      "linear_frequency_hz": 196.0102624213752,
+      "frequency_hz": 196.03310396239132,
+      "shift_cents": 0.20173305800211716,
+      "weak_theory_shift_cents": 0.2017489756166537
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "cubic",
+      "rate": 192000,
+      "height_m": 0.002,
+      "linear_frequency_hz": 196.0102624213752,
+      "frequency_hz": 196.10161096305288,
+      "shift_cents": 0.806635653141507,
+      "weak_theory_shift_cents": 0.8068548761803244
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "cubic",
+      "rate": 192000,
+      "height_m": 0.004,
+      "linear_frequency_hz": 196.0102624213752,
+      "frequency_hz": 196.37537908706562,
+      "shift_cents": 3.2218436104240316,
+      "weak_theory_shift_cents": 3.225165710002182
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "exact",
+      "rate": 192000,
+      "height_m": 0.001,
+      "linear_frequency_hz": 196.0102624213752,
+      "frequency_hz": 196.0331036879126,
+      "shift_cents": 0.20173063398856256,
+      "weak_theory_shift_cents": 0.2017489756166537
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "exact",
+      "rate": 192000,
+      "height_m": 0.002,
+      "linear_frequency_hz": 196.0102624213752,
+      "frequency_hz": 196.10160469783017,
+      "shift_cents": 0.8065803421882983,
+      "weak_theory_shift_cents": 0.8068548761803244
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "exact",
+      "rate": 192000,
+      "height_m": 0.004,
+      "linear_frequency_hz": 196.0102624213752,
+      "frequency_hz": 196.37531662591067,
+      "shift_cents": 3.2212929563862063,
+      "weak_theory_shift_cents": 3.225165710002182
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "kirchhoff",
+      "rate": 192000,
+      "height_m": 0.001,
+      "linear_frequency_hz": 196.0102624213752,
+      "frequency_hz": 196.0254904112525,
+      "shift_cents": 0.13449393019493244,
+      "weak_theory_shift_cents": 0.13450192935195318
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "kirchhoff",
+      "rate": 192000,
+      "height_m": 0.002,
+      "linear_frequency_hz": 196.0102624213752,
+      "frequency_hz": 196.0711657968722,
+      "shift_cents": 0.5378372481998157,
+      "weak_theory_shift_cents": 0.5379450309437329
+    },
+    {
+      "test": "single_mode_pitch",
+      "model": "kirchhoff",
+      "rate": 192000,
+      "height_m": 0.004,
+      "linear_frequency_hz": 196.0102624213752,
+      "frequency_hz": 196.253747451756,
+      "shift_cents": 2.1492138894245083,
+      "weak_theory_shift_cents": 2.1507779188611704
+    },
+    {
+      "test": "rk4_self_convergence",
+      "rates": [
+        384000,
+        768000
+      ],
+      "relative_modal_displacement_error": 2.1458421641796957e-07,
+      "relative_bridge_force_error": 1.7105934886172343e-06
+    },
+    {
+      "test": "time_convergence",
+      "rate": 48000,
+      "lambda": 0,
+      "relative_modal_displacement_error": 0.04391547880529214,
+      "relative_bridge_force_error": 0.2746365158335556
+    },
+    {
+      "test": "time_convergence",
+      "rate": 96000,
+      "lambda": 0,
+      "relative_modal_displacement_error": 0.015563605448110444,
+      "relative_bridge_force_error": 0.11106218883009965,
+      "observed_displacement_order": 1.4965532211502375,
+      "observed_force_order": 1.3061557256538625
+    },
+    {
+      "test": "time_convergence",
+      "rate": 192000,
+      "lambda": 0,
+      "relative_modal_displacement_error": 0.004028129772772038,
+      "relative_bridge_force_error": 0.028845037592681866,
+      "observed_displacement_order": 1.9499942442440192,
+      "observed_force_order": 1.9449726854459546
+    },
+    {
+      "test": "time_convergence",
+      "rate": 48000,
+      "lambda": 1000,
+      "relative_modal_displacement_error": 0.04380660921407203,
+      "relative_bridge_force_error": 0.27484620753697986
+    },
+    {
+      "test": "time_convergence",
+      "rate": 96000,
+      "lambda": 1000,
+      "relative_modal_displacement_error": 0.015400644912280709,
+      "relative_bridge_force_error": 0.11057448780047725,
+      "observed_displacement_order": 1.5081577832997002,
+      "observed_force_order": 1.3136060130506568
+    },
+    {
+      "test": "time_convergence",
+      "rate": 192000,
+      "lambda": 1000,
+      "relative_modal_displacement_error": 0.003968390570642945,
+      "relative_bridge_force_error": 0.028636745270954472,
+      "observed_displacement_order": 1.9563648375340232,
+      "observed_force_order": 1.949079122915564
+    },
+    {
+      "test": "repeated_release",
+      "model": "exact",
+      "lambda": 0,
+      "gauge_j": 1e-14,
+      "role": "unregulated_control",
+      "release_gate_passed": false,
+      "balance_relative": 6.528843046226592e-13,
+      "drift_energy_relative": 0.0017431377942715277,
+      "minimum_energy_j": 1.4952880209088024e-07,
+      "minimum_psi": 0.0003512386212028042,
+      "minimum_rank_denominator": 1,
+      "maximum_rank_denominator": 1.000108235323916,
+      "displacement_rms_m": 0.0010040660338537677,
+      "force_rms_n": 0.46801868924000156,
+      "finite_window_dc_db": -47.45127595215302,
+      "mode3_peak_energy_fraction": 0.7893250512741238,
+      "final_energy_fraction": 0.00012855390827329523
+    },
+    {
+      "test": "repeated_release",
+      "model": "exact",
+      "lambda": 0,
+      "gauge_j": 1e-10,
+      "role": "unregulated_control",
+      "release_gate_passed": false,
+      "balance_relative": 6.910573403837179e-13,
+      "drift_energy_relative": 0.0017431499600918823,
+      "minimum_energy_j": 1.5495698251320103e-07,
+      "minimum_psi": 0.0003513714458129742,
+      "minimum_rank_denominator": 1,
+      "maximum_rank_denominator": 1.000108234814826,
+      "displacement_rms_m": 0.0010040660256187407,
+      "force_rms_n": 0.4680186884206642,
+      "finite_window_dc_db": -47.451261042923946,
+      "mode3_peak_energy_fraction": 0.7893250427038979,
+      "final_energy_fraction": 0.00013322066008528266
+    },
+    {
+      "test": "repeated_release",
+      "model": "exact",
+      "lambda": 1000,
+      "gauge_j": 1e-14,
+      "role": "candidate",
+      "release_gate_passed": true,
+      "balance_relative": 6.71617021612773e-13,
+      "drift_energy_relative": 5.2041213971011555e-05,
+      "minimum_energy_j": 1.0249233074059639e-20,
+      "minimum_psi": 1.0000000000000001e-07,
+      "minimum_rank_denominator": 1,
+      "maximum_rank_denominator": 1.0001076076617768,
+      "displacement_rms_m": 0.0010022818789750198,
+      "force_rms_n": 0.4680405434084852,
+      "finite_window_dc_db": -47.38432793732991,
+      "mode3_peak_energy_fraction": 0.7892295949521274,
+      "final_energy_fraction": 8.811539650223987e-18
+    },
+    {
+      "test": "repeated_release",
+      "model": "exact",
+      "lambda": 1000,
+      "gauge_j": 1e-10,
+      "role": "candidate",
+      "release_gate_passed": true,
+      "balance_relative": 8.665656225715215e-13,
+      "drift_energy_relative": 5.2040526879524943e-05,
+      "minimum_energy_j": 1.0249238827802072e-20,
+      "minimum_psi": 9.999999999999997e-06,
+      "minimum_rank_denominator": 1,
+      "maximum_rank_denominator": 1.000107607226317,
+      "displacement_rms_m": 0.0010022818775997696,
+      "force_rms_n": 0.46804054192761996,
+      "finite_window_dc_db": -47.38432792733346,
+      "mode3_peak_energy_fraction": 0.7892295971791216,
+      "final_energy_fraction": 8.811544596870161e-18
+    },
+    {
+      "test": "repeated_release",
+      "model": "kirchhoff",
+      "lambda": 0,
+      "gauge_j": 1e-14,
+      "role": "unregulated_control",
+      "release_gate_passed": true,
+      "balance_relative": 6.606392478210037e-13,
+      "drift_energy_relative": 4.731767377051023e-06,
+      "minimum_energy_j": 1.1091657223339767e-15,
+      "minimum_psi": 1.1053646876779997e-07,
+      "minimum_rank_denominator": 1,
+      "maximum_rank_denominator": 1.0000087965135942,
+      "displacement_rms_m": 0.001003763031118335,
+      "force_rms_n": 0.4696064822071233,
+      "finite_window_dc_db": -46.87488550195898,
+      "mode3_peak_energy_fraction": 0.7829807750654383,
+      "final_energy_fraction": 9.552582977151546e-13
+    },
+    {
+      "test": "repeated_release",
+      "model": "kirchhoff",
+      "lambda": 0,
+      "gauge_j": 1e-10,
+      "role": "unregulated_control",
+      "release_gate_passed": true,
+      "balance_relative": 6.431313638427162e-13,
+      "drift_energy_relative": 4.731482987347962e-06,
+      "minimum_energy_j": -2.4165874863338074e-13,
+      "minimum_psi": 9.975804853855951e-06,
+      "minimum_rank_denominator": 1,
+      "maximum_rank_denominator": 1.0000087960816917,
+      "displacement_rms_m": 0.0010037630276282551,
+      "force_rms_n": 0.4696064823197816,
+      "finite_window_dc_db": -46.87488541525623,
+      "mode3_peak_energy_fraction": 0.7829807767194664,
+      "final_energy_fraction": -2.0812627022203305e-10
+    },
+    {
+      "test": "repeated_release",
+      "model": "kirchhoff",
+      "lambda": 1000,
+      "gauge_j": 1e-14,
+      "role": "candidate",
+      "release_gate_passed": true,
+      "balance_relative": 5.90345060483913e-13,
+      "drift_energy_relative": 3.3569541994796436e-06,
+      "minimum_energy_j": 1.0258822792995526e-20,
+      "minimum_psi": 1.0000000000000001e-07,
+      "minimum_rank_denominator": 1,
+      "maximum_rank_denominator": 1.0000087974890326,
+      "displacement_rms_m": 0.0010037738802860996,
+      "force_rms_n": 0.4696075732522675,
+      "finite_window_dc_db": -46.87520371460012,
+      "mode3_peak_energy_fraction": 0.7829830372067498,
+      "final_energy_fraction": 8.835312343746902e-18
+    },
+    {
+      "test": "repeated_release",
+      "model": "kirchhoff",
+      "lambda": 1000,
+      "gauge_j": 1e-10,
+      "role": "candidate",
+      "release_gate_passed": true,
+      "balance_relative": 7.097491798010309e-13,
+      "drift_energy_relative": 3.356950240854945e-06,
+      "minimum_energy_j": 1.0259225483127112e-20,
+      "minimum_psi": 1.0000000000000006e-05,
+      "minimum_rank_denominator": 1,
+      "maximum_rank_denominator": 1.0000087970571434,
+      "displacement_rms_m": 0.0010037738801578176,
+      "force_rms_n": 0.4696075735686161,
+      "finite_window_dc_db": -46.87520371712572,
+      "mode3_peak_energy_fraction": 0.7829830389027879,
+      "final_energy_fraction": 8.83565915674505e-18
+    }
+  ],
+  "failures": 0,
+  "provenance": {
+    "checked_utc": "2026-09-08T20:37:56.530002+00:00",
+    "source": "Tools/NonlinearStringPrototype.cpp",
+    "source_sha256": "227d13ddeccfca9efa1499e30b54301a9542bb065d3eda04e9b3ce0962c3afd5",
+    "binary": "/tmp/AcustraNonlinearStringPrototype",
+    "binary_sha256": "3cf0d53d2b1f4ce78880d46ddc67be135fd14e5d11590d62a3dd59d081671f58",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.5.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "compile_command": "c++ -std=c++20 -O3 -Wall -Wextra -Wpedantic Tools/NonlinearStringPrototype.cpp -o /tmp/AcustraNonlinearStringPrototype",
+    "run_command": "/tmp/AcustraNonlinearStringPrototype --self-test /tmp/acustra-nonlinear-prototype-final",
+    "native_report_sha256": "0422cefbe8d41c044b33f80c1433c4523c9ab9e5ba46d739c467dbe0c41555b7",
+    "csv_files": [
+      {
+        "file": "cubic-lambda0.csv",
+        "bytes": 2524073,
+        "sha256": "1b8d93d9bc3c7617f2dd9e138e8758f76dc2c6e323b70b2d1f9588f91069c75b"
+      },
+      {
+        "file": "cubic-lambda1000.csv",
+        "bytes": 2525404,
+        "sha256": "8c94441057f8d2f5bacdb424a80e014debb13515619e24cb424abb7f51819c47"
+      },
+      {
+        "file": "exact-lambda0.csv",
+        "bytes": 2524031,
+        "sha256": "77383918d9644279fda029f0b5194b2107140c860782086c555b3522814eacce"
+      },
+      {
+        "file": "exact-lambda1000.csv",
+        "bytes": 2525341,
+        "sha256": "0d5a1a44258ddddac6f1df2cf9c05615efd29ba2b9b69591dca0bba24e202471"
+      },
+      {
+        "file": "kirchhoff-lambda0.csv",
+        "bytes": 2218951,
+        "sha256": "594a32d6b351dde16c2a3cb00b30a88eca16d1cdcdf09002deb6172893f0a782"
+      },
+      {
+        "file": "kirchhoff-lambda1000.csv",
+        "bytes": 2217986,
+        "sha256": "42d524318801ac7b947f378424c3fe6dc30943fdf37032746decd3914d901dc7"
+      },
+      {
+        "file": "repeated-exact-lambda0.csv",
+        "bytes": 3427057,
+        "sha256": "22c9a29de43ce617be569ae7bd35945ed793d3c28d4fbe8ccb6d9429afe9a51b"
+      },
+      {
+        "file": "repeated-exact-lambda1000.csv",
+        "bytes": 3430610,
+        "sha256": "fb0995d0c71739df7904d70f5d6ecadfa14751fe50fee71f958195acaf692a34"
+      },
+      {
+        "file": "repeated-kirchhoff-lambda0.csv",
+        "bytes": 3438302,
+        "sha256": "dab1c8dcae1945c59deea5470927b06d7805d8768a64d6777cecb9ee11bd8581"
+      },
+      {
+        "file": "repeated-kirchhoff-lambda1000.csv",
+        "bytes": 3435250,
+        "sha256": "6d0b81a9a176c54f435bf16e531ae279daebea983546f463b8415a04c8b6fb51"
+      }
+    ],
+    "physical_configuration": {
+      "material": "plain nylon G3",
+      "length_m": 0.65,
+      "diameter_m": 0.001,
+      "bulk_density_kg_m3": 1140,
+      "young_modulus_pa": 2700000000.0,
+      "bending_rigidity_n_m2": 0.00031,
+      "nominal_fundamental_hz": 195.99771799
+    },
+    "default_modes": 12,
+    "default_spatial_intervals": 64,
+    "default_rate_hz": 48000,
+    "default_gauge_j": 1e-12,
+    "default_regulator_per_second": 1000,
+    "scope": "Independent offline fixed-end numerical experiment; no engine linkage, body radiation or real-recording qualification."
+  }
+}
