@@ -1,0 +1,264 @@
+{
+  "artifact": "Moving-endpoint power-port corrections A then B",
+  "date_local": "2026-09-09 Europe/Prague",
+  "production_or_audio_qualification": false,
+  "retained_v1_directory": "../MovingEndpointPowerPortAuditV1",
+  "v1_inputs": {
+    "MovingPortAudit.cpp": {
+      "sha256": "5926322d8158b7d522f4a53fed573c451889b0a442416a3be7e6bd1656209947",
+      "bytes": 34543
+    },
+    "frozen-prototype.cpp": {
+      "sha256": "227d13ddeccfca9efa1499e30b54301a9542bb065d3eda04e9b3ce0962c3afd5",
+      "bytes": 35628
+    },
+    "protocol-v1.md": {
+      "sha256": "cd826a1cd20322bea306be55f1ae591cf6b93093e3c8b117786de6a13ce383bd",
+      "bytes": 17582
+    },
+    "report.json": {
+      "sha256": "783d9ea8178845cbd698b7b1016eb8bbb7dc3d9f6738eea606f373cabca8e091",
+      "bytes": 116722
+    }
+  },
+  "protocol_A_packaged_name": "protocol-A.md",
+  "protocol_A_original_name": "protocol-A-v2.md",
+  "protocol_copies_byte_identical": {
+    "A": true,
+    "B": true
+  },
+  "patch_reconstruction_verified_byte_identical": true,
+  "reconstructed_sources": {
+    "A": {
+      "sha256": "93c856d625f2135de1fc895ebe51953178b5414d7f057e8e17d4d2b3f57911ac",
+      "bytes": 37172
+    },
+    "B": {
+      "sha256": "725b51ad7fea7ecdc50a7b06d1b5275f3cc49d152abaf0fdb4e9218c230552e6",
+      "bytes": 39031
+    }
+  },
+  "retained_run_A": {
+    "protocols": [
+      "protocol-v1.md",
+      "protocol-A-v2.md"
+    ],
+    "source": "MovingPortAudit-A.cpp",
+    "files": {
+      "protocol-v1.md": {
+        "sha256": "cd826a1cd20322bea306be55f1ae591cf6b93093e3c8b117786de6a13ce383bd",
+        "bytes": 17582
+      },
+      "protocol-A-v2.md": {
+        "sha256": "1ac9f47847325036fc84ba1c2efab882f718fad295f23193e3edf1d5d0725905",
+        "bytes": 4222
+      },
+      "frozen-prototype.cpp": {
+        "sha256": "227d13ddeccfca9efa1499e30b54301a9542bb065d3eda04e9b3ce0962c3afd5",
+        "bytes": 35628
+      },
+      "MovingPortAudit-A.cpp": {
+        "sha256": "93c856d625f2135de1fc895ebe51953178b5414d7f057e8e17d4d2b3f57911ac",
+        "bytes": 37172
+      },
+      "MovingPortAudit-A": {
+        "sha256": "8a622cde8a81c5685252b9ba978ac484a8eba99a4c20d6bf5d4c437cce1879bb",
+        "bytes": 337968
+      }
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.5.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+    "compile_flags": [
+      "-std=c++20",
+      "-O3",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic"
+    ],
+    "run_started_utc": "2026-09-08T21:49:57.142798+00:00",
+    "exit_code": 1,
+    "run_finished_utc": "2026-09-08T21:50:03.490294+00:00"
+  },
+  "retained_run_B": {
+    "protocols": [
+      "protocol-v1.md",
+      "protocol-A-v2.md",
+      "protocol-B.md"
+    ],
+    "source": "MovingPortAudit-B.cpp",
+    "compile_flags": [
+      "-std=c++20",
+      "-O3",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic"
+    ],
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.5.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+    "run_started_utc": "2026-09-08T22:15:55.456318+00:00",
+    "files": {
+      "MovingPortAudit-B.cpp": {
+        "sha256": "725b51ad7fea7ecdc50a7b06d1b5275f3cc49d152abaf0fdb4e9218c230552e6",
+        "bytes": 39031
+      },
+      "MovingPortAudit-B": {
+        "sha256": "bd5d6348ac7cdf50a11afbab5791a13b0946b1a4ed0ed88826208004f1f5b4e8",
+        "bytes": 337760
+      },
+      "frozen-prototype.cpp": {
+        "sha256": "227d13ddeccfca9efa1499e30b54301a9542bb065d3eda04e9b3ce0962c3afd5",
+        "bytes": 35628
+      },
+      "protocol-v1.md": {
+        "sha256": "cd826a1cd20322bea306be55f1ae591cf6b93093e3c8b117786de6a13ce383bd",
+        "bytes": 17582
+      },
+      "protocol-A-v2.md": {
+        "sha256": "1ac9f47847325036fc84ba1c2efab882f718fad295f23193e3edf1d5d0725905",
+        "bytes": 4222
+      },
+      "protocol-B.md": {
+        "sha256": "b72d6813b3ea1ce0e2a1c776e9b4b853a750c8993061295ecee14487a3222bff",
+        "bytes": 3954
+      },
+      "parent-hashes.json": {
+        "sha256": "1acff35833fb8ca1bb46229e1be49a1f1bee5adde2dfbbf5e04a815782ab6183",
+        "bytes": 1098
+      },
+      "make-B.py": {
+        "sha256": "24b0c839a36265f0bf16f51fc058928da7c4819a73898630fe5ae733ef2aa170",
+        "bytes": 4270
+      },
+      "A-to-B.patch": {
+        "sha256": "dc7186e434d33bd559a6b1d5a7826b77f7c598fd3ae6555d56d4d278b4197bd5",
+        "bytes": 10453
+      },
+      "result-B/report.json": {
+        "sha256": "dae2e8199c02040f8d0667dd1799cd7abd90f4ea46f8443fb3c92bb6cb2aba31",
+        "bytes": 127393
+      },
+      "stdout-B.txt": {
+        "sha256": "5c4de640d1de1d6996eb43a209c46f29d0c7bc9658ad64bfed78692415ebba3c",
+        "bytes": 455
+      },
+      "stderr-B.txt": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    "exit_code": 0,
+    "run_finished_utc": "2026-09-08T22:16:02.374722+00:00"
+  },
+  "original_v1_and_A_preservation_sha256": {
+    "MovingPortAudit.cpp": "5926322d8158b7d522f4a53fed573c451889b0a442416a3be7e6bd1656209947",
+    "MovingPortAudit-A.cpp": "93c856d625f2135de1fc895ebe51953178b5414d7f057e8e17d4d2b3f57911ac",
+    "MovingPortAudit": "ada6ba0c1a1596eb2596851bdf09e5aea93d02d9a5cd7e120b5897eece4b407c",
+    "MovingPortAudit-A": "8a622cde8a81c5685252b9ba978ac484a8eba99a4c20d6bf5d4c437cce1879bb",
+    "frozen-prototype.cpp": "227d13ddeccfca9efa1499e30b54301a9542bb065d3eda04e9b3ce0962c3afd5",
+    "protocol-v1.md": "cd826a1cd20322bea306be55f1ae591cf6b93093e3c8b117786de6a13ce383bd",
+    "protocol-A-v2.md": "1ac9f47847325036fc84ba1c2efab882f718fad295f23193e3edf1d5d0725905",
+    "protocol-B.md": "b72d6813b3ea1ce0e2a1c776e9b4b853a750c8993061295ecee14487a3222bff",
+    "manifest-v1.json": "b8ebfba4383f3ede9aaa3cbab0983921bfd6fb7ee25548b390f27ed674dd1b18",
+    "manifest-A.json": "975b1a4e05e23fb8fecdbf5d6c5b37592d0930d0c41d44e3de0d93419c33e2df",
+    "result-v1/report.json": "783d9ea8178845cbd698b7b1016eb8bbb7dc3d9f6738eea606f373cabca8e091",
+    "result-A/report.json": "b56f5e3dd9be2048098978816cb9f80815e73c52f3774b6152c1f2d5e5b32691"
+  },
+  "all_original_files_reverified_unchanged_after_B_and_packaging": true,
+  "outcomes": {
+    "v1": {
+      "measurements": 182,
+      "failures": 3,
+      "coverage_limitation": "Original auxiliary maxima monitor lacks complete nonfinite guards."
+    },
+    "A": {
+      "measurements": 204,
+      "failures": 2,
+      "nonfinite_controls_detected": 22
+    },
+    "B": {
+      "measurements": 204,
+      "failures": 0,
+      "nonfinite_controls_detected": 22
+    }
+  },
+  "B_verification": {
+    "source_invariance_checks": {
+      "SAV_recurrence_and_observation_guards_unchanged": true,
+      "physical_RK4_unchanged": true,
+      "physical_reference_builder_unchanged": true,
+      "all_controls_algebra_reference_cases_and_acceptance_gates_unchanged": true,
+      "candidate_acceptance_gate_expressions_unchanged": true
+    },
+    "reference_measurements_exactly_equal_to_A": true,
+    "non_driven_original_measurement_fields_differing_indices": [],
+    "refinement_ratios": [
+      {
+        "from_rate": 48000,
+        "to_rate": 96000,
+        "q_error": 4.019974507125133,
+        "v_error": 4.004751890411981,
+        "y_error": 4.00470502159387,
+        "vy_error": 4.002851362154926,
+        "port_force_error": 4.024277307993118
+      },
+      {
+        "from_rate": 96000,
+        "to_rate": 192000,
+        "q_error": 4.002063953334132,
+        "v_error": 3.997067128604052,
+        "y_error": 4.00184433985055,
+        "vy_error": 4.001051656750179,
+        "port_force_error": 4.0021280140996405
+      }
+    ],
+    "all_case_ledger_maxima": {
+      "joint_relative_balance": 1.5626394160104567e-13,
+      "string_relative_balance": 1.5731038157714635e-13,
+      "body_relative_balance": 1.7730443055974229e-13,
+      "independent_branch_relative_peak_mismatch": 1.4234057629029776e-14
+    },
+    "observer_conclusion": "The existing global force and refinement gates pass including the t=.2 sample. No separate pointwise equality gate exists. The cell-versus-right-sided same-state effort mismatch remains nonzero (~2.263e-5 N); its eventual pointwise/asymptotic limitation is not removed or hidden."
+  },
+  "independent_review": {
+    "reviewer": "test_controls",
+    "scope": "Read-only review of the B diff: single eta=50.5 sample, cell work consistency, independent instantaneous physical diagnostic, reference/gate/sample preservation. Original A and B derivations were independently reviewed before implementation.",
+    "conclusion": "No mathematical blocker found; narrow numerical representation correction, not a fit."
+  },
+  "package_files": {
+    "README.md": {
+      "sha256": "628c94beb73391697b9b8c95d7726dcbefb79630e08294e0ae05ab185087a8a4",
+      "bytes": 7235
+    },
+    "amendment-A.patch": {
+      "sha256": "7374f1fd809a3912f706ef3c9939664b00f3a6da443e32d971bf59d47c4c81a9",
+      "bytes": 20427
+    },
+    "amendment-B.patch": {
+      "sha256": "dc7186e434d33bd559a6b1d5a7826b77f7c598fd3ae6555d56d4d278b4197bd5",
+      "bytes": 10453
+    },
+    "protocol-A.md": {
+      "sha256": "1ac9f47847325036fc84ba1c2efab882f718fad295f23193e3edf1d5d0725905",
+      "bytes": 4222
+    },
+    "protocol-B.md": {
+      "sha256": "b72d6813b3ea1ce0e2a1c776e9b4b853a750c8993061295ecee14487a3222bff",
+      "bytes": 3954
+    },
+    "report-A.json": {
+      "sha256": "b56f5e3dd9be2048098978816cb9f80815e73c52f3774b6152c1f2d5e5b32691",
+      "bytes": 118140
+    },
+    "report-B.json": {
+      "sha256": "dae2e8199c02040f8d0667dd1799cd7abd90f4ea46f8443fb3c92bb6cb2aba31",
+      "bytes": 127393
+    }
+  },
+  "independent_packaged_B_reproduction_2026_09_09": {
+    "source_sha256": "725b51ad7fea7ecdc50a7b06d1b5275f3cc49d152abaf0fdb4e9218c230552e6",
+    "report_sha256": "dae2e8199c02040f8d0667dd1799cd7abd90f4ea46f8443fb3c92bb6cb2aba31",
+    "all_204_measurements_exactly_equal": true,
+    "failures": 0,
+    "exit_code": 0,
+    "directory": "/tmp/acustra-port-B-independent-20260909",
+    "log_sha256": "5c4de640d1de1d6996eb43a209c46f29d0c7bc9658ad64bfed78692415ebba3c"
+  }
+}
