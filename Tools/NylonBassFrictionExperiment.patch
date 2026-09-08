@@ -1,0 +1,28 @@
+diff --git a/Source/DSP/AcustraEngine.cpp b/Source/DSP/AcustraEngine.cpp
+index 17384ab..5e4f1c2 100644
+--- a/Source/DSP/AcustraEngine.cpp
++++ b/Source/DSP/AcustraEngine.cpp
+@@ -2081,14 +2081,16 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
+               / std::max(unbentFrequency, 1.0f)), 0.0f, 0.95f)
+         : highLoss;
+ 
+-    // Woodhouse's measured string-loss model contains a term linear in modal
+-    // angular frequency (DAFx-26 Eq. 25 reports eta_f=2.0--2.5e-4 s for the
+-    // EJ45 set). A second, low-gain pole supplies the part of that slope the
+-    // former fixed-kHz loss filter missed, so upper partials evolve during a
+-    // held note instead of repeating like a lossless plucked oscillator.
+-    const float viscousLoss = (steel ? 1.65e-4f : 2.25e-4f)
++    // Woodhouse's corrected Table I (Acta Acustica 90, 2004, p.947) gives
++    // dimensionless internal-friction loss factors for the wound nylon basses
++    // E2/A2/D3. They differ from the plain-nylon strings and from the separate
++    // bending-loss factors. The low-gain pole below approximates that broad
++    // loss; its factor 72 and age mapping remain authored, not measured rates.
++    constexpr std::array<float, 3> nylonBassFriction {{ 2.0e-5f, 7.0e-5f, 5.0e-5f }};
++    const float frictionLoss = (steel ? 1.65e-4f
++        : (stringIndex < 3 ? nylonBassFriction[index] : 2.25e-4f))
+         * (1.0f + 1.35f * age);
+-    const float broadLoss = clamp(72.0f * viscousLoss
++    const float broadLoss = clamp(72.0f * frictionLoss
+         * physical.frequencyLossScale, 0.0f, 0.95f);
+     const float broadLossCutoff = 14.3f * frequency;
+     const float broadLossCoefficient = std::exp(-twoPi

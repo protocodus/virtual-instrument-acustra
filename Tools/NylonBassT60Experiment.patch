@@ -1,0 +1,16 @@
+diff --git a/Source/DSP/AcustraEngine.cpp b/Source/DSP/AcustraEngine.cpp
+index 17384ab..c2d3cf0 100644
+--- a/Source/DSP/AcustraEngine.cpp
++++ b/Source/DSP/AcustraEngine.cpp
+@@ -2160,6 +2160,11 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
+         * (1.0f - 0.12f * age)
+         * fretT60Factor
+         * physical.fundamentalT60Scale;
++    // The wound nylon basses need less scalar loss than the plain trebles.
++    // This calibration changes the intrinsic decay rate; the measured bridge
++    // and relative upper-partial filters still contribute their own losses.
++    if (!steel && stringIndex < 3)
++        fundamentalT60 *= 1.5f;
+     if (handRate > 0.0f)
+         fundamentalT60 = 1.0f / (1.0f / fundamentalT60 + handRate);
+     const float rawDelay = static_cast<float>(tunedLoopDelay(
