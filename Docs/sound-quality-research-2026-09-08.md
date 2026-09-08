@@ -358,3 +358,24 @@ recording and a deliberately reduced-quality anchor, and ask for realism
 separately from preference. A public unmatched demo can guide qualitative
 listening; it cannot establish that Acustra beats the market or that any
 particular missing equation causes the difference.
+
+## Further reference audit: classical performances
+
+The [GAPS paper](https://arxiv.org/html/2408.08653v2) supplies a useful possible
+nylon performance monitor: 300 classical performances with aligned scores.
+It does not supply measured pluck force, bridge admittance or microphone
+transfer functions. The paper explicitly leaves correspondence between its
+tablature and the performers' actual string/fret choices unverified. Its
+alignment selection evaluates onsets without offsets; it therefore cannot
+by itself establish physical finger-release timing for this instrument.
+
+The [updated Zenodo record](https://zenodo.org/records/17152440) points to an
+audio-inclusive Hugging Face version with corrected identifier case handling.
+The [author's current dataset card](https://huggingface.co/datasets/xavriley/GAPS)
+labels it MIT, while the [project site's conditions](https://aim-qmul.github.io/GAPS/)
+restrict use to non-commercial research and redistribution. This conflicting
+metadata has not been resolved here. No GAPS audio was downloaded, scored,
+used for fitting or bundled. It remains a potential performance monitor,
+subject to a suitable permission basis and annotation checks, rather than the
+missing same-guitar force/motion/radiation experiment. Existing dry and
+Yamaha/Walden real recordings remain the candidate's training gates.
