@@ -274,6 +274,33 @@ std::span<const detail::MeasuredBodyMode> measuredBodyBank(
     return detail::measuredNylonBodyModes;
 }
 
+detail::MeasuredBridgeMode shapeBridgeMode(
+    detail::MeasuredBridgeMode mode, const EngineParameters& parameters) noexcept
+{
+    // Original's bridge was calibrated with Dreadnought selected, while its
+    // radiation uses Auditorium as its unmorphed reference. Keep that legacy
+    // offset: the default instrument is unchanged, and changing Shape moves
+    // both observations in the same relative frequency/damping direction.
+    // Each named guitar instead keeps its measured native family exactly.
+    const auto reference = parameters.guitarModel == GuitarModel::Original
+        || parameters.guitarModel == GuitarModel::MartinD18V2007
+        ? BodyShape::Dreadnought
+        : parameters.guitarModel == GuitarModel::Washburn1897
+        ? BodyShape::Parlor : BodyShape::Auditorium;
+    if (parameters.shape == reference)
+        return mode;
+    const auto& shape = shapeSpecs[static_cast<std::size_t>(parameters.shape)];
+    const auto& native = shapeSpecs[static_cast<std::size_t>(reference)];
+    const bool lowBodyMode = mode.frequency > 85.0f && mode.frequency < 145.0f;
+    mode.frequency *= lowBodyMode ? shape.airHz / native.airHz
+                                  : shape.modeScale / native.modeScale;
+    mode.q *= shape.qScale / native.qScale;
+    // Only modal stiffness and loss move. Retaining each residue matrix
+    // preserves its positive-semidefinite heave/rock coupling. These are
+    // authored construction variations, not additional measured guitars.
+    return mode;
+}
+
 // Where a string crosses the saddle, in units of the half-separation between
 // the archive's two bridge impacts. Method.pdf section 2b puts the treble
 // impact between B3 and E4 and the bass impact between E2 and A2, so they are
@@ -1453,13 +1480,14 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     const bool constructionChanged = force
         || !sameStringConstruction(next, parameters_);
     const bool modelChanged = force || next.guitarModel != parameters_.guitarModel;
-    const bool bodyChanged = modelChanged || next.shape != parameters_.shape
+    const bool shapeChanged = next.shape != parameters_.shape;
+    const bool bodyChanged = modelChanged || shapeChanged
         || next.bodyMaterial != parameters_.bodyMaterial;
     const bool ageChanged = force
         || std::abs(next.stringAge - parameters_.stringAge) > 1.0e-5f;
     const bool stringChanged = force
         || next.stringMaterial != parameters_.stringMaterial;
-    const bool bridgeChanged = modelChanged || stringChanged
+    const bool bridgeChanged = modelChanged || stringChanged || shapeChanged
         || (next.stringMaterial == StringMaterial::Steel
             && next.bridgeModel != parameters_.bridgeModel);
     const bool tuningChanged = force || next.tuning != parameters_.tuning;
@@ -1489,20 +1517,22 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
         }
         if (!voice.played && tuningChanged)
             returnToOpenString(voice, string, true);
-        else if (constructionChanged || ageChanged || stringChanged)
+        else if (constructionChanged || ageChanged || stringChanged || shapeChanged)
             configureVoice(voice, string, voice.midiNote, false);
     }
     // Switching the string set or the tuning under a ringing chord changes
     // every string's impedance at once, so the junction's wave variables step
     // with the port. That is the strings being exchanged, not the bridge
     // moving, and differencing it made a click 26 times the chord it landed
-    // on. Shape, material and age move smoothly and are left alone.
+    // on. A Shape change now exchanges the mechanical load too; reuse this
+    // boundary-step treatment while the string delay targets slew normally.
     if (bridgeChanged || tuningChanged)
         bridgeDerivativesCrossRelease_ = true;
 
     // A tail belongs to the string construction it was taken from, and its
-    // loop is not redesigned below. Body shape and wood only change radiation;
-    // they must preserve the tail and its still-connected junction port.
+    // loop is not redesigned below. Shape changes the body attached to that
+    // string, not its ownership or construction, so it keeps the tail and its
+    // still-connected junction port. Wood continues to change radiation only.
     if (constructionChanged || ageChanged || stringChanged || tuningChanged)
         for (auto& voice : voices_)
         {
@@ -1515,7 +1545,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             voice.tailLoop.reset();
         }
 
-    if (constructionChanged || ageChanged || stringChanged || tuningChanged)
+    if (constructionChanged || ageChanged || stringChanged || tuningChanged || shapeChanged)
         for (int pass = 0; pass < 2; ++pass)
             for (int string = 0; string < stringCount; ++string)
                 configureVoice(voices_[static_cast<std::size_t>(string)], string,
@@ -1795,8 +1825,8 @@ void AcustraEngine::configureBridge() noexcept
             configure(index, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
             continue;
         }
-        const auto& measured = bank[index];
-        const bool include = includeMeasuredBridgeMode(measured);
+        const bool include = includeMeasuredBridgeMode(bank[index]);
+        const auto measured = shapeBridgeMode(bank[index], parameters_);
         configure(index, measured.frequency, measured.q,
                   include ? measured.heave * scale : 0.0f,
                   include ? measured.cross * scale : 0.0f,
@@ -1832,11 +1862,12 @@ float AcustraEngine::bridgePhaseDelay(float frequency,
     std::complex<float> mobilityHeave {};
     std::complex<float> mobilityCross {};
     std::complex<float> mobilityRock {};
-    for (const auto& measured
+    for (const auto& source
          : measuredBridgeBank(parameters_.stringMaterial, parameters_.bridgeModel, parameters_.guitarModel))
     {
+        const auto measured = shapeBridgeMode(source, parameters_);
         if (measured.frequency >= 0.45f * rate
-            || !includeMeasuredBridgeMode(measured))
+            || !includeMeasuredBridgeMode(source))
             continue;
         const float omega = bilinear * std::tan(
             pi * measured.frequency / rate);
@@ -2446,7 +2477,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // dimensions or universal laws of a plectrum/finger. The panel remains
     // the base hand position; explicit MPE position below takes precedence.
     const float pickingDistance = parameters_.picking == PickingTechnique::Pick
-        ? 0.55f : parameters_.picking == PickingTechnique::Thumb ? 1.60f : 1.0f;
+        ? 0.40f : parameters_.picking == PickingTechnique::Thumb ? 1.95f : 1.0f;
     const float distanceFromBridge = (0.045f
         + 0.135f * parameters_.pluckPosition) * physical.pluckDistanceScale
         * pickingDistance;
@@ -2533,12 +2564,17 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             + (voice.fret >= 17 ? 1.5f : 0.0f);
 #endif
         const int modes = std::max(voice.harmonic, 1);
-        // A fixed style ratio preserves a finite difference even when Touch
-        // reaches either endpoint. Finger retains its calibrated arithmetic.
+        // A thumb's soft pad retains a finite contact footprint even at hard
+        // velocities. Convolving the velocity-dependent Gaussian with that
+        // pad adds their variances; it does not clamp away Touch response.
+        // All widths use the same reference-rate/register conversion below.
+        // The style ratios and 2.5-sample pad are authored, not measured tool
+        // dimensions. Finger retains its calibrated arithmetic.
         const float contactSamples = parameters_.picking == PickingTechnique::Pick
-            ? 0.5f * apertureSamples
+            ? 0.35f * apertureSamples
             : parameters_.picking == PickingTechnique::Thumb
-                ? 2.0f * apertureSamples : apertureSamples;
+                ? std::sqrt(4.0f * apertureSamples * apertureSamples + 6.25f)
+                : apertureSamples;
         const float aperture = registeredPluckAperture(
             contactSamples, physical.apertureScale, apertureReferenceDelay,
             currentReferenceLength,

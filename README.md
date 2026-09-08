@@ -25,7 +25,8 @@ the bridge hand, CC68 as legato and, while CC68 is enabled, note-off velocity
 as an intentional finger lift. Ordinary note-off always damps the note. Existing
 saved sessions retain their parameter IDs. The revised picking styles and
 stronger body variations intentionally change their sound. See the
-[2026-09-08 realism work](Docs/realism-work.md) for measurements and limits.
+[latest picking/body character comparison](Docs/control-character-feedback-2026-09-08.md)
+and [realism work](Docs/realism-work.md) for measurements and limits.
 
 ## Audio demos
 
@@ -731,19 +732,24 @@ microphone, so their microphone capture remains mono even with Stereo mic
 selected. The `guitarModel` host parameter is appended at version 7; old saved
 states default to Original.
 
-Shape and Body Material change radiation while preserving the ringing strings,
-including overlapping re-pluck tails. If a body crossfade is already sounding,
+Shape changes the bridge's resonance frequencies and damping together with
+radiation, so it also changes the saddle-force Piezo capture and the body's
+interaction with the strings. Body Material continues to change radiation.
+Both preserve ringing strings and overlapping re-pluck tails. Original keeps
+its calibrated bridge at Dreadnought; its radiation's unwarped reference remains
+Auditorium, a retained legacy offset. Each named model keeps its measured
+bridge at its native shape. If a body crossfade is already sounding,
 the latest selection waits for its remaining duration (at most 40 ms), then
 uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
 
 | Control | Audible behavior |
 | --- | --- |
 | **Model** | Original, Bellido 1978, Washburn 1897, Santa Cruz OM 2022 or Martin D18V 2007; each named model selects its own measured bridge and radiation. |
-| **Shape** | More distinct Parlor, Auditorium, Dreadnought or Jumbo air modes, resonances, bass and decay in the radiation model. |
+| **Shape** | Parlor, Auditorium, Dreadnought or Jumbo resonance and damping directions in the bridge and radiation; all three captures hear the resulting instrument. |
 | **Body Material** | Spruce, Cedar, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. |
 | **String Material** | Selects the dedicated nylon or steel geometry, impedance, stiffness, loss and fitted calibration. |
 | **Tuning** | Changes the six open-string/fret constraints. |
-| **Picking** | Finger retains the calibrated contact; Pick plays closer to the bridge with a narrower contact, Thumb nearer the neck with a broader contact. These authored styles stay distinct at maximum velocity. |
+| **Picking** | Finger retains the calibrated contact; Pick is sharper and farther bridgeward, Thumb rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or electrically loaded saddle-force piezo. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Explicit MPE position overrides that ratio. |

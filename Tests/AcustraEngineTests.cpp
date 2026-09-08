@@ -98,12 +98,15 @@ struct AcustraEngineTestAccess
             ? calibration.steel : calibration.nylon;
         const float apertureSamples = 0.70f + 3.60f * (1.0f - touch)
             + (string < 3 ? 1.0f : 0.0f) + (voice.fret >= 17 ? 1.5f : 0.0f);
+        const float contactSamples = options.picking == PickingTechnique::Pick
+            ? 0.35f * apertureSamples
+            : options.picking == PickingTechnique::Thumb
+                ? std::sqrt(4.0f * apertureSamples * apertureSamples + 6.25f)
+                : apertureSamples;
         ReleasedContactSnapshot result {
             {}, std::clamp(voice.pluckPoint
                 + (options.polarisation == 0 ? -0.006f : 0.009f), 0.05f, 0.48f),
-            registeredAperture(apertureSamples
-                * (options.picking == PickingTechnique::Pick ? 0.5f
-                   : options.picking == PickingTechnique::Thumb ? 2.0f : 1.0f),
+            registeredAperture(contactSamples,
                 physical.apertureScale,
                 loop.currentDelay * 48000.0f / static_cast<float>(rate),
                 calibration.apertureRegisterExponent),
@@ -5113,13 +5116,24 @@ void testBodyChangesPreserveTheSoundingStrings()
                 changed.setParameters(parameters);
                 expect(Access::retainedTailCount(changed)
                            == Access::retainedTailCount(held),
-                       "a radiation-only body change deleted a connected string tail");
+                       "a body change deleted a connected string tail");
                 const auto expected = continueConstructionProbe(held, 480);
                 const auto actual = continueConstructionProbe(changed, 480);
-                // These observations bypass microphone radiation. A body-only
-                // change must preserve every sample, including the first one.
-                expect(actual.left == expected.left && actual.right == expected.right,
-                       "a body-only change altered the ideal pickup's ringing strings");
+                // Wood changes microphone radiation only; shape also changes
+                // the bridge loading. Both must retain the connected tails.
+                if (wood)
+                    expect(actual.left == expected.left && actual.right == expected.right,
+                           "a wood-only change altered the pickup's ringing strings");
+                else
+                {
+                    expect(actual.left != expected.left || actual.right != expected.right,
+                           "a shape change did not reach the pickup's bridge loading");
+                    expect(std::all_of(actual.left.begin(), actual.left.end(),
+                                       [] (float value) { return std::isfinite(value); })
+                               && std::all_of(actual.right.begin(), actual.right.end(),
+                                              [] (float value) { return std::isfinite(value); }),
+                           "a shape change made the pickup's ringing strings non-finite");
+                }
             }
 }
 
@@ -5144,16 +5158,18 @@ void testBodyChangesPreserveAnUnfinishedFade()
     };
 
     auto first = parameters;
-    first.shape = acustra::BodyShape::Parlor;
+    // Hold the mechanical shape equal so this observes radiation-bank
+    // scheduling against exactly the same continuously ringing string input.
+    first.bodyMaterial = acustra::BodyMaterial::Maple;
     auto second = first;
-    second.bodyMaterial = acustra::BodyMaterial::Maple;
+    second.bodyMaterial = acustra::BodyMaterial::Cedar;
     reference.setParameters(second);
     changed.setParameters(first);
     changed.setParameters(second);
     compare(64, "same-tick body updates erased the sounding bank instead of replacing the silent target");
 
     auto latest = second;
-    latest.bodyMaterial = acustra::BodyMaterial::Cedar;
+    latest.bodyMaterial = acustra::BodyMaterial::Mahogany;
     changed.setParameters(parameters); // superseded before another audio sample
     changed.setParameters(latest);
     expect(Access::bodyUpdatePending(changed), "an interrupted body fade was not queued");

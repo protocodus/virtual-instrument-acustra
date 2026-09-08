@@ -61,11 +61,17 @@ The Shape control now spans air-resonance anchors of 128, 107, 98 and 88 Hz,
 plate-frequency factors 1.18, 1.00, 0.90 and 0.82, and broader bass/damping
 directions from Parlor to Jumbo. These are authored soundboard-color
 variations. In particular, increasing Q with size is a musical direction,
-not a universal physical law. They transform radiation while leaving the
-selected measured bridge intact. At a named guitar's native family and wood
-reference, relative factors return its original fitted response.
+not a universal physical law. Shape now applies the same relative frequency
+and damping directions to the bridge, preserving its positive-semidefinite
+residue matrices. This closes the former Piezo no-op and lets the body's
+mechanical response change along with microphone color. At a named guitar's
+native family and wood reference, its original fitted response remains exact.
+Original retains Dreadnought as its calibrated bridge reference and Auditorium
+as its radiation reference; this legacy offset is preserved to avoid retuning
+the default instrument. The high-band conductance floor has no measured shape
+mapping and remains unchanged. See [the coupling qualification](body-shape-coupling-2026-09-09.md).
 
-[The reproducible comparison](body-control-comparison-2026-09-08.json) uses
+[The earlier radiation-only comparison](body-control-comparison-2026-09-08.json) uses
 identical notes and removes each note's overall spectral energy before
 comparing frequency bands. All six shape pairs separate more strongly in
 both materials. Mean pairwise band distances rise from 3.45–5.57 to

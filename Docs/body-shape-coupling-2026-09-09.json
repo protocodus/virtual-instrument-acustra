@@ -1,0 +1,2351 @@
+{
+  "date": "2026-09-09",
+  "change": "Existing Shape frequency/Q directions now apply to the mechanical bridge as well as radiation. No new controls, wider shape table, residue gain fit or physical calibration change.",
+  "references": {
+    "Original_bridge": "Dreadnought preserves calibrated default",
+    "Original_radiation": "Auditorium retained legacy reference offset",
+    "Bellido1978": "Auditorium",
+    "Washburn1897": "Parlor",
+    "SantaCruzOM2022": "Auditorium",
+    "MartinD18V2007": "Dreadnought"
+  },
+  "source_sha256": {
+    "Source/DSP/AcustraEngine.cpp": "b4dbbc0d21b27c2f8831c4acb8d59b50fdf3ad80e765a242d412745cb5105a39",
+    "Source/DSP/AcustraEngine.h": "8596f443834ccdccafb8f2a1142f93ea0d9f0e8de33cc3d9a35af761761d3d25",
+    "Source/DSP/FittedPhysicalData.h": "e270667ffd6ee279e4b3371bd20fb7a9fa17675956816c4f64deb5c224043f3e",
+    "Tests/BodyShapeTests.cpp": "c90595f8f09dea059862253727ba5cb8d29ee252e80f83fe1f2317471254b986",
+    "CMakeLists.txt": "1937214c5b283bb061a0cef9bc01a578dabfc3fb66c0d73bf7c5ef51d6ba313b"
+  },
+  "native": {
+    "target": "Acustra.BodyShape",
+    "executable_name": "AcustraBodyShapeTests",
+    "failures": 0,
+    "log": {
+      "path": "/tmp/acustra-body-shape-20260908/tests.log",
+      "sha256": "a852b7c6d808b01e031df7a7fdf579aeaa3c61c0a68620df78c39e2322ba8032",
+      "bytes": 246
+    },
+    "log_text": "shape actual-biquad phase error cents=0.492829 minimum mobility real=0 case=3,1,96000,2,0,19,247,\nlargest immediate shape delay-target change samples=1.01393\nshape static minimum body work=0 transition/capture peak=0.696149\nBody shape failures=0\n",
+    "frozen_source_provenance": {
+      "path": "/tmp/acustra-body-shape-20260908/provenance.json",
+      "sha256": "f30516c390542d0cef1e16f9f69ca10561ec46f46fa0620f094bbb830849d1a5",
+      "bytes": 613
+    },
+    "coverage": {
+      "digital_phase_configurations": 160,
+      "digital_phase_comparisons": 2880,
+      "sampled_passive_string_port_real_parts": 57600,
+      "static_and_transition_configurations": 48,
+      "tail_states_preserved_per_material": 2
+    },
+    "phase_budget": {
+      "cents": 1.0,
+      "candidate_maximum_cents_as_printed": 0.492829,
+      "baseline_maximum_cents_as_printed": 0.289307,
+      "initial_quarter_cent_gate_failed": true,
+      "initial_failure_log": {
+        "path": "/tmp/acustra-body-shape-20260908/initial-quarter-cent-gate.log",
+        "sha256": "0522e29241e205c2d98af9498e1dd2ccddd3eab7cf444e3082787597a2f88a61",
+        "bytes": 304
+      },
+      "baseline_log": {
+        "path": "/tmp/acustra-body-shape-20260908/baseline-phase.log",
+        "sha256": "3162e1e324a71b1cbd63aa1cfaf9e00f3cb08b7c688cbaadc56892ca65973061",
+        "bytes": 177
+      },
+      "reason": "New0.25-cent observer threshold was below inherited float-biquad/analytic-formula discrepancy. Root approved documented1-cent reconstruction budget; existing end-to-end tuning gates unchanged."
+    },
+    "negative_controls": {
+      "stale-phase": {
+        "failures": 2,
+        "source": {
+          "path": "/tmp/acustra-body-shape-20260908/stale-phase.cpp",
+          "sha256": "a68b206b6f5777b1cbc5cc2273d92729a211c873801fd02877559a21591d5693",
+          "bytes": 216500
+        },
+        "executable": {
+          "path": "/tmp/acustra-body-shape-20260908/stale-phase",
+          "sha256": "51102f1362869dc5d30f7208e8a4992008c22bbc2d8f8f109095258c6a93011f",
+          "bytes": 199688
+        },
+        "log": {
+          "path": "/tmp/acustra-body-shape-20260908/stale-phase.log",
+          "sha256": "50429515dc8821bc30723b775bb8376e1bc00be7601011474f959e565d9630bf",
+          "bytes": 282
+        },
+        "log_text": "shape actual-biquad phase error cents=70.5572 minimum mobility real=0 case=0,1,96000,1,0,19,247,\nFAIL: shape tuning differs from its actual digital bridge\nlargest immediate shape delay-target change samples=0\nFAIL: shape changed no actual string delay targets\nBody shape failures=2\n"
+      },
+      "lost-tail": {
+        "failures": 4,
+        "source": {
+          "path": "/tmp/acustra-body-shape-20260908/lost-tail.cpp",
+          "sha256": "30e0e2f632ac43d025746b119484fc5ef1465c8dc66cb57030b9a9a908935f32",
+          "bytes": 216545
+        },
+        "executable": {
+          "path": "/tmp/acustra-body-shape-20260908/lost-tail",
+          "sha256": "14d0570e7f865e3c598b3d8e0ffbfc4ab047521bf532f4d2dd64902fb1c92933",
+          "bytes": 199688
+        },
+        "log": {
+          "path": "/tmp/acustra-body-shape-20260908/lost-tail.log",
+          "sha256": "a5ddef5a09a22044ae83769a093d3b49fbe5d00d6e07335a7e2b1b9c8e2d5203",
+          "bytes": 424
+        },
+        "log_text": "shape actual-biquad phase error cents=0.492829 minimum mobility real=0 case=3,1,96000,2,0,19,247,\nFAIL: shape discarded or changed a retained tail's own state\nFAIL: shape discarded or changed a retained tail's own state\nFAIL: shape discarded or changed a retained tail's own state\nFAIL: shape discarded or changed a retained tail's own state\nlargest immediate shape delay-target change samples=1.01393\nBody shape failures=4\n"
+      },
+      "missing-rebase": {
+        "failures": 4,
+        "source": {
+          "path": "/tmp/acustra-body-shape-20260908/missing-rebase.cpp",
+          "sha256": "a1041fecfce7d2ba2018e19dbb7aa75ddc0ba6d2f99d8db5a135231a8506c6a8",
+          "bytes": 216548
+        },
+        "executable": {
+          "path": "/tmp/acustra-body-shape-20260908/missing-rebase",
+          "sha256": "cc3ef63d3554191cfcf35379e9bcd02e213f783b53dd2b145d343b86e6ecdfa2",
+          "bytes": 199696
+        },
+        "log": {
+          "path": "/tmp/acustra-body-shape-20260908/missing-rebase.log",
+          "sha256": "b1229503a5e0b6f9b6a1d7b186c7d3c713e5712b8910047532f827e698e3274b",
+          "bytes": 422
+        },
+        "log_text": "shape actual-biquad phase error cents=0.492829 minimum mobility real=0 case=3,1,96000,2,0,19,247,\nFAIL: shape forgot the bridge derivative transition\nFAIL: shape emitted the instantaneous load change as a force impulse\nFAIL: shape forgot the bridge derivative transition\nFAIL: shape emitted the instantaneous load change as a force impulse\nlargest immediate shape delay-target change samples=1.01393\nBody shape failures=4\n"
+      }
+    }
+  },
+  "level_normalized_shape_comparison": {
+    "source_reports": [
+      {
+        "path": "/tmp/acustra-option-audibility-20260908/isolated-picking/report.json",
+        "sha256": "e7089e4c363d22fcef95b108dd3be1318c9d0d06d858004e075bb4a7b02093ae",
+        "bytes": 1842930
+      },
+      {
+        "path": "/tmp/acustra-option-audibility-20260908/isolated-final/report.json",
+        "sha256": "543e6bf43abb36cd9c0bbb6333fc3a85883decad8b02473349b2dc6bd28e73a7",
+        "bytes": 949951
+      }
+    ],
+    "protocol": "Clean held-note option contrasts; fixed source-relative windows, stereo power.\nNo recording targets, feature fitting or perceptual-realism claim.\n",
+    "normalization": "Stereo average power, each note divided by its own0\u2013500ms stereoRMS\u00b2. WAVs match that RMS to0.035. Fixed note-on windows; no onset/time shift. Default Spruce/Original/Touch.58/Pluck.28/Body.82/Stereo.62, same seed per fresh engine.",
+    "script_sha256": "6d0d92c104a701057bd26e76b36f949710a458ef74c67752347d93424d1410c2",
+    "renderers": {
+      "baseline": {
+        "path": "/private/tmp/acustra-option-audibility-20260908/baseline-options",
+        "sha256": "f61f02c2a286d52cbf45b5e0b736f8b46766b877fb5b2aee998e502bc500b352"
+      },
+      "final": {
+        "path": "/private/tmp/acustra-option-audibility-20260908/final-options",
+        "sha256": "77182d4cf2e61401e33da3c3b22d1c21f566cec3410ac8a8842948c917e9d04a"
+      }
+    },
+    "notes": [
+      40,
+      55,
+      64,
+      74
+    ],
+    "shape_velocity": 91,
+    "windows_seconds": {
+      "attack": [
+        0,
+        0.05
+      ],
+      "early": [
+        0,
+        0.1
+      ],
+      "sustain": [
+        0.1,
+        0.5
+      ]
+    },
+    "band_edges_hz": [
+      60,
+      120,
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000,
+      12000
+    ],
+    "summary": {
+      "shape|baseline|steel|||stereo_mic|parlor_auditorium": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 0.40811322102248127,
+        "attack": {
+          "active_band_mean_abs_db": 3.2458448527463277,
+          "power_weighted_abs_db": 3.4958937004076516,
+          "centroid_ratio": 1.0502167888439935,
+          "centroid_delta_hz": 26.764318494410475,
+          "high_fraction_delta_db": -0.7255841909297622
+        },
+        "early": {
+          "active_band_mean_abs_db": 2.6421954673843517,
+          "power_weighted_abs_db": 2.447754562617031,
+          "centroid_ratio": 1.0930410080701527,
+          "centroid_delta_hz": 61.5545430391021,
+          "high_fraction_delta_db": -0.5794275514450096
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 2.7866963860776073,
+          "power_weighted_abs_db": 1.7354526889376984,
+          "centroid_ratio": 1.0968411108019254,
+          "centroid_delta_hz": 46.54420964903878,
+          "high_fraction_delta_db": 0.18963628021169932
+        }
+      },
+      "shape|baseline|steel|||stereo_mic|parlor_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 1.6083648089425797,
+        "attack": {
+          "active_band_mean_abs_db": 3.5913048829519143,
+          "power_weighted_abs_db": 3.6199472975419766,
+          "centroid_ratio": 1.144202431147877,
+          "centroid_delta_hz": 83.58506297839983,
+          "high_fraction_delta_db": 0.7857405555232777
+        },
+        "early": {
+          "active_band_mean_abs_db": 3.0086694038335615,
+          "power_weighted_abs_db": 2.2627799810147176,
+          "centroid_ratio": 1.093520769683098,
+          "centroid_delta_hz": 25.389185916469643,
+          "high_fraction_delta_db": 0.0022428782460917063
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 3.483708646465366,
+          "power_weighted_abs_db": 1.741319104753547,
+          "centroid_ratio": 1.0129001323935722,
+          "centroid_delta_hz": 9.10246337404493,
+          "high_fraction_delta_db": -2.1675522622049046
+        }
+      },
+      "shape|baseline|steel|||stereo_mic|parlor_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 6.915104814119911,
+        "attack": {
+          "active_band_mean_abs_db": 6.439296888248516,
+          "power_weighted_abs_db": 3.4579053520140706,
+          "centroid_ratio": 0.9250199181271985,
+          "centroid_delta_hz": -53.443171469433935,
+          "high_fraction_delta_db": -1.9930634820399398
+        },
+        "early": {
+          "active_band_mean_abs_db": 5.796604442025546,
+          "power_weighted_abs_db": 2.180660064755904,
+          "centroid_ratio": 0.958994475956121,
+          "centroid_delta_hz": -40.07077829487116,
+          "high_fraction_delta_db": -2.7204649784439425
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 6.54922797227565,
+          "power_weighted_abs_db": 3.7476893110764813,
+          "centroid_ratio": 0.8848454733341324,
+          "centroid_delta_hz": -68.76280847433978,
+          "high_fraction_delta_db": -6.021476936118802
+        }
+      },
+      "shape|baseline|steel|||stereo_mic|auditorium_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 2.459484464514402,
+        "attack": {
+          "active_band_mean_abs_db": 2.722861014332926,
+          "power_weighted_abs_db": 1.5133136229893434,
+          "centroid_ratio": 0.9765439143902597,
+          "centroid_delta_hz": -15.018847922213752,
+          "high_fraction_delta_db": -1.015764164539176
+        },
+        "early": {
+          "active_band_mean_abs_db": 2.7657138317233736,
+          "power_weighted_abs_db": 1.1102741447228364,
+          "centroid_ratio": 0.9208724550392311,
+          "centroid_delta_hz": -57.787987708198415,
+          "high_fraction_delta_db": -1.254207521027519
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 3.699436280859661,
+          "power_weighted_abs_db": 0.9757492566750732,
+          "centroid_ratio": 0.8800511172158371,
+          "centroid_delta_hz": -82.55957766208985,
+          "high_fraction_delta_db": -2.977167156236261
+        }
+      },
+      "shape|baseline|steel|||stereo_mic|auditorium_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 6.301879027753145,
+        "attack": {
+          "active_band_mean_abs_db": 5.275593495978031,
+          "power_weighted_abs_db": 2.4097028452681934,
+          "centroid_ratio": 0.9583985158712713,
+          "centroid_delta_hz": -21.718058622280807,
+          "high_fraction_delta_db": -1.1133604791736929
+        },
+        "early": {
+          "active_band_mean_abs_db": 5.381994768036405,
+          "power_weighted_abs_db": 1.6220851494844644,
+          "centroid_ratio": 0.9303602191973293,
+          "centroid_delta_hz": -36.4800387768787,
+          "high_fraction_delta_db": -2.182053403148526
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 5.514890901611239,
+          "power_weighted_abs_db": 2.1409582448727837,
+          "centroid_ratio": 0.8748487960817279,
+          "centroid_delta_hz": -53.37041936118766,
+          "high_fraction_delta_db": -4.725933996901544
+        }
+      },
+      "shape|baseline|steel|||stereo_mic|dreadnought_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 4.3682302861044136,
+        "attack": {
+          "active_band_mean_abs_db": 3.8682559068284883,
+          "power_weighted_abs_db": 2.857882037479963,
+          "centroid_ratio": 0.9711517209015673,
+          "centroid_delta_hz": -20.7471470210742,
+          "high_fraction_delta_db": -0.0975963146345169
+        },
+        "early": {
+          "active_band_mean_abs_db": 4.022759128414623,
+          "power_weighted_abs_db": 2.6922175319819934,
+          "centroid_ratio": 0.9034004212580683,
+          "centroid_delta_hz": -64.61728144925337,
+          "high_fraction_delta_db": -1.4264721854750384
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 4.6288179727688,
+          "power_weighted_abs_db": 3.230700817072189,
+          "centroid_ratio": 0.8855807468664614,
+          "centroid_delta_hz": -58.22264987871526,
+          "high_fraction_delta_db": -3.1134733774031815
+        }
+      },
+      "shape|baseline|steel|||piezo|parlor_auditorium": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|steel|||piezo|parlor_dreadnought": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|steel|||piezo|parlor_jumbo": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|steel|||piezo|auditorium_dreadnought": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|steel|||piezo|auditorium_jumbo": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|steel|||piezo|dreadnought_jumbo": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|nylon|||stereo_mic|parlor_auditorium": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -1.0669293686780361,
+        "attack": {
+          "active_band_mean_abs_db": 3.7352606525444454,
+          "power_weighted_abs_db": 2.171003663387518,
+          "centroid_ratio": 0.9444504212702138,
+          "centroid_delta_hz": -25.27712640124568,
+          "high_fraction_delta_db": 3.2415578889453887
+        },
+        "early": {
+          "active_band_mean_abs_db": 3.8823891976916123,
+          "power_weighted_abs_db": 1.0157328126514442,
+          "centroid_ratio": 0.9644389034116989,
+          "centroid_delta_hz": -22.11480105816014,
+          "high_fraction_delta_db": 4.068616099975559
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 4.195796425867256,
+          "power_weighted_abs_db": 1.7221962277257326,
+          "centroid_ratio": 0.9394845545619592,
+          "centroid_delta_hz": -42.919844460871786,
+          "high_fraction_delta_db": 5.747670862686066
+        }
+      },
+      "shape|baseline|nylon|||stereo_mic|parlor_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -2.5367379394337823,
+        "attack": {
+          "active_band_mean_abs_db": 3.9891692672040895,
+          "power_weighted_abs_db": 1.7056642698357651,
+          "centroid_ratio": 0.9572179235522275,
+          "centroid_delta_hz": -20.219874868075237,
+          "high_fraction_delta_db": 4.616656939076606
+        },
+        "early": {
+          "active_band_mean_abs_db": 3.471417614705411,
+          "power_weighted_abs_db": 2.0551038815790954,
+          "centroid_ratio": 0.9676948085503012,
+          "centroid_delta_hz": -19.28178906296945,
+          "high_fraction_delta_db": 5.64890199229405
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 4.676920441298099,
+          "power_weighted_abs_db": 3.650845875895298,
+          "centroid_ratio": 0.8773815255093595,
+          "centroid_delta_hz": -47.761411207235156,
+          "high_fraction_delta_db": 3.4466946302716472
+        }
+      },
+      "shape|baseline|nylon|||stereo_mic|parlor_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 1.7037044014098355,
+        "attack": {
+          "active_band_mean_abs_db": 3.677796060518712,
+          "power_weighted_abs_db": 1.2386135542098633,
+          "centroid_ratio": 0.9292661354152546,
+          "centroid_delta_hz": -39.09571367378396,
+          "high_fraction_delta_db": 2.936599846622652
+        },
+        "early": {
+          "active_band_mean_abs_db": 3.6391337332050453,
+          "power_weighted_abs_db": 2.838712199723444,
+          "centroid_ratio": 0.9036052061955657,
+          "centroid_delta_hz": -58.71203778844284,
+          "high_fraction_delta_db": 1.565028162710096
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 3.3168848789038536,
+          "power_weighted_abs_db": 3.1541082838887657,
+          "centroid_ratio": 0.7992490970974386,
+          "centroid_delta_hz": -109.68488184586697,
+          "high_fraction_delta_db": -2.6892124599788545
+        }
+      },
+      "shape|baseline|nylon|||stereo_mic|auditorium_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.9971241559026724,
+        "attack": {
+          "active_band_mean_abs_db": 2.7495141425533722,
+          "power_weighted_abs_db": 2.054338448162598,
+          "centroid_ratio": 0.9760772192642165,
+          "centroid_delta_hz": -7.725995675334389,
+          "high_fraction_delta_db": 1.1766349366610438
+        },
+        "early": {
+          "active_band_mean_abs_db": 2.6957112347224235,
+          "power_weighted_abs_db": 1.1826928041117584,
+          "centroid_ratio": 0.9726246745558615,
+          "centroid_delta_hz": -8.759510922109499,
+          "high_fraction_delta_db": 1.1279454975560856
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 2.659551601978545,
+          "power_weighted_abs_db": 2.181308318787312,
+          "centroid_ratio": 0.9400667843180633,
+          "centroid_delta_hz": -28.563870215940625,
+          "high_fraction_delta_db": -0.3039526027637791
+        }
+      },
+      "shape|baseline|nylon|||stereo_mic|auditorium_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 3.4388620191550876,
+        "attack": {
+          "active_band_mean_abs_db": 4.723405865055726,
+          "power_weighted_abs_db": 2.6184397095723795,
+          "centroid_ratio": 0.9594317529888409,
+          "centroid_delta_hz": -10.621025670454728,
+          "high_fraction_delta_db": -0.6692526332702755
+        },
+        "early": {
+          "active_band_mean_abs_db": 4.766924838107922,
+          "power_weighted_abs_db": 1.4182118544661462,
+          "centroid_ratio": 0.9369427840525817,
+          "centroid_delta_hz": -32.962064616455834,
+          "high_fraction_delta_db": -2.2974035773151904
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 3.389026148854329,
+          "power_weighted_abs_db": 2.3233954111607535,
+          "centroid_ratio": 0.9035562968232768,
+          "centroid_delta_hz": -62.24665518069642,
+          "high_fraction_delta_db": -5.500726791808452
+        }
+      },
+      "shape|baseline|nylon|||stereo_mic|dreadnought_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 4.717551802119929,
+        "attack": {
+          "active_band_mean_abs_db": 4.184612856102454,
+          "power_weighted_abs_db": 1.9835773417315394,
+          "centroid_ratio": 0.9631331373610772,
+          "centroid_delta_hz": -11.116716414544484,
+          "high_fraction_delta_db": -2.2527033442590696
+        },
+        "early": {
+          "active_band_mean_abs_db": 4.286759290454562,
+          "power_weighted_abs_db": 1.7501832676353173,
+          "centroid_ratio": 0.9382193942407524,
+          "centroid_delta_hz": -19.45376359884483,
+          "high_fraction_delta_db": -3.0937549198263774
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 4.081178035757449,
+          "power_weighted_abs_db": 1.5922717936662347,
+          "centroid_ratio": 0.9108497263879207,
+          "centroid_delta_hz": -35.69402355457251,
+          "high_fraction_delta_db": -5.196774189044673
+        }
+      },
+      "shape|baseline|nylon|||piezo|parlor_auditorium": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|nylon|||piezo|parlor_dreadnought": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|nylon|||piezo|parlor_jumbo": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|nylon|||piezo|auditorium_dreadnought": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|nylon|||piezo|auditorium_jumbo": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|baseline|nylon|||piezo|dreadnought_jumbo": {
+        "count": 4,
+        "byte_identical": 4,
+        "raw_rms_delta_db_median": 0.0,
+        "attack": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.0,
+          "power_weighted_abs_db": 0.0,
+          "centroid_ratio": 1.0,
+          "centroid_delta_hz": 0.0,
+          "high_fraction_delta_db": 0.0
+        }
+      },
+      "shape|final|steel|||stereo_mic|parlor_auditorium": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 1.3054717335707973,
+        "attack": {
+          "active_band_mean_abs_db": 5.044230477970384,
+          "power_weighted_abs_db": 3.2637216593620773,
+          "centroid_ratio": 1.110089193892636,
+          "centroid_delta_hz": 71.07861135337998,
+          "high_fraction_delta_db": 1.6988709723852669
+        },
+        "early": {
+          "active_band_mean_abs_db": 4.269904692385941,
+          "power_weighted_abs_db": 3.179506679303609,
+          "centroid_ratio": 1.0530354986776542,
+          "centroid_delta_hz": 27.71476843517695,
+          "high_fraction_delta_db": 0.625304347041034
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 3.8797056188906653,
+          "power_weighted_abs_db": 2.542609285297245,
+          "centroid_ratio": 1.0796032701954354,
+          "centroid_delta_hz": 46.80087953966074,
+          "high_fraction_delta_db": -1.6942938342784188
+        }
+      },
+      "shape|final|steel|||stereo_mic|parlor_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 0.5887389967810138,
+        "attack": {
+          "active_band_mean_abs_db": 7.089846415779546,
+          "power_weighted_abs_db": 2.7607619844406925,
+          "centroid_ratio": 1.3387835541278224,
+          "centroid_delta_hz": 178.06963071314573,
+          "high_fraction_delta_db": 4.081507161248741
+        },
+        "early": {
+          "active_band_mean_abs_db": 9.128962475631347,
+          "power_weighted_abs_db": 3.4104743078062416,
+          "centroid_ratio": 1.307398451756629,
+          "centroid_delta_hz": 165.12195907608233,
+          "high_fraction_delta_db": 2.4847380165279453
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 5.6197592003491454,
+          "power_weighted_abs_db": 2.266617124127448,
+          "centroid_ratio": 1.1321468483795356,
+          "centroid_delta_hz": 66.53250898537826,
+          "high_fraction_delta_db": 1.4617452772103832
+        }
+      },
+      "shape|final|steel|||stereo_mic|parlor_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 5.775760663523437,
+        "attack": {
+          "active_band_mean_abs_db": 7.977140360078623,
+          "power_weighted_abs_db": 4.13928671532998,
+          "centroid_ratio": 1.1033344076127674,
+          "centroid_delta_hz": 92.6533299020021,
+          "high_fraction_delta_db": 1.5366344675566115
+        },
+        "early": {
+          "active_band_mean_abs_db": 10.123271871860949,
+          "power_weighted_abs_db": 4.350524744420849,
+          "centroid_ratio": 1.1158486296646668,
+          "centroid_delta_hz": 47.802988248034495,
+          "high_fraction_delta_db": 0.8430138386952066
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 7.567343019262086,
+          "power_weighted_abs_db": 3.702661992971584,
+          "centroid_ratio": 0.8821904917845399,
+          "centroid_delta_hz": -54.3092182298775,
+          "high_fraction_delta_db": -5.269599803606299
+        }
+      },
+      "shape|final|steel|||stereo_mic|auditorium_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 0.8114642736744571,
+        "attack": {
+          "active_band_mean_abs_db": 2.8344469214884294,
+          "power_weighted_abs_db": 2.065856588895963,
+          "centroid_ratio": 0.9930116196800496,
+          "centroid_delta_hz": 1.6905895493990215,
+          "high_fraction_delta_db": 0.14232766924350848
+        },
+        "early": {
+          "active_band_mean_abs_db": 3.860010526537738,
+          "power_weighted_abs_db": 1.4213207131787735,
+          "centroid_ratio": 1.0246447601099113,
+          "centroid_delta_hz": 28.759461060666553,
+          "high_fraction_delta_db": 0.5296836591538288
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 3.656591250948653,
+          "power_weighted_abs_db": 2.4225502874686216,
+          "centroid_ratio": 0.9951912340671027,
+          "centroid_delta_hz": 28.225609600173442,
+          "high_fraction_delta_db": -0.5072322189618355
+        }
+      },
+      "shape|final|steel|||stereo_mic|auditorium_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 4.415128193345639,
+        "attack": {
+          "active_band_mean_abs_db": 4.875408034858408,
+          "power_weighted_abs_db": 1.5230745446887526,
+          "centroid_ratio": 0.9566676495776829,
+          "centroid_delta_hz": -18.791266435371597,
+          "high_fraction_delta_db": 0.2181268241539147
+        },
+        "early": {
+          "active_band_mean_abs_db": 6.305179907145114,
+          "power_weighted_abs_db": 2.6046497367071697,
+          "centroid_ratio": 0.8512852550190273,
+          "centroid_delta_hz": -68.5371589367592,
+          "high_fraction_delta_db": -1.1255810693099146
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 5.924321268296075,
+          "power_weighted_abs_db": 1.9816191483295442,
+          "centroid_ratio": 0.8839552361362233,
+          "centroid_delta_hz": -73.26439713580442,
+          "high_fraction_delta_db": -3.014390392297795
+        }
+      },
+      "shape|final|steel|||stereo_mic|dreadnought_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 3.1061037789350694,
+        "attack": {
+          "active_band_mean_abs_db": 3.0784291045412386,
+          "power_weighted_abs_db": 2.1619489424010343,
+          "centroid_ratio": 1.0104827526830624,
+          "centroid_delta_hz": 20.414304328445013,
+          "high_fraction_delta_db": 0.3123659138970396
+        },
+        "early": {
+          "active_band_mean_abs_db": 3.5374551805414165,
+          "power_weighted_abs_db": 2.5826350319349425,
+          "centroid_ratio": 0.9523325013370938,
+          "centroid_delta_hz": -30.953268950519572,
+          "high_fraction_delta_db": -0.2500088436346246
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 4.611311380536827,
+          "power_weighted_abs_db": 3.595464632675392,
+          "centroid_ratio": 0.8039345963521078,
+          "centroid_delta_hz": -140.8269004675111,
+          "high_fraction_delta_db": -1.7789247239547805
+        }
+      },
+      "shape|final|steel|||piezo|parlor_auditorium": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.07962775991279253,
+        "attack": {
+          "active_band_mean_abs_db": 0.4278946728796393,
+          "power_weighted_abs_db": 0.4613394170567203,
+          "centroid_ratio": 1.0049401903527853,
+          "centroid_delta_hz": 3.449809278114998,
+          "high_fraction_delta_db": 0.049073486002511046
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.871563986252083,
+          "power_weighted_abs_db": 0.8847981819826238,
+          "centroid_ratio": 1.0051091789393762,
+          "centroid_delta_hz": 4.47946868874547,
+          "high_fraction_delta_db": -0.0015619787601321988
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 1.782715663113466,
+          "power_weighted_abs_db": 1.8544924220770846,
+          "centroid_ratio": 1.0213505662138669,
+          "centroid_delta_hz": 12.851616073734363,
+          "high_fraction_delta_db": 0.15392752598075976
+        }
+      },
+      "shape|final|steel|||piezo|parlor_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.2627613944821132,
+        "attack": {
+          "active_band_mean_abs_db": 1.3081101516396192,
+          "power_weighted_abs_db": 0.59782401352573,
+          "centroid_ratio": 1.004887820972184,
+          "centroid_delta_hz": 3.075680138715228,
+          "high_fraction_delta_db": 0.06038362290877686
+        },
+        "early": {
+          "active_band_mean_abs_db": 1.5596425324855439,
+          "power_weighted_abs_db": 1.133449743798155,
+          "centroid_ratio": 1.0126030107674269,
+          "centroid_delta_hz": 8.296156559471342,
+          "high_fraction_delta_db": 0.18092797509806857
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 1.9073606480821188,
+          "power_weighted_abs_db": 2.3286743371190397,
+          "centroid_ratio": 1.0151361239007333,
+          "centroid_delta_hz": 12.031139223483052,
+          "high_fraction_delta_db": 0.4335566578028418
+        }
+      },
+      "shape|final|steel|||piezo|parlor_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.12301680010706542,
+        "attack": {
+          "active_band_mean_abs_db": 1.568817020629883,
+          "power_weighted_abs_db": 0.5026501701863186,
+          "centroid_ratio": 1.0026890177894898,
+          "centroid_delta_hz": 1.428237438554902,
+          "high_fraction_delta_db": 0.00998563984735501
+        },
+        "early": {
+          "active_band_mean_abs_db": 1.7806995599152793,
+          "power_weighted_abs_db": 0.6256899957620503,
+          "centroid_ratio": 1.0068366554121608,
+          "centroid_delta_hz": 5.3844125684338735,
+          "high_fraction_delta_db": 0.0377672018188413
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 2.0844393168945983,
+          "power_weighted_abs_db": 1.2314137566301255,
+          "centroid_ratio": 1.0268785604407158,
+          "centroid_delta_hz": 14.573970698995794,
+          "high_fraction_delta_db": 0.024883985838083156
+        }
+      },
+      "shape|final|steel|||piezo|auditorium_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.02722173893358456,
+        "attack": {
+          "active_band_mean_abs_db": 1.2698040764183465,
+          "power_weighted_abs_db": 0.4502407916237471,
+          "centroid_ratio": 0.9890778990870285,
+          "centroid_delta_hz": -14.539524531981954,
+          "high_fraction_delta_db": -0.16058131310410495
+        },
+        "early": {
+          "active_band_mean_abs_db": 1.2164411572140401,
+          "power_weighted_abs_db": 0.5131059944921703,
+          "centroid_ratio": 1.0060694572388469,
+          "centroid_delta_hz": 3.816687870725872,
+          "high_fraction_delta_db": -0.18030267914181763
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 1.1899110365294074,
+          "power_weighted_abs_db": 1.1170389077002527,
+          "centroid_ratio": 0.9574709555785439,
+          "centroid_delta_hz": -48.10238347603965,
+          "high_fraction_delta_db": 0.41038711867720057
+        }
+      },
+      "shape|final|steel|||piezo|auditorium_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 0.6226622336852136,
+        "attack": {
+          "active_band_mean_abs_db": 1.6666871022125758,
+          "power_weighted_abs_db": 0.6360928521174715,
+          "centroid_ratio": 0.9973505062608196,
+          "centroid_delta_hz": -2.3243171744829283,
+          "high_fraction_delta_db": 0.0174278039557878
+        },
+        "early": {
+          "active_band_mean_abs_db": 1.684121621095719,
+          "power_weighted_abs_db": 0.612586473575929,
+          "centroid_ratio": 0.9921635345796928,
+          "centroid_delta_hz": -9.751728135504095,
+          "high_fraction_delta_db": -0.04156641419818996
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 1.4258172883291906,
+          "power_weighted_abs_db": 1.6590495984640623,
+          "centroid_ratio": 0.8741400407633295,
+          "centroid_delta_hz": -156.4853133639471,
+          "high_fraction_delta_db": -1.0379520355888054
+        }
+      },
+      "shape|final|steel|||piezo|dreadnought_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 0.266123375948508,
+        "attack": {
+          "active_band_mean_abs_db": 0.453823801886372,
+          "power_weighted_abs_db": 0.4015186750996716,
+          "centroid_ratio": 0.9978117231108279,
+          "centroid_delta_hz": -1.647442700160326,
+          "high_fraction_delta_db": 0.04279622669901073
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.748590136254179,
+          "power_weighted_abs_db": 0.63013050626771,
+          "centroid_ratio": 0.9942967654215433,
+          "centroid_delta_hz": -2.9117439910374685,
+          "high_fraction_delta_db": -0.04713259030895767
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.8430482711200606,
+          "power_weighted_abs_db": 1.1033325445280298,
+          "centroid_ratio": 0.9344537465787943,
+          "centroid_delta_hz": -62.36892937955196,
+          "high_fraction_delta_db": -0.6039889315589644
+        }
+      },
+      "shape|final|nylon|||stereo_mic|parlor_auditorium": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 0.887488028816522,
+        "attack": {
+          "active_band_mean_abs_db": 4.004415627222538,
+          "power_weighted_abs_db": 2.293579466912317,
+          "centroid_ratio": 0.9080294362135537,
+          "centroid_delta_hz": -44.436862888087205,
+          "high_fraction_delta_db": -1.1003585540482081
+        },
+        "early": {
+          "active_band_mean_abs_db": 3.795262006646035,
+          "power_weighted_abs_db": 2.1714596475636596,
+          "centroid_ratio": 0.8905335434782307,
+          "centroid_delta_hz": -44.03292303549384,
+          "high_fraction_delta_db": -0.825324858572337
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 3.213918792002298,
+          "power_weighted_abs_db": 1.8247340825194995,
+          "centroid_ratio": 0.8900061232489643,
+          "centroid_delta_hz": -48.572107473793096,
+          "high_fraction_delta_db": 2.2178282127865874
+        }
+      },
+      "shape|final|nylon|||stereo_mic|parlor_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.8004804671040601,
+        "attack": {
+          "active_band_mean_abs_db": 5.742102015497314,
+          "power_weighted_abs_db": 2.6827902864064663,
+          "centroid_ratio": 0.9036748426709926,
+          "centroid_delta_hz": -30.558093616371565,
+          "high_fraction_delta_db": 1.0618397405015916
+        },
+        "early": {
+          "active_band_mean_abs_db": 5.73384572740952,
+          "power_weighted_abs_db": 1.8119040941860869,
+          "centroid_ratio": 0.9072689043035145,
+          "centroid_delta_hz": -27.729394429186087,
+          "high_fraction_delta_db": 1.9018593205084322
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 5.702932746001085,
+          "power_weighted_abs_db": 2.5492345379617065,
+          "centroid_ratio": 0.8638129457792187,
+          "centroid_delta_hz": -45.38213459354047,
+          "high_fraction_delta_db": 3.6043469362303533
+        }
+      },
+      "shape|final|nylon|||stereo_mic|parlor_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 4.272030122066015,
+        "attack": {
+          "active_band_mean_abs_db": 6.351305863343548,
+          "power_weighted_abs_db": 2.8319993843029216,
+          "centroid_ratio": 0.8520790196466904,
+          "centroid_delta_hz": -62.71231466003374,
+          "high_fraction_delta_db": -1.0218681204858022
+        },
+        "early": {
+          "active_band_mean_abs_db": 6.174060714573006,
+          "power_weighted_abs_db": 2.7499828206194126,
+          "centroid_ratio": 0.8259865209865382,
+          "centroid_delta_hz": -75.65074782968256,
+          "high_fraction_delta_db": -1.5880321976793912
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 5.170461870410888,
+          "power_weighted_abs_db": 2.273698302139044,
+          "centroid_ratio": 0.8232149414191035,
+          "centroid_delta_hz": -71.35294106601295,
+          "high_fraction_delta_db": -1.5513619689513778
+        }
+      },
+      "shape|final|nylon|||stereo_mic|auditorium_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -1.5532527876233593,
+        "attack": {
+          "active_band_mean_abs_db": 4.58780584124993,
+          "power_weighted_abs_db": 1.9739056377922368,
+          "centroid_ratio": 1.0727291875053666,
+          "centroid_delta_hz": 29.79489434125665,
+          "high_fraction_delta_db": 3.0376157451160175
+        },
+        "early": {
+          "active_band_mean_abs_db": 5.116681362748626,
+          "power_weighted_abs_db": 1.9216938496143015,
+          "centroid_ratio": 1.0577158477968251,
+          "centroid_delta_hz": 36.780083044009416,
+          "high_fraction_delta_db": 1.9229696886843506
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 4.637225345291772,
+          "power_weighted_abs_db": 3.109114503775936,
+          "centroid_ratio": 1.0336875385987423,
+          "centroid_delta_hz": 18.81378729613256,
+          "high_fraction_delta_db": 0.0773798864215216
+        }
+      },
+      "shape|final|nylon|||stereo_mic|auditorium_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 3.0185831935116574,
+        "attack": {
+          "active_band_mean_abs_db": 4.627169745290606,
+          "power_weighted_abs_db": 3.246696730203536,
+          "centroid_ratio": 0.9992402209455635,
+          "centroid_delta_hz": 0.19268107536709067,
+          "high_fraction_delta_db": -1.2448528129542815
+        },
+        "early": {
+          "active_band_mean_abs_db": 4.249384391257905,
+          "power_weighted_abs_db": 2.436713474411914,
+          "centroid_ratio": 0.9867738781954352,
+          "centroid_delta_hz": -11.851668606905378,
+          "high_fraction_delta_db": -2.95728780844572
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 4.309710967325626,
+          "power_weighted_abs_db": 2.7373112736911027,
+          "centroid_ratio": 0.9218635205273416,
+          "centroid_delta_hz": -22.78083359221985,
+          "high_fraction_delta_db": -5.075784627376118
+        }
+      },
+      "shape|final|nylon|||stereo_mic|dreadnought_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 3.8769390206349663,
+        "attack": {
+          "active_band_mean_abs_db": 4.129521564184773,
+          "power_weighted_abs_db": 2.1150929902322577,
+          "centroid_ratio": 0.9538272003806898,
+          "centroid_delta_hz": -21.789899072974862,
+          "high_fraction_delta_db": -1.2191561679200191
+        },
+        "early": {
+          "active_band_mean_abs_db": 4.145573700725851,
+          "power_weighted_abs_db": 1.8270656084245607,
+          "centroid_ratio": 0.9450105994067499,
+          "centroid_delta_hz": -28.15519721321313,
+          "high_fraction_delta_db": -3.0984320009280584
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 3.699797276148635,
+          "power_weighted_abs_db": 2.2313883662290688,
+          "centroid_ratio": 0.9068965435717375,
+          "centroid_delta_hz": -40.6965404362484,
+          "high_fraction_delta_db": -4.866363405808309
+        }
+      },
+      "shape|final|nylon|||piezo|parlor_auditorium": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.025971361043614492,
+        "attack": {
+          "active_band_mean_abs_db": 0.3076004864883659,
+          "power_weighted_abs_db": 0.1581160583394855,
+          "centroid_ratio": 1.0088418096099652,
+          "centroid_delta_hz": 3.8276566760475816,
+          "high_fraction_delta_db": 0.13706455828792574
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.33649589083043746,
+          "power_weighted_abs_db": 0.20262645379963912,
+          "centroid_ratio": 1.010565095531859,
+          "centroid_delta_hz": 4.873228372106269,
+          "high_fraction_delta_db": 0.17381647307159476
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.5489502048621436,
+          "power_weighted_abs_db": 0.6483702771743397,
+          "centroid_ratio": 0.9806583408896785,
+          "centroid_delta_hz": -7.806561388948012,
+          "high_fraction_delta_db": -0.2839622595114193
+        }
+      },
+      "shape|final|nylon|||piezo|parlor_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.6619424437941621,
+        "attack": {
+          "active_band_mean_abs_db": 1.2203642016092995,
+          "power_weighted_abs_db": 0.5263388667613609,
+          "centroid_ratio": 1.0078399367454032,
+          "centroid_delta_hz": 1.7477381076757297,
+          "high_fraction_delta_db": 0.29327628407667916
+        },
+        "early": {
+          "active_band_mean_abs_db": 1.205761760187672,
+          "power_weighted_abs_db": 0.3106691522291688,
+          "centroid_ratio": 1.0175495074935335,
+          "centroid_delta_hz": 7.627422134125169,
+          "high_fraction_delta_db": 0.5563463043926262
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 1.2335013714143093,
+          "power_weighted_abs_db": 0.9938095371270917,
+          "centroid_ratio": 1.0268483380492983,
+          "centroid_delta_hz": 34.387258896247474,
+          "high_fraction_delta_db": 1.3033471589768393
+        }
+      },
+      "shape|final|nylon|||piezo|parlor_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.30880196745501665,
+        "attack": {
+          "active_band_mean_abs_db": 1.3534952331100696,
+          "power_weighted_abs_db": 0.3045686116006313,
+          "centroid_ratio": 1.0094887646952952,
+          "centroid_delta_hz": 4.834047806024557,
+          "high_fraction_delta_db": 0.17211040465864347
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.9896253094092982,
+          "power_weighted_abs_db": 0.3963666662048934,
+          "centroid_ratio": 1.0154760771429086,
+          "centroid_delta_hz": 4.076388147478127,
+          "high_fraction_delta_db": 0.342050954910075
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 1.2215101998008016,
+          "power_weighted_abs_db": 1.2643513781067144,
+          "centroid_ratio": 1.0291527512280991,
+          "centroid_delta_hz": 22.314466285878723,
+          "high_fraction_delta_db": 0.8430198192692977
+        }
+      },
+      "shape|final|nylon|||piezo|auditorium_dreadnought": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.30828537785100174,
+        "attack": {
+          "active_band_mean_abs_db": 0.9094106234321897,
+          "power_weighted_abs_db": 0.4665362339185693,
+          "centroid_ratio": 1.0018937695037033,
+          "centroid_delta_hz": 0.2775014971776386,
+          "high_fraction_delta_db": 0.09920174708630025
+        },
+        "early": {
+          "active_band_mean_abs_db": 1.0090915891556897,
+          "power_weighted_abs_db": 0.5839567606244788,
+          "centroid_ratio": 1.0027475279088687,
+          "centroid_delta_hz": 0.20315980949581558,
+          "high_fraction_delta_db": 0.21486084702565478
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.8311635765398043,
+          "power_weighted_abs_db": 0.7828509952877764,
+          "centroid_ratio": 0.9674727404634984,
+          "centroid_delta_hz": -9.63902197127878,
+          "high_fraction_delta_db": 1.1932054465235016
+        }
+      },
+      "shape|final|nylon|||piezo|auditorium_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": -0.0647349910638321,
+        "attack": {
+          "active_band_mean_abs_db": 1.0570347933907636,
+          "power_weighted_abs_db": 0.44261716862067474,
+          "centroid_ratio": 1.0082850005532298,
+          "centroid_delta_hz": 3.3638111955264662,
+          "high_fraction_delta_db": 0.13158952933759682
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.7882251777320071,
+          "power_weighted_abs_db": 0.5242695547279221,
+          "centroid_ratio": 1.0112221782551813,
+          "centroid_delta_hz": 3.7911133183013987,
+          "high_fraction_delta_db": 0.13778945315872537
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 1.1877341238737251,
+          "power_weighted_abs_db": 1.4268156489767727,
+          "centroid_ratio": 1.0104477572521835,
+          "centroid_delta_hz": 3.732112078955396,
+          "high_fraction_delta_db": 0.73287810681596
+        }
+      },
+      "shape|final|nylon|||piezo|dreadnought_jumbo": {
+        "count": 4,
+        "byte_identical": 0,
+        "raw_rms_delta_db_median": 0.35314047633914486,
+        "attack": {
+          "active_band_mean_abs_db": 0.6184444173021655,
+          "power_weighted_abs_db": 0.256436727036112,
+          "centroid_ratio": 0.9957193453447983,
+          "centroid_delta_hz": -4.077486444889985,
+          "high_fraction_delta_db": -0.08972716387289204
+        },
+        "early": {
+          "active_band_mean_abs_db": 0.5315114868003922,
+          "power_weighted_abs_db": 0.30743869472660057,
+          "centroid_ratio": 0.9876532549167236,
+          "centroid_delta_hz": -13.050410297607243,
+          "high_fraction_delta_db": -0.21429534948255125
+        },
+        "sustain": {
+          "active_band_mean_abs_db": 0.8235230370225952,
+          "power_weighted_abs_db": 0.8841589613473457,
+          "centroid_ratio": 0.9972761221735169,
+          "centroid_delta_hz": -12.07279261036875,
+          "high_fraction_delta_db": -0.44626547673026984
+        }
+      }
+    }
+  },
+  "original_dreadnought_finger_invariance": {
+    "count": 16,
+    "equal": 16,
+    "rows": [
+      {
+        "parameters": {
+          "material": "nylon",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 40,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "piezo",
+          "touch": 0.58
+        },
+        "before_sha256": "ff27599b7abac0f05a5728113cdf83851a559bf4a23fe10c6278f87f436ddc7f",
+        "after_sha256": "ff27599b7abac0f05a5728113cdf83851a559bf4a23fe10c6278f87f436ddc7f",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "nylon",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 40,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "stereo_mic",
+          "touch": 0.58
+        },
+        "before_sha256": "60fd8d89740661f0ecd2d4584181605c78e0eccfa170f01c856f6e3c084db694",
+        "after_sha256": "60fd8d89740661f0ecd2d4584181605c78e0eccfa170f01c856f6e3c084db694",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "nylon",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 55,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "piezo",
+          "touch": 0.58
+        },
+        "before_sha256": "7dd75127e58caad84601abee885f4bcc956a465eb2d8dce16bba33893acb90d6",
+        "after_sha256": "7dd75127e58caad84601abee885f4bcc956a465eb2d8dce16bba33893acb90d6",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "nylon",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 55,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "stereo_mic",
+          "touch": 0.58
+        },
+        "before_sha256": "413e690c308c393be43102d5ab8fd76749ef3014421bdb01ca8b2f20921e955e",
+        "after_sha256": "413e690c308c393be43102d5ab8fd76749ef3014421bdb01ca8b2f20921e955e",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "nylon",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 64,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "piezo",
+          "touch": 0.58
+        },
+        "before_sha256": "f3323fe01c4b8e52698cf2863c6432151ed25974c663d2a6a40c119f9f37bde5",
+        "after_sha256": "f3323fe01c4b8e52698cf2863c6432151ed25974c663d2a6a40c119f9f37bde5",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "nylon",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 64,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "stereo_mic",
+          "touch": 0.58
+        },
+        "before_sha256": "c6a7b39099100dd698b44da217195c999cbb37bc5f9bea9dc9843436ab68ad7b",
+        "after_sha256": "c6a7b39099100dd698b44da217195c999cbb37bc5f9bea9dc9843436ab68ad7b",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "nylon",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 74,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "piezo",
+          "touch": 0.58
+        },
+        "before_sha256": "d7598106b509c8dce6a36910262e850ceac3d69f84b9b45c6fc9ec562cde8ee2",
+        "after_sha256": "d7598106b509c8dce6a36910262e850ceac3d69f84b9b45c6fc9ec562cde8ee2",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "nylon",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 74,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "stereo_mic",
+          "touch": 0.58
+        },
+        "before_sha256": "d6a613bda0dff3d581302f104bd2bcf748f57a83dc6ca0111e11e506a389bb99",
+        "after_sha256": "d6a613bda0dff3d581302f104bd2bcf748f57a83dc6ca0111e11e506a389bb99",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "steel",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 40,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "piezo",
+          "touch": 0.58
+        },
+        "before_sha256": "cd2dae52fece4a69d4080bc156c55cc49c02ba56f105dbe3ee7ba159244bc9eb",
+        "after_sha256": "cd2dae52fece4a69d4080bc156c55cc49c02ba56f105dbe3ee7ba159244bc9eb",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "steel",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 40,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "stereo_mic",
+          "touch": 0.58
+        },
+        "before_sha256": "cad80350da820ac0fd13fcbe7f94269796532517dbf465eb53651d5646673b60",
+        "after_sha256": "cad80350da820ac0fd13fcbe7f94269796532517dbf465eb53651d5646673b60",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "steel",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 55,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "piezo",
+          "touch": 0.58
+        },
+        "before_sha256": "504bb3c0d76f916f5e64f063de64eceae1964d858cb6ef6667365e33101f740f",
+        "after_sha256": "504bb3c0d76f916f5e64f063de64eceae1964d858cb6ef6667365e33101f740f",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "steel",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 55,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "stereo_mic",
+          "touch": 0.58
+        },
+        "before_sha256": "f385c4ea084312ec70bd39e528e55f5e7e14ed0d29356e735ffeb0638e9e86cb",
+        "after_sha256": "f385c4ea084312ec70bd39e528e55f5e7e14ed0d29356e735ffeb0638e9e86cb",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "steel",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 64,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "piezo",
+          "touch": 0.58
+        },
+        "before_sha256": "093a227167fd89e34ff463aa235c29b4de8ca0d7632df17e6d83ed46a817171f",
+        "after_sha256": "093a227167fd89e34ff463aa235c29b4de8ca0d7632df17e6d83ed46a817171f",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "steel",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 64,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "stereo_mic",
+          "touch": 0.58
+        },
+        "before_sha256": "6803980327489c4783966edf90934c438619ade64004585d64578e32e9e0de1b",
+        "after_sha256": "6803980327489c4783966edf90934c438619ade64004585d64578e32e9e0de1b",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "steel",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 74,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "piezo",
+          "touch": 0.58
+        },
+        "before_sha256": "2b4b25199071104ffc6e3f8343c688c15ab9fc249b25b21f9f9e202f2a073bd4",
+        "after_sha256": "2b4b25199071104ffc6e3f8343c688c15ab9fc249b25b21f9f9e202f2a073bd4",
+        "equal": true
+      },
+      {
+        "parameters": {
+          "material": "steel",
+          "shape": "dreadnought",
+          "picking": "finger",
+          "note": 74,
+          "velocity": 91,
+          "timbre": -1,
+          "capture": "stereo_mic",
+          "touch": 0.58
+        },
+        "before_sha256": "b7e24dce1d1b03d1fbb570ad736ee457242682a59a87b9e18af12a33388892de",
+        "after_sha256": "b7e24dce1d1b03d1fbb570ad736ee457242682a59a87b9e18af12a33388892de",
+        "equal": true
+      }
+    ]
+  },
+  "named_native_invariance": {
+    "status": "complete",
+    "source_report": {
+      "path": "/tmp/acustra-option-audibility-20260908/final-authentication/report.json",
+      "sha256": "e5fd8059455000787f4cea8b0ed90da718e8a33b788664d977a5e4a425af1e1b",
+      "bytes": 91261
+    },
+    "count": 32,
+    "equal": 32,
+    "rows": [
+      {
+        "kind": "native",
+        "material": "nylon",
+        "shape": "auditorium",
+        "wood": "cedar",
+        "guitar": "bellido1978",
+        "note": 40,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "3282b2a46415782c9220e55a536c4e72eee2ebb66684ea9ba9213fb5a1927db6",
+          "baseline": "3282b2a46415782c9220e55a536c4e72eee2ebb66684ea9ba9213fb5a1927db6"
+        },
+        "expected_sha256": "3282b2a46415782c9220e55a536c4e72eee2ebb66684ea9ba9213fb5a1927db6"
+      },
+      {
+        "kind": "native",
+        "material": "nylon",
+        "shape": "auditorium",
+        "wood": "cedar",
+        "guitar": "bellido1978",
+        "note": 40,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "61cca1d581d6f9eb4f25fcbc5dea4a36fd5c5142bc4425156e40f1f174b793a3",
+          "baseline": "61cca1d581d6f9eb4f25fcbc5dea4a36fd5c5142bc4425156e40f1f174b793a3"
+        },
+        "expected_sha256": "61cca1d581d6f9eb4f25fcbc5dea4a36fd5c5142bc4425156e40f1f174b793a3"
+      },
+      {
+        "kind": "native",
+        "material": "nylon",
+        "shape": "auditorium",
+        "wood": "cedar",
+        "guitar": "bellido1978",
+        "note": 55,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "541c886486f3c7c86b94d548ebe1791365789c175cdcdb2b7777feb1be385dcb",
+          "baseline": "541c886486f3c7c86b94d548ebe1791365789c175cdcdb2b7777feb1be385dcb"
+        },
+        "expected_sha256": "541c886486f3c7c86b94d548ebe1791365789c175cdcdb2b7777feb1be385dcb"
+      },
+      {
+        "kind": "native",
+        "material": "nylon",
+        "shape": "auditorium",
+        "wood": "cedar",
+        "guitar": "bellido1978",
+        "note": 55,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "49c814ab3a604d00ec1711e701bf85b51a0463bd6691632c9eed92e871f0c1db",
+          "baseline": "49c814ab3a604d00ec1711e701bf85b51a0463bd6691632c9eed92e871f0c1db"
+        },
+        "expected_sha256": "49c814ab3a604d00ec1711e701bf85b51a0463bd6691632c9eed92e871f0c1db"
+      },
+      {
+        "kind": "native",
+        "material": "nylon",
+        "shape": "auditorium",
+        "wood": "cedar",
+        "guitar": "bellido1978",
+        "note": 64,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "3541f389ec98bf7e06afb497f9f5c844dc1cac8499ed7a10ad2db13dbacac54d",
+          "baseline": "3541f389ec98bf7e06afb497f9f5c844dc1cac8499ed7a10ad2db13dbacac54d"
+        },
+        "expected_sha256": "3541f389ec98bf7e06afb497f9f5c844dc1cac8499ed7a10ad2db13dbacac54d"
+      },
+      {
+        "kind": "native",
+        "material": "nylon",
+        "shape": "auditorium",
+        "wood": "cedar",
+        "guitar": "bellido1978",
+        "note": 64,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "d140ee0025dbd5408af84860be50d3f7643b53e90ffafff2f1eefa8e618c591f",
+          "baseline": "d140ee0025dbd5408af84860be50d3f7643b53e90ffafff2f1eefa8e618c591f"
+        },
+        "expected_sha256": "d140ee0025dbd5408af84860be50d3f7643b53e90ffafff2f1eefa8e618c591f"
+      },
+      {
+        "kind": "native",
+        "material": "nylon",
+        "shape": "auditorium",
+        "wood": "cedar",
+        "guitar": "bellido1978",
+        "note": 74,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "aaad5ac338b5218be28df7b1dfb19dd785e0cd29be46217a872b3ad5b7646a6e",
+          "baseline": "aaad5ac338b5218be28df7b1dfb19dd785e0cd29be46217a872b3ad5b7646a6e"
+        },
+        "expected_sha256": "aaad5ac338b5218be28df7b1dfb19dd785e0cd29be46217a872b3ad5b7646a6e"
+      },
+      {
+        "kind": "native",
+        "material": "nylon",
+        "shape": "auditorium",
+        "wood": "cedar",
+        "guitar": "bellido1978",
+        "note": 74,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "51d5e0fe196bead413ab143037d51e5a2fc2d78aac179f791ec971967a1d9e53",
+          "baseline": "51d5e0fe196bead413ab143037d51e5a2fc2d78aac179f791ec971967a1d9e53"
+        },
+        "expected_sha256": "51d5e0fe196bead413ab143037d51e5a2fc2d78aac179f791ec971967a1d9e53"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "parlor",
+        "wood": "spruce",
+        "guitar": "washburn1897",
+        "note": 40,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "1446381087384e6e62e31432fedc7a20744c198ec73b5548dba5c80eb9502ad6",
+          "baseline": "1446381087384e6e62e31432fedc7a20744c198ec73b5548dba5c80eb9502ad6"
+        },
+        "expected_sha256": "1446381087384e6e62e31432fedc7a20744c198ec73b5548dba5c80eb9502ad6"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "parlor",
+        "wood": "spruce",
+        "guitar": "washburn1897",
+        "note": 40,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "7bbf406cebf32af58e53b9b5c1b44a0d3464a1720d376805d2347c55aa0a49af",
+          "baseline": "7bbf406cebf32af58e53b9b5c1b44a0d3464a1720d376805d2347c55aa0a49af"
+        },
+        "expected_sha256": "7bbf406cebf32af58e53b9b5c1b44a0d3464a1720d376805d2347c55aa0a49af"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "parlor",
+        "wood": "spruce",
+        "guitar": "washburn1897",
+        "note": 55,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "6bc9fca6a28ce53ff7608b3df75e69fba29d850e5ce5cc215a6d1f8bda2da346",
+          "baseline": "6bc9fca6a28ce53ff7608b3df75e69fba29d850e5ce5cc215a6d1f8bda2da346"
+        },
+        "expected_sha256": "6bc9fca6a28ce53ff7608b3df75e69fba29d850e5ce5cc215a6d1f8bda2da346"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "parlor",
+        "wood": "spruce",
+        "guitar": "washburn1897",
+        "note": 55,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "887da990b705226034526cf48961b956f707bc0f39520b85ed00320c5e13c59b",
+          "baseline": "887da990b705226034526cf48961b956f707bc0f39520b85ed00320c5e13c59b"
+        },
+        "expected_sha256": "887da990b705226034526cf48961b956f707bc0f39520b85ed00320c5e13c59b"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "parlor",
+        "wood": "spruce",
+        "guitar": "washburn1897",
+        "note": 64,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "d92079e9455ea3b1622210b3ca32276f9672252ca754bf6f8bd3f3e8e86ee3c3",
+          "baseline": "d92079e9455ea3b1622210b3ca32276f9672252ca754bf6f8bd3f3e8e86ee3c3"
+        },
+        "expected_sha256": "d92079e9455ea3b1622210b3ca32276f9672252ca754bf6f8bd3f3e8e86ee3c3"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "parlor",
+        "wood": "spruce",
+        "guitar": "washburn1897",
+        "note": 64,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "48e56cf142e5ca635b78b28e6a42672fda9e9688b8f0d9d5e143f1e12e01da26",
+          "baseline": "48e56cf142e5ca635b78b28e6a42672fda9e9688b8f0d9d5e143f1e12e01da26"
+        },
+        "expected_sha256": "48e56cf142e5ca635b78b28e6a42672fda9e9688b8f0d9d5e143f1e12e01da26"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "parlor",
+        "wood": "spruce",
+        "guitar": "washburn1897",
+        "note": 74,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "33457eb73ca99f69acc650fb1a43511c526293557536f315595149567c8eca55",
+          "baseline": "33457eb73ca99f69acc650fb1a43511c526293557536f315595149567c8eca55"
+        },
+        "expected_sha256": "33457eb73ca99f69acc650fb1a43511c526293557536f315595149567c8eca55"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "parlor",
+        "wood": "spruce",
+        "guitar": "washburn1897",
+        "note": 74,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "53f90a1af70472d7bd907bd5560939234b1c1d09dc3fd7184fb7c3a08cf07ff4",
+          "baseline": "53f90a1af70472d7bd907bd5560939234b1c1d09dc3fd7184fb7c3a08cf07ff4"
+        },
+        "expected_sha256": "53f90a1af70472d7bd907bd5560939234b1c1d09dc3fd7184fb7c3a08cf07ff4"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "guitar": "santacruz2022",
+        "note": 40,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "7b901617bf7df79293963e3f123eb9bfeee3c85e7722159e7b8595db52a65c3f",
+          "baseline": "7b901617bf7df79293963e3f123eb9bfeee3c85e7722159e7b8595db52a65c3f"
+        },
+        "expected_sha256": "7b901617bf7df79293963e3f123eb9bfeee3c85e7722159e7b8595db52a65c3f"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "guitar": "santacruz2022",
+        "note": 40,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "be68eed657d98b3608649475dfec35a9e7ba275eca9521306680b9e55be40f5d",
+          "baseline": "be68eed657d98b3608649475dfec35a9e7ba275eca9521306680b9e55be40f5d"
+        },
+        "expected_sha256": "be68eed657d98b3608649475dfec35a9e7ba275eca9521306680b9e55be40f5d"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "guitar": "santacruz2022",
+        "note": 55,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "5a88cc44c8e5f12d413ab83dd12a4646a83624fd33e10d0a18c7ff26d4169fed",
+          "baseline": "5a88cc44c8e5f12d413ab83dd12a4646a83624fd33e10d0a18c7ff26d4169fed"
+        },
+        "expected_sha256": "5a88cc44c8e5f12d413ab83dd12a4646a83624fd33e10d0a18c7ff26d4169fed"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "guitar": "santacruz2022",
+        "note": 55,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "1a6a05ea87200854b385011cefbf1eeb51b1c9373bfc3dda98f08accc753a8d8",
+          "baseline": "1a6a05ea87200854b385011cefbf1eeb51b1c9373bfc3dda98f08accc753a8d8"
+        },
+        "expected_sha256": "1a6a05ea87200854b385011cefbf1eeb51b1c9373bfc3dda98f08accc753a8d8"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "guitar": "santacruz2022",
+        "note": 64,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "b7d0b0a3619991eef19f1cd06a48f74efbc264cc9fef8d34978a37f64e725a15",
+          "baseline": "b7d0b0a3619991eef19f1cd06a48f74efbc264cc9fef8d34978a37f64e725a15"
+        },
+        "expected_sha256": "b7d0b0a3619991eef19f1cd06a48f74efbc264cc9fef8d34978a37f64e725a15"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "guitar": "santacruz2022",
+        "note": 64,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "f0039fdfc9f59a0cea33d7b250ef95615288a6436baa6e5e73f79fd2d1c97fd7",
+          "baseline": "f0039fdfc9f59a0cea33d7b250ef95615288a6436baa6e5e73f79fd2d1c97fd7"
+        },
+        "expected_sha256": "f0039fdfc9f59a0cea33d7b250ef95615288a6436baa6e5e73f79fd2d1c97fd7"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "guitar": "santacruz2022",
+        "note": 74,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "6e0bb27b591eca76788e4f37eb1cbf275cf48a79c21c4dd6dc17855df844b9ec",
+          "baseline": "6e0bb27b591eca76788e4f37eb1cbf275cf48a79c21c4dd6dc17855df844b9ec"
+        },
+        "expected_sha256": "6e0bb27b591eca76788e4f37eb1cbf275cf48a79c21c4dd6dc17855df844b9ec"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "guitar": "santacruz2022",
+        "note": 74,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "2cfaf1190a7102c8c0be4f01b8c86b6b7880bed87799b6e1e8f7a5519af5a495",
+          "baseline": "2cfaf1190a7102c8c0be4f01b8c86b6b7880bed87799b6e1e8f7a5519af5a495"
+        },
+        "expected_sha256": "2cfaf1190a7102c8c0be4f01b8c86b6b7880bed87799b6e1e8f7a5519af5a495"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "guitar": "martin2007",
+        "note": 40,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "651dba537b2c50164554d05182486fab8edad3df1837654eaaa0515a1e5d1dde",
+          "baseline": "651dba537b2c50164554d05182486fab8edad3df1837654eaaa0515a1e5d1dde"
+        },
+        "expected_sha256": "651dba537b2c50164554d05182486fab8edad3df1837654eaaa0515a1e5d1dde"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "guitar": "martin2007",
+        "note": 40,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "d2bebe08d49fd63d523bc1e44a575250baa5b0fd14637b3c8ad0ec6036b011e2",
+          "baseline": "d2bebe08d49fd63d523bc1e44a575250baa5b0fd14637b3c8ad0ec6036b011e2"
+        },
+        "expected_sha256": "d2bebe08d49fd63d523bc1e44a575250baa5b0fd14637b3c8ad0ec6036b011e2"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "guitar": "martin2007",
+        "note": 55,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "482995f6b3455b0386a4f3338a38c9f33c74e7880bb9ce49c0ae9fe0a43679d3",
+          "baseline": "482995f6b3455b0386a4f3338a38c9f33c74e7880bb9ce49c0ae9fe0a43679d3"
+        },
+        "expected_sha256": "482995f6b3455b0386a4f3338a38c9f33c74e7880bb9ce49c0ae9fe0a43679d3"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "guitar": "martin2007",
+        "note": 55,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "915f2be4fb16f0aa3278ab5e22b068127e15da76ff1055335ba1efc2c28e9582",
+          "baseline": "915f2be4fb16f0aa3278ab5e22b068127e15da76ff1055335ba1efc2c28e9582"
+        },
+        "expected_sha256": "915f2be4fb16f0aa3278ab5e22b068127e15da76ff1055335ba1efc2c28e9582"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "guitar": "martin2007",
+        "note": 64,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "c978b8295386bfdc98b31ca3b4e9d98db59c1cc9368816dde6cda04578243d8f",
+          "baseline": "c978b8295386bfdc98b31ca3b4e9d98db59c1cc9368816dde6cda04578243d8f"
+        },
+        "expected_sha256": "c978b8295386bfdc98b31ca3b4e9d98db59c1cc9368816dde6cda04578243d8f"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "guitar": "martin2007",
+        "note": 64,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "5b0194524ac81a78c6f694fa6576071873757c49db35ffb34177561d86fb20a5",
+          "baseline": "5b0194524ac81a78c6f694fa6576071873757c49db35ffb34177561d86fb20a5"
+        },
+        "expected_sha256": "5b0194524ac81a78c6f694fa6576071873757c49db35ffb34177561d86fb20a5"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "guitar": "martin2007",
+        "note": 74,
+        "velocity": 91,
+        "capture": "stereo_mic",
+        "identical": true,
+        "outputs": {
+          "final": "31dc93398d0c435c5a328221f094790712ad6d62f8dcafbb9c4ca2e7c70cb122",
+          "baseline": "31dc93398d0c435c5a328221f094790712ad6d62f8dcafbb9c4ca2e7c70cb122"
+        },
+        "expected_sha256": "31dc93398d0c435c5a328221f094790712ad6d62f8dcafbb9c4ca2e7c70cb122"
+      },
+      {
+        "kind": "native",
+        "material": "steel",
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "guitar": "martin2007",
+        "note": 74,
+        "velocity": 91,
+        "capture": "piezo",
+        "identical": true,
+        "outputs": {
+          "final": "2e2fb8e821448255f0b93d92463b63a44328df461d343fae7bde2dfb3cf09379",
+          "baseline": "2e2fb8e821448255f0b93d92463b63a44328df461d343fae7bde2dfb3cf09379"
+        },
+        "expected_sha256": "2e2fb8e821448255f0b93d92463b63a44328df461d343fae7bde2dfb3cf09379"
+      }
+    ],
+    "renderers": {
+      "baseline": "3cfe007f5601a45f50c08cc8272bef8b4f3c892a24507906d64eb4ab21945b83",
+      "final": "c12abed8d63bcd5b52e960d8439d460c89e49a39ea661f8ed77a72fb446600aa"
+    }
+  },
+  "recorded_training": {
+    "source_report": {
+      "path": "/tmp/acustra-control-feedback-final-20260909/recorded-training/report.json",
+      "sha256": "a31f7cbf446b365ff7634f014c5ea6f6ca461bb2c9ca045899e183d6091da6ff",
+      "bytes": 19319
+    },
+    "protocol": "Fixed training-only comparison for the picking/body feedback change.\n\nUses the existing Yamaha/Walden nine training pitches, original file selection,\nfeature extractor, weights, MIDI velocity and Auditorium settings. No fitting,\ndevelopment pitches or protected corpus. Two immutable renderer snapshots.\n",
+    "selection_count": 36,
+    "recordings_per_material": {
+      "steel": 18,
+      "nylon": 18
+    },
+    "pitches_per_material": {
+      "steel": [
+        40,
+        45,
+        50,
+        55,
+        59,
+        64,
+        69,
+        74,
+        79
+      ],
+      "nylon": [
+        40,
+        45,
+        50,
+        55,
+        59,
+        64,
+        69,
+        74,
+        79
+      ]
+    },
+    "selection_sha256": "dec4e4722ac7ce5edd52975c5f916e4300722b07108108501165e7df49740d48",
+    "calibration": {
+      "bodyFrequencyScale": 1.0,
+      "bodyQScale": 1.0,
+      "bridgeMobilityScale": 0.754677154,
+      "residueTiltDbPerOctave": 0.0,
+      "directGain": 0.0,
+      "nylon.fundamentalT60Scale": 1.037816616,
+      "nylon.frequencyLossScale": 1.40369766,
+      "nylon.apertureScale": 2.12267268,
+      "nylon.transientScale": 0.0,
+      "nylon.pluckDistanceScale": 1.12667139,
+      "nylon.velocityBrightnessDepth": 0.0375,
+      "steel.stiffnessScale": 0.749355465,
+      "steel.fundamentalT60Scale": 1.53,
+      "steel.frequencyLossScale": 0.52,
+      "steel.apertureScale": 0.643124355,
+      "steel.transientScale": 0.494086432,
+      "steel.pluckDistanceScale": 0.88819512,
+      "steel.velocityBrightnessDepth": 1.1859375,
+      "apertureRegisterExponent": -0.0706290118,
+      "lowBodyModeGain": 1.0,
+      "steelDisplacementScaleMetres": 0.00773577847,
+      "steelFretT60Slope": -0.0597851562,
+      "highLossCutoffScale": 2.28586032,
+      "bridgeConductanceFloor": 0.011,
+      "bridgeConductanceCornerHz": 2187.76023,
+      "bridgeTailLengthMetres": 0.00325,
+      "longitudinalGain": 0.0,
+      "longitudinalQ": 35.0,
+      "polarisationEndCorrectionMetres": 0.0008
+    },
+    "scorer_source_sha256": {
+      "CalibrateRecordedGuitars.py": "2768a1722210733830ee8d65aea78835e89f4c3cd461db4701ad4c5d885d7070",
+      "FitPhysicalModel.py": "94ec199da74c3432801225829028abf25a100d73d66015e754d6dea8da80c7bd",
+      "BenchmarkTechniqueNotes.py": "650f8884973557d9a02d1ed4e5def2fac54b677f109b04cebe54f6e252713d49",
+      "OptimizePhysicalModel.py": "153e25ae2e6674678f4f116cd27ecbba5abaebb794a206cb9906b003cf185552",
+      "BenchmarkPerformances.py": "eaf4cc65f526e06c4180376532abb2d54ba4d37f17e467aad7f0b6fa901dc575"
+    },
+    "tool_sha256": "c09ab13bdf7f20df5ed51c0aa651d787a8eba050999b80855971c93530d0d392",
+    "renderers": {
+      "before": {
+        "source": "/private/tmp/acustra-contact-qualified-20260908/AcustraPerformanceRenderer",
+        "sha256": "3cfe007f5601a45f50c08cc8272bef8b4f3c892a24507906d64eb4ab21945b83"
+      },
+      "after": {
+        "source": "/private/tmp/acustra-control-feedback-final-20260909/renderer",
+        "sha256": "c12abed8d63bcd5b52e960d8439d460c89e49a39ea661f8ed77a72fb446600aa"
+      }
+    },
+    "results": [
+      {
+        "renderer": "before",
+        "material": "nylon",
+        "candidate": "fixed",
+        "split": "train",
+        "score": 7.932492354449021,
+        "terms": {
+          "attack": 7.274372172445977,
+          "harmonics": 8.05260839287194,
+          "decay": 5.511634484967264,
+          "body": 13.959010142256016
+        }
+      },
+      {
+        "renderer": "before",
+        "material": "steel",
+        "candidate": "fixed",
+        "split": "train",
+        "score": 9.149220342042632,
+        "terms": {
+          "attack": 8.739104947389945,
+          "harmonics": 9.42936347468985,
+          "decay": 5.201376536386296,
+          "body": 18.117303973716602
+        }
+      },
+      {
+        "renderer": "after",
+        "material": "nylon",
+        "candidate": "fixed",
+        "split": "train",
+        "score": 7.806703174653165,
+        "terms": {
+          "attack": 7.605314194311264,
+          "harmonics": 8.162486099242674,
+          "decay": 5.084452313859517,
+          "body": 13.529850672804725
+        }
+      },
+      {
+        "renderer": "after",
+        "material": "steel",
+        "candidate": "fixed",
+        "split": "train",
+        "score": 9.616855484215874,
+        "terms": {
+          "attack": 9.02173621754196,
+          "harmonics": 10.544734296081327,
+          "decay": 5.4485179044846666,
+          "body": 17.77304520924322
+        }
+      }
+    ],
+    "interpretation": "Original/Auditorium changes: Yamaha nylon total improves, Walden steel total worsens. Both attack terms worsen. Not a universal recording-realism improvement; no fitting/development scoring."
+  },
+  "limitations": [
+    "No listening panel or perceptual threshold is established by normalized spectral contrast.",
+    "Some shape pairs/windows become less distinct; all pair summaries are retained.",
+    "PSD residues and positive damping are the analytic passive-section argument; sampled physical-string directions alone are not a full-matrix proof.",
+    "Stationary passivity checks do not establish passivity under arbitrary time-varying construction changes.",
+    "Existing bridge-mode transition resets its modal histories and rebases the audio derivative; string/tail state is preserved and radiation crossfades.",
+    "Full native/plugin qualification and callback evidence are owned by the root report, not duplicated here."
+  ]
+}

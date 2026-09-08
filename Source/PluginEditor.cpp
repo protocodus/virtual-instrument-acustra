@@ -399,8 +399,9 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         timerCallback();
     };
     configureSetupMenu (
-        1, "PICKING", "Finger, pick or thumb excitation. Touch adjusts the "
-        "contact within the selected technique. MIDI: CC2 bridge-hand damping; "
+        1, "PICKING", "Finger: balanced attack. Pick: crisp and bridgeward. "
+        "Thumb: rounder and neckward. Touch adjusts the contact within each "
+        "technique. MIDI: CC2 bridge-hand damping; "
         "CC68 legato; note-off velocity controls finger lift.");
     configureSetupMenu (
         2, "CAPTURE", "Stereo body microphones, one mono body microphone, or "
@@ -444,7 +445,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
 
     configureChoice (
         0, "BODY SHAPE", acustra::parameters::shape,
-        "Bounded low-frequency body-size direction, from compact to large");
+        "Compact to large body: changes resonance and sustain in both microphone and piezo captures");
     configureChoice (
         1, "BODY MATERIAL", acustra::parameters::bodyMaterial,
         "Bounded high-frequency wood direction, not captured wood identification");

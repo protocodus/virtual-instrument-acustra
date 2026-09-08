@@ -251,6 +251,12 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.GuitarModels COMMAND AcustraGuitarModelTests)
     set_tests_properties(Acustra.GuitarModels PROPERTIES TIMEOUT 180)
 
+    add_executable(AcustraBodyShapeTests Tests/BodyShapeTests.cpp)
+    target_link_libraries(AcustraBodyShapeTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraBodyShapeTests PRIVATE cxx_std_20)
+    add_test(NAME Acustra.BodyShape COMMAND AcustraBodyShapeTests)
+    set_tests_properties(Acustra.BodyShape PROPERTIES TIMEOUT 90)
+
     add_executable(AcustraMeasuredSteelBridgeTests Tests/MeasuredSteelBridgeTests.cpp)
     target_link_libraries(AcustraMeasuredSteelBridgeTests PRIVATE AcustraDSP)
     add_test(NAME Acustra.MeasuredSteelBridge COMMAND AcustraMeasuredSteelBridgeTests)
