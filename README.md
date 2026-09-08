@@ -536,8 +536,11 @@ matrix" — and calls the exact size tentative ("would require detailed
 computation"), so it ships as a single published length, bounded to one
 string diameter and frozen rather than fitted (the corpus's own lever on it
 is weak, but it prefers the published value on every split). On steel this
-second loop also feeds the bridge junction and the attack-pitch surrogate
-below through its own slope energy, alongside the first.
+second loop contributes slope energy to the attack-pitch surrogate below.
+Only the perpendicular loop drives the shared bridge; the parallel loop's
+optional direct observer has zero gain in the fitted defaults. The retained
+saddle-height experiment documents the unresolved coupled tuning problem
+with routing that second plane into the bridge.
 
 Steel attack pitch uses a bounded Kirchhoff--Carrier energy surrogate. The
 released waveguide displacement supplies its slope energy; string axial
@@ -1734,6 +1737,11 @@ git history rather than here.
 
 ### 2026-09-08
 
+- Steel picking contact now travels from the picking point toward the bridge
+  and nut, with pending waves retained and damped correctly during release and
+  repicking. Fixed recording comparisons show small attack improvements;
+  [qualification and limits](Docs/contact-travel-2026-09-08.md) include native,
+  plugin, audio-invariance and callback checks. No new control is added.
 - Capture now offers only Stereo mic, Mono mic and Piezo for both steel and
   nylon. Mono uses a single measured microphone response in both channels;
   piezo always includes its electrical load. Retired captures migrate on state

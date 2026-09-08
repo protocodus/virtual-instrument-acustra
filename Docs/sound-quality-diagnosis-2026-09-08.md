@@ -80,11 +80,21 @@ On the six GuitarSet clips, current model-minus-reference whole-clip octave-band
 
 The stronger shape morph, named-body choices, scalar microphone trims and renewed horizontal-axis routing are not part of these proposed changes. Existing saddle-height experiments must not be repeated as though untested; their coupled tuning/phase issue remains documented in README and `Tools/SaddleHeightExperiment.patch`.
 
-The first steel-only residual-loss experiment has since been [rejected on training evidence](steel-loss-rate-experiment-2026-09-08.md): dry steel improves but Walden decay and total loss worsen. Its development split was not scored. The remaining items above are still proposals.
+### Follow-up: the first broad steel loss candidate does not generalize
+
+The experiment owner tested the E2-anchored vertical-loss change on steel training only. Dry steel total/decay losses improved from 6.091584/4.095839 to 6.047128/3.961981, but Walden training worsened from 9.132877/5.209248 to 9.191158/5.334756. No development scores were consulted for this candidate. This is grounds to reject the broad change, despite the useful diagnosis of the extra per-cycle loss.
+
+Re-extracting the candidate's nine Walden training models shows why. The larger penalties occur in H5–H12 at MIDI 55, 59, 64, 69 and 74, whose relevant partials were already too slow or become worse under the changed decay. MIDI 74 also worsens H2–H4 and band-decay terms. MIDI 79 improves, but does not offset them. H1's measured reductions vary: −1.47 dB/s at MIDI 64, −1.03 at 69, −0.41 at 74 and −0.98 at 79. There is no usable target H1 slope at MIDI 69, so that improvement cannot contribute to the score. A reduction in fundamental attenuation affects all partials, not just H1; it also changes the steel energy/pitch trajectory and the dominant observed decay. The aggregate conflict is not fixed by interpreting missing slopes as zero. Per-pitch sums of the actual squared-Huber penalty changes are retained in `/tmp/acustra-sound-diagnosis-20260908/loss-candidate-attribution.json`, and frozen inputs/results are in `/tmp/acustra-loop-loss-20260908`.
+
+The contact alternative began as the historical `Tools/ContactTravelExperiment.patch`. It splits the existing ordinary-steel burst into equal-energy direct and nut-reflected traveling waves, inserts them before the shared junction, and removes the old boundary injection for those voices. It introduces no control or fitted amplitude. Its qualified successor is now [integrated with release, repicking and retirement fixes](contact-travel-2026-09-08.md). The held-note recording gates passed, with small attack gains and mixed performance-monitor results. First-arrival dispersion/loss and fractional-delay limitations remain; this is not a complete physical contact-force solver.
+
+The first steel-only residual-loss experiment has since been [rejected on training evidence](steel-loss-rate-experiment-2026-09-08.md): dry steel improves but Walden decay and total loss worsen. Its development split was not scored. Apart from the qualified contact transport, the remaining items above are still proposals.
 
 ## Run an isolated candidate against the same recordings
 
 The local helper `/tmp/acustra-sound-diagnosis-20260908/run_frozen.py` copies both supplied executables, the DSP/tool source snapshot, and the existing dry corpus into a **new** output directory. It keeps all 29 calibration values fixed, rerenders dry models with `--models-only`, compares train/development/flat-top against the authoritative baseline, then reruns the fixed Yamaha/Walden selection without fitting. It writes a completion marker only after successful scoring. It never opens a blind set. Its CLI was checked; the full candidate run belongs to the experiment owner.
+
+Use this full runner only after the training decision; it explicitly scores the already-used development sets. The copied source snapshot describes the workspace at invocation. The supplied frozen executable hashes are authoritative, and its builder must independently establish which source produced each executable, especially when rerunning an older baseline.
 
 ```sh
 python3 /tmp/acustra-sound-diagnosis-20260908/run_frozen.py \

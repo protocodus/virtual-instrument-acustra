@@ -1944,6 +1944,11 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const auto& physical = steel ? physicalCalibration_.steel
                                  : physicalCalibration_.nylon;
     const auto index = static_cast<std::size_t>(stringIndex);
+    if (clearDelay)
+    {
+        voice.contactTravelEnabled = false;
+        voice.contactTravel.active = false;
+    }
     const float scaleLength = steel ? 0.648f : 0.650f;
     // A natural harmonic is the open string vibrating in its nth mode, so the
     // waveguide runs at the open pitch and the mode number comes from the
@@ -1987,6 +1992,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         unbentFrequency * std::exp2(performedSemitones / 12.0f),
         static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
         0.24f * static_cast<float>(sampleRate_));
+    voice.contactPeriodSamples = static_cast<float>(sampleRate_) / frequency;
 
     const float diameter = steel ? steelDiameterMetres[index]
                                  : nylonDiameterMetres[index];
@@ -2081,11 +2087,11 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
               / std::max(unbentFrequency, 1.0f)), 0.0f, 0.95f)
         : highLoss;
 
-    // Woodhouse's measured string-loss model contains a term linear in modal
-    // angular frequency (DAFx-26 Eq. 25 reports eta_f=2.0--2.5e-4 s for the
-    // EJ45 set). A second, low-gain pole supplies the part of that slope the
-    // former fixed-kHz loss filter missed, so upper partials evolve during a
-    // held note instead of repeating like a lossless plucked oscillator.
+    // This broad one-pole loss slope and its 72x scale are authored and
+    // calibrated, not a per-string realization of Woodhouse's measured loss
+    // table. DAFx-26 Eq. 25 prints seconds for eta_f, but the coefficient of
+    // its angular-frequency damping term is dimensionless. That printed
+    // unit does not justify treating the constants below as measured times.
     const float viscousLoss = (steel ? 1.65e-4f : 2.25e-4f)
         * (1.0f + 1.35f * age);
     const float broadLoss = clamp(72.0f * viscousLoss
@@ -2466,6 +2472,14 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         : distanceFromBridge / soundingLength;
     const float position = clamp(basePosition + takeOffset, 0.05f, 0.46f);
     voice.pluckPoint = position;
+    // Freeze the two transport paths at contact. D=2L/c, x=pL, hence the
+    // direct arrival is pD/2 and the nut-reflected arrival is (1-p/2)D.
+    // The source's two polarisations meet the same physical pluck point.
+    // This held-note experiment excludes natural-harmonic touches and nylon.
+    voice.contactTravelEnabled = steel && voice.harmonic <= 1;
+    if (voice.contactTravelEnabled)
+        voice.contactTravel.reset(0.5f * position * voice.contactPeriodSamples,
+            (1.0f - 0.5f * position) * voice.contactPeriodSamples);
     // Velocity response has two bounded parts: touch brightens with velocity,
     // while the displacement exponent moves from the legacy 1.32 toward the
     // reference-response 0.82 as the same fitted depth rises.
@@ -2748,6 +2762,8 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.fret = 0;
     voice.velocity = 0.0f;
     voice.excitationEnvelope = 0.0f;
+    voice.contactTravelEnabled = false;
+    voice.contactTravel.active = false;
     voice.attackPitchCents = 0.0f;
     voice.attackPitchDecay = 1.0f;
     voice.frozenMemberPitchBendSemitones = 0.0f;
@@ -2764,6 +2780,7 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.pluckDelay = 0;
     voice.repluckPending = false;
     voice.tailActive = false;
+    voice.tailContactTravel.active = false;
     voice.tailCharacteristicImpedance = 0.0f;
     voice.tailLevel = 0.0f;
     voice.tailQuietSamples = 0;
@@ -2782,13 +2799,22 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     // 20-60 ms finger-contact regime, also distinct from a decay constant.
     // Bridge backreaction can keep this branch active after its initial wave
     // has damped; the existing reaction-force threshold decides retirement.
-    if (!(voice.level > 2.0e-7f))
+    if (!(voice.level > 2.0e-7f)
+        && !(voice.contactTravelEnabled && voice.contactTravel.active))
     {
         voice.tailActive = false;
+        voice.tailContactTravel.active = false;
         voice.tailCharacteristicImpedance = 0.0f;
         return;
     }
     voice.tailLoop = voice.loops[0];
+    // Already emitted contact waves still travelling toward the bridge are
+    // part of the retained vertical string state. The old source stops here;
+    // this copied transport receives only zeros while the new pluck starts.
+    if (voice.contactTravelEnabled && voice.contactTravel.active)
+        voice.tailContactTravel = voice.contactTravel;
+    else
+        voice.tailContactTravel.active = false;
     voice.tailCharacteristicImpedance = voice.characteristicImpedance
         * voice.appliedBendImpedanceScale;
     constexpr float tailT60Seconds = 0.010f;
@@ -2811,6 +2837,10 @@ void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
         liftFinger(voice, stringIndex, voice.openMidi);
         return;
     }
+    // An ordinary damping release ends the picking contact. Waves already
+    // emitted remain in transit and receive the same hand loss on arrival.
+    if (voice.contactTravelEnabled)
+        voice.excitationEnvelope = 0.0f;
     const float releaseSeconds = voice.fret == 0 ? 1.25f : 0.16f;
     voice.releaseDamping = std::pow(0.001f,
         1.0f / std::max(releaseSeconds * midiFrequency(voice.midiNote), 1.0f));
@@ -3409,7 +3439,8 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
     // Taking a string that is still sounding, for any note, is a refret and a
     // repluck, not a cut: what it still holds carries on under the hand while
     // the new pluck is released from rest.
-    if (voice.level > 2.0e-7f)
+    if (voice.level > 2.0e-7f
+        || (voice.contactTravelEnabled && voice.contactTravel.active))
         captureTail(voice);
     voice.harmonic = harmonic;
     voice.played = true;
@@ -3474,7 +3505,8 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
         // The pick reaches this held string now. Keep its preceding wave
         // intact until then, and carry it under the hand while the new pluck
         // is released, exactly as for an immediate re-pluck.
-        if (voice.level > 2.0e-7f)
+        if (voice.level > 2.0e-7f
+            || (voice.contactTravelEnabled && voice.contactTravel.active))
             captureTail(voice);
         configureVoice(voice, stringIndex, voice.midiNote, true);
     }
@@ -3839,6 +3871,86 @@ void AcustraEngine::setSympatheticStringsEnabled(bool enabled) noexcept
     sympatheticStringsEnabled_ = enabled;
 }
 
+void AcustraEngine::ContactTravel::reset(float directDelay,
+                                         float nutDelay) noexcept
+{
+    history.fill(0.0f);
+    writeIndex = 0;
+    historyLength = historyRemaining = 0;
+    active = false;
+    const std::array<float, 2> delays { directDelay, nutDelay };
+    for (std::size_t i = 0; i < taps.size(); ++i)
+    {
+        auto& tap = taps[i];
+        tap = {};
+        const double delay = std::clamp(static_cast<double>(delays[i]),
+            0.0, static_cast<double>(maximumDelaySamples - 3));
+        // The existing second-order Thiran convention is stable for its
+        // residual delay >=1.1. Very short causal paths need first order.
+        if (delay >= 1.1)
+        {
+            tap.whole = delayAnchor(delay);
+            tap.order = 2;
+            thiranCoefficients(delay - tap.whole, tap.a1, tap.a2);
+        }
+        else if (delay > 1.0e-8)
+        {
+            tap.order = 1;
+            tap.a1 = (1.0 - delay) / (1.0 + delay);
+        }
+        historyLength = std::max(historyLength, tap.whole + tap.order + 1);
+    }
+}
+
+std::array<float, 2> AcustraEngine::ContactTravel::process(float source) noexcept
+{
+    if (source != 0.0f)
+    {
+        active = true;
+        historyRemaining = historyLength;
+    }
+    if (!active)
+        return {};
+    history[static_cast<std::size_t>(writeIndex)] = source;
+    std::array<float, 2> result {};
+    for (std::size_t i = 0; i < taps.size(); ++i)
+    {
+        auto& tap = taps[i];
+        const auto at = [&] (int lag)
+        {
+            return static_cast<double>(history[static_cast<std::size_t>(
+                wrapDelayIndex(writeIndex - lag))]);
+        };
+        double value = at(tap.whole);
+        if (tap.order == 2)
+            value = tap.a2 * value + tap.a1 * at(tap.whole + 1)
+                + at(tap.whole + 2) - tap.a1 * tap.y1 - tap.a2 * tap.y2;
+        else if (tap.order == 1)
+            value = tap.a1 * value + at(1) - tap.a1 * tap.y1;
+        tap.y2 = tap.y1;
+        tap.y1 = value;
+        result[i] = static_cast<float>(value);
+    }
+    writeIndex = (writeIndex + 1) % maximumDelaySamples;
+    if (historyRemaining > 0)
+        --historyRemaining;
+    if (historyRemaining == 0)
+    {
+        // No delayed input remains. In this fixed Thiran domain the absolute
+        // feedback coefficient sum is <1, so states below this bound can
+        // never produce another nonzero float sample. Retire without an
+        // audible threshold or changing the held-note waveform.
+        constexpr double silent = 0.25 * std::numeric_limits<float>::denorm_min();
+        bool silentState = true;
+        for (const auto& tap : taps)
+            silentState = silentState && std::abs(tap.y1) <= silent
+                                      && std::abs(tap.y2) <= silent;
+        if (silentState)
+            active = false;
+    }
+    return result;
+}
+
 float AcustraEngine::renderExcitation(Voice& voice) noexcept
 {
     float excitation = 0.0f;
@@ -3873,9 +3985,12 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
     // A rigid bridge and nut each invert a displacement wave, so the collapsed
     // full-round-trip loop writes +incident.  A moving bridge has reflected
     // wave b=x-a; folding in the nut inversion therefore writes a-x.
+    // The local-contact paths have already entered incident waves before
+    // the junction solve. Writing this source again would duplicate energy.
+    const float boundaryExcitation = voice.contactTravelEnabled ? 0.0f : excitation;
     voice.loops[0].write(verticalIncident - bridgeDisplacement
-                         + 0.76f * excitation);
-    voice.loops[1].write(horizontalIncident + 0.51f * excitation);
+                         + 0.76f * boundaryExcitation);
+    voice.loops[1].write(horizontalIncident + 0.51f * boundaryExcitation);
 
     const float sampleRateRatio = static_cast<float>(sampleRate_) / 48000.0f;
     const float verticalVelocity = voice.loops[0].bridgeVelocity(
@@ -3949,9 +4064,11 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             ++voice.tailQuietSamples;
         else
             voice.tailQuietSamples = 0;
-        if (voice.tailQuietSamples > static_cast<int>(0.08 * sampleRate_))
+        if (voice.tailQuietSamples > static_cast<int>(0.08 * sampleRate_)
+            && !voice.tailContactTravel.active)
         {
             voice.tailActive = false;
+            voice.tailContactTravel.active = false;
             voice.tailCharacteristicImpedance = 0.0f;
             voice.tailLevel = 0.0f;
             voice.tailQuietSamples = 0;
@@ -4131,9 +4248,44 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
                 = voice.loops[0].advance(delaySmoothing_, releaseGain);
             horizontalIncident[static_cast<std::size_t>(string)]
                 = voice.loops[1].advance(delaySmoothing_, releaseGain);
+            if (voice.contactTravelEnabled
+                && (voice.contactTravel.active
+                    || excitation[static_cast<std::size_t>(string)] != 0.0f))
+            {
+                const auto paths = voice.contactTravel.process(
+                    excitation[static_cast<std::size_t>(string)]);
+                // A fixed nut reverses displacement. Split one emitted
+                // displacement-wave burst equally between both directions:
+                // each gets 1/sqrt(2), preserving the sum of directional
+                // wave-velocity energies of the old one-way source. Their
+                // coherent sum at the bridge need not preserve mic RMS.
+                constexpr float equalEnergySplit = 0.7071067811865475f;
+                const float localContact = equalEnergySplit * (paths[0] - paths[1]);
+                // Keep the held-note expression unchanged, including its
+                // floating-point contraction; hand loss affects arrivals
+                // only once the corresponding loop has begun damping.
+                const float verticalContact = voice.loops[0].appliedReleaseGain == 1.0f
+                    ? localContact : localContact * voice.loops[0].appliedReleaseGain;
+                const float horizontalContact = voice.loops[1].appliedReleaseGain == 1.0f
+                    ? localContact : localContact * voice.loops[1].appliedReleaseGain;
+                verticalIncident[static_cast<std::size_t>(string)]
+                    += 0.76f * verticalContact;
+                horizontalIncident[static_cast<std::size_t>(string)]
+                    += 0.51f * horizontalContact;
+            }
             if (voice.tailActive)
+            {
                 tailIncident[static_cast<std::size_t>(string)]
                     = voice.tailLoop.advance(delaySmoothing_, voice.tailDamping);
+                if (voice.tailContactTravel.active)
+                {
+                    const auto paths = voice.tailContactTravel.process(0.0f);
+                    constexpr float equalEnergySplit = 0.7071067811865475f;
+                    const float localContact = equalEnergySplit * (paths[0] - paths[1]);
+                    tailIncident[static_cast<std::size_t>(string)]
+                        += 0.76f * localContact * voice.tailLoop.appliedReleaseGain;
+                }
+            }
             // Every string is anchored behind the saddle whether or not it
             // is being played, so the anchor the junction sees is a constant
             // of the instrument. Summing only the played ones made it stiffen

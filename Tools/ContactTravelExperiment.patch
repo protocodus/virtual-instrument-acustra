@@ -1,0 +1,198 @@
+HISTORICAL first local-contact candidate, preceding final lifecycle fixes.
+The qualified successor is integrated in AcustraEngine; do not apply this patch
+on top of current source. This artifact reconstructs the first scored candidate.
+Base commit: b958979497a17c869839a50b80d8069f87fedab1
+Only ordinary steel contact bursts change. No contact amplitude fitting.
+The existing displacement-noise signal is phenomenological, not a measured force.
+For p=x/L and D=2L/c, incident contact = g/sqrt(2) * [e(t-pD/2)-e(t-(1-p/2)D)].
+g=.76 vertical/.51 horizontal; old boundary writes are removed for these voices.
+Fixed allpass delays preserve each directional wave's derivative-energy norm.
+This preserves EMITTED source energy, not total stored energy or microphone RMS:
+coherent force work with existing waves and the coupled bridge still needs audit.
+First-arrival dispersion/loss is not modeled; existing losses apply on subsequent
+round trips. Delay paths freeze at note-on, ignoring changes during the few-ms
+contact. Repluck/clearDelay discard pending contact history; this is not a
+qualified contact model for refrets/release/rapid retrigger. Those gates remain.
+Fractional Thiran phase is approximate, especially near Nyquist/at8k; rate gates
+and fixed-window attack spectra are required before any integration.
+See Docs/contact-travel-2026-09-08.md for final qualification and limitations.
+
+--- a/Source/DSP/AcustraEngine.h
++++ b/Source/DSP/AcustraEngine.h
+@@ -450,6 +450,25 @@
+         void reset() noexcept { real = imaginary = momentReal = momentImaginary = 0.0f; }
+     };
+ 
++    // Research-only local-contact transport. Each tap is a fixed lossless
++    // fractional delay; source samples enter once and the ordinary string
++    // loop carries every subsequent round trip.
++    struct ContactTravel
++    {
++        struct Tap
++        {
++            int whole { 0 };
++            int order { 0 };
++            double a1 { 0.0 }, a2 { 0.0 };
++            double y1 { 0.0 }, y2 { 0.0 };
++        };
++        std::array<float, maximumDelaySamples> history {};
++        std::array<Tap, 2> taps {};
++        int writeIndex { 0 };
++        void reset(float directDelay, float nutDelay) noexcept;
++        std::array<float, 2> process(float source) noexcept;
++    };
++
+     struct Voice
+     {
+         std::array<StringLoop, 2> loops {};
+@@ -492,6 +511,9 @@
+         float excitationDecay { 0.0f };
+         float excitationColour { 0.0f };
+         float excitationLowpass { 0.0f };
++        ContactTravel contactTravel {};
++        float contactPeriodSamples { 0.0f };
++        bool contactTravelEnabled { false };
+         float characteristicImpedance { 0.5f };
+         // A bend is a tension change at fixed length, so the port the string
+         // presents moves with it: Z = sqrt(T mu) = Z0 times the frequency
+--- a/Source/DSP/AcustraEngine.cpp
++++ b/Source/DSP/AcustraEngine.cpp
+@@ -1944,6 +1944,8 @@
+     const auto& physical = steel ? physicalCalibration_.steel
+                                  : physicalCalibration_.nylon;
+     const auto index = static_cast<std::size_t>(stringIndex);
++    if (clearDelay)
++        voice.contactTravelEnabled = false;
+     const float scaleLength = steel ? 0.648f : 0.650f;
+     // A natural harmonic is the open string vibrating in its nth mode, so the
+     // waveguide runs at the open pitch and the mode number comes from the
+@@ -1987,6 +1989,7 @@
+         unbentFrequency * std::exp2(performedSemitones / 12.0f),
+         static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+         0.24f * static_cast<float>(sampleRate_));
++    voice.contactPeriodSamples = static_cast<float>(sampleRate_) / frequency;
+ 
+     const float diameter = steel ? steelDiameterMetres[index]
+                                  : nylonDiameterMetres[index];
+@@ -2466,6 +2469,14 @@
+         : distanceFromBridge / soundingLength;
+     const float position = clamp(basePosition + takeOffset, 0.05f, 0.46f);
+     voice.pluckPoint = position;
++    // Freeze the two transport paths at contact. D=2L/c, x=pL, hence the
++    // direct arrival is pD/2 and the nut-reflected arrival is (1-p/2)D.
++    // The source's two polarisations meet the same physical pluck point.
++    // This held-note experiment excludes natural-harmonic touches and nylon.
++    voice.contactTravelEnabled = steel && voice.harmonic <= 1;
++    if (voice.contactTravelEnabled)
++        voice.contactTravel.reset(0.5f * position * voice.contactPeriodSamples,
++            (1.0f - 0.5f * position) * voice.contactPeriodSamples);
+     // Velocity response has two bounded parts: touch brightens with velocity,
+     // while the displacement exponent moves from the legacy 1.32 toward the
+     // reference-response 0.82 as the same fitted depth rises.
+@@ -2748,6 +2759,7 @@
+     voice.fret = 0;
+     voice.velocity = 0.0f;
+     voice.excitationEnvelope = 0.0f;
++    voice.contactTravelEnabled = false;
+     voice.attackPitchCents = 0.0f;
+     voice.attackPitchDecay = 1.0f;
+     voice.frozenMemberPitchBendSemitones = 0.0f;
+@@ -3839,6 +3851,60 @@
+     sympatheticStringsEnabled_ = enabled;
+ }
+ 
++void AcustraEngine::ContactTravel::reset(float directDelay,
++                                         float nutDelay) noexcept
++{
++    history.fill(0.0f);
++    writeIndex = 0;
++    const std::array<float, 2> delays { directDelay, nutDelay };
++    for (std::size_t i = 0; i < taps.size(); ++i)
++    {
++        auto& tap = taps[i];
++        tap = {};
++        const double delay = std::clamp(static_cast<double>(delays[i]),
++            0.0, static_cast<double>(maximumDelaySamples - 3));
++        // The existing second-order Thiran convention is stable for its
++        // residual delay >=1.1. Very short causal paths need first order.
++        if (delay >= 1.1)
++        {
++            tap.whole = delayAnchor(delay);
++            tap.order = 2;
++            thiranCoefficients(delay - tap.whole, tap.a1, tap.a2);
++        }
++        else if (delay > 1.0e-8)
++        {
++            tap.order = 1;
++            tap.a1 = (1.0 - delay) / (1.0 + delay);
++        }
++    }
++}
++
++std::array<float, 2> AcustraEngine::ContactTravel::process(float source) noexcept
++{
++    history[static_cast<std::size_t>(writeIndex)] = source;
++    std::array<float, 2> result {};
++    for (std::size_t i = 0; i < taps.size(); ++i)
++    {
++        auto& tap = taps[i];
++        const auto at = [&] (int lag)
++        {
++            return static_cast<double>(history[static_cast<std::size_t>(
++                wrapDelayIndex(writeIndex - lag))]);
++        };
++        double value = at(tap.whole);
++        if (tap.order == 2)
++            value = tap.a2 * value + tap.a1 * at(tap.whole + 1)
++                + at(tap.whole + 2) - tap.a1 * tap.y1 - tap.a2 * tap.y2;
++        else if (tap.order == 1)
++            value = tap.a1 * value + at(1) - tap.a1 * tap.y1;
++        tap.y2 = tap.y1;
++        tap.y1 = value;
++        result[i] = static_cast<float>(value);
++    }
++    writeIndex = (writeIndex + 1) % maximumDelaySamples;
++    return result;
++}
++
+ float AcustraEngine::renderExcitation(Voice& voice) noexcept
+ {
+     float excitation = 0.0f;
+@@ -3873,9 +3939,12 @@
+     // A rigid bridge and nut each invert a displacement wave, so the collapsed
+     // full-round-trip loop writes +incident.  A moving bridge has reflected
+     // wave b=x-a; folding in the nut inversion therefore writes a-x.
++    // The local-contact paths have already entered incident waves before
++    // the junction solve. Writing this source again would duplicate energy.
++    const float boundaryExcitation = voice.contactTravelEnabled ? 0.0f : excitation;
+     voice.loops[0].write(verticalIncident - bridgeDisplacement
+-                         + 0.76f * excitation);
+-    voice.loops[1].write(horizontalIncident + 0.51f * excitation);
++                         + 0.76f * boundaryExcitation);
++    voice.loops[1].write(horizontalIncident + 0.51f * boundaryExcitation);
+ 
+     const float sampleRateRatio = static_cast<float>(sampleRate_) / 48000.0f;
+     const float verticalVelocity = voice.loops[0].bridgeVelocity(
+@@ -4131,6 +4200,22 @@
+                 = voice.loops[0].advance(delaySmoothing_, releaseGain);
+             horizontalIncident[static_cast<std::size_t>(string)]
+                 = voice.loops[1].advance(delaySmoothing_, releaseGain);
++            if (voice.contactTravelEnabled)
++            {
++                const auto paths = voice.contactTravel.process(
++                    excitation[static_cast<std::size_t>(string)]);
++                // A fixed nut reverses displacement. Split one emitted
++                // displacement-wave burst equally between both directions:
++                // each gets 1/sqrt(2), preserving the sum of directional
++                // wave-velocity energies of the old one-way source. Their
++                // coherent sum at the bridge need not preserve mic RMS.
++                constexpr float equalEnergySplit = 0.7071067811865475f;
++                const float localContact = equalEnergySplit * (paths[0] - paths[1]);
++                verticalIncident[static_cast<std::size_t>(string)]
++                    += 0.76f * localContact;
++                horizontalIncident[static_cast<std::size_t>(string)]
++                    += 0.51f * localContact;
++            }
+             if (voice.tailActive)
+                 tailIncident[static_cast<std::size_t>(string)]
+                     = voice.tailLoop.advance(delaySmoothing_, voice.tailDamping);

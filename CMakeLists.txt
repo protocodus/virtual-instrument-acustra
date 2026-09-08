@@ -235,6 +235,12 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.Release COMMAND AcustraReleaseTests)
     set_tests_properties(Acustra.Release PROPERTIES TIMEOUT 90)
 
+    add_executable(AcustraContactTravelTests Tests/ContactTravelTests.cpp)
+    target_link_libraries(AcustraContactTravelTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraContactTravelTests PRIVATE cxx_std_20)
+    add_test(NAME Acustra.ContactTravel COMMAND AcustraContactTravelTests)
+    set_tests_properties(Acustra.ContactTravel PROPERTIES TIMEOUT 90)
+
     add_executable(AcustraCaptureTests Tests/CaptureTests.cpp)
     target_link_libraries(AcustraCaptureTests PRIVATE AcustraDSP)
     add_test(NAME Acustra.Capture COMMAND AcustraCaptureTests)

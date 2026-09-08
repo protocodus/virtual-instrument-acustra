@@ -450,6 +450,28 @@ private:
         void reset() noexcept { real = imaginary = momentReal = momentImaginary = 0.0f; }
     };
 
+    // Local-contact transport. Each tap is a fixed lossless
+    // fractional delay; source samples enter once and the ordinary string
+    // loop carries every subsequent round trip.
+    struct ContactTravel
+    {
+        struct Tap
+        {
+            int whole { 0 };
+            int order { 0 };
+            double a1 { 0.0 }, a2 { 0.0 };
+            double y1 { 0.0 }, y2 { 0.0 };
+        };
+        std::array<float, maximumDelaySamples> history {};
+        std::array<Tap, 2> taps {};
+        int writeIndex { 0 };
+        int historyLength { 0 };
+        int historyRemaining { 0 };
+        bool active { false };
+        void reset(float directDelay, float nutDelay) noexcept;
+        std::array<float, 2> process(float source) noexcept;
+    };
+
     struct Voice
     {
         std::array<StringLoop, 2> loops {};
@@ -458,6 +480,7 @@ private:
         // stopped note, instead of deleting it. Only the radiated vertical
         // polarisation is kept.
         StringLoop tailLoop {};
+        ContactTravel tailContactTravel {};
         float tailDamping { 1.0f };
         // The retained virtual-string branch keeps the port it had at capture,
         // including its applied member bend, while the main voice is retuned.
@@ -492,6 +515,11 @@ private:
         float excitationDecay { 0.0f };
         float excitationColour { 0.0f };
         float excitationLowpass { 0.0f };
+        ContactTravel contactTravel {};
+        float contactPeriodSamples { 0.0f };
+        // Routing identity survives transport retirement: a drained contact
+        // must not fall back to the former bridge-boundary source write.
+        bool contactTravelEnabled { false };
         float characteristicImpedance { 0.5f };
         // A bend is a tension change at fixed length, so the port the string
         // presents moves with it: Z = sqrt(T mu) = Z0 times the frequency

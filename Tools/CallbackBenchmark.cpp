@@ -4,9 +4,9 @@
 // -Dacustra=acustra_baseline/acustra_current. Compile each AcustraEngine.cpp
 // with the same namespace definition and include its own Source directory.
 // Link the five objects into one executable. No LTO or fast-math is required.
-// Compile a current adapter supporting named guitars with
-// -DACUSTRA_CALLBACK_GUITAR_MODELS. The legacy adapter keeps Original but uses
-// the matching requested material/shape/wood for its timing reference.
+// Compile each adapter that supports named guitars with
+// -DACUSTRA_CALLBACK_GUITAR_MODELS. An adapter without that definition keeps
+// Original with the requested material/shape/wood. Report the actual selection.
 // Usage: AcustraCallbackBenchmark OUTPUT.json [pairs=256] [warmup=16] [--guitar-models]
 // Output contains every timed observation; construction/prepare/50 ms pre-roll and
 // result checking are outside the interval. Each pair alternates engine order.
@@ -273,9 +273,11 @@ int main(int argc, char** argv)
         const int repeats = argc >= 3 ? positiveInteger(argv[2]) : 256;
         const int warmups = argc >= 4 ? positiveInteger(argv[3]) : 16;
         const bool namedGuitars = argc == 5 && std::string(argv[4]) == "--guitar-models";
+        const bool baselineHasGuitarModels = callback_baseline_has_guitar_models();
+        const bool currentHasGuitarModels = callback_current_has_guitar_models();
         if (argc == 5 && !namedGuitars)
             throw std::runtime_error("unknown final option");
-        if (namedGuitars && !callback_current_has_guitar_models())
+        if (namedGuitars && !currentHasGuitarModels)
             throw std::runtime_error("current adapter was compiled without named-guitar support");
         if (std::filesystem::exists(argv[1]))
             throw std::runtime_error("output already exists");
@@ -293,8 +295,13 @@ int main(int argc, char** argv)
                   "\n\"touch\":0.58,\n\"pluck_position\":0.28,"
                   "\n\"capture\":\"stereo_mic\",\n\"picking\":\"finger\","
                   "\n\"chord_midi\":[40,47,52,56,59,64],\n\"harmonic_midi\":100,"
-                  "\n\"named_model_comparison\":\"current named model versus baseline Original with matching material, shape and wood\","
-                  "\n\"results\":[\n";
+               << "\n\"baseline_has_guitar_models\":" << (baselineHasGuitarModels ? "true" : "false")
+               << ",\n\"current_has_guitar_models\":" << (currentHasGuitarModels ? "true" : "false")
+               << ",\n\"named_model_comparison\":\""
+               << (!namedGuitars ? "Original on both adapters"
+                   : baselineHasGuitarModels ? "matching named models on both adapters"
+                   : "current named model versus baseline Original with matching material, shape and wood")
+               << "\",\n\"results\":[\n";
         constexpr std::array scenarios { "six_string_initial", "six_string_repick", "eighth_harmonic" };
         struct ModelCase { int material, guitar; const char* name; const char* shape; const char* wood; };
         std::vector<ModelCase> cases {
@@ -348,7 +355,8 @@ int main(int argc, char** argv)
                                << ",\"frames\":" << frames << ",\"material\":\""
                                << (material == 0 ? "nylon" : "steel")
                                << "\",\"current_guitar_model\":\"" << model.name
-                               << "\",\"baseline_guitar_model\":\"Original"
+                               << "\",\"baseline_guitar_model\":\""
+                               << (baselineHasGuitarModels ? model.name : "Original")
                                << "\",\"body_shape\":\"" << model.shape
                                << "\",\"body_material\":\"" << model.wood
                                << "\",\"scenario\":\"" << scenarios[static_cast<std::size_t>(scenario)]
