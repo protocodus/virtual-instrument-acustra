@@ -1,0 +1,21 @@
+diff --git a/Source/DSP/AcustraEngine.cpp b/Source/DSP/AcustraEngine.cpp
+index 17384ab..231eb39 100644
+--- a/Source/DSP/AcustraEngine.cpp
++++ b/Source/DSP/AcustraEngine.cpp
+@@ -2248,8 +2248,14 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
+             3.0f, static_cast<float>(maximumDelaySamples - 3));
+         if (clearDelay)
+             loop.currentDelay = loop.targetDelay;
+-        loop.loopGain = clamp(loopGain
+-            * (polarisation == 0 ? 0.9995f : 0.9988f), 0.70f, 0.999995f);
++        // A fixed attenuation per round trip adds a loss rate proportional
++        // to pitch. Keep the steel normal-plane residual at its low-E rate
++        // in every register, instead of shortening treble sustain again
++        // after the fundamental T60 has already been compensated above.
++        const float residualGain = steel && polarisation == 0
++            ? std::pow(0.9995f, midiFrequency(40) / frequency)
++            : (polarisation == 0 ? 0.9995f : 0.9988f);
++        loop.loopGain = clamp(loopGain * residualGain, 0.70f, 0.999995f);
+         loop.broadLossMix = clamp(broadLoss
+             * (polarisation == 0 ? 1.0f : 1.06f), 0.0f, 1.0f);
+         loop.highLossMix = clamp(mutedHighLoss
