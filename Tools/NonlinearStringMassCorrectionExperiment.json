@@ -1,0 +1,2506 @@
+{
+  "experiment": "Separate exact-linear-pole numerical-mass correction with physical stiffness and unscaled force",
+  "date": "2026-09-08",
+  "disposition": "Promising isolated numerical groundwork; not coupled, audio-qualified or all-green; two inherited negative-control expectation failures retained",
+  "coefficient_fit": false,
+  "physical_stiffness_changed": false,
+  "physical_potential_changed": false,
+  "physical_force_observer_changed": false,
+  "physical_viscous_C_changed": false,
+  "input_force_scaled": false,
+  "baseline_source_unchanged": true,
+  "unchanged_blocks": {
+    "physical_model": {
+      "unchanged": true,
+      "sha256": "2f073bd8e5907d1c120f24bd6a0de70d12d431d855c0ac561b78b7111a5e599c"
+    },
+    "physical_rk4": {
+      "unchanged": true,
+      "sha256": "a97067d4652ca6d38b15fe267490ce669ef58adeb87d8b6a041e9c9296fad5e1"
+    }
+  },
+  "artifacts": {
+    "baseline_source": {
+      "path": "/tmp/acustra-exact-pole-experiment-20260908/baseline.cpp",
+      "sha256": "227d13ddeccfca9efa1499e30b54301a9542bb065d3eda04e9b3ce0962c3afd5",
+      "bytes": 35628
+    },
+    "candidate_source": {
+      "path": "/tmp/acustra-exact-pole-experiment-20260908/mass-candidate.cpp",
+      "sha256": "bc319068924c6a4a47339a053abee77dd155fe43091955b79a0b4be1c5ce16ad",
+      "bytes": 42032
+    },
+    "baseline_executable": {
+      "path": "/tmp/acustra-exact-pole-experiment-20260908/baseline",
+      "sha256": "32cf830909bf054bd141392f64cb745ae50c4942c309ff48cb9682fef8ef3f25",
+      "bytes": 127208
+    },
+    "candidate_executable": {
+      "path": "/tmp/acustra-exact-pole-experiment-20260908/mass-candidate",
+      "sha256": "e0981ed715edc7ffda7265546b8a149347bf0c599b5905d13ab60a900cd0b2d6",
+      "bytes": 160256
+    },
+    "baseline_raw_report": {
+      "path": "/tmp/acustra-exact-pole-experiment-20260908/baseline-result/report.json",
+      "sha256": "0422cefbe8d41c044b33f80c1433c4523c9ab9e5ba46d739c467dbe0c41555b7",
+      "bytes": 17939
+    },
+    "candidate_raw_report": {
+      "path": "/tmp/acustra-exact-pole-experiment-20260908/mass-authoritative-result/report.json",
+      "sha256": "8448d9a971269b46532de9230417a7e0c538a74cce14d7a75ce2f47cacd46ff9",
+      "bytes": 35895
+    },
+    "patch": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra/Tools/NonlinearStringMassCorrectionExperiment.patch",
+      "sha256": "8fb55e9aa27f9c6528e2a648fd9288fcb3333ea0cec627aaae528dea1364df20",
+      "bytes": 10978
+    },
+    "candidate_stdout": {
+      "path": "/tmp/acustra-exact-pole-experiment-20260908/mass-stdout.txt",
+      "sha256": "7b342bf54afdb54cfa679decd7d32344398ac76b8d95ae8db5927f7034354f5c",
+      "bytes": 367
+    },
+    "candidate_stderr": {
+      "path": "/tmp/acustra-exact-pole-experiment-20260908/mass-stderr.txt",
+      "sha256": "3c68d750568655659ec2004569d6d961d859cddd54ff7e58cb0721e668ec30ef",
+      "bytes": 168
+    },
+    "frozen_stiffness_candidate_report": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra/Tools/NonlinearStringExactPoleExperiment.json",
+      "sha256": "e6b5270113c0ab13eb01d5f544c78d68d46e01d7736f68100ef86284f730b994",
+      "bytes": 89692
+    }
+  },
+  "run": {
+    "exit_code": 1,
+    "utc_run_finished": "2026-09-08T21:01:25.691806+00:00",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.5.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "compile_flags": [
+      "-std=c++20",
+      "-O3",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic"
+    ]
+  },
+  "inherited_expectation_failures": [
+    "FAIL: unregulated local-slope negative control lost its residual-energy sensitivity",
+    "FAIL: unregulated local-slope negative control lost its residual-energy sensitivity"
+  ],
+  "analytical_linear_response_note": "Closed-form transfer-function and complex-pole calculations, not additional time-domain drive measurements. Positive damping; tested underdamped eta=1 and eta=100 domains. See Markdown for equations and continuous versus centred velocity distinction.",
+  "analytical_linear_response": [
+    {
+      "rate": 48000,
+      "mode": 1,
+      "physical_frequency_hz": 196.0099263900649,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.00010972750368165585,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -5.4858189686757264e-05,
+      "eta_100_amplitude_decay_relative_error": -5.341180940032775e-05
+    },
+    {
+      "rate": 48000,
+      "mode": 2,
+      "physical_frequency_hz": 392.09309405747996,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.00043917527848535975,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.00021950073644649848,
+      "eta_100_amplitude_decay_relative_error": -0.00021805507049033057
+    },
+    {
+      "rate": 48000,
+      "mode": 3,
+      "physical_frequency_hz": 588.3226986899512,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0009891400838275555,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.000494130023697581,
+      "eta_100_amplitude_decay_relative_error": -0.0004926855487440429
+    },
+    {
+      "rate": 48000,
+      "mode": 4,
+      "physical_frequency_hz": 784.7718449149928,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0017609530870719148,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0008790832548876137,
+      "eta_100_amplitude_decay_relative_error": -0.0008776404482848665
+    },
+    {
+      "rate": 48000,
+      "mode": 5,
+      "physical_frequency_hz": 981.5135010669106,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.002756484743653864,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0013748317928182763,
+      "eta_100_amplitude_decay_relative_error": -0.0013733911328495108
+    },
+    {
+      "rate": 48000,
+      "mode": 6,
+      "physical_frequency_hz": 1178.6204543084143,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.003978151684832065,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0019819804353419235,
+      "eta_100_amplitude_decay_relative_error": -0.001980542401477603
+    },
+    {
+      "rate": 48000,
+      "mode": 7,
+      "physical_frequency_hz": 1376.1652662220017,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.005428925669403117,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.002701266480873432,
+      "eta_100_amplitude_decay_relative_error": -0.0026998315540095463
+    },
+    {
+      "rate": 48000,
+      "mode": 8,
+      "physical_frequency_hz": 1574.2202289836364,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.007112344672939974,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0035335585813057735,
+      "eta_100_amplitude_decay_relative_error": -0.003532127243990102
+    },
+    {
+      "rate": 48000,
+      "mode": 9,
+      "physical_frequency_hz": 1772.8573222280563,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.009032526206183888,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.004479855379403652,
+      "eta_100_amplitude_decay_relative_error": -0.00447842811604271
+    },
+    {
+      "rate": 48000,
+      "mode": 10,
+      "physical_frequency_hz": 1972.1481707112468,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.011194182973385258,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.005541283927244733,
+      "eta_100_amplitude_decay_relative_error": -0.005539861224291509
+    },
+    {
+      "rate": 48000,
+      "mode": 11,
+      "physical_frequency_hz": 2172.1640028713286,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.013602641001883686,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.00671909788177516,
+      "eta_100_amplitude_decay_relative_error": -0.0067176802278956504
+    },
+    {
+      "rate": 48000,
+      "mode": 12,
+      "physical_frequency_hz": 2372.975610384257,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.01626386039629968,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.008014675473119737,
+      "eta_100_amplitude_decay_relative_error": -0.008013263359331835
+    },
+    {
+      "rate": 96000,
+      "mode": 1,
+      "physical_frequency_hz": 196.0099263900649,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 2.743029575968947e-05,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -1.371477313161229e-05,
+      "eta_100_amplitude_decay_relative_error": -1.3353134130422717e-05
+    },
+    {
+      "rate": 96000,
+      "mode": 2,
+      "physical_frequency_hz": 392.09309405747996,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.00010976851155808376,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -5.4878798063540124e-05,
+      "eta_100_amplitude_decay_relative_error": -5.451720372062763e-05
+    },
+    {
+      "rate": 96000,
+      "mode": 3,
+      "physical_frequency_hz": 588.3226986899512,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.00024715668353225695,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0001235508230478244,
+      "eta_100_amplitude_decay_relative_error": -0.00012318930319787924
+    },
+    {
+      "rate": 96000,
+      "mode": 4,
+      "physical_frequency_hz": 784.7718449149928,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0004398317074081337,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.00021982879985071868,
+      "eta_100_amplitude_decay_relative_error": -0.00021946738442291114
+    },
+    {
+      "rate": 96000,
+      "mode": 5,
+      "physical_frequency_hz": 981.5135010669106,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.000688125592577693,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0003438498141138391,
+      "eta_100_amplitude_decay_relative_error": -0.0003434885331682347
+    },
+    {
+      "rate": 96000,
+      "mode": 6,
+      "physical_frequency_hz": 1178.6204543084143,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0009924658194719882,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0004957900383337766,
+      "eta_100_amplitude_decay_relative_error": -0.0004954289220990837
+    },
+    {
+      "rate": 96000,
+      "mode": 7,
+      "physical_frequency_hz": 1376.1652662220017,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0013533758018986486,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0006758646711498839,
+      "eta_100_amplitude_decay_relative_error": -0.0006755037500609795
+    },
+    {
+      "rate": 96000,
+      "mode": 8,
+      "physical_frequency_hz": 1574.2202289836364,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0017714754565096857,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0008843278627413964,
+      "eta_100_amplitude_decay_relative_error": -0.0008839671674740757
+    },
+    {
+      "rate": 96000,
+      "mode": 9,
+      "physical_frequency_hz": 1772.8573222280563,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0022474818820539255,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.001121472626085418,
+      "eta_100_amplitude_decay_relative_error": -0.0011211121875953634
+    },
+    {
+      "rate": 96000,
+      "mode": 10,
+      "physical_frequency_hz": 1972.1481707112468,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0027822101515817543,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0013876307338143157,
+      "eta_100_amplitude_decay_relative_error": -0.0013872705833715138
+    },
+    {
+      "rate": 96000,
+      "mode": 11,
+      "physical_frequency_hz": 2172.1640028713286,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.003376574221287676,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0016831726003159186,
+      "eta_100_amplitude_decay_relative_error": -0.0016828127695410755
+    },
+    {
+      "rate": 96000,
+      "mode": 12,
+      "physical_frequency_hz": 2372.975610384257,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0040315879602161875,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.002008507148744121,
+      "eta_100_amplitude_decay_relative_error": -0.00200814766964319
+    },
+    {
+      "rate": 192000,
+      "mode": 1,
+      "physical_frequency_hz": 196.0099263900649,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 6.8574751863614836e-06,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -3.4287073901184684e-06,
+      "eta_100_amplitude_decay_relative_error": -3.3382948936289125e-06
+    },
+    {
+      "rate": 192000,
+      "mode": 2,
+      "physical_frequency_hz": 392.09309405747996,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 2.744054654746364e-05,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -1.3719925397781552e-05,
+      "eta_100_amplitude_decay_relative_error": -1.3629515692947791e-05
+    },
+    {
+      "rate": 192000,
+      "mode": 3,
+      "physical_frequency_hz": 588.3226986899512,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 6.178115449650967e-05,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -3.08888506959093e-05,
+      "eta_100_amplitude_decay_relative_error": -3.079844564757295e-05
+    },
+    {
+      "rate": 192000,
+      "mode": 4,
+      "physical_frequency_hz": 784.7718449149928,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.00010993254308711009,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -5.4960824735883484e-05,
+      "eta_100_amplitude_decay_relative_error": -5.487042621665772e-05
+    },
+    {
+      "rate": 192000,
+      "mode": 5,
+      "physical_frequency_hz": 981.5135010669106,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.00017196927510076954,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -8.597132259857698e-05,
+      "eta_100_amplitude_decay_relative_error": -8.588093248906858e-05
+    },
+    {
+      "rate": 192000,
+      "mode": 6,
+      "physical_frequency_hz": 1178.6204543084143,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.00024798725324925996,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.00012396595002339694,
+      "eta_100_amplitude_decay_relative_error": -0.00012387557021786844
+    },
+    {
+      "rate": 192000,
+      "mode": 7,
+      "physical_frequency_hz": 1376.1652662220017,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.00033810374757181627,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.00016900043958345545,
+      "eta_100_amplitude_decay_relative_error": -0.00016891007198927
+    },
+    {
+      "rate": 192000,
+      "mode": 8,
+      "physical_frequency_hz": 1574.2202289836364,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.00044245742912929487,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.00022114064597189564,
+      "eta_100_amplitude_decay_relative_error": -0.00022105029251462405
+    },
+    {
+      "rate": 192000,
+      "mode": 9,
+      "physical_frequency_hz": 1772.8573222280563,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0005612084101231929,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0002804625404022598,
+      "eta_100_amplitude_decay_relative_error": -0.00028037220302767896
+    },
+    {
+      "rate": 192000,
+      "mode": 10,
+      "physical_frequency_hz": 1972.1481707112468,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0006945382905856334,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.00034705220409569915,
+      "eta_100_amplitude_decay_relative_error": -0.0003469618847714573
+    },
+    {
+      "rate": 192000,
+      "mode": 11,
+      "physical_frequency_hz": 2172.1640028713286,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0008426502118163981,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.00042100582082782445,
+      "eta_100_amplitude_decay_relative_error": -0.000420915521547105
+    },
+    {
+      "rate": 192000,
+      "mode": 12,
+      "physical_frequency_hz": 2372.975610384257,
+      "static_compliance_relative_error_exact_arithmetic": 0,
+      "modal_displacement_compliance_relative_error_at_physical_undamped_frequency": 0.0010057689167601858,
+      "centred_velocity_mobility_relative_error_at_physical_undamped_frequency_exact_arithmetic": 0,
+      "eta_1_amplitude_decay_relative_error": -0.0005024296685272045,
+      "eta_100_amplitude_decay_relative_error": -0.0005023393913119456
+    }
+  ],
+  "baseline": {
+    "measurements": [
+      {
+        "test": "directional_gradient",
+        "model": "cubic",
+        "maximum_relative_error": 7.295858369695081e-10
+      },
+      {
+        "test": "directional_gradient",
+        "model": "exact",
+        "maximum_relative_error": 7.748597710035399e-10
+      },
+      {
+        "test": "directional_gradient",
+        "model": "kirchhoff",
+        "maximum_relative_error": 4.732841677267344e-10
+      },
+      {
+        "test": "signed_symmetry",
+        "lambda": 0,
+        "maximum_displacement_sum_m": 0,
+        "maximum_force_sum_n": 0,
+        "maximum_auxiliary_difference": 0
+      },
+      {
+        "test": "signed_symmetry",
+        "lambda": 1000,
+        "maximum_displacement_sum_m": 0,
+        "maximum_force_sum_n": 0,
+        "maximum_auxiliary_difference": 0
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.01,
+        "intervals": 25,
+        "relative_energy_error": 3.3306690738754696e-15,
+        "relative_gradient_error": 1.256174316070217e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.01,
+        "intervals": 48,
+        "relative_energy_error": 2.4424906541753444e-15,
+        "relative_gradient_error": 1.35053451812542e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.01,
+        "intervals": 96,
+        "relative_energy_error": 2.6645352591003757e-15,
+        "relative_gradient_error": 1.2386936125650664e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.01,
+        "intervals": 192,
+        "relative_energy_error": 3.3306690738754696e-15,
+        "relative_gradient_error": 1.4409210232453798e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.1,
+        "intervals": 25,
+        "relative_energy_error": 2.220446049250313e-16,
+        "relative_gradient_error": 1.2399860154574115e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.1,
+        "intervals": 48,
+        "relative_energy_error": 9.992007221626409e-16,
+        "relative_gradient_error": 1.1256814006548738e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.1,
+        "intervals": 96,
+        "relative_energy_error": 1.2212453270876722e-15,
+        "relative_gradient_error": 1.402864544384956e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.1,
+        "intervals": 192,
+        "relative_energy_error": 8.881784197001252e-16,
+        "relative_gradient_error": 1.0667042627877386e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.01,
+        "intervals": 25,
+        "relative_energy_error": 8.803289359038402e-05,
+        "relative_gradient_error": 0.0003825869410075743
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.01,
+        "intervals": 48,
+        "relative_energy_error": 1.9643175974692895e-12,
+        "relative_gradient_error": 2.4055663398194248e-11
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.01,
+        "intervals": 96,
+        "relative_energy_error": 3.219646771412954e-15,
+        "relative_gradient_error": 1.0500842323793e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.01,
+        "intervals": 192,
+        "relative_energy_error": 4.551914400963142e-15,
+        "relative_gradient_error": 1.3068124556602288e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.1,
+        "intervals": 25,
+        "relative_energy_error": 0.0019121598268108109,
+        "relative_gradient_error": 0.0105235853882292
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.1,
+        "intervals": 48,
+        "relative_energy_error": 2.9774021206296908e-06,
+        "relative_gradient_error": 6.463996202125721e-05
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.1,
+        "intervals": 96,
+        "relative_energy_error": 7.611500318915887e-11,
+        "relative_gradient_error": 1.4298270210306532e-09
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.1,
+        "intervals": 192,
+        "relative_energy_error": 0,
+        "relative_gradient_error": 1.197940644551499e-15
+      },
+      {
+        "test": "zero_state_and_cfl",
+        "zero_displacement": true,
+        "energy_roundoff_j": -3.519521198874155e-29,
+        "invalid_rate_rejected": true
+      },
+      {
+        "test": "linear",
+        "rate": 48000,
+        "max_displacement_error_m": 1.4414314430193941e-16,
+        "physical_frequency_error_cents": 0.047490216089534916
+      },
+      {
+        "test": "linear",
+        "rate": 96000,
+        "max_displacement_error_m": 8.082316304769443e-16,
+        "physical_frequency_error_cents": 0.011872016652530357
+      },
+      {
+        "test": "linear",
+        "rate": 192000,
+        "max_displacement_error_m": 8.850438757109065e-16,
+        "physical_frequency_error_cents": 0.0029679705804497394
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "cubic",
+        "lambda": 0.0,
+        "balance_relative": 2.601536450030056e-13,
+        "drift_energy_relative": 3.6356985985785277e-06,
+        "minimum_energy_j": 0.00353907970370284,
+        "minimum_psi": 6.48911610703264e-07,
+        "minimum_rank_denominator": 1.0000000000002243,
+        "maximum_rank_denominator": 1.0000064203221022,
+        "displacement_rms_m": 0.002578032086908534,
+        "force_rms_n": 0.7971766104987875,
+        "finite_window_dc_db": -54.0708704539296,
+        "mode3_peak_energy_fraction": 0.03923443584854476,
+        "final_energy_fraction": 0.9999999999997643
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "cubic",
+        "lambda": 1000.0,
+        "balance_relative": 1.5832242550347772e-13,
+        "drift_energy_relative": 5.616873605019237e-07,
+        "minimum_energy_j": 0.0035390797037032004,
+        "minimum_psi": 6.983124209227538e-07,
+        "minimum_rank_denominator": 1.0000000000002442,
+        "maximum_rank_denominator": 1.0000064193611362,
+        "displacement_rms_m": 0.0025780212313355404,
+        "force_rms_n": 0.7971761964135522,
+        "finite_window_dc_db": -54.071313309723635,
+        "mode3_peak_energy_fraction": 0.039251849802807395,
+        "final_energy_fraction": 0.9999999999999476
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "exact",
+        "lambda": 0.0,
+        "balance_relative": 1.6138600219584486e-13,
+        "drift_energy_relative": 3.640349484743915e-06,
+        "minimum_energy_j": 0.003539078338232589,
+        "minimum_psi": 6.490518018245157e-07,
+        "minimum_rank_denominator": 1.0000000000002243,
+        "maximum_rank_denominator": 1.0000064158791322,
+        "displacement_rms_m": 0.002578047862284459,
+        "force_rms_n": 0.7971759348486639,
+        "finite_window_dc_db": -54.069120098743156,
+        "mode3_peak_energy_fraction": 0.03920777092727332,
+        "final_energy_fraction": 0.9999999999999517
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "exact",
+        "lambda": 1000.0,
+        "balance_relative": 5.160185689041023e-13,
+        "drift_energy_relative": 5.615284345806638e-07,
+        "minimum_energy_j": 0.0035390783382330073,
+        "minimum_psi": 6.983107309807459e-07,
+        "minimum_rank_denominator": 1.0000000000002471,
+        "maximum_rank_denominator": 1.000006415487189,
+        "displacement_rms_m": 0.002578037358005511,
+        "force_rms_n": 0.7971758313425672,
+        "finite_window_dc_db": -54.06937729141478,
+        "mode3_peak_energy_fraction": 0.03922518740117762,
+        "final_energy_fraction": 1.0000000000003142
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "kirchhoff",
+        "lambda": 0.0,
+        "balance_relative": 3.205859593059476e-13,
+        "drift_energy_relative": 4.978833079441563e-07,
+        "minimum_energy_j": 0.0035361554635915966,
+        "minimum_psi": 5.662314755521576e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000010911430102,
+        "displacement_rms_m": 0.002597336910416862,
+        "force_rms_n": 0.7960969039494116,
+        "finite_window_dc_db": -51.5480109663978,
+        "mode3_peak_energy_fraction": 0,
+        "final_energy_fraction": 0.999999999999681
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "kirchhoff",
+        "lambda": 1000.0,
+        "balance_relative": 3.208312431309713e-13,
+        "drift_energy_relative": 4.65022404014044e-06,
+        "minimum_energy_j": 0.003536155463592026,
+        "minimum_psi": 5.317675016819961e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000028018035745,
+        "displacement_rms_m": 0.0025973372010865046,
+        "force_rms_n": 0.7960969934837737,
+        "finite_window_dc_db": -51.549852220355476,
+        "mode3_peak_energy_fraction": 0,
+        "final_energy_fraction": 1.0000000000002083
+      },
+      {
+        "test": "amplitude_limit",
+        "height_m": 0.0001,
+        "relative_displacement_error": 0.0002307206476897893
+      },
+      {
+        "test": "amplitude_limit",
+        "height_m": 5e-05,
+        "relative_displacement_error": 5.7747846599374996e-05
+      },
+      {
+        "test": "amplitude_limit",
+        "height_m": 2.5e-05,
+        "relative_displacement_error": 1.444681660266039e-05
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 48000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.01530329292933,
+        "frequency_hz": 196.03814104314472,
+        "shift_cents": 0.20169439341926193,
+        "weak_theory_shift_cents": 0.2017489756166537
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 48000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.01530329292933,
+        "frequency_hz": 196.10661542069056,
+        "shift_cents": 0.806293451021575,
+        "weak_theory_shift_cents": 0.8068548761803244
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 48000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.01530329292933,
+        "frequency_hz": 196.380484977021,
+        "shift_cents": 3.2223340158849356,
+        "weak_theory_shift_cents": 3.225165710002182
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 48000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.01530329292933,
+        "frequency_hz": 196.03814079261446,
+        "shift_cents": 0.20169218095938143,
+        "weak_theory_shift_cents": 0.2017489756166537
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 48000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.01530329292933,
+        "frequency_hz": 196.1066120142531,
+        "shift_cents": 0.8062633789072975,
+        "weak_theory_shift_cents": 0.8068548761803244
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 48000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.01530329292933,
+        "frequency_hz": 196.38012017025744,
+        "shift_cents": 3.2191179810682766,
+        "weak_theory_shift_cents": 3.225165710002182
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 48000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.01530329292933,
+        "frequency_hz": 196.03052899043018,
+        "shift_cents": 0.13447022657509802,
+        "weak_theory_shift_cents": 0.13450192935195318
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 48000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.01530329292933,
+        "frequency_hz": 196.07620291664728,
+        "shift_cents": 0.5377902930002146,
+        "weak_theory_shift_cents": 0.5379450309437329
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 48000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.01530329292933,
+        "frequency_hz": 196.25876051894232,
+        "shift_cents": 2.1489133856317766,
+        "weak_theory_shift_cents": 2.1507779188611704
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 192000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.0102624213752,
+        "frequency_hz": 196.03310396239132,
+        "shift_cents": 0.20173305800211716,
+        "weak_theory_shift_cents": 0.2017489756166537
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 192000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.0102624213752,
+        "frequency_hz": 196.10161096305288,
+        "shift_cents": 0.806635653141507,
+        "weak_theory_shift_cents": 0.8068548761803244
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 192000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.0102624213752,
+        "frequency_hz": 196.37537908706562,
+        "shift_cents": 3.2218436104240316,
+        "weak_theory_shift_cents": 3.225165710002182
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 192000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.0102624213752,
+        "frequency_hz": 196.0331036879126,
+        "shift_cents": 0.20173063398856256,
+        "weak_theory_shift_cents": 0.2017489756166537
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 192000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.0102624213752,
+        "frequency_hz": 196.10160469783017,
+        "shift_cents": 0.8065803421882983,
+        "weak_theory_shift_cents": 0.8068548761803244
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 192000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.0102624213752,
+        "frequency_hz": 196.37531662591067,
+        "shift_cents": 3.2212929563862063,
+        "weak_theory_shift_cents": 3.225165710002182
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 192000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.0102624213752,
+        "frequency_hz": 196.0254904112525,
+        "shift_cents": 0.13449393019493244,
+        "weak_theory_shift_cents": 0.13450192935195318
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 192000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.0102624213752,
+        "frequency_hz": 196.0711657968722,
+        "shift_cents": 0.5378372481998157,
+        "weak_theory_shift_cents": 0.5379450309437329
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 192000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.0102624213752,
+        "frequency_hz": 196.253747451756,
+        "shift_cents": 2.1492138894245083,
+        "weak_theory_shift_cents": 2.1507779188611704
+      },
+      {
+        "test": "rk4_self_convergence",
+        "rates": [
+          384000,
+          768000
+        ],
+        "relative_modal_displacement_error": 2.1458421641796957e-07,
+        "relative_bridge_force_error": 1.7105934886172343e-06
+      },
+      {
+        "test": "time_convergence",
+        "rate": 48000,
+        "lambda": 0,
+        "relative_modal_displacement_error": 0.04391547880529214,
+        "relative_bridge_force_error": 0.2746365158335556
+      },
+      {
+        "test": "time_convergence",
+        "rate": 96000,
+        "lambda": 0,
+        "relative_modal_displacement_error": 0.015563605448110444,
+        "relative_bridge_force_error": 0.11106218883009965,
+        "observed_displacement_order": 1.4965532211502375,
+        "observed_force_order": 1.3061557256538625
+      },
+      {
+        "test": "time_convergence",
+        "rate": 192000,
+        "lambda": 0,
+        "relative_modal_displacement_error": 0.004028129772772038,
+        "relative_bridge_force_error": 0.028845037592681866,
+        "observed_displacement_order": 1.9499942442440192,
+        "observed_force_order": 1.9449726854459546
+      },
+      {
+        "test": "time_convergence",
+        "rate": 48000,
+        "lambda": 1000,
+        "relative_modal_displacement_error": 0.04380660921407203,
+        "relative_bridge_force_error": 0.27484620753697986
+      },
+      {
+        "test": "time_convergence",
+        "rate": 96000,
+        "lambda": 1000,
+        "relative_modal_displacement_error": 0.015400644912280709,
+        "relative_bridge_force_error": 0.11057448780047725,
+        "observed_displacement_order": 1.5081577832997002,
+        "observed_force_order": 1.3136060130506568
+      },
+      {
+        "test": "time_convergence",
+        "rate": 192000,
+        "lambda": 1000,
+        "relative_modal_displacement_error": 0.003968390570642945,
+        "relative_bridge_force_error": 0.028636745270954472,
+        "observed_displacement_order": 1.9563648375340232,
+        "observed_force_order": 1.949079122915564
+      },
+      {
+        "test": "repeated_release",
+        "model": "exact",
+        "lambda": 0,
+        "gauge_j": 1e-14,
+        "role": "unregulated_control",
+        "release_gate_passed": false,
+        "balance_relative": 6.528843046226592e-13,
+        "drift_energy_relative": 0.0017431377942715277,
+        "minimum_energy_j": 1.4952880209088024e-07,
+        "minimum_psi": 0.0003512386212028042,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.000108235323916,
+        "displacement_rms_m": 0.0010040660338537677,
+        "force_rms_n": 0.46801868924000156,
+        "finite_window_dc_db": -47.45127595215302,
+        "mode3_peak_energy_fraction": 0.7893250512741238,
+        "final_energy_fraction": 0.00012855390827329523
+      },
+      {
+        "test": "repeated_release",
+        "model": "exact",
+        "lambda": 0,
+        "gauge_j": 1e-10,
+        "role": "unregulated_control",
+        "release_gate_passed": false,
+        "balance_relative": 6.910573403837179e-13,
+        "drift_energy_relative": 0.0017431499600918823,
+        "minimum_energy_j": 1.5495698251320103e-07,
+        "minimum_psi": 0.0003513714458129742,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.000108234814826,
+        "displacement_rms_m": 0.0010040660256187407,
+        "force_rms_n": 0.4680186884206642,
+        "finite_window_dc_db": -47.451261042923946,
+        "mode3_peak_energy_fraction": 0.7893250427038979,
+        "final_energy_fraction": 0.00013322066008528266
+      },
+      {
+        "test": "repeated_release",
+        "model": "exact",
+        "lambda": 1000,
+        "gauge_j": 1e-14,
+        "role": "candidate",
+        "release_gate_passed": true,
+        "balance_relative": 6.71617021612773e-13,
+        "drift_energy_relative": 5.2041213971011555e-05,
+        "minimum_energy_j": 1.0249233074059639e-20,
+        "minimum_psi": 1.0000000000000001e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0001076076617768,
+        "displacement_rms_m": 0.0010022818789750198,
+        "force_rms_n": 0.4680405434084852,
+        "finite_window_dc_db": -47.38432793732991,
+        "mode3_peak_energy_fraction": 0.7892295949521274,
+        "final_energy_fraction": 8.811539650223987e-18
+      },
+      {
+        "test": "repeated_release",
+        "model": "exact",
+        "lambda": 1000,
+        "gauge_j": 1e-10,
+        "role": "candidate",
+        "release_gate_passed": true,
+        "balance_relative": 8.665656225715215e-13,
+        "drift_energy_relative": 5.2040526879524943e-05,
+        "minimum_energy_j": 1.0249238827802072e-20,
+        "minimum_psi": 9.999999999999997e-06,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.000107607226317,
+        "displacement_rms_m": 0.0010022818775997696,
+        "force_rms_n": 0.46804054192761996,
+        "finite_window_dc_db": -47.38432792733346,
+        "mode3_peak_energy_fraction": 0.7892295971791216,
+        "final_energy_fraction": 8.811544596870161e-18
+      },
+      {
+        "test": "repeated_release",
+        "model": "kirchhoff",
+        "lambda": 0,
+        "gauge_j": 1e-14,
+        "role": "unregulated_control",
+        "release_gate_passed": true,
+        "balance_relative": 6.606392478210037e-13,
+        "drift_energy_relative": 4.731767377051023e-06,
+        "minimum_energy_j": 1.1091657223339767e-15,
+        "minimum_psi": 1.1053646876779997e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000087965135942,
+        "displacement_rms_m": 0.001003763031118335,
+        "force_rms_n": 0.4696064822071233,
+        "finite_window_dc_db": -46.87488550195898,
+        "mode3_peak_energy_fraction": 0.7829807750654383,
+        "final_energy_fraction": 9.552582977151546e-13
+      },
+      {
+        "test": "repeated_release",
+        "model": "kirchhoff",
+        "lambda": 0,
+        "gauge_j": 1e-10,
+        "role": "unregulated_control",
+        "release_gate_passed": true,
+        "balance_relative": 6.431313638427162e-13,
+        "drift_energy_relative": 4.731482987347962e-06,
+        "minimum_energy_j": -2.4165874863338074e-13,
+        "minimum_psi": 9.975804853855951e-06,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000087960816917,
+        "displacement_rms_m": 0.0010037630276282551,
+        "force_rms_n": 0.4696064823197816,
+        "finite_window_dc_db": -46.87488541525623,
+        "mode3_peak_energy_fraction": 0.7829807767194664,
+        "final_energy_fraction": -2.0812627022203305e-10
+      },
+      {
+        "test": "repeated_release",
+        "model": "kirchhoff",
+        "lambda": 1000,
+        "gauge_j": 1e-14,
+        "role": "candidate",
+        "release_gate_passed": true,
+        "balance_relative": 5.90345060483913e-13,
+        "drift_energy_relative": 3.3569541994796436e-06,
+        "minimum_energy_j": 1.0258822792995526e-20,
+        "minimum_psi": 1.0000000000000001e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000087974890326,
+        "displacement_rms_m": 0.0010037738802860996,
+        "force_rms_n": 0.4696075732522675,
+        "finite_window_dc_db": -46.87520371460012,
+        "mode3_peak_energy_fraction": 0.7829830372067498,
+        "final_energy_fraction": 8.835312343746902e-18
+      },
+      {
+        "test": "repeated_release",
+        "model": "kirchhoff",
+        "lambda": 1000,
+        "gauge_j": 1e-10,
+        "role": "candidate",
+        "release_gate_passed": true,
+        "balance_relative": 7.097491798010309e-13,
+        "drift_energy_relative": 3.356950240854945e-06,
+        "minimum_energy_j": 1.0259225483127112e-20,
+        "minimum_psi": 1.0000000000000006e-05,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000087970571434,
+        "displacement_rms_m": 0.0010037738801578176,
+        "force_rms_n": 0.4696075735686161,
+        "finite_window_dc_db": -46.87520371712572,
+        "mode3_peak_energy_fraction": 0.7829830389027879,
+        "final_energy_fraction": 8.83565915674505e-18
+      }
+    ],
+    "failures": 0
+  },
+  "candidate": {
+    "measurements": [
+      {
+        "test": "directional_gradient",
+        "model": "cubic",
+        "maximum_relative_error": 7.295858369695081e-10
+      },
+      {
+        "test": "directional_gradient",
+        "model": "exact",
+        "maximum_relative_error": 7.748597710035399e-10
+      },
+      {
+        "test": "directional_gradient",
+        "model": "kirchhoff",
+        "maximum_relative_error": 4.732841677267344e-10
+      },
+      {
+        "test": "signed_symmetry",
+        "lambda": 0,
+        "maximum_displacement_sum_m": 0,
+        "maximum_force_sum_n": 0,
+        "maximum_auxiliary_difference": 0
+      },
+      {
+        "test": "signed_symmetry",
+        "lambda": 1000,
+        "maximum_displacement_sum_m": 0,
+        "maximum_force_sum_n": 0,
+        "maximum_auxiliary_difference": 0
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.01,
+        "intervals": 25,
+        "relative_energy_error": 3.3306690738754696e-15,
+        "relative_gradient_error": 1.256174316070217e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.01,
+        "intervals": 48,
+        "relative_energy_error": 2.4424906541753444e-15,
+        "relative_gradient_error": 1.35053451812542e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.01,
+        "intervals": 96,
+        "relative_energy_error": 2.6645352591003757e-15,
+        "relative_gradient_error": 1.2386936125650664e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.01,
+        "intervals": 192,
+        "relative_energy_error": 3.3306690738754696e-15,
+        "relative_gradient_error": 1.4409210232453798e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.1,
+        "intervals": 25,
+        "relative_energy_error": 2.220446049250313e-16,
+        "relative_gradient_error": 1.2399860154574115e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.1,
+        "intervals": 48,
+        "relative_energy_error": 9.992007221626409e-16,
+        "relative_gradient_error": 1.1256814006548738e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.1,
+        "intervals": 96,
+        "relative_energy_error": 1.2212453270876722e-15,
+        "relative_gradient_error": 1.402864544384956e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "cubic",
+        "height_m": 0.1,
+        "intervals": 192,
+        "relative_energy_error": 8.881784197001252e-16,
+        "relative_gradient_error": 1.0667042627877386e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.01,
+        "intervals": 25,
+        "relative_energy_error": 8.803289359038402e-05,
+        "relative_gradient_error": 0.0003825869410075743
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.01,
+        "intervals": 48,
+        "relative_energy_error": 1.9643175974692895e-12,
+        "relative_gradient_error": 2.4055663398194248e-11
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.01,
+        "intervals": 96,
+        "relative_energy_error": 3.219646771412954e-15,
+        "relative_gradient_error": 1.0500842323793e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.01,
+        "intervals": 192,
+        "relative_energy_error": 4.551914400963142e-15,
+        "relative_gradient_error": 1.3068124556602288e-15
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.1,
+        "intervals": 25,
+        "relative_energy_error": 0.0019121598268108109,
+        "relative_gradient_error": 0.0105235853882292
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.1,
+        "intervals": 48,
+        "relative_energy_error": 2.9774021206296908e-06,
+        "relative_gradient_error": 6.463996202125721e-05
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.1,
+        "intervals": 96,
+        "relative_energy_error": 7.611500318915887e-11,
+        "relative_gradient_error": 1.4298270210306532e-09
+      },
+      {
+        "test": "spatial_quadrature",
+        "model": "exact",
+        "height_m": 0.1,
+        "intervals": 192,
+        "relative_energy_error": 0,
+        "relative_gradient_error": 1.197940644551499e-15
+      },
+      {
+        "test": "zero_state_and_cfl",
+        "zero_displacement": true,
+        "energy_roundoff_j": -3.519521198874155e-29,
+        "invalid_rate_rejected": true
+      },
+      {
+        "test": "linear",
+        "rate": 48000,
+        "max_displacement_error_m": 1.3028919076141077e-14,
+        "physical_frequency_error_cents": 0
+      },
+      {
+        "test": "linear",
+        "rate": 96000,
+        "max_displacement_error_m": 1.8961534538643844e-14,
+        "physical_frequency_error_cents": 0
+      },
+      {
+        "test": "linear",
+        "rate": 192000,
+        "max_displacement_error_m": 1.904652884954027e-13,
+        "physical_frequency_error_cents": 0
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "cubic",
+        "lambda": 0.0,
+        "balance_relative": 1.2619228506185429e-12,
+        "drift_energy_relative": 2.650904289103363e-06,
+        "minimum_energy_j": 0.003539079735902699,
+        "minimum_psi": 6.523075748855684e-07,
+        "minimum_rank_denominator": 1.0000000000002383,
+        "maximum_rank_denominator": 1.000007905384476,
+        "displacement_rms_m": 0.002577283343191464,
+        "force_rms_n": 0.7971884976535071,
+        "finite_window_dc_db": -53.96756269096491,
+        "mode3_peak_energy_fraction": 0.039013217348692696,
+        "final_energy_fraction": 0.9999999999987987
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "cubic",
+        "lambda": 1000.0,
+        "balance_relative": 7.413704841952015e-13,
+        "drift_energy_relative": 5.792560888991771e-07,
+        "minimum_energy_j": 0.0035390797359069344,
+        "minimum_psi": 7.05480296305905e-07,
+        "minimum_rank_denominator": 1.000000000000258,
+        "maximum_rank_denominator": 1.000007907951237,
+        "displacement_rms_m": 0.002577272139863777,
+        "force_rms_n": 0.7971885858942668,
+        "finite_window_dc_db": -53.96618613300077,
+        "mode3_peak_energy_fraction": 0.03902921827890808,
+        "final_energy_fraction": 0.9999999999999682
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "exact",
+        "lambda": 0.0,
+        "balance_relative": 1.118550808382026e-12,
+        "drift_energy_relative": 2.6552775645728066e-06,
+        "minimum_energy_j": 0.0035390783704325264,
+        "minimum_psi": 6.52447735727925e-07,
+        "minimum_rank_denominator": 1.0000000000002383,
+        "maximum_rank_denominator": 1.0000078991660946,
+        "displacement_rms_m": 0.0025772999872110303,
+        "force_rms_n": 0.7971877833295784,
+        "finite_window_dc_db": -53.96582676150439,
+        "mode3_peak_energy_fraction": 0.038988173727819965,
+        "final_energy_fraction": 0.9999999999989129
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "exact",
+        "lambda": 1000.0,
+        "balance_relative": 1.4835993248336097e-12,
+        "drift_energy_relative": 5.786477131346083e-07,
+        "minimum_energy_j": 0.0035390783704312345,
+        "minimum_psi": 7.054865729057013e-07,
+        "minimum_rank_denominator": 1.0000000000002607,
+        "maximum_rank_denominator": 1.0000079024622384,
+        "displacement_rms_m": 0.0025772890774457004,
+        "force_rms_n": 0.7971881867971757,
+        "finite_window_dc_db": -53.96420089683517,
+        "mode3_peak_energy_fraction": 0.03900410169902793,
+        "final_energy_fraction": 0.9999999999985197
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "kirchhoff",
+        "lambda": 0.0,
+        "balance_relative": 6.725682421114376e-13,
+        "drift_energy_relative": 4.935440961646111e-07,
+        "minimum_energy_j": 0.003536155495680604,
+        "minimum_psi": 5.67391586000031e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000010910831518,
+        "displacement_rms_m": 0.0025973369768378103,
+        "force_rms_n": 0.7960969424353804,
+        "finite_window_dc_db": -51.45825752338158,
+        "mode3_peak_energy_fraction": 0,
+        "final_energy_fraction": 0.9999999999993984
+      },
+      {
+        "test": "lossless_single_mode",
+        "model": "kirchhoff",
+        "lambda": 1000.0,
+        "balance_relative": 5.226998263820108e-13,
+        "drift_energy_relative": 8.143266517981897e-07,
+        "minimum_energy_j": 0.0035361554956829804,
+        "minimum_psi": 6.937901413966e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000015095225958,
+        "displacement_rms_m": 0.0025973369888825366,
+        "force_rms_n": 0.7960969461454114,
+        "finite_window_dc_db": -51.45827167826032,
+        "mode3_peak_energy_fraction": 0,
+        "final_energy_fraction": 1.0000000000002633
+      },
+      {
+        "test": "amplitude_limit",
+        "height_m": 0.0001,
+        "relative_displacement_error": 0.00022993420367470682
+      },
+      {
+        "test": "amplitude_limit",
+        "height_m": 5e-05,
+        "relative_displacement_error": 5.756315992315157e-05
+      },
+      {
+        "test": "amplitude_limit",
+        "height_m": 2.5e-05,
+        "relative_displacement_error": 1.4401605379542948e-05
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 48000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.0099263519204,
+        "frequency_hz": 196.0327634700973,
+        "shift_cents": 0.20169434422113172,
+        "weak_theory_shift_cents": 0.2017489756166537
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 48000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.0099263519204,
+        "frequency_hz": 196.10124772339455,
+        "shift_cents": 0.8063971700619366,
+        "weak_theory_shift_cents": 0.8068548761803244
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 48000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.0099263519204,
+        "frequency_hz": 196.37493878143954,
+        "shift_cents": 3.22093018740112,
+        "weak_theory_shift_cents": 3.225165710002182
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 48000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.0099263519204,
+        "frequency_hz": 196.03276319297063,
+        "shift_cents": 0.20169189681805885,
+        "weak_theory_shift_cents": 0.2017489756166537
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 48000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.0099263519204,
+        "frequency_hz": 196.10124417948208,
+        "shift_cents": 0.8063658834584186,
+        "weak_theory_shift_cents": 0.8068548761803244
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 48000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.0099263519204,
+        "frequency_hz": 196.3749081910703,
+        "shift_cents": 3.2206605038393374,
+        "weak_theory_shift_cents": 3.225165710002182
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 48000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.0099263519204,
+        "frequency_hz": 196.0251550995188,
+        "shift_cents": 0.1345008527433213,
+        "weak_theory_shift_cents": 0.13450192935195318
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 48000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.0099263519204,
+        "frequency_hz": 196.07085149350033,
+        "shift_cents": 0.5380303567847755,
+        "weak_theory_shift_cents": 0.5379450309437329
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 48000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.0099263519204,
+        "frequency_hz": 196.2533660162655,
+        "shift_cents": 2.148817379113952,
+        "weak_theory_shift_cents": 2.1507779188611704
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 96000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.00992638931126,
+        "frequency_hz": 196.03276692439914,
+        "shift_cents": 0.2017245201206888,
+        "weak_theory_shift_cents": 0.2017489756166537
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 96000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.00992638931126,
+        "frequency_hz": 196.101272347884,
+        "shift_cents": 0.8066142313499959,
+        "weak_theory_shift_cents": 0.8068548761803244
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 96000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.00992638931126,
+        "frequency_hz": 196.3750032158843,
+        "shift_cents": 3.2214979086910556,
+        "weak_theory_shift_cents": 3.225165710002182
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 96000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.00992638931126,
+        "frequency_hz": 196.03276664691646,
+        "shift_cents": 0.20172206957392586,
+        "weak_theory_shift_cents": 0.2017489756166537
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 96000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.00992638931126,
+        "frequency_hz": 196.101268483825,
+        "shift_cents": 0.8065801184118927,
+        "weak_theory_shift_cents": 0.8068548761803244
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 96000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.00992638931126,
+        "frequency_hz": 196.37493606519797,
+        "shift_cents": 3.2209059108675335,
+        "weak_theory_shift_cents": 3.225165710002182
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 96000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.00992638931126,
+        "frequency_hz": 196.02515356856185,
+        "shift_cents": 0.13448700155061255,
+        "weak_theory_shift_cents": 0.13450192935195318
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 96000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.00992638931126,
+        "frequency_hz": 196.07082764781984,
+        "shift_cents": 0.5378194778670767,
+        "weak_theory_shift_cents": 0.5379450309437329
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 96000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.00992638931126,
+        "frequency_hz": 196.25340488541516,
+        "shift_cents": 2.149159930058726,
+        "weak_theory_shift_cents": 2.1507779188611704
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 192000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.00992638789694,
+        "frequency_hz": 196.03276779028158,
+        "shift_cents": 0.2017321795238937,
+        "weak_theory_shift_cents": 0.2017489756166537
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 192000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.00992638789694,
+        "frequency_hz": 196.10126621927498,
+        "shift_cents": 0.8065601388545903,
+        "weak_theory_shift_cents": 0.8068548761803244
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "cubic",
+        "rate": 192000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.00992638789694,
+        "frequency_hz": 196.37501436846568,
+        "shift_cents": 3.2215962418841997,
+        "weak_theory_shift_cents": 3.225165710002182
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 192000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.00992638789694,
+        "frequency_hz": 196.03276751273827,
+        "shift_cents": 0.2017297284417192,
+        "weak_theory_shift_cents": 0.2017489756166537
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 192000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.00992638789694,
+        "frequency_hz": 196.10126898155457,
+        "shift_cents": 0.806584524992234,
+        "weak_theory_shift_cents": 0.8068548761803244
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "exact",
+        "rate": 192000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.00992638789694,
+        "frequency_hz": 196.37494589288445,
+        "shift_cents": 3.2209925638716927,
+        "weak_theory_shift_cents": 3.225165710002182
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 192000,
+        "height_m": 0.001,
+        "linear_frequency_hz": 196.00992638789694,
+        "frequency_hz": 196.02515437393993,
+        "shift_cents": 0.13449412689476864,
+        "weak_theory_shift_cents": 0.13450192935195318
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 192000,
+        "height_m": 0.002,
+        "linear_frequency_hz": 196.00992638789694,
+        "frequency_hz": 196.07082995823654,
+        "shift_cents": 0.5378398904974453,
+        "weak_theory_shift_cents": 0.5379450309437329
+      },
+      {
+        "test": "single_mode_pitch",
+        "model": "kirchhoff",
+        "rate": 192000,
+        "height_m": 0.004,
+        "linear_frequency_hz": 196.00992638789694,
+        "frequency_hz": 196.2534063919425,
+        "shift_cents": 2.1491732322634,
+        "weak_theory_shift_cents": 2.1507779188611704
+      },
+      {
+        "test": "rk4_self_convergence",
+        "rates": [
+          384000,
+          768000
+        ],
+        "relative_modal_displacement_error": 2.1458421641796957e-07,
+        "relative_bridge_force_error": 1.7105934886172343e-06
+      },
+      {
+        "test": "time_convergence",
+        "rate": 48000,
+        "lambda": 0,
+        "relative_modal_displacement_error": 0.0023139766236769227,
+        "relative_bridge_force_error": 0.007817111484241907
+      },
+      {
+        "test": "time_convergence",
+        "rate": 96000,
+        "lambda": 0,
+        "relative_modal_displacement_error": 0.00058407472352574,
+        "relative_bridge_force_error": 0.001964754049076706,
+        "observed_displacement_order": 1.986149433049805,
+        "observed_force_order": 1.992286887996943
+      },
+      {
+        "test": "time_convergence",
+        "rate": 192000,
+        "lambda": 0,
+        "relative_modal_displacement_error": 0.00014637440929226193,
+        "relative_bridge_force_error": 0.0004919038934142217,
+        "observed_displacement_order": 1.9964896033137782,
+        "observed_force_order": 1.9979003458749027
+      },
+      {
+        "test": "time_convergence",
+        "rate": 48000,
+        "lambda": 1000,
+        "relative_modal_displacement_error": 0.0004811109839543173,
+        "relative_bridge_force_error": 0.0025479679171186097
+      },
+      {
+        "test": "time_convergence",
+        "rate": 96000,
+        "lambda": 1000,
+        "relative_modal_displacement_error": 0.00011991425091826633,
+        "relative_bridge_force_error": 0.0006328085960589441,
+        "observed_displacement_order": 2.004366614561889,
+        "observed_force_order": 2.009506009336608
+      },
+      {
+        "test": "time_convergence",
+        "rate": 192000,
+        "lambda": 1000,
+        "relative_modal_displacement_error": 2.9964901194364962e-05,
+        "relative_bridge_force_error": 0.00015807563791921664,
+        "observed_displacement_order": 2.0006576006168935,
+        "observed_force_order": 2.001154155918611
+      },
+      {
+        "test": "repeated_release",
+        "model": "exact",
+        "lambda": 0,
+        "gauge_j": 1e-14,
+        "role": "unregulated_control",
+        "release_gate_passed": true,
+        "balance_relative": 2.615272582760018e-13,
+        "drift_energy_relative": 0.0016300844225829174,
+        "minimum_energy_j": 1.0234284639658402e-07,
+        "minimum_psi": 0.0003333264254821721,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0001247628853367,
+        "displacement_rms_m": 0.001005730233798263,
+        "force_rms_n": 0.46793127830511627,
+        "finite_window_dc_db": -47.49134332765347,
+        "mode3_peak_energy_fraction": 0.7904137274690547,
+        "final_energy_fraction": 8.798659186738086e-05
+      },
+      {
+        "test": "repeated_release",
+        "model": "exact",
+        "lambda": 0,
+        "gauge_j": 1e-10,
+        "role": "unregulated_control",
+        "release_gate_passed": true,
+        "balance_relative": 3.355118751846866e-13,
+        "drift_energy_relative": 0.001630127163047189,
+        "minimum_energy_j": 1.0676097216468101e-07,
+        "minimum_psi": 0.0003334630674812358,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0001247624430445,
+        "displacement_rms_m": 0.0010057303026431302,
+        "force_rms_n": 0.46793131476600125,
+        "finite_window_dc_db": -47.49137323585131,
+        "mode3_peak_energy_fraction": 0.790413795140367,
+        "final_energy_fraction": 9.178496021908701e-05
+      },
+      {
+        "test": "repeated_release",
+        "model": "exact",
+        "lambda": 1000,
+        "gauge_j": 1e-14,
+        "role": "candidate",
+        "release_gate_passed": true,
+        "balance_relative": 3.1651672480124686e-13,
+        "drift_energy_relative": 6.104912057865369e-05,
+        "minimum_energy_j": 1.050675965803445e-20,
+        "minimum_psi": 1.0000000000000001e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0001247835817793,
+        "displacement_rms_m": 0.0010038701912850599,
+        "force_rms_n": 0.46763714997361655,
+        "finite_window_dc_db": -47.42896060073237,
+        "mode3_peak_energy_fraction": 0.7905664137069559,
+        "final_energy_fraction": 9.03291247438859e-18
+      },
+      {
+        "test": "repeated_release",
+        "model": "exact",
+        "lambda": 1000,
+        "gauge_j": 1e-10,
+        "role": "candidate",
+        "release_gate_passed": true,
+        "balance_relative": 3.9676671514545315e-13,
+        "drift_energy_relative": 6.104831663757121e-05,
+        "minimum_energy_j": 1.0507461236874481e-20,
+        "minimum_psi": 1.0000000000000006e-05,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0001247829593196,
+        "displacement_rms_m": 0.0010038701899834433,
+        "force_rms_n": 0.4676371501910934,
+        "finite_window_dc_db": -47.428960595098786,
+        "mode3_peak_energy_fraction": 0.7905664190938215,
+        "final_energy_fraction": 9.033515638490764e-18
+      },
+      {
+        "test": "repeated_release",
+        "model": "kirchhoff",
+        "lambda": 0,
+        "gauge_j": 1e-14,
+        "role": "unregulated_control",
+        "release_gate_passed": true,
+        "balance_relative": 4.382854242566528e-13,
+        "drift_energy_relative": 4.269155800302694e-06,
+        "minimum_energy_j": 1.119396262779692e-15,
+        "minimum_psi": 1.1062898620509317e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000071726015123,
+        "displacement_rms_m": 0.0010039074721127895,
+        "force_rms_n": 0.464144989675002,
+        "finite_window_dc_db": -46.85975517182081,
+        "mode3_peak_energy_fraction": 0.7795865136491384,
+        "final_energy_fraction": 9.640661103835394e-13
+      },
+      {
+        "test": "repeated_release",
+        "model": "kirchhoff",
+        "lambda": 0,
+        "gauge_j": 1e-10,
+        "role": "unregulated_control",
+        "release_gate_passed": true,
+        "balance_relative": 3.706080320033387e-13,
+        "drift_energy_relative": 4.269454680334356e-06,
+        "minimum_energy_j": -7.6847290944679e-14,
+        "minimum_psi": 9.99231231488357e-06,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000071724569992,
+        "displacement_rms_m": 0.0010039074621532244,
+        "force_rms_n": 0.4641449917954475,
+        "finite_window_dc_db": -46.859754891110114,
+        "mode3_peak_energy_fraction": 0.7795865160399907,
+        "final_energy_fraction": -6.618377364471306e-11
+      },
+      {
+        "test": "repeated_release",
+        "model": "kirchhoff",
+        "lambda": 1000,
+        "gauge_j": 1e-14,
+        "role": "candidate",
+        "release_gate_passed": true,
+        "balance_relative": 2.496679313020984e-13,
+        "drift_energy_relative": 3.06955686219445e-06,
+        "minimum_energy_j": 9.968179425227411e-21,
+        "minimum_psi": 1.0000000000000004e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000071719533292,
+        "displacement_rms_m": 0.0010039162132701185,
+        "force_rms_n": 0.46414333311031414,
+        "finite_window_dc_db": -46.85999373622958,
+        "mode3_peak_energy_fraction": 0.779590080760702,
+        "final_energy_fraction": 8.584970564597601e-18
+      },
+      {
+        "test": "repeated_release",
+        "model": "kirchhoff",
+        "lambda": 1000,
+        "gauge_j": 1e-10,
+        "role": "candidate",
+        "release_gate_passed": true,
+        "balance_relative": 4.3423919811536855e-13,
+        "drift_energy_relative": 3.0694012037071116e-06,
+        "minimum_energy_j": 9.968185625216958e-21,
+        "minimum_psi": 1e-05,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000071718076626,
+        "displacement_rms_m": 0.001003916213141886,
+        "force_rms_n": 0.4641433331769931,
+        "finite_window_dc_db": -46.859993735801204,
+        "mode3_peak_energy_fraction": 0.7795900830324051,
+        "final_energy_fraction": 8.584975904261495e-18
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 48000,
+        "fraction": 0.99,
+        "accepted": true
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 48000,
+        "fraction": 1,
+        "accepted": false
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 48000,
+        "fraction": 1.01,
+        "accepted": false
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 48000,
+        "fraction": 2.01,
+        "accepted": false
+      },
+      {
+        "test": "mass_linear_and_static",
+        "rate": 48000,
+        "energy_balance_relative": 1.0480505352461478e-13,
+        "maximum_physical_static_displacement_relative_error": 1.7763568394002505e-15,
+        "wrong_mass_ledger_drift_relative": 0.002893182737454869
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 1,
+        "max_displacement_error_m": 1.3025872161865976e-14,
+        "numerical_to_physical_mass_ratio": 1.0000548613439406,
+        "numerical_to_physical_rest_energy_ratio": 0.9998354304140531
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 2,
+        "max_displacement_error_m": 3.238925383948164e-15,
+        "numerical_to_physical_mass_ratio": 1.000219549072242,
+        "numerical_to_physical_rest_energy_ratio": 0.999341584087322
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 3,
+        "max_displacement_error_m": 1.4024924619240408e-16,
+        "numerical_to_physical_mass_ratio": 1.0004943744534909,
+        "numerical_to_physical_rest_energy_ratio": 0.9985180490518382
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 4,
+        "max_displacement_error_m": 4.339740682748681e-16,
+        "numerical_to_physical_mass_ratio": 1.0008798568667474,
+        "numerical_to_physical_rest_energy_ratio": 0.99736414115804
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 5,
+        "max_displacement_error_m": 3.961703087585988e-16,
+        "numerical_to_physical_mass_ratio": 1.0013767247019867,
+        "numerical_to_physical_rest_energy_ratio": 0.995878907775144
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 6,
+        "max_displacement_error_m": 1.2539430631883806e-16,
+        "numerical_to_physical_mass_ratio": 1.0019859166273466,
+        "numerical_to_physical_rest_energy_ratio": 0.9940611329812024
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 7,
+        "max_displacement_error_m": 4.4822306173048404e-17,
+        "numerical_to_physical_mass_ratio": 1.0027085832298583,
+        "numerical_to_physical_rest_energy_ratio": 0.9919093442522602
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 8,
+        "max_displacement_error_m": 2.3654975292216356e-16,
+        "numerical_to_physical_mass_ratio": 1.0035460890383125,
+        "numerical_to_physical_rest_energy_ratio": 0.9894218206625337
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 9,
+        "max_displacement_error_m": 4.305173238910611e-17,
+        "numerical_to_physical_mass_ratio": 1.0045000149389178,
+        "numerical_to_physical_rest_energy_ratio": 0.9865966026099197
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 10,
+        "max_displacement_error_m": 1.9467490675477944e-16,
+        "numerical_to_physical_mass_ratio": 1.0055721609964916,
+        "numerical_to_physical_rest_energy_ratio": 0.9834315030833524
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 11,
+        "max_displacement_error_m": 1.07674320126713e-16,
+        "numerical_to_physical_mass_ratio": 1.0067645496960471,
+        "numerical_to_physical_rest_energy_ratio": 0.9799241204905519
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 48000,
+        "mode": 12,
+        "max_displacement_error_m": 6.248612706905491e-17,
+        "numerical_to_physical_mass_ratio": 1.0080794296219133,
+        "numerical_to_physical_rest_energy_ratio": 0.976071853066499
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 48000,
+        "lambda": 0,
+        "gauge_j": 1e-14,
+        "balance_relative": 2.615272582760018e-13,
+        "drift_energy_relative": 0.0016300844225829174,
+        "minimum_energy_j": 1.0234284639658402e-07,
+        "minimum_psi": 0.0003333264254821721,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0001247628853367,
+        "displacement_rms_m": 0.001005730233798263,
+        "force_rms_n": 0.46793127830511627,
+        "finite_window_dc_db": -47.49134332765347,
+        "mode3_peak_energy_fraction": 0.7904137274690547,
+        "final_energy_fraction": 8.798659186738086e-05
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 48000,
+        "lambda": 0,
+        "gauge_j": 1e-10,
+        "balance_relative": 3.355118751846866e-13,
+        "drift_energy_relative": 0.001630127163047189,
+        "minimum_energy_j": 1.0676097216468101e-07,
+        "minimum_psi": 0.0003334630674812358,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0001247624430445,
+        "displacement_rms_m": 0.0010057303026431302,
+        "force_rms_n": 0.46793131476600125,
+        "finite_window_dc_db": -47.49137323585131,
+        "mode3_peak_energy_fraction": 0.790413795140367,
+        "final_energy_fraction": 9.178496021908701e-05
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 48000,
+        "lambda": 1000,
+        "gauge_j": 1e-14,
+        "balance_relative": 3.1651672480124686e-13,
+        "drift_energy_relative": 6.104912057865369e-05,
+        "minimum_energy_j": 1.050675965803445e-20,
+        "minimum_psi": 1.0000000000000001e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0001247835817793,
+        "displacement_rms_m": 0.0010038701912850599,
+        "force_rms_n": 0.46763714997361655,
+        "finite_window_dc_db": -47.42896060073237,
+        "mode3_peak_energy_fraction": 0.7905664137069559,
+        "final_energy_fraction": 9.03291247438859e-18
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 48000,
+        "lambda": 1000,
+        "gauge_j": 1e-10,
+        "balance_relative": 3.9676671514545315e-13,
+        "drift_energy_relative": 6.104831663757121e-05,
+        "minimum_energy_j": 1.0507461236874481e-20,
+        "minimum_psi": 1.0000000000000006e-05,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0001247829593196,
+        "displacement_rms_m": 0.0010038701899834433,
+        "force_rms_n": 0.4676371501910934,
+        "finite_window_dc_db": -47.428960595098786,
+        "mode3_peak_energy_fraction": 0.7905664190938215,
+        "final_energy_fraction": 9.033515638490764e-18
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 96000,
+        "fraction": 0.99,
+        "accepted": true
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 96000,
+        "fraction": 1,
+        "accepted": false
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 96000,
+        "fraction": 1.01,
+        "accepted": false
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 96000,
+        "fraction": 2.01,
+        "accepted": false
+      },
+      {
+        "test": "mass_linear_and_static",
+        "rate": 96000,
+        "energy_balance_relative": 7.66053886991358e-14,
+        "maximum_physical_static_displacement_relative_error": 1.9317880628477724e-14,
+        "wrong_mass_ledger_drift_relative": 0.0007276448743673836
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 1,
+        "max_displacement_error_m": 1.8967270505863593e-14,
+        "numerical_to_physical_mass_ratio": 1.0000137149973978,
+        "numerical_to_physical_rest_energy_ratio": 0.9999588559106771
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 2,
+        "max_displacement_error_m": 3.737068848360207e-15,
+        "numerical_to_physical_mass_ratio": 1.0000548818460784,
+        "numerical_to_physical_rest_energy_ratio": 0.9998353689184374
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 3,
+        "max_displacement_error_m": 9.207713197003875e-17,
+        "numerical_to_physical_mass_ratio": 1.0001235661259043,
+        "numerical_to_physical_rest_energy_ratio": 0.9996293748999948
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 4,
+        "max_displacement_error_m": 6.881779254299599e-16,
+        "numerical_to_physical_mass_ratio": 1.0002198771713384,
+        "numerical_to_physical_rest_energy_ratio": 0.9993406004817854
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 5,
+        "max_displacement_error_m": 3.3691693937590534e-16,
+        "numerical_to_physical_mass_ratio": 1.0003439681236332,
+        "numerical_to_physical_rest_energy_ratio": 0.9989686632883732
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 6,
+        "max_displacement_error_m": 2.581085229245207e-16,
+        "numerical_to_physical_mass_ratio": 1.0004960360041764,
+        "numerical_to_physical_rest_energy_ratio": 0.9985130722912897
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 7,
+        "max_displacement_error_m": 7.679357047868558e-16,
+        "numerical_to_physical_mass_ratio": 1.0006763218092873,
+        "numerical_to_physical_rest_energy_ratio": 0.9979732282593764
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 8,
+        "max_displacement_error_m": 7.736866831700832e-16,
+        "numerical_to_physical_mass_ratio": 1.0008851106268353,
+        "numerical_to_physical_rest_energy_ratio": 0.9973484243120042
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 9,
+        "max_displacement_error_m": 4.480641837755754e-16,
+        "numerical_to_physical_mass_ratio": 1.0011227317751257,
+        "numerical_to_physical_rest_energy_ratio": 0.9966378465768391
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 10,
+        "max_displacement_error_m": 5.848814083819987e-17,
+        "numerical_to_physical_mass_ratio": 1.0013895589646087,
+        "numerical_to_physical_rest_energy_ratio": 0.9958405749541258
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 11,
+        "max_displacement_error_m": 5.130387502293163e-17,
+        "numerical_to_physical_mass_ratio": 1.001686010483012,
+        "numerical_to_physical_rest_energy_ratio": 0.9949555839897536
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 96000,
+        "mode": 12,
+        "max_displacement_error_m": 4.5149315822899345e-17,
+        "numerical_to_physical_mass_ratio": 1.0020125494046344,
+        "numerical_to_physical_rest_energy_ratio": 0.9939817438596539
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 96000,
+        "lambda": 0,
+        "gauge_j": 1e-14,
+        "balance_relative": 7.00346659412711e-13,
+        "drift_energy_relative": 0.0003941741319268377,
+        "minimum_energy_j": 6.144696247152721e-09,
+        "minimum_psi": 0.00011085757752307617,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000312648126908,
+        "displacement_rms_m": 0.001004175655663149,
+        "force_rms_n": 0.46749517178755623,
+        "finite_window_dc_db": -47.49335907632238,
+        "mode3_peak_energy_fraction": 0.7749297140765082,
+        "final_energy_fraction": 5.277197097532632e-06
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 96000,
+        "lambda": 0,
+        "gauge_j": 1e-10,
+        "balance_relative": 3.169909243496778e-13,
+        "drift_energy_relative": 0.0003941832515332921,
+        "minimum_energy_j": 7.237507684222823e-09,
+        "minimum_psi": 0.00012072702832599267,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000312646685285,
+        "displacement_rms_m": 0.001004175670678618,
+        "force_rms_n": 0.4674951798179596,
+        "finite_window_dc_db": -47.49336598920735,
+        "mode3_peak_energy_fraction": 0.7749297293058327,
+        "final_energy_fraction": 6.215727028369989e-06
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 96000,
+        "lambda": 1000,
+        "gauge_j": 1e-14,
+        "balance_relative": 4.689622836902527e-13,
+        "drift_energy_relative": 1.5182252096481516e-05,
+        "minimum_energy_j": 1.0254293322483281e-20,
+        "minimum_psi": 1.0000000000000001e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000312381752754,
+        "displacement_rms_m": 0.0010037195764426847,
+        "force_rms_n": 0.4674263834529664,
+        "finite_window_dc_db": -47.47765423106323,
+        "mode3_peak_energy_fraction": 0.7749650517425697,
+        "final_energy_fraction": 8.806607321514369e-18
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 96000,
+        "lambda": 1000,
+        "gauge_j": 1e-10,
+        "balance_relative": 6.239387628686899e-13,
+        "drift_energy_relative": 1.5182054956510266e-05,
+        "minimum_energy_j": 1.0255096132010608e-20,
+        "minimum_psi": 1.000000000000001e-05,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000312380207064,
+        "displacement_rms_m": 0.0010037195761176969,
+        "force_rms_n": 0.4674263835098422,
+        "finite_window_dc_db": -47.477654229561644,
+        "mode3_peak_energy_fraction": 0.774965053061996,
+        "final_energy_fraction": 8.807296791577181e-18
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 192000,
+        "fraction": 0.99,
+        "accepted": true
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 192000,
+        "fraction": 1,
+        "accepted": false
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 192000,
+        "fraction": 1.01,
+        "accepted": false
+      },
+      {
+        "test": "mass_nyquist",
+        "rate": 192000,
+        "fraction": 2.01,
+        "accepted": false
+      },
+      {
+        "test": "mass_linear_and_static",
+        "rate": 192000,
+        "energy_balance_relative": 4.072298054325074e-13,
+        "maximum_physical_static_displacement_relative_error": 4.085620730620576e-14,
+        "wrong_mass_ledger_drift_relative": 0.00018249029821404417
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 1,
+        "max_displacement_error_m": 1.9047756751221557e-13,
+        "numerical_to_physical_mass_ratio": 1.0000034287281883,
+        "numerical_to_physical_rest_energy_ratio": 0.9999897138718649
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 2,
+        "max_displacement_error_m": 2.4707353865070848e-14,
+        "numerical_to_physical_mass_ratio": 1.0000137201226789,
+        "numerical_to_physical_rest_energy_ratio": 0.9999588405355079
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 3,
+        "max_displacement_error_m": 1.0519753922613377e-14,
+        "numerical_to_physical_mass_ratio": 1.0000308898138883,
+        "numerical_to_physical_rest_energy_ratio": 0.9999073351382222
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 4,
+        "max_displacement_error_m": 4.269225751027408e-15,
+        "numerical_to_physical_mass_ratio": 1.000054963854636,
+        "numerical_to_physical_rest_energy_ratio": 0.9998351229360001
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 5,
+        "max_displacement_error_m": 7.204636271028899e-15,
+        "numerical_to_physical_mass_ratio": 1.0000859787233436,
+        "numerical_to_physical_rest_energy_ratio": 0.9997420993093271
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 6,
+        "max_displacement_error_m": 1.3785238950039883e-15,
+        "numerical_to_physical_mass_ratio": 1.0001239813285265,
+        "numerical_to_physical_rest_energy_ratio": 0.9996281297853659
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 7,
+        "max_displacement_error_m": 3.831367116219231e-15,
+        "numerical_to_physical_mass_ratio": 1.0001690290146004,
+        "numerical_to_physical_rest_energy_ratio": 0.9994930500666093
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 8,
+        "max_displacement_error_m": 7.681572520904071e-16,
+        "numerical_to_physical_mass_ratio": 1.0002211895690143,
+        "numerical_to_physical_rest_energy_ratio": 0.9993366660660932
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 9,
+        "max_displacement_error_m": 2.774374709030267e-15,
+        "numerical_to_physical_mass_ratio": 1.0002805412307456,
+        "numerical_to_physical_rest_energy_ratio": 0.999158753949292
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 10,
+        "max_displacement_error_m": 1.4598585580969014e-15,
+        "numerical_to_physical_mass_ratio": 1.0003471727001825,
+        "numerical_to_physical_rest_energy_ratio": 0.9989590601828284
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 11,
+        "max_displacement_error_m": 2.1806661606518091e-16,
+        "numerical_to_physical_mass_ratio": 1.0004211831504202,
+        "numerical_to_physical_rest_energy_ratio": 0.9987373015901642
+      },
+      {
+        "test": "mass_linear_mode",
+        "rate": 192000,
+        "mode": 12,
+        "max_displacement_error_m": 9.812349015664514e-16,
+        "numerical_to_physical_mass_ratio": 1.0005026822400316,
+        "numerical_to_physical_rest_energy_ratio": 0.9984931654144453
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 192000,
+        "lambda": 0,
+        "gauge_j": 1e-14,
+        "balance_relative": 1.960141258954026e-12,
+        "drift_energy_relative": 9.768017087897047e-05,
+        "minimum_energy_j": 3.8228273920426843e-10,
+        "minimum_psi": 2.765095800127234e-05,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000078243094634,
+        "displacement_rms_m": 0.001003798863973766,
+        "force_rms_n": 0.4673897784931488,
+        "finite_window_dc_db": -47.506298728706675,
+        "mode3_peak_energy_fraction": 0.7674668183135509,
+        "final_energy_fraction": 3.282262987277e-07
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 192000,
+        "lambda": 0,
+        "gauge_j": 1e-10,
+        "balance_relative": 1.6868898458376882e-12,
+        "drift_energy_relative": 9.768236571301756e-05,
+        "minimum_energy_j": 6.5475514135397e-10,
+        "minimum_psi": 3.754344526928131e-05,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000078242725314,
+        "displacement_rms_m": 0.0010037988676040225,
+        "force_rms_n": 0.46738978043286544,
+        "finite_window_dc_db": -47.50630043549481,
+        "mode3_peak_energy_fraction": 0.7674668220439117,
+        "final_energy_fraction": 5.621699192249223e-07
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 192000,
+        "lambda": 1000,
+        "gauge_j": 1e-14,
+        "balance_relative": 9.793079589093003e-13,
+        "drift_energy_relative": 3.7888293208345097e-06,
+        "minimum_energy_j": 1.0196119695032618e-20,
+        "minimum_psi": 1.0000000000000006e-07,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000078231538996,
+        "displacement_rms_m": 0.0010036854366103753,
+        "force_rms_n": 0.4673729277437621,
+        "finite_window_dc_db": -47.502363470881626,
+        "mode3_peak_energy_fraction": 0.7674756638589735,
+        "final_energy_fraction": 8.754344064425376e-18
+      },
+      {
+        "test": "mass_release_rate_sweep",
+        "rate": 192000,
+        "lambda": 1000,
+        "gauge_j": 1e-10,
+        "balance_relative": 1.5603824149939575e-12,
+        "drift_energy_relative": 3.788780390434289e-06,
+        "minimum_energy_j": 1.0198317844814594e-20,
+        "minimum_psi": 9.999999999999994e-06,
+        "minimum_rank_denominator": 1,
+        "maximum_rank_denominator": 1.0000078231167921,
+        "displacement_rms_m": 0.0010036854365293546,
+        "force_rms_n": 0.46737292775824607,
+        "finite_window_dc_db": -47.502363470530035,
+        "mode3_peak_energy_fraction": 0.7674756641877284,
+        "final_energy_fraction": 8.756231386276447e-18
+      }
+    ],
+    "failures": 2
+  }
+}

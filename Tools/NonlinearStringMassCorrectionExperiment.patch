@@ -1,0 +1,198 @@
+--- a/Tools/NonlinearStringPrototype.cpp
++++ b/Tools/NonlinearStringPrototype.cpp
+@@ -170,7 +170,7 @@
+ {
+     const Model& model;
+     double dt, lambda, gauge, psi;
+-    Vector q, previous, next, gradient, midpoint, g, inverseG, rhs;
++    Vector q, previous, next, gradient, midpoint, g, inverseG, rhs, numericalMass;
+     double inputWork = 0.0, dissipatedWork = 0.0;
+     double smallestDenominator = std::numeric_limits<double>::max(), largestDenominator = 0.0;
+     double minimumPsi = std::numeric_limits<double>::max();
+@@ -178,13 +178,19 @@
+     Sav(const Model& m, double rate, double regulation = 1000.0, double shift = 1e-12)
+         : model(m), dt(1.0 / rate), lambda(regulation), gauge(shift), psi(0.0),
+           q(m.modes), previous(m.modes), next(m.modes), gradient(m.modes),
+-          midpoint(m.modes), g(m.modes), inverseG(m.modes), rhs(m.modes)
++          midpoint(m.modes), g(m.modes), inverseG(m.modes), rhs(m.modes), numericalMass(m.modes)
+     {
+         if (!(shift > 0.0) || regulation < 0.0 || regulation >= rate)
+             throw std::invalid_argument("invalid gauge/regulator domain");
+-        for (double k : m.stiffness)
+-            if (!(dt * dt * k / m.mass < 4.0))
+-                throw std::invalid_argument("linear CFL positivity condition violated");
++        for (int n = 0; n < m.modes; ++n)
++        {
++            const double omega = std::sqrt(m.stiffness[n] / m.mass);
++            if (!(omega > 0.0 && omega < pi * rate))
++                throw std::invalid_argument("physical mode must be below Nyquist");
++            const double theta = dt * omega;
++            numericalMass[n] = m.stiffness[n] * dt * dt
++                / (4.0 * std::pow(std::sin(0.5 * theta), 2));
++        }
+     }
+ 
+     void initialise(const Vector& displacement)
+@@ -194,7 +200,7 @@
+         // Consistent rest preload: q(-dt)=q(0)+dt^2*a(0)/2, not q(-dt)=q(0).
+         for (int n = 0; n < model.modes; ++n)
+         {
+-            previous[n] = q[n] - dt * dt / (2.0 * model.mass)
++            previous[n] = q[n] - dt * dt / (2.0 * numericalMass[n])
+                 * (model.stiffness[n] * q[n] + gradient[n]);
+             midpoint[n] = 0.5 * (q[n] + previous[n]);
+         }
+@@ -209,7 +215,7 @@
+     {
+         double e = 0.5 * (psi * psi - gauge);
+         for (int n = 0; n < model.modes; ++n)
+-            e += 0.5 * model.mass * std::pow((q[n] - previous[n]) / dt, 2)
++            e += 0.5 * numericalMass[n] * std::pow((q[n] - previous[n]) / dt, 2)
+                + 0.5 * model.stiffness[n] * q[n] * previous[n];
+         return e;
+     }
+@@ -240,15 +246,17 @@
+             for (int n = 0; n < model.modes; ++n)
+                 g[n] -= correction * ((q[n] > previous[n]) - (q[n] < previous[n]));
+         }
+-        const double alpha = dt * dt / (4.0 * model.mass);
+-        const double inverseDiagonal = 1.0 / (1.0 + eta * dt);
++        const double alpha = dt * dt / 4.0;
+         const double gp = dot(g, previous);
+         for (int n = 0; n < model.modes; ++n)
+         {
+-            rhs[n] = inverseDiagonal * (2.0 * q[n] - (1.0 - eta * dt) * previous[n]
+-                - dt * dt / model.mass * model.stiffness[n] * q[n]
++            const double dampingHalfStep = model.mass * eta * dt;
++            const double inverseDiagonal = 1.0 / (numericalMass[n] + dampingHalfStep);
++            rhs[n] = inverseDiagonal * (2.0 * numericalMass[n] * q[n]
++                - (numericalMass[n] - dampingHalfStep) * previous[n]
++                - dt * dt * model.stiffness[n] * q[n]
+                 + alpha * g[n] * (gp - 4.0 * psi)
+-                + dt * dt / model.mass * model.forceShape[n] * force);
++                + dt * dt * model.forceShape[n] * force);
+             inverseG[n] = inverseDiagonal * g[n];
+         }
+         const double denominator = 1.0 + alpha * dot(g, inverseG);
+@@ -557,7 +565,7 @@
+         Sav solver(linear, rate);
+         solver.initialise(linear.pluck(0.001, true));
+         const double omega = std::sqrt(linear.stiffness[0] / linear.mass);
+-        const double theta = 2.0 * std::asin(omega / (2.0 * rate));
++        const double theta = omega / rate;
+         double maximum = 0.0;
+         for (int n = 0; n < rate / 5; ++n)
+         {
+@@ -610,7 +618,7 @@
+     }
+ 
+     std::cout << "Checking single-mode pitch against weak Duffing theory...\n" << std::flush;
+-    for (int rate : { 48000, 192000 })
++    for (int rate : { 48000, 96000, 192000 })
+         for (auto kind : { Potential::cubic, Potential::exact, Potential::kirchhoff })
+         {
+             Model model(kind, 1, 8), baseline(Potential::linear, 1, 8);
+@@ -724,6 +732,103 @@
+                     << ',' << metricFields(metrics);
+                 audit.add(row.str());
+             }
++
++    std::cout << "Checking modified-mass poles, static compliance and all-rate release...\n" << std::flush;
++    for (int rate : { 48000, 96000, 192000 })
++    {
++        for (double fraction : { 0.99, 1.0, 1.01, 2.01 })
++        {
++            Model boundary(Potential::linear, 1, 8);
++            boundary.stiffness[0] = boundary.mass * std::pow(fraction * pi * rate, 2);
++            bool accepted = true;
++            try { Sav solver(boundary, rate, 0.0); }
++            catch (const std::invalid_argument&) { accepted = false; }
++            audit.check(accepted == (fraction < 1.0), "modified-mass solver hid physical Nyquist alias");
++            audit.add("\"test\":\"mass_nyquist\",\"rate\":" + std::to_string(rate)
++                + ",\"fraction\":" + number(fraction) + ",\"accepted\":" + (accepted ? "true" : "false"));
++        }
++        Model linearModel(Potential::linear);
++        Sav solver(linearModel, rate, 0.0), staticSolver(linearModel, rate, 0.0);
++        Vector initial(linearModel.modes), staticQ(linearModel.modes), maximumError(linearModel.modes, 0.0);
++        constexpr double force = 0.01;
++        for (int n = 0; n < linearModel.modes; ++n)
++        {
++            initial[n] = 0.001 / (n + 1);
++            staticQ[n] = linearModel.forceShape[n] * force / linearModel.stiffness[n];
++        }
++        solver.initialise(initial);
++        staticSolver.initialise(staticQ);
++        // Constant physical force is present already before t=0: prehistory
++        // is static equilibrium, not the unforced rest-release prehistory.
++        staticSolver.previous = staticQ;
++        const double initialEnergy = solver.energy();
++        auto wrongLedger = [&]() {
++            // Deliberately inconsistent stencil ledger: physical mass in the
++            // kinetic term, although the recurrence uses numericalMass.
++            // This is not the continuous physical Hamiltonian.
++            double value = solver.energy();
++            for (int n = 0; n < linearModel.modes; ++n)
++                value += 0.5 * (linearModel.mass - solver.numericalMass[n])
++                    * std::pow((solver.q[n] - solver.previous[n]) * rate, 2);
++            return value;
++        };
++        const double initialWrongEnergy = wrongLedger();
++        double maximumBalance = 0.0, maximumStaticError = 0.0, maximumWrongBalance = 0.0;
++        for (int sample = 0; sample < rate / 5; ++sample)
++        {
++            for (int n = 0; n < linearModel.modes; ++n)
++            {
++                const double omega = std::sqrt(linearModel.stiffness[n] / linearModel.mass);
++                maximumError[n] = std::max(maximumError[n],
++                    std::abs(solver.q[n] - initial[n] * std::cos(sample * omega / rate)));
++                maximumStaticError = std::max(maximumStaticError,
++                    std::abs(staticSolver.q[n] / staticQ[n] - 1.0));
++            }
++            solver.step();
++            staticSolver.step(force);
++            maximumBalance = std::max(maximumBalance, std::abs(solver.energy() / initialEnergy - 1.0));
++            maximumWrongBalance = std::max(maximumWrongBalance,
++                std::abs(wrongLedger() / initialWrongEnergy - 1.0));
++        }
++        audit.check(maximumWrongBalance > 1e-5, "wrong-mass ledger control lost sensitivity");
++        audit.check(maximumBalance < 1e-8 && maximumStaticError < 1e-8,
++                    "modified-mass linear energy or physical static compliance failed");
++        audit.add("\"test\":\"mass_linear_and_static\",\"rate\":" + std::to_string(rate)
++            + ",\"energy_balance_relative\":" + number(maximumBalance)
++            + ",\"maximum_physical_static_displacement_relative_error\":" + number(maximumStaticError)
++            + ",\"wrong_mass_ledger_drift_relative\":" + number(maximumWrongBalance));
++        for (int n = 0; n < linearModel.modes; ++n)
++        {
++            const double omega = std::sqrt(linearModel.stiffness[n] / linearModel.mass), theta = omega / rate;
++            const double numericalRestEnergy = 0.5 * solver.numericalMass[n]
++                * std::pow(initial[n] * rate * (1.0 - std::cos(theta)), 2)
++                + 0.5 * linearModel.stiffness[n] * initial[n] * initial[n] * std::cos(theta);
++            const double physicalRestEnergy = 0.5 * linearModel.stiffness[n] * initial[n] * initial[n];
++            const double ratio = numericalRestEnergy / physicalRestEnergy;
++            audit.check(maximumError[n] < 1e-12, "modified-mass linear pole was not physical");
++            audit.check(std::abs(ratio - std::pow(std::cos(theta / 2.0), 2)) < 1e-12,
++                        "modified-mass rest-energy formula failed");
++            audit.add("\"test\":\"mass_linear_mode\",\"rate\":" + std::to_string(rate)
++                + ",\"mode\":" + std::to_string(n + 1)
++                + ",\"max_displacement_error_m\":" + number(maximumError[n])
++                + ",\"numerical_to_physical_mass_ratio\":" + number(solver.numericalMass[n] / linearModel.mass)
++                + ",\"numerical_to_physical_rest_energy_ratio\":" + number(ratio));
++        }
++        Model nonlinear(Potential::exact);
++        for (double lambda : { 0.0, 1000.0 })
++            for (double gauge : { 1e-14, 1e-10 })
++            {
++                const auto metrics = render(nonlinear, rate, 0.4, 0.002, lambda, gauge, true, false);
++                audit.check(metrics.maximumBalance < 1e-8, "modified-mass physical power balance failed");
++                audit.check(metrics.minimumPsi >= 0.0 && metrics.minimumDenominator >= 1.0,
++                            "modified-mass auxiliary or rank domain failed");
++                if (lambda > 0.0) audit.check(std::abs(metrics.finalEnergy) < 1e-4,
++                                             "modified-mass regulated release failed");
++                audit.add("\"test\":\"mass_release_rate_sweep\",\"rate\":" + std::to_string(rate)
++                    + ",\"lambda\":" + number(lambda) + ",\"gauge_j\":" + number(gauge)
++                    + ',' + metricFields(metrics));
++            }
++    }
+     audit.finish();
+     std::cout << "Prototype audit failures: " << audit.failures << '\n';
+     return audit.failures == 0 ? 0 : 1;
