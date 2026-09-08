@@ -1,0 +1,748 @@
+{
+  "protocol_sha256": "2c5cb1afc7cbe62194e51efdbb3c3e9efae327410a57efa3d1ec5becf17e6e1f",
+  "source_sha256": "1009facecbb6e7cce75c6d0df4253a0fea9f35992b6550d983870265cfb78e72",
+  "physical": {
+    "length_m": 0.65,
+    "density_kg_m": 0.0008953539062730911,
+    "tension_n": 58.12774389551704,
+    "EA_n": 2120.57504117311,
+    "EI_n_m2": 0.00031
+  },
+  "scope": "Initial fixed-end spatial states only. The 192-mode reference is not an audio-rate candidate. No moving-port protocol or acoustic gate is changed.",
+  "rows": [
+    {
+      "modes": 12,
+      "intervals": 96,
+      "amplitude_m": 0.001,
+      "highest_physical_frequency_hz": 2372.975610384257,
+      "linear_energy_j": 0.000290525982292262,
+      "nonlinear_energy_j": 1.6819651990858411e-07,
+      "total_energy_j": 0.00029069417881217056,
+      "endpoint_slope": 0.008057185938440826,
+      "linear_force_n": 0.467489558808921,
+      "point_force_n": 0.468028922711742,
+      "weak_reaction_n": 0.4680647912096793,
+      "weak_minus_point_n": 3.586849793729696e-05,
+      "relative_weak_minus_point": 7.66373533701213e-05,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.00029069417881217056,
+          "fine": 0.00029069417881217056,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 1.6819651990858411e-07,
+          "fine": 1.681965199085841e-07,
+          "absolute_error": 2.6469779601696886e-23,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 0.4680647912096793,
+          "fine": 0.4680647912096793,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 0.02634416130406314,
+      "relative_total_energy_error": -0.026329675788432705,
+      "relative_point_force_error": -0.0958513406425372,
+      "relative_weak_reaction_error": -0.09578204899348286,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.00889284126278346,
+        "point_force_n": 0.5176459842834833,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 24,
+      "intervals": 192,
+      "amplitude_m": 0.001,
+      "highest_physical_frequency_hz": 4869.795655822085,
+      "linear_energy_j": 0.00029708757253922845,
+      "nonlinear_energy_j": 1.6877212384976513e-07,
+      "total_energy_j": 0.0002972563446630782,
+      "endpoint_slope": 0.008618199143668136,
+      "linear_force_n": 0.49987423554146315,
+      "point_force_n": 0.5005342876886507,
+      "weak_reaction_n": 0.5005328733705416,
+      "weak_minus_point_n": -1.4143181090719992e-06,
+      "relative_weak_minus_point": -2.825616833569957e-06,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.0002972563446630782,
+          "fine": 0.0002972563446630782,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 1.6877212384976513e-07,
+          "fine": 1.6877212384976515e-07,
+          "absolute_error": 2.6469779601696886e-23,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 0.5005328733705416,
+          "fine": 0.5005328733705416,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 0.004353939965916931,
+      "relative_total_energy_error": -0.004349923122963006,
+      "relative_point_force_error": -0.03305675522351148,
+      "relative_weak_reaction_error": -0.033059487339716975,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.00889284126278346,
+        "point_force_n": 0.5176459842834833,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 48,
+      "intervals": 384,
+      "amplitude_m": 0.001,
+      "highest_physical_frequency_hz": 10673.019570423667,
+      "linear_energy_j": 0.0002983599180416398,
+      "nonlinear_energy_j": 1.6836077281267247e-07,
+      "total_energy_j": 0.0002985282788144525,
+      "endpoint_slope": 0.008869217317923922,
+      "linear_force_n": 0.5151946506349416,
+      "point_force_n": 0.5159140716695465,
+      "weak_reaction_n": 0.5159072319964136,
+      "weak_minus_point_n": -6.8396731328634885e-06,
+      "relative_weak_minus_point": -1.3257388213369839e-05,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.0002985282788144525,
+          "fine": 0.0002985282788144525,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 1.6836077281267247e-07,
+          "fine": 1.6836077281267247e-07,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 0.5159072319964136,
+          "fine": 0.5159072319964136,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 8.985791209525917e-05,
+      "relative_total_energy_error": -8.962268418277741e-05,
+      "relative_point_force_error": -0.003345747222198825,
+      "relative_weak_reaction_error": -0.003358960156723323,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.00889284126278346,
+        "point_force_n": 0.5176459842834833,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 96,
+      "intervals": 768,
+      "amplitude_m": 0.001,
+      "highest_physical_frequency_hz": 27577.39495179446,
+      "linear_energy_j": 0.0002983867302095332,
+      "nonlinear_energy_j": 1.6830567952236212e-07,
+      "total_energy_j": 0.00029855503588905555,
+      "endpoint_slope": 0.00889289997671821,
+      "linear_force_n": 0.516928590027285,
+      "point_force_n": 0.5176537892475741,
+      "weak_reaction_n": 0.5176533825437178,
+      "weak_minus_point_n": -4.0670385625940497e-07,
+      "relative_weak_minus_point": -7.856676889211256e-07,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.00029855503588905555,
+          "fine": 0.00029855503588905555,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 1.6830567952236212e-07,
+          "fine": 1.6830567952236212e-07,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 0.5176533825437178,
+          "fine": 0.5176533825437178,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 8.066773915516023e-10,
+      "relative_total_energy_error": -7.673967017396421e-10,
+      "relative_point_force_error": 1.507780271747805e-05,
+      "relative_weak_reaction_error": 1.4292221332645738e-05,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.00889284126278346,
+        "point_force_n": 0.5176459842834833,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 192,
+      "intervals": 1536,
+      "amplitude_m": 0.001,
+      "highest_physical_frequency_hz": 88993.25847784085,
+      "linear_energy_j": 0.000298386730450235,
+      "nonlinear_energy_j": 1.6830566793066256e-07,
+      "total_energy_j": 0.0002985550361181657,
+      "endpoint_slope": 0.008892841262783651,
+      "linear_force_n": 0.5169207994266256,
+      "point_force_n": 0.5176459842835456,
+      "weak_reaction_n": 0.5176459842327392,
+      "weak_minus_point_n": -5.08063591198038e-11,
+      "relative_weak_minus_point": -9.814885203856643e-11,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.0002985550361181657,
+          "fine": 0.0002985550361181657,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 1.6830566793066256e-07,
+          "fine": 1.6830566793066256e-07,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 0.5176459842327392,
+          "fine": 0.5176459842327392,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 0.0,
+      "relative_total_energy_error": 0.0,
+      "relative_point_force_error": 0.0,
+      "relative_weak_reaction_error": 0.0,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.00889284126278346,
+        "point_force_n": 0.5176459842834833,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 12,
+      "intervals": 96,
+      "amplitude_m": 0.002,
+      "highest_physical_frequency_hz": 2372.975610384257,
+      "linear_energy_j": 0.001162103929169048,
+      "nonlinear_energy_j": 2.690808518537069e-06,
+      "total_energy_j": 0.001164794737687585,
+      "endpoint_slope": 0.016114371876881653,
+      "linear_force_n": 0.934979117617842,
+      "point_force_n": 0.9392933987181263,
+      "weak_reaction_n": 0.9395802335406649,
+      "weak_minus_point_n": 0.00028683482253855086,
+      "relative_weak_minus_point": 0.000305372978166354,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.001164794737687585,
+          "fine": 0.001164794737687585,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 2.690808518537069e-06,
+          "fine": 2.6908085185370688e-06,
+          "absolute_error": 4.235164736271502e-22,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 0.9395802335406649,
+          "fine": 0.9395802335406649,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 0.02634416130406314,
+      "relative_total_energy_error": -0.026286344476984858,
+      "relative_point_force_error": -0.0965223053389872,
+      "relative_weak_reaction_error": -0.09624640731114942,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.01778568252556692,
+        "point_force_n": 1.0396420456959248,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 24,
+      "intervals": 192,
+      "amplitude_m": 0.002,
+      "highest_physical_frequency_hz": 4869.795655822085,
+      "linear_energy_j": 0.0011883502901569138,
+      "nonlinear_energy_j": 2.700035600860735e-06,
+      "total_energy_j": 0.0011910503257577746,
+      "endpoint_slope": 0.017236398287336273,
+      "linear_force_n": 0.9997484710829263,
+      "point_force_n": 1.0050280060471097,
+      "weak_reaction_n": 1.0050166730682888,
+      "weak_minus_point_n": -1.1332978820943751e-05,
+      "relative_weak_minus_point": -1.1276281608825663e-05,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.0011910503257577746,
+          "fine": 0.0011910503257577746,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 2.700035600860735e-06,
+          "fine": 2.7000356008607353e-06,
+          "absolute_error": 4.235164736271502e-22,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 1.0050166730682888,
+          "fine": 1.0050166730682888,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 0.004353939965916931,
+      "relative_total_energy_error": -0.004337906859139262,
+      "relative_point_force_error": -0.03329418985336019,
+      "relative_weak_reaction_error": -0.03330509032217588,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.01778568252556692,
+        "point_force_n": 1.0396420456959248,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 48,
+      "intervals": 384,
+      "amplitude_m": 0.002,
+      "highest_physical_frequency_hz": 10673.019570423667,
+      "linear_energy_j": 0.0011934396721665593,
+      "nonlinear_energy_j": 2.6934607351307443e-06,
+      "total_energy_j": 0.0011961331329016901,
+      "endpoint_slope": 0.017738434635847844,
+      "linear_force_n": 1.0303893012698833,
+      "point_force_n": 1.0361436511675162,
+      "weak_reaction_n": 1.036088939746009,
+      "weak_minus_point_n": -5.4711421507258606e-05,
+      "relative_weak_minus_point": -5.2802930795947385e-05,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.0011961331329016901,
+          "fine": 0.0011961331329016901,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 2.6934607351307443e-06,
+          "fine": 2.6934607351307443e-06,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 1.036088939746009,
+          "fine": 1.036088939746009,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 8.985791209525917e-05,
+      "relative_total_energy_error": -8.89189780248767e-05,
+      "relative_point_force_error": -0.0033649990811899233,
+      "relative_weak_reaction_error": -0.003417623940349057,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.01778568252556692,
+        "point_force_n": 1.0396420456959248,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 96,
+      "intervals": 768,
+      "amplitude_m": 0.002,
+      "highest_physical_frequency_hz": 27577.39495179446,
+      "linear_energy_j": 0.0011935469208381327,
+      "nonlinear_energy_j": 2.6925796800951064e-06,
+      "total_energy_j": 0.0011962395005182278,
+      "endpoint_slope": 0.01778579995343642,
+      "linear_force_n": 1.03385718005457,
+      "point_force_n": 1.0396577417702566,
+      "weak_reaction_n": 1.0396544877953784,
+      "weak_minus_point_n": -3.2539748782145494e-06,
+      "relative_weak_minus_point": -3.1298520152159964e-06,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.0011962395005182278,
+          "fine": 0.0011962395005182278,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 2.6925796800951064e-06,
+          "fine": 2.6925796800951064e-06,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 1.0396544877953784,
+          "fine": 1.0396544877953784,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 8.066773915516023e-10,
+      "relative_total_energy_error": -6.498619420369778e-10,
+      "relative_point_force_error": 1.5097575431610721e-05,
+      "relative_weak_reaction_error": 1.1968067328060883e-05,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.01778568252556692,
+        "point_force_n": 1.0396420456959248,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 192,
+      "intervals": 1536,
+      "amplitude_m": 0.002,
+      "highest_physical_frequency_hz": 88993.25847784085,
+      "linear_energy_j": 0.00119354692180094,
+      "nonlinear_energy_j": 2.6925794946781513e-06,
+      "total_energy_j": 0.0011962395012956183,
+      "endpoint_slope": 0.017785682525567302,
+      "linear_force_n": 1.0338415988532512,
+      "point_force_n": 1.0396420456960498,
+      "weak_reaction_n": 1.0396420452893833,
+      "weak_minus_point_n": -4.066664782698126e-10,
+      "relative_weak_minus_point": -3.9116009202719935e-10,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.0011962395012956183,
+          "fine": 0.0011962395012956183,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 2.6925794946781513e-06,
+          "fine": 2.6925794946781513e-06,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 1.0396420452893833,
+          "fine": 1.0396420452893833,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 0.0,
+      "relative_total_energy_error": 0.0,
+      "relative_point_force_error": 0.0,
+      "relative_weak_reaction_error": 0.0,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.01778568252556692,
+        "point_force_n": 1.0396420456959248,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 12,
+      "intervals": 96,
+      "amplitude_m": 0.004,
+      "highest_physical_frequency_hz": 2372.975610384257,
+      "linear_energy_j": 0.004648415716676192,
+      "nonlinear_energy_j": 4.303146255084002e-05,
+      "total_energy_j": 0.004691447179227032,
+      "endpoint_slope": 0.032228743753763306,
+      "linear_force_n": 1.869958235235684,
+      "point_force_n": 1.9044523364723742,
+      "weak_reaction_n": 1.906743398999372,
+      "weak_minus_point_n": 0.0022910625269978446,
+      "relative_weak_minus_point": 0.0012030033428096134,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.004691447179227032,
+          "fine": 0.004691447179227032,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 4.303146255084002e-05,
+          "fine": 4.303146255084001e-05,
+          "absolute_error": 6.776263578034403e-21,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 1.906743398999372,
+          "fine": 1.906743398999372,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 0.02634416130406314,
+      "relative_total_energy_error": -0.026114879399229185,
+      "relative_point_force_error": -0.09914669442258883,
+      "relative_weak_reaction_error": -0.09806296349375465,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.03557136505113384,
+        "point_force_n": 2.1140537806557402,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 24,
+      "intervals": 192,
+      "amplitude_m": 0.004,
+      "highest_physical_frequency_hz": 4869.795655822085,
+      "linear_energy_j": 0.004753401160627655,
+      "nonlinear_energy_j": 4.3180208571083354e-05,
+      "total_energy_j": 0.004796581369198739,
+      "endpoint_slope": 0.034472796574672546,
+      "linear_force_n": 1.9994969421658526,
+      "point_force_n": 2.0417050172355267,
+      "weak_reaction_n": 2.0416137647237345,
+      "weak_minus_point_n": -9.125251179220584e-05,
+      "relative_weak_minus_point": -4.46942682815963e-05,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.004796581369198739,
+          "fine": 0.004796581369198739,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 4.3180208571083354e-05,
+          "fine": 4.3180208571083354e-05,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 2.0416137647237345,
+          "fine": 2.0416137647237345,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 0.004353939965916931,
+      "relative_total_energy_error": -0.004290350769082796,
+      "relative_point_force_error": -0.03422276390623136,
+      "relative_weak_reaction_error": -0.03426592712389909,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.03557136505113384,
+        "point_force_n": 2.1140537806557402,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 48,
+      "intervals": 384,
+      "amplitude_m": 0.004,
+      "highest_physical_frequency_hz": 10673.019570423667,
+      "linear_energy_j": 0.004773758688666237,
+      "nonlinear_energy_j": 4.307544206749505e-05,
+      "total_energy_j": 0.004816834130733732,
+      "endpoint_slope": 0.03547686927169569,
+      "linear_force_n": 2.0607786025397665,
+      "point_force_n": 2.1067808455939727,
+      "weak_reaction_n": 2.1063433450036104,
+      "weak_minus_point_n": -0.00043750059036229416,
+      "relative_weak_minus_point": -0.0002076630757666434,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.004816834130733732,
+          "fine": 0.004816834130733732,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 4.307544206749505e-05,
+          "fine": 4.307544206749505e-05,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 2.1063433450036104,
+          "fine": 2.1063433450036104,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 8.985791209525917e-05,
+      "relative_total_energy_error": -8.613352939190744e-05,
+      "relative_point_force_error": -0.003440279111424971,
+      "relative_weak_reaction_error": -0.0036472262318114623,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.03557136505113384,
+        "point_force_n": 2.1140537806557402,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 96,
+      "intervals": 768,
+      "amplitude_m": 0.004,
+      "highest_physical_frequency_hz": 27577.39495179446,
+      "linear_energy_j": 0.004774187683352531,
+      "nonlinear_energy_j": 4.306137315670151e-05,
+      "total_energy_j": 0.004817249056509232,
+      "endpoint_slope": 0.03557159990687284,
+      "linear_force_n": 2.06771436010914,
+      "point_force_n": 2.1140858609531725,
+      "weak_reaction_n": 2.1140598181886796,
+      "weak_minus_point_n": -2.6042764492917314e-05,
+      "relative_weak_minus_point": -1.231868817341954e-05,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.004817249056509232,
+          "fine": 0.004817249056509232,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 4.306137315670151e-05,
+          "fine": 4.306137315670151e-05,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 2.1140598181886796,
+          "fine": 2.1140598181886796,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 8.066773915516023e-10,
+      "relative_total_energy_error": -1.842904717719307e-10,
+      "relative_point_force_error": 1.5174778179138926e-05,
+      "relative_weak_reaction_error": 2.857445139392567e-06,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.03557136505113384,
+        "point_force_n": 2.1140537806557402,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    },
+    {
+      "modes": 192,
+      "intervals": 1536,
+      "amplitude_m": 0.004,
+      "highest_physical_frequency_hz": 88993.25847784085,
+      "linear_energy_j": 0.00477418768720376,
+      "nonlinear_energy_j": 4.30613701932459e-05,
+      "total_energy_j": 0.0048172490573970056,
+      "endpoint_slope": 0.035571365051134604,
+      "linear_force_n": 2.0676831977065024,
+      "point_force_n": 2.1140537806559925,
+      "weak_reaction_n": 2.114053777395989,
+      "weak_minus_point_n": -3.2600033783580784e-09,
+      "relative_weak_minus_point": -1.5420626514745036e-09,
+      "quadrature_check": {
+        "total_energy_j": {
+          "coarse": 0.0048172490573970056,
+          "fine": 0.0048172490573970056,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "nonlinear_energy_j": {
+          "coarse": 4.30613701932459e-05,
+          "fine": 4.30613701932459e-05,
+          "absolute_error": 0.0,
+          "passed": true
+        },
+        "weak_reaction_n": {
+          "coarse": 2.114053777395989,
+          "fine": 2.114053777395989,
+          "absolute_error": 0.0,
+          "passed": true
+        }
+      },
+      "spatial_reference_modes": 192,
+      "excluded_linear_energy_fraction": 0.0,
+      "relative_total_energy_error": 0.0,
+      "relative_point_force_error": 0.0,
+      "relative_weak_reaction_error": 0.0,
+      "unsmoothed_triangular_comparison": {
+        "endpoint_slope": 0.03557136505113384,
+        "point_force_n": 2.1140537806557402,
+        "label": "Analytic slope/point-force comparison only; unsmoothed stiff-string bending energy is singular."
+      }
+    }
+  ],
+  "bandwidth_limits": [
+    {
+      "strict_frequency_cutoff_hz": 3000,
+      "modes": 15,
+      "highest_retained_hz": 2980.885632121591,
+      "first_excluded_hz": 3185.5781701700303,
+      "prototype_minimum_quadrature_intervals": 31
+    },
+    {
+      "strict_frequency_cutoff_hz": 5000,
+      "modes": 24,
+      "highest_retained_hz": 4869.795655822085,
+      "first_excluded_hz": 5087.1297040744485,
+      "prototype_minimum_quadrature_intervals": 49
+    },
+    {
+      "strict_frequency_cutoff_hz": 10000,
+      "modes": 45,
+      "highest_retained_hz": 9869.919092213728,
+      "first_excluded_hz": 10134.816725750981,
+      "prototype_minimum_quadrature_intervals": 91
+    },
+    {
+      "strict_frequency_cutoff_hz": 15000,
+      "modes": 62,
+      "highest_retained_hz": 14777.822896846259,
+      "first_excluded_hz": 15095.027530697937,
+      "prototype_minimum_quadrature_intervals": 125
+    },
+    {
+      "strict_frequency_cutoff_hz": 20000,
+      "modes": 77,
+      "highest_retained_hz": 19899.700928480437,
+      "first_excluded_hz": 20269.771680731323,
+      "prototype_minimum_quadrature_intervals": 155
+    },
+    {
+      "strict_frequency_cutoff_hz": 24000,
+      "modes": 87,
+      "highest_retained_hz": 23768.476560343635,
+      "first_excluded_hz": 24176.18562837577,
+      "prototype_minimum_quadrature_intervals": 175
+    },
+    {
+      "strict_frequency_cutoff_hz": 48000,
+      "modes": 135,
+      "highest_retained_hz": 47850.989103276865,
+      "first_excluded_hz": 48453.61576779164,
+      "prototype_minimum_quadrature_intervals": 271
+    },
+    {
+      "strict_frequency_cutoff_hz": 96000,
+      "modes": 200,
+      "highest_retained_hz": 95884.6289039332,
+      "first_excluded_hz": 96765.51088202548,
+      "prototype_minimum_quadrature_intervals": 401
+    }
+  ],
+  "failures": []
+}
