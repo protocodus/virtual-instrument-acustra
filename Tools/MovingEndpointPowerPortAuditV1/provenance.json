@@ -1,0 +1,225 @@
+{
+  "status": "Unqualified numerical v1; all three original failures retained; additional nonfinite-guard coverage hole disclosed",
+  "protocol_sha256": "cd826a1cd20322bea306be55f1ae591cf6b93093e3c8b117786de6a13ce383bd",
+  "original_run": {
+    "protocol_status": "root approved frozen v1; initial implementation before first run",
+    "compile_flags": [
+      "-std=c++20",
+      "-O3",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic"
+    ],
+    "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.5.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+    "files": {
+      "protocol-v1.md": {
+        "sha256": "cd826a1cd20322bea306be55f1ae591cf6b93093e3c8b117786de6a13ce383bd",
+        "bytes": 17582
+      },
+      "frozen-prototype.cpp": {
+        "sha256": "227d13ddeccfca9efa1499e30b54301a9542bb065d3eda04e9b3ce0962c3afd5",
+        "bytes": 35628
+      },
+      "MovingPortAudit.cpp": {
+        "sha256": "5926322d8158b7d522f4a53fed573c451889b0a442416a3be7e6bd1656209947",
+        "bytes": 34543
+      },
+      "MovingPortAudit": {
+        "sha256": "ada6ba0c1a1596eb2596851bdf09e5aea93d02d9a5cd7e120b5897eece4b407c",
+        "bytes": 320368
+      }
+    },
+    "implementation_note": "Static review added all-stepped-case ledger/domain coverage and scalar body coercivity before any trajectory run; no protocol, fixture, or threshold changed.",
+    "run_started_utc": "2026-09-08T21:34:39.232610+00:00",
+    "exit_code": 1,
+    "run_finished_utc": "2026-09-08T21:34:45.141593+00:00"
+  },
+  "retained_files": {
+    "MovingPortAudit.cpp": {
+      "sha256": "5926322d8158b7d522f4a53fed573c451889b0a442416a3be7e6bd1656209947",
+      "bytes": 34543
+    },
+    "frozen-prototype.cpp": {
+      "sha256": "227d13ddeccfca9efa1499e30b54301a9542bb065d3eda04e9b3ce0962c3afd5",
+      "bytes": 35628
+    },
+    "protocol-v1.md": {
+      "sha256": "cd826a1cd20322bea306be55f1ae591cf6b93093e3c8b117786de6a13ce383bd",
+      "bytes": 17582
+    },
+    "report.json": {
+      "sha256": "783d9ea8178845cbd698b7b1016eb8bbb7dc3d9f6738eea606f373cabca8e091",
+      "bytes": 116722
+    }
+  },
+  "failures": [
+    {
+      "gate": "additional stepped-case work or domain gate",
+      "specific_gate": "independent branch-force relative peak mismatch",
+      "case": "sinusoid-220Hz",
+      "rate": 192000,
+      "measured": 2.823185986808585e-10,
+      "threshold_strict_less_than": 1e-10,
+      "absolute_difference_n": 1.6343107422933656e-12,
+      "row": {
+        "test": "additional_ledger",
+        "case": "sinusoid-220Hz",
+        "rate": 192000,
+        "joint_balance": 1.7838364850177491e-12,
+        "string_balance": 2.614791832748462e-12,
+        "body_balance": 4.285712200761833e-14,
+        "branch_force_peak_error_n": 1.6343107422933656e-12,
+        "force_peak_n": 0.005788887979501627,
+        "minimum_psi": 1e-06,
+        "minimum_denominator": 1
+      }
+    },
+    {
+      "gate": "candidate sample-rate convergence gate",
+      "case": "exact-driven-release",
+      "lambda": 1000,
+      "rate_from": 48000,
+      "rate_to": 96000,
+      "required_error_reduction_strictly_greater_than": 3,
+      "failed_fields": {
+        "y_error": {
+          "error_coarser": 0.0006694974247782448,
+          "error_finer": 0.0002506108826212978,
+          "reduction": 2.6714619005190343,
+          "reference_self_error": 1.579724377411967e-08
+        },
+        "vy_error": {
+          "error_coarser": 0.000751732869920967,
+          "error_finer": 0.00027696609272492964,
+          "reduction": 2.7141693141028442,
+          "reference_self_error": 1.0360442826623925e-07
+        }
+      }
+    },
+    {
+      "gate": "candidate sample-rate convergence gate",
+      "case": "exact-driven-release",
+      "lambda": 1000,
+      "rate_from": 96000,
+      "rate_to": 192000,
+      "required_error_reduction_strictly_greater_than": 3,
+      "failed_fields": {
+        "q_error": {
+          "error_coarser": 0.0001799305458793294,
+          "error_finer": 6.314944647409924e-05,
+          "reduction": 2.8492814414949454,
+          "reference_self_error": 3.534868669694763e-07
+        },
+        "y_error": {
+          "error_coarser": 0.0002506108826212978,
+          "error_finer": 0.00010849582898464445,
+          "reduction": 2.3098665171429498,
+          "reference_self_error": 1.579724377411967e-08
+        },
+        "vy_error": {
+          "error_coarser": 0.00027696609272492964,
+          "error_finer": 0.00011837433192085152,
+          "reduction": 2.3397478847873634,
+          "reference_self_error": 1.0360442826623925e-07
+        }
+      }
+    }
+  ],
+  "stderr": [
+    "FAIL: candidate sample-rate convergence gate",
+    "FAIL: candidate sample-rate convergence gate",
+    "FAIL: additional stepped-case work or domain gate"
+  ],
+  "coverage_hole": "Auxiliary zero/symmetry/static/sinusoidal LedgerMonitor::add does not explicitly reject nonfinite states/energies. std::max can hide NaN; stored report values are finite but full domain coverage cannot be claimed. The trajectory path rejects nonfinite energy+psi. No source repair or rerun has been made to v1.",
+  "independent_evidence": {
+    "oracle_code": {
+      "path": "/tmp/acustra-moving-port-algebra-review-20260908/oracle.py",
+      "sha256": "45884dcfca78c399bd5d62df786199c1b040b63df2270aad2a8c78d9e1164240"
+    },
+    "oracle_report": {
+      "path": "/tmp/acustra-moving-port-algebra-review-20260908/report.json",
+      "sha256": "84768a21b40ae0858ded021cf21366e0d7a24e4e86dda99258a4934234d9a80f"
+    },
+    "native_crosscheck": {
+      "path": "/tmp/acustra-moving-port-algebra-review-20260908/native-crosscheck.json",
+      "sha256": "45cdfae4b29d182e9614d2bafb9b8fd9a31975a9eb5d389fec3bd9572041282e",
+      "report": {
+        "scope": "Independent source/analytic cross-check of native v1. No rerun, tuning or protocol change.",
+        "protocol_sha256": "cd826a1cd20322bea306be55f1ae591cf6b93093e3c8b117786de6a13ce383bd",
+        "native_source_sha256": "5926322d8158b7d522f4a53fed573c451889b0a442416a3be7e6bd1656209947",
+        "native_report_sha256": "783d9ea8178845cbd698b7b1016eb8bbb7dc3d9f6738eea606f373cabca8e091",
+        "oracle_source_sha256": "45884dcfca78c399bd5d62df786199c1b040b63df2270aad2a8c78d9e1164240",
+        "oracle_report_sha256": "84768a21b40ae0858ded021cf21366e0d7a24e4e86dda99258a4934234d9a80f",
+        "algebra_agrees": true,
+        "maximum_mass_matrix_absolute_difference": 5.421010862427522e-20,
+        "maximum_complex_transfer_relative_difference": 7.309626009651985e-15,
+        "maximum_coupled_pole_cents_difference": 4.612934098829728e-12,
+        "native_measurements": 182,
+        "native_failures": 3,
+        "native_qualification": "failed",
+        "driven_release_error_ratios": [
+          {
+            "rates": [
+              48000,
+              96000
+            ],
+            "q_error": 3.549778191304845,
+            "v_error": 3.983071055661155,
+            "y_error": 2.6714619005190343,
+            "vy_error": 2.7141693141028442,
+            "port_force_error": 4.020104974165482
+          },
+          {
+            "rates": [
+              96000,
+              192000
+            ],
+            "q_error": 2.8492814414949454,
+            "v_error": 3.914648901124883,
+            "y_error": 2.3098665171429498,
+            "vy_error": 2.3397478847873634,
+            "port_force_error": 3.9515753580019166
+          }
+        ],
+        "failed_extra_ledger": [
+          {
+            "test": "additional_ledger",
+            "case": "sinusoid-220Hz",
+            "rate": 192000,
+            "joint_balance": 1.7838364850177491e-12,
+            "string_balance": 2.614791832748462e-12,
+            "body_balance": 4.285712200761833e-14,
+            "branch_force_peak_error_n": 1.6343107422933656e-12,
+            "force_peak_n": 0.005788887979501627,
+            "minimum_psi": 1e-06,
+            "minimum_denominator": 1
+          }
+        ],
+        "null_fields": [
+          "measurements[129].q_error",
+          "measurements[129].v_error",
+          "measurements[129].y_error",
+          "measurements[129].vy_error",
+          "measurements[129].port_force_error",
+          "measurements[129].reference_final_physical_energy_j",
+          "measurements[129].physical_weak_vs_point_gap"
+        ],
+        "source_review": "Core physical lifting, PSD inertia, damping, load signs, weighted SAV solve, branch ledgers, same-state force split and RK4/time alignment match frozen protocol.",
+        "remaining_harness_limit": "LedgerMonitor does not explicitly reject nonfinite states; std::max can hide NaNs. Saved nulls inspected separately and confined to intentional no-reference naive metrics.",
+        "diagnostic_inference": "Only driven-release convergence fails, consistent with a first-order contribution from a centered stencil straddling the abrupt damping jump. Cause is not established by this report."
+      }
+    }
+  },
+  "production_or_audio_integration": false,
+  "measurements_retained": 182,
+  "independent_reproduction_2026_09_09": {
+    "command": "clang++ -std=c++20 -O3 -Wall -Wextra -Wpedantic MovingPortAudit.cpp -o /tmp/acustra-moving-port-v1-retained-20260909",
+    "result_directory": "/tmp/acustra-moving-port-v1-retained-20260909-output",
+    "log_path": "/tmp/acustra-moving-port-v1-retained-20260909.log",
+    "exit_code": 1,
+    "measurement_rows": 182,
+    "failures": 3,
+    "all_parsed_report_values_exactly_equal": true,
+    "report_sha256": "783d9ea8178845cbd698b7b1016eb8bbb7dc3d9f6738eea606f373cabca8e091"
+  }
+}
