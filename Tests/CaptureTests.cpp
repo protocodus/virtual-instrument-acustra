@@ -1,6 +1,6 @@
 // Capture is a read-only observation of the instrument. Verify the microphone
-// channel identity, physical pickup observables, geometry, switching and MIDI
-// silence; absolute pickup sensitivity requires recorded calibration pairs.
+// channel identity, loaded saddle-force observation, switching and MIDI
+// silence; absolute piezo sensitivity requires recorded calibration pairs.
 #include "DSP/AcustraEngine.h"
 
 #include <algorithm>
@@ -24,32 +24,7 @@ struct AcustraEngineTestAccess
     {
         return { engine.piezoLoadInput_, engine.piezoLoadOutput_ };
     }
-    static std::array<float, 4> pickupFractions(const AcustraEngine& engine,
-                                               int string)
-    {
-        const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
-        return { voice.loops[0].currentPickupFraction,
-                 voice.loops[0].targetPickupFraction,
-                 voice.tailLoop.currentPickupFraction,
-                 voice.tailLoop.targetPickupFraction };
-    }
-    static double pointAmplitude(int harmonic, float fraction)
-    {
-        AcustraEngine::StringLoop loop;
-        constexpr int period = 128;
-        loop.currentDelay = period;
-        for (int i = 0; i < AcustraEngine::maximumDelaySamples; ++i)
-            loop.delay[static_cast<std::size_t>(i)] = static_cast<float>(
-                std::sin(2.0 * 3.141592653589793 * harmonic * i / period));
-        double peak = 0.0;
-        for (int i = 0; i < period; ++i)
-        {
-            loop.writeIndex = i;
-            peak = std::max(peak, std::abs(static_cast<double>(
-                loop.displacementAt(fraction))));
-        }
-        return peak;
-    }
+
 };
 } // namespace acustra
 
@@ -93,81 +68,61 @@ double energy(const Audio& audio)
     return sum / audio.left.size();
 }
 
-bool sameSamples(const std::vector<float>& a, const std::vector<float>& b)
-{
-    return std::equal(a.begin(), a.end(), b.begin(),
-        [] (float x, float y) { return std::abs(x - y) < 1.0e-6f; });
-}
-
 void testCaptureObservations()
 {
     using acustra::CaptureType;
-    acustra::EngineParameters parameters;
-    parameters.stereoWidth = 1.0f;
-    const auto stereo = render(parameters);
-    parameters.capture = CaptureType::TrebleMic;
-    const auto treble = render(parameters);
-    parameters.capture = CaptureType::BassMic;
-    const auto bass = render(parameters);
-    // Width=1 still evaluates mono+(channel-mono) in the legacy path; permit
-    // its rounding, but require the mono copies themselves to be identical.
-    expect(sameSamples(stereo.left, treble.left) && treble.left == treble.right,
-           "treble capture is not the measured left microphone in mono");
-    expect(sameSamples(stereo.right, bass.left) && bass.left == bass.right,
-           "bass capture is not the measured right microphone in mono");
-    expect(treble.left != bass.left, "the two microphone paths are identical");
-
-    for (auto capture : { CaptureType::SaddlePiezo, CaptureType::Magnetic,
-                           CaptureType::LoadedPiezo })
+    for (auto material : { acustra::StringMaterial::Steel,
+                           acustra::StringMaterial::Nylon })
     {
-        parameters.capture = capture;
-        const auto pickup = render(parameters);
-        parameters.stereoWidth = 0.0f;
-        parameters.bodyAmount = 0.0f;
-        const auto dry = render(parameters);
-        expect(pickup.left == pickup.right, "pickup output is not mono");
-        expect(pickup.left == dry.left,
-               "microphone mix controls altered the pickup observation");
-        expect(energy(pickup) > 1.0e-10, "a steel pickup is silent");
-        expect(pickup.left != treble.left && pickup.left != bass.left,
-               "a pickup duplicates a microphone signal");
-        if (capture == CaptureType::LoadedPiezo)
-        {
-            auto idealParameters = parameters;
-            idealParameters.capture = CaptureType::SaddlePiezo;
-            expect(pickup.left != render(idealParameters).left,
-                   "loaded piezo duplicates the unloaded saddle force");
-        }
-        parameters.stringMaterial = acustra::StringMaterial::Nylon;
-        const auto nylon = render(parameters);
-        expect(capture == CaptureType::Magnetic ? energy(nylon) == 0.0
-                                               : energy(nylon) > 1.0e-10,
-               "nylon must excite piezo force but not a magnetic pickup");
-        parameters.stringMaterial = acustra::StringMaterial::Steel;
+        acustra::EngineParameters parameters;
+        parameters.stringMaterial = material;
         parameters.stereoWidth = 1.0f;
+        const auto stereo = render(parameters);
+        expect(stereo.left != stereo.right, "stereo mic lost its measured spatial response");
+        parameters.capture = CaptureType::MonoMic;
+        const auto mono = render(parameters);
+        parameters.stereoWidth = 0.0f;
+        expect(mono.left == mono.right && mono.left == render(parameters).left,
+               "mono microphone must be bit-identical in both channels and independent of width");
+        expect(energy(mono) > 1.0e-10, "mono microphone is silent");
+        expect(mono.left != stereo.left && mono.left != stereo.right,
+               "mono microphone is not its own measured observation");
+        for (auto retired : { CaptureType::TrebleMic, CaptureType::BassMic,
+                              CaptureType::UpperMic })
+        {
+            parameters.capture = retired;
+            expect(render(parameters).left == mono.left,
+                   "retired microphone did not remap to the supported mono microphone");
+        }
+        parameters.capture = CaptureType::Piezo;
+        const auto piezo = render(parameters);
+        parameters.bodyAmount = 0.0f;
+        parameters.stereoWidth = 1.0f;
+        expect(piezo.left == piezo.right && piezo.left == render(parameters).left,
+               "piezo output must be mono and independent of microphone controls");
+        expect(energy(piezo) > 1.0e-10 && piezo.left != mono.left,
+               "piezo is silent or duplicates a microphone");
+        for (auto retired : { CaptureType::SaddlePiezo, CaptureType::Magnetic })
+        {
+            parameters.capture = retired;
+            expect(render(parameters).left == piezo.left,
+                   "retired pickup did not remap to the supported loaded piezo");
+        }
         parameters.bodyAmount = 0.82f;
+        parameters.capture = static_cast<CaptureType>(-123);
+        expect(render(parameters).left == stereo.left,
+               "invalid capture did not fall back to the default stereo microphone");
     }
-    parameters.capture = static_cast<CaptureType>(-123);
-    expect(render(parameters).left == stereo.left,
-           "invalid capture did not fall back to the default stereo microphone");
-
-    // Each node is geometry, not an EQ curve or a guessed pickup frequency.
-    using Access = acustra::AcustraEngineTestAccess;
-    expect(Access::pointAmplitude(4, 0.25f) < 1.0e-5,
-           "quarter-string observation missed the fourth-partial node");
-    expect(std::abs(Access::pointAmplitude(2, 0.25f) - 2.0) < 1.0e-5,
-           "quarter-string observation missed the second-partial antinode");
-    expect(Access::pointAmplitude(2, 0.5f) < 1.0e-5,
-           "midpoint observation missed the even-partial node");
 }
 
 void testCaptureLifecycle()
 {
     for (int rate : { 44100, 48000, 96000 })
-        for (int type = 0; type < 7; ++type)
+        for (auto type : { acustra::CaptureType::StereoMic, acustra::CaptureType::MonoMic,
+                           acustra::CaptureType::Piezo })
         {
             acustra::EngineParameters parameters;
-            parameters.capture = static_cast<acustra::CaptureType>(type);
+            parameters.capture = type;
             const auto audio = render(parameters, rate);
             expect(audio.left == render(parameters, rate, 127).left,
                    "capture changed with host block size");
@@ -195,7 +150,7 @@ void testCaptureLifecycle()
     engine->noteOn(40, 0.8f);
     for (int i = 0; i < 200; ++i)
     {
-        parameters.capture = static_cast<acustra::CaptureType>(i % 7);
+        parameters.capture = static_cast<acustra::CaptureType>(i % 8);
         engine->setParameters(parameters);
         engine->process(left.data(), right.data(), 64);
         expect(engine->getActiveVoiceCount() == 1,
@@ -224,7 +179,7 @@ void testCaptureLifecycle()
     for (int block = 0; block < 600; ++block)
     {
         if (block < 100)
-            parameters.capture = static_cast<acustra::CaptureType>(block % 7);
+            parameters.capture = static_cast<acustra::CaptureType>(block % 8);
         else
             parameters.capture = acustra::CaptureType::StereoMic;
         engine->setParameters(parameters);
@@ -233,68 +188,6 @@ void testCaptureLifecycle()
     }
     expect(left == referenceLeft && right == referenceRight,
            "pickup observation changed the state of the vibrating instrument");
-}
-
-void testUpperMicrophone()
-{
-    for (auto material : { acustra::StringMaterial::Steel,
-                           acustra::StringMaterial::Nylon })
-        for (int rate : { 44100, 48000, 96000 })
-        {
-            acustra::EngineParameters parameters;
-            parameters.stringMaterial = material;
-            parameters.capture = acustra::CaptureType::UpperMic;
-            const auto upper = render(parameters, rate);
-            expect(upper.left == upper.right,
-                   "upper microphone output is not mono");
-            expect(upper.left == render(parameters, rate, 127).left,
-                   "upper microphone changed with host block size");
-            expect(energy(upper) > 1.0e-10,
-                   "upper microphone is silent for a supported string material");
-            for (float sample : upper.left)
-                expect(std::isfinite(sample) && std::abs(sample) <= 1.0f,
-                       "upper microphone is not finite and bounded");
-            for (auto other : { acustra::CaptureType::TrebleMic,
-                                 acustra::CaptureType::BassMic })
-            {
-                parameters.capture = other;
-                expect(upper.left != render(parameters, rate).left,
-                       "upper microphone duplicates an existing microphone");
-            }
-
-            // Switching observation must neither reset nor perturb a held
-            // string. After returning to stereo and settling the capture
-            // fade, compare to the engine that never switched, byte for byte.
-            parameters.capture = acustra::CaptureType::StereoMic;
-            auto engine = std::make_unique<acustra::AcustraEngine>();
-            auto reference = std::make_unique<acustra::AcustraEngine>();
-            for (auto* instrument : { engine.get(), reference.get() })
-            {
-                instrument->setParameters(parameters);
-                instrument->prepare(rate, 64);
-                instrument->noteOn(45, 0.7f);
-            }
-            std::array<float, 64> left {}, right {}, referenceLeft {}, referenceRight {};
-            for (int block = 0; block < 600; ++block)
-            {
-                if (block == 40 || block == 120)
-                {
-                    parameters.capture = block == 40
-                        ? acustra::CaptureType::UpperMic
-                        : acustra::CaptureType::StereoMic;
-                    engine->setParameters(parameters);
-                }
-                engine->process(left.data(), right.data(), 64);
-                reference->process(referenceLeft.data(), referenceRight.data(), 64);
-                expect(engine->getActiveVoiceCount() == 1,
-                       "upper microphone switching reset a held string");
-                expect(engine->getLastBridgeBodyForce()
-                            == reference->getLastBridgeBodyForce(),
-                       "upper microphone observation changed the mechanical bridge");
-            }
-            expect(left == referenceLeft && right == referenceRight,
-                   "upper microphone observation changed the retained radiation state");
-        }
 }
 
 void testLoadedPiezoElectricalResponse()
@@ -373,7 +266,7 @@ void testLoadedPiezoStaysWarmWhileUnheard()
             auto switched = std::make_unique<acustra::AcustraEngine>();
             auto reference = std::make_unique<acustra::AcustraEngine>();
             switched->setParameters(parameters);
-            parameters.capture = acustra::CaptureType::LoadedPiezo;
+            parameters.capture = acustra::CaptureType::Piezo;
             reference->setParameters(parameters);
             for (auto* engine : { switched.get(), reference.get() })
             {
@@ -402,114 +295,14 @@ void testLoadedPiezoStaysWarmWhileUnheard()
         }
 }
 
-void testScopedRemovalDoesNotStrikeTheMagneticPickup()
-{
-    for (int rate : { 44100, 48000, 96000 })
-        for (bool removeZone : { false, true })
-        {
-            auto engine = std::make_unique<acustra::AcustraEngine>();
-            acustra::EngineParameters parameters;
-            parameters.capture = acustra::CaptureType::Magnetic;
-            engine->setParameters(parameters);
-            engine->prepare(rate, 64);
-            engine->setLowerZoneMemberCount(1);
-            engine->noteOn(40, 0.8f, 2);
-            engine->noteOn(64, 0.1f, 8);
-            std::array<float, 64> left {}, right {};
-            for (int block = 0; block < 150; ++block)
-                engine->process(left.data(), right.data(), 64);
-            float before = 0.0f;
-            for (float sample : left)
-                before = std::max(before, std::abs(sample));
-
-            if (removeZone)
-                engine->setLowerZoneMemberCount(0);
-            else
-                engine->allSoundOff(2);
-            expect(engine->getActiveVoiceCount() == 1,
-                   "scoped removal stopped an unrelated channel");
-            engine->process(left.data(), right.data(), 64);
-            float onset = 0.0f;
-            for (int sample = 0; sample < 8; ++sample)
-                onset = std::max(onset, std::abs(left[sample]));
-            // Removing the loud note cannot strike the remaining quiet one.
-            // Differencing its deleted displacement used to spike 30-73x
-            // above the preceding block, including into the output limiter.
-            expect(before > 1.0e-5f && onset < 2.0f * before,
-                   "scoped removal turned deleted displacement into a magnetic impulse");
-            engine->allSoundOff(8);
-            expect(engine->getActiveVoiceCount() == 0,
-                   "the surviving voice did not belong to the unrelated channel");
-        }
-}
-
-void testPickupPositionFollowsLengthAndNotTension()
-{
-    using Access = acustra::AcustraEngineTestAccess;
-    const float fretThree = 0.25f * std::exp2(3.0f / 12.0f);
-    const float fretFive = 0.25f * std::exp2(5.0f / 12.0f);
-    for (bool mpe : { false, true })
-    {
-        auto engine = std::make_unique<acustra::AcustraEngine>();
-        acustra::EngineParameters parameters;
-        parameters.capture = acustra::CaptureType::Magnetic;
-        engine->setParameters(parameters);
-        engine->prepare(48000, 64);
-        engine->setStringPerChannelMode(true);
-        if (mpe)
-            engine->setLowerZoneMemberCount(1);
-        const int channel = mpe ? 2 : 1;
-        const int string = channel - 1;
-        const int note = mpe ? 48 : 43;
-        engine->noteOn(note, 0.8f, channel);
-        std::array<float, 64> left {}, right {};
-        for (int block = 0; block < 100; ++block)
-            engine->process(left.data(), right.data(), 64);
-        expect(std::abs(Access::pickupFractions(*engine, string)[0]
-                        - fretThree) < 1.0e-5f,
-               "the fretted note has the wrong pickup geometry");
-        engine->setPitchBend(2.0f, channel);
-        for (int block = 0; block < 100; ++block)
-            engine->process(left.data(), right.data(), 64);
-        auto fraction = Access::pickupFractions(*engine, string);
-        expect(std::abs(fraction[0] - (mpe ? fretThree : fretFive)) < 1.0e-5f,
-               "a slide failed to move geometry or a tension bend moved it");
-        engine->noteOn(note + 4, 0.8f, channel);
-        const auto replucked = Access::pickupFractions(*engine, string);
-        expect(replucked[2] == fraction[0] && replucked[3] == fraction[1],
-               "a repluck discarded the previous note's pickup geometry");
-        if (mpe)
-        {
-            engine->setPitchBend(2.0f, 1);
-            for (int block = 0; block < 100; ++block)
-                engine->process(left.data(), right.data(), 64);
-            expect(std::abs(Access::pickupFractions(*engine, string)[0]
-                            - 0.25f * std::exp2(9.0f / 12.0f)) < 1.0e-5f,
-                   "an MPE manager slide did not move pickup geometry");
-        }
-        // A pickup past the new stopping point is outside the vibrating
-        // segment. Extreme host bends saturate at the endpoint, never wrap.
-        engine->setPitchBend(192.0f, 1);
-        for (int block = 0; block < 100; ++block)
-            engine->process(left.data(), right.data(), 64);
-        fraction = Access::pickupFractions(*engine, string);
-        expect(fraction[0] > 0.9999f && fraction[1] == 1.0f,
-               "an extreme slide let pickup geometry escape the string");
-        for (float sample : left)
-            expect(std::isfinite(sample), "sliding a magnetic note is nonfinite");
-    }
-}
 } // namespace
 
 int main()
 {
     testCaptureObservations();
     testCaptureLifecycle();
-    testUpperMicrophone();
     testLoadedPiezoElectricalResponse();
     testLoadedPiezoStaysWarmWhileUnheard();
-    testScopedRemovalDoesNotStrikeTheMagneticPickup();
-    testPickupPositionFollowsLengthAndNotTension();
     if (failures == 0)
         std::cout << "All Acustra capture tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

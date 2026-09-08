@@ -540,8 +540,8 @@ std::string modelControlsJson()
          << (renderBridgeModel == acustra::BridgeModel::FyldeSteel ? "fylde" : "original")
          << "\""
          << ", \"capture\": \""
-         << std::array { "stereo_mic", "treble_mic", "bass_mic",
-                               "saddle_piezo", "magnetic", "upper_mic" }[
+         << std::array { "stereo_mic", "mono_mic", "mono_mic",
+                               "piezo", "piezo", "mono_mic", "piezo", "mono_mic" }[
                       static_cast<std::size_t>(parameters.capture)]
          << "\", \"picking\": \""
          << std::array { "finger", "pick", "thumb" }[

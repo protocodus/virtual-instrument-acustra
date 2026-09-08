@@ -138,9 +138,13 @@ struct PhysicalCalibration
 // the old minimum-phase calibration over suppressed upper bands by 18-28 dB.
 // Keep the remaining string/bridge calibration above. These four neutral
 // factors are the auditioned model, not a new fit or an absolute-SPL claim.
+// 2026-09-08: nylon T60 and contact width calibrated on fixed Yamaha CM-40
+// pitches, then checked on disjoint pitches and the separate classical bank.
+// Both datasets improve; steel is unchanged. See Docs/realism-work.md and
+// Docs/realism-calibration-2026-09-08.json for assumptions and exact scores.
 inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     1.0f, 1.0f, 0.754677154f, 0.0f, 0.0f,
-    { 1.0f, 0.86484718f, 1.40369766f, 1.7688939f,
+    { 1.0f, 1.037816616f, 1.40369766f, 2.12267268f,
       0.0f, 1.12667139f, 0.0375f },
     { 0.749355465f, 1.53f, 0.52f, 0.643124355f,
       0.494086432f, 0.88819512f, 1.1859375f },

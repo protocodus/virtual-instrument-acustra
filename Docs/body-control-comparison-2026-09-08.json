@@ -1,0 +1,457 @@
+{
+  "analysis": "Identical eight notes, velocity100, 48kHz. Each note spectrum normalized independently before equal-weight band comparison. No perceptual realism claim.",
+  "tool_sha256": "541af1e45d0d78403e0f5e22d4c4d378063804f93696b13d8122edfba193bbb3",
+  "renderers": {
+    "current": {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra/build-dsp/AcustraPerformanceRenderer",
+      "sha256": "bd199d6df8bcd0426523df8abaef5e836435b12fa6bc07ba5cc630fc7e56f843"
+    },
+    "baseline": {
+      "source": "/private/var/folders/jl/cjv384t54g3bpst5xzs9zqnc0000gn/T/acustra-realism-20260908-8bca92he/recorded-final/renderer-snapshot",
+      "sha256": "3a12e40644eed7cca9881ba8735dd82335f8f5d82def5cd7512e3f925a2421a1"
+    }
+  },
+  "renders": {
+    "current-steel-parlor-original": {
+      "sha256": "1eb6b4e1caa0cd60c19c846d3eafc6f0eeb100f435c20249a56dd4a6f2fe5030",
+      "rms": 0.02005367912352085,
+      "peak": 0.19961674511432648,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-steel-parlor-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "parlor",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.055000003427267075
+    },
+    "current-steel-auditorium-original": {
+      "sha256": "e78e4c9ccfcdd5eaaa64f25dd44c5fd634f4e079f1d9c362ddb2023b99ffab51",
+      "rms": 0.021116144955158234,
+      "peak": 0.1945255696773529,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-steel-auditorium-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "auditorium",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.05500002205371857
+    },
+    "current-steel-dreadnought-original": {
+      "sha256": "c3065232652883fb277bc8e7a2230d4c57e5908c9e42ee30c02583302b04f921",
+      "rms": 0.03227943181991577,
+      "peak": 0.26572418212890625,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-steel-dreadnought-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "dreadnought",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.05499999225139618
+    },
+    "current-steel-jumbo-original": {
+      "sha256": "69e46f3714b669088328502742894fc8dabba364f905d89cf3fc39c5a0d1b73d",
+      "rms": 0.038667842745780945,
+      "peak": 0.2817288637161255,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-steel-jumbo-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "jumbo",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.055000003427267075
+    },
+    "current-nylon-parlor-original": {
+      "sha256": "ffe2c2f135ba138d3d3e3b1fa3b586e268ce7a68519292a64b8d1ecca95d5789",
+      "rms": 0.011216890998184681,
+      "peak": 0.10071812570095062,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-nylon-parlor-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "nylon",
+        "--body-shape",
+        "parlor",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.05500000715255737
+    },
+    "current-nylon-auditorium-original": {
+      "sha256": "f9aa4b0f3431e05d032f9e0aa93d2b3dfbddf3ee4ea072469d45b5b9df7f9f1c",
+      "rms": 0.009883654303848743,
+      "peak": 0.08122074604034424,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-nylon-auditorium-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "nylon",
+        "--body-shape",
+        "auditorium",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.054999999701976776
+    },
+    "current-nylon-dreadnought-original": {
+      "sha256": "d5d5b7aa28709bd2320d4134b74f5ccdbffd8d6643e0f98775500eb326244b85",
+      "rms": 0.012086053378880024,
+      "peak": 0.1012018695473671,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-nylon-dreadnought-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "nylon",
+        "--body-shape",
+        "dreadnought",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.05500001832842827
+    },
+    "current-nylon-jumbo-original": {
+      "sha256": "828587f030dc7e599485116de750ad6492b9cda57b0fad85b45f619f4e85305b",
+      "rms": 0.015287515707314014,
+      "peak": 0.11010634899139404,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-nylon-jumbo-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "nylon",
+        "--body-shape",
+        "jumbo",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.05499999225139618
+    },
+    "current-nylon-auditorium-bellido1978": {
+      "sha256": "a8d5012c36617785dddf434c2bf0092d4ebebeeca0f2f385eeb2fa028b1e4a3f",
+      "rms": 0.009900265373289585,
+      "peak": 0.09594075381755829,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-nylon-auditorium-bellido1978.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "nylon",
+        "--body-shape",
+        "auditorium",
+        "--body-material",
+        "cedar",
+        "--guitar-model",
+        "bellido1978"
+      ],
+      "audition_rms": 0.05499999225139618
+    },
+    "current-steel-parlor-washburn1897": {
+      "sha256": "b083bb3e3f78fddd171d1cf889a03ea04d8a314ebbb6372233a92a548c8f1d5c",
+      "rms": 0.021144846454262733,
+      "peak": 0.2285604625940323,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-steel-parlor-washburn1897.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "parlor",
+        "--body-material",
+        "spruce",
+        "--guitar-model",
+        "washburn1897"
+      ],
+      "audition_rms": 0.05500000715255737
+    },
+    "current-steel-auditorium-santacruz2022": {
+      "sha256": "3bb232029768599a87832b9dd66c68c1d4bef69020782100b611893e2098403c",
+      "rms": 0.0211479552090168,
+      "peak": 0.12330364435911179,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-steel-auditorium-santacruz2022.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "auditorium",
+        "--body-material",
+        "spruce",
+        "--guitar-model",
+        "santacruz2022"
+      ],
+      "audition_rms": 0.054999999701976776
+    },
+    "current-steel-dreadnought-martin2007": {
+      "sha256": "18fd0fdd9d96a7011dbce4460895b0e493062b1f79dbfd71da8557ce46ef1409",
+      "rms": 0.02114671841263771,
+      "peak": 0.13755165040493011,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/current-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/current-steel-dreadnought-martin2007.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "dreadnought",
+        "--body-material",
+        "spruce",
+        "--guitar-model",
+        "martin2007"
+      ],
+      "audition_rms": 0.05499999225139618
+    },
+    "baseline-steel-parlor-original": {
+      "sha256": "32a5f1d875f4a70a804ab62a82e67ac7cd9a38e1777646a167cd2583c3c232b6",
+      "rms": 0.023020543158054352,
+      "peak": 0.17686177790164948,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/baseline-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/baseline-steel-parlor-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "parlor",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.055000003427267075
+    },
+    "baseline-steel-auditorium-original": {
+      "sha256": "e78e4c9ccfcdd5eaaa64f25dd44c5fd634f4e079f1d9c362ddb2023b99ffab51",
+      "rms": 0.021116144955158234,
+      "peak": 0.1945255696773529,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/baseline-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/baseline-steel-auditorium-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "auditorium",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.05500002205371857
+    },
+    "baseline-steel-dreadnought-original": {
+      "sha256": "746e688b56a4e1e829b8e3f6a9fa2730d554b52570413e123e8f991da4c799dc",
+      "rms": 0.02387833409011364,
+      "peak": 0.1953589767217636,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/baseline-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/baseline-steel-dreadnought-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "dreadnought",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.05500000715255737
+    },
+    "baseline-steel-jumbo-original": {
+      "sha256": "a33115f9c21111b93f823207fb5ff5c969931fd25e4fceea34e436b1a3684813",
+      "rms": 0.02249079942703247,
+      "peak": 0.19452348351478577,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/baseline-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/baseline-steel-jumbo-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "steel",
+        "--body-shape",
+        "jumbo",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.055000003427267075
+    },
+    "baseline-nylon-parlor-original": {
+      "sha256": "51d118799f2883dd6cce9928fcfcbaad9fd0163c7358212a1aa23141daa5a5b9",
+      "rms": 0.016981087625026703,
+      "peak": 0.15688437223434448,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/baseline-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/baseline-nylon-parlor-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "nylon",
+        "--body-shape",
+        "parlor",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.054999999701976776
+    },
+    "baseline-nylon-auditorium-original": {
+      "sha256": "f9aa4b0f3431e05d032f9e0aa93d2b3dfbddf3ee4ea072469d45b5b9df7f9f1c",
+      "rms": 0.009883654303848743,
+      "peak": 0.08122074604034424,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/baseline-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/baseline-nylon-auditorium-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "nylon",
+        "--body-shape",
+        "auditorium",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.054999999701976776
+    },
+    "baseline-nylon-dreadnought-original": {
+      "sha256": "48c2b8722080dc702f38f5940a8eb49b9fcb03db29f0756892e291428d16558a",
+      "rms": 0.009808764792978764,
+      "peak": 0.08485816419124603,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/baseline-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/baseline-nylon-dreadnought-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "nylon",
+        "--body-shape",
+        "dreadnought",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.05500000715255737
+    },
+    "baseline-nylon-jumbo-original": {
+      "sha256": "b71935750b6eb692cba14af63b3d6fb3fc52810ea3af66e378a562e74e05ad68",
+      "rms": 0.009965553879737854,
+      "peak": 0.08388149738311768,
+      "command": [
+        "/private/tmp/acustra-body-final-20260908/baseline-renderer",
+        "/private/tmp/acustra-body-final-20260908/notes.txt",
+        "/private/tmp/acustra-body-final-20260908/baseline-nylon-jumbo-original.f32",
+        "stereo_mic",
+        "finger",
+        "--string-material",
+        "nylon",
+        "--body-shape",
+        "jumbo",
+        "--body-material",
+        "spruce"
+      ],
+      "audition_rms": 0.05500000715255737
+    }
+  },
+  "shape_distances_db": {
+    "current-steel": {
+      "parlor vs auditorium": 5.306053327616196,
+      "parlor vs dreadnought": 7.051348729930617,
+      "parlor vs jumbo": 7.85110845560342,
+      "auditorium vs dreadnought": 6.42407166953036,
+      "auditorium vs jumbo": 6.789887966948009,
+      "dreadnought vs jumbo": 6.475997737155329
+    },
+    "current-nylon": {
+      "parlor vs auditorium": 6.377489875548149,
+      "parlor vs dreadnought": 8.174083298075006,
+      "parlor vs jumbo": 8.198031899858956,
+      "auditorium vs dreadnought": 6.192623939142625,
+      "auditorium vs jumbo": 7.560343122293642,
+      "dreadnought vs jumbo": 6.570945036986594
+    },
+    "baseline-steel": {
+      "parlor vs auditorium": 4.123506152639122,
+      "parlor vs dreadnought": 4.90221170252352,
+      "parlor vs jumbo": 5.571258328429853,
+      "auditorium vs dreadnought": 3.446391819744511,
+      "auditorium vs jumbo": 4.705454395910736,
+      "dreadnought vs jumbo": 3.646410223675511
+    },
+    "baseline-nylon": {
+      "parlor vs auditorium": 4.712992963333279,
+      "parlor vs dreadnought": 6.567880143366578,
+      "parlor vs jumbo": 7.457144844360229,
+      "auditorium vs dreadnought": 3.531171511147046,
+      "auditorium vs jumbo": 4.616166512221509,
+      "dreadnought vs jumbo": 3.1220770890062983
+    }
+  },
+  "microphone_trim_selection": {
+    "protocol": "Fixed gain from preceding raw named-bank8note RMS sweep against Original/Auditorium of the same string material; rounded to two decimal places.",
+    "raw_renderer": {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra/build-dsp/AcustraPerformanceRenderer",
+      "sha256": "3951570ce968f167e89e0f432911060862644adeb9ad93b6d1261c60e8c86ada"
+    },
+    "raw_named_rms": {
+      "current-nylon-auditorium-bellido1978": 0.009000240825116634,
+      "current-steel-parlor-washburn1897": 0.006712650880217552,
+      "current-steel-auditorium-santacruz2022": 0.005793959833681583,
+      "current-steel-dreadnought-martin2007": 0.006526764016598463
+    },
+    "trims": {
+      "bellido1978": 1.1,
+      "washburn1897": 3.15,
+      "santacruz2022": 3.65,
+      "martin2007": 3.24
+    }
+  }
+}

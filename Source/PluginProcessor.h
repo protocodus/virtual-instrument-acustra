@@ -25,7 +25,10 @@ inline constexpr auto bridgeModel = "bridgeModel";
 inline constexpr auto upperMic = "upperMic";
 inline constexpr auto piezoLoading = "piezoLoading";
 
-inline constexpr int parameterCount = 15;
+inline constexpr auto captureMode = "captureMode";
+inline constexpr auto guitarModel = "guitarModel";
+
+inline constexpr int parameterCount = 17;
 } // namespace acustra::parameters
 
 class AcustraAudioProcessorEditor;

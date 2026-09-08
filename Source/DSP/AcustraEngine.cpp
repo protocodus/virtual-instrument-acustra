@@ -1,4 +1,5 @@
 #include "AcustraEngine.h"
+#include "GaussianApertureData.h"
 #include "MeasuredBodyData.h"
 #if defined(ACUSTRA_MEASURED_BRIDGE_DATA_HEADER)
 #include ACUSTRA_MEASURED_BRIDGE_DATA_HEADER
@@ -6,6 +7,7 @@
 #include "MeasuredBridgeData.h"
 #endif
 #include "MeasuredSteelBridgeData.h"
+#include "GuitarModelData.h"
 
 #include <algorithm>
 #include <cmath>
@@ -33,6 +35,15 @@ static_assert(detail::measuredNylonBridgeModes.size()
 static_assert(detail::measuredFyldeBridgeModes.size()
               <= ACUSTRA_BRIDGE_MODE_COUNT);
 
+static_assert(detail::bellidoBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
+static_assert(detail::bellidoBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
+static_assert(detail::washburnBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
+static_assert(detail::washburnBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
+static_assert(detail::santaCruzBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
+static_assert(detail::santaCruzBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
+static_assert(detail::martinBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
+static_assert(detail::martinBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
+
 struct ShapeSpec
 {
     float airHz;
@@ -40,13 +51,18 @@ struct ShapeSpec
     float bass;
     float volume;
     float asymmetry;
+    float qScale;
 };
 
+// Authored geometry directions: smaller plates move resonances upward and a
+// smaller cavity raises its air resonance. Q also separates the short, compact
+// response from a more sustained large body. These are deliberately audible
+// construction morphs, not measured dimensions of any named guitar.
 constexpr std::array<ShapeSpec, 4> shapeSpecs {{
-    { 112.0f, 1.045f, 0.90f, 1.11f, -0.012f }, // parlor
-    { 107.0f, 1.000f, 0.98f, 1.00f,  0.000f }, // auditorium/reference
-    { 101.0f, 0.972f, 1.08f, 0.97f,  0.009f }, // dreadnought
-    {  96.0f, 0.948f, 1.14f, 0.90f,  0.015f }  // jumbo
+    { 128.0f, 1.180f, 0.65f, 1.10f, -0.024f, 0.80f }, // parlor
+    { 107.0f, 1.000f, 0.98f, 1.00f,  0.000f, 1.00f }, // auditorium/reference
+    {  98.0f, 0.900f, 1.28f, 0.93f,  0.018f, 1.10f }, // dreadnought
+    {  88.0f, 0.820f, 1.55f, 0.84f,  0.030f, 1.22f }  // jumbo
 }};
 
 struct WoodSpec
@@ -222,8 +238,17 @@ float bentStringTension(float tension, float axialRigidity,
 // The optional Fylde bank supplies measured steel-string bridge mobility;
 // radiation still uses the existing bank. Nylon retains its own g34 bank.
 std::span<const detail::MeasuredBridgeMode> measuredBridgeBank(
-    StringMaterial material, BridgeModel model) noexcept
+    StringMaterial material, BridgeModel model,
+    GuitarModel guitar = GuitarModel::Original) noexcept
 {
+    switch (guitar)
+    {
+        case GuitarModel::Bellido1978: return detail::bellidoBridgeModes;
+        case GuitarModel::Washburn1897: return detail::washburnBridgeModes;
+        case GuitarModel::SantaCruzOM2022: return detail::santaCruzBridgeModes;
+        case GuitarModel::MartinD18V2007: return detail::martinBridgeModes;
+        default: break;
+    }
     if (material == StringMaterial::Steel)
     {
         if (model == BridgeModel::FyldeSteel)
@@ -234,8 +259,16 @@ std::span<const detail::MeasuredBridgeMode> measuredBridgeBank(
 }
 
 std::span<const detail::MeasuredBodyMode> measuredBodyBank(
-    StringMaterial material) noexcept
+    StringMaterial material, GuitarModel guitar) noexcept
 {
+    switch (guitar)
+    {
+        case GuitarModel::Bellido1978: return detail::bellidoBodyModes;
+        case GuitarModel::Washburn1897: return detail::washburnBodyModes;
+        case GuitarModel::SantaCruzOM2022: return detail::santaCruzBodyModes;
+        case GuitarModel::MartinD18V2007: return detail::martinBodyModes;
+        default: break;
+    }
     if (material == StringMaterial::Steel)
         return detail::measuredSteelBodyModes;
     return detail::measuredNylonBodyModes;
@@ -311,7 +344,8 @@ int wrapDelayIndex(int index) noexcept
 bool sameStringConstruction(const EngineParameters& a,
                             const EngineParameters& b) noexcept
 {
-    return a.stringMaterial == b.stringMaterial
+    return a.guitarModel == b.guitarModel
+        && a.stringMaterial == b.stringMaterial
         && (a.stringMaterial != StringMaterial::Steel
             || a.bridgeModel == b.bridgeModel)
         && a.tuning == b.tuning;
@@ -781,9 +815,23 @@ EngineParameters AcustraEngine::sanitise(const EngineParameters& source) noexcep
     result.stringMaterial = static_cast<StringMaterial>(enumOr(
         static_cast<int>(source.stringMaterial), 1,
         static_cast<int>(EngineParameters {}.stringMaterial)));
-    result.capture = static_cast<CaptureType>(enumOr(
-        static_cast<int>(source.capture), 6,
-        static_cast<int>(EngineParameters {}.capture)));
+    switch (source.capture)
+    {
+        case CaptureType::TrebleMic:
+        case CaptureType::BassMic:
+        case CaptureType::UpperMic:
+        case CaptureType::MonoMic:
+            result.capture = CaptureType::MonoMic;
+            break;
+        case CaptureType::SaddlePiezo:
+        case CaptureType::Magnetic:
+        case CaptureType::LoadedPiezo:
+            result.capture = CaptureType::Piezo;
+            break;
+        default:
+            result.capture = CaptureType::StereoMic;
+            break;
+    }
     result.tuning = static_cast<Tuning>(enumOr(
         static_cast<int>(source.tuning), 4,
         static_cast<int>(EngineParameters {}.tuning)));
@@ -793,6 +841,9 @@ EngineParameters AcustraEngine::sanitise(const EngineParameters& source) noexcep
     result.bridgeModel = static_cast<BridgeModel>(enumOr(
         static_cast<int>(source.bridgeModel), 1,
         static_cast<int>(EngineParameters {}.bridgeModel)));
+    result.guitarModel = static_cast<GuitarModel>(enumOr(
+        static_cast<int>(source.guitarModel), 4,
+        static_cast<int>(EngineParameters {}.guitarModel)));
     result.stringAge = clamp(source.stringAge, 0.0f, 1.0f);
     result.pluckPosition = clamp(source.pluckPosition, 0.0f, 1.0f);
     result.touch = clamp(source.touch, 0.0f, 1.0f);
@@ -968,7 +1019,6 @@ void AcustraEngine::OnePole::configureRate(float referencePole,
 void AcustraEngine::StringLoop::reset() noexcept
 {
     delay.fill(0.0f);
-    currentPickupFraction = targetPickupFraction;
     writeIndex = 0;
     allpassY1 = 0.0f;
     allpassY2 = 0.0f;
@@ -1101,8 +1151,6 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
                                          float releaseGain) noexcept
 {
     currentDelay += delaySmoothing * (targetDelay - currentDelay);
-    currentPickupFraction += delaySmoothing
-        * (targetPickupFraction - currentPickupFraction);
     const float delayed = readDelay(currentDelay);
     const float broad = broadLossFilter.process(
         delayed, broadLossCoefficient);
@@ -1349,10 +1397,12 @@ void AcustraEngine::reset() noexcept
 
 void AcustraEngine::resetSoundState() noexcept
 {
+    bodyRadiationDelay_.reset();
+    fadingBodyRadiationDelay_.reset();
     piezoLoadInput_ = piezoLoadOutput_ = 0.0f;
-    magneticDerivative_.reset();
-    magneticNeedsPriming_ = true;
     bridgeLoad_.reset();
+    for (auto& derivative : bridgePowerDerivatives_)
+        derivative.reset();
     bridgeVelocityDerivative_.reset();
     bridgeRotationDerivative_.reset();
     bridgeForceDerivative_.reset();
@@ -1402,13 +1452,14 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     const auto next = sanitise(targetParameters_);
     const bool constructionChanged = force
         || !sameStringConstruction(next, parameters_);
-    const bool bodyChanged = force || next.shape != parameters_.shape
+    const bool modelChanged = force || next.guitarModel != parameters_.guitarModel;
+    const bool bodyChanged = modelChanged || next.shape != parameters_.shape
         || next.bodyMaterial != parameters_.bodyMaterial;
     const bool ageChanged = force
         || std::abs(next.stringAge - parameters_.stringAge) > 1.0e-5f;
     const bool stringChanged = force
         || next.stringMaterial != parameters_.stringMaterial;
-    const bool bridgeChanged = stringChanged
+    const bool bridgeChanged = modelChanged || stringChanged
         || (next.stringMaterial == StringMaterial::Steel
             && next.bridgeModel != parameters_.bridgeModel);
     const bool tuningChanged = force || next.tuning != parameters_.tuning;
@@ -1513,6 +1564,7 @@ void AcustraEngine::updateControlState() noexcept
 void AcustraEngine::configureBody() noexcept
 {
     if (bodyConfigured_
+        && configuredGuitarModel_ == parameters_.guitarModel
         && configuredBodyShape_ == parameters_.shape
         && configuredBodyMaterial_ == parameters_.bodyMaterial
         && configuredBodyStringMaterial_ == parameters_.stringMaterial)
@@ -1532,7 +1584,10 @@ void AcustraEngine::configureBody() noexcept
     if (bodyConfigured_)
     {
         if (bodyModelFade_ >= 1.0f)
+        {
             fadingBodyModes_ = bodyModes_;
+            fadingBodyRadiationDelay_ = bodyRadiationDelay_;
+        }
         bodyModelFade_ = 0.0f;
     }
     else
@@ -1542,7 +1597,26 @@ void AcustraEngine::configureBody() noexcept
 
     const auto shape = shapeSpecs[static_cast<std::size_t>(parameters_.shape)];
     const auto wood = woodSpecs[static_cast<std::size_t>(parameters_.bodyMaterial)];
-    const auto bank = measuredBodyBank(parameters_.stringMaterial);
+    const auto bank = measuredBodyBank(parameters_.stringMaterial,
+                                       parameters_.guitarModel);
+    // A named guitar is unwarped at its own family/wood setting. Moving Shape
+    // or Wood away from that point is explicitly a construction variation.
+    const auto nativeShape = parameters_.guitarModel == GuitarModel::Washburn1897
+        ? BodyShape::Parlor : parameters_.guitarModel == GuitarModel::MartinD18V2007
+        ? BodyShape::Dreadnought : BodyShape::Auditorium;
+    const auto referenceShape = shapeSpecs[static_cast<std::size_t>(nativeShape)];
+    const auto referenceWood = woodSpecs[parameters_.guitarModel == GuitarModel::Bellido1978 ? 1 : 0];
+    const bool named = parameters_.guitarModel != GuitarModel::Original;
+    int delayAt48k = 0;
+    switch (parameters_.guitarModel)
+    {
+        case GuitarModel::Washburn1897: delayAt48k = experimental::Washburn_1897_radiationDelaySamples; break;
+        case GuitarModel::SantaCruzOM2022: delayAt48k = experimental::SCGC_OM3_radiationDelaySamples; break;
+        case GuitarModel::MartinD18V2007: delayAt48k = experimental::Martin_D18_radiationDelaySamples; break;
+        default: break;
+    }
+    bodyRadiationDelay_.reset();
+    bodyRadiationDelay_.configure(static_cast<float>(delayAt48k * sampleRate_ / 48000.0));
 
     for (int index = 0; index < bodyModeCount; ++index)
     {
@@ -1557,11 +1631,12 @@ void AcustraEngine::configureBody() noexcept
         const bool lowBodyMode = measured.frequency > 85.0f
             && measured.frequency < 145.0f;
         const float lowModeMorph = lowBodyMode
-            ? shape.airHz / 107.0f : shape.modeScale;
+            ? shape.airHz / (named ? referenceShape.airHz : 107.0f)
+            : shape.modeScale / (named ? referenceShape.modeScale : 1.0f);
         float frequency = measured.frequency * lowModeMorph
-            * wood.frequencyScale
+            * (wood.frequencyScale / (named ? referenceWood.frequencyScale : 1.0f))
             * physicalCalibration_.bodyFrequencyScale
-            * (1.0f + alternating * shape.asymmetry
+            * (1.0f + alternating * (shape.asymmetry - (named ? referenceShape.asymmetry : 0.0f))
                / std::sqrt(static_cast<float>(index + 1)));
         const float highestMode = 0.46f * static_cast<float>(sampleRate_);
         const bool audibleAtThisRate = frequency < highestMode;
@@ -1569,8 +1644,10 @@ void AcustraEngine::configureBody() noexcept
 
         const float upper = clamp(std::log2(std::max(frequency, 120.0f)
             / 120.0f) / 6.0f, 0.0f, 1.0f);
-        const float q = clamp(measured.q * wood.qScale
-            * physicalCalibration_.bodyQScale, 4.0f, 150.0f);
+        const float q = clamp(measured.q
+            * (shape.qScale / (named ? referenceShape.qScale : 1.0f))
+            * (wood.qScale / (named ? referenceWood.qScale : 1.0f))
+            * physicalCalibration_.bodyQScale, named ? 1.0f : 4.0f, 150.0f);
         const float radius = std::exp(-pi * frequency
                                       / (q * static_cast<float>(sampleRate_)));
         const std::complex<float> pole = std::polar(
@@ -1578,14 +1655,17 @@ void AcustraEngine::configureBody() noexcept
         mode.poleReal = pole.real();
         mode.poleImaginary = audibleAtThisRate ? pole.imag() : 0.0f;
 
-        const float bassTilt = 1.0f + (shape.bass - 1.0f)
+        const float bassTilt = 1.0f + (shape.bass / (named ? referenceShape.bass : 1.0f) - 1.0f)
             * std::exp(-frequency / 520.0f);
-        const float brilliance = std::pow(wood.brightness, upper);
+        const float brilliance = std::pow(wood.brightness / (named ? referenceWood.brightness : 1.0f), upper);
         const float residueTilt = std::exp2(
             physicalCalibration_.residueTiltDbPerOctave
             * std::log2(frequency / 1000.0f) / 6.02059991f);
         const float drive = audibleAtThisRate
-            ? shape.volume * wood.radiation * bassTilt * brilliance
+            ? detail::guitarMicrophoneTrims[static_cast<std::size_t>(parameters_.guitarModel)]
+                * (shape.volume / (named ? referenceShape.volume : 1.0f))
+                * (wood.radiation / (named ? referenceWood.radiation : 1.0f))
+                * bassTilt * brilliance
                 * residueTilt
                 * (lowBodyMode ? physicalCalibration_.lowBodyModeGain : 1.0f)
             : 0.0f;
@@ -1632,6 +1712,7 @@ void AcustraEngine::configureBody() noexcept
         if (bodyConfigured_)
             mode.reset();
     }
+    configuredGuitarModel_ = parameters_.guitarModel;
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
     configuredBodyStringMaterial_ = parameters_.stringMaterial;
@@ -1698,8 +1779,14 @@ void AcustraEngine::configureBridge() noexcept
     };
 
     const auto bank = measuredBridgeBank(parameters_.stringMaterial,
-                                         parameters_.bridgeModel);
-    const float scale = physicalCalibration_.bridgeMobilityScale;
+                                         parameters_.bridgeModel, parameters_.guitarModel);
+    // Additional bodies already have a qualified absolute mobility. The old
+    // corpus compensation and high-band conductance floor belong to Original.
+    // Keep the fitting control as a relative multiplier around the new body's
+    // measured response, with unit gain at the shipped calibration.
+    const float scale = physicalCalibration_.bridgeMobilityScale
+        / (parameters_.guitarModel == GuitarModel::Original ? 1.0f
+           : fittedPhysicalCalibration.bridgeMobilityScale);
     for (std::size_t index = 0;
          index < static_cast<std::size_t>(bridgeModeCount); ++index)
     {
@@ -1721,7 +1808,8 @@ void AcustraEngine::configureBridge() noexcept
     // rocking pair, so it enters as heave alone.
     const auto plate = plateConductanceMode(physicalCalibration_);
     configure(static_cast<std::size_t>(bridgeModeCount), plate.frequency,
-              plate.q, plate.weight, 0.0f, 0.0f);
+              plate.q, parameters_.guitarModel == GuitarModel::Original ? plate.weight : 0.0f,
+              0.0f, 0.0f);
     bridgeLoad_.pastHeave = 0.0f;
     bridgeLoad_.pastRock = 0.0f;
 }
@@ -1745,7 +1833,7 @@ float AcustraEngine::bridgePhaseDelay(float frequency,
     std::complex<float> mobilityCross {};
     std::complex<float> mobilityRock {};
     for (const auto& measured
-         : measuredBridgeBank(parameters_.stringMaterial, parameters_.bridgeModel))
+         : measuredBridgeBank(parameters_.stringMaterial, parameters_.bridgeModel, parameters_.guitarModel))
     {
         if (measured.frequency >= 0.45f * rate
             || !includeMeasuredBridgeMode(measured))
@@ -1754,7 +1842,9 @@ float AcustraEngine::bridgePhaseDelay(float frequency,
             pi * measured.frequency / rate);
         const float damping = omega / (2.0f * measured.q);
         const std::complex<float> shape
-            = physicalCalibration_.bridgeMobilityScale * s
+            = (physicalCalibration_.bridgeMobilityScale
+               / (parameters_.guitarModel == GuitarModel::Original ? 1.0f
+                  : fittedPhysicalCalibration.bridgeMobilityScale)) * s
             / (s * s + 2.0f * damping * s + omega * omega);
         mobilityHeave += measured.heave * shape;
         mobilityCross += measured.cross * shape;
@@ -1762,7 +1852,8 @@ float AcustraEngine::bridgePhaseDelay(float frequency,
     }
 
     const auto plate = plateConductanceMode(physicalCalibration_);
-    if (plate.weight > 0.0f && plate.frequency < 0.45f * rate)
+    if (parameters_.guitarModel == GuitarModel::Original
+        && plate.weight > 0.0f && plate.frequency < 0.45f * rate)
     {
         const float omega = bilinear * std::tan(pi * plate.frequency / rate);
         const float damping = omega / (2.0f * plate.q);
@@ -2137,17 +2228,9 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         * magnitudeForOnePoleMix(lowpassCoefficient, mutedHighLoss, lossOmega);
     const float loopGain = desiredPeriodGain / std::max(filterGain, 0.50f);
 
-    // Conventional/manager pitch bend slides the stopping point; a member
-    // bend and vibrato change tension at fixed length. Keep observation
-    // geometry apart from delay (which also carries dispersion and tension),
-    // and in the loop so a stolen string's tail retains its own length.
-    const float slide = performedBend - memberBendSemitones;
-    const float pickupFraction = clamp(0.25f * std::exp2(
-        (static_cast<float>(fret) + slide) / 12.0f), 0.0f, 1.0f);
     for (int polarisation = 0; polarisation < 2; ++polarisation)
     {
         auto& loop = voice.loops[static_cast<std::size_t>(polarisation)];
-        loop.targetPickupFraction = pickupFraction;
         // The pair is split by an end correction, not by the body: see
         // polarisationEndCorrectionMetres in FittedPhysicalData.h for the
         // measurement and its bound. The whole difference lengthens the
@@ -2290,20 +2373,9 @@ float AcustraEngine::effectiveTouch(float velocity) const noexcept
         ? physicalCalibration_.steel : physicalCalibration_.nylon;
     const float touch = clamp(parameters_.touch + physical.velocityBrightnessDepth
         * (velocity - 0.5f), 0.0f, 1.0f);
-    // A finite contact rounds a released string and suppresses high modes:
-    // https://webhome.phy.duke.edu/~dtl/136126/136m3_gui.html
-    // Pick/Thumb select the narrow/broad halves of the existing calibrated
-    // contact control, after its velocity response. These are playable ranges,
-    // not measured thumb dimensions or a new plectrum solver. In particular,
-    // pick material and attack depth do not imply a universal brightness law:
-    // https://doi.org/10.21008/j.0860-6897.2025.2.05
-    // Finger retains the original full range, including its exact arithmetic.
-    // ponytail: reuse the fitted aperture; replace with contact measurements
-    // when matching pick/finger/thumb recordings become available.
-    if (parameters_.picking == PickingTechnique::Pick)
-        return 0.5f + 0.5f * touch;
-    if (parameters_.picking == PickingTechnique::Thumb)
-        return 0.5f * touch;
+    // Touch and velocity keep one displacement/noise law for all techniques.
+    // Picking styles change the contact footprint and panel-based position
+    // in initialisePluck; their distinction must survive saturated touch.
     return touch;
 }
 
@@ -2362,8 +2434,16 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // A player's hand stays at an approximately fixed physical distance from
     // the bridge.  Express that distance relative to each fretted string only
     // when constructing its initial condition.
+    // Authored playing styles: a bridgeward narrow Pick, calibrated Finger,
+    // and neckward broad Thumb. Finite width and pluck position change the
+    // excited modes (Traube/Smith, DAFx00); these ratios are not measured
+    // dimensions or universal laws of a plectrum/finger. The panel remains
+    // the base hand position; explicit MPE position below takes precedence.
+    const float pickingDistance = parameters_.picking == PickingTechnique::Pick
+        ? 0.55f : parameters_.picking == PickingTechnique::Thumb ? 1.60f : 1.0f;
     const float distanceFromBridge = (0.045f
-        + 0.135f * parameters_.pluckPosition) * physical.pluckDistanceScale;
+        + 0.135f * parameters_.pluckPosition) * physical.pluckDistanceScale
+        * pickingDistance;
     // No two plucks land in the same place. The archtop's three takes of each
     // note put their pluck points a median 0.02 of the string length apart
     // (Traube-Smith comb on the soft rows, where the estimate is clean),
@@ -2439,24 +2519,79 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             + (voice.fret >= 17 ? 1.5f : 0.0f);
 #endif
         const int modes = std::max(voice.harmonic, 1);
+        // A fixed style ratio preserves a finite difference even when Touch
+        // reaches either endpoint. Finger retains its calibrated arithmetic.
+        const float contactSamples = parameters_.picking == PickingTechnique::Pick
+            ? 0.5f * apertureSamples
+            : parameters_.picking == PickingTechnique::Thumb
+                ? 2.0f * apertureSamples : apertureSamples;
         const float aperture = registeredPluckAperture(
-            apertureSamples, physical.apertureScale, apertureReferenceDelay,
+            contactSamples, physical.apertureScale, apertureReferenceDelay,
             currentReferenceLength,
             physicalCalibration_.apertureRegisterExponent);
-        const auto triangleAt = [localPosition] (float phase)
+        const auto triangleAt = [localPosition] (double phase)
         {
-            phase -= std::floor(phase);
             return phase < localPosition
                 ? phase / localPosition
-                : (1.0f - phase) / (1.0f - localPosition);
+                : (1.0 - phase) / (1.0 - localPosition);
         };
-        const auto smoothedTriangleAt = [&] (float phase)
+        // Continuous periodic Gaussian contact profile, sigma=aperture:
+        // the same variance as the former [1,4,6,4,1]/16 spatial atoms.
+        // This is a numerical profile candidate, not a measured finger shape.
+        const double sigma = aperture;
+        const double gaussianPi = std::acos(-1.0);
+        const double cornerScale = 1.0
+            / (static_cast<double>(localPosition) * (1.0 - localPosition));
+        const double epsilon = std::numeric_limits<double>::epsilon();
+        const bool uniformToPrecision = std::exp(
+            -2.0 * gaussianPi * gaussianPi * sigma * sigma)
+            * cornerScale / 6.0 <= epsilon;
+        // The reset delay is already the exact endpoint-subtracted uniform
+        // wave. Avoid evaluating the same constant at every sample.
+        if (uniformToPrecision)
+            continue;
+        // q(z)=sigma*phi(|z|/sigma)-|z|*Phi(-|z|/sigma), q''=G-delta.
+        // For R>=1 the four omitted image tails sum to no more than
+        // 4*sigma*(1+sigma)*phi(R)*cornerScale. This R bounds that by epsilon.
+        const double radius = sigma * std::sqrt(-2.0 * std::log(
+            epsilon / (4.0 * sigma * (1.0 + sigma) * cornerScale)));
+        const double inverseSigma = 1.0 / sigma;
+        const auto gaussianCorner = [] (double z)
         {
-            return (triangleAt(phase - 2.0f * aperture)
-                + 4.0f * triangleAt(phase - aperture)
-                + 6.0f * triangleAt(phase)
-                + 4.0f * triangleAt(phase + aperture)
-                + triangleAt(phase + 2.0f * aperture)) / 16.0f;
+            // q(10) < 7.48e-25; farther tails are below float precision.
+            if (z >= 10.0)
+                return 0.0;
+            const double scaled = z * 64.0;
+            const int index = static_cast<int>(scaled);
+            const double t = scaled - index;
+            const auto& a = gaussianAperture::cornerTable[index];
+            const auto& b = gaussianAperture::cornerTable[index + 1];
+            const double da = a[1] / 64.0;
+            const double db = b[1] / 64.0;
+            const double difference = b[0] - a[0];
+            return a[0] + t * (da + t * (3.0 * difference - 2.0 * da - db
+                + t * (-2.0 * difference + da + db)));
+        };
+        const auto periodicCorner = [&] (double phase)
+        {
+            double sum = 0.0;
+            const int first = static_cast<int>(std::ceil(phase - radius));
+            const int last = static_cast<int>(std::floor(phase + radius));
+            for (int image = first; image <= last; ++image)
+            {
+                const double distance = std::abs(phase - image);
+                sum += sigma * gaussianCorner(distance * inverseSigma);
+            }
+            return sum;
+        };
+        const auto nearestCorner = [&] (double phase)
+        {
+            // The caller's phase is in (-1,1). With radius < 1/2, at most
+            // the nearest periodic image contributes to the existing sum.
+            const double absolute = std::abs(phase);
+            const double distance = std::min(absolute, 1.0 - absolute);
+            return distance <= radius
+                ? sigma * gaussianCorner(distance * inverseSigma) : 0.0;
         };
         // A light touch at the nth node leaves exactly the modes that have a
         // node there. Averaging the released shape over its n cyclic shifts is
@@ -2465,29 +2600,88 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // and no free constant, and the surviving modes keep precisely the
         // amplitude the pluck gave them - which is why a harmonic comes out
         // quieter than the stopped note, as one does on a guitar.
-        const auto releasedAt = [&] (float phase)
+        const auto initialise = [&] (const auto& cornerAt)
         {
-            if (modes <= 1)
-                return smoothedTriangleAt(phase);
-            float sum = 0.0f;
-            for (int shift = 0; shift < modes; ++shift)
-                sum += smoothedTriangleAt(phase + static_cast<float>(shift)
-                                                / static_cast<float>(modes));
-            return sum / static_cast<float>(modes);
+            const auto smoothedTriangleAt = [&] (double wrapped)
+            {
+                return static_cast<float>(triangleAt(wrapped) + cornerScale
+                    * (cornerAt(wrapped) - cornerAt(wrapped - localPosition)));
+            };
+            const auto releasedAt = [&] (float phase)
+            {
+                // Ordinary pluck phases already lie in [0,1), so neither
+                // triangle nor kernel requires another floor operation.
+                if (modes <= 1)
+                    return smoothedTriangleAt(phase);
+                float sum = 0.0f;
+                for (int shift = 0; shift < modes; ++shift)
+                {
+                    const float shifted = phase + static_cast<float>(shift)
+                                                  / static_cast<float>(modes);
+                    sum += smoothedTriangleAt(static_cast<double>(shifted)
+                                              - std::floor(shifted));
+                }
+                return sum / static_cast<float>(modes);
+            };
+            const float endpoint = releasedAt(0.0f);
+            // Subtracting a constant changes only DC. Keep the signed wave:
+            // rectification would introduce corners absent from the contact.
+            const auto fillRange = [&]<bool smoothed> (int first, int last)
+            {
+                for (int sample = first; sample < last; ++sample)
+                {
+                    const float phase = static_cast<float>(sample)
+                                      / static_cast<float>(length);
+                    const float released = smoothed ? releasedAt(phase)
+                        : static_cast<float>(triangleAt(phase));
+                    const float triangle = released - endpoint;
+                    // reset() establishes writeIndex=0. These samples never
+                    // need the general circular-index wrap operation.
+                    loop.delay[static_cast<std::size_t>(maximumDelaySamples - sample - 1)]
+                        = amplitude * polarisationGain * triangle;
+                }
+            };
+            if (modes == 1 && radius < 0.5)
+            {
+                // Away from the three corner images, the bounded kernel is
+                // exactly zero and the original triangle is unchanged. Pad
+                // each sample interval to cover float phase-rounding at its
+                // edges; cornerAt retains the exact original radius check.
+                const auto firstAt = [&] (double phase)
+                {
+                    return std::clamp(static_cast<int>(std::floor(phase * length)) - 1,
+                                      0, length);
+                };
+                const auto lastAt = [&] (double phase)
+                {
+                    return std::clamp(static_cast<int>(std::ceil(phase * length)) + 2,
+                                      0, length);
+                };
+                const std::array<std::array<int, 2>, 3> supports {{
+                    { 0, lastAt(radius) },
+                    { firstAt(localPosition - radius), lastAt(localPosition + radius) },
+                    { firstAt(1.0 - radius), length }
+                }};
+                int filled = 0;
+                for (const auto& support : supports)
+                {
+                    if (support[0] > filled)
+                        fillRange.template operator()<false>(filled, support[0]);
+                    filled = std::max(filled, support[0]);
+                    if (support[1] > filled)
+                        fillRange.template operator()<true>(filled, support[1]);
+                    filled = std::max(filled, support[1]);
+                }
+            }
+            else
+                fillRange.template operator()<true>(0, length);
         };
-        const float endpoint = releasedAt(0.0f);
-        // Subtracting a constant only changes the travelling wave's DC term.
-        // Keep the signed result: rectifying it would add corners and modes
-        // absent from the linear contact filter (whose transfer is cos^4(pi*n*a)).
-        for (int sample = 1; sample <= length; ++sample)
-        {
-            const float phase = static_cast<float>(sample - 1)
-                              / static_cast<float>(length);
-            const float triangle = releasedAt(phase) - endpoint;
-            loop.delay[static_cast<std::size_t>(wrapDelayIndex(
-                loop.writeIndex - sample))]
-                = amplitude * polarisationGain * triangle;
-        }
+        // Specialize outside the sample loop. Broad contacts retain every
+        // periodic image selected by the same analytic tail bound.
+        if (radius < 0.5)
+            initialise(nearestCorner);
+        else
+            initialise(periodicCorner);
     }
 
     if (steel)
@@ -2542,10 +2736,6 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
 void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
                                        bool clearDelay) noexcept
 {
-    // Scoped sound-off and zone removal delete a wave, not move the string.
-    // Surviving channels keep ringing without a false pickup-velocity impulse.
-    if (clearDelay)
-        magneticNeedsPriming_ = true;
     voice.played = false;
     voice.keyDown = false;
     voice.pedalHeld = false;
@@ -2612,7 +2802,11 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
 void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
 {
     voice.pedalHeld = false;
-    if (voice.fingerLift > 0.0f && voice.fret > 0 && voice.harmonic == 1)
+    // Lifting a keyboard key normally damps its note. Releasing stored fret
+    // displacement is an active pull-off, requested only by CC68. Check the
+    // switch here too: a sustain-held release must not become a delayed
+    // articulation after the player has left legato mode.
+    if (legato_ && voice.fingerLift > 0.0f && voice.fret > 0 && voice.harmonic == 1)
     {
         liftFinger(voice, stringIndex, voice.openMidi);
         return;
@@ -3323,7 +3517,9 @@ void AcustraEngine::noteOff(int midiNote, int midiChannel,
 {
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return;
-    const float lift = std::isfinite(fingerLift)
+    // MIDI release speed alone does not request a new pluck. In particular,
+    // fast key-up must not retune a fretted note to open and add fret energy.
+    const float lift = legato_ && std::isfinite(fingerLift)
         ? clamp(fingerLift, 0.0f, 1.0f) : 0.0f;
     if (releaseLegatoNote(midiNote, midiChannel, lift))
         return;
@@ -3385,7 +3581,10 @@ void AcustraEngine::setLegato(bool on) noexcept
     // only stops the fretting hand's stack being tracked, so the notes under
     // the top one are forgotten rather than pulled off to.
     for (auto& voice : voices_)
+    {
         voice.legatoHeldCount = 0;
+        voice.fingerLift = 0.0f;
+    }
 }
 
 // A guitarist hammers on to the string already under the hand, so prefer the
@@ -3606,6 +3805,8 @@ void AcustraEngine::setBridgeCouplingEnabled(bool enabled) noexcept
         return;
     bridgeCouplingEnabled_ = enabled;
     bridgeLoad_.reset();
+    for (auto& derivative : bridgePowerDerivatives_)
+        derivative.reset();
     bridgeVelocityDerivative_.reset();
     bridgeRotationDerivative_.reset();
     bridgeForceDerivative_.reset();
@@ -3783,6 +3984,45 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
 
 }
 
+void AcustraEngine::RadiationDelay::configure(float delaySamples) noexcept
+{
+    samples = delaySamples;
+    const int whole = static_cast<int>(samples);
+    firstTap = whole - 2;
+    const double position = 2.0 + double(samples) - whole;
+    // Centered fifth-order Lagrange interpolation avoids the treble loss of
+    // a two-tap delay at 44.1/88.2 kHz. All fitted delays are >=6.66 samples
+    // even at 8 kHz, so every tap is causal. Coefficients update off the
+    // per-sample path, and integer delays have exactly one unit coefficient.
+    for (int tap = 0; tap < 6; ++tap)
+    {
+        double weight = 1;
+        for (int other = 0; other < 6; ++other)
+            if (other != tap)
+                weight *= (position - other) / (tap - other);
+        weights[static_cast<std::size_t>(tap)] = static_cast<float>(weight);
+    }
+}
+
+AcustraEngine::BodyOutput AcustraEngine::RadiationDelay::process(BodyOutput input) noexcept
+{
+    if (!(samples > 0.0f))
+        return input;
+    history[static_cast<std::size_t>(writeIndex)] = input;
+    constexpr int capacity = static_cast<int>(std::tuple_size_v<decltype(history)>);
+    BodyOutput result;
+    for (int tap = 0; tap < 6; ++tap)
+    {
+        const auto& value = history[static_cast<std::size_t>((writeIndex - firstTap - tap + capacity) % capacity)];
+        const float weight = weights[static_cast<std::size_t>(tap)];
+        result.left += weight * value.left;
+        result.right += weight * value.right;
+        result.upper += weight * value.upper;
+    }
+    writeIndex = (writeIndex + 1) % capacity;
+    return result;
+}
+
 AcustraEngine::BodyOutput AcustraEngine::renderBody(float bridgeInput,
                                                    float bodyMoment) noexcept
 {
@@ -3804,10 +4044,10 @@ AcustraEngine::BodyOutput AcustraEngine::renderBody(float bridgeInput,
         return output;
     };
 
-    BodyOutput result = renderBank(bodyModes_);
+    BodyOutput result = bodyRadiationDelay_.process(renderBank(bodyModes_));
     if (bodyModelFade_ < 1.0f)
     {
-        const BodyOutput previous = renderBank(fadingBodyModes_);
+        const BodyOutput previous = fadingBodyRadiationDelay_.process(renderBank(fadingBodyModes_));
         const float mix = bodyModelFade_;
         result.left = previous.left + mix * (result.left - previous.left);
         result.right = previous.right + mix * (result.right - previous.right);
@@ -3827,39 +4067,6 @@ float AcustraEngine::renderLoadedPiezo(float force) noexcept
     if (std::abs(piezoLoadOutput_) < 1.0e-30f)
         piezoLoadOutput_ = 0.0f;
     return piezoLoadOutput_;
-}
-
-float AcustraEngine::renderMagneticPickup(bool crossingRelease) noexcept
-{
-    // Linear, vertically sensitive point pickup at L_open/4 (162 mm from
-    // the bridge on the steel scale). This is a chosen sensor geometry, not
-    // a measured soundhole position or a named pickup's transfer function.
-    // A fret changes L but does not move a pickup mounted on the guitar.
-    // Faraday's law gives voltage proportional to local string velocity in
-    // the small-excursion limit; use the engine's 48 kHz-normalised derivative.
-    // ponytail: no measured magnetic field or loaded coil response; add
-    // string-specific flux gradients and electrical impedance when captured.
-    float displacement = 0.0f;
-    if (parameters_.stringMaterial == StringMaterial::Steel)
-        for (const auto& voice : voices_)
-        {
-            displacement += voice.loops[0].displacementAt(
-                voice.loops[0].currentPickupFraction);
-            if (voice.tailActive)
-                displacement += voice.tailLoop.displacementAt(
-                    voice.tailLoop.currentPickupFraction);
-        }
-    if (magneticNeedsPriming_)
-    {
-        magneticDerivative_.reset(displacement);
-        magneticNeedsPriming_ = false;
-    }
-    const float rate = static_cast<float>(sampleRate_) / 48000.0f;
-    const float velocity = crossingRelease
-        ? magneticDerivative_.processAcrossRelease(displacement, rate)
-        : magneticDerivative_.process(displacement, rate);
-    // Nylon and its nonferromagnetic winding cannot induce this signal.
-    return parameters_.stringMaterial == StringMaterial::Steel ? velocity : 0.0f;
 }
 
 void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
@@ -4065,18 +4272,30 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         // Power crosses the saddle in both coordinates, so each branch's is
         // the heave product plus the rocking one; reading only the first
         // would let the tail spring look like it stored negative energy.
-        const float reactionMomentRate
-            = motion(bridgeForceMomentDerivative_, reactionMoment);
+        motion(bridgeForceMomentDerivative_, reactionMoment);
         const float bodyMomentRate
             = motion(bridgeBodyMomentDerivative_, bodyMomentWave);
-        const float tailMomentRate
-            = motion(bridgeTailMomentDerivative_, tailMomentWave);
-        lastBridgePower_ = lastBridgeVelocity_ * lastBridgeReactionForce_
-            + bridgeRotationRate * reactionMomentRate;
-        lastBridgeBodyPower_ = lastBridgeVelocity_ * lastBridgeBodyForce_
-            + bridgeRotationRate * bodyMomentRate;
-        lastBridgeTailPower_ = lastBridgeVelocity_ * lastBridgeTailForce_
-            + bridgeRotationRate * tailMomentRate;
+        motion(bridgeTailMomentDerivative_, tailMomentWave);
+        // Account for the complete zero-state trajectory of the passive load.
+        // Audio priming suppresses the displacement shape's initial boundary
+        // step; using that primed derivative in the work ledger drops its
+        // positive input work but still counts the following elastic return.
+        // The independent histories keep that initial work, without changing
+        // the derivatives that drive radiation or the string pitch observer.
+        const std::array<float, 8> portWaves {
+            bridgeDisplacement, bridgeRotation, reactionWave, reactionMoment,
+            bodyForceWave, bodyMomentWave, tailForceWave, tailMomentWave
+        };
+        std::array<float, 8> portRates {};
+        for (std::size_t index = 0; index < portWaves.size(); ++index)
+            portRates[index] = bridgePowerDerivatives_[index].process(
+                portWaves[index], sampleRateRatio);
+        lastBridgePower_ = portRates[0] * portRates[2]
+                         + portRates[1] * portRates[3];
+        lastBridgeBodyPower_ = portRates[0] * portRates[4]
+                             + portRates[1] * portRates[5];
+        lastBridgeTailPower_ = portRates[0] * portRates[6]
+                             + portRates[1] * portRates[7];
 
         float directLeft = 0.0f;
         float directRight = 0.0f;
@@ -4114,10 +4333,12 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         // response, and apply
         // Width to both paths so zero is genuinely mono.
         const float directMono = 0.5f * (directLeft + directRight);
+        const float observationWidth = parameters_.guitarModel >= GuitarModel::Washburn1897
+            ? 0.0f : width_;
         const float spreadDirectLeft = directMono
-            + width_ * (directLeft - directMono);
+            + observationWidth * (directLeft - directMono);
         const float spreadDirectRight = directMono
-            + width_ * (directRight - directMono);
+            + observationWidth * (directRight - directMono);
         const float bodyScale = 0.68f + 0.72f * bodyAmount_;
         const float directScale = 0.10f + 0.10f * (1.0f - bodyAmount_);
         const float monoBody = 0.5f * (body.left + body.right);
@@ -4146,32 +4367,16 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
                 if (std::abs(target - mix) < 1.0e-4f)
                     mix = target;
             }
-            float magnetic = 0.0f;
-            if (captureMix_[4] > 0.0f)
-                magnetic = renderMagneticPickup(crossingRelease);
-            else
-                magneticNeedsPriming_ = true;
-            // Ideal piezo charge is proportional to the net saddle force;
-            // no microphone radiation filter belongs on this observation.
-            // https://www.pcb.com/resources/technical-information/introduction-to-force-sensors
-            // Pickup sensitivities are unit-normalised, not volts or SPL.
-            // The ideal SaddlePiezo remains unloaded; LoadedPiezo adds only
-            // the measured RC loading above. No sensor/preamp tonal EQ is added.
+            // One physical microphone, with its own measured complex response,
+            // avoids phase cancellation from summing two spaced microphones.
+            // Its identical L/R copies and the loaded saddle piezo ignore width.
             const float mono = radiationReferenceGain * outputGain_
-                * (captureMix_[1]
-                       * (bodyScale * body.left + directScale * directLeft)
-                   + captureMix_[2]
-                       * (bodyScale * body.right + directScale * directRight)
-                   + captureMix_[3] * lastBridgeReactionForce_
-                   + captureMix_[4] * magnetic
-                   + captureMix_[5]
+                * (captureMix_[7]
                        * (bodyScale * body.upper + directScale * directMono)
                    + captureMix_[6] * loadedPiezo);
             outputLeft = captureMix_[0] * outputLeft + mono;
             outputRight = captureMix_[0] * outputRight + mono;
         }
-        else
-            magneticNeedsPriming_ = true;
 
         // Preserve ordinary notes exactly; only the final 1 dB of headroom is
         // compressed for pathological automation and dense repicks.

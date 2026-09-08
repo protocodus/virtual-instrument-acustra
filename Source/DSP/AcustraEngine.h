@@ -15,7 +15,7 @@
 // each generated header. AcustraEngine.cpp static-asserts that both fit, so a
 // regenerated header that grows fails to build rather than to sound.
 #if !defined(ACUSTRA_BRIDGE_MODE_COUNT)
-#define ACUSTRA_BRIDGE_MODE_COUNT 50
+#define ACUSTRA_BRIDGE_MODE_COUNT 56
 #endif
 #if !defined(ACUSTRA_BODY_MODE_COUNT)
 #define ACUSTRA_BODY_MODE_COUNT 141
@@ -46,6 +46,8 @@ enum class StringMaterial
     Steel
 };
 
+// Legacy numeric values remain valid for offline renderers; sanitisation maps
+// retired microphones to MonoMic and retired pickups to loaded Piezo.
 enum class CaptureType
 {
     StereoMic,
@@ -54,7 +56,9 @@ enum class CaptureType
     SaddlePiezo,
     Magnetic,
     UpperMic,
-    LoadedPiezo
+    LoadedPiezo,
+    MonoMic,
+    Piezo = LoadedPiezo
 };
 
 enum class Tuning
@@ -79,6 +83,15 @@ enum class BridgeModel
     FyldeSteel
 };
 
+enum class GuitarModel
+{
+    Original,
+    Bellido1978,
+    Washburn1897,
+    SantaCruzOM2022,
+    MartinD18V2007
+};
+
 struct EngineParameters
 {
     BodyShape shape { BodyShape::Dreadnought };
@@ -88,6 +101,7 @@ struct EngineParameters
     Tuning tuning { Tuning::Standard };
     PickingTechnique picking { PickingTechnique::Finger };
     BridgeModel bridgeModel { BridgeModel::Original };
+    GuitarModel guitarModel { GuitarModel::Original };
     float stringAge { 0.15f };       // 0 fresh, 1 worn/dead
     float pluckPosition { 0.28f };   // 0 bridgeward, 1 neckward
     float touch { 0.58f };           // 0 soft/dark, 1 hard/bright
@@ -135,11 +149,11 @@ public:
     // the pick's speed for this velocity and the string spacing.
     [[nodiscard]] int strumDelaySamples(int stringRank,
                                         float velocity) const noexcept;
-    // fingerLift is MIDI release velocity as the fretting finger leaving a
-    // stopped string: the lift carries the string energy a pluck at that
-    // velocity would, so a pull-off at a velocity is as loud as a pluck at
-    // it. Zero is the finger staying on the string, which is what every
-    // note-off did before and is still exact.
+    // Ordinary key-up damps the existing note at every release velocity.
+    // With CC68 legato explicitly enabled, fingerLift requests an active
+    // fretting-hand lift/pull-off; zero keeps the finger touching the string.
+    // That articulation adds the velocity law's energy capped by the fret's
+    // stored elastic energy, so it can audibly excite the target/open note.
     void noteOff(int midiNote, int midiChannel = 1,
                  float fingerLift = 0.0f) noexcept;
     void setSustainPedal(bool down, int midiChannel = 1) noexcept;
@@ -206,6 +220,9 @@ public:
     // The played strings' axial wave, observed separately from the two-way
     // junction because its current radiation surrogate remains one-way.
     [[nodiscard]] float getLastLongitudinalForce() const noexcept;
+    // Zero-state port-power observers retain the work that enters at note-on.
+    // Acoustic derivatives re-reference a newly established pluck shape;
+    // they cannot account for that initial state in a passivity ledger.
     [[nodiscard]] float getLastBridgePower() const noexcept;
     [[nodiscard]] float getLastBridgeBodyPower() const noexcept;
     [[nodiscard]] float getLastBridgeTailPower() const noexcept;
@@ -288,8 +305,6 @@ private:
         int writeIndex { 0 };
         float currentDelay { 128.0f };
         float targetDelay { 128.0f };
-        float currentPickupFraction { 0.25f };
-        float targetPickupFraction { 0.25f };
         float loopGain { 0.995f };
         float broadLossMix { 0.02f };
         float highLossMix { 0.1f };
@@ -549,6 +564,18 @@ private:
         float upper { 0.0f };
     };
 
+    struct RadiationDelay
+    {
+        // Largest supplied delay is 1 ms; capacity covers 384 kHz plus interpolation.
+        std::array<BodyOutput, 512> history {};
+        float samples {};
+        std::array<float, 6> weights { 0, 0, 1, 0, 0, 0 };
+        int firstTap {}, writeIndex {};
+        void configure(float delaySamples) noexcept;
+        BodyOutput process(BodyOutput input) noexcept;
+        void reset() noexcept { history.fill({}); writeIndex = 0; }
+    };
+
     static EngineParameters sanitise(const EngineParameters&) noexcept;
     static PhysicalCalibration sanitise(const PhysicalCalibration&) noexcept;
     static std::array<int, stringCount> openNotes(Tuning) noexcept;
@@ -631,7 +658,6 @@ private:
                      float& directRight, float& sympatheticForce,
                      float& longitudinalForce) noexcept;
     BodyOutput renderBody(float bridgeInput, float bodyMoment) noexcept;
-    float renderMagneticPickup(bool crossingRelease) noexcept;
     float renderLoadedPiezo(float force) noexcept;
     float nextNoise(Voice& voice) noexcept;
 
@@ -641,17 +667,20 @@ private:
     std::array<Voice, stringCount> voices_ {};
     std::array<BodyMode, bodyModeCount> bodyModes_ {};
     std::array<BodyMode, bodyModeCount> fadingBodyModes_ {};
+    RadiationDelay bodyRadiationDelay_ {}, fadingBodyRadiationDelay_ {};
+    GuitarModel configuredGuitarModel_ { GuitarModel::Original };
     BodyShape configuredBodyShape_ { BodyShape::Dreadnought };
     BodyMaterial configuredBodyMaterial_ { BodyMaterial::Spruce };
     StringMaterial configuredBodyStringMaterial_ { StringMaterial::Steel };
     bool bodyUpdatePending_ { false };
     BridgeLoad bridgeLoad_ {};
+    // Motion plus total/body/tail loads, each in heave and normalized rock.
+    // Unlike acoustic histories these never re-prime at a note boundary.
+    std::array<FixedDerivative, 8> bridgePowerDerivatives_ {};
     FixedDerivative bridgeVelocityDerivative_ {};
-    FixedDerivative magneticDerivative_ {};
-    std::array<float, 7> captureMix_ { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+    std::array<float, 8> captureMix_ { 1.0f };
     float piezoLoadPole_ {}, piezoLoadGain_ {};
     float piezoLoadInput_ {}, piezoLoadOutput_ {};
-    bool magneticNeedsPriming_ { true };
     FixedDerivative bridgeRotationDerivative_ {};
     // The junction's power is the sum over both coordinates, so the moments
     // are differenced alongside the forces; the passivity tests read it.

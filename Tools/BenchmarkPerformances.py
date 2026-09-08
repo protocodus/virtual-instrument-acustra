@@ -49,7 +49,7 @@ Usage (NumPy and SciPy, no JAMS/MIDI dependency):
       --renderer /path/to/AcustraPerformanceRenderer --output /tmp/performance-audit
   python3 Tools/BenchmarkPerformances.py --dataset /tmp/acustra-guitarset \
       --renderer /path/to/AcustraPerformanceRenderer --output /tmp/pickup-audit \
-      --reference-capture magnetic_pickup --capture magnetic
+      --reference-capture magnetic_pickup --capture piezo
   python3 Tools/BenchmarkPerformances.py --self-test --renderer /path/to/renderer
 """
 from __future__ import annotations
@@ -382,7 +382,7 @@ def main() -> None:
     parser.add_argument("--dataset", type=Path)
     parser.add_argument("--renderer", type=Path)
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--capture", default="stereo_mic", choices=("stereo_mic", "treble_mic", "bass_mic", "saddle_piezo", "magnetic", "upper_mic"))
+    parser.add_argument("--capture", default="stereo_mic", choices=("stereo_mic", "mono_mic", "piezo"))
     parser.add_argument("--reference-capture", default="microphone", choices=("microphone", "magnetic_pickup"))
     parser.add_argument("--picking", default="finger", choices=("finger", "pick", "thumb"))
     parser.add_argument("--bridge-model", default="original", choices=("original", "fylde"))

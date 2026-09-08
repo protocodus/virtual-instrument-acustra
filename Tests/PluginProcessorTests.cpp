@@ -111,11 +111,11 @@ void testParameterContract()
         ids::shape, ids::bodyMaterial, ids::stringMaterial, ids::tuning,
         ids::stringAge, ids::pluckPosition, ids::touch, ids::bodyAmount,
         ids::stereoWidth, ids::output, ids::capture, ids::picking, ids::bridgeModel,
-        ids::upperMic, ids::piezoLoading
+        ids::upperMic, ids::piezoLoading, ids::captureMode, ids::guitarModel
     };
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 1.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, -7.5f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -178,6 +178,13 @@ void testParameterContract()
     expect (picking != nullptr && picking->choices
                 == juce::StringArray { "Finger", "Pick", "Thumb" },
             "Picking does not expose finger, pick and thumb");
+    const auto* model = dynamic_cast<const juce::AudioParameterChoice*> (
+        processor.parameters.getParameter (ids::guitarModel));
+    expect (model != nullptr && model->getVersionHint() == 7
+                && model->getParameterIndex() == 16
+                && model->choices == juce::StringArray { "Original", "Bellido 1978",
+                    "Washburn 1897", "Santa Cruz OM 2022", "Martin D18V 2007" },
+            "Guitar Model must append five measured-body choices with AU version hint 7");
 
     setValue (processor, ids::shape, 3.0f);
     setValue (processor, ids::bodyMaterial, 2.0f);
@@ -189,17 +196,19 @@ void testParameterContract()
     setValue (processor, ids::bodyAmount, 66.0f);
     setValue (processor, ids::stereoWidth, 35.0f);
     setValue (processor, ids::output, -3.0f);
-    setValue (processor, ids::capture, 3.0f);
+    setValue (processor, ids::captureMode, 2.0f);
     setValue (processor, ids::picking, 2.0f);
     setValue (processor, ids::bridgeModel, 1.0f);
+    setValue (processor, ids::guitarModel, 4.0f);
     const auto engine = processor.snapshotEngineParameters();
     expect (engine.shape == acustra::BodyShape::Jumbo
                 && engine.bodyMaterial == acustra::BodyMaterial::Mahogany
                 && engine.stringMaterial == acustra::StringMaterial::Nylon
                 && engine.tuning == acustra::Tuning::Dadgad
-                && engine.capture == acustra::CaptureType::SaddlePiezo
+                && engine.capture == acustra::CaptureType::Piezo
                 && engine.picking == acustra::PickingTechnique::Thumb
-                && engine.bridgeModel == acustra::BridgeModel::FyldeSteel,
+                && engine.bridgeModel == acustra::BridgeModel::FyldeSteel
+                && engine.guitarModel == acustra::GuitarModel::MartinD18V2007,
             "choice parameters did not reach the engine snapshot");
     expect (std::abs (engine.stringAge - 0.73f) < 0.002f
                 && std::abs (engine.pluckPosition - 0.41f) < 0.002f
@@ -211,40 +220,29 @@ void testParameterContract()
                       - juce::Decibels::decibelsToGain (-3.0f)) < 0.001f,
             "Output was not converted from dB to linear gain");
 
-    // A sixth item in the old choice would reinterpret existing normalized
-    // automation. Upper mic instead overrides that unchanged five-item value.
-    auto* legacyCapture = processor.parameters.getParameter (ids::capture);
-    if (legacyCapture != nullptr)
-        for (int choice = 0; choice < 5; ++choice)
+    const auto* publicCapture = dynamic_cast<const juce::AudioParameterChoice*> (
+        processor.parameters.getParameter (ids::captureMode));
+    expect (publicCapture != nullptr && publicCapture->choices == juce::StringArray {
+                "Stereo mic", "Mono mic", "Piezo" }
+                && publicCapture->getVersionHint() == 6 && publicCapture->getParameterIndex() == 15,
+            "the public capture must append exactly three supported observations");
+    expect (! capture->isAutomatable() && ! upperMic->isAutomatable()
+                && ! piezoLoading->isAutomatable(),
+            "retired capture parameters still advertise new automation");
+    constexpr std::array supported { acustra::CaptureType::StereoMic,
+        acustra::CaptureType::MonoMic, acustra::CaptureType::Piezo };
+    for (int mode = 0; mode < 3; ++mode)
+    {
+        setValue (processor, ids::captureMode, static_cast<float> (mode));
+        for (int legacy = 0; legacy < 5; ++legacy)
         {
-            legacyCapture->setValueNotifyingHost (choice * 0.25f);
-            expect (valueOf (processor, ids::capture) == static_cast<float> (choice)
-                        && processor.snapshotEngineParameters().capture
-                            == static_cast<acustra::CaptureType> (choice),
-                    "legacy normalized capture automation changed meaning");
+            setValue (processor, ids::capture, static_cast<float> (legacy));
             setValue (processor, ids::upperMic, 1.0f);
-            expect (processor.snapshotEngineParameters().capture
-                        == acustra::CaptureType::UpperMic
-                        && valueOf (processor, ids::capture) == static_cast<float> (choice),
-                    "Upper mic did not override capture while retaining its saved value");
-            setValue (processor, ids::upperMic, 0.0f);
-            expect (processor.snapshotEngineParameters().capture
-                        == static_cast<acustra::CaptureType> (choice),
-                    "disabling Upper mic did not restore the legacy capture");
             setValue (processor, ids::piezoLoading, 1.0f);
-            const auto loaded = choice == 3 ? acustra::CaptureType::LoadedPiezo
-                : static_cast<acustra::CaptureType> (choice);
-            expect (processor.snapshotEngineParameters().capture == loaded
-                        && valueOf (processor, ids::capture) == static_cast<float> (choice),
-                    "piezo loading altered a different capture or its legacy value");
-            setValue (processor, ids::upperMic, 1.0f);
-            expect (processor.snapshotEngineParameters().capture == acustra::CaptureType::UpperMic,
-                    "piezo loading overrode the independent Upper mic switch");
-            setValue (processor, ids::upperMic, 0.0f);
-            expect (processor.snapshotEngineParameters().capture == loaded,
-                    "Upper mic did not restore the underlying pickup loading");
-            setValue (processor, ids::piezoLoading, 0.0f);
+            expect (processor.snapshotEngineParameters().capture == supported[static_cast<std::size_t> (mode)],
+                    "a retired capture parameter overrode the public capture selection");
         }
+    }
 }
 
 void testProcessorContractAndSampleAccurateMidi()
@@ -688,13 +686,11 @@ void testLegatoControllerReachesTheEngine()
             "CC68 did not reach the engine as legato");
 }
 
-void testReleaseVelocityReachesTheEngineAsAFingerLift()
+void testReleaseVelocityRequiresExplicitLegato()
 {
-    // Note-off velocity is how fast the fretting finger leaves the string.
-    // MIDI's default when unsensed is 64, so 64 and a plain Note On at
-    // velocity zero are exactly the release every host sent before; 127 lifts
-    // the finger clear and the open string rings.
-    const auto phrase = [] (const juce::MidiMessage& off)
+    // Fast keyboard release must damp the existing note. Only explicit CC68
+    // requests an active fretting-hand lift that excites the open string.
+    const auto phrase = [] (const juce::MidiMessage& off, bool legato = false)
     {
         AcustraAudioProcessor processor;
         processor.prepareToPlay (sampleRate, blockSize);
@@ -714,7 +710,9 @@ void testReleaseVelocityReachesTheEngineAsAFingerLift()
             }
         };
         juce::MidiBuffer start;
-        start.addEvent (juce::MidiMessage::noteOn (1, 43, 0.8f), 0);
+        if (legato)
+            start.addEvent (juce::MidiMessage::controllerEvent (1, 68, 127), 0);
+        start.addEvent (juce::MidiMessage::noteOn (1, 43, 1.0f), 0);
         sweep (0.8, start);
         juce::MidiBuffer release;
         release.addEvent (off, 0);
@@ -736,15 +734,19 @@ void testReleaseVelocityReachesTheEngineAsAFingerLift()
         = phrase (juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (64)));
     const auto [zeroOn, zeroOnAt]
         = phrase (juce::MidiMessage::noteOn (1, 43, static_cast<juce::uint8> (0)));
-    const auto [lifted, liftedAt]
+    const auto [fast, fastAt]
         = phrase (juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (127)));
-    expect (plain == sixtyFour && plain == zeroOn,
-            "a release velocity of 64 or an unsensed release changed the note-off");
+    const auto [lifted, liftedAt]
+        = phrase (juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (127)), true);
+    expect (plain == sixtyFour && plain == zeroOn && plain == fast,
+            "ordinary release velocity re-excited or changed the damped note");
+    expect (plainAt == sixtyFourAt && plainAt == zeroOnAt && plainAt == fastAt,
+            "release encodings were rendered at different sample boundaries");
     // A plain note-off no longer leaves near silence: the two-way junction
     // lets the strings the note drove ring on, so the lifted string's tail
     // exceeds the damped one's by a few times rather than the ten it did.
     expect (tailEnergy (lifted, liftedAt) > 2.0 * tailEnergy (plain, plainAt),
-            "a release velocity of 127 did not lift the finger");
+            "CC68 with release velocity 127 did not lift the finger");
     // What rings afterwards is the open string, not the fretted note.
     const auto bandAt = [&] (const std::vector<float>& mono, std::size_t from,
                              double frequency)
@@ -1265,6 +1267,8 @@ void testStateRoundTripAndMigration()
     setValue (source, ids::bridgeModel, 1.0f);
     setValue (source, ids::upperMic, 1.0f);
     setValue (source, ids::piezoLoading, 1.0f);
+    setValue (source, ids::captureMode, 1.0f);
+    setValue (source, ids::guitarModel, 1.0f);
 
     juce::MemoryBlock stored;
     source.getStateInformation (stored);
@@ -1276,51 +1280,59 @@ void testStateRoundTripAndMigration()
     for (const char* id : { ids::shape, ids::bodyMaterial, ids::stringMaterial,
                             ids::tuning, ids::stringAge, ids::pluckPosition,
                             ids::output, ids::capture, ids::picking, ids::bridgeModel,
-                            ids::upperMic, ids::piezoLoading })
+                            ids::upperMic, ids::piezoLoading, ids::captureMode,
+                            ids::guitarModel })
         expect (std::abs (valueOf (restored, id) - valueOf (source, id)) < 0.011f,
                 std::string { "state round trip lost " } + id);
 
-    // A complete version-3 state has a saved capture value but no upper-mic
-    // override. Loading it into a live upper-mic session must restore that
-    // actual capture, not leave the new override latched.
-    auto previousState = source.parameters.copyState();
-    for (int child = previousState.getNumChildren(); --child >= 0;)
-        if (previousState.getChild (child).getProperty ("id").toString()
-                == ids::upperMic
-            || previousState.getChild (child).getProperty ("id").toString()
-                == ids::piezoLoading)
-            previousState.removeChild (child, nullptr);
-    juce::MemoryBlock previousBytes;
-    if (const auto xml = previousState.createXml())
-        juce::AudioProcessor::copyXmlToBinary (*xml, previousBytes);
-    restored.setStateInformation (previousBytes.getData(),
-                                  static_cast<int> (previousBytes.getSize()));
-    expect (valueOf (restored, ids::upperMic) == 0.0f
-                && valueOf (restored, ids::piezoLoading) == 0.0f
-                && valueOf (restored, ids::capture) == 4.0f
-                && restored.snapshotEngineParameters().capture
-                    == acustra::CaptureType::Magnetic,
-            "a legacy state retained the new upper-mic override or lost its capture");
-
-    // A loaded-piezo session round-trips; a version-4 state without the new
-    // modifier must clear it when restored into that same live processor.
-    setValue (source, ids::upperMic, 0.0f);
-    setValue (source, ids::capture, 3.0f);
-    source.getStateInformation (stored);
+    constexpr std::array models { acustra::GuitarModel::Original,
+        acustra::GuitarModel::Bellido1978, acustra::GuitarModel::Washburn1897,
+        acustra::GuitarModel::SantaCruzOM2022, acustra::GuitarModel::MartinD18V2007 };
+    for (std::size_t index = 0; index < models.size(); ++index)
+    {
+        setValue (source, ids::guitarModel, static_cast<float> (index));
+        source.getStateInformation (stored);
+        restored.setStateInformation (stored.getData(), static_cast<int> (stored.getSize()));
+        expect (restored.snapshotEngineParameters().guitarModel == models[index],
+                "a measured guitar model did not survive save/reload");
+    }
+    auto versionSix = source.parameters.copyState();
+    for (int child = versionSix.getNumChildren(); --child >= 0;)
+        if (versionSix.getChild (child).getProperty ("id").toString() == ids::guitarModel)
+            versionSix.removeChild (child, nullptr);
+    if (const auto xml = versionSix.createXml())
+        juce::AudioProcessor::copyXmlToBinary (*xml, stored);
     restored.setStateInformation (stored.getData(), static_cast<int> (stored.getSize()));
-    expect (restored.snapshotEngineParameters().capture == acustra::CaptureType::LoadedPiezo,
-            "a saved loaded-piezo capture did not round-trip");
-    auto unloadedState = source.parameters.copyState();
-    for (int child = unloadedState.getNumChildren(); --child >= 0;)
-        if (unloadedState.getChild (child).getProperty ("id").toString() == ids::piezoLoading)
-            unloadedState.removeChild (child, nullptr);
-    juce::MemoryBlock unloadedBytes;
-    if (const auto xml = unloadedState.createXml())
-        juce::AudioProcessor::copyXmlToBinary (*xml, unloadedBytes);
-    restored.setStateInformation (unloadedBytes.getData(), static_cast<int> (unloadedBytes.getSize()));
-    expect (valueOf (restored, ids::piezoLoading) == 0.0f
-                && restored.snapshotEngineParameters().capture == acustra::CaptureType::SaddlePiezo,
-            "a legacy saddle-piezo state retained the newer electrical loading");
+    expect (restored.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Original
+                && valueOf (restored, ids::captureMode) == valueOf (source, ids::captureMode),
+            "a pre-model state must default to Original without changing its modern capture");
+
+    // Every retired choice, with either legacy override, migrates to a
+    // supported observation. A saved modern value takes precedence.
+    for (int legacy = 0; legacy < 5; ++legacy)
+        for (int upper = 0; upper < 2; ++upper)
+            for (int loaded = 0; loaded < 2; ++loaded)
+            {
+                setValue (source, ids::capture, static_cast<float> (legacy));
+                setValue (source, ids::upperMic, static_cast<float> (upper));
+                setValue (source, ids::piezoLoading, static_cast<float> (loaded));
+                auto old = source.parameters.copyState();
+                for (int child = old.getNumChildren(); --child >= 0;)
+                    if (old.getChild (child).getProperty ("id").toString() == ids::captureMode)
+                        old.removeChild (child, nullptr);
+                juce::MemoryBlock bytes;
+                if (const auto xml = old.createXml())
+                    juce::AudioProcessor::copyXmlToBinary (*xml, bytes);
+                restored.setStateInformation (bytes.getData(), static_cast<int> (bytes.getSize()));
+                const int expected = upper ? 1 : legacy == 0 ? 0 : legacy < 3 ? 1 : 2;
+                expect (std::abs (valueOf (restored, ids::captureMode) - static_cast<float> (expected)) < 0.01f,
+                        "a retired capture choice was not migrated deterministically");
+                restored.getStateInformation (bytes);
+                AcustraAudioProcessor roundTrip;
+                roundTrip.setStateInformation (bytes.getData(), static_cast<int> (bytes.getSize()));
+                expect (roundTrip.snapshotEngineParameters().capture == restored.snapshotEngineParameters().capture,
+                        "a migrated capture changed on its next save and reload");
+            }
 
     // A session saved before later controls existed must receive their factory
     // defaults, not whatever values happen to be live in the destination.
@@ -1331,6 +1343,7 @@ void testStateRoundTripAndMigration()
     setValue (restored, ids::bridgeModel, 1.0f);
     setValue (restored, ids::upperMic, 1.0f);
     setValue (restored, ids::piezoLoading, 1.0f);
+    setValue (restored, ids::guitarModel, 4.0f);
     juce::ValueTree oldState { restored.parameters.state.getType() };
     juce::ValueTree shape { "PARAM" };
     shape.setProperty ("id", ids::shape, nullptr);
@@ -1349,7 +1362,9 @@ void testStateRoundTripAndMigration()
                 && valueOf (restored, ids::picking) == 0.0f
                 && valueOf (restored, ids::bridgeModel) == 0.0f
                 && valueOf (restored, ids::upperMic) == 0.0f
-                && valueOf (restored, ids::piezoLoading) == 0.0f,
+                && valueOf (restored, ids::piezoLoading) == 0.0f
+                && valueOf (restored, ids::captureMode) == 0.0f
+                && valueOf (restored, ids::guitarModel) == 0.0f,
             "parameters absent from an old state did not receive defaults");
 
     const char garbage[] = "not an Acustra state";
@@ -1398,8 +1413,8 @@ void testEditorRendering()
         }
     }
 
-    expect (setupMenus.size() == 3,
-            "the guitar, picking and capture setup menus are missing");
+    expect (setupMenus.size() == 4,
+            "the guitar, model, picking and capture setup menus are missing");
     const auto refreshDisplayTimer = [&]
     {
         expect (engineStatus != nullptr, "the visible engine status is missing");
@@ -1487,35 +1502,16 @@ void testEditorRendering()
             menu->setSelectedId (2, juce::sendNotificationSync);
             setValue (processor, ids::tuning, 2.0f);
             setValue (processor, ids::output, -4.0f);
-            setValue (processor, ids::capture, 4.0f);
+            setValue (processor, ids::captureMode, 2.0f);
             menu->setSelectedId (5, juce::sendNotificationSync);
-            expect (engineStatus != nullptr
-                        && engineStatus->getText() == "Magnetic needs steel",
-                    "the silent magnetic/nylon combination has no visible explanation");
             auto state = processor.snapshotEngineParameters();
             expect (state.shape == acustra::BodyShape::Auditorium
                         && state.bodyMaterial == acustra::BodyMaterial::Cedar
-                        && state.stringMaterial == acustra::StringMaterial::Nylon,
-                    "the classical preset did not set the guitar construction");
-            for (auto* captureMenu : setupMenus)
-                if (captureMenu->getName() == "CAPTURE")
-                {
-                    expect (! captureMenu->isItemEnabled (5),
-                            "nylon still offers a magnetic pickup in the menu");
-                    setValue (processor, ids::capture, 4.0f);
-                    expect (captureMenu->getSelectedId() == 5
-                                && valueOf (processor, ids::capture) == 4.0f,
-                            "the UI silently replaced host-automated magnetic capture");
-                    setValue (processor, ids::upperMic, 1.0f);
-                    juce::Timer::callPendingTimersSynchronously();
-                    expect (captureMenu->isItemEnabled (6)
-                                && captureMenu->getSelectedId() == 6
-                                && engineStatus != nullptr
-                                && engineStatus->getText().contains ("kHz"),
-                            "the upper microphone retained a false magnetic/nylon warning");
-                    setValue (processor, ids::upperMic, 0.0f);
-                    setValue (processor, ids::capture, 0.0f);
-                }
+                        && state.stringMaterial == acustra::StringMaterial::Nylon
+                        && state.capture == acustra::CaptureType::Piezo,
+                    "the classical preset changed capture or missed its construction");
+            expect (engineStatus != nullptr && engineStatus->getText().contains ("kHz"),
+                    "a supported nylon capture shows an obsolete magnetic warning");
             menu->setSelectedId (2, juce::sendNotificationSync);
             expect (engineStatus != nullptr
                         && engineStatus->getText().contains ("kHz"),
@@ -1540,77 +1536,80 @@ void testEditorRendering()
             expect (valueOf (processor, ids::tuning) == 2.0f
                         && std::abs (valueOf (processor, ids::output) + 4.0f) < 0.011f,
                     "a guitar construction preset changed tuning or output");
+            expect (menu->getNumItems() == 10,
+                    "the four measured guitar construction presets are missing");
+            constexpr std::array models { acustra::GuitarModel::Bellido1978,
+                acustra::GuitarModel::Washburn1897, acustra::GuitarModel::SantaCruzOM2022,
+                acustra::GuitarModel::MartinD18V2007 };
+            constexpr std::array shapes { acustra::BodyShape::Auditorium,
+                acustra::BodyShape::Parlor, acustra::BodyShape::Auditorium,
+                acustra::BodyShape::Dreadnought };
+            for (std::size_t index = 0; index < models.size(); ++index)
+            {
+                menu->setSelectedId (static_cast<int> (index) + 7, juce::sendNotificationSync);
+                const auto measured = processor.snapshotEngineParameters();
+                expect (measured.guitarModel == models[index] && measured.shape == shapes[index]
+                            && measured.stringMaterial == (index == 0 ? acustra::StringMaterial::Nylon
+                                                                     : acustra::StringMaterial::Steel)
+                            && measured.bodyMaterial == (index == 0 ? acustra::BodyMaterial::Cedar
+                                                                   : acustra::BodyMaterial::Spruce)
+                            && measured.bridgeModel == acustra::BridgeModel::Original
+                            && measured.capture == acustra::CaptureType::Piezo,
+                        "a measured preset missed its body/string construction or changed capture");
+                refreshDisplayTimer();
+                expect (menu->getSelectedId() == static_cast<int> (index) + 7,
+                        "a measured construction preset lost its caption");
+            }
+            menu->setSelectedId (2, juce::sendNotificationSync);
+            expect (processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Original,
+                    "an original construction preset retained a measured body override");
             setValue (processor, ids::tuning, 0.0f);
             setValue (processor, ids::output, -7.5f);
+        }
+        else if (menu->getName() == "MODEL")
+        {
+            expect (menu->getNumItems() == 5 && menu->getItemText (0) == "Original"
+                        && menu->getItemText (1) == "Bellido 1978"
+                        && menu->getItemText (2) == "Washburn 1897"
+                        && menu->getItemText (3) == "Santa Cruz OM 2022"
+                        && menu->getItemText (4) == "Martin D18V 2007",
+                    "the model menu does not expose the five supported bodies");
+            expect (menu->getTooltip().contains ("one measured microphone")
+                        && menu->getTooltip().contains ("stay mono"),
+                    "the model menu conceals the measured steel microphone limitation");
+            menu->setSelectedItemIndex (1, juce::sendNotificationSync);
+            expect (processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Bellido1978,
+                    "the Bellido model menu selection did not reach the engine");
+            setValue (processor, ids::guitarModel, 4.0f);
+            expect (menu->getSelectedId() == 5,
+                    "host body-model automation did not update the menu");
+            setValue (processor, ids::guitarModel, 0.0f);
         }
         else
         {
             const bool captureMenu = menu->getName() == "CAPTURE";
-            const auto* id = captureMenu ? ids::capture : ids::picking;
-            menu->setSelectedItemIndex (captureMenu ? 3 : 2,
-                                        juce::sendNotificationSync);
-            expect (std::abs (valueOf (processor, id)
-                              - (captureMenu ? 3.0f : 2.0f)) < 0.011f,
+            const auto* id = captureMenu ? ids::captureMode : ids::picking;
+            menu->setSelectedItemIndex (2, juce::sendNotificationSync);
+            expect (std::abs (valueOf (processor, id) - 2.0f) < 0.011f,
                     "a setup menu did not update its host parameter");
             if (captureMenu)
             {
-                expect (menu->getNumItems() == 7,
-                        "the Capture menu does not expose all microphone/pickup choices");
-                // ComboBox user notifications are asynchronous. A display
-                // timer firing before that notification must not replace the
-                // user's pending selection with the old parameter value.
-                menu->setSelectedId (6, juce::sendNotificationAsync);
+                expect (menu->getNumItems() == 3 && menu->getItemText (0) == "Stereo mic"
+                            && menu->getItemText (1) == "Mono mic" && menu->getItemText (2) == "Piezo",
+                        "the Capture menu must expose only stereo mic, mono mic and piezo");
+                expect (menu->getTooltip().contains ("both mic settings stay mono"),
+                        "the capture menu conceals the measured steel mono observation");
+                menu->setSelectedId (2, juce::sendNotificationAsync);
                 refreshDisplayTimer();
-                expect (menu->getSelectedId() == 6,
-                        "a display timer discarded the pending upper-mic selection");
-                // Deliver a synchronous selection to drain the pending
-                // notification and return to the same starting capture.
-                menu->setSelectedId (4, juce::sendNotificationSync);
-                menu->setSelectedId (6, juce::sendNotificationSync);
-                expect (valueOf (processor, ids::upperMic) == 1.0f
-                            && valueOf (processor, ids::capture) == 3.0f
-                            && processor.snapshotEngineParameters().capture
-                                == acustra::CaptureType::UpperMic,
-                        "the upper microphone menu item changed the legacy choice");
-                setValue (processor, ids::capture, 1.0f);
-                juce::Timer::callPendingTimersSynchronously();
-                expect (menu->getSelectedId() == 6,
-                        "legacy capture automation hid an active upper-mic override");
+                expect (menu->getSelectedId() == 2,
+                        "a display timer discarded the pending mono-mic selection");
                 menu->setSelectedId (3, juce::sendNotificationSync);
-                expect (valueOf (processor, ids::upperMic) == 0.0f
-                            && valueOf (processor, ids::capture) == 2.0f,
-                        "selecting a legacy microphone left the upper override enabled");
-                setValue (processor, ids::upperMic, 1.0f);
-                juce::Timer::callPendingTimersSynchronously();
-                expect (menu->getSelectedId() == 6,
-                        "upper microphone host automation did not update the menu");
-                setValue (processor, ids::upperMic, 0.0f);
-                menu->setSelectedId (7, juce::sendNotificationAsync);
-                refreshDisplayTimer();
-                expect (menu->getSelectedId() == 7,
-                        "a display timer discarded the pending loaded-piezo selection");
-                menu->setSelectedId (4, juce::sendNotificationSync);
-                menu->setSelectedId (7, juce::sendNotificationSync);
-                expect (valueOf (processor, ids::capture) == 3.0f
-                            && valueOf (processor, ids::piezoLoading) == 1.0f
-                            && processor.snapshotEngineParameters().capture
-                                == acustra::CaptureType::LoadedPiezo,
-                        "Loaded piezo did not select its legacy sensor and loading");
-                menu->setSelectedId (6, juce::sendNotificationSync);
-                expect (valueOf (processor, ids::piezoLoading) == 1.0f,
-                        "Upper mic discarded the underlying piezo loading");
-                setValue (processor, ids::upperMic, 0.0f);
-                expect (menu->getSelectedId() == 7,
-                        "disabling Upper mic did not restore Loaded piezo in the menu");
-                menu->setSelectedId (4, juce::sendNotificationSync);
-                expect (valueOf (processor, ids::piezoLoading) == 0.0f
-                            && processor.snapshotEngineParameters().capture
-                                == acustra::CaptureType::SaddlePiezo,
-                        "the ideal piezo menu selection retained electrical loading");
-                setValue (processor, ids::piezoLoading, 1.0f);
-                expect (menu->getSelectedId() == 7,
-                        "host piezo-loading automation did not update its menu");
-                setValue (processor, ids::piezoLoading, 0.0f);
+                menu->setSelectedId (2, juce::sendNotificationSync);
+                expect (processor.snapshotEngineParameters().capture == acustra::CaptureType::MonoMic,
+                        "the mono microphone menu selection did not reach the engine");
+                setValue (processor, ids::captureMode, 2.0f);
+                expect (menu->getSelectedId() == 3,
+                        "host capture automation did not update the menu");
             }
             setValue (processor, id, 0.0f);
             expect (menu->getSelectedItemIndex() == 0,
@@ -1675,16 +1674,18 @@ void testEditorRendering()
     auto* guitarMenu = findMenu ("GUITAR");
     auto* pickingMenu = findMenu ("PICKING");
     auto* captureMenu = findMenu ("CAPTURE");
-    if (guitarMenu != nullptr && pickingMenu != nullptr && captureMenu != nullptr)
+    auto* modelMenu = findMenu ("MODEL");
+    if (guitarMenu != nullptr && pickingMenu != nullptr && captureMenu != nullptr
+        && modelMenu != nullptr)
     {
         // Reload an actual serialized state into an already-open editor. The
         // composite capture menu, preset caption and radio groups must all agree
         // with the restored construction, not retain the intervening controls.
         juce::MemoryBlock initialState, nylonState;
         processor.getStateInformation (initialState);
-        guitarMenu->setSelectedId (5, juce::sendNotificationSync);
+        guitarMenu->setSelectedId (7, juce::sendNotificationSync);
         pickingMenu->setSelectedId (3, juce::sendNotificationSync);
-        captureMenu->setSelectedId (6, juce::sendNotificationSync);
+        captureMenu->setSelectedId (2, juce::sendNotificationSync);
         processor.getStateInformation (nylonState);
         guitarMenu->setSelectedId (2, juce::sendNotificationSync);
         pickingMenu->setSelectedId (1, juce::sendNotificationSync);
@@ -1694,25 +1695,26 @@ void testEditorRendering()
         refreshDisplayTimer();
         const auto nylon = std::find_if (choiceButtons.begin(), choiceButtons.end(),
             [] (const auto* button) { return button->getName() == "STRINGS: Nylon"; });
-        expect (guitarMenu->getSelectedId() == 5 && pickingMenu->getSelectedId() == 3
-                    && captureMenu->getSelectedId() == 6 && ! captureMenu->isItemEnabled (5)
+        expect (guitarMenu->getSelectedId() == 7 && pickingMenu->getSelectedId() == 3
+                    && modelMenu->getSelectedId() == 2
+                    && captureMenu->getSelectedId() == 2 && captureMenu->isItemEnabled (3)
                     && nylon != choiceButtons.end() && (*nylon)->getToggleState()
-                    && processor.snapshotEngineParameters().capture == acustra::CaptureType::UpperMic,
+                    && processor.snapshotEngineParameters().capture == acustra::CaptureType::MonoMic
+                    && processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Bellido1978,
                 "live state reload left the editor showing a different guitar or capture");
-        saveImage (renderAt (editorWidth, editorHeight), "-restored-nylon-upper");
+        saveImage (renderAt (editorWidth, editorHeight), "-restored-nylon-mono");
 
-        setValue (processor, acustra::parameters::capture, 4.0f);
-        setValue (processor, acustra::parameters::upperMic, 0.0f);
+        setValue (processor, acustra::parameters::captureMode, 2.0f);
         refreshDisplayTimer();
-        saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-nylon-magnetic");
-        captureMenu->setSelectedId (7, juce::sendNotificationSync);
+        saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-nylon-piezo");
+        captureMenu->setSelectedId (3, juce::sendNotificationSync);
         juce::MemoryBlock loadedState;
         processor.getStateInformation (loadedState);
         captureMenu->setSelectedId (1, juce::sendNotificationSync);
         processor.setStateInformation (loadedState.getData(),
                                       static_cast<int> (loadedState.getSize()));
         refreshDisplayTimer();
-        expect (captureMenu->getSelectedId() == 7 && captureMenu->isItemEnabled (7)
+        expect (captureMenu->getSelectedId() == 3 && captureMenu->isItemEnabled (3)
                     && processor.snapshotEngineParameters().capture == acustra::CaptureType::LoadedPiezo,
                 "live loaded-piezo state reload left an incorrect capture in the editor");
         saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-loaded-piezo");
@@ -1860,7 +1862,7 @@ int main()
     testMpePressureReachesTheEngineOnMemberChannelOnly();
     testStringPerChannelModeViaMonoModeOn();
     testLegatoControllerReachesTheEngine();
-    testReleaseVelocityReachesTheEngineAsAFingerLift();
+    testReleaseVelocityRequiresExplicitLegato();
     testResetAllControllersReleasesSustain();
     testMemberChannelOwnershipAndControllers();
     testMemberPitchBendDoesNotLeakChannels();

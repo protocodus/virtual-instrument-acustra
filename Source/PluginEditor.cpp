@@ -22,10 +22,12 @@ struct ConstructionPreset
     acustra::BodyMaterial wood;
     acustra::StringMaterial strings;
     acustra::BridgeModel bridge { acustra::BridgeModel::Original };
+    acustra::GuitarModel model { acustra::GuitarModel::Original };
 };
 
-// Construction directions, not measured replicas of manufacturer models.
-constexpr std::array<ConstructionPreset, 5> constructionPresets {{
+// Original presets are authored construction directions. The appended presets
+// select a measured body plus suitable string construction and geometry morph.
+constexpr std::array<ConstructionPreset, 9> constructionPresets {{
     { "Dreadnought / Martin style", acustra::BodyShape::Dreadnought,
       acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel },
     { "Auditorium / Taylor style", acustra::BodyShape::Auditorium,
@@ -36,7 +38,19 @@ constexpr std::array<ConstructionPreset, 5> constructionPresets {{
       acustra::BodyMaterial::Cedar, acustra::StringMaterial::Nylon },
     { "Fylde bridge / steel", acustra::BodyShape::Dreadnought,
       acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
-      acustra::BridgeModel::FyldeSteel }
+      acustra::BridgeModel::FyldeSteel },
+    { "Bellido 1978 / nylon", acustra::BodyShape::Auditorium,
+      acustra::BodyMaterial::Cedar, acustra::StringMaterial::Nylon,
+      acustra::BridgeModel::Original, acustra::GuitarModel::Bellido1978 },
+    { "Washburn 1897 / parlor", acustra::BodyShape::Parlor,
+      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
+      acustra::BridgeModel::Original, acustra::GuitarModel::Washburn1897 },
+    { "Santa Cruz OM 2022", acustra::BodyShape::Auditorium,
+      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
+      acustra::BridgeModel::Original, acustra::GuitarModel::SantaCruzOM2022 },
+    { "Martin D18V 2007", acustra::BodyShape::Dreadnought,
+      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
+      acustra::BridgeModel::Original, acustra::GuitarModel::MartinD18V2007 }
 }};
 
 // Palette drawn from the classical-guitar reference: pale soundboard, ebony
@@ -336,7 +350,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     statusLabel.setName ("Engine status");
     statusLabel.setTitle ("Engine status");
     statusLabel.setDescription (
-        "Audio sample rate, sounding strings, or an incompatible capture selection");
+        "Audio sample rate and sounding strings");
     statusLabel.setFont (displayFont (15.5f));
     statusLabel.setColour (juce::Label::textColourId, mutedText);
     statusLabel.setJustificationType (juce::Justification::centredRight);
@@ -351,9 +365,9 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     addAndMakeVisible (panicButton);
 
     configureSetupMenu (
-        0, "GUITAR", "Set body shape, wood and string construction together. "
-        "Manufacturer styles are generic directions, not measured replicas. "
-        "Fylde uses measured steel-string bridge mobility with the existing microphones. "
+        0, "GUITAR", "Set the body model, shape, wood and strings together. "
+        "Style presets use the original body; named years select measured bodies. "
+        "Fylde selects steel-string bridge mobility with the original microphones. "
         "Adjust any construction control below to make your own guitar.");
     auto& guitarMenu = setupControls[0];
     guitarMenu.addItem ("Custom construction", 1);
@@ -381,6 +395,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         setChoice (acustra::parameters::bodyMaterial, preset.wood);
         setChoice (acustra::parameters::stringMaterial, preset.strings);
         setChoice (acustra::parameters::bridgeModel, preset.bridge);
+        setChoice (acustra::parameters::guitarModel, preset.model);
         timerCallback();
     };
     configureSetupMenu (
@@ -388,12 +403,17 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         "contact within the selected technique. MIDI: CC2 bridge-hand damping; "
         "CC68 legato; note-off velocity controls finger lift.");
     configureSetupMenu (
-        2, "CAPTURE", "Listen through body microphones, bridge-force saddle "
-        "piezo or a magnetic string pickup. Loaded piezo models measured "
-        "pickup/preamp electrical loading, reducing low frequencies. "
-        "Upper mic is a measured position "
-        "10 cm above the upper bout. Magnetic pickups require steel "
-        "strings; a magnetic capture selected by automation is silent on nylon.");
+        2, "CAPTURE", "Stereo body microphones, one mono body microphone, or "
+        "saddle piezo with pickup/preamp electrical loading. Mono mic and piezo "
+        "send the same signal to both channels and ignore Stereo Width. "
+        "Washburn, Santa Cruz and Martin have one measured microphone: "
+        "both mic settings stay mono for these models.");
+    configureSetupMenu (
+        3, "MODEL", "Choose the measured guitar body. Original follows the "
+        "string material; Bellido has three measured microphones. Washburn, "
+        "Santa Cruz and Martin have one measured microphone and stay mono. "
+        "Guitar presets also set the matching string construction; shape and "
+        "wood controls remain adjustable construction changes.");
     if (auto* parameter = dynamic_cast<juce::AudioParameterChoice*> (
             audioProcessor.parameters.getParameter (acustra::parameters::picking)))
     {
@@ -404,51 +424,23 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
                 setupControls[1]);
     }
     if (auto* parameter = dynamic_cast<juce::AudioParameterChoice*> (
-            audioProcessor.parameters.getParameter (acustra::parameters::capture)))
+            audioProcessor.parameters.getParameter (acustra::parameters::captureMode)))
+    {
         setupControls[2].addItemList (parameter->choices, 1);
-    setupControls[2].addItem ("Upper mic", 6);
-    setupControls[2].addItem ("Loaded piezo", 7);
-    setupControls[2].onChange = [this]
-    {
-        const int selected = setupControls[2].getSelectedId();
-        if (selected < 1 || selected > 7)
-            return;
-        const auto set = [this] (const char* id, float value)
-        {
-            auto* parameter = audioProcessor.parameters.getParameter (id);
-            parameter->beginChangeGesture();
-            parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
-            parameter->endChangeGesture();
-        };
-        // The appended override leaves the legacy Capture parameter's
-        // normalized automation untouched. Both appear as one menu here.
-        if (selected != 6)
-        {
-            set (acustra::parameters::capture,
-                 selected == 7 ? 3.0f : static_cast<float> (selected - 1));
-            set (acustra::parameters::piezoLoading, selected == 7 ? 1.0f : 0.0f);
-        }
-        set (acustra::parameters::upperMic, selected == 6 ? 1.0f : 0.0f);
-    };
-    constexpr std::array captureIds {
-        acustra::parameters::capture, acustra::parameters::upperMic,
-        acustra::parameters::piezoLoading
-    };
-    for (std::size_t index = 0; index < captureIds.size(); ++index)
-    {
-        auto* parameter = audioProcessor.parameters.getParameter (captureIds[index]);
-        captureAttachments[index] = std::make_unique<juce::ParameterAttachment> (
-            *parameter, [this, index] (float value)
-            {
-                // Use the delivered value: the APVTS raw-value listener can
-                // run after this attachment's callback on the message thread.
-                captureValues[index] = value;
-                updateCaptureControl();
-            }, nullptr);
+        captureAttachment = std::make_unique<
+            juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
+                audioProcessor.parameters, acustra::parameters::captureMode,
+                setupControls[2]);
     }
-    captureAttachments[0]->sendInitialUpdate();
-    captureAttachments[1]->sendInitialUpdate();
-    captureAttachments[2]->sendInitialUpdate();
+    if (auto* parameter = dynamic_cast<juce::AudioParameterChoice*> (
+            audioProcessor.parameters.getParameter (acustra::parameters::guitarModel)))
+    {
+        setupControls[3].addItemList (parameter->choices, 1);
+        guitarModelAttachment = std::make_unique<
+            juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
+                audioProcessor.parameters, acustra::parameters::guitarModel,
+                setupControls[3]);
+    }
 
     configureChoice (
         0, "BODY SHAPE", acustra::parameters::shape,
@@ -477,7 +469,8 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         "Strength of the measurement-derived body radiation");
     configureSlider (
         4, "STEREO", acustra::parameters::stereoWidth,
-        "Width of the measurement-derived, mono-compatible body radiation");
+        "Width between body microphones. Mono mic and piezo ignore this control. "
+        "Washburn, Santa Cruz and Martin have one measured microphone and stay mono.");
     configureSlider (
         5, "OUTPUT", acustra::parameters::output,
         "Final output level in decibels", true);
@@ -535,7 +528,8 @@ void AcustraAudioProcessorEditor::updateConstructionControls()
     for (std::size_t index = 0; index < constructionPresets.size(); ++index)
     {
         const auto& preset = constructionPresets[index];
-        if (state.shape == preset.shape && state.bodyMaterial == preset.wood
+        if (state.guitarModel == preset.model
+            && state.shape == preset.shape && state.bodyMaterial == preset.wood
             && state.stringMaterial == preset.strings
             && (state.stringMaterial == acustra::StringMaterial::Nylon
                 || state.bridgeModel == preset.bridge))
@@ -559,23 +553,6 @@ void AcustraAudioProcessorEditor::updateConstructionControls()
                 handler->notifyAccessibilityEvent (juce::AccessibilityEvent::valueChanged);
         }
     }
-    setupControls[2].setItemEnabled (
-        5, state.stringMaterial == acustra::StringMaterial::Steel);
-}
-
-void AcustraAudioProcessorEditor::updateCaptureControl()
-{
-    auto& captureMenu = setupControls[2];
-    const int captureId = captureValues[1] >= 0.5f
-        ? 6 : juce::roundToInt (captureValues[0]) == 3 && captureValues[2] >= 0.5f
-            ? 7 : juce::roundToInt (captureValues[0]) + 1;
-    if (captureMenu.getSelectedId() != captureId)
-    {
-        captureMenu.setSelectedId (captureId, juce::dontSendNotification);
-        if (auto* handler = captureMenu.getAccessibilityHandler())
-            handler->notifyAccessibilityEvent (juce::AccessibilityEvent::valueChanged);
-    }
-    timerCallback();
 }
 
 void AcustraAudioProcessorEditor::configureChoice (
@@ -734,11 +711,15 @@ void AcustraAudioProcessorEditor::resized()
     bounds.removeFromTop (12);
     setupPanelBounds = bounds.removeFromTop (80);
     auto setupArea = setupPanelBounds.reduced (14, 10);
-    const auto setupWidth = setupArea.getWidth() - 24;
-    const std::array<int, 3> setupWidths {
-        setupWidth * 44 / 100, setupWidth * 23 / 100, setupWidth * 33 / 100
+    const auto setupWidth = setupArea.getWidth() - 36;
+    const int guitarWidth = setupWidth * 30 / 100;
+    const int pickingWidth = juce::jmax (175, setupWidth * 17 / 100);
+    const int captureWidth = juce::jmax (175, setupWidth * 23 / 100);
+    const std::array<int, 4> setupWidths {
+        guitarWidth, pickingWidth, captureWidth,
+        setupWidth - guitarWidth - pickingWidth - captureWidth
     };
-    for (std::size_t index = 0; index < setupControls.size(); ++index)
+    for (const auto index : std::array<std::size_t, 4> { 0, 3, 1, 2 })
     {
         auto cell = setupArea.removeFromLeft (setupWidths[index]);
         setupLabels[index].setBounds (cell.removeFromTop (24));
@@ -785,14 +766,7 @@ void AcustraAudioProcessorEditor::timerCallback()
 {
     updateConstructionControls();
     juce::String next;
-    const auto state = audioProcessor.snapshotEngineParameters();
-    if (captureValues[1] < 0.5f
-        && juce::roundToInt (captureValues[0]) == 4
-        && state.stringMaterial == acustra::StringMaterial::Nylon)
-    {
-        next = "Magnetic needs steel";
-    }
-    else if (! audioProcessor.isEngineReady())
+    if (! audioProcessor.isEngineReady())
     {
         next = "WAITING FOR AUDIO";
     }

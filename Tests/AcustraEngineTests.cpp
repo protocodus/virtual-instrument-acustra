@@ -53,11 +53,23 @@ struct AcustraEngineTestAccess
         double position, aperture, gain;
     };
 
+    struct ReleasedContactOptions
+    {
+        PhysicalCalibration calibration { fittedPhysicalCalibration };
+        float touch { EngineParameters {}.touch };
+        float bend { 0.0f };
+        float timbre { -1.0f };
+        int fret { 0 };
+        int polarisation { 0 };
+        PickingTechnique picking { PickingTechnique::Thumb };
+    };
+
     static ReleasedContactSnapshot releasedContact(StringMaterial material,
-                                                    int rate, int string)
+                                                    int rate, int string,
+                                                    const ReleasedContactOptions& options)
     {
         AcustraEngine engine;
-        auto calibration = fittedPhysicalCalibration;
+        auto calibration = options.calibration;
         // Recover the initializer's amplitude from its envelope metadata,
         // including nylon, without duplicating the displacement/velocity law.
         // No audio is advanced, so this probe emits no release noise.
@@ -65,27 +77,40 @@ struct AcustraEngineTestAccess
         engine.setPhysicalCalibration(calibration);
         EngineParameters parameters;
         parameters.stringMaterial = material;
-        parameters.picking = PickingTechnique::Thumb;
+        parameters.picking = options.picking;
+        parameters.touch = options.touch;
         engine.setParameters(parameters);
         engine.prepare(rate, 64);
         engine.setStringPerChannelMode(true);
+        if (options.timbre >= 0.0f)
+        {
+            engine.setLowerZoneMemberCount(5);
+            engine.setMpeTimbre(options.timbre, string + 1);
+        }
+        engine.setPitchBend(options.bend, options.timbre >= 0.0f ? 1 : string + 1);
         auto& voice = engine.voices_[static_cast<std::size_t>(string)];
-        engine.noteOn(voice.openMidi, 0.6f, string + 1);
-        const auto& loop = voice.loops[0];
+        engine.noteOn(voice.openMidi + options.fret, 0.6f, string + 1);
+        const auto& loop = voice.loops[static_cast<std::size_t>(options.polarisation)];
         const int length = std::clamp(static_cast<int>(std::round(loop.currentDelay)),
                                       8, AcustraEngine::maximumDelaySamples - 3);
         const float touch = engine.effectiveTouch(voice.velocity);
         const auto& physical = material == StringMaterial::Steel
             ? calibration.steel : calibration.nylon;
         const float apertureSamples = 0.70f + 3.60f * (1.0f - touch)
-            + (string < 3 ? 1.0f : 0.0f);
+            + (string < 3 ? 1.0f : 0.0f) + (voice.fret >= 17 ? 1.5f : 0.0f);
         ReleasedContactSnapshot result {
-            {}, std::clamp(voice.pluckPoint - 0.006f, 0.05f, 0.48f),
-            registeredAperture(apertureSamples, physical.apertureScale,
+            {}, std::clamp(voice.pluckPoint
+                + (options.polarisation == 0 ? -0.006f : 0.009f), 0.05f, 0.48f),
+            registeredAperture(apertureSamples
+                * (options.picking == PickingTechnique::Pick ? 0.5f
+                   : options.picking == PickingTechnique::Thumb ? 2.0f : 1.0f),
+                physical.apertureScale,
                 loop.currentDelay * 48000.0f / static_cast<float>(rate),
                 calibration.apertureRegisterExponent),
             static_cast<double>(voice.excitationEnvelope)
-                / (0.003f + 0.014f * touch) * std::sqrt(voice.polarisationMix)
+                / (0.003f + 0.014f * touch)
+                * std::sqrt(options.polarisation == 0
+                    ? voice.polarisationMix : 1.0f - voice.polarisationMix)
         };
         for (int sample = 0; sample < length; ++sample)
         {
@@ -94,6 +119,12 @@ struct AcustraEngineTestAccess
             result.history.push_back(loop.delay[static_cast<std::size_t>(index)]);
         }
         return result;
+    }
+
+    static ReleasedContactSnapshot releasedContact(StringMaterial material,
+                                                    int rate, int string)
+    {
+        return releasedContact(material, rate, string, ReleasedContactOptions {});
     }
 
     struct PluckSnapshot
@@ -960,9 +991,13 @@ struct AcustraEngineTestAccess
     // from it, so two calls with the same midiChannel and midiNote draw the
     // identical offset and differ only by what timbre itself moved.
     static double mpeTimbrePluckPoint(float timbre, int midiChannel,
-                                      int midiNote = 52)
+                                      int midiNote = 52,
+                                      PickingTechnique picking = PickingTechnique::Finger)
     {
         AcustraEngine engine;
+        EngineParameters parameters;
+        parameters.picking = picking;
+        engine.setParameters(parameters);
         engine.prepare(48000.0, 64);
         if (midiChannel > 1)
             engine.setLowerZoneMemberCount(2);
@@ -1013,6 +1048,7 @@ struct AcustraEngineTestAccess
         parameters.stringMaterial = StringMaterial::Steel;
         engine.setParameters(parameters);
         engine.prepare(sampleRate, 64);
+        engine.setLegato(true);
         if (midiChannel > 1)
             engine.setLowerZoneMemberCount(2);
         if (pressure >= 0.0f)
@@ -1150,6 +1186,15 @@ struct AcustraEngineTestAccess
         return result;
     }
 
+    static std::array<float, 8> bridgePortWaves(const AcustraEngine& engine)
+    {
+        const auto& bridge = engine.bridgeLoad_;
+        return { bridge.displacement, bridge.rotation,
+                 bridge.mainIntegratedForce, bridge.mainIntegratedMoment,
+                 bridge.bodyIntegratedForce, bridge.bodyIntegratedMoment,
+                 bridge.tailIntegratedForce, bridge.tailIntegratedMoment };
+    }
+
     static std::vector<float> radiationHistory(const AcustraEngine& engine)
     {
         std::vector<float> state;
@@ -1165,8 +1210,7 @@ struct AcustraEngineTestAccess
                  &engine.bridgeVelocityDerivative_, &engine.bridgeRotationDerivative_,
                  &engine.bridgeForceDerivative_, &engine.bridgeForceMomentDerivative_,
                  &engine.bridgeBodyForceDerivative_, &engine.bridgeBodyMomentDerivative_,
-                 &engine.bridgeTailForceDerivative_, &engine.bridgeTailMomentDerivative_,
-                 &engine.magneticDerivative_ })
+                 &engine.bridgeTailForceDerivative_, &engine.bridgeTailMomentDerivative_ })
         {
             state.insert(state.end(), derivative->history.begin(), derivative->history.end());
             state.push_back(static_cast<float>(derivative->index));
@@ -1191,6 +1235,7 @@ struct AcustraEngineTestAccess
         parameters.stringMaterial = material;
         engine.setParameters(parameters);
         engine.prepare(rate, 64);
+        engine.setLegato(true);
         engine.setStringPerChannelMode(true);
         engine.noteOn(43, 0.8f, 1);
         auto& voice = engine.voices_[0];
@@ -2199,6 +2244,85 @@ void testPassiveBridgeBranchesBalance()
         expect(maximumSympatheticForce == 0.0,
                name + " an idle string radiated outside the junction");
     }
+}
+
+// Measure the solver's actual zero-state port trajectories independently of
+// its acoustic derivative histories. In particular, a note-on can re-reference
+// acoustic motion but cannot remove positive work from the passive ledger.
+void testPowerObserversKeepInitialAndRepeatedPluckWork()
+{
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const auto material : { acustra::StringMaterial::Steel,
+                                     acustra::StringMaterial::Nylon })
+        {
+            acustra::AcustraEngine engine;
+            acustra::EngineParameters parameters;
+            parameters.stringMaterial = material;
+            parameters.touch = material == acustra::StringMaterial::Steel ? 0.72f : 0.08f;
+            engine.setParameters(parameters);
+            engine.prepare(rate, 1);
+            std::vector<std::array<float, 8>> trajectory;
+            const int frames = static_cast<int>(0.05 * rate);
+            trajectory.reserve(static_cast<std::size_t>(frames));
+            bool agrees = true;
+            double largestError = 0.0;
+            for (int sample = 0; sample < frames; ++sample)
+            {
+                if (sample == 0) engine.noteOn(40, 0.72f);
+                if (sample == static_cast<int>(0.020 * rate)) engine.noteOn(55, 1.0f);
+                if (sample == static_cast<int>(0.030 * rate)) engine.noteOff(40);
+                if (sample == static_cast<int>(0.035 * rate)) engine.noteOn(55, 0.95f);
+                float left {}, right {};
+                engine.process(&left, &right, 1);
+                trajectory.push_back(acustra::AcustraEngineTestAccess::bridgePortWaves(engine));
+                const double delayedAt = static_cast<double>(sample) - rate / 48000.0;
+                const int before = static_cast<int>(std::floor(delayedAt));
+                const double fraction = delayedAt - before;
+                std::array<double, 8> rates {}, rateErrorBounds {};
+                for (std::size_t coordinate = 0; coordinate < rates.size(); ++coordinate)
+                {
+                    const auto valueAt = [&] (int at)
+                    {
+                        return at < 0 ? 0.0 : static_cast<double>(
+                            trajectory[static_cast<std::size_t>(at)][coordinate]);
+                    };
+                    const double delayed = (1.0 - fraction) * valueAt(before)
+                                         + fraction * valueAt(before + 1);
+                    rates[coordinate] = trajectory.back()[coordinate] - delayed;
+                    // The production interpolated subtraction rounds at float
+                    // precision. Bound its absolute forward error from the
+                    // input magnitudes, including near-zero differences.
+                    rateErrorBounds[coordinate] = 8.0
+                        * std::numeric_limits<float>::epsilon()
+                        * (std::abs(trajectory.back()[coordinate])
+                           + std::abs(valueAt(before)) + std::abs(valueAt(before + 1)));
+                }
+                const std::array<double, 3> observed {
+                    engine.getLastBridgePower(), engine.getLastBridgeBodyPower(),
+                    engine.getLastBridgeTailPower()
+                };
+                for (std::size_t branch = 0; branch < observed.size(); ++branch)
+                {
+                    const double heave = rates[0] * rates[2 + 2 * branch];
+                    const double rock = rates[1] * rates[3 + 2 * branch];
+                    const double error = std::abs(observed[branch] - heave - rock);
+                    largestError = std::max(largestError, error);
+                    const auto productError = [&] (std::size_t motion, std::size_t force)
+                    {
+                        return rateErrorBounds[motion] * std::abs(rates[force])
+                            + rateErrorBounds[force] * std::abs(rates[motion])
+                            + rateErrorBounds[motion] * rateErrorBounds[force];
+                    };
+                    const double bound = productError(0, 2 + 2 * branch)
+                        + productError(1, 3 + 2 * branch)
+                        + 4.0 * std::numeric_limits<float>::epsilon()
+                            * (std::abs(heave) + std::abs(rock)) + 1.0e-22;
+                    agrees = agrees && error <= bound;
+                }
+            }
+            expect(agrees, "power observer lost initial/repeated-pluck work at "
+                + std::to_string(rate) + ", maximum error " + std::to_string(largestError));
+        }
 }
 
 void testRetainedTailClosesTheWaveNormBalance()
@@ -3473,6 +3597,13 @@ void testMpeTimbreSetsPerNotePluckPointOnMemberChannelOnly()
            "CC74's pluck point left its published 0.05-0.46 band");
     expect(std::abs((memberHigh - memberLow) - 0.8 * span) < 1.0e-4,
            "CC74 did not move the pluck point across its own 0.05-0.46 span");
+    for (const auto picking : { acustra::PickingTechnique::Pick,
+                                acustra::PickingTechnique::Thumb })
+    {
+        expect(AcustraEngineTestAccess::mpeTimbrePluckPoint(0.1f, 2, 52, picking) == memberLow
+                   && AcustraEngineTestAccess::mpeTimbrePluckPoint(0.9f, 2, 52, picking) == memberHigh,
+               "picking style overrode an explicit MPE pluck position");
+    }
 }
 
 void testMpePressureBiasesVibratoDepthWithinTheWheelsOwnBound()
@@ -3998,8 +4129,8 @@ void testBodyAndBridgeCalibrationChangePhysicalDescriptors()
 void testReleasedContactPreservesTheLinearFilterSpectrum()
 {
     // Independently integrate the asymmetric triangle's Fourier series.
-    // Sampling aliases all n+kN coefficients into DFT bin n; the five-point
-    // spatial convolution multiplies each by cos^4(pi*(n+kN)*a). Subtracting
+    // Sampling aliases all n+kN coefficients into DFT bin n; the continuous
+    // Gaussian convolution multiplies each by exp(-2*pi^2*(n+kN)^2*a^2). Subtracting
     // the endpoint changes only DC. A subsequent zero clamp violates this.
     constexpr int aliases = 64;
     double worstError = 0.0;
@@ -4018,10 +4149,12 @@ void testReleasedContactPreservesTheLinearFilterSpectrum()
                 // omitted +/- alias tails are bounded by this integral.
                 const double tailBound = 1.0 / (std::numbers::pi * std::numbers::pi
                     * p * (1.0 - p) * length * length * (aliases - 0.5));
-                // Float phase wrapping, piecewise-linear slope <=1/min(p,1-p),
-                // five positive weighted additions and amplitude recovery:
-                // 16 eps/min(p,1-p) conservatively bounds their absolute error
-                // after gain normalization. DFT averaging cannot amplify it.
+                // Float phase rounding is amplified by a triangle slope of
+                // at most 1/min(p,1-p). Corner interpolation (unit error
+                // <6.20e-11) and image sums use double; final float storage
+                // and amplitude recovery also fit within this conservative
+                // bound on the probed a<0.125 domain. DFT averaging cannot
+                // amplify the absolute time-domain error.
                 const double roundingBound = 16.0 * std::numeric_limits<float>::epsilon()
                     / std::min(p, 1.0 - p);
                 for (const int harmonic : { 1, 2, 3, 5, 8,
@@ -4037,8 +4170,9 @@ void testReleasedContactPreservesTheLinearFilterSpectrum()
                         const auto triangle = (std::polar(1.0, -2.0 * std::numbers::pi * m * p)
                             - 1.0) / (4.0 * std::numbers::pi * std::numbers::pi
                                       * m * m * p * (1.0 - p));
-                        const double kernel = std::cos(std::numbers::pi * m * a);
-                        expected += triangle * (kernel * kernel * kernel * kernel);
+                        const double kernel = std::exp(-2.0 * std::numbers::pi
+                            * std::numbers::pi * m * m * a * a);
+                        expected += triangle * kernel;
                     }
                     for (int sample = 0; sample < length; ++sample)
                         observed += state.history[static_cast<std::size_t>(sample)]
@@ -4058,6 +4192,145 @@ void testReleasedContactPreservesTheLinearFilterSpectrum()
               << worstError << '\n';
 }
 
+void testBroadContactWrapsAndReachesItsUniformLimit()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    // Public calibration, RPN-range bends, MPE timbre and host rates reach
+    // these domains without injecting a kernel or manufacturing loop state.
+    // Reconstruct the whole signed wave with an independent Fourier series,
+    // including both sides of its periodic boundary and both polarisations.
+    struct Domain { int rate; float bend, exponent; };
+    constexpr std::array domains {
+        Domain { 48000, 0.0f, 1.0f }, Domain { 96000, 12.0f, 1.0f },
+        Domain { 384000, 24.0f, 1.0f }, Domain { 384000, 96.0f, 1.0f },
+        Domain { 8000, -96.0f, -1.0f }
+    };
+    constexpr int terms = 32;
+    // For a>=0.125 the omitted Fourier tail is below 1e-145.
+    // The absolute tolerance covers float phase/gain recovery and storage,
+    // plus the double corner table's <6.20e-11 unit interpolation error.
+    constexpr double tolerance = 2.0e-6;
+    double worstError = 0.0;
+    double smallestAperture = std::numeric_limits<double>::max();
+    double largestAperture = 0.0;
+    int uniformCases = 0, signedWrapCases = 0, cases = 0;
+    for (const auto material : { acustra::StringMaterial::Steel,
+                                 acustra::StringMaterial::Nylon })
+        for (const auto& domain : domains)
+            for (const float timbre : { 0.0f, 1.0f })
+                for (const int polarisation : { 0, 1 })
+                {
+                    Access::ReleasedContactOptions options;
+                    options.calibration.nylon.apertureScale = 2.5f;
+                    options.calibration.steel.apertureScale = 2.5f;
+                    options.calibration.nylon.velocityBrightnessDepth = 0.0f;
+                    options.calibration.steel.velocityBrightnessDepth = 0.0f;
+                    options.calibration.apertureRegisterExponent = domain.exponent;
+                    options.touch = 0.0f;
+                    options.bend = domain.bend;
+                    options.timbre = timbre;
+                    options.fret = 19;
+                    options.polarisation = polarisation;
+                    options.picking = acustra::PickingTechnique::Finger;
+                    const auto state = Access::releasedContact(material, domain.rate, 5, options);
+                    const double p = state.position, a = state.aperture;
+                    const int length = static_cast<int>(state.history.size());
+                    expect(state.gain > 0.0 && length >= 8 && a >= 0.125,
+                           "broad-contact probe missed its intended legal domain");
+                    smallestAperture = std::min(smallestAperture, a);
+                    largestAperture = std::max(largestAperture, a);
+                    const bool uniform = std::exp(-2.0 * std::numbers::pi
+                        * std::numbers::pi * a * a) / (6.0 * p * (1.0 - p))
+                        <= std::numeric_limits<double>::epsilon();
+                    std::array<std::complex<double>, terms> coefficients {};
+                    for (int n = 1; n <= terms; ++n)
+                    {
+                        const double m = n;
+                        coefficients[static_cast<std::size_t>(n - 1)]
+                            = (std::polar(1.0, -2.0 * std::numbers::pi * m * p) - 1.0)
+                            * std::exp(-2.0 * std::numbers::pi * std::numbers::pi * m * m * a * a)
+                            / (4.0 * std::numbers::pi * std::numbers::pi * m * m * p * (1.0 - p));
+                    }
+                    bool negativeBeforeWrap = false;
+                    for (int sample = 0; sample < length; ++sample)
+                    {
+                        double expected = 0.0;
+                        const double phase = static_cast<double>(sample) / length;
+                        for (int n = 1; n <= terms; ++n)
+                            expected += 2.0 * std::real(coefficients[static_cast<std::size_t>(n - 1)]
+                                * (std::polar(1.0, 2.0 * std::numbers::pi * n * phase) - 1.0));
+                        const double observed = state.history[static_cast<std::size_t>(sample)] / state.gain;
+                        const double error = std::abs(observed - expected);
+                        worstError = std::max(worstError, error);
+                        expect(std::isfinite(observed) && error < tolerance,
+                               "broad-contact periodic Fourier reconstruction differs");
+                        if (uniform || sample == 0)
+                            expect(observed == 0.0,
+                                   "uniform contact or its subtracted endpoint was nonzero");
+                        if (sample > length / 2 && expected < -4.0 * tolerance)
+                        {
+                            negativeBeforeWrap = true;
+                            expect(observed < 0.0, "contact was rectified before its periodic endpoint");
+                        }
+                    }
+                    uniformCases += uniform ? 1 : 0;
+                    signedWrapCases += negativeBeforeWrap ? 1 : 0;
+                    ++cases;
+                }
+    expect(uniformCases >= 8 && signedWrapCases >= 8,
+           "broad-contact domains did not exercise uniform and signed-wrap branches");
+    std::cout << "Acustra broad-contact " << cases << " cases, aperture "
+              << smallestAperture << ".." << largestAperture << ", uniform "
+              << uniformCases << ", signed wrap " << signedWrapCases
+              << ", maximum sample error " << worstError << '\n';
+}
+
+void testPickingStylesChangeMoreThanGainAtEveryVelocity()
+{
+    // Fit and remove any scalar amplitude difference between complete attacks.
+    // A technique volume control, or saturated Finger/Pick identity, must fail.
+    double smallestDifference = 1.0;
+    for (const auto material : { acustra::StringMaterial::Steel,
+                                 acustra::StringMaterial::Nylon })
+        for (const double rate : { 44100.0, 48000.0, 96000.0 })
+            for (const int midi : { 43, 52, 64, 76 })
+                for (const float velocity : { 32.0f / 127.0f, 0.5f, 91.0f / 127.0f, 1.0f })
+                {
+                    acustra::EngineParameters parameters;
+                    parameters.stringMaterial = material;
+                    std::array<Audio, 3> attacks;
+                    for (int technique = 0; technique < 3; ++technique)
+                    {
+                        parameters.picking = static_cast<acustra::PickingTechnique>(technique);
+                        attacks[static_cast<std::size_t>(technique)]
+                            = renderAtRate(parameters, midi, velocity, 0.120, rate, 64);
+                    }
+                    for (int first = 0; first < 3; ++first)
+                        for (int second = first + 1; second < 3; ++second)
+                        {
+                            const auto& a = attacks[static_cast<std::size_t>(first)];
+                            const auto& b = attacks[static_cast<std::size_t>(second)];
+                            double aa = 0.0, bb = 0.0, ab = 0.0;
+                            for (std::size_t sample = 0; sample < a.left.size(); ++sample)
+                            {
+                                const double x = 0.5 * (a.left[sample] + a.right[sample]);
+                                const double y = 0.5 * (b.left[sample] + b.right[sample]);
+                                aa += x * x;
+                                bb += y * y;
+                                ab += x * y;
+                            }
+                            const double difference = std::sqrt(std::max(0.0,
+                                1.0 - ab * ab / std::max(aa * bb, 1.0e-40)));
+                            smallestDifference = std::min(smallestDifference, difference);
+                            expect(aa > 0.0 && bb > 0.0 && difference > 0.02,
+                                   "picking attacks differ only in gain at MIDI " + std::to_string(midi)
+                                   + " velocity " + std::to_string(velocity));
+                        }
+                }
+    std::cout << "Acustra picking minimum attack difference after gain removal: "
+              << smallestDifference << '\n';
+}
+
 void testPickingChangesTheContactWithoutRetuningOrReplucking()
 {
     using acustra::PickingTechnique;
@@ -4065,7 +4338,7 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
     for (const auto material : { acustra::StringMaterial::Steel,
                                  acustra::StringMaterial::Nylon })
     {
-        for (const float velocity : { 0.2f, 0.5f, 0.9f })
+        for (const float velocity : { 0.2f, 0.5f, 0.9f, 1.0f })
         {
             const auto finger = AcustraEngineTestAccess::pluck(
                 acustra::fittedPhysicalCalibration, material, velocity);
@@ -4079,11 +4352,13 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
                        // Nylon's calibrated release-noise gain is zero.
                        && pick.noiseEnvelope >= thumb.noiseEnvelope,
                    "pick/thumb did not reach the released shape and attack");
-            expect(pick.touch >= finger.touch && finger.touch >= thumb.touch,
-                   "the contact ranges crossed under MIDI velocity");
-            expect(pick.pluckPoint == thumb.pluckPoint
-                       && thumb.pluckPoint == finger.pluckPoint,
-                   "picking technique moved the player's pluck position");
+            expect(pick.touch == finger.touch && finger.touch == thumb.touch
+                       && pick.noiseEnvelope == finger.noiseEnvelope
+                       && thumb.noiseEnvelope == finger.noiseEnvelope,
+                   "picking styles changed the shared touch/noise amplitude law");
+            expect(pick.pluckPoint < finger.pluckPoint
+                       && finger.pluckPoint < thumb.pluckPoint,
+                   "panel-based picking styles did not move bridgeward/neckward");
         }
         for (const double rate : { 44100.0, 48000.0, 96000.0 })
         {
@@ -6338,7 +6613,7 @@ void testFrettingHandFollowsThePluckLaw()
             double previousEnergy = 0.0;
             for (const float lift : { 0.3f, 0.6f, 1.0f })
             {
-                const auto lifted = render(material, rate, false, 43, 0, 0.0f,
+                const auto lifted = render(material, rate, true, 43, 0, 0.0f,
                                            43, lift, 1.0);
                 const auto plucked = render(material, rate, false, 40, 0, 0.0f,
                                             0, 0.0f, 1.0);
@@ -6813,6 +7088,7 @@ int main()
     testSharedBodyExcitesIdleStrings();
     testSympatheticStringsAreAudibleButBounded();
     testPassiveBridgeBranchesBalance();
+    testPowerObserversKeepInitialAndRepeatedPluckWork();
     testRetainedTailClosesTheWaveNormBalance();
     testConstructionControlsChangeTheModel();
     testAgeRemovesUpperStringEnergy();
@@ -6843,7 +7119,9 @@ int main()
     testBodyAndBridgeCalibrationChangePhysicalDescriptors();
     testMaterialCalibrationChangesStringAndPluckDescriptors();
     testReleasedContactPreservesTheLinearFilterSpectrum();
+    testBroadContactWrapsAndReachesItsUniformLimit();
     testPickingChangesTheContactWithoutRetuningOrReplucking();
+    testPickingStylesChangeMoreThanGainAtEveryVelocity();
     testHighLossCutoffScaleChangesOnlyUpperLoss();
     testPlateConductanceFloorDampsOnlyTheUpperBand();
     testStolenStringKeepsRingingUnderHandDamping();

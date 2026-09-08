@@ -1,0 +1,1104 @@
+{
+  "baseline": {
+    "sha256": "c6a9756f9270313868fdf811554812e6fd398e3fab9c86879c22de276d84ace7",
+    "results": {
+      "dataset": "GuitarSet v1.1.0",
+      "source": "https://zenodo.org/records/3371780",
+      "attribution": "Qingyang Xi, Rachel M. Bittner, Johan Pauwels, Xuzhou Ye, Juan P. Bello, ISMIR 2018; CC BY 4.0",
+      "archive_md5": {
+        "annotation.zip": "b39b78e63d3446f2e54ddb7a54df9b10",
+        "audio_mono-mic.zip": "275966d6610ac34999b58426beb119c3"
+      },
+      "renderer_sha256": "c6a9756f9270313868fdf811554812e6fd398e3fab9c86879c22de276d84ace7",
+      "physical_scorer_sha256": "94ec199da74c3432801225829028abf25a100d73d66015e754d6dea8da80c7bd",
+      "scorer_sha256": "eaf4cc65f526e06c4180376532abb2d54ba4d37f17e467aad7f0b6fa901dc575",
+      "numpy_version": "1.26.4",
+      "scipy_version": "1.14.1",
+      "analysis_rate": 48000,
+      "start_seconds": 0,
+      "duration_seconds": 12,
+      "velocity": 91,
+      "capture": "stereo_mic",
+      "picking": "finger",
+      "bridge_model": "original",
+      "reference_capture": "microphone",
+      "reference_transducer": "Neumann U87 condenser, about 30 cm from the 18th fret",
+      "render_protocol": "shipping calibration/default controls; string-per-channel; 127-frame blocks; annotated mean pitch; zero release velocity",
+      "limitations": "One phrase, six players; timing/strum statistics previously informed engine. No measured note velocities, gesture labels, matched guitar body or matched transducer. Pickup position, field response, loaded electronics and channel balance are undocumented. Descriptor distances include those differences and do not establish perceptual equivalence or market rank.",
+      "mean": {
+        "log_magnitude_mae_db": 13.148461854136576,
+        "spectral_convergence": 0.9199364652677682,
+        "chroma_cosine_distance": 0.3177430798441288
+      },
+      "performances": [
+        {
+          "track": "00_BN1-129-Eb_comp",
+          "notes": 74,
+          "source_rate": 44100,
+          "source_audio_filename": "00_BN1-129-Eb_comp_mic.wav",
+          "source_audio_sha256": "59e1e3c9bebdabd48afe28050a2c031e6cf36e5697268301cdf2e74bc66b71f1",
+          "annotation_sha256": "cd79564c51d0dec7d04e010d31525e9f7d2b9d41cf6116118a66ac5a8c181007",
+          "events_sha256": "25c82f2c666ecbe8ca704d1e5303a990c3c08c6feca2746b5ba7644582a343a2",
+          "model_sha256": "f97d044fcb67e067af4e8e4e07ca707597839956ddecbb4f3d3977888e8225ef",
+          "reference_audition_trim_db": 9.73014703683393,
+          "model_audition_trim_db": 2.6820886865761473,
+          "metrics": {
+            "log_magnitude_mae_db": 13.512048382418298,
+            "spectral_convergence": 0.948250275765112,
+            "chroma_cosine_distance": 0.349417411432114,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -18.822796705056813
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": -0.7365956922865223
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 4.134902760412832
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": 9.960032023541876
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": -2.6800271161925924
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -5.647731668105937
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -9.045446797926
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 13.544774055620623,
+                "spectral_convergence": 0.8844301490030534
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 13.778413689584248,
+                "spectral_convergence": 0.8591153408498161
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 13.549966911222977,
+                "spectral_convergence": 0.881252305747559
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 13.529212220018229,
+                "spectral_convergence": 0.9500086463412403
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 13.525166885457166,
+                "spectral_convergence": 1.0294581937337917
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 13.14475653260655,
+                "spectral_convergence": 1.0852370189152116
+              }
+            ]
+          }
+        },
+        {
+          "track": "01_BN1-129-Eb_solo",
+          "notes": 34,
+          "source_rate": 44100,
+          "source_audio_filename": "01_BN1-129-Eb_solo_mic.wav",
+          "source_audio_sha256": "76330537c6a88df56c7e338da9dd81d84cbf7f3a5ae7cd1b32a663bded6b76b4",
+          "annotation_sha256": "ecdd877eaf6208cfefa47b74c1a6a5211146e12dfa0f5132345a4c456cd67fc8",
+          "events_sha256": "b7aaedbfc5b3cc1454f300bc4974a537cca2e08ce5c81331f3a54d27757549ab",
+          "model_sha256": "3f6a5f84e5277ac389fa68199ff5a1fc5960d905dbdec2d9add54fe175ed7def",
+          "reference_audition_trim_db": 14.000153752705415,
+          "model_audition_trim_db": 5.425979275098815,
+          "metrics": {
+            "log_magnitude_mae_db": 14.432450520603568,
+            "spectral_convergence": 0.7691675386409406,
+            "chroma_cosine_distance": 0.1922510587406437,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -23.711007540537786
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": 0.3337521939239495
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 0.2147074622914833
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": 3.8466629692205907
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": -7.980057197392002
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -13.02046530933739
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -9.832939166002411
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 14.417699218345103,
+                "spectral_convergence": 0.8265224189997904
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 14.439799334398081,
+                "spectral_convergence": 0.7629953615046473
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 14.075846311813528,
+                "spectral_convergence": 0.7289889967600582
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 14.410756965403205,
+                "spectral_convergence": 0.7491903439680156
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 14.814839427399352,
+                "spectral_convergence": 0.764009941993201
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 14.435761866262137,
+                "spectral_convergence": 0.7832981686199306
+              }
+            ]
+          }
+        },
+        {
+          "track": "02_BN1-129-Eb_comp",
+          "notes": 78,
+          "source_rate": 44100,
+          "source_audio_filename": "02_BN1-129-Eb_comp_mic.wav",
+          "source_audio_sha256": "54d0b5d30a727ddbf3f9dbe18663063d6c55c979627ab6993fdede63f0a54cc0",
+          "annotation_sha256": "38208980f05c69d1560306553651f687a3c6260f47d98b64e33eb74c33e14931",
+          "events_sha256": "e015bc9727f1a5ecd9dd20e837b02bfbd3d488d36e7c5fd0f22c1f2a42001d48",
+          "model_sha256": "40dd91c449cf7e0cfce7814775197576f64bd796a356e2e63892cceaf24dc96b",
+          "reference_audition_trim_db": -3.2082305572645136,
+          "model_audition_trim_db": 3.5884231094025463,
+          "metrics": {
+            "log_magnitude_mae_db": 10.429521315476252,
+            "spectral_convergence": 0.9891641973201001,
+            "chroma_cosine_distance": 0.3972245996656081,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -19.027327270026337
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": -0.5886300127921982
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 12.266533793403049
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": 1.1171608053043667
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": 0.7352840250208841
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -0.4575413141508289
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -1.3134166616171048
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 10.957143488290757,
+                "spectral_convergence": 0.847438350053168
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 11.206467040737033,
+                "spectral_convergence": 0.8256932917668848
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 10.85601765807732,
+                "spectral_convergence": 0.9004364382749309
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 10.416593596550936,
+                "spectral_convergence": 1.043852021769896
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 9.926717992209534,
+                "spectral_convergence": 1.1444877949887817
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 9.214188116991936,
+                "spectral_convergence": 1.1730772870669386
+              }
+            ]
+          }
+        },
+        {
+          "track": "03_BN1-129-Eb_solo",
+          "notes": 35,
+          "source_rate": 44100,
+          "source_audio_filename": "03_BN1-129-Eb_solo_mic.wav",
+          "source_audio_sha256": "51ec6f1d43b4866a02ca5ff43bb5cfcb7f2b8069fe12b078385e091a8f8d78f4",
+          "annotation_sha256": "44dd4061b27bb3320d1e42180f5602e71932be8c388945f8b06a46d2df6d7aef",
+          "events_sha256": "00e4e78f6b33523eb5e516fd7d97dec783cc6b4620e2ce90314e6b4996ff4913",
+          "model_sha256": "0089cfabede72b4b3f1e4ce3e4d9b506fbc380022734a94ce9033ffe0a07a6aa",
+          "reference_audition_trim_db": -0.3362882949392624,
+          "model_audition_trim_db": 8.462150487117718,
+          "metrics": {
+            "log_magnitude_mae_db": 14.787347978252418,
+            "spectral_convergence": 0.9976607166724936,
+            "chroma_cosine_distance": 0.23748054054425738,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -23.374190342714726
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": -0.31010663964802065
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 2.2675381459678374
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": -0.4314650829548741
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": -6.458210455187449
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -14.613630590616175
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -10.503485065350679
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 15.525693291681213,
+                "spectral_convergence": 0.980804232101883
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 15.088752472057836,
+                "spectral_convergence": 0.9525041848065897
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 14.493810121411226,
+                "spectral_convergence": 0.9686035583459739
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 14.619944533615083,
+                "spectral_convergence": 1.0085024707481522
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 14.698784141669618,
+                "spectral_convergence": 1.0306157478862832
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 14.297103309079533,
+                "spectral_convergence": 1.0449341061460802
+              }
+            ]
+          }
+        },
+        {
+          "track": "04_BN1-129-Eb_comp",
+          "notes": 70,
+          "source_rate": 44100,
+          "source_audio_filename": "04_BN1-129-Eb_comp_mic.wav",
+          "source_audio_sha256": "ca4b487760400edabb87ed478a523ad0587c020b8463f97429af4009789f4ebd",
+          "annotation_sha256": "81c4818b93f86a45a582d1b958837b5579c599a2b0a214e9025c63981c87538a",
+          "events_sha256": "658234f20ec10b3ac526eba900e66fb38cb0aa4fb1d0b4df89d656008e57b1d9",
+          "model_sha256": "bce33157df75a0da7d73f98a6ed56095c5a92384aacfc9b6551b9abda00dbd47",
+          "reference_audition_trim_db": 7.501653209529044,
+          "model_audition_trim_db": 2.9034721251512137,
+          "metrics": {
+            "log_magnitude_mae_db": 13.913171694129204,
+            "spectral_convergence": 0.884881721592556,
+            "chroma_cosine_distance": 0.521364992514919,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -21.464929150736612
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": 0.6112249638169364
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 6.347591857929434
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": 7.142957067332238
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": 2.6557082974901176
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -12.441313858482403
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -10.288947656472864
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 14.597162646215109,
+                "spectral_convergence": 0.8583144177984422
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 14.57666358646241,
+                "spectral_convergence": 0.8157213164947533
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 13.989059615629586,
+                "spectral_convergence": 0.8170469994478512
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 13.666390033234393,
+                "spectral_convergence": 0.8800004701821802
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 13.499480765923842,
+                "spectral_convergence": 0.9393685960606329
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 13.15027351730988,
+                "spectral_convergence": 0.9988385295714755
+              }
+            ]
+          }
+        },
+        {
+          "track": "05_BN1-129-Eb_solo",
+          "notes": 24,
+          "source_rate": 44100,
+          "source_audio_filename": "05_BN1-129-Eb_solo_mic.wav",
+          "source_audio_sha256": "ccf801f3a6e7b1ab38dd9bf1ae917d13c51ef93c977af41cdabcb0548f55a261",
+          "annotation_sha256": "8b9c47dae61790596142ffc898995a82d066229fa5b2947facc4a83750a921e1",
+          "events_sha256": "767d5e6af9b502ae8132e2068d1ea7b8b0126d02874e7fe349d2d3df80fff29b",
+          "model_sha256": "b04ba3c7d380708f5744de449246ee8b7b1fd3827c96b4e041c346f352124e8e",
+          "reference_audition_trim_db": 0.7758792886505601,
+          "model_audition_trim_db": 4.8034756519890704,
+          "metrics": {
+            "log_magnitude_mae_db": 11.816231233939709,
+            "spectral_convergence": 0.9304943416154074,
+            "chroma_cosine_distance": 0.2087198761672309,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -36.8574248939646
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": 3.4932823156190973
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 0.36883232278555256
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": -4.288516732999651
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": -5.548717125199543
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -14.13990165522138
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -16.20948281879174
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 12.72698190961559,
+                "spectral_convergence": 0.9721543102978458
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 12.640646821838732,
+                "spectral_convergence": 0.9310885327794319
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 12.211178234704539,
+                "spectral_convergence": 0.9125457069906838
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 11.927131995991118,
+                "spectral_convergence": 0.9212839336328084
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 11.22850070177305,
+                "spectral_convergence": 0.924257579607074
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 10.162947739715214,
+                "spectral_convergence": 0.9216359863846008
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "current": {
+    "sha256": "bd199d6df8bcd0426523df8abaef5e836435b12fa6bc07ba5cc630fc7e56f843",
+    "results": {
+      "dataset": "GuitarSet v1.1.0",
+      "source": "https://zenodo.org/records/3371780",
+      "attribution": "Qingyang Xi, Rachel M. Bittner, Johan Pauwels, Xuzhou Ye, Juan P. Bello, ISMIR 2018; CC BY 4.0",
+      "archive_md5": {
+        "annotation.zip": "b39b78e63d3446f2e54ddb7a54df9b10",
+        "audio_mono-mic.zip": "275966d6610ac34999b58426beb119c3"
+      },
+      "renderer_sha256": "bd199d6df8bcd0426523df8abaef5e836435b12fa6bc07ba5cc630fc7e56f843",
+      "physical_scorer_sha256": "94ec199da74c3432801225829028abf25a100d73d66015e754d6dea8da80c7bd",
+      "scorer_sha256": "eaf4cc65f526e06c4180376532abb2d54ba4d37f17e467aad7f0b6fa901dc575",
+      "numpy_version": "1.26.4",
+      "scipy_version": "1.14.1",
+      "analysis_rate": 48000,
+      "start_seconds": 0,
+      "duration_seconds": 12,
+      "velocity": 91,
+      "capture": "stereo_mic",
+      "picking": "finger",
+      "bridge_model": "original",
+      "reference_capture": "microphone",
+      "reference_transducer": "Neumann U87 condenser, about 30 cm from the 18th fret",
+      "render_protocol": "shipping calibration/default controls; string-per-channel; 127-frame blocks; annotated mean pitch; zero release velocity",
+      "limitations": "One phrase, six players; timing/strum statistics previously informed engine. No measured note velocities, gesture labels, matched guitar body or matched transducer. Pickup position, field response, loaded electronics and channel balance are undocumented. Descriptor distances include those differences and do not establish perceptual equivalence or market rank.",
+      "mean": {
+        "log_magnitude_mae_db": 13.540526168729079,
+        "spectral_convergence": 0.9157349844597773,
+        "chroma_cosine_distance": 0.3054591991232012
+      },
+      "performances": [
+        {
+          "track": "00_BN1-129-Eb_comp",
+          "notes": 74,
+          "source_rate": 44100,
+          "source_audio_filename": "00_BN1-129-Eb_comp_mic.wav",
+          "source_audio_sha256": "59e1e3c9bebdabd48afe28050a2c031e6cf36e5697268301cdf2e74bc66b71f1",
+          "annotation_sha256": "cd79564c51d0dec7d04e010d31525e9f7d2b9d41cf6116118a66ac5a8c181007",
+          "events_sha256": "25c82f2c666ecbe8ca704d1e5303a990c3c08c6feca2746b5ba7644582a343a2",
+          "model_sha256": "b30c9562e3b3b4cd72ace26a3507f391fd6a97e92d9b6e857dd05aa2d232a5bd",
+          "reference_audition_trim_db": 9.73014703683393,
+          "model_audition_trim_db": 1.350351026289554,
+          "metrics": {
+            "log_magnitude_mae_db": 14.270140430166444,
+            "spectral_convergence": 0.934198333841731,
+            "chroma_cosine_distance": 0.33771370464918987,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -12.45058427716614
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": -0.5353381542505778
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 4.505279487923498
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": 5.879104309337279
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": -4.320515224416875
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -4.774220619567066
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -9.202113259490034
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 14.489970471184416,
+                "spectral_convergence": 0.8740344525969391
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 14.910254416287646,
+                "spectral_convergence": 0.8491650291499976
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 14.534799505861532,
+                "spectral_convergence": 0.862899378679884
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 14.274293013484186,
+                "spectral_convergence": 0.9324034666486063
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 14.001432609720759,
+                "spectral_convergence": 1.0162140205536438
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 13.410092564460138,
+                "spectral_convergence": 1.0704736554213155
+              }
+            ]
+          }
+        },
+        {
+          "track": "01_BN1-129-Eb_solo",
+          "notes": 34,
+          "source_rate": 44100,
+          "source_audio_filename": "01_BN1-129-Eb_solo_mic.wav",
+          "source_audio_sha256": "76330537c6a88df56c7e338da9dd81d84cbf7f3a5ae7cd1b32a663bded6b76b4",
+          "annotation_sha256": "ecdd877eaf6208cfefa47b74c1a6a5211146e12dfa0f5132345a4c456cd67fc8",
+          "events_sha256": "b7aaedbfc5b3cc1454f300bc4974a537cca2e08ce5c81331f3a54d27757549ab",
+          "model_sha256": "d75ac3210574dac5848a24face10fa5140f990b0f5e82dc6cdaafdf581083d69",
+          "reference_audition_trim_db": 14.000153752705415,
+          "model_audition_trim_db": 4.1527237384634335,
+          "metrics": {
+            "log_magnitude_mae_db": 14.993277449024923,
+            "spectral_convergence": 0.7961275816147211,
+            "chroma_cosine_distance": 0.20454722870969264,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -19.909486866413665
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": 0.7249541450018526
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 0.2669449442411941
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": 1.371174685238602
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": -8.655159034794064
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -13.224381345392512
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -11.092234100168739
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 15.194354588465492,
+                "spectral_convergence": 0.8524854321447294
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 15.360218025887708,
+                "spectral_convergence": 0.8125681097177219
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 14.829558224796882,
+                "spectral_convergence": 0.765075784748915
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 14.895936577655988,
+                "spectral_convergence": 0.7684047425056315
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 15.086981141734928,
+                "spectral_convergence": 0.7822507209744163
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 14.592616135608539,
+                "spectral_convergence": 0.7959806995969119
+              }
+            ]
+          }
+        },
+        {
+          "track": "02_BN1-129-Eb_comp",
+          "notes": 78,
+          "source_rate": 44100,
+          "source_audio_filename": "02_BN1-129-Eb_comp_mic.wav",
+          "source_audio_sha256": "54d0b5d30a727ddbf3f9dbe18663063d6c55c979627ab6993fdede63f0a54cc0",
+          "annotation_sha256": "38208980f05c69d1560306553651f687a3c6260f47d98b64e33eb74c33e14931",
+          "events_sha256": "e015bc9727f1a5ecd9dd20e837b02bfbd3d488d36e7c5fd0f22c1f2a42001d48",
+          "model_sha256": "b69682c1b6540676beb3e9854a6c0967e5a206080e2f596d2810ce18fb224b75",
+          "reference_audition_trim_db": -3.2082305572645136,
+          "model_audition_trim_db": 2.7609972489195793,
+          "metrics": {
+            "log_magnitude_mae_db": 10.415469441999592,
+            "spectral_convergence": 0.9433193161849628,
+            "chroma_cosine_distance": 0.403370958394539,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -12.141182149904097
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": 0.5169794963246176
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 9.964609303376744
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": 2.479060001384518
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": 0.05053147691525369
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": 0.21063527635028695
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -1.0370823370322448
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 11.044209570643085,
+                "spectral_convergence": 0.8296712519815928
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 11.420582702068995,
+                "spectral_convergence": 0.8043604477988472
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 10.908328814263232,
+                "spectral_convergence": 0.851552001808063
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 10.320554891829048,
+                "spectral_convergence": 0.9784183877711097
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 9.763687080607816,
+                "spectral_convergence": 1.0813209187547652
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 9.035453592585373,
+                "spectral_convergence": 1.1145928889953982
+              }
+            ]
+          }
+        },
+        {
+          "track": "03_BN1-129-Eb_solo",
+          "notes": 35,
+          "source_rate": 44100,
+          "source_audio_filename": "03_BN1-129-Eb_solo_mic.wav",
+          "source_audio_sha256": "51ec6f1d43b4866a02ca5ff43bb5cfcb7f2b8069fe12b078385e091a8f8d78f4",
+          "annotation_sha256": "44dd4061b27bb3320d1e42180f5602e71932be8c388945f8b06a46d2df6d7aef",
+          "events_sha256": "00e4e78f6b33523eb5e516fd7d97dec783cc6b4620e2ce90314e6b4996ff4913",
+          "model_sha256": "3e83de8ca96f5998bddaf1e476b4d7dfa54658903a46af2ac409e019f73bd3e7",
+          "reference_audition_trim_db": -0.3362882949392624,
+          "model_audition_trim_db": 7.236469198345237,
+          "metrics": {
+            "log_magnitude_mae_db": 15.161785288495295,
+            "spectral_convergence": 0.9907294236611626,
+            "chroma_cosine_distance": 0.2441930388264114,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -19.552278980657345
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": -0.7876440671089184
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 2.7945213179631594
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": -0.6341874022390502
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": -8.218498489897497
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -13.021945659290497
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -10.501289830168721
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 16.064478153360316,
+                "spectral_convergence": 0.9805343612205368
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 15.66087384401333,
+                "spectral_convergence": 0.9580740079263423
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 14.966170268388257,
+                "spectral_convergence": 0.9675342686319406
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 14.963994560083716,
+                "spectral_convergence": 0.9978295342733421
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 14.87939492882445,
+                "spectral_convergence": 1.0138726562403513
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 14.435799976301691,
+                "spectral_convergence": 1.026531713674462
+              }
+            ]
+          }
+        },
+        {
+          "track": "04_BN1-129-Eb_comp",
+          "notes": 70,
+          "source_rate": 44100,
+          "source_audio_filename": "04_BN1-129-Eb_comp_mic.wav",
+          "source_audio_sha256": "ca4b487760400edabb87ed478a523ad0587c020b8463f97429af4009789f4ebd",
+          "annotation_sha256": "81c4818b93f86a45a582d1b958837b5579c599a2b0a214e9025c63981c87538a",
+          "events_sha256": "658234f20ec10b3ac526eba900e66fb38cb0aa4fb1d0b4df89d656008e57b1d9",
+          "model_sha256": "05cd4e3d8a61f944b2a3b261155d6b44e96fe651ca887c379173816b1e05a4d3",
+          "reference_audition_trim_db": 7.501653209529044,
+          "model_audition_trim_db": 2.0939197461210055,
+          "metrics": {
+            "log_magnitude_mae_db": 14.492210745418049,
+            "spectral_convergence": 0.8730658982727322,
+            "chroma_cosine_distance": 0.43823759251923694,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -14.744988947460758
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": 1.0765272785615037
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 4.5990071895860565
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": 8.226448059578612
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": -2.3971551944283056
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -10.568075198385909
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -9.680233153188254
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 15.312394460311241,
+                "spectral_convergence": 0.8515835250163571
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 15.384603511533204,
+                "spectral_convergence": 0.8072098883872401
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 14.693207193281188,
+                "spectral_convergence": 0.8130984609548167
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 14.265594674313466,
+                "spectral_convergence": 0.869485083427125
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 13.925773769852578,
+                "spectral_convergence": 0.9243603621639005
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 13.371690863216608,
+                "spectral_convergence": 0.972658069686953
+              }
+            ]
+          }
+        },
+        {
+          "track": "05_BN1-129-Eb_solo",
+          "notes": 24,
+          "source_rate": 44100,
+          "source_audio_filename": "05_BN1-129-Eb_solo_mic.wav",
+          "source_audio_sha256": "ccf801f3a6e7b1ab38dd9bf1ae917d13c51ef93c977af41cdabcb0548f55a261",
+          "annotation_sha256": "8b9c47dae61790596142ffc898995a82d066229fa5b2947facc4a83750a921e1",
+          "events_sha256": "767d5e6af9b502ae8132e2068d1ea7b8b0126d02874e7fe349d2d3df80fff29b",
+          "model_sha256": "7b351b1a393a0747fbb2e9a29bbc7a0546f45e7531a4742556894613b87b92db",
+          "reference_audition_trim_db": 0.7758792886505601,
+          "model_audition_trim_db": 3.359325066941881,
+          "metrics": {
+            "log_magnitude_mae_db": 11.910273657270166,
+            "spectral_convergence": 0.9569693531833536,
+            "chroma_cosine_distance": 0.2046926716401372,
+            "octave_bands": [
+              {
+                "low_hz": 80,
+                "high_hz": 160,
+                "model_minus_reference_db": -33.72609169654946
+              },
+              {
+                "low_hz": 160,
+                "high_hz": 320,
+                "model_minus_reference_db": 3.111626033324184
+              },
+              {
+                "low_hz": 320,
+                "high_hz": 640,
+                "model_minus_reference_db": 0.9349672228263604
+              },
+              {
+                "low_hz": 640,
+                "high_hz": 1280,
+                "model_minus_reference_db": -5.221905082576481
+              },
+              {
+                "low_hz": 1280,
+                "high_hz": 2560,
+                "model_minus_reference_db": -8.599505356437845
+              },
+              {
+                "low_hz": 2560,
+                "high_hz": 5120,
+                "model_minus_reference_db": -13.639005608563368
+              },
+              {
+                "low_hz": 5120,
+                "high_hz": 10000,
+                "model_minus_reference_db": -16.478382428908233
+              }
+            ],
+            "scales": [
+              {
+                "fft_size": 67,
+                "log_magnitude_mae_db": 13.003391726492552,
+                "spectral_convergence": 1.0017032029779556
+              },
+              {
+                "fft_size": 127,
+                "log_magnitude_mae_db": 12.927949615673882,
+                "spectral_convergence": 0.9632651241931262
+              },
+              {
+                "fft_size": 257,
+                "log_magnitude_mae_db": 12.312210572016228,
+                "spectral_convergence": 0.9379663942004368
+              },
+              {
+                "fft_size": 509,
+                "log_magnitude_mae_db": 11.877789038459987,
+                "spectral_convergence": 0.9441181580225556
+              },
+              {
+                "fft_size": 1021,
+                "log_magnitude_mae_db": 11.183839167546303,
+                "spectral_convergence": 0.9467752718295612
+              },
+              {
+                "fft_size": 2053,
+                "log_magnitude_mae_db": 10.156461823432045,
+                "spectral_convergence": 0.947987967876487
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -27,6 +27,8 @@ enum ParameterSlot
     slotBridgeModel,
     slotUpperMic,
     slotPiezoLoading,
+    slotCaptureMode,
+    slotGuitarModel,
     slotCount
 };
 
@@ -47,7 +49,9 @@ constexpr std::array<const char*, slotCount> parameterIds {
     ids::picking,
     ids::bridgeModel,
     ids::upperMic,
-    ids::piezoLoading
+    ids::piezoLoading,
+    ids::captureMode,
+    ids::guitarModel
 };
 
 std::unique_ptr<juce::RangedAudioParameter> makePercentParameter (
@@ -130,12 +134,11 @@ struct PendingNoteOff
     float lift { 0.0f };
 };
 
-// Note-off velocity is how fast the key was released, and on this instrument
-// how fast the fretting finger leaves the string. MIDI's own default when a
-// keyboard does not sense it is 64, so 64 and below is the finger staying on
-// the string - exactly the note-off every host sent before - and the lift
-// grows from there to the full pull-off at 127. A Note On at velocity zero
-// carries no release velocity at all and is the same as 64.
+// In explicit CC68 legato mode, release velocity controls an active finger
+// lift. Unsensed/default 64 and below keep the finger touching; 127 requests
+// the full lift. The engine ignores this active gesture outside legato, so
+// a fast ordinary key-up damps the note without generating another stroke.
+// A Note On at velocity zero carries no sensed release velocity.
 float fingerLiftFromReleaseVelocity (unsigned velocity) noexcept
 {
     return velocity <= 64u ? 0.0f
@@ -203,22 +206,31 @@ AcustraAudioProcessor::createParameterLayout()
     // Append new controls, including a later AU version hint, so existing host
     // automation retains the original ten parameter indices.
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { ids::capture, 2 }, "Capture",
+        juce::ParameterID { ids::capture, 2 }, "Legacy capture",
         juce::StringArray { "Stereo mics", "Treble mic", "Bass mic",
-                            "Saddle piezo", "Magnetic (steel)" }, 0));
+                            "Saddle piezo", "Magnetic (steel)" }, 0,
+        juce::AudioParameterChoiceAttributes().withAutomatable (false)));
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::picking, 2 }, "Picking",
         juce::StringArray { "Finger", "Pick", "Thumb" }, 0));
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::bridgeModel, 3 }, "Bridge Model",
         juce::StringArray { "Original", "Measured Fylde (steel)" }, 0));
-    // Keep Capture's five-value normalized range: adding a sixth choice there
-    // would reinterpret existing host automation. The editor combines this
-    // independent override with the legacy choices into one Capture menu.
+    // Retain old parameter IDs, indices and ranges for saved-state migration.
+    // Only the appended three-choice Capture parameter drives new sessions.
     result.push_back (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { ids::upperMic, 4 }, "Upper mic", false));
+        juce::ParameterID { ids::upperMic, 4 }, "Legacy upper mic", false,
+        juce::AudioParameterBoolAttributes().withAutomatable (false)));
     result.push_back (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { ids::piezoLoading, 5 }, "Piezo loading", false));
+        juce::ParameterID { ids::piezoLoading, 5 }, "Legacy piezo loading", false,
+        juce::AudioParameterBoolAttributes().withAutomatable (false)));
+    result.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { ids::captureMode, 6 }, "Capture",
+        juce::StringArray { "Stereo mic", "Mono mic", "Piezo" }, 0));
+    result.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { ids::guitarModel, 7 }, "Guitar Model",
+        juce::StringArray { "Original", "Bellido 1978", "Washburn 1897",
+                            "Santa Cruz OM 2022", "Martin D18V 2007" }, 0));
 
     return { result.begin(), result.end() };
 }
@@ -245,14 +257,13 @@ AcustraAudioProcessor::snapshotEngineParameters() const noexcept
     result.bodyAmount = 0.01f * value (slotBodyAmount);
     result.stereoWidth = 0.01f * value (slotStereoWidth);
     result.outputGain = juce::Decibels::decibelsToGain (value (slotOutput));
-    result.capture = choiceValue<acustra::CaptureType> (value (slotCapture), 4);
-    if (result.capture == acustra::CaptureType::SaddlePiezo
-        && value (slotPiezoLoading) >= 0.5f)
-        result.capture = acustra::CaptureType::LoadedPiezo;
-    if (value (slotUpperMic) >= 0.5f)
-        result.capture = acustra::CaptureType::UpperMic;
+    constexpr std::array captures { acustra::CaptureType::StereoMic,
+        acustra::CaptureType::MonoMic, acustra::CaptureType::Piezo };
+    result.capture = captures[static_cast<std::size_t> (
+        std::clamp (static_cast<int> (std::lround (value (slotCaptureMode))), 0, 2))];
     result.picking = choiceValue<acustra::PickingTechnique> (value (slotPicking), 2);
     result.bridgeModel = choiceValue<acustra::BridgeModel> (value (slotBridgeModel), 1);
+    result.guitarModel = choiceValue<acustra::GuitarModel> (value (slotGuitarModel), 4);
     return result;
 }
 
@@ -753,6 +764,30 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
     if (xml != nullptr && xml->hasTagName (parameters.state.getType()))
     {
         auto restoredState = juce::ValueTree::fromXml (*xml);
+        // The old five-choice capture and two overrides had different ranges.
+        // Migrate once, before defaults are added; an explicit modern value wins.
+        if (! containsParameterState (restoredState, ids::captureMode))
+        {
+            const auto legacyValue = [&] (const char* id)
+            {
+                for (const auto& child : restoredState)
+                    if (child.hasType ("PARAM")
+                        && child.getProperty ("id").toString() == id)
+                    {
+                        const auto value = static_cast<float> (child.getProperty ("value"));
+                        return std::isfinite (value) ? value : 0.0f;
+                    }
+                return 0.0f;
+            };
+            const int legacy = static_cast<int> (std::lround (
+                std::clamp (legacyValue (ids::capture), 0.0f, 4.0f)));
+            const float migrated = legacyValue (ids::upperMic) >= 0.5f
+                ? 1.0f : legacy == 0 ? 0.0f : legacy < 3 ? 1.0f : 2.0f;
+            juce::ValueTree captureState { "PARAM" };
+            captureState.setProperty ("id", ids::captureMode, nullptr);
+            captureState.setProperty ("value", migrated, nullptr);
+            restoredState.appendChild (captureState, nullptr);
+        }
         addMissingParameterDefaults (restoredState, parameters, getParameters());
         parameters.replaceState (restoredState);
         requestPanic();

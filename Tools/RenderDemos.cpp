@@ -397,10 +397,9 @@ Audio frettingHand()
     take.rest(0.80);
     take.noteOff(55);
     take.rest(0.50);
-    take.legato(false);
-
-    // The same fretted G2 three times: the finger stays (as every note-off
-    // was), then lifts briskly, then lifts as fast as the string can follow.
+    // Keep explicit legato enabled for the active finger-lift demonstration.
+    // The same fretted G2 three times: the finger stays on the string, then
+    // lifts briskly, then lifts as fast as the string can follow.
     for (const float lift : { 0.0f, 0.35f, 1.0f })
     {
         take.noteOn(43, 0.78f);
@@ -551,12 +550,8 @@ Audio captureTypes()
     // pickup gains are unit sensitivities, so this demonstrates their native
     // levels as well as their spectra; it is not a level-matched preference test.
     for (auto capture : { acustra::CaptureType::StereoMic,
-                           acustra::CaptureType::TrebleMic,
-                           acustra::CaptureType::BassMic,
-                           acustra::CaptureType::SaddlePiezo,
-                           acustra::CaptureType::Magnetic,
-                           acustra::CaptureType::UpperMic,
-                           acustra::CaptureType::LoadedPiezo })
+                           acustra::CaptureType::MonoMic,
+                           acustra::CaptureType::Piezo })
     {
         parameters.capture = capture;
         Take take(parameters);
@@ -613,7 +608,7 @@ constexpr std::array<Demo, 12> demos {{
       "Finger, pick and thumb on steel, then on nylon; same notes and velocity",
       pickingTechniques },
     { "12-capture-types.wav",
-      "Stereo, treble, bass, ideal piezo, magnetic, upper mic, loaded piezo",
+      "Stereo mic, mono mic, piezo",
       captureTypes },
 }};
 

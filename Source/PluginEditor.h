@@ -40,7 +40,6 @@ private:
 
     void timerCallback() override;
     void updateConstructionControls();
-    void updateCaptureControl();
     void configureSetupMenu (std::size_t index, const juce::String& name,
                              const juce::String& description);
     void configureChoice (std::size_t index, const juce::String& name,
@@ -60,13 +59,13 @@ private:
     juce::Label statusLabel;
     juce::TextButton panicButton { "PANIC" };
 
-    std::array<juce::Label, 3> setupLabels;
-    std::array<juce::ComboBox, 3> setupControls;
+    std::array<juce::Label, 4> setupLabels;
+    std::array<juce::ComboBox, 4> setupControls;
     int displayedConstructionPresetId = 0;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
         pickingAttachment;
-    std::array<std::unique_ptr<juce::ParameterAttachment>, 3> captureAttachments;
-    std::array<float, 3> captureValues {};
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> captureAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> guitarModelAttachment;
 
     std::array<juce::Label, 4> choiceLabels;
     std::array<std::unique_ptr<ChoiceButtonGroup>, 4> choiceControls;

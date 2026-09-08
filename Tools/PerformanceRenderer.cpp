@@ -6,6 +6,7 @@
 // Optional material/tuning flags follow the existing capture/picking/bridge
 // positionals; omitting them preserves the original steel/Standard rendering.
 #include "DSP/AcustraEngine.h"
+#include "CalibrationFile.h"
 
 #include <algorithm>
 #include <array>
@@ -35,14 +36,19 @@ int main(int argc, char** argv)
     if (argc < 3)
     {
         std::cerr << "usage: AcustraPerformanceRenderer EVENTS OUTPUT.f32 "
-                     "[stereo_mic|treble_mic|bass_mic|saddle_piezo|magnetic|upper_mic "
+                     "[stereo_mic|mono_mic|piezo "
                      "finger|pick|thumb [original|fylde]] "
-                     "[--string-material steel|nylon] [--tuning standard|drop_d]\n";
+                     "[--string-material steel|nylon] [--tuning standard|drop_d] "
+                     "[--body-shape parlor|auditorium|dreadnought|jumbo] "
+                     "[--body-material spruce|cedar|mahogany|maple] "
+                     "[--guitar-model original|bellido1978|washburn1897|santacruz2022|martin2007] "
+                     "[--calibration FILE]\n";
         return 2;
     }
     try
     {
         acustra::EngineParameters parameters;
+        auto calibration = acustra::fittedPhysicalCalibration;
         int optionStart = 3;
         while (optionStart < argc && !std::string(argv[optionStart]).starts_with("--"))
             ++optionStart;
@@ -51,14 +57,21 @@ int main(int argc, char** argv)
             throw std::runtime_error("expected capture and picking, with optional bridge model");
         if (positionalCount >= 2)
         {
+            // Old command lines remain accepted, with the same remap used by
+            // the engine; no retired magnetic/individual/ideal signal survives.
             const std::array captures { "stereo_mic", "treble_mic", "bass_mic",
-                                        "saddle_piezo", "magnetic", "upper_mic" };
+                "saddle_piezo", "magnetic", "upper_mic", "loaded_piezo", "mono_mic", "piezo" };
+            constexpr std::array modes { acustra::CaptureType::StereoMic,
+                acustra::CaptureType::MonoMic, acustra::CaptureType::MonoMic,
+                acustra::CaptureType::Piezo, acustra::CaptureType::Piezo,
+                acustra::CaptureType::MonoMic, acustra::CaptureType::Piezo,
+                acustra::CaptureType::MonoMic, acustra::CaptureType::Piezo };
             const std::array techniques { "finger", "pick", "thumb" };
             const auto capture = std::find(captures.begin(), captures.end(), std::string(argv[3]));
             const auto technique = std::find(techniques.begin(), techniques.end(), std::string(argv[4]));
             if (capture == captures.end() || technique == techniques.end())
                 throw std::runtime_error("unknown capture or picking technique");
-            parameters.capture = static_cast<acustra::CaptureType>(capture - captures.begin());
+            parameters.capture = modes[static_cast<std::size_t>(capture - captures.begin())];
             parameters.picking = static_cast<acustra::PickingTechnique>(technique - techniques.begin());
         }
         if (positionalCount == 3)
@@ -69,10 +82,11 @@ int main(int argc, char** argv)
                 ? acustra::BridgeModel::FyldeSteel : acustra::BridgeModel::Original;
         }
         bool materialSeen = false, tuningSeen = false;
+        bool shapeSeen = false, woodSeen = false, calibrationSeen = false, guitarSeen = false;
         for (int index = optionStart; index < argc; index += 2)
         {
             if (index + 1 >= argc)
-                throw std::runtime_error("missing material/tuning option value");
+                throw std::runtime_error("missing render option value");
             const std::string option(argv[index]), value(argv[index + 1]);
             if (option == "--string-material" && !materialSeen)
             {
@@ -89,8 +103,40 @@ int main(int argc, char** argv)
                 parameters.tuning = value == "standard" ? acustra::Tuning::Standard : acustra::Tuning::DropD;
                 tuningSeen = true;
             }
+            else if (option == "--body-shape" && !shapeSeen)
+            {
+                const std::array choices { "parlor", "auditorium", "dreadnought", "jumbo" };
+                const auto found = std::find(choices.begin(), choices.end(), value);
+                if (found == choices.end())
+                    throw std::runtime_error("unknown body shape");
+                parameters.shape = static_cast<acustra::BodyShape>(found - choices.begin());
+                shapeSeen = true;
+            }
+            else if (option == "--body-material" && !woodSeen)
+            {
+                const std::array choices { "spruce", "cedar", "mahogany", "maple" };
+                const auto found = std::find(choices.begin(), choices.end(), value);
+                if (found == choices.end())
+                    throw std::runtime_error("unknown body material");
+                parameters.bodyMaterial = static_cast<acustra::BodyMaterial>(found - choices.begin());
+                woodSeen = true;
+            }
+            else if (option == "--guitar-model" && !guitarSeen)
+            {
+                const std::array choices { "original", "bellido1978", "washburn1897", "santacruz2022", "martin2007" };
+                const auto found = std::find(choices.begin(), choices.end(), value);
+                if (found == choices.end())
+                    throw std::runtime_error("unknown guitar model");
+                parameters.guitarModel = static_cast<acustra::GuitarModel>(found - choices.begin());
+                guitarSeen = true;
+            }
+            else if (option == "--calibration" && !calibrationSeen)
+            {
+                calibration = acustra::offline::readCalibration(value);
+                calibrationSeen = true;
+            }
             else
-                throw std::runtime_error("unknown or repeated material/tuning option");
+                throw std::runtime_error("unknown or repeated render option");
         }
         std::array openNotes { 40, 45, 50, 55, 59, 64 };
         if (parameters.tuning == acustra::Tuning::DropD)
@@ -130,6 +176,7 @@ int main(int argc, char** argv)
 
         acustra::AcustraEngine engine;
         constexpr int blockSize = 127;
+        engine.setPhysicalCalibration(calibration);
         engine.setParameters(parameters);
         engine.prepare(sampleRate, blockSize);
         engine.setStringPerChannelMode(true);

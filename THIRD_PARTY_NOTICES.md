@@ -186,6 +186,38 @@ the source MAT file, recorded impulses, photographs or documentation from the
 archive. The attribution, source link, licence link and description of changes
 above must accompany distributions containing the coefficient table.
 
+### Additional Bellido body
+
+The 2026-09-08 Model selector additionally uses Mores g35, a 1978 Manuel
+Lopez Bellido classical guitar (cedar/Rio palisander), under the same CC BY
+4.0 archive license above. `NylonG35CandidateData.h` contains 134 fitted
+force/moment radiation modes and 50 positive-semidefinite bridge modes;
+the modifications include calibrated H1 extraction, causal tapering and
+bounded frequency/Q/residue fitting. See
+[`Docs/body-models-2026-09-08.md`](Docs/body-models-2026-09-08.md) and the linked
+fit reports. The unused g36 candidate is also adapted from that archive.
+
+## Mark Rau guitar measurements in the local test build
+
+Creator: Mark Rau. Source:
+<https://rau.mit.edu/projects/GuitarMeasurements/>.
+
+`RauQualifiedGuitarData.h` contains fitted numerical modal approximations for
+the 1897 Washburn parlor, 2022 Santa Cruz OM3 and 2007 Martin D18V, used by
+`GuitarModelData.h`. The source records provide mono force-to-pressure and
+normal bridge mobility. The modifications include causal pressure fitting,
+explicit observation delay, instrumentation-aligned positive-real mobility
+fitting and float32 rounding. Source SHA-256 hashes, withheld numbered
+captures, and fit qualifications are preserved in
+[`Docs/rau-guitar-candidate-report.json`](Docs/rau-guitar-candidate-report.json).
+
+No explicit reuse license was supplied for the separately downloaded raw ZIP;
+the paper's license is not represented as a license for that dataset. Raw
+recordings are not included in this repository. These coefficients have been
+integrated for local testing; this work has not published a release containing
+them. They are not represented as original Acustra measurements or recorded
+stereo channels.
+
 ## Measured Fylde steel-string bridge
 
 Samuele Carcagno, Roger Bucknall, Jim Woodhouse, Claudia Fritz and Christopher

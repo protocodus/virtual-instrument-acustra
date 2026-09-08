@@ -230,10 +230,20 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.Engine COMMAND AcustraEngineTests)
     set_tests_properties(Acustra.Engine PROPERTIES TIMEOUT 300)
 
+    add_executable(AcustraReleaseTests Tests/ReleaseTests.cpp)
+    target_link_libraries(AcustraReleaseTests PRIVATE AcustraDSP)
+    add_test(NAME Acustra.Release COMMAND AcustraReleaseTests)
+    set_tests_properties(Acustra.Release PROPERTIES TIMEOUT 90)
+
     add_executable(AcustraCaptureTests Tests/CaptureTests.cpp)
     target_link_libraries(AcustraCaptureTests PRIVATE AcustraDSP)
     add_test(NAME Acustra.Capture COMMAND AcustraCaptureTests)
     set_tests_properties(Acustra.Capture PROPERTIES TIMEOUT 90)
+
+    add_executable(AcustraGuitarModelTests Tests/GuitarModelTests.cpp)
+    target_link_libraries(AcustraGuitarModelTests PRIVATE AcustraDSP)
+    add_test(NAME Acustra.GuitarModels COMMAND AcustraGuitarModelTests)
+    set_tests_properties(Acustra.GuitarModels PROPERTIES TIMEOUT 180)
 
     add_executable(AcustraMeasuredSteelBridgeTests Tests/MeasuredSteelBridgeTests.cpp)
     target_link_libraries(AcustraMeasuredSteelBridgeTests PRIVATE AcustraDSP)
@@ -270,6 +280,16 @@ if(BUILD_TESTING)
         # without them still configures.
         find_package(Python3 COMPONENTS Interpreter QUIET)
         if(Python3_Interpreter_FOUND)
+            add_test(NAME Acustra.GaussianApertureData
+                     COMMAND "${Python3_EXECUTABLE}"
+                             "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateGaussianAperture.py"
+                             --check)
+            set_tests_properties(Acustra.GaussianApertureData PROPERTIES TIMEOUT 30)
+            add_test(NAME Acustra.CalibrationRenderer
+                     COMMAND "${Python3_EXECUTABLE}"
+                             "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CalibrationRendererTests.py"
+                             "$<TARGET_FILE:AcustraPerformanceRenderer>")
+            set_tests_properties(Acustra.CalibrationRenderer PROPERTIES TIMEOUT 120)
             execute_process(COMMAND "${Python3_EXECUTABLE}" -c
                                     "import numpy, scipy.io.wavfile"
                             RESULT_VARIABLE ACUSTRA_EXCITATION_PY_DEPS

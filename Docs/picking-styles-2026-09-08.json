@@ -1,0 +1,1438 @@
+{
+  "date": "2026-09-08",
+  "scope": "Authored physical picking styles; frozen original-body comparison before later body-selector integration.",
+  "source": "https://www.kaggle.com/datasets/mohammedalkooheji/guitar-notes-dataset",
+  "archive_sha256": "4563a70d5dd9a14919171d103f10f6731fd78e63f1498dd11047bfea471f6a6d",
+  "limitations": [
+    "Archive f label merges finger and thumb.",
+    "Recorded velocities, pluck position, fingering and capture are undocumented.",
+    "Position/width ratios are authored and not measured contact geometry.",
+    "Descriptor contrast is not a blind listening or perceptual realism result."
+  ],
+  "controls": {
+    "bridge": "original",
+    "shape": "auditorium",
+    "body_material": {
+      "steel": "mahogany",
+      "nylon": "spruce"
+    },
+    "capture": "stereo_mic",
+    "sample_rate": 48000,
+    "duration_seconds": 0.2,
+    "notes_start_at_frame": 0,
+    "pitches": [
+      40,
+      42,
+      45,
+      47,
+      50,
+      52,
+      55,
+      57,
+      59,
+      62,
+      64,
+      67,
+      69,
+      72,
+      74,
+      77,
+      79,
+      80
+    ],
+    "velocities": [
+      32,
+      64,
+      91,
+      127
+    ]
+  },
+  "styles": {
+    "finger": {
+      "distance_ratio": 1,
+      "width_ratio": 1
+    },
+    "pick": {
+      "distance_ratio": 0.55,
+      "width_ratio": 0.5
+    },
+    "thumb": {
+      "distance_ratio": 1.6,
+      "width_ratio": 2
+    }
+  },
+  "analysis_sha256": {
+    "ComparePickingAttacks.py": "198c5619603310ad54f9d0b3eb6d8c13ab6cdf9b35b11c51aaaffe1c45ac4d1e",
+    "BenchmarkTechniqueNotes.py": "650f8884973557d9a02d1ed4e5def2fac54b677f109b04cebe54f6e252713d49",
+    "FitPhysicalModel.py": "94ec199da74c3432801225829028abf25a100d73d66015e754d6dea8da80c7bd"
+  },
+  "renderers": {
+    "before": {
+      "path": "/private/tmp/acustra-picking-20260908-h1t2e4pv/before/PerformanceRenderer",
+      "sha256": "38258f3a3b7ea9a0ced9edfc7f4405c25b4ad4f66bc6030b58e902bd0806f58a"
+    },
+    "after": {
+      "path": "/private/tmp/acustra-picking-20260908-h1t2e4pv/position_candidate/PerformanceRenderer",
+      "sha256": "cb22aba95b298468c11ffb74caeae9baaab7c0fb53e24f54207d669657fc4b43"
+    }
+  },
+  "compiler": "Apple clang21.0.0 (clang-2100.1.1.101), arm64-apple-darwin25.5.0; c++ -std=c++20 -O3 -DNDEBUG",
+  "frozen_source_sha256": {
+    "before": {
+      "Source/DSP/AcustraEngine.cpp": "24e4061cc926abc613242822df1776729d71c321afc649a7478f9f05f8ca497a",
+      "Source/DSP/AcustraEngine.h": "fd72936a5f012fe52544dcc6b438fbba4df4c571b7c1a96dbe86df34ac443743",
+      "Source/DSP/FittedPhysicalData.h": "e270667ffd6ee279e4b3371bd20fb7a9fa17675956816c4f64deb5c224043f3e",
+      "Source/DSP/GaussianApertureData.h": "5383edf9778c013587ab9578f262e40ac61ec5d8660a7fbd4348f072a24a834a",
+      "Source/DSP/MeasuredBodyData.h": "7a7b9a48908c2f0bb3674f41134ce9af1003e02e13c7985ee4cecd5da7ab4301",
+      "Source/DSP/MeasuredBridgeData.h": "d1e2bf16dcb9c91428e9dc4f3b7da472a5e0152f30b8eda4b25b14f0e3715a90",
+      "Source/DSP/MeasuredSteelBridgeData.h": "f3bf2d8d9a65c8b09961da38c8217ecc4f31a763f802ca675dcbe9e6e8d52e2b",
+      "Source/DSP/NylonG35CandidateData.h": "384e131358f2e171a21f4d3bae77949f55068a4f666db3567380cf074506b1d4",
+      "Source/DSP/NylonG36CandidateData.h": "8185742a3037fb017bdab6323f99ff7af2538b403f3518f00faf7391e68b956e",
+      "Source/DSP/RauQualifiedGuitarData.h": "e4c37df9d2a7033288b07a177ad3892273f07f28b67b023bfada0e310c76b128"
+    },
+    "after": {
+      "Source/DSP/AcustraEngine.cpp": "9b1e631ed95da0a5b7f87c1e77a15c2261f85364acec39539a9f46d1b728cd98",
+      "Source/DSP/AcustraEngine.h": "fd72936a5f012fe52544dcc6b438fbba4df4c571b7c1a96dbe86df34ac443743",
+      "Source/DSP/FittedPhysicalData.h": "e270667ffd6ee279e4b3371bd20fb7a9fa17675956816c4f64deb5c224043f3e",
+      "Source/DSP/GaussianApertureData.h": "5383edf9778c013587ab9578f262e40ac61ec5d8660a7fbd4348f072a24a834a",
+      "Source/DSP/MeasuredBodyData.h": "7a7b9a48908c2f0bb3674f41134ce9af1003e02e13c7985ee4cecd5da7ab4301",
+      "Source/DSP/MeasuredBridgeData.h": "d1e2bf16dcb9c91428e9dc4f3b7da472a5e0152f30b8eda4b25b14f0e3715a90",
+      "Source/DSP/MeasuredSteelBridgeData.h": "f3bf2d8d9a65c8b09961da38c8217ecc4f31a763f802ca675dcbe9e6e8d52e2b",
+      "Source/DSP/NylonG35CandidateData.h": "384e131358f2e171a21f4d3bae77949f55068a4f666db3567380cf074506b1d4",
+      "Source/DSP/NylonG36CandidateData.h": "8185742a3037fb017bdab6323f99ff7af2538b403f3518f00faf7391e68b956e",
+      "Source/DSP/RauQualifiedGuitarData.h": "e4c37df9d2a7033288b07a177ad3892273f07f28b67b023bfada0e310c76b128"
+    }
+  },
+  "reference_contrast_median_db": {
+    "steel": 7.386682214936043,
+    "nylon": 4.418680878134568
+  },
+  "summary": {
+    "before": {
+      "steel_v32": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 0.6054622301683983,
+            "minimum": 0.18714001202067548
+          },
+          "finger_thumb": {
+            "median": 0.18350632196023745,
+            "minimum": 0.07436116485527518
+          },
+          "pick_thumb": {
+            "median": 0.7975932189995064,
+            "minimum": 0.260887686058566
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 8.825220543919357
+      },
+      "steel_v64": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 0.4264988378132727,
+            "minimum": 0.07833992482536521
+          },
+          "finger_thumb": {
+            "median": 0.44803362375676403,
+            "minimum": 0.15023435498032633
+          },
+          "pick_thumb": {
+            "median": 0.8582892339303518,
+            "minimum": 0.22735997286231835
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 8.854330356726004
+      },
+      "steel_v91": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 0.13703995369773508,
+            "minimum": 0.022125418818676152
+          },
+          "finger_thumb": {
+            "median": 0.7596588755289588,
+            "minimum": 0.15910347507731504
+          },
+          "pick_thumb": {
+            "median": 0.9294542459200608,
+            "minimum": 0.1718471976264767
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 8.943768872015081
+      },
+      "steel_v127": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 0.0,
+            "minimum": 0.0
+          },
+          "finger_thumb": {
+            "median": 0.9393238252523404,
+            "minimum": 0.182027467122
+          },
+          "pick_thumb": {
+            "median": 0.9393238252523404,
+            "minimum": 0.182027467122
+          }
+        },
+        "exactly_identical_finger_pick_notes": 18,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 9.02415586867798
+      },
+      "nylon_v32": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 0.5417771746221391,
+            "minimum": 0.4263570478847435
+          },
+          "finger_thumb": {
+            "median": 0.6599916132306249,
+            "minimum": 0.4780819779893569
+          },
+          "pick_thumb": {
+            "median": 1.1649591281149507,
+            "minimum": 0.7659829405271232
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 4.7905890933194675
+      },
+      "nylon_v64": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 0.5257449958995088,
+            "minimum": 0.4151985410702796
+          },
+          "finger_thumb": {
+            "median": 0.6779870592049027,
+            "minimum": 0.4763148453826274
+          },
+          "pick_thumb": {
+            "median": 1.178562564407013,
+            "minimum": 0.7613381071001413
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 4.7846517010637095
+      },
+      "nylon_v91": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 0.5194642326322949,
+            "minimum": 0.40288085679569713
+          },
+          "finger_thumb": {
+            "median": 0.6792204667400474,
+            "minimum": 0.47553480712857904
+          },
+          "pick_thumb": {
+            "median": 1.1885973108246393,
+            "minimum": 0.7573639774659503
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 4.7796325605150605
+      },
+      "nylon_v127": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 0.5483609910696532,
+            "minimum": 0.39082904679163527
+          },
+          "finger_thumb": {
+            "median": 0.7090707967750358,
+            "minimum": 0.4792505426503429
+          },
+          "pick_thumb": {
+            "median": 1.2932769076914996,
+            "minimum": 0.7576980358084511
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 4.853284836464727
+      }
+    },
+    "after": {
+      "steel_v32": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 3.6691213983374764,
+            "minimum": 2.8684531424292268
+          },
+          "finger_thumb": {
+            "median": 3.441419170377811,
+            "minimum": 2.5347461840899466
+          },
+          "pick_thumb": {
+            "median": 6.156460055880682,
+            "minimum": 4.692891230496292
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 7.900383162984955
+      },
+      "steel_v64": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 3.778552411659436,
+            "minimum": 2.7784502781782967
+          },
+          "finger_thumb": {
+            "median": 3.567916505459311,
+            "minimum": 2.0947889880771493
+          },
+          "pick_thumb": {
+            "median": 6.038526245195852,
+            "minimum": 4.035816464709872
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 7.9907327825126435
+      },
+      "steel_v91": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 3.7337064078990463,
+            "minimum": 2.802865481248477
+          },
+          "finger_thumb": {
+            "median": 3.518976177265188,
+            "minimum": 1.940460510549708
+          },
+          "pick_thumb": {
+            "median": 5.5313549728117195,
+            "minimum": 3.724535645391916
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 8.048822150040248
+      },
+      "steel_v127": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 3.6782046208013126,
+            "minimum": 2.8630214977775306
+          },
+          "finger_thumb": {
+            "median": 3.391555889641813,
+            "minimum": 2.014710655139854
+          },
+          "pick_thumb": {
+            "median": 5.430462821649882,
+            "minimum": 3.8274016956553774
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 8.13611676740963
+      },
+      "nylon_v32": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 3.611372625683984,
+            "minimum": 2.355098442948153
+          },
+          "finger_thumb": {
+            "median": 3.1663122490775364,
+            "minimum": 1.8690977517631195
+          },
+          "pick_thumb": {
+            "median": 6.198361376349014,
+            "minimum": 3.9276599276207045
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 4.155550182189668
+      },
+      "nylon_v64": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 3.6140679485016998,
+            "minimum": 2.3779001248741674
+          },
+          "finger_thumb": {
+            "median": 3.191398370750365,
+            "minimum": 1.8892210350280962
+          },
+          "pick_thumb": {
+            "median": 6.213740808787029,
+            "minimum": 3.957334111123122
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 4.164471360859457
+      },
+      "nylon_v91": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 3.6203997642153336,
+            "minimum": 2.4058439293893206
+          },
+          "finger_thumb": {
+            "median": 3.216893381625492,
+            "minimum": 1.909106389624722
+          },
+          "pick_thumb": {
+            "median": 6.230663388215671,
+            "minimum": 3.987208146655673
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 4.1528112466424405
+      },
+      "nylon_v127": {
+        "attack_contrast_mean_absolute_db": {
+          "finger_pick": {
+            "median": 3.6580444742549494,
+            "minimum": 2.3959153711943126
+          },
+          "finger_thumb": {
+            "median": 3.2516160666508815,
+            "minimum": 1.9184863617435903
+          },
+          "pick_thumb": {
+            "median": 6.30303911755588,
+            "minimum": 3.9723727248019975
+          }
+        },
+        "exactly_identical_finger_pick_notes": 0,
+        "reference_pick_minus_merged_finger_contrast_mae_db": 4.147195031492036
+      }
+    }
+  },
+  "finger_preservation": {
+    "before": {
+      "baseline": "before",
+      "tested": 144,
+      "byte_identical": 144
+    },
+    "after": {
+      "baseline": "before",
+      "tested": 144,
+      "byte_identical": 144
+    }
+  },
+  "finger_audio_sha256": [
+    {
+      "material": "nylon",
+      "midi": 40,
+      "velocity": 32,
+      "before": "23415cab806a12deaf73e0fb322b798938dbeecc8cb0160269ecfe0e7f8e4453",
+      "after": "23415cab806a12deaf73e0fb322b798938dbeecc8cb0160269ecfe0e7f8e4453"
+    },
+    {
+      "material": "nylon",
+      "midi": 40,
+      "velocity": 64,
+      "before": "c0a5bd0877a069b7fec497a162b36c479e4e2640e27d06f77d185bfc7132198b",
+      "after": "c0a5bd0877a069b7fec497a162b36c479e4e2640e27d06f77d185bfc7132198b"
+    },
+    {
+      "material": "nylon",
+      "midi": 40,
+      "velocity": 91,
+      "before": "1b5e1ff114bb07d74917af29168b6b3252ed5786336702456660e40a100356b4",
+      "after": "1b5e1ff114bb07d74917af29168b6b3252ed5786336702456660e40a100356b4"
+    },
+    {
+      "material": "nylon",
+      "midi": 40,
+      "velocity": 127,
+      "before": "f69bde80c6bb51a13ebbf760331992065eccfe15955e9a86afc8765c4f1cc11c",
+      "after": "f69bde80c6bb51a13ebbf760331992065eccfe15955e9a86afc8765c4f1cc11c"
+    },
+    {
+      "material": "nylon",
+      "midi": 42,
+      "velocity": 32,
+      "before": "dfbe70a70553f42925d572bc86133fa7c10283cda1110ae069812f02a0d3bf70",
+      "after": "dfbe70a70553f42925d572bc86133fa7c10283cda1110ae069812f02a0d3bf70"
+    },
+    {
+      "material": "nylon",
+      "midi": 42,
+      "velocity": 64,
+      "before": "431086c4003e63789ef2a4699f583bb2794821d02986b7842359dcec396ed22b",
+      "after": "431086c4003e63789ef2a4699f583bb2794821d02986b7842359dcec396ed22b"
+    },
+    {
+      "material": "nylon",
+      "midi": 42,
+      "velocity": 91,
+      "before": "e51fb1f811af7d0dd1f4ad9ef7b48174d1886c1a9656511ed12300f58e6597ac",
+      "after": "e51fb1f811af7d0dd1f4ad9ef7b48174d1886c1a9656511ed12300f58e6597ac"
+    },
+    {
+      "material": "nylon",
+      "midi": 42,
+      "velocity": 127,
+      "before": "61db87990af6b0cbcd051bc23bf24d6a9afa7d6c4750b896e7b3789f1328b448",
+      "after": "61db87990af6b0cbcd051bc23bf24d6a9afa7d6c4750b896e7b3789f1328b448"
+    },
+    {
+      "material": "nylon",
+      "midi": 45,
+      "velocity": 32,
+      "before": "5292659d6bd0eca01f46b10076683aa6ad97bae502c742ff1c79cc5a04e7542c",
+      "after": "5292659d6bd0eca01f46b10076683aa6ad97bae502c742ff1c79cc5a04e7542c"
+    },
+    {
+      "material": "nylon",
+      "midi": 45,
+      "velocity": 64,
+      "before": "f3eec26ebf7f43c02a5f6f5425624d1318615143b6607b083d315f4acf0897bd",
+      "after": "f3eec26ebf7f43c02a5f6f5425624d1318615143b6607b083d315f4acf0897bd"
+    },
+    {
+      "material": "nylon",
+      "midi": 45,
+      "velocity": 91,
+      "before": "9542c8f6be93aac5a6522bd89e9f16efd45e92b5972444d4a9cf3849a2cd0c82",
+      "after": "9542c8f6be93aac5a6522bd89e9f16efd45e92b5972444d4a9cf3849a2cd0c82"
+    },
+    {
+      "material": "nylon",
+      "midi": 45,
+      "velocity": 127,
+      "before": "9d59dacac53daaa25b2bffb66d7e7c0dff0c60dd647dcad2f33122e24133c3d7",
+      "after": "9d59dacac53daaa25b2bffb66d7e7c0dff0c60dd647dcad2f33122e24133c3d7"
+    },
+    {
+      "material": "nylon",
+      "midi": 47,
+      "velocity": 32,
+      "before": "bf2a0a5cfc389816a72e04a2a850ffb586551779a863c0deae76405e0e07202d",
+      "after": "bf2a0a5cfc389816a72e04a2a850ffb586551779a863c0deae76405e0e07202d"
+    },
+    {
+      "material": "nylon",
+      "midi": 47,
+      "velocity": 64,
+      "before": "c6853514e6501cdae4c5cd4c3ac916e30c7b748b25d14eafcf2c5937bdf80b49",
+      "after": "c6853514e6501cdae4c5cd4c3ac916e30c7b748b25d14eafcf2c5937bdf80b49"
+    },
+    {
+      "material": "nylon",
+      "midi": 47,
+      "velocity": 91,
+      "before": "03233d8e224dc944f5d4390862acbe4e5c8ccbfb1372ba5fd0d5fad530e736d3",
+      "after": "03233d8e224dc944f5d4390862acbe4e5c8ccbfb1372ba5fd0d5fad530e736d3"
+    },
+    {
+      "material": "nylon",
+      "midi": 47,
+      "velocity": 127,
+      "before": "cb5b29df71ec102a71754c624497cd19c57bac3315af6374e1c9de5c24d9f019",
+      "after": "cb5b29df71ec102a71754c624497cd19c57bac3315af6374e1c9de5c24d9f019"
+    },
+    {
+      "material": "nylon",
+      "midi": 50,
+      "velocity": 32,
+      "before": "804cc96277351a846c6efb087797a1d00df58143f56884aba2b1025ef333de33",
+      "after": "804cc96277351a846c6efb087797a1d00df58143f56884aba2b1025ef333de33"
+    },
+    {
+      "material": "nylon",
+      "midi": 50,
+      "velocity": 64,
+      "before": "b5ec46c61e57798dfc395718ddd693ebd01ee4e35f95cb342bbc8ce510015efe",
+      "after": "b5ec46c61e57798dfc395718ddd693ebd01ee4e35f95cb342bbc8ce510015efe"
+    },
+    {
+      "material": "nylon",
+      "midi": 50,
+      "velocity": 91,
+      "before": "4bc84724b2bfdbcd05d1e0f78db92813e4a04f95630c13fad7eae4f248c74a97",
+      "after": "4bc84724b2bfdbcd05d1e0f78db92813e4a04f95630c13fad7eae4f248c74a97"
+    },
+    {
+      "material": "nylon",
+      "midi": 50,
+      "velocity": 127,
+      "before": "dedbc3f191a957ab9cbefc590f1adbcb3616a1afc3253ea8adf3a2aaca73b5c8",
+      "after": "dedbc3f191a957ab9cbefc590f1adbcb3616a1afc3253ea8adf3a2aaca73b5c8"
+    },
+    {
+      "material": "nylon",
+      "midi": 52,
+      "velocity": 32,
+      "before": "42cb7b85b48c872bb675e25e95e154781075672b5fbb862b52bf450038cf9dc5",
+      "after": "42cb7b85b48c872bb675e25e95e154781075672b5fbb862b52bf450038cf9dc5"
+    },
+    {
+      "material": "nylon",
+      "midi": 52,
+      "velocity": 64,
+      "before": "f17f97fd7c48a0cfcea2b410f53bc6103869ad625b297d0aef627847cc16eb49",
+      "after": "f17f97fd7c48a0cfcea2b410f53bc6103869ad625b297d0aef627847cc16eb49"
+    },
+    {
+      "material": "nylon",
+      "midi": 52,
+      "velocity": 91,
+      "before": "b3c6b132f1d39d65003c975422d9776b9083bcbeb1654291c0cd27a04f61e628",
+      "after": "b3c6b132f1d39d65003c975422d9776b9083bcbeb1654291c0cd27a04f61e628"
+    },
+    {
+      "material": "nylon",
+      "midi": 52,
+      "velocity": 127,
+      "before": "4e32bd351078b98e2c37489707852363125862d3c90f1f654a808a76c8a475f7",
+      "after": "4e32bd351078b98e2c37489707852363125862d3c90f1f654a808a76c8a475f7"
+    },
+    {
+      "material": "nylon",
+      "midi": 55,
+      "velocity": 32,
+      "before": "354c6701848002f8f533341f9ab296e0f9d021afb430304ba8922406ee1cf6dd",
+      "after": "354c6701848002f8f533341f9ab296e0f9d021afb430304ba8922406ee1cf6dd"
+    },
+    {
+      "material": "nylon",
+      "midi": 55,
+      "velocity": 64,
+      "before": "3ef9002b8eef9f3a08a38db7366b9fdf6e57f2279b60da5c52c05f5e55f97a30",
+      "after": "3ef9002b8eef9f3a08a38db7366b9fdf6e57f2279b60da5c52c05f5e55f97a30"
+    },
+    {
+      "material": "nylon",
+      "midi": 55,
+      "velocity": 91,
+      "before": "89c502bc43eb59bef343ae0772a291b3a2b7780160f68bc4ee79445399502925",
+      "after": "89c502bc43eb59bef343ae0772a291b3a2b7780160f68bc4ee79445399502925"
+    },
+    {
+      "material": "nylon",
+      "midi": 55,
+      "velocity": 127,
+      "before": "63cd5709e8e79a4d9bcfc43c46d2dfd6c406b7e55e795e87b414a5a78c7e6610",
+      "after": "63cd5709e8e79a4d9bcfc43c46d2dfd6c406b7e55e795e87b414a5a78c7e6610"
+    },
+    {
+      "material": "nylon",
+      "midi": 57,
+      "velocity": 32,
+      "before": "8c9d574c15e970587c7046ea45145eac54c3ce4bd21660d9ee8bd8dd5dae1332",
+      "after": "8c9d574c15e970587c7046ea45145eac54c3ce4bd21660d9ee8bd8dd5dae1332"
+    },
+    {
+      "material": "nylon",
+      "midi": 57,
+      "velocity": 64,
+      "before": "723e6fe5d6d7c1981369a5893df54ac9901b0413fe25ccea4ce778e4f42c545f",
+      "after": "723e6fe5d6d7c1981369a5893df54ac9901b0413fe25ccea4ce778e4f42c545f"
+    },
+    {
+      "material": "nylon",
+      "midi": 57,
+      "velocity": 91,
+      "before": "fd679e330163924b644c568b2821d0ed4c338c4718008ce998a6b79486b72e65",
+      "after": "fd679e330163924b644c568b2821d0ed4c338c4718008ce998a6b79486b72e65"
+    },
+    {
+      "material": "nylon",
+      "midi": 57,
+      "velocity": 127,
+      "before": "d4e8801a1971b8455b894fe0cd79e80bef247e5713ec5123e3b8adc1f565905f",
+      "after": "d4e8801a1971b8455b894fe0cd79e80bef247e5713ec5123e3b8adc1f565905f"
+    },
+    {
+      "material": "nylon",
+      "midi": 59,
+      "velocity": 32,
+      "before": "becbf9a2e581855f65451414bbd68bb66e1310792a789a2180b80eb08f168285",
+      "after": "becbf9a2e581855f65451414bbd68bb66e1310792a789a2180b80eb08f168285"
+    },
+    {
+      "material": "nylon",
+      "midi": 59,
+      "velocity": 64,
+      "before": "ad59fafc3decb82c65487ab76d6adc6e2c3cd1c92134d1722b5b0580704d696f",
+      "after": "ad59fafc3decb82c65487ab76d6adc6e2c3cd1c92134d1722b5b0580704d696f"
+    },
+    {
+      "material": "nylon",
+      "midi": 59,
+      "velocity": 91,
+      "before": "c1cba3ad42d3616ddeae1931491741a136e87febe0bce7e21b3813826121029b",
+      "after": "c1cba3ad42d3616ddeae1931491741a136e87febe0bce7e21b3813826121029b"
+    },
+    {
+      "material": "nylon",
+      "midi": 59,
+      "velocity": 127,
+      "before": "716ec93d51df50a9df14bae2fc545199c0aee6cf0f0b29b12b646b0289620c75",
+      "after": "716ec93d51df50a9df14bae2fc545199c0aee6cf0f0b29b12b646b0289620c75"
+    },
+    {
+      "material": "nylon",
+      "midi": 62,
+      "velocity": 32,
+      "before": "e2c2c2c623126e6386c08b1349a8d75d5b34a03b7740683373ea6ef080fa1a57",
+      "after": "e2c2c2c623126e6386c08b1349a8d75d5b34a03b7740683373ea6ef080fa1a57"
+    },
+    {
+      "material": "nylon",
+      "midi": 62,
+      "velocity": 64,
+      "before": "7fa2ce5c5a2f08828996ff4ccaf52b0c11816f6b98cbe732572c2a6f806608c0",
+      "after": "7fa2ce5c5a2f08828996ff4ccaf52b0c11816f6b98cbe732572c2a6f806608c0"
+    },
+    {
+      "material": "nylon",
+      "midi": 62,
+      "velocity": 91,
+      "before": "c93519b30b5dde250b848e8e4a2c9b9701b0d3cc8ad47ea853da1879d51cf653",
+      "after": "c93519b30b5dde250b848e8e4a2c9b9701b0d3cc8ad47ea853da1879d51cf653"
+    },
+    {
+      "material": "nylon",
+      "midi": 62,
+      "velocity": 127,
+      "before": "aa9c47a06a95703e64360b24795fb0995378b8fd33a62a07184479ddf711b5d6",
+      "after": "aa9c47a06a95703e64360b24795fb0995378b8fd33a62a07184479ddf711b5d6"
+    },
+    {
+      "material": "nylon",
+      "midi": 64,
+      "velocity": 32,
+      "before": "f06ecae2b85763c5fd79cd960d339fbd0c30f85f2add110ec62af8df56782a85",
+      "after": "f06ecae2b85763c5fd79cd960d339fbd0c30f85f2add110ec62af8df56782a85"
+    },
+    {
+      "material": "nylon",
+      "midi": 64,
+      "velocity": 64,
+      "before": "562832eae60fccf31c4f74f15c7dfd39cb17383b821d8c4417192f9e3faa2bd6",
+      "after": "562832eae60fccf31c4f74f15c7dfd39cb17383b821d8c4417192f9e3faa2bd6"
+    },
+    {
+      "material": "nylon",
+      "midi": 64,
+      "velocity": 91,
+      "before": "abcfa4b7b741f7d1cfdd2af3e1f241c899886190c0df5d3d3fe82a7269bb276a",
+      "after": "abcfa4b7b741f7d1cfdd2af3e1f241c899886190c0df5d3d3fe82a7269bb276a"
+    },
+    {
+      "material": "nylon",
+      "midi": 64,
+      "velocity": 127,
+      "before": "1b465a871472157b20ec486fb4d40727a0ed22801ae6596ba378f36d8b29b81f",
+      "after": "1b465a871472157b20ec486fb4d40727a0ed22801ae6596ba378f36d8b29b81f"
+    },
+    {
+      "material": "nylon",
+      "midi": 67,
+      "velocity": 32,
+      "before": "7885d7d13a4fa5eb02a24b4d6f6c5bfa9ebbe3618305b9757f0f69b0e881c4d8",
+      "after": "7885d7d13a4fa5eb02a24b4d6f6c5bfa9ebbe3618305b9757f0f69b0e881c4d8"
+    },
+    {
+      "material": "nylon",
+      "midi": 67,
+      "velocity": 64,
+      "before": "b68bb641de4af28be8cea3bcacc845e3712d67bb401eb741b270cf2120d7abca",
+      "after": "b68bb641de4af28be8cea3bcacc845e3712d67bb401eb741b270cf2120d7abca"
+    },
+    {
+      "material": "nylon",
+      "midi": 67,
+      "velocity": 91,
+      "before": "7e8faebcfd0f7d449dae473cd1c9790ca0e95c3e6d61ae80a1f720775d09a584",
+      "after": "7e8faebcfd0f7d449dae473cd1c9790ca0e95c3e6d61ae80a1f720775d09a584"
+    },
+    {
+      "material": "nylon",
+      "midi": 67,
+      "velocity": 127,
+      "before": "43370017e9608c0cb388ed520d11bf3b11abb6a1fedb75a0c67aa090f52a71a9",
+      "after": "43370017e9608c0cb388ed520d11bf3b11abb6a1fedb75a0c67aa090f52a71a9"
+    },
+    {
+      "material": "nylon",
+      "midi": 69,
+      "velocity": 32,
+      "before": "4a240012a1cd1d6014abf220e361481bd0280687a093c512e99685fe40cffbfe",
+      "after": "4a240012a1cd1d6014abf220e361481bd0280687a093c512e99685fe40cffbfe"
+    },
+    {
+      "material": "nylon",
+      "midi": 69,
+      "velocity": 64,
+      "before": "9039192c50e2354db56d50c9d83163f57b9ebfab29fe8c9d0d60c3db5c457fd3",
+      "after": "9039192c50e2354db56d50c9d83163f57b9ebfab29fe8c9d0d60c3db5c457fd3"
+    },
+    {
+      "material": "nylon",
+      "midi": 69,
+      "velocity": 91,
+      "before": "e0f969167c9751d54c153d077ab27e710045256fa53799e6b70d29bdf8ee07b2",
+      "after": "e0f969167c9751d54c153d077ab27e710045256fa53799e6b70d29bdf8ee07b2"
+    },
+    {
+      "material": "nylon",
+      "midi": 69,
+      "velocity": 127,
+      "before": "3f3abf37beed1090ee693b3fd8ed7583991e56ce2bd6f958c3c2dee9fe26fb6d",
+      "after": "3f3abf37beed1090ee693b3fd8ed7583991e56ce2bd6f958c3c2dee9fe26fb6d"
+    },
+    {
+      "material": "nylon",
+      "midi": 72,
+      "velocity": 32,
+      "before": "74f4383e6e4f5942741bcc120941c68386a5c9dbb64a8afdaa5b02068fa41ff8",
+      "after": "74f4383e6e4f5942741bcc120941c68386a5c9dbb64a8afdaa5b02068fa41ff8"
+    },
+    {
+      "material": "nylon",
+      "midi": 72,
+      "velocity": 64,
+      "before": "f6e82dfac575a0f572f6732e5a399299008bcb98465f04fc759c1b43907d4b72",
+      "after": "f6e82dfac575a0f572f6732e5a399299008bcb98465f04fc759c1b43907d4b72"
+    },
+    {
+      "material": "nylon",
+      "midi": 72,
+      "velocity": 91,
+      "before": "475859059a68b96195dc1954b263e3bcecd99337b6438820eb334b9f290ec970",
+      "after": "475859059a68b96195dc1954b263e3bcecd99337b6438820eb334b9f290ec970"
+    },
+    {
+      "material": "nylon",
+      "midi": 72,
+      "velocity": 127,
+      "before": "a6e19929fe093c7239adcebb73490d427f3212cbd556fe7dfd39b8ee31843a2e",
+      "after": "a6e19929fe093c7239adcebb73490d427f3212cbd556fe7dfd39b8ee31843a2e"
+    },
+    {
+      "material": "nylon",
+      "midi": 74,
+      "velocity": 32,
+      "before": "41ffcab359b1d8960b1d2ac607ab31fdadf35bb1967990c143a21dd9571b91a1",
+      "after": "41ffcab359b1d8960b1d2ac607ab31fdadf35bb1967990c143a21dd9571b91a1"
+    },
+    {
+      "material": "nylon",
+      "midi": 74,
+      "velocity": 64,
+      "before": "f07c387a2565011a80dfd9f6c84330f9fca845c2e9af279958cacc90129ee7f5",
+      "after": "f07c387a2565011a80dfd9f6c84330f9fca845c2e9af279958cacc90129ee7f5"
+    },
+    {
+      "material": "nylon",
+      "midi": 74,
+      "velocity": 91,
+      "before": "30b06c1d975c6b3fcc07fb9be55a877d1e08ffc3e7820fb57cc222d952211ea7",
+      "after": "30b06c1d975c6b3fcc07fb9be55a877d1e08ffc3e7820fb57cc222d952211ea7"
+    },
+    {
+      "material": "nylon",
+      "midi": 74,
+      "velocity": 127,
+      "before": "6145283e2d6db50af7a78d38fffa4fa3c8be8a489778d688ce3cdc8641739396",
+      "after": "6145283e2d6db50af7a78d38fffa4fa3c8be8a489778d688ce3cdc8641739396"
+    },
+    {
+      "material": "nylon",
+      "midi": 77,
+      "velocity": 32,
+      "before": "a59d3fb0a192f4eb7c68d49b456f9710c4b7f0a76e39d953bd52fd20b88ace58",
+      "after": "a59d3fb0a192f4eb7c68d49b456f9710c4b7f0a76e39d953bd52fd20b88ace58"
+    },
+    {
+      "material": "nylon",
+      "midi": 77,
+      "velocity": 64,
+      "before": "61c06c4e7579325c01a064115327a5c1b217df334d945efc60c9d05859a2c6bb",
+      "after": "61c06c4e7579325c01a064115327a5c1b217df334d945efc60c9d05859a2c6bb"
+    },
+    {
+      "material": "nylon",
+      "midi": 77,
+      "velocity": 91,
+      "before": "934812a791e6bd89201f34394a39e1556d754fcdd57f87a1cad458615c8bc679",
+      "after": "934812a791e6bd89201f34394a39e1556d754fcdd57f87a1cad458615c8bc679"
+    },
+    {
+      "material": "nylon",
+      "midi": 77,
+      "velocity": 127,
+      "before": "a409bbef5b83d3ba02237550771e1b6d6214f5165bbec11135558cc1790b3178",
+      "after": "a409bbef5b83d3ba02237550771e1b6d6214f5165bbec11135558cc1790b3178"
+    },
+    {
+      "material": "nylon",
+      "midi": 79,
+      "velocity": 32,
+      "before": "2f794dc3085aa9bc544ae7628f5885b0e4b7598edd0b6cd2d989c5c9ac14ee3f",
+      "after": "2f794dc3085aa9bc544ae7628f5885b0e4b7598edd0b6cd2d989c5c9ac14ee3f"
+    },
+    {
+      "material": "nylon",
+      "midi": 79,
+      "velocity": 64,
+      "before": "e025c253b80d8bdbd19a559092fca76f336972339e64783ac45d840d2d5b107a",
+      "after": "e025c253b80d8bdbd19a559092fca76f336972339e64783ac45d840d2d5b107a"
+    },
+    {
+      "material": "nylon",
+      "midi": 79,
+      "velocity": 91,
+      "before": "09fb764e9a2943d028a41c7e40bf08679b1fd58ac0249eb6f69520800ebd2443",
+      "after": "09fb764e9a2943d028a41c7e40bf08679b1fd58ac0249eb6f69520800ebd2443"
+    },
+    {
+      "material": "nylon",
+      "midi": 79,
+      "velocity": 127,
+      "before": "8249d844b35055f794f3bc06f87928c5b5d33873f6c3764a07c5bbef61f8174a",
+      "after": "8249d844b35055f794f3bc06f87928c5b5d33873f6c3764a07c5bbef61f8174a"
+    },
+    {
+      "material": "nylon",
+      "midi": 80,
+      "velocity": 32,
+      "before": "46a7d5dccccfa8971f8d8dbb4976f43dd97a5262061821e3c9d7ba950e9a14da",
+      "after": "46a7d5dccccfa8971f8d8dbb4976f43dd97a5262061821e3c9d7ba950e9a14da"
+    },
+    {
+      "material": "nylon",
+      "midi": 80,
+      "velocity": 64,
+      "before": "949a4f97d5f46226a707a9bb54f5da927bb609a4a6fbff1aaf464590273e771a",
+      "after": "949a4f97d5f46226a707a9bb54f5da927bb609a4a6fbff1aaf464590273e771a"
+    },
+    {
+      "material": "nylon",
+      "midi": 80,
+      "velocity": 91,
+      "before": "d339681909203b738a10ba699d29ebcfbe56331c7b41c88dcdac060158fd4324",
+      "after": "d339681909203b738a10ba699d29ebcfbe56331c7b41c88dcdac060158fd4324"
+    },
+    {
+      "material": "nylon",
+      "midi": 80,
+      "velocity": 127,
+      "before": "502276befeb5198cefb05d214f267d56ba81d53cf0bc34661256e31f56de4b6e",
+      "after": "502276befeb5198cefb05d214f267d56ba81d53cf0bc34661256e31f56de4b6e"
+    },
+    {
+      "material": "steel",
+      "midi": 40,
+      "velocity": 32,
+      "before": "d8ac31803a8e8a57d4f1b1baa5ae010d698b9e097c1748be8e7b7177f777e415",
+      "after": "d8ac31803a8e8a57d4f1b1baa5ae010d698b9e097c1748be8e7b7177f777e415"
+    },
+    {
+      "material": "steel",
+      "midi": 40,
+      "velocity": 64,
+      "before": "52488199197520d7ca39163de5e3ddd9cf3f6a542783891ba91175fc6eefb8a2",
+      "after": "52488199197520d7ca39163de5e3ddd9cf3f6a542783891ba91175fc6eefb8a2"
+    },
+    {
+      "material": "steel",
+      "midi": 40,
+      "velocity": 91,
+      "before": "5b1ee25ccf8a6a5789019f51ff7b50642f06847915e644d777d2b9b56e75dcdb",
+      "after": "5b1ee25ccf8a6a5789019f51ff7b50642f06847915e644d777d2b9b56e75dcdb"
+    },
+    {
+      "material": "steel",
+      "midi": 40,
+      "velocity": 127,
+      "before": "cb1fe04e50917f9bf031f9f5601ae3cca4864b7e7042737226a5f4b65401cb97",
+      "after": "cb1fe04e50917f9bf031f9f5601ae3cca4864b7e7042737226a5f4b65401cb97"
+    },
+    {
+      "material": "steel",
+      "midi": 42,
+      "velocity": 32,
+      "before": "4357a5fd5dccfe5ecfdf4f434368dd082a8bc557bad6317bbf21a6071efd7da2",
+      "after": "4357a5fd5dccfe5ecfdf4f434368dd082a8bc557bad6317bbf21a6071efd7da2"
+    },
+    {
+      "material": "steel",
+      "midi": 42,
+      "velocity": 64,
+      "before": "63e0e9d02be3c6e11646fa073dcfcaf0996e5be713c6af9682c543087dd79913",
+      "after": "63e0e9d02be3c6e11646fa073dcfcaf0996e5be713c6af9682c543087dd79913"
+    },
+    {
+      "material": "steel",
+      "midi": 42,
+      "velocity": 91,
+      "before": "b6788bdf7bc47bedc64fd85cbafa2631e937526db5878074ea5909c87030ba21",
+      "after": "b6788bdf7bc47bedc64fd85cbafa2631e937526db5878074ea5909c87030ba21"
+    },
+    {
+      "material": "steel",
+      "midi": 42,
+      "velocity": 127,
+      "before": "67f5b172021f079107c698817acdb99aee265f6f67592988d3745265a7aa1763",
+      "after": "67f5b172021f079107c698817acdb99aee265f6f67592988d3745265a7aa1763"
+    },
+    {
+      "material": "steel",
+      "midi": 45,
+      "velocity": 32,
+      "before": "557693cc55bb624d45dae5635639cd7099e8e63244f6f2e26c75287e258aac1f",
+      "after": "557693cc55bb624d45dae5635639cd7099e8e63244f6f2e26c75287e258aac1f"
+    },
+    {
+      "material": "steel",
+      "midi": 45,
+      "velocity": 64,
+      "before": "2781b3e554be483e74e2711d5b300e0587d3a9a46a2c8c73726af70adb9c44b2",
+      "after": "2781b3e554be483e74e2711d5b300e0587d3a9a46a2c8c73726af70adb9c44b2"
+    },
+    {
+      "material": "steel",
+      "midi": 45,
+      "velocity": 91,
+      "before": "a5afe790699333dd388ba43fcf43d5f2c9355c505f324a32e2f7cb23fd87487d",
+      "after": "a5afe790699333dd388ba43fcf43d5f2c9355c505f324a32e2f7cb23fd87487d"
+    },
+    {
+      "material": "steel",
+      "midi": 45,
+      "velocity": 127,
+      "before": "1897df43fb72deb9e25d20071793929c6cda1bbc4078c3d2d6254f7497d5733e",
+      "after": "1897df43fb72deb9e25d20071793929c6cda1bbc4078c3d2d6254f7497d5733e"
+    },
+    {
+      "material": "steel",
+      "midi": 47,
+      "velocity": 32,
+      "before": "7e153e060a8f13b6143fdbc3fdc9ca8c1a444ecaaa91fb4022dfa3da18b84259",
+      "after": "7e153e060a8f13b6143fdbc3fdc9ca8c1a444ecaaa91fb4022dfa3da18b84259"
+    },
+    {
+      "material": "steel",
+      "midi": 47,
+      "velocity": 64,
+      "before": "e63c9845cd8de940e939815a522394951c2c5ea632cb24a164cae44103aaff7d",
+      "after": "e63c9845cd8de940e939815a522394951c2c5ea632cb24a164cae44103aaff7d"
+    },
+    {
+      "material": "steel",
+      "midi": 47,
+      "velocity": 91,
+      "before": "b841b0770761b611c7a5c3d209ef62738a8ef178a3d15da295bc155bc96ddd19",
+      "after": "b841b0770761b611c7a5c3d209ef62738a8ef178a3d15da295bc155bc96ddd19"
+    },
+    {
+      "material": "steel",
+      "midi": 47,
+      "velocity": 127,
+      "before": "dce1438c5bb454f0ac805c6d7b24a57dc8e12823e9aae1f66e826e6fb2e87fc4",
+      "after": "dce1438c5bb454f0ac805c6d7b24a57dc8e12823e9aae1f66e826e6fb2e87fc4"
+    },
+    {
+      "material": "steel",
+      "midi": 50,
+      "velocity": 32,
+      "before": "afedf576271f798907573c61d2873b700af262e0557194ead2b91493345014b3",
+      "after": "afedf576271f798907573c61d2873b700af262e0557194ead2b91493345014b3"
+    },
+    {
+      "material": "steel",
+      "midi": 50,
+      "velocity": 64,
+      "before": "a195661601c48760a1a5a0a44d91f6c09a96a6a8354b9ca08a0ccbdf63f49aa8",
+      "after": "a195661601c48760a1a5a0a44d91f6c09a96a6a8354b9ca08a0ccbdf63f49aa8"
+    },
+    {
+      "material": "steel",
+      "midi": 50,
+      "velocity": 91,
+      "before": "7a0fc2926a5ac739fcd39b243fb424843bcb99be816b8f0502e7034a82bcc71d",
+      "after": "7a0fc2926a5ac739fcd39b243fb424843bcb99be816b8f0502e7034a82bcc71d"
+    },
+    {
+      "material": "steel",
+      "midi": 50,
+      "velocity": 127,
+      "before": "70bc4c7308ab3fb166362990553173918d5b6af6081ee2e4a959f1d646971b8f",
+      "after": "70bc4c7308ab3fb166362990553173918d5b6af6081ee2e4a959f1d646971b8f"
+    },
+    {
+      "material": "steel",
+      "midi": 52,
+      "velocity": 32,
+      "before": "950809a563957345db4d87fb947afe18049999eaa50fda77a14bc5e2ef23206e",
+      "after": "950809a563957345db4d87fb947afe18049999eaa50fda77a14bc5e2ef23206e"
+    },
+    {
+      "material": "steel",
+      "midi": 52,
+      "velocity": 64,
+      "before": "4ac988cfeba86c73c3616facb0328adaca5d20af8108fd39ccb87ee7232d6deb",
+      "after": "4ac988cfeba86c73c3616facb0328adaca5d20af8108fd39ccb87ee7232d6deb"
+    },
+    {
+      "material": "steel",
+      "midi": 52,
+      "velocity": 91,
+      "before": "0e07dc17b9dcca59bd180ec2c39d622f15d9334ca68899f6792796ad9954dbff",
+      "after": "0e07dc17b9dcca59bd180ec2c39d622f15d9334ca68899f6792796ad9954dbff"
+    },
+    {
+      "material": "steel",
+      "midi": 52,
+      "velocity": 127,
+      "before": "7bb771fef675ef55d4514436c2d09a792978d421836d81689a33496eb39a12c3",
+      "after": "7bb771fef675ef55d4514436c2d09a792978d421836d81689a33496eb39a12c3"
+    },
+    {
+      "material": "steel",
+      "midi": 55,
+      "velocity": 32,
+      "before": "7fefba8f4a03ce0472149a52cb4d203e9002e5ec53aecfaba1754eddee640d3b",
+      "after": "7fefba8f4a03ce0472149a52cb4d203e9002e5ec53aecfaba1754eddee640d3b"
+    },
+    {
+      "material": "steel",
+      "midi": 55,
+      "velocity": 64,
+      "before": "56306af695c1b8b1e87ef366573ba2e887d2ce8e04bba42353272487d73c35df",
+      "after": "56306af695c1b8b1e87ef366573ba2e887d2ce8e04bba42353272487d73c35df"
+    },
+    {
+      "material": "steel",
+      "midi": 55,
+      "velocity": 91,
+      "before": "71bc0430f1bd1768361227b62fc62f62992418d94b75623f99a16d04841aed84",
+      "after": "71bc0430f1bd1768361227b62fc62f62992418d94b75623f99a16d04841aed84"
+    },
+    {
+      "material": "steel",
+      "midi": 55,
+      "velocity": 127,
+      "before": "75663224378f384d579295796b99ef03cf37aedcc52c54ae05ab8b34b886a29d",
+      "after": "75663224378f384d579295796b99ef03cf37aedcc52c54ae05ab8b34b886a29d"
+    },
+    {
+      "material": "steel",
+      "midi": 57,
+      "velocity": 32,
+      "before": "f97ab50e1a4b7b67327cb59696ea59da907880b3a26f2c68db66535aba00d07d",
+      "after": "f97ab50e1a4b7b67327cb59696ea59da907880b3a26f2c68db66535aba00d07d"
+    },
+    {
+      "material": "steel",
+      "midi": 57,
+      "velocity": 64,
+      "before": "cc37597f87a93ff5e16f2a0d8424c34272b38d38500ba5b615b572a947fe2575",
+      "after": "cc37597f87a93ff5e16f2a0d8424c34272b38d38500ba5b615b572a947fe2575"
+    },
+    {
+      "material": "steel",
+      "midi": 57,
+      "velocity": 91,
+      "before": "40c2f42fd5962ae06fcf310e9a6225dc2ae8dd19995d7f982f33c8778164748b",
+      "after": "40c2f42fd5962ae06fcf310e9a6225dc2ae8dd19995d7f982f33c8778164748b"
+    },
+    {
+      "material": "steel",
+      "midi": 57,
+      "velocity": 127,
+      "before": "ea1002461c1aa41a78692ecc007f1edc5ca0789e4f05f96b5f306c736c3c2c27",
+      "after": "ea1002461c1aa41a78692ecc007f1edc5ca0789e4f05f96b5f306c736c3c2c27"
+    },
+    {
+      "material": "steel",
+      "midi": 59,
+      "velocity": 32,
+      "before": "6be0b9705d09d79d267d226a45a98db3047bd8d7bc083abb6f6937786c542685",
+      "after": "6be0b9705d09d79d267d226a45a98db3047bd8d7bc083abb6f6937786c542685"
+    },
+    {
+      "material": "steel",
+      "midi": 59,
+      "velocity": 64,
+      "before": "ed56f1c29bc04bd16f760c6974d9177437eed64cca994a6102e43f2c36574182",
+      "after": "ed56f1c29bc04bd16f760c6974d9177437eed64cca994a6102e43f2c36574182"
+    },
+    {
+      "material": "steel",
+      "midi": 59,
+      "velocity": 91,
+      "before": "c5d375abccb1aa66bdea90849db61c617be2789d871d076001a2a24ab91ec903",
+      "after": "c5d375abccb1aa66bdea90849db61c617be2789d871d076001a2a24ab91ec903"
+    },
+    {
+      "material": "steel",
+      "midi": 59,
+      "velocity": 127,
+      "before": "1feac383aa75ad7469a7a96c17895fed3ee93fc8e1c7c9286852fa2385fce68b",
+      "after": "1feac383aa75ad7469a7a96c17895fed3ee93fc8e1c7c9286852fa2385fce68b"
+    },
+    {
+      "material": "steel",
+      "midi": 62,
+      "velocity": 32,
+      "before": "64c52722be5801c9b2528d024ea4af193b6f8973f6e05925b95a8159ed15bb5e",
+      "after": "64c52722be5801c9b2528d024ea4af193b6f8973f6e05925b95a8159ed15bb5e"
+    },
+    {
+      "material": "steel",
+      "midi": 62,
+      "velocity": 64,
+      "before": "f09d2e4927bd825a7e87497acd82eb9102c73fc5de610207f5538d207265305f",
+      "after": "f09d2e4927bd825a7e87497acd82eb9102c73fc5de610207f5538d207265305f"
+    },
+    {
+      "material": "steel",
+      "midi": 62,
+      "velocity": 91,
+      "before": "1eb07acbc9841c35c3f98ecbd9cebe9aa97a9ac3a06d8b25893b4cec213f9c86",
+      "after": "1eb07acbc9841c35c3f98ecbd9cebe9aa97a9ac3a06d8b25893b4cec213f9c86"
+    },
+    {
+      "material": "steel",
+      "midi": 62,
+      "velocity": 127,
+      "before": "9eb76e47f34f628501b025abbdf1b0d9b24fcb5feb55ff1cd3e72b5798412f6d",
+      "after": "9eb76e47f34f628501b025abbdf1b0d9b24fcb5feb55ff1cd3e72b5798412f6d"
+    },
+    {
+      "material": "steel",
+      "midi": 64,
+      "velocity": 32,
+      "before": "6217b79e4c9d5754bcec47c84a1c3c7d0ab5471709600271a1e046767e45f47a",
+      "after": "6217b79e4c9d5754bcec47c84a1c3c7d0ab5471709600271a1e046767e45f47a"
+    },
+    {
+      "material": "steel",
+      "midi": 64,
+      "velocity": 64,
+      "before": "f5d2fcfe1be7ed58618a58dacf0585de43209c11d91fc3a8bd308e6d7da208cb",
+      "after": "f5d2fcfe1be7ed58618a58dacf0585de43209c11d91fc3a8bd308e6d7da208cb"
+    },
+    {
+      "material": "steel",
+      "midi": 64,
+      "velocity": 91,
+      "before": "66c3aacdc7135adb66f46c7072f883c432c4358b5d0c45dfa68f58ee3a7e13e3",
+      "after": "66c3aacdc7135adb66f46c7072f883c432c4358b5d0c45dfa68f58ee3a7e13e3"
+    },
+    {
+      "material": "steel",
+      "midi": 64,
+      "velocity": 127,
+      "before": "459f0ff2f2d3f62b0f35cbb54cc9697c5427af47eec451ac7a121c0af41cbb7d",
+      "after": "459f0ff2f2d3f62b0f35cbb54cc9697c5427af47eec451ac7a121c0af41cbb7d"
+    },
+    {
+      "material": "steel",
+      "midi": 67,
+      "velocity": 32,
+      "before": "e057c6259f73a6e04c0515a2beace3c23a6ebdd5c9a4249a37222bfe0ad6181b",
+      "after": "e057c6259f73a6e04c0515a2beace3c23a6ebdd5c9a4249a37222bfe0ad6181b"
+    },
+    {
+      "material": "steel",
+      "midi": 67,
+      "velocity": 64,
+      "before": "1dc555b67458859421dc3e19ab92bea962bfaf000e9d911971055b9a3304ad0b",
+      "after": "1dc555b67458859421dc3e19ab92bea962bfaf000e9d911971055b9a3304ad0b"
+    },
+    {
+      "material": "steel",
+      "midi": 67,
+      "velocity": 91,
+      "before": "bca37392e0ee0726a7b6f54235affbf1ec5631c892e59da7421280e4484112a4",
+      "after": "bca37392e0ee0726a7b6f54235affbf1ec5631c892e59da7421280e4484112a4"
+    },
+    {
+      "material": "steel",
+      "midi": 67,
+      "velocity": 127,
+      "before": "a85c2da1b4371341428878c36ccd089ff77890977ee42bc2a923137b4e4a831f",
+      "after": "a85c2da1b4371341428878c36ccd089ff77890977ee42bc2a923137b4e4a831f"
+    },
+    {
+      "material": "steel",
+      "midi": 69,
+      "velocity": 32,
+      "before": "365e053b69e322ed083e3d4997f641350d5dff81098f750f53121dbec92b9423",
+      "after": "365e053b69e322ed083e3d4997f641350d5dff81098f750f53121dbec92b9423"
+    },
+    {
+      "material": "steel",
+      "midi": 69,
+      "velocity": 64,
+      "before": "89e4cc9514bb03d6b2a387dafcd668317dc29d87fe7c89bfc2ee2f366db0135d",
+      "after": "89e4cc9514bb03d6b2a387dafcd668317dc29d87fe7c89bfc2ee2f366db0135d"
+    },
+    {
+      "material": "steel",
+      "midi": 69,
+      "velocity": 91,
+      "before": "49aba7e2a92845daf01366cafea0a86fe3263b489f96994abd2735a6c30f13d9",
+      "after": "49aba7e2a92845daf01366cafea0a86fe3263b489f96994abd2735a6c30f13d9"
+    },
+    {
+      "material": "steel",
+      "midi": 69,
+      "velocity": 127,
+      "before": "062ca58557fa1ccebab91f0b8698bc5ef5f736162ef4ae50c4ca4c4c581b2fdc",
+      "after": "062ca58557fa1ccebab91f0b8698bc5ef5f736162ef4ae50c4ca4c4c581b2fdc"
+    },
+    {
+      "material": "steel",
+      "midi": 72,
+      "velocity": 32,
+      "before": "fc68f2726e8bae7e59965b9310050db4a5e43680af0e1248073195d594068ef5",
+      "after": "fc68f2726e8bae7e59965b9310050db4a5e43680af0e1248073195d594068ef5"
+    },
+    {
+      "material": "steel",
+      "midi": 72,
+      "velocity": 64,
+      "before": "53ecfc787637780fe3408d0e6a5a62ea23633331ceb70017ae007bfb0f046151",
+      "after": "53ecfc787637780fe3408d0e6a5a62ea23633331ceb70017ae007bfb0f046151"
+    },
+    {
+      "material": "steel",
+      "midi": 72,
+      "velocity": 91,
+      "before": "d5c8225fe445bfa55f662714375b2d12dcd5aa2b42a8005bfa66336223f9d7dd",
+      "after": "d5c8225fe445bfa55f662714375b2d12dcd5aa2b42a8005bfa66336223f9d7dd"
+    },
+    {
+      "material": "steel",
+      "midi": 72,
+      "velocity": 127,
+      "before": "8b79b4ef27cd5904c82fdbb65555cfdfaa9a8898ebd22bdef80ddd50c72f842e",
+      "after": "8b79b4ef27cd5904c82fdbb65555cfdfaa9a8898ebd22bdef80ddd50c72f842e"
+    },
+    {
+      "material": "steel",
+      "midi": 74,
+      "velocity": 32,
+      "before": "720891594d74011d523d518d041155868db0922e5c5f92e1fe1ff91bc2ff38b1",
+      "after": "720891594d74011d523d518d041155868db0922e5c5f92e1fe1ff91bc2ff38b1"
+    },
+    {
+      "material": "steel",
+      "midi": 74,
+      "velocity": 64,
+      "before": "959be2c1195f64a8bd44556f80c05ae0603a7f12130f2a6e1a10ad14284a8c32",
+      "after": "959be2c1195f64a8bd44556f80c05ae0603a7f12130f2a6e1a10ad14284a8c32"
+    },
+    {
+      "material": "steel",
+      "midi": 74,
+      "velocity": 91,
+      "before": "4627445e5184f9c3261cbb904a0f74630255b3c62dba6a91f29b77688764096d",
+      "after": "4627445e5184f9c3261cbb904a0f74630255b3c62dba6a91f29b77688764096d"
+    },
+    {
+      "material": "steel",
+      "midi": 74,
+      "velocity": 127,
+      "before": "4d27cdf8d0e8cf3bac8436eab1344cf122ebf912e40a517bcfbc87cac2a0b944",
+      "after": "4d27cdf8d0e8cf3bac8436eab1344cf122ebf912e40a517bcfbc87cac2a0b944"
+    },
+    {
+      "material": "steel",
+      "midi": 77,
+      "velocity": 32,
+      "before": "900c89c4e22ddc3feadc64e904fc8ca51b5cd95483c5721c4413d0d0dde5b675",
+      "after": "900c89c4e22ddc3feadc64e904fc8ca51b5cd95483c5721c4413d0d0dde5b675"
+    },
+    {
+      "material": "steel",
+      "midi": 77,
+      "velocity": 64,
+      "before": "0e4c2f29a1c68a3d92209af3ebaecf041c03e1201eefe6eaaab31ce244efdcb0",
+      "after": "0e4c2f29a1c68a3d92209af3ebaecf041c03e1201eefe6eaaab31ce244efdcb0"
+    },
+    {
+      "material": "steel",
+      "midi": 77,
+      "velocity": 91,
+      "before": "50e1c28b2f008b3a5f4c07ed19e3bdaad883cffea277b82ccdf98fd1856dd8eb",
+      "after": "50e1c28b2f008b3a5f4c07ed19e3bdaad883cffea277b82ccdf98fd1856dd8eb"
+    },
+    {
+      "material": "steel",
+      "midi": 77,
+      "velocity": 127,
+      "before": "cad60272caf46493feb6c0d26207573549ca8a3c9f82cc6a1a11536101dc93ab",
+      "after": "cad60272caf46493feb6c0d26207573549ca8a3c9f82cc6a1a11536101dc93ab"
+    },
+    {
+      "material": "steel",
+      "midi": 79,
+      "velocity": 32,
+      "before": "f5e632105471cbaf02226bcc245c2898f5879d9fcb7892548b36110300cb071b",
+      "after": "f5e632105471cbaf02226bcc245c2898f5879d9fcb7892548b36110300cb071b"
+    },
+    {
+      "material": "steel",
+      "midi": 79,
+      "velocity": 64,
+      "before": "cedfcb4771bb33028d3c616ec4064f2c2336735a988cfa090231fd0c5f822480",
+      "after": "cedfcb4771bb33028d3c616ec4064f2c2336735a988cfa090231fd0c5f822480"
+    },
+    {
+      "material": "steel",
+      "midi": 79,
+      "velocity": 91,
+      "before": "4a3d447f592d985962febee3f522775d55963a8014fbbb6e7b3f483145c034a3",
+      "after": "4a3d447f592d985962febee3f522775d55963a8014fbbb6e7b3f483145c034a3"
+    },
+    {
+      "material": "steel",
+      "midi": 79,
+      "velocity": 127,
+      "before": "7a2d6930f0b4a61d6f524a1bf7698d902d7ce3ae711262552ea581c185ff1f4a",
+      "after": "7a2d6930f0b4a61d6f524a1bf7698d902d7ce3ae711262552ea581c185ff1f4a"
+    },
+    {
+      "material": "steel",
+      "midi": 80,
+      "velocity": 32,
+      "before": "a3820bb9927c796608298c4285879ed08ae57aadbc0c303c4604ec7631ad0880",
+      "after": "a3820bb9927c796608298c4285879ed08ae57aadbc0c303c4604ec7631ad0880"
+    },
+    {
+      "material": "steel",
+      "midi": 80,
+      "velocity": 64,
+      "before": "e8d5babe38e500b0f2001f4c0b4ec25aa97a3f96335fab5118af79e2eff0f232",
+      "after": "e8d5babe38e500b0f2001f4c0b4ec25aa97a3f96335fab5118af79e2eff0f232"
+    },
+    {
+      "material": "steel",
+      "midi": 80,
+      "velocity": 91,
+      "before": "93096afdcb4d12b6cf8036981a0c18cff7bd2223d1c942d478ede55dc739dc5e",
+      "after": "93096afdcb4d12b6cf8036981a0c18cff7bd2223d1c942d478ede55dc739dc5e"
+    },
+    {
+      "material": "steel",
+      "midi": 80,
+      "velocity": 127,
+      "before": "db17bc33f041779a677bce3cd933ff85acf2d848d39f786faeef39cd0a9f0aef",
+      "after": "db17bc33f041779a677bce3cd933ff85acf2d848d39f786faeef39cd0a9f0aef"
+    }
+  ],
+  "native_qualification": {
+    "log": "Acustra released-contact maximum complex coefficient error: 1.45269e-08\nAcustra broad-contact 40 cases, aperture 0.31758..5.70638, uniform 16, signed wrap 12, maximum sample error 5.13741e-08\nAcustra picking minimum attack difference after gain removal: 0.276999\n",
+    "binary_sha256": "adf58b74529ab9c53a4ec9327bdb2146136321cb5635b2039607f0d8026b10c3",
+    "test_source_sha256": "29ecc2ab9953683907f184a3ce9d29458f98f2ff1fd09f474d95cec030865726",
+    "engine_source_sha256": "8cfe7c31e935a575391a3dce2b3c239d9612bd2fa93605796fd8adfea22a9275"
+  },
+  "artifacts": {
+    "full_report": "/tmp/acustra-picking-20260908-h1t2e4pv/final-comparison/report.json",
+    "full_report_sha256": "16b6fe3d8de4f0af1eedc17322dddfae38d2eac353cb9a28bdc67ae059ee105b",
+    "audition_manifest": "/tmp/acustra-picking-20260908-h1t2e4pv/audition/manifest.json",
+    "source_snapshots": "/tmp/acustra-picking-20260908-h1t2e4pv"
+  }
+}
