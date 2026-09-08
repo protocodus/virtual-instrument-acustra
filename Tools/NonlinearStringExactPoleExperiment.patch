@@ -1,0 +1,231 @@
+--- a/Tools/NonlinearStringPrototype.cpp
++++ b/Tools/NonlinearStringPrototype.cpp
+@@ -170,7 +170,7 @@
+ {
+     const Model& model;
+     double dt, lambda, gauge, psi;
+-    Vector q, previous, next, gradient, midpoint, g, inverseG, rhs;
++    Vector q, previous, next, gradient, midpoint, g, inverseG, rhs, linearStiffness;
+     double inputWork = 0.0, dissipatedWork = 0.0;
+     double smallestDenominator = std::numeric_limits<double>::max(), largestDenominator = 0.0;
+     double minimumPsi = std::numeric_limits<double>::max();
+@@ -178,24 +178,34 @@
+     Sav(const Model& m, double rate, double regulation = 1000.0, double shift = 1e-12)
+         : model(m), dt(1.0 / rate), lambda(regulation), gauge(shift), psi(0.0),
+           q(m.modes), previous(m.modes), next(m.modes), gradient(m.modes),
+-          midpoint(m.modes), g(m.modes), inverseG(m.modes), rhs(m.modes)
++          midpoint(m.modes), g(m.modes), inverseG(m.modes), rhs(m.modes), linearStiffness(m.modes)
+     {
+         if (!(shift > 0.0) || regulation < 0.0 || regulation >= rate)
+             throw std::invalid_argument("invalid gauge/regulator domain");
+-        for (double k : m.stiffness)
+-            if (!(dt * dt * k / m.mass < 4.0))
+-                throw std::invalid_argument("linear CFL positivity condition violated");
++        for (int n = 0; n < m.modes; ++n)
++        {
++            const double omega = std::sqrt(m.stiffness[n] / m.mass);
++            const double theta = dt * omega;
++            // Check physical bandwidth BEFORE the bounded sine map. Otherwise
++            // an aliased mode above Nyquist can appear energy-stable.
++            if (!(omega > 0.0 && omega < pi * rate))
++                throw std::invalid_argument("physical mode must be below Nyquist");
++            linearStiffness[n] = 4.0 * m.mass / (dt * dt)
++                * std::pow(std::sin(0.5 * theta), 2);
++        }
+     }
+ 
+     void initialise(const Vector& displacement)
+     {
+         q = displacement;
+         model.evaluate(q, &gradient);
+-        // Consistent rest preload: q(-dt)=q(0)+dt^2*a(0)/2, not q(-dt)=q(0).
++        // Rest preload for the same corrected recurrence: the linear part is
++        // exactly q[-1]=q[0]*cos(h*omega); physical nonlinear acceleration is
++        // still second-order Taylor. Model stiffness/gradient remain physical.
+         for (int n = 0; n < model.modes; ++n)
+         {
+             previous[n] = q[n] - dt * dt / (2.0 * model.mass)
+-                * (model.stiffness[n] * q[n] + gradient[n]);
++                * (linearStiffness[n] * q[n] + gradient[n]);
+             midpoint[n] = 0.5 * (q[n] + previous[n]);
+         }
+         psi = std::sqrt(2.0 * model.evaluate(midpoint) + gauge);
+@@ -210,7 +220,7 @@
+         double e = 0.5 * (psi * psi - gauge);
+         for (int n = 0; n < model.modes; ++n)
+             e += 0.5 * model.mass * std::pow((q[n] - previous[n]) / dt, 2)
+-               + 0.5 * model.stiffness[n] * q[n] * previous[n];
++               + 0.5 * linearStiffness[n] * q[n] * previous[n];
+         return e;
+     }
+ 
+@@ -246,7 +256,7 @@
+         for (int n = 0; n < model.modes; ++n)
+         {
+             rhs[n] = inverseDiagonal * (2.0 * q[n] - (1.0 - eta * dt) * previous[n]
+-                - dt * dt / model.mass * model.stiffness[n] * q[n]
++                - dt * dt / model.mass * linearStiffness[n] * q[n]
+                 + alpha * g[n] * (gp - 4.0 * psi)
+                 + dt * dt / model.mass * model.forceShape[n] * force);
+             inverseG[n] = inverseDiagonal * g[n];
+@@ -543,8 +553,8 @@
+                     "zero-state solver generated displacement or energy");
+         bool rejected = false;
+         try { Sav invalid(model, 1000, 0.0); } catch (const std::invalid_argument&) { rejected = true; }
+-        audit.check(rejected, "solver accepted a rate beyond its linear CFL domain");
+-        audit.add("\"test\":\"zero_state_and_cfl\",\"zero_displacement\":"
++        audit.check(rejected, "solver accepted a physical mode at or above Nyquist");
++        audit.add("\"test\":\"zero_state_and_nyquist\",\"zero_displacement\":"
+                   + std::string(zeroDisplacement ? "true" : "false")
+                   + ",\"energy_roundoff_j\":" + number(rest.energy()) + ",\"invalid_rate_rejected\":"
+                   + std::string(rejected ? "true" : "false"));
+@@ -557,7 +567,7 @@
+         Sav solver(linear, rate);
+         solver.initialise(linear.pluck(0.001, true));
+         const double omega = std::sqrt(linear.stiffness[0] / linear.mass);
+-        const double theta = 2.0 * std::asin(omega / (2.0 * rate));
++        const double theta = omega / rate;
+         double maximum = 0.0;
+         for (int n = 0; n < rate / 5; ++n)
+         {
+@@ -610,7 +620,7 @@
+     }
+ 
+     std::cout << "Checking single-mode pitch against weak Duffing theory...\n" << std::flush;
+-    for (int rate : { 48000, 192000 })
++    for (int rate : { 48000, 96000, 192000 })
+         for (auto kind : { Potential::cubic, Potential::exact, Potential::kirchhoff })
+         {
+             Model model(kind, 1, 8), baseline(Potential::linear, 1, 8);
+@@ -633,7 +643,16 @@
+                     + ",\"linear_frequency_hz\":" + number(linearFrequency)
+                     + ",\"frequency_hz\":" + number(frequency)
+                     + ",\"shift_cents\":" + number(1200.0 * std::log2(1.0 + shift))
+-                    + ",\"weak_theory_shift_cents\":" + number(1200.0 * std::log2(1.0 + theory)));
++                    + ",\"weak_theory_shift_cents\":" + number(1200.0 * std::log2(1.0 + theory))
++                    + ",\"physical_linear_frequency_hz\":"
++                    + number(std::sqrt(model.stiffness[0] / model.mass) / (2.0 * pi))
++                    + ",\"linear_estimator_error_cents\":"
++                    + number(1200.0 * std::log2(linearFrequency * 2.0 * pi
++                        / std::sqrt(model.stiffness[0] / model.mass)))
++                    + ",\"shift_over_physical_linear_cents\":"
++                    + number(1200.0 * std::log2(frequency * 2.0 * pi
++                        / std::sqrt(model.stiffness[0] / model.mass)))
++                    + ",\"weak_theory_fractional_shift_relative_error\":" + number(shift / theory - 1.0));
+             }
+         }
+ 
+@@ -724,6 +743,113 @@
+                     << ',' << metricFields(metrics);
+                 audit.add(row.str());
+             }
++
++    std::cout << "Checking exact-pole bandwidth, Hamiltonian and all-rate release...\n" << std::flush;
++    for (int rate : { 48000, 96000, 192000 })
++    {
++        // Manufacture one physical linear frequency on either side of the
++        // boundary. Testing physical omega avoids accepting aliased modes
++        // merely because sin(theta/2)^2 is bounded.
++        for (double fraction : { 0.99, 1.0, 1.01, 2.01 })
++        {
++            Model boundary(Potential::linear, 1, 8);
++            boundary.stiffness[0] = boundary.mass * std::pow(fraction * pi * rate, 2);
++            bool accepted = true;
++            try { Sav check(boundary, rate, 0.0); }
++            catch (const std::invalid_argument&) { accepted = false; }
++            audit.check(accepted == (fraction < 1.0), "physical Nyquist boundary not enforced");
++            audit.add("\"test\":\"nyquist_boundary\",\"rate\":" + std::to_string(rate)
++                + ",\"physical_nyquist_fraction\":" + number(fraction)
++                + ",\"accepted\":" + (accepted ? "true" : "false"));
++        }
++
++        Model model(Potential::linear);
++        Vector initial(model.modes), maximumError(model.modes, 0.0);
++        for (int n = 0; n < model.modes; ++n) initial[n] = 0.001 / (n + 1);
++        Sav solver(model, rate, 0.0);
++        solver.initialise(initial);
++        const double initialEnergy = solver.energy();
++        auto wrongLedger = [&]() {
++            // Deliberately inconsistent stencil-energy control: retain the
++            // corrected recurrence but use the UNCORRECTED physical K here.
++            // This is not claimed to be the continuous physical Hamiltonian.
++            double value = solver.energy();
++            for (int n = 0; n < model.modes; ++n)
++                value += 0.5 * (model.stiffness[n] - solver.linearStiffness[n])
++                    * solver.q[n] * solver.previous[n];
++            return value;
++        };
++        const double initialWrongEnergy = wrongLedger();
++        double maximumBalance = 0.0, maximumWrongBalance = 0.0;
++        for (int sample = 0; sample < rate / 5; ++sample)
++        {
++            for (int n = 0; n < model.modes; ++n)
++            {
++                const double omega = std::sqrt(model.stiffness[n] / model.mass);
++                maximumError[n] = std::max(maximumError[n],
++                    std::abs(solver.q[n] - initial[n] * std::cos(sample * omega / rate)));
++            }
++            solver.step();
++            maximumBalance = std::max(maximumBalance, std::abs(solver.energy() / initialEnergy - 1.0));
++            maximumWrongBalance = std::max(maximumWrongBalance,
++                std::abs(wrongLedger() / initialWrongEnergy - 1.0));
++        }
++        audit.check(maximumBalance < 1e-8, "corrected linear Hamiltonian balance failed");
++        audit.check(maximumWrongBalance > 1e-5,
++                    "uncorrected-stiffness ledger negative control lost sensitivity");
++        audit.add("\"test\":\"linear_modified_hamiltonian\",\"rate\":" + std::to_string(rate)
++            + ",\"corrected_balance_relative\":" + number(maximumBalance)
++            + ",\"uncorrected_stiffness_ledger_drift_relative\":" + number(maximumWrongBalance));
++        for (int n = 0; n < model.modes; ++n)
++        {
++            const double omega = std::sqrt(model.stiffness[n] / model.mass);
++            const double theta = omega / rate;
++            const double recoveredOmega = rate * std::acos(1.0 - solver.linearStiffness[n]
++                / (2.0 * model.mass * rate * rate));
++            const double frequencyError = 1200.0 * std::log2(recoveredOmega / omega);
++            const double numericalRestEnergy = 0.5 * model.mass
++                * std::pow(initial[n] * rate * (1.0 - std::cos(theta)), 2)
++                + 0.5 * solver.linearStiffness[n] * initial[n] * initial[n] * std::cos(theta);
++            const double physicalRestEnergy = 0.5 * model.stiffness[n] * initial[n] * initial[n];
++            const double restEnergyRatio = numericalRestEnergy / physicalRestEnergy;
++            audit.check(maximumError[n] < 1e-12 && std::abs(frequencyError) < 1e-7,
++                        "physical linear modal pole not reproduced");
++            audit.check(std::abs(restEnergyRatio - std::pow(std::sin(theta) / theta, 2)) < 1e-12,
++                        "modified rest energy differs from derived value");
++            // Static input is deliberately not scaled. Solving the linear
++            // recurrence at equilibrium gives F_n/Ktilde, not F_n/K.
++            audit.add("\"test\":\"linear_all_modes\",\"rate\":" + std::to_string(rate)
++                + ",\"mode\":" + std::to_string(n + 1)
++                + ",\"physical_frequency_hz\":" + number(omega / (2.0 * pi))
++                + ",\"max_displacement_error_m\":" + number(maximumError[n])
++                + ",\"physical_frequency_error_cents\":" + number(frequencyError)
++                + ",\"corrected_to_physical_stiffness_ratio\":"
++                + number(solver.linearStiffness[n] / model.stiffness[n])
++                + ",\"numerical_to_physical_rest_energy_ratio\":" + number(restEnergyRatio)
++                + ",\"unscaled_static_compliance_relative_error\":"
++                + number(model.stiffness[n] / solver.linearStiffness[n] - 1.0));
++        }
++
++        // The original 48 kHz negative-control assertions above are retained.
++        // This rate sweep reports unregulated residues without presuming that
++        // the old threshold remains a sensitive control at a new time step.
++        Model nonlinear(Potential::exact);
++        for (double lambda : { 0.0, 1000.0 })
++            for (double gauge : { 1e-14, 1e-10 })
++            {
++                const auto metrics = render(nonlinear, rate, 0.4, 0.002,
++                                            lambda, gauge, true, false);
++                audit.check(metrics.maximumBalance < 1e-8, "all-rate forced/damped power balance failed");
++                audit.check(metrics.minimumPsi >= 0.0 && metrics.minimumDenominator >= 1.0,
++                            "all-rate release left auxiliary/rank domain");
++                if (lambda > 0.0)
++                    audit.check(std::abs(metrics.finalEnergy) < 1e-4,
++                                "all-rate regulated release energy gate failed");
++                audit.add("\"test\":\"exact_pole_release_rate_sweep\",\"rate\":" + std::to_string(rate)
++                    + ",\"lambda\":" + number(lambda) + ",\"gauge_j\":" + number(gauge)
++                    + ',' + metricFields(metrics));
++            }
++    }
+     audit.finish();
+     std::cout << "Prototype audit failures: " << audit.failures << '\n';
+     return audit.failures == 0 ? 0 : 1;
