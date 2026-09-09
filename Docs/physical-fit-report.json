@@ -85581,5 +85581,115 @@
   "validation_scope": "One extended six-case/ten-integrator reference run, comparison against the preceding portable reference and independent off-tree force audit, and native pressure steady-state algebra. No production/plugin tests repeated for this analysis-only change.",
   "recording_and_listening_boundary": "No new real-recording access, scoring, fitting or listener verdict. Wider user-selected stereo remains shipping; these tools do not themselves improve the audible instrument.",
   "preserved_prior_ledger_sha256": "2db6fdb0c4492cd574a7c7812244ff12a634585b75dbe232da8209adeac6355c"
+ },
+ "body_shape_coupled_model_2026_09_09": {
+  "decision": "Shape re-couples the measured A0/T1 pair through Christensen and Vistisen's two-oscillator top/cavity model (JASA 68(3), 1980) for a published box, with plate modes above T1 on the equal-thickness law f ~ 1/A_top and radiation scaled by top area. Each material's anchor is the authored transform its calibration was fitted on (steel: Dreadnought slot; nylon: Auditorium slot, the Classical preset) and is bit-identical; the renderer renders each material at its anchor by default.",
+  "boxes_metres": {
+   "parlor": {
+    "source": "Martin Size 0 (13 1/2 x 18 3/8 x 4 1/4 in), the PS-220E's class",
+    "width": 0.343,
+    "length": 0.467,
+    "depth": 0.108,
+    "soundhole": 0.1016,
+    "outline_fraction": 0.72
+   },
+   "auditorium": {
+    "source": "Martin 000 Auditorium (15 x 19 3/8 x 4 1/8 in)",
+    "width": 0.381,
+    "length": 0.492,
+    "depth": 0.105,
+    "soundhole": 0.1016,
+    "outline_fraction": 0.72
+   },
+   "dreadnought": {
+    "source": "Martin D-28 (15 5/8 x 20 x 3 7/8 to 4 7/8 in)",
+    "width": 0.397,
+    "length": 0.508,
+    "depth": 0.111,
+    "soundhole": 0.1016,
+    "outline_fraction": 0.75
+   },
+   "jumbo": {
+    "source": "Gibson SJ-200 (17 x 21 x 4 7/8 in)",
+    "width": 0.432,
+    "length": 0.533,
+    "depth": 0.124,
+    "soundhole": 0.1016,
+    "outline_fraction": 0.72
+   },
+   "classical_nylon_anchor": {
+    "source": "Torres-derived plantilla of both measured guitars",
+    "width": 0.37,
+    "length": 0.49,
+    "depth": 0.095,
+    "soundhole": 0.087,
+    "outline_fraction": 0.72
+   }
+  },
+  "steel_low_modes_hz": {
+   "parlor": [
+    118.17,
+    205.71
+   ],
+   "auditorium": [
+    102.67,
+    189.68
+   ],
+   "dreadnought_anchor": [
+    90.95,
+    175.53
+   ],
+   "jumbo": [
+    81.5,
+    161.52
+   ]
+  },
+  "benchmark_byte_identity": "79 of 79 model renders identical to the pre-shape renders under the per-material anchor protocol",
+  "shipping_scores_current_engine": {
+   "train": 6.44035,
+   "validation": 6.521658,
+   "flattop": 9.26087
+  },
+  "flattop_rows_by_rendered_shape": {
+   "parlor": {
+    "total": 8.6121,
+    "body": 16.4356
+   },
+   "auditorium": {
+    "total": 8.8115,
+    "body": 17.5818
+   },
+   "dreadnought": {
+    "total": 9.2609,
+    "body": 18.1707
+   },
+   "jumbo": {
+    "total": 8.8252,
+    "body": 17.8186
+   }
+  },
+  "nylon_rows_by_rendered_shape": {
+   "train": {
+    "parlor": 7.6577,
+    "auditorium_anchor": 7.5283,
+    "dreadnought": 7.8368,
+    "jumbo": 8.0754,
+    "bare_measured_classical": 7.9096
+   },
+   "validation": {
+    "parlor": 7.3298,
+    "auditorium_anchor": 7.4688,
+    "dreadnought": 7.9987,
+    "jumbo": 7.7678,
+    "bare_measured_classical": 7.7682
+   }
+  },
+  "steel_training_rows_by_rendered_shape": {
+   "parlor": 6.3722,
+   "auditorium": 6.3881,
+   "dreadnought_anchor": 6.2521,
+   "jumbo": 6.0962
+  },
+  "reading": "The E1D dreadnought rows prefer the Parlor and Auditorium morphs to the anchored Dreadnought, whose A0/T1 sit below published dreadnought values; the archtop rows run the other way. The anchor is the fitted and auditioned default, so this is recorded as an outstanding listening question, not acted on. Outline fraction and one-thickness plate law are model assumptions."
  }
 }

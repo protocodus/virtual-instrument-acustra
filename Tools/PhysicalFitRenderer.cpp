@@ -23,6 +23,7 @@
 #include <iterator>
 #include <locale>
 #include <map>
+#include <optional>
 #include <regex>
 #include <set>
 #include <sstream>
@@ -44,8 +45,26 @@ using acustra::dense::Library;
 using acustra::dense::Sampler;
 using acustra::dense::ZoneView;
 
-// One model per invocation; the selected bridge is also written to manifests.
+// One model per invocation; the selected bridge and body shape are also
+// written to manifests. Without --shape each material renders the body its
+// calibration was fitted on: steel the public default Dreadnought, nylon the
+// Auditorium slot that is the measured classical (the Classical preset).
 acustra::BridgeModel renderBridgeModel { acustra::BridgeModel::Original };
+std::optional<acustra::BodyShape> renderShapeOverride;
+constexpr std::array shapeNames { "parlor", "auditorium", "dreadnought", "jumbo" };
+// --archtop-picking renders the picked archtop rows (Material::Steel) with
+// that tool; the finger-plucked flat-top and classical rows always render
+// with Finger, which is what was on the string in those recordings.
+acustra::PickingTechnique archtopPicking { acustra::EngineParameters {}.picking };
+constexpr std::array pickingNames { "finger", "pick", "thumb" };
+
+acustra::BodyShape renderShapeFor(acustra::StringMaterial material) noexcept
+{
+    if (renderShapeOverride)
+        return *renderShapeOverride;
+    return material == acustra::StringMaterial::Nylon
+        ? acustra::BodyShape::Auditorium : acustra::EngineParameters {}.shape;
+}
 
 constexpr int modelSampleRate = 48000;
 constexpr int renderBlockSize = 127;
@@ -428,6 +447,9 @@ std::vector<float> renderModel(Material material, int midi, int velocity,
     EngineParameters parameters;
     parameters.stringMaterial = engineMaterial(material);
     parameters.bridgeModel = renderBridgeModel;
+    parameters.shape = renderShapeFor(parameters.stringMaterial);
+    if (material == Material::Steel)
+        parameters.picking = archtopPicking;
     engine.setParameters(parameters);
     engine.setPhysicalCalibration(calibration);
     engine.prepare(modelSampleRate, renderBlockSize);
@@ -533,8 +555,18 @@ std::string modelControlsJson()
     std::ostringstream text;
     text.imbue(std::locale::classic());
     text << std::setprecision(9);
-    text << "{\"shape\": " << static_cast<int>(parameters.shape)
-         << ", \"body_material\": " << static_cast<int>(parameters.bodyMaterial)
+    text << "{\"shape\": \"";
+    if (renderShapeOverride)
+        text << shapeNames[static_cast<std::size_t>(*renderShapeOverride)];
+    else
+        text << "per material: "
+             << shapeNames[static_cast<std::size_t>(
+                    renderShapeFor(StringMaterial::Steel))]
+             << " for steel, "
+             << shapeNames[static_cast<std::size_t>(
+                    renderShapeFor(StringMaterial::Nylon))]
+             << " (the measured classical) for nylon";
+    text << "\", \"body_material\": " << static_cast<int>(parameters.bodyMaterial)
          << ", \"string_material\": \"per example: nylon or steel\""
          << ", \"bridge_model\": \""
          << (renderBridgeModel == acustra::BridgeModel::FyldeSteel ? "fylde" : "original")
@@ -544,8 +576,9 @@ std::string modelControlsJson()
                                "saddle_piezo", "magnetic", "upper_mic" }[
                       static_cast<std::size_t>(parameters.capture)]
          << "\", \"picking\": \""
-         << std::array { "finger", "pick", "thumb" }[
-                      static_cast<std::size_t>(parameters.picking)]
+         << pickingNames[static_cast<std::size_t>(parameters.picking)]
+         << "\", \"archtop_picking\": \""
+         << pickingNames[static_cast<std::size_t>(archtopPicking)]
          << "\", \"tuning\": " << static_cast<int>(parameters.tuning)
          << ", \"string_age\": " << parameters.stringAge
          << ", \"pluck_position\": " << parameters.pluckPosition
@@ -1164,7 +1197,9 @@ void printUsage()
 {
     std::printf(
         "usage: AcustraPhysicalFitRenderer [--smoke|--models-only|--test] "
-        "[--bridge-model original|fylde] OUTPUT "
+        "[--bridge-model original|fylde] "
+        "[--shape parlor|auditorium|dreadnought|jumbo] "
+        "[--archtop-picking finger|pick|thumb] OUTPUT "
         "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT DIRECT_GAIN "
         "NYLON_T60 NYLON_FREQUENCY_LOSS NYLON_APERTURE "
         "NYLON_TRANSIENT NYLON_PLUCK_DISTANCE NYLON_VELOCITY_BRIGHTNESS "
@@ -1218,6 +1253,32 @@ int main(int argc, char** argv)
         }
         renderBridgeModel = std::string(argv[first + 1]) == "fylde"
             ? acustra::BridgeModel::FyldeSteel : acustra::BridgeModel::Original;
+        first += 2;
+    }
+    if (argc > first && std::string(argv[first]) == "--shape")
+    {
+        const auto name = std::find(shapeNames.begin(), shapeNames.end(),
+            argc > first + 1 ? std::string(argv[first + 1]) : std::string());
+        if (name == shapeNames.end())
+        {
+            printUsage();
+            return 2;
+        }
+        renderShapeOverride = static_cast<acustra::BodyShape>(
+            std::distance(shapeNames.begin(), name));
+        first += 2;
+    }
+    if (argc > first && std::string(argv[first]) == "--archtop-picking")
+    {
+        const auto name = std::find(pickingNames.begin(), pickingNames.end(),
+            argc > first + 1 ? std::string(argv[first + 1]) : std::string());
+        if (name == pickingNames.end())
+        {
+            printUsage();
+            return 2;
+        }
+        archtopPicking = static_cast<acustra::PickingTechnique>(
+            std::distance(pickingNames.begin(), name));
         first += 2;
     }
     if (argc - first != static_cast<int>(calibrationValueCount + 1))

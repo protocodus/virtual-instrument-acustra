@@ -33,7 +33,17 @@ static_assert(detail::measuredNylonBridgeModes.size()
 static_assert(detail::measuredFyldeBridgeModes.size()
               <= ACUSTRA_BRIDGE_MODE_COUNT);
 
-struct ShapeSpec
+// The measured body each material plays is one guitar of one size, so a
+// Shape is a morph of that measurement, not a second measurement. Both
+// calibrations were fitted, and steel's auditioned, with the public default
+// shape's authored transform of the bank in place, and the classical
+// recordings prefer that transformed body to the bare measurement (nylon
+// training rows 7.528 against 7.910), so the transform has been absorbed by
+// the fit and is kept exactly as it was as each material's anchor: steel's
+// in the Dreadnought slot, nylon's in the Auditorium slot the Classical
+// preset uses. The other shapes are placed relative to the anchor by the
+// coupled model below, so the anchors stay bit-identical.
+struct AnchorTransform
 {
     float airHz;
     float modeScale;
@@ -42,12 +52,234 @@ struct ShapeSpec
     float asymmetry;
 };
 
-constexpr std::array<ShapeSpec, 4> shapeSpecs {{
-    { 112.0f, 1.045f, 0.90f, 1.11f, -0.012f }, // parlor
-    { 107.0f, 1.000f, 0.98f, 1.00f,  0.000f }, // auditorium/reference
-    { 101.0f, 0.972f, 1.08f, 0.97f,  0.009f }, // dreadnought
-    {  96.0f, 0.948f, 1.14f, 0.90f,  0.015f }  // jumbo
+constexpr AnchorTransform fittedAnchorTransform { 101.0f, 0.972f, 1.08f,
+                                                  0.97f, 0.009f };
+
+// Body outline and cavity, in metres: lower-bout width, body length, mean
+// depth, soundhole diameter, and the fraction of the width-by-length
+// rectangle the outline fills (about 0.72 for a waisted guitar plantilla,
+// 0.75 for a dreadnought's squarer shoulders). Manufacturer set-up sheets
+// publish the first three for each body size:
+//   Parlor      Martin Size 0 (13 1/2 x 18 3/8 x 4 1/4 in), the class the
+//               Fender PS-220E belongs to
+//   Auditorium  Martin 000 "Auditorium" (15 x 19 3/8 x 4 1/8 in); Taylor's
+//               Grand Auditorium is a larger take on the same name
+//   Dreadnought Martin D-28 (15 5/8 x 20 x 3 7/8 to 4 7/8 in)
+//   Jumbo       Gibson SJ-200 (17 x 21 x 4 7/8 in)
+// with the 4 in soundhole a steel-string flat-top carries. The classical is
+// the Torres-derived plantilla both measured guitars follow: 370 mm lower
+// bout, 490 mm body, 95 mm mean depth and an 87 mm soundhole. The outline
+// fraction is an estimate read off those plantillas, not a published figure.
+struct BodyGeometry
+{
+    float width;
+    float length;
+    float depth;
+    float soundhole;
+    float outline;
+
+    constexpr float topArea() const noexcept { return outline * width * length; }
+    constexpr float volume() const noexcept { return topArea() * depth; }
+};
+
+constexpr std::array<BodyGeometry, 4> steelStringBodies {{
+    { 0.343f, 0.467f, 0.108f, 0.1016f, 0.72f }, // Parlor
+    { 0.381f, 0.492f, 0.105f, 0.1016f, 0.72f }, // Auditorium
+    { 0.397f, 0.508f, 0.111f, 0.1016f, 0.75f }, // Dreadnought
+    { 0.432f, 0.533f, 0.124f, 0.1016f, 0.72f }  // Jumbo
 }};
+constexpr BodyGeometry classicalBody { 0.370f, 0.490f, 0.095f, 0.087f, 0.72f };
+
+// Christensen and Vistisen, "Simple model for low-frequency guitar
+// function", J. Acoust. Soc. Am. 68(3) (1980) 758-766: the top plate is one
+// piston of effective area A_p, mass m_p and stiffness k_p, the soundhole air
+// a plug of area S and mass m_h, and the cavity of volume V the spring
+// mu = rho c^2 / V that couples them. In volume-displacement coordinates
+// q_p = A_p x_p and q_h = S x_h, divided through by mu, the system is
+//     M = diag(1/wa^2, 1/wh^2),  K = [[wp0^2/wa^2 + 1, 1], [1, 1]],
+// with wp0^2 = k_p/m_p the plate alone, wa^2 = mu A_p^2/m_p the cavity spring
+// on the plate and wh^2 = mu S^2/m_h the Helmholtz resonance of the rigid
+// box. Its two modes are the guitar's A0 and T1, and they obey
+//     w-^2 + w+^2 = wp0^2 + wa^2 + wh^2,   w-^2 w+^2 = wp0^2 wh^2,
+// so a measured A0/T1 pair plus the box's own Helmholtz frequency identify
+// the plate's two frequencies, and a different box then gives a different
+// pair. The radiated monopole is the volume velocity q_p' + q_h' for a unit
+// bridge force, whose modal residues follow from the same eigenvectors; the
+// force enters as 1/(mu A_p) = V/(rho c^2 A_p), so a common rho c^2 cancels
+// in every ratio taken here.
+struct LowBodyPair
+{
+    float a0Frequency;
+    float t1Frequency;
+    // |residue| times frequency of each mode in the pressure-per-force
+    // response, which is what scales a discrete pole pair's residue; see
+    // configureBody. Both carry the common 1/(rho c^2) already dropped.
+    float a0Weight;
+    float t1Weight;
+};
+
+float helmholtzFrequency(const BodyGeometry& body) noexcept
+{
+    // Rigid-walled Helmholtz resonance with Rayleigh's flanged-end correction
+    // of 0.85 r at each face of a 3 mm top.
+    constexpr float soundSpeed = 343.0f;
+    const float radius = 0.5f * body.soundhole;
+    const float area = pi * radius * radius;
+    const float neck = 0.003f + 1.7f * radius;
+    return soundSpeed / twoPi
+        * std::sqrt(area / (body.volume() * neck));
+}
+
+LowBodyPair coupledLowBodyPair(float plateFrequency, float cavitySpringFrequency,
+                               float helmholtz, float depth) noexcept
+{
+    const double wp0 = twoPi * plateFrequency;
+    const double wa = twoPi * cavitySpringFrequency;
+    const double wh = twoPi * helmholtz;
+    const double sum = wp0 * wp0 + wa * wa + wh * wh;
+    const double product = wp0 * wp0 * wh * wh;
+    const double discriminant = std::sqrt(std::max(sum * sum - 4.0 * product, 0.0));
+    const double lambdas[] { 0.5 * (sum - discriminant), 0.5 * (sum + discriminant) };
+    LowBodyPair pair {};
+    float* frequencies[] { &pair.a0Frequency, &pair.t1Frequency };
+    float* weights[] { &pair.a0Weight, &pair.t1Weight };
+    for (int mode = 0; mode < 2; ++mode)
+    {
+        const double lambda = lambdas[mode];
+        // Second row of (K - lambda M) phi = 0 with the hole part taken as 1:
+        // phi_p + (1 - lambda/wh^2) phi_h = 0, then mass-normalise.
+        const double platePart = -(1.0 - lambda / (wh * wh));
+        const double massNorm = std::sqrt(platePart * platePart / (wa * wa)
+                                          + 1.0 / (wh * wh));
+        const double phiPlate = platePart / massNorm;
+        const double phiHole = 1.0 / massNorm;
+        // Force enters on the plate coordinate as V/A_p = depth; the output is
+        // the sum of both volume velocities.
+        const double residue = (phiPlate + phiHole) * phiPlate * depth;
+        const double frequency = std::sqrt(lambda) / twoPi;
+        *frequencies[mode] = static_cast<float>(frequency);
+        *weights[mode] = static_cast<float>(std::abs(residue) * frequency);
+    }
+    return pair;
+}
+
+// What one Shape does to the anchor bank: the A0 group (every mode below
+// 150 Hz) and T1 are retuned and reweighted by the coupled pair, and every
+// plate mode above T1 follows the equal-thickness plate law f ~ 1/A_p with
+// its radiation scaled by the plate area it radiates from. Every factor is
+// exactly 1 for the anchor shape, which is what keeps it bit-identical.
+struct BodyShapeMorph
+{
+    int t1Index { -1 };
+    float a0Frequency { 1.0f };
+    float a0Level { 1.0f };
+    float t1Frequency { 1.0f };
+    float t1Level { 1.0f };
+    float plateFrequency { 1.0f };
+    float plateLevel { 1.0f };
+};
+
+constexpr float lowBodyGroupUpperHz = 150.0f;
+
+BodyShapeMorph bodyShapeMorph(std::span<const detail::MeasuredBodyMode> bank,
+                              const AnchorTransform& anchor,
+                              const BodyGeometry& anchorBody,
+                              const BodyGeometry& body) noexcept
+{
+    BodyShapeMorph morph;
+    // A0 is the strongest radiating mode below 150 Hz, T1 the strongest
+    // between there and 260 Hz, read from the measured force paths.
+    const auto weight = [] (const detail::MeasuredBodyMode& mode)
+    {
+        return std::hypot(mode.leftReal, mode.leftImaginary)
+             + std::hypot(mode.rightReal, mode.rightImaginary)
+             + std::hypot(mode.upperReal, mode.upperImaginary);
+    };
+    int a0Index = -1;
+    for (int index = 0; index < static_cast<int>(bank.size()); ++index)
+    {
+        const auto& mode = bank[static_cast<std::size_t>(index)];
+        if (mode.frequency < lowBodyGroupUpperHz)
+        {
+            if (a0Index < 0 || weight(mode) > weight(bank[static_cast<std::size_t>(a0Index)]))
+                a0Index = index;
+        }
+        else if (mode.frequency < 260.0f)
+        {
+            if (morph.t1Index < 0
+                || weight(mode) > weight(bank[static_cast<std::size_t>(morph.t1Index)]))
+                morph.t1Index = index;
+        }
+    }
+    const bool sameBox = body.width == anchorBody.width
+        && body.length == anchorBody.length && body.depth == anchorBody.depth
+        && body.soundhole == anchorBody.soundhole
+        && body.outline == anchorBody.outline;
+    if (a0Index < 0 || morph.t1Index < 0 || sameBox)
+        return morph;
+
+    // The anchor's own pair, as the anchor transform leaves it.
+    const auto anchored = [&] (int index)
+    {
+        const auto& mode = bank[static_cast<std::size_t>(index)];
+        const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
+        const bool lowBodyMode = mode.frequency > 85.0f && mode.frequency < 145.0f;
+        return mode.frequency * (lowBodyMode ? anchor.airHz / 107.0f : anchor.modeScale)
+            * (1.0f + alternating * anchor.asymmetry
+               / std::sqrt(static_cast<float>(index + 1)));
+    };
+    const float a0 = anchored(a0Index);
+    const float t1 = anchored(morph.t1Index);
+    const float anchorHelmholtz = helmholtzFrequency(anchorBody);
+    // Invert the sum and product identities for the plate's two frequencies.
+    const float plate = a0 * t1 / anchorHelmholtz;
+    const float cavitySpringSquared = a0 * a0 + t1 * t1 - plate * plate
+                                    - anchorHelmholtz * anchorHelmholtz;
+    if (!(cavitySpringSquared > 0.0f))
+        return morph;
+    const float cavitySpring = std::sqrt(cavitySpringSquared);
+    const float anchorDepth = anchorBody.volume() / anchorBody.topArea();
+    const auto reference = coupledLowBodyPair(plate, cavitySpring,
+                                              anchorHelmholtz, anchorDepth);
+
+    // The target box: the plate keeps its thickness, so its frequencies go as
+    // 1/A_p and its mass as A_p; the cavity spring on it, mu A_p^2 / m_p, then
+    // goes as A_p / V.
+    const float areaRatio = body.topArea() / anchorBody.topArea();
+    const float targetPlate = plate / areaRatio;
+    const float targetSpring = cavitySpring
+        * std::sqrt((body.topArea() / body.volume())
+                    / (anchorBody.topArea() / anchorBody.volume()));
+    const auto target = coupledLowBodyPair(targetPlate, targetSpring,
+                                           helmholtzFrequency(body),
+                                           body.volume() / body.topArea());
+    morph.a0Frequency = target.a0Frequency / reference.a0Frequency;
+    morph.t1Frequency = target.t1Frequency / reference.t1Frequency;
+    morph.a0Level = target.a0Weight / reference.a0Weight;
+    morph.t1Level = target.t1Weight / reference.t1Weight;
+    morph.plateFrequency = 1.0f / areaRatio;
+    morph.plateLevel = areaRatio;
+    return morph;
+}
+
+// For nylon the Auditorium slot is the measured classical's own box; the
+// other three names mean the steel-string sizes above on either material.
+const BodyGeometry& bodyGeometryFor(StringMaterial material,
+                                    BodyShape shape) noexcept
+{
+    if (material == StringMaterial::Nylon && shape == BodyShape::Auditorium)
+        return classicalBody;
+    return steelStringBodies[static_cast<std::size_t>(shape)];
+}
+
+// The box each material's anchor transform describes: the dreadnought the
+// steel default is, and the classical guitar nylon's bank was measured on.
+const BodyGeometry& anchorBodyFor(StringMaterial material) noexcept
+{
+    return material == StringMaterial::Steel
+        ? steelStringBodies[static_cast<std::size_t>(BodyShape::Dreadnought)]
+        : classicalBody;
+}
 
 struct WoodSpec
 {
@@ -1540,9 +1772,12 @@ void AcustraEngine::configureBody() noexcept
         bodyModelFade_ = 1.0f;
     }
 
-    const auto shape = shapeSpecs[static_cast<std::size_t>(parameters_.shape)];
+    const AnchorTransform& anchor = fittedAnchorTransform;
     const auto wood = woodSpecs[static_cast<std::size_t>(parameters_.bodyMaterial)];
     const auto bank = measuredBodyBank(parameters_.stringMaterial);
+    const auto morph = bodyShapeMorph(
+        bank, anchor, anchorBodyFor(parameters_.stringMaterial),
+        bodyGeometryFor(parameters_.stringMaterial, parameters_.shape));
 
     for (int index = 0; index < bodyModeCount; ++index)
     {
@@ -1557,11 +1792,25 @@ void AcustraEngine::configureBody() noexcept
         const bool lowBodyMode = measured.frequency > 85.0f
             && measured.frequency < 145.0f;
         const float lowModeMorph = lowBodyMode
-            ? shape.airHz / 107.0f : shape.modeScale;
-        float frequency = measured.frequency * lowModeMorph
+            ? anchor.airHz / 107.0f : anchor.modeScale;
+        // The A0 group, T1 and the plate modes above it each take their own
+        // factor from the coupled pair; the anchor shape's are exactly 1.
+        float shapeFrequency = morph.plateFrequency;
+        float shapeLevel = morph.plateLevel;
+        if (measured.frequency < lowBodyGroupUpperHz)
+        {
+            shapeFrequency = morph.a0Frequency;
+            shapeLevel = morph.a0Level;
+        }
+        else if (index <= morph.t1Index)
+        {
+            shapeFrequency = morph.t1Frequency;
+            shapeLevel = morph.t1Level;
+        }
+        float frequency = measured.frequency * lowModeMorph * shapeFrequency
             * wood.frequencyScale
             * physicalCalibration_.bodyFrequencyScale
-            * (1.0f + alternating * shape.asymmetry
+            * (1.0f + alternating * anchor.asymmetry
                / std::sqrt(static_cast<float>(index + 1)));
         const float highestMode = 0.46f * static_cast<float>(sampleRate_);
         const bool audibleAtThisRate = frequency < highestMode;
@@ -1578,14 +1827,14 @@ void AcustraEngine::configureBody() noexcept
         mode.poleReal = pole.real();
         mode.poleImaginary = audibleAtThisRate ? pole.imag() : 0.0f;
 
-        const float bassTilt = 1.0f + (shape.bass - 1.0f)
+        const float bassTilt = 1.0f + (anchor.bass - 1.0f)
             * std::exp(-frequency / 520.0f);
         const float brilliance = std::pow(wood.brightness, upper);
         const float residueTilt = std::exp2(
             physicalCalibration_.residueTiltDbPerOctave
             * std::log2(frequency / 1000.0f) / 6.02059991f);
         const float drive = audibleAtThisRate
-            ? shape.volume * wood.radiation * bassTilt * brilliance
+            ? anchor.volume * shapeLevel * wood.radiation * bassTilt * brilliance
                 * residueTilt
                 * (lowBodyMode ? physicalCalibration_.lowBodyModeGain : 1.0f)
             : 0.0f;

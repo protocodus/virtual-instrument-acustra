@@ -224,11 +224,13 @@ struct AcustraEngineTestAccess
 
     static BodyModeSnapshot configuredBody(
         PhysicalCalibration calibration, int index,
-        StringMaterial material = StringMaterial::Steel)
+        StringMaterial material = StringMaterial::Steel,
+        BodyShape shape = EngineParameters {}.shape)
     {
         AcustraEngine engine;
         EngineParameters parameters;
         parameters.stringMaterial = material;
+        parameters.shape = shape;
         engine.setParameters(parameters);
         engine.setPhysicalCalibration(calibration);
         engine.prepare(48000.0, 64);
@@ -6535,6 +6537,101 @@ void testEachStringMaterialPlaysItsOwnMeasuredGuitar()
             }
 }
 
+// A Shape is the measured body's A0 and T1 re-coupled through Christensen and
+// Vistisen's two-oscillator model for a published box, with the plate modes
+// above T1 on the equal-thickness plate law. The anchors are the transform
+// each calibration was fitted on and must not move; the other shapes must
+// land where an independent evaluation of the same model puts them.
+void testBodyShapesFollowTheCoupledTopAndCavity()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    using acustra::BodyShape;
+    using acustra::StringMaterial;
+    const auto calibration = acustra::fittedPhysicalCalibration;
+    const auto body = [&] (StringMaterial material, BodyShape shape, int index)
+    {
+        return Access::configuredBody(calibration, index, material, shape);
+    };
+
+    // Steel's anchor is the Dreadnought: the flamenca's bank under the
+    // fitted transform, A0 at 95.49 * 101/107 * (1 + 0.009) and T1 at
+    // 179.65 * 0.972 * (1 + 0.009 / sqrt(3)).
+    const auto steelDread0 = body(StringMaterial::Steel, BodyShape::Dreadnought, 0);
+    const auto steelDread2 = body(StringMaterial::Steel, BodyShape::Dreadnought, 2);
+    expect(std::abs(steelDread0.frequency - 95.4921112 * (101.0 / 107.0) * 1.009) < 0.01,
+           "the steel Dreadnought anchor moved its A0");
+    expect(std::abs(steelDread2.frequency
+                    - 179.654236 * 0.972 * (1.0 + 0.009 / std::sqrt(3.0))) < 0.01,
+           "the steel Dreadnought anchor moved its T1");
+    // Nylon's anchor is the Auditorium slot the Classical preset uses, under
+    // the same fitted transform of the measured classical.
+    const auto nylonAud0 = body(StringMaterial::Nylon, BodyShape::Auditorium, 0);
+    const auto nylonAud1 = body(StringMaterial::Nylon, BodyShape::Auditorium, 1);
+    expect(std::abs(nylonAud0.frequency - 98.1445312 * (101.0 / 107.0) * 1.009) < 0.01,
+           "the nylon Auditorium anchor moved its A0");
+    expect(std::abs(nylonAud1.frequency
+                    - 200.751648 * 0.972 * (1.0 - 0.009 / std::sqrt(2.0))) < 0.01,
+           "the nylon Auditorium anchor moved its T1");
+
+    // Independently evaluated (Tools-free, in double precision from the same
+    // published boxes) the coupled pair puts the steel shapes here; the
+    // engine's single-precision path must agree within a fraction of a hertz.
+    struct Expected { BodyShape shape; double a0, t1; };
+    for (const auto& row : { Expected { BodyShape::Parlor, 118.17, 205.71 },
+                             Expected { BodyShape::Auditorium, 102.67, 189.68 },
+                             Expected { BodyShape::Jumbo, 81.50, 161.52 } })
+    {
+        const auto a0 = body(StringMaterial::Steel, row.shape, 0);
+        const auto t1 = body(StringMaterial::Steel, row.shape, 2);
+        expect(std::abs(a0.frequency - row.a0) < 0.5,
+               "a steel shape's A0 is not where the coupled model puts it");
+        expect(std::abs(t1.frequency - row.t1) < 0.5,
+               "a steel shape's T1 is not where the coupled model puts it");
+    }
+
+    // A smaller box raises both modes and a larger one lowers them, on both
+    // materials, and the same ordering holds for the plate modes above T1.
+    for (const auto material : { StringMaterial::Steel, StringMaterial::Nylon })
+    {
+        const int t1Index = material == StringMaterial::Steel ? 2 : 1;
+        const int plateIndex = 9;
+        double previousA0 = 1.0e9, previousT1 = 1.0e9, previousPlate = 1.0e9;
+        for (const auto shape : { BodyShape::Parlor, BodyShape::Auditorium,
+                                  BodyShape::Dreadnought, BodyShape::Jumbo })
+        {
+            const double a0 = body(material, shape, 0).frequency;
+            const double t1 = body(material, shape, t1Index).frequency;
+            const double plate = body(material, shape, plateIndex).frequency;
+            expect(a0 < previousA0 && t1 < previousT1 && plate < previousPlate,
+                   "a larger box did not lower A0, T1 and the plate modes");
+            previousA0 = a0;
+            previousT1 = t1;
+            previousPlate = plate;
+        }
+        // Nylon's Auditorium is the classical's own box, so it sits between
+        // the Parlor and the Dreadnought on the same monotone run; the
+        // measured Q is retained by every shape.
+        expect(std::abs(body(material, BodyShape::Parlor, t1Index).q
+                        - body(material, BodyShape::Jumbo, t1Index).q) < 0.05,
+               "a shape changed a body mode's measured Q");
+    }
+
+    // The small box radiates its A0 more strongly per unit force (the piston
+    // is smaller, so the same force is more cavity pressure) while its plate
+    // modes radiate from less area; the large box the other way round.
+    const auto steelParlor0 = body(StringMaterial::Steel, BodyShape::Parlor, 0);
+    const auto steelJumbo0 = body(StringMaterial::Steel, BodyShape::Jumbo, 0);
+    const auto steelParlor9 = body(StringMaterial::Steel, BodyShape::Parlor, 9);
+    const auto steelDread9 = body(StringMaterial::Steel, BodyShape::Dreadnought, 9);
+    const auto steelJumbo9 = body(StringMaterial::Steel, BodyShape::Jumbo, 9);
+    expect(steelParlor0.residue > steelDread0.residue
+               && steelJumbo0.residue < steelDread0.residue,
+           "A0 radiation did not follow the coupled model's residues");
+    expect(steelParlor9.residue < steelDread9.residue
+               && steelJumbo9.residue > steelDread9.residue,
+           "plate radiation did not scale with the plate area");
+}
+
 // Woodhouse (Acta Acustica 90 (2004) 945-965, Sec. 4.3) measures the two
 // polarisations of a plucked string as a doublet split not by the body -- the
 // measured 2x2 admittance matrix splits it by about 0.1 Hz -- but by an end
@@ -6871,6 +6968,7 @@ int main()
     testNoTwoPlucksLandInTheSamePlace();
     testFrettingHandFollowsThePluckLaw();
     testEachStringMaterialPlaysItsOwnMeasuredGuitar();
+    testBodyShapesFollowTheCoupledTopAndCavity();
     testTheNormalPolarisationIsTheHigherMemberByALength();
     testPerformance();
     if (failures == 0)

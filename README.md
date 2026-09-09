@@ -75,15 +75,15 @@ reverb, room effect or recorded-note layer.
 | File | What it is | Length | Rendered peak | Normalisation |
 | --- | --- | ---: | ---: | ---: |
 | `01-steel-sustain-range.wav` | Steel sustain from open E2 to B5, one held pluck at a time | 9.5 s | −14.3 dBFS | +11.3 dB |
-| `02-nylon-fingerstyle.wav` | A fingertip nylon arpeggio with overlapping held notes | 4.2 s | −22.1 dBFS | +19.1 dB |
-| `03-shape-material-anchors.wav` | One chord: Parlor/Jumbo, then Cedar/Maple anchor settings | 13.7 s | −8.3 dBFS | +5.3 dB |
+| `02-nylon-fingerstyle.wav` | A fingertip nylon arpeggio with overlapping held notes | 4.2 s | −21.4 dBFS | +18.4 dB |
+| `03-shape-material-anchors.wav` | One chord: Parlor/Jumbo, then Cedar/Maple anchor settings | 13.7 s | −10.3 dBFS | +7.3 dB |
 | `04-string-age.wav` | The same steel phrase with fresh strings, then fully aged strings | 6.5 s | −9.1 dBFS | +6.1 dB |
-| `05-alternate-tunings.wav` | Drop D, DADGAD and Open G chords | 12.3 s | −10.8 dBFS | +7.8 dB |
+| `05-alternate-tunings.wav` | Drop D, DADGAD and Open G chords | 12.3 s | −8.3 dBFS | +5.3 dB |
 | `06-playing-behaviours.wav` | A chord change over a ringing chord, CC2 bridge-hand damping, then two natural harmonics above the fretted range | 10.7 s | −11.1 dBFS | +8.1 dB |
 | `07-fretting-hand.wav` | Hammer-ons at two velocities and a pull-off under CC68, then one fretted note released three ways by its note-off velocity | 8.8 s | −14.0 dBFS | +11.0 dB |
 | `08-strummed-chords.wav` | Same-sample chords swept as alternating strums, then one chord eight times hand-damped, no two strokes the same take | 6.9 s | −5.1 dBFS | +2.1 dB |
-| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −17.6 dBFS | +14.6 dB |
-| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −20.6 dBFS | +17.6 dB |
+| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −17.7 dBFS | +14.7 dB |
+| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −21.0 dBFS | +18.0 dB |
 | `11-picking-techniques.wav` | Finger, pick and thumb on steel, then on nylon; same notes and velocity | 10.6 s | −15.9 dBFS | +12.9 dB |
 | `12-capture-types.wav` | Stereo, treble, bass, ideal piezo, magnetic, upper mic, loaded piezo | 17.1 s | −16.0 dBFS | +13.0 dB |
 <!-- peaks-table-end -->
@@ -111,6 +111,14 @@ attack envelope, interpolation and stereo playback path; it says nothing about
 uncaptured notes, transitions or performances. Keeping this control beside the
 physical result prevents the misleading claim that a source-recording replay
 is an independent realism benchmark.
+
+On the current force/moment body the same protocol at the shipping calibration
+reads 6.440350 on training, 6.521658 on development validation and 9.260870 on
+the flat-top rows; these are the base every paired comparison below is taken
+against. The renderer renders each material at the body its calibration was
+fitted on - steel the default Dreadnought, nylon the Auditorium slot that is
+the measured classical - which is byte-identical to the renders scored before
+the shape model existed.
 
 Run `python3 Tools/SummarizePhysicalBenchmark.py` to print the compact split
 table, historical sample-player control and five retained realism paths from
@@ -694,6 +702,41 @@ The construction controls are deliberately bounded directions around the
 measured reference guitar, not claims that one measurement identifies several
 distinct instruments.
 
+Shape is a box rather than a tone curve. The measured body's two lowest strong
+modes, the air resonance A0 and the top's first mode T1, are the two modes of
+Christensen and Vistisen's coupled top-plate/air-cavity model (J. Acoust. Soc.
+Am. 68(3), 1980, 758-766): a top piston on a cavity spring and the soundhole's
+air plug, whose coupled pair obeys f₋² + f₊² = f_p0² + f_a² + f_h² and
+f₋²f₊² = f_p0²f_h². A measured A0/T1 pair plus the box's own rigid-walled
+Helmholtz frequency therefore identify the top's two frequencies, and a
+different box re-couples the same top into a different pair. The boxes are
+published set-up dimensions: Martin's Size 0 for Parlor (the class the PS-220E
+belongs to), the Martin 000 "Auditorium", the D-28 for Dreadnought and Gibson's
+SJ-200 for Jumbo, each with the 4-inch soundhole a flat-top carries; the plate
+modes above T1 follow the equal-thickness plate law f ∝ 1/A_top with their
+radiation scaled by the area they radiate from, and the A0/T1 radiation ratios
+come from the same model's eigenvectors. On steel that puts A0/T1 at 118/206 Hz
+for the Parlor, 103/190 for the Auditorium, 91/176 for the Dreadnought and
+82/162 for the Jumbo. The anchor each material's calibration was fitted on is
+kept exactly as it was: steel's is the Dreadnought and nylon's the Auditorium
+slot the Classical preset uses (both calibrations were fitted with that one
+authored transform of the bank in place, and the classical recordings prefer it
+to the bare measurement, 7.528 against 7.910 on the nylon training rows), so
+the default sounds and all 79 benchmark renders are byte-identical and the
+other three shapes are placed relative to the anchor. Read against the
+recordings, the eight never-fitted Eastman E1D flat-top rows, a dreadnought,
+prefer the Parlor (8.612) and Auditorium (8.812) morphs to the anchored
+Dreadnought (9.261): the anchor's A0/T1 sit below the roughly 100 and 190 Hz
+that published dreadnought measurements report (Fletcher and Rossing, *The
+Physics of Musical Instruments*, ch. 9), because it darkened a classical-size
+body whose A0 was already low. Moving the anchor is a listening decision and is
+left to one. The classical recordings prefer their own box on training (7.528
+against Parlor 7.658, Dreadnought 7.837, Jumbo 8.075) and the Parlor on
+validation (7.330 against 7.469). The outline's fraction of its width-by-length
+rectangle (0.72, and 0.75 for the dreadnought's shoulders) is read off the
+plantillas, and the plate law assumes tops of one thickness; both are model
+assumptions, not measurements of those instruments.
+
 The Guitar menu applies construction controls together, using the documented
 body families as starting points: Dreadnought / Martin style (spruce and steel,
 as in the [D-28](https://www.martinguitar.com/guitars/standard-series/D-28.html)),
@@ -714,7 +757,7 @@ uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
 
 | Control | Audible behavior |
 | --- | --- |
-| **Shape** | Parlor, Auditorium, Dreadnought or Jumbo air-mode, modal-scale, bass and radiation direction. |
+| **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top. |
 | **Body Material** | Spruce, Cedar, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. |
 | **String Material** | Selects the dedicated nylon or steel geometry, impedance, stiffness, loss and fitted calibration. |
 | **Tuning** | Changes the six open-string/fret constraints. |
@@ -1473,7 +1516,12 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
 - Shape and Body Material morph whichever measured body the string material
   selects — the g21 flamenca on steel, a 1971 Manuel Contreras classical
   (g34) on nylon — and are not separate measurements of four guitar sizes or
-  four woods. The original steel bank adapts a nylon-strung flamenca blanca;
+  four woods. Shape re-couples the measured A0/T1 pair for a published box
+  and scales the plate modes with the top, but each anchor is still the one
+  authored transform its calibration was fitted on, and the E1D dreadnought
+  rows place a real dreadnought above it (Construction controls). What would
+  settle both is a measured body of each size, or one listening verdict on the
+  anchor. The original steel bank adapts a nylon-strung flamenca blanca;
   the archive lists Savarez Tomatito strings for g21. The optional Fylde bridge
   adds actual steel-guitar mobility, but a matched steel microphone-radiation
   measurement remains missing.
@@ -1707,6 +1755,20 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
 A concise ledger of the changes that move what Acustra sounds like or how it is
 controlled. Pure refactors, deduplications and test-coverage additions are in
 git history rather than here.
+
+### 2026-09-09
+
+- **Shape is a box.** Parlor, Auditorium, Dreadnought and Jumbo re-couple the
+  measured body's A0 and T1 through Christensen and Vistisen's top/cavity model
+  for the published dimensions of a Martin Size 0, a Martin 000, a D-28 and an
+  SJ-200, and scale the plate modes above T1 with the top; the earlier
+  authored air-mode, mode-scale, bass and volume factors are gone. Steel's
+  Dreadnought and nylon's Auditorium (the Classical preset) are the anchors
+  their calibrations were fitted on and are bit-identical, as are all 79
+  benchmark renders; the nylon Dreadnought, and steel's Parlor, Auditorium and
+  Jumbo, are now physically spaced around them. The fit renderer renders each
+  material at its anchor (`--shape` overrides it), gains `--archtop-picking`
+  for the tool on the picked archtop rows, and records both in its manifests.
 
 ### 2026-09-05
 

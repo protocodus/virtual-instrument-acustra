@@ -4,6 +4,45 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-09 — Shape is a box, and the anchors stay where the fit put them
+
+What was decided. The four Shapes were authored factors around one measured
+body: an air-mode frequency (112/107/101/96 Hz), a mode scale (1.045 to
+0.948), a bass shelf and a volume, chosen without a model. They are replaced by
+Christensen and Vistisen's two-oscillator top/cavity model (JASA 68(3), 1980):
+the measured A0 and T1 plus the box's own rigid-walled Helmholtz frequency
+identify the top's two frequencies, and a published box - Martin Size 0, Martin
+000, D-28, Gibson SJ-200, all with a 4 in soundhole - re-couples that top into
+a new pair, with the plate modes above T1 on the equal-thickness law f ∝ 1/A
+and radiation scaled by top area. Steel's shapes land at A0/T1 118/206,
+103/190, 91/176 and 82/162 Hz.
+
+The anchor was the open question, and the recordings answered it. Both
+material calibrations were fitted with the public default shape's transform in
+place, and the nylon rows show the fit absorbed it: rendered on the bare
+measured classical body they score 7.910 on training against 7.528 with the
+transform. So the transform is kept exactly as each material's anchor - steel
+in the Dreadnought slot, nylon in the Auditorium slot the Classical preset
+uses - and the renderer now renders nylon at that slot, which makes all 79
+benchmark renders byte-identical to before. Nylon's Classical preset gains the
+transform its calibration was fitted on (it had been reachable only as
+nylon-plus-Dreadnought); nylon-plus-Dreadnought becomes a dreadnought-sized
+classical.
+
+What was read and not acted on. The eight never-fitted Eastman E1D rows are a
+real dreadnought, and rendered through each shape they score Parlor 8.612,
+Auditorium 8.812, Jumbo 8.825, Dreadnought 9.261: the anchored Dreadnought is
+the worst of the four on the only dreadnought recordings the bank holds, and
+its A0/T1 (91/176 Hz) sit below the roughly 100/190 Hz published for the type.
+The archtop training rows run the other way (Jumbo 6.096, Dreadnought 6.252,
+Parlor 6.372, Auditorium 6.388), the same disagreement the corpus and the
+flat-top have shown five times before. The anchor is the fitted and auditioned
+default, so moving it is the listener's call, not this measurement's; a
+listening set on the Auditorium morph against the anchored Dreadnought would
+decide it, and is recorded here as outstanding. The classical rows prefer
+their own box on training (Parlor 7.658, Dreadnought 7.837, Jumbo 8.075
+against 7.528) and the Parlor on validation (7.330 against 7.469).
+
 ## 2026-09-05 — B preferred for its stereo presentation
 
 On the 16-second body-radiation A/B, the user said: **“i like B since it is
