@@ -1353,6 +1353,19 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   the nylon and flat-top targets carry 11 to 12 ms of pre-roll that the
   scorer charges to every such row's attack term as a constant the model
   cannot remove.
+- The held string's static force on the saddle is not released with the
+  pluck, so the top never springs back from the load. Building that release -
+  exact for an ideal string, sized from the written wave, no constant chosen -
+  fixes the model's onset latency on the archtop rows (0.66 ms late → 0.02)
+  and its first 12 ms' 80–139 Hz deficit on both materials, and improves the
+  never-fitted flat-top rows 7.7%, but worsens every archtop and classical
+  split 3.1–5.0% (frozen test split +4.2%) because the model's low body modes
+  then ring 14–28 dB over those recordings at 12–100 ms, at the auditioned
+  body damping and at the corpus-fitted one alike. The measurement and a blind
+  A/B are in Docs/decisions.md (2026-09-10); the recordings' early 80–140 Hz
+  energy the model lacks (8–19 dB in the first 12 ms at every layer) stays
+  open, and nothing here separates the body's spring-back from the finger's
+  own contact thud in that band.
 - The loudest layer's missing brightness has been split between two owners
   by measurement. A geometrically exact (non-linear) string solver, driven by
   the engine's own string data, supplies between nil and about 58% of the

@@ -4,6 +4,71 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-10 — the held string's static force, released at the pluck: exact, parameter-free, and the recordings say no
+
+What was measured. A held string pushes the saddle with the static force of its
+own slope there, T·y/a, and the wave a pluck writes carries the oscillation that
+follows but not that the force existed before it: the top never springs back
+from the load. In the engine's own terms that force is the level of the line's
+steep flank, 2Z times the flank's rise per sample, and its removal is a positive
+step. The pluck is written in the fitted frame, the rest state advanced by half
+the apex phase, so a step at the first sample is exactly the rest pluck's
+dynamic force at the arrival of its first corner (until then the force is the
+static level, which the body has relaxed to). It was built as an integrated
+external force on the two-way junction: the impulse response of a double pole,
+(n+1)·dⁿ from a kick of 2Z·h/(p·D) with h the vertical line height, p the
+pluck fraction and D the loop delay, the pole at 10 ms so it is a step
+high-passed at 16 Hz (0.97 of a true step at 90 Hz) that carries no net impulse
+and keeps the integrated force at the wave's own scale - at 100 ms the
+junction's float derivatives lost their precision and the cross-rate H8 decay
+regression spread 104-126%. Sized from the line the pluck wrote; no constant is
+chosen.
+
+What it did to the descriptors, model minus recording. Steel archtop training
+and development rows (68): the onset latency from +0.66 ms median (1.19 ms
+mean absolute) to +0.02 (0.07); the first 12 ms' 80/105/139 Hz bands from
+−8.0/−10.8/−2.2 dB to −2.2/−9.5/+0.4 (the soft layer's 80/105 Hz from −13/−19
+to −8/−13, the loud layer's from −3.5/−4.1 to −0.7/−6.6); nylon classical
+rows (39): 80/105/139 Hz from −10.1/−9.9/−8.5 to −2.6/−3.8/−6.4. That is the
+deficit the mechanism was built for, and it closes. But the bands are
+mean-normalised, so the same energy pushes every other band down, 184-321 Hz,
+already +5.5 to +9.8 dB hot on steel, goes to +9 to +11, and after the step the
+model's low body modes ring where the recordings' do not: the 80 Hz band at
+12-40 ms from +7 to +21 dB on steel, the 80/105 Hz bands at 40-100 ms from
++14/+12 to +28/+25 on steel and from +2/+2 to +16/+16 on nylon.
+
+Scores, the mechanism against the shipping engine on identical recordings and
+calibration. The benchmark protocol: training 6.440350 → 6.764678 (+5.0%;
+nylon 7.528331 → 8.067540, steel 6.252120 → 6.490676), development validation
+6.521658 → 6.818282 (+4.6%), and the eight never-fitted flat-top rows 9.260870
+→ 8.546800 (−7.7%, attack 9.444 → 8.229 and body 18.171 → 15.520). The Pick
+protocol: archtop training 6.189238 → 6.379470 (+3.1%), development validation
+6.273555 → 6.560904 (+4.6%), the frozen 188-row test split 6.204019 → 6.466809
+(+4.2%, attack 7.112 → 8.236). The attack term carries the loss everywhere
+(7.058 → 8.157 on training) and the body term follows it (12.086 → 12.790);
+decay, harmonics, tuning and dynamics move under 0.03. Whether the corpus
+objects only to the ring: under the corpus-fitted body damping the 2026-09-05
+audition pinned back (bodyQScale 0.0534, a 19x cut), the same pair reads
+7.311125 → 7.881060 on training (+7.8%), 7.615099 → 8.074994 on validation
+(+6.0%) and 7.904805 → 7.603916 on the flat top (−3.8%) - worse still, so the
+low modes' Q is not what the archtop and classical rows are objecting to.
+
+What was decided. Not shipped; the engine is unchanged. The one split whose
+instrument is the modelled body's kind, the flat top, wants it by 8%, and every
+fitted and frozen archtop and classical split rejects it at both body dampings
+tried. The mechanism is exact for an ideal string, so what disagrees is the
+modelled body's response to a saddle step against those two instruments' - or
+the recordings' early 80-140 Hz energy is not the preload's at all (a
+fingertip's contact thud lives there too), which no descriptor here separates.
+A level-matched blind A/B of three demos (steel single notes, nylon
+fingerstyle, steel strums; RMS-matched, the release side read 0.75, 0.41 and
+−0.04 dB under the shipping side before matching) was rendered and sent with
+the key unread. The key: steel single notes A, nylon fingerstyle A and steel
+strums B are the release. Whatever the listener says is recorded as chosen by
+ear. What would license it by measurement: a flat-top recording set of the
+benchmark's size, or an isolation of the recordings' early 80-140 Hz energy
+into the body's spring-back and the finger's own contact.
+
 ## 2026-09-10 — the plectrum releases the string with velocity, fitted on the archtop
 
 What was decided. The 2026-09-01 plectrum entry ended: "What would license it
