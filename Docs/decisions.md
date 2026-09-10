@@ -69,6 +69,14 @@ ear. What would license it by measurement: a flat-top recording set of the
 benchmark's size, or an isolation of the recordings' early 80-140 Hz energy
 into the body's spring-back and the finger's own contact.
 
+What the listener said. B in all three pairs, before reading the key: on the
+steel single notes and the nylon fingerstyle that is the shipping engine
+without the release, on the steel strums it is the release. Recorded as chosen
+by ear. The ear and the corpus agree on single notes of both materials, which
+is where the mechanism was aimed, so it stays out; the strum preference is
+noted and not acted on, since nothing here separates the release from the
+strum's other differences, and the benchmark holds no strums.
+
 ## 2026-09-10 — the plectrum releases the string with velocity, fitted on the archtop
 
 What was decided. The 2026-09-01 plectrum entry ended: "What would license it

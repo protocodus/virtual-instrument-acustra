@@ -1362,10 +1362,12 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   split 3.1–5.0% (frozen test split +4.2%) because the model's low body modes
   then ring 14–28 dB over those recordings at 12–100 ms, at the auditioned
   body damping and at the corpus-fitted one alike. The measurement and a blind
-  A/B are in Docs/decisions.md (2026-09-10); the recordings' early 80–140 Hz
-  energy the model lacks (8–19 dB in the first 12 ms at every layer) stays
-  open, and nothing here separates the body's spring-back from the finger's
-  own contact thud in that band.
+  A/B are in Docs/decisions.md (2026-09-10); the listener preferred the
+  shipping engine on single notes of both materials and the release on a
+  strummed demo. The recordings' early 80–140 Hz energy the model lacks
+  (8–19 dB in the first 12 ms at every layer) stays open, and nothing here
+  separates the body's spring-back from the finger's own contact thud in
+  that band.
 - The loudest layer's missing brightness has been split between two owners
   by measurement. A geometrically exact (non-linear) string solver, driven by
   the engine's own string data, supplies between nil and about 58% of the
