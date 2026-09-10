@@ -1097,7 +1097,13 @@ PhysicalCalibration AcustraEngine::sanitise(
         bounded(source.longitudinalQ, 10.0f, 400.0f,
                 fittedPhysicalCalibration.longitudinalQ),
         bounded(source.polarisationEndCorrectionMetres, 0.0f, 0.82e-3f,
-                fittedPhysicalCalibration.polarisationEndCorrectionMetres)
+                fittedPhysicalCalibration.polarisationEndCorrectionMetres),
+        bounded(source.pickReleaseVelocityShare, 0.0f, 2.0f,
+                fittedPhysicalCalibration.pickReleaseVelocityShare),
+        bounded(source.pickReleaseVelocityExponent, 0.0f, 4.0f,
+                fittedPhysicalCalibration.pickReleaseVelocityExponent),
+        bounded(source.pickTransientGain, 0.0f, 8.0f,
+                fittedPhysicalCalibration.pickTransientGain)
     };
 }
 
@@ -2658,6 +2664,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // The shared register law pivots at one fixed 48 kHz MIDI-61 period,
     // independent of material, string choice and host sample rate.
     const float apertureReferenceDelay = 48000.0f / midiFrequency(61);
+    // The Pick technique's release velocity (FittedPhysicalData.h). Finger
+    // and Thumb, and a pick at a zero share, take the legacy shape below.
+    const bool pick = parameters_.picking == PickingTechnique::Pick;
+    const float releaseShare = pick
+        ? physicalCalibration_.pickReleaseVelocityShare
+            * std::pow(v, physicalCalibration_.pickReleaseVelocityExponent)
+        : 0.0f;
 
     // The caller has already retained any preceding wave. This full-period
     // triangle initializes a fresh pluck, but its time origin is not the
@@ -2692,6 +2705,12 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             apertureSamples, physical.apertureScale, apertureReferenceDelay,
             currentReferenceLength,
             physicalCalibration_.apertureRegisterExponent);
+        if (releaseShare > 0.0f)
+        {
+            writePickRelease(loop, length, amplitude * polarisationGain,
+                             localPosition, aperture, modes, releaseShare);
+            continue;
+        }
         const auto triangleAt = [localPosition] (float phase)
         {
             phase -= std::floor(phase);
@@ -2776,8 +2795,24 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     }
 
     voice.velocity = v;
-    voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
-        * physical.transientScale;
+    voice.excitationWhite = pick && physicalCalibration_.pickTransientGain > 0.0f;
+    if (voice.excitationWhite)
+    {
+        // One speed law for the plectrum: the release share above goes as
+        // the tip's speed squared, so that speed goes as v^(exponent/2), and
+        // an impact's transient amplitude goes as the speed itself rather
+        // than as the note it starts. Referenced to the Finger law's own
+        // full-velocity burst, so a gain of one meets it there and the
+        // fitted gain says how much louder a pick's click is.
+        const float speedRatio = std::pow(
+            v, 0.5f * physicalCalibration_.pickReleaseVelocityExponent);
+        voice.excitationEnvelope = physicalCalibration_.pickTransientGain
+            * (steel ? 0.24f : 0.29f) * 0.017f * physical.transientScale
+            * speedRatio;
+    }
+    else
+        voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
+            * physical.transientScale;
     const float burstSeconds = 0.0046f - 0.0025f * touch;
     voice.excitationDecay = std::exp(-1.0f
         / (std::max(burstSeconds, 0.0004f) * static_cast<float>(sampleRate_)));
@@ -3035,6 +3070,133 @@ void AcustraEngine::addTriangleVelocity(StringLoop& loop, float scale,
         loop.delay[static_cast<std::size_t>(wrapDelayIndex(
             loop.writeIndex - sample))] += sign * scale * (0.5f - integral);
     }
+}
+
+// A plectrum's release. The rest displacement is Smith's opposed half-height
+// waves (PASP App. C.3.2), each half of the folded line the smoothed
+// triangle read at its own bridge fraction, so displacementAt returns the
+// triangle itself and the velocity is zero. The release velocity is the
+// same integrated step on both halves, which unfolds to a hump of velocity
+// over the contact width - the string the tip was carrying - with no
+// displacement of its own. In a lossless line every sample-to-sample
+// difference carries T/dx times its square of energy whichever wave it
+// belongs to, and the two waves' energies add without a cross term, so the
+// hump's height is set from the two components' summed squared differences
+// alone: no tension, length or unit enters the share. The two components'
+// partials sit in quadrature (cosine and sine phases at release), so their
+// powers add and the hump's sign is immaterial.
+void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
+                                     float position, float aperture, int modes,
+                                     float releaseShare) noexcept
+{
+    const float p = clamp(position, 0.05f, 0.48f);
+    const auto bridgeFraction = [] (float phase)
+    {
+        phase -= std::floor(phase);
+        return phase < 0.5f ? 2.0f * phase : 2.0f * (1.0f - phase);
+    };
+    const auto displacementWave = [&] (float phase)
+    {
+        const float wrapped = phase - std::floor(phase);
+        const float fraction = bridgeFraction(wrapped);
+        const float triangle = fraction < p ? fraction / p
+                                            : (1.0f - fraction) / (1.0f - p);
+        return (wrapped < 0.5f ? -0.5f : 0.5f) * triangle;
+    };
+    const auto velocityWave = [&] (float phase)
+    {
+        return bridgeFraction(phase) < p ? 0.0f : 1.0f;
+    };
+    // The contact kernel initialisePluck's shape uses, then the node
+    // projection for a natural harmonic; both are linear, so the two
+    // components are smoothed and projected alike.
+    const auto released = [&] (auto&& wave, float phase)
+    {
+        const auto smoothed = [&] (float at)
+        {
+            return (wave(at - 2.0f * aperture) + 4.0f * wave(at - aperture)
+                + 6.0f * wave(at) + 4.0f * wave(at + aperture)
+                + wave(at + 2.0f * aperture)) / 16.0f;
+        };
+        if (modes <= 1)
+            return smoothed(phase);
+        float sum = 0.0f;
+        for (int shift = 0; shift < modes; ++shift)
+            sum += smoothed(phase + static_cast<float>(shift)
+                                    / static_cast<float>(modes));
+        return sum / static_cast<float>(modes);
+    };
+    // Phases are read in the fitted frame below, advanced by half the apex
+    // phase; the energies are summed on that same sampled grid, because a
+    // step smoothed over less than a sample lands on one difference or two
+    // depending on where the grid falls, and the share must describe what
+    // is written.
+    const auto phaseOf = [length, p] (int sample)
+    {
+        return static_cast<float>(sample - 1) / static_cast<float>(length)
+             - 0.5f * p;
+    };
+
+    double displacementEnergy = 0.0;
+    double velocityEnergy = 0.0;
+    double crossEnergy = 0.0;
+    float previousDisplacement = released(displacementWave, phaseOf(length));
+    float previousVelocity = released(velocityWave, phaseOf(length));
+    for (int sample = 1; sample <= length; ++sample)
+    {
+        const float displacement = released(displacementWave, phaseOf(sample));
+        const float velocity = released(velocityWave, phaseOf(sample));
+        const double displacementStep = displacement - previousDisplacement;
+        const double velocityStep = velocity - previousVelocity;
+        displacementEnergy += displacementStep * displacementStep;
+        velocityEnergy += velocityStep * velocityStep;
+        crossEnergy += displacementStep * velocityStep;
+        previousDisplacement = displacement;
+        previousVelocity = velocity;
+    }
+    // The fitted level law describes the displacement the tip leaves behind;
+    // the velocity it also leaves is energy on top of that. Redistributing
+    // one fitted energy between the two instead was tried and read worse on
+    // both splits: the hump's energy sits in partials that decay fast, so the
+    // sustained level then rose too little with velocity for the recordings.
+    // In the continuum the two waves' energies add with no cross term, but on
+    // the grid the step's smoothed spike sits on the apex kink, whose slope
+    // jump it samples at different offsets on the two halves, so the cross
+    // term is kept and the hump solved for exactly: h^2 V + 2 h X = share D.
+    // Of its two roots the one that vanishes with the share is taken, in
+    // the form that stays stable when X dominates; its sign follows X's,
+    // which the string does not hear (the components are in quadrature).
+    const float rest = height;
+    float hump = 0.0f;
+    if (velocityEnergy > 0.0)
+    {
+        const double added = static_cast<double>(releaseShare)
+                           * displacementEnergy;
+        const double magnitude = added
+            / (std::abs(crossEnergy)
+               + std::sqrt(crossEnergy * crossEnergy + added * velocityEnergy));
+        hump = rest * static_cast<float>(crossEnergy < 0.0 ? -magnitude
+                                                            : magnitude);
+    }
+    // The plucked shape every calibration was fitted with is this rest state
+    // advanced by half the apex phase and negated: initialisePluck's
+    // tri_p(phase) equals -rest(phase - p/2) + 1/2 (partial magnitudes agree
+    // to 1e-3 dB and phases differ by exactly -pi*p*n). The initial modal
+    // phases are not free here - a rest-frame pluck with the same magnitudes
+    // moved the archtop harmonics term from 8.6 to 12.8, because the idle
+    // strings, bridge and body at coinciding partials interfere with the
+    // string according to the phase it starts with - so both components are
+    // written in that fitted frame, which keeps their quadrature intact, and
+    // the line starts at zero at the bridge as the legacy shape does.
+    const auto frame = [&] (float phase)
+    {
+        return -(rest * released(displacementWave, phase)
+                 + hump * released(velocityWave, phase));
+    };
+    const float endpoint = frame(phaseOf(1));
+    for (int sample = 1; sample <= length; ++sample)
+        loop.delay[static_cast<std::size_t>(wrapDelayIndex(
+            loop.writeIndex - sample))] = frame(phaseOf(sample)) - endpoint;
 }
 
 // The finger leaves a stopped string. The string was pressed to the fret by
@@ -3894,16 +4056,21 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
     {
         const float rateRatio = static_cast<float>(sampleRate_) / 48000.0f;
         const float noise = nextNoise(voice) * std::sqrt(rateRatio);
-        const float referenceCoefficient = 0.05f
-            + 0.42f * voice.excitationColour;
-        const float excitationCoefficient = 1.0f - std::pow(
-            1.0f - referenceCoefficient, 1.0f / rateRatio);
-        voice.excitationLowpass += excitationCoefficient
-            * (noise - voice.excitationLowpass);
-        excitation = (voice.excitationLowpass
-            + 0.16f * voice.excitationColour
-                * (noise - voice.excitationLowpass))
-            * voice.excitationEnvelope;
+        if (voice.excitationWhite)
+            excitation = noise * voice.excitationEnvelope;
+        else
+        {
+            const float referenceCoefficient = 0.05f
+                + 0.42f * voice.excitationColour;
+            const float excitationCoefficient = 1.0f - std::pow(
+                1.0f - referenceCoefficient, 1.0f / rateRatio);
+            voice.excitationLowpass += excitationCoefficient
+                * (noise - voice.excitationLowpass);
+            excitation = (voice.excitationLowpass
+                + 0.16f * voice.excitationColour
+                    * (noise - voice.excitationLowpass))
+                * voice.excitationEnvelope;
+        }
         voice.excitationEnvelope *= voice.excitationDecay;
     }
     return excitation;

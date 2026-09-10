@@ -84,7 +84,7 @@ reverb, room effect or recorded-note layer.
 | `08-strummed-chords.wav` | Same-sample chords swept as alternating strums, then one chord eight times hand-damped, no two strokes the same take | 6.9 s | −1.6 dBFS | −1.4 dB |
 | `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −17.7 dBFS | +14.7 dB |
 | `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −21.0 dBFS | +18.0 dB |
-| `11-picking-techniques.wav` | Finger, pick and thumb on steel, then on nylon; same notes and velocity | 10.6 s | −15.2 dBFS | +12.2 dB |
+| `11-picking-techniques.wav` | Finger, pick and thumb on steel, then on nylon; same notes and velocity | 10.6 s | −15.0 dBFS | +12.0 dB |
 | `12-capture-types.wav` | Stereo, treble, bass, ideal piezo, magnetic, upper mic, loaded piezo | 17.1 s | −15.0 dBFS | +12.0 dB |
 <!-- peaks-table-end -->
 
@@ -488,6 +488,38 @@ slope without applying note-dependent body EQ. The fitted exponent continues
 past the pitch-independent point, so low-note contact is broader and high-note
 contact narrower than in the earlier model.
 
+A string does not leave a plectrum's tip from rest. Under Pick the released
+state carries, beside that displacement, a velocity over the same contact
+width — the string the tip was carrying when it slipped off — written as
+Smith's equal integrated waves and so unfolding to a hump of velocity with no
+displacement of its own. Its kinetic energy is a fitted share of the
+displacement's, `share(v) = pickReleaseVelocityShare · v^pickReleaseVelocityExponent`
+for MIDI velocity v in 0–1, and the pick's contact transient is an impact:
+broadband, and growing with the tip's speed (`v^(exponent/2)`, the same speed
+law) rather than with the note it starts, scaled by `pickTransientGain`. All
+three are fitted on the picked archtop recordings across their four velocity
+layers and read by the Pick technique only; Finger and Thumb, and so the
+finger-plucked flat-top and classical rows, are bit-identical. The velocity's
+partials fall 6 dB/octave slower than the displacement's, which is the tilt the
+recordings gain with dynamics: before the mechanism the model's loud layer
+(MIDI 112) carried 5–9 dB too much H1–H3 and 4–6 dB too little H7–H10 while its
+soft layer (MIDI 16) sat within a few dB, and its first 12 ms were 10–19 dB
+short above 4 kHz at the loud layer only. Two things are fixed by measurement
+rather than fitted. The written frame: the plucked shape every calibration was
+fitted with is the rest state advanced by half the apex phase and negated
+(partial magnitudes agree to 0.001 dB, phases differ by exactly −πpn), and a
+rest-frame pluck with the *same* magnitudes moved the archtop harmonics term
+from 8.61 to 12.77, because the idle strings, bridge and body at coinciding
+partials interfere with the string according to the phase it starts with — so
+both components are written in the fitted frame, where they stay in
+quadrature. And the energy: the fitted level law describes the displacement,
+and the velocity is energy on top of it; redistributing one fitted energy
+between the two read worse on both splits, since the hump's energy sits in
+partials that decay fast and the sustained level then rose too little with
+velocity. What the plectrum still lacks is any measurement of its own: the
+share and exponent are fitted, not a beam and friction solver, and the
+archtop's four layers are the only picked recordings in the bank.
+
 Transverse motion stretches the string, and the tension that adds can also be
 represented as a longitudinal wave with the string's own axial
 resonances, at `c_long/2L` with `c_long = sqrt(EA/mu)`. For this steel set that
@@ -550,7 +582,13 @@ stage, the development-validation aggregate was 0.0215 lower when it was
 disabled, and that tradeoff is retained explicitly in the fit report. The same
 mechanism failed the nylon training gate, so nylon keeps the exact earlier 3-cent,
 velocity-squared and Touch-scaled cue with a 75 ms
-decay. It is an authored cue, not a nonlinear-string claim. A separate fitted
+decay. It is an authored cue, not a nonlinear-string claim, but it has since
+been read against the 39 classical recordings with the scorer's own
+pitch-trajectory descriptor: their median 20–100 ms movement is 0.69 cents
+against the model's 0.68, and the 80–200 and 180–400 ms windows 0.29 and 0.14
+against 0.23 and 0.04, inside a note-to-note spread of about a cent, so the
+magnitude stands as measured and only a slightly longer tail is suggested
+(Docs/decisions.md). A separate fitted
 steel fret-decay slope of -0.0598 lengthens T60 with fret number; nylon retains
 its prior +0.018 fret law.
 
@@ -774,7 +812,7 @@ uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
 | **Body Material** | Spruce, Cedar, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. |
 | **String Material** | Selects the dedicated nylon or steel geometry, impedance, stiffness, loss and fitted calibration. |
 | **Tuning** | Changes the six open-string/fret constraints. |
-| **Picking** | Finger retains the original full Touch range; Pick selects its narrower-contact half and Thumb its broader-contact half, including MIDI velocity response. |
+| **Picking** | Finger retains the original full Touch range and Thumb its broader-contact half. Pick takes the narrower half and releases the string with velocity over the contact width, its share of the pluck's energy and its broadband contact transient growing with MIDI velocity as fitted on the picked archtop recordings. |
 | **Capture** | Stereo microphones, individual treble/bass/upper microphones, ideal or electrically loaded saddle-force piezo, or local steel-string-velocity magnetic pickup. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss. |
 | **Pluck Position** | Moves the physical pluck point from bridgeward toward the neck. |
@@ -912,8 +950,9 @@ does to a note is a level difference and after t seconds that difference is
 exactly the rate error times t; the relative form scored the same 1.4x error
 identically whether it meant 25 dB or 3 dB after one second. The trajectory
 term measures common H1--H8 pitch movement over 20--100, 80--200 and
-180--400 ms relative to settled partials. The calibration stores 29 bounded
-values; 27 are active. The unidentifiable optional direct branch is fixed off,
+180--400 ms relative to settled partials. The calibration stores 32 bounded
+values; 30 are active, the last three of them the plectrum's, fitted on the
+picked archtop rows alone. The unidentifiable optional direct branch is fixed off,
 and the string-polarisation end correction ships as Woodhouse's published
 0.8 mm rather than a fitted value, because the corpus's own lever on it is
 weak. It does not copy audio or fit an arbitrary playback filter.
@@ -1154,9 +1193,12 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   simultaneous microphone/magnetic audit exposes a response mismatch; captures
   with documented pickup geometry, loading and channel gains are still needed
   to identify the response and sensitivity. Piezo has no matched reference yet.
-  Pick and Thumb are ranges of the existing fitted contact model, not separate
-  measured finger dimensions or a beam/friction plectrum solver. Matched
-  technique recordings are needed to benchmark these choices independently.
+  Thumb is a range of the existing fitted contact model, and Pick that range
+  plus a fitted release velocity and contact transient (Pluck and strings),
+  not measured finger dimensions or a beam/friction plectrum solver; the
+  picked archtop is the only picked recording in the bank, so the plectrum's
+  values are fitted to one guitar and one player. Matched technique
+  recordings are needed to benchmark these choices independently.
 
   [`PrototypePlectrumContact.py`](Tools/PrototypePlectrumContact.py) audits
   Perng's published two-dimensional beam/string contact geometry offline.
@@ -1220,8 +1262,25 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   chord still correlate 0.93 on a bass-first downstroke and 0.995 on a
   treble-first upstroke, because a pluck point moves a treble string's
   waveform far less than a bass string's.
-- Velocity still barely reaches attack brightness with the selected
-  force/moment body. A fresh comparison uses all 54 already-opened Shinyguitar
+- Velocity reaches attack brightness under Pick, and about half way. The
+  plectrum's fitted release velocity (Pluck and strings) moves the archtop's
+  loud layer from 5.2/9.0/7.4 dB too much H1/H2/H3 and 5.8/6.1/3.3 dB too
+  little H9/H10/H12 to 2.1/7.4/5.1 too much and 3.3/5.7/0.0 too little (H12
+  lands 0.5 dB over), leaves the soft layer within a decibel of where it was,
+  and halves the first 12 ms' deficit above 5 kHz at the loud layer
+  (18.6/13.3/17.8 dB to 10.9/6.0/8.2 at 5.2/6.9/9.1 kHz) without a louder
+  click - the fit set the pick's own transient to 0.078 of the Finger burst,
+  so that deficit is not a white impact. Scores, archtop rows rendered with
+  Pick: training 6.296551 → 6.189238 (−1.7%; the same rows with Finger read
+  6.252120), development validation 6.376421 → 6.273555 (−1.6%), and the
+  frozen 188-row test split that no fit has rendered 6.264245 → 6.204019
+  (−1.0%; Finger 6.277125). The attack term carries the gain (7.394 → 6.878
+  training, 8.038 → 7.571 validation); tuning, pitch trajectory and dynamics
+  pay part of it back and the body term moves both ways (12.08 → 12.19
+  training, 12.21 → 11.91 validation). These figures move by about a percent
+  with the hump's sign alone, which the string does not hear, so a percent is
+  their resolution. Finger is untouched, so what follows still describes the
+  finger-plucked instrument and the plectrum's remaining half. A fresh comparison uses all 54 already-opened Shinyguitar
   training recordings: nine roots, MIDI layers 16/112 and three takes each,
   against 18 deterministic model renders. On the shared finite same-root
   loud/soft pairs, the recordings' median 12 ms power-centroid rise is 2,054
@@ -1771,6 +1830,18 @@ git history rather than here.
 
 ### 2026-09-10
 
+- **A plectrum releases the string with velocity.** Under Pick the string
+  leaves the tip carrying a velocity over the contact width beside the fitted
+  displacement, its energy share growing as v^2.93 to equal the
+  displacement's at full velocity, with a pick-speed contact transient the fit
+  left at 0.078 of the Finger burst. Fitted on the picked archtop recordings
+  across their four layers, written in the frame the calibration was fitted
+  in, read by Pick only: archtop training 6.296551 → 6.189238, development
+  validation 6.376421 → 6.273555, the never-fitted 188-row test split
+  6.264245 → 6.204019; the loud layer's H1–H3 excess and H9–H12 deficit close
+  by about half and the soft layer stays put. The calibration grows to 32
+  values, the fit renderer gains `--archtop-picking` and the optimizer a
+  `pick-release` stage, `--stages`, `--start shipping` and `--archtop-picking`.
 - **Steel plays the measured steel-string bridge.** The Dreadnought, Auditorium
   and Parlor presets, a new session and the demos select the Fylde bridge,
   which with the unchanged string calibration sits closer to the recordings on
@@ -2120,8 +2191,10 @@ microphone recording cannot validate a pickup's response.
 checks the scoring, string scheduling and renderer without downloading audio.
 For dry-note comparisons, add `--bridge-model fylde` after the optional
 `--models-only`/`--smoke` mode and before the output directory in
-`AcustraPhysicalFitRenderer`; the same 29 calibration arguments follow.
-The selected bridge is recorded in each model manifest.
+`AcustraPhysicalFitRenderer`; `--shape` and `--archtop-picking` may follow it,
+and then the 32 calibration arguments. The selected bridge, shape and archtop
+picking tool are recorded in each model manifest; without them each material
+renders at its anchor shape and the archtop rows with Finger.
 For an explicit performance event file, `AcustraPerformanceRenderer` also
 accepts trailing `--string-material steel|nylon` and `--tuning standard|drop_d`
 options. String/fret validation uses the selected tuning; omitting these

@@ -69,7 +69,7 @@ acustra::BodyShape renderShapeFor(acustra::StringMaterial material) noexcept
 constexpr int modelSampleRate = 48000;
 constexpr int renderBlockSize = 127;
 constexpr double renderSeconds = 4.2;
-constexpr std::size_t calibrationValueCount = 29;
+constexpr std::size_t calibrationValueCount = 32;
 constexpr float int16Scale = 1.0f / 32768.0f;
 
 enum class Material
@@ -132,6 +132,7 @@ constexpr CalibrationValues calibrationMinimums {{
     0.25f, 0.4f, 0.35f, 0.35f, 0.0f, 0.7f, 0.0f,
     -1.0f, 0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f, 0.00325f,
     0.0f, 10.0f, 0.0f,
+    0.0f, 0.0f, 0.0f,
 }};
 
 constexpr CalibrationValues calibrationMaximums {{
@@ -140,6 +141,7 @@ constexpr CalibrationValues calibrationMaximums {{
     4.0f, 2.0f, 3.0f, 2.5f, 3.0f, 1.3f, 1.2f,
     1.0f, 32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f, 0.060f,
     0.5f, 400.0f, 0.82e-3f,
+    2.0f, 4.0f, 8.0f,
 }};
 
 const char* materialName(Material material) noexcept
@@ -437,6 +439,9 @@ PhysicalCalibration makeCalibration(const CalibrationValues& values)
     calibration.longitudinalGain = values[26];
     calibration.longitudinalQ = values[27];
     calibration.polarisationEndCorrectionMetres = values[28];
+    calibration.pickReleaseVelocityShare = values[29];
+    calibration.pickReleaseVelocityExponent = values[30];
+    calibration.pickTransientGain = values[31];
     return calibration;
 }
 
@@ -686,7 +691,9 @@ void writeManifest(const std::filesystem::path& path,
            "\"highLossCutoffScale\", \"bridgeConductanceFloor\", "
            "\"bridgeConductanceCornerHz\", \"bridgeTailLengthMetres\", "
            "\"longitudinalGain\", \"longitudinalQ\", "
-           "\"polarisationEndCorrectionMetres\"],\n"
+           "\"polarisationEndCorrectionMetres\", "
+           "\"pickReleaseVelocityShare\", \"pickReleaseVelocityExponent\", "
+           "\"pickTransientGain\"],\n"
         << "  \"provenance\": {\n"
         << "    \"target_timing\": \"source frame 0; recorded pre-roll/onset retained; cropped or zero-padded to 4.2 seconds\",\n"
         << "    \"target_gain\": \"dense::Sampler calibrated playback gain: layer/peak normalisation times (velocity/127)^0.82\",\n"
@@ -1210,7 +1217,9 @@ void printUsage()
         "HIGH_LOSS_CUTOFF_SCALE BRIDGE_CONDUCTANCE_FLOOR "
         "BRIDGE_CONDUCTANCE_CORNER_HZ BRIDGE_TAIL_LENGTH_METRES "
         "LONGITUDINAL_GAIN LONGITUDINAL_Q "
-        "POLARISATION_END_CORRECTION_METRES\n");
+        "POLARISATION_END_CORRECTION_METRES "
+        "PICK_RELEASE_VELOCITY_SHARE PICK_RELEASE_VELOCITY_EXPONENT "
+        "PICK_TRANSIENT_GAIN\n");
 }
 } // namespace
 

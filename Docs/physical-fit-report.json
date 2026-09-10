@@ -85770,5 +85770,183 @@
    }
   },
   "limits": "The string calibration was fitted on the Original bridge and is not refitted here; the Fylde bank is scalar (no rocking or microphone response) and radiation still comes from the flamenca-derived body bank. Descriptor distances, not perceptual ratings."
+ },
+ "plectrum_release_velocity_2026_09_10": {
+  "decision": "Under PickingTechnique::Pick the released state carries a velocity hump over the contact width beside the displacement (added energy = pickReleaseVelocityShare * v^pickReleaseVelocityExponent of the displacement's line energy, solved exactly on the written grid including the cross term the apex kink leaves) and a broadband pick-speed contact transient (pickTransientGain * Finger full-velocity burst * v^(exponent/2)). Fitted by the optimizer's pick-release stage on the archtop training rows rendered with Pick, starting from the shipping vector; Finger and Thumb never read the three values.",
+  "fitted": {
+   "pickReleaseVelocityShare": 1.0,
+   "pickReleaseVelocityExponent": 2.9296875,
+   "pickTransientGain": 0.078125,
+   "evaluations": 79,
+   "bounds": [
+    [
+     0,
+     2
+    ],
+    [
+     0,
+     4
+    ],
+    [
+     0,
+     8
+    ]
+   ],
+   "search_best_train_archtop": 6.168049,
+   "note": "two exactness corrections to the hump's energy landed after the search and were not refitted for"
+  },
+  "frame": "Both components are written in the frame the calibration was fitted in: initialisePluck's tri_p(phase) == -rest(phase - p/2) + 1/2 (partial magnitudes agree to 1e-3 dB, phases differ by -pi*p*n). A rest-frame pluck with identical magnitudes moved the archtop harmonics term 8.612 -> 12.767 through initial-phase interference with coupled modes.",
+  "energy": "Added to the fitted displacement, not redistributed: conserving the line energy read worse on both splits (e.g. share 1 exp 2: 6.2255/6.4076 against 6.1831/6.3730 additive) because the hump's partials decay fast and the sustained level then rose too little with velocity.",
+  "archtop_rows_pick_protocol": {
+   "train": {
+    "pick_baseline": 6.296551,
+    "fitted": 6.189238,
+    "finger_protocol": 6.25212
+   },
+   "validation": {
+    "pick_baseline": 6.376421,
+    "fitted": 6.273555,
+    "finger_protocol": 6.381751
+   }
+  },
+  "whole_splits_pick_protocol": {
+   "train": {
+    "pick_baseline": 6.469213,
+    "fitted": 6.404088
+   },
+   "validation": {
+    "pick_baseline": 6.518517,
+    "fitted": 6.45862
+   }
+  },
+  "frozen_test_split_188_rows": {
+   "finger_protocol": 6.277125,
+   "pick_baseline": 6.264245,
+   "fitted": 6.204019
+  },
+  "steel_terms_baseline_vs_fitted": {
+   "train": {
+    "attack": [
+     7.3937,
+     6.8781
+    ],
+    "harmonics": [
+     8.6125,
+     8.4555
+    ],
+    "tuning": [
+     2.5797,
+     2.7546
+    ],
+    "pitch_trajectory": [
+     0.6547,
+     0.7461
+    ],
+    "decay": [
+     4.2771,
+     4.2088
+    ],
+    "body": [
+     12.0837,
+     12.1888
+    ],
+    "dynamics": [
+     0.1328,
+     0.2682
+    ]
+   },
+   "validation": {
+    "attack": [
+     8.0383,
+     7.5712
+    ],
+    "harmonics": [
+     8.9991,
+     9.1498
+    ],
+    "tuning": [
+     1.8939,
+     1.8931
+    ],
+    "pitch_trajectory": [
+     0.1717,
+     0.2167
+    ],
+    "decay": [
+     4.001,
+     4.0133
+    ],
+    "body": [
+     12.205,
+     11.9113
+    ],
+    "dynamics": [
+     0.0023,
+     0.0032
+    ]
+   }
+  },
+  "loud_layer_median_model_minus_target_db_H1_H12": {
+   "before": [
+    5.2,
+    9.0,
+    7.4,
+    0.6,
+    0.7,
+    4.3,
+    -2.4,
+    -3.9,
+    -5.8,
+    -6.1,
+    -0.8,
+    -3.3
+   ],
+   "after": [
+    2.1,
+    7.4,
+    5.1,
+    0.8,
+    -4.3,
+    4.4,
+    -4.1,
+    -3.5,
+    -3.3,
+    -5.7,
+    -0.6,
+    0.5
+   ]
+  },
+  "soft_layer_median_model_minus_target_db_H1_H12": {
+   "before": [
+    -5.6,
+    -3.6,
+    3.4,
+    4.9,
+    -2.2,
+    0.4,
+    0.2,
+    3.4,
+    -2.9,
+    -2.8,
+    7.1,
+    5.3
+   ],
+   "after": [
+    -5.7,
+    -3.3,
+    3.3,
+    4.7,
+    -2.4,
+    0.4,
+    0.3,
+    3.2,
+    -0.9,
+    -3.1,
+    7.5,
+    5.3
+   ]
+  },
+  "resolution": "Flipping the hump's sign, inaudible to the string itself, moved validation from -0.3% to -1.6% and the test split from -0.7% to -1.0% through coupled-mode interference; about one percent is the resolution of these figures.",
+  "limits": "One picked guitar and player; tuning, pitch-trajectory and dynamics terms worsen; the loud layer's 4-10 kHz first-12 ms deficit halves (18.6/13.3/17.8 -> 10.9/6.0/8.2 dB at 5.2/6.9/9.1 kHz) and is not a white impact; nylon+Pick shares the constants with no nylon picked recordings."
  }
 }

@@ -4,6 +4,74 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-10 — the plectrum releases the string with velocity, fitted on the archtop
+
+What was decided. The 2026-09-01 plectrum entry ended: "What would license it
+is a measurement that separates the two releases on one instrument, or a
+finger/plectrum switch the player sends." The switch has existed since
+2026-09-05 (Picking), and the archtop rows are picked recordings, so the
+plectrum's brightness now lives under Pick alone and is fitted on those rows
+rendered with Pick; the finger-plucked flat-top and classical rows render with
+Finger and are bit-identical whatever the plectrum does. The mechanism is not
+the 2026-09-01 dent (a point driven through the string, which gave 2.8 dB of
+the 9 dB rise) nor the 2026-09-04 release-time smoothing (which darkened): it
+is the velocity the string leaves the tip with, a hump over the contact width
+in quadrature with the displacement, whose partials fall 6 dB/octave slower
+and whose energy share grows with velocity. Three fitted values: share 1.0 at
+full velocity, exponent 2.93, and a pick-speed contact transient the fit ran
+down to 0.078 of the Finger burst — the recordings do not want a louder white
+click. Archtop training 6.296551 → 6.189238 (−1.7%), development validation
+6.376421 → 6.273555 (−1.6%), the frozen 188-row test split 6.264245 →
+6.204019 (−1.0%); the loud layer's H1/H2/H3 excess falls from 5.2/9.0/7.4 to
+2.1/7.4/5.1 dB and its H9/H10/H12 deficit from 5.8/6.1/3.3 to 3.3/5.7/0.0
+while the soft layer moves under a decibel. The search itself read 6.168049
+on training: two corrections landed after it, the hump's energy summed on the
+grid it is written on rather than an unshifted one, and the exact solve of
+its amplitude with the cross term the apex kink leaves, and neither was
+refitted for.
+
+Two findings on the way decided the form. First, the phase frame is not free:
+a rest-frame pluck with partial magnitudes identical to the legacy pluck's
+(to 0.001 dB) moved the archtop harmonics term from 8.61 to 12.77, because
+the idle strings, bridge and body at coinciding partials interfere with the
+string according to the phase it starts with, and the calibration was fitted
+on the legacy phases. The legacy pluck is exactly the rest state advanced by
+half the apex phase and negated (phases differ by −πpn), so both components
+are written in that frame and the hump's quadrature survives. Second, the
+energy is added, not redistributed: keeping the line's total energy at the
+fitted level law read worse on both splits at every setting, because the
+hump's energy sits in partials that decay fast and the sustained level then
+rose too little with velocity for the dynamics term.
+
+What it does not settle. The attack term carries the whole gain and the
+tuning, pitch-trajectory and dynamics terms pay part of it back; the pick's
+constants are one guitar's and one player's; the loud layer's missing 4–10 kHz
+attack is halved rather than closed and is not a white impact; and the
+figures have a resolution of about a percent, because flipping the hump's
+sign — which the string does not hear — moved validation from −0.3% to −1.6%
+through the coupled modes' interference. The remaining half of the tilt is
+the string's own nonlinearity (the 2026-09-04 reading), which no excitation
+can supply.
+
+## 2026-09-10 — nylon's attack-pitch cue read against the classical recordings
+
+What was measured. Nylon's early pitch glide is an authored cue, 3 cents times
+velocity squared times a Touch factor with a 75 ms decay, kept when the steel
+Kirchhoff-Carrier surrogate failed nylon's training gate. Read on the 39
+classical rows with the scorer's own pitch-trajectory descriptor (common H1-H8
+movement over 20-100, 80-200 and 180-400 ms relative to the settled partials),
+the recordings' median movement is 0.69, 0.29 and 0.14 cents and the model's
+0.68, 0.23 and 0.04: the cue's magnitude sits on the recordings' median to
+0.02 cents in the window it was authored for, and the later windows fall 0.06
+and 0.09 cents short against a note-to-note spread of about one cent (target
+values run from -1.7 to +5.3 cents in the first window).
+
+What was decided. Nothing changes. A fitted magnitude would land where the
+authored one already is, and the later-window shortfall is a tenth of the
+scatter; the term is the benchmark's smallest on nylon (0.087 on training).
+Recorded so the cue is no longer only authored: it is authored and measured to
+agree with the one dynamic the classical recordings hold.
+
 ## 2026-09-10 — the steel presets play the measured steel-string bridge
 
 What was decided. The three steel construction presets, a new session and the
