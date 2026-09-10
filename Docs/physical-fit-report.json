@@ -85581,5 +85581,407 @@
   "validation_scope": "One extended six-case/ten-integrator reference run, comparison against the preceding portable reference and independent off-tree force audit, and native pressure steady-state algebra. No production/plugin tests repeated for this analysis-only change.",
   "recording_and_listening_boundary": "No new real-recording access, scoring, fitting or listener verdict. Wider user-selected stereo remains shipping; these tools do not themselves improve the audible instrument.",
   "preserved_prior_ledger_sha256": "2db6fdb0c4492cd574a7c7812244ff12a634585b75dbe232da8209adeac6355c"
+ },
+ "body_shape_coupled_model_2026_09_09": {
+  "decision": "Shape re-couples the measured A0/T1 pair through Christensen and Vistisen's two-oscillator top/cavity model (JASA 68(3), 1980) for a published box, with plate modes above T1 on the equal-thickness law f ~ 1/A_top and radiation scaled by top area. Each material's anchor is the authored transform its calibration was fitted on (steel: Dreadnought slot; nylon: Auditorium slot, the Classical preset) and is bit-identical; the renderer renders each material at its anchor by default.",
+  "boxes_metres": {
+   "parlor": {
+    "source": "Martin Size 0 (13 1/2 x 18 3/8 x 4 1/4 in), the PS-220E's class",
+    "width": 0.343,
+    "length": 0.467,
+    "depth": 0.108,
+    "soundhole": 0.1016,
+    "outline_fraction": 0.72
+   },
+   "auditorium": {
+    "source": "Martin 000 Auditorium (15 x 19 3/8 x 4 1/8 in)",
+    "width": 0.381,
+    "length": 0.492,
+    "depth": 0.105,
+    "soundhole": 0.1016,
+    "outline_fraction": 0.72
+   },
+   "dreadnought": {
+    "source": "Martin D-28 (15 5/8 x 20 x 3 7/8 to 4 7/8 in)",
+    "width": 0.397,
+    "length": 0.508,
+    "depth": 0.111,
+    "soundhole": 0.1016,
+    "outline_fraction": 0.75
+   },
+   "jumbo": {
+    "source": "Gibson SJ-200 (17 x 21 x 4 7/8 in)",
+    "width": 0.432,
+    "length": 0.533,
+    "depth": 0.124,
+    "soundhole": 0.1016,
+    "outline_fraction": 0.72
+   },
+   "classical_nylon_anchor": {
+    "source": "Torres-derived plantilla of both measured guitars",
+    "width": 0.37,
+    "length": 0.49,
+    "depth": 0.095,
+    "soundhole": 0.087,
+    "outline_fraction": 0.72
+   }
+  },
+  "steel_low_modes_hz": {
+   "parlor": [
+    118.17,
+    205.71
+   ],
+   "auditorium": [
+    102.67,
+    189.68
+   ],
+   "dreadnought_anchor": [
+    90.95,
+    175.53
+   ],
+   "jumbo": [
+    81.5,
+    161.52
+   ]
+  },
+  "benchmark_byte_identity": "79 of 79 model renders identical to the pre-shape renders under the per-material anchor protocol",
+  "shipping_scores_current_engine": {
+   "train": 6.44035,
+   "validation": 6.521658,
+   "flattop": 9.26087
+  },
+  "flattop_rows_by_rendered_shape": {
+   "parlor": {
+    "total": 8.6121,
+    "body": 16.4356
+   },
+   "auditorium": {
+    "total": 8.8115,
+    "body": 17.5818
+   },
+   "dreadnought": {
+    "total": 9.2609,
+    "body": 18.1707
+   },
+   "jumbo": {
+    "total": 8.8252,
+    "body": 17.8186
+   }
+  },
+  "nylon_rows_by_rendered_shape": {
+   "train": {
+    "parlor": 7.6577,
+    "auditorium_anchor": 7.5283,
+    "dreadnought": 7.8368,
+    "jumbo": 8.0754,
+    "bare_measured_classical": 7.9096
+   },
+   "validation": {
+    "parlor": 7.3298,
+    "auditorium_anchor": 7.4688,
+    "dreadnought": 7.9987,
+    "jumbo": 7.7678,
+    "bare_measured_classical": 7.7682
+   }
+  },
+  "steel_training_rows_by_rendered_shape": {
+   "parlor": 6.3722,
+   "auditorium": 6.3881,
+   "dreadnought_anchor": 6.2521,
+   "jumbo": 6.0962
+  },
+  "reading": "The E1D dreadnought rows prefer the Parlor and Auditorium morphs to the anchored Dreadnought, whose A0/T1 sit below published dreadnought values; the archtop rows run the other way. The anchor is the fitted and auditioned default, so this is recorded as an outstanding listening question, not acted on. Outline fraction and one-thickness plate law are model assumptions."
+ },
+ "steel_presets_fylde_bridge_2026_09_10": {
+  "decision": "The Dreadnought, Auditorium and Parlor construction presets, a new session's Bridge Model default and the demos select BridgeModel::FyldeSteel; Original stays a preset, the benchmark reference and the missing-state value for sessions saved before the parameter existed.",
+  "protocol": "Paired dry-note comparison on the current force/moment body, Linux x64, identical recordings and shipping calibration (the 32-value vector with the plectrum values at 0, 2, 0), archtop rows rendered with Finger, only --bridge-model exchanged.",
+  "train": {
+   "original": 6.44035,
+   "fylde": 6.321691,
+   "terms_original": {
+    "attack": 7.0584,
+    "harmonics": 8.2215,
+    "tuning": 2.9733,
+    "pitch_trajectory": 0.4565,
+    "decay": 5.3434,
+    "body": 12.0858,
+    "dynamics": 0.1383
+   },
+   "terms_fylde": {
+    "attack": 6.9557,
+    "harmonics": 8.2753,
+    "tuning": 2.909,
+    "pitch_trajectory": 0.5889,
+    "decay": 4.9334,
+    "body": 12.0582,
+    "dynamics": 0.1213
+   }
+  },
+  "validation": {
+   "original": 6.521658,
+   "fylde": 6.30116,
+   "terms_original": {
+    "attack": 7.4153,
+    "harmonics": 8.6467,
+    "tuning": 2.9001,
+    "pitch_trajectory": 0.1426,
+    "decay": 4.9798,
+    "body": 12.3783,
+    "dynamics": 0.0029
+   },
+   "terms_fylde": {
+    "attack": 7.3392,
+    "harmonics": 8.357,
+    "tuning": 2.7605,
+    "pitch_trajectory": 0.1786,
+    "decay": 4.5533,
+    "body": 12.1636,
+    "dynamics": 0.0047
+   }
+  },
+  "flattop": {
+   "original": 9.26087,
+   "fylde": 8.603331,
+   "terms_original": {
+    "attack": 9.4441,
+    "harmonics": 9.068,
+    "tuning": 2.5933,
+    "pitch_trajectory": 0.7939,
+    "decay": 6.8056,
+    "body": 18.1707
+   },
+   "terms_fylde": {
+    "attack": 8.4324,
+    "harmonics": 9.349,
+    "tuning": 2.3257,
+    "pitch_trajectory": 0.8564,
+    "decay": 5.2338,
+    "body": 17.9318
+   }
+  },
+  "steel_rows_only": {
+   "train": {
+    "original": 6.25212,
+    "fylde": 6.070436
+   },
+   "validation": {
+    "original": 6.381751,
+    "fylde": 6.004933
+   }
+  },
+  "limits": "The string calibration was fitted on the Original bridge and is not refitted here; the Fylde bank is scalar (no rocking or microphone response) and radiation still comes from the flamenca-derived body bank. Descriptor distances, not perceptual ratings."
+ },
+ "plectrum_release_velocity_2026_09_10": {
+  "decision": "Under PickingTechnique::Pick the released state carries a velocity hump over the contact width beside the displacement (added energy = pickReleaseVelocityShare * v^pickReleaseVelocityExponent of the displacement's line energy, solved exactly on the written grid including the cross term the apex kink leaves) and a broadband pick-speed contact transient (pickTransientGain * Finger full-velocity burst * v^(exponent/2)). Fitted by the optimizer's pick-release stage on the archtop training rows rendered with Pick, starting from the shipping vector; Finger and Thumb never read the three values.",
+  "fitted": {
+   "pickReleaseVelocityShare": 1.0,
+   "pickReleaseVelocityExponent": 2.9296875,
+   "pickTransientGain": 0.078125,
+   "evaluations": 79,
+   "bounds": [
+    [
+     0,
+     2
+    ],
+    [
+     0,
+     4
+    ],
+    [
+     0,
+     8
+    ]
+   ],
+   "search_best_train_archtop": 6.168049,
+   "note": "two exactness corrections to the hump's energy landed after the search and were not refitted for"
+  },
+  "frame": "Both components are written in the frame the calibration was fitted in: initialisePluck's tri_p(phase) == -rest(phase - p/2) + 1/2 (partial magnitudes agree to 1e-3 dB, phases differ by -pi*p*n). A rest-frame pluck with identical magnitudes moved the archtop harmonics term 8.612 -> 12.767 through initial-phase interference with coupled modes.",
+  "energy": "Added to the fitted displacement, not redistributed: conserving the line energy read worse on both splits (e.g. share 1 exp 2: 6.2255/6.4076 against 6.1831/6.3730 additive) because the hump's partials decay fast and the sustained level then rose too little with velocity.",
+  "archtop_rows_pick_protocol": {
+   "train": {
+    "pick_baseline": 6.296551,
+    "fitted": 6.189238,
+    "finger_protocol": 6.25212
+   },
+   "validation": {
+    "pick_baseline": 6.376421,
+    "fitted": 6.273555,
+    "finger_protocol": 6.381751
+   }
+  },
+  "whole_splits_pick_protocol": {
+   "train": {
+    "pick_baseline": 6.469213,
+    "fitted": 6.404088
+   },
+   "validation": {
+    "pick_baseline": 6.518517,
+    "fitted": 6.45862
+   }
+  },
+  "frozen_test_split_188_rows": {
+   "finger_protocol": 6.277125,
+   "pick_baseline": 6.264245,
+   "fitted": 6.204019
+  },
+  "steel_terms_baseline_vs_fitted": {
+   "train": {
+    "attack": [
+     7.3937,
+     6.8781
+    ],
+    "harmonics": [
+     8.6125,
+     8.4555
+    ],
+    "tuning": [
+     2.5797,
+     2.7546
+    ],
+    "pitch_trajectory": [
+     0.6547,
+     0.7461
+    ],
+    "decay": [
+     4.2771,
+     4.2088
+    ],
+    "body": [
+     12.0837,
+     12.1888
+    ],
+    "dynamics": [
+     0.1328,
+     0.2682
+    ]
+   },
+   "validation": {
+    "attack": [
+     8.0383,
+     7.5712
+    ],
+    "harmonics": [
+     8.9991,
+     9.1498
+    ],
+    "tuning": [
+     1.8939,
+     1.8931
+    ],
+    "pitch_trajectory": [
+     0.1717,
+     0.2167
+    ],
+    "decay": [
+     4.001,
+     4.0133
+    ],
+    "body": [
+     12.205,
+     11.9113
+    ],
+    "dynamics": [
+     0.0023,
+     0.0032
+    ]
+   }
+  },
+  "loud_layer_median_model_minus_target_db_H1_H12": {
+   "before": [
+    5.2,
+    9.0,
+    7.4,
+    0.6,
+    0.7,
+    4.3,
+    -2.4,
+    -3.9,
+    -5.8,
+    -6.1,
+    -0.8,
+    -3.3
+   ],
+   "after": [
+    2.1,
+    7.4,
+    5.1,
+    0.8,
+    -4.3,
+    4.4,
+    -4.1,
+    -3.5,
+    -3.3,
+    -5.7,
+    -0.6,
+    0.5
+   ]
+  },
+  "soft_layer_median_model_minus_target_db_H1_H12": {
+   "before": [
+    -5.6,
+    -3.6,
+    3.4,
+    4.9,
+    -2.2,
+    0.4,
+    0.2,
+    3.4,
+    -2.9,
+    -2.8,
+    7.1,
+    5.3
+   ],
+   "after": [
+    -5.7,
+    -3.3,
+    3.3,
+    4.7,
+    -2.4,
+    0.4,
+    0.3,
+    3.2,
+    -0.9,
+    -3.1,
+    7.5,
+    5.3
+   ]
+  },
+  "resolution": "Flipping the hump's sign, inaudible to the string itself, moved validation from -0.3% to -1.6% and the test split from -0.7% to -1.0% through coupled-mode interference; about one percent is the resolution of these figures.",
+  "limits": "One picked guitar and player; tuning, pitch-trajectory and dynamics terms worsen; the loud layer's 4-10 kHz first-12 ms deficit halves (18.6/13.3/17.8 -> 10.9/6.0/8.2 dB at 5.2/6.9/9.1 kHz) and is not a white impact; nylon+Pick shares the constants with no nylon picked recordings."
+ },
+ "static_preload_release_2026_09_10": {
+  "shipped": false,
+  "mechanism": "The held string's static saddle force T*y/a, in the engine's terms 2Z times the line's steep-flank rise per sample, released at the pluck as an integrated external force on the two-way junction: a double-pole impulse response (n+1)d^n from a kick of 2Z*h/(p*D), pole at 10 ms (a step high-passed at 16 Hz, no net impulse). Parameter-free; sized from the written wave.",
+  "benchmark_protocol": {
+   "training": [6.440350, 6.764678],
+   "training_nylon": [7.528331, 8.067540],
+   "training_steel": [6.252120, 6.490676],
+   "development_validation": [6.521658, 6.818282],
+   "flattop": [9.260870, 8.546800],
+   "training_terms": {"attack": [7.058, 8.157], "body": [12.086, 12.790]}
+  },
+  "pick_protocol": {
+   "archtop_training": [6.189238, 6.379470],
+   "development_validation": [6.273555, 6.560904],
+   "frozen_test_188": [6.204019, 6.466809],
+   "frozen_test_attack": [7.112, 8.236]
+  },
+  "under_corpus_fitted_body_q_0_0534": {
+   "training": [7.311125, 7.881060],
+   "development_validation": [7.615099, 8.074994],
+   "flattop": [7.904805, 7.603916]
+  },
+  "steel_archtop_68_rows_model_minus_target": {
+   "latency_ms_median_and_mean_abs": {"before": [0.66, 1.19], "after": [0.02, 0.07]},
+   "first_12_ms_80_105_139_hz_db": {"before": [-8.0, -10.8, -2.2], "after": [-2.2, -9.5, 0.4]},
+   "first_12_ms_184_243_321_hz_db": {"before": [5.5, 9.2, 9.8], "after": [9.3, 10.8, 8.9]},
+   "40_100_ms_80_105_hz_db": {"before": [13.8, 11.8], "after": [27.8, 25.0]}
+  },
+  "nylon_classical_39_rows_model_minus_target": {
+   "first_12_ms_80_105_139_hz_db": {"before": [-10.1, -9.9, -8.5], "after": [-2.6, -3.8, -6.4]},
+   "40_100_ms_80_105_hz_db": {"before": [1.7, 2.1], "after": [16.4, 16.4]}
+  },
+  "blind_ab_sent": "steel single notes, nylon fingerstyle, steel strums; RMS-matched; key in Docs/decisions.md",
+  "limits": "Exact for an ideal string, rejected by every archtop and classical split at two body dampings and preferred by the eight flat-top rows; whether the recordings' early 80-140 Hz energy is the preload's or the fingertip's contact is not separated here."
  }
 }

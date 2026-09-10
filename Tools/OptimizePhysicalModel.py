@@ -66,24 +66,42 @@ NAMES = (
     "longitudinalGain",
     "longitudinalQ",
     "polarisationEndCorrectionMetres",
+    "pickReleaseVelocityShare",
+    "pickReleaseVelocityExponent",
+    "pickTransientGain",
 )
 LOWER = np.asarray((
     0.96, 0.05, 0.25, -6.0, 0.0,
     0.4, 0.35, 0.35, 0.0, 0.7, 0.0,
     0.25, 0.4, 0.35, 0.35, 0.0, 0.7, 0.0,
     -1.0, 0.25, 0.0, -0.06, 0.5, 0.0, 100.0, 0.00325, 0.0, 10.0, 0.0,
+    0.0, 0.0, 0.0,
 ))
 UPPER = np.asarray((
     1.04, 1.8, 4.0, 6.0, 0.12,
     2.0, 3.0, 2.5, 3.0, 1.3, 1.2,
     4.0, 2.0, 3.0, 2.5, 3.0, 1.3, 1.2,
     1.0, 32.0, 0.04, 0.05, 4.0, 0.02, 8000.0, 0.060, 0.5, 400.0, 0.82e-3,
+    2.0, 4.0, 8.0,
 ))
 INITIAL = np.asarray((
     1.0, 1.0, 1.0, 0.0, 0.0,
     1.0, 1.0, 1.0, 1.0, 1.0, 0.0,
     1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0,
     1.0, 1.0, 0.0061, -0.030, 1.30, 0.0, 1000.0, 0.020, 0.0, 80.0, 0.0008,
+    0.0, 2.0, 0.0,
+))
+# The shipping vector, mirroring fittedPhysicalCalibration in
+# Source/DSP/FittedPhysicalData.h, for --start shipping: a stage that fits a
+# new mechanism around the calibration that ships rather than around the
+# neutral baseline.
+SHIPPING = np.asarray((
+    1.0, 1.0, 0.754677154, 0.0, 0.0,
+    0.86484718, 1.40369766, 1.7688939, 0.0, 1.12667139, 0.0375,
+    0.749355465, 1.53, 0.52, 0.643124355, 0.494086432, 0.88819512, 1.1859375,
+    -0.0706290118, 1.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011,
+    2187.76023, 0.00325, 0.0, 35.0, 0.0008,
+    1.0, 2.9296875, 0.078125,
 ))
 # The bridge-local direct path is deliberately fixed off. Its score direction
 # was flat (and slightly worse on validation), so fitting it only lets a
@@ -130,6 +148,29 @@ def _free(indices: np.ndarray) -> np.ndarray:
 GLOBAL = _free(np.asarray((0, 1, 2, 3, 18, 19, 22, 23, 24, 25, 26, 27, 28)))
 NYLON = _free(np.arange(5, 11))
 STEEL = _free(np.append(np.arange(11, 18), (20, 21)))
+# The plectrum's three values are read by the Pick technique only, so they
+# are fitted on the picked archtop rows rendered with it (--archtop-picking
+# pick) and by nothing else; the finger-plucked flat-top and classical rows
+# render with Finger whatever this stage does.
+PICK = np.asarray((29, 30, 31))
+# The steel excitation and the plectrum together, on the same picked rows:
+# the four steel values that shape the pluck's contact, level law and
+# brightness were fitted with Finger on recordings that were picked.
+PICK_EXCITATION = np.asarray((14, 15, 16, 17, 29, 30, 31))
+
+STAGES = {
+    "shared-body": (None, GLOBAL),
+    "nylon-string": ("nylon", NYLON),
+    "steel-string": ("steel", STEEL),
+    "shared-body-refine": (None, GLOBAL),
+    "pick-release": ("steel", PICK),
+    "pick-excitation": ("steel", PICK_EXCITATION),
+}
+DEFAULT_STAGES = ("shared-body", "nylon-string", "steel-string",
+                  "shared-body-refine")
+
+# Renderer options every evaluation carries, e.g. --archtop-picking pick.
+RENDER_OPTIONS: list[str] = []
 
 
 def _command(renderer: Path, directory: Path, values: np.ndarray,
@@ -137,6 +178,7 @@ def _command(renderer: Path, directory: Path, values: np.ndarray,
     command = [str(renderer)]
     if models_only:
         command.append("--models-only")
+    command.extend(RENDER_OPTIONS)
     command.append(str(directory))
     command.extend(format(float(value), ".9g") for value in values)
     return command
@@ -174,11 +216,13 @@ def _small_report(report: dict[str, Any]) -> dict[str, Any]:
 _WORKER: dict[str, Any] = {}
 
 
-def _worker_setup(renderer: Path, directories: Any) -> None:
+def _worker_setup(renderer: Path, directories: Any,
+                  render_options: list[str]) -> None:
     directory = Path(directories.get())
     _WORKER["renderer"] = renderer
     _WORKER["directory"] = directory
     _WORKER["train"] = PreparedManifest(directory / "train.json")
+    RENDER_OPTIONS[:] = render_options
 
 
 def _worker_evaluate(job: tuple[list[float], str | None]) -> dict[str, Any]:
@@ -338,30 +382,69 @@ def main() -> int:
         "--resume", action="store_true",
         help="reuse an existing renderer corpus and its current calibration",
     )
+    parser.add_argument(
+        "--start", choices=("neutral", "shipping"), default="neutral",
+        help="calibration the search starts from: the neutral baseline "
+             "(default) or the vector that ships",
+    )
+    parser.add_argument(
+        "--stages", default=",".join(DEFAULT_STAGES),
+        help="comma-separated stages to run, in order, from: "
+             + ", ".join(STAGES) + f" (default: {','.join(DEFAULT_STAGES)})",
+    )
+    parser.add_argument(
+        "--archtop-picking", choices=("finger", "pick", "thumb"),
+        help="render the picked archtop rows with this tool (the renderer's "
+             "own default otherwise); stages over the plectrum's values "
+             "(pick-release, pick-excitation) need pick",
+    )
     arguments = parser.parse_args()
     if arguments.evaluations < 1:
         parser.error("--evaluations must be positive")
     if arguments.jobs < 1:
         parser.error("--jobs must be positive")
+    stage_names = [name.strip() for name in arguments.stages.split(",") if name.strip()]
+    unknown = [name for name in stage_names if name not in STAGES]
+    if unknown or not stage_names:
+        parser.error(f"unknown stages: {', '.join(unknown) or 'none given'}")
+    # The plectrum's values are read by Pick only, so a stage over them
+    # rendered with any other tool would search inert coordinates.
+    needs_pick = [name for name in stage_names
+                  if np.intersect1d(STAGES[name][1], PICK).size > 0]
     renderer = arguments.renderer.resolve()
     output = arguments.output.resolve()
     if not renderer.is_file():
         parser.error(f"renderer does not exist: {renderer}")
 
-    values = INITIAL.copy()
+    values = (SHIPPING if arguments.start == "shipping" else INITIAL).copy()
+    start = arguments.start
+    archtop_picking = arguments.archtop_picking
     if arguments.resume:
         manifest_path = output / "train.json"
         if not manifest_path.is_file():
             parser.error("--resume output has no train.json")
+        manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        # A resumed run continues the experiment the corpus recorded. The
+        # manifest itself says which tool its archtop rows were rendered
+        # with, whether a fit has finished on it or the renderer alone wrote
+        # it; the models-only render below would otherwise replace those
+        # rows with the renderer's own default.
+        controls = manifest_data.get("model_controls")
+        stored_picking = (controls.get("archtop_picking")
+                          if isinstance(controls, dict) else None)
+        if archtop_picking is None:
+            archtop_picking = stored_picking
+        elif stored_picking not in (None, archtop_picking):
+            parser.error(f"the corpus was rendered with --archtop-picking "
+                         f"{stored_picking}; pass the same, or a new output")
         result_path = output / "fit-result.json"
         if result_path.is_file():
             result_data = json.loads(result_path.read_text(encoding="utf-8"))
+            # The start its values came from, not this command line's.
+            start = result_data.get("start", start)
             candidate = np.asarray(result_data.get("values", []), dtype=float)
             order = result_data.get("parameter_order")
             if not isinstance(order, list) or len(order) != candidate.size:
-                manifest_data = json.loads(
-                    manifest_path.read_text(encoding="utf-8")
-                )
                 order = manifest_data.get("calibration_order")
             if isinstance(order, list) and len(order) == candidate.size:
                 migrated = INITIAL.copy()
@@ -388,11 +471,14 @@ def main() -> int:
                 )
             values = np.clip(candidate, LOWER, UPPER)
         values[4] = 0.0
-        _run_renderer(renderer, output, values, True)
-    else:
-        if output.exists():
-            parser.error("output already exists; use a new path or --resume")
-        _run_renderer(renderer, output, values, False)
+    elif output.exists():
+        parser.error("output already exists; use a new path or --resume")
+    if needs_pick and archtop_picking != "pick":
+        parser.error(f"{', '.join(needs_pick)}: a stage over the plectrum's "
+                     "values needs --archtop-picking pick")
+    if archtop_picking is not None:
+        RENDER_OPTIONS[:] = ["--archtop-picking", archtop_picking]
+    _run_renderer(renderer, output, values, arguments.resume)
 
     train = PreparedManifest(output / "train.json")
     baseline = train.score()
@@ -406,14 +492,10 @@ def main() -> int:
     with ProcessPoolExecutor(
         max_workers=arguments.jobs,
         initializer=_worker_setup,
-        initargs=(renderer, queue),
+        initargs=(renderer, queue, list(RENDER_OPTIONS)),
     ) as executor:
-        for name, material, active in (
-            ("shared-body", None, GLOBAL),
-            ("nylon-string", "nylon", NYLON),
-            ("steel-string", "steel", STEEL),
-            ("shared-body-refine", None, GLOBAL),
-        ):
+        for name in stage_names:
+            material, active = STAGES[name]
             values, stage = _fit_stage(
                 name, material, active, values, executor,
                 arguments.evaluations, evaluations,
@@ -436,6 +518,9 @@ def main() -> int:
     result = {
         "parameter_order": NAMES,
         "values": values.tolist(),
+        "start": start,
+        "resumed": arguments.resume,
+        "render_options": list(RENDER_OPTIONS),
         "baseline_train": _small_report(baseline),
         "final_train": _small_report(final_train),
         "validation": _small_report(validation),

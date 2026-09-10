@@ -4,6 +4,207 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-10 — the held string's static force, released at the pluck: exact, parameter-free, and the recordings say no
+
+What was measured. A held string pushes the saddle with the static force of its
+own slope there, T·y/a, and the wave a pluck writes carries the oscillation that
+follows but not that the force existed before it: the top never springs back
+from the load. In the engine's own terms that force is the level of the line's
+steep flank, 2Z times the flank's rise per sample, and its removal is a positive
+step. The pluck is written in the fitted frame, the rest state advanced by half
+the apex phase, so a step at the first sample is exactly the rest pluck's
+dynamic force at the arrival of its first corner (until then the force is the
+static level, which the body has relaxed to). It was built as an integrated
+external force on the two-way junction: the impulse response of a double pole,
+(n+1)·dⁿ from a kick of 2Z·h/(p·D) with h the vertical line height, p the
+pluck fraction and D the loop delay, the pole at 10 ms so it is a step
+high-passed at 16 Hz (0.97 of a true step at 90 Hz) that carries no net impulse
+and keeps the integrated force at the wave's own scale - at 100 ms the
+junction's float derivatives lost their precision and the cross-rate H8 decay
+regression spread 104-126%. Sized from the line the pluck wrote; no constant is
+chosen.
+
+What it did to the descriptors, model minus recording. Steel archtop training
+and development rows (68): the onset latency from +0.66 ms median (1.19 ms
+mean absolute) to +0.02 (0.07); the first 12 ms' 80/105/139 Hz bands from
+−8.0/−10.8/−2.2 dB to −2.2/−9.5/+0.4 (the soft layer's 80/105 Hz from −13/−19
+to −8/−13, the loud layer's from −3.5/−4.1 to −0.7/−6.6); nylon classical
+rows (39): 80/105/139 Hz from −10.1/−9.9/−8.5 to −2.6/−3.8/−6.4. That is the
+deficit the mechanism was built for, and it closes. But the bands are
+mean-normalised, so the same energy pushes every other band down, 184-321 Hz,
+already +5.5 to +9.8 dB hot on steel, goes to +9 to +11, and after the step the
+model's low body modes ring where the recordings' do not: the 80 Hz band at
+12-40 ms from +7 to +21 dB on steel, the 80/105 Hz bands at 40-100 ms from
++14/+12 to +28/+25 on steel and from +2/+2 to +16/+16 on nylon.
+
+Scores, the mechanism against the shipping engine on identical recordings and
+calibration. The benchmark protocol: training 6.440350 → 6.764678 (+5.0%;
+nylon 7.528331 → 8.067540, steel 6.252120 → 6.490676), development validation
+6.521658 → 6.818282 (+4.6%), and the eight never-fitted flat-top rows 9.260870
+→ 8.546800 (−7.7%, attack 9.444 → 8.229 and body 18.171 → 15.520). The Pick
+protocol: archtop training 6.189238 → 6.379470 (+3.1%), development validation
+6.273555 → 6.560904 (+4.6%), the frozen 188-row test split 6.204019 → 6.466809
+(+4.2%, attack 7.112 → 8.236). The attack term carries the loss everywhere
+(7.058 → 8.157 on training) and the body term follows it (12.086 → 12.790);
+decay, harmonics, tuning and dynamics move under 0.03. Whether the corpus
+objects only to the ring: under the corpus-fitted body damping the 2026-09-05
+audition pinned back (bodyQScale 0.0534, a 19x cut), the same pair reads
+7.311125 → 7.881060 on training (+7.8%), 7.615099 → 8.074994 on validation
+(+6.0%) and 7.904805 → 7.603916 on the flat top (−3.8%) - worse still, so the
+low modes' Q is not what the archtop and classical rows are objecting to.
+
+What was decided. Not shipped; the engine is unchanged. The one split whose
+instrument is the modelled body's kind, the flat top, wants it by 8%, and every
+fitted and frozen archtop and classical split rejects it at both body dampings
+tried. The mechanism is exact for an ideal string, so what disagrees is the
+modelled body's response to a saddle step against those two instruments' - or
+the recordings' early 80-140 Hz energy is not the preload's at all (a
+fingertip's contact thud lives there too), which no descriptor here separates.
+A level-matched blind A/B of three demos (steel single notes, nylon
+fingerstyle, steel strums; RMS-matched, the release side read 0.75, 0.41 and
+−0.04 dB under the shipping side before matching) was rendered and sent with
+the key unread. The key: steel single notes A, nylon fingerstyle A and steel
+strums B are the release. Whatever the listener says is recorded as chosen by
+ear. What would license it by measurement: a flat-top recording set of the
+benchmark's size, or an isolation of the recordings' early 80-140 Hz energy
+into the body's spring-back and the finger's own contact.
+
+What the listener said. B in all three pairs, before reading the key: on the
+steel single notes and the nylon fingerstyle that is the shipping engine
+without the release, on the steel strums it is the release. Recorded as chosen
+by ear. The ear and the corpus agree on single notes of both materials, which
+is where the mechanism was aimed, so it stays out; the strum preference is
+noted and not acted on, since nothing here separates the release from the
+strum's other differences, and the benchmark holds no strums.
+
+## 2026-09-10 — the plectrum releases the string with velocity, fitted on the archtop
+
+What was decided. The 2026-09-01 plectrum entry ended: "What would license it
+is a measurement that separates the two releases on one instrument, or a
+finger/plectrum switch the player sends." The switch has existed since
+2026-09-05 (Picking), and the archtop rows are picked recordings, so the
+plectrum's brightness now lives under Pick alone and is fitted on those rows
+rendered with Pick; the finger-plucked flat-top and classical rows render with
+Finger and are bit-identical whatever the plectrum does. The mechanism is not
+the 2026-09-01 dent (a point driven through the string, which gave 2.8 dB of
+the 9 dB rise) nor the 2026-09-04 release-time smoothing (which darkened): it
+is the velocity the string leaves the tip with, a hump over the contact width
+in quadrature with the displacement, whose partials fall 6 dB/octave slower
+and whose energy share grows with velocity. Three fitted values: share 1.0 at
+full velocity, exponent 2.93, and a pick-speed contact transient the fit ran
+down to 0.078 of the Finger burst — the recordings do not want a louder white
+click. Archtop training 6.296551 → 6.189238 (−1.7%), development validation
+6.376421 → 6.273555 (−1.6%), the frozen 188-row test split 6.264245 →
+6.204019 (−1.0%); the loud layer's H1/H2/H3 excess falls from 5.2/9.0/7.4 to
+2.1/7.4/5.1 dB and its H9/H10/H12 deficit from 5.8/6.1/3.3 to 3.3/5.7/0.0
+while the soft layer moves under a decibel. The search itself read 6.168049
+on training: two corrections landed after it, the hump's energy summed on the
+grid it is written on rather than an unshifted one, and the exact solve of
+its amplitude with the cross term the apex kink leaves, and neither was
+refitted for.
+
+Two findings on the way decided the form. First, the phase frame is not free:
+a rest-frame pluck with partial magnitudes identical to the legacy pluck's
+(to 0.001 dB) moved the archtop harmonics term from 8.61 to 12.77, because
+the idle strings, bridge and body at coinciding partials interfere with the
+string according to the phase it starts with, and the calibration was fitted
+on the legacy phases. The legacy pluck is exactly the rest state advanced by
+half the apex phase and negated (phases differ by −πpn), so both components
+are written in that frame and the hump's quadrature survives. Second, the
+energy is added, not redistributed: keeping the line's total energy at the
+fitted level law read worse on both splits at every setting, because the
+hump's energy sits in partials that decay fast and the sustained level then
+rose too little with velocity for the dynamics term.
+
+What it does not settle. The attack term carries the whole gain and the
+tuning, pitch-trajectory and dynamics terms pay part of it back; the pick's
+constants are one guitar's and one player's; the loud layer's missing 4–10 kHz
+attack is halved rather than closed and is not a white impact; and the
+figures have a resolution of about a percent, because flipping the hump's
+sign — which the string does not hear — moved validation from −0.3% to −1.6%
+through the coupled modes' interference. The remaining half of the tilt is
+the string's own nonlinearity (the 2026-09-04 reading), which no excitation
+can supply.
+
+## 2026-09-10 — nylon's attack-pitch cue read against the classical recordings
+
+What was measured. Nylon's early pitch glide is an authored cue, 3 cents times
+velocity squared times a Touch factor with a 75 ms decay, kept when the steel
+Kirchhoff-Carrier surrogate failed nylon's training gate. Read on the 39
+classical rows with the scorer's own pitch-trajectory descriptor (common H1-H8
+movement over 20-100, 80-200 and 180-400 ms relative to the settled partials),
+the recordings' median movement is 0.69, 0.29 and 0.14 cents and the model's
+0.68, 0.23 and 0.04: the cue's magnitude sits on the recordings' median to
+0.02 cents in the window it was authored for, and the later windows fall 0.06
+and 0.09 cents short against a note-to-note spread of about one cent (target
+values run from -1.7 to +5.3 cents in the first window).
+
+What was decided. Nothing changes. A fitted magnitude would land where the
+authored one already is, and the later-window shortfall is a tenth of the
+scatter; the term is the benchmark's smallest on nylon (0.087 on training).
+Recorded so the cue is no longer only authored: it is authored and measured to
+agree with the one dynamic the classical recordings hold.
+
+## 2026-09-10 — the steel presets play the measured steel-string bridge
+
+What was decided. The three steel construction presets, a new session and the
+demos select the Fylde bridge (Carcagno et al.'s measured steel-string
+mobility) instead of the flamenca's bridge the string calibration was fitted
+on. The Original bridge stays as its own preset, as the benchmark's reference,
+and as what any session saved before the bridge parameter existed keeps.
+
+What decided it. A paired comparison on the current engine, identical
+recordings and calibration, only the bridge bank exchanged: training 6.440350
+→ 6.321691 (−1.8%), development validation 6.521658 → 6.301160 (−3.4%), the
+never-fitted flat-top rows 9.260870 → 8.603331 (−7.1%); the steel rows alone
+−2.9% and −5.9%. Six of seven terms improve on validation and the decay term
+carries most of it (the flamenca's fast-decaying bridge was already the
+suspected cause of the too-fast low fundamentals in Known gaps); only the
+pitch-trajectory term worsens, on every split. The earlier paired readings on
+the 2026-09-05 engine ran the same way on the dry notes, the technique-note
+audit and two of the three performance descriptors. No listening verdict is
+involved; this is a measured bridge for the string set the presets claim,
+chosen on recordings, and the string calibration has not been refitted to it.
+
+## 2026-09-09 — Shape is a box, and the anchors stay where the fit put them
+
+What was decided. The four Shapes were authored factors around one measured
+body: an air-mode frequency (112/107/101/96 Hz), a mode scale (1.045 to
+0.948), a bass shelf and a volume, chosen without a model. They are replaced by
+Christensen and Vistisen's two-oscillator top/cavity model (JASA 68(3), 1980):
+the measured A0 and T1 plus the box's own rigid-walled Helmholtz frequency
+identify the top's two frequencies, and a published box - Martin Size 0, Martin
+000, D-28, Gibson SJ-200, all with a 4 in soundhole - re-couples that top into
+a new pair, with the plate modes above T1 on the equal-thickness law f ∝ 1/A
+and radiation scaled by top area. Steel's shapes land at A0/T1 118/206,
+103/190, 91/176 and 82/162 Hz.
+
+The anchor was the open question, and the recordings answered it. Both
+material calibrations were fitted with the public default shape's transform in
+place, and the nylon rows show the fit absorbed it: rendered on the bare
+measured classical body they score 7.910 on training against 7.528 with the
+transform. So the transform is kept exactly as each material's anchor - steel
+in the Dreadnought slot, nylon in the Auditorium slot the Classical preset
+uses - and the renderer now renders nylon at that slot, which makes all 79
+benchmark renders byte-identical to before. Nylon's Classical preset gains the
+transform its calibration was fitted on (it had been reachable only as
+nylon-plus-Dreadnought); nylon-plus-Dreadnought becomes a dreadnought-sized
+classical.
+
+What was read and not acted on. The eight never-fitted Eastman E1D rows are a
+real dreadnought, and rendered through each shape they score Parlor 8.612,
+Auditorium 8.812, Jumbo 8.825, Dreadnought 9.261: the anchored Dreadnought is
+the worst of the four on the only dreadnought recordings the bank holds, and
+its A0/T1 (91/176 Hz) sit below the roughly 100/190 Hz published for the type.
+The archtop training rows run the other way (Jumbo 6.096, Dreadnought 6.252,
+Parlor 6.372, Auditorium 6.388), the same disagreement the corpus and the
+flat-top have shown five times before. The anchor is the fitted and auditioned
+default, so moving it is the listener's call, not this measurement's; a
+listening set on the Auditorium morph against the anchored Dreadnought would
+decide it, and is recorded here as outstanding. The classical rows prefer
+their own box on training (Parlor 7.658, Dreadnought 7.837, Jumbo 8.075
+against 7.528) and the Parlor on validation (7.330 against 7.469).
+
 ## 2026-09-05 — B preferred for its stereo presentation
 
 On the 16-second body-radiation A/B, the user said: **“i like B since it is

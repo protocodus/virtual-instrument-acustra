@@ -101,6 +101,24 @@ struct PhysicalCalibration
     // the order of the string diameter - taken as the 0.82 mm B string the
     // 0.8 mm was measured on (nylonDiameterMetres in AcustraEngine.cpp).
     float polarisationEndCorrectionMetres { 0.0008f };
+    // The Pick technique only; Finger and Thumb never read these. A string
+    // does not leave a plectrum's tip from rest: the contact region is
+    // carried at the tip's speed until it slips, so the release carries a
+    // velocity over the contact width beside the displacement. Its kinetic
+    // energy, as a share of the pluck's stored energy, is
+    //     share(v) = pickReleaseVelocityShare * v^pickReleaseVelocityExponent
+    // for MIDI velocity v in 0-1, both fitted on the picked archtop rows
+    // across their four velocity layers (FitPhysicalModel's harmonics term
+    // reads the loud layer's H7-H12 4-6 dB under the recordings and its
+    // H1-H3 5-9 dB over them, and the soft layer the other way; a velocity
+    // component's partials fall 6 dB/octave slower than a displacement's,
+    // which is the tilt that grows). Zero is the exact legacy pluck. The
+    // plectrum's contact transient is an impact and grows with the pick's
+    // speed squared, not with the note it starts; pickTransientGain scales
+    // that broadband burst, and zero keeps the Finger burst law.
+    float pickReleaseVelocityShare { 0.0f };
+    float pickReleaseVelocityExponent { 2.0f };
+    float pickTransientGain { 0.0f };
 };
 
 // Refit on 2026-09-04 around the two-way junction and the saddle anchor, by a
@@ -163,7 +181,18 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // shipped before the 2026-09-04 refit). That is a real preference for the
     // published value on all three splits, but far too small a lever to fit
     // an end correction against.
-    0.0008f
+    0.0008f,
+    // The plectrum, fitted 2026-09-10 by the pick-release stage of
+    // Tools/OptimizePhysicalModel.py on the picked archtop training rows
+    // rendered with Pick (79 evaluations to the step floor): the release
+    // carries the displacement's own energy again at full velocity, growing
+    // as v^2.93, and the pick's own broadband transient came out at 0.078 of
+    // the Finger law's full-velocity burst - the recordings do not want a
+    // louder white click, so the loud layer's missing 4-10 kHz attack is
+    // still open. Archtop training 6.296551 -> 6.189238 on the write that
+    // ships (the search read 6.168049 before two exactness corrections to
+    // the hump's energy); the other splits are in the README.
+    1.0f, 2.9296875f, 0.078125f
 };
 
 } // namespace acustra

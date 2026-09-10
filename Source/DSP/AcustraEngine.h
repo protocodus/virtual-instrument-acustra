@@ -477,6 +477,9 @@ private:
         float excitationDecay { 0.0f };
         float excitationColour { 0.0f };
         float excitationLowpass { 0.0f };
+        // The Pick technique's contact transient is an impact and enters
+        // broadband, bypassing the Finger burst's colour filter.
+        bool excitationWhite { false };
         float characteristicImpedance { 0.5f };
         // A bend is a tension change at fixed length, so the port the string
         // presents moves with it: Z = sqrt(T mu) = Z0 times the frequency
@@ -602,6 +605,16 @@ private:
                             float extentFraction, float sign) noexcept;
     void addTriangleVelocity(StringLoop& loop, float scale,
                              float apexFraction, float sign) noexcept;
+    // The Pick technique's released state (FittedPhysicalData.h): a rest
+    // triangle of this height with its apex at position, a fraction of the
+    // sounding length from the bridge, smoothed by the contact aperture (in
+    // loop phase), plus the velocity the string leaves the tip with,
+    // localised over that same aperture and carrying releaseShare of the
+    // triangle's stored energy. Both are projected onto the nth-harmonic
+    // node like the plucked shape. Replaces the line's first length samples.
+    void writePickRelease(StringLoop& loop, int length, float height,
+                          float position, float aperture, int modes,
+                          float releaseShare) noexcept;
     void liftFinger(Voice& voice, int stringIndex, int targetMidi) noexcept;
     void hammerString(Voice& voice, int stringIndex, int previousMidi,
                       float velocity) noexcept;

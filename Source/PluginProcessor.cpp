@@ -101,9 +101,13 @@ void addMissingParameterDefaults (
 
         juce::ValueTree parameterState { parameterType };
         parameterState.setProperty (idProperty, ranged->paramID, nullptr);
-        parameterState.setProperty (
-            valueProperty,
-            ranged->convertFrom0to1 (ranged->getDefaultValue()), nullptr);
+        // A session saved before the bridge parameter existed was made on the
+        // Original bridge, so it keeps that bridge rather than taking the
+        // measured steel bridge a new session starts on.
+        const float value = ranged->paramID == ids::bridgeModel
+            ? 0.0f
+            : ranged->convertFrom0to1 (ranged->getDefaultValue());
+        parameterState.setProperty (valueProperty, value, nullptr);
         state.appendChild (parameterState, nullptr);
     }
 }
@@ -209,9 +213,13 @@ AcustraAudioProcessor::createParameterLayout()
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::picking, 2 }, "Picking",
         juce::StringArray { "Finger", "Pick", "Thumb" }, 0));
+    // New sessions start on the measured steel-string bridge, which the steel
+    // construction presets select; a session saved before this parameter
+    // existed keeps the Original bridge it was made with (see
+    // addMissingParameterDefaults), not this default.
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::bridgeModel, 3 }, "Bridge Model",
-        juce::StringArray { "Original", "Measured Fylde (steel)" }, 0));
+        juce::StringArray { "Original", "Measured Fylde (steel)" }, 1));
     // Keep Capture's five-value normalized range: adding a sixth choice there
     // would reinterpret existing host automation. The editor combines this
     // independent override with the legacy choices into one Capture menu.
