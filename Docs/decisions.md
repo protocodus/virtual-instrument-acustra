@@ -4,6 +4,39 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-10 — the steel excitation refitted under the plectrum: training says yes, everything held out says no
+
+What was measured. The four steel values that shape the pluck's contact, level
+law and brightness (steel.apertureScale, steel.transientScale,
+steel.pluckDistanceScale, steel.velocityBrightnessDepth) were fitted with
+Finger on recordings that were picked, so a `pick-excitation` stage was added
+to Tools/OptimizePhysicalModel.py and run from the shipping vector on the
+picked archtop training rows rendered with Pick, jointly with the plectrum's
+three values (204 evaluations to the step floor; the plectrum's values did not
+move). It broadened the contact to 1.185 of its reference (from 0.643),
+removed the steel burst outright (transientScale 0.494 → 0, where nylon's
+already sits), moved the pluck distance to 1.038 (from 0.888) and the
+velocity-brightness depth to 1.05 (from 1.186). Steel training rows under
+Pick 6.189238 → 6.102399 (−1.4%), the whole training set 6.404088 → 6.355272;
+nylon rows byte-identical.
+
+What was decided. Not adopted; the shipping vector is unchanged. Every split
+the fit did not see moves the other way: steel development validation under
+Pick 6.273555 → 6.736450 (+7.4%), the frozen 188-row test split 6.204019 →
+6.373567 (+2.7%), and under the benchmark's Finger protocol steel training
+6.252120 → 6.357788 and validation 6.381751 → 6.726452 (+5.4%); the
+finger-played flat-top rows read 9.260870 → 9.204102 (−0.6%), within their
+resolution. The engine suite built with the fitted values also fails five of
+its own regressions before finishing: the fitted steel displacement misses the
+attack-pitch onset cue by 6.5 cents, the steel attack glide raises the top band
+14-34x in one frame at every rate (with no burst the band has nothing under
+it, so the glide's own step reads as a click), and a whole-tone bend arriving
+in one message exceeds its slide's frame bound. Four values on 54 rows of one
+guitar can trade the held-out rows for the fitted ones, and this fit did. What
+the search itself learned is kept: an interrupted stage now leaves its best
+vector on disk (fit-best.json) and resumes from it, since this run died with
+the container once before it converged.
+
 ## 2026-09-10 — the held string's static force, released at the pluck: exact, parameter-free, and the recordings say no
 
 What was measured. A held string pushes the saddle with the static force of its

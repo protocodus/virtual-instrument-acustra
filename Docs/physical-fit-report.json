@@ -85983,5 +85983,23 @@
   },
   "blind_ab_sent": "steel single notes, nylon fingerstyle, steel strums; RMS-matched; key in Docs/decisions.md",
   "limits": "Exact for an ideal string, rejected by every archtop and classical split at two body dampings and preferred by the eight flat-top rows; whether the recordings' early 80-140 Hz energy is the preload's or the fingertip's contact is not separated here."
+ },
+ "pick_excitation_refit_2026_09_10": {
+  "adopted": false,
+  "stage": "pick-excitation: steel.apertureScale, steel.transientScale, steel.pluckDistanceScale, steel.velocityBrightnessDepth with the three plectrum values, from the shipping vector, picked archtop training rows rendered with Pick, 204 evaluations",
+  "fitted_steel_values": {"apertureScale": [0.643124355, 1.18482357], "transientScale": [0.494086432, 0.0], "pluckDistanceScale": [0.88819512, 1.03819512], "velocityBrightnessDepth": [1.1859375, 1.05]},
+  "pick_protocol": {
+   "steel_training": [6.189238, 6.102399],
+   "training_all": [6.404088, 6.355272],
+   "steel_development_validation": [6.273555, 6.736450],
+   "frozen_test_188": [6.204019, 6.373567]
+  },
+  "finger_protocol": {
+   "steel_training": [6.252120, 6.357788],
+   "steel_development_validation": [6.381751, 6.726452],
+   "flattop": [9.260870, 9.204102]
+  },
+  "engine_suite": "five regressions fail with the fitted values: steel onset cue missed by 6.5 cents, attack-glide top-band frame ratio 14-34x at 44.1/48/96 kHz, whole-tone bend frame bound at 44.1 kHz",
+  "limits": "Training-only gain; every held-out split worsens. Four values on 54 rows of one guitar."
  }
 }
