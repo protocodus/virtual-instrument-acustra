@@ -4,6 +4,27 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-10 — the steel presets play the measured steel-string bridge
+
+What was decided. The three steel construction presets, a new session and the
+demos select the Fylde bridge (Carcagno et al.'s measured steel-string
+mobility) instead of the flamenca's bridge the string calibration was fitted
+on. The Original bridge stays as its own preset, as the benchmark's reference,
+and as what any session saved before the bridge parameter existed keeps.
+
+What decided it. A paired comparison on the current engine, identical
+recordings and calibration, only the bridge bank exchanged: training 6.440350
+→ 6.321691 (−1.8%), development validation 6.521658 → 6.301160 (−3.4%), the
+never-fitted flat-top rows 9.260870 → 8.603331 (−7.1%); the steel rows alone
+−2.9% and −5.9%. Six of seven terms improve on validation and the decay term
+carries most of it (the flamenca's fast-decaying bridge was already the
+suspected cause of the too-fast low fundamentals in Known gaps); only the
+pitch-trajectory term worsens, on every split. The earlier paired readings on
+the 2026-09-05 engine ran the same way on the dry notes, the technique-note
+audit and two of the three performance descriptors. No listening verdict is
+involved; this is a measured bridge for the string set the presets claim,
+chosen on recordings, and the string calibration has not been refitted to it.
+
 ## 2026-09-09 — Shape is a box, and the anchors stay where the fit put them
 
 What was decided. The four Shapes were authored factors around one measured

@@ -85691,5 +85691,84 @@
    "jumbo": 6.0962
   },
   "reading": "The E1D dreadnought rows prefer the Parlor and Auditorium morphs to the anchored Dreadnought, whose A0/T1 sit below published dreadnought values; the archtop rows run the other way. The anchor is the fitted and auditioned default, so this is recorded as an outstanding listening question, not acted on. Outline fraction and one-thickness plate law are model assumptions."
+ },
+ "steel_presets_fylde_bridge_2026_09_10": {
+  "decision": "The Dreadnought, Auditorium and Parlor construction presets, a new session's Bridge Model default and the demos select BridgeModel::FyldeSteel; Original stays a preset, the benchmark reference and the missing-state value for sessions saved before the parameter existed.",
+  "protocol": "Paired dry-note comparison on the current force/moment body, Linux x64, identical recordings and shipping calibration (the 32-value vector with the plectrum values at 0, 2, 0), archtop rows rendered with Finger, only --bridge-model exchanged.",
+  "train": {
+   "original": 6.44035,
+   "fylde": 6.321691,
+   "terms_original": {
+    "attack": 7.0584,
+    "harmonics": 8.2215,
+    "tuning": 2.9733,
+    "pitch_trajectory": 0.4565,
+    "decay": 5.3434,
+    "body": 12.0858,
+    "dynamics": 0.1383
+   },
+   "terms_fylde": {
+    "attack": 6.9557,
+    "harmonics": 8.2753,
+    "tuning": 2.909,
+    "pitch_trajectory": 0.5889,
+    "decay": 4.9334,
+    "body": 12.0582,
+    "dynamics": 0.1213
+   }
+  },
+  "validation": {
+   "original": 6.521658,
+   "fylde": 6.30116,
+   "terms_original": {
+    "attack": 7.4153,
+    "harmonics": 8.6467,
+    "tuning": 2.9001,
+    "pitch_trajectory": 0.1426,
+    "decay": 4.9798,
+    "body": 12.3783,
+    "dynamics": 0.0029
+   },
+   "terms_fylde": {
+    "attack": 7.3392,
+    "harmonics": 8.357,
+    "tuning": 2.7605,
+    "pitch_trajectory": 0.1786,
+    "decay": 4.5533,
+    "body": 12.1636,
+    "dynamics": 0.0047
+   }
+  },
+  "flattop": {
+   "original": 9.26087,
+   "fylde": 8.603331,
+   "terms_original": {
+    "attack": 9.4441,
+    "harmonics": 9.068,
+    "tuning": 2.5933,
+    "pitch_trajectory": 0.7939,
+    "decay": 6.8056,
+    "body": 18.1707
+   },
+   "terms_fylde": {
+    "attack": 8.4324,
+    "harmonics": 9.349,
+    "tuning": 2.3257,
+    "pitch_trajectory": 0.8564,
+    "decay": 5.2338,
+    "body": 17.9318
+   }
+  },
+  "steel_rows_only": {
+   "train": {
+    "original": 6.25212,
+    "fylde": 6.070436
+   },
+   "validation": {
+    "original": 6.381751,
+    "fylde": 6.004933
+   }
+  },
+  "limits": "The string calibration was fitted on the Original bridge and is not refitted here; the Fylde bank is scalar (no rocking or microphone response) and radiation still comes from the flamenca-derived body bank. Descriptor distances, not perceptual ratings."
  }
 }

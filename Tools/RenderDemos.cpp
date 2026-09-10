@@ -31,6 +31,7 @@ namespace
 using acustra::AcustraEngine;
 using acustra::BodyMaterial;
 using acustra::BodyShape;
+using acustra::BridgeModel;
 using acustra::EngineParameters;
 using acustra::StringMaterial;
 using acustra::Tuning;
@@ -208,6 +209,9 @@ EngineParameters baseParameters()
     EngineParameters parameters;
     // Render at the public default. Whole-file normalisation owns listening
     // level, so driving the safety limiter here would only alter transients.
+    // The steel presets and a new session play the measured Fylde bridge, so
+    // the demos do too; nylon does not read this field.
+    parameters.bridgeModel = BridgeModel::FyldeSteel;
     return parameters;
 }
 

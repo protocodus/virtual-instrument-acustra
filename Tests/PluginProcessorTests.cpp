@@ -1523,20 +1523,22 @@ void testEditorRendering()
             state = processor.snapshotEngineParameters();
             expect (state.shape == acustra::BodyShape::Dreadnought
                         && state.bodyMaterial == acustra::BodyMaterial::Spruce
-                        && state.stringMaterial == acustra::StringMaterial::Steel,
-                    "the dreadnought preset did not restore steel construction");
+                        && state.stringMaterial == acustra::StringMaterial::Steel
+                        && state.bridgeModel == acustra::BridgeModel::FyldeSteel,
+                    "the dreadnought preset did not restore steel construction "
+                    "on the measured steel bridge");
             menu->setSelectedId (6, juce::sendNotificationSync);
             state = processor.snapshotEngineParameters();
-            expect (state.bridgeModel == acustra::BridgeModel::FyldeSteel
+            expect (state.bridgeModel == acustra::BridgeModel::Original
                         && state.stringMaterial == acustra::StringMaterial::Steel,
-                    "the Fylde preset did not select the measured steel bridge");
+                    "the Original bridge preset did not select the fitted bridge");
             juce::Timer::callPendingTimersSynchronously();
             expect (menu->getSelectedId() == 6,
-                    "the measured bridge preset caption was lost");
+                    "the original bridge preset caption was lost");
             menu->setSelectedId (2, juce::sendNotificationSync);
             expect (processor.snapshotEngineParameters().bridgeModel
-                        == acustra::BridgeModel::Original,
-                    "the original preset retained the alternative bridge");
+                        == acustra::BridgeModel::FyldeSteel,
+                    "the dreadnought preset retained the original bridge");
             expect (valueOf (processor, ids::tuning) == 2.0f
                         && std::abs (valueOf (processor, ids::output) + 4.0f) < 0.011f,
                     "a guitar construction preset changed tuning or output");
