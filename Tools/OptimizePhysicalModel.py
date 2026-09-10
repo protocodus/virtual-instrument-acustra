@@ -423,28 +423,28 @@ def main() -> int:
         manifest_path = output / "train.json"
         if not manifest_path.is_file():
             parser.error("--resume output has no train.json")
+        manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        # A resumed run continues the experiment the corpus recorded. The
+        # manifest itself says which tool its archtop rows were rendered
+        # with, whether a fit has finished on it or the renderer alone wrote
+        # it; the models-only render below would otherwise replace those
+        # rows with the renderer's own default.
+        controls = manifest_data.get("model_controls")
+        stored_picking = (controls.get("archtop_picking")
+                          if isinstance(controls, dict) else None)
+        if archtop_picking is None:
+            archtop_picking = stored_picking
+        elif stored_picking not in (None, archtop_picking):
+            parser.error(f"the corpus was rendered with --archtop-picking "
+                         f"{stored_picking}; pass the same, or a new output")
         result_path = output / "fit-result.json"
         if result_path.is_file():
             result_data = json.loads(result_path.read_text(encoding="utf-8"))
-            # A resumed run continues the experiment the corpus recorded: the
-            # start its values came from, and the tool its archtop rows were
-            # rendered with, which the models-only render below would
-            # otherwise replace with the renderer's own default.
+            # The start its values came from, not this command line's.
             start = result_data.get("start", start)
-            stored = result_data.get("render_options") or []
-            stored_picking = (stored[stored.index("--archtop-picking") + 1]
-                              if "--archtop-picking" in stored else None)
-            if archtop_picking is None:
-                archtop_picking = stored_picking
-            elif stored_picking not in (None, archtop_picking):
-                parser.error(f"the corpus was rendered with --archtop-picking "
-                             f"{stored_picking}; pass the same, or a new output")
             candidate = np.asarray(result_data.get("values", []), dtype=float)
             order = result_data.get("parameter_order")
             if not isinstance(order, list) or len(order) != candidate.size:
-                manifest_data = json.loads(
-                    manifest_path.read_text(encoding="utf-8")
-                )
                 order = manifest_data.get("calibration_order")
             if isinstance(order, list) and len(order) == candidate.size:
                 migrated = INITIAL.copy()
