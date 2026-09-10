@@ -478,34 +478,43 @@ def main() -> int:
             result_data = json.loads(result_path.read_text(encoding="utf-8"))
             # The start its values came from, not this command line's.
             start = result_data.get("start", start)
-            candidate = np.asarray(result_data.get("values", []), dtype=float)
-            order = result_data.get("parameter_order")
-            if not isinstance(order, list) or len(order) != candidate.size:
-                order = manifest_data.get("calibration_order")
-            if isinstance(order, list) and len(order) == candidate.size:
-                migrated = INITIAL.copy()
-                destination = {name: index for index, name in enumerate(NAMES)}
-                aliases = {
-                    "steel.displacementScaleMetres":
-                        "steelDisplacementScaleMetres",
-                }
-                for value, name in zip(candidate, order):
-                    target = destination.get(aliases.get(name, name))
-                    if target is not None:
-                        migrated[target] = value
-                candidate = migrated
-            elif candidate.size == 24:
-                # The temporary all-material KC layout stored nylon at 21,
-                # steel at 22 and the fret slope at 23.
-                candidate = np.append(np.delete(candidate, 21), INITIAL[-1])
-            elif 19 <= candidate.size < INITIAL.size:
-                candidate = np.append(candidate, INITIAL[candidate.size:])
-            if candidate.shape != INITIAL.shape or not np.all(np.isfinite(candidate)):
-                parser.error(
-                    "fit-result.json has no valid 19- through 24-value "
-                    "calibration"
-                )
-            values = np.clip(candidate, LOWER, UPPER)
+        else:
+            # Neither a checkpoint nor a finished result: the calibration the
+            # corpus was last rendered with, as its manifest records it, is
+            # the current one, whatever the command line's start.
+            result_path = manifest_path
+            result_data = {
+                "values": manifest_data.get("calibration_values", []),
+                "parameter_order": manifest_data.get("calibration_order"),
+            }
+        candidate = np.asarray(result_data.get("values", []), dtype=float)
+        order = result_data.get("parameter_order")
+        if not isinstance(order, list) or len(order) != candidate.size:
+            order = manifest_data.get("calibration_order")
+        if isinstance(order, list) and len(order) == candidate.size:
+            migrated = INITIAL.copy()
+            destination = {name: index for index, name in enumerate(NAMES)}
+            aliases = {
+                "steel.displacementScaleMetres":
+                    "steelDisplacementScaleMetres",
+            }
+            for value, name in zip(candidate, order):
+                target = destination.get(aliases.get(name, name))
+                if target is not None:
+                    migrated[target] = value
+            candidate = migrated
+        elif candidate.size == 24:
+            # The temporary all-material KC layout stored nylon at 21,
+            # steel at 22 and the fret slope at 23.
+            candidate = np.append(np.delete(candidate, 21), INITIAL[-1])
+        elif 19 <= candidate.size < INITIAL.size:
+            candidate = np.append(candidate, INITIAL[candidate.size:])
+        if candidate.shape != INITIAL.shape or not np.all(np.isfinite(candidate)):
+            parser.error(
+                f"{result_path.name} has no valid 19- through "
+                f"{INITIAL.size}-value calibration"
+            )
+        values = np.clip(candidate, LOWER, UPPER)
         values[4] = 0.0
     elif output.exists():
         parser.error("output already exists; use a new path or --resume")
