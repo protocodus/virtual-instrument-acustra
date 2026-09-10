@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import multiprocessing
+import os
 import shutil
 import subprocess
 import sys
@@ -276,7 +277,10 @@ class Objective:
         # when no finished fit-result.json exists.
         if self.checkpoint is None:
             return
-        self.checkpoint.write_text(
+        # Through a temporary sibling, so an interruption during the write -
+        # the case the checkpoint exists for - leaves the previous one whole.
+        partial = self.checkpoint.with_suffix(".json.partial")
+        partial.write_text(
             json.dumps({"parameter_order": NAMES,
                         "values": self.best_values.tolist(),
                         "score": self.best_score,
@@ -285,6 +289,7 @@ class Objective:
                         **self.provenance}, indent=2) + "\n",
             encoding="utf-8",
         )
+        os.replace(partial, self.checkpoint)
 
     def values(self, unit: np.ndarray) -> np.ndarray:
         values = self.base.copy()
@@ -463,10 +468,12 @@ def main() -> int:
         elif stored_picking not in (None, archtop_picking):
             parser.error(f"the corpus was rendered with --archtop-picking "
                          f"{stored_picking}; pass the same, or a new output")
-        # A finished fit, else the best an interrupted one saved (Objective).
-        result_path = output / "fit-result.json"
+        # The checkpoint exists only while a search is unfinished (a finished
+        # run removes it below), so when it is present it belongs to the run
+        # to continue, even beside an older run's finished result.
+        result_path = output / "fit-best.json"
         if not result_path.is_file():
-            result_path = output / "fit-best.json"
+            result_path = output / "fit-result.json"
         if result_path.is_file():
             result_data = json.loads(result_path.read_text(encoding="utf-8"))
             # The start its values came from, not this command line's.
@@ -561,6 +568,8 @@ def main() -> int:
     (output / "fit-result.json").write_text(
         json.dumps(result, indent=2) + "\n", encoding="utf-8"
     )
+    # The finished result supersedes the search's checkpoint.
+    (output / "fit-best.json").unlink(missing_ok=True)
     print("fitted values:", " ".join(format(value, ".9g") for value in values))
     print(f"final train score={final_train['score']:.6f}")
     print(f"validation score={validation['score']:.6f}")
