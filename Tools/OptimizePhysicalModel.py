@@ -255,16 +255,36 @@ def _worker_directories(output: Path, jobs: int) -> list[Path]:
 class Objective:
     def __init__(self, executor: ProcessPoolExecutor, base: np.ndarray,
                  active: np.ndarray, material: str | None,
-                 evaluations: list[dict[str, Any]]):
+                 evaluations: list[dict[str, Any]],
+                 checkpoint: Path | None = None,
+                 provenance: dict[str, Any] | None = None):
         self.executor = executor
         self.base = base.copy()
         self.active = active
         self.material = material
         self.evaluations = evaluations
+        self.checkpoint = checkpoint
+        self.provenance = provenance or {}
         self.cache: dict[tuple[float, ...], float] = {}
         self.best_values = base.copy()
         self.best_score = float("inf")
         self.count = 0
+
+    def _save_best(self) -> None:
+        # A stage is hours of renders and the search keeps its best only in
+        # memory, so every improvement goes to disk; --resume reads it back
+        # when no finished fit-result.json exists.
+        if self.checkpoint is None:
+            return
+        self.checkpoint.write_text(
+            json.dumps({"parameter_order": NAMES,
+                        "values": self.best_values.tolist(),
+                        "score": self.best_score,
+                        "stage_material": self.material,
+                        "evaluations": len(self.evaluations),
+                        **self.provenance}, indent=2) + "\n",
+            encoding="utf-8",
+        )
 
     def values(self, unit: np.ndarray) -> np.ndarray:
         values = self.base.copy()
@@ -292,7 +312,8 @@ class Objective:
                 score = float(report["score"])
                 self.cache[key] = score
                 self.count += 1
-                if score < self.best_score:
+                improved = score < self.best_score
+                if improved:
                     self.best_score = score
                     self.best_values = values.copy()
                 self.evaluations.append({
@@ -300,6 +321,8 @@ class Objective:
                     "values": values.tolist(),
                     **report,
                 })
+                if improved:
+                    self._save_best()
                 print(
                     f"eval {len(self.evaluations):04d} "
                     f"{self.material or 'both':>5} score={score:.6f}",
@@ -346,9 +369,12 @@ def _pattern_search(objective: Objective, unit: np.ndarray, budget: int,
 def _fit_stage(name: str, material: str | None, active: np.ndarray,
                values: np.ndarray, executor: ProcessPoolExecutor,
                budget: int, evaluations: list[dict[str, Any]],
+               checkpoint: Path | None = None,
+               provenance: dict[str, Any] | None = None,
                ) -> tuple[np.ndarray, dict[str, Any]]:
     unit = (values[active] - LOWER[active]) / (UPPER[active] - LOWER[active])
-    objective = Objective(executor, values, active, material, evaluations)
+    objective = Objective(executor, values, active, material, evaluations,
+                          checkpoint, provenance)
     _pattern_search(objective, np.clip(unit, 0.0, 1.0), budget)
     fitted = objective.best_values
     print(
@@ -437,7 +463,10 @@ def main() -> int:
         elif stored_picking not in (None, archtop_picking):
             parser.error(f"the corpus was rendered with --archtop-picking "
                          f"{stored_picking}; pass the same, or a new output")
+        # A finished fit, else the best an interrupted one saved (Objective).
         result_path = output / "fit-result.json"
+        if not result_path.is_file():
+            result_path = output / "fit-best.json"
         if result_path.is_file():
             result_data = json.loads(result_path.read_text(encoding="utf-8"))
             # The start its values came from, not this command line's.
@@ -499,6 +528,8 @@ def main() -> int:
             values, stage = _fit_stage(
                 name, material, active, values, executor,
                 arguments.evaluations, evaluations,
+                output / "fit-best.json",
+                {"start": start, "render_options": list(RENDER_OPTIONS)},
             )
             stages.append(stage)
             # A full run is hours long; leave each stage's answer on disk so a
