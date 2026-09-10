@@ -153,6 +153,10 @@ STEEL = _free(np.append(np.arange(11, 18), (20, 21)))
 # pick) and by nothing else; the finger-plucked flat-top and classical rows
 # render with Finger whatever this stage does.
 PICK = np.asarray((29, 30, 31))
+# The steel excitation and the plectrum together, on the same picked rows:
+# the four steel values that shape the pluck's contact, level law and
+# brightness were fitted with Finger on recordings that were picked.
+PICK_EXCITATION = np.asarray((14, 15, 16, 17, 29, 30, 31))
 
 STAGES = {
     "shared-body": (None, GLOBAL),
@@ -160,6 +164,7 @@ STAGES = {
     "steel-string": ("steel", STEEL),
     "shared-body-refine": (None, GLOBAL),
     "pick-release": ("steel", PICK),
+    "pick-excitation": ("steel", PICK_EXCITATION),
 }
 DEFAULT_STAGES = ("shared-body", "nylon-string", "steel-string",
                   "shared-body-refine")
