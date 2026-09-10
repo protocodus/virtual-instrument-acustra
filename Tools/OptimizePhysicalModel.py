@@ -395,7 +395,8 @@ def main() -> int:
     parser.add_argument(
         "--archtop-picking", choices=("finger", "pick", "thumb"),
         help="render the picked archtop rows with this tool (the renderer's "
-             "own default otherwise); the pick-release stage needs pick",
+             "own default otherwise); stages over the plectrum's values "
+             "(pick-release, pick-excitation) need pick",
     )
     arguments = parser.parse_args()
     if arguments.evaluations < 1:
@@ -406,8 +407,13 @@ def main() -> int:
     unknown = [name for name in stage_names if name not in STAGES]
     if unknown or not stage_names:
         parser.error(f"unknown stages: {', '.join(unknown) or 'none given'}")
-    if "pick-release" in stage_names and arguments.archtop_picking != "pick":
-        parser.error("the pick-release stage needs --archtop-picking pick")
+    # The plectrum's values are read by Pick only, so a stage over them
+    # rendered with any other tool would search inert coordinates.
+    needs_pick = [name for name in stage_names
+                  if np.intersect1d(STAGES[name][1], PICK).size > 0]
+    if needs_pick and arguments.archtop_picking != "pick":
+        parser.error(f"{', '.join(needs_pick)}: a stage over the plectrum's "
+                     "values needs --archtop-picking pick")
     if arguments.archtop_picking is not None:
         RENDER_OPTIONS[:] = ["--archtop-picking", arguments.archtop_picking]
     renderer = arguments.renderer.resolve()

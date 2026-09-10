@@ -542,6 +542,31 @@ std::string formatTrim(float value)
     return text.str();
 }
 
+// The names of calibration_values, in their order; written with a fresh
+// manifest and rewritten with the values by the models-only update, so a
+// corpus rendered before a value existed carries the names of the values
+// it now holds.
+std::string calibrationOrderJson()
+{
+    return "[\"bodyFrequencyScale\", \"bodyQScale\", "
+           "\"bridgeMobilityScale\", \"residueTiltDbPerOctave\", \"directGain\", "
+           "\"nylon.fundamentalT60Scale\", "
+           "\"nylon.frequencyLossScale\", \"nylon.apertureScale\", "
+           "\"nylon.transientScale\", \"nylon.pluckDistanceScale\", "
+           "\"nylon.velocityBrightnessDepth\", \"steel.stiffnessScale\", "
+           "\"steel.fundamentalT60Scale\", \"steel.frequencyLossScale\", "
+           "\"steel.apertureScale\", \"steel.transientScale\", "
+           "\"steel.pluckDistanceScale\", \"steel.velocityBrightnessDepth\", "
+           "\"apertureRegisterExponent\", \"lowBodyModeGain\", "
+           "\"steelDisplacementScaleMetres\", \"steelFretT60Slope\", "
+           "\"highLossCutoffScale\", \"bridgeConductanceFloor\", "
+           "\"bridgeConductanceCornerHz\", \"bridgeTailLengthMetres\", "
+           "\"longitudinalGain\", \"longitudinalQ\", "
+           "\"polarisationEndCorrectionMetres\", "
+           "\"pickReleaseVelocityShare\", \"pickReleaseVelocityExponent\", "
+           "\"pickTransientGain\"]";
+}
+
 std::string calibrationJson(const CalibrationValues& values)
 {
     std::ostringstream text;
@@ -633,9 +658,11 @@ std::string replaceModelMetadata(std::string text, const char* key,
     const std::string string = R"("([^"\\]|\\.)*")";
     const std::string scalar = "(" + string + "|" + number + "|true|false|null)";
     const std::string member = string + "\\s*:\\s*" + scalar;
+    // An array of any length: a manifest written before a calibration value
+    // existed holds a shorter calibration_values and calibration_order, and
+    // the models-only update replaces both with the ones it renders with.
     const std::string pattern = json.front() == '['
-        ? "\\[\\s*" + number + "(\\s*,\\s*" + number + "){"
-            + std::to_string(calibrationValueCount - 1) + "}\\s*\\]"
+        ? "\\[\\s*(" + scalar + "(\\s*,\\s*" + scalar + ")*)?\\s*\\]"
         : json.front() == '{'
             ? "\\{\\s*(" + member + "(\\s*,\\s*" + member + ")*)?\\s*\\}"
             : "(true|false)";
@@ -677,23 +704,7 @@ void writeManifest(const std::filesystem::path& path,
     output
         << "{\n"
         << "  \"analysis_sample_rate\": 48000,\n"
-        << "  \"calibration_order\": [\"bodyFrequencyScale\", \"bodyQScale\", "
-           "\"bridgeMobilityScale\", \"residueTiltDbPerOctave\", \"directGain\", "
-           "\"nylon.fundamentalT60Scale\", "
-           "\"nylon.frequencyLossScale\", \"nylon.apertureScale\", "
-           "\"nylon.transientScale\", \"nylon.pluckDistanceScale\", "
-           "\"nylon.velocityBrightnessDepth\", \"steel.stiffnessScale\", "
-           "\"steel.fundamentalT60Scale\", \"steel.frequencyLossScale\", "
-           "\"steel.apertureScale\", \"steel.transientScale\", "
-           "\"steel.pluckDistanceScale\", \"steel.velocityBrightnessDepth\", "
-           "\"apertureRegisterExponent\", \"lowBodyModeGain\", "
-           "\"steelDisplacementScaleMetres\", \"steelFretT60Slope\", "
-           "\"highLossCutoffScale\", \"bridgeConductanceFloor\", "
-           "\"bridgeConductanceCornerHz\", \"bridgeTailLengthMetres\", "
-           "\"longitudinalGain\", \"longitudinalQ\", "
-           "\"polarisationEndCorrectionMetres\", "
-           "\"pickReleaseVelocityShare\", \"pickReleaseVelocityExponent\", "
-           "\"pickTransientGain\"],\n"
+        << "  \"calibration_order\": " << calibrationOrderJson() << ",\n"
         << "  \"provenance\": {\n"
         << "    \"target_timing\": \"source frame 0; recorded pre-roll/onset retained; cropped or zero-padded to 4.2 seconds\",\n"
         << "    \"target_gain\": \"dense::Sampler calibrated playback gain: layer/peak normalisation times (velocity/127)^0.82\",\n"
@@ -1169,6 +1180,7 @@ void renderModelsOnlyCorpus(const std::filesystem::path& directory,
         auto text = readTextFile(path);
         for (const auto& [key, json] : std::array {
                  std::pair { "calibration_values", calibrationJson(values) },
+                 std::pair { "calibration_order", calibrationOrderJson() },
                  std::pair { "model_controls", modelControlsJson() },
                  std::pair { "model_render_complete", std::string("false") } })
             text = replaceModelMetadata(std::move(text), key, json);
