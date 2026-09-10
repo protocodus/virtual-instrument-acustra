@@ -113,9 +113,11 @@ void testParameterContract()
         ids::stereoWidth, ids::output, ids::capture, ids::picking, ids::bridgeModel,
         ids::upperMic, ids::piezoLoading
     };
+    // bridgeModel's factory default is the Fylde steel-string bridge (1);
+    // sessions saved before the parameter existed restore the Original one.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 1.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, -7.5f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+        0.0f, 0.0f, 1.0f, 0.0f, 0.0f
     };
 
     const auto& hostParameters = processor.getParameters();
