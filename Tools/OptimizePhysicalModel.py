@@ -411,17 +411,14 @@ def main() -> int:
     # rendered with any other tool would search inert coordinates.
     needs_pick = [name for name in stage_names
                   if np.intersect1d(STAGES[name][1], PICK).size > 0]
-    if needs_pick and arguments.archtop_picking != "pick":
-        parser.error(f"{', '.join(needs_pick)}: a stage over the plectrum's "
-                     "values needs --archtop-picking pick")
-    if arguments.archtop_picking is not None:
-        RENDER_OPTIONS[:] = ["--archtop-picking", arguments.archtop_picking]
     renderer = arguments.renderer.resolve()
     output = arguments.output.resolve()
     if not renderer.is_file():
         parser.error(f"renderer does not exist: {renderer}")
 
     values = (SHIPPING if arguments.start == "shipping" else INITIAL).copy()
+    start = arguments.start
+    archtop_picking = arguments.archtop_picking
     if arguments.resume:
         manifest_path = output / "train.json"
         if not manifest_path.is_file():
@@ -429,6 +426,19 @@ def main() -> int:
         result_path = output / "fit-result.json"
         if result_path.is_file():
             result_data = json.loads(result_path.read_text(encoding="utf-8"))
+            # A resumed run continues the experiment the corpus recorded: the
+            # start its values came from, and the tool its archtop rows were
+            # rendered with, which the models-only render below would
+            # otherwise replace with the renderer's own default.
+            start = result_data.get("start", start)
+            stored = result_data.get("render_options") or []
+            stored_picking = (stored[stored.index("--archtop-picking") + 1]
+                              if "--archtop-picking" in stored else None)
+            if archtop_picking is None:
+                archtop_picking = stored_picking
+            elif stored_picking not in (None, archtop_picking):
+                parser.error(f"the corpus was rendered with --archtop-picking "
+                             f"{stored_picking}; pass the same, or a new output")
             candidate = np.asarray(result_data.get("values", []), dtype=float)
             order = result_data.get("parameter_order")
             if not isinstance(order, list) or len(order) != candidate.size:
@@ -461,11 +471,14 @@ def main() -> int:
                 )
             values = np.clip(candidate, LOWER, UPPER)
         values[4] = 0.0
-        _run_renderer(renderer, output, values, True)
-    else:
-        if output.exists():
-            parser.error("output already exists; use a new path or --resume")
-        _run_renderer(renderer, output, values, False)
+    elif output.exists():
+        parser.error("output already exists; use a new path or --resume")
+    if needs_pick and archtop_picking != "pick":
+        parser.error(f"{', '.join(needs_pick)}: a stage over the plectrum's "
+                     "values needs --archtop-picking pick")
+    if archtop_picking is not None:
+        RENDER_OPTIONS[:] = ["--archtop-picking", archtop_picking]
+    _run_renderer(renderer, output, values, arguments.resume)
 
     train = PreparedManifest(output / "train.json")
     baseline = train.score()
@@ -505,7 +518,8 @@ def main() -> int:
     result = {
         "parameter_order": NAMES,
         "values": values.tolist(),
-        "start": arguments.start,
+        "start": start,
+        "resumed": arguments.resume,
         "render_options": list(RENDER_OPTIONS),
         "baseline_train": _small_report(baseline),
         "final_train": _small_report(final_train),
