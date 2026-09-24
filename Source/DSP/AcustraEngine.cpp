@@ -2148,8 +2148,41 @@ void AcustraEngine::configureBridge() noexcept
 float AcustraEngine::bridgePhaseDelay(float frequency,
                                       int stringIndex) const noexcept
 {
-    if (!bridgeCouplingEnabled_ || !(frequency > 0.0f))
+    return bridgePhaseDelay(bridgePortMobility(frequency, stringIndex),
+                            frequency, stringIndex);
+}
+
+float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
+                                      int stringIndex) const noexcept
+{
+    if (!port.valid)
         return 0.0f;
+    const bool steel = parameters_.stringMaterial == StringMaterial::Steel;
+    const auto notes = openNotes(parameters_.tuning);
+    const float impedance = stringImpedance(
+        steel, stringIndex, notes[static_cast<std::size_t>(stringIndex)]);
+    // This estimates one string's return phase from the body and anchors.
+    // Other strings' frequency-dependent loopback impedances are omitted here,
+    // although the runtime junction includes their returning waves. It is an
+    // isolated-port tuning approximation, not the coupled instrument's poles.
+    const float characteristicAdmittance = 1.0f / impedance;
+    // This is the folded full-round-trip multiplier -b/a.  Its phase is the
+    // phase contributed by both measured body motion and the saddle anchor; the
+    // speaking-string delay is shortened by exactly that amount when tuned.
+    const std::complex<float> selfReflection
+        = (characteristicAdmittance - port.normal)
+        / (characteristicAdmittance + port.normal);
+    const float digitalOmega = twoPi * frequency
+        / static_cast<float>(sampleRate_);
+    return -std::arg(selfReflection) / digitalOmega;
+}
+
+AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
+    float frequency, int stringIndex) const noexcept
+{
+    PortMobility result {};
+    if (!bridgeCouplingEnabled_ || !(frequency > 0.0f))
+        return result;
 
     const float rate = static_cast<float>(sampleRate_);
     const float bilinear = 2.0f * rate;
@@ -2194,15 +2227,6 @@ float AcustraEngine::bridgePhaseDelay(float frequency,
             / (s * s + 2.0f * damping * s + omega * omega);
     }
 
-    const bool steel = parameters_.stringMaterial == StringMaterial::Steel;
-    const auto notes = openNotes(parameters_.tuning);
-    const float impedance = stringImpedance(
-        steel, stringIndex, notes[static_cast<std::size_t>(stringIndex)]);
-    // This estimates one string's return phase from the body and anchors.
-    // Other strings' frequency-dependent loopback impedances are omitted here,
-    // although the runtime junction includes their returning waves. It is an
-    // isolated-port tuning approximation, not the coupled instrument's poles.
-    const float characteristicAdmittance = 1.0f / impedance;
     // Body and anchor are in parallel at the saddle, but on a bridge with two
     // degrees of freedom that parallel has to be taken as matrices and only
     // then read at this string's own point: the anchor a string finds is
@@ -2227,6 +2251,17 @@ float AcustraEngine::bridgePhaseDelay(float frequency,
     {
         effectiveMobility = determinant
             * (a11 - 2.0f * arm * a01 + arm * arm * a00) / inner;
+        // The same parallel read at the parallel polarisation's port, which
+        // is (h/a) times the rocking (saddleHeightRatio): its own mobility
+        // and its transfer mobility to this string's normal port.
+        const float eta = saddleHeightRatio();
+        if (eta != 0.0f)
+        {
+            const std::complex<float> rockRock = determinant * a00 / inner;
+            const std::complex<float> heaveRock = -determinant * a01 / inner;
+            result.transfer = -eta * (heaveRock + arm * rockRock);
+            result.parallel = eta * eta * rockRock;
+        }
     }
     else
     {
@@ -2239,16 +2274,133 @@ float AcustraEngine::bridgePhaseDelay(float frequency,
         const std::complex<float> denominator
             = s + stiffness0 * mobilityHeave;
         if (!(std::abs(denominator) > 0.0f))
-            return 0.0f;
+            return result;
         effectiveMobility = mobilityHeave * s / denominator;
     }
-    // This is the folded full-round-trip multiplier -b/a.  Its phase is the
-    // phase contributed by both measured body motion and the saddle anchor; the
-    // speaking-string delay is shortened by exactly that amount when tuned.
-    const std::complex<float> selfReflection
-        = (characteristicAdmittance - effectiveMobility)
-        / (characteristicAdmittance + effectiveMobility);
-    return -std::arg(selfReflection) / digitalOmega;
+    result.normal = effectiveMobility;
+    result.valid = true;
+    return result;
+}
+
+// Each polarisation's loop is tuned against its own port, but where the
+// saddle rocks the two are coupled through it (the transfer mobility) and
+// ring as one pair of modes. Near the fundamental each loop's round trip is
+// its gain and phase times the saddle's 2x2 reflection R = (Y0 - Y)(Y0 + Y)^-1,
+// so the pair's modes are the eigenvalues of diag(G_normal, G_parallel) R: a
+// mode's phase over 2 pi is how far it sits from the requested pitch, as a
+// fraction of it, and its magnitude per round trip how fast it decays. The
+// normal loop's own compensation already puts its uncoupled mode on the
+// request; what the coupling adds is read here as the shift of the note's
+// sustained, energy-weighted centre - the pitch a tuner or a player's ear
+// reads once the attack has passed. Each mode is weighted by its
+// normal-polarisation share (the normal polarisation is what radiates, and a
+// mostly normal pluck is what starts it) times the energy it still carries
+// after the first 100 ms, |lambda|^(2n)/(1 - |lambda|^2) per unit start with n
+// the periods in 100 ms. That matters where the rocking is strong: on the
+// flamenca's bridge the open B's normal-dominated mode sheds 0.24 dB a period
+// while its parallel-dominated partner, 6.4 cents above, sheds 0.011, so the
+// note's sustain is the partner's and its attack briefly sits below it. When
+// the pair is weakly coupled the centre is the normal member's own shift. Both loops are lengthened by that fraction; the
+// doublet's split and its beat are left as the coupling makes them. Zero
+// wherever the saddle's rocking was not measured.
+float AcustraEngine::coupledPolarisationDetune(
+    const PortMobility& port, float impedance, float bentImpedance,
+    float frequency, float parallelExtraDelay, float normalGain,
+    float parallelGain) const noexcept
+{
+    if (!port.valid || port.transfer == std::complex<float>{})
+        return 0.0f;
+    using Complex = std::complex<double>;
+    // The junction reads the string's port at its bent impedance; the normal
+    // loop's own compensation (bridgePhaseDelay) was taken at the unbent one.
+    const double admittance = 1.0 / static_cast<double>(bentImpedance);
+    const double unbentAdmittance = 1.0 / static_cast<double>(impedance);
+    const Complex normal = port.normal;
+    const Complex transfer = port.transfer;
+    const Complex parallel = port.parallel;
+    const Complex b00 = admittance + normal;
+    const Complex b11 = admittance + parallel;
+    const Complex inverseDeterminant = 1.0 / (b00 * b11 - transfer * transfer);
+    // R = (Y0 I - Y)(Y0 I + Y)^-1 with Y symmetric.
+    const Complex c00 = admittance - normal;
+    const Complex c11 = admittance - parallel;
+    const Complex r00 = (c00 * b11 + transfer * transfer) * inverseDeterminant;
+    const Complex r01 = (-c00 * transfer - transfer * b00) * inverseDeterminant;
+    const Complex r10 = (-transfer * b11 - c11 * transfer) * inverseDeterminant;
+    const Complex r11 = (transfer * transfer + c11 * b00) * inverseDeterminant;
+    // The normal loop's delay cancels its own uncoupled reflection's phase at
+    // the request; the parallel loop shares that bare length plus its end
+    // correction.
+    const double ownPhase = std::arg(Complex((unbentAdmittance - normal)
+                                             / (unbentAdmittance + normal)));
+    const double digitalOmega = 2.0 * std::numbers::pi
+        * static_cast<double>(frequency) / sampleRate_;
+    const Complex gainNormal = std::polar(static_cast<double>(normalGain), -ownPhase);
+    const Complex gainParallel = std::polar(static_cast<double>(parallelGain),
+        -ownPhase - digitalOmega * static_cast<double>(parallelExtraDelay));
+    const Complex a00 = gainNormal * r00;
+    const Complex a01 = gainNormal * r01;
+    const Complex a10 = gainParallel * r10;
+    const Complex a11 = gainParallel * r11;
+    const Complex halfTrace = 0.5 * (a00 + a11);
+    const Complex root = std::sqrt(halfTrace * halfTrace - (a00 * a11 - a01 * a10));
+    constexpr double onsetSeconds = 0.1;
+    const double onsetPeriods = onsetSeconds * static_cast<double>(frequency);
+    double weighted = 0.0;
+    double weights = 0.0;
+    for (const Complex eigenvalue : { halfTrace + root, halfTrace - root })
+    {
+        const double normalPart = std::norm(a01);
+        const double parallelPart = std::norm(eigenvalue - a00);
+        if (!(normalPart + parallelPart > 0.0))
+            continue;
+        const double share = normalPart / (normalPart + parallelPart);
+        const double perPeriod = std::norm(eigenvalue);
+        const double energy = share * std::pow(perPeriod, onsetPeriods)
+            / std::max(1.0 - perPeriod, 1.0e-6);
+        weighted += energy * std::arg(eigenvalue);
+        weights += energy;
+    }
+    if (!(weights > 0.0))
+        return 0.0f;
+    const double detune = weighted / (weights * 2.0 * std::numbers::pi);
+    return std::isfinite(detune)
+        ? static_cast<float>(std::clamp(detune, -0.02, 0.02)) : 0.0f;
+}
+
+// A string's two transverse polarisations do not reach the body alike. The
+// one normal to the soundboard pushes the saddle down; the one parallel to it
+// pushes the saddle crown sideways at the crown's height h over the top, a
+// moment about the string's own axis - the rocking the archive's two
+// bridge-end impacts measure. In the normalized rocking coordinate r = a*theta
+// that moment is (h/a) times the horizontal force, and the crown moves
+// (h/a)*r sideways, so the parallel polarisation's port is (h/a)^2 times the
+// measured rocking mobility and its load reaches the microphones through the
+// measured moment paths. That is how a guitar partial becomes the doublet
+// Woodhouse measures (Acta Acustica 90 (2004) 945-965, Sec. 4.3: the normal
+// pluck excites the upper member, the parallel pluck the lower, and parallel
+// plucks are markedly quieter). h is the published height of the strings over
+// the top at the bridge, to the string's lower bound (R. Mores, "List of
+// guitars measured", 2021, https://zenodo.org/records/4604577, column HSaT):
+// 8.1 mm on g21, whose radiation steel plays whichever bridge it selects,
+// 10.2 mm on g34 and 8.6 mm on the 1978 Bellido, g35. a is the 23.2 mm
+// half-spacing the archive's impacts are placed at (saddleLeverArm). The Rau
+// guitars were measured with one scalar mobility and one force-to-pressure
+// path, so nothing carries a sideways force for them and their parallel
+// polarisation stays the silent loop it was.
+float AcustraEngine::saddleHeightRatio() const noexcept
+{
+    constexpr float impactHalfSpacing = 0.0232f;
+    switch (parameters_.guitarModel)
+    {
+        case GuitarModel::Original:
+            return (parameters_.stringMaterial == StringMaterial::Steel
+                ? 0.0081f : 0.0102f) / impactHalfSpacing;
+        case GuitarModel::Bellido1978:
+            return 0.0086f / impactHalfSpacing;
+        default:
+            return 0.0f;
+    }
 }
 
 void AcustraEngine::bridgeAnchorMoments(float& stiffness0,
@@ -2257,7 +2409,10 @@ void AcustraEngine::bridgeAnchorMoments(float& stiffness0,
 {
     // Every string is anchored behind the saddle whether or not it is being
     // played, but each stub stands at its own point on it, so the six springs
-    // are one stiffness matrix rather than one sum.
+    // are one stiffness matrix rather than one sum. The stub holds the crown
+    // sideways as well as down, so it also stiffens the rocking the parallel
+    // polarisation drives, by (h/a)^2 of its own stiffness.
+    const float eta = saddleHeightRatio();
     stiffness0 = stiffness1 = stiffness2 = 0.0f;
     for (int string = 0; string < stringCount; ++string)
     {
@@ -2267,6 +2422,8 @@ void AcustraEngine::bridgeAnchorMoments(float& stiffness0,
         stiffness0 += stiffness;
         stiffness1 += arm * stiffness;
         stiffness2 += arm * arm * stiffness;
+        if (eta != 0.0f)
+            stiffness2 += eta * eta * stiffness;
     }
 }
 
@@ -2558,9 +2715,21 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                 / (2.0f * soundingLength * soundingLength)
             : 0.0f;
     }
-    const float measuredBridgeDelay = bridgePhaseDelay(frequency, stringIndex);
+    const auto bridgePort = bridgePortMobility(frequency, stringIndex);
+    const float measuredBridgeDelay = bridgePhaseDelay(bridgePort, frequency,
+                                                       stringIndex);
     const float desiredPeriodGain = std::pow(0.001f,
         1.0f / std::max(fundamentalT60 * frequency, 1.0f));
+    const float unbentImpedance = stringImpedance(steel, stringIndex,
+                                                  voice.openMidi);
+    const float coupledDetune = coupledPolarisationDetune(
+        bridgePort, unbentImpedance, unbentImpedance
+            * std::sqrt((bentTension / tension) / (1.0f
+                + (bentTension - tension) / std::max(axialRigidity, 1.0f))),
+        frequency, (rawDelay - measuredBridgeDelay)
+            * physicalCalibration_.polarisationEndCorrectionMetres / soundingLength,
+        desiredPeriodGain * 0.9995f, desiredPeriodGain * 0.9988f);
+    voice.polarisationDetune = coupledDetune;
     const float lossOmega = static_cast<float>(referenceLossOmega(omega, sampleRate_));
     const float filterGain = magnitudeForOnePoleMix(
         broadLossCoefficient, broadLoss, lossOmega)
@@ -2580,8 +2749,16 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // cents with the opposite sign and a third of the measured size.
         const float endCorrection = polarisation == 0 ? 0.0f
             : physicalCalibration_.polarisationEndCorrectionMetres;
-        const float polarisationDelay = rawDelay
-            - (polarisation == 0 ? measuredBridgeDelay : 0.0f);
+        // Both polarisations are one string, one length and one tension. The
+        // normal loop is tuned so that, loaded by the bridge, it sounds the
+        // requested pitch - a player tunes the note that radiates - and the
+        // parallel one shares that bare length, lengthened by the end
+        // correction; how far the bridge pulls the normal member away from
+        // it is the doublet's width, which therefore varies note to note as
+        // the bridge's phase does.
+        const float polarisationDelay = coupledDetune != 0.0f
+            ? (rawDelay - measuredBridgeDelay) * (1.0f + coupledDetune)
+            : rawDelay - measuredBridgeDelay;
         loop.targetDelay = clamp(
             polarisationDelay * (1.0f + endCorrection / soundingLength),
             3.0f, static_cast<float>(maximumDelaySamples - 3));
@@ -4524,7 +4701,9 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                                 float verticalIncident,
                                 float horizontalIncident, float excitation,
                                 float tailIncident, float bridgeDisplacement,
-                                float bridgeVelocity, float& directLeft,
+                                float bridgeVelocity,
+                                float horizontalBridgeDisplacement,
+                                float& directLeft,
                                 float& directRight,
                                 float& sympatheticForce,
                                 float& longitudinalForce) noexcept
@@ -4537,7 +4716,13 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
     const float boundaryExcitation = voice.contactTravelEnabled ? 0.0f : excitation;
     voice.loops[0].write(verticalIncident - bridgeDisplacement
                          + 0.76f * boundaryExcitation);
-    voice.loops[1].write(horizontalIncident + 0.51f * boundaryExcitation);
+    // The crown's sideways motion is (h/a) times the rocking; on a bridge
+    // whose rocking was not measured it never moves, and the parallel loop
+    // reflects rigidly as it always did.
+    voice.loops[1].write((horizontalBridgeDisplacement != 0.0f
+                              ? horizontalIncident - horizontalBridgeDisplacement
+                              : horizontalIncident)
+                         + 0.51f * boundaryExcitation);
 
     const float sampleRateRatio = static_cast<float>(sampleRate_) / 48000.0f;
     const float verticalVelocity = voice.loops[0].bridgeVelocity(
@@ -4767,6 +4952,7 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         std::array<float, stringCount> excitation {};
         std::array<float, stringCount> tailIncident {};
         BridgeDrive drive {};
+        const float saddleHeight = saddleHeightRatio();
         for (int string = 0; string < stringCount; ++string)
         {
             auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -4844,6 +5030,9 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
             drive.stiffness0 += voice.bridgeTailStiffness;
             drive.stiffness1 += arm * voice.bridgeTailStiffness;
             drive.stiffness2 += arm * arm * voice.bridgeTailStiffness;
+            if (saddleHeight != 0.0f)
+                drive.stiffness2 += saddleHeight * saddleHeight
+                                  * voice.bridgeTailStiffness;
             // Every string on the bridge is a member of the junction, played
             // or not: an idle string on a moving bridge carries a wave, and
             // at its resonance it presents thousands of times its
@@ -4878,6 +5067,16 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
                 drive.impedance2 += arm * arm * branchImpedance;
                 drive.incidentHeave += incident;
                 drive.incidentRock += arm * incident;
+                // The parallel polarisation's port on the rocking coordinate
+                // (see saddleHeightRatio): its incident force times h/a is a
+                // moment, and it presents (h/a)^2 of its impedance there. The
+                // retained tail is the normal polarisation only.
+                if (saddleHeight != 0.0f)
+                {
+                    drive.impedance2 += saddleHeight * saddleHeight * port;
+                    drive.incidentRock -= saddleHeight * 2.0f * port
+                        * horizontalIncident[static_cast<std::size_t>(string)];
+                }
             }
         }
 
@@ -5010,6 +5209,7 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
                 tailIncident[static_cast<std::size_t>(string)],
                 bridgeDisplacement + arm * bridgeRotation,
                 lastBridgeVelocity_ + arm * bridgeRotationRate,
+                -saddleHeight * bridgeRotation,
                 directLeft, directRight, sympatheticForce,
                 longitudinalForce);
         }

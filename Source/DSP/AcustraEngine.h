@@ -8,6 +8,7 @@
 #include "FittedPhysicalData.h"
 
 #include <array>
+#include <complex>
 #include <cstddef>
 #include <cstdint>
 
@@ -562,6 +563,10 @@ private:
         // Exact arguments of the last completed dispersion solve. Frequency
         // is positive, so the zero-initialized key cannot be a valid hit.
         std::array<double, 7> dispersionDesignArguments {};
+        // The fraction both polarisation loops were lengthened by so that the
+        // pair of modes they form through a rocking saddle is heard at the
+        // requested pitch (coupledPolarisationDetune); zero elsewhere.
+        float polarisationDetune { 0.0f };
         float dispersionDecayRatio { 10.0f };
         float dispersionPoleRatio { 4.0f };
         float level { 0.0f };
@@ -626,6 +631,33 @@ private:
     void configureBody() noexcept;
     void configureBridge() noexcept;
     float bridgePhaseDelay(float frequency, int stringIndex) const noexcept;
+    // The saddle's mobility at one string's two ports, bridge and anchors in
+    // parallel, at a frequency: the normal port at its lever arm, the
+    // parallel port on the rocking (see saddleHeightRatio), and the transfer
+    // between them. The last two are zero wherever rocking was not measured.
+    struct PortMobility
+    {
+        std::complex<float> normal {};
+        std::complex<float> transfer {};
+        std::complex<float> parallel {};
+        bool valid { false };
+    };
+    [[nodiscard]] PortMobility bridgePortMobility(float frequency,
+                                                  int stringIndex) const noexcept;
+    float bridgePhaseDelay(const PortMobility& port, float frequency,
+                           int stringIndex) const noexcept;
+    // How far, as a fraction of the request, the pair of modes the two
+    // polarisations form through a rocking saddle sits from the pitch the
+    // normal loop was tuned to alone (see AcustraEngine.cpp).
+    [[nodiscard]] float coupledPolarisationDetune(
+        const PortMobility& port, float impedance, float bentImpedance,
+        float frequency, float parallelExtraDelay, float normalGain,
+        float parallelGain) const noexcept;
+    // The saddle crown's height over the measured body's rocking axis, over
+    // the normalized rocking coordinate's half-spacing: what projects a
+    // string's horizontal (soundboard-parallel) force onto the rocking
+    // moment, and the rocking displacement back onto its horizontal motion.
+    [[nodiscard]] float saddleHeightRatio() const noexcept;
     // The six anchor stubs as the three moments of one stiffness matrix in
     // the saddle's two coordinates: sum K, sum uK, sum u^2 K.
     void bridgeAnchorMoments(float& stiffness0, float& stiffness1,
@@ -695,7 +727,8 @@ private:
     void finishVoice(Voice& voice, int stringIndex, float verticalIncident,
                      float horizontalIncident, float excitation,
                      float tailIncident, float bridgeDisplacement,
-                     float bridgeVelocity, float& directLeft,
+                     float bridgeVelocity, float horizontalBridgeDisplacement,
+                     float& directLeft,
                      float& directRight, float& sympatheticForce,
                      float& longitudinalForce) noexcept;
     BodyOutput renderBody(float bridgeInput, float bodyMoment) noexcept;

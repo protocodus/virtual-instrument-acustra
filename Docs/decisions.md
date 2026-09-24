@@ -4,6 +4,47 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-24 — the parallel polarisation radiates through the measured rocking
+
+What was measured. Every partial of a real guitar beats slowly: over 0.3-2.3 s
+the median RMS residual of the H1-H6 envelopes after a quadratic trend is
+0.58-2.97 dB on the eight flat-top rows, 0.26-1.69 on the steel archtop rows
+and 1.73-7.06 on the classical rows. The engine's partials were single smooth
+exponentials (0.11-0.59, 0.02-0.81 and 0.01-0.34 dB): its parallel
+polarisation loop was reflected rigidly and never reached the output.
+
+What was built. The sideways force of the parallel plane acts at the saddle
+crown's height over the top, a moment on the rocking coordinate the archive
+measures, so the plane's port is (h/a)^2 times the measured rocking mobility
+(plus (h/a)^2 of each anchor stub) and its load reaches the microphones
+through the measured moment paths. h is the published string height over the
+top at the bridge (Mores 2021: 8.1 mm g21, 10.2 mm g34, 8.6 mm g35); a is the
+23.2 mm impact half-spacing the lever arms already use. The two planes share
+one bare string length, so the doublet width is the bridge's own pull on the
+normal member. Where the saddle rocks the pair is one coupled system; it is
+tuned by its sustained, energy-weighted centre, found from the eigenvalues of
+the loops' round trip times the saddle's 2x2 reflection (the flamenca's open B
+otherwise sustains 6.6 cents sharp, its bridge-led member shedding 0.24 dB a
+period against the parallel-led member's 0.011). Nothing is fitted.
+
+What it did. Beating: flat-top H1-H6 0.23-1.14 dB, steel archtop 0.05-1.59,
+nylon 0.49-1.36 - toward the recordings on every row group, still short on
+nylon and on the fundamentals. Benchmark, every split: Fylde bridge training
+6.268767 -> 6.148927, development validation 6.172187 -> 6.008802, flat-top
+8.591335 -> 8.232583; Original bridge 6.392396 -> 6.167890, 6.378758 ->
+6.042989, 9.256751 -> 8.559757; Pick 6.546029 -> 6.308471, 6.256259 ->
+5.950761. The decay term carries most of it; the pitch-trajectory term rises
+on the rocking bridges (Original training 0.455 -> 0.855) because a strongly
+coupled pair's attack can sit a few cents from its sustain.
+
+What was decided. Shipped on the measurement: it is the first change here that
+improves every split and every material, it adds no constant, and it is what
+the 2026-08-30 commitment asked for before a second axis radiated - a
+measured passive path - within the part of the 2x2 matrix the archive does
+measure. It is audible and changes every note, so a listening pair (A the
+engine without the parallel plane, B this) is the natural check; no verdict
+is recorded yet.
+
 ## 2026-09-24 — the two lines merged, and which Dreadnought the default keeps
 
 What was merged. Two lines grew from the same snapshot: a local one (the

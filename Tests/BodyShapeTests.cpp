@@ -20,6 +20,7 @@ struct AcustraEngineTestAccess
     { return e.bridgeDerivativesCrossRelease_; }
     static bool bodySettled(const AcustraEngine& e, BodyShape shape)
     { return e.configuredBodyShape_ == shape && e.bodyModelFade_ == 1.0f; }
+    static float saddle(const AcustraEngine& e) { return e.saddleHeightRatio(); }
 };
 }
 
@@ -70,11 +71,14 @@ double expectedPhase(const Engine& e, double frequency, int string, double rate)
     const auto y = mobility(Access::bridge(e), frequency, rate);
     const Complex s(0, 2*rate*std::tan(pi*frequency/rate));
     std::array<double, 3> stiffness {};
+    // The anchor stubs also hold the saddle crown sideways, which the
+    // parallel polarisation's rocking port adds as (h/a)^2 of each stub.
+    const double eta = Access::saddle(e);
     for (int i = 0; i < 6; ++i)
     {
         const double u = (i-2.5)/2;
         const double k = Access::voices(e)[i].bridgeTailStiffness;
-        stiffness[0] += k; stiffness[1] += u*k; stiffness[2] += u*u*k;
+        stiffness[0] += k; stiffness[1] += u*k; stiffness[2] += (u*u+eta*eta)*k;
     }
     // Apply a unit force at this string and solve (I+Y*K/s)*motion=Y*[1,u].
     // This direct solve works for both rank-one and rocking banks, without
@@ -219,8 +223,12 @@ void testRetuneAndTailOwnership()
                 && after[i].tailDamping == before[i].tailDamping
                 && after[i].tailCharacteristicImpedance == before[i].tailCharacteristicImpedance,
                 "shape discarded or changed a retained tail's own state");
-            const double expected = before[i].loops[0].targetDelay+oldPhase[i]
-                -Access::phase(*e,static_cast<float>(frequency[i]),i);
+            // Both loops also carry the coupled pair's detune, which follows
+            // the new bridge too; the phase is taken on the bare length.
+            const double expected = (before[i].loops[0].targetDelay
+                    / (1.0+before[i].polarisationDetune)+oldPhase[i]
+                -Access::phase(*e,static_cast<float>(frequency[i]),i))
+                * (1.0+after[i].polarisationDetune);
             expect(std::abs(after[i].loops[0].targetDelay-expected)<.002,
                 "shape did not retune an active or idle string to its new bridge");
             largestRetune = std::max(largestRetune,

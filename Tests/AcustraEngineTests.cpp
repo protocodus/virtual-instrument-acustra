@@ -20,6 +20,18 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    // Empties every string's parallel-polarisation loop, as if the pluck had
+    // put nothing in that plane.
+    static void silenceParallelPolarisation(AcustraEngine& engine)
+    {
+        for (auto& voice : engine.voices_)
+            voice.loops[1].reset();
+    }
+    static float saddleHeightRatio(const AcustraEngine& engine)
+    {
+        return engine.saddleHeightRatio();
+    }
+
     static void invalidateDispersionSolveCache(AcustraEngine& engine)
     {
         for (auto& voice : engine.voices_)
@@ -2597,10 +2609,17 @@ void testPhysicalSustainSettlesNearRequestedPitch()
         // bound and is what sets it: at the shipping calibration the six
         // read +0.432 (MIDI 40), +0.274 (45), +0.322 (52), +1.515 (59),
         // +0.087 (64) and -0.214 (71) cents, so the other five sit inside
-        // half a cent and B3 has 0.08 cents of headroom. Tighten this only
-        // together with a measurement of B3's coupling to the rocking mode,
-        // since that pair, not a compensation error, is what puts it there.
-        expect(std::abs(alone) < 1.6,
+        // half a cent and B3 has 0.08 cents of headroom. That coupling has
+        // since been measured: with the parallel polarisation on the rocking
+        // coordinate the open B forms a mode pair through it, a
+        // normal-dominated member that sheds 0.24 dB a period and a
+        // parallel-dominated one 6.4 cents above that sheds 0.011, so the
+        // sustain this window reads was 6.6 cents sharp before the pair was
+        // tuned by its sustained, energy-weighted centre
+        // (coupledPolarisationDetune). Tuned, B3 reads +1.67 cents, where the
+        // uncoupled string read +1.52: the same reactive-termination pair as
+        // before, read through a doublet. The bound is 1.8 for that reason.
+        expect(std::abs(alone) < 1.8,
                "the played steel string missed settled pitch for MIDI "
                    + std::to_string(midiNote) + " by "
                    + std::to_string(alone) + " cents");
@@ -3479,7 +3498,14 @@ void testABendDoesNotStepTheJunctionPort()
         const auto steppedSlide = bendTo(false, 2.0f, true);
         const double steppedRise = rise(stepped);
         const double steppedSlideRise = rise(steppedSlide);
-        expect(steppedRise < std::max(steppedSlideRise, heldRise) * 1.05,
+        // Both reach their worst frame at the same moment, where the new
+        // pitch lands on a body mode; there the bent string's 12.3% higher
+        // impedance makes the junction's force that much larger, which is
+        // the mechanism the peak bound below allows 1.13 for. With the
+        // parallel polarisation radiating, the note's doublet sets which
+        // frame precedes the landing, and the 48 kHz stepped bend rises 1.09
+        // times the slide in the same frame (level 1.077 times it).
+        expect(steppedRise < std::max(steppedSlideRise, heldRise) * 1.13,
                "a whole tone arriving in one message at "
                    + std::to_string(static_cast<int>(rate))
                    + " Hz raised one 5 ms frame by a factor of "
@@ -7215,6 +7241,114 @@ void testTheNormalPolarisationIsTheHigherMemberByALength()
               << " cents, normal loop unmoved\n";
 }
 
+// The polarisation parallel to the soundboard pushes the saddle crown
+// sideways at its height over the top, which is a moment about the string's
+// own axis: on a bridge whose rocking and moment radiation were measured it
+// reaches the microphones and forms, with the normal polarisation, the doublet
+// every guitar partial beats with. Where the measurement is scalar (the Rau
+// guitars) nothing can carry it and the plane stays silent.
+void testTheParallelPolarisationRadiatesThroughTheRockingSaddle()
+{
+    using acustra::AcustraEngineTestAccess;
+    using acustra::GuitarModel;
+    using acustra::StringMaterial;
+    const auto renderNote = [] (acustra::EngineParameters parameters,
+                                int midiNote, bool silenceParallel)
+    {
+        acustra::AcustraEngine engine;
+        engine.setParameters(parameters);
+        engine.prepare(sampleRate, blockSize);
+        engine.noteOn(midiNote, 0.75f);
+        if (silenceParallel)
+            AcustraEngineTestAccess::silenceParallelPolarisation(engine);
+        const int samples = static_cast<int>(2.5 * sampleRate);
+        Audio audio { std::vector<float>(static_cast<std::size_t>(samples)),
+                      std::vector<float>(static_cast<std::size_t>(samples)) };
+        for (int offset = 0; offset < samples; offset += blockSize)
+            engine.process(audio.left.data() + offset,
+                           audio.right.data() + offset,
+                           std::min(blockSize, samples - offset));
+        return std::pair { audio,
+                           AcustraEngineTestAccess::saddleHeightRatio(engine) };
+    };
+    const auto energy = [] (const std::vector<float>& signal, std::size_t from)
+    {
+        double sum = 0.0;
+        for (std::size_t index = from; index < signal.size(); ++index)
+            sum += static_cast<double>(signal[index]) * signal[index];
+        return sum;
+    };
+    struct Case
+    {
+        GuitarModel model;
+        StringMaterial material;
+        acustra::BridgeModel bridge;
+        bool radiates;
+        const char* name;
+    };
+    // Nylon avoids steel's attack-pitch surrogate, which reads both planes'
+    // slope energy, so a silent plane must leave the scalar guitars' output
+    // bit-identical.
+    for (const Case test : {
+             Case { GuitarModel::Original, StringMaterial::Nylon,
+                    acustra::BridgeModel::Original, true, "Original nylon" },
+             Case { GuitarModel::Original, StringMaterial::Steel,
+                    acustra::BridgeModel::FyldeSteel, true, "Original steel, Fylde" },
+             Case { GuitarModel::Original, StringMaterial::Steel,
+                    acustra::BridgeModel::Original, true, "Original steel" },
+             Case { GuitarModel::Bellido1978, StringMaterial::Nylon,
+                    acustra::BridgeModel::Original, true, "Bellido" },
+             Case { GuitarModel::MartinD18V2007, StringMaterial::Nylon,
+                    acustra::BridgeModel::Original, false, "Martin, nylon" },
+             Case { GuitarModel::Washburn1897, StringMaterial::Nylon,
+                    acustra::BridgeModel::Original, false, "Washburn, nylon" } })
+    {
+        acustra::EngineParameters parameters;
+        parameters.guitarModel = test.model;
+        parameters.stringMaterial = test.material;
+        parameters.bridgeModel = test.bridge;
+        for (const int midiNote : { 45, 57, 64 })
+        {
+            const auto [both, eta] = renderNote(parameters, midiNote, false);
+            const auto [normalOnly, unused] = renderNote(parameters, midiNote, true);
+            std::vector<float> parallel(both.left.size());
+            for (std::size_t index = 0; index < parallel.size(); ++index)
+                parallel[index] = both.left[index] - normalOnly.left[index];
+            const auto from = static_cast<std::size_t>(0.1 * sampleRate);
+            const double share = energy(parallel, from)
+                / std::max(energy(both.left, from), 1.0e-30);
+            if (test.radiates)
+            {
+                // The published crown heights over the 23.2 mm half-spacing.
+                expect(eta > 0.34f && eta < 0.45f,
+                       std::string(test.name) + " did not project the crown's "
+                       "published height onto the rocking");
+                // Parallel plucks are markedly quieter (Woodhouse 2004), and
+                // this pluck puts about a tenth of its energy in that plane;
+                // but its share of what is heard grows as the normal plane,
+                // which the bridge loads harder, decays away from it.
+                expect(share > 1.0e-4 && share < 0.5,
+                       std::string(test.name) + " MIDI "
+                           + std::to_string(midiNote)
+                           + ": the parallel plane's share of the sound was "
+                           + std::to_string(share));
+            }
+            else
+            {
+                expect(eta == 0.0f && share == 0.0,
+                       std::string(test.name)
+                           + ": a scalar measurement carried the parallel "
+                             "plane to the microphones");
+            }
+            if (midiNote == 57)
+                std::cout << "Acustra parallel polarisation " << test.name
+                          << " A3 share of the sound after 0.1 s: "
+                          << 10.0 * std::log10(std::max(share, 1.0e-30))
+                          << " dB\n";
+        }
+    }
+}
+
 void testFrettingGeometryUsesTheOpenNutAndActualFretPositions()
 {
     for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
@@ -7489,6 +7623,7 @@ int main()
     testBodyShapesFollowTheCoupledTopAndCavity();
     testAPlectrumReleasesWithVelocity();
     testTheNormalPolarisationIsTheHigherMemberByALength();
+    testTheParallelPolarisationRadiatesThroughTheRockingSaddle();
     testPerformance();
     if (failures == 0)
         std::cout << "All Acustra engine tests passed\n";

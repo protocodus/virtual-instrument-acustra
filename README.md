@@ -118,11 +118,13 @@ is an independent realism benchmark.
 On the current engine - the force/moment body, the coupled-model shapes, the
 continuous Gaussian contact, the steel contact transport and the Yamaha nylon
 calibration, the two lines of development merged on 2026-09-24 - the same
-protocol at the shipping calibration reads 6.392396 on training, 6.378758 on
+protocol at the shipping calibration read 6.392396 on training, 6.378758 on
 development validation and 9.256751 on the flat-top rows with the benchmark's
 reference Original bridge, and 6.268767, 6.172187 and 8.591335 with the Fylde
-bridge the steel presets play; these are the base every paired comparison
-below is taken against. The renderer renders each material at the body its
+bridge the steel presets play; with the parallel polarisation radiating
+(Pluck and strings) they read 6.167890, 6.042989 and 8.559757, and 6.148927,
+6.008802 and 8.232583. The latter are the base every later paired comparison
+is taken against. The renderer renders each material at the body its
 calibration was fitted on - steel the default Dreadnought, nylon the
 Auditorium slot that is the measured classical - which is byte-identical to
 the renders scored before the shape model existed.
@@ -601,10 +603,42 @@ computation"), so it ships as a single published length, bounded to one
 string diameter and frozen rather than fitted (the corpus's own lever on it
 is weak, but it prefers the published value on every split). On steel this
 second loop contributes slope energy to the attack-pitch surrogate below.
-Only the perpendicular loop drives the shared bridge; the parallel loop's
-optional direct observer has zero gain in the fitted defaults. The retained
-saddle-height experiment documents the unresolved coupled tuning problem
-with routing that second plane into the bridge.
+
+The parallel loop reaches the body too. A string vibrating parallel to the
+soundboard pushes the saddle crown sideways at the crown's height over the
+top, and a sideways force there is a moment about the string's own axis - the
+rocking the archive's two bridge-end impacts measure. In the model's
+normalized rocking coordinate `r = a*theta` that moment is `h/a` times the
+horizontal force and the crown moves `h/a` times the rocking, so the parallel
+polarisation's port is `(h/a)^2` times the measured rocking mobility, the
+anchor stubs hold it with `(h/a)^2` of their stiffness, and its load reaches
+the microphones through the measured moment-to-pressure paths. `h` is the
+published height of the strings over the top at the bridge, to their lower
+bound (R. Mores, *List of guitars measured*, 2021, HSaT): 8.1 mm on g21, whose
+radiation steel plays with either bridge, 10.2 mm on g34 and 8.6 mm on the
+1978 Bellido; `a` is the 23.2 mm impact half-spacing the saddle lever arms
+already assume. Nothing is fitted. The Fylde bridge was measured without
+rocking, so there the crown does not move and the parallel loop still
+reflects rigidly, but its force still reaches g21's measured moment paths;
+the Rau guitars have neither a rocking nor a moment measurement and their
+parallel plane stays silent. Both polarisations are one string: the normal
+loop is tuned so that, loaded by the bridge, it sounds the requested pitch,
+and the parallel loop shares that bare length plus the end correction, so the
+pair's split - the doublet each partial beats with - is the bridge's own pull
+on the normal member and varies note to note (0 to about 10 cents here, 5 to
+9 in Woodhouse's measurements). Where the saddle rocks, the two loops are
+coupled through it and ring as one pair of modes; its sustained,
+energy-weighted centre is found from the eigenvalues of the loops' round trip
+times the saddle's 2x2 reflection, and both loops are lengthened by what it
+sits above the request - the flamenca bridge's open B, whose parallel-led mode
+sustains while its bridge-led partner sheds 0.24 dB a period, would otherwise
+sound 6.6 cents sharp. The effect is audible as the slow beating a guitar
+partial has and a single radiating plane cannot: over 0.3-2.3 s, the median
+RMS envelope residual of H1-H6 after a quadratic trend is 0.23-1.14 dB on the
+flat-top rows against the recordings' 0.58-2.97 (0.11-0.59 with one plane),
+0.05-1.59 dB on the steel archtop rows against 0.26-1.69 (0.02-0.81), and
+0.49-1.36 dB on nylon against 1.73-7.06 (0.01-0.34). It also lengthens what
+sustains: on the benchmark the decay term falls on every split.
 
 Steel attack pitch uses a bounded Kirchhoff--Carrier energy surrogate. The
 released waveguide displacement supplies its slope energy; string axial
@@ -934,8 +968,10 @@ stopping-finger contact. Those mechanisms inform the roadmap, but Acustra does
 not mislabel its present bounded pitch glide as that solver. A 2025
 [comparison of acoustic, electro-acoustic and optical sensors](https://www.mdpi.com/1424-8220/25/21/6514)
 examines the different waveforms those sensors observe on a plucked and struck
-string. It does not identify a reciprocal 2-D guitar-bridge transfer matrix;
-that measurement is still needed before the silent second axis is promoted.
+string. It does not identify a reciprocal 2-D guitar-bridge transfer matrix.
+The second axis Acustra radiates is the part of that matrix the archive does
+measure - the rocking a sideways crown force drives, through the published
+crown height - not the in-plane translation, which remains unmeasured.
 
 The 2025
 [robotic plucking-depth study, posted in 2026](https://arxiv.org/abs/2606.24356)
@@ -1395,8 +1431,12 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   115-note corpus despite bringing partial-level fine structure closer to the
   real guitars; those dated results do not establish the accuracy of the new
   force-pair bank. Real nylon and flat-top fundamentals beat at about 1 Hz and
-  5 dB, a doublet 5 to 9 cents wide, which the single radiating string axis
-  cannot make; the earlier model's 2 to 3 dB modulation was idle-string beating. And
+  5 dB, a doublet 5 to 9 cents wide; the radiating parallel polarisation
+  (Pluck and strings) now gives the model's partials a beat of the same kind,
+  but its fundamentals still beat less than the recordings' (flat-top H1
+  0.23 against 1.50 dB RMS residual), since the parallel plane's share of a
+  pluck is fixed near a tenth and its path through the rocking is weak at the
+  lowest partials. And
   the nylon and flat-top targets carry 11 to 12 ms of pre-roll that the
   scorer charges to every such row's attack term as a constant the model
   cannot remove.
@@ -1470,10 +1510,12 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   force, or a 111% change in release aperture. All three are an order of
   magnitude beyond anything a player does, so the model's attack colour is
   locked to note and velocity for a reason its excitation parameters cannot
-  reach. The plucking angle is the mechanism this points to, and expressing it
-  needs the two radiating axes the scalar bridge above does not have: changing
-  the angle here only moves energy into the silent polarisation, scaling the
-  note rather than colouring it. Level spread cannot be read from that corpus,
+  reach. The plucking angle is the mechanism this points to. The parallel
+  polarisation now radiates where the rocking was measured (Pluck and
+  strings), so an angle colours a note rather than only scaling it, but each
+  pluck still draws its angle from the same narrow authored spread
+  (polarisation mix 0.91 - 0.08 Touch, +-0.025), and what spread a player's
+  angle actually has is not measured here. Level spread cannot be read from that corpus,
   whose per-zone playback trim normalises it, and its settled-pitch spread sits
   below the analysis resolution.
 - The string waveguides remain linear apart from the bounded steel
@@ -1508,123 +1550,39 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   classical string set and rejected: it fixes 180-900 Hz but over-damps
   2-6.8 kHz by up to 40%, and a bounded scale on the bending-loss term cannot
   buy it back without moving worse than the shipping loss everywhere else.
-- The measured bridge is scalar and radiates one transverse string axis, and
-  what that costs has been corrected. Woodhouse, who measured the full 2x2
-  bridge admittance matrix on a guitar and synthesised with and without the
-  second string polarisation, reports that including it "makes rather little
-  difference" to the damping factors, and that across every note to the twelfth
-  fret on each string of his test guitar there was no convincing example of
-  double exponential decay. Two-stage decay is a piano behaviour, and the
-  second axis is not the route to it here. What he does report is that plucks
-  parallel to the soundboard have significantly lower levels, and that where a
-  string peak splits into a doublet the normal pluck excites the upper member
-  and the parallel pluck the lower — an effect on angle and colour, which is
-  what this instrument's own take-to-take measurement pointed at. The gap
-  stays, for that reason rather than for sustain. Two things the same source
-  settles: such a matrix has been measured and published, by Woodhouse and
-  earlier by Lambourg and Chaigne, and in a modal expansion the two direct
-  admittances and the cross admittance all follow from each mode's normal and
-  tangential components, so a passive 2x2 on the existing measured body needs
-  one extra number per mode rather than a second measurement of everything.
-  A proper second axis requires that number;
-  the tested arbitrary rotation did not generalise and is not shipped. The
-  corpus's clearest signature of angle-selected doublet members is the
-  archtop's open E2 at the softest layer, whose H2 is a resolved doublet
-  about 0.8 Hz wide whose dominant member switches across the three round
-  robins, on a partial with no open-string unison partner. Two
-  independent lines now raise its priority rather than lower its bar: no
-  excitation control can reach the take-to-take attack variation real recordings
-  show, which points at the plucking angle, and the established physically
-  modelled acoustic guitar on the market states that it models both transverse
-  axes. Both argue for acquiring the measurement, not for approximating it
-  again. This
-  also costs the instrument its plucking angle: with one radiating axis, angle
-  moves energy into the silent polarisation and scales a note instead of
-  colouring it, which is why no excitation control can reach the take-to-take
-  attack variation measured below. A historical scratch trial reported levels
-  64.2, 60.2 and 47.7 dB below shipping at saddle heights of 3, 6 and 30 mm
-  ([commit 9bc0bf38](https://github.com/voho/vst-instruments/commit/9bc0bf385eb4af260c453d4f10fb1c1c8430fca6),
-  `Docs/physical-fit-report.json`, `polarisation_end_correction.rocking_only_second_axis_rejected`).
-  Its implementation and audio could not be recovered, so its unit conversions
-  and output comparison cannot be verified. The model uses normalized rocking
-  displacement `r = a*theta`, with `a` the assumed impact half-separation. A
-  horizontal force applied at height `h` therefore projects with `h/a`, and
-  its driving-point mobility is `(h/a)^2*Yrr`, not `h^2*Yrr`. Omitting `1/a^2`
-  at the model's 23.2/21.6 mm half-spacings would reduce mobility by 65.4/66.6 dB;
-  a pressure path with one projection has a 32.7/33.3 dB factor instead. Neither
-  factor predicts the old render's level without its missing routing code.
-  That trial supplies no verified inaudibility bound. A new
-  [retained prototype](Tools/SaddleHeightExperiment.patch) uses the correct
-  ratio with published lower-string heights and an explicitly assumed 58 mm
-  string spread. Equal-initial-energy, isolated held notes produce horizontal
-  output up to 5.3 dB below the vertical output through cross-to-heave coupling;
-  every tested note decays. The existing training loss improves 1.0%, but attack
-  and pitch-trajectory losses worsen. That early version failed three
-  release/pull-off gates. The current fretting correction and simultaneous
-  held-note release comparison resolve those failures; including both string
-  axes in the wave-flux audit makes the complete engine suite pass. This is
-  not proof that its tuning or radiation is correct: the independent per-axis
-  phase estimate omits the other axis's returning wave, and even the shipping
-  tuning estimate omits neighbouring strings' frequency-dependent loop loads.
-  A discrete coupled-pole reference reproduces the native string and bridge
-  recurrences, but selecting a pole remains an audible-mode problem: in the
-  prototype's 96 kHz open B, the tracked vertical mode is 19.6 cents flat while
-  the recorded tail is dominated by a different mode about 3.1 cents sharp.
-  In its fretted nylon C4, the early vertical mode gives way to a longer-lived
-  horizontal mode about 6.8 cents flat. Neither the nearest root nor continuity
-  from the vertical mode is therefore sufficient for an automatic tuner.
-  Rotation-axis geometry and lateral translation remain unmeasured. The raw
-  normal-impact microphone records do support a conditional force-pair
-  radiation map; they do not measure arbitrary horizontal excitation.
-  [`AuditBodyForcePair.py`](Tools/AuditBodyForcePair.py) preserves the complex
-  bass/treble responses and converts them to common force `Fb+Ft` and
-  differential force `Ft-Fb` (moment divided by impact half-spacing).
-  This exactly reconstructs those two measured inputs; extending it to every
-  string position assumes spatial interpolation. The center impact tests only
-  the common component. The previous independent minimum-phase paths discarded
-  the relative phase needed for this map. Refitting their existing poles to
-  the raw complex pair passed the filter-error limits on only two of six
-  generalized-force paths per guitar. A common 16-sample onset offset did not
-  resolve that failure and was not an identified acoustic delay.
-  Joint pole selection from the six measured endpoint paths does better:
-  [`GenerateBodyForcePair.py`](Tools/GenerateBodyForcePair.py) fits their raw
-  complex responses and checks both endpoint and generalized-force bases.
-  Its native header contains the 3,752 float values auditioned in the selected
-  model. The zero-added-delay banks pass the existing filter and capture-balance
-  limits at 127/141 poles for g21/g34. On forces from 72 native modeled notes,
-  median pressure-approximation error falls about 20% against the fixed-pole
-  refit, but the largest relative errors remain 0.51/0.34. These are conditional
-  approximation checks, not an overall realism score; coherent cancellation
-  and unmeasured spatial behavior remain limitations.
-  The [retained pre-integration experiment](Tools/BodyForcePairExperiment.patch)
-  showed that inheriting the old body calibration suppressed upper bands by
-  18–28 dB. Resetting four body calibration factors to their neutral values
-  restored those levels while retaining Dreadnought morphing. Across the same
-  six already-opened GuitarSet clips, this version reduced mean log-spectrum
-  error from 14.920 to 13.103 dB, while spectral convergence and chroma distance
-  worsened from 0.902/0.310 to 0.920/0.318. On the AG-PT hammer-on comparison
-  after the fretting-geometry correction, microphone level-ratio error also
-  worsens under all 18 declared timing/velocity assumptions:
-  the median errors span 3.793–4.652 dB versus 1.533–3.351 dB with the previous
-  body. All 450 corresponding saddle-piezo streams are byte-identical, isolating
-  the radiation change. Those events are estimated from pitch plateaus, and
-  the model's microphone/piezo paths do not reproduce the recording's pickup blend.
-  On 2026-09-05 the user preferred this candidate because it sounded more
-  stereo. The native force-pair bank and neutral body calibration adopt that
-  spatial direction, without a runtime level trim or a general realism claim.
-  Qualification separated source behavior from radiation: the string-loss
-  check observes saddle force with unchanged tolerances, and release checks
-  preserve ringing body/history state while independently measuring injected
-  string energy. The old first-millisecond/prior-sustain peak ratio remains a
-  diagnostic, not a physical continuity bound. No protected development or
-  test targets were opened for this comparison. The missing horizontal-force
-  measurements, measured steel body and validated spatial interpolation remain
-  requirements for a broader model.
-  Separately,
-  a doublet-ratio extraction of the plucking angle from the reference
-  recordings' round robins is noise-limited (a take-to-take spread the same
-  size as the within-take scatter). Neither substitutes for the missing
-  tangential admittance per body mode.
+- The parallel polarisation radiates through the measured rocking, not
+  through a measured tangential admittance. Woodhouse, who measured the full
+  2x2 bridge admittance matrix on a guitar and synthesised with and without
+  the second polarisation, reports that including it "makes rather little
+  difference" to the damping factors and found no convincing double
+  exponential decay across every note to the twelfth fret of his test guitar;
+  what he does report is that plucks parallel to the soundboard are markedly
+  quieter and that where a partial splits into a doublet the normal pluck
+  excites the upper member and the parallel pluck the lower. Acustra's
+  parallel plane now reaches the body the way a sideways crown force does,
+  as a moment through `h/a` onto the measured rocking and moment paths, with
+  `h` the published crown heights of the measured guitars (Pluck and
+  strings). Three things that route does not cover remain open: the saddle's
+  in-plane translation, which no archive here measures; the rotation axis's
+  depth below the top, taken as the top surface; and every bridge measured
+  without rocking - the Fylde's crown does not move, so its parallel loop is
+  loaded by nothing and only radiates, and the Rau guitars, measured with one
+  scalar mobility and one force-to-pressure path, keep a silent parallel
+  plane. In a modal expansion the direct and cross admittances all follow
+  from each mode's normal and tangential components, so one extra measured
+  number per mode would replace the rocking route with the full matrix.
+  Where the rocking is strong the two loops form one pair of modes; the pair
+  is tuned by its sustained, energy-weighted centre, so its attack can sit a
+  few cents from its sustain (the flamenca bridge's open B starts about 7
+  cents under the pitch it sustains at), and across the fretboard the settled
+  pitch of a single note stays within -1.8 to +3.0 cents on the flamenca
+  bridge and -2.6 to +1.5 on the classical where it was -4.2 to +3.7 and -1.0
+  to +0.3 with one radiating plane. The benchmark's pitch-trajectory term
+  rises with it (Finger, Original bridge: training 0.455 -> 0.855,
+  validation 0.143 -> 0.499) while every total falls. The superseded
+  [saddle-height prototype](Tools/SaddleHeightExperiment.patch) tuned each
+  plane against its own port, which is what left its open B 19.6 cents from
+  the mode that sustained.
 - The two-way junction and the stub anchor are calibrated around a
   one-way, 17 mm-spring engine. The open-string partials now sit 21 to 25 dB
   under a played fundamental against the recordings' 25 to 40, and the
@@ -1835,12 +1793,11 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   natural harmonics, continuous finger-to-pick contact through Touch, slides —
   pitch bend retunes a sounding string without replaying it, verified by the
   delay line moving 276.4 to 245.6 samples for two semitones and back — and, on
-  CC68, legato. It lacks tapping, slapping and buzz, and it radiates one
-  transverse axis where
-  the commercial instrument states two. Its measured-body and published-fit
-  approach has no counterpart in either. The second axis is the same gap its own
-  measurements reached independently through the plucking angle. This is a
-  reading of what those products say they model, not a listening comparison.
+  CC68, legato. It lacks tapping, slapping and buzz. Like the commercial
+  instrument it now radiates both transverse axes, the second through the
+  measured rocking rather than a modelled one. Its measured-body and
+  published-fit approach has no counterpart in either. This is a reading of
+  what those products say they model, not a listening comparison.
 - No controlled expert study has compared this build with real guitars and
   leading commercial instruments. “Top of market” remains the target, not a
   validated product claim.
@@ -1894,6 +1851,19 @@ git history rather than here.
 
 ### 2026-09-24
 
+- **Both string polarisations are heard.** The plane parallel to the
+  soundboard pushes the saddle crown sideways at its published height, a
+  moment on the measured rocking, and reaches the microphones through the
+  measured moment paths, so each partial becomes the slowly beating doublet a
+  real guitar's is instead of one smooth exponential. Both planes share one
+  string length, so the doublet's width is the bridge's pull on the normal
+  member and changes note to note; where the saddle rocks, the coupled pair is
+  tuned by its sustained centre. Nothing is fitted. Every split of the
+  benchmark improves: with the Fylde bridge training 6.268767 → 6.148927,
+  development validation 6.172187 → 6.008802, flat-top 8.591335 → 8.232583;
+  with the Original bridge 6.392396 → 6.167890, 6.378758 → 6.042989 and
+  9.256751 → 8.559757; under Pick 6.546029 → 6.308471 and 6.256259 → 5.950761.
+  The Rau guitars, measured without rocking or moment paths, are unchanged.
 - **The two lines of development are one instrument again.** The measured
   guitar models, three-choice capture, continuous Gaussian contact, steel
   contact transport, release and picking-character work join the coupled
