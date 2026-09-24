@@ -3038,9 +3038,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // preferred the normal-led pluck on all three nylon pairs, and again
     // wherever the branch was heard whole: a classical stroke pushes the
     // string toward the top, so nylon keeps 0.91 - 0.08 Touch
-    // (Docs/decisions.md). Both are selected shares, not measured angles;
-    // Touch presses either further toward the top, and each pluck draws its
-    // own.
+    // (Docs/decisions.md). Both are selected shares, not measured angles; a
+    // higher Touch turns either further along the top, and each pluck draws
+    // its own.
     const float randomAngle = 0.025f * nextNoise(voice);
     voice.polarisationMix = pluckNormalShare(steel, touch, randomAngle);
     // The shared register law pivots at one fixed 48 kHz MIDI-61 period,
