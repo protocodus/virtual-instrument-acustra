@@ -23,10 +23,20 @@ namespace
 constexpr float pi = 3.14159265358979323846f;
 constexpr float twoPi = 2.0f * pi;
 constexpr int localMaximumDelaySamples = 8192;
-// Legacy output reference gain retained identically to shipping A. The pair
-// bank preserves raw measured complex phase; this gain is not an absolute-SPL
-// calibration of the new bank. Any audition RMS match is applied after render.
-constexpr float radiationReferenceGain = 18.0f;
+// Legacy output reference gain. The pair bank preserves raw measured complex
+// phase; this gain is not an absolute-SPL calibration of the new bank. Any
+// audition RMS match is applied after render. It was 18 while a pluck put 86%
+// of its energy normal to the top; releasing most of it parallel to the top
+// (initialisePluck) left every demo a median 5.41 dB quieter at the same
+// controls, so the reference rises by that much and a session keeps the
+// loudness it had.
+constexpr float radiationReferenceGain = 18.0f * 1.8637f;
+// The share of a pluck's energy released normal to the soundboard at a Touch,
+// with a pluck's own draw about it; initialisePluck says where it comes from.
+float pluckNormalShare(float touch, float draw = 0.0f) noexcept
+{
+    return std::clamp(0.30f - 0.08f * touch + draw, 0.17f, 0.35f);
+}
 static_assert(detail::measuredSteelBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
 static_assert(detail::measuredNylonBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
 static_assert(detail::measuredSteelBridgeModes.size()
@@ -3007,9 +3017,22 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     const float amplitude = (steel ? 0.24f : 0.29f)
         * std::pow(v, velocityExponent) * (0.92f + 0.08f * touch)
         * strumLevelGain;
+    // The share of the pluck's energy released normal to the soundboard. A
+    // finger's free stroke and a pick both cross the strings moving along
+    // the top, pressing in only partly, so most of a pluck is parallel to it
+    // - which radiates only through the rocking saddle, quieter and longer
+    // (saddleHeightRatio). When only the normal plane reached the body this
+    // share sat at 0.91 - 0.08 Touch so the note would be heard at all. With
+    // both planes radiating, a sweep of the share over the benchmark improves
+    // every split down to about 0.25 at the default Touch, a release about 60
+    // degrees from the normal: from 0.86 to 0.25, Fylde bridge training
+    // -0.39%, development validation -2.38%, flat-top -3.46%, and Original
+    // -1.10%, -2.78%, -5.13% (only the nylon training rows move the other
+    // way, +0.54%), with the partials' beating coming within reach of the
+    // recordings'. It is a selected share, not a measured angle; Touch still
+    // presses it further toward the top, and each pluck draws its own.
     const float randomAngle = 0.025f * nextNoise(voice);
-    voice.polarisationMix = clamp(0.91f - 0.08f * touch + randomAngle,
-                                  0.78f, 0.96f);
+    voice.polarisationMix = pluckNormalShare(touch, randomAngle);
     // The shared register law pivots at one fixed 48 kHz MIDI-61 period,
     // independent of material, string choice and host sample rate.
     const float apertureReferenceDelay = 48000.0f / midiFrequency(61);
@@ -3471,7 +3494,14 @@ float AcustraEngine::pluckEnergy(float velocity, float soundingLength,
                                  0.05f, 0.46f);
     const float metres = amplitude
         * std::max(physicalCalibration_.steelDisplacementScaleMetres, 1.0e-4f);
-    return 0.5f * tension * metres * metres
+    // The fretting finger strikes and leaves the string normal to the
+    // fretboard, so its gestures belong to the normal plane alone, while a
+    // pluck puts most of its energy parallel to the top (initialisePluck's
+    // polarisation share). Matching a hammer-on to what a pluck at the same
+    // velocity puts in the normal plane, rather than to the whole pluck,
+    // keeps the convention's own aim: a hammered note lands at a pluck's
+    // loudness rather than several times it.
+    return pluckNormalShare(touch) * 0.5f * tension * metres * metres
          * (1.0f / position + 1.0f / (1.0f - position)) / soundingLength;
 }
 
@@ -3867,7 +3897,7 @@ void AcustraEngine::liftFinger(Voice& voice, int stringIndex,
 // constants writes this same dent and the rigid one stays.
 //
 // The published finger does not bound the speed either. Over that same
-// sweep the descent below reaches 62 m/s on steel and 43 m/s on nylon at
+// sweep the descent below reaches 21.8 m/s on steel and 16.3 m/s on nylon at
 // velocity 1.0 -- far faster than a hand moves -- but neither the mass nor
 // the stiffness limits it, because the finger is driven. The only published
 // value for that driving force is DAFx-24 Sec. 6.2's f_e,FG = 0.9 N, from

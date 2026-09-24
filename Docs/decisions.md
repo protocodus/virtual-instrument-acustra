@@ -4,6 +4,42 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-24 — a pluck releases most of its energy parallel to the top
+
+What was measured. Once the parallel plane radiated, the share of a pluck
+put into the plane normal to the top stopped being a level and became a
+colour, so it was swept on the benchmark from the 0.86 (0.91 - 0.08 Touch at
+the default Touch) that had kept the one radiating plane audible. Every Finger
+split improves down to about 0.25; a tenth lower (base 0.20) the development
+and flat-top rows turn (+0.09%, +0.62%) while training gains 0.07% more, and
+at base 0.13 all three are worse. At 0.25 the Fylde
+bridge's training, development validation and flat-top rows move -0.39%,
+-2.38% and -3.46%, the Original bridge's -1.10%, -2.78% and -5.13%; only the
+nylon training rows move the other way (+0.54%). The partials' beating comes
+within reach of the recordings' (flat-top H1-H6 median RMS residual 0.33-1.74
+dB against 0.58-2.97; steel archtop 0.17-1.75 against 0.26-1.69; nylon
+0.71-3.04 against 1.73-7.06), and the flat-top decay term falls 5.232 ->
+2.840. What worsens is the early pitch at high frets (the pitch-trajectory
+term, Fylde training 0.633 -> 1.199): see Known gaps in the README.
+
+What was built. The normal-plane share is 0.30 - 0.08 Touch, bounded to
+0.17-0.35, each pluck drawing its own +-0.025 about it; a finger's free
+stroke and a pick both cross the strings moving along the top, which is the
+direction of this choice, but its size is selected on the corpus, not
+measured. The fretting hand strikes and lifts normal to the fretboard, so its
+energy convention now matches what a pluck at the same velocity puts in that
+plane (its implied top speeds fall from 62 and 43 m/s to 21.8 and 16.3). The
+output reference rises by the 5.41 dB median the demos lost at unchanged
+controls. The plectrum's three values were refitted for the new release by
+the pick-release stage: 0.0625 v^0.47 with the transient gain on its zero
+bound (the Finger burst), archtop training under Pick 6.334019 -> 6.284861,
+development validation 5.941904 -> 5.904206.
+
+What was decided. Shipped on the benchmark: the one value is selected, not
+measured, and it is recorded as such. It changes every note's colour and
+beating, so it belongs in the next blind listening pair (A the engine before
+it, B this); no verdict is recorded yet.
+
 ## 2026-09-24 — the parallel polarisation radiates through the measured rocking
 
 What was measured. Every partial of a real guitar beats slowly: over 0.3-2.3 s

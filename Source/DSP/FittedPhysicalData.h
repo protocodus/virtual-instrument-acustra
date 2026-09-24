@@ -197,8 +197,15 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // wants a smaller share growing almost linearly, 0.3125 v^0.93, and a
     // transient at 0.125 of the Finger law's full-velocity burst: archtop
     // training 6.623494 -> 6.546029 under Pick, development validation
-    // 6.271120 -> 6.256259.
-    0.3125f, 0.9296875f, 0.125f
+    // 6.271120 -> 6.256259. Refitted again the same day by the same stage
+    // once both polarisations radiated and the pluck left most of its energy
+    // in the plane parallel to the top: the more horizontal release already
+    // carries the high partials the velocity share was supplying, and the
+    // search (60 evaluations to the step floor) keeps only a small, nearly
+    // flat share, 0.0625 v^0.47, with the transient gain on its zero bound,
+    // which is the Finger burst law: training 6.334019 -> 6.284861 under
+    // Pick, development validation 5.941904 -> 5.904206.
+    0.0625f, 0.46875f, 0.0f
 };
 
 } // namespace acustra

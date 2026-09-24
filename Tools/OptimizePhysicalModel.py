@@ -102,7 +102,7 @@ SHIPPING = np.asarray((
     0.749355465, 1.53, 0.52, 0.643124355, 0.494086432, 0.88819512, 1.1859375,
     -0.0706290118, 1.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011,
     2187.76023, 0.00325, 0.0, 35.0, 0.0008,
-    0.3125, 0.9296875, 0.125,
+    0.0625, 0.46875, 0.0,
 ))
 # The bridge-local direct path is deliberately fixed off. Its score direction
 # was flat (and slightly worse on validation), so fitting it only lets a

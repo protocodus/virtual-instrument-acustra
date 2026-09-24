@@ -2691,8 +2691,21 @@ void testSteelDispersionTracksTheStiffStringLaw()
 {
     acustra::EngineParameters parameters;
     parameters.stringMaterial = acustra::StringMaterial::Steel;
-    const auto audio = render(parameters, 40, 0.72f, 1.0,
-                              blockSize, false);
+    // The normal plane carries the tuning; the parallel plane shares its
+    // dispersion but sits the end correction's 2.1 cents below it, and a
+    // pluck puts most of its energy there, so it is emptied for this read.
+    acustra::AcustraEngine engine;
+    engine.prepare(sampleRate, blockSize);
+    engine.setParameters(parameters);
+    engine.setBridgeCouplingEnabled(false);
+    engine.noteOn(40, 0.72f);
+    acustra::AcustraEngineTestAccess::silenceParallelPolarisation(engine);
+    const int samples = static_cast<int>(1.0 * sampleRate);
+    Audio audio { std::vector<float>(static_cast<std::size_t>(samples)),
+                  std::vector<float>(static_cast<std::size_t>(samples)) };
+    for (int offset = 0; offset < samples; offset += blockSize)
+        engine.process(audio.left.data() + offset, audio.right.data() + offset,
+                       std::min(blockSize, samples - offset));
     const double fundamental = 440.0 * std::exp2((40.0 - 69.0) / 12.0);
     constexpr double length = 0.648;
     constexpr double tension = 110.759;
@@ -3476,10 +3489,10 @@ void testABendDoesNotStepTheJunctionPort()
         // A step in the port would arrive as a transient rather than as a
         // level: measured where one would show, in the rise from one 5 ms
         // frame to the frame two hops before it.
-        const auto rise = [&] (const Audio& audio)
+        const auto rise = [&] (const Audio& audio, double until = 1.2)
         {
             std::vector<double> frames;
-            for (double at = 0.45; at + 0.005 < 1.2; at += 0.0025)
+            for (double at = 0.45; at + 0.005 < until; at += 0.0025)
                 frames.push_back(tailBandRms(audio, rate, at, at + 0.005,
                                              20.0, 0.45 * rate));
             double worst = 0.0;
@@ -3494,10 +3507,15 @@ void testABendDoesNotStepTheJunctionPort()
         // And the hostile case the port slew exists for: the whole interval
         // arriving in one message, so the string's impedance is asked to
         // move 12% between one sample and the next.
+        // A step in the port shows within the delay's slew of the message at
+        // 0.5 s; hundreds of milliseconds later the frames only carry the
+        // doublet's own beat, whose nulls make a 5 ms rise of any size (at
+        // 96 kHz the bend's largest one sits 435 ms after the message). The
+        // stepped pair is therefore read over the 200 ms after it.
         const auto stepped = bendTo(true, 2.0f, true);
         const auto steppedSlide = bendTo(false, 2.0f, true);
-        const double steppedRise = rise(stepped);
-        const double steppedSlideRise = rise(steppedSlide);
+        const double steppedRise = rise(stepped, 0.70);
+        const double steppedSlideRise = rise(steppedSlide, 0.70);
         // Both reach their worst frame at the same moment, where the new
         // pitch lands on a body mode; there the bent string's 12.3% higher
         // impedance makes the junction's force that much larger, which is
@@ -4423,13 +4441,17 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
             // The pick's contact transient follows its own fitted law, an
             // impact growing with the tip's speed (FittedPhysicalData.h), not
             // the Finger burst the thumb shares; nylon's burst gain is zero.
+            // A zero gain is the Finger burst law itself.
             const auto& calibration = acustra::fittedPhysicalCalibration;
             const auto& physical = material == acustra::StringMaterial::Steel
                 ? calibration.steel : calibration.nylon;
-            const double expectedPick = calibration.pickTransientGain
-                * (material == acustra::StringMaterial::Steel ? 0.24 : 0.29)
-                * 0.017 * physical.transientScale
-                * std::pow(velocity, 0.5 * calibration.pickReleaseVelocityExponent);
+            const double expectedPick = calibration.pickTransientGain > 0.0f
+                ? calibration.pickTransientGain
+                    * (material == acustra::StringMaterial::Steel ? 0.24 : 0.29)
+                    * 0.017 * physical.transientScale
+                    * std::pow(velocity,
+                               0.5 * calibration.pickReleaseVelocityExponent)
+                : finger.noiseEnvelope;
             expect(std::abs(pick.noiseEnvelope - expectedPick)
                        <= 1.0e-5 * std::max(expectedPick, 1.0e-3),
                    "the pick's contact transient did not follow its fitted speed law");
@@ -7323,11 +7345,12 @@ void testTheParallelPolarisationRadiatesThroughTheRockingSaddle()
                 expect(eta > 0.34f && eta < 0.45f,
                        std::string(test.name) + " did not project the crown's "
                        "published height onto the rocking");
-                // Parallel plucks are markedly quieter (Woodhouse 2004), and
-                // this pluck puts about a tenth of its energy in that plane;
-                // but its share of what is heard grows as the normal plane,
-                // which the bridge loads harder, decays away from it.
-                expect(share > 1.0e-4 && share < 0.5,
+                // Parallel plucks are markedly quieter (Woodhouse 2004), but a
+                // pluck puts most of its energy in that plane and its share of
+                // what is heard grows as the normal plane, which the bridge
+                // loads harder, decays away from it; the two planes also
+                // interfere, so the difference can exceed the whole.
+                expect(share > 1.0e-4 && std::isfinite(share),
                        std::string(test.name) + " MIDI "
                            + std::to_string(midiNote)
                            + ": the parallel plane's share of the sound was "
@@ -7488,7 +7511,11 @@ void testAnOpenLiftInjectsItsCappedPhysicalEnergy()
             const double amplitude = (steel ? 0.24 : 0.29)
                 * std::pow(velocity, 1.32 - 0.50 * physical.velocityBrightnessDepth)
                 * (0.92 + 0.08 * touch);
-            const double requested = amplitude * amplitude
+            // The fretting finger's gestures carry what a pluck at the same
+            // velocity puts in the normal plane: its share 0.30 - 0.08 Touch,
+            // bounded to 0.17-0.35, without the per-pluck angle draw.
+            const double normalShare = std::clamp(0.30 - 0.08 * touch, 0.17, 0.35);
+            const double requested = normalShare * amplitude * amplitude
                                    / (position * (1.0 - position));
             const double expected = std::min(requested, elastic);
             for (const double rate : { 44100.0, 48000.0, 96000.0 })
