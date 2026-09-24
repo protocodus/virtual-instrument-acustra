@@ -4,6 +4,35 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-24 — steel's missing low end is the air mode at the bridge microphones
+
+What was measured. On the eight Eastman E1D flat-top rows the model's H1
+still stands 10.7 dB (80-250 ms) and 8.6 dB (400-900 ms) under the
+recordings against its own upper partials, and the body bands under 180 Hz
+11-46 dB under. Those rows are the source's finger-plucked take, whose
+spectral centroid on the six notes up to B4 is 2.0-4.6 times lower than
+the picked take of the same guitar through the same coincident pair (113
+against 517 Hz at E2, 891 against 1818 at B4), so part of their darkness
+is the player's flesh. The picked take separates the body from the finger:
+against it the model's Pick has no consistent tilt above 300 Hz (octave
+bands differ by up to 12 dB either way), but its E2 and A#2 fundamentals
+stand 12.7 and 11.2 dB weaker against their 2nd and 3rd harmonics. That
+is g21 at the bridge microphone
+pair: the measured bank radiates 82 Hz 15-16 dB under 330 Hz there, while
+its upper-bout microphone hears it 2 dB over. The upper-bout microphone
+alone does not close the gap on the benchmark (flat-top 7.328740 ->
+8.372812, H1 still 11 dB under), because it is brighter everywhere above
+2 kHz.
+
+What is open. Raising the air-mode radiation (lowBodyModeGain, the modes
+between 85 and 145 Hz) improves the flat-top rows monotonically (x2
+7.196557, x4 7.033710, x8 6.841363) and costs training and development
+validation about 1% at x4 (5.877624 -> 5.947365, 5.806595 -> 5.860527),
+nylon included, so the benchmark does not settle it. Set 10,
+`2026-09-24-air-mode`, puts x4 (+12 dB, the picked take's balance) against
+the shipping engine on three steel performances, key unread. A B verdict
+would be applied to steel only.
+
 ## 2026-09-24 — nylon is plucked at the soundhole's edge
 
 What was measured. Following the listener's "lacks substance", the model's
