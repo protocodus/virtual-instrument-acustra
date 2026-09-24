@@ -56,6 +56,12 @@ constexpr std::array shapeNames { "parlor", "auditorium", "dreadnought", "jumbo"
 // that tool; the finger-plucked flat-top and classical rows always render
 // with Finger, which is what was on the string in those recordings.
 acustra::PickingTechnique archtopPicking { acustra::EngineParameters {}.picking };
+// --guitar-model renders every row through one named measured guitar's
+// bridge and radiation instead of Original's, to ask which measured body the
+// recordings sit closest to; it is an evaluation option, not a fit input.
+acustra::GuitarModel renderGuitarModel { acustra::GuitarModel::Original };
+constexpr std::array guitarModelNames { "original", "bellido1978", "washburn1897",
+                                        "santacruz2022", "martin2007" };
 constexpr std::array pickingNames { "finger", "pick", "thumb" };
 
 acustra::BodyShape renderShapeFor(acustra::StringMaterial material) noexcept
@@ -452,6 +458,7 @@ std::vector<float> renderModel(Material material, int midi, int velocity,
     EngineParameters parameters;
     parameters.stringMaterial = engineMaterial(material);
     parameters.bridgeModel = renderBridgeModel;
+    parameters.guitarModel = renderGuitarModel;
     parameters.shape = renderShapeFor(parameters.stringMaterial);
     if (material == Material::Steel)
         parameters.picking = archtopPicking;
@@ -600,6 +607,9 @@ std::string modelControlsJson()
          << ", \"string_material\": \"per example: nylon or steel\""
          << ", \"bridge_model\": \""
          << (renderBridgeModel == acustra::BridgeModel::FyldeSteel ? "fylde" : "original")
+         << "\""
+         << ", \"guitar_model\": \""
+         << guitarModelNames[static_cast<std::size_t>(renderGuitarModel)]
          << "\""
          << ", \"capture\": \""
          << std::array { "stereo_mic", "mono_mic", "mono_mic",
@@ -1218,7 +1228,9 @@ void printUsage()
         "usage: AcustraPhysicalFitRenderer [--smoke|--models-only|--test] "
         "[--bridge-model original|fylde] "
         "[--shape parlor|auditorium|dreadnought|jumbo] "
-        "[--archtop-picking finger|pick|thumb] OUTPUT "
+        "[--archtop-picking finger|pick|thumb] "
+        "[--guitar-model original|bellido1978|washburn1897|santacruz2022|martin2007] "
+        "OUTPUT "
         "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT DIRECT_GAIN "
         "NYLON_T60 NYLON_FREQUENCY_LOSS NYLON_APERTURE "
         "NYLON_TRANSIENT NYLON_PLUCK_DISTANCE NYLON_VELOCITY_BRIGHTNESS "
@@ -1300,6 +1312,19 @@ int main(int argc, char** argv)
         }
         archtopPicking = static_cast<acustra::PickingTechnique>(
             std::distance(pickingNames.begin(), name));
+        first += 2;
+    }
+    if (argc > first && std::string(argv[first]) == "--guitar-model")
+    {
+        const auto name = std::find(guitarModelNames.begin(), guitarModelNames.end(),
+            argc > first + 1 ? std::string(argv[first + 1]) : std::string());
+        if (name == guitarModelNames.end())
+        {
+            printUsage();
+            return 2;
+        }
+        renderGuitarModel = static_cast<acustra::GuitarModel>(
+            std::distance(guitarModelNames.begin(), name));
         first += 2;
     }
     if (argc - first != static_cast<int>(calibrationValueCount + 1))
