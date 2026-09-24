@@ -1495,6 +1495,29 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   (8–19 dB in the first 12 ms at every layer) stays open, and nothing here
   separates the body's spring-back from the finger's own contact thud in
   that band.
+- Steel's excitation was fitted with Finger on recordings that were picked,
+  and refitting it with the technique that played them does not ship. The
+  optimizer's pick-excitation stage (aperture, transient, pluck distance and
+  velocity brightness with the plectrum's three values, 166 evaluations under
+  Pick) improves every technique-matched split: picked archtop training
+  6.284861 -> 6.101598 and development validation 5.904206 -> 5.846431 under
+  Pick, and the eight finger-plucked flat-top rows under Finger 7.948070 ->
+  7.627089 (Fylde) and 8.120313 -> 7.821725 (Original). It gets there by
+  running the aperture scale to its 2.5 ceiling and still improving toward
+  it, which at a soft velocity is a Gaussian contact with a sigma of 8 cm
+  on an open A (13% of the string, against 2 cm now): far wider than a
+  fingertip,
+  so the pluck is standing in for the recordings' darker body and
+  microphone rather than describing a finger. It is the direction a listener
+  already called "a bit too dull" at full extent, it drops a soft pluck's
+  first second 5 to 6 dB against a hammer-on at the same velocity (steel
+  hammer-over-pluck energy +10.1 dB at velocity 0.3 and +13.7 at 0.1, from
+  +5.2 and +7.4), and rounding the hammer's dent with the same contact does
+  not close it, because at soft velocities the whole segment moves and there
+  is no front to round. A following steel-string stage under Pick also
+  reverses the fret T60 slope (-0.060 -> +0.017), which the picked archtop
+  wants and the flat-top rows do not (7.627089 -> 7.777287). A matched
+  finger-plucked steel corpus, or a measured contact, would decide it.
 - The loudest layer's missing brightness has been split between two owners
   by measurement. A geometrically exact (non-linear) string solver, driven by
   the engine's own string data, supplies between nil and about 58% of the
@@ -1724,6 +1747,21 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   10 kHz ceiling, string-side high-frequency loss, or radiation, are the
   candidates). A bridge mobility measurement of the modelled instruments, or
   an accounting of that missing loss, would close it.
+- The classical rows cannot settle nylon's sustain. Their FreePats samples
+  above MIDI 72 end after 0.9 to 1.75 s, so their decay is partly the
+  library's own fade, while its open strings, which run to 4 s, lose their
+  fundamental at 4 to 11 dB/s where the model's lose theirs at 15 to 27: the
+  model's nylon bass dies about twice as fast. Its decay rate rises with
+  frequency as f^0.35 against the recordings' f^0.77, and the recordings'
+  rise comes mostly with the fret: open strings sustain alike whatever their
+  pitch, fretted ones faster the higher they are stopped. Yet a grid of the
+  fret T60 slope (0.018, 0.04, 0.06 per fret) against the T60 scale (1.04,
+  1.4, 1.8) worsens nylon training and development validation everywhere
+  except one point, 1.4 at the shipped slope, whose validation gain (6.9216
+  -> 6.9091) comes with a 2.0% training loss, because the decay term also
+  weighs the upper partials those longer T60s leave ringing. Longer nylon
+  sustain is therefore not licensed by this benchmark; classical recordings
+  that decay to the noise floor untrimmed would decide it.
 - Nylon paid for its upper band. Against the recordings the current build is
   4.2 to 5.2 dB/s closer over 2000--6800 Hz than the build before the plate
   floor, but 0.8 to 3.3 dB/s further away over 270--2000 Hz, where it now
