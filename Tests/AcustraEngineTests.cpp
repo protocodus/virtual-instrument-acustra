@@ -2628,10 +2628,14 @@ void testPhysicalSustainSettlesNearRequestedPitch()
         // parallel-dominated one 6.4 cents above that sheds 0.011, so the
         // sustain this window reads was 6.6 cents sharp before the pair was
         // tuned by its sustained, energy-weighted centre
-        // (coupledPolarisationDetune). Tuned, B3 reads +1.67 cents, where the
+        // (coupledPolarisationDetune). Tuned, B3 read +1.67 cents, where the
         // uncoupled string read +1.52: the same reactive-termination pair as
-        // before, read through a doublet. The bound is 1.8 for that reason.
-        expect(std::abs(alone) < 1.8,
+        // before, read through a doublet. With the end correction at zero
+        // (chosen by ear) the two planes start in tune, the rocking mixes
+        // them into a closer pair, and B3 reads +2.53 against that pair's
+        // sustained centre; the other five stay inside a cent. The bound is
+        // 2.8 for that reason.
+        expect(std::abs(alone) < 2.8,
                "the played steel string missed settled pitch for MIDI "
                    + std::to_string(midiNote) + " by "
                    + std::to_string(alone) + " cents");
@@ -2704,8 +2708,8 @@ void testSteelDispersionTracksTheStiffStringLaw()
     acustra::EngineParameters parameters;
     parameters.stringMaterial = acustra::StringMaterial::Steel;
     // The normal plane carries the tuning; the parallel plane shares its
-    // dispersion but sits the end correction's 2.1 cents below it, and a
-    // pluck puts most of its energy there, so it is emptied for this read.
+    // dispersion, and a steel pluck puts most of its energy there, so it is
+    // emptied for this read.
     acustra::AcustraEngine engine;
     engine.prepare(sampleRate, blockSize);
     engine.setParameters(parameters);
@@ -3435,6 +3439,10 @@ void testABendDoesNotStepTheJunctionPort()
             engine.prepare(rate, block);
             engine.setLowerZoneMemberCount(4);
             engine.noteOn(52, 0.85f, 2);
+            // What is measured is the junction port's step, which both
+            // planes' ports would carry; the parallel plane's own wave only
+            // adds the doublet's beat to every frame, so it is emptied.
+            acustra::AcustraEngineTestAccess::silenceParallelPolarisation(engine);
             const int samples = static_cast<int>(2.0 * rate);
             Audio audio {
                 std::vector<float>(static_cast<std::size_t>(samples)),
@@ -3486,11 +3494,13 @@ void testABendDoesNotStepTheJunctionPort()
         expect(reference > 0.0, "the held note was silent");
         // The bend and the slide of the same interval reach the same pitch
         // at the same moment, so what a peak measures is the interval, not
-        // the mechanism: both cross the same body mode 0.1 s into the ramp
+        // the mechanism: both cross the same body mode 0.2 s into the ramp
         // and both are louder there than the note held still. The tension
         // route's own contribution is the difference between them, which is
-        // the string's 12% higher impedance in the junction's force.
-        expect(bentPeak <= slidPeak * 1.05,
+        // the string's 12.3% higher impedance in the junction's force, the
+        // same allowance the stepped bend below is held to (the ramped one
+        // reads 1.06).
+        expect(bentPeak <= slidPeak * 1.13,
                "the tension bend peaked "
                    + std::to_string(bentPeak / slidPeak)
                    + " times the slide of the same interval");
@@ -3549,8 +3559,10 @@ void testABendDoesNotStepTheJunctionPort()
         // arrived; what separates them is that a bent string presents 12.3%
         // more impedance and the junction's force is proportional to it, so
         // that much more level is the mechanism rather than a transient.
+        // "The same moment" is within two periods of the bent note: the
+        // loudest sample can fall on either of two adjacent crests.
         expect(steppedPeak <= steppedSlidePeak * 1.13
-                   && std::abs(steppedAt - steppedSlideAt) < 0.01,
+                   && std::abs(steppedAt - steppedSlideAt) < 0.0125,
                "a whole tone arriving in one message peaked "
                    + std::to_string(steppedPeak / steppedSlidePeak)
                    + " times the slide of the same interval, "
@@ -7125,9 +7137,10 @@ void testAPlectrumReleasesWithVelocity()
 
 // A Shape is the measured body's A0 and T1 re-coupled through Christensen and
 // Vistisen's two-oscillator model for a published box, with the plate modes
-// above T1 on the equal-thickness plate law. The anchors are the transform
-// each calibration was fitted on and must not move; the other shapes must
-// land where an independent evaluation of the same model puts them.
+// above T1 on the equal-thickness plate law. The anchors - steel's the wide
+// Dreadnought chosen by ear, nylon's the transform its calibration was
+// fitted on - must not move; the other shapes must land where an independent
+// evaluation of the same model puts them.
 void testBodyShapesFollowTheCoupledTopAndCavity()
 {
     using Access = acustra::AcustraEngineTestAccess;
@@ -7139,15 +7152,15 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
         return Access::configuredBody(calibration, index, material, shape);
     };
 
-    // Steel's anchor is the Dreadnought: the flamenca's bank under the
-    // fitted transform, A0 at 95.49 * 101/107 * (1 + 0.009) and T1 at
-    // 179.65 * 0.972 * (1 + 0.009 / sqrt(3)).
+    // Steel's anchor is the Dreadnought: the flamenca's bank under the wide
+    // transform, A0 at 95.49 * 98/107 * (1 + 0.018) and T1 at
+    // 179.65 * 0.900 * (1 + 0.018 / sqrt(3)).
     const auto steelDread0 = body(StringMaterial::Steel, BodyShape::Dreadnought, 0);
     const auto steelDread2 = body(StringMaterial::Steel, BodyShape::Dreadnought, 2);
-    expect(std::abs(steelDread0.frequency - 95.4921112 * (101.0 / 107.0) * 1.009) < 0.01,
+    expect(std::abs(steelDread0.frequency - 95.4921112 * (98.0 / 107.0) * 1.018) < 0.01,
            "the steel Dreadnought anchor moved its A0");
     expect(std::abs(steelDread2.frequency
-                    - 179.654236 * 0.972 * (1.0 + 0.009 / std::sqrt(3.0))) < 0.01,
+                    - 179.654236 * 0.900 * (1.0 + 0.018 / std::sqrt(3.0))) < 0.01,
            "the steel Dreadnought anchor moved its T1");
     // Nylon's anchor is the Auditorium slot the Classical preset uses, under
     // the same fitted transform of the measured classical.
@@ -7163,9 +7176,9 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
     // published boxes) the coupled pair puts the steel shapes here; the
     // engine's single-precision path must agree within a fraction of a hertz.
     struct Expected { BodyShape shape; double a0, t1; };
-    for (const auto& row : { Expected { BodyShape::Parlor, 118.17, 205.71 },
-                             Expected { BodyShape::Auditorium, 102.67, 189.68 },
-                             Expected { BodyShape::Jumbo, 81.50, 161.52 } })
+    for (const auto& row : { Expected { BodyShape::Parlor, 116.21, 190.59 },
+                             Expected { BodyShape::Auditorium, 100.52, 176.52 },
+                             Expected { BodyShape::Jumbo, 79.94, 150.03 } })
     {
         const auto a0 = body(StringMaterial::Steel, row.shape, 0);
         const auto t1 = body(StringMaterial::Steel, row.shape, 2);
@@ -7222,10 +7235,11 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
 // polarisations of a plucked string as a doublet split not by the body -- the
 // measured 2x2 admittance matrix splits it by about 0.1 Hz -- but by an end
 // correction at the terminations, the parallel polarisation running about
-// 0.8 mm longer on 650 mm and so lower. The engine had that sign backwards
-// and at a third of the size. What is pinned here is that it is a LENGTH: the
-// same 0.8 mm splits a stopped string wider than an open one, and it never
-// moves the normal loop, which is the one the tuning is built on.
+// 0.8 mm longer on 650 mm and so lower. What is pinned here is that the
+// mechanism carries it as a LENGTH: the same 0.8 mm splits a stopped string
+// wider than an open one, and it never moves the normal loop, which is the
+// one the tuning is built on. The instrument ships it at zero, chosen by ear
+// (Docs/decisions.md, 2026-09-24), so the shipped pair is exactly in tune.
 void testTheNormalPolarisationIsTheHigherMemberByALength()
 {
     using acustra::AcustraEngineTestAccess;
@@ -7233,15 +7247,16 @@ void testTheNormalPolarisationIsTheHigherMemberByALength()
     {
         return 1200.0 * std::log2(delays[1] / delays[0]);
     };
-    const auto shipped
-        = acustra::fittedPhysicalCalibration.polarisationEndCorrectionMetres;
+    auto measured = acustra::fittedPhysicalCalibration;
+    measured.polarisationEndCorrectionMetres = 0.0008f;
+    const auto shipped = measured.polarisationEndCorrectionMetres;
     const double openNylon = cents(AcustraEngineTestAccess::polarisationDelays(
-        acustra::StringMaterial::Nylon, 59));
+        acustra::StringMaterial::Nylon, 59, measured));
     const double openSteel = cents(AcustraEngineTestAccess::polarisationDelays(
-        acustra::StringMaterial::Steel, 40));
+        acustra::StringMaterial::Steel, 40, measured));
     const double stoppedNylon = cents(
         AcustraEngineTestAccess::polarisationDelays(
-            acustra::StringMaterial::Nylon, 71));
+            acustra::StringMaterial::Nylon, 71, measured));
     const double expectedNylon
         = 1200.0 * std::log2(1.0 + static_cast<double>(shipped) / 0.650);
     const double expectedSteel
@@ -7257,16 +7272,16 @@ void testTheNormalPolarisationIsTheHigherMemberByALength()
            "a stopped string did not split wider than an open one, so the "
            "correction is not being carried as a length");
 
-    auto zero = acustra::fittedPhysicalCalibration;
-    zero.polarisationEndCorrectionMetres = 0.0f;
     const auto none = AcustraEngineTestAccess::polarisationDelays(
-        acustra::StringMaterial::Nylon, 59, zero);
-    expect(none[0] == none[1],
-           "a zero end correction did not leave the two polarisations "
-           "exactly in tune");
-    auto shipping = AcustraEngineTestAccess::polarisationDelays(
         acustra::StringMaterial::Nylon, 59);
-    expect(shipping[0] == none[0],
+    expect(acustra::fittedPhysicalCalibration.polarisationEndCorrectionMetres
+                   == 0.0f
+               && none[0] == none[1],
+           "the shipped zero end correction did not leave the two "
+           "polarisations exactly in tune");
+    auto corrected = AcustraEngineTestAccess::polarisationDelays(
+        acustra::StringMaterial::Nylon, 59, measured);
+    expect(corrected[0] == none[0],
            "the end correction moved the normal loop, which carries the "
            "tuning");
 

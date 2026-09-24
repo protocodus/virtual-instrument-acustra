@@ -4,6 +4,46 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-24 — blind verdicts: high notes keep their pitch, nylon rings longer, steel's Dreadnought is the wide one
+
+What was being decided. Three more blind A/B sets, each a question the
+measurements split on, B level-matched to A (whole-excerpt RMS for sets 4 and
+6, the first half second for set 5, so that only the ring differed). A was
+8730d8a in each.
+
+- Set 4, the polarisation end correction. A Woodhouse's 0.8 mm on the
+  parallel loop at every fret; B zero. Rendered through
+  AcustraPerformanceRenderer with a calibration file: a steel melody on the
+  top string at frets 12-20, steel chords held at frets 12 and 17, a nylon
+  melody at frets 12-19. In A the high partials drift from about +7 cents
+  early to -4 late as the parallel member takes over; in B they stay within
+  3. Chosen: B, B, B.
+- Set 5, nylon's sustain. A the fitted fundamental T60 scale 1.038; B 1.4.
+  Open E2, A2 and D3 left to ring: no preference. Arpeggios over a held open
+  bass: B.
+- Set 6, steel's Dreadnought anchor, the question the merge left to the ear.
+  A the fitted transform (air 101 Hz, modes x0.972, bass x1.08, volume x0.97,
+  asymmetry 0.009); B the local line's wider box (98 Hz, x0.900, x1.28,
+  x0.93, 0.018), steel only. Steel held notes, the string-age phrase, Drop D
+  and DADGAD chords, strummed chords. Chosen: B, B, B, B.
+
+What each choice licensed. Set 4 sets polarisationEndCorrectionMetres to zero;
+it moves from the measured values to the by-ear ones in
+Tools/OptimizePhysicalModel.py, and the mechanism stays calibratable. Set 5
+sets nylon.fundamentalT60Scale to 1.4, by ear: one pair preferred it and the
+other heard no difference, a narrow verdict, and it agrees with the classical
+bank's open strings, which ring about twice as long as the model's did.
+Set 6 makes the wide box steel's Dreadnought anchor; nylon keeps the fitted
+transform, which its rows prefer outright. The benchmark after all three
+(Fylde bridge, then Original): training 6.112127 -> 6.180182 and 6.087514 ->
+6.145552, development validation 5.928819 -> 6.103707 and 5.938380 ->
+6.216121, the never-fitted flat-top rows 7.948071 -> 7.572502 and
+8.120314 -> 7.618706. By material: nylon training +2.4% and validation -0.9%
+(the longer T60); steel training +0.4%, validation +6.0%, flat-top -4.7%
+(the anchor and the end correction together). The ear again chose the
+direction of the only finger-plucked flat-top evidence over the fitted
+archtop corpus.
+
 ## 2026-09-24 — blind verdicts: both planes radiate, steel plucks along the top, nylon does not
 
 What was being decided. Three blind A/B sets, rendered by AcustraRenderDemos

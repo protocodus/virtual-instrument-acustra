@@ -98,10 +98,10 @@ INITIAL = np.asarray((
 # neutral baseline.
 SHIPPING = np.asarray((
     1.0, 1.0, 0.754677154, 0.0, 0.0,
-    1.037816616, 1.40369766, 2.12267268, 0.0, 1.12667139, 0.0375,
+    1.4, 1.40369766, 2.12267268, 0.0, 1.12667139, 0.0375,
     0.749355465, 1.53, 0.52, 0.643124355, 0.494086432, 0.88819512, 1.1859375,
     -0.0706290118, 1.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011,
-    2187.76023, 0.00325, 0.0, 35.0, 0.0008,
+    2187.76023, 0.00325, 0.0, 35.0, 0.0,
     0.0625, 0.46875, 0.0,
 ))
 # The bridge-local direct path is deliberately fixed off. Its score direction
@@ -121,23 +121,22 @@ BY_EAR = (
     # the corpus disagrees: it scored 6.7685 with them on against 6.8353 off.
     # That is exactly the disagreement freezing exists for.
     "longitudinalGain",
+    # Zeroed by ear on 2026-09-24 (a blind listener preferred high notes that
+    # keep their pitch) over the published 0.8 mm the corpus mildly prefers.
+    "polarisationEndCorrectionMetres",
+    # Raised to 1.4 by ear on 2026-09-24 over the fitted 1.038: the classical
+    # rows' trimmed samples pull the fit toward a shorter ring than their
+    # own open strings have.
+    "nylon.fundamentalT60Scale",
 )
 # With longitudinalGain frozen at zero the axial resonators are not summed at
 # all, so their Q multiplies nothing and any value renders the same audio.
 INERT = (
     "longitudinalQ",
 )
-# Values that are a published measurement rather than a fit. The corpus does
-# see the end correction, but only weakly and only on steel: with the
-# bridge-local direct path off, the polarisation it lengthens still reaches
-# the output through the shared slope energy that drives the steel attack
-# pitch. Zeroing it changes 40 of the 79 renders (all 32 steel and all 8 flat
-# top; all 39 nylon byte-identical) and moves the score from
-# 6.319236 / 6.327235 / 7.948337 to 6.320649 / 6.328354 / 7.953299 - a real
-# preference for the published value, and far too small a lever to fit it on.
-MEASURED = (
-    "polarisationEndCorrectionMetres",
-)
+# Values that are a published measurement rather than a fit. The one it held,
+# the polarisation end correction, is now chosen by ear (BY_EAR above).
+MEASURED: tuple[str, ...] = ()
 FROZEN = frozenset(NAMES.index(name) for name in BY_EAR + MEASURED + INERT)
 
 

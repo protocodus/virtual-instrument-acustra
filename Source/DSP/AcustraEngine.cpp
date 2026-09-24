@@ -59,15 +59,15 @@ static_assert(detail::martinBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
 
 // The measured body each material plays is one guitar of one size, so a
 // Shape is a morph of that measurement, not a second measurement. Both
-// calibrations were fitted, and steel's auditioned, with the public default
-// shape's authored transform of the bank in place, and the classical
-// recordings prefer that transformed body to the bare measurement (nylon
-// training rows 7.528 against 7.910), so the transform has been absorbed by
-// the fit and is kept exactly as it was as each material's anchor: steel's
-// in the Dreadnought slot, nylon's in the Auditorium slot the Classical
-// preset uses. The other shapes are placed relative to the anchor by the
-// coupled model below, so the anchors stay bit-identical. A named guitar is
-// its own measurement at its own box, so its anchor is the identity.
+// calibrations were fitted with the public default shape's authored
+// transform of the bank in place, and the classical recordings prefer that
+// transformed body to the bare measurement (nylon training rows 7.528
+// against 7.910), so it stays nylon's anchor, in the Auditorium slot the
+// Classical preset uses. Steel's anchor, in the Dreadnought slot, is the
+// wider authored box a blind listener chose over it (wideSteelAnchorTransform
+// below). The other shapes are placed relative to the anchor by the coupled
+// model below. A named guitar is its own measurement at its own box, so its
+// anchor is the identity.
 struct AnchorTransform
 {
     float airHz;
@@ -81,6 +81,14 @@ constexpr AnchorTransform fittedAnchorTransform { 101.0f, 0.972f, 1.08f,
                                                   0.97f, 0.009f };
 constexpr AnchorTransform measuredAnchorTransform { 107.0f, 1.0f, 1.0f,
                                                     1.0f, 0.0f };
+// Steel's Dreadnought anchor is the wider box the local line authored: a
+// lower air mode, the plate modes lower and more bass. The benchmark split on
+// it (steel training -0.5%, the never-fitted flat-top rows -5.2%,
+// development validation +3.2%) and a blind listener chose it on all four
+// steel pairs (Docs/decisions.md, 2026-09-24), so it is chosen by ear; nylon,
+// whose rows prefer the fitted transform outright, keeps that.
+constexpr AnchorTransform wideSteelAnchorTransform { 98.0f, 0.900f, 1.28f,
+                                                     0.93f, 0.018f };
 
 // Body outline and cavity, in metres: lower-bout width, body length, mean
 // depth, soundhole diameter, and the fraction of the width-by-length
@@ -352,10 +360,13 @@ const BodyGeometry& targetBodyFor(StringMaterial material, GuitarModel model,
     return bodyGeometryFor(material, shape);
 }
 
-const AnchorTransform& anchorTransformFor(GuitarModel model) noexcept
+const AnchorTransform& anchorTransformFor(GuitarModel model,
+                                          StringMaterial material) noexcept
 {
-    return model == GuitarModel::Original ? fittedAnchorTransform
-                                          : measuredAnchorTransform;
+    if (model != GuitarModel::Original)
+        return measuredAnchorTransform;
+    return material == StringMaterial::Steel ? wideSteelAnchorTransform
+                                             : fittedAnchorTransform;
 }
 
 struct WoodSpec
@@ -1915,7 +1926,8 @@ void AcustraEngine::configureBody() noexcept
         bodyModelFade_ = 1.0f;
     }
 
-    const AnchorTransform& anchor = anchorTransformFor(parameters_.guitarModel);
+    const AnchorTransform& anchor = anchorTransformFor(parameters_.guitarModel,
+                           parameters_.stringMaterial);
     const auto wood = woodSpecs[static_cast<std::size_t>(parameters_.bodyMaterial)];
     const auto bank = measuredBodyBank(parameters_.stringMaterial,
                                        parameters_.guitarModel);
@@ -2117,7 +2129,8 @@ void AcustraEngine::configureBridge() noexcept
     // its modes by the coupled model's factors (see shapeBridgeMode).
     const auto morph = bodyShapeMorph(
         measuredBodyBank(parameters_.stringMaterial, parameters_.guitarModel),
-        anchorTransformFor(parameters_.guitarModel),
+        anchorTransformFor(parameters_.guitarModel,
+                           parameters_.stringMaterial),
         anchorBodyFor(parameters_.stringMaterial, parameters_.guitarModel),
         targetBodyFor(parameters_.stringMaterial, parameters_.guitarModel,
                       parameters_.shape));

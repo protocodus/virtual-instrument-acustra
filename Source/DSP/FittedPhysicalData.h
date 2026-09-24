@@ -162,7 +162,14 @@ struct PhysicalCalibration
 // Docs/realism-calibration-2026-09-08.json for assumptions and exact scores.
 inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     1.0f, 1.0f, 0.754677154f, 0.0f, 0.0f,
-    { 1.0f, 1.037816616f, 1.40369766f, 2.12267268f,
+    // Nylon's fundamental T60 scale is 1.4, chosen by ear on 2026-09-24 over
+    // the fitted 1.037816616 (Docs/decisions.md). The classical bank's open
+    // strings lose their fundamental at 4-11 dB/s where the model's lost
+    // theirs at 15-27, while its upper rows are samples trimmed with a fade,
+    // and the benchmark prefers the fitted value (nylon training 2.0% better);
+    // a blind listener preferred the longer ring over arpeggios on a held
+    // bass and heard no difference on open strings left to ring.
+    { 1.0f, 1.4f, 1.40369766f, 2.12267268f,
       0.0f, 1.12667139f, 0.0375f },
     { 0.749355465f, 1.53f, 0.52f, 0.643124355f,
       0.494086432f, 0.88819512f, 1.1859375f },
@@ -173,19 +180,20 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // available for measurement work, but do not add that synthetic ping to
     // the shipping voice.
     0.011f, 2187.76023f, 0.00325f, 0.0f, 35.0f,
-    // Woodhouse's published 0.8 mm, shipped frozen at the measurement rather
-    // than fitted. The corpus does see the parallel loop, but only weakly and
-    // only on steel: with the bridge-local direct path off, loops[1] reaches
-    // the output through the shared slope energy in finishVoice, which on
-    // steel drives the attack pitch. Setting this value to zero changes 40 of
-    // the 79 corpus renders - all 32 steel and all 8 flat-top rows, while all
-    // 39 nylon rows stay byte-identical - and moves the score from
-    // 6.319236 / 6.327235 / 7.948337 to 6.320649 / 6.328354 / 7.953299
-    // (training / validation / flat top, measured on the calibration that
-    // shipped before the 2026-09-04 refit). That is a real preference for the
-    // published value on all three splits, but far too small a lever to fit
-    // an end correction against.
-    0.0008f,
+    // Zero, chosen by ear on 2026-09-24 over Woodhouse's published 0.8 mm
+    // (Docs/decisions.md). He measured the correction on an open string and
+    // calls its attribution tentative; carried as a fixed length it splits a
+    // stopped string's planes further the higher it is fretted (4.8 cents at
+    // the 14th fret, 6.8 at the 20th), and once the parallel plane radiated
+    // and held most of a steel pluck, its member took over within 0.2-0.4 s
+    // and high notes drifted flat as they rang, where the recordings' do not.
+    // A blind listener preferred the steady pitch on all three pairs of high
+    // steel and nylon melodies and chords. The benchmark prefers 0.8 mm by
+    // little (Fylde training/validation/flat-top +0.15%/+0.23%/+0.68% at
+    // zero, measured before the nylon share returned) while its
+    // pitch-trajectory term prefers zero (1.199 -> 0.659). The mechanism
+    // stays calibratable up to one string diameter.
+    0.0f,
     // The plectrum, first fitted 2026-09-10 by the pick-release stage of
     // Tools/OptimizePhysicalModel.py on the picked archtop training rows
     // rendered with Pick (share 1.0, exponent 2.93, transient 0.078), then
