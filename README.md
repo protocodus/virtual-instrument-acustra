@@ -78,15 +78,15 @@ reverb, room effect or recorded-note layer.
 | File | What it is | Length | Rendered peak | Normalisation |
 | --- | --- | ---: | ---: | ---: |
 | `01-steel-sustain-range.wav` | Steel sustain from open E2 to B5, one held pluck at a time | 9.5 s | −14.2 dBFS | +11.2 dB |
-| `02-nylon-fingerstyle.wav` | A fingertip nylon arpeggio with overlapping held notes | 4.2 s | −21.3 dBFS | +18.3 dB |
+| `02-nylon-fingerstyle.wav` | A fingertip nylon arpeggio with overlapping held notes | 4.2 s | −21.0 dBFS | +18.0 dB |
 | `03-shape-material-anchors.wav` | One chord: Parlor/Jumbo, then Cedar/Maple anchor settings | 13.7 s | −3.6 dBFS | +0.6 dB |
 | `04-string-age.wav` | The same steel phrase with fresh strings, then fully aged strings | 6.5 s | −8.6 dBFS | +5.6 dB |
 | `05-alternate-tunings.wav` | Drop D, DADGAD and Open G chords | 12.3 s | −7.9 dBFS | +4.9 dB |
 | `06-playing-behaviours.wav` | A chord change over a ringing chord, CC2 bridge-hand damping, then two natural harmonics above the fretted range | 10.7 s | −7.8 dBFS | +4.8 dB |
 | `07-fretting-hand.wav` | Hammer-ons at two velocities and a pull-off under CC68, then one fretted note released three ways by its note-off velocity | 8.8 s | −12.3 dBFS | +9.3 dB |
 | `08-strummed-chords.wav` | Same-sample chords swept as alternating strums, then one chord eight times hand-damped, no two strokes the same take | 6.9 s | −2.9 dBFS | −0.1 dB |
-| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −20.7 dBFS | +17.7 dB |
-| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −22.1 dBFS | +19.1 dB |
+| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −21.2 dBFS | +18.2 dB |
+| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −24.2 dBFS | +21.2 dB |
 | `11-picking-techniques.wav` | Finger, pick and thumb on steel, then on nylon; same notes and velocity | 10.6 s | −15.0 dBFS | +12.0 dB |
 | `12-capture-types.wav` | Stereo mic, mono mic, piezo | 7.3 s | −16.3 dBFS | +13.3 dB |
 <!-- peaks-table-end -->
@@ -129,10 +129,10 @@ parallel to the top and nylon's normal-led, 6.087514, 5.938380 and
 blind listener chose that day (no polarisation end correction, a longer nylon
 T60, steel's wider Dreadnought), 6.145552, 6.216121 and 7.618706, and
 6.180182, 6.103707 and 7.572502; with a force-limited release, 6.131424,
-6.217292 and 7.622994, and 6.182335, 6.097915 and 7.556267. The latter are
-the base every later paired comparison is taken against: the ear bought the
-never-fitted flat-top rows 4.9% at the cost of 1.1% on training and 2.9% on
-development validation. The
+6.217292 and 7.622994, and 6.182335, 6.097915 and 7.556267; with steel's
+body resolved over 250 ms and nylon plucked at the soundhole's edge,
+5.928457, 5.989914 and 7.492669, and 5.877624, 5.806595 and 7.328740. The
+latter are the base every later paired comparison is taken against. The
 renderer renders each material at its anchor body - steel the default
 Dreadnought, nylon the Auditorium slot that is the measured classical.
 
@@ -1967,6 +1967,14 @@ git history rather than here.
 
 ### 2026-09-24
 
+- **Nylon is plucked where a classical player plucks.** The fit had been held
+  within about 107 mm of the bridge while the classical recordings were
+  played near the soundhole (their open G and B carry almost no third
+  harmonic); with the bound widened, nylon's finger lands 178 mm from the
+  bridge at the default Pluck Position, the fundamental comes up against the
+  second and third harmonics (from 3.5-4.2 dB under the recordings' balance to
+  1.6-2.6 over), and the classical rows improve on training (7.554 → 7.164)
+  and development validation (6.911 → 6.418).
 - **The steel body rings like wood.** The measured flamenca body steel plays
   is now fitted from 250 ms of its impact responses instead of 62.5 ms, a
   window so short it had set the damping of every mode below 300 Hz: the air

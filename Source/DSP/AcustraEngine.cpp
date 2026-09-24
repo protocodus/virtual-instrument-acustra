@@ -1194,7 +1194,7 @@ PhysicalCalibration AcustraEngine::sanitise(
                     fallback.apertureScale),
             bounded(value.transientScale, 0.0f, 3.0f,
                     fallback.transientScale),
-            bounded(value.pluckDistanceScale, 0.7f, 1.3f,
+            bounded(value.pluckDistanceScale, 0.7f, 3.0f,
                     fallback.pluckDistanceScale),
             bounded(value.velocityBrightnessDepth, 0.0f, 1.2f,
                     fallback.velocityBrightnessDepth)

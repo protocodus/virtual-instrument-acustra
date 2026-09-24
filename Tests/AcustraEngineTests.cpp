@@ -4095,7 +4095,7 @@ void testHostilePhysicalCalibrationIsSanitised()
         0.25f, 0.4f, 0.35f, 0.35f, 0.0f, 0.7f, 0.0f
     };
     const std::array materialHigh {
-        4.0f, 2.0f, 3.0f, 2.5f, 3.0f, 1.3f, 1.2f
+        4.0f, 2.0f, 3.0f, 2.5f, 3.0f, 3.0f, 1.2f
     };
     expect(values(low.nylon) == materialLow && values(low.steel) == materialLow,
            "low material calibration bounds were not enforced");

@@ -4,6 +4,31 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-24 — nylon is plucked at the soundhole's edge
+
+What was measured. Following the listener's "lacks substance", the model's
+partial balance was read against the recordings note by note: at
+fundamentals of 110-310 Hz the classical rows' H1 stands 5-17 dB over H2
+where the model's stood 2-15 dB under it, from the first 10 ms on, and the
+recordings' open G and B carry almost no third harmonic (41-47 dB down), the
+comb of a pluck about a third of the way along the string. The nylon pluck
+distance scale was bounded at 1.3 of its reference, about 107 mm from the
+bridge, so no fit could reach it. A grid past the bound (scale 1.6, 2.0,
+2.5) improved nylon development validation at every step (6.911 -> 6.700,
+6.630, 6.366) and training at 2.0 (7.554 -> 7.315).
+
+What was decided. The bound is 3.0 for both materials' pluck distance
+(engine, renderer, calibration files, optimizer), and the nylon-string stage
+was refitted from 2.0 (from the shipped 1.127 it stalls in the near basin,
+111 evaluations to 7.488): pluck distance 2.14375 (178 mm at the default
+Pluck Position), aperture 2.391, frequency loss 1.652, velocity-brightness
+depth 0.1125; the T60 scale is by ear and was held. Nylon training 7.5542 ->
+7.1644, development validation 6.9108 -> 6.4177; the H1 balance moves from
+3.5-4.2 dB under the recordings to 1.6-2.6 over. Shipped on the measurement;
+steel is untouched. Steel's own pluck distance is a listening question: the
+finger-played flat-top rows prefer 133 mm to the 74 mm the picked archtop
+set, by 3.0%, and the archtop rows prefer 74 by 6-7%.
+
 ## 2026-09-24 — steel's body resolved over 250 ms: the low-mode question closed by a measurement
 
 What was heard. Comparing the reference recordings with the engine's

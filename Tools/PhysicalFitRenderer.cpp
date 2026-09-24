@@ -143,8 +143,8 @@ constexpr CalibrationValues calibrationMinimums {{
 
 constexpr CalibrationValues calibrationMaximums {{
     1.04f, 1.8f, 4.0f, 6.0f, 0.12f,
-    2.0f, 3.0f, 2.5f, 3.0f, 1.3f, 1.2f,
-    4.0f, 2.0f, 3.0f, 2.5f, 3.0f, 1.3f, 1.2f,
+    2.0f, 3.0f, 2.5f, 3.0f, 3.0f, 1.2f,
+    4.0f, 2.0f, 3.0f, 2.5f, 3.0f, 3.0f, 1.2f,
     1.0f, 32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f, 0.060f,
     0.5f, 400.0f, 0.82e-3f,
     2.0f, 4.0f, 8.0f,

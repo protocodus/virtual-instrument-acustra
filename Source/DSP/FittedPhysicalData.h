@@ -169,8 +169,21 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // and the benchmark prefers the fitted value (nylon training 2.0% better);
     // a blind listener preferred the longer ring over arpeggios on a held
     // bass and heard no difference on open strings left to ring.
-    { 1.0f, 1.4f, 1.40369766f, 2.12267268f,
-      0.0f, 1.12667139f, 0.0375f },
+    // Nylon's pluck was held within 1.3 of its reference distance, about 107
+    // mm from the bridge, while the classical recordings were played about a
+    // third of the way along the string: their open G and B carry almost no
+    // third harmonic (41-47 dB down), the model's fundamental sat 8-16 dB
+    // under theirs against the second and third at 110-310 Hz, and a listener
+    // heard the engine lack substance. With the bound at 3.0 the
+    // nylon-string stage of Tools/OptimizePhysicalModel.py, started from 2.0
+    // (a start from the shipped 1.127 stalls in the near basin), puts the
+    // finger 178 mm from the bridge at the default Pluck Position, the
+    // classical right hand's place at the soundhole's edge, with a wider
+    // contact and more upper-partial loss (2026-09-24): nylon training
+    // 7.554 -> 7.164, development validation 6.911 -> 6.418. The T60 scale
+    // (1.4) is chosen by ear and was held.
+    { 1.0f, 1.4f, 1.65213516f, 2.39142268f,
+      0.0f, 2.14375f, 0.1125f },
     { 0.749355465f, 1.53f, 0.52f, 0.643124355f,
       0.494086432f, 0.88819512f, 1.1859375f },
     -0.0706290118f, 1.0f, 0.00773577847f, -0.0597851562f, 2.28586032f,
