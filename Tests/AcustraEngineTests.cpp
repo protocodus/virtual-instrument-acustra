@@ -3513,10 +3513,16 @@ void testABendDoesNotStepTheJunctionPort()
                "the tension bend peaked "
                    + std::to_string(bentPeak / slidPeak)
                    + " times the slide of the same interval");
-        expect(std::abs(bentAt - slidAt) < 0.01,
-               "the tension bend's loudest moment was "
-                   + std::to_string(bentAt - slidAt)
-                   + " s away from the slide's");
+        // Their moments are compared where the slide's crossing is a peak
+        // at all: under the resolved body's narrower low modes the slide's
+        // crossing can stay under the held note's own level at the window's
+        // start (0.999 of it), and the loudest sample is then that start,
+        // not a crossing.
+        if (slidPeak > reference * 1.02)
+            expect(std::abs(bentAt - slidAt) < 0.01,
+                   "the tension bend's loudest moment was "
+                       + std::to_string(bentAt - slidAt)
+                       + " s away from the slide's");
         // A step in the port would arrive as a transient rather than as a
         // level: measured where one would show, in the rise from one 5 ms
         // frame to the frame two hops before it.
@@ -7161,15 +7167,15 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
         return Access::configuredBody(calibration, index, material, shape);
     };
 
-    // Steel's anchor is the Dreadnought: the flamenca's bank under the wide
-    // transform, A0 at 95.49 * 98/107 * (1 + 0.018) and T1 at
-    // 179.65 * 0.900 * (1 + 0.018 / sqrt(3)).
+    // Steel's anchor is the Dreadnought: the flamenca's bank, resolved over
+    // 250 ms, under the wide transform, A0 at 90.82 * 98/107 * (1 + 0.018)
+    // and T1, the bank's second mode, at 178.53 * 0.900 * (1 - 0.018 / sqrt(2)).
     const auto steelDread0 = body(StringMaterial::Steel, BodyShape::Dreadnought, 0);
-    const auto steelDread2 = body(StringMaterial::Steel, BodyShape::Dreadnought, 2);
-    expect(std::abs(steelDread0.frequency - 95.4921112 * (98.0 / 107.0) * 1.018) < 0.01,
+    const auto steelDread1 = body(StringMaterial::Steel, BodyShape::Dreadnought, 1);
+    expect(std::abs(steelDread0.frequency - 90.8203125 * (98.0 / 107.0) * 1.018) < 0.01,
            "the steel Dreadnought anchor moved its A0");
-    expect(std::abs(steelDread2.frequency
-                    - 179.654236 * 0.900 * (1.0 + 0.018 / std::sqrt(3.0))) < 0.01,
+    expect(std::abs(steelDread1.frequency
+                    - 178.532211 * 0.900 * (1.0 - 0.018 / std::sqrt(2.0))) < 0.01,
            "the steel Dreadnought anchor moved its T1");
     // Nylon's anchor is the Auditorium slot the Classical preset uses, under
     // the same fitted transform of the measured classical.
@@ -7185,12 +7191,12 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
     // published boxes) the coupled pair puts the steel shapes here; the
     // engine's single-precision path must agree within a fraction of a hertz.
     struct Expected { BodyShape shape; double a0, t1; };
-    for (const auto& row : { Expected { BodyShape::Parlor, 116.21, 190.59 },
-                             Expected { BodyShape::Auditorium, 100.52, 176.52 },
-                             Expected { BodyShape::Jumbo, 79.94, 150.03 } })
+    for (const auto& row : { Expected { BodyShape::Parlor, 111.34, 183.71 },
+                             Expected { BodyShape::Auditorium, 95.72, 171.18 },
+                             Expected { BodyShape::Jumbo, 76.09, 145.57 } })
     {
         const auto a0 = body(StringMaterial::Steel, row.shape, 0);
-        const auto t1 = body(StringMaterial::Steel, row.shape, 2);
+        const auto t1 = body(StringMaterial::Steel, row.shape, 1);
         expect(std::abs(a0.frequency - row.a0) < 0.5,
                "a steel shape's A0 is not where the coupled model puts it");
         expect(std::abs(t1.frequency - row.t1) < 0.5,
@@ -7201,7 +7207,7 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
     // materials, and the same ordering holds for the plate modes above T1.
     for (const auto material : { StringMaterial::Steel, StringMaterial::Nylon })
     {
-        const int t1Index = material == StringMaterial::Steel ? 2 : 1;
+        const int t1Index = 1;
         const int plateIndex = 9;
         double previousA0 = 1.0e9, previousT1 = 1.0e9, previousPlate = 1.0e9;
         for (const auto shape : { BodyShape::Parlor, BodyShape::Auditorium,

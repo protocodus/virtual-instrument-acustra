@@ -4,6 +4,40 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-24 — steel's body resolved over 250 ms: the low-mode question closed by a measurement
+
+What was heard. Comparing the reference recordings with the engine's
+renderings of the same notes (the listening room's labelled rows), the user
+said the engine "lacks substance - body, the massive wooden resonance,
+low-mids, resonating with the string".
+
+What was measured. The 2026-09-01 entry found that g21's bank, fitted from
+the first 3000 samples (62.5 ms) of its impact responses, had its low modes'
+Q set by the window's own 16 Hz bandwidth, and left the choice to a
+listening set that was never answered; the body was since replaced by the
+force/moment pair bank, which kept the same 3000-sample window for g21 (g34
+already used 12000). The archive (Zenodo 4604577, MD5 733cb10b...) was
+fetched, Tools/GenerateBodyForcePair.py reproduced the shipped header byte for
+byte, and g21 was regenerated at the 12000 samples that are the shortest
+window at which every mode below 700 Hz is within 10% of its 1 s Q. The bank
+passes the generator's gates at 132 modes (127 before): air mode 90.8 Hz Q 19
+(95.5 Hz Q 6.1, plus a 119 Hz Q 9 window artefact, before), 178.5 Hz Q 17.5
+(10.5), 208.7 Hz Q 37 (14.5), 229 Hz Q 18 (13), 410 Hz Q 38 (27). A steel
+note's share of energy below 120 Hz rises 9 dB in the sustain demo.
+
+What was decided. Shipped on the measurement: every split improves (Fylde
+training 6.182335 -> 6.000217, validation 6.097915 -> 5.991366, flat-top
+7.556267 -> 7.328740; Original 6.131424 -> 6.051050, 6.217292 -> 6.174686,
+7.622994 -> 7.492669; Pick 6.372432 -> 6.354535, 6.135961 -> 6.076904), with
+the body, attack and training decay terms better, and nylon, already at 250
+ms, byte-identical. The generator's default window for g21 becomes 12000
+samples. The wide Dreadnought transform chosen by ear now lands the anchor's
+A0/T1 at 84.7/158.6 Hz, lower than the 89/163 it was heard at, because the
+resolved measurement's own air mode is 90.8 Hz rather than the window's 95.5;
+the transform itself is unchanged. The regressions that encode the bank were
+re-evaluated independently (anchor and shape frequencies), and the bend test
+compares loudest moments only where the slide's crossing is a peak at all.
+
 ## 2026-09-24 — blind verdict: a pluck is released at the force the hand holds
 
 What was being decided. Whether the velocity law sets a pluck's displacement

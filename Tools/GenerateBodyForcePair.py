@@ -2,8 +2,11 @@
 """Fit two measured normal-force inputs to three microphones, preserving phase.
 
 Use the verified Mores g21/g34 archive, authors' SI calibration and raw complex
-H1 extraction from AuditBridgeSpatialMap. Apply the existing common causal
-windows: g21 3000 samples, g34 12000, each with the final tenth cosine-tapered.
+H1 extraction from AuditBridgeSpatialMap. Apply a common causal window of
+12000 samples (250 ms) to both guitars, the final tenth cosine-tapered. It is
+the shortest window at which every mode below 700 Hz has its Q within 10% of
+the 1 s value; g21 was once fitted at 3000 samples, whose 16 Hz bandwidth set
+the Q of every mode below 300 Hz (--g21-keep 3000 reproduces that bank).
 There is no minimum-phase conversion, delay alignment, gain fit or engine-data
 calibration. Both measured instruments were nylon-strung. These windows discard
 late/circular-end terms; this is an approximation of the retained responses.
@@ -213,12 +216,12 @@ def self_test() -> None:
     print("Body force-pair generator self-test passed")
 
 
-def run(raw: Path, output: Path) -> None:
+def run(raw: Path, output: Path, g21_keep: int = 12000) -> None:
     if output.exists() or not output.parent.is_dir():
         raise ValueError("output must be a new directory inside an existing parent")
     responses, quality = spatial.extract(spatial.bridge.load_matrix(raw))
     banks, arrays = [], {"frequency": FREQUENCY}
-    for guitar, keep in ((21, 3000), (34, 12000)):
+    for guitar, keep in ((21, g21_keep), (34, 12000)):
         bank, values = fit_bank(guitar, keep, responses)
         banks.append(bank)
         arrays.update(values)
@@ -258,6 +261,8 @@ def main() -> int:
     parser.add_argument("--raw-mat", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--g21-keep", type=int, default=12000,
+                        help="samples of the g21 responses kept before the taper")
     args = parser.parse_args()
     try:
         if args.self_test:
@@ -267,7 +272,7 @@ def main() -> int:
         else:
             if args.raw_mat is None or args.output is None:
                 parser.error("--raw-mat and --output are required")
-            run(args.raw_mat, args.output)
+            run(args.raw_mat, args.output, args.g21_keep)
         return 0
     except (OSError, ValueError, AssertionError) as error:
         parser.exit(1, f"{error}\n")
