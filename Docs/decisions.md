@@ -4,6 +4,28 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-24 — blind verdict: a pluck is released at the force the hand holds
+
+What was being decided. Whether the velocity law sets a pluck's displacement
+(A, 3c86ed1) or the force it is released at (B). A point force F at distance
+a from the bridge deflects a string of tension T and speaking length L by
+F a (L - a) / (T L), so under B the same stroke displaces a stopped string by
+(L - a)/L against the open string's (L0 - a)/L0 at the same hand position -
+up to 2.7 dB less at the 17th fret - and its Kirchhoff-Carrier glide shrinks
+with it; the contact noise stays on the force. Under A a fretted note grew
+louder up the neck (nylon +9.2 dB at the 17th fret against the open G) and
+glided further than the recordings' (the soft steel C6 rows 4-6 cents). Three
+pairs through AcustraPerformanceRenderer, whole-excerpt RMS-matched (trims
++0.89 to +1.43 dB): a steel scale up the G string to the 17th fret and back,
+steel triads moving up the neck, the nylon scale. Chosen: B, B, B.
+
+What it licensed. The force-limited release ships, by ear and on physics
+the benchmark cannot see, since it normalises each note's level: training
++0.07%, development validation -0.07%, flat-top -0.24%, with the
+pitch-trajectory term better on every split (Fylde training 0.688 -> 0.516,
+flat-top 0.969 -> 0.680). The hammer-on convention follows the same law, so
+the implied top finger speeds fall to 15.4 m/s on steel and 34.1 on nylon.
+
 ## 2026-09-24 — blind verdicts: high notes keep their pitch, nylon rings longer, steel's Dreadnought is the wide one
 
 What was being decided. Three more blind A/B sets, each a question the

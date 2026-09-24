@@ -78,15 +78,15 @@ reverb, room effect or recorded-note layer.
 | File | What it is | Length | Rendered peak | Normalisation |
 | --- | --- | ---: | ---: | ---: |
 | `01-steel-sustain-range.wav` | Steel sustain from open E2 to B5, one held pluck at a time | 9.5 s | −14.0 dBFS | +11.0 dB |
-| `02-nylon-fingerstyle.wav` | A fingertip nylon arpeggio with overlapping held notes | 4.2 s | −21.2 dBFS | +18.2 dB |
-| `03-shape-material-anchors.wav` | One chord: Parlor/Jumbo, then Cedar/Maple anchor settings | 13.7 s | −4.1 dBFS | +1.1 dB |
-| `04-string-age.wav` | The same steel phrase with fresh strings, then fully aged strings | 6.5 s | −7.9 dBFS | +4.9 dB |
+| `02-nylon-fingerstyle.wav` | A fingertip nylon arpeggio with overlapping held notes | 4.2 s | −21.3 dBFS | +18.3 dB |
+| `03-shape-material-anchors.wav` | One chord: Parlor/Jumbo, then Cedar/Maple anchor settings | 13.7 s | −4.2 dBFS | +1.2 dB |
+| `04-string-age.wav` | The same steel phrase with fresh strings, then fully aged strings | 6.5 s | −8.0 dBFS | +5.0 dB |
 | `05-alternate-tunings.wav` | Drop D, DADGAD and Open G chords | 12.3 s | −7.3 dBFS | +4.3 dB |
-| `06-playing-behaviours.wav` | A chord change over a ringing chord, CC2 bridge-hand damping, then two natural harmonics above the fretted range | 10.7 s | −7.3 dBFS | +4.3 dB |
+| `06-playing-behaviours.wav` | A chord change over a ringing chord, CC2 bridge-hand damping, then two natural harmonics above the fretted range | 10.7 s | −7.6 dBFS | +4.6 dB |
 | `07-fretting-hand.wav` | Hammer-ons at two velocities and a pull-off under CC68, then one fretted note released three ways by its note-off velocity | 8.8 s | −11.2 dBFS | +8.2 dB |
-| `08-strummed-chords.wav` | Same-sample chords swept as alternating strums, then one chord eight times hand-damped, no two strokes the same take | 6.9 s | −1.5 dBFS | −1.5 dB |
-| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −17.4 dBFS | +14.4 dB |
-| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −21.5 dBFS | +18.5 dB |
+| `08-strummed-chords.wav` | Same-sample chords swept as alternating strums, then one chord eight times hand-damped, no two strokes the same take | 6.9 s | −2.1 dBFS | −0.9 dB |
+| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −20.7 dBFS | +17.7 dB |
+| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −22.1 dBFS | +19.1 dB |
 | `11-picking-techniques.wav` | Finger, pick and thumb on steel, then on nylon; same notes and velocity | 10.6 s | −14.8 dBFS | +11.8 dB |
 | `12-capture-types.wav` | Stereo mic, mono mic, piezo | 7.3 s | −16.2 dBFS | +13.2 dB |
 <!-- peaks-table-end -->
@@ -128,9 +128,11 @@ parallel to the top and nylon's normal-led, 6.087514, 5.938380 and
 8.120314, and 6.112127, 5.928819 and 7.948071; and with the three values a
 blind listener chose that day (no polarisation end correction, a longer nylon
 T60, steel's wider Dreadnought), 6.145552, 6.216121 and 7.618706, and
-6.180182, 6.103707 and 7.572502. The latter are the base every later paired
-comparison is taken against: the ear bought the never-fitted flat-top rows
-4.7% at the cost of 1.1% on training and 2.9% on development validation. The
+6.180182, 6.103707 and 7.572502; with a force-limited release, 6.131424,
+6.217292 and 7.622994, and 6.182335, 6.097915 and 7.556267. The latter are
+the base every later paired comparison is taken against: the ear bought the
+never-fitted flat-top rows 4.9% at the cost of 1.1% on training and 2.9% on
+development validation. The
 renderer renders each material at its anchor body - steel the default
 Dreadnought, nylon the Auditorium slot that is the measured classical.
 
@@ -320,8 +322,8 @@ while a steel pluck releases most of its energy parallel to the top.
 Equal energy is not equal loudness: a faster finger makes a narrower dent,
 and the string losses and body radiation weight its spectrum differently.
 The map is an energy convention, not a measurement of real finger dynamics.
-(The equality asks for finger speeds up to 21.8 m/s on steel and
-55.0 m/s on nylon at the top of the range, far faster than a hand moves. The
+(The equality asks for finger speeds up to 15.4 m/s on steel and
+34.1 m/s on nylon at the top of the range, far faster than a hand moves. The
 published stopping finger — Bilbao and Torin, DAFx-14 — has been checked
 against the whole fretboard and is rigid everywhere the engine reaches, so it
 cannot supply this bound; the open question is a measured fingertip speed
@@ -517,7 +519,16 @@ A short deterministic noise burst adds the
 release detail; the bridge-local direct path's fitted gain is zero, so the
 measured body is the only radiator. Pluck Position moves the
 displacement point; Touch and MIDI velocity alter its aperture, level and
-brightness. A fitted register law broadens the effective low-note contact and
+brightness. The hand lets the string go at the force it can hold, not at a
+set displacement: a point force at distance a from the bridge deflects a
+string of tension T and speaking length L by F·a(L − a)/(T·L), so the same
+stroke displaces a stopped string less than the open one the velocity law is
+calibrated on, by (L − a)/L against (L0 − a)/L0 at the same hand position (up
+to 2.7 dB less at the 17th fret), and its attack-pitch glide shrinks with it;
+the contact noise stays on the force. A blind listener chose this on every
+up-the-neck pair (Docs/decisions.md); the benchmark is neutral on it
+(training +0.07%, development validation −0.07%, flat-top −0.24%) while its
+pitch-trajectory term improves on every split. A fitted register law broadens the effective low-note contact and
 narrows it in the upper register, correcting a repeatable corpus-wide spectral
 slope without applying note-dependent body EQ. The fitted exponent continues
 past the pitch-independent point, so low-note contact is broader and high-note
@@ -1366,8 +1377,8 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   buying with that rail — less bridge damping, or something the modal fit
   above 10 kHz does not carry — is the open question.
 
-- The fretting hand's energy law implies finger speeds up to 21.8 m/s on steel
-  and 55.0 m/s on nylon at the top of the hammer-on velocity range, far above
+- The fretting hand's energy law implies finger speeds up to 15.4 m/s on steel
+  and 34.1 m/s on nylon at the top of the hammer-on velocity range, far above
   what a hand does, so the top of that map is louder than the mechanism it
   claims. The obvious bound — a published stopping finger, mass-spring on the
   dent — has been tried and does not supply it: Bilbao and Torin's finger
@@ -1952,6 +1963,12 @@ git history rather than here.
 
 ### 2026-09-24
 
+- **A pluck is released at the force the hand holds.** The same stroke now
+  displaces a stopped string less than an open one, as a point force on a
+  shorter string does, so notes up the neck no longer grow louder and glide
+  further than a real guitar's; a blind listener chose it on every
+  up-the-neck pair. Benchmark neutral (Fylde bridge 6.180182 → 6.182335,
+  6.103707 → 6.097915, 7.572502 → 7.556267), pitch trajectory better.
 - **Three blind verdicts set what the benchmark could not.** High fretted
   notes now keep their pitch as they ring: the parallel polarisation's 0.8 mm
   end correction, which let the flatter member take over within half a

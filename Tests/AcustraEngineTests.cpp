@@ -115,6 +115,15 @@ struct AcustraEngineTestAccess
             : options.picking == PickingTechnique::Thumb
                 ? std::sqrt(4.0f * apertureSamples * apertureSamples + 6.25f)
                 : apertureSamples;
+        // The envelope carries the stroke's force; the shape is displaced by
+        // it through the stopped string's compliance at the pluck point,
+        // referred to the open string (initialisePluck).
+        const float scaleLength = material == StringMaterial::Steel ? 0.648f : 0.650f;
+        const float soundingLength = scaleLength
+            * std::exp2(-static_cast<float>(voice.fret) / 12.0f);
+        const double releaseScale = (1.0f - voice.pluckPoint)
+            / std::clamp(1.0f - voice.pluckPoint * soundingLength / scaleLength,
+                         0.05f, 1.0f);
         ReleasedContactSnapshot result {
             {}, std::clamp(voice.pluckPoint
                 + (options.polarisation == 0 ? -0.006f : 0.009f), 0.05f, 0.48f),
@@ -123,7 +132,7 @@ struct AcustraEngineTestAccess
                 loop.currentDelay * 48000.0f / static_cast<float>(rate),
                 calibration.apertureRegisterExponent),
             static_cast<double>(voice.excitationEnvelope)
-                / (0.003f + 0.014f * touch)
+                / (0.003f + 0.014f * touch) * releaseScale
                 * std::sqrt(options.polarisation == 0
                     ? voice.polarisationMix : 1.0f - voice.polarisationMix)
         };

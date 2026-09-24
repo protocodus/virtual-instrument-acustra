@@ -3036,9 +3036,21 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // so it never draws this and stays exactly as it was.
     const float strumLevelGain = voice.strumming
         ? std::pow(10.0f, 7.74f * nextNoise(voice) / 20.0f) : 1.0f;
+    // A hand lets the string go at the force it can hold, not at a set
+    // displacement: a point force F at distance a from the bridge deflects a
+    // string of tension T and speaking length L by F a (L - a) / (T L), so the
+    // same stroke displaces a stopped string less than the open one it was
+    // calibrated on, by (L - a)/L against (L0 - a)/L0 at the same hand
+    // position.
+    const float heldDistance = position * soundingLength;
+    const float releaseScale = (1.0f - position)
+        / clamp(1.0f - heldDistance / scaleLength, 0.05f, 1.0f);
     const float amplitude = (steel ? 0.24f : 0.29f)
         * std::pow(v, velocityExponent) * (0.92f + 0.08f * touch)
         * strumLevelGain;
+    // The contact noise below follows the force; the shape it leaves, the
+    // displacement.
+    const float releasedAmplitude = amplitude * releaseScale;
     // The share of the pluck's energy released normal to the soundboard. A
     // steel-string player's finger stroke and pick both cross the strings
     // moving along the top, pressing in only partly, so most of a steel pluck
@@ -3117,7 +3129,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             physicalCalibration_.apertureRegisterExponent);
         if (releaseShare > 0.0f)
         {
-            writePickRelease(loop, length, amplitude * polarisationGain,
+            writePickRelease(loop, length, releasedAmplitude * polarisationGain,
                              localPosition, aperture, modes, releaseShare);
             continue;
         }
@@ -3230,7 +3242,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                     // reset() establishes writeIndex=0. These samples never
                     // need the general circular-index wrap operation.
                     loop.delay[static_cast<std::size_t>(maximumDelaySamples - sample - 1)]
-                        = amplitude * polarisationGain * triangle;
+                        = releasedAmplitude * polarisationGain * triangle;
                 }
             };
             if (modes == 1 && radius < 0.5)
@@ -3521,7 +3533,10 @@ float AcustraEngine::pluckEnergy(float velocity, float soundingLength,
         + 0.135f * parameters_.pluckPosition) * physical.pluckDistanceScale;
     const float position = clamp(distanceFromBridge / soundingLength,
                                  0.05f, 0.46f);
-    const float metres = amplitude
+    const float scaleLength = steel ? 0.648f : 0.650f;
+    const float releaseScale = (1.0f - position)
+        / clamp(1.0f - position * soundingLength / scaleLength, 0.05f, 1.0f);
+    const float metres = amplitude * releaseScale
         * std::max(physicalCalibration_.steelDisplacementScaleMetres, 1.0e-4f);
     // The fretting finger strikes and leaves the string normal to the
     // fretboard, so its gestures belong to the normal plane alone, while a
@@ -3926,7 +3941,7 @@ void AcustraEngine::liftFinger(Voice& voice, int stringIndex,
 // constants writes this same dent and the rigid one stays.
 //
 // The published finger does not bound the speed either. Over that same
-// sweep the descent below reaches 21.8 m/s on steel and 55.0 m/s on nylon at
+// sweep the descent below reaches 15.4 m/s on steel and 34.1 m/s on nylon at
 // velocity 1.0 -- far faster than a hand moves -- but neither the mass nor
 // the stiffness limits it, because the finger is driven. The only published
 // value for that driving force is DAFx-24 Sec. 6.2's f_e,FG = 0.9 N, from
