@@ -2321,16 +2321,20 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
 // request; what the coupling adds is read here as the shift of the note's
 // sustained, energy-weighted centre - the pitch a tuner or a player's ear
 // reads once the attack has passed. Each mode is weighted by its
-// normal-polarisation share (the normal polarisation is what radiates, and a
-// mostly normal pluck is what starts it) times the energy it still carries
-// after the first 100 ms, |lambda|^(2n)/(1 - |lambda|^2) per unit start with n
-// the periods in 100 ms. That matters where the rocking is strong: on the
-// flamenca's bridge the open B's normal-dominated mode sheds 0.24 dB a period
-// while its parallel-dominated partner, 6.4 cents above, sheds 0.011, so the
-// note's sustain is the partner's and its attack briefly sits below it. When
-// the pair is weakly coupled the centre is the normal member's own shift. Both loops are lengthened by that fraction; the
-// doublet's split and its beat are left as the coupling makes them. Zero
-// wherever the saddle's rocking was not measured.
+// normal-polarisation share (the normal polarisation radiates through the
+// heave, far more strongly than the parallel one through the rocking) times
+// the energy it still carries after the first 100 ms,
+// |lambda|^(2n)/(1 - |lambda|^2) per unit start with n the periods in
+// 100 ms. The pluck's own division between the planes is not in the weight,
+// which is why a steel open B, plucked mostly parallel to the top, settles
+// 2.5 cents from its request. That matters where the rocking is strong: on
+// the flamenca's bridge the open B's normal-dominated mode sheds 0.24 dB a
+// period while its parallel-dominated partner sheds 0.011, so the note's
+// sustain is the partner's and its attack briefly sits apart from it. When
+// the pair is weakly coupled the centre is the normal member's own shift.
+// Both loops are lengthened by that fraction; the doublet's split and its
+// beat are left as the coupling makes them. Zero wherever the saddle's
+// rocking was not measured.
 float AcustraEngine::coupledPolarisationDetune(
     const PortMobility& port, float impedance, float bentImpedance,
     float frequency, float parallelExtraDelay, float normalGain,
@@ -3522,10 +3526,10 @@ float AcustraEngine::pluckEnergy(float velocity, float soundingLength,
     // The fretting finger strikes and leaves the string normal to the
     // fretboard, so its gestures belong to the normal plane alone, while a
     // steel pluck puts most of its energy parallel to the top
-    // (initialisePluck's polarisation share). Matching a hammer-on to what a pluck at the same
-    // velocity puts in the normal plane, rather than to the whole pluck,
-    // keeps the convention's own aim: a hammered note lands at a pluck's
-    // loudness rather than several times it.
+    // (initialisePluck's polarisation share). Matching a hammer-on to what a
+    // pluck at the same velocity puts in the normal plane, rather than to the
+    // whole pluck, keeps the convention's own aim: a hammered note lands at a
+    // pluck's loudness rather than several times it.
     return pluckNormalShare(steel, touch) * 0.5f * tension * metres * metres
          * (1.0f / position + 1.0f / (1.0f - position)) / soundingLength;
 }
