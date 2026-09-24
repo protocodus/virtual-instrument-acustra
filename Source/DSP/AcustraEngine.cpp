@@ -1828,6 +1828,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             voice.tailLevel = 0.0f;
             voice.tailQuietSamples = 0;
             voice.tailLoop.reset();
+            voice.tailParallelLoop.reset();
         }
 
     if (constructionChanged || ageChanged || stringChanged || tuningChanged || shapeChanged)
@@ -3352,6 +3353,7 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.tailLevel = 0.0f;
     voice.tailQuietSamples = 0;
     voice.tailLoop.reset();
+    voice.tailParallelLoop.reset();
     configureVoice(voice, stringIndex, voice.openMidi, clearDelay);
 }
 
@@ -3375,8 +3377,9 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
         return;
     }
     voice.tailLoop = voice.loops[0];
+    voice.tailParallelLoop = voice.loops[1];
     // Already emitted contact waves still travelling toward the bridge are
-    // part of the retained vertical string state. The old source stops here;
+    // part of the retained string state. The old source stops here;
     // this copied transport receives only zeros while the new pluck starts.
     if (voice.contactTravelEnabled && voice.contactTravel.active)
         voice.tailContactTravel = voice.contactTravel;
@@ -4730,7 +4733,9 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
 void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                                 float verticalIncident,
                                 float horizontalIncident, float excitation,
-                                float tailIncident, float bridgeDisplacement,
+                                float tailIncident,
+                                float tailParallelIncident,
+                                float bridgeDisplacement,
                                 float bridgeVelocity,
                                 float horizontalBridgeDisplacement,
                                 float& directLeft,
@@ -4814,8 +4819,13 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
     if (voice.tailActive)
     {
         // This independently retained branch receives a full bridge return
-        // and contributes its own captured impedance to the junction.
+        // and contributes its own captured impedance to the junction; its
+        // parallel plane reads the crown's sideways motion as the voice's
+        // does.
         voice.tailLoop.write(tailIncident - bridgeDisplacement);
+        voice.tailParallelLoop.write(horizontalBridgeDisplacement != 0.0f
+            ? tailParallelIncident - horizontalBridgeDisplacement
+            : tailParallelIncident);
         const float tailVelocity = voice.tailLoop.bridgeVelocity(
             tailIncident, sampleRateRatio);
         const float tailForce = voice.tailCharacteristicImpedance
@@ -4835,6 +4845,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             voice.tailLevel = 0.0f;
             voice.tailQuietSamples = 0;
             voice.tailLoop.reset();
+            voice.tailParallelLoop.reset();
         }
     }
     const float localReactionForce = impedance
@@ -4981,6 +4992,7 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         std::array<float, stringCount> horizontalIncident {};
         std::array<float, stringCount> excitation {};
         std::array<float, stringCount> tailIncident {};
+        std::array<float, stringCount> tailParallelIncident {};
         BridgeDrive drive {};
         const float saddleHeight = saddleHeightRatio();
         for (int string = 0; string < stringCount; ++string)
@@ -5040,6 +5052,9 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
             {
                 tailIncident[static_cast<std::size_t>(string)]
                     = voice.tailLoop.advance(delaySmoothing_, voice.tailDamping);
+                tailParallelIncident[static_cast<std::size_t>(string)]
+                    = voice.tailParallelLoop.advance(delaySmoothing_,
+                                                     voice.tailDamping);
                 if (voice.tailContactTravel.active)
                 {
                     const auto paths = voice.tailContactTravel.process(0.0f);
@@ -5047,6 +5062,9 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
                     const float localContact = equalEnergySplit * (paths[0] - paths[1]);
                     tailIncident[static_cast<std::size_t>(string)]
                         += 0.76f * localContact * voice.tailLoop.appliedReleaseGain;
+                    tailParallelIncident[static_cast<std::size_t>(string)]
+                        += 0.51f * localContact
+                            * voice.tailParallelLoop.appliedReleaseGain;
                 }
             }
             // Every string is anchored behind the saddle whether or not it
@@ -5100,12 +5118,21 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
                 // The parallel polarisation's port on the rocking coordinate
                 // (see saddleHeightRatio): its incident force times h/a is a
                 // moment, and it presents (h/a)^2 of its impedance there. The
-                // retained tail is the normal polarisation only.
+                // retained tail's parallel plane is a second such port, at
+                // the impedance the tail captured.
                 if (saddleHeight != 0.0f)
                 {
                     drive.impedance2 += saddleHeight * saddleHeight * port;
                     drive.incidentRock -= saddleHeight * 2.0f * port
                         * horizontalIncident[static_cast<std::size_t>(string)];
+                    if (voice.tailActive)
+                    {
+                        drive.impedance2 += saddleHeight * saddleHeight
+                                          * tailPort;
+                        drive.incidentRock -= saddleHeight * 2.0f * tailPort
+                            * tailParallelIncident[
+                                static_cast<std::size_t>(string)];
+                    }
                 }
             }
         }
@@ -5237,6 +5264,7 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
                 horizontalIncident[static_cast<std::size_t>(string)],
                 excitation[static_cast<std::size_t>(string)],
                 tailIncident[static_cast<std::size_t>(string)],
+                tailParallelIncident[static_cast<std::size_t>(string)],
                 bridgeDisplacement + arm * bridgeRotation,
                 lastBridgeVelocity_ + arm * bridgeRotationRate,
                 -saddleHeight * bridgeRotation,

@@ -478,9 +478,10 @@ private:
         std::array<StringLoop, 2> loops {};
         // A string taken for a new note is still vibrating. This carries that
         // vibration on under the hand damping the model already uses for a
-        // stopped note, instead of deleting it. Only the radiated vertical
-        // polarisation is kept.
+        // stopped note, instead of deleting it, in both planes: the parallel
+        // one holds most of a pluck and radiates through the rocking saddle.
         StringLoop tailLoop {};
+        StringLoop tailParallelLoop {};
         ContactTravel tailContactTravel {};
         float tailDamping { 1.0f };
         // The retained virtual-string branch keeps the port it had at capture,
@@ -726,7 +727,8 @@ private:
     float renderExcitation(Voice& voice) noexcept;
     void finishVoice(Voice& voice, int stringIndex, float verticalIncident,
                      float horizontalIncident, float excitation,
-                     float tailIncident, float bridgeDisplacement,
+                     float tailIncident, float tailParallelIncident,
+                     float bridgeDisplacement,
                      float bridgeVelocity, float horizontalBridgeDisplacement,
                      float& directLeft,
                      float& directRight, float& sympatheticForce,

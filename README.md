@@ -422,8 +422,11 @@ round robins show, which is what makes a repeated stroke a new take rather
 than a copy.
 
 Taking a still-sounding string for a new pluck preserves its preceding
-vertical wave in a separately damped loop. This is a provisional transition
-model. [Laurson et al., CMJ 25(3), 2001](https://aaltodoc.aalto.fi/bitstreams/768dbe9c-526c-414a-b2ce-0742574b8064/download)
+waves, in both planes, in separately damped loops; the parallel plane holds
+most of a pluck and reaches the body through the rocking saddle, so dropping
+it at a repluck, as the build before this did, cut a nylon E3's old wave
+off 24 dB under the new note's first 30 ms instead of letting it die under the
+hand. This is a provisional transition model. [Laurson et al., CMJ 25(3), 2001](https://aaltodoc.aalto.fi/bitstreams/768dbe9c-526c-414a-b2ce-0742574b8064/download)
 reduce loop gain over about 10 ms **before** the next pluck;
 [Erkut et al., AES preprint 5114, §3.2](https://aaltodoc.aalto.fi/server/api/core/bitstreams/a290c5f2-9a62-4d17-ba32-160615a9c670/content)
 measure a 20–60 ms finger-contact interval. Neither establishes the current
@@ -431,7 +434,8 @@ model's 10 ms post-release T60 or its two concurrent wave states. The retained
 loop's stored-state energy falls below 1% in the existing 60 ms regression,
 but the moving bridge keeps driving it: its active lifetime can last seconds.
 Each independently returned wave therefore contributes its own impedance to
-the junction, with the old wave retaining the impedance it had at capture.
+the junction - the parallel one at (h/a)^2 of it on the rocking - with the
+old wave retaining the impedance it had at capture.
 The six physical saddle-to-anchor springs are still counted once each.
 Measured on a chord change 0.6 seconds after the first chord, the strings
 still hold 25% of their initial energy and an earlier build discarded all of
@@ -1890,6 +1894,11 @@ git history rather than here.
 
 ### 2026-09-24
 
+- **A retaken string keeps both planes under the hand.** The wave a
+  repluck or a chord change leaves behind is carried and damped in the plane
+  parallel to the top as well as the normal one, instead of being dropped;
+  that plane holds most of a pluck and radiates through the rocking saddle.
+  Single notes are unchanged (the benchmark renders byte-identically).
 - **A pluck leaves the string moving mostly along the top.** A finger's free
   stroke and a pick both cross the strings parallel to the soundboard and
   press in only partly, so the normal plane now takes 0.30 − 0.08·Touch of a

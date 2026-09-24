@@ -782,6 +782,9 @@ struct AcustraEngineTestAccess
         double heldBeforeSteal;      // stored energy in the string's own loops
         double keptInTail;           // stored energy carried into the tail
         double tailEnergyAfterDecay; // the same tail 0.5 s later
+        double heldParallelBeforeSteal; // the same, in the parallel plane
+        double keptInParallelTail;
+        double parallelTailEnergyAfterDecay;
         bool tailActive;
         bool tailActiveAfterRepluck; // a repluck of the same note lands the hand
     };
@@ -856,39 +859,44 @@ struct AcustraEngineTestAccess
                 engine.process(&left, &right, 1);
                 continue;
             }
-            std::array<double, 18> incoming {}, impedance {};
+            std::array<double, 24> incoming {}, impedance {};
             for (int i = 0; i < 6; ++i)
             {
                 const auto& voice = engine.voices_[static_cast<std::size_t>(i)];
                 for (int axis = 0; axis < 2; ++axis)
                 {
                     auto copy = voice.loops[static_cast<std::size_t>(axis)];
-                    incoming[3 * i + axis] = copy.advance(engine.delaySmoothing_, 1.0f);
-                    impedance[3 * i + axis] = voice.characteristicImpedance
+                    incoming[4 * i + axis] = copy.advance(engine.delaySmoothing_, 1.0f);
+                    impedance[4 * i + axis] = voice.characteristicImpedance
                                            * voice.appliedBendImpedanceScale;
                 }
                 if (voice.tailActive)
                 {
-                    auto copy = voice.tailLoop;
-                    incoming[3 * i + 2] = copy.advance(engine.delaySmoothing_,
-                                                       voice.tailDamping);
-                    // Weight the retained state by its independently observed
-                    // pre-capture port, not the new note's or a copied field.
-                    impedance[3 * i + 2] = expectedTailZ;
+                    // Both retained planes, each weighted by the branch's
+                    // independently observed pre-capture port, not the new
+                    // note's or a copied field.
+                    auto normal = voice.tailLoop;
+                    incoming[4 * i + 2] = normal.advance(engine.delaySmoothing_,
+                                                         voice.tailDamping);
+                    impedance[4 * i + 2] = expectedTailZ;
+                    auto parallel = voice.tailParallelLoop;
+                    incoming[4 * i + 3] = parallel.advance(engine.delaySmoothing_,
+                                                           voice.tailDamping);
+                    impedance[4 * i + 3] = expectedTailZ;
                 }
             }
             engine.process(&left, &right, 1);
             if (!retained.tailActive)
                 break;
             double waveFlux = 0.0;
-            for (int port = 0; port < 18; ++port)
+            for (int port = 0; port < 24; ++port)
             {
                 if (impedance[port] == 0.0)
                     continue;
-                const auto& voice = engine.voices_[static_cast<std::size_t>(port / 3)];
-                const int axis = port % 3;
+                const auto& voice = engine.voices_[static_cast<std::size_t>(port / 4)];
+                const int axis = port % 4;
                 const auto& loop = axis < 2 ? voice.loops[static_cast<std::size_t>(axis)]
-                                            : voice.tailLoop;
+                                 : axis == 2 ? voice.tailLoop : voice.tailParallelLoop;
                 const double outgoing = loop.delay[static_cast<std::size_t>(
                     (loop.writeIndex + AcustraEngine::maximumDelaySamples - 1)
                     % AcustraEngine::maximumDelaySamples)];
@@ -926,12 +934,16 @@ struct AcustraEngineTestAccess
         run(0.5);
         StolenStringSnapshot out {};
         out.heldBeforeSteal = loopEnergy(engine.voices_[0].loops[0]);
+        out.heldParallelBeforeSteal = loopEnergy(engine.voices_[0].loops[1]);
         for (const int note : second) engine.noteOn(note, 0.8f);
         out.tailActive = engine.voices_[0].tailActive;
         out.keptInTail = loopEnergy(engine.voices_[0].tailLoop);
+        out.keptInParallelTail = loopEnergy(engine.voices_[0].tailParallelLoop);
         run(0.5);
         out.tailEnergyAfterDecay = engine.voices_[0].tailActive
             ? loopEnergy(engine.voices_[0].tailLoop) : 0.0;
+        out.parallelTailEnergyAfterDecay = engine.voices_[0].tailActive
+            ? loopEnergy(engine.voices_[0].tailParallelLoop) : 0.0;
 
         AcustraEngine repluck;
         repluck.setParameters(parameters);
@@ -2380,8 +2392,8 @@ void testRetainedTailClosesTheWaveNormBalance()
     // The collapsed loops hold displacement waves, so this is a wave-norm
     // identity, not calibrated joules or a complete string-energy ledger:
     // sum Z*(a^2-c^2) = [x,r] dot [integrated force, integrated moment].
-    // Include both polarisations and the retained normal branch. A rigid
-    // horizontal termination contributes exactly zero flux; omitting that
+    // Include both polarisations and both retained planes. A rigid
+    // horizontal termination contributes exactly zero flux; omitting a
     // branch would incorrectly report an energy error for a moving saddle.
     // Reading incidents from copies and actual emitted delay samples catches
     // a tail receiving a full return while its impedance is absent from G.
@@ -4782,6 +4794,17 @@ void testStolenStringKeepsRingingUnderHandDamping()
     // instantaneously, so half a second later the tail must be far down.
     expect(snapshot.tailEnergyAfterDecay < 0.01 * snapshot.keptInTail,
            "the stolen tail did not decay under the hand damping");
+    // The plane parallel to the top holds most of a pluck, and the hand
+    // lands on it too: it is carried and damped exactly as the normal one.
+    expect(snapshot.heldParallelBeforeSteal > snapshot.heldBeforeSteal,
+           "the first chord did not store most of its energy parallel to the top");
+    expect(snapshot.keptInParallelTail > 0.5 * snapshot.heldParallelBeforeSteal
+               && snapshot.keptInParallelTail
+                   <= snapshot.heldParallelBeforeSteal * 1.000001,
+           "the tail did not carry the parallel plane's stored energy");
+    expect(snapshot.parallelTailEnergyAfterDecay
+               < 0.01 * snapshot.keptInParallelTail,
+           "the stolen parallel tail did not decay under the hand damping");
     // Replucking the same note is the hand landing on the string too: what
     // it held goes on in the tail under the hand while the pluck is released
     // from rest.
