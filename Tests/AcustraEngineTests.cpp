@@ -258,11 +258,13 @@ struct AcustraEngineTestAccess
 
     static BodyModeSnapshot configuredBody(
         PhysicalCalibration calibration, int index,
-        StringMaterial material = StringMaterial::Steel)
+        StringMaterial material = StringMaterial::Steel,
+        BodyShape shape = EngineParameters {}.shape)
     {
         AcustraEngine engine;
         EngineParameters parameters;
         parameters.stringMaterial = material;
+        parameters.shape = shape;
         engine.setParameters(parameters);
         engine.setPhysicalCalibration(calibration);
         engine.prepare(48000.0, 64);
@@ -1196,6 +1198,39 @@ struct AcustraEngineTestAccess
                  bridge.mainIntegratedForce, bridge.mainIntegratedMoment,
                  bridge.bodyIntegratedForce, bridge.bodyIntegratedMoment,
                  bridge.tailIntegratedForce, bridge.tailIntegratedMoment };
+    }
+
+    // The normal-polarisation line a fresh note writes, newest sample first,
+    // over its round trip: what the bridge will read over the first period.
+    static std::vector<double> pluckedLine(PhysicalCalibration calibration,
+                                           PickingTechnique picking,
+                                           int midiNote, float velocity)
+    {
+        AcustraEngine engine;
+        engine.setPhysicalCalibration(calibration);
+        EngineParameters parameters;
+        parameters.picking = picking;
+        engine.setParameters(parameters);
+        engine.prepare(48000.0, 64);
+        engine.noteOn(midiNote, velocity);
+        std::vector<double> line;
+        for (const auto& voice : engine.voices_)
+        {
+            if (!voice.played || voice.midiNote != midiNote)
+                continue;
+            // The shape was written over the delay current at the pluck;
+            // the steel attack-pitch glide has since moved targetDelay.
+            const auto& loop = voice.loops[0];
+            const int length = static_cast<int>(std::round(loop.currentDelay));
+            for (int sample = 1; sample <= length; ++sample)
+            {
+                int index = loop.writeIndex - sample;
+                while (index < 0)
+                    index += AcustraEngine::maximumDelaySamples;
+                line.push_back(loop.delay[static_cast<std::size_t>(index)]);
+            }
+        }
+        return line;
     }
 
     static std::vector<float> radiationHistory(const AcustraEngine& engine)
@@ -3923,13 +3958,13 @@ void testHostilePhysicalCalibrationIsSanitised()
         -100.0f, -100.0f, -100.0f, -100.0f, -100.0f,
         uniformMaterial(-100.0f), uniformMaterial(-100.0f), -100.0f, -100.0f,
         -100.0f, -100.0f, -100.0f, -100.0f, -100.0f, -100.0f,
-        -100.0f, -100.0f, -100.0f
+        -100.0f, -100.0f, -100.0f, -100.0f, -100.0f, -100.0f
     };
     const acustra::PhysicalCalibration highSource {
         100.0f, 100.0f, 100.0f, 100.0f, 100.0f,
         uniformMaterial(100.0f), uniformMaterial(100.0f), 100.0f, 100.0f,
         100.0f, 100.0f, 100.0f, 100.0f, 100000.0f, 100.0f,
-        100.0f, 100000.0f, 100.0f
+        100.0f, 100000.0f, 100.0f, 100.0f, 100.0f, 100.0f
     };
     const auto sanitised = [] (acustra::PhysicalCalibration source)
     {
@@ -3948,10 +3983,13 @@ void testHostilePhysicalCalibrationIsSanitised()
                         low.bridgeConductanceFloor,
                         low.bridgeConductanceCornerHz,
                         low.bridgeTailLengthMetres,
-                        low.polarisationEndCorrectionMetres }
+                        low.polarisationEndCorrectionMetres,
+                        low.pickReleaseVelocityShare,
+                        low.pickReleaseVelocityExponent,
+                        low.pickTransientGain }
                == std::array { 0.96f, 0.05f, 0.25f, -6.0f, 0.0f, -1.0f,
                                0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f,
-                               0.00325f, 0.0f },
+                               0.00325f, 0.0f, 0.0f, 0.0f, 0.0f },
            "low physical calibration bounds were not enforced");
     expect(std::array { high.bodyFrequencyScale, high.bodyQScale,
                         high.bridgeMobilityScale, high.residueTiltDbPerOctave,
@@ -3962,10 +4000,13 @@ void testHostilePhysicalCalibrationIsSanitised()
                         high.bridgeConductanceFloor,
                         high.bridgeConductanceCornerHz,
                         high.bridgeTailLengthMetres,
-                        high.polarisationEndCorrectionMetres }
+                        high.polarisationEndCorrectionMetres,
+                        high.pickReleaseVelocityShare,
+                        high.pickReleaseVelocityExponent,
+                        high.pickTransientGain }
                == std::array { 1.04f, 1.8f, 4.0f, 6.0f, 0.12f, 1.0f,
                                32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f,
-                               0.060f, 0.82e-3f },
+                               0.060f, 0.82e-3f, 2.0f, 4.0f, 8.0f },
            "high physical calibration bounds were not enforced");
     const std::array materialLow {
         0.25f, 0.4f, 0.35f, 0.35f, 0.0f, 0.7f, 0.0f
@@ -4351,12 +4392,22 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
             const auto thumb = AcustraEngineTestAccess::pluck(
                 acustra::fittedPhysicalCalibration, material, velocity,
                 52, PickingTechnique::Thumb);
-            expect(pick.peakDisplacement > thumb.peakDisplacement
-                       // Nylon's calibrated release-noise gain is zero.
-                       && pick.noiseEnvelope >= thumb.noiseEnvelope,
-                   "pick/thumb did not reach the released shape and attack");
+            expect(pick.peakDisplacement > thumb.peakDisplacement,
+                   "pick/thumb did not reach the released shape");
+            // The pick's contact transient follows its own fitted law, an
+            // impact growing with the tip's speed (FittedPhysicalData.h), not
+            // the Finger burst the thumb shares; nylon's burst gain is zero.
+            const auto& calibration = acustra::fittedPhysicalCalibration;
+            const auto& physical = material == acustra::StringMaterial::Steel
+                ? calibration.steel : calibration.nylon;
+            const double expectedPick = calibration.pickTransientGain
+                * (material == acustra::StringMaterial::Steel ? 0.24 : 0.29)
+                * 0.017 * physical.transientScale
+                * std::pow(velocity, 0.5 * calibration.pickReleaseVelocityExponent);
+            expect(std::abs(pick.noiseEnvelope - expectedPick)
+                       <= 1.0e-5 * std::max(expectedPick, 1.0e-3),
+                   "the pick's contact transient did not follow its fitted speed law");
             expect(pick.touch == finger.touch && finger.touch == thumb.touch
-                       && pick.noiseEnvelope == finger.noiseEnvelope
                        && thumb.noiseEnvelope == finger.noiseEnvelope,
                    "picking styles changed the shared touch/noise amplitude law");
             expect(pick.pluckPoint < finger.pluckPoint
@@ -6826,6 +6877,276 @@ void testEachStringMaterialPlaysItsOwnMeasuredGuitar()
             }
 }
 
+// A string does not leave a plectrum's tip from rest (FittedPhysicalData.h).
+// Under Pick the written line carries, beside the fitted displacement, a
+// velocity over the contact width whose energy is the fitted share of the
+// displacement's, in the same time frame the calibration was fitted in;
+// Finger and Thumb never read the three plectrum values.
+void testAPlectrumReleasesWithVelocity()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    using acustra::PickingTechnique;
+    auto plain = acustra::fittedPhysicalCalibration;
+    plain.pickReleaseVelocityShare = 0.0f;
+    plain.pickReleaseVelocityExponent = 0.0f; // the share applies at every velocity
+    plain.pickTransientGain = 0.0f;
+    auto shared = plain;
+    shared.pickReleaseVelocityShare = 1.0f;
+    auto traceOnly = plain;
+    traceOnly.pickReleaseVelocityShare = 1.0e-10f;
+
+    // In a lossless line every sample-to-sample difference carries the same
+    // energy whichever wave it belongs to, so the share is read straight
+    // from the summed squared differences around the loop.
+    const auto lineEnergy = [] (const std::vector<double>& line)
+    {
+        double energy = 0.0;
+        for (std::size_t sample = 0; sample < line.size(); ++sample)
+        {
+            const double step = line[sample]
+                - line[(sample + line.size() - 1) % line.size()];
+            energy += step * step;
+        }
+        return energy;
+    };
+    const auto partialDb = [] (const std::vector<double>& line, int harmonic)
+    {
+        std::complex<double> sum {};
+        for (std::size_t sample = 0; sample < line.size(); ++sample)
+            sum += line[sample] * std::polar(1.0, -2.0 * std::numbers::pi
+                * harmonic * static_cast<double>(sample)
+                / static_cast<double>(line.size()));
+        return 20.0 * std::log10(std::max(std::abs(sum), 1.0e-30));
+    };
+    for (const int midi : { 40, 52, 64 })
+    {
+        const auto legacy = Access::pluckedLine(plain, PickingTechnique::Pick, midi, 0.7f);
+        const auto trace = Access::pluckedLine(traceOnly, PickingTechnique::Pick, midi, 0.7f);
+        const auto released = Access::pluckedLine(shared, PickingTechnique::Pick, midi, 0.7f);
+        expect(legacy.size() > 8 && legacy.size() == trace.size()
+                   && legacy.size() == released.size(),
+               "the plectrum write changed the line written at the pluck");
+        // The fitted frame: with the velocity switched off the new write is
+        // the legacy pluck, sample for sample.
+        double peak = 0.0, deviation = 0.0;
+        for (std::size_t sample = 0; sample < legacy.size(); ++sample)
+        {
+            peak = std::max(peak, std::abs(legacy[sample]));
+            deviation = std::max(deviation, std::abs(legacy[sample] - trace[sample]));
+        }
+        expect(deviation < 1.0e-4 * peak,
+               "the plectrum's rest frame is not the fitted pluck's frame");
+        const double ratio = lineEnergy(released) / lineEnergy(legacy);
+        expect(std::abs(ratio - 2.0) < 0.02,
+               "a unit release share did not add the displacement's own energy");
+        // The velocity's partials fall 6 dB/octave slower than the
+        // displacement's, so the top of the band rises against the bottom.
+        double lowLegacy = 0.0, lowReleased = 0.0, highLegacy = 0.0, highReleased = 0.0;
+        for (int harmonic = 1; harmonic <= 3; ++harmonic)
+        {
+            lowLegacy += partialDb(legacy, harmonic) / 3.0;
+            lowReleased += partialDb(released, harmonic) / 3.0;
+        }
+        for (int harmonic = 8; harmonic <= 12; ++harmonic)
+        {
+            highLegacy += partialDb(legacy, harmonic) / 5.0;
+            highReleased += partialDb(released, harmonic) / 5.0;
+        }
+        expect((highReleased - lowReleased) - (highLegacy - lowLegacy) > 1.0,
+               "the release velocity did not tilt the line toward its upper partials");
+    }
+
+    // Finger and Thumb never read the plectrum's values; Pick does.
+    auto loud = plain;
+    loud.pickReleaseVelocityShare = 2.0f;
+    loud.pickReleaseVelocityExponent = 2.0f;
+    loud.pickTransientGain = 8.0f;
+    for (const auto rate : { 44100.0, 48000.0, 96000.0 })
+    {
+        acustra::EngineParameters parameters;
+        for (const auto technique : { PickingTechnique::Finger, PickingTechnique::Thumb })
+        {
+            parameters.picking = technique;
+            const auto before = renderAtRate(parameters, 52, 0.8f, 0.3, rate, 64, true, plain);
+            const auto after = renderAtRate(parameters, 52, 0.8f, 0.3, rate, 64, true, loud);
+            expect(before.left == after.left && before.right == after.right,
+                   "a plectrum value reached a finger or thumb pluck");
+        }
+        parameters.picking = PickingTechnique::Pick;
+        const auto before = renderAtRate(parameters, 52, 0.8f, 0.3, rate, 64, true, plain);
+        const auto after = renderAtRate(parameters, 52, 0.8f, 0.3, rate, 64, true, loud);
+        expect(normalisedDifference(before, after) > 0.01,
+               "the plectrum values did not reach a picked note");
+        double peakBefore = 0.0, peakAfter = 0.0;
+        bool finite = true;
+        for (std::size_t sample = 0; sample < after.left.size(); ++sample)
+        {
+            finite = finite && std::isfinite(after.left[sample]) && std::isfinite(after.right[sample]);
+            peakBefore = std::max(peakBefore, static_cast<double>(std::abs(before.left[sample])));
+            peakAfter = std::max(peakAfter, static_cast<double>(std::abs(after.left[sample])));
+        }
+        expect(finite && peakAfter < 1.0 && peakAfter < 4.0 * peakBefore,
+               "an extreme plectrum setting left headroom or blew up");
+    }
+
+    // Brightness grows with dynamics under Pick: the loud-over-soft rise of
+    // the upper partials against the lower ones, read on the excitation alone
+    // (bridge coupling off), exceeds the Finger law's on the same notes.
+    auto fitted = plain;
+    fitted.pickReleaseVelocityShare = 1.5f;
+    fitted.pickReleaseVelocityExponent = 2.0f;
+    fitted.pickTransientGain = 2.0f;
+    const auto balance = [&] (PickingTechnique technique, int midi, float velocity,
+                              const acustra::PhysicalCalibration& calibration)
+    {
+        acustra::EngineParameters parameters;
+        parameters.picking = technique;
+        const auto audio = renderAtRate(parameters, midi, velocity, 0.3, 48000.0, 64,
+                                        false, calibration);
+        const double f0 = 440.0 * std::exp2((midi - 69) / 12.0);
+        std::array<double, 12> levels {};
+        for (int harmonic = 1; harmonic <= 12; ++harmonic)
+        {
+            // The steel attack-pitch glide moves a loud note's partials off
+            // exact multiples of f0 inside this window, so each level is the
+            // strongest line within the scorer's own +/-65 cent search.
+            double strongest = 0.0;
+            for (int step = -8; step <= 8; ++step)
+            {
+                const double frequency = harmonic * f0
+                    * std::exp2(65.0 * step / (8.0 * 1200.0));
+                std::complex<double> sum {};
+                for (int sample = 3840; sample < 12000; ++sample)
+                    sum += static_cast<double>(audio.left[static_cast<std::size_t>(sample)])
+                         * std::polar(1.0, -2.0 * std::numbers::pi * frequency
+                                           * sample / 48000.0);
+                strongest = std::max(strongest, std::abs(sum));
+            }
+            levels[static_cast<std::size_t>(harmonic - 1)]
+                = 20.0 * std::log10(std::max(strongest, 1.0e-30));
+        }
+        double low = 0.0, high = 0.0;
+        for (int harmonic = 1; harmonic <= 4; ++harmonic)
+            low += levels[static_cast<std::size_t>(harmonic - 1)] / 4.0;
+        for (int harmonic = 5; harmonic <= 12; ++harmonic)
+            high += levels[static_cast<std::size_t>(harmonic - 1)] / 8.0;
+        return high - low;
+    };
+    // The comparison is the same plectrum without its release velocity: the
+    // Pick contact's own narrower width and the shared Touch law already
+    // give a rise, and the release has to add to it.
+    double pickRise = 0.0, restRise = 0.0, fingerRise = 0.0;
+    for (const int midi : { 45, 52, 59 })
+    {
+        pickRise += balance(PickingTechnique::Pick, midi, 1.0f, fitted)
+                  - balance(PickingTechnique::Pick, midi, 0.2f, fitted);
+        restRise += balance(PickingTechnique::Pick, midi, 1.0f, plain)
+                  - balance(PickingTechnique::Pick, midi, 0.2f, plain);
+        fingerRise += balance(PickingTechnique::Finger, midi, 1.0f, fitted)
+                    - balance(PickingTechnique::Finger, midi, 0.2f, fitted);
+    }
+    std::cout << "Acustra plectrum loud-over-soft upper-partial rise: pick "
+              << pickRise / 3.0 << " dB, from rest " << restRise / 3.0
+              << " dB, finger " << fingerRise / 3.0 << " dB\n";
+    expect(pickRise > restRise + 2.0,
+           "a picked note did not brighten with dynamics beyond its release from rest");
+}
+
+// A Shape is the measured body's A0 and T1 re-coupled through Christensen and
+// Vistisen's two-oscillator model for a published box, with the plate modes
+// above T1 on the equal-thickness plate law. The anchors are the transform
+// each calibration was fitted on and must not move; the other shapes must
+// land where an independent evaluation of the same model puts them.
+void testBodyShapesFollowTheCoupledTopAndCavity()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    using acustra::BodyShape;
+    using acustra::StringMaterial;
+    const auto calibration = acustra::fittedPhysicalCalibration;
+    const auto body = [&] (StringMaterial material, BodyShape shape, int index)
+    {
+        return Access::configuredBody(calibration, index, material, shape);
+    };
+
+    // Steel's anchor is the Dreadnought: the flamenca's bank under the
+    // fitted transform, A0 at 95.49 * 101/107 * (1 + 0.009) and T1 at
+    // 179.65 * 0.972 * (1 + 0.009 / sqrt(3)).
+    const auto steelDread0 = body(StringMaterial::Steel, BodyShape::Dreadnought, 0);
+    const auto steelDread2 = body(StringMaterial::Steel, BodyShape::Dreadnought, 2);
+    expect(std::abs(steelDread0.frequency - 95.4921112 * (101.0 / 107.0) * 1.009) < 0.01,
+           "the steel Dreadnought anchor moved its A0");
+    expect(std::abs(steelDread2.frequency
+                    - 179.654236 * 0.972 * (1.0 + 0.009 / std::sqrt(3.0))) < 0.01,
+           "the steel Dreadnought anchor moved its T1");
+    // Nylon's anchor is the Auditorium slot the Classical preset uses, under
+    // the same fitted transform of the measured classical.
+    const auto nylonAud0 = body(StringMaterial::Nylon, BodyShape::Auditorium, 0);
+    const auto nylonAud1 = body(StringMaterial::Nylon, BodyShape::Auditorium, 1);
+    expect(std::abs(nylonAud0.frequency - 98.1445312 * (101.0 / 107.0) * 1.009) < 0.01,
+           "the nylon Auditorium anchor moved its A0");
+    expect(std::abs(nylonAud1.frequency
+                    - 200.751648 * 0.972 * (1.0 - 0.009 / std::sqrt(2.0))) < 0.01,
+           "the nylon Auditorium anchor moved its T1");
+
+    // Independently evaluated (Tools-free, in double precision from the same
+    // published boxes) the coupled pair puts the steel shapes here; the
+    // engine's single-precision path must agree within a fraction of a hertz.
+    struct Expected { BodyShape shape; double a0, t1; };
+    for (const auto& row : { Expected { BodyShape::Parlor, 118.17, 205.71 },
+                             Expected { BodyShape::Auditorium, 102.67, 189.68 },
+                             Expected { BodyShape::Jumbo, 81.50, 161.52 } })
+    {
+        const auto a0 = body(StringMaterial::Steel, row.shape, 0);
+        const auto t1 = body(StringMaterial::Steel, row.shape, 2);
+        expect(std::abs(a0.frequency - row.a0) < 0.5,
+               "a steel shape's A0 is not where the coupled model puts it");
+        expect(std::abs(t1.frequency - row.t1) < 0.5,
+               "a steel shape's T1 is not where the coupled model puts it");
+    }
+
+    // A smaller box raises both modes and a larger one lowers them, on both
+    // materials, and the same ordering holds for the plate modes above T1.
+    for (const auto material : { StringMaterial::Steel, StringMaterial::Nylon })
+    {
+        const int t1Index = material == StringMaterial::Steel ? 2 : 1;
+        const int plateIndex = 9;
+        double previousA0 = 1.0e9, previousT1 = 1.0e9, previousPlate = 1.0e9;
+        for (const auto shape : { BodyShape::Parlor, BodyShape::Auditorium,
+                                  BodyShape::Dreadnought, BodyShape::Jumbo })
+        {
+            const double a0 = body(material, shape, 0).frequency;
+            const double t1 = body(material, shape, t1Index).frequency;
+            const double plate = body(material, shape, plateIndex).frequency;
+            expect(a0 < previousA0 && t1 < previousT1 && plate < previousPlate,
+                   "a larger box did not lower A0, T1 and the plate modes");
+            previousA0 = a0;
+            previousT1 = t1;
+            previousPlate = plate;
+        }
+        // Nylon's Auditorium is the classical's own box, so it sits between
+        // the Parlor and the Dreadnought on the same monotone run; the
+        // measured Q is retained by every shape.
+        expect(std::abs(body(material, BodyShape::Parlor, t1Index).q
+                        - body(material, BodyShape::Jumbo, t1Index).q) < 0.05,
+               "a shape changed a body mode's measured Q");
+    }
+
+    // The small box radiates its A0 more strongly per unit force (the piston
+    // is smaller, so the same force is more cavity pressure) while its plate
+    // modes radiate from less area; the large box the other way round.
+    const auto steelParlor0 = body(StringMaterial::Steel, BodyShape::Parlor, 0);
+    const auto steelJumbo0 = body(StringMaterial::Steel, BodyShape::Jumbo, 0);
+    const auto steelParlor9 = body(StringMaterial::Steel, BodyShape::Parlor, 9);
+    const auto steelDread9 = body(StringMaterial::Steel, BodyShape::Dreadnought, 9);
+    const auto steelJumbo9 = body(StringMaterial::Steel, BodyShape::Jumbo, 9);
+    expect(steelParlor0.residue > steelDread0.residue
+               && steelJumbo0.residue < steelDread0.residue,
+           "A0 radiation did not follow the coupled model's residues");
+    expect(steelParlor9.residue < steelDread9.residue
+               && steelJumbo9.residue > steelDread9.residue,
+           "plate radiation did not scale with the plate area");
+}
+
 // Woodhouse (Acta Acustica 90 (2004) 945-965, Sec. 4.3) measures the two
 // polarisations of a plucked string as a doublet split not by the body -- the
 // measured 2x2 admittance matrix splits it by about 0.1 Hz -- but by an end
@@ -7165,6 +7486,8 @@ int main()
     testNoTwoPlucksLandInTheSamePlace();
     testFrettingHandFollowsThePluckLaw();
     testEachStringMaterialPlaysItsOwnMeasuredGuitar();
+    testBodyShapesFollowTheCoupledTopAndCavity();
+    testAPlectrumReleasesWithVelocity();
     testTheNormalPolarisationIsTheHigherMemberByALength();
     testPerformance();
     if (failures == 0)

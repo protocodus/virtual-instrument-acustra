@@ -25,20 +25,28 @@ struct ConstructionPreset
     acustra::GuitarModel model { acustra::GuitarModel::Original };
 };
 
-// Original presets are authored construction directions. The appended presets
-// select a measured body plus suitable string construction and geometry morph.
+// Construction directions, not measured replicas of manufacturer models.
+// The steel presets play the measured Fylde steel-string bridge: with the
+// same string calibration it sits closer to every split of the dry-note
+// recordings than the flamenca's bridge the calibration was fitted on
+// (README, Real dry-note benchmark). That fitted Original bridge stays
+// reachable as its own preset and remains the benchmark's reference. The
+// appended presets select a measured body plus suitable string construction.
 constexpr std::array<ConstructionPreset, 9> constructionPresets {{
     { "Dreadnought / Martin style", acustra::BodyShape::Dreadnought,
-      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel },
-    { "Auditorium / Taylor style", acustra::BodyShape::Auditorium,
-      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel },
-    { "Parlor / Fender style", acustra::BodyShape::Parlor,
-      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel },
-    { "Classical nylon", acustra::BodyShape::Auditorium,
-      acustra::BodyMaterial::Cedar, acustra::StringMaterial::Nylon },
-    { "Fylde bridge / steel", acustra::BodyShape::Dreadnought,
       acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
       acustra::BridgeModel::FyldeSteel },
+    { "Auditorium / Taylor style", acustra::BodyShape::Auditorium,
+      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
+      acustra::BridgeModel::FyldeSteel },
+    { "Parlor / Fender style", acustra::BodyShape::Parlor,
+      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
+      acustra::BridgeModel::FyldeSteel },
+    { "Classical nylon", acustra::BodyShape::Auditorium,
+      acustra::BodyMaterial::Cedar, acustra::StringMaterial::Nylon },
+    { "Original bridge / steel", acustra::BodyShape::Dreadnought,
+      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
+      acustra::BridgeModel::Original },
     { "Bellido 1978 / nylon", acustra::BodyShape::Auditorium,
       acustra::BodyMaterial::Cedar, acustra::StringMaterial::Nylon,
       acustra::BridgeModel::Original, acustra::GuitarModel::Bellido1978 },

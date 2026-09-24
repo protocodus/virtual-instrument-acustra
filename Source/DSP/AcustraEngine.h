@@ -515,6 +515,9 @@ private:
         float excitationDecay { 0.0f };
         float excitationColour { 0.0f };
         float excitationLowpass { 0.0f };
+        // The Pick technique's contact transient is an impact and enters
+        // broadband, bypassing the Finger burst's colour filter.
+        bool excitationWhite { false };
         ContactTravel contactTravel {};
         float contactPeriodSamples { 0.0f };
         // Routing identity survives transport retirement: a drained contact
@@ -657,6 +660,16 @@ private:
                             float extentFraction, float sign) noexcept;
     void addTriangleVelocity(StringLoop& loop, float scale,
                              float apexFraction, float sign) noexcept;
+    // The Pick technique's released state (FittedPhysicalData.h): a rest
+    // triangle of this height with its apex at position, a fraction of the
+    // sounding length from the bridge, smoothed by the contact aperture (in
+    // loop phase), plus the velocity the string leaves the tip with,
+    // localised over that same aperture and carrying releaseShare of the
+    // triangle's stored energy. Both are projected onto the nth-harmonic
+    // node like the plucked shape. Replaces the line's first length samples.
+    void writePickRelease(StringLoop& loop, int length, float height,
+                          float position, float aperture, int modes,
+                          float releaseShare) noexcept;
     void liftFinger(Voice& voice, int stringIndex, int targetMidi) noexcept;
     void hammerString(Voice& voice, int stringIndex, int previousMidi,
                       float velocity) noexcept;
@@ -701,6 +714,13 @@ private:
     BodyMaterial configuredBodyMaterial_ { BodyMaterial::Spruce };
     StringMaterial configuredBodyStringMaterial_ { StringMaterial::Steel };
     bool bodyUpdatePending_ { false };
+    // The coupled body-shape factors configureBridge applies to the bridge
+    // bank's A0 group, its modes up to T1 and the plate modes above; all
+    // exactly 1 at each bank's anchor shape.
+    float bridgeShapeA0_ { 1.0f };
+    float bridgeShapeT1_ { 1.0f };
+    float bridgeShapePlate_ { 1.0f };
+    float bridgeShapeT1UpperHz_ { 0.0f };
     BridgeLoad bridgeLoad_ {};
     // Motion plus total/body/tail loads, each in heave and normalized rock.
     // Unlike acoustic histories these never re-prime at a note boundary.

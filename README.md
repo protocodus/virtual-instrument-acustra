@@ -115,6 +115,18 @@ uncaptured notes, transitions or performances. Keeping this control beside the
 physical result prevents the misleading claim that a source-recording replay
 is an independent realism benchmark.
 
+On the current engine - the force/moment body, the coupled-model shapes, the
+continuous Gaussian contact, the steel contact transport and the Yamaha nylon
+calibration, the two lines of development merged on 2026-09-24 - the same
+protocol at the shipping calibration reads 6.392396 on training, 6.378758 on
+development validation and 9.256751 on the flat-top rows with the benchmark's
+reference Original bridge, and 6.268767, 6.172187 and 8.591335 with the Fylde
+bridge the steel presets play; these are the base every paired comparison
+below is taken against. The renderer renders each material at the body its
+calibration was fitted on - steel the default Dreadnought, nylon the
+Auditorium slot that is the measured classical - which is byte-identical to
+the renders scored before the shape model existed.
+
 Run `python3 Tools/SummarizePhysicalBenchmark.py` to print the compact split
 table, historical sample-player control and five retained realism paths from
 the committed
@@ -152,10 +164,19 @@ entry retains this baseline without distributing the source recordings.
 The adjacent `performance_spectral_diagnostic_2026_09_05` entry uses exactly
 the same audio bytes and leaves all three baseline distances unchanged.
 
-The optional measured Fylde bridge gives the following paired results with
-identical recordings, calibration and macOS arm64 build. Lower descriptor
-distances mean closer to these recordings; they are not perceptual ratings.
-All nylon renders remain byte-identical.
+The measured Fylde bridge gives the following paired results with identical
+recordings, calibration and macOS arm64 build. Lower descriptor distances mean
+closer to these recordings; they are not perceptual ratings. All nylon renders
+remain byte-identical. Repeated on the current force/moment body (Linux x64,
+2026-09-10) the pairing reads 6.440350 → 6.321691 on training (−1.8%),
+6.521658 → 6.301160 on development validation (−3.4%) and 9.260870 → 8.603331
+on the flat-top rows (−7.1%), with the steel rows alone −2.9% and −5.9%; the
+decay term carries most of it (5.343 → 4.933, 4.980 → 4.553, 6.806 → 5.234),
+and only the pitch-trajectory term moves the other way. On the merged engine
+(2026-09-24, macOS arm64) the same pairing reads 6.392396 → 6.268767 on
+training (−1.9%), 6.378758 → 6.172187 on development validation (−3.2%) and
+9.256751 → 8.591335 on the flat-top rows (−7.2%), the steel rows alone −3.0%
+and −5.5%. This is why the steel presets now play it.
 
 | Comparison | Original bridge | Fylde bridge |
 | --- | ---: | ---: |
@@ -489,6 +510,48 @@ slope without applying note-dependent body EQ. The fitted exponent continues
 past the pitch-independent point, so low-note contact is broader and high-note
 contact narrower than in the earlier model.
 
+A string does not leave a plectrum's tip from rest. Under Pick the released
+state carries, beside that displacement, a velocity over the same contact
+width — the string the tip was carrying when it slipped off — written as
+Smith's equal integrated waves and so unfolding to a hump of velocity with no
+displacement of its own. Its kinetic energy is a fitted share of the
+displacement's, `share(v) = pickReleaseVelocityShare · v^pickReleaseVelocityExponent`
+for MIDI velocity v in 0–1, and the pick's contact transient is an impact:
+broadband, and growing with the tip's speed (`v^(exponent/2)`, the same speed
+law) rather than with the note it starts, scaled by `pickTransientGain`. All
+three are fitted on the picked archtop recordings across their four velocity
+layers and read by the Pick technique only; Finger and Thumb, and so the
+finger-plucked flat-top and classical rows, are bit-identical. The first fit
+(share 1.0 at full velocity growing as v^2.93, transient 0.078 of the Finger
+burst) belonged to a Pick with the wider 0.5 contact and the five-point
+kernel; the merged Pick meets the string narrower (0.35 of the Finger width),
+more bridgeward (0.40 of its distance) and through the continuous Gaussian,
+and the same stage refitted from that vector wants 0.3125·v^0.93 and a 0.125
+transient (archtop training under Pick 6.623494 → 6.546029, development
+validation 6.271127 → 6.256259). The velocity hump is smoothed by that same
+Gaussian contact as the displacement, exactly: the rest wave gains the
+tabulated corner function at its two folded apex corners and the velocity box
+is the difference of two Gaussian edges. The velocity's
+partials fall 6 dB/octave slower than the displacement's, which is the tilt the
+recordings gain with dynamics: before the mechanism the model's loud layer
+(MIDI 112) carried 5–9 dB too much H1–H3 and 4–6 dB too little H7–H10 while its
+soft layer (MIDI 16) sat within a few dB, and its first 12 ms were 10–19 dB
+short above 4 kHz at the loud layer only. Two things are fixed by measurement
+rather than fitted. The written frame: the plucked shape every calibration was
+fitted with is the rest state advanced by half the apex phase and negated
+(partial magnitudes agree to 0.001 dB, phases differ by exactly −πpn), and a
+rest-frame pluck with the *same* magnitudes moved the archtop harmonics term
+from 8.61 to 12.77, because the idle strings, bridge and body at coinciding
+partials interfere with the string according to the phase it starts with — so
+both components are written in the fitted frame, where they stay in
+quadrature. And the energy: the fitted level law describes the displacement,
+and the velocity is energy on top of it; redistributing one fitted energy
+between the two read worse on both splits, since the hump's energy sits in
+partials that decay fast and the sustained level then rose too little with
+velocity. What the plectrum still lacks is any measurement of its own: the
+share and exponent are fitted, not a beam and friction solver, and the
+archtop's four layers are the only picked recordings in the bank.
+
 Transverse motion stretches the string, and the tension that adds can also be
 represented as a longitudinal wave with the string's own axial
 resonances, at `c_long/2L` with `c_long = sqrt(EA/mu)`. For this steel set that
@@ -554,7 +617,13 @@ stage, the development-validation aggregate was 0.0215 lower when it was
 disabled, and that tradeoff is retained explicitly in the fit report. The same
 mechanism failed the nylon training gate, so nylon keeps the exact earlier 3-cent,
 velocity-squared and Touch-scaled cue with a 75 ms
-decay. It is an authored cue, not a nonlinear-string claim. A separate fitted
+decay. It is an authored cue, not a nonlinear-string claim, but it has since
+been read against the 39 classical recordings with the scorer's own
+pitch-trajectory descriptor: their median 20–100 ms movement is 0.69 cents
+against the model's 0.68, and the 80–200 and 180–400 ms windows 0.29 and 0.14
+against 0.23 and 0.04, inside a note-to-note spread of about a cent, so the
+magnitude stands as measured and only a slightly longer tail is suggested
+(Docs/decisions.md). A separate fitted
 steel fret-decay slope of -0.0598 lengthens T60 with fret number; nylon retains
 its prior +0.018 fret law.
 
@@ -591,9 +660,9 @@ they reach 32–76%. Narrow-band microphone errors near 794 and 891 Hz reach
 at every mode. Shorter common windows leave the high-frequency discrepancy.
 The full frequency and sensor results are retained in the fit report.
 
-**Fylde bridge / steel**, in the Guitar menu, selects a separate 44-mode passive
-bridge fitted to the first instrument in [Carcagno et al.'s steel-guitar
-measurements](https://doi.org/10.1121/1.5084735): a custom Fylde Falstaff with
+The steel construction presets, and a new session, play a separate 44-mode
+passive **Fylde bridge** fitted to the first instrument in [Carcagno et al.'s
+steel-guitar measurements](https://doi.org/10.1121/1.5084735): a custom Fylde Falstaff with
 Sitka spruce top and Brazilian rosewood back and sides. Its normal bridge
 velocity/force was measured with the strings damped, between strings 5 and 6.
 The fit retains measured SI gain and has 0.230 relative complex error and
@@ -602,10 +671,15 @@ The fit retains measured SI gain and has 0.230 relative complex error and
 fits only the measured response, and records the inferred phase alignment.
 There is no measured rocking or microphone response in this dataset: all six
 strings share its scalar bridge, and microphone radiation still comes from the
-existing body bank. This is a measured bridge alternative, not a complete Fylde
-replica. It retains the current string calibration and anchor model; nylon and
-the default sound are unchanged. The host's appended `bridgeModel` parameter
-preserves this choice in sessions, with Original as the missing-state default.
+existing body bank. This is a measured bridge, not a complete Fylde replica. It
+retains the string calibration and anchor model that were fitted on the
+flamenca's bridge, and with that same calibration it sits closer to every split
+of the dry-note recordings (the paired table in Real dry-note benchmark), which
+is why the steel presets select it. The fitted flamenca bridge remains the
+**Original bridge / steel** preset and the benchmark's reference; nylon does
+not read the choice. The host's appended `bridgeModel` parameter preserves the
+choice in sessions, and a session saved before it existed keeps the Original
+bridge it was made with.
 
 The model represents each short segment behind the saddle as a spring between
 the bridge and ground. All six are there whether or not
@@ -712,6 +786,41 @@ The construction controls are deliberately bounded directions around the
 measured reference guitar, not claims that one measurement identifies several
 distinct instruments.
 
+Shape is a box rather than a tone curve. The measured body's two lowest strong
+modes, the air resonance A0 and the top's first mode T1, are the two modes of
+Christensen and Vistisen's coupled top-plate/air-cavity model (J. Acoust. Soc.
+Am. 68(3), 1980, 758-766): a top piston on a cavity spring and the soundhole's
+air plug, whose coupled pair obeys f₋² + f₊² = f_p0² + f_a² + f_h² and
+f₋²f₊² = f_p0²f_h². A measured A0/T1 pair plus the box's own rigid-walled
+Helmholtz frequency therefore identify the top's two frequencies, and a
+different box re-couples the same top into a different pair. The boxes are
+published set-up dimensions: Martin's Size 0 for Parlor (the class the PS-220E
+belongs to), the Martin 000 "Auditorium", the D-28 for Dreadnought and Gibson's
+SJ-200 for Jumbo, each with the 4-inch soundhole a flat-top carries; the plate
+modes above T1 follow the equal-thickness plate law f ∝ 1/A_top with their
+radiation scaled by the area they radiate from, and the A0/T1 radiation ratios
+come from the same model's eigenvectors. On steel that puts A0/T1 at 118/206 Hz
+for the Parlor, 103/190 for the Auditorium, 91/176 for the Dreadnought and
+82/162 for the Jumbo. The anchor each material's calibration was fitted on is
+kept exactly as it was: steel's is the Dreadnought and nylon's the Auditorium
+slot the Classical preset uses (both calibrations were fitted with that one
+authored transform of the bank in place, and the classical recordings prefer it
+to the bare measurement, 7.528 against 7.910 on the nylon training rows), so
+the default sounds and all 79 benchmark renders are byte-identical and the
+other three shapes are placed relative to the anchor. Read against the
+recordings, the eight never-fitted Eastman E1D flat-top rows, a dreadnought,
+prefer the Parlor (8.612) and Auditorium (8.812) morphs to the anchored
+Dreadnought (9.261): the anchor's A0/T1 sit below the roughly 100 and 190 Hz
+that published dreadnought measurements report (Fletcher and Rossing, *The
+Physics of Musical Instruments*, ch. 9), because it darkened a classical-size
+body whose A0 was already low. Moving the anchor is a listening decision and is
+left to one. The classical recordings prefer their own box on training (7.528
+against Parlor 7.658, Dreadnought 7.837, Jumbo 8.075) and the Parlor on
+validation (7.330 against 7.469). The outline's fraction of its width-by-length
+rectangle (0.72, and 0.75 for the dreadnought's shoulders) is read off the
+plantillas, and the plate law assumes tops of one thickness; both are model
+assumptions, not measurements of those instruments.
+
 The Guitar menu applies construction controls together, using the documented
 body families as starting points: Dreadnought / Martin style (spruce and steel,
 as in the [D-28](https://www.martinguitar.com/guitars/standard-series/D-28.html)),
@@ -719,10 +828,12 @@ Auditorium / Taylor style (spruce and steel, the
 [Grand Auditorium family](https://blog.taylorguitars.com/buyers-resources/an-introduction-to-taylor-acoustic-guitar-body-shapes)),
 Parlor / Fender style (spruce and steel, as in the
 [PS-220E](https://www.fender.com/products/ps-220e-parlor)), and Classical nylon
-(Auditorium/Cedar/Nylon). These reuse the bounded construction directions;
+(Auditorium/Cedar/Nylon). The three steel presets play the measured Fylde
+steel-string bridge; Original bridge / steel keeps the fitted flamenca bridge.
+These reuse the bounded construction directions;
 they are not independently measured models of those manufacturers. The menu
-changes Shape, Material and Strings with host automation gestures, leaving
-tuning and output where the player set them. Other combinations show Custom
+changes Shape, Material, Strings and the bridge with host automation gestures,
+leaving tuning and output where the player set them. Other combinations show Custom
 construction.
 
 The four additional models and their microphone limitations are documented in
@@ -732,24 +843,28 @@ microphone, so their microphone capture remains mono even with Stereo mic
 selected. The `guitarModel` host parameter is appended at version 7; old saved
 states default to Original.
 
-Shape changes the bridge's resonance frequencies and damping together with
-radiation, so it also changes the saddle-force Piezo capture and the body's
-interaction with the strings. Body Material continues to change radiation.
-Both preserve ringing strings and overlapping re-pluck tails. Original keeps
-its calibrated bridge at Dreadnought; its radiation's unwarped reference remains
-Auditorium, a retained legacy offset. Each named model keeps its measured
-bridge at its native shape. If a body crossfade is already sounding,
+Shape moves the bridge's modes by the same coupled-model factors as the
+radiation - its A0 group, its modes up to the body's T1 and the plate modes
+above - so it also changes the saddle-force Piezo capture and the body's
+interaction with the strings. Only modal stiffness moves: each bridge residue
+matrix and Q is retained, so a fixed shape keeps the passive modal
+construction. Body Material continues to change radiation. Both preserve
+ringing strings and overlapping re-pluck tails. Each anchor leaves both the
+bridge and the radiation exactly as fitted or measured: Original's steel
+Dreadnought and nylon Auditorium, and each named model's own family and box
+(the Bellido a classical, the Washburn a parlor, the Santa Cruz an OM/000 and
+the Martin a dreadnought). If a body crossfade is already sounding,
 the latest selection waits for its remaining duration (at most 40 ms), then
 uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
 
 | Control | Audible behavior |
 | --- | --- |
 | **Model** | Original, Bellido 1978, Washburn 1897, Santa Cruz OM 2022 or Martin D18V 2007; each named model selects its own measured bridge and radiation. |
-| **Shape** | Parlor, Auditorium, Dreadnought or Jumbo resonance and damping directions in the bridge and radiation; all three captures hear the resulting instrument. |
+| **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
 | **Body Material** | Spruce, Cedar, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. |
 | **String Material** | Selects the dedicated nylon or steel geometry, impedance, stiffness, loss and fitted calibration. |
 | **Tuning** | Changes the six open-string/fret constraints. |
-| **Picking** | Finger retains the calibrated contact; Pick is sharper and farther bridgeward, Thumb rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
+| **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and releases the string with velocity over the contact width, its share of the pluck's energy and its broadband contact transient growing with MIDI velocity as fitted on the picked archtop recordings. Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or electrically loaded saddle-force piezo. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Explicit MPE position overrides that ratio. |
@@ -885,8 +1000,9 @@ does to a note is a level difference and after t seconds that difference is
 exactly the rate error times t; the relative form scored the same 1.4x error
 identically whether it meant 25 dB or 3 dB after one second. The trajectory
 term measures common H1--H8 pitch movement over 20--100, 80--200 and
-180--400 ms relative to settled partials. The calibration stores 29 bounded
-values; 27 are active. The unidentifiable optional direct branch is fixed off,
+180--400 ms relative to settled partials. The calibration stores 32 bounded
+values; 30 are active, the last three of them the plectrum's, fitted on the
+picked archtop rows alone. The unidentifiable optional direct branch is fixed off,
 and the string-polarisation end correction ships as Woodhouse's published
 0.8 mm rather than a fitted value, because the corpus's own lever on it is
 weak. It does not copy audio or fit an arbitrary playback filter.
@@ -1129,8 +1245,11 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   captures with documented loading and channel gains are still needed to
   identify the response and sensitivity. Piezo has no matched reference yet.
   Pick and Thumb use authored hand-position/contact-width ratios, not measured
-  tool dimensions or a beam/friction plectrum solver. The real-note archive
-  supports a brighter Pick direction but merges finger and thumb labels.
+  tool dimensions or a beam/friction plectrum solver; Pick adds a fitted
+  release velocity and contact transient (Pluck and strings), and the picked
+  archtop is the only picked recording in the bank, so the plectrum's values
+  are fitted to one guitar and one player. The real-note archive supports a
+  brighter Pick direction but merges finger and thumb labels.
   [Picking comparison and assumptions](Docs/picking-styles-2026-09-08.md)
   record the audible separation and the remaining identification limits.
 
@@ -1196,8 +1315,19 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   chord still correlate 0.93 on a bass-first downstroke and 0.995 on a
   treble-first upstroke, because a pluck point moves a treble string's
   waveform far less than a bass string's.
-- Velocity still barely reaches attack brightness with the selected
-  force/moment body. A fresh comparison uses all 54 already-opened Shinyguitar
+- Velocity reaches attack brightness under Pick at the loud end, but the
+  soft end is too bright. On the merged engine the archtop's picked layers,
+  rendered with Pick, read an H5-H12 over H1-H4 balance 7.6, 7.0, 4.3 and
+  -1.0 dB from the recordings at MIDI 16, 48, 80 and 112, and a 0-12 ms
+  centroid +792, -18, -770 and -602 cents from them: the recordings' balance
+  rises 9.1 dB from the softest layer to the loudest and the model's 1.3. The
+  merged Pick's narrow contact already makes a soft stroke as bright as a
+  loud one, and its release velocity adds little on top; rendered with
+  Finger the same rows sit within a decibel at the soft layer and 9.6 dB too
+  dark at the loud one. What a soft plectrum stroke's release looks like -
+  how wide the string's roll off the tip is at low speed - is not measured
+  here. Finger is untouched by the plectrum, so what follows still describes
+  the finger-plucked instrument. A fresh comparison uses all 54 already-opened Shinyguitar
   training recordings: nine roots, MIDI layers 16/112 and three takes each,
   against 18 deterministic model renders. On the shared finite same-root
   loud/soft pairs, the recordings' median 12 ms power-centroid rise is 2,054
@@ -1270,6 +1400,21 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   the nylon and flat-top targets carry 11 to 12 ms of pre-roll that the
   scorer charges to every such row's attack term as a constant the model
   cannot remove.
+- The held string's static force on the saddle is not released with the
+  pluck, so the top never springs back from the load. Building that release -
+  exact for an ideal string, sized from the written wave, no constant chosen -
+  fixes the model's onset latency on the archtop rows (0.66 ms late → 0.02)
+  and its first 12 ms' 80–139 Hz deficit on both materials, and improves the
+  never-fitted flat-top rows 7.7%, but worsens every archtop and classical
+  split 3.1–5.0% (frozen test split +4.2%) because the model's low body modes
+  then ring 14–28 dB over those recordings at 12–100 ms, at the auditioned
+  body damping and at the corpus-fitted one alike. The measurement and a blind
+  A/B are in Docs/decisions.md (2026-09-10); the listener preferred the
+  shipping engine on single notes of both materials and the release on a
+  strummed demo. The recordings' early 80–140 Hz energy the model lacks
+  (8–19 dB in the first 12 ms at every layer) stays open, and nothing here
+  separates the body's spring-back from the finger's own contact thud in
+  that band.
 - The loudest layer's missing brightness has been split between two owners
   by measurement. A geometrically exact (non-linear) string solver, driven by
   the engine's own string data, supplies between nil and about 58% of the
@@ -1505,11 +1650,17 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
 - Shape and Body Material morph whichever measured body the string material
   selects — the g21 flamenca on steel, a 1971 Manuel Contreras classical
   (g34) on nylon — and are not separate measurements of four guitar sizes or
-  four woods. The original steel bank adapts a nylon-strung flamenca blanca;
-  the archive lists Savarez Tomatito strings for g21. The optional Fylde bridge
-  adds actual steel-guitar mobility. The separate Model menu now adds matched
-  Bellido, Washburn, Santa Cruz and Martin bridge/radiation banks; the three
-  steel models have mono microphone measurements, not a measured stereo pair.
+  four woods. Shape re-couples the measured A0/T1 pair for a published box
+  and scales the plate modes with the top, but each anchor is still the one
+  authored transform its calibration was fitted on, and the E1D dreadnought
+  rows place a real dreadnought above it (Construction controls). What would
+  settle both is a measured body of each size, or one listening verdict on the
+  anchor. The original steel bank adapts a nylon-strung flamenca blanca;
+  the archive lists Savarez Tomatito strings for g21. The Fylde bridge the
+  steel presets play adds actual steel-guitar mobility. The separate Model
+  menu adds matched Bellido, Washburn, Santa Cruz and Martin bridge/radiation
+  banks; the three steel models have mono microphone measurements, not a
+  measured stereo pair.
 - The band audits now measure a distance the build chose rather than an error
   it is trying to close. With the body moved by ear toward the flat-top rows,
   the model over the first 350 ms carries 4.0 dB more energy than the archtop
@@ -1740,6 +1891,59 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
 A concise ledger of the changes that move what Acustra sounds like or how it is
 controlled. Pure refactors, deduplications and test-coverage additions are in
 git history rather than here.
+
+### 2026-09-24
+
+- **The two lines of development are one instrument again.** The measured
+  guitar models, three-choice capture, continuous Gaussian contact, steel
+  contact transport, release and picking-character work join the coupled
+  top/cavity body shapes, the plectrum's release velocity and the measured
+  Fylde bridge on the steel presets. Shape now moves the bridge's modes by the
+  same coupled-model factors as the radiation, and each named guitar is
+  unwarped at its own family's box. Original's anchors stay the transform
+  both calibrations were fitted on, which the development rows prefer by
+  3.3% on steel over the wider authored Dreadnought the local line had
+  introduced, while training and the flat-top rows prefer that wider one by
+  2.2% and 4.7%; the default Dreadnought therefore sounds as it did before
+  the local widening. The plectrum was refitted for the merged Pick contact
+  (0.3125·v^0.93, transient 0.125). Benchmark with the Fylde bridge:
+  training 6.268767, development validation 6.172187, flat-top 8.591335.
+
+### 2026-09-10
+
+- **A plectrum releases the string with velocity.** Under Pick the string
+  leaves the tip carrying a velocity over the contact width beside the fitted
+  displacement, its energy share growing as v^2.93 to equal the
+  displacement's at full velocity, with a pick-speed contact transient the fit
+  left at 0.078 of the Finger burst. Fitted on the picked archtop recordings
+  across their four layers, written in the frame the calibration was fitted
+  in, read by Pick only: archtop training 6.296551 → 6.189238, development
+  validation 6.376421 → 6.273555, the never-fitted 188-row test split
+  6.264245 → 6.204019; the loud layer's H1–H3 excess and H9–H12 deficit close
+  by about half and the soft layer stays put. The calibration grows to 32
+  values, the fit renderer gains `--archtop-picking` and the optimizer a
+  `pick-release` stage, `--stages`, `--start shipping` and `--archtop-picking`.
+- **Steel plays the measured steel-string bridge.** The Dreadnought, Auditorium
+  and Parlor presets, a new session and the demos select the Fylde bridge,
+  which with the unchanged string calibration sits closer to the recordings on
+  every dry-note split (training −1.8%, development validation −3.4%, the
+  never-fitted flat-top rows −7.1%). The fitted flamenca bridge remains the
+  Original bridge / steel preset and the benchmark's reference; sessions saved
+  before the bridge parameter existed keep it.
+
+### 2026-09-09
+
+- **Shape is a box.** Parlor, Auditorium, Dreadnought and Jumbo re-couple the
+  measured body's A0 and T1 through Christensen and Vistisen's top/cavity model
+  for the published dimensions of a Martin Size 0, a Martin 000, a D-28 and an
+  SJ-200, and scale the plate modes above T1 with the top; the earlier
+  authored air-mode, mode-scale, bass and volume factors are gone. Steel's
+  Dreadnought and nylon's Auditorium (the Classical preset) are the anchors
+  their calibrations were fitted on and are bit-identical, as are all 79
+  benchmark renders; the nylon Dreadnought, and steel's Parlor, Auditorium and
+  Jumbo, are now physically spaced around them. The fit renderer renders each
+  material at its anchor (`--shape` overrides it), gains `--archtop-picking`
+  for the tool on the picked archtop rows, and records both in its manifests.
 
 ### 2026-09-08
 
@@ -2081,8 +2285,10 @@ microphone recording cannot validate a pickup's response.
 checks the scoring, string scheduling and renderer without downloading audio.
 For dry-note comparisons, add `--bridge-model fylde` after the optional
 `--models-only`/`--smoke` mode and before the output directory in
-`AcustraPhysicalFitRenderer`; the same 29 calibration arguments follow.
-The selected bridge is recorded in each model manifest.
+`AcustraPhysicalFitRenderer`; `--shape` and `--archtop-picking` may follow it,
+and then the 32 calibration arguments. The selected bridge, shape and archtop
+picking tool are recorded in each model manifest; without them each material
+renders at its anchor shape and the archtop rows with Finger.
 For an explicit performance event file, `AcustraPerformanceRenderer` also
 accepts trailing `--string-material steel|nylon` and `--tuning standard|drop_d`
 options. String/fret validation uses the selected tuning; omitting these

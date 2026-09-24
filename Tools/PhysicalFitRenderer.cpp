@@ -23,6 +23,7 @@
 #include <iterator>
 #include <locale>
 #include <map>
+#include <optional>
 #include <regex>
 #include <set>
 #include <sstream>
@@ -44,13 +45,31 @@ using acustra::dense::Library;
 using acustra::dense::Sampler;
 using acustra::dense::ZoneView;
 
-// One model per invocation; the selected bridge is also written to manifests.
+// One model per invocation; the selected bridge and body shape are also
+// written to manifests. Without --shape each material renders the body its
+// calibration was fitted on: steel the public default Dreadnought, nylon the
+// Auditorium slot that is the measured classical (the Classical preset).
 acustra::BridgeModel renderBridgeModel { acustra::BridgeModel::Original };
+std::optional<acustra::BodyShape> renderShapeOverride;
+constexpr std::array shapeNames { "parlor", "auditorium", "dreadnought", "jumbo" };
+// --archtop-picking renders the picked archtop rows (Material::Steel) with
+// that tool; the finger-plucked flat-top and classical rows always render
+// with Finger, which is what was on the string in those recordings.
+acustra::PickingTechnique archtopPicking { acustra::EngineParameters {}.picking };
+constexpr std::array pickingNames { "finger", "pick", "thumb" };
+
+acustra::BodyShape renderShapeFor(acustra::StringMaterial material) noexcept
+{
+    if (renderShapeOverride)
+        return *renderShapeOverride;
+    return material == acustra::StringMaterial::Nylon
+        ? acustra::BodyShape::Auditorium : acustra::EngineParameters {}.shape;
+}
 
 constexpr int modelSampleRate = 48000;
 constexpr int renderBlockSize = 127;
 constexpr double renderSeconds = 4.2;
-constexpr std::size_t calibrationValueCount = 29;
+constexpr std::size_t calibrationValueCount = 32;
 constexpr float int16Scale = 1.0f / 32768.0f;
 
 enum class Material
@@ -113,6 +132,7 @@ constexpr CalibrationValues calibrationMinimums {{
     0.25f, 0.4f, 0.35f, 0.35f, 0.0f, 0.7f, 0.0f,
     -1.0f, 0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f, 0.00325f,
     0.0f, 10.0f, 0.0f,
+    0.0f, 0.0f, 0.0f,
 }};
 
 constexpr CalibrationValues calibrationMaximums {{
@@ -121,6 +141,7 @@ constexpr CalibrationValues calibrationMaximums {{
     4.0f, 2.0f, 3.0f, 2.5f, 3.0f, 1.3f, 1.2f,
     1.0f, 32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f, 0.060f,
     0.5f, 400.0f, 0.82e-3f,
+    2.0f, 4.0f, 8.0f,
 }};
 
 const char* materialName(Material material) noexcept
@@ -418,6 +439,9 @@ PhysicalCalibration makeCalibration(const CalibrationValues& values)
     calibration.longitudinalGain = values[26];
     calibration.longitudinalQ = values[27];
     calibration.polarisationEndCorrectionMetres = values[28];
+    calibration.pickReleaseVelocityShare = values[29];
+    calibration.pickReleaseVelocityExponent = values[30];
+    calibration.pickTransientGain = values[31];
     return calibration;
 }
 
@@ -428,6 +452,9 @@ std::vector<float> renderModel(Material material, int midi, int velocity,
     EngineParameters parameters;
     parameters.stringMaterial = engineMaterial(material);
     parameters.bridgeModel = renderBridgeModel;
+    parameters.shape = renderShapeFor(parameters.stringMaterial);
+    if (material == Material::Steel)
+        parameters.picking = archtopPicking;
     engine.setParameters(parameters);
     engine.setPhysicalCalibration(calibration);
     engine.prepare(modelSampleRate, renderBlockSize);
@@ -515,6 +542,31 @@ std::string formatTrim(float value)
     return text.str();
 }
 
+// The names of calibration_values, in their order; written with a fresh
+// manifest and rewritten with the values by the models-only update, so a
+// corpus rendered before a value existed carries the names of the values
+// it now holds.
+std::string calibrationOrderJson()
+{
+    return "[\"bodyFrequencyScale\", \"bodyQScale\", "
+           "\"bridgeMobilityScale\", \"residueTiltDbPerOctave\", \"directGain\", "
+           "\"nylon.fundamentalT60Scale\", "
+           "\"nylon.frequencyLossScale\", \"nylon.apertureScale\", "
+           "\"nylon.transientScale\", \"nylon.pluckDistanceScale\", "
+           "\"nylon.velocityBrightnessDepth\", \"steel.stiffnessScale\", "
+           "\"steel.fundamentalT60Scale\", \"steel.frequencyLossScale\", "
+           "\"steel.apertureScale\", \"steel.transientScale\", "
+           "\"steel.pluckDistanceScale\", \"steel.velocityBrightnessDepth\", "
+           "\"apertureRegisterExponent\", \"lowBodyModeGain\", "
+           "\"steelDisplacementScaleMetres\", \"steelFretT60Slope\", "
+           "\"highLossCutoffScale\", \"bridgeConductanceFloor\", "
+           "\"bridgeConductanceCornerHz\", \"bridgeTailLengthMetres\", "
+           "\"longitudinalGain\", \"longitudinalQ\", "
+           "\"polarisationEndCorrectionMetres\", "
+           "\"pickReleaseVelocityShare\", \"pickReleaseVelocityExponent\", "
+           "\"pickTransientGain\"]";
+}
+
 std::string calibrationJson(const CalibrationValues& values)
 {
     std::ostringstream text;
@@ -533,8 +585,18 @@ std::string modelControlsJson()
     std::ostringstream text;
     text.imbue(std::locale::classic());
     text << std::setprecision(9);
-    text << "{\"shape\": " << static_cast<int>(parameters.shape)
-         << ", \"body_material\": " << static_cast<int>(parameters.bodyMaterial)
+    text << "{\"shape\": \"";
+    if (renderShapeOverride)
+        text << shapeNames[static_cast<std::size_t>(*renderShapeOverride)];
+    else
+        text << "per material: "
+             << shapeNames[static_cast<std::size_t>(
+                    renderShapeFor(StringMaterial::Steel))]
+             << " for steel, "
+             << shapeNames[static_cast<std::size_t>(
+                    renderShapeFor(StringMaterial::Nylon))]
+             << " (the measured classical) for nylon";
+    text << "\", \"body_material\": " << static_cast<int>(parameters.bodyMaterial)
          << ", \"string_material\": \"per example: nylon or steel\""
          << ", \"bridge_model\": \""
          << (renderBridgeModel == acustra::BridgeModel::FyldeSteel ? "fylde" : "original")
@@ -544,8 +606,9 @@ std::string modelControlsJson()
                                "piezo", "piezo", "mono_mic", "piezo", "mono_mic" }[
                       static_cast<std::size_t>(parameters.capture)]
          << "\", \"picking\": \""
-         << std::array { "finger", "pick", "thumb" }[
-                      static_cast<std::size_t>(parameters.picking)]
+         << pickingNames[static_cast<std::size_t>(parameters.picking)]
+         << "\", \"archtop_picking\": \""
+         << pickingNames[static_cast<std::size_t>(archtopPicking)]
          << "\", \"tuning\": " << static_cast<int>(parameters.tuning)
          << ", \"string_age\": " << parameters.stringAge
          << ", \"pluck_position\": " << parameters.pluckPosition
@@ -595,9 +658,11 @@ std::string replaceModelMetadata(std::string text, const char* key,
     const std::string string = R"("([^"\\]|\\.)*")";
     const std::string scalar = "(" + string + "|" + number + "|true|false|null)";
     const std::string member = string + "\\s*:\\s*" + scalar;
+    // An array of any length: a manifest written before a calibration value
+    // existed holds a shorter calibration_values and calibration_order, and
+    // the models-only update replaces both with the ones it renders with.
     const std::string pattern = json.front() == '['
-        ? "\\[\\s*" + number + "(\\s*,\\s*" + number + "){"
-            + std::to_string(calibrationValueCount - 1) + "}\\s*\\]"
+        ? "\\[\\s*(" + scalar + "(\\s*,\\s*" + scalar + ")*)?\\s*\\]"
         : json.front() == '{'
             ? "\\{\\s*(" + member + "(\\s*,\\s*" + member + ")*)?\\s*\\}"
             : "(true|false)";
@@ -639,21 +704,7 @@ void writeManifest(const std::filesystem::path& path,
     output
         << "{\n"
         << "  \"analysis_sample_rate\": 48000,\n"
-        << "  \"calibration_order\": [\"bodyFrequencyScale\", \"bodyQScale\", "
-           "\"bridgeMobilityScale\", \"residueTiltDbPerOctave\", \"directGain\", "
-           "\"nylon.fundamentalT60Scale\", "
-           "\"nylon.frequencyLossScale\", \"nylon.apertureScale\", "
-           "\"nylon.transientScale\", \"nylon.pluckDistanceScale\", "
-           "\"nylon.velocityBrightnessDepth\", \"steel.stiffnessScale\", "
-           "\"steel.fundamentalT60Scale\", \"steel.frequencyLossScale\", "
-           "\"steel.apertureScale\", \"steel.transientScale\", "
-           "\"steel.pluckDistanceScale\", \"steel.velocityBrightnessDepth\", "
-           "\"apertureRegisterExponent\", \"lowBodyModeGain\", "
-           "\"steelDisplacementScaleMetres\", \"steelFretT60Slope\", "
-           "\"highLossCutoffScale\", \"bridgeConductanceFloor\", "
-           "\"bridgeConductanceCornerHz\", \"bridgeTailLengthMetres\", "
-           "\"longitudinalGain\", \"longitudinalQ\", "
-           "\"polarisationEndCorrectionMetres\"],\n"
+        << "  \"calibration_order\": " << calibrationOrderJson() << ",\n"
         << "  \"provenance\": {\n"
         << "    \"target_timing\": \"source frame 0; recorded pre-roll/onset retained; cropped or zero-padded to 4.2 seconds\",\n"
         << "    \"target_gain\": \"dense::Sampler calibrated playback gain: layer/peak normalisation times (velocity/127)^0.82\",\n"
@@ -1129,6 +1180,7 @@ void renderModelsOnlyCorpus(const std::filesystem::path& directory,
         auto text = readTextFile(path);
         for (const auto& [key, json] : std::array {
                  std::pair { "calibration_values", calibrationJson(values) },
+                 std::pair { "calibration_order", calibrationOrderJson() },
                  std::pair { "model_controls", modelControlsJson() },
                  std::pair { "model_render_complete", std::string("false") } })
             text = replaceModelMetadata(std::move(text), key, json);
@@ -1164,7 +1216,9 @@ void printUsage()
 {
     std::printf(
         "usage: AcustraPhysicalFitRenderer [--smoke|--models-only|--test] "
-        "[--bridge-model original|fylde] OUTPUT "
+        "[--bridge-model original|fylde] "
+        "[--shape parlor|auditorium|dreadnought|jumbo] "
+        "[--archtop-picking finger|pick|thumb] OUTPUT "
         "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT DIRECT_GAIN "
         "NYLON_T60 NYLON_FREQUENCY_LOSS NYLON_APERTURE "
         "NYLON_TRANSIENT NYLON_PLUCK_DISTANCE NYLON_VELOCITY_BRIGHTNESS "
@@ -1175,7 +1229,9 @@ void printUsage()
         "HIGH_LOSS_CUTOFF_SCALE BRIDGE_CONDUCTANCE_FLOOR "
         "BRIDGE_CONDUCTANCE_CORNER_HZ BRIDGE_TAIL_LENGTH_METRES "
         "LONGITUDINAL_GAIN LONGITUDINAL_Q "
-        "POLARISATION_END_CORRECTION_METRES\n");
+        "POLARISATION_END_CORRECTION_METRES "
+        "PICK_RELEASE_VELOCITY_SHARE PICK_RELEASE_VELOCITY_EXPONENT "
+        "PICK_TRANSIENT_GAIN\n");
 }
 } // namespace
 
@@ -1218,6 +1274,32 @@ int main(int argc, char** argv)
         }
         renderBridgeModel = std::string(argv[first + 1]) == "fylde"
             ? acustra::BridgeModel::FyldeSteel : acustra::BridgeModel::Original;
+        first += 2;
+    }
+    if (argc > first && std::string(argv[first]) == "--shape")
+    {
+        const auto name = std::find(shapeNames.begin(), shapeNames.end(),
+            argc > first + 1 ? std::string(argv[first + 1]) : std::string());
+        if (name == shapeNames.end())
+        {
+            printUsage();
+            return 2;
+        }
+        renderShapeOverride = static_cast<acustra::BodyShape>(
+            std::distance(shapeNames.begin(), name));
+        first += 2;
+    }
+    if (argc > first && std::string(argv[first]) == "--archtop-picking")
+    {
+        const auto name = std::find(pickingNames.begin(), pickingNames.end(),
+            argc > first + 1 ? std::string(argv[first + 1]) : std::string());
+        if (name == pickingNames.end())
+        {
+            printUsage();
+            return 2;
+        }
+        archtopPicking = static_cast<acustra::PickingTechnique>(
+            std::distance(pickingNames.begin(), name));
         first += 2;
     }
     if (argc - first != static_cast<int>(calibrationValueCount + 1))

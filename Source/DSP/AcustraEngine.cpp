@@ -13,6 +13,7 @@
 #include <cmath>
 #include <complex>
 #include <limits>
+#include <numbers>
 #include <span>
 
 namespace acustra
@@ -44,26 +45,306 @@ static_assert(detail::santaCruzBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
 static_assert(detail::martinBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
 static_assert(detail::martinBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
 
-struct ShapeSpec
+// The measured body each material plays is one guitar of one size, so a
+// Shape is a morph of that measurement, not a second measurement. Both
+// calibrations were fitted, and steel's auditioned, with the public default
+// shape's authored transform of the bank in place, and the classical
+// recordings prefer that transformed body to the bare measurement (nylon
+// training rows 7.528 against 7.910), so the transform has been absorbed by
+// the fit and is kept exactly as it was as each material's anchor: steel's
+// in the Dreadnought slot, nylon's in the Auditorium slot the Classical
+// preset uses. The other shapes are placed relative to the anchor by the
+// coupled model below, so the anchors stay bit-identical. A named guitar is
+// its own measurement at its own box, so its anchor is the identity.
+struct AnchorTransform
 {
     float airHz;
     float modeScale;
     float bass;
     float volume;
     float asymmetry;
-    float qScale;
 };
 
-// Authored geometry directions: smaller plates move resonances upward and a
-// smaller cavity raises its air resonance. Q also separates the short, compact
-// response from a more sustained large body. These are deliberately audible
-// construction morphs, not measured dimensions of any named guitar.
-constexpr std::array<ShapeSpec, 4> shapeSpecs {{
-    { 128.0f, 1.180f, 0.65f, 1.10f, -0.024f, 0.80f }, // parlor
-    { 107.0f, 1.000f, 0.98f, 1.00f,  0.000f, 1.00f }, // auditorium/reference
-    {  98.0f, 0.900f, 1.28f, 0.93f,  0.018f, 1.10f }, // dreadnought
-    {  88.0f, 0.820f, 1.55f, 0.84f,  0.030f, 1.22f }  // jumbo
+constexpr AnchorTransform fittedAnchorTransform { 101.0f, 0.972f, 1.08f,
+                                                  0.97f, 0.009f };
+constexpr AnchorTransform measuredAnchorTransform { 107.0f, 1.0f, 1.0f,
+                                                    1.0f, 0.0f };
+
+// Body outline and cavity, in metres: lower-bout width, body length, mean
+// depth, soundhole diameter, and the fraction of the width-by-length
+// rectangle the outline fills (about 0.72 for a waisted guitar plantilla,
+// 0.75 for a dreadnought's squarer shoulders). Manufacturer set-up sheets
+// publish the first three for each body size:
+//   Parlor      Martin Size 0 (13 1/2 x 18 3/8 x 4 1/4 in), the class the
+//               Fender PS-220E belongs to
+//   Auditorium  Martin 000 "Auditorium" (15 x 19 3/8 x 4 1/8 in); Taylor's
+//               Grand Auditorium is a larger take on the same name
+//   Dreadnought Martin D-28 (15 5/8 x 20 x 3 7/8 to 4 7/8 in)
+//   Jumbo       Gibson SJ-200 (17 x 21 x 4 7/8 in)
+// with the 4 in soundhole a steel-string flat-top carries. The classical is
+// the Torres-derived plantilla both measured guitars follow: 370 mm lower
+// bout, 490 mm body, 95 mm mean depth and an 87 mm soundhole. The outline
+// fraction is an estimate read off those plantillas, not a published figure.
+struct BodyGeometry
+{
+    float width;
+    float length;
+    float depth;
+    float soundhole;
+    float outline;
+
+    constexpr float topArea() const noexcept { return outline * width * length; }
+    constexpr float volume() const noexcept { return topArea() * depth; }
+};
+
+constexpr std::array<BodyGeometry, 4> steelStringBodies {{
+    { 0.343f, 0.467f, 0.108f, 0.1016f, 0.72f }, // Parlor
+    { 0.381f, 0.492f, 0.105f, 0.1016f, 0.72f }, // Auditorium
+    { 0.397f, 0.508f, 0.111f, 0.1016f, 0.75f }, // Dreadnought
+    { 0.432f, 0.533f, 0.124f, 0.1016f, 0.72f }  // Jumbo
 }};
+constexpr BodyGeometry classicalBody { 0.370f, 0.490f, 0.095f, 0.087f, 0.72f };
+
+// Christensen and Vistisen, "Simple model for low-frequency guitar
+// function", J. Acoust. Soc. Am. 68(3) (1980) 758-766: the top plate is one
+// piston of effective area A_p, mass m_p and stiffness k_p, the soundhole air
+// a plug of area S and mass m_h, and the cavity of volume V the spring
+// mu = rho c^2 / V that couples them. In volume-displacement coordinates
+// q_p = A_p x_p and q_h = S x_h, divided through by mu, the system is
+//     M = diag(1/wa^2, 1/wh^2),  K = [[wp0^2/wa^2 + 1, 1], [1, 1]],
+// with wp0^2 = k_p/m_p the plate alone, wa^2 = mu A_p^2/m_p the cavity spring
+// on the plate and wh^2 = mu S^2/m_h the Helmholtz resonance of the rigid
+// box. Its two modes are the guitar's A0 and T1, and they obey
+//     w-^2 + w+^2 = wp0^2 + wa^2 + wh^2,   w-^2 w+^2 = wp0^2 wh^2,
+// so a measured A0/T1 pair plus the box's own Helmholtz frequency identify
+// the plate's two frequencies, and a different box then gives a different
+// pair. The radiated monopole is the volume velocity q_p' + q_h' for a unit
+// bridge force, whose modal residues follow from the same eigenvectors; the
+// force enters as 1/(mu A_p) = V/(rho c^2 A_p), so a common rho c^2 cancels
+// in every ratio taken here.
+struct LowBodyPair
+{
+    float a0Frequency;
+    float t1Frequency;
+    // |residue| times frequency of each mode in the pressure-per-force
+    // response, which is what scales a discrete pole pair's residue; see
+    // configureBody. Both carry the common 1/(rho c^2) already dropped.
+    float a0Weight;
+    float t1Weight;
+};
+
+float helmholtzFrequency(const BodyGeometry& body) noexcept
+{
+    // Rigid-walled Helmholtz resonance with Rayleigh's flanged-end correction
+    // of 0.85 r at each face of a 3 mm top.
+    constexpr float soundSpeed = 343.0f;
+    const float radius = 0.5f * body.soundhole;
+    const float area = pi * radius * radius;
+    const float neck = 0.003f + 1.7f * radius;
+    return soundSpeed / twoPi
+        * std::sqrt(area / (body.volume() * neck));
+}
+
+LowBodyPair coupledLowBodyPair(float plateFrequency, float cavitySpringFrequency,
+                               float helmholtz, float depth) noexcept
+{
+    const double wp0 = twoPi * plateFrequency;
+    const double wa = twoPi * cavitySpringFrequency;
+    const double wh = twoPi * helmholtz;
+    const double sum = wp0 * wp0 + wa * wa + wh * wh;
+    const double product = wp0 * wp0 * wh * wh;
+    const double discriminant = std::sqrt(std::max(sum * sum - 4.0 * product, 0.0));
+    const double lambdas[] { 0.5 * (sum - discriminant), 0.5 * (sum + discriminant) };
+    LowBodyPair pair {};
+    float* frequencies[] { &pair.a0Frequency, &pair.t1Frequency };
+    float* weights[] { &pair.a0Weight, &pair.t1Weight };
+    for (int mode = 0; mode < 2; ++mode)
+    {
+        const double lambda = lambdas[mode];
+        // Second row of (K - lambda M) phi = 0 with the hole part taken as 1:
+        // phi_p + (1 - lambda/wh^2) phi_h = 0, then mass-normalise.
+        const double platePart = -(1.0 - lambda / (wh * wh));
+        const double massNorm = std::sqrt(platePart * platePart / (wa * wa)
+                                          + 1.0 / (wh * wh));
+        const double phiPlate = platePart / massNorm;
+        const double phiHole = 1.0 / massNorm;
+        // Force enters on the plate coordinate as V/A_p = depth; the output is
+        // the sum of both volume velocities.
+        const double residue = (phiPlate + phiHole) * phiPlate * depth;
+        const double frequency = std::sqrt(lambda) / twoPi;
+        *frequencies[mode] = static_cast<float>(frequency);
+        *weights[mode] = static_cast<float>(std::abs(residue) * frequency);
+    }
+    return pair;
+}
+
+// What one Shape does to the anchor bank: the A0 group (every mode below
+// 150 Hz) and T1 are retuned and reweighted by the coupled pair, and every
+// plate mode above T1 follows the equal-thickness plate law f ~ 1/A_p with
+// its radiation scaled by the plate area it radiates from. Every factor is
+// exactly 1 for the anchor shape, which is what keeps it bit-identical.
+struct BodyShapeMorph
+{
+    int t1Index { -1 };
+    // The measured (unwarped) frequency of T1, which bounds the T1 group
+    // when the same factors are applied to a bridge bank.
+    float t1UpperHz { 0.0f };
+    float a0Frequency { 1.0f };
+    float a0Level { 1.0f };
+    float t1Frequency { 1.0f };
+    float t1Level { 1.0f };
+    float plateFrequency { 1.0f };
+    float plateLevel { 1.0f };
+};
+
+constexpr float lowBodyGroupUpperHz = 150.0f;
+
+BodyShapeMorph bodyShapeMorph(std::span<const detail::MeasuredBodyMode> bank,
+                              const AnchorTransform& anchor,
+                              const BodyGeometry& anchorBody,
+                              const BodyGeometry& body) noexcept
+{
+    BodyShapeMorph morph;
+    // A0 is the strongest radiating mode below 150 Hz, T1 the strongest
+    // between there and 260 Hz, read from the measured force paths.
+    const auto weight = [] (const detail::MeasuredBodyMode& mode)
+    {
+        return std::hypot(mode.leftReal, mode.leftImaginary)
+             + std::hypot(mode.rightReal, mode.rightImaginary)
+             + std::hypot(mode.upperReal, mode.upperImaginary);
+    };
+    int a0Index = -1;
+    for (int index = 0; index < static_cast<int>(bank.size()); ++index)
+    {
+        const auto& mode = bank[static_cast<std::size_t>(index)];
+        if (mode.frequency < lowBodyGroupUpperHz)
+        {
+            if (a0Index < 0 || weight(mode) > weight(bank[static_cast<std::size_t>(a0Index)]))
+                a0Index = index;
+        }
+        else if (mode.frequency < 260.0f)
+        {
+            if (morph.t1Index < 0
+                || weight(mode) > weight(bank[static_cast<std::size_t>(morph.t1Index)]))
+                morph.t1Index = index;
+        }
+    }
+    if (morph.t1Index >= 0)
+        morph.t1UpperHz = bank[static_cast<std::size_t>(morph.t1Index)].frequency;
+    const bool sameBox = body.width == anchorBody.width
+        && body.length == anchorBody.length && body.depth == anchorBody.depth
+        && body.soundhole == anchorBody.soundhole
+        && body.outline == anchorBody.outline;
+    if (a0Index < 0 || morph.t1Index < 0 || sameBox)
+        return morph;
+
+    // The anchor's own pair, as the anchor transform leaves it.
+    const auto anchored = [&] (int index)
+    {
+        const auto& mode = bank[static_cast<std::size_t>(index)];
+        const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
+        const bool lowBodyMode = mode.frequency > 85.0f && mode.frequency < 145.0f;
+        return mode.frequency * (lowBodyMode ? anchor.airHz / 107.0f : anchor.modeScale)
+            * (1.0f + alternating * anchor.asymmetry
+               / std::sqrt(static_cast<float>(index + 1)));
+    };
+    const float a0 = anchored(a0Index);
+    const float t1 = anchored(morph.t1Index);
+    const float anchorHelmholtz = helmholtzFrequency(anchorBody);
+    // Invert the sum and product identities for the plate's two frequencies.
+    const float plate = a0 * t1 / anchorHelmholtz;
+    const float cavitySpringSquared = a0 * a0 + t1 * t1 - plate * plate
+                                    - anchorHelmholtz * anchorHelmholtz;
+    if (!(cavitySpringSquared > 0.0f))
+        return morph;
+    const float cavitySpring = std::sqrt(cavitySpringSquared);
+    const float anchorDepth = anchorBody.volume() / anchorBody.topArea();
+    const auto reference = coupledLowBodyPair(plate, cavitySpring,
+                                              anchorHelmholtz, anchorDepth);
+
+    // The target box: the plate keeps its thickness, so its frequencies go as
+    // 1/A_p and its mass as A_p; the cavity spring on it, mu A_p^2 / m_p, then
+    // goes as A_p / V.
+    const float areaRatio = body.topArea() / anchorBody.topArea();
+    const float targetPlate = plate / areaRatio;
+    const float targetSpring = cavitySpring
+        * std::sqrt((body.topArea() / body.volume())
+                    / (anchorBody.topArea() / anchorBody.volume()));
+    const auto target = coupledLowBodyPair(targetPlate, targetSpring,
+                                           helmholtzFrequency(body),
+                                           body.volume() / body.topArea());
+    morph.a0Frequency = target.a0Frequency / reference.a0Frequency;
+    morph.t1Frequency = target.t1Frequency / reference.t1Frequency;
+    morph.a0Level = target.a0Weight / reference.a0Weight;
+    morph.t1Level = target.t1Weight / reference.t1Weight;
+    morph.plateFrequency = 1.0f / areaRatio;
+    morph.plateLevel = areaRatio;
+    return morph;
+}
+
+// For nylon the Auditorium slot is the measured classical's own box; the
+// other three names mean the steel-string sizes above on either material.
+const BodyGeometry& bodyGeometryFor(StringMaterial material,
+                                    BodyShape shape) noexcept
+{
+    if (material == StringMaterial::Nylon && shape == BodyShape::Auditorium)
+        return classicalBody;
+    return steelStringBodies[static_cast<std::size_t>(shape)];
+}
+
+// The Shape slot each bank is heard unwarped in: the material's anchor for
+// Original, and each named guitar's own family.
+BodyShape anchorShapeFor(StringMaterial material, GuitarModel model) noexcept
+{
+    switch (model)
+    {
+        case GuitarModel::Washburn1897: return BodyShape::Parlor;
+        case GuitarModel::MartinD18V2007: return BodyShape::Dreadnought;
+        case GuitarModel::Bellido1978:
+        case GuitarModel::SantaCruzOM2022: return BodyShape::Auditorium;
+        default: break;
+    }
+    return material == StringMaterial::Steel ? BodyShape::Dreadnought
+                                             : BodyShape::Auditorium;
+}
+
+// The box each anchor describes: the dreadnought the steel default is, the
+// classical guitar nylon's bank was measured on, and each named guitar's
+// own family (the Bellido is a classical, the Santa Cruz an OM/000).
+const BodyGeometry& anchorBodyFor(StringMaterial material,
+                                  GuitarModel model) noexcept
+{
+    switch (model)
+    {
+        case GuitarModel::Bellido1978: return classicalBody;
+        case GuitarModel::Washburn1897:
+            return steelStringBodies[static_cast<std::size_t>(BodyShape::Parlor)];
+        case GuitarModel::SantaCruzOM2022:
+            return steelStringBodies[static_cast<std::size_t>(BodyShape::Auditorium)];
+        case GuitarModel::MartinD18V2007:
+            return steelStringBodies[static_cast<std::size_t>(BodyShape::Dreadnought)];
+        default: break;
+    }
+    return material == StringMaterial::Steel
+        ? steelStringBodies[static_cast<std::size_t>(BodyShape::Dreadnought)]
+        : classicalBody;
+}
+
+// The box a Shape asks for; its anchor slot is the anchor's own box exactly,
+// so every morph factor is 1 there.
+const BodyGeometry& targetBodyFor(StringMaterial material, GuitarModel model,
+                                  BodyShape shape) noexcept
+{
+    if (shape == anchorShapeFor(material, model))
+        return anchorBodyFor(material, model);
+    return bodyGeometryFor(material, shape);
+}
+
+const AnchorTransform& anchorTransformFor(GuitarModel model) noexcept
+{
+    return model == GuitarModel::Original ? fittedAnchorTransform
+                                          : measuredAnchorTransform;
+}
 
 struct WoodSpec
 {
@@ -274,30 +555,18 @@ std::span<const detail::MeasuredBodyMode> measuredBodyBank(
     return detail::measuredNylonBodyModes;
 }
 
+// The same coupled-model factors the radiation takes, applied to a bridge
+// bank: its A0 group, its modes up to T1, and the plate modes above follow
+// the body they belong to. Only modal stiffness moves: each residue matrix,
+// and with it the positive-semidefinite heave/rock coupling, and each Q are
+// retained, so a fixed shape keeps the passive modal construction. At the
+// anchor every factor is exactly 1.
 detail::MeasuredBridgeMode shapeBridgeMode(
-    detail::MeasuredBridgeMode mode, const EngineParameters& parameters) noexcept
+    detail::MeasuredBridgeMode mode, float a0Frequency, float t1Frequency,
+    float plateFrequency, float t1UpperHz) noexcept
 {
-    // Original's bridge was calibrated with Dreadnought selected, while its
-    // radiation uses Auditorium as its unmorphed reference. Keep that legacy
-    // offset: the default instrument is unchanged, and changing Shape moves
-    // both observations in the same relative frequency/damping direction.
-    // Each named guitar instead keeps its measured native family exactly.
-    const auto reference = parameters.guitarModel == GuitarModel::Original
-        || parameters.guitarModel == GuitarModel::MartinD18V2007
-        ? BodyShape::Dreadnought
-        : parameters.guitarModel == GuitarModel::Washburn1897
-        ? BodyShape::Parlor : BodyShape::Auditorium;
-    if (parameters.shape == reference)
-        return mode;
-    const auto& shape = shapeSpecs[static_cast<std::size_t>(parameters.shape)];
-    const auto& native = shapeSpecs[static_cast<std::size_t>(reference)];
-    const bool lowBodyMode = mode.frequency > 85.0f && mode.frequency < 145.0f;
-    mode.frequency *= lowBodyMode ? shape.airHz / native.airHz
-                                  : shape.modeScale / native.modeScale;
-    mode.q *= shape.qScale / native.qScale;
-    // Only modal stiffness and loss move. Retaining each residue matrix
-    // preserves its positive-semidefinite heave/rock coupling. These are
-    // authored construction variations, not additional measured guitars.
+    mode.frequency *= mode.frequency < lowBodyGroupUpperHz ? a0Frequency
+        : mode.frequency <= t1UpperHz ? t1Frequency : plateFrequency;
     return mode;
 }
 
@@ -943,7 +1212,13 @@ PhysicalCalibration AcustraEngine::sanitise(
         bounded(source.longitudinalQ, 10.0f, 400.0f,
                 fittedPhysicalCalibration.longitudinalQ),
         bounded(source.polarisationEndCorrectionMetres, 0.0f, 0.82e-3f,
-                fittedPhysicalCalibration.polarisationEndCorrectionMetres)
+                fittedPhysicalCalibration.polarisationEndCorrectionMetres),
+        bounded(source.pickReleaseVelocityShare, 0.0f, 2.0f,
+                fittedPhysicalCalibration.pickReleaseVelocityShare),
+        bounded(source.pickReleaseVelocityExponent, 0.0f, 4.0f,
+                fittedPhysicalCalibration.pickReleaseVelocityExponent),
+        bounded(source.pickTransientGain, 0.0f, 8.0f,
+                fittedPhysicalCalibration.pickTransientGain)
     };
 }
 
@@ -1625,16 +1900,17 @@ void AcustraEngine::configureBody() noexcept
         bodyModelFade_ = 1.0f;
     }
 
-    const auto shape = shapeSpecs[static_cast<std::size_t>(parameters_.shape)];
+    const AnchorTransform& anchor = anchorTransformFor(parameters_.guitarModel);
     const auto wood = woodSpecs[static_cast<std::size_t>(parameters_.bodyMaterial)];
     const auto bank = measuredBodyBank(parameters_.stringMaterial,
                                        parameters_.guitarModel);
     // A named guitar is unwarped at its own family/wood setting. Moving Shape
     // or Wood away from that point is explicitly a construction variation.
-    const auto nativeShape = parameters_.guitarModel == GuitarModel::Washburn1897
-        ? BodyShape::Parlor : parameters_.guitarModel == GuitarModel::MartinD18V2007
-        ? BodyShape::Dreadnought : BodyShape::Auditorium;
-    const auto referenceShape = shapeSpecs[static_cast<std::size_t>(nativeShape)];
+    const auto morph = bodyShapeMorph(
+        bank, anchor,
+        anchorBodyFor(parameters_.stringMaterial, parameters_.guitarModel),
+        targetBodyFor(parameters_.stringMaterial, parameters_.guitarModel,
+                      parameters_.shape));
     const auto referenceWood = woodSpecs[parameters_.guitarModel == GuitarModel::Bellido1978 ? 1 : 0];
     const bool named = parameters_.guitarModel != GuitarModel::Original;
     int delayAt48k = 0;
@@ -1661,12 +1937,25 @@ void AcustraEngine::configureBody() noexcept
         const bool lowBodyMode = measured.frequency > 85.0f
             && measured.frequency < 145.0f;
         const float lowModeMorph = lowBodyMode
-            ? shape.airHz / (named ? referenceShape.airHz : 107.0f)
-            : shape.modeScale / (named ? referenceShape.modeScale : 1.0f);
-        float frequency = measured.frequency * lowModeMorph
+            ? anchor.airHz / 107.0f : anchor.modeScale;
+        // The A0 group, T1 and the plate modes above it each take their own
+        // factor from the coupled pair; the anchor shape's are exactly 1.
+        float shapeFrequency = morph.plateFrequency;
+        float shapeLevel = morph.plateLevel;
+        if (measured.frequency < lowBodyGroupUpperHz)
+        {
+            shapeFrequency = morph.a0Frequency;
+            shapeLevel = morph.a0Level;
+        }
+        else if (index <= morph.t1Index)
+        {
+            shapeFrequency = morph.t1Frequency;
+            shapeLevel = morph.t1Level;
+        }
+        float frequency = measured.frequency * lowModeMorph * shapeFrequency
             * (wood.frequencyScale / (named ? referenceWood.frequencyScale : 1.0f))
             * physicalCalibration_.bodyFrequencyScale
-            * (1.0f + alternating * (shape.asymmetry - (named ? referenceShape.asymmetry : 0.0f))
+            * (1.0f + alternating * anchor.asymmetry
                / std::sqrt(static_cast<float>(index + 1)));
         const float highestMode = 0.46f * static_cast<float>(sampleRate_);
         const bool audibleAtThisRate = frequency < highestMode;
@@ -1675,7 +1964,6 @@ void AcustraEngine::configureBody() noexcept
         const float upper = clamp(std::log2(std::max(frequency, 120.0f)
             / 120.0f) / 6.0f, 0.0f, 1.0f);
         const float q = clamp(measured.q
-            * (shape.qScale / (named ? referenceShape.qScale : 1.0f))
             * (wood.qScale / (named ? referenceWood.qScale : 1.0f))
             * physicalCalibration_.bodyQScale, named ? 1.0f : 4.0f, 150.0f);
         const float radius = std::exp(-pi * frequency
@@ -1685,7 +1973,7 @@ void AcustraEngine::configureBody() noexcept
         mode.poleReal = pole.real();
         mode.poleImaginary = audibleAtThisRate ? pole.imag() : 0.0f;
 
-        const float bassTilt = 1.0f + (shape.bass / (named ? referenceShape.bass : 1.0f) - 1.0f)
+        const float bassTilt = 1.0f + (anchor.bass - 1.0f)
             * std::exp(-frequency / 520.0f);
         const float brilliance = std::pow(wood.brightness / (named ? referenceWood.brightness : 1.0f), upper);
         const float residueTilt = std::exp2(
@@ -1693,7 +1981,7 @@ void AcustraEngine::configureBody() noexcept
             * std::log2(frequency / 1000.0f) / 6.02059991f);
         const float drive = audibleAtThisRate
             ? detail::guitarMicrophoneTrims[static_cast<std::size_t>(parameters_.guitarModel)]
-                * (shape.volume / (named ? referenceShape.volume : 1.0f))
+                * anchor.volume * shapeLevel
                 * (wood.radiation / (named ? referenceWood.radiation : 1.0f))
                 * bassTilt * brilliance
                 * residueTilt
@@ -1810,6 +2098,18 @@ void AcustraEngine::configureBridge() noexcept
 
     const auto bank = measuredBridgeBank(parameters_.stringMaterial,
                                          parameters_.bridgeModel, parameters_.guitarModel);
+    // The bridge belongs to the same body as the radiation, so Shape moves
+    // its modes by the coupled model's factors (see shapeBridgeMode).
+    const auto morph = bodyShapeMorph(
+        measuredBodyBank(parameters_.stringMaterial, parameters_.guitarModel),
+        anchorTransformFor(parameters_.guitarModel),
+        anchorBodyFor(parameters_.stringMaterial, parameters_.guitarModel),
+        targetBodyFor(parameters_.stringMaterial, parameters_.guitarModel,
+                      parameters_.shape));
+    bridgeShapeA0_ = morph.a0Frequency;
+    bridgeShapeT1_ = morph.t1Frequency;
+    bridgeShapePlate_ = morph.plateFrequency;
+    bridgeShapeT1UpperHz_ = morph.t1UpperHz;
     // Additional bodies already have a qualified absolute mobility. The old
     // corpus compensation and high-band conductance floor belong to Original.
     // Keep the fitting control as a relative multiplier around the new body's
@@ -1826,7 +2126,8 @@ void AcustraEngine::configureBridge() noexcept
             continue;
         }
         const bool include = includeMeasuredBridgeMode(bank[index]);
-        const auto measured = shapeBridgeMode(bank[index], parameters_);
+        const auto measured = shapeBridgeMode(bank[index], bridgeShapeA0_,
+            bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
         configure(index, measured.frequency, measured.q,
                   include ? measured.heave * scale : 0.0f,
                   include ? measured.cross * scale : 0.0f,
@@ -1865,7 +2166,8 @@ float AcustraEngine::bridgePhaseDelay(float frequency,
     for (const auto& source
          : measuredBridgeBank(parameters_.stringMaterial, parameters_.bridgeModel, parameters_.guitarModel))
     {
-        const auto measured = shapeBridgeMode(source, parameters_);
+        const auto measured = shapeBridgeMode(source, bridgeShapeA0_,
+            bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
         if (measured.frequency >= 0.45f * rate
             || !includeMeasuredBridgeMode(source))
             continue;
@@ -2534,6 +2836,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // The shared register law pivots at one fixed 48 kHz MIDI-61 period,
     // independent of material, string choice and host sample rate.
     const float apertureReferenceDelay = 48000.0f / midiFrequency(61);
+    // The Pick technique's release velocity (FittedPhysicalData.h). Finger
+    // and Thumb, and a pick at a zero share, take the legacy shape below.
+    const bool pick = parameters_.picking == PickingTechnique::Pick;
+    const float releaseShare = pick
+        ? physicalCalibration_.pickReleaseVelocityShare
+            * std::pow(v, physicalCalibration_.pickReleaseVelocityExponent)
+        : 0.0f;
 
     // The caller has already retained any preceding wave. This full-period
     // triangle initializes a fresh pluck, but its time origin is not the
@@ -2579,6 +2888,12 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             contactSamples, physical.apertureScale, apertureReferenceDelay,
             currentReferenceLength,
             physicalCalibration_.apertureRegisterExponent);
+        if (releaseShare > 0.0f)
+        {
+            writePickRelease(loop, length, amplitude * polarisationGain,
+                             localPosition, aperture, modes, releaseShare);
+            continue;
+        }
         const auto triangleAt = [localPosition] (double phase)
         {
             return phase < localPosition
@@ -2771,8 +3086,24 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     }
 
     voice.velocity = v;
-    voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
-        * physical.transientScale;
+    voice.excitationWhite = pick && physicalCalibration_.pickTransientGain > 0.0f;
+    if (voice.excitationWhite)
+    {
+        // One speed law for the plectrum: the release share above goes as
+        // the tip's speed squared, so that speed goes as v^(exponent/2), and
+        // an impact's transient amplitude goes as the speed itself rather
+        // than as the note it starts. Referenced to the Finger law's own
+        // full-velocity burst, so a gain of one meets it there and the
+        // fitted gain says how much louder a pick's click is.
+        const float speedRatio = std::pow(
+            v, 0.5f * physicalCalibration_.pickReleaseVelocityExponent);
+        voice.excitationEnvelope = physicalCalibration_.pickTransientGain
+            * (steel ? 0.24f : 0.29f) * 0.017f * physical.transientScale
+            * speedRatio;
+    }
+    else
+        voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
+            * physical.transientScale;
     const float burstSeconds = 0.0046f - 0.0025f * touch;
     voice.excitationDecay = std::exp(-1.0f
         / (std::max(burstSeconds, 0.0004f) * static_cast<float>(sampleRate_)));
@@ -3046,6 +3377,181 @@ void AcustraEngine::addTriangleVelocity(StringLoop& loop, float scale,
         loop.delay[static_cast<std::size_t>(wrapDelayIndex(
             loop.writeIndex - sample))] += sign * scale * (0.5f - integral);
     }
+}
+
+// A plectrum's release. The rest displacement is Smith's opposed half-height
+// waves (PASP App. C.3.2), each half of the folded line the smoothed
+// triangle read at its own bridge fraction, so displacementAt returns the
+// triangle itself and the velocity is zero. The release velocity is the
+// same integrated step on both halves, which unfolds to a hump of velocity
+// over the contact width - the string the tip was carrying - with no
+// displacement of its own. In a lossless line every sample-to-sample
+// difference carries T/dx times its square of energy whichever wave it
+// belongs to, and the two waves' energies add without a cross term, so the
+// hump's height is set from the two components' summed squared differences
+// alone: no tension, length or unit enters the share. The two components'
+// partials sit in quadrature (cosine and sine phases at release), so their
+// powers add and the hump's sign is immaterial.
+void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
+                                     float position, float aperture, int modes,
+                                     float releaseShare) noexcept
+{
+    const float p = clamp(position, 0.05f, 0.48f);
+    const double apex = static_cast<double>(p);
+    const auto bridgeFraction = [] (double phase)
+    {
+        phase -= std::floor(phase);
+        return phase < 0.5 ? 2.0 * phase : 2.0 * (1.0 - phase);
+    };
+    const auto displacementWave = [&] (double phase)
+    {
+        const double wrapped = phase - std::floor(phase);
+        const double fraction = bridgeFraction(wrapped);
+        const double triangle = fraction < apex ? fraction / apex
+                                                : (1.0 - fraction) / (1.0 - apex);
+        return (wrapped < 0.5 ? -0.5 : 0.5) * triangle;
+    };
+    // The same continuous Gaussian contact initialisePluck's shape uses,
+    // sigma the aperture in loop phase, applied exactly to both components.
+    // The rest wave is piecewise linear with its two slope changes at the
+    // folded apex, p/2 and 1-p/2, so smoothing adds sigma*q(|z|/sigma) there
+    // (q the tabulated corner function). The velocity wave is the unit box
+    // between those two points, whose smoothing is the difference of two
+    // Gaussian edges; taking the whole box rather than a sharp box plus a
+    // correction leaves nothing to decide at a sample landing exactly on an
+    // edge, which the first sample always does. Periodic images within the
+    // kernel's reach are summed. The node projection for a natural harmonic
+    // follows; all of it is linear, so both components are treated alike.
+    const double sigma = std::max(static_cast<double>(aperture), 1.0e-9);
+    const double cornerA = 0.5 * apex;
+    const double cornerB = 1.0 - 0.5 * apex;
+    const double slopeChange = 1.0 / (apex * (1.0 - apex));
+    const auto unitCorner = [] (double z)
+    {
+        if (z >= 10.0)
+            return 0.0;
+        const double scaled = z * 64.0;
+        const int index = static_cast<int>(scaled);
+        const double t = scaled - index;
+        const auto& a = gaussianAperture::cornerTable[index];
+        const auto& b = gaussianAperture::cornerTable[index + 1];
+        const double da = a[1] / 64.0;
+        const double db = b[1] / 64.0;
+        const double difference = b[0] - a[0];
+        return a[0] + t * (da + t * (3.0 * difference - 2.0 * da - db
+            + t * (-2.0 * difference + da + db)));
+    };
+    const auto corner = [&] (double z)
+    {
+        return sigma * unitCorner(std::abs(z) / sigma);
+    };
+    const auto step = [&] (double z)
+    {
+        return 0.5 * std::erfc(-z / (sigma * std::numbers::sqrt2));
+    };
+    const auto images = [] (double z, const auto& kernel)
+    {
+        const double wrapped = z - std::floor(z + 0.5);
+        double sum = 0.0;
+        for (int image = -2; image <= 2; ++image)
+            sum += kernel(wrapped + static_cast<double>(image));
+        return sum;
+    };
+    const auto smoothedDisplacement = [&] (double phase)
+    {
+        return displacementWave(phase) + slopeChange
+            * (images(phase - cornerA, corner) - images(phase - cornerB, corner));
+    };
+    const auto smoothedVelocity = [&] (double phase)
+    {
+        const double wrapped = phase - std::floor(phase);
+        double sum = 0.0;
+        for (int image = -2; image <= 2; ++image)
+            sum += step(wrapped - cornerA + static_cast<double>(image))
+                 - step(wrapped - cornerB + static_cast<double>(image));
+        return sum;
+    };
+    const auto released = [&] (const auto& smoothed, float phase)
+    {
+        if (modes <= 1)
+            return static_cast<float>(smoothed(static_cast<double>(phase)));
+        double sum = 0.0;
+        for (int shift = 0; shift < modes; ++shift)
+            sum += smoothed(static_cast<double>(phase)
+                            + static_cast<double>(shift) / static_cast<double>(modes));
+        return static_cast<float>(sum / static_cast<double>(modes));
+    };
+    // Phases are read in the fitted frame below, advanced by half the apex
+    // phase; the energies are summed on that same sampled grid, because a
+    // step smoothed over less than a sample lands on one difference or two
+    // depending on where the grid falls, and the share must describe what
+    // is written.
+    const auto phaseOf = [length, p] (int sample)
+    {
+        return static_cast<float>(sample - 1) / static_cast<float>(length)
+             - 0.5f * p;
+    };
+
+    double displacementEnergy = 0.0;
+    double velocityEnergy = 0.0;
+    double crossEnergy = 0.0;
+    float previousDisplacement = released(smoothedDisplacement, phaseOf(length));
+    float previousVelocity = released(smoothedVelocity, phaseOf(length));
+    for (int sample = 1; sample <= length; ++sample)
+    {
+        const float displacement = released(smoothedDisplacement, phaseOf(sample));
+        const float velocity = released(smoothedVelocity, phaseOf(sample));
+        const double displacementStep = displacement - previousDisplacement;
+        const double velocityStep = velocity - previousVelocity;
+        displacementEnergy += displacementStep * displacementStep;
+        velocityEnergy += velocityStep * velocityStep;
+        crossEnergy += displacementStep * velocityStep;
+        previousDisplacement = displacement;
+        previousVelocity = velocity;
+    }
+    // The fitted level law describes the displacement the tip leaves behind;
+    // the velocity it also leaves is energy on top of that. Redistributing
+    // one fitted energy between the two instead was tried and read worse on
+    // both splits: the hump's energy sits in partials that decay fast, so the
+    // sustained level then rose too little with velocity for the recordings.
+    // In the continuum the two waves' energies add with no cross term, but on
+    // the grid the step's smoothed spike sits on the apex kink, whose slope
+    // jump it samples at different offsets on the two halves, so the cross
+    // term is kept and the hump solved for exactly: h^2 V + 2 h X = share D.
+    // Of its two roots the one that vanishes with the share is taken, in
+    // the form that stays stable when X dominates; its sign follows X's,
+    // which the string does not hear (the components are in quadrature).
+    const float rest = height;
+    float hump = 0.0f;
+    if (velocityEnergy > 0.0)
+    {
+        const double added = static_cast<double>(releaseShare)
+                           * displacementEnergy;
+        const double magnitude = added
+            / (std::abs(crossEnergy)
+               + std::sqrt(crossEnergy * crossEnergy + added * velocityEnergy));
+        hump = rest * static_cast<float>(crossEnergy < 0.0 ? -magnitude
+                                                            : magnitude);
+    }
+    // The plucked shape every calibration was fitted with is this rest state
+    // advanced by half the apex phase and negated: initialisePluck's
+    // tri_p(phase) equals -rest(phase - p/2) + 1/2 (partial magnitudes agree
+    // to 1e-3 dB and phases differ by exactly -pi*p*n). The initial modal
+    // phases are not free here - a rest-frame pluck with the same magnitudes
+    // moved the archtop harmonics term from 8.6 to 12.8, because the idle
+    // strings, bridge and body at coinciding partials interfere with the
+    // string according to the phase it starts with - so both components are
+    // written in that fitted frame, which keeps their quadrature intact, and
+    // the line starts at zero at the bridge as the legacy shape does.
+    const auto frame = [&] (float phase)
+    {
+        return -(rest * released(smoothedDisplacement, phase)
+                 + hump * released(smoothedVelocity, phase));
+    };
+    const float endpoint = frame(phaseOf(1));
+    for (int sample = 1; sample <= length; ++sample)
+        loop.delay[static_cast<std::size_t>(wrapDelayIndex(
+            loop.writeIndex - sample))] = frame(phaseOf(sample)) - endpoint;
 }
 
 // The finger leaves a stopped string. The string was pressed to the fret by
@@ -3994,16 +4500,21 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
     {
         const float rateRatio = static_cast<float>(sampleRate_) / 48000.0f;
         const float noise = nextNoise(voice) * std::sqrt(rateRatio);
-        const float referenceCoefficient = 0.05f
-            + 0.42f * voice.excitationColour;
-        const float excitationCoefficient = 1.0f - std::pow(
-            1.0f - referenceCoefficient, 1.0f / rateRatio);
-        voice.excitationLowpass += excitationCoefficient
-            * (noise - voice.excitationLowpass);
-        excitation = (voice.excitationLowpass
-            + 0.16f * voice.excitationColour
-                * (noise - voice.excitationLowpass))
-            * voice.excitationEnvelope;
+        if (voice.excitationWhite)
+            excitation = noise * voice.excitationEnvelope;
+        else
+        {
+            const float referenceCoefficient = 0.05f
+                + 0.42f * voice.excitationColour;
+            const float excitationCoefficient = 1.0f - std::pow(
+                1.0f - referenceCoefficient, 1.0f / rateRatio);
+            voice.excitationLowpass += excitationCoefficient
+                * (noise - voice.excitationLowpass);
+            excitation = (voice.excitationLowpass
+                + 0.16f * voice.excitationColour
+                    * (noise - voice.excitationLowpass))
+                * voice.excitationEnvelope;
+        }
         voice.excitationEnvelope *= voice.excitationDecay;
     }
     return excitation;

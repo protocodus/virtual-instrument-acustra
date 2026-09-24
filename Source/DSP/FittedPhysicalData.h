@@ -101,6 +101,24 @@ struct PhysicalCalibration
     // the order of the string diameter - taken as the 0.82 mm B string the
     // 0.8 mm was measured on (nylonDiameterMetres in AcustraEngine.cpp).
     float polarisationEndCorrectionMetres { 0.0008f };
+    // The Pick technique only; Finger and Thumb never read these. A string
+    // does not leave a plectrum's tip from rest: the contact region is
+    // carried at the tip's speed until it slips, so the release carries a
+    // velocity over the contact width beside the displacement. Its kinetic
+    // energy, as a share of the pluck's stored energy, is
+    //     share(v) = pickReleaseVelocityShare * v^pickReleaseVelocityExponent
+    // for MIDI velocity v in 0-1, both fitted on the picked archtop rows
+    // across their four velocity layers (FitPhysicalModel's harmonics term
+    // reads the loud layer's H7-H12 4-6 dB under the recordings and its
+    // H1-H3 5-9 dB over them, and the soft layer the other way; a velocity
+    // component's partials fall 6 dB/octave slower than a displacement's,
+    // which is the tilt that grows). Zero is the exact legacy pluck. The
+    // plectrum's contact transient is an impact and grows with the pick's
+    // speed squared, not with the note it starts; pickTransientGain scales
+    // that broadband burst, and zero keeps the Finger burst law.
+    float pickReleaseVelocityShare { 0.0f };
+    float pickReleaseVelocityExponent { 2.0f };
+    float pickTransientGain { 0.0f };
 };
 
 // Refit on 2026-09-04 around the two-way junction and the saddle anchor, by a
@@ -167,7 +185,20 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // shipped before the 2026-09-04 refit). That is a real preference for the
     // published value on all three splits, but far too small a lever to fit
     // an end correction against.
-    0.0008f
+    0.0008f,
+    // The plectrum, first fitted 2026-09-10 by the pick-release stage of
+    // Tools/OptimizePhysicalModel.py on the picked archtop training rows
+    // rendered with Pick (share 1.0, exponent 2.93, transient 0.078), then
+    // refitted 2026-09-24 by the same stage from that vector when the two
+    // lines of development merged: the merged Pick meets the string with the
+    // narrower (0.35) and more bridgeward (0.40) contact and the continuous
+    // Gaussian kernel, so the earlier values described a different release.
+    // On the merged engine the search (77 evaluations to the step floor)
+    // wants a smaller share growing almost linearly, 0.3125 v^0.93, and a
+    // transient at 0.125 of the Finger law's full-velocity burst: archtop
+    // training 6.623494 -> 6.546029 under Pick, development validation
+    // 6.271120 -> 6.256259.
+    0.3125f, 0.9296875f, 0.125f
 };
 
 } // namespace acustra
