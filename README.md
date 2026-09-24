@@ -78,15 +78,15 @@ reverb, room effect or recorded-note layer.
 | File | What it is | Length | Rendered peak | Normalisation |
 | --- | --- | ---: | ---: | ---: |
 | `01-steel-sustain-range.wav` | Steel sustain from open E2 to B5, one held pluck at a time | 9.5 s | −15.1 dBFS | +12.1 dB |
-| `02-nylon-fingerstyle.wav` | A fingertip nylon arpeggio with overlapping held notes | 4.2 s | −21.8 dBFS | +18.8 dB |
+| `02-nylon-fingerstyle.wav` | A fingertip nylon arpeggio with overlapping held notes | 4.2 s | −21.5 dBFS | +18.5 dB |
 | `03-shape-material-anchors.wav` | One chord: Parlor/Jumbo, then Cedar/Maple anchor settings | 13.7 s | −5.7 dBFS | +2.7 dB |
 | `04-string-age.wav` | The same steel phrase with fresh strings, then fully aged strings | 6.5 s | −8.7 dBFS | +5.7 dB |
 | `05-alternate-tunings.wav` | Drop D, DADGAD and Open G chords | 12.3 s | −5.3 dBFS | +2.3 dB |
 | `06-playing-behaviours.wav` | A chord change over a ringing chord, CC2 bridge-hand damping, then two natural harmonics above the fretted range | 10.7 s | −7.2 dBFS | +4.2 dB |
 | `07-fretting-hand.wav` | Hammer-ons at two velocities and a pull-off under CC68, then one fretted note released three ways by its note-off velocity | 8.8 s | −10.4 dBFS | +7.4 dB |
 | `08-strummed-chords.wav` | Same-sample chords swept as alternating strums, then one chord eight times hand-damped, no two strokes the same take | 6.9 s | −1.8 dBFS | −1.2 dB |
-| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −15.6 dBFS | +12.6 dB |
-| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −20.9 dBFS | +17.9 dB |
+| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −17.6 dBFS | +14.6 dB |
+| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −21.8 dBFS | +18.8 dB |
 | `11-picking-techniques.wav` | Finger, pick and thumb on steel, then on nylon; same notes and velocity | 10.6 s | −14.6 dBFS | +11.6 dB |
 | `12-capture-types.wav` | Stereo mic, mono mic, piezo | 7.3 s | −15.9 dBFS | +12.9 dB |
 <!-- peaks-table-end -->
@@ -123,10 +123,10 @@ development validation and 9.256751 on the flat-top rows with the benchmark's
 reference Original bridge, and 6.268767, 6.172187 and 8.591335 with the Fylde
 bridge the steel presets play; with the parallel polarisation radiating
 (Pluck and strings) they read 6.167890, 6.042989 and 8.559757, and 6.148927,
-6.008802 and 8.232583; with a pluck releasing most of its energy parallel to
-the top, 6.100127, 5.875268 and 8.120313, and 6.124740, 5.865707 and
-7.948070. The latter are the base every later paired comparison is taken
-against. The renderer renders each material at the body its
+6.008802 and 8.232583; with a steel pluck releasing most of its energy
+parallel to the top and nylon's normal-led, 6.087514, 5.938380 and
+8.120314, and 6.112127, 5.928819 and 7.948071. The latter are the base every
+later paired comparison is taken against. The renderer renders each material at the body its
 calibration was fitted on - steel the default Dreadnought, nylon the
 Auditorium slot that is the measured classical - which is byte-identical to
 the renders scored before the shape model existed.
@@ -313,12 +313,12 @@ that half-width plus a uniform velocity across it. Note-on velocity sets the
 finger's speed through the pluck's own velocity law: a hammer-on at a velocity
 carries the string energy a pluck at that velocity puts in the plane normal to
 the top, since the fretting finger strikes and leaves normal to the fretboard
-while a pluck releases most of its energy parallel to the top.
+while a steel pluck releases most of its energy parallel to the top.
 Equal energy is not equal loudness: a faster finger makes a narrower dent,
 and the string losses and body radiation weight its spectrum differently.
 The map is an energy convention, not a measurement of real finger dynamics.
 (The equality asks for finger speeds up to 21.8 m/s on steel and
-16.3 m/s on nylon at the top of the range, still far faster than a hand moves. The
+55.0 m/s on nylon at the top of the range, far faster than a hand moves. The
 published stopping finger — Bilbao and Torin, DAFx-14 — has been checked
 against the whole fretboard and is rigid everywhere the engine reaches, so it
 cannot supply this bound; the open question is a measured fingertip speed
@@ -646,28 +646,33 @@ sits above the request - the flamenca bridge's open B, whose parallel-led mode
 sustains while its bridge-led partner sheds 0.24 dB a period, would otherwise
 sound 6.6 cents sharp.
 
-How a pluck divides between the planes follows the hand: a finger's free
-stroke and a pick both cross the strings moving along the top and press in
-only partly, so most of a pluck's energy is released parallel to the top.
-The normal-plane share is 0.30 - 0.08 Touch (0.25 at the default Touch, a
-release about 60 degrees from the normal), bounded to 0.17-0.35, and each
-pluck draws its own +-0.025 about it. That share was selected on the
-benchmark once both planes radiated: from the 0.86 that had kept the one
-radiating plane audible, every Finger split improves - Fylde bridge training
--0.39%, development validation -2.38%, flat-top -3.46%, Original bridge
--1.10%, -2.78% and -5.13% - with only the nylon training rows moving the
-other way (+0.54%). The fretting hand's strike and lift move normal to the
-fretboard and stay in the normal plane, so their energy convention matches
-what a pluck at the same velocity puts there (see the fretting hand above).
-The output reference rises by the 5.41 dB the demos lost at the same
-controls, so a session keeps its loudness. The effect is audible as the slow
-beating a guitar partial has and a single radiating plane cannot: over
-0.3-2.3 s, the median RMS envelope residual of H1-H6 after a quadratic trend
-is 0.33-1.74 dB on the flat-top rows against the recordings' 0.58-2.97
-(0.11-0.59 with one plane), 0.17-1.75 dB on the steel archtop rows against
-0.26-1.69 (0.02-0.81), and 0.71-3.04 dB on nylon against 1.73-7.06
-(0.01-0.34). It also lengthens what sustains: the decay term falls on every
-split (flat-top 5.232 -> 2.840 with the Fylde bridge).
+How a pluck divides between the planes follows the hand. On steel, a
+finger's free stroke and a pick both cross the strings moving along the top
+and press in only partly, so most of a steel pluck's energy is released
+parallel to the top: the normal-plane share is 0.30 - 0.08 Touch (0.25 at the
+default Touch, a release about 60 degrees from the normal), bounded to
+0.17-0.35. That share was selected on the benchmark once both planes
+radiated: from the 0.86 that had kept the one radiating plane audible, every
+steel split improves - Fylde bridge training -0.39%, development validation
+-2.38%, flat-top -3.46%, Original bridge -1.10%, -2.78% and -5.13% - and a
+blind listener preferred it on both steel pairs. Nylon keeps the normal-led
+0.91 - 0.08 Touch (0.86), bounded to 0.78-0.96. The same move split the
+classical rows (training +0.54%, development validation -2.4%), and the
+listener preferred the normal-led pluck on all three nylon pairs and again
+whenever the branch was heard whole, so nylon's share was chosen by ear
+(Docs/decisions.md); a classical stroke pushes the string toward the top.
+Each pluck draws its own +-0.025 about its share. The fretting hand's strike
+and lift move normal to the fretboard and stay in the normal plane, so their
+energy convention matches what a pluck at the same velocity puts there (see
+the fretting hand above). Steel's output reference rises by the 5.41 dB its
+demos lost at the same controls, so a session keeps its loudness. The effect
+is audible as the slow beating a guitar partial has and a single radiating
+plane cannot: over 0.3-2.3 s, the median RMS envelope residual of H1-H6
+after a quadratic trend is 0.33-1.74 dB on the flat-top rows against the
+recordings' 0.58-2.97 (0.11-0.59 with one plane), 0.17-1.75 dB on the steel
+archtop rows against 0.26-1.69 (0.02-0.81), and 0.49-1.36 dB on nylon against
+1.73-7.06 (0.01-0.34). It also lengthens what sustains: the decay term falls
+on every steel split (flat-top 5.232 -> 2.840 with the Fylde bridge).
 
 Steel attack pitch uses a bounded Kirchhoff--Carrier energy surrogate. The
 released waveguide displacement supplies its slope energy; string axial
@@ -1352,7 +1357,7 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   above 10 kHz does not carry — is the open question.
 
 - The fretting hand's energy law implies finger speeds up to 21.8 m/s on steel
-  and 16.3 m/s on nylon at the top of the hammer-on velocity range, far above
+  and 55.0 m/s on nylon at the top of the hammer-on velocity range, far above
   what a hand does, so the top of that map is louder than the mechanism it
   claims. The obvious bound — a published stopping finger, mass-spring on the
   dent — has been tried and does not supply it: Bilbao and Torin's finger
@@ -1471,8 +1476,8 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
 - High fretted notes settle a few cents flat of their attack; the
   recordings' do not. The parallel loop is longer by Woodhouse's 0.8 mm end
   correction at every fret, which is 4.8 cents of doublet at the 14th fret and
-  6.8 at the 20th, and since a pluck now leaves most of its energy in that
-  plane, its member takes over from the faster-dying normal one within
+  6.8 at the 20th, and since a steel pluck now leaves most of its energy in
+  that plane, its member takes over from the faster-dying normal one within
   0.2-0.4 s: over the first 400 ms the soft steel F#5 and C6 rows sit 4.0-6.3
   cents above their settled pitch where the recordings sit within 0.5, and
   the benchmark's pitch-trajectory term doubles (Fylde training 0.633 ->
@@ -1577,7 +1582,7 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   polarisation now radiates where the rocking was measured (Pluck and
   strings), so an angle colours a note rather than only scaling it, but each
   pluck still draws its share from a narrow authored spread (+-0.025 about
-  0.30 - 0.08 Touch), and what spread a player's angle actually has is not
+  its material's share), and what spread a player's angle actually has is not
   measured here. Widening it does not reach the recordings either: on the
   picked archtop's three takes per note the recordings' 0-40 ms centroid
   ranges a median 267 cents, the model's 34-81, and even +-30 degrees of angle
@@ -1937,20 +1942,21 @@ git history rather than here.
   parallel to the top as well as the normal one, instead of being dropped;
   that plane holds most of a pluck and radiates through the rocking saddle.
   Single notes are unchanged (the benchmark renders byte-identically).
-- **A pluck leaves the string moving mostly along the top.** A finger's free
-  stroke and a pick both cross the strings parallel to the soundboard and
-  press in only partly, so the normal plane now takes 0.30 − 0.08·Touch of a
-  pluck's energy (0.25 at the default Touch) instead of 0.91 − 0.08·Touch.
-  With both planes radiating, a sweep of that share improves every Finger
-  split down to about this value: Fylde bridge training 6.148927 → 6.124740,
-  development validation 6.008802 → 5.865707, flat-top 8.232583 → 7.948070;
-  Original 6.167890 → 6.100127, 6.042989 → 5.875268, 8.559757 → 8.120313.
-  The partials' beating comes within reach of the recordings' (flat-top
-  H1–H6 0.33–1.74 dB against 0.58–2.97). Hammer-ons and pull-offs strike
-  normal to the fretboard and keep the energy a pluck puts in that plane;
-  the output reference rises 5.41 dB so sessions keep their loudness. The
+- **A steel pluck leaves the string moving mostly along the top.** A
+  finger's free stroke and a pick both cross the strings parallel to the
+  soundboard and press in only partly, so on steel the normal plane now
+  takes 0.30 − 0.08·Touch of a pluck's energy (0.25 at the default Touch)
+  instead of 0.91 − 0.08·Touch. With both planes radiating, a sweep of that
+  share improves every steel split down to about this value (Fylde bridge
+  training −0.39%, development validation −2.38%, flat-top −3.46%; Original
+  −1.10%, −2.78%, −5.13%), and a blind listener preferred it on both steel
+  pairs. Nylon keeps the normal-led share: the classical rows split on it and
+  the listener preferred the normal-led pluck on every nylon pair. Hammer-ons
+  and pull-offs keep the energy a pluck puts in the normal plane; steel's
+  output reference rises 5.41 dB so sessions keep their loudness. The
   plectrum was refitted for the new release (0.0625·v^0.47, the Finger
-  burst): under Pick 6.308471 → 6.284861 and 5.950761 → 5.904206.
+  burst; picked archtop training under Pick 6.334019 → 6.284861,
+  development validation 5.941904 → 5.904206).
 - **Both string polarisations are heard.** The plane parallel to the
   soundboard pushes the saddle crown sideways at its published height, a
   moment on the measured rocking, and reaches the microphones through the

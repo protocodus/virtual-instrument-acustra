@@ -4,6 +4,44 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-24 — blind verdicts: both planes radiate, steel plucks along the top, nylon does not
+
+What was being decided. Three blind A/B sets, rendered by AcustraRenderDemos
+through the plug-in's signal path, each B level-matched to its A on
+whole-excerpt RMS (trims -0.66 to +1.69 dB), presented as lettered pairs with
+the key hidden until every pair in the set had an answer.
+
+- Set 1, whether the parallel polarisation radiates. A the merged engine
+  (91cded7), whose parallel plane was a silent loop; B e020523, the plane
+  radiating through the measured rocking. Steel held notes, nylon
+  fingerstyle, strummed steel chords, Lagrima. Chosen: B, B, B, B.
+- Set 2, the pluck's normal-plane share. A e020523 (0.91 - 0.08 Touch); B
+  4252fff (0.30 - 0.08 Touch), Finger material only. Steel held notes B,
+  nylon fingerstyle A, strummed steel chords B, Recuerdos (nylon) A, Lagrima
+  A.
+- Set 3, the branch whole. A the merge; B 340dbb8 (radiating plane, the
+  horizontal pluck on both materials, the plectrum refit and the two-plane
+  retained tail). Steel held notes A, nylon fingerstyle A, strummed steel
+  chords B, Recuerdos A, Lagrima A, the picking-techniques demo (steel then
+  nylon) A.
+
+What each choice licensed. Set 1 keeps the radiating parallel polarisation,
+which the benchmark also supported on every split. Set 2 splits by material:
+the horizontal pluck stays on steel, where the listener and every steel split
+agree, and nylon returns to the normal-led share it had, where the classical
+rows had split (training +0.54%, development validation -2.4%) and the
+listener chose A on all three pairs; Set 3 agrees on every nylon pair. That
+nylon share is chosen by ear. The steel held-note answers are intransitive
+across the sets (B over the merge in Set 1, B over that in Set 2, the merge
+over the same B in Set 3, the excerpts being identical within their six
+seconds), so on steel they are read as a difference near the listener's
+threshold and the steel choice rests on Set 2 and the benchmark. Set 3's
+preference for the merge is carried by its nylon pairs; the plectrum refit
+was heard only inside the mixed picking-techniques pair and is not changed by
+it. After the change the benchmark reads 6.112127, 5.928819 and 7.948071
+(Fylde bridge) and 6.087514, 5.938380 and 8.120314 (Original); nylon's
+output reference returns to what it was, steel's keeps the +5.41 dB.
+
 ## 2026-09-24 — a pluck releases most of its energy parallel to the top
 
 What was measured. Once the parallel plane radiated, the share of a pluck
@@ -37,8 +75,8 @@ development validation 5.941904 -> 5.904206.
 
 What was decided. Shipped on the benchmark: the one value is selected, not
 measured, and it is recorded as such. It changes every note's colour and
-beating, so it belongs in the next blind listening pair (A the engine before
-it, B this); no verdict is recorded yet.
+beating, so it went to a blind listening pair, whose verdict (the entry
+above) kept it on steel and returned nylon to the normal-led share.
 
 ## 2026-09-24 — the parallel polarisation radiates through the measured rocking
 
@@ -77,9 +115,9 @@ What was decided. Shipped on the measurement: it is the first change here that
 improves every split and every material, it adds no constant, and it is what
 the 2026-08-30 commitment asked for before a second axis radiated - a
 measured passive path - within the part of the 2x2 matrix the archive does
-measure. It is audible and changes every note, so a listening pair (A the
-engine without the parallel plane, B this) is the natural check; no verdict
-is recorded yet.
+measure. It is audible and changes every note, so it went to a listening
+pair (A the engine without the parallel plane, B this): the listener chose B
+on all four pairs (the entry above).
 
 ## 2026-09-24 — the two lines merged, and which Dreadnought the default keeps
 

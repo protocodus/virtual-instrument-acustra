@@ -7535,9 +7535,12 @@ void testAnOpenLiftInjectsItsCappedPhysicalEnergy()
                 * std::pow(velocity, 1.32 - 0.50 * physical.velocityBrightnessDepth)
                 * (0.92 + 0.08 * touch);
             // The fretting finger's gestures carry what a pluck at the same
-            // velocity puts in the normal plane: its share 0.30 - 0.08 Touch,
-            // bounded to 0.17-0.35, without the per-pluck angle draw.
-            const double normalShare = std::clamp(0.30 - 0.08 * touch, 0.17, 0.35);
+            // velocity puts in the normal plane: its share 0.30 - 0.08 Touch
+            // on steel, bounded to 0.17-0.35, and 0.91 - 0.08 Touch on nylon,
+            // bounded to 0.78-0.96, without the per-pluck angle draw.
+            const double normalShare = steel
+                ? std::clamp(0.30 - 0.08 * touch, 0.17, 0.35)
+                : std::clamp(0.91 - 0.08 * touch, 0.78, 0.96);
             const double requested = normalShare * amplitude * amplitude
                                    / (position * (1.0 - position));
             const double expected = std::min(requested, elastic);

@@ -25,17 +25,19 @@ constexpr float twoPi = 2.0f * pi;
 constexpr int localMaximumDelaySamples = 8192;
 // Legacy output reference gain. The pair bank preserves raw measured complex
 // phase; this gain is not an absolute-SPL calibration of the new bank. Any
-// audition RMS match is applied after render. It was 18 while a pluck put 86%
-// of its energy normal to the top; releasing most of it parallel to the top
-// (initialisePluck) left every demo a median 5.41 dB quieter at the same
-// controls, so the reference rises by that much and a session keeps the
-// loudness it had.
-constexpr float radiationReferenceGain = 18.0f * 1.8637f;
+// audition RMS match is applied after render.
+constexpr float radiationReferenceGain = 18.0f;
+// Releasing most of a steel pluck parallel to the top (initialisePluck) left
+// the demos a median 5.41 dB quieter at the same controls, so steel's
+// reference rises by that much and a session keeps the loudness it had.
+// Nylon keeps the normal-led pluck and the reference it had.
+constexpr float steelParallelPluckReference = 1.8637f;
 // The share of a pluck's energy released normal to the soundboard at a Touch,
 // with a pluck's own draw about it; initialisePluck says where it comes from.
-float pluckNormalShare(float touch, float draw = 0.0f) noexcept
+float pluckNormalShare(bool steel, float touch, float draw = 0.0f) noexcept
 {
-    return std::clamp(0.30f - 0.08f * touch + draw, 0.17f, 0.35f);
+    return steel ? std::clamp(0.30f - 0.08f * touch + draw, 0.17f, 0.35f)
+                 : std::clamp(0.91f - 0.08f * touch + draw, 0.78f, 0.96f);
 }
 static_assert(detail::measuredSteelBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
 static_assert(detail::measuredNylonBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
@@ -1672,6 +1674,8 @@ void AcustraEngine::reset() noexcept
     bodyAmount_ = parameters_.bodyAmount;
     width_ = parameters_.stereoWidth;
     outputGain_ = parameters_.outputGain;
+    materialReference_ = parameters_.stringMaterial == StringMaterial::Steel
+        ? steelParallelPluckReference : 1.0f;
     captureMix_.fill(0.0f);
     captureMix_[static_cast<std::size_t>(parameters_.capture)] = 1.0f;
     bodyConfigured_ = false;
@@ -3019,21 +3023,26 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         * std::pow(v, velocityExponent) * (0.92f + 0.08f * touch)
         * strumLevelGain;
     // The share of the pluck's energy released normal to the soundboard. A
-    // finger's free stroke and a pick both cross the strings moving along
-    // the top, pressing in only partly, so most of a pluck is parallel to it
-    // - which radiates only through the rocking saddle, quieter and longer
-    // (saddleHeightRatio). When only the normal plane reached the body this
-    // share sat at 0.91 - 0.08 Touch so the note would be heard at all. With
-    // both planes radiating, a sweep of the share over the benchmark improves
-    // every split down to about 0.25 at the default Touch, a release about 60
-    // degrees from the normal: from 0.86 to 0.25, Fylde bridge training
-    // -0.39%, development validation -2.38%, flat-top -3.46%, and Original
-    // -1.10%, -2.78%, -5.13% (only the nylon training rows move the other
-    // way, +0.54%), with the partials' beating coming within reach of the
-    // recordings'. It is a selected share, not a measured angle; Touch still
-    // presses it further toward the top, and each pluck draws its own.
+    // steel-string player's finger stroke and pick both cross the strings
+    // moving along the top, pressing in only partly, so most of a steel pluck
+    // is parallel to it - which radiates only through the rocking saddle,
+    // quieter and longer (saddleHeightRatio). When only the normal plane
+    // reached the body the share sat at 0.91 - 0.08 Touch for both
+    // materials. With both planes radiating, a sweep over the benchmark
+    // improves every steel split down to about 0.25 at the default Touch, a
+    // release about 60 degrees from the normal (0.86 -> 0.25: Fylde bridge
+    // training -0.39%, development validation -2.38%, flat-top -3.46%;
+    // Original -1.10%, -2.78%, -5.13%), and a blind listener preferred it on
+    // both steel pairs of the 2026-09-24 set. The same share on nylon split
+    // the classical rows (training +0.54%, validation -2.4%) and the listener
+    // preferred the normal-led pluck on all three nylon pairs, and again
+    // wherever the branch was heard whole: a classical stroke pushes the
+    // string toward the top, so nylon keeps 0.91 - 0.08 Touch
+    // (Docs/decisions.md). Both are selected shares, not measured angles;
+    // Touch presses either further toward the top, and each pluck draws its
+    // own.
     const float randomAngle = 0.025f * nextNoise(voice);
-    voice.polarisationMix = pluckNormalShare(touch, randomAngle);
+    voice.polarisationMix = pluckNormalShare(steel, touch, randomAngle);
     // The shared register law pivots at one fixed 48 kHz MIDI-61 period,
     // independent of material, string choice and host sample rate.
     const float apertureReferenceDelay = 48000.0f / midiFrequency(61);
@@ -3499,12 +3508,12 @@ float AcustraEngine::pluckEnergy(float velocity, float soundingLength,
         * std::max(physicalCalibration_.steelDisplacementScaleMetres, 1.0e-4f);
     // The fretting finger strikes and leaves the string normal to the
     // fretboard, so its gestures belong to the normal plane alone, while a
-    // pluck puts most of its energy parallel to the top (initialisePluck's
-    // polarisation share). Matching a hammer-on to what a pluck at the same
+    // steel pluck puts most of its energy parallel to the top
+    // (initialisePluck's polarisation share). Matching a hammer-on to what a pluck at the same
     // velocity puts in the normal plane, rather than to the whole pluck,
     // keeps the convention's own aim: a hammered note lands at a pluck's
     // loudness rather than several times it.
-    return pluckNormalShare(touch) * 0.5f * tension * metres * metres
+    return pluckNormalShare(steel, touch) * 0.5f * tension * metres * metres
          * (1.0f / position + 1.0f / (1.0f - position)) / soundingLength;
 }
 
@@ -3900,7 +3909,7 @@ void AcustraEngine::liftFinger(Voice& voice, int stringIndex,
 // constants writes this same dent and the rigid one stays.
 //
 // The published finger does not bound the speed either. Over that same
-// sweep the descent below reaches 21.8 m/s on steel and 16.3 m/s on nylon at
+// sweep the descent below reaches 21.8 m/s on steel and 55.0 m/s on nylon at
 // velocity 1.0 -- far faster than a hand moves -- but neither the mass nor
 // the stiffness limits it, because the finger is driven. The only published
 // value for that driving force is DAFx-24 Sec. 6.2's f_e,FG = 0.9 N, from
@@ -5301,9 +5310,16 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         const float monoBody = 0.5f * (body.left + body.right);
         const float spreadLeft = monoBody + width_ * (body.left - monoBody);
         const float spreadRight = monoBody + width_ * (body.right - monoBody);
-        float outputLeft = radiationReferenceGain * outputGain_
+        // A material change reaches the reference over the same smoothing
+        // as the output control, so it never steps a ringing instrument.
+        const float materialReference = parameters_.stringMaterial
+            == StringMaterial::Steel ? steelParallelPluckReference : 1.0f;
+        materialReference_ += parameterSmoothing_
+            * (materialReference - materialReference_);
+        const float reference = radiationReferenceGain * materialReference_;
+        float outputLeft = reference * outputGain_
             * (bodyScale * spreadLeft + directScale * spreadDirectLeft);
-        float outputRight = radiationReferenceGain * outputGain_
+        float outputRight = reference * outputGain_
             * (bodyScale * spreadRight + directScale * spreadDirectRight);
 
         // Capture is an observation: every route shares the unchanged
@@ -5327,7 +5343,7 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
             // One physical microphone, with its own measured complex response,
             // avoids phase cancellation from summing two spaced microphones.
             // Its identical L/R copies and the loaded saddle piezo ignore width.
-            const float mono = radiationReferenceGain * outputGain_
+            const float mono = reference * outputGain_
                 * (captureMix_[7]
                        * (bodyScale * body.upper + directScale * directMono)
                    + captureMix_[6] * loadedPiezo);

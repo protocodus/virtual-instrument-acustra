@@ -794,6 +794,9 @@ private:
     float bodyAmount_ { 0.82f };
     float width_ { 0.62f };
     float outputGain_ { 0.42f };
+    // The output reference's per-material factor (steelParallelPluckReference
+    // in AcustraEngine.cpp), smoothed like the output control.
+    float materialReference_ { 1.0f };
     float palmMute_ { 0.0f };
     float targetPalmMute_ { 0.0f };
     float palmMuteSmoothing_ { 0.5f };
