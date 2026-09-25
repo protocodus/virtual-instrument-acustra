@@ -4,6 +4,36 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-25 — the narrow ringing is the room in g21's 250 ms window
+
+What was heard. Of the Set 9 renders the listener said "both are quite harsh
+in resonance". Asked what that meant: "too narrow band resonating, sounding
+unpleasant, like a highly resonant BP filter".
+
+What was measured. The complaint came with the first sets rendered on g21
+refitted from 250 ms (592f126), and g21 is the one guitar here measured in a
+room: a school music room, first reflection after 17.6 ms. The generator's own
+docstring warns that a longer window fits the room. The 250 ms convergence
+rule adopted that day is the anechoic records' rule. Against six flamenca
+blancas of the same archive measured in the anechoic laboratory, g21's band
+decays after 100 ms sit 6-15 dB higher from 150 Hz to 2.2 kHz. So does g18,
+the same DeVoe model in the same room. In the fitted bank the rocking path,
+which carries about 70% of a steel pluck, peaks at 190 and 587 Hz, 7.8 and
+9.6 dB over the surrounding third-octave. Its 150-300 Hz band is only
+14.9 dB down after 100 ms. The 587 Hz peak is the measured 655 Hz mode,
+whose Q went from under 40 to 61 with the long window.
+
+What is open. The five anechoic flamencas that pass the generator's gates at
+their converged windows were benchmarked as steel's body. Only g39, a 1971
+German Perez Barranco, holds the flat-top rows (7.181437 -> 7.181589). The
+other four read 7.77-8.83, and g41 fails the gates. On the archtop rows g39
+splits: steel training 6.2651 -> 6.1268, steel development validation
+6.1799 -> 6.3660. Its peaks stand 6.7-7.7 dB over their surroundings, and
+the rocking path's 150-300 Hz band is 27.4 dB down after 100 ms. The same
+air-mode rule gives the same x4 (a picked E2 0.1 dB from the recording).
+Set 11, `2026-09-25-anechoic-body`, puts it against the shipping body on four
+steel performances, key unread.
+
 ## 2026-09-25 — three blind verdicts: the upper-bout pair, a finger at the soundhole's edge, the air mode at the bridge microphone
 
 What was heard. Sets 8, 9 and 10 (`2026-09-24-mic-pair`,
