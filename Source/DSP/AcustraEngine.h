@@ -199,6 +199,10 @@ public:
     // on channel 1-6 with no playable fret on that channel's string is
     // dropped rather than reassigned. Off, the default, is an exact no-op.
     void setStringPerChannelMode(bool enabled) noexcept;
+    [[nodiscard]] bool isStringPerChannelMode() const noexcept
+    {
+        return stringPerChannelMode_;
+    }
     void allNotesOff(int midiChannel = 1) noexcept;
     void allSoundOff(int midiChannel = 1) noexcept;
     void setBridgeCouplingEnabled(bool enabled) noexcept;

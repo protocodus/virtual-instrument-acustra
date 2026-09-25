@@ -111,13 +111,14 @@ void testParameterContract()
         ids::shape, ids::bodyMaterial, ids::stringMaterial, ids::tuning,
         ids::stringAge, ids::pluckPosition, ids::touch, ids::bodyAmount,
         ids::stereoWidth, ids::output, ids::capture, ids::picking, ids::bridgeModel,
-        ids::upperMic, ids::piezoLoading, ids::captureMode, ids::guitarModel
+        ids::upperMic, ids::piezoLoading, ids::captureMode, ids::guitarModel,
+        ids::gatherChords
     };
     // bridgeModel's factory default is the Fylde steel-string bridge (1);
     // sessions saved before the parameter existed restore the Original one.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 1.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, -7.5f,
-        0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f
+        0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -186,6 +187,11 @@ void testParameterContract()
                 && model->getParameterIndex() == 16
                 && model->choices == juce::StringArray { "Original", "Bellido 1978" },
             "Guitar Model must append the two measured-body choices with AU version hint 7");
+    const auto* gather = dynamic_cast<const juce::AudioParameterBool*> (
+        processor.parameters.getParameter (ids::gatherChords));
+    expect (gather != nullptr && gather->getVersionHint() == 8
+                && gather->getParameterIndex() == 17 && ! gather->isAutomatable(),
+            "Gather Chords must append a non-automatable switch with AU version hint 8");
 
     setValue (processor, ids::shape, 3.0f);
     setValue (processor, ids::bodyMaterial, 2.0f);
@@ -1824,6 +1830,184 @@ void testMpePressureReachesTheEngineOnMemberChannelOnly()
             "channel pressure did not reach the engine on a member channel");
 }
 
+struct TimedMidi
+{
+    int sample { 0 };
+    juce::MidiMessage message;
+};
+
+// Renders a MIDI timeline through a fresh processor and returns its stereo
+// output, left channel then right.
+std::vector<float> renderTimeline (const std::vector<TimedMidi>& events,
+                                   int length, bool gather,
+                                   int* latency = nullptr)
+{
+    AcustraAudioProcessor processor;
+    setValue (processor, acustra::parameters::gatherChords, gather ? 1.0f : 0.0f);
+    processor.prepareToPlay (sampleRate, blockSize);
+    if (latency != nullptr)
+        *latency = processor.getLatencySamples();
+    std::vector<float> left, right;
+    juce::AudioBuffer<float> audio { 2, blockSize };
+    for (int start = 0; start < length; start += blockSize)
+    {
+        juce::MidiBuffer midi;
+        for (const auto& event : events)
+            if (event.sample >= start && event.sample < start + blockSize)
+                midi.addEvent (event.message, event.sample - start);
+        processor.processBlock (audio, midi);
+        left.insert (left.end(), audio.getReadPointer (0),
+                     audio.getReadPointer (0) + blockSize);
+        right.insert (right.end(), audio.getReadPointer (1),
+                      audio.getReadPointer (1) + blockSize);
+    }
+    left.insert (left.end(), right.begin(), right.end());
+    return left;
+}
+
+void testGatheredChordsVoiceLikeSequencedChords()
+{
+    // A keyboard hand's C major triad arriving low to high over 20 ms. Taken
+    // one key at a time, C4 claims the B string's first fret before G4
+    // arrives, leaving G4 only the G string's twelfth fret; gathered, the
+    // triad reaches the allocator as one wrist event and sounds exactly as
+    // the same chord placed on one sample does.
+    constexpr int onset = 1000;
+    constexpr int length = 24 * blockSize;
+    const std::vector<TimedMidi> rolled {
+        { onset, juce::MidiMessage::noteOn (1, 60, 0.8f) },
+        { onset + 480, juce::MidiMessage::noteOn (1, 64, 0.8f) },
+        { onset + 960, juce::MidiMessage::noteOn (1, 67, 0.8f) }
+    };
+    const std::vector<TimedMidi> together {
+        { onset, juce::MidiMessage::noteOn (1, 60, 0.8f) },
+        { onset, juce::MidiMessage::noteOn (1, 64, 0.8f) },
+        { onset, juce::MidiMessage::noteOn (1, 67, 0.8f) }
+    };
+    int latency = 0;
+    const auto gatheredRoll = renderTimeline (rolled, length, true, &latency);
+    const auto gatheredChord = renderTimeline (together, length, true);
+    expect (latency == 1440,
+            "Gather Chords did not report its 30 ms window as latency");
+    expect (gatheredRoll == gatheredChord,
+            "a chord rolled inside the window did not sound as the same chord "
+            "on one sample");
+    expect (std::any_of (gatheredRoll.begin(), gatheredRoll.end(),
+                         [] (float value) { return std::abs (value) > 0.001f; }),
+            "the gathered chord rendered silence");
+    // Without gathering the same roll is fretted differently, which is what
+    // the switch is for; if this ever matched, the check above proves nothing.
+    expect (renderTimeline (rolled, length, false)
+                != renderTimeline (together, length, false),
+            "the rolled chord no longer needs gathering to voice like a chord");
+}
+
+void testGatheringOnlyDelaysNotesMeantApart()
+{
+    // Notes more than the window apart, a key repeated inside it, a legato
+    // run, a string-per-channel controller's notes, notes either side of an
+    // All Notes Off and notes on two channels are not chords to gather: each
+    // sounds exactly as the same timeline played ungathered with every event
+    // 30 ms later.
+    constexpr int length = 40 * blockSize;
+    constexpr int window = 1440;
+    const std::vector<std::vector<TimedMidi>> timelines {
+        {
+            { 300, juce::MidiMessage::noteOn (1, 48, 0.7f) },
+            { 300 + 1500, juce::MidiMessage::controllerEvent (1, 1, 40) },
+            { 300 + 1600, juce::MidiMessage::noteOn (1, 52, 0.6f) },
+            { 300 + 2400, juce::MidiMessage::pitchWheel (1, 9000) },
+            { 300 + 3300, juce::MidiMessage::noteOn (1, 55, 0.8f) },
+            { 300 + 5000, juce::MidiMessage::noteOff (1, 52) }
+        },
+        {
+            { 300, juce::MidiMessage::noteOn (1, 60, 0.8f) },
+            { 300 + 240, juce::MidiMessage::noteOff (1, 60) },
+            { 300 + 720, juce::MidiMessage::noteOn (1, 60, 0.8f) }
+        },
+        {
+            { 200, juce::MidiMessage::controllerEvent (1, 68, 127) },
+            { 300, juce::MidiMessage::noteOn (1, 57, 0.8f) },
+            { 300 + 480, juce::MidiMessage::noteOn (1, 59, 0.8f) },
+            { 300 + 960, juce::MidiMessage::noteOn (1, 60, 0.8f) }
+        },
+        {
+            // Channel 1 is the low E string, channel 2 the A string.
+            { 100, juce::MidiMessage::controllerEvent (1, 126, 6) },
+            { 300, juce::MidiMessage::noteOn (1, 45, 0.8f) },
+            { 300 + 240, juce::MidiMessage::noteOn (2, 50, 0.8f) },
+            { 300 + 480, juce::MidiMessage::noteOn (1, 47, 0.8f) },
+            { 300 + 720, juce::MidiMessage::noteOn (1, 48, 0.8f) }
+        },
+        {
+            { 300, juce::MidiMessage::noteOn (1, 60, 0.8f) },
+            { 300 + 240, juce::MidiMessage::controllerEvent (1, 123, 0) },
+            { 300 + 480, juce::MidiMessage::noteOn (1, 64, 0.8f) }
+        },
+        {
+            { 300, juce::MidiMessage::noteOn (1, 60, 0.8f) },
+            { 300 + 480, juce::MidiMessage::noteOn (2, 64, 0.8f) }
+        }
+    };
+    for (std::size_t index = 0; index < timelines.size(); ++index)
+    {
+        auto later = timelines[index];
+        for (auto& event : later)
+            event.sample += window;
+        const auto held = renderTimeline (timelines[index], length, true);
+        expect (held == renderTimeline (later, length, false),
+                "timeline " + std::to_string (index)
+                    + " was regrouped rather than only delayed");
+        expect (std::any_of (held.begin(), held.end(),
+                             [] (float value) { return std::abs (value) > 0.001f; }),
+                "timeline " + std::to_string (index) + " rendered silence");
+    }
+}
+
+void testGatherSwitchAndPanicReleaseHeldNotes()
+{
+    AcustraAudioProcessor processor;
+    setValue (processor, acustra::parameters::gatherChords, 1.0f);
+    processor.prepareToPlay (sampleRate, blockSize);
+    juce::AudioBuffer<float> audio { 2, blockSize };
+    juce::MidiBuffer empty;
+    const auto sound = [&] (int blocks)
+    {
+        float loudest = 0.0f;
+        for (int block = 0; block < blocks; ++block)
+        {
+            processor.processBlock (audio, empty);
+            loudest = std::max (loudest, peak (audio));
+        }
+        return loudest;
+    };
+
+    // A panic before a held note comes due discards it.
+    juce::MidiBuffer note;
+    note.addEvent (juce::MidiMessage::noteOn (1, 52, 0.8f), 10);
+    processor.processBlock (audio, note);
+    expect (peak (audio) == 0.0f, "a gathered note sounded inside its window");
+    processor.requestPanic();
+    expect (sound (12) == 0.0f, "a panic left a held note to sound later");
+
+    // Switching off releases what is held at once, and the latency with it.
+    processor.processBlock (audio, note);
+    setValue (processor, acustra::parameters::gatherChords, 0.0f);
+    expect (processor.getLatencySamples() == 0,
+            "switching Gather Chords off kept its latency");
+    expect (sound (2) > 0.001f,
+            "switching Gather Chords off lost the note it was holding");
+    juce::MidiBuffer release;
+    release.addEvent (juce::MidiMessage::noteOff (1, 52), 0);
+    processor.processBlock (audio, release);
+    static_cast<void> (sound (100));
+    expect (processor.getActiveVoiceCount() == 0,
+            "a note released after Gather Chords went off stayed held");
+    setValue (processor, acustra::parameters::gatherChords, 1.0f);
+    expect (processor.getLatencySamples() == 1440,
+            "switching Gather Chords back on did not restore its latency");
+}
+
 void testStringPerChannelModeViaMonoModeOn()
 {
     // MIDI 1.0's own Mono Mode On (CC126, value = channel count) is the
@@ -1869,6 +2053,9 @@ int main()
     testSameSampleNoteOnOffDoesNotStick();
     testSameSampleChordsAreStrummedAndAlternate();
     testRepeatedHeldChordsKeepTheirAudibleSweep();
+    testGatheredChordsVoiceLikeSequencedChords();
+    testGatheringOnlyDelaysNotesMeantApart();
+    testGatherSwitchAndPanicReleaseHeldNotes();
     testBridgeHandControllerReachesTheEngine();
     testTheModulationWheelReachesTheEngineAsVibrato();
     testMpeTimbreReachesTheEngineOnMemberChannelOnly();

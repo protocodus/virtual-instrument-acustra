@@ -27,17 +27,20 @@ inline constexpr auto piezoLoading = "piezoLoading";
 
 inline constexpr auto captureMode = "captureMode";
 inline constexpr auto guitarModel = "guitarModel";
+inline constexpr auto gatherChords = "gatherChords";
 
-inline constexpr int parameterCount = 17;
+inline constexpr int parameterCount = 18;
 } // namespace acustra::parameters
 
 class AcustraAudioProcessorEditor;
 
-class AcustraAudioProcessor final : public juce::AudioProcessor
+class AcustraAudioProcessor final
+    : public juce::AudioProcessor,
+      private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     AcustraAudioProcessor();
-    ~AcustraAudioProcessor() override = default;
+    ~AcustraAudioProcessor() override;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
@@ -91,6 +94,8 @@ public:
 private:
     static constexpr double maximumTailLengthSeconds = 30.0;
 
+    void parameterChanged (const juce::String& parameterID,
+                           float newValue) override;
     void dispatchMidiData (const juce::uint8* data, int numBytes) noexcept;
     bool processRpnController (int midiChannel, int controller,
                                int value) noexcept;
@@ -116,6 +121,18 @@ private:
     float lowerMasterPitchBendRange { 2.0f };
     float lowerMemberPitchBendRange { 48.0f };
     int lowerZoneMemberCount { 0 };
+    // Gather Chords holds every MIDI event back by the gathering window;
+    // see processBlock. A due time counts samples since prepareToPlay.
+    struct HeldMidi
+    {
+        std::int64_t due { 0 };
+        std::array<juce::uint8, 3> bytes {};
+        int size { 0 };
+        bool gathered { false };
+    };
+    std::array<HeldMidi, 1024> heldMidi {};
+    int heldMidiCount { 0 };
+    std::atomic<int> gatherWindowSamples { 0 };
     std::atomic<bool> panicRequested { false };
     std::atomic<bool> engineReady { false };
     std::atomic<int> activeVoiceCount { 0 };

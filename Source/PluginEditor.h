@@ -58,6 +58,9 @@ private:
     juce::Label subtitleLabel;
     juce::Label statusLabel;
     juce::TextButton panicButton { "PANIC" };
+    juce::TextButton gatherChordsButton { "CHORDS" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
+        gatherChordsAttachment;
 
     std::array<juce::Label, 4> setupLabels;
     std::array<juce::ComboBox, 4> setupControls;

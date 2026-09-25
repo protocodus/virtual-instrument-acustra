@@ -426,8 +426,30 @@ two seconds restarts with a downstroke. The spacing is the set-up dimension
 at the saddle; the pick's speed is a player's map of velocity over the
 0.51–2.46 m/s range measured from GuitarSet strokes. The corpus does not
 establish that velocity-to-speed relationship. Chords whose notes arrive
-spread in time are played as sent. And
-no two plucks land in the same place: each draws its own point within ±0.02
+spread in time are played as sent, unless Gather Chords is on.
+
+A chord played live reaches the plug-in one key at a time, in whatever order
+the fingers land, and each note used to take the free string with the lowest
+fret before the next was known. Played low to high, C4-E4-G4 became G fret
+12, B fret 1 and open E, an 11-fret stretch no hand makes, and a note high on
+a wound string does not sound like the same note on a plain one. Gather
+Chords, the CHORDS switch beside PANIC, holds every MIDI event back by 30 ms.
+A Note On that comes due takes along the Note Ons its channel received in the
+30 ms after it, and the group reaches the allocator as one wrist event: voiced
+high to low and strummed exactly as the same chord sent on one sample. Thirty
+milliseconds is where one chord ends and notes meant apart begin. A pianist's
+louder melody note strikes 20 to 30 ms before the rest of its chord, mostly
+because a faster key travels sooner, which a keyboard's key-bottom contact
+shares, while asynchronies played on purpose usually exceed 30 ms
+([Goebl, JASA 110(1), 2001](https://iwk.mdw.ac.at/goebl/papers/Goebl_JASA2001_melodyLead.pdf)).
+The cost is 30 ms of latency on every note, which the plug-in reports so a
+host compensates it on playback; a player hears it live. The switch is off by
+default. A key repeated inside the window, or a controller that changes how
+notes are allocated (legato, sound or notes off, reset, mono/poly, the RPNs
+that lay out an MPE zone), ends a chord. Legato runs and string-per-channel
+controllers already say how each note is played, so they are only delayed.
+
+And no two plucks land in the same place: each draws its own point within ±0.02
 of the string length, the take-to-take spread the reference recordings'
 round robins show, which is what makes a repeated stroke a new take rather
 than a copy.
@@ -1367,24 +1389,23 @@ cannot modify reference targets.
 
 The wrapper suite additionally checks that CC68 reaches the engine as legato,
 sample-accurate MIDI, canonical
-same-time chord order, conventional channel isolation, lower-zone MPE setup,
+same-time chord order, gathered live chords (a triad rolled low to high over
+20 ms sounds bit-identical to the same triad on one sample, while notes more
+than the window apart, a key repeated inside it and a legato run sound
+bit-identical to the same timeline played 30 ms later, and the 30 ms is
+reported as latency), conventional channel isolation, lower-zone MPE setup,
 RPN 0/RPN 6 ranges and lifecycle, frozen member-tail bends,
 panic/controller-reset behavior, state migration and editor rendering.
 VST3, Audio Unit and Standalone targets are built from the same engine.
 
 ## Known gaps
 
-- A chord played live on a keyboard arrives one note at a time, and each
-  note takes the free string with the lowest fret before the next is known.
-  Played low to high, close triads high on the neck become unplayable
-  fingerings: C4-E4-G4 lands on G fret 12, B fret 1 and open E (an 11-fret
-  stretch), and D4-F#4-A4 and E4-G4-B4 stretch 12 and 8 frets. That changes
-  the timbre as well as the hand, since a note high on a wound string is not
-  the same note on a plain one. A chord sent on one sample is voiced high to
-  low and lands where a guitarist plays it (the same three triads within two
-  frets). Doing the same for live chords needs a short window to gather them,
-  and so latency. Whether that should exist, and be on by default, is a
-  product decision that has not been taken.
+- With Gather Chords off, its default, a chord played live on a keyboard is
+  still fretted one note at a time: played low to high, C4-E4-G4 lands on G
+  fret 12, B fret 1 and open E, and D4-F#4-A4 and E4-G4-B4 stretch 12 and 8
+  frets. Switching it on voices them as a guitarist would, at 30 ms of
+  latency. A chord whose notes spread over more than 30 ms, such as a slow
+  roll, is still fretted as it arrives.
 - Capture choices provide measured microphone positions and one measured
   piezo/preamp electrical load. The piezo's mechanical sensor response and
   sensitivity and named microphone electronics remain unidentified. Matched

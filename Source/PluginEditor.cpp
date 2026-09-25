@@ -363,6 +363,22 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     panicButton.onClick = [this] { audioProcessor.requestPanic(); };
     addAndMakeVisible (panicButton);
 
+    const juce::String gatherDescription {
+        "Gather keys pressed within 30 ms of each other into one chord, "
+        "fretted and strummed as a guitarist would. Every note then sounds "
+        "30 ms later; hosts compensate that on playback." };
+    gatherChordsButton.setName ("Gather chords");
+    gatherChordsButton.setTitle ("Gather chords");
+    gatherChordsButton.setDescription (gatherDescription);
+    gatherChordsButton.setTooltip (gatherDescription);
+    gatherChordsButton.setWantsKeyboardFocus (true);
+    gatherChordsButton.setClickingTogglesState (true);
+    addAndMakeVisible (gatherChordsButton);
+    gatherChordsAttachment = std::make_unique<
+        juce::AudioProcessorValueTreeState::ButtonAttachment> (
+            audioProcessor.parameters, acustra::parameters::gatherChords,
+            gatherChordsButton);
+
     configureSetupMenu (
         0, "GUITAR", "Set the body model, shape, wood and strings together. "
         "Style presets use the original body; named years select measured bodies. "
@@ -698,10 +714,11 @@ void AcustraAudioProcessorEditor::resized()
     bounds.setBottom (keyboardPanelBounds.getY() - 12);
     auto header = bounds.removeFromTop (58);
     titleLabel.setBounds (header.removeFromLeft (
-        juce::jmin (318, header.getWidth() / 3)));
+        juce::jmin (318, header.getWidth() / 4)));
+    panicButton.setBounds (header.removeFromRight (80).reduced (3, 10));
+    gatherChordsButton.setBounds (header.removeFromRight (96).reduced (3, 10));
     subtitleLabel.setBounds (header.removeFromLeft (
         juce::jmin (480, header.getWidth() / 2)).reduced (8, 0));
-    panicButton.setBounds (header.removeFromRight (80).reduced (3, 10));
     statusLabel.setBounds (header.reduced (8, 0));
 
     bounds.removeFromTop (12);
