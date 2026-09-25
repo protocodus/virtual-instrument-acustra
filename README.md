@@ -1359,6 +1359,17 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
 
 ## Known gaps
 
+- A chord played live on a keyboard arrives one note at a time, and each
+  note takes the free string with the lowest fret before the next is known.
+  Played low to high, close triads high on the neck become unplayable
+  fingerings: C4-E4-G4 lands on G fret 12, B fret 1 and open E (an 11-fret
+  stretch), and D4-F#4-A4 and E4-G4-B4 stretch 12 and 8 frets. That changes
+  the timbre as well as the hand, since a note high on a wound string is not
+  the same note on a plain one. A chord sent on one sample is voiced high to
+  low and lands where a guitarist plays it (the same three triads within two
+  frets). Doing the same for live chords needs a short window to gather them,
+  and so latency. Whether that should exist, and be on by default, is a
+  product decision that has not been taken.
 - Capture choices provide measured microphone positions and one measured
   piezo/preamp electrical load. The piezo's mechanical sensor response and
   sensitivity and named microphone electronics remain unidentified. Matched
