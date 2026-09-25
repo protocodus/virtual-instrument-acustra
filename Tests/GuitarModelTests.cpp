@@ -45,9 +45,7 @@ acustra::EngineParameters parametersFor(acustra::GuitarModel model)
 {
     acustra::EngineParameters p;
     p.guitarModel = model;
-    p.shape = model == acustra::GuitarModel::Washburn1897 ? acustra::BodyShape::Parlor
-        : model == acustra::GuitarModel::MartinD18V2007 ? acustra::BodyShape::Dreadnought
-        : acustra::BodyShape::Auditorium;
+    p.shape = acustra::BodyShape::Auditorium;
     if (model == acustra::GuitarModel::Bellido1978)
     { p.stringMaterial = acustra::StringMaterial::Nylon; p.bodyMaterial = acustra::BodyMaterial::Cedar; }
     return p;
@@ -220,41 +218,43 @@ void testNominalBridge(acustra::GuitarModel model, const Bank& bank)
            "a nominal measured bridge inherited legacy mobility gain or conductance floor");
 }
 
-void testScalarModelsRemainMono()
+// Values 2-4 were the Washburn 1897, Santa Cruz OM 2022 and Martin D18V 2007,
+// whose source measurements carry no redistribution license. A host or file
+// that still sends one must hear Original, sample for sample.
+std::vector<float> renderChord(acustra::EngineParameters p)
 {
-    for (const auto model : { acustra::GuitarModel::Washburn1897,
-                             acustra::GuitarModel::SantaCruzOM2022,
-                             acustra::GuitarModel::MartinD18V2007 })
+    auto engine = std::make_unique<acustra::AcustraEngine>();
+    engine->setParameters(p);
+    engine->prepare(48000, 64);
+    for (int note : { 40, 47, 52, 55, 59, 64 }) engine->noteOn(note, .8f);
+    std::vector<float> audio;
+    for (int n = 0; n < 24000; n += 64)
     {
-        auto engine = std::make_unique<acustra::AcustraEngine>();
-        auto p = parametersFor(model);
-        p.capture = acustra::CaptureType::StereoMic;
-        p.stereoWidth = 1.f;
-        engine->setParameters(p);
-        auto calibration = acustra::fittedPhysicalCalibration;
-        // Factory directGain is zero; exercise the supported nonzero setting
-        // so a panned direct-string path cannot hide behind that default.
-        calibration.directGain = .12f;
-        engine->setPhysicalCalibration(calibration);
-        engine->prepare(48000, 64);
-        engine->noteOn(40, .75f); // one outer string makes accidental panning observable
-        double energy = 0;
-        bool equal = true;
-        for (int n = 0; n < 4096; ++n)
+        float l[64], r[64]; engine->process(l, r, 64);
+        audio.insert(audio.end(), l, l + 64);
+        audio.insert(audio.end(), r, r + 64);
+    }
+    return audio;
+}
+
+void testRetiredModelsPlayOriginal()
+{
+    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
+    {
+        auto p = parametersFor(acustra::GuitarModel::Original);
+        p.stringMaterial = material;
+        const auto original = renderChord(p);
+        for (int retired : { 2, 3, 4 })
         {
-            float left, right;
-            engine->process(&left, &right, 1);
-            equal = equal && left == right;
-            energy += double(left)*left + double(right)*right;
+            p.guitarModel = static_cast<acustra::GuitarModel>(retired);
+            expect(renderChord(p) == original, "a retired guitar model did not play Original");
         }
-        expect(energy > 1e-9 && equal,
-               "a scalar measured microphone acquired stereo from the direct string path");
     }
 }
 
 void testCoupledModels()
 {
-    for (int model = 0; model < 5; ++model)
+    for (int model = 0; model < 2; ++model)
         for (int rate : { 44100, 96000 })
         {
             auto engine = std::make_unique<acustra::AcustraEngine>();
@@ -278,7 +278,8 @@ void testCoupledModels()
             expect(audioEnergy > 1e-9 && peak < .89f, "measured model must sound without relying on the limiter");
             // A host can move faster than the radiation fade. Verify the final
             // request wins, including its delay history, while a chord rings.
-            for (int next : { 4, 1, 3, 2 })
+            // 4 and 3 are retired values, which coalesce as Original.
+            for (int next : { 4, 1, 3, 1 })
             {
                 p.guitarModel = static_cast<acustra::GuitarModel>(next);
                 engine->setParameters(p);
@@ -289,7 +290,7 @@ void testCoupledModels()
                 float l[64], r[64]; engine->process(l, r, 64);
                 for (float value : l) expect(std::isfinite(value) && std::abs(value) <= 1, "rapid model switching must remain bounded");
             }
-            expect(acustra::AcustraEngineTestAccess::hasModel(*engine, acustra::GuitarModel::Washburn1897), "coalesced model change lost the last host request");
+            expect(acustra::AcustraEngineTestAccess::hasModel(*engine, acustra::GuitarModel::Bellido1978), "coalesced model change lost the last host request");
             engine->allSoundOff();
             float l[512], r[512]; engine->process(l, r, 512);
             for (int n = 0; n < 512; ++n) expect(l[n] == 0 && r[n] == 0, "all sound off must clear radiation delay too");
@@ -300,18 +301,9 @@ int main()
 {
     using namespace acustra;
     testRadiation(GuitarModel::Bellido1978, detail::bellidoBodyModes, 0);
-    testRadiation(GuitarModel::Washburn1897, detail::washburnBodyModes, experimental::Washburn_1897_radiationDelaySamples);
-    testRadiation(GuitarModel::SantaCruzOM2022, detail::santaCruzBodyModes, experimental::SCGC_OM3_radiationDelaySamples);
-    testRadiation(GuitarModel::MartinD18V2007, detail::martinBodyModes, experimental::Martin_D18_radiationDelaySamples);
     testFractionalRadiation(GuitarModel::Bellido1978, detail::bellidoBodyModes, 0);
-    testFractionalRadiation(GuitarModel::Washburn1897, detail::washburnBodyModes, experimental::Washburn_1897_radiationDelaySamples);
-    testFractionalRadiation(GuitarModel::SantaCruzOM2022, detail::santaCruzBodyModes, experimental::SCGC_OM3_radiationDelaySamples);
-    testFractionalRadiation(GuitarModel::MartinD18V2007, detail::martinBodyModes, experimental::Martin_D18_radiationDelaySamples);
     testNominalBridge(GuitarModel::Bellido1978, detail::bellidoBridgeModes);
-    testNominalBridge(GuitarModel::Washburn1897, detail::washburnBridgeModes);
-    testNominalBridge(GuitarModel::SantaCruzOM2022, detail::santaCruzBridgeModes);
-    testNominalBridge(GuitarModel::MartinD18V2007, detail::martinBridgeModes);
-    testScalarModelsRemainMono();
+    testRetiredModelsPlayOriginal();
     testCoupledModels();
     return failures == 0 ? 0 : 1;
 }

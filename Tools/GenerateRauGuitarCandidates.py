@@ -20,7 +20,9 @@ Bridge fitting uses nonnegative residues and the engine's prewarped bilinear
 mobility, preserving passivity without putting a phase delay in its feedback.
 
 Only generated numerical coefficients and reports are written to --output.
-Raw measurements remain outside the repository. Nothing is published.
+Raw measurements remain outside the repository. Nothing is published: the
+engine no longer reads these coefficients, and .gitignore keeps a local copy
+of the header or report out of commits.
 """
 from __future__ import annotations
 

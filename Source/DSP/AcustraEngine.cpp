@@ -50,12 +50,6 @@ static_assert(detail::measuredFyldeBridgeModes.size()
 
 static_assert(detail::bellidoBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
 static_assert(detail::bellidoBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
-static_assert(detail::washburnBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
-static_assert(detail::washburnBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
-static_assert(detail::santaCruzBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
-static_assert(detail::santaCruzBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
-static_assert(detail::martinBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
-static_assert(detail::martinBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
 
 // The measured body each material plays is one guitar of one size, so a
 // Shape is a morph of that measurement, not a second measurement. Both
@@ -313,38 +307,22 @@ const BodyGeometry& bodyGeometryFor(StringMaterial material,
 }
 
 // The Shape slot each bank is heard unwarped in: the material's anchor for
-// Original, and each named guitar's own family.
+// Original, and the Bellido's own family.
 BodyShape anchorShapeFor(StringMaterial material, GuitarModel model) noexcept
 {
-    switch (model)
-    {
-        case GuitarModel::Washburn1897: return BodyShape::Parlor;
-        case GuitarModel::MartinD18V2007: return BodyShape::Dreadnought;
-        case GuitarModel::Bellido1978:
-        case GuitarModel::SantaCruzOM2022: return BodyShape::Auditorium;
-        default: break;
-    }
+    if (model == GuitarModel::Bellido1978)
+        return BodyShape::Auditorium;
     return material == StringMaterial::Steel ? BodyShape::Dreadnought
                                              : BodyShape::Auditorium;
 }
 
-// The box each anchor describes: the dreadnought the steel default is, the
-// classical guitar nylon's bank was measured on, and each named guitar's
-// own family (the Bellido is a classical, the Santa Cruz an OM/000).
+// The box each anchor describes: the dreadnought the steel default is, and
+// the classical guitar nylon's bank and the Bellido were measured on.
 const BodyGeometry& anchorBodyFor(StringMaterial material,
                                   GuitarModel model) noexcept
 {
-    switch (model)
-    {
-        case GuitarModel::Bellido1978: return classicalBody;
-        case GuitarModel::Washburn1897:
-            return steelStringBodies[static_cast<std::size_t>(BodyShape::Parlor)];
-        case GuitarModel::SantaCruzOM2022:
-            return steelStringBodies[static_cast<std::size_t>(BodyShape::Auditorium)];
-        case GuitarModel::MartinD18V2007:
-            return steelStringBodies[static_cast<std::size_t>(BodyShape::Dreadnought)];
-        default: break;
-    }
+    if (model == GuitarModel::Bellido1978)
+        return classicalBody;
     return material == StringMaterial::Steel
         ? steelStringBodies[static_cast<std::size_t>(BodyShape::Dreadnought)]
         : classicalBody;
@@ -545,14 +523,8 @@ std::span<const detail::MeasuredBridgeMode> measuredBridgeBank(
     StringMaterial material, BridgeModel model,
     GuitarModel guitar = GuitarModel::Original) noexcept
 {
-    switch (guitar)
-    {
-        case GuitarModel::Bellido1978: return detail::bellidoBridgeModes;
-        case GuitarModel::Washburn1897: return detail::washburnBridgeModes;
-        case GuitarModel::SantaCruzOM2022: return detail::santaCruzBridgeModes;
-        case GuitarModel::MartinD18V2007: return detail::martinBridgeModes;
-        default: break;
-    }
+    if (guitar == GuitarModel::Bellido1978)
+        return detail::bellidoBridgeModes;
     if (material == StringMaterial::Steel)
     {
         if (model == BridgeModel::FyldeSteel)
@@ -565,14 +537,8 @@ std::span<const detail::MeasuredBridgeMode> measuredBridgeBank(
 std::span<const detail::MeasuredBodyMode> measuredBodyBank(
     StringMaterial material, GuitarModel guitar) noexcept
 {
-    switch (guitar)
-    {
-        case GuitarModel::Bellido1978: return detail::bellidoBodyModes;
-        case GuitarModel::Washburn1897: return detail::washburnBodyModes;
-        case GuitarModel::SantaCruzOM2022: return detail::santaCruzBodyModes;
-        case GuitarModel::MartinD18V2007: return detail::martinBodyModes;
-        default: break;
-    }
+    if (guitar == GuitarModel::Bellido1978)
+        return detail::bellidoBodyModes;
     if (material == StringMaterial::Steel)
         return detail::measuredSteelBodyModes;
     return detail::measuredNylonBodyModes;
@@ -1160,9 +1126,10 @@ EngineParameters AcustraEngine::sanitise(const EngineParameters& source) noexcep
     result.bridgeModel = static_cast<BridgeModel>(enumOr(
         static_cast<int>(source.bridgeModel), 1,
         static_cast<int>(EngineParameters {}.bridgeModel)));
+    // A retired model's value (2-4) plays Original.
     result.guitarModel = static_cast<GuitarModel>(enumOr(
-        static_cast<int>(source.guitarModel), 4,
-        static_cast<int>(EngineParameters {}.guitarModel)));
+        static_cast<int>(source.guitarModel), 1,
+        static_cast<int>(GuitarModel::Original)));
     result.stringAge = clamp(source.stringAge, 0.0f, 1.0f);
     result.pluckPosition = clamp(source.pluckPosition, 0.0f, 1.0f);
     result.touch = clamp(source.touch, 0.0f, 1.0f);
@@ -1940,16 +1907,10 @@ void AcustraEngine::configureBody() noexcept
                       parameters_.shape));
     const auto referenceWood = woodSpecs[parameters_.guitarModel == GuitarModel::Bellido1978 ? 1 : 0];
     const bool named = parameters_.guitarModel != GuitarModel::Original;
-    int delayAt48k = 0;
-    switch (parameters_.guitarModel)
-    {
-        case GuitarModel::Washburn1897: delayAt48k = experimental::Washburn_1897_radiationDelaySamples; break;
-        case GuitarModel::SantaCruzOM2022: delayAt48k = experimental::SCGC_OM3_radiationDelaySamples; break;
-        case GuitarModel::MartinD18V2007: delayAt48k = experimental::Martin_D18_radiationDelaySamples; break;
-        default: break;
-    }
+    // Every bank that ships keeps its measured phase with no observation
+    // delay; the delay line stays for a bank that needs one.
     bodyRadiationDelay_.reset();
-    bodyRadiationDelay_.configure(static_cast<float>(delayAt48k * sampleRate_ / 48000.0));
+    bodyRadiationDelay_.configure(0.0f);
 
     for (int index = 0; index < bodyModeCount; ++index)
     {
@@ -2416,10 +2377,7 @@ float AcustraEngine::coupledPolarisationDetune(
 // guitars measured", 2021, https://zenodo.org/records/4604577, column HSaT):
 // 8.1 mm on g21, whose radiation steel plays whichever bridge it selects,
 // 10.2 mm on g34 and 8.6 mm on the 1978 Bellido, g35. a is the 23.2 mm
-// half-spacing the archive's impacts are placed at (saddleLeverArm). The Rau
-// guitars were measured with one scalar mobility and one force-to-pressure
-// path, so nothing carries a sideways force for them and their parallel
-// polarisation stays the silent loop it was.
+// half-spacing the archive's impacts are placed at (saddleLeverArm).
 float AcustraEngine::saddleHeightRatio() const noexcept
 {
     constexpr float impactHalfSpacing = 0.0232f;
@@ -5331,12 +5289,10 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         // response, and apply
         // Width to both paths so zero is genuinely mono.
         const float directMono = 0.5f * (directLeft + directRight);
-        const float observationWidth = parameters_.guitarModel >= GuitarModel::Washburn1897
-            ? 0.0f : width_;
         const float spreadDirectLeft = directMono
-            + observationWidth * (directLeft - directMono);
+            + width_ * (directLeft - directMono);
         const float spreadDirectRight = directMono
-            + observationWidth * (directRight - directMono);
+            + width_ * (directRight - directMono);
         const float bodyScale = 0.68f + 0.72f * bodyAmount_;
         const float directScale = 0.10f + 0.10f * (1.0f - bodyAmount_);
         const float monoBody = 0.5f * (body.left + body.right);

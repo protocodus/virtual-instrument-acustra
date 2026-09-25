@@ -60,8 +60,7 @@ acustra::PickingTechnique archtopPicking { acustra::EngineParameters {}.picking 
 // bridge and radiation instead of Original's, to ask which measured body the
 // recordings sit closest to; it is an evaluation option, not a fit input.
 acustra::GuitarModel renderGuitarModel { acustra::GuitarModel::Original };
-constexpr std::array guitarModelNames { "original", "bellido1978", "washburn1897",
-                                        "santacruz2022", "martin2007" };
+constexpr std::array guitarModelNames { "original", "bellido1978" };
 constexpr std::array pickingNames { "finger", "pick", "thumb" };
 
 acustra::BodyShape renderShapeFor(acustra::StringMaterial material) noexcept
@@ -1229,7 +1228,7 @@ void printUsage()
         "[--bridge-model original|fylde] "
         "[--shape parlor|auditorium|dreadnought|jumbo] "
         "[--archtop-picking finger|pick|thumb] "
-        "[--guitar-model original|bellido1978|washburn1897|santacruz2022|martin2007] "
+        "[--guitar-model original|bellido1978] "
         "OUTPUT "
         "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT DIRECT_GAIN "
         "NYLON_T60 NYLON_FREQUENCY_LOSS NYLON_APERTURE "

@@ -40,10 +40,7 @@ constexpr double pi = std::numbers::pi;
 acustra::BodyShape nativeShape(acustra::GuitarModel model)
 {
     return model == acustra::GuitarModel::Original
-        || model == acustra::GuitarModel::MartinD18V2007
-        ? acustra::BodyShape::Dreadnought
-        : model == acustra::GuitarModel::Washburn1897
-        ? acustra::BodyShape::Parlor : acustra::BodyShape::Auditorium;
+        ? acustra::BodyShape::Dreadnought : acustra::BodyShape::Auditorium;
 }
 
 // Read the ACTUAL configured digital section, including float rounding and
@@ -98,7 +95,7 @@ void testPhaseAndPassivity()
 {
     double worstCents = 0, minimumReal = 0;
     std::array<int,7> worstCase {};
-    for (int model = 0; model < 5; ++model)
+    for (int model = 0; model < 2; ++model)
         for (int material = 0; material < 2; ++material)
             for (int rate : { 8000, 24000, 48000, 96000 })
             {

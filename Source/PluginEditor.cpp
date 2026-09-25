@@ -32,7 +32,7 @@ struct ConstructionPreset
 // (README, Real dry-note benchmark). That fitted Original bridge stays
 // reachable as its own preset and remains the benchmark's reference. The
 // appended presets select a measured body plus suitable string construction.
-constexpr std::array<ConstructionPreset, 9> constructionPresets {{
+constexpr std::array<ConstructionPreset, 6> constructionPresets {{
     { "Dreadnought / Martin style", acustra::BodyShape::Dreadnought,
       acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
       acustra::BridgeModel::FyldeSteel },
@@ -49,16 +49,7 @@ constexpr std::array<ConstructionPreset, 9> constructionPresets {{
       acustra::BridgeModel::Original },
     { "Bellido 1978 / nylon", acustra::BodyShape::Auditorium,
       acustra::BodyMaterial::Cedar, acustra::StringMaterial::Nylon,
-      acustra::BridgeModel::Original, acustra::GuitarModel::Bellido1978 },
-    { "Washburn 1897 / parlor", acustra::BodyShape::Parlor,
-      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
-      acustra::BridgeModel::Original, acustra::GuitarModel::Washburn1897 },
-    { "Santa Cruz OM 2022", acustra::BodyShape::Auditorium,
-      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
-      acustra::BridgeModel::Original, acustra::GuitarModel::SantaCruzOM2022 },
-    { "Martin D18V 2007", acustra::BodyShape::Dreadnought,
-      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
-      acustra::BridgeModel::Original, acustra::GuitarModel::MartinD18V2007 }
+      acustra::BridgeModel::Original, acustra::GuitarModel::Bellido1978 }
 }};
 
 // Palette drawn from the classical-guitar reference: pale soundboard, ebony
@@ -414,15 +405,12 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     configureSetupMenu (
         2, "CAPTURE", "Stereo body microphones, one mono body microphone, or "
         "saddle piezo with pickup/preamp electrical loading. Mono mic and piezo "
-        "send the same signal to both channels and ignore Stereo Width. "
-        "Washburn, Santa Cruz and Martin have one measured microphone: "
-        "both mic settings stay mono for these models.");
+        "send the same signal to both channels and ignore Stereo Width.");
     configureSetupMenu (
         3, "MODEL", "Choose the measured guitar body. Original follows the "
-        "string material; Bellido has three measured microphones. Washburn, "
-        "Santa Cruz and Martin have one measured microphone and stay mono. "
-        "Guitar presets also set the matching string construction; shape and "
-        "wood controls remain adjustable construction changes.");
+        "string material; Bellido is a measured 1978 classical with three "
+        "microphones. Guitar presets also set the matching string construction; "
+        "shape and wood controls remain adjustable construction changes.");
     if (auto* parameter = dynamic_cast<juce::AudioParameterChoice*> (
             audioProcessor.parameters.getParameter (acustra::parameters::picking)))
     {
@@ -478,8 +466,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         "Strength of the measurement-derived body radiation");
     configureSlider (
         4, "STEREO", acustra::parameters::stereoWidth,
-        "Width between body microphones. Mono mic and piezo ignore this control. "
-        "Washburn, Santa Cruz and Martin have one measured microphone and stay mono.");
+        "Width between body microphones. Mono mic and piezo ignore this control.");
     configureSlider (
         5, "OUTPUT", acustra::parameters::output,
         "Final output level in decibels", true);

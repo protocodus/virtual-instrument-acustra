@@ -311,9 +311,6 @@ int main(int argc, char** argv)
         if (namedGuitars)
         {
             cases.push_back({ 0, 1, "Bellido1978", "auditorium", "cedar" });
-            cases.push_back({ 1, 2, "Washburn1897", "parlor", "spruce" });
-            cases.push_back({ 1, 3, "SantaCruzOM2022", "auditorium", "spruce" });
-            cases.push_back({ 1, 4, "MartinD18V2007", "dreadnought", "spruce" });
         }
         bool first = true;
         for (const int rate : { 48000, 96000 })

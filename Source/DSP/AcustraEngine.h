@@ -84,13 +84,13 @@ enum class BridgeModel
     FyldeSteel
 };
 
+// Values 2-4 were the Washburn 1897, Santa Cruz OM 2022 and Martin D18V 2007,
+// fitted from Mark Rau's measurements, which carry no redistribution license.
+// They are retired: sanitisation maps any of those values to Original.
 enum class GuitarModel
 {
     Original,
-    Bellido1978,
-    Washburn1897,
-    SantaCruzOM2022,
-    MartinD18V2007
+    Bellido1978
 };
 
 struct EngineParameters

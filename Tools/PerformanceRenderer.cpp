@@ -41,7 +41,7 @@ int main(int argc, char** argv)
                      "[--string-material steel|nylon] [--tuning standard|drop_d] "
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
                      "[--body-material spruce|cedar|mahogany|maple] "
-                     "[--guitar-model original|bellido1978|washburn1897|santacruz2022|martin2007] "
+                     "[--guitar-model original|bellido1978] "
                      "[--calibration FILE]\n";
         return 2;
     }
@@ -123,7 +123,7 @@ int main(int argc, char** argv)
             }
             else if (option == "--guitar-model" && !guitarSeen)
             {
-                const std::array choices { "original", "bellido1978", "washburn1897", "santacruz2022", "martin2007" };
+                const std::array choices { "original", "bellido1978" };
                 const auto found = std::find(choices.begin(), choices.end(), value);
                 if (found == choices.end())
                     throw std::runtime_error("unknown guitar model");

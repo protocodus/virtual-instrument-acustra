@@ -47,8 +47,7 @@ def main():
         cases = [(material, shape, 'original') for material in ['steel', 'nylon']
                  for shape in ['parlor', 'auditorium', 'dreadnought', 'jumbo']]
         if version == 'current':
-            cases += [('nylon','auditorium','bellido1978'), ('steel','parlor','washburn1897'),
-                      ('steel','auditorium','santacruz2022'), ('steel','dreadnought','martin2007')]
+            cases += [('nylon','auditorium','bellido1978')]
         spectra = {}
         audio = {}
         for material, shape, model in cases:

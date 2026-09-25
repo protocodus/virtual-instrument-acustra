@@ -4,6 +4,22 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-25 — the Rau-measured models leave the published repository
+
+What was decided, and by whom. Before the first push of this work to the
+public repository, the owner chose to publish it without the coefficients
+fitted from Mark Rau's guitar measurements, whose raw ZIP carries no
+explicit redistribution license. That is a licensing decision, not a
+listening or measurement one. The unpushed commits were rewritten so that
+`Source/DSP/RauQualifiedGuitarData.h` in them is a stub with no modes and
+`Docs/rau-guitar-candidate-report.json` never appears; the Washburn 1897,
+Santa Cruz OM 2022 and Martin D18V 2007 are retired from the engine, the
+plugin and the offline tools. Retired values sanitise to Original, and a
+saved state that chose one reloads as Original instead of clamping onto the
+nylon Bellido. The generator stays for local comparison, with its output
+ignored by git. Commits before this one select those three models with an
+empty bank and are not meant to be played.
+
 ## 2026-09-24 — steel's missing low end is the air mode at the bridge microphones
 
 What was measured. On the eight Eastman E1D flat-top rows the model's H1

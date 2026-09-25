@@ -1,5 +1,11 @@
 # Measured guitars and stronger body variations
 
+Update 2026-09-25: the Washburn, Santa Cruz and Martin models below are
+retired and their coefficients are not published with this repository,
+because Mark Rau's measurements carry no redistribution license. The
+instrument offers the Bellido alone beside Original; the rest of this
+document records how the three were built and measured locally.
+
 The local instrument now offers four additional measured bridge/body pairs.
 The **Guitar** presets choose their native family, wood reference and string
 material together; **Model** independently selects the measured bank.
@@ -20,7 +26,7 @@ model variation, not another measured real instrument.
 
 Sources, exact input hashes, fit conditions and rejected models are in
 [the measurement review](rau-source-methods-2026-09-08.md),
-[Rau fit report](rau-guitar-candidate-report.json) and
+the Rau fit report (generated locally, not published) and
 [Bellido refinement report](nylon-bridge-refinement-report.json).
 The Bellido source is Robert Mores' CC BY 4.0 archive. Rau's separate raw ZIP
 has no explicit redistribution license; raw data stays outside the repository

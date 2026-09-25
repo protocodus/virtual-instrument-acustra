@@ -7320,8 +7320,8 @@ void testTheNormalPolarisationIsTheHigherMemberByALength()
 // sideways at its height over the top, which is a moment about the string's
 // own axis: on a bridge whose rocking and moment radiation were measured it
 // reaches the microphones and forms, with the normal polarisation, the doublet
-// every guitar partial beats with. Where the measurement is scalar (the Rau
-// guitars) nothing can carry it and the plane stays silent.
+// every guitar partial beats with. Where the measurement is scalar nothing
+// can carry it and the plane would stay silent; every shipping bank is not.
 void testTheParallelPolarisationRadiatesThroughTheRockingSaddle()
 {
     using acustra::AcustraEngineTestAccess;
@@ -7372,11 +7372,7 @@ void testTheParallelPolarisationRadiatesThroughTheRockingSaddle()
              Case { GuitarModel::Original, StringMaterial::Steel,
                     acustra::BridgeModel::Original, true, "Original steel" },
              Case { GuitarModel::Bellido1978, StringMaterial::Nylon,
-                    acustra::BridgeModel::Original, true, "Bellido" },
-             Case { GuitarModel::MartinD18V2007, StringMaterial::Nylon,
-                    acustra::BridgeModel::Original, false, "Martin, nylon" },
-             Case { GuitarModel::Washburn1897, StringMaterial::Nylon,
-                    acustra::BridgeModel::Original, false, "Washburn, nylon" } })
+                    acustra::BridgeModel::Original, true, "Bellido" } })
     {
         acustra::EngineParameters parameters;
         parameters.guitarModel = test.model;

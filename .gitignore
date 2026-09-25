@@ -30,3 +30,9 @@ DerivedData/
 
 # Audio is generated locally and is not stored in this repository
 *.[wW][aA][vV]
+
+# Coefficients fitted from Mark Rau's guitar measurements, which carry no
+# redistribution license: Tools/GenerateRauGuitarCandidates.py writes them
+# locally and they are never committed.
+/Source/DSP/RauQualifiedGuitarData.h
+/Docs/rau-guitar-candidate-report.json

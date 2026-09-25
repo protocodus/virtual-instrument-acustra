@@ -235,10 +235,12 @@ AcustraAudioProcessor::createParameterLayout()
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::captureMode, 6 }, "Capture",
         juce::StringArray { "Stereo mic", "Mono mic", "Piezo" }, 0));
+    // Its choices 2-4, the Washburn 1897, Santa Cruz OM 2022 and Martin D18V
+    // 2007, were fitted from measurements with no redistribution license and
+    // are retired; setStateInformation moves a state that chose one to Original.
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::guitarModel, 7 }, "Guitar Model",
-        juce::StringArray { "Original", "Bellido 1978", "Washburn 1897",
-                            "Santa Cruz OM 2022", "Martin D18V 2007" }, 0));
+        juce::StringArray { "Original", "Bellido 1978" }, 0));
 
     return { result.begin(), result.end() };
 }
@@ -271,7 +273,7 @@ AcustraAudioProcessor::snapshotEngineParameters() const noexcept
         std::clamp (static_cast<int> (std::lround (value (slotCaptureMode))), 0, 2))];
     result.picking = choiceValue<acustra::PickingTechnique> (value (slotPicking), 2);
     result.bridgeModel = choiceValue<acustra::BridgeModel> (value (slotBridgeModel), 1);
-    result.guitarModel = choiceValue<acustra::GuitarModel> (value (slotGuitarModel), 4);
+    result.guitarModel = choiceValue<acustra::GuitarModel> (value (slotGuitarModel), 1);
     return result;
 }
 
@@ -796,6 +798,13 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
             captureState.setProperty ("value", migrated, nullptr);
             restoredState.appendChild (captureState, nullptr);
         }
+        // A retired Guitar Model (2-4) would clamp to Bellido, a nylon
+        // classical; the steel guitars those slots held play Original.
+        for (auto child : restoredState)
+            if (child.hasType ("PARAM")
+                && child.getProperty ("id").toString() == ids::guitarModel
+                && static_cast<float> (child.getProperty ("value")) >= 1.5f)
+                child.setProperty ("value", 0.0f, nullptr);
         addMissingParameterDefaults (restoredState, parameters, getParameters());
         parameters.replaceState (restoredState);
         requestPanic();

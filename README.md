@@ -649,9 +649,8 @@ radiation steel plays with either bridge, 10.2 mm on g34 and 8.6 mm on the
 1978 Bellido; `a` is the 23.2 mm impact half-spacing the saddle lever arms
 already assume. Nothing is fitted. The Fylde bridge was measured without
 rocking, so there the crown does not move and the parallel loop still
-reflects rigidly, but its force still reaches g21's measured moment paths;
-the Rau guitars have neither a rocking nor a moment measurement and their
-parallel plane stays silent. Both polarisations are one string: the normal
+reflects rigidly, but its force still reaches g21's measured moment paths.
+Both polarisations are one string: the normal
 loop is tuned so that, loaded by the bridge, it sounds the requested pitch,
 and the parallel loop shares that bare length (plus any end correction, zero
 as shipped), so the pair's split - the doublet each partial beats with - is
@@ -928,12 +927,17 @@ changes Shape, Material, Strings and the bridge with host automation gestures,
 leaving tuning and output where the player set them. Other combinations show Custom
 construction.
 
-The four additional models and their microphone limitations are documented in
-[Measured guitars](Docs/body-models-2026-09-08.md). Their Guitar presets select
-the native construction together. The three Rau steel models have one measured
-microphone, so their microphone capture remains mono even with Stereo mic
-selected. The `guitarModel` host parameter is appended at version 7; old saved
-states default to Original.
+The additional Bellido model is documented in
+[Measured guitars](Docs/body-models-2026-09-08.md); its Guitar preset selects
+the native construction together. Three steel models once beside it, the
+Washburn 1897, Santa Cruz OM 2022 and Martin D18V 2007, were fitted from Mark
+Rau's measurements, which carry no redistribution license, so their
+coefficients are not published with this repository and the models are
+retired: `Tools/GenerateRauGuitarCandidates.py` still fits them locally for
+comparison, and `.gitignore` keeps its output out of commits. The
+`guitarModel` host parameter is appended at version 7 with two choices; old
+saved states default to Original, and a state that chose a retired model
+reloads as Original rather than clamping onto the nylon Bellido.
 
 Shape moves the bridge's modes by the same coupled-model factors as the
 radiation - its A0 group, its modes up to the body's T1 and the plate modes
@@ -943,15 +947,14 @@ matrix and Q is retained, so a fixed shape keeps the passive modal
 construction. Body Material continues to change radiation. Both preserve
 ringing strings and overlapping re-pluck tails. Each anchor leaves both the
 bridge and the radiation exactly as fitted or measured: Original's steel
-Dreadnought and nylon Auditorium, and each named model's own family and box
-(the Bellido a classical, the Washburn a parlor, the Santa Cruz an OM/000 and
-the Martin a dreadnought). If a body crossfade is already sounding,
+Dreadnought and nylon Auditorium, and the Bellido's own box, a classical.
+If a body crossfade is already sounding,
 the latest selection waits for its remaining duration (at most 40 ms), then
 uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
 
 | Control | Audible behavior |
 | --- | --- |
-| **Model** | Original, Bellido 1978, Washburn 1897, Santa Cruz OM 2022 or Martin D18V 2007; each named model selects its own measured bridge and radiation. |
+| **Model** | Original or Bellido 1978; the named model selects its own measured bridge and radiation. |
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
 | **Body Material** | Spruce, Cedar, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. |
 | **String Material** | Selects the dedicated nylon or steel geometry, impedance, stiffness, loss and fitted calibration. |
@@ -1666,9 +1669,7 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   in-plane translation, which no archive here measures; the rotation axis's
   depth below the top, taken as the top surface; and every bridge measured
   without rocking - the Fylde's crown does not move, so its parallel loop is
-  loaded by nothing and only radiates, and the Rau guitars, measured with one
-  scalar mobility and one force-to-pressure path, keep a silent parallel
-  plane. In a modal expansion the direct and cross admittances all follow
+  loaded by nothing and only radiates. In a modal expansion the direct and cross admittances all follow
   from each mode's normal and tangential components, so one extra measured
   number per mode would replace the rocking route with the full matrix.
   Where the rocking is strong the two loops form one pair of modes; the pair
@@ -1716,9 +1717,8 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   each size. The original steel bank adapts a nylon-strung flamenca blanca;
   the archive lists Savarez Tomatito strings for g21. The Fylde bridge the
   steel presets play adds actual steel-guitar mobility. The separate Model
-  menu adds matched Bellido, Washburn, Santa Cruz and Martin bridge/radiation
-  banks; the three steel models have mono microphone measurements, not a
-  measured stereo pair.
+  menu adds the matched Bellido bridge/radiation bank; the three steel
+  guitars once beside it are retired (Construction controls).
 - The band audits now measure a distance the build chose rather than an error
   it is trying to close. With the body moved by ear toward the flat-top rows,
   the model over the first 350 ms carries 4.0 dB more energy than the archtop
@@ -1965,6 +1965,14 @@ A concise ledger of the changes that move what Acustra sounds like or how it is
 controlled. Pure refactors, deduplications and test-coverage additions are in
 git history rather than here.
 
+### 2026-09-25
+
+- **The Washburn, Santa Cruz and Martin models are retired.** Their
+  coefficients were fitted from Mark Rau's measurements, which carry no
+  redistribution license, so they are not published with this repository.
+  Model offers Original and Bellido 1978; a saved session or host that still
+  selects a retired model hears Original.
+
 ### 2026-09-24
 
 - **Nylon is plucked where a classical player plucks.** The fit had been held
@@ -2032,7 +2040,6 @@ git history rather than here.
   development validation 6.172187 → 6.008802, flat-top 8.591335 → 8.232583;
   with the Original bridge 6.392396 → 6.167890, 6.378758 → 6.042989 and
   9.256751 → 8.559757; under Pick 6.546029 → 6.308471 and 6.256259 → 5.950761.
-  The Rau guitars, measured without rocking or moment paths, are unchanged.
 - **The two lines of development are one instrument again.** The measured
   guitar models, three-choice capture, continuous Gaussian contact, steel
   contact transport, release and picking-character work join the coupled
@@ -2426,10 +2433,10 @@ For dry-note comparisons, add `--bridge-model fylde` after the optional
 `--models-only`/`--smoke` mode and before the output directory in
 `AcustraPhysicalFitRenderer`; `--shape`, `--archtop-picking` and
 `--guitar-model` may follow it, and then the 32 calibration arguments. With
-the string calibration fitted on Original, the named steel guitars read worse
-than Original with the Fylde bridge on every split (Martin D18V training +12%,
-flat-top +10%; Santa Cruz OM +6% and +4%), so the option measures, it does
-not choose. The selected bridge, shape and archtop
+the string calibration fitted on Original, the since-retired named steel
+guitars read worse than Original with the Fylde bridge on every split
+(Martin D18V training +12%, flat-top +10%; Santa Cruz OM +6% and +4%), so the
+option measures, it does not choose. The selected bridge, shape and archtop
 picking tool are recorded in each model manifest; without them each material
 renders at its anchor shape and the archtop rows with Finger.
 For an explicit performance event file, `AcustraPerformanceRenderer` also

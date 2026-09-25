@@ -45,10 +45,12 @@ model selection. No alignment or gain fit is applied between captures.
 
 ## Conditional fit results
 
-The [candidate report](rau-guitar-candidate-report.json) records exact raw SHA256
+The candidate report, `Docs/rau-guitar-candidate-report.json` when generated
+locally (it and the header are no longer published; see
+[THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md)), records exact raw SHA256
 hashes, executable/helper hashes captured at startup, package versions, selected
-IDs, and a completion marker. The generated
-[header](../Source/DSP/RauQualifiedGuitarData.h) contains only these passing banks:
+IDs, and a completion marker. The generated header,
+`Source/DSP/RauQualifiedGuitarData.h`, contains only these passing banks:
 
 | Archive instrument | Radiation modes | Passive bridge modes | Held-out pressure complex error | Held-out bridge complex error |
 | --- | ---: | ---: | ---: | ---: |

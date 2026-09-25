@@ -184,9 +184,8 @@ void testParameterContract()
         processor.parameters.getParameter (ids::guitarModel));
     expect (model != nullptr && model->getVersionHint() == 7
                 && model->getParameterIndex() == 16
-                && model->choices == juce::StringArray { "Original", "Bellido 1978",
-                    "Washburn 1897", "Santa Cruz OM 2022", "Martin D18V 2007" },
-            "Guitar Model must append five measured-body choices with AU version hint 7");
+                && model->choices == juce::StringArray { "Original", "Bellido 1978" },
+            "Guitar Model must append the two measured-body choices with AU version hint 7");
 
     setValue (processor, ids::shape, 3.0f);
     setValue (processor, ids::bodyMaterial, 2.0f);
@@ -201,7 +200,7 @@ void testParameterContract()
     setValue (processor, ids::captureMode, 2.0f);
     setValue (processor, ids::picking, 2.0f);
     setValue (processor, ids::bridgeModel, 1.0f);
-    setValue (processor, ids::guitarModel, 4.0f);
+    setValue (processor, ids::guitarModel, 1.0f);
     const auto engine = processor.snapshotEngineParameters();
     expect (engine.shape == acustra::BodyShape::Jumbo
                 && engine.bodyMaterial == acustra::BodyMaterial::Mahogany
@@ -210,7 +209,7 @@ void testParameterContract()
                 && engine.capture == acustra::CaptureType::Piezo
                 && engine.picking == acustra::PickingTechnique::Thumb
                 && engine.bridgeModel == acustra::BridgeModel::FyldeSteel
-                && engine.guitarModel == acustra::GuitarModel::MartinD18V2007,
+                && engine.guitarModel == acustra::GuitarModel::Bellido1978,
             "choice parameters did not reach the engine snapshot");
     expect (std::abs (engine.stringAge - 0.73f) < 0.002f
                 && std::abs (engine.pluckPosition - 0.41f) < 0.002f
@@ -1288,8 +1287,7 @@ void testStateRoundTripAndMigration()
                 std::string { "state round trip lost " } + id);
 
     constexpr std::array models { acustra::GuitarModel::Original,
-        acustra::GuitarModel::Bellido1978, acustra::GuitarModel::Washburn1897,
-        acustra::GuitarModel::SantaCruzOM2022, acustra::GuitarModel::MartinD18V2007 };
+        acustra::GuitarModel::Bellido1978 };
     for (std::size_t index = 0; index < models.size(); ++index)
     {
         setValue (source, ids::guitarModel, static_cast<float> (index));
@@ -1297,6 +1295,24 @@ void testStateRoundTripAndMigration()
         restored.setStateInformation (stored.getData(), static_cast<int> (stored.getSize()));
         expect (restored.snapshotEngineParameters().guitarModel == models[index],
                 "a measured guitar model did not survive save/reload");
+    }
+    // A session saved with a retired model (2-4: the Washburn, Santa Cruz and
+    // Martin) reloads as Original, not clamped onto the nylon Bellido.
+    for (const float retired : { 2.0f, 3.0f, 4.0f })
+    {
+        auto old = source.parameters.copyState();
+        for (auto child : old)
+            if (child.getProperty ("id").toString() == ids::guitarModel)
+                child.setProperty ("value", retired, nullptr);
+        juce::MemoryBlock bytes;
+        if (const auto xml = old.createXml())
+            juce::AudioProcessor::copyXmlToBinary (*xml, bytes);
+        // Start from the Bellido saved above, so the reload has to move it.
+        restored.setStateInformation (stored.getData(), static_cast<int> (stored.getSize()));
+        restored.setStateInformation (bytes.getData(), static_cast<int> (bytes.getSize()));
+        expect (restored.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Original
+                    && valueOf (restored, ids::guitarModel) == 0.0f,
+                "a retired guitar model did not reload as Original");
     }
     auto versionSix = source.parameters.copyState();
     for (int child = versionSix.getNumChildren(); --child >= 0;)
@@ -1540,14 +1556,10 @@ void testEditorRendering()
             expect (valueOf (processor, ids::tuning) == 2.0f
                         && std::abs (valueOf (processor, ids::output) + 4.0f) < 0.011f,
                     "a guitar construction preset changed tuning or output");
-            expect (menu->getNumItems() == 10,
-                    "the four measured guitar construction presets are missing");
-            constexpr std::array models { acustra::GuitarModel::Bellido1978,
-                acustra::GuitarModel::Washburn1897, acustra::GuitarModel::SantaCruzOM2022,
-                acustra::GuitarModel::MartinD18V2007 };
-            constexpr std::array shapes { acustra::BodyShape::Auditorium,
-                acustra::BodyShape::Parlor, acustra::BodyShape::Auditorium,
-                acustra::BodyShape::Dreadnought };
+            expect (menu->getNumItems() == 7,
+                    "the measured guitar construction preset is missing");
+            constexpr std::array models { acustra::GuitarModel::Bellido1978 };
+            constexpr std::array shapes { acustra::BodyShape::Auditorium };
             for (std::size_t index = 0; index < models.size(); ++index)
             {
                 menu->setSelectedId (static_cast<int> (index) + 7, juce::sendNotificationSync);
@@ -1572,20 +1584,17 @@ void testEditorRendering()
         }
         else if (menu->getName() == "MODEL")
         {
-            expect (menu->getNumItems() == 5 && menu->getItemText (0) == "Original"
-                        && menu->getItemText (1) == "Bellido 1978"
-                        && menu->getItemText (2) == "Washburn 1897"
-                        && menu->getItemText (3) == "Santa Cruz OM 2022"
-                        && menu->getItemText (4) == "Martin D18V 2007",
-                    "the model menu does not expose the five supported bodies");
-            expect (menu->getTooltip().contains ("one measured microphone")
-                        && menu->getTooltip().contains ("stay mono"),
-                    "the model menu conceals the measured steel microphone limitation");
+            expect (menu->getNumItems() == 2 && menu->getItemText (0) == "Original"
+                        && menu->getItemText (1) == "Bellido 1978",
+                    "the model menu does not expose the two supported bodies");
+            expect (! menu->getTooltip().contains ("Martin")
+                        && ! menu->getTooltip().contains ("Washburn"),
+                    "the model menu still describes a retired body");
             menu->setSelectedItemIndex (1, juce::sendNotificationSync);
             expect (processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Bellido1978,
                     "the Bellido model menu selection did not reach the engine");
-            setValue (processor, ids::guitarModel, 4.0f);
-            expect (menu->getSelectedId() == 5,
+            setValue (processor, ids::guitarModel, 1.0f);
+            expect (menu->getSelectedId() == 2,
                     "host body-model automation did not update the menu");
             setValue (processor, ids::guitarModel, 0.0f);
         }
@@ -1601,8 +1610,8 @@ void testEditorRendering()
                 expect (menu->getNumItems() == 3 && menu->getItemText (0) == "Stereo mic"
                             && menu->getItemText (1) == "Mono mic" && menu->getItemText (2) == "Piezo",
                         "the Capture menu must expose only stereo mic, mono mic and piezo");
-                expect (menu->getTooltip().contains ("both mic settings stay mono"),
-                        "the capture menu conceals the measured steel mono observation");
+                expect (menu->getTooltip().contains ("ignore Stereo Width"),
+                        "the capture menu conceals that mono mic and piezo ignore Stereo Width");
                 menu->setSelectedId (2, juce::sendNotificationAsync);
                 refreshDisplayTimer();
                 expect (menu->getSelectedId() == 2,
