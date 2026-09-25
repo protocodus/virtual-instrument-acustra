@@ -1473,11 +1473,11 @@ void AcustraEngine::StringLoop::write(float value) noexcept
     writeIndex = wrapDelayIndex(writeIndex + 1);
 }
 
-float AcustraEngine::BridgeMode::processPast(float input) noexcept
+double AcustraEngine::BridgeMode::processPast(double input) noexcept
 {
-    const float output = numerator1 * input + numerator2 * input1
-                       - denominator1 * output1
-                       - denominator2 * output2;
+    const double output = numerator1 * input + numerator2 * input1
+                        - denominator1 * output1
+                        - denominator2 * output2;
     input1 = input;
     output2 = output1;
     output1 = output;
@@ -1573,21 +1573,23 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     const float bodyForce = b0 - g00 * displacement - g01 * rotation;
     const float bodyMoment = b1 - g01 * displacement - g11 * rotation;
 
-    float nextPastHeave = 0.0f;
-    float nextPastRock = 0.0f;
+    double nextPastHeave = 0.0;
+    double nextPastRock = 0.0;
     for (std::size_t index = 0; index < heaveModes.size(); ++index)
     {
-        const float heaveState = heaveModes[index].processPast(bodyForce);
+        const double heaveState = heaveModes[index].processPast(bodyForce);
         nextPastHeave += residueHeave[index] * heaveState;
         if (!rocking[index])
             continue;
-        const float rockState = rockModes[index].processPast(bodyMoment);
+        const double rockState = rockModes[index].processPast(bodyMoment);
         nextPastHeave += residueCross[index] * rockState;
         nextPastRock += residueCross[index] * heaveState
                       + residueRock[index] * rockState;
     }
-    pastHeave = std::isfinite(nextPastHeave) ? nextPastHeave : 0.0f;
-    pastRock = std::isfinite(nextPastRock) ? nextPastRock : 0.0f;
+    pastHeave = std::isfinite(nextPastHeave)
+        ? static_cast<float>(nextPastHeave) : 0.0f;
+    pastRock = std::isfinite(nextPastRock)
+        ? static_cast<float>(nextPastRock) : 0.0f;
     previousDisplacement = displacement;
     previousRotation = rotation;
     tailIntegratedForce = nextTailForce;
@@ -2031,7 +2033,6 @@ void AcustraEngine::configureBridge() noexcept
     bridgeLoad_.immediateCross = 0.0f;
     bridgeLoad_.immediateRock = 0.0f;
     const float rate = static_cast<float>(sampleRate_);
-    const float bilinear = 2.0f * rate;
     // Each mode's residue matrix multiplies the continuous mobility
     // s/(s^2 + 2 damping s + omega^2), which is shared by both coordinates.
     // A per-mode prewarped bilinear transform preserves its measured centre
@@ -2052,27 +2053,31 @@ void AcustraEngine::configureBridge() noexcept
         {
             for (auto* mode : { &heaveMode, &rockMode })
             {
-                mode->denominator1 = mode->denominator2 = 0.0f;
-                mode->numerator1 = mode->numerator2 = 0.0f;
+                mode->denominator1 = mode->denominator2 = 0.0;
+                mode->numerator1 = mode->numerator2 = 0.0;
                 mode->reset();
             }
             return;
         }
-        const float omega = bilinear * std::tan(pi * frequency / rate);
-        const float damping = omega / (2.0f * q);
-        const float denominator0 = bilinear * bilinear
-            + 2.0f * damping * bilinear + omega * omega;
-        const float denominator1 = (-2.0f * bilinear * bilinear
-            + 2.0f * omega * omega) / denominator0;
-        const float denominator2 = (bilinear * bilinear
-            - 2.0f * damping * bilinear + omega * omega) / denominator0;
-        const float immediate = bilinear / denominator0;
+        const double rateD = sampleRate_;
+        const double bilinearD = 2.0 * rateD;
+        const double omega = bilinearD * std::tan(
+            static_cast<double>(pi) * frequency / rateD);
+        const double damping = omega / (2.0 * q);
+        const double denominator0 = bilinearD * bilinearD
+            + 2.0 * damping * bilinearD + omega * omega;
+        const double denominator1 = (-2.0 * bilinearD * bilinearD
+            + 2.0 * omega * omega) / denominator0;
+        const double denominator2 = (bilinearD * bilinearD
+            - 2.0 * damping * bilinearD + omega * omega) / denominator0;
+        const float immediate = static_cast<float>(bilinearD / denominator0);
         for (auto* mode : { &heaveMode, &rockMode })
         {
             mode->denominator1 = denominator1;
             mode->denominator2 = denominator2;
-            mode->numerator1 = -immediate * denominator1;
-            mode->numerator2 = -immediate * (1.0f + denominator2);
+            mode->numerator1 = -static_cast<double>(immediate) * denominator1;
+            mode->numerator2 = -static_cast<double>(immediate)
+                * (1.0 + denominator2);
             mode->reset();
         }
         bridgeLoad_.residueHeave[index] = heave;

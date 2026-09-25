@@ -346,20 +346,24 @@ private:
         void write(float value) noexcept;
     };
 
+    // Double precision: a direct-form section's coefficients sit within
+    // theta^2 of 2 and 1, and at 384 kHz a float held the bridge's air-mode
+    // group's pole angles to only about 5%, which turned the heave's H1 by
+    // 90 degrees against the rock.
     struct BridgeMode
     {
-        float denominator1 { 0.0f };
-        float denominator2 { 0.0f };
-        float numerator1 { 0.0f };
-        float numerator2 { 0.0f };
-        float input1 { 0.0f };
-        float output1 { 0.0f };
-        float output2 { 0.0f };
+        double denominator1 { 0.0 };
+        double denominator2 { 0.0 };
+        double numerator1 { 0.0 };
+        double numerator2 { 0.0 };
+        double input1 { 0.0 };
+        double output1 { 0.0 };
+        double output2 { 0.0 };
 
-        float processPast(float input) noexcept;
+        double processPast(double input) noexcept;
         void reset() noexcept
         {
-            input1 = output1 = output2 = 0.0f;
+            input1 = output1 = output2 = 0.0;
         }
     };
 
