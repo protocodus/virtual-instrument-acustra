@@ -5,10 +5,18 @@ For q(z)=phi(z)-z*Phi(-z), q'(z)=-Phi(-z), a cubic Hermite interval
 of width h has error at most h**4*max(abs(fourth_derivative(q)))/384.
 The fourth derivative is (z*z-1)*phi(z), whose largest magnitude is phi(0).
 At h=1/64 this bound is 6.1924e-11. Beyond z=10, q is below 7.48e-25.
+
+--check compares values, not text. The table is written from the platform's
+erfc and exp, which differ in the last bit between C libraries, and phi(z)
+minus z*Phi(-z) cancels, so macOS, glibc and the MSVC runtime print different
+seventeenth digits. A value within 1e-15 of the regenerated one passes: about
+ten units in the last place of the largest entry, and four orders of
+magnitude inside the interpolation bound above.
 """
 from pathlib import Path
 import argparse
 import math
+import re
 
 
 def make_header():
@@ -31,6 +39,27 @@ def make_header():
     return "\n".join(lines) + "\n"
 
 
+ROW = re.compile(r"^    \{\{ (\S+), (\S+) \}\},$")
+
+
+def matches(committed, generated, tolerance=1.0e-15):
+    """True when both headers have the same text apart from table values,
+    and every value agrees within the tolerance."""
+    left, right = committed.splitlines(), generated.splitlines()
+    if len(left) != len(right):
+        return False
+    for mine, theirs in zip(left, right):
+        a, b = ROW.match(mine), ROW.match(theirs)
+        if a is None or b is None:
+            if mine != theirs:
+                return False
+            continue
+        for x, y in zip(a.groups(), b.groups()):
+            if abs(float(x) - float(y)) > tolerance:
+                return False
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="verify the committed table without writing")
@@ -39,7 +68,7 @@ def main():
     args = parser.parse_args()
     generated = make_header()
     if args.check:
-        if args.output.read_text() != generated:
+        if not matches(args.output.read_text(), generated):
             raise SystemExit("Gaussian aperture table differs from its generator")
         print("Gaussian aperture table matches all 641 generated pairs")
     else:

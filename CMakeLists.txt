@@ -227,13 +227,17 @@ if(BUILD_TESTING)
             -Wall -Wextra -Wpedantic)
     endif()
 
+    # CI's Linux and Windows runners take about 1.8 times as long as its
+    # macOS runner (on 2026-09-25 the engine suite ran 268 s against 149 s
+    # and the release suite timed out at 90 s against 50 s), so these two
+    # long suites keep that much headroom over the slowest runner.
     add_test(NAME Acustra.Engine COMMAND AcustraEngineTests)
-    set_tests_properties(Acustra.Engine PROPERTIES TIMEOUT 300)
+    set_tests_properties(Acustra.Engine PROPERTIES TIMEOUT 600)
 
     add_executable(AcustraReleaseTests Tests/ReleaseTests.cpp)
     target_link_libraries(AcustraReleaseTests PRIVATE AcustraDSP)
     add_test(NAME Acustra.Release COMMAND AcustraReleaseTests)
-    set_tests_properties(Acustra.Release PROPERTIES TIMEOUT 90)
+    set_tests_properties(Acustra.Release PROPERTIES TIMEOUT 240)
 
     add_executable(AcustraContactTravelTests Tests/ContactTravelTests.cpp)
     target_link_libraries(AcustraContactTravelTests PRIVATE AcustraDSP)
