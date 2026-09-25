@@ -105,6 +105,13 @@ Tests re-pinned, each because the verdicts moved the physics under it:
 Open. The listener heard both pluck distances as harsh in their resonance
 and asked for more clarity still. Neither has a measured candidate yet.
 
+Not shipped. The nylon-string stage was rerun from the shipping vector
+around the new pair (104 evaluations, the by-ear T60 held). Nylon training
+went 7.4698 -> 7.4550, but development validation went 5.994260 -> 6.022333:
+a transient at 0.094, a pluck 2% nearer the bridge and no velocity
+brightening. The rows do not agree on that, so nylon keeps its fitted
+values.
+
 ## 2026-09-25 — the Rau-measured models leave the published repository
 
 What was decided, and by whom. Before the first push of this work to the
