@@ -4,6 +4,77 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-25 — three blind verdicts: the upper-bout pair, a finger at the soundhole's edge, the air mode at the bridge microphone
+
+What was heard. Sets 8, 9 and 10 (`2026-09-24-mic-pair`,
+`2026-09-24-steel-pluck-position`, `2026-09-24-air-mode`) were answered B on
+every pair, ten of ten. The listener's notes: the upper-bout pair "is
+brighter and has more clarity, could have even more"; of the two pluck
+distances, "both are quite harsh in resonance".
+
+What was decided, by ear. Stereo mic pairs the treble-bridge microphone
+(left) with the upper-bout one (right); the bass-bridge microphone is not
+heard, and Mono mic keeps the upper-bout one alone. steel.pluckDistanceScale
+is 1.8: a Finger meets a steel string 149 mm from the bridge at the default
+Pluck Position (the Set 9 key said 133 mm, an arithmetic slip; the renders
+were at 1.8), at the same fitted displacement. Pick keeps its authored 0.40
+of the Finger's distance, 60 mm, and Thumb its 1.95. lowBodyModeGain is 4,
+and now applies to steel's g21 bank only.
+
+What was measured to apply them together. Set 10 was heard through the
+bridge pair, whose air mode is the one under-heard (82 Hz 15 dB under 330 Hz
+at the bridge microphones, 2 dB over at the upper-bout one). Applied to
+both channels of the new pair, x4 overshoots the Eastman picked take's E2
+balance by 10 dB. Applied to the bridge microphone alone, x4 puts a picked
+E2 within 1.1 dB of it and equally in both channels, left +4.5 and right
++4.1 dB of 2nd-3rd harmonic over fundamental. So the gain reaches the
+treble-bridge microphone only. Each channel is then what was heard: the
+right is Set 8's upper-bout microphone as measured, the left Set 10's bridge
+microphone with its air mode raised. A#2's fundamental, between A0 and T1,
+stays 6-7 dB short. Keeping the onset pitch cue by rescaling the
+displacement with the pluck distance reads worse on every split (Fylde
+training 6.428853 -> 6.447171).
+
+What the corpus says, and what was refitted. Fylde training 5.877624 ->
+6.432400, development validation 5.806595 -> 5.996174, flat-top 7.328740 ->
+7.181437; Original 5.928457 -> 6.329200, 5.989914 -> 5.994260, 7.492669 ->
+7.425652. By material, the picked archtop rows under Finger read 0.5-12.6%
+further, the classical rows +4.3% on training and -0.6% on validation. The
+plectrum's three values are read by Pick alone and were fitted at a place it
+has left, so the pick-release stage was rerun from the shipping vector with
+everything else held (67 evaluations): share 0.0625 v^0.47 -> 0.0117 v^0.45,
+transient 0 -> 0.031, Pick training 6.133475 -> 6.103277, development
+validation 5.742850 -> 5.702917. Against the build before the verdicts,
+Pick reads 6.231943 -> 6.103277 and 5.892132 -> 5.702917.
+
+A bug the new pair exposed. With the upper-bout microphone in the stereo
+pair, nylon's sustain at 384 kHz read 1.39 times its 48 kHz level. The body
+and the string force were the same at both rates, but the heave's
+fundamental had turned 93 degrees against the rocking moment. The bridge's
+modal sections are direct-form biquads whose float coefficients hold the
+lowest modes' pole angles to about 5% at 384 kHz, and the error was already
+1-2 dB at 96 and 192 kHz. They now run in double precision, and every rate
+agrees to 0.1 degree and 0.5%.
+
+Tests re-pinned, each because the verdicts moved the physics under it:
+- The Kirchhoff-Carrier onset cue is 4.1 cents, not 7.8. At a fixed
+  displacement the mean-square slope goes as 1/(a (L - a)).
+- The bridge-switch click gate reads the band above 200 Hz. It grows 1.83
+  times there, where the broadband peak now carries the low modes' swell.
+- The stepped bend's frame rise may reach 1.16 times the slide's. It is 1.15
+  at 44.1 kHz through the upper-bout microphone and 0.85 on the piezo, so
+  the port does not step.
+- The bend's moment is read from 10 ms frames. The slide's envelope has two
+  crests 50 ms apart equal to 0.0001.
+- Finger and Thumb are held to half the attack-difference margin where both
+  pass the 0.46 limit of a 12th-fret string.
+- The longitudinal and plectrum-dynamics mechanism tests are read at the
+  74 mm they were built on.
+- The arrival probe advances to the voice's own direct arrival.
+
+Open. The listener heard both pluck distances as harsh in their resonance
+and asked for more clarity still. Neither has a measured candidate yet.
+
 ## 2026-09-25 — the Rau-measured models leave the published repository
 
 What was decided, and by whom. Before the first push of this work to the
@@ -71,7 +142,7 @@ depth 0.1125; the T60 scale is by ear and was held. Nylon training 7.5542 ->
 7.1644, development validation 6.9108 -> 6.4177; the H1 balance moves from
 3.5-4.2 dB under the recordings to 1.6-2.6 over. Shipped on the measurement;
 steel is untouched. Steel's own pluck distance is a listening question: the
-finger-played flat-top rows prefer 133 mm to the 74 mm the picked archtop
+finger-played flat-top rows prefer 149 mm to the 74 mm the picked archtop
 set, by 3.0%, and the archtop rows prefer 74 by 6-7%.
 
 ## 2026-09-24 — steel's body resolved over 250 ms: the low-mode question closed by a measurement

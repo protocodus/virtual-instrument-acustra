@@ -213,7 +213,12 @@ void testArrivalDampingAndTailRetention()
         planes->setSympatheticStringsEnabled(false);
         planes->setBridgeCouplingEnabled(false);
         planes->noteOn(43, 1.0f);
-        Access::advance(*planes, 48);
+        // Advance to the direct arrival, half the pluck point's share of a
+        // round trip (about 67 samples at the default Finger distance), so
+        // the next transport sample is the first arrival itself.
+        const auto& plucked = Access::voice(*planes);
+        Access::advance(*planes, static_cast<int>(std::ceil(
+            0.5f * plucked.pluckPoint * plucked.contactPeriodSamples)));
         Access::queueOnly(*planes);
         Access::fixedDamping(*planes, 0.25f, 0.75f);
         auto expected = Access::voice(*planes).contactTravel;

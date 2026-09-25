@@ -158,11 +158,13 @@ void testFractionalRadiation(acustra::GuitarModel model, const Bank& bank, int d
                     const auto pole = std::exp(std::complex<double>(-pi * m.frequency / m.q, 2*pi*m.frequency) / double(rate));
                     const auto referencePole = std::exp(std::complex<double>(-pi * m.frequency / m.q, 2*pi*m.frequency) / 48000.);
                     const auto scale = (pole - 1.) / (referencePole - 1.);
+                    // The Stereo pair's right channel is the upper-bout
+                    // microphone, the same path the Mono mic hears.
                     const std::array<std::complex<double>, 3> residues = axis == 0
                         ? std::array<std::complex<double>, 3> { std::complex<double>(m.leftReal, m.leftImaginary),
-                            { m.rightReal, m.rightImaginary }, { m.upperReal, m.upperImaginary } }
+                            { m.upperReal, m.upperImaginary }, { m.upperReal, m.upperImaginary } }
                         : std::array<std::complex<double>, 3> { std::complex<double>(m.leftMomentReal, m.leftMomentImaginary),
-                            { m.rightMomentReal, m.rightMomentImaginary }, { m.upperMomentReal, m.upperMomentImaginary } };
+                            { m.upperMomentReal, m.upperMomentImaginary }, { m.upperMomentReal, m.upperMomentImaginary } };
                     for (std::size_t channel = 0; channel < expected.size(); ++channel)
                     {
                         const auto r = scale * residues[channel];

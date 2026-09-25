@@ -99,10 +99,10 @@ INITIAL = np.asarray((
 SHIPPING = np.asarray((
     1.0, 1.0, 0.754677154, 0.0, 0.0,
     1.4, 1.65213516, 2.39142268, 0.0, 2.14375, 0.1125,
-    0.749355465, 1.53, 0.52, 0.643124355, 0.494086432, 0.88819512, 1.1859375,
-    -0.0706290118, 1.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011,
+    0.749355465, 1.53, 0.52, 0.643124355, 0.494086432, 1.8, 1.1859375,
+    -0.0706290118, 4.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011,
     2187.76023, 0.00325, 0.0, 35.0, 0.0,
-    0.0625, 0.46875, 0.0,
+    0.01171875, 0.453125, 0.03125,
 ))
 # The bridge-local direct path is deliberately fixed off. Its score direction
 # was flat (and slightly worse on validation), so fitting it only lets a
@@ -112,6 +112,8 @@ SHIPPING = np.asarray((
 # leaving them free would simply undo the verdict on the next run.
 BY_EAR = (
     "residueTiltDbPerOctave",
+    # 4 by ear on 2026-09-25: the steel air mode at the bridge microphone,
+    # where the corpus rows other than the flat-top ones prefer 1.
     "lowBodyModeGain",
     "steel.fundamentalT60Scale",
     "steel.frequencyLossScale",
@@ -128,6 +130,10 @@ BY_EAR = (
     # rows' trimmed samples pull the fit toward a shorter ring than their
     # own open strings have.
     "nylon.fundamentalT60Scale",
+    # 1.8 (149 mm) by ear on 2026-09-25 over the fitted 0.888 (74 mm): the
+    # archtop rows it was fitted on were picked near the bridge, and the
+    # finger-played flat-top rows agree with the listener.
+    "steel.pluckDistanceScale",
 )
 # With longitudinalGain frozen at zero the axial resonators are not summed at
 # all, so their Q multiplies nothing and any value renders the same audio.

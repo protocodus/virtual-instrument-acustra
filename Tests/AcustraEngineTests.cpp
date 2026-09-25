@@ -2495,8 +2495,13 @@ void testMaterialSpecificAttackPitchIsBoundedAndVelocityResponsive()
         // loudest steel layer moves 1.81 times (quartiles 1.15-2.57) the
         // engine's previously fitted excursion by its own early-minus-late
         // fundamental, and the corpus agrees - the pitch-trajectory term
-        // improves from 0.5226 to 0.5182 on training.
-        expect(std::abs(hardSteel.front().cents - 7.8) < 1.0,
+        // improves from 0.5226 to 0.5182 on training. 4.1 cents since the
+        // Finger moved from 74 to 149 mm from the bridge by ear (2026-09-25):
+        // at the same fitted displacement a triangle's mean-square slope
+        // goes as 1/(a (L - a)), 0.57 of what it was. Rescaling the
+        // displacement to keep the cue reads worse on the benchmark (the
+        // flat-top pitch-trajectory term 0.571 -> 0.608).
+        expect(std::abs(hardSteel.front().cents - 4.1) < 1.0,
                "fitted steel displacement missed the onset cue: "
                    + std::to_string(hardSteel.front().cents) + " cents");
 
@@ -3497,9 +3502,7 @@ void testABendDoesNotStepTheJunctionPort()
         // adds is all that is being measured.
         const double reference = peak(held, 0.5, 1.2);
         const double bentPeak = peak(bent, 0.5, 1.2);
-        const double bentAt = peakAt;
         const double slidPeak = peak(slid, 0.5, 1.2);
-        const double slidAt = peakAt;
         expect(reference > 0.0, "the held note was silent");
         // The bend and the slide of the same interval reach the same pitch
         // at the same moment, so what a peak measures is the interval, not
@@ -3517,11 +3520,33 @@ void testABendDoesNotStepTheJunctionPort()
         // at all: under the resolved body's narrower low modes the slide's
         // crossing can stay under the held note's own level at the window's
         // start (0.999 of it), and the loudest sample is then that start,
-        // not a crossing.
+        // not a crossing. The moment is the loudest 10 ms frame's, not the
+        // loudest sample's: through the upper-bout microphone the slide's
+        // envelope has two crests 50 ms apart equal to 0.0001, and which
+        // one a sample grid lands on is not the mechanism.
+        const auto loudestFrame = [&] (const Audio& audio)
+        {
+            double loudest = 0.0, at = 0.0;
+            for (double begin = 0.5; begin + 0.01 <= 1.2; begin += 0.0025)
+            {
+                const auto first = static_cast<std::size_t>(begin * rate);
+                const auto last = static_cast<std::size_t>((begin + 0.01) * rate);
+                double energy = 0.0;
+                for (auto index = first; index < last; ++index)
+                    energy += static_cast<double>(audio.left[index]) * audio.left[index]
+                            + static_cast<double>(audio.right[index]) * audio.right[index];
+                if (energy > loudest)
+                {
+                    loudest = energy;
+                    at = begin;
+                }
+            }
+            return at;
+        };
         if (slidPeak > reference * 1.02)
-            expect(std::abs(bentAt - slidAt) < 0.01,
+            expect(std::abs(loudestFrame(bent) - loudestFrame(slid)) < 0.01,
                    "the tension bend's loudest moment was "
-                       + std::to_string(bentAt - slidAt)
+                       + std::to_string(loudestFrame(bent) - loudestFrame(slid))
                        + " s away from the slide's");
         // A step in the port would arrive as a transient rather than as a
         // level: measured where one would show, in the rise from one 5 ms
@@ -3559,8 +3584,13 @@ void testABendDoesNotStepTheJunctionPort()
         // the mechanism the peak bound below allows 1.13 for. With the
         // parallel polarisation radiating, the note's doublet sets which
         // frame precedes the landing, and the 48 kHz stepped bend rises 1.09
-        // times the slide in the same frame (level 1.077 times it).
-        expect(steppedRise < std::max(steppedSlideRise, heldRise) * 1.13,
+        // times the slide in the same frame (level 1.077 times it). The
+        // upper-bout microphone of the Stereo pair (2026-09-25) hears the
+        // rocking modes the bent port rings harder than the bass-bridge one
+        // did: at 44.1 kHz the stepped bend rises 1.15 times the slide
+        // (1.135 on that microphone alone), where the saddle's own force,
+        // the piezo, rises 0.85 times it, so the port itself does not step.
+        expect(steppedRise < std::max(steppedSlideRise, heldRise) * 1.16,
                "a whole tone arriving in one message at "
                    + std::to_string(static_cast<int>(rate))
                    + " Hz raised one 5 ms frame by a factor of "
@@ -3605,7 +3635,7 @@ void testABendDoesNotStepTheJunctionPort()
         std::cout << "Acustra bend peak at " << static_cast<int>(rate)
                   << " Hz: bend " << bentPeak / reference << ", slide "
                   << slidPeak / reference << " of the held note, both at "
-                  << bentAt << " s; frame rise " << bentRise << " vs "
+                  << loudestFrame(bent) << " s; frame rise " << bentRise << " vs "
                   << slidRise << " and " << heldRise << ", stepped "
                   << steppedRise << " vs " << steppedSlideRise << "\n";
     }
@@ -4432,11 +4462,26 @@ void testPickingStylesChangeMoreThanGainAtEveryVelocity()
                         attacks[static_cast<std::size_t>(technique)]
                             = renderAtRate(parameters, midi, velocity, 0.120, rate, 64);
                     }
+                    // Past the 0.46 limit of the string the model plucks, a
+                    // hand meets the string at that limit. From 2026-09-25 a
+                    // Finger plucks steel 149 mm from the bridge, 0.46 of a
+                    // 12th-fret string, where the Thumb (1.95 times further)
+                    // meets it too: there the two differ by contact width and
+                    // pluck share alone, and are held to half the margin.
+                    const auto fingerPoint = acustra::AcustraEngineTestAccess::pluck(
+                        acustra::fittedPhysicalCalibration, material, velocity, midi,
+                        acustra::PickingTechnique::Finger).pluckPoint;
+                    const auto thumbPoint = acustra::AcustraEngineTestAccess::pluck(
+                        acustra::fittedPhysicalCalibration, material, velocity, midi,
+                        acustra::PickingTechnique::Thumb).pluckPoint;
+                    const bool handsMeet = std::abs(fingerPoint - thumbPoint) < 0.021;
                     for (int first = 0; first < 3; ++first)
                         for (int second = first + 1; second < 3; ++second)
                         {
                             const auto& a = attacks[static_cast<std::size_t>(first)];
                             const auto& b = attacks[static_cast<std::size_t>(second)];
+                            const double margin = handsMeet && first == 0 && second == 2
+                                ? 0.01 : 0.02;
                             double aa = 0.0, bb = 0.0, ab = 0.0;
                             for (std::size_t sample = 0; sample < a.left.size(); ++sample)
                             {
@@ -4449,7 +4494,7 @@ void testPickingStylesChangeMoreThanGainAtEveryVelocity()
                             const double difference = std::sqrt(std::max(0.0,
                                 1.0 - ab * ab / std::max(aa * bb, 1.0e-40)));
                             smallestDifference = std::min(smallestDifference, difference);
-                            expect(aa > 0.0 && bb > 0.0 && difference > 0.02,
+                            expect(aa > 0.0 && bb > 0.0 && difference > margin,
                                    "picking attacks differ only in gain at MIDI " + std::to_string(midi)
                                    + " velocity " + std::to_string(velocity));
                         }
@@ -5563,9 +5608,15 @@ void testLongitudinalModesGrowWithVelocity()
     {
         return tailBandRms(audio, sampleRate, 0.0, 0.12, low, high);
     };
-    const auto& silent = acustra::fittedPhysicalCalibration;
-    expect(silent.longitudinalGain == 0.0f,
+    expect(acustra::fittedPhysicalCalibration.longitudinalGain == 0.0f,
            "the shipping build reintroduced the drip-like axial onset");
+    // The mechanism is measured where it was built: a Finger 74 mm from the
+    // bridge (steel.pluckDistanceScale 0.888, the fitted archtop value). At
+    // the 149 mm chosen by ear on 2026-09-25 the shallower triangle's squared
+    // slope grows E3's axial band only 1.1 dB faster than the note (E2 4.8),
+    // and the path ships switched off, so that is not what is under test.
+    auto silent = acustra::fittedPhysicalCalibration;
+    silent.steel.pluckDistanceScale = 0.88819512f;
     auto sounding = silent;
     sounding.longitudinalGain = 0.025f;
     const auto axial = acustra::AcustraEngineTestAccess::
@@ -7089,7 +7140,13 @@ void testAPlectrumReleasesWithVelocity()
 
     // Brightness grows with dynamics under Pick: the loud-over-soft rise of
     // the upper partials against the lower ones, read on the excitation alone
-    // (bridge coupling off), exceeds the Finger law's on the same notes.
+    // (bridge coupling off), exceeds the Finger law's on the same notes. It
+    // is read where the release law was built, the plectrum 30 mm from the
+    // bridge (steel.pluckDistanceScale 0.888): at the 60 mm it has followed
+    // the Finger to since 2026-09-25 the same share lifts the rise by 0.6 dB
+    // against the pick released from rest, and the refitted share is
+    // 0.0117, so the effect is not what ships.
+    plain.steel.pluckDistanceScale = 0.88819512f;
     auto fitted = plain;
     fitted.pickReleaseVelocityShare = 1.5f;
     fitted.pickReleaseVelocityExponent = 2.0f;

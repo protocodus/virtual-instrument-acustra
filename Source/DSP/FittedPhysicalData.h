@@ -30,6 +30,9 @@ struct PhysicalCalibration
     MaterialCalibration nylon;
     MaterialCalibration steel;
     float apertureRegisterExponent { 1.0f };
+    // Radiation gain on steel's measured air mode (the g21 modes between 85
+    // and 145 Hz) at the bridge microphone of the Stereo pair only; the
+    // upper-bout microphone, nylon and the named models hear it as measured.
     float lowBodyModeGain { 1.0f };
     float steelDisplacementScaleMetres { 0.0061f };
     float steelFretT60Slope { -0.030f };
@@ -184,9 +187,21 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // (1.4) is chosen by ear and was held.
     { 1.0f, 1.4f, 1.65213516f, 2.39142268f,
       0.0f, 2.14375f, 0.1125f },
+    // Steel's pluck distance scale is 1.8, chosen by ear on 2026-09-25 over
+    // the fitted 0.888 (Docs/decisions.md): at the default Pluck Position a
+    // finger meets the string 149 mm from the bridge instead of 74 mm, at
+    // the same fitted displacement. The 0.888 was fitted on archtop rows
+    // played with a pick near the bridge; the finger-played flat-top rows
+    // prefer 149 mm, and a blind listener chose it on all three pairs. Pick
+    // keeps 0.40 of the Finger's distance, 60 mm, and the picked archtop
+    // rows rendered with it improve (steel training 6.106 -> 5.803).
     { 0.749355465f, 1.53f, 0.52f, 0.643124355f,
-      0.494086432f, 0.88819512f, 1.1859375f },
-    -0.0706290118f, 1.0f, 0.00773577847f, -0.0597851562f, 2.28586032f,
+      0.494086432f, 1.8f, 1.1859375f },
+    // lowBodyModeGain 4 (+12 dB), chosen by ear on 2026-09-25 over 1 on all
+    // three pairs (Docs/decisions.md): the Eastman dreadnought's picked E2
+    // and A#2 stand 11-13 dB stronger against their 2nd and 3rd harmonics
+    // than the engine rendered them through the bridge microphones.
+    -0.0706290118f, 4.0f, 0.00773577847f, -0.0597851562f, 2.28586032f,
     // The axial resonators are physically motivated, but without a measured
     // transfer level their narrow, high-Q onset reads as a pitched water-drop
     // transient rather than part of the pluck. Keep the calibrated mechanism
@@ -225,8 +240,14 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // search (60 evaluations to the step floor) keeps only a small, nearly
     // flat share, 0.0625 v^0.47, with the transient gain on its zero bound,
     // which is the Finger burst law: training 6.334019 -> 6.284861 under
-    // Pick, development validation 5.941904 -> 5.904206.
-    0.0625f, 0.46875f, 0.0f
+    // Pick, development validation 5.941904 -> 5.904206. Refitted on
+    // 2026-09-25 by the same stage (67 evaluations to the step floor) once
+    // the plectrum followed the Finger to 60 mm from the bridge and the
+    // Stereo pair took the upper-bout microphone: a still smaller share,
+    // 0.0117 v^0.45, and a pick transient at 0.031 of the Finger burst:
+    // training 6.133475 -> 6.103277 under Pick, development validation
+    // 5.742850 -> 5.702917.
+    0.01171875f, 0.453125f, 0.03125f
 };
 
 } // namespace acustra

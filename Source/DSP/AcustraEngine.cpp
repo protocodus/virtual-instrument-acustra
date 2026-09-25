@@ -1909,6 +1909,12 @@ void AcustraEngine::configureBody() noexcept
                       parameters_.shape));
     const auto referenceWood = woodSpecs[parameters_.guitarModel == GuitarModel::Bellido1978 ? 1 : 0];
     const bool named = parameters_.guitarModel != GuitarModel::Original;
+    // lowBodyModeGain raises the air mode where steel's g21 bank under-hears
+    // it: at the treble-bridge microphone, 10 cm over the bridge, 82 Hz
+    // radiates 15 dB under 330 Hz where the upper-bout one hears it 2 dB
+    // over. Nylon's classical rows want their measured air mode.
+    const bool steelBank = !named
+        && parameters_.stringMaterial == StringMaterial::Steel;
     // Every bank that ships keeps its measured phase with no observation
     // delay; the delay line stays for a bank that needs one.
     bodyRadiationDelay_.reset();
@@ -1975,7 +1981,6 @@ void AcustraEngine::configureBody() noexcept
                 * (wood.radiation / (named ? referenceWood.radiation : 1.0f))
                 * bassTilt * brilliance
                 * residueTilt
-                * (lowBodyMode ? physicalCalibration_.lowBodyModeGain : 1.0f)
             : 0.0f;
         // The stored residues drive unit-input discrete states fitted at
         // 48 kHz. Convert that state as a zero-order-held continuous mode:
@@ -1993,10 +1998,20 @@ void AcustraEngine::configureBody() noexcept
             return drive * std::complex<float>(real, imaginary)
                 * residueRateScale;
         };
-        const auto left = scaledResidue(
+        // The Stereo mic pair is the treble-bridge microphone on the left and
+        // the upper-bout one on the right, the bridge/twelfth-fret placement
+        // a blind listener chose over the bridge's own treble/bass pair
+        // (2026-09-25). The bass-bridge microphone is not heard. The air-mode
+        // gain reaches the bridge microphone alone: at x4, chosen by ear, a
+        // picked E2 then stands against its 2nd and 3rd harmonics within
+        // 1 dB of the Eastman dreadnought recording, and equally in both
+        // channels.
+        const float airGain = lowBodyMode && steelBank
+            ? physicalCalibration_.lowBodyModeGain : 1.0f;
+        const auto left = airGain * scaledResidue(
             measured.leftReal, measured.leftImaginary);
         const auto right = scaledResidue(
-            measured.rightReal, measured.rightImaginary);
+            measured.upperReal, measured.upperImaginary);
         const auto upperMic = scaledResidue(
             measured.upperReal, measured.upperImaginary);
         mode.leftReal = left.real();
@@ -2005,10 +2020,10 @@ void AcustraEngine::configureBody() noexcept
         mode.rightImaginary = right.imag();
         mode.upperReal = upperMic.real();
         mode.upperImaginary = upperMic.imag();
-        const auto leftMoment = scaledResidue(
+        const auto leftMoment = airGain * scaledResidue(
             measured.leftMomentReal, measured.leftMomentImaginary);
         const auto rightMoment = scaledResidue(
-            measured.rightMomentReal, measured.rightMomentImaginary);
+            measured.upperMomentReal, measured.upperMomentImaginary);
         const auto upperMoment = scaledResidue(
             measured.upperMomentReal, measured.upperMomentImaginary);
         mode.leftMomentReal = leftMoment.real();

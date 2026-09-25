@@ -131,8 +131,14 @@ T60, steel's wider Dreadnought), 6.145552, 6.216121 and 7.618706, and
 6.180182, 6.103707 and 7.572502; with a force-limited release, 6.131424,
 6.217292 and 7.622994, and 6.182335, 6.097915 and 7.556267; with steel's
 body resolved over 250 ms and nylon plucked at the soundhole's edge,
-5.928457, 5.989914 and 7.492669, and 5.877624, 5.806595 and 7.328740. The
-latter are the base every later paired comparison is taken against. The
+5.928457, 5.989914 and 7.492669, and 5.877624, 5.806595 and 7.328740; and
+with the three values a blind listener chose on 2026-09-25 (the treble-bridge
+and upper-bout microphone pair, a steel Finger 149 mm from the bridge,
+steel's air mode four times stronger at the bridge microphone), the refitted
+plectrum and double-precision bridge modes, 6.329200, 5.994260 and 7.425652,
+and 6.432400, 5.996174 and 7.181437. The latter are the base every later
+paired comparison is taken against. Under Pick the archtop rows read 6.103277
+and 5.702917. The
 renderer renders each material at its anchor body - steel the default
 Dreadnought, nylon the Auditorium slot that is the measured classical.
 
@@ -835,12 +841,17 @@ string positions assumes a rigid saddle; it does not identify horizontal
 forcing or the saddle's rotation axis.
 
 Stereo comes from the measured microphone responses, with no added channel
-delay or reverb. The treble and bass microphones were 10 cm above the top plate
-and 20 cm apart, one each side of the bridge. The g21 setup used a floor
-absorber, with its first room reflections 12 ms or more away. **Mono mic**
-uses the third position, 20 cm from the treble microphone toward the upper
-bout and also 10 cm above the top. It sends identical samples to both channels; the
-stereo pair remains the default. Both measured guitars were nylon-strung, so
+delay or reverb. The archive's treble and bass microphones were 10 cm above
+the top plate and 20 cm apart, one each side of the bridge, and its third
+microphone 20 cm from the treble one toward the upper bout, also 10 cm above
+the top. Stereo mic pairs the treble-bridge microphone (left) with the
+upper-bout one (right), the bridge/twelfth-fret placement a blind listener
+chose over the bridge's own treble/bass pair on all four pairs of the
+2026-09-25 set, noting more clarity; the bass-bridge microphone is not
+heard. The g21 setup used a floor absorber, with its first room reflections
+12 ms or more away. **Mono mic** uses the upper-bout microphone alone. It
+sends identical samples to both channels; the stereo pair remains the
+default. Both measured guitars were nylon-strung, so
 g21 remains an adaptation for steel, not a measured steel-string body.
 
 The generator fits all six impact-to-microphone paths jointly, then checks
@@ -863,7 +874,15 @@ windowed measurements, not identified intrinsic body decays.
 No independent minimum-phase conversion or convolution remainder is added.
 
 The selected bank uses neutral body calibration factors: frequency and Q scales
-of 1, residue tilt of 0 dB/octave and low-body-mode gain of 1. Shape and wood
+of 1 and residue tilt of 0 dB/octave. One exception was chosen by ear: steel's
+air mode (the g21 modes between 85 and 145 Hz) radiates four times stronger
+(+12 dB) at the treble-bridge microphone. Heard there, 82 Hz is 15 dB weaker
+than 330 Hz, while the upper-bout microphone hears it 2 dB stronger. The Eastman
+dreadnought's picked E2 and A#2 stand 11-13 dB stronger against their 2nd
+and 3rd harmonics than the engine rendered them through the bridge pair.
+With the gain, a picked E2 lands within 1 dB of that recording and equally
+in both channels. Nylon, the named models and the upper-bout microphone hear
+their air modes as measured. Shape and wood
 still apply their documented construction morphs and the existing Q limits;
 even the default Dreadnought is therefore a transformation of the measurement.
 The optional bridge-local direct branch remains disabled. The existing fixed
@@ -968,8 +987,8 @@ uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
 | **Stereo Width** | Blends the measured stereo pair toward mono; Mono mic and Piezo ignore width and send identical samples to both channels. |
 | **Output** | Final gain; exactly linear through −1 dBFS, then bounded by a headroom-only safety limiter. |
 
-Original and Bellido Stereo mic use the measured treble/bass pair. Mono mic uses the third,
-upper-bout microphone; it does not sum two spaced microphone signals and
+Original and Bellido Stereo mic use the measured treble-bridge/upper-bout pair. Mono mic uses the
+upper-bout microphone alone; it does not sum two spaced microphone signals and
 therefore avoids their phase cancellation. Piezo observes net saddle force
 before body radiation. These observations never feed back into the instrument.
 Capture changes crossfade on the existing parameter smoothing, preserving
@@ -1967,6 +1986,26 @@ git history rather than here.
 
 ### 2026-09-25
 
+- **Three blind verdicts give steel a recorded guitar's body.** Stereo mic
+  now pairs the treble-bridge microphone with the upper-bout one, the
+  bridge/twelfth-fret placement, where it paired the two bridge
+  microphones. A Finger meets a steel string 149 mm from the bridge, at the
+  soundhole's edge, where it met it at 74 mm; Pick follows it to 60 mm. And
+  steel's air mode radiates four times stronger at the bridge microphone,
+  which alone under-heard it. The picked E2 of a real dreadnought recording
+  and the engine's now stand the same against their harmonics, within 1 dB.
+  All three were chosen by ear on every pair. On the benchmark the
+  finger-played flat-top rows read 2.0% closer (Fylde). The picked archtop
+  rows read 5-6% closer when rendered with Pick and 0.5-12.6% further with
+  Finger. The classical rows, now heard partly through the upper-bout
+  microphone, read 4.3% further on training and 0.6% closer on validation.
+- **The plectrum is refitted at its new place**: a smaller release share and
+  a faint pick transient (Pick training -0.5%, validation -0.7%).
+- **The bridge keeps its tuning at every host rate.** Its modes run in double
+  precision. A float's direct-form coefficients held the lowest modes' pole
+  angles to about 5% at 384 kHz, which turned the heave's fundamental 90
+  degrees against the rock and raised the upper-bout microphone's low E by
+  6 dB. It already moved 1-2 dB at 96-192 kHz.
 - **The Washburn, Santa Cruz and Martin models are retired.** Their
   coefficients were fitted from Mark Rau's measurements, which carry no
   redistribution license, so they are not published with this repository.
