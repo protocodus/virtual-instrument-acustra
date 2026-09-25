@@ -81,11 +81,12 @@ def metrics(center: np.ndarray, prediction: np.ndarray) -> dict:
     }
 
 
-def extract(values: np.ndarray) -> tuple[dict, dict]:
+def extract(values: np.ndarray,
+            guitars: tuple[int, ...] = (21, 34)) -> tuple[dict, dict]:
     frequency = np.fft.rfftfreq(bridge.FFT_SIZE, 1 / bridge.SAMPLE_RATE)
     taper = 0.5 + 0.5 * np.cos(np.arange(1, 48001) * np.pi / 48000)
     responses, force_quality = {}, {}
-    for guitar in (21, 34):
+    for guitar in guitars:
         for impact in range(3):
             record = values[guitar - 1, impact * 48000:(impact + 1) * 48000]
             force = record[:, 0] * taper * bridge.HAMMER_NEWTONS_PER_FULL_SCALE

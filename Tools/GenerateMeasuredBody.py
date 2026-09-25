@@ -149,8 +149,26 @@ GUITAR_DESCRIPTION = {
     36: "a 2001 Jose Lopez Bellido classical Spanish, spruce/Indian "
         "palisander, measured anechoic in the class-1 free-field laboratory "
         "of the Hamburg University of Applied Sciences",
+    37: "a 1981 Manuel Contreras flamenca blanca, spruce/cypress, measured "
+        "anechoic in the class-1 free-field laboratory of the Hamburg "
+        "University of Applied Sciences",
+    38: "a 1970 Jose Lopez Bellido flamenca blanca, cedar/cypress, measured "
+        "anechoic in the class-1 free-field laboratory of the Hamburg "
+        "University of Applied Sciences",
+    39: "a 1971 German Perez Barranco flamenca blanca (Nr. 11), cedar/"
+        "cypress, measured anechoic in the class-1 free-field laboratory of "
+        "the Hamburg University of Applied Sciences",
+    41: "a 1987 Valeriano Bernal flamenca blanca, spruce/cypress, measured "
+        "anechoic in the class-1 free-field laboratory of the Hamburg "
+        "University of Applied Sciences",
+    42: "a 1989 Antonio Ariza flamenca blanca, spruce/cypress, measured "
+        "anechoic in the class-1 free-field laboratory of the Hamburg "
+        "University of Applied Sciences",
+    43: "a 1975 Jose Ramirez flamenca blanca (Clase 1a), spruce/cypress, "
+        "measured anechoic in the class-1 free-field laboratory of the "
+        "Hamburg University of Applied Sciences",
 }
-ANECHOIC_GUITARS = frozenset({34, 35, 36})
+ANECHOIC_GUITARS = frozenset({34, 35, 36, 37, 38, 39, 41, 42, 43})
 DEFAULT_OUTPUT = (
     Path(__file__).resolve().parents[1] / "Source" / "DSP" / "MeasuredBodyData.h"
 )

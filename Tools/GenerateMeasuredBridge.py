@@ -117,7 +117,11 @@ GUITAR_DESCRIPTION = {
     36: "a 2001 Jose Lopez Bellido classical Spanish, spruce/Indian "
         "palisander, measured anechoic in the class-1 free-field laboratory "
         "of the Hamburg University of Applied Sciences",
+    39: "a 1971 German Perez Barranco flamenca blanca (Nr. 11), cedar/"
+        "cypress, measured anechoic in the class-1 free-field laboratory of "
+        "the Hamburg University of Applied Sciences",
 }
+DEFAULT_STEEL_GUITAR = 21
 DEFAULT_OUTPUT = (
     Path(__file__).resolve().parents[1] / "Source" / "DSP" / "MeasuredBridgeData.h"
 )
@@ -521,7 +525,7 @@ def render_header(steel: dict, nylon: dict) -> str:
 // semidefinite, so the model's Y(u) is positive real. This constraint does
 // not establish passivity or collocation of the measured response matrix.
 // The original material settings select two measured nylon-string guitars:
-// g21 flamenco is adapted for steel, g34 classical for nylon. The separate
+// g{steel['guitar']} flamenco is adapted for steel, g{nylon['guitar']} classical for nylon. The separate
 // MeasuredSteelBridgeData.h contains actual steel-string bridge measurements.
 // Adapted from Robert Mores, "Archive for the acoustical documentation of
 // classical Spanish guitars, flamenco guitars and romantic guitars from
@@ -581,13 +585,19 @@ def main() -> int:
         help="archive record for the nylon bank (default: %(default)s)",
     )
     parser.add_argument(
+        "--steel-guitar", type=int, default=DEFAULT_STEEL_GUITAR,
+        choices=(21, 39),
+        help="archive record for the steel bank: g21, or g39, the anechoic "
+             "flamenca whose radiation steel may play (default: %(default)s)",
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="compare generated content with --output without writing it",
     )
     arguments = parser.parse_args()
 
-    steel = fit_bank(arguments.raw_mat, 21)
+    steel = fit_bank(arguments.raw_mat, arguments.steel_guitar)
     nylon = fit_bank(arguments.raw_mat, arguments.nylon_guitar)
     header = render_header(steel, nylon)
     if arguments.check:
