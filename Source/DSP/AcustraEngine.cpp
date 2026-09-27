@@ -4122,12 +4122,20 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     double displacementEnergy = 0.0;
     double velocityEnergy = 0.0;
     double crossEnergy = 0.0;
+    // Kept for the write pass below, which reads the same phases.
+    const bool kept = length >= 1
+        && length <= static_cast<int>(pickReleaseDisplacement_.size());
     float previousDisplacement = released(smoothedDisplacement, phaseOf(length));
     float previousVelocity = released(smoothedVelocity, phaseOf(length));
     for (int sample = 1; sample <= length; ++sample)
     {
         const float displacement = released(smoothedDisplacement, phaseOf(sample));
         const float velocity = released(smoothedVelocity, phaseOf(sample));
+        if (kept)
+        {
+            pickReleaseDisplacement_[static_cast<std::size_t>(sample - 1)] = displacement;
+            pickReleaseVelocity_[static_cast<std::size_t>(sample - 1)] = velocity;
+        }
         const double displacementStep = displacement - previousDisplacement;
         const double velocityStep = velocity - previousVelocity;
         displacementEnergy += displacementStep * displacementStep;
@@ -4170,31 +4178,42 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     // string according to the phase it starts with - so both components are
     // written in that fitted frame, which keeps their quadrature intact, and
     // the line starts at zero at the bridge as the legacy shape does.
-    const auto frame = [&] (float phase)
+    // The released waves at a sample of the loop, as the energy pass formed
+    // them.
+    const auto displacementAt = [&] (int sample)
     {
-        return -(rest * released(smoothedDisplacement, phase)
-                 + hump * released(smoothedVelocity, phase));
+        return kept ? pickReleaseDisplacement_[static_cast<std::size_t>(sample - 1)]
+                    : released(smoothedDisplacement, phaseOf(sample));
+    };
+    const auto velocityAt = [&] (int sample)
+    {
+        return kept ? pickReleaseVelocity_[static_cast<std::size_t>(sample - 1)]
+                    : released(smoothedVelocity, phaseOf(sample));
+    };
+    const auto frame = [&] (int sample)
+    {
+        return -(rest * displacementAt(sample) + hump * velocityAt(sample));
     };
     if (!(slipPole > 0.0))
     {
-        const float endpoint = frame(phaseOf(1));
+        const float endpoint = frame(1);
         for (int sample = 1; sample <= length; ++sample)
             loop.delay[static_cast<std::size_t>(wrapDelayIndex(
-                loop.writeIndex - sample))] = frame(phaseOf(sample)) - endpoint;
+                loop.writeIndex - sample))] = frame(sample) - endpoint;
         return;
     }
-    const auto restFrame = [&] (float phase)
+    const auto restFrame = [&] (int sample)
     {
-        return -rest * released(smoothedDisplacement, phase);
+        return -rest * displacementAt(sample);
     };
-    const auto humpFrame = [&] (float phase)
+    const auto humpFrame = [&] (int sample)
     {
-        return -hump * released(smoothedVelocity, phase);
+        return -hump * velocityAt(sample);
     };
-    const float restEndpoint = restFrame(phaseOf(1));
+    const float restEndpoint = restFrame(1);
     for (int sample = 1; sample <= length; ++sample)
         loop.delay[static_cast<std::size_t>(wrapDelayIndex(
-            loop.writeIndex - sample))] = restFrame(phaseOf(sample)) - restEndpoint;
+            loop.writeIndex - sample))] = restFrame(sample) - restEndpoint;
     applyPlectrumSlip(loop, length, slipPole);
     // The displacement the tip leaves behind is now the slipped one, so the
     // share is of its energy and the cross term is read against it: the
@@ -4210,11 +4229,11 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
         double slippedEnergy = 0.0;
         double slippedCross = 0.0;
         double previousLine = lineAt(length);
-        float previousVelocity = released(smoothedVelocity, phaseOf(length));
+        float previousVelocity = velocityAt(length);
         for (int sample = 1; sample <= length; ++sample)
         {
             const double line = lineAt(sample);
-            const float velocity = released(smoothedVelocity, phaseOf(sample));
+            const float velocity = velocityAt(sample);
             const double lineStep = line - previousLine;
             const double velocityStep = velocity - previousVelocity;
             slippedEnergy += lineStep * lineStep;
@@ -4229,10 +4248,10 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
         hump = rest * static_cast<float>(slippedCross < 0.0 ? -magnitude
                                                              : magnitude);
     }
-    const float humpEndpoint = humpFrame(phaseOf(1));
+    const float humpEndpoint = humpFrame(1);
     for (int sample = 1; sample <= length; ++sample)
         loop.delay[static_cast<std::size_t>(wrapDelayIndex(
-            loop.writeIndex - sample))] += humpFrame(phaseOf(sample)) - humpEndpoint;
+            loop.writeIndex - sample))] += humpFrame(sample) - humpEndpoint;
 }
 
 // The finger leaves a stopped string. The string was pressed to the fret by

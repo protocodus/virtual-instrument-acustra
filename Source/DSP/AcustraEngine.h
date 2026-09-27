@@ -1004,6 +1004,11 @@ private:
         bool valid { false };
     };
     std::array<DispersionSolve, 64> dispersionSolves_ {};
+    // writePickRelease's two released waves at every sample of the loop: its
+    // energy pass evaluates them (ten Gaussian edges and ten corner lookups
+    // a sample), and its write pass writes the same samples from them.
+    std::array<float, maximumDelaySamples> pickReleaseDisplacement_ {};
+    std::array<float, maximumDelaySamples> pickReleaseVelocity_ {};
     int nextDispersionSolve_ { 0 };
     // Advanced whenever engine state that configureVoice reads changes; see
     // VoiceConfigurationKey. Starts past the keys' never-matching zero.
