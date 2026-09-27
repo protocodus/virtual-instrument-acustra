@@ -729,7 +729,18 @@ delay currently occupies so a bend or vibrato's slewing fractional part does
 not stall the solve. String Age lowers the high-frequency cutoff and
 increases loss. A shared fitted cutoff scale of 2.286 reduces excess
 upper-partial damping found across both materials; a regression proves that it
-does not move the requested fundamental T60 or compensated pitch. A second,
+does not move the requested fundamental T60 or compensated pitch. Each string
+can also lose its upper partials through its own bending stiffness, the
+viscoelastic term of Valette's string damping model (*Mechanics of Musical
+Instruments*, Springer 1995) and the bending-loss term of Woodhouse's (Acta
+Acustica 90 (2004) 928-944): a stiffness EI(1 + i eta) loses
+1/Q_n = eta B n^2 / (1 + B n^2), with B the inharmonicity the dispersion
+uses, so the added decay grows as the cube of frequency. Both polarisations
+carry it as a unit-DC two-pole section designed at the host rate, with its
+phase in the tuning and dispersion collocation and its H1 magnitude in the
+loop gain. The four factors (steel and nylon, wound and plain) ship at zero,
+where the loop is exactly as it was; what fitting them does is in Known
+gaps. A second,
 orthogonal polarisation loop can be detuned from the first by an end
 correction at the string terminations: Woodhouse (Acta Acustica 90 (2004)
 945-965, Sec. 4.3) measured the polarisation parallel to the soundboard as
@@ -1514,6 +1525,47 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   string field is not fully converged either. The tool records those limits
   and both displacement and velocity; it changes no runtime excitation.
 
+- The recordings snap and then mellow, and the engine does neither. Over their
+  first 300 ms the archtop's low steel strings lose 1-12 kHz at 96-121 dB/s
+  and the never-fitted Eastman E1D's wound strings 2-4, 4-8 and 8-12 kHz at
+  86, 153 and 300 dB/s (picked); the engine's fall at 15-32. The strings'
+  bending loss (above) reaches those rates at a steel wound factor of 0.10,
+  and the benchmark refuses it even with the pluck refitted around it: a joint
+  fit over Finger and Pick (the loss with the contact width, burst, velocity
+  brightness, plectrum edge, release velocity and pick burst) takes steel's
+  wound loss back to zero from shipping and from the measured value alike, and
+  holding it at half or all of that value leaves training 5-8% worse with the
+  Finger contact on its 0.35 floor, the finger burst on its 3.0 ceiling and,
+  under Pick alone, the release-velocity share on its 2.0 ceiling. Three
+  measurements say why. The attack the lost partials were standing in for is
+  missing: at the loud archtop layer the recordings' energy between partials
+  at 2.3-12 kHz stands 10-25 dB over the engine's in the first 15 ms (a pick
+  transient, then a tail falling at 100-200 dB/s), the Eastman's wound strings
+  start 13-21 dB brighter at 1-5 kHz, and the engine's first period carries
+  its first corner as a/L of the real step, since the held string's static
+  load is not released (2026-09-10), so its loud onset comes a period late.
+  The recordings have a hiss floor the engine does not: the soft archtop
+  layer's 5-12 kHz is that floor from the first frame, and strings whose upper
+  partials die as fast as the recordings' fall a median 12-16 dB under it by
+  0.6-0.9 s (shipping sits 3-5 dB over), which the log-averaged and band
+  descriptors charge. With each recording's own floor added to both engines
+  ([`AuditRecordingFloor.py`](Tools/AuditRecordingFloor.py), a diagnostic, not
+  the benchmark), the half-loss candidate of the listening set beats shipping
+  under Finger on training, validation and the frozen test split (-1.3, -2.3,
+  -1.8%) and on the Eastman finger rows (-7.4%); under Pick it trails on
+  training and the test split (+1.7, +0.6%), leads on validation (-2.3%) and
+  is level on the Eastman picked rows (+0.4%). And the recordings' partials
+  decay in two stages, faster before 0.3 s than over the decay term's 0.12-4
+  s, which one loss per partial cannot follow. The finger-plucked flat-top and
+  the picked archtop also disagree about the attack itself: against the
+  Eastman finger rows the engine's plain strings are 13-18 dB too bright at
+  5-12 kHz and its wound strings 7-14 dB too dark at 1-5 kHz, the opposite of
+  the authored contact law's extra width on the three wound strings, while the
+  archtop, rendered with Finger, wants every Finger contact narrower. Nylon's
+  wound loss fits at 0.029 (its measured decay reads 0.03): classical training
+  -5.9% and development validation -5.3%, the anechoic UIowa rows +1.3% (-1.6%
+  with their floor added). Both went to a blind set rather than into the
+  calibration (Docs/decisions.md, 2026-09-28).
 - The highest steel partials still vary with host rate. The loop-loss filters
   now map the calibrated 48 kHz transfer to the host rate, preserving the
   existing 48 kHz sound; bilinear frequency warping leaves H8 decay spread of
