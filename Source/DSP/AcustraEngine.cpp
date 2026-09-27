@@ -1967,6 +1967,7 @@ void AcustraEngine::configureBody() noexcept
         if (bodyModelFade_ >= 1.0f)
         {
             fadingBodyModes_ = bodyModes_;
+            fadingBodyModeActiveCount_ = bodyModeActiveCount_;
             fadingBodyRadiationDelay_ = bodyRadiationDelay_;
         }
         bodyModelFade_ = 0.0f;
@@ -2000,6 +2001,8 @@ void AcustraEngine::configureBody() noexcept
     // delay; the delay line stays for a bank that needs one.
     bodyRadiationDelay_.reset();
     bodyRadiationDelay_.configure(0.0f);
+    bodyModeActiveCount_ = static_cast<int>(std::min(
+        bank.size(), static_cast<std::size_t>(bodyModeCount)));
 
     for (int index = 0; index < bodyModeCount; ++index)
     {
@@ -5716,12 +5719,16 @@ AcustraEngine::BodyOutput AcustraEngine::RadiationDelay::process(BodyOutput inpu
 AcustraEngine::BodyOutput AcustraEngine::renderBody(float bridgeInput,
                                                    float bodyMoment) noexcept
 {
-    const auto renderBank = [&] (auto& modes)
+    // Only a bank's own modes: the zero padding after them adds exactly
+    // zero to sums that start at +0 and so can never be -0. The mono
+    // microphone's sum is the right channel's (see BodyMode::processStereo).
+    const auto renderBank = [&] (auto& modes, int count)
     {
         BodyOutput output;
-        for (auto& mode : modes)
+        for (int index = 0; index < count; ++index)
         {
-            mode.process(bridgeInput, bodyMoment, output.left, output.right, output.upper);
+            auto& mode = modes[static_cast<std::size_t>(index)];
+            mode.processStereo(bridgeInput, bodyMoment, output.left, output.right);
             if (exact::abs(mode.real) < 1.0e-30f)
                 mode.real = 0.0f;
             if (exact::abs(mode.imaginary) < 1.0e-30f)
@@ -5731,13 +5738,16 @@ AcustraEngine::BodyOutput AcustraEngine::renderBody(float bridgeInput,
             if (exact::abs(mode.momentImaginary) < 1.0e-30f)
                 mode.momentImaginary = 0.0f;
         }
+        output.upper = output.right;
         return output;
     };
 
-    BodyOutput result = bodyRadiationDelay_.process(renderBank(bodyModes_));
+    BodyOutput result = bodyRadiationDelay_.process(
+        renderBank(bodyModes_, bodyModeActiveCount_));
     if (bodyModelFade_ < 1.0f)
     {
-        const BodyOutput previous = fadingBodyRadiationDelay_.process(renderBank(fadingBodyModes_));
+        const BodyOutput previous = fadingBodyRadiationDelay_.process(
+            renderBank(fadingBodyModes_, fadingBodyModeActiveCount_));
         const float mix = bodyModelFade_;
         result.left = previous.left + mix * (result.left - previous.left);
         result.right = previous.right + mix * (result.right - previous.right);

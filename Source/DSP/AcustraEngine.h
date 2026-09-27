@@ -468,6 +468,28 @@ private:
             upper += 2.0f * (upperReal * real - upperImaginary * imaginary
                 + upperMomentReal * momentReal - upperMomentImaginary * momentImaginary);
         }
+        // process() without the upper-bout sum: configureBody gives the
+        // right channel and the mono microphone the same residues, so their
+        // sums are the same numbers and renderBody forms that sum once. The
+        // expressions are process()'s own, so every bit is what it returns.
+        void processStereo(float force, float moment, float& left,
+                           float& right) noexcept
+        {
+            const float nextReal = force + poleReal * real - poleImaginary * imaginary;
+            const float nextImaginary = poleImaginary * real + poleReal * imaginary;
+            const float nextMomentReal = moment + poleReal * momentReal
+                                       - poleImaginary * momentImaginary;
+            const float nextMomentImaginary = poleImaginary * momentReal
+                                            + poleReal * momentImaginary;
+            real = nextReal;
+            imaginary = nextImaginary;
+            momentReal = nextMomentReal;
+            momentImaginary = nextMomentImaginary;
+            left += 2.0f * (leftReal * real - leftImaginary * imaginary
+                + leftMomentReal * momentReal - leftMomentImaginary * momentImaginary);
+            right += 2.0f * (rightReal * real - rightImaginary * imaginary
+                + rightMomentReal * momentReal - rightMomentImaginary * momentImaginary);
+        }
         void reset() noexcept { real = imaginary = momentReal = momentImaginary = 0.0f; }
     };
 
@@ -831,6 +853,10 @@ private:
     std::array<Voice, stringCount> voices_ {};
     std::array<BodyMode, bodyModeCount> bodyModes_ {};
     std::array<BodyMode, bodyModeCount> fadingBodyModes_ {};
+    // Slots past a bank's own modes are all-zero padding (configureBody);
+    // their contribution to every sum is exactly zero, so they are skipped.
+    int bodyModeActiveCount_ { bodyModeCount };
+    int fadingBodyModeActiveCount_ { bodyModeCount };
     RadiationDelay bodyRadiationDelay_ {}, fadingBodyRadiationDelay_ {};
     GuitarModel configuredGuitarModel_ { GuitarModel::Original };
     BodyShape configuredBodyShape_ { BodyShape::Dreadnought };
