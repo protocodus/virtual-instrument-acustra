@@ -30,6 +30,13 @@ response NPZ and native MeasuredBodyData.h inside the new output directory,
 with axes and Pa/N units recorded in the report. Cross-product
 diagnostics compare Ht*conj(Hb), with the existing 1%-of-product-peak mask.
 
+--plate-q median reads g21's plate modes (300 Hz-10 kHz, above the air mode
+and T1) against the anechoic flamenca blancas of the same archive, each fitted
+at its own converged window with the same gates: over the octave round each
+mode, the mode's Q is scaled by the population's median Q over g21's own,
+never raised. Frequencies and residues are kept. The committed header is
+written this way; without the option the measured Qs are written unchanged.
+
     python3 Tools/GenerateBodyForcePair.py --self-test
     python3 Tools/GenerateBodyForcePair.py --raw-mat /path/qualified_selected_impulses.mat --output /new/fit-directory
 """
@@ -50,6 +57,43 @@ import RemoveRoomTail
 spatial, body = pair.spatial, pair.spatial.body
 MICROPHONES = ("upper", "treble", "bass")
 FREQUENCY = np.fft.rfftfreq(body.FFT_SIZE, 1 / body.SAMPLE_RATE)
+
+# The flamenca blancas of the archive measured in the anechoic laboratory, the
+# population g21's plate-mode damping is read against (--plate-q). g41 is kept
+# in the list and left out where its bank fails the generator's gates.
+PLATE_Q_POPULATION = (37, 38, 39, 41, 42, 43)
+# The band corrected by default: every plate mode above the air mode, T1 and
+# the 287 Hz broad mode (which the by-ear air-mode gain and the shape anchors
+# read) up to the fit's 10 kHz limit.
+PLATE_Q_BAND_HZ = (300.0, 10_000.0)
+
+
+def plate_q_correction(steel_q: np.ndarray, population_q: list, rule: str,
+                       band: tuple = PLATE_Q_BAND_HZ) -> np.ndarray:
+    """g21's Q per mode in band read against the anechoic population.
+
+    Each mode is compared over the octave centred on it (f/sqrt2 to f*sqrt2):
+    "median" scales it by the population's median Q over g21's own there,
+    never raising one; "ceiling" holds it at the population's upper quartile.
+    Frequencies and residues are unchanged: a mode given more loss keeps the
+    amplitude it starts with and rings for a shorter time.
+    """
+    pooled = np.concatenate([np.asarray(bank)[:, :2] for bank in population_q])
+    corrected = np.array(steel_q, dtype=float)
+    for index, (frequency, q) in enumerate(steel_q):
+        if not band[0] <= frequency < band[1]:
+            continue
+        low, high = frequency / np.sqrt(2.0), frequency * np.sqrt(2.0)
+        reference = pooled[(pooled[:, 0] >= low) & (pooled[:, 0] < high), 1]
+        own = steel_q[(steel_q[:, 0] >= low) & (steel_q[:, 0] < high), 1]
+        if rule == "median":
+            corrected[index, 1] = q * min(1.0, np.median(reference) / np.median(own))
+        elif rule == "ceiling":
+            corrected[index, 1] = min(q, np.percentile(reference, 75))
+        else:
+            raise ValueError(f"unknown --plate-q rule {rule}")
+    corrected[:, 1] = corrected[:, 1].astype(np.float32).astype(float)
+    return corrected
 
 
 def rounded(values: np.ndarray) -> np.ndarray:
@@ -80,10 +124,16 @@ def paired(values: np.ndarray) -> np.ndarray:
     return np.array([pair.force_pair(mic[0], mic[1]) for mic in values])
 
 
-def render_header(arrays: dict, steel: int = 21) -> str:
+def render_header(arrays: dict, steel: int = 21, plate_q: tuple | None = None) -> str:
     """Export the auditioned ABI: treble, bass, upper; heave then moment."""
     source = ("// response was measured. Both source guitars are nylon-strung; g21 is",
               "// adapted for steel. These reference residues do not include the")
+    if plate_q:
+        rule, low, high = plate_q
+        source = ("// response was measured. Both source guitars are nylon-strung; g21 is",
+                  f"// adapted for steel, its Q from {low:.0f} to {high:.0f} Hz read against the",
+                  f"// anechoic flamencas' ({rule} over the octave). These reference",
+                  "// residues do not include the")
     if steel != 21:
         source = (f"// response was measured. Both source guitars are nylon-strung; g{steel},",
                   "// measured anechoically, is adapted for steel. These reference",
@@ -219,11 +269,21 @@ def self_test() -> None:
     expected = "    { 300.0f, 4.0f, 7.0f, 8.0f, -4.0f, -5.0f, 2.0f, 3.0f, 2.0f, 2.0f, -3.0f, -3.0f, 1.0f, 1.0f },"
     if render_header(fixture).count(expected) != 2:
         raise AssertionError("native export changed microphone order or force/moment polarity")
+    steel_q = np.array([[100.0, 20.0], [600.0, 60.0], [700.0, 20.0], [2000.0, 90.0]])
+    population_q = [np.array([[550.0, 30.0], [650.0, 40.0], [750.0, 50.0], [2000.0, 10.0]])]
+    median = plate_q_correction(steel_q, population_q, "median", (300.0, 1500.0))
+    ceiling = plate_q_correction(steel_q, population_q, "ceiling", (300.0, 1500.0))
+    if (not np.array_equal(median[[0, 3]], steel_q[[0, 3]])
+            or not np.array_equal(ceiling[[0, 3]], steel_q[[0, 3]])):
+        raise AssertionError("the plate-mode Q correction reached a mode outside its band")
+    if not np.allclose(median[1:3, 1], [60.0, 20.0]) or not np.allclose(ceiling[1:3, 1], [45.0, 20.0]):
+        raise AssertionError("the plate-mode Q correction does not read the population's octave")
     print("Body force-pair generator self-test passed")
 
 
 def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
-        steel_keep: int | None = None, room_free: bool = False) -> None:
+        steel_keep: int | None = None, room_free: bool = False,
+        plate_q: str | None = None, plate_q_band: tuple = PLATE_Q_BAND_HZ) -> None:
     if output.exists() or not output.parent.is_dir():
         raise ValueError("output must be a new directory inside an existing parent")
     if steel != 21 and steel not in body.ANECHOIC_GUITARS:
@@ -243,12 +303,33 @@ def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
         for impact in RemoveRoomTail.IMPACTS:
             for channel in RemoveRoomTail.MICROPHONES:
                 responses[21, impact, channel] = RemoveRoomTail.remove(responses[21, impact, channel], room)
+    population_responses = spatial.extract(values, PLATE_Q_POPULATION)[0] if plate_q else None
     banks, arrays = [], {"frequency": FREQUENCY}
     for guitar, keep in ((steel, steel_keep), (34, 12000)):
         bank, values = fit_bank(guitar, keep, responses)
         banks.append(bank)
         arrays.update(values)
         print(f"g{guitar}: first passing measured prefix {bank['mode_count']}/{bank['candidate_count']}", flush=True)
+    population = None
+    if plate_q:
+        if steel != 21:
+            raise ValueError("--plate-q applies to g21, whose plate modes are read against the anechoic flamencas")
+        # Each population guitar is fitted as steel's body would be: its own
+        # converged window, the same candidate ordering and gates.
+        population = {}
+        for guitar in PLATE_Q_POPULATION:
+            keep = body.converged_keep_samples(raw, guitar)[0]
+            try:
+                _, fitted = fit_bank(guitar, keep, population_responses)
+            except ValueError as error:
+                print(f"g{guitar}: left out of the population ({str(error)[:60]})", flush=True)
+                continue
+            population[guitar] = dict(keep_samples=keep, frequency_q=fitted[f"g{guitar}_frequency_q"].tolist())
+            print(f"g{guitar}: population bank {len(fitted[f'g{guitar}_frequency_q'])} modes at {keep} samples", flush=True)
+        arrays["g21_measured_frequency_q"] = arrays["g21_frequency_q"]
+        arrays["g21_frequency_q"] = plate_q_correction(
+            arrays["g21_frequency_q"], [entry["frequency_q"] for entry in population.values()],
+            plate_q, tuple(plate_q_band))
     report = dict(protocol=__doc__, source=str(raw.resolve()),
         source_url="https://zenodo.org/records/4604577", source_license="CC BY 4.0",
         raw_md5=spatial.bridge.digest(raw), raw_sha256=spatial.sha256(raw),
@@ -271,6 +352,8 @@ def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
             endpoint_mic_balance_p90_db=body.MAX_STEREO_RATIO_P90_ERROR_DB,
             erb_5k_to_10k_level_abs_db=body.MAX_BAND_MAGNITUDE_ERROR_DB),
         force_quality=quality, banks=banks,
+        plate_q=None if population is None else dict(rule=plate_q, band_hz=list(plate_q_band),
+            population=population, corrected_frequency_q=arrays["g21_frequency_q"].tolist()),
         room_removed=None if room is None else dict(
             band_centres_hz=RemoveRoomTail.CENTRES.tolist(),
             t60_s=(3.0 * np.log(10.0) / room["delta"]).tolist(),
@@ -280,7 +363,8 @@ def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
     output.mkdir()
     np.savez(output / "body-force-pair.npz", **arrays)
     report["coefficient_response_npz_sha256"] = spatial.sha256(output / "body-force-pair.npz")
-    (output / "MeasuredBodyData.h").write_text(render_header(arrays, steel))
+    (output / "MeasuredBodyData.h").write_text(render_header(arrays, steel,
+        None if plate_q is None else (plate_q, *plate_q_band)))
     report["native_header_sha256"] = spatial.sha256(output / "MeasuredBodyData.h")
     (output / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False)+"\n")
 
@@ -298,6 +382,12 @@ def main() -> int:
     parser.add_argument("--room-free", action="store_true",
                         help="remove the music room's reverberant tail from g21 before "
                              "fitting (Tools/RemoveRoomTail.py)")
+    parser.add_argument("--plate-q", choices=("median", "ceiling"),
+                        help="read g21's plate-mode Q against the anechoic flamencas "
+                             "over the octave round each mode: their median over g21's, "
+                             "or a ceiling at their upper quartile")
+    parser.add_argument("--plate-q-band", type=float, nargs=2, default=PLATE_Q_BAND_HZ,
+                        metavar=("LOW_HZ", "HIGH_HZ"), help="band --plate-q corrects (default 300 10000)")
     args = parser.parse_args()
     try:
         if args.self_test:
@@ -307,7 +397,8 @@ def main() -> int:
         else:
             if args.raw_mat is None or args.output is None:
                 parser.error("--raw-mat and --output are required")
-            run(args.raw_mat, args.output, args.g21_keep, args.steel_guitar, room_free=args.room_free)
+            run(args.raw_mat, args.output, args.g21_keep, args.steel_guitar, room_free=args.room_free,
+                plate_q=args.plate_q, plate_q_band=tuple(args.plate_q_band))
         return 0
     except (OSError, ValueError, AssertionError) as error:
         parser.exit(1, f"{error}\n")

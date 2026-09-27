@@ -4,6 +4,43 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — g21's plate modes damped to the anechoic flamencas'
+
+What was measured. Fitted by the same generator and gates, each at its own
+converged window, the five anechoic flamenca blancas that pass (g37, g38,
+g39, g42, g43; g41 fails) have lower plate-mode Q than g21 in every band
+above T1: median 30 against 37.8 at 300-600 Hz, 38.9 against 47.8 at
+600-1200, about 39 against 44.9 at 1.2-2.4 kHz, 49 against 55.1 at
+2.4-5 kHz, 54 against 60.0 at 5-10 kHz. The room does not explain the mid
+band (2026-09-27), so the excess is g21's own trait, not what a steel
+guitar's body is known to have.
+
+What was built. `Tools/GenerateBodyForcePair.py --plate-q median` scales
+each g21 mode from 300 Hz to 10 kHz by the population's median Q over g21's
+own over the octave round it, never raising one; frequencies and residues
+are kept, so a mode rings for less time from the same start. The air mode,
+T1 and the 287 Hz broad mode are not touched, so the by-ear air-mode x4 and
+the shape anchors read the same modes. 655 Hz Q 60.6 -> 46.6, 765 Hz 69.3
+-> 53.1; the rocking path's strongest peak 9.6 -> 8.5 dB over its third
+octave (the population's 8.3-8.7). Without the option the committed header
+is reproduced byte for byte.
+
+What the corpus says. Fylde training 6.4324 -> 6.4032, development
+validation 5.9962 -> 6.0192, flat-top 7.1814 -> 7.1217; Pick steel 5.5639
+-> 5.5164 and 5.4839 -> 5.5110; the frozen test split 6.1134 -> 6.1015
+(Finger) and 5.4272 -> 5.4031 (Pick). Eastman picked 6.5254 -> 6.4535,
+finger 7.4777 -> 7.3917; Martin HD28 7.3638 -> 7.3222; GuitarSet log error
+12.9824 -> 12.9364. Nylon is bit-identical. Restricted to 300-1500 Hz the
+same rule moves every reference by under 0.8% (Pick -0.2%, Finger
+validation +0.5%); a ceiling at the population's upper quartile moves them
+by under 0.2%. The late strongest partial over its neighbours on six
+Eastman notes, Pick/Finger: recordings 18.6/19.6, shipping 18.7/23.9, this
+17.6/23.5, g39 12.8/17.1; Finger's excess is H2 of single notes at 465,
+660 and 988 Hz, set by residue levels, not by the modes' Q.
+
+What is open. Not shipped: set 13, `2026-09-28-midq`, puts it (B) against
+shipping (A) and g39 (C) on four steel performances, key unread.
+
 ## 2026-09-27 — blind verdicts: Stereo Width stays at 0.62, and live chords get a switch
 
 Set 12 put the shipping Stereo Width, 0.62 (each channel carries 19% of the

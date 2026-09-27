@@ -3524,17 +3524,27 @@ void testABendDoesNotStepTheJunctionPort()
         // loudest sample's: through the upper-bout microphone the slide's
         // envelope has two crests 50 ms apart equal to 0.0001, and which
         // one a sample grid lands on is not the mechanism.
+        // With steel's plate modes damped to the anechoic flamencas'
+        // (2026-09-28) the crossing's envelope has two crests 27.5 ms apart
+        // in both renders, at 96 kHz within 0.08% of each other in the bend,
+        // so the bend is held to be at its crest, within 1% of its loudest
+        // frame, at the moment the slide is loudest.
+        const auto frameEnergy = [&] (const Audio& audio, double begin)
+        {
+            const auto first = static_cast<std::size_t>(begin * rate);
+            const auto last = static_cast<std::size_t>((begin + 0.01) * rate);
+            double energy = 0.0;
+            for (auto index = first; index < last; ++index)
+                energy += static_cast<double>(audio.left[index]) * audio.left[index]
+                        + static_cast<double>(audio.right[index]) * audio.right[index];
+            return energy;
+        };
         const auto loudestFrame = [&] (const Audio& audio)
         {
             double loudest = 0.0, at = 0.0;
             for (double begin = 0.5; begin + 0.01 <= 1.2; begin += 0.0025)
             {
-                const auto first = static_cast<std::size_t>(begin * rate);
-                const auto last = static_cast<std::size_t>((begin + 0.01) * rate);
-                double energy = 0.0;
-                for (auto index = first; index < last; ++index)
-                    energy += static_cast<double>(audio.left[index]) * audio.left[index]
-                            + static_cast<double>(audio.right[index]) * audio.right[index];
+                const double energy = frameEnergy(audio, begin);
                 if (energy > loudest)
                 {
                     loudest = energy;
@@ -3544,10 +3554,16 @@ void testABendDoesNotStepTheJunctionPort()
             return at;
         };
         if (slidPeak > reference * 1.02)
-            expect(std::abs(loudestFrame(bent) - loudestFrame(slid)) < 0.01,
+        {
+            const double bendCrest = frameEnergy(bent, loudestFrame(slid))
+                / frameEnergy(bent, loudestFrame(bent));
+            expect(std::abs(loudestFrame(bent) - loudestFrame(slid)) < 0.01
+                       || bendCrest >= 0.99,
                    "the tension bend's loudest moment was "
                        + std::to_string(loudestFrame(bent) - loudestFrame(slid))
-                       + " s away from the slide's");
+                       + " s away from the slide's, where it stood at "
+                       + std::to_string(bendCrest) + " of its peak");
+        }
         // A step in the port would arrive as a transient rather than as a
         // level: measured where one would show, in the rise from one 5 ms
         // frame to the frame two hops before it.
