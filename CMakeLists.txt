@@ -244,6 +244,12 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.Engine COMMAND AcustraEngineTests)
     set_tests_properties(Acustra.Engine PROPERTIES TIMEOUT 600)
 
+    add_executable(AcustraHandAllocatorTests Tests/HandAllocatorTests.cpp)
+    target_link_libraries(AcustraHandAllocatorTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraHandAllocatorTests PRIVATE cxx_std_20)
+    add_test(NAME Acustra.HandAllocator COMMAND AcustraHandAllocatorTests)
+    set_tests_properties(Acustra.HandAllocator PROPERTIES TIMEOUT 120)
+
     add_executable(AcustraReleaseTests Tests/ReleaseTests.cpp)
     target_link_libraries(AcustraReleaseTests PRIVATE AcustraDSP)
     add_test(NAME Acustra.Release COMMAND AcustraReleaseTests)

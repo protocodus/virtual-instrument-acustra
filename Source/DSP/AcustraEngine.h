@@ -146,6 +146,18 @@ public:
     // false and is unaffected down to the bit.
     void noteOn(int midiNote, float velocity, int midiChannel = 1,
                 int pluckDelaySamples = 0, bool strumMember = false) noexcept;
+    // Call just before the noteOn() calls for notes that arrive together on
+    // one sample and one channel (a sequenced chord, or one the plug-in has
+    // gathered): the fretting hand forms them as one shape, one note per
+    // string within one hand span, instead of fretting them one at a time
+    // (see planChord in AcustraEngine.cpp). The plan belongs to this sample
+    // only; notes it does not name, and every note when it is not called,
+    // are placed one at a time as before. Inert for string-per-channel
+    // controllers and MPE member channels, whose strings are their own.
+    void planChord(const int* midiNotes, int count, int midiChannel = 1) noexcept;
+    // Observer for displays and tests: the string (0 is the low E) whose key
+    // is down for this note on this channel, or -1.
+    [[nodiscard]] int heldString(int midiNote, int midiChannel = 1) const noexcept;
     // Samples after the first string that a strum's k-th string sounds, from
     // the pick's speed for this velocity and the string spacing.
     [[nodiscard]] int strumDelaySamples(int stringRank,
@@ -600,6 +612,9 @@ private:
         // point every note already draws. A single note leaves this false,
         // so it draws exactly as it did before and stays bit-identical.
         bool strumming { false };
+        // The engine's sample clock when this note was fretted; a chord
+        // still forming is the run of notes whose onsets are close together.
+        std::uint64_t onsetSample { 0 };
     };
 
     struct BodyOutput
@@ -731,6 +746,66 @@ private:
     bool releaseLegatoNote(int midiNote, int midiChannel,
                            float fingerLift) noexcept;
     int chooseString(int midiNote) const noexcept;
+    int chooseStringWithoutHand(int midiNote) const noexcept;
+    // The fretting hand (see chooseString). Each string remembers the last
+    // fretted note it sounded and when a finger last held it there.
+    struct HandFinger
+    {
+        int fret { 0 };
+        std::uint64_t heldAt { 0 };
+        bool valid { false };
+    };
+    using StringFrets = std::array<int, stringCount>;
+    using HandWeights = std::array<float, stringCount>;
+    [[nodiscard]] HandWeights handWeights() const noexcept;
+    [[nodiscard]] static bool handKnown(const HandWeights& weights) noexcept;
+    [[nodiscard]] float shapeCost(const StringFrets& shapeFrets,
+                                  unsigned movableStrings,
+                                  const HandWeights& weights) const noexcept;
+    struct ShapeNote
+    {
+        int midiNote { 0 };
+        // The string this note sounds on now (a chord member that may move),
+        // or -1 for a note still to be placed.
+        int current { -1 };
+        // A string still ringing this pitch, which a repeat prefers.
+        int ringing { -1 };
+        // Only its current string: a key re-struck while it is held.
+        bool fixed { false };
+    };
+    struct ShapeScore
+    {
+        int steals { 0 };
+        int impossible { 0 };
+        int moves { 0 };
+        float cost { 0.0f };
+        int misses { 0 };
+        int opens { 0 };
+        int fretSum { 0 };
+        int ringing { 0 };
+    };
+    struct ShapeSearch
+    {
+        std::array<ShapeNote, stringCount> notes {};
+        int count { 0 };
+        unsigned movable { 0 };
+        HandWeights weights {};
+        StringFrets frets {};
+        std::array<int, stringCount> strings {};
+        std::array<int, stringCount> bestStrings {};
+        ShapeScore best {};
+        bool found { false };
+    };
+    [[nodiscard]] static bool betterShape(const ShapeScore& candidate,
+                                          const ShapeScore& incumbent) noexcept;
+    void searchShape(ShapeSearch& search, int index, unsigned used) const noexcept;
+    [[nodiscard]] int reshapeFormingChord(int midiNote, int midiChannel,
+                                          int chosenString) noexcept;
+    void startNote(int stringIndex, int harmonic, int midiNote, float velocity,
+                   int midiChannel, int delaySamples, bool strumMember) noexcept;
+    void muteVacatedString(Voice& voice, int stringIndex) noexcept;
+    void rememberFinger(int stringIndex) noexcept;
+    void releaseFinger(int stringIndex) noexcept;
     struct HarmonicChoice
     {
         int string { -1 };
@@ -840,6 +915,48 @@ private:
     bool prepared_ { false };
     bool bodyConfigured_ { false };
     std::uint64_t noteOrder_ { 0 };
+    // Samples rendered since reset(); the hand's memory and the chord window
+    // are timed on it.
+    std::uint64_t sampleClock_ { 0 };
+    std::array<HandFinger, stringCount> hand_ {};
+    std::uint64_t lastNoteOnSample_ { 0 };
+    std::uint64_t chordStartSample_ { 0 };
+    bool noteOnSeen_ { false };
+    // planChord's shape for the notes of one sample.
+    std::array<int, stringCount> plannedNotes_ {};
+    std::array<int, stringCount> plannedStrings_ {};
+    int plannedCount_ { 0 };
+    int plannedChannel_ { 1 };
+    std::uint64_t plannedSample_ { 0 };
+    // Heijink and Meulenbroek, "On the Complexity of Classical Guitar
+    // Playing: Functional Adaptations to Task Constraints", J. Motor
+    // Behavior 34(4), 339-351 (2002): the scale fingering they call a small
+    // span has the index and little fingers four frets apart counted
+    // inclusively, the large span five, and the large one was rated more
+    // complex; asked to finger note sequences themselves, six professional
+    // guitarists moved the hand in only 2 of 31 fingerings, and then by a
+    // single fret. So a hand in position covers four frets (the highest
+    // fret it holds at most three above the lowest), a stretch reaches a
+    // fifth, and moving the hand costs more than stretching it.
+    static constexpr int handPositionSpan = 3;
+    static constexpr int handStretchSpan = 4;
+    // A fret held outside the four-fret position, against a fret the hand
+    // must move by at full memory weight (1 per fret). Half is an ordering
+    // choice -- stretching beats moving, as the study found -- not a figure.
+    static constexpr float handStretchCost = 0.5f;
+    // The listener's direction, not a measurement: a note released less
+    // than handMemorySeconds ago still places the hand, weighted by
+    // exp(-age / handMemoryTimeConstantSeconds); held notes weigh 1. With
+    // nothing held and nothing that recent the hand is forgotten and the
+    // allocator is exactly the handless one. Two seconds is the same rest
+    // the plug-in already takes to restart a strum on a downstroke.
+    static constexpr float handMemorySeconds = 2.0f;
+    static constexpr float handMemoryTimeConstantSeconds = 1.0f;
+    // Onsets closer than this are one chord still forming (Goebl, JASA
+    // 110(1), 2001: a chord's unintended melody lead is 20-30 ms; the same
+    // window the plug-in's Gather Chords uses).
+    static constexpr float chordWindowSeconds = 0.030f;
+    static constexpr float impossibleShapeCost = 1000.0f;
     // Shared across every string of one strum: drawn once by beginStrum(),
     // read by noteOn's strumMember path. A per-string draw here (rather than
     // each voice's own generator) is what keeps the pick's speed for the

@@ -1680,6 +1680,12 @@ void AcustraEngine::reset() noexcept
     vibratoPhase_ = 0.0f;
     vibratoOnset_ = 0.0f;
     noteOrder_ = 0;
+    sampleClock_ = 0;
+    hand_.fill({});
+    lastNoteOnSample_ = 0;
+    chordStartSample_ = 0;
+    noteOnSeen_ = false;
+    plannedCount_ = 0;
     controlCounter_ = 0;
     parameters_ = sanitise(targetParameters_);
     bodyAmount_ = parameters_.bodyAmount;
@@ -3372,6 +3378,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
 void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
                                        bool clearDelay) noexcept
 {
+    if (voice.keyDown || voice.pedalHeld)
+        releaseFinger(stringIndex);
     voice.played = false;
     voice.keyDown = false;
     voice.pedalHeld = false;
@@ -3451,6 +3459,7 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
 
 void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
 {
+    releaseFinger(stringIndex);
     voice.pedalHeld = false;
     // Lifting a keyboard key normally damps its note. Releasing stored fret
     // displacement is an active pull-off, requested only by CC68. Check the
@@ -4193,11 +4202,212 @@ bool AcustraEngine::sustainIsDown(const Voice& voice) const noexcept
     return voice.mpeMember ? sustainPedals_[0] || own : own;
 }
 
+// The fretting hand. A guitarist fretting a note keeps the hand where it
+// is if a finger reaches, takes an open string if one sounds the note, and
+// otherwise reaches low on the neck (the listener's direction for Acustra:
+// "imagine a player's hand on the frets that are currently playing or were
+// playing previously - try to fit a fret that a finger would reach. then,
+// prefer empty strings, then prefer lower frets"). Each string remembers
+// the last fretted note it sounded (hand_); held notes, key or pedal, weigh
+// 1, and released ones exp(-age / handMemoryTimeConstantSeconds) until
+// handMemorySeconds, when they are forgotten.
+AcustraEngine::HandWeights AcustraEngine::handWeights() const noexcept
+{
+    HandWeights weights {};
+    const double memory = static_cast<double>(handMemorySeconds) * sampleRate_;
+    const double timeConstant
+        = static_cast<double>(handMemoryTimeConstantSeconds) * sampleRate_;
+    for (int string = 0; string < stringCount; ++string)
+    {
+        const auto& finger = hand_[static_cast<std::size_t>(string)];
+        const auto& voice = voices_[static_cast<std::size_t>(string)];
+        float weight = 0.0f;
+        if (finger.valid)
+        {
+            if (voice.played && (voice.keyDown || voice.pedalHeld)
+                && voice.harmonic == 1 && voice.fret == finger.fret)
+                weight = 1.0f;
+            else
+            {
+                const double age = static_cast<double>(
+                    sampleClock_ - std::min(finger.heldAt, sampleClock_));
+                if (age <= memory)
+                    weight = static_cast<float>(std::exp(-age / timeConstant));
+            }
+        }
+        weights[static_cast<std::size_t>(string)] = weight;
+    }
+    return weights;
+}
+
+bool AcustraEngine::handKnown(const HandWeights& weights) noexcept
+{
+    return std::any_of(weights.begin(), weights.end(),
+                       [] (float weight) { return weight > 0.0f; });
+}
+
+// How far a set of frets is from one hand. shapeFrets names the fret each
+// string would sound (-1: not part of the shape). The frets the hand must
+// hold are the shape's fretted notes and every other string whose key is
+// down (movableStrings are chord members about to be re-placed, so they do
+// not count); what it remembers are the other strings' released or pedal-
+// held fingers, at their weights. The hand is an index finger at fret p
+// covering p..p+handPositionSpan; a held fret one outside it is a stretch
+// (handStretchCost a fret), a remembered one outside it costs its weight
+// per fret the hand would have to move. The cost is the best p's; frets
+// the hand must hold that no one hand can span are impossibleShapeCost
+// plus their spread. Zero is a shape the hand reaches where it is.
+float AcustraEngine::shapeCost(const StringFrets& shapeFrets,
+                               unsigned movableStrings,
+                               const HandWeights& weights) const noexcept
+{
+    std::array<int, 2 * stringCount> held {};
+    int heldCount = 0;
+    std::array<int, stringCount> remembered {};
+    std::array<float, stringCount> rememberedWeight {};
+    int rememberedCount = 0;
+    int low = fretCount + 1;
+    int high = -1;
+    const auto hold = [&] (int fret)
+    {
+        held[static_cast<std::size_t>(heldCount++)] = fret;
+        low = std::min(low, fret);
+        high = std::max(high, fret);
+    };
+    for (int string = 0; string < stringCount; ++string)
+    {
+        const auto index = static_cast<std::size_t>(string);
+        const auto& voice = voices_[index];
+        const bool movable = ((movableStrings >> string) & 1u) != 0u;
+        const bool keyed = voice.played && voice.keyDown && !movable;
+        if (shapeFrets[index] >= 1)
+            hold(shapeFrets[index]);
+        else if (shapeFrets[index] < 0 && keyed && voice.harmonic == 1
+                 && voice.fret >= 1)
+            hold(voice.fret);
+        if (movable || (voice.played && voice.keyDown))
+            continue;
+        if (weights[index] > 0.0f)
+        {
+            remembered[static_cast<std::size_t>(rememberedCount)]
+                = hand_[index].fret;
+            rememberedWeight[static_cast<std::size_t>(rememberedCount)]
+                = weights[index];
+            ++rememberedCount;
+        }
+    }
+    if (heldCount == 0 && rememberedCount == 0)
+        return 0.0f;
+    if (heldCount > 0 && high - low > handStretchSpan)
+        return impossibleShapeCost + static_cast<float>(high - low);
+    int firstPosition = 1;
+    int lastPosition = fretCount - handPositionSpan;
+    if (heldCount > 0)
+    {
+        // Every held fret within one fret of the position.
+        firstPosition = std::max(firstPosition, high - handPositionSpan - 1);
+        lastPosition = std::min(lastPosition, low + 1);
+    }
+    const auto outside = [] (int fret, int position)
+    {
+        return fret < position ? position - fret
+            : fret > position + handPositionSpan
+                ? fret - position - handPositionSpan : 0;
+    };
+    float best = std::numeric_limits<float>::max();
+    for (int position = firstPosition; position <= lastPosition; ++position)
+    {
+        float cost = 0.0f;
+        for (int index = 0; index < heldCount; ++index)
+            cost += handStretchCost * static_cast<float>(
+                outside(held[static_cast<std::size_t>(index)], position));
+        for (int index = 0; index < rememberedCount; ++index)
+            cost += rememberedWeight[static_cast<std::size_t>(index)]
+                * static_cast<float>(outside(
+                    remembered[static_cast<std::size_t>(index)], position));
+        best = std::min(best, cost);
+    }
+    return best == std::numeric_limits<float>::max()
+        ? impossibleShapeCost : best;
+}
+
 int AcustraEngine::chooseString(int midiNote) const noexcept
 {
     // A note repeated after its key came up is replucked on the string still
     // sounding it, as a guitarist does, rather than hopping to whichever free
     // string can also reach it and leaving the first one ringing.
+    for (int string = stringCount - 1; string >= 0; --string)
+    {
+        const auto& voice = voices_[static_cast<std::size_t>(string)];
+        if (voice.played && !voice.keyDown && voice.harmonic == 1
+            && voice.midiNote == midiNote && voice.level > 2.0e-7f)
+            return string;
+    }
+    const auto weights = handWeights();
+    if (!handKnown(weights))
+        return chooseStringWithoutHand(midiNote);
+
+    // With a hand on the neck, in order: never a string whose key is still
+    // down while another can sound the note; then the fret the hand reaches
+    // from where it is (shapeCost zero; otherwise the fewest frets moved,
+    // weighted by how recently the hand was there); then an open string;
+    // then the lower fret; then a silent string over one still ringing, and
+    // the one that has rung longest.
+    constexpr float tie = 1.0e-4f;
+    int best = -1;
+    bool bestSteal = true;
+    float bestCost = 0.0f;
+    bool bestOpen = false;
+    int bestFret = fretCount + 1;
+    bool bestRinging = true;
+    std::uint64_t bestOrder = 0;
+    for (int string = stringCount - 1; string >= 0; --string)
+    {
+        const auto& voice = voices_[static_cast<std::size_t>(string)];
+        const int fret = midiNote - voice.openMidi;
+        if (fret < 0 || fret > fretCount)
+            continue;
+        StringFrets frets {};
+        frets.fill(-1);
+        frets[static_cast<std::size_t>(string)] = fret;
+        const bool steal = voice.played && voice.keyDown;
+        const float cost = shapeCost(frets, 0u, weights);
+        const bool open = fret == 0;
+        const bool ringing = voice.played;
+        bool better = best < 0;
+        if (!better && steal != bestSteal)
+            better = !steal;
+        else if (!better && std::abs(cost - bestCost) > tie)
+            better = cost < bestCost;
+        else if (!better && open != bestOpen)
+            better = open;
+        else if (!better && fret != bestFret)
+            better = fret < bestFret;
+        else if (!better && ringing != bestRinging)
+            better = !ringing;
+        else if (!better)
+            better = voice.startOrder < bestOrder;
+        if (better)
+        {
+            best = string;
+            bestSteal = steal;
+            bestCost = cost;
+            bestOpen = open;
+            bestFret = fret;
+            bestRinging = ringing;
+            bestOrder = voice.startOrder;
+        }
+    }
+    return best;
+}
+
+// The allocator with no hand on the neck (a fresh engine, or two seconds
+// with nothing fretted): the free string with the lowest fret, else the
+// string released longest ago, else the oldest. A lone note is placed
+// exactly as it always was. A repeated note is replucked where it rings,
+// as with a hand.
+int AcustraEngine::chooseStringWithoutHand(int midiNote) const noexcept
+{
     for (int string = stringCount - 1; string >= 0; --string)
     {
         const auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -4309,6 +4519,15 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             std::round(static_cast<float>(pluckDelaySamples) * strumSpeedScale_)));
     }
 
+    // A chord still forming is a run of onsets each within the chord window
+    // of the one before it.
+    const auto chordWindow = static_cast<std::uint64_t>(
+        static_cast<double>(chordWindowSeconds) * sampleRate_);
+    if (!noteOnSeen_ || sampleClock_ - lastNoteOnSample_ > chordWindow)
+        chordStartSample_ = sampleClock_;
+    lastNoteOnSample_ = sampleClock_;
+    noteOnSeen_ = true;
+
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -4350,6 +4569,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             configureVoice(voice, hammered, midiNote, false);
             hammerString(voice, hammered, previousMidi,
                          clamp(velocity, 0.001f, 1.0f));
+            rememberFinger(hammered);
             return;
         }
     }
@@ -4372,7 +4592,29 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
     }
     else
     {
-        string = chooseString(midiNote);
+        string = -1;
+        bool planned = false;
+        if (plannedCount_ > 0 && plannedSample_ == sampleClock_
+            && plannedChannel_ == midiChannel)
+        {
+            for (int index = 0; index < plannedCount_; ++index)
+            {
+                const auto slot = static_cast<std::size_t>(index);
+                if (plannedNotes_[slot] != midiNote)
+                    continue;
+                string = plannedStrings_[slot];
+                plannedNotes_[slot] = -1;
+                planned = true;
+                break;
+            }
+        }
+        // MPE member notes keep the handless allocator exactly: a member
+        // controller's notes are placed as they always were.
+        if (string < 0)
+            string = isLowerZoneMember(midiChannel)
+                ? chooseStringWithoutHand(midiNote) : chooseString(midiNote);
+        if (string >= 0 && !planned && !isLowerZoneMember(midiChannel))
+            string = reshapeFormingChord(midiNote, midiChannel, string);
         if (string < 0)
         {
             // Above the fretted range the guitar still reaches, through the
@@ -4384,6 +4626,14 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             harmonic = choice.harmonic;
         }
     }
+    startNote(string, harmonic, midiNote, velocity, midiChannel, delaySamples,
+              strumMember);
+}
+
+void AcustraEngine::startNote(int string, int harmonic, int midiNote,
+                              float velocity, int midiChannel,
+                              int delaySamples, bool strumMember) noexcept
+{
     auto& voice = voices_[static_cast<std::size_t>(string)];
     // Taking a string that is still sounding, for any note, is a refret and a
     // repluck, not a cut: what it still holds carries on under the hand while
@@ -4418,6 +4668,8 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             / (0.075f * static_cast<float>(sampleRate_)));
     }
     configureVoice(voice, string, midiNote, true);
+    voice.onsetSample = sampleClock_;
+    rememberFinger(string);
     voice.strumming = strumMember;
     voice.repluckPending = false;
     if (delaySamples > 0)
@@ -4430,6 +4682,310 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
         return;
     }
     firePluck(voice, string);
+}
+
+// The hand's memory of a string: the fret its finger now holds there, or
+// none for an open string or a natural harmonic's touch.
+void AcustraEngine::rememberFinger(int stringIndex) noexcept
+{
+    const auto index = static_cast<std::size_t>(stringIndex);
+    const auto& voice = voices_[index];
+    auto& finger = hand_[index];
+    if (voice.harmonic == 1 && voice.fret >= 1)
+        finger = { voice.fret, sampleClock_, true };
+    else
+        finger.valid = false;
+}
+
+// The finger leaves the note: its memory starts to fade from now.
+void AcustraEngine::releaseFinger(int stringIndex) noexcept
+{
+    const auto index = static_cast<std::size_t>(stringIndex);
+    const auto& voice = voices_[index];
+    auto& finger = hand_[index];
+    if (finger.valid && voice.played && voice.harmonic == 1
+        && voice.fret == finger.fret)
+        finger.heldAt = sampleClock_;
+}
+
+bool AcustraEngine::betterShape(const ShapeScore& candidate,
+                                const ShapeScore& incumbent) noexcept
+{
+    constexpr float tie = 1.0e-4f;
+    if (candidate.steals != incumbent.steals)
+        return candidate.steals < incumbent.steals;
+    if (candidate.impossible != incumbent.impossible)
+        return candidate.impossible < incumbent.impossible;
+    if (candidate.moves != incumbent.moves)
+        return candidate.moves < incumbent.moves;
+    if (std::abs(candidate.cost - incumbent.cost) > tie)
+        return candidate.cost < incumbent.cost;
+    if (candidate.misses != incumbent.misses)
+        return candidate.misses < incumbent.misses;
+    if (candidate.opens != incumbent.opens)
+        return candidate.opens > incumbent.opens;
+    if (candidate.fretSum != incumbent.fretSum)
+        return candidate.fretSum < incumbent.fretSum;
+    return candidate.ringing < incumbent.ringing;
+}
+
+// Every way of putting the chord's notes one to a string, depth first: at
+// most 6! complete shapes, scored by betterShape; the first of equals wins,
+// so the result depends only on the engine's state.
+void AcustraEngine::searchShape(ShapeSearch& search, int index,
+                                unsigned used) const noexcept
+{
+    if (index == search.count)
+    {
+        ShapeScore score {};
+        for (int note = 0; note < search.count; ++note)
+        {
+            const auto& shapeNote = search.notes[static_cast<std::size_t>(note)];
+            const int string = search.strings[static_cast<std::size_t>(note)];
+            const auto& voice = voices_[static_cast<std::size_t>(string)];
+            const int fret = search.frets[static_cast<std::size_t>(string)];
+            if (voice.played && voice.keyDown && string != shapeNote.current
+                && ((search.movable >> string) & 1u) == 0u)
+                ++score.steals;
+            if (shapeNote.current >= 0 && string != shapeNote.current)
+                ++score.moves;
+            if (shapeNote.ringing >= 0 && string != shapeNote.ringing)
+                ++score.misses;
+            score.opens += fret == 0 ? 1 : 0;
+            score.fretSum += fret;
+            score.ringing += voice.played && string != shapeNote.current ? 1 : 0;
+        }
+        score.cost = shapeCost(search.frets, search.movable, search.weights);
+        score.impossible = score.cost >= impossibleShapeCost ? 1 : 0;
+        if (!search.found || betterShape(score, search.best))
+        {
+            search.best = score;
+            search.bestStrings = search.strings;
+            search.found = true;
+        }
+        return;
+    }
+    const auto& shapeNote = search.notes[static_cast<std::size_t>(index)];
+    for (int string = stringCount - 1; string >= 0; --string)
+    {
+        if (((used >> string) & 1u) != 0u)
+            continue;
+        if (shapeNote.fixed && string != shapeNote.current)
+            continue;
+        const int fret = shapeNote.midiNote
+            - voices_[static_cast<std::size_t>(string)].openMidi;
+        if (fret < 0 || fret > fretCount)
+            continue;
+        search.strings[static_cast<std::size_t>(index)] = string;
+        search.frets[static_cast<std::size_t>(string)] = fret;
+        searchShape(search, index + 1, used | (1u << string));
+        search.frets[static_cast<std::size_t>(string)] = -1;
+    }
+}
+
+// A chord that arrives on one sample is fretted as one shape. The notes are
+// placed together, one to a string, by the same rules as a single note:
+// no string whose key is still down while a free one serves; a shape the
+// hand holds within one span, reached from where it is with the fewest
+// frets moved; a note re-struck on the string still ringing it; the most
+// open strings; the lowest frets; silent strings before ringing ones.
+void AcustraEngine::planChord(const int* midiNotes, int count,
+                              int midiChannel) noexcept
+{
+    plannedCount_ = 0;
+    if (!prepared_ || midiNotes == nullptr || count < 2 || count > stringCount
+        || midiChannel < 1 || midiChannel > midiChannelCount
+        || isLowerZoneMember(midiChannel)
+        || (stringPerChannelMode_ && midiChannel <= stringCount))
+        return;
+    ShapeSearch search {};
+    search.frets.fill(-1);
+    search.weights = handWeights();
+    for (int index = 0; index < count; ++index)
+    {
+        const int midiNote = midiNotes[index];
+        if (midiNote < 0 || midiNote > 127)
+            continue;
+        bool duplicate = false;
+        for (int other = 0; other < search.count; ++other)
+            duplicate |= search.notes[static_cast<std::size_t>(other)].midiNote
+                == midiNote;
+        bool frettable = false;
+        for (const auto& voice : voices_)
+            frettable |= midiNote - voice.openMidi >= 0
+                && midiNote - voice.openMidi <= fretCount;
+        // A repeat of a note the chord already has, or one only a natural
+        // harmonic reaches, is left to the note-by-note allocator.
+        if (duplicate || !frettable)
+            continue;
+        ShapeNote note {};
+        note.midiNote = midiNote;
+        for (int string = 0; string < stringCount; ++string)
+        {
+            const auto& voice = voices_[static_cast<std::size_t>(string)];
+            if (voice.played && voice.keyDown && voice.midiNote == midiNote
+                && voice.midiChannel == midiChannel)
+            {
+                // noteOn re-plucks a held key where it is.
+                note.current = string;
+                note.fixed = true;
+            }
+            else if (voice.played && !voice.keyDown && voice.harmonic == 1
+                     && voice.midiNote == midiNote && voice.level > 2.0e-7f)
+                note.ringing = string;
+        }
+        search.notes[static_cast<std::size_t>(search.count++)] = note;
+    }
+    if (search.count < 2)
+        return;
+    searchShape(search, 0, 0u);
+    if (!search.found)
+        return;
+    for (int index = 0; index < search.count; ++index)
+    {
+        const auto slot = static_cast<std::size_t>(index);
+        plannedNotes_[slot] = search.notes[slot].midiNote;
+        plannedStrings_[slot] = search.bestStrings[slot];
+    }
+    plannedCount_ = search.count;
+    plannedChannel_ = midiChannel;
+    plannedSample_ = sampleClock_;
+}
+
+// A chord that arrives one key at a time can be fretted into a corner: a
+// rolled C4-E4-G4 puts C4 on the B string's first fret and E4 on the open
+// E before G4 arrives, and then only the G string's twelfth fret is free.
+// When the note just chosen would take a string whose key is down, or
+// cannot be held in one hand with the notes already down, and it follows
+// notes of its own channel still forming a chord (onsets within
+// chordWindowSeconds of each other), the chord so far is refretted with
+// it as one shape, moving as few of its notes as the shape allows. A moved
+// note is replucked on its new string, inside the chord's own onset
+// spread; the string it leaves is either taken by another note of the
+// shape or damped by the leaving finger. Returns the string for the new
+// note.
+int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
+                                       int chosenString) noexcept
+{
+    const auto weights = handWeights();
+    {
+        const auto& chosen = voices_[static_cast<std::size_t>(chosenString)];
+        StringFrets frets {};
+        frets.fill(-1);
+        frets[static_cast<std::size_t>(chosenString)]
+            = midiNote - chosen.openMidi;
+        const bool steal = chosen.played && chosen.keyDown;
+        if (!steal && shapeCost(frets, 0u, weights) < impossibleShapeCost)
+            return chosenString;
+    }
+    ShapeSearch search {};
+    search.frets.fill(-1);
+    search.weights = weights;
+    for (int string = 0; string < stringCount; ++string)
+    {
+        const auto& voice = voices_[static_cast<std::size_t>(string)];
+        if (!voice.played || !voice.keyDown || voice.harmonic != 1
+            || voice.mpeMember || voice.legatoHeldCount > 0
+            || voice.midiChannel != midiChannel
+            || voice.onsetSample < chordStartSample_
+            || voice.midiNote == midiNote)
+            continue;
+        ShapeNote note {};
+        note.midiNote = voice.midiNote;
+        note.current = string;
+        search.notes[static_cast<std::size_t>(search.count++)] = note;
+        search.movable |= 1u << string;
+    }
+    if (search.count == 0 || search.count >= stringCount)
+        return chosenString;
+    ShapeNote incoming {};
+    incoming.midiNote = midiNote;
+    search.notes[static_cast<std::size_t>(search.count++)] = incoming;
+    searchShape(search, 0, 0u);
+    if (!search.found || search.best.moves == 0 || search.best.impossible != 0
+        || search.best.steals != 0)
+        return chosenString;
+
+    // Lift every moved note first, so a chain of moves finds its strings free.
+    struct Moved
+    {
+        int from, to, midiNote, channel, ownerCount, delay;
+        float velocity;
+        bool strumming;
+        std::uint64_t startOrder, onsetSample;
+    };
+    std::array<Moved, stringCount> moved {};
+    int movedCount = 0;
+    unsigned vacated = 0u;
+    for (int index = 0; index + 1 < search.count; ++index)
+    {
+        const auto slot = static_cast<std::size_t>(index);
+        const int from = search.notes[slot].current;
+        const int to = search.bestStrings[slot];
+        if (from == to)
+            continue;
+        auto& voice = voices_[static_cast<std::size_t>(from)];
+        moved[static_cast<std::size_t>(movedCount++)] = {
+            from, to, voice.midiNote, voice.midiChannel, voice.ownerCount,
+            voice.pluckDelay > 0 ? voice.pluckDelay - 1 : 0,
+            voice.velocity, voice.strumming, voice.startOrder,
+            voice.onsetSample };
+        voice.keyDown = false;
+        voice.pedalHeld = false;
+        voice.ownerCount = 0;
+        voice.pluckDelay = 0;
+        voice.repluckPending = false;
+        voice.fingerLift = 0.0f;
+        hand_[static_cast<std::size_t>(from)].valid = false;
+        vacated |= 1u << from;
+    }
+    const int incomingString = search.bestStrings[
+        static_cast<std::size_t>(search.count - 1)];
+    unsigned taken = 1u << incomingString;
+    for (int index = 0; index < movedCount; ++index)
+    {
+        const auto& move = moved[static_cast<std::size_t>(index)];
+        taken |= 1u << move.to;
+        startNote(move.to, 1, move.midiNote, move.velocity, move.channel,
+                  move.delay, move.strumming);
+        auto& voice = voices_[static_cast<std::size_t>(move.to)];
+        voice.ownerCount = move.ownerCount;
+        voice.startOrder = move.startOrder;
+        voice.onsetSample = move.onsetSample;
+    }
+    for (int string = 0; string < stringCount; ++string)
+        if (((vacated >> string) & 1u) != 0u && ((taken >> string) & 1u) == 0u)
+            muteVacatedString(voices_[static_cast<std::size_t>(string)], string);
+    return incomingString;
+}
+
+// A finger that leaves a string for another damps what it leaves behind
+// with the hand loss a released fretted note already has, open or not.
+void AcustraEngine::muteVacatedString(Voice& voice, int stringIndex) noexcept
+{
+    static_cast<void>(stringIndex);
+    if (voice.contactTravelEnabled)
+        voice.excitationEnvelope = 0.0f;
+    constexpr float releaseSeconds = 0.16f;
+    voice.releaseDamping = std::pow(0.001f,
+        1.0f / std::max(releaseSeconds * midiFrequency(voice.midiNote), 1.0f));
+    voice.returnSamples = static_cast<int>(
+        (releaseSeconds + 0.08f) * static_cast<float>(sampleRate_));
+}
+
+int AcustraEngine::heldString(int midiNote, int midiChannel) const noexcept
+{
+    int found = -1;
+    for (int string = 0; string < stringCount; ++string)
+    {
+        const auto& voice = voices_[static_cast<std::size_t>(string)];
+        if (voice.played && voice.keyDown && voice.midiNote == midiNote
+            && voice.midiChannel == midiChannel
+            && (found < 0 || voice.startOrder
+                > voices_[static_cast<std::size_t>(found)].startOrder))
+            found = string;
+    }
+    return found;
 }
 
 void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
@@ -4656,10 +5212,13 @@ bool AcustraEngine::releaseLegatoNote(int midiNote, int midiChannel,
                 voice.legatoHeldCount - 1)];
             voice.startOrder = ++noteOrder_;
             voice.fingerLift = fingerLift;
+            releaseFinger(string);
             if (fingerLift > 0.0f)
                 liftFinger(voice, string, target);
             else
                 configureVoice(voice, string, target, false);
+            if (voice.fret >= 1 && voice.harmonic == 1)
+                rememberFinger(string);
         }
         return true;
     }
@@ -5544,6 +6103,7 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         left[sample] = std::isfinite(outputLeft) ? outputLeft : 0.0f;
         right[sample] = std::isfinite(outputRight) ? outputRight : 0.0f;
     }
+    sampleClock_ += static_cast<std::uint64_t>(numSamples);
 }
 
 int AcustraEngine::getActiveVoiceCount() const noexcept
