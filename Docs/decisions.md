@@ -4,6 +4,25 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-27 — blind verdicts: Stereo Width stays at 0.62, and live chords get a switch
+
+Set 12 put the shipping Stereo Width, 0.62 (each channel carries 19% of the
+other microphone), as A against 1.0 as B, where each channel is its own
+measured microphone alone. The pieces were steel travis picking, steel chords
+up the neck, a nylon bass arpeggio and a high nylon melody, level-matched on
+whole-excerpt RMS with B trimmed by -0.33 to -1.32 dB. The listener chose A
+overall, with the note "it is close": pair 1 A, pair 2 no difference, pair 3 B,
+pair 4 unanswered. The default stays at 0.62, chosen by ear. Width stays a control.
+
+The same session answered the product question left open by the live-chord
+known gap. Of three options (leave as is, always gather, or an opt-in switch),
+the listener chose the switch, off by default. The listener also asked for
+the allocator to think like a hand: "imagine a player's hand on the frets that
+are currently playing or were playing previously - try to fit a fret that a
+finger would reach. then, prefer empty strings, then prefer lower frets." The
+switch and that allocation rule are built together. The rule is a direction
+set by the listener, not a measurement.
+
 ## 2026-09-27 — a plectrum lets go as the string slides round its edge
 
 What was measured. On the picked archtop's same-root pairs, the recordings'
