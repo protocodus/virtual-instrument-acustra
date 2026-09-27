@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <cstring>
 #include <limits>
 
 namespace acustra
@@ -80,6 +81,18 @@ inline float copysign(float magnitude, float sign) noexcept
     return std::copysign(magnitude, sign);
 }
 #endif
+// The bits of a float, for keys that must tell -0 from +0 and a NaN from
+// itself; the builtin keeps the copy inline under -fno-builtin.
+inline std::uint32_t bits(float value) noexcept
+{
+    std::uint32_t result;
+#if defined(__clang__) || defined(__GNUC__)
+    __builtin_memcpy(&result, &value, sizeof(result));
+#else
+    std::memcpy(&result, &value, sizeof(result));
+#endif
+    return result;
+}
 template <typename T> void abs(T) = delete;
 template <typename T> void isfinite(T) = delete;
 template <typename T> void floor(T) = delete;
@@ -1683,6 +1696,7 @@ void AcustraEngine::prepare(double sampleRate, int)
     if (!exact::isfinite(sampleRate) || sampleRate < 8000.0)
         sampleRate = 48000.0;
     sampleRate_ = std::clamp(sampleRate, 8000.0, 384000.0);
+    ++voiceConfigurationGeneration_;
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
     // Measured Adamas SMT piezo capacitance 450pF and installed preamp input 2MΩ:
     // M. Zollner, Physics of the Electric Guitar, ch.6, p.6-13 (2005).
@@ -1733,6 +1747,7 @@ void AcustraEngine::reset() noexcept
     plannedCount_ = 0;
     controlCounter_ = 0;
     parameters_ = sanitise(targetParameters_);
+    ++voiceConfigurationGeneration_;
     bodyAmount_ = parameters_.bodyAmount;
     width_ = parameters_.stereoWidth;
     outputGain_ = parameters_.outputGain;
@@ -1820,6 +1835,7 @@ void AcustraEngine::setPhysicalCalibration(
     const PhysicalCalibration& calibration) noexcept
 {
     physicalCalibration_ = sanitise(calibration);
+    ++voiceConfigurationGeneration_;
     if (!prepared_)
         return;
     reset();
@@ -1842,6 +1858,13 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
         || (next.stringMaterial == StringMaterial::Steel
             && next.bridgeModel != parameters_.bridgeModel);
     const bool tuningChanged = force || next.tuning != parameters_.tuning;
+    if (force || next.stringMaterial != parameters_.stringMaterial
+        || next.tuning != parameters_.tuning
+        || next.bridgeModel != parameters_.bridgeModel
+        || next.guitarModel != parameters_.guitarModel
+        || next.shape != parameters_.shape
+        || exact::bits(next.stringAge) != exact::bits(parameters_.stringAge))
+        ++voiceConfigurationGeneration_;
     parameters_ = next;
 
     // The string material selects which measured guitar the bridge and body
@@ -2129,6 +2152,7 @@ void AcustraEngine::configureBody() noexcept
 
 void AcustraEngine::configureBridge() noexcept
 {
+    ++voiceConfigurationGeneration_;
     bridgeLoad_.immediateHeave = 0.0f;
     bridgeLoad_.immediateCross = 0.0f;
     bridgeLoad_.immediateRock = 0.0f;
@@ -2639,6 +2663,23 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         ? bentStringTension(tension, axialRigidity,
                             std::exp2(tensionSemitones / 12.0f))
         : tension;
+    // Every value below is a function of this key (VoiceConfigurationKey),
+    // and configureVoice is the only writer of what it sets from here on, so
+    // an unchanged key - an idle string, or a held one once its attack glide
+    // has settled below a float step of its pitch - keeps what it has. Only
+    // the two assignments that depend on arguments outside the key remain.
+    // clearDelay always runs: it also resets the loops.
+    const VoiceConfigurationKey configurationKey {
+        voiceConfigurationGeneration_, stoppedMidi, voice.openMidi,
+        exact::bits(frequency), exact::bits(tensionSemitones),
+        exact::bits(parameters_.stringAge), exact::bits(palmMute_), steel };
+    if (!clearDelay && configurationKey == voice.configurationKey)
+    {
+        voice.midiNote = midiNote;
+        if (voice.keyDown || voice.pedalHeld || !voice.played)
+            voice.releaseDamping = 1.0f;
+        return;
+    }
     // Steel keeps the E*I = E*(pi*d^4/64) solid-cylinder model on its fitted
     // effective bending diameter and stiffnessScale. Nylon reads Woodhouse's
     // measured E*I directly (see nylonBendingEI above) rather than deriving
@@ -2777,8 +2818,12 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // The segment between saddle and anchor does not move when a string is
     // fretted and does not change tension, so its spring T/L is a constant of
     // the string rather than a fraction of the speaking length.
-    voice.bridgeTailStiffness = tension / std::max(
+    const float bridgeTailStiffness = tension / std::max(
         physicalCalibration_.bridgeTailLengthMetres, 1.0e-5f);
+    // Every string's port mobility reads all six anchors.
+    if (exact::bits(bridgeTailStiffness) != exact::bits(voice.bridgeTailStiffness))
+        ++voiceConfigurationGeneration_;
+    voice.bridgeTailStiffness = bridgeTailStiffness;
     // The longitudinal wave speed is sqrt(E*A/mu) for a wound string, whose
     // axial load the core carries while the whole construction supplies the
     // mass; plain strings use the same expression with their own diameter.
@@ -2912,6 +2957,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
     if (voice.keyDown || voice.pedalHeld || !voice.played)
         voice.releaseDamping = 1.0f;
+    voice.configurationKey = configurationKey;
 }
 
 void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
@@ -5410,6 +5456,7 @@ void AcustraEngine::setBridgeCouplingEnabled(bool enabled) noexcept
     if (bridgeCouplingEnabled_ == enabled)
         return;
     bridgeCouplingEnabled_ = enabled;
+    ++voiceConfigurationGeneration_;
     bridgeLoad_.reset();
     for (auto& derivative : bridgePowerDerivatives_)
         derivative.reset();

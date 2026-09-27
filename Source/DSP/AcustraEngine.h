@@ -526,9 +526,40 @@ private:
         std::array<float, 2> process(float source) noexcept;
     };
 
+    // Everything configureVoice's result depends on, reduced to what it is
+    // computed from: the engine-wide state configureVoice reads (calibration,
+    // host rate, construction, tuning, bridge bank, every string's anchor
+    // stiffness) enters as one generation count that changes whenever any of
+    // it does; the voice's own pitch, tension, age and hand enter as their
+    // exact bits. configureVoice writes the same values for an equal key, so
+    // an equal key lets it keep what it already wrote.
+    struct VoiceConfigurationKey
+    {
+        std::uint64_t generation { 0 }; // 0 matches nothing
+        int stoppedMidi { 0 };
+        int openMidi { 0 };
+        std::uint32_t frequency { 0 };
+        std::uint32_t tensionSemitones { 0 };
+        std::uint32_t age { 0 };
+        std::uint32_t palmMute { 0 };
+        bool steel { false };
+
+        bool operator==(const VoiceConfigurationKey& other) const noexcept
+        {
+            return generation == other.generation
+                && stoppedMidi == other.stoppedMidi
+                && openMidi == other.openMidi
+                && frequency == other.frequency
+                && tensionSemitones == other.tensionSemitones
+                && age == other.age && palmMute == other.palmMute
+                && steel == other.steel;
+        }
+    };
+
     struct Voice
     {
         std::array<StringLoop, 2> loops {};
+        VoiceConfigurationKey configurationKey {};
         // A string taken for a new note is still vibrating. This carries that
         // vibration on under the hand damping the model already uses for a
         // stopped note, instead of deleting it, in both planes: the parallel
@@ -874,6 +905,9 @@ private:
     BodyMaterial configuredBodyMaterial_ { BodyMaterial::Spruce };
     StringMaterial configuredBodyStringMaterial_ { StringMaterial::Steel };
     bool bodyUpdatePending_ { false };
+    // Advanced whenever engine state that configureVoice reads changes; see
+    // VoiceConfigurationKey. Starts past the keys' never-matching zero.
+    std::uint64_t voiceConfigurationGeneration_ { 1 };
     // The coupled body-shape factors configureBridge applies to the bridge
     // bank's A0 group, its modes up to T1 and the plate modes above; all
     // exactly 1 at each bank's anchor shape.
