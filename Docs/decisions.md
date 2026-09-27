@@ -4,7 +4,7 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
-## 2026-09-28 — g21's plate modes damped to the anechoic flamencas'
+## 2026-09-27 — g21's plate modes damped to the anechoic flamencas'
 
 What was measured. Fitted by the same generator and gates, each at its own
 converged window, the five anechoic flamenca blancas that pass (g37, g38,
@@ -38,8 +38,12 @@ Eastman notes, Pick/Finger: recordings 18.6/19.6, shipping 18.7/23.9, this
 17.6/23.5, g39 12.8/17.1; Finger's excess is H2 of single notes at 465,
 660 and 988 Hz, set by residue levels, not by the modes' Q.
 
-What is open. Not shipped: set 13, `2026-09-28-midq`, puts it (B) against
-shipping (A) and g39 (C) on four steel performances, key unread.
+What was decided. It ships on the measurement: every reference no fit has
+touched moves closer or holds, including the frozen test split under both
+tools, and development validation, 0.5-0.6% further, is the one that does
+not. A blind set (Set 15 in the listening room) puts the previous shipping
+engine (A) against this one (B) and g39 (C) on four steel performances,
+key unread, so the listener can overrule it by ear.
 
 ## 2026-09-27 — blind verdicts: Stereo Width stays at 0.62, and live chords get a switch
 
