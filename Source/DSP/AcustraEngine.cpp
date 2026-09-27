@@ -4789,7 +4789,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                                 float horizontalBridgeDisplacement,
                                 float& directLeft,
                                 float& directRight,
-                                float& sympatheticForce,
+                                float& /*sympatheticForce: legacy observer, now always zero*/,
                                 float& longitudinalForce) noexcept
 {
     // A rigid bridge and nut each invert a displacement wave, so the collapsed
