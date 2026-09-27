@@ -93,6 +93,85 @@ inline std::uint32_t bits(float value) noexcept
 #endif
     return result;
 }
+// std::complex<float> division. Under the Jukebox SDK its libc++ divides
+// with logb/scalbn scaling through five out-of-line calls; divide() is that
+// algorithm with the calls inlined - newlib's scalbnf replicated below, and
+// logbf, fmaxf and fabsf, which are exact for the normal divisors it takes -
+// and hands anything else (a non-finite part, a zero or subnormal divisor, a
+// NaN result) back to the library, so every result is the library's own.
+// Tests/cpu/SdkComplexDivisionFuzz.cpp in the Rack Extension checks it
+// against the SDK's compiled code. Other toolchains keep std's division.
+#if defined(JUKEBOX_SDK) && (defined(__clang__) || defined(__GNUC__))
+inline float fromBits(std::uint32_t value) noexcept
+{
+    float result;
+    __builtin_memcpy(&result, &value, sizeof(result));
+    return result;
+}
+
+// newlib libm/common/sf_scalbn.c, which the SDK's libc links, bit for bit.
+inline float sdkScalbn(float x, int n) noexcept
+{
+    constexpr float two25 = 3.355443200e+07f;
+    constexpr float twom25 = 2.9802322388e-08f;
+    constexpr float huge = 1.0e+30f;
+    constexpr float tiny = 1.0e-30f;
+    std::uint32_t ix = bits(x);
+    int k = static_cast<int>((ix & 0x7f800000u) >> 23);
+    if (k == 0)
+    {
+        if ((ix & 0x7fffffffu) == 0)
+            return x;
+        x *= two25;
+        ix = bits(x);
+        k = static_cast<int>((ix & 0x7f800000u) >> 23) - 25;
+        if (n < -50000)
+            return tiny * x;
+    }
+    if (k == 0xff)
+        return x + x;
+    k += n;
+    if (k > 0xfe)
+        return huge * __builtin_copysignf(huge, x);
+    if (k > 0)
+        return fromBits((ix & 0x807fffffu) | (static_cast<std::uint32_t>(k) << 23));
+    // FLT_SMALLEST_EXP: below it newlib flushes to zero rather than round.
+    if (k < -22)
+        return n > 50000 ? huge * __builtin_copysignf(huge, x)
+                         : tiny * __builtin_copysignf(tiny, x);
+    k += 25;
+    return fromBits((ix & 0x807fffffu) | (static_cast<std::uint32_t>(k) << 23)) * twom25;
+}
+
+inline std::complex<float> divide(const std::complex<float>& z,
+                                  const std::complex<float>& w) noexcept
+{
+    const float a = z.real();
+    const float b = z.imag();
+    float c = w.real();
+    float d = w.imag();
+    const std::uint32_t scale = bits(__builtin_fmaxf(__builtin_fabsf(c), __builtin_fabsf(d)));
+    if (!__builtin_isfinite(a) || !__builtin_isfinite(b) || !__builtin_isfinite(c)
+        || !__builtin_isfinite(d) || scale < 0x00800000u || scale >= 0x7f800000u)
+        return z / w;
+    // logb of a normal float is its unbiased exponent.
+    const int ilogbw = static_cast<int>(scale >> 23) - 127;
+    c = sdkScalbn(c, -ilogbw);
+    d = sdkScalbn(d, -ilogbw);
+    const float denominator = c * c + d * d;
+    const float x = sdkScalbn((a * c + b * d) / denominator, -ilogbw);
+    const float y = sdkScalbn((b * c - a * d) / denominator, -ilogbw);
+    if (__builtin_isnan(x) && __builtin_isnan(y))
+        return z / w;
+    return { x, y };
+}
+#else
+inline std::complex<float> divide(const std::complex<float>& z,
+                                  const std::complex<float>& w) noexcept
+{
+    return z / w;
+}
+#endif
 template <typename T> void abs(T) = delete;
 template <typename T> void isfinite(T) = delete;
 template <typename T> void floor(T) = delete;
@@ -2396,13 +2475,16 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
     std::complex<float> mobilityCross {};
     std::complex<float> mobilityRock {};
     const auto& table = bridgeMobilityTable();
+    // Both are the same numbers for every mode.
+    const std::complex<float> scaledS = table.scale * s;
+    const std::complex<float> sSquared = s * s;
     for (int index = 0; index < table.count; ++index)
     {
         const auto& mode = table.modes[static_cast<std::size_t>(index)];
         const float omega = mode.omega;
         const float damping = mode.damping;
-        const std::complex<float> shape = table.scale * s
-            / (s * s + 2.0f * damping * s + omega * omega);
+        const std::complex<float> shape = exact::divide(scaledS,
+            sSquared + 2.0f * damping * s + omega * omega);
         mobilityHeave += mode.heave * shape;
         mobilityCross += mode.cross * shape;
         mobilityRock += mode.rock * shape;
@@ -2412,8 +2494,8 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
     {
         const float omega = table.plateOmega;
         const float damping = table.plateDamping;
-        mobilityHeave += table.plateWeight * s
-            / (s * s + 2.0f * damping * s + omega * omega);
+        mobilityHeave += exact::divide(table.plateWeight * s,
+            sSquared + 2.0f * damping * s + omega * omega);
     }
 
     // Body and anchor are in parallel at the saddle, but on a bridge with two
