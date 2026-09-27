@@ -1276,13 +1276,14 @@ struct AcustraEngineTestAccess
     static std::vector<float> radiationHistory(const AcustraEngine& engine)
     {
         std::vector<float> state;
-        for (const auto* bank : { &engine.bodyModes_, &engine.fadingBodyModes_ })
-            for (const auto& mode : *bank)
+        for (const auto* bank : { &engine.bodyBank_, &engine.fadingBodyBank_ })
+            for (int index = 0; index < bank->count; ++index)
             {
-                state.push_back(mode.real);
-                state.push_back(mode.imaginary);
-                state.push_back(mode.momentReal);
-                state.push_back(mode.momentImaginary);
+                const auto mode = static_cast<std::size_t>(index);
+                state.push_back(bank->real[mode]);
+                state.push_back(bank->imaginary[mode]);
+                state.push_back(bank->momentReal[mode]);
+                state.push_back(bank->momentImaginary[mode]);
             }
         for (const auto* derivative : {
                  &engine.bridgeVelocityDerivative_, &engine.bridgeRotationDerivative_,

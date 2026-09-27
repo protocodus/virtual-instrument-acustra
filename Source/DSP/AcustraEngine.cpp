@@ -1771,6 +1771,8 @@ void AcustraEngine::reset() noexcept
         mode.reset();
     for (auto& mode : fadingBodyModes_)
         mode.reset();
+    bodyBank_.reset();
+    fadingBodyBank_.reset();
     const auto notes = openNotes(parameters_.tuning);
     for (int string = 0; string < stringCount; ++string)
     {
@@ -1828,6 +1830,8 @@ void AcustraEngine::resetSoundState() noexcept
         mode.reset();
     for (auto& mode : fadingBodyModes_)
         mode.reset();
+    bodyBank_.reset();
+    fadingBodyBank_.reset();
 }
 
 void AcustraEngine::setParameters(const EngineParameters& parameters) noexcept
@@ -1997,7 +2001,7 @@ void AcustraEngine::configureBody() noexcept
         if (bodyModelFade_ >= 1.0f)
         {
             fadingBodyModes_ = bodyModes_;
-            fadingBodyModeActiveCount_ = bodyModeActiveCount_;
+            fadingBodyBank_ = bodyBank_;
             fadingBodyRadiationDelay_ = bodyRadiationDelay_;
         }
         bodyModelFade_ = 0.0f;
@@ -2031,8 +2035,6 @@ void AcustraEngine::configureBody() noexcept
     // delay; the delay line stays for a bank that needs one.
     bodyRadiationDelay_.reset();
     bodyRadiationDelay_.configure(0.0f);
-    bodyModeActiveCount_ = static_cast<int>(std::min(
-        bank.size(), static_cast<std::size_t>(bodyModeCount)));
 
     for (int index = 0; index < bodyModeCount; ++index)
     {
@@ -2149,6 +2151,8 @@ void AcustraEngine::configureBody() noexcept
         if (bodyConfigured_)
             mode.reset();
     }
+    bodyBank_.load(bodyModes_, static_cast<int>(std::min(
+        bank.size(), static_cast<std::size_t>(bodyModeCount))), bodyConfigured_);
     configuredGuitarModel_ = parameters_.guitarModel;
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
@@ -5813,38 +5817,133 @@ AcustraEngine::BodyOutput AcustraEngine::RadiationDelay::process(BodyOutput inpu
     return result;
 }
 
+void AcustraEngine::BodyBank::load(const std::array<BodyMode, bodyModeCount>& modes,
+                                   int modeCount, bool resetStates) noexcept
+{
+    count = std::clamp(modeCount, 0, bodyModeCount);
+    for (int index = 0; index < capacity; ++index)
+    {
+        const auto slot = static_cast<std::size_t>(index);
+        const BodyMode mode = index < count ? modes[slot] : BodyMode {};
+        poleReal[slot] = mode.poleReal;
+        poleImaginary[slot] = mode.poleImaginary;
+        leftReal[slot] = mode.leftReal;
+        leftImaginary[slot] = mode.leftImaginary;
+        rightReal[slot] = mode.rightReal;
+        rightImaginary[slot] = mode.rightImaginary;
+        leftMomentReal[slot] = mode.leftMomentReal;
+        leftMomentImaginary[slot] = mode.leftMomentImaginary;
+        rightMomentReal[slot] = mode.rightMomentReal;
+        rightMomentImaginary[slot] = mode.rightMomentImaginary;
+        if (resetStates || index >= count)
+            real[slot] = imaginary[slot] = momentReal[slot] = momentImaginary[slot] = 0.0f;
+    }
+}
+
+// BodyMode::processStereo and renderBody's flush, for four modes at a time.
+// Each lane is the scalar expression's own sequence of IEEE operations (the
+// same products, sums and order), so each mode's states and contributions
+// are the scalar ones bit for bit; the two sums then take the contributions
+// one mode at a time in index order, as the scalar loop did. Only modes
+// below count are summed; lanes past it are zero padding.
+AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float moment) noexcept
+{
+    BodyOutput output;
+#if defined(__clang__) || defined(__GNUC__)
+    typedef float Vector __attribute__((vector_size(16)));
+    typedef std::int32_t Mask __attribute__((vector_size(16)));
+    const auto load = [] (const Lanes& lanes, int index)
+    {
+        Vector value;
+        __builtin_memcpy(&value, lanes.data() + index, sizeof(value));
+        return value;
+    };
+    const auto store = [] (Lanes& lanes, int index, Vector value)
+    {
+        __builtin_memcpy(lanes.data() + index, &value, sizeof(value));
+    };
+    // |x| < 1e-30 is exactly -1e-30 < x < 1e-30, NaN included (false).
+    const auto flush = [] (Vector value)
+    {
+        const Mask tiny = (value < 1.0e-30f) & (value > -1.0e-30f);
+        return reinterpret_cast<Vector>(reinterpret_cast<Mask>(value) & ~tiny);
+    };
+    const Vector forceLanes = { force, force, force, force };
+    const Vector momentLanes = { moment, moment, moment, moment };
+    // One group of four lanes, the first valid of them summed. A constant
+    // valid lets the full groups keep their products in vector registers.
+    const auto group = [&] (int index, int valid)
+    {
+        const Vector pr = load(poleReal, index);
+        const Vector pi = load(poleImaginary, index);
+        const Vector re = load(real, index);
+        const Vector im = load(imaginary, index);
+        const Vector mr = load(momentReal, index);
+        const Vector mi = load(momentImaginary, index);
+        const Vector nextReal = forceLanes + pr * re - pi * im;
+        const Vector nextImaginary = pi * re + pr * im;
+        const Vector nextMomentReal = momentLanes + pr * mr
+                                    - pi * mi;
+        const Vector nextMomentImaginary = pi * mr
+                                         + pr * mi;
+        const Vector leftPart = load(leftReal, index) * nextReal
+            - load(leftImaginary, index) * nextImaginary
+            + load(leftMomentReal, index) * nextMomentReal
+            - load(leftMomentImaginary, index) * nextMomentImaginary;
+        const Vector rightPart = load(rightReal, index) * nextReal
+            - load(rightImaginary, index) * nextImaginary
+            + load(rightMomentReal, index) * nextMomentReal
+            - load(rightMomentImaginary, index) * nextMomentImaginary;
+        for (int lane = 0; lane < valid; ++lane)
+        {
+            output.left += 2.0f * leftPart[lane];
+            output.right += 2.0f * rightPart[lane];
+        }
+        store(real, index, flush(nextReal));
+        store(imaginary, index, flush(nextImaginary));
+        store(momentReal, index, flush(nextMomentReal));
+        store(momentImaginary, index, flush(nextMomentImaginary));
+    };
+    int index = 0;
+    for (; index + lanes <= count; index += lanes)
+        group(index, lanes);
+    if (index < count)
+        group(index, count - index);
+#else
+    for (int index = 0; index < count; ++index)
+    {
+        const auto i = static_cast<std::size_t>(index);
+        const float nextReal = force + poleReal[i] * real[i] - poleImaginary[i] * imaginary[i];
+        const float nextImaginary = poleImaginary[i] * real[i] + poleReal[i] * imaginary[i];
+        const float nextMomentReal = moment + poleReal[i] * momentReal[i]
+                                   - poleImaginary[i] * momentImaginary[i];
+        const float nextMomentImaginary = poleImaginary[i] * momentReal[i]
+                                        + poleReal[i] * momentImaginary[i];
+        output.left += 2.0f * (leftReal[i] * nextReal - leftImaginary[i] * nextImaginary
+            + leftMomentReal[i] * nextMomentReal - leftMomentImaginary[i] * nextMomentImaginary);
+        output.right += 2.0f * (rightReal[i] * nextReal - rightImaginary[i] * nextImaginary
+            + rightMomentReal[i] * nextMomentReal - rightMomentImaginary[i] * nextMomentImaginary);
+        real[i] = exact::abs(nextReal) < 1.0e-30f ? 0.0f : nextReal;
+        imaginary[i] = exact::abs(nextImaginary) < 1.0e-30f ? 0.0f : nextImaginary;
+        momentReal[i] = exact::abs(nextMomentReal) < 1.0e-30f ? 0.0f : nextMomentReal;
+        momentImaginary[i] = exact::abs(nextMomentImaginary) < 1.0e-30f
+            ? 0.0f : nextMomentImaginary;
+    }
+#endif
+    // The mono microphone's sum is the right channel's (processStereo).
+    output.upper = output.right;
+    return output;
+}
+
 AcustraEngine::BodyOutput AcustraEngine::renderBody(float bridgeInput,
                                                    float bodyMoment) noexcept
 {
-    // Only a bank's own modes: the zero padding after them adds exactly
-    // zero to sums that start at +0 and so can never be -0. The mono
-    // microphone's sum is the right channel's (see BodyMode::processStereo).
-    const auto renderBank = [&] (auto& modes, int count)
-    {
-        BodyOutput output;
-        for (int index = 0; index < count; ++index)
-        {
-            auto& mode = modes[static_cast<std::size_t>(index)];
-            mode.processStereo(bridgeInput, bodyMoment, output.left, output.right);
-            if (exact::abs(mode.real) < 1.0e-30f)
-                mode.real = 0.0f;
-            if (exact::abs(mode.imaginary) < 1.0e-30f)
-                mode.imaginary = 0.0f;
-            if (exact::abs(mode.momentReal) < 1.0e-30f)
-                mode.momentReal = 0.0f;
-            if (exact::abs(mode.momentImaginary) < 1.0e-30f)
-                mode.momentImaginary = 0.0f;
-        }
-        output.upper = output.right;
-        return output;
-    };
-
     BodyOutput result = bodyRadiationDelay_.process(
-        renderBank(bodyModes_, bodyModeActiveCount_));
+        bodyBank_.render(bridgeInput, bodyMoment));
     if (bodyModelFade_ < 1.0f)
     {
         const BodyOutput previous = fadingBodyRadiationDelay_.process(
-            renderBank(fadingBodyModes_, fadingBodyModeActiveCount_));
+            fadingBodyBank_.render(bridgeInput, bodyMoment));
         const float mix = bodyModelFade_;
         result.left = previous.left + mix * (result.left - previous.left);
         result.right = previous.right + mix * (result.right - previous.right);

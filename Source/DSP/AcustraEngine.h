@@ -707,6 +707,40 @@ private:
         float upper { 0.0f };
     };
 
+    // The body bank as renderBody runs it: each BodyMode field as its own
+    // array, so four modes advance as one vector operation where the
+    // compiler has vector extensions (the Rack toolchain emits no vectors of
+    // its own). bodyModes_ stays the configured record; load() copies its
+    // coefficients here. The states live here only.
+    struct BodyBank
+    {
+        static constexpr int lanes = 4;
+        static constexpr int capacity = (bodyModeCount + lanes - 1) / lanes * lanes;
+        using Lanes = std::array<float, capacity>;
+        alignas(16) Lanes real {}, imaginary {}, momentReal {}, momentImaginary {};
+        alignas(16) Lanes poleReal {}, poleImaginary {};
+        alignas(16) Lanes leftReal {}, leftImaginary {}, rightReal {}, rightImaginary {};
+        alignas(16) Lanes leftMomentReal {}, leftMomentImaginary {};
+        alignas(16) Lanes rightMomentReal {}, rightMomentImaginary {};
+        int count { 0 };
+
+        // The first modeCount modes' coefficients; with resetStates their
+        // states restart from rest, as configureBody's mode.reset() did.
+        // Slots past the bank are zero, as configureBody's mode = {} was.
+        void load(const std::array<BodyMode, bodyModeCount>& modes,
+                  int modeCount, bool resetStates) noexcept;
+        void reset() noexcept
+        {
+            real.fill(0.0f);
+            imaginary.fill(0.0f);
+            momentReal.fill(0.0f);
+            momentImaginary.fill(0.0f);
+        }
+        // BodyMode::processStereo for every mode in index order, each sum
+        // accumulated in that order, then the same flush of tiny states.
+        BodyOutput render(float force, float moment) noexcept;
+    };
+
     struct RadiationDelay
     {
         // Largest supplied delay is 1 ms; capacity covers 384 kHz plus interpolation.
@@ -914,10 +948,11 @@ private:
     std::array<Voice, stringCount> voices_ {};
     std::array<BodyMode, bodyModeCount> bodyModes_ {};
     std::array<BodyMode, bodyModeCount> fadingBodyModes_ {};
-    // Slots past a bank's own modes are all-zero padding (configureBody);
-    // their contribution to every sum is exactly zero, so they are skipped.
-    int bodyModeActiveCount_ { bodyModeCount };
-    int fadingBodyModeActiveCount_ { bodyModeCount };
+    // What renderBody runs: the two banks above as BodyBank lanes, with
+    // their states. Slots past a bank's own modes are all-zero padding
+    // (configureBody); their contribution to every sum is exactly zero, so
+    // BodyBank::count stops before them.
+    BodyBank bodyBank_ {}, fadingBodyBank_ {};
     RadiationDelay bodyRadiationDelay_ {}, fadingBodyRadiationDelay_ {};
     GuitarModel configuredGuitarModel_ { GuitarModel::Original };
     BodyShape configuredBodyShape_ { BodyShape::Dreadnought };
