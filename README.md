@@ -2148,6 +2148,13 @@ git history rather than here.
   MIDI event waits 30 ms (reported to the host as latency) and a chord rolled
   in inside that window is voiced as if sent on one sample.
 - **Stereo Width stays at 0.62**, chosen by ear against 1.0 ("it is close").
+- **The engine costs about half as much CPU, with every sample unchanged.**
+  Strings whose inputs have not changed keep their configuration, the body
+  bank advances four modes at a time and skips empty slots, strings share
+  completed dispersion solves, and the math the Rack Extension toolchain
+  would turn into library calls is inline and exact. A held chord at 48 kHz
+  costs 40 us per 64-frame block where it cost 76 (host build); every
+  benchmark, corpus, performance and allocator render is byte-identical.
 
 ### 2026-09-25
 
