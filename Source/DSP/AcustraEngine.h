@@ -313,6 +313,16 @@ private:
         float lowpassCoefficient { 0.5f };
         float dispersionA1 { 0.0f };
         float dispersionA2 { 0.0f };
+        // The string's own bending loss (bendingLossSection in
+        // AcustraEngine.cpp): g / (1 + a1 z^-1 + a2 z^-2), unit gain at DC,
+        // designed at the host rate from the loss law rather than mapped
+        // from 48 kHz. Inactive leaves the loop exactly as it was.
+        bool bendingLossActive { false };
+        float bendingLossGain { 1.0f };
+        float bendingLossA1 { 0.0f };
+        float bendingLossA2 { 0.0f };
+        float bendingLossY1 { 0.0f };
+        float bendingLossY2 { 0.0f };
         OnePole broadLossFilter {};
         OnePole lossFilter {};
         SecondOrderAllpass dispersion {};
@@ -567,7 +577,12 @@ private:
         float dispersionDesignFrequencyLossScale { -1.0f };
         // Exact arguments of the last completed dispersion solve. Frequency
         // is positive, so the zero-initialized key cannot be a valid hit.
-        std::array<double, 7> dispersionDesignArguments {};
+        std::array<double, 9> dispersionDesignArguments {};
+        // The bending-loss section designed with that solve, for the
+        // unbent string; both polarisations carry it.
+        float bendingLossGain { 1.0f };
+        float bendingLossA1 { 0.0f };
+        float bendingLossA2 { 0.0f };
         // The fraction both polarisation loops were lengthened by so that the
         // pair of modes they form through a rocking saddle is heard at the
         // requested pitch (coupledPolarisationDetune); zero elsewhere.

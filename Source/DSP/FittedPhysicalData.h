@@ -128,6 +128,14 @@ struct PhysicalCalibration
     // so it low-passes the pluck at a corner that rises with the stroke's
     // force. Zero is the instant release.
     float pickEdgeRadiusMetres { 0.0f };
+    // The loss factor eta of a string's viscoelastic bending stiffness,
+    // EI(1 + i eta), one per construction: Valette's and Woodhouse's bending
+    // loss 1/Q_n = eta B n^2 / (1 + B n^2) (bendingLossSection in
+    // AcustraEngine.cpp). Zero is an exact no-op.
+    float steelWoundBendingLoss { 0.0f };
+    float steelPlainBendingLoss { 0.0f };
+    float nylonWoundBendingLoss { 0.0f };
+    float nylonPlainBendingLoss { 0.0f };
 };
 
 // Refit on 2026-09-04 around the two-way junction and the saddle anchor, by a
