@@ -5589,10 +5589,17 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
             excitation = noise * voice.excitationEnvelope;
         else
         {
-            const float referenceCoefficient = 0.05f
-                + 0.42f * voice.excitationColour;
-            const float excitationCoefficient = 1.0f - std::pow(
-                1.0f - referenceCoefficient, 1.0f / rateRatio);
+            if (exact::bits(voice.excitationColour) != voice.excitationCoefficientColour
+                || exact::bits(rateRatio) != voice.excitationCoefficientRate)
+            {
+                const float referenceCoefficient = 0.05f
+                    + 0.42f * voice.excitationColour;
+                voice.excitationCoefficient = 1.0f - std::pow(
+                    1.0f - referenceCoefficient, 1.0f / rateRatio);
+                voice.excitationCoefficientColour = exact::bits(voice.excitationColour);
+                voice.excitationCoefficientRate = exact::bits(rateRatio);
+            }
+            const float excitationCoefficient = voice.excitationCoefficient;
             voice.excitationLowpass += excitationCoefficient
                 * (noise - voice.excitationLowpass);
             excitation = (voice.excitationLowpass
