@@ -222,6 +222,13 @@ public:
     // Their delay lines still receive its return, and all six anchor springs
     // remain present. This changes bridge loading and the resulting motion.
     void setSympatheticStringsEnabled(bool enabled) noexcept;
+    // The port observers - getLastBridgeTailForce and the three
+    // getLastBridge*Power ledgers - and the moment histories behind them
+    // cost a tenth of a held chord and never reach the output. A host that
+    // does not read them (the plug-in, the Rack Extension) can turn them
+    // off; the audio is bit-identical either way. On by default, for the
+    // tests and tools that read them; switching restarts them from rest.
+    void setPortObserversEnabled(bool enabled) noexcept;
 
     void process(float* left, float* right, int numSamples) noexcept;
 
@@ -986,6 +993,7 @@ private:
     std::array<bool, midiChannelCount> sustainPedals_ {};
     bool bridgeCouplingEnabled_ { true };
     bool sympatheticStringsEnabled_ { true };
+    bool portObserversEnabled_ { true };
     // The strings do not leave the bridge when a note ends, so the junction
     // keeps the port they present rather than switching it out from under a
     // body that is still ringing.

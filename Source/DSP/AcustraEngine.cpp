@@ -5493,6 +5493,24 @@ void AcustraEngine::setBridgeCouplingEnabled(bool enabled) noexcept
                        false);
 }
 
+void AcustraEngine::setPortObserversEnabled(bool enabled) noexcept
+{
+    if (portObserversEnabled_ == enabled)
+        return;
+    portObserversEnabled_ = enabled;
+    // A history that stopped is stale; restart the observers from rest, as
+    // reset() does, rather than differencing across the gap.
+    for (auto& derivative : bridgePowerDerivatives_)
+        derivative.reset();
+    bridgeForceMomentDerivative_.reset();
+    bridgeTailForceDerivative_.reset();
+    bridgeTailMomentDerivative_.reset();
+    lastBridgeTailForce_ = 0.0f;
+    lastBridgePower_ = 0.0f;
+    lastBridgeBodyPower_ = 0.0f;
+    lastBridgeTailPower_ = 0.0f;
+}
+
 void AcustraEngine::setSympatheticStringsEnabled(bool enabled) noexcept
 {
     sympatheticStringsEnabled_ = enabled;
@@ -6112,34 +6130,40 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
             bridgeRotationDerivative_, bridgeRotation);
         lastBridgeReactionForce_ = motion(bridgeForceDerivative_, reactionWave);
         lastBridgeBodyForce_ = motion(bridgeBodyForceDerivative_, bodyForceWave);
-        lastBridgeTailForce_ = motion(bridgeTailForceDerivative_, tailForceWave);
-        // Power crosses the saddle in both coordinates, so each branch's is
-        // the heave product plus the rocking one; reading only the first
-        // would let the tail spring look like it stored negative energy.
-        motion(bridgeForceMomentDerivative_, reactionMoment);
         const float bodyMomentRate
             = motion(bridgeBodyMomentDerivative_, bodyMomentWave);
-        motion(bridgeTailMomentDerivative_, tailMomentWave);
-        // Account for the complete zero-state trajectory of the passive load.
-        // Audio priming suppresses the displacement shape's initial boundary
-        // step; using that primed derivative in the work ledger drops its
-        // positive input work but still counts the following elastic return.
-        // The independent histories keep that initial work, without changing
-        // the derivatives that drive radiation or the string pitch observer.
-        const std::array<float, 8> portWaves {
-            bridgeDisplacement, bridgeRotation, reactionWave, reactionMoment,
-            bodyForceWave, bodyMomentWave, tailForceWave, tailMomentWave
-        };
-        std::array<float, 8> portRates {};
-        for (std::size_t index = 0; index < portWaves.size(); ++index)
-            portRates[index] = bridgePowerDerivatives_[index].process(
-                portWaves[index], sampleRateRatio);
-        lastBridgePower_ = portRates[0] * portRates[2]
-                         + portRates[1] * portRates[3];
-        lastBridgeBodyPower_ = portRates[0] * portRates[4]
-                             + portRates[1] * portRates[5];
-        lastBridgeTailPower_ = portRates[0] * portRates[6]
-                             + portRates[1] * portRates[7];
+        // Everything from here to the voices is observation only - the tail
+        // force, the total and tail moments and the port-power ledger feed
+        // getters, never the output - so it runs only while observed.
+        if (portObserversEnabled_)
+        {
+            lastBridgeTailForce_ = motion(bridgeTailForceDerivative_, tailForceWave);
+            // Power crosses the saddle in both coordinates, so each branch's is
+            // the heave product plus the rocking one; reading only the first
+            // would let the tail spring look like it stored negative energy.
+            motion(bridgeForceMomentDerivative_, reactionMoment);
+            motion(bridgeTailMomentDerivative_, tailMomentWave);
+            // Account for the complete zero-state trajectory of the passive load.
+            // Audio priming suppresses the displacement shape's initial boundary
+            // step; using that primed derivative in the work ledger drops its
+            // positive input work but still counts the following elastic return.
+            // The independent histories keep that initial work, without changing
+            // the derivatives that drive radiation or the string pitch observer.
+            const std::array<float, 8> portWaves {
+                bridgeDisplacement, bridgeRotation, reactionWave, reactionMoment,
+                bodyForceWave, bodyMomentWave, tailForceWave, tailMomentWave
+            };
+            std::array<float, 8> portRates {};
+            for (std::size_t index = 0; index < portWaves.size(); ++index)
+                portRates[index] = bridgePowerDerivatives_[index].process(
+                    portWaves[index], sampleRateRatio);
+            lastBridgePower_ = portRates[0] * portRates[2]
+                             + portRates[1] * portRates[3];
+            lastBridgeBodyPower_ = portRates[0] * portRates[4]
+                                 + portRates[1] * portRates[5];
+            lastBridgeTailPower_ = portRates[0] * portRates[6]
+                                 + portRates[1] * portRates[7];
+        }
 
         float directLeft = 0.0f;
         float directRight = 0.0f;

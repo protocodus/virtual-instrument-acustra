@@ -38,6 +38,13 @@ struct AcustraEngineTestAccess
             voice.dispersionDesignArguments.fill(0.0);
     }
 
+    // Generation 0 matches no key, so every configureVoice runs in full.
+    static void invalidateVoiceConfigurations(AcustraEngine& engine)
+    {
+        for (auto& voice : engine.voices_)
+            voice.configurationKey.generation = 0;
+    }
+
     struct StringLoopSnapshot
     {
         double delay;
@@ -3171,6 +3178,96 @@ void testDispersionSolveCacheMatchesForcedRecomputation()
         }
     }
     expect(heardSignal, "dispersion cache comparison rendered no signal");
+}
+
+void testConfigurationKeysAndObserversLeaveTheOutputUnchanged()
+{
+    // cached keeps its voice configurations while their keys hold and runs
+    // without the port observers; reference reconfigures every string on
+    // every control update and observes. Their outputs must be identical in
+    // every bit, through settling attack glides, bends, vibrato, the bridge
+    // hand, construction and tuning changes, releases and a second rate.
+    acustra::AcustraEngine cached, reference;
+    cached.setPortObserversEnabled(false);
+    std::array<float, blockSize> left {}, right {}, expectedLeft {}, expectedRight {};
+    bool heardSignal = false;
+    const auto apply = [&] (const auto& operation)
+    {
+        operation(cached);
+        acustra::AcustraEngineTestAccess::invalidateVoiceConfigurations(reference);
+        operation(reference);
+    };
+    const auto render = [&] (const std::string& context, int blocks)
+    {
+        for (int block = 0; block < blocks; ++block)
+        {
+            cached.process(left.data(), right.data(), blockSize);
+            for (int part = 0; part < blockSize; part += 16)
+            {
+                acustra::AcustraEngineTestAccess::invalidateVoiceConfigurations(reference);
+                reference.process(expectedLeft.data() + part, expectedRight.data() + part,
+                                  std::min(16, blockSize - part));
+            }
+            expect(left == expectedLeft && right == expectedRight,
+                   "configuration keys or observers changed the output: " + context);
+            heardSignal = heardSignal || std::any_of(left.begin(), left.end(),
+                                                     [] (float value) { return value != 0.0f; });
+        }
+    };
+    for (const auto material : { acustra::StringMaterial::Steel,
+                                 acustra::StringMaterial::Nylon })
+    for (const double rate : { 48000.0, 96000.0 })
+    {
+        const std::string context = (material == acustra::StringMaterial::Steel
+            ? "steel " : "nylon ") + std::to_string(rate);
+        acustra::EngineParameters parameters;
+        parameters.stringMaterial = material;
+        apply([&] (auto& engine) { engine.setParameters(parameters); });
+        apply([&] (auto& engine) { engine.prepare(rate, blockSize); });
+        apply([] (auto& engine)
+        {
+            engine.beginStrum();
+            for (int note : { 40, 47, 52, 56, 59, 64 })
+                engine.noteOn(note, 0.8f, 1, 40 * (note - 40), true);
+        });
+        // Long enough for held steel notes' attack glides to settle, which
+        // is when their keys start to hold.
+        render(context + " held chord", static_cast<int>(3.0 * rate) / blockSize);
+        apply([] (auto& engine) { engine.setVibrato(0.7f); });
+        render(context + " vibrato", 40);
+        apply([] (auto& engine) { engine.setVibrato(0.0f); });
+        for (const float bend : { 0.0005f, 0.5f, 2.0f, 0.0f })
+        {
+            apply([&] (auto& engine) { engine.setPitchBend(bend, 1); });
+            render(context + " bend " + std::to_string(bend), 12);
+        }
+        for (const float pressure : { 0.3f, 0.8f, 0.0f })
+        {
+            apply([&] (auto& engine) { engine.setPalmMutePressure(pressure); });
+            render(context + " bridge hand " + std::to_string(pressure), 12);
+        }
+        parameters.shape = acustra::BodyShape::Parlor;
+        apply([&] (auto& engine) { engine.setParameters(parameters); });
+        render(context + " shape", 30);
+        parameters.bridgeModel = acustra::BridgeModel::FyldeSteel;
+        parameters.stringAge += 0.2f;
+        apply([&] (auto& engine) { engine.setParameters(parameters); });
+        render(context + " bridge and age", 30);
+        parameters.tuning = acustra::Tuning::DropD;
+        apply([&] (auto& engine) { engine.setParameters(parameters); });
+        render(context + " tuning", 30);
+        apply([] (auto& engine) { engine.setSustainPedal(true); });
+        apply([] (auto& engine) { engine.noteOff(47); engine.noteOff(59); });
+        render(context + " pedalled release", 20);
+        apply([] (auto& engine) { engine.setSustainPedal(false); });
+        render(context + " release", 60);
+        apply([] (auto& engine) { engine.noteOn(62, 0.6f); });
+        render(context + " new note", 60);
+        apply([] (auto& engine) { engine.allNotesOff(); });
+        render(context + " all notes off", 60);
+        apply([] (auto& engine) { engine.reset(); });
+    }
+    expect(heardSignal, "configuration key comparison rendered no signal");
 }
 
 void testDispersionAcrossRatesMaterialsAndNotes()
@@ -7796,6 +7893,7 @@ int main()
     testLoadedE2IsCentredAndNotSplit();
     testSteelDispersionTracksTheStiffStringLaw();
     testDispersionSolveCacheMatchesForcedRecomputation();
+    testConfigurationKeysAndObserversLeaveTheOutputUnchanged();
     testDispersionAcrossRatesMaterialsAndNotes();
     testTheFractionalDelayReadIsLossless();
     testASlewingDelayDoesNotClickAboveFourteenKilohertz();
