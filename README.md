@@ -137,10 +137,35 @@ and upper-bout microphone pair, a steel Finger 149 mm from the bridge,
 steel's air mode four times stronger at the bridge microphone), the refitted
 plectrum and double-precision bridge modes, 6.329200, 5.994260 and 7.425652,
 and 6.432400, 5.996174 and 7.181437. The latter are the base every later
-paired comparison is taken against. Under Pick the archtop rows read 6.103277
-and 5.702917. The
+paired comparison was taken against until 2026-09-27. Under Pick the archtop
+rows read 6.103277 and 5.702917. With the plectrum released as the string
+slides round its edge and steel's plate modes damped to the anechoic
+flamencas' measured Q (2026-09-27), the Fylde reading is 6.403167, 6.019245
+and 7.121675, and under Pick with the Fylde bridge 5.943771 and 5.605528
+(steel alone 5.516350 and 5.511048); these are the current base. The
 renderer renders each material at its anchor body - steel the default
 Dreadnought, nylon the Auditorium slot that is the measured classical.
+
+The bank's steel rows are an archtop, and its only flat-top is eight notes
+of one finger-plucked take. [`BenchmarkOpenCorpora.py`](Tools/BenchmarkOpenCorpora.py)
+scores the same descriptors against open recordings outside the bank, each
+prepared by a tool that pins its source hashes and licence and writes rows in
+a shared schema (no audio is committed): 49 picked and 55 finger-plucked notes
+from the two full CC0 Eastman E1D dreadnought takes
+([`PrepareEastmanCorpus.py`](Tools/PrepareEastmanCorpus.py)), 11 regions of a
+CC0 Martin HD28 sample bank whose samples start at the attack and stop at their
+loop, so its attack term is not read
+([`PrepareMartinCorpus.py`](Tools/PrepareMartinCorpus.py)), and 317 anechoic
+nylon notes at pp, mf and ff from the University of Iowa's Raimundo 118,
+high-passed at 60 Hz against the microphone's rumble and tuned 22 cents flat,
+which its tuning term reads as error
+([`PrepareIowaGuitarCorpus.py`](Tools/PrepareIowaGuitarCorpus.py)). Its
+renderer is the fit renderer's model half, byte-identical to it. On the
+current engine they read 6.453504 (Eastman picked), 7.391678 (Eastman finger),
+7.322244 (Martin HD28) and 9.741938 (Iowa nylon). None of them is fitted; a
+split used to choose a calibration stops being a held-out reading. Two of the
+bank's eight flat-top targets (E2, E3) start after their attack has begun,
+which the corpus tool's onset rule catches and the bank's export did not.
 
 Run `python3 Tools/SummarizePhysicalBenchmark.py` to print the compact split
 table, historical sample-player control and five retained realism paths from
@@ -2092,6 +2117,37 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
 A concise ledger of the changes that move what Acustra sounds like or how it is
 controlled. Pure refactors, deduplications and test-coverage additions are in
 git history rather than here.
+
+### 2026-09-27
+
+- **A plectrum lets go as the string slides round its edge.** The held force
+  unloads over the time the string's own motion takes to cross a 0.15 mm edge,
+  so a soft stroke is released darker than a hard one: the picked archtop's
+  soft-to-loud brightness rise is 4.1 dB where it was 0.7 (the recordings'
+  8.4). Every Pick reference reads closer - archtop training 6.3%, the frozen
+  test split 4.2%, the Eastman dreadnought's picked take 2.0%; the refit
+  around it drops the pick's release-velocity share and transient. Finger and
+  Thumb are unchanged.
+- **Steel's plate modes are damped to the anechoic flamencas'.** g21, the
+  measured body behind the steel presets, rang with more Q in every band above
+  its top-plate mode than five flamencas of the same archive measured
+  anechoically; each mode now takes their median Q (the 655 Hz mode 60.6 to
+  46.6), with frequencies, levels, the air mode and T1 as measured. Flat-top
+  rows, both Eastman takes, the Martin and GuitarSet read closer, and so does
+  the frozen test split under Finger and Pick; development validation reads
+  0.5% further. Removing g21's music room from its measurement was also tried:
+  the ringing is the body's own, not the room's, and that change does not ship.
+- **The fretting hand remembers where it has been.** Live notes are fretted
+  within reach of the hand the sounding and recently released notes define (a
+  four-fret position with a one-fret stretch, after Heijink and Meulenbroek
+  2002), then on open strings, then low frets, the order the listener asked
+  for; a chord rolled in within 30 ms is re-fretted as one shape. With nothing
+  fretted for two seconds the previous allocator runs exactly, so single notes
+  are unchanged.
+- **CHORDS gathers live keyboard chords**, off by default: while on, every
+  MIDI event waits 30 ms (reported to the host as latency) and a chord rolled
+  in inside that window is voiced as if sent on one sample.
+- **Stereo Width stays at 0.62**, chosen by ear against 1.0 ("it is close").
 
 ### 2026-09-25
 
