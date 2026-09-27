@@ -13,8 +13,37 @@
 #include <cmath>
 #include <complex>
 #include <limits>
-#include <numbers>
-#include <span>
+
+namespace acustra
+{
+namespace
+{
+// C++17 stand-ins for std::span and std::numbers: the Rack Extension
+// toolchain compiles this engine as C++17 against a libc++ without either.
+// The constants are the same double values std::numbers gives.
+constexpr double piDouble = 3.141592653589793238462643383279502884;
+constexpr double sqrt2Double = 1.414213562373095048801688724209698079;
+
+template <typename T>
+class ConstSpan
+{
+public:
+    template <std::size_t N>
+    constexpr ConstSpan(const std::array<T, N>& values) noexcept
+        : data_ { values.data() }, size_ { N } {}
+    constexpr std::size_t size() const noexcept { return size_; }
+    constexpr const T& operator[](std::size_t index) const noexcept { return data_[index]; }
+    constexpr const T* begin() const noexcept { return data_; }
+    constexpr const T* end() const noexcept { return data_ + size_; }
+    constexpr bool empty() const noexcept { return size_ == 0; }
+
+private:
+    const T* data_ {};
+    std::size_t size_ {};
+};
+} // namespace
+} // namespace acustra
+
 
 namespace acustra
 {
@@ -213,7 +242,7 @@ struct BodyShapeMorph
 
 constexpr float lowBodyGroupUpperHz = 150.0f;
 
-BodyShapeMorph bodyShapeMorph(std::span<const detail::MeasuredBodyMode> bank,
+BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
                               const AnchorTransform& anchor,
                               const BodyGeometry& anchorBody,
                               const BodyGeometry& body) noexcept
@@ -519,7 +548,7 @@ float bentStringTension(float tension, float axialRigidity,
 // The original steel voice adapts Mores g21, a nylon-strung flamenco guitar.
 // The optional Fylde bank supplies measured steel-string bridge mobility;
 // radiation still uses the existing bank. Nylon retains its own g34 bank.
-std::span<const detail::MeasuredBridgeMode> measuredBridgeBank(
+ConstSpan<detail::MeasuredBridgeMode> measuredBridgeBank(
     StringMaterial material, BridgeModel model,
     GuitarModel guitar = GuitarModel::Original) noexcept
 {
@@ -534,7 +563,7 @@ std::span<const detail::MeasuredBridgeMode> measuredBridgeBank(
     return detail::measuredNylonBridgeModes;
 }
 
-std::span<const detail::MeasuredBodyMode> measuredBodyBank(
+ConstSpan<detail::MeasuredBodyMode> measuredBodyBank(
     StringMaterial material, GuitarModel guitar) noexcept
 {
     if (guitar == GuitarModel::Bellido1978)
@@ -2346,7 +2375,7 @@ float AcustraEngine::coupledPolarisationDetune(
     // correction.
     const double ownPhase = std::arg(Complex((unbentAdmittance - normal)
                                              / (unbentAdmittance + normal)));
-    const double digitalOmega = 2.0 * std::numbers::pi
+    const double digitalOmega = 2.0 * piDouble
         * static_cast<double>(frequency) / sampleRate_;
     const Complex gainNormal = std::polar(static_cast<double>(normalGain), -ownPhase);
     const Complex gainParallel = std::polar(static_cast<double>(parallelGain),
@@ -2376,7 +2405,7 @@ float AcustraEngine::coupledPolarisationDetune(
     }
     if (!(weights > 0.0))
         return 0.0f;
-    const double detune = weighted / (weights * 2.0 * std::numbers::pi);
+    const double detune = weighted / (weights * 2.0 * piDouble);
     return std::isfinite(detune)
         ? static_cast<float>(std::clamp(detune, -0.02, 0.02)) : 0.0f;
 }
@@ -3208,8 +3237,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             const float endpoint = releasedAt(0.0f);
             // Subtracting a constant changes only DC. Keep the signed wave:
             // rectification would introduce corners absent from the contact.
-            const auto fillRange = [&]<bool smoothed> (int first, int last)
+            const auto fillRange = [&] (auto smoothedTag, int first, int last)
             {
+                constexpr bool smoothed = decltype(smoothedTag)::value;
                 for (int sample = first; sample < last; ++sample)
                 {
                     const float phase = static_cast<float>(sample)
@@ -3248,15 +3278,15 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                 for (const auto& support : supports)
                 {
                     if (support[0] > filled)
-                        fillRange.template operator()<false>(filled, support[0]);
+                        fillRange(std::false_type {}, filled, support[0]);
                     filled = std::max(filled, support[0]);
                     if (support[1] > filled)
-                        fillRange.template operator()<true>(filled, support[1]);
+                        fillRange(std::true_type {}, filled, support[1]);
                     filled = std::max(filled, support[1]);
                 }
             }
             else
-                fillRange.template operator()<true>(0, length);
+                fillRange(std::true_type {}, 0, length);
         };
         // Specialize outside the sample loop. Broad contacts retain every
         // periodic image selected by the same analytic tail bound.
@@ -3676,7 +3706,7 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     };
     const auto step = [&] (double z)
     {
-        return 0.5 * std::erfc(-z / (sigma * std::numbers::sqrt2));
+        return 0.5 * std::erfc(-z / (sigma * sqrt2Double));
     };
     const auto images = [] (double z, const auto& kernel)
     {
