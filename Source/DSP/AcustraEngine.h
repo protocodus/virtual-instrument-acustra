@@ -250,6 +250,7 @@ private:
     static constexpr int maximumDelaySamples = 8192;
     static constexpr int bodyModeCount = ACUSTRA_BODY_MODE_COUNT;
     static constexpr int bridgeModeCount = ACUSTRA_BRIDGE_MODE_COUNT;
+    static_assert(bridgeModeCount < 255, "BridgeLoad::activeModes holds a byte");
     static constexpr int controlPeriod = 32;
     static constexpr int midiChannelCount = 16;
     static constexpr int legatoHeldLimit = 8;
@@ -418,6 +419,16 @@ private:
         std::array<float, bridgeModeCount + 1> residueCross {};
         std::array<float, bridgeModeCount + 1> residueRock {};
         std::array<bool, bridgeModeCount + 1> rocking {};
+        // The slots process() runs, in index order: configureBridge drops
+        // the ones whose section and residues are all zero (the padding past
+        // a bank and modes above 0.45 fs), which add exactly zero.
+        std::array<std::uint8_t, bridgeModeCount + 1> activeModes = [] {
+            std::array<std::uint8_t, bridgeModeCount + 1> all {};
+            for (std::size_t index = 0; index < all.size(); ++index)
+                all[index] = static_cast<std::uint8_t>(index);
+            return all;
+        }();
+        int activeModeCount { bridgeModeCount + 1 };
         float immediateHeave { 0.0f };
         float immediateCross { 0.0f };
         float immediateRock { 0.0f };

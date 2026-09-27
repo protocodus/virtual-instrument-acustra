@@ -1650,8 +1650,9 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
 
     double nextPastHeave = 0.0;
     double nextPastRock = 0.0;
-    for (std::size_t index = 0; index < heaveModes.size(); ++index)
+    for (int active = 0; active < activeModeCount; ++active)
     {
+        const std::size_t index = activeModes[static_cast<std::size_t>(active)];
         const double heaveState = heaveModes[index].processPast(bodyForce);
         nextPastHeave += residueHeave[index] * heaveState;
         if (!rocking[index])
@@ -2236,6 +2237,24 @@ void AcustraEngine::configureBridge() noexcept
               0.0f, 0.0f);
     bridgeLoad_.pastHeave = 0.0f;
     bridgeLoad_.pastRock = 0.0f;
+    // A slot whose sections and residues are all zero returns +-0 and adds
+    // +-0 to sums that start at +0, so leaving it out changes no bit.
+    bridgeLoad_.activeModeCount = 0;
+    for (std::size_t index = 0; index < bridgeLoad_.heaveModes.size(); ++index)
+    {
+        const auto zero = [] (const BridgeMode& mode)
+        {
+            return mode.denominator1 == 0.0 && mode.denominator2 == 0.0
+                && mode.numerator1 == 0.0 && mode.numerator2 == 0.0;
+        };
+        if (zero(bridgeLoad_.heaveModes[index]) && zero(bridgeLoad_.rockModes[index])
+            && bridgeLoad_.residueHeave[index] == 0.0f
+            && bridgeLoad_.residueCross[index] == 0.0f
+            && bridgeLoad_.residueRock[index] == 0.0f)
+            continue;
+        bridgeLoad_.activeModes[static_cast<std::size_t>(
+            bridgeLoad_.activeModeCount++)] = static_cast<std::uint8_t>(index);
+    }
 }
 
 float AcustraEngine::bridgePhaseDelay(float frequency,
