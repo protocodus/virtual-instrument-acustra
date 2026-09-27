@@ -41,6 +41,50 @@ private:
     const T* data_ {};
     std::size_t size_ {};
 };
+
+// The Rack Extension toolchain compiles with -ffreestanding -fno-builtin, so
+// there std::abs, std::isfinite, std::floor, std::sqrt and std::copysign on a
+// float or double are out-of-line library calls (fabsf, __fpclassifyf, a
+// bit-serial software sqrtf, ...), several per body mode and string per
+// sample. Each is an exactly specified IEEE operation - no rounding choice
+// is left to the library - so the compiler builtins, which lower to the
+// instruction, return the same bits on every toolchain. MSVC keeps std.
+// Only real scalars are accepted: a complex or integer argument does not
+// convert, so it cannot silently change meaning here.
+namespace exact
+{
+#if defined(__clang__) || defined(__GNUC__)
+inline float abs(float value) noexcept { return __builtin_fabsf(value); }
+inline double abs(double value) noexcept { return __builtin_fabs(value); }
+inline bool isfinite(float value) noexcept { return __builtin_isfinite(value); }
+inline bool isfinite(double value) noexcept { return __builtin_isfinite(value); }
+inline float floor(float value) noexcept { return __builtin_floorf(value); }
+inline double floor(double value) noexcept { return __builtin_floor(value); }
+inline float sqrt(float value) noexcept { return __builtin_sqrtf(value); }
+inline double sqrt(double value) noexcept { return __builtin_sqrt(value); }
+inline float copysign(float magnitude, float sign) noexcept
+{
+    return __builtin_copysignf(magnitude, sign);
+}
+#else
+inline float abs(float value) noexcept { return std::abs(value); }
+inline double abs(double value) noexcept { return std::abs(value); }
+inline bool isfinite(float value) noexcept { return std::isfinite(value); }
+inline bool isfinite(double value) noexcept { return std::isfinite(value); }
+inline float floor(float value) noexcept { return std::floor(value); }
+inline double floor(double value) noexcept { return std::floor(value); }
+inline float sqrt(float value) noexcept { return std::sqrt(value); }
+inline double sqrt(double value) noexcept { return std::sqrt(value); }
+inline float copysign(float magnitude, float sign) noexcept
+{
+    return std::copysign(magnitude, sign);
+}
+#endif
+template <typename T> void abs(T) = delete;
+template <typename T> void isfinite(T) = delete;
+template <typename T> void floor(T) = delete;
+template <typename T> void sqrt(T) = delete;
+} // namespace exact
 } // namespace
 } // namespace acustra
 
@@ -185,7 +229,7 @@ float helmholtzFrequency(const BodyGeometry& body) noexcept
     const float area = pi * radius * radius;
     const float neck = 0.003f + 1.7f * radius;
     return soundSpeed / twoPi
-        * std::sqrt(area / (body.volume() * neck));
+        * exact::sqrt(area / (body.volume() * neck));
 }
 
 LowBodyPair coupledLowBodyPair(float plateFrequency, float cavitySpringFrequency,
@@ -196,7 +240,7 @@ LowBodyPair coupledLowBodyPair(float plateFrequency, float cavitySpringFrequency
     const double wh = twoPi * helmholtz;
     const double sum = wp0 * wp0 + wa * wa + wh * wh;
     const double product = wp0 * wp0 * wh * wh;
-    const double discriminant = std::sqrt(std::max(sum * sum - 4.0 * product, 0.0));
+    const double discriminant = exact::sqrt(std::max(sum * sum - 4.0 * product, 0.0));
     const double lambdas[] { 0.5 * (sum - discriminant), 0.5 * (sum + discriminant) };
     LowBodyPair pair {};
     float* frequencies[] { &pair.a0Frequency, &pair.t1Frequency };
@@ -207,16 +251,16 @@ LowBodyPair coupledLowBodyPair(float plateFrequency, float cavitySpringFrequency
         // Second row of (K - lambda M) phi = 0 with the hole part taken as 1:
         // phi_p + (1 - lambda/wh^2) phi_h = 0, then mass-normalise.
         const double platePart = -(1.0 - lambda / (wh * wh));
-        const double massNorm = std::sqrt(platePart * platePart / (wa * wa)
+        const double massNorm = exact::sqrt(platePart * platePart / (wa * wa)
                                           + 1.0 / (wh * wh));
         const double phiPlate = platePart / massNorm;
         const double phiHole = 1.0 / massNorm;
         // Force enters on the plate coordinate as V/A_p = depth; the output is
         // the sum of both volume velocities.
         const double residue = (phiPlate + phiHole) * phiPlate * depth;
-        const double frequency = std::sqrt(lambda) / twoPi;
+        const double frequency = exact::sqrt(lambda) / twoPi;
         *frequencies[mode] = static_cast<float>(frequency);
-        *weights[mode] = static_cast<float>(std::abs(residue) * frequency);
+        *weights[mode] = static_cast<float>(exact::abs(residue) * frequency);
     }
     return pair;
 }
@@ -289,7 +333,7 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
         const bool lowBodyMode = mode.frequency > 85.0f && mode.frequency < 145.0f;
         return mode.frequency * (lowBodyMode ? anchor.airHz / 107.0f : anchor.modeScale)
             * (1.0f + alternating * anchor.asymmetry
-               / std::sqrt(static_cast<float>(index + 1)));
+               / exact::sqrt(static_cast<float>(index + 1)));
     };
     const float a0 = anchored(a0Index);
     const float t1 = anchored(morph.t1Index);
@@ -300,7 +344,7 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
                                     - anchorHelmholtz * anchorHelmholtz;
     if (!(cavitySpringSquared > 0.0f))
         return morph;
-    const float cavitySpring = std::sqrt(cavitySpringSquared);
+    const float cavitySpring = exact::sqrt(cavitySpringSquared);
     const float anchorDepth = anchorBody.volume() / anchorBody.topArea();
     const auto reference = coupledLowBodyPair(plate, cavitySpring,
                                               anchorHelmholtz, anchorDepth);
@@ -311,7 +355,7 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     const float areaRatio = body.topArea() / anchorBody.topArea();
     const float targetPlate = plate / areaRatio;
     const float targetSpring = cavitySpring
-        * std::sqrt((body.topArea() / body.volume())
+        * exact::sqrt((body.topArea() / body.volume())
                     / (anchorBody.topArea() / anchorBody.volume()));
     const auto target = coupledLowBodyPair(targetPlate, targetSpring,
                                            helmholtzFrequency(body),
@@ -402,13 +446,13 @@ float safetyLimit(float sample) noexcept
     // The former zero-centred knee altered every ordinary guitar transient.
     constexpr float threshold = 0.89125094f;
     constexpr float headroom = 1.0f - threshold;
-    const float magnitude = std::abs(sample);
+    const float magnitude = exact::abs(sample);
     if (magnitude <= threshold)
         return sample;
     const float excess = magnitude - threshold;
     const float limited = threshold
         + excess / (1.0f + excess / headroom);
-    return std::copysign(limited, sample);
+    return exact::copysign(limited, sample);
 }
 
 constexpr std::array<float, AcustraEngine::stringCount> steelDiameterMetres {{
@@ -613,7 +657,7 @@ bool includeMeasuredBridgeMode(const detail::MeasuredBridgeMode& mode) noexcept
     // resolved Q.
     constexpr float openLowE = 82.406889f;
     const float cents = 1200.0f * std::log2(mode.frequency / openLowE);
-    return std::abs(cents) >= 25.0f;
+    return exact::abs(cents) >= 25.0f;
 #else
     (void) mode;
     return true;
@@ -640,8 +684,8 @@ PlateConductanceMode plateConductanceMode(
 {
     const float low = std::clamp(calibration.bridgeConductanceCornerHz,
                                  100.0f, 8000.0f);
-    return { std::sqrt(low * plateConductanceUpperHz),
-             std::sqrt(low / plateConductanceUpperHz),
+    return { exact::sqrt(low * plateConductanceUpperHz),
+             exact::sqrt(low / plateConductanceUpperHz),
              calibration.bridgeConductanceFloor * twoPi
                  * plateConductanceUpperHz };
 }
@@ -727,7 +771,7 @@ double mixedOnePolePhase(double coefficient, double mix,
 // chatter across it.
 int delayAnchor(double samples) noexcept
 {
-    return static_cast<int>(std::floor(samples - 1.1));
+    return static_cast<int>(exact::floor(samples - 1.1));
 }
 
 void thiranCoefficients(double samples, double& a1, double& a2) noexcept
@@ -805,14 +849,14 @@ double tunedLoopDelay(double fundamental, double sampleRate,
         {
             const double residual = thiranDelayPhase(delay, anchor, omega)
                                   + fixedPhase - twoPiDouble;
-            if (std::abs(residual) < 1.0e-11)
+            if (exact::abs(residual) < 1.0e-11)
                 break;
             constexpr double step = 0.01;
             const double slope
                 = (thiranDelayPhase(delay + step, anchor, omega)
                  - thiranDelayPhase(delay - step, anchor, omega))
                 / (2.0 * step);
-            if (std::abs(slope) < 1.0e-12)
+            if (exact::abs(slope) < 1.0e-12)
                 break;
             delay = std::clamp(delay - residual / slope, 3.0,
                 static_cast<double>(localMaximumDelaySamples - 3));
@@ -838,10 +882,10 @@ bool solveThreeByThree(double matrix[3][3], const double rhs[3],
     {
         int pivot = column;
         for (int row = column + 1; row < 3; ++row)
-            if (std::abs(augmented[row][column])
-                > std::abs(augmented[pivot][column]))
+            if (exact::abs(augmented[row][column])
+                > exact::abs(augmented[pivot][column]))
                 pivot = row;
-        if (std::abs(augmented[pivot][column]) < 1.0e-13)
+        if (exact::abs(augmented[pivot][column]) < 1.0e-13)
             return false;
         if (pivot != column)
             for (int item = column; item < 4; ++item)
@@ -890,7 +934,7 @@ DispersionCalibration calibrateDispersion(
 
     const auto stretchedOmega = [=] (double partial)
     {
-        return omega0 * partial * std::sqrt(
+        return omega0 * partial * exact::sqrt(
             (1.0 + inharmonicity * partial * partial)
             / (1.0 + inharmonicity));
     };
@@ -932,8 +976,8 @@ DispersionCalibration calibrateDispersion(
     };
     const auto maximumResidual = [] (const double residuals[3])
     {
-        return std::max({ std::abs(residuals[0]), std::abs(residuals[1]),
-                          std::abs(residuals[2]) });
+        return std::max({ exact::abs(residuals[0]), exact::abs(residuals[1]),
+                          exact::abs(residuals[2]) });
     };
 
     // Nine damped Gauss-Newton steps on (delay, decayRatio, poleRatio)
@@ -1108,7 +1152,7 @@ AcustraEngine::AcustraEngine() noexcept
 
 float AcustraEngine::clamp(float value, float low, float high) noexcept
 {
-    if (!std::isfinite(value))
+    if (!exact::isfinite(value))
         return low;
     return std::max(low, std::min(high, value));
 }
@@ -1174,7 +1218,7 @@ PhysicalCalibration AcustraEngine::sanitise(
     const auto bounded = [] (float value, float low, float high,
                              float fallback) noexcept
     {
-        return std::isfinite(value) ? std::clamp(value, low, high) : fallback;
+        return exact::isfinite(value) ? std::clamp(value, low, high) : fallback;
     };
     const auto material = [&] (const MaterialCalibration& value,
                                const MaterialCalibration& fallback) noexcept
@@ -1484,7 +1528,7 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
     if (releaseGain != requestedReleaseGain)
     {
         requestedReleaseGain = releaseGain;
-        releaseGainStep = std::abs(releaseGain - appliedReleaseGain)
+        releaseGainStep = exact::abs(releaseGain - appliedReleaseGain)
                         / std::max(currentDelay, 1.0f);
     }
     if (appliedReleaseGain < requestedReleaseGain)
@@ -1498,7 +1542,7 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
 
 void AcustraEngine::StringLoop::write(float value) noexcept
 {
-    if (!std::isfinite(value) || std::abs(value) < 1.0e-30f)
+    if (!exact::isfinite(value) || exact::abs(value) < 1.0e-30f)
         value = 0.0f;
     delay[static_cast<std::size_t>(writeIndex)] = value;
     writeIndex = wrapDelayIndex(writeIndex + 1);
@@ -1579,8 +1623,8 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     const float r0 = immediateHeave * b0 + immediateCross * b1 + pastHeave;
     const float r1 = immediateCross * b0 + immediateRock * b1 + pastRock;
     const float determinant = m00 * m11 - m01 * m10;
-    if (!(std::abs(determinant) > 1.0e-12f) || !std::isfinite(b0)
-        || !std::isfinite(b1))
+    if (!(exact::abs(determinant) > 1.0e-12f) || !exact::isfinite(b0)
+        || !exact::isfinite(b1))
     {
         reset();
         return;
@@ -1588,7 +1632,7 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
 
     const float nextDisplacement = (r0 * m11 - r1 * m01) / determinant;
     const float nextRotation = (r1 * m00 - r0 * m10) / determinant;
-    if (!std::isfinite(nextDisplacement) || !std::isfinite(nextRotation))
+    if (!exact::isfinite(nextDisplacement) || !exact::isfinite(nextRotation))
     {
         reset();
         return;
@@ -1617,9 +1661,9 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
         nextPastRock += residueCross[index] * heaveState
                       + residueRock[index] * rockState;
     }
-    pastHeave = std::isfinite(nextPastHeave)
+    pastHeave = exact::isfinite(nextPastHeave)
         ? static_cast<float>(nextPastHeave) : 0.0f;
-    pastRock = std::isfinite(nextPastRock)
+    pastRock = exact::isfinite(nextPastRock)
         ? static_cast<float>(nextPastRock) : 0.0f;
     previousDisplacement = displacement;
     previousRotation = rotation;
@@ -1635,7 +1679,7 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
 
 void AcustraEngine::prepare(double sampleRate, int)
 {
-    if (!std::isfinite(sampleRate) || sampleRate < 8000.0)
+    if (!exact::isfinite(sampleRate) || sampleRate < 8000.0)
         sampleRate = 48000.0;
     sampleRate_ = std::clamp(sampleRate, 8000.0, 384000.0);
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
@@ -1790,7 +1834,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     const bool bodyChanged = modelChanged || shapeChanged
         || next.bodyMaterial != parameters_.bodyMaterial;
     const bool ageChanged = force
-        || std::abs(next.stringAge - parameters_.stringAge) > 1.0e-5f;
+        || exact::abs(next.stringAge - parameters_.stringAge) > 1.0e-5f;
     const bool stringChanged = force
         || next.stringMaterial != parameters_.stringMaterial;
     const bool bridgeChanged = modelChanged || stringChanged || shapeChanged
@@ -1863,7 +1907,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
 void AcustraEngine::updateControlState() noexcept
 {
     palmMute_ += palmMuteSmoothing_ * (targetPalmMute_ - palmMute_);
-    if (std::abs(targetPalmMute_ - palmMute_) < 1.0e-6f)
+    if (exact::abs(targetPalmMute_ - palmMute_) < 1.0e-6f)
         palmMute_ = targetPalmMute_;
     if (vibrato_ > 0.0f)
     {
@@ -1989,7 +2033,7 @@ void AcustraEngine::configureBody() noexcept
             * (wood.frequencyScale / (named ? referenceWood.frequencyScale : 1.0f))
             * physicalCalibration_.bodyFrequencyScale
             * (1.0f + alternating * anchor.asymmetry
-               / std::sqrt(static_cast<float>(index + 1)));
+               / exact::sqrt(static_cast<float>(index + 1)));
         const float highestMode = 0.46f * static_cast<float>(sampleRate_);
         const bool audibleAtThisRate = frequency < highestMode;
         frequency = clamp(frequency, 45.0f, highestMode);
@@ -2414,7 +2458,7 @@ float AcustraEngine::coupledPolarisationDetune(
     if (!(weights > 0.0))
         return 0.0f;
     const double detune = weighted / (weights * 2.0 * piDouble);
-    return std::isfinite(detune)
+    return exact::isfinite(detune)
         ? static_cast<float>(std::clamp(detune, -0.02, 0.02)) : 0.0f;
 }
 
@@ -2648,7 +2692,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // would rerun this iterative design every control period, and the hand
     // only adds loss on top of a shape this already fixes.
     const bool dispersionDesignChanged = clearDelay
-        || std::abs(voice.dispersionDesignFrequency - unbentFrequency) > 1.0e-4f
+        || exact::abs(voice.dispersionDesignFrequency - unbentFrequency) > 1.0e-4f
         // A bend or a vibrato moves B continuously, and this design is an
         // iterative solve, so B is only re-solved once it has moved 0.2%.
         // That relative tolerance applies to every caller, not only to a
@@ -2659,10 +2703,10 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // orders below the 3-cent tolerance the dispersion test holds, and
         // every discrete change that reaches here - fret, tuning, string set,
         // a calibration edit worth hearing - moves B by far more than that.
-        || std::abs(voice.dispersionDesignInharmonicity - inharmonicity)
+        || exact::abs(voice.dispersionDesignInharmonicity - inharmonicity)
                > std::max(1.0e-9f, 0.002f * inharmonicity)
-        || std::abs(voice.dispersionDesignAge - age) > 1.0e-5f
-        || std::abs(voice.dispersionDesignFrequencyLossScale
+        || exact::abs(voice.dispersionDesignAge - age) > 1.0e-5f
+        || exact::abs(voice.dispersionDesignFrequencyLossScale
                     - physical.frequencyLossScale) > 1.0e-5f;
     if (dispersionDesignChanged)
     {
@@ -2729,7 +2773,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         const float axialDiameter = steel ? steelBendingDiameter[index]
                                           : diameter;
         const float axialArea = 0.25f * pi * axialDiameter * axialDiameter;
-        const float longitudinalSpeed = std::sqrt(std::max(
+        const float longitudinalSpeed = exact::sqrt(std::max(
             youngsModulus * axialArea / std::max(linearMass, 1.0e-9f), 1.0f));
         const float longitudinal = clamp(
             longitudinalSpeed / (2.0f * soundingLength), 100.0f,
@@ -2771,7 +2815,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                                                   voice.openMidi);
     const float coupledDetune = coupledPolarisationDetune(
         bridgePort, unbentImpedance, unbentImpedance
-            * std::sqrt((bentTension / tension) / (1.0f
+            * exact::sqrt((bentTension / tension) / (1.0f
                 + (bentTension - tension) / std::max(axialRigidity, 1.0f))),
         frequency, (rawDelay - measuredBridgeDelay)
             * physicalCalibration_.polarisationEndCorrectionMetres / soundingLength,
@@ -2840,7 +2884,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float stretchedMass = 1.0f
         + (bentTension - tension) / std::max(axialRigidity, 1.0f);
     voice.tensionNewtons = bentTension;
-    voice.bendImpedanceScale = std::sqrt((bentTension / tension)
+    voice.bendImpedanceScale = exact::sqrt((bentTension / tension)
                                          / stretchedMass);
     if (clearDelay)
         voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
@@ -2853,7 +2897,7 @@ void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
     if (parameters_.stringMaterial != StringMaterial::Steel)
         return;
     if (!voice.played || !(voice.attackSlopeEnergy > 0.0f)
-        || !std::isfinite(voice.attackSlopeEnergy))
+        || !exact::isfinite(voice.attackSlopeEnergy))
     {
         voice.attackPitchCents = 0.0f;
         return;
@@ -2882,8 +2926,8 @@ void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
     const float bendingStiffness = pi * pi * youngsModulus * secondMoment
         * physical.stiffnessScale / lengthSquared;
     const float ratio = tensionIncrease / (tension + bendingStiffness);
-    const float cents = 1200.0f * std::log2(std::sqrt(1.0f + ratio));
-    voice.attackPitchCents = std::isfinite(cents)
+    const float cents = 1200.0f * std::log2(exact::sqrt(1.0f + ratio));
+    voice.attackPitchCents = exact::isfinite(cents)
         ? clamp(cents, 0.0f, 20.0f) : 0.0f;
 }
 
@@ -3118,8 +3162,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const float localPosition = clamp(position
             + (polarisation == 0 ? -0.006f : 0.009f), 0.05f, 0.48f);
         const float polarisationGain = polarisation == 0
-            ? std::sqrt(voice.polarisationMix)
-            : std::sqrt(1.0f - voice.polarisationMix);
+            ? exact::sqrt(voice.polarisationMix)
+            : exact::sqrt(1.0f - voice.polarisationMix);
         const float currentReferenceLength = loop.targetDelay * 48000.0f
             / static_cast<float>(sampleRate_);
 #if defined(ACUSTRA_ANALYSIS_APERTURE_MILLISECONDS)
@@ -3140,7 +3184,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const float contactSamples = parameters_.picking == PickingTechnique::Pick
             ? 0.35f * apertureSamples
             : parameters_.picking == PickingTechnique::Thumb
-                ? std::sqrt(4.0f * apertureSamples * apertureSamples + 6.25f)
+                ? exact::sqrt(4.0f * apertureSamples * apertureSamples + 6.25f)
                 : apertureSamples;
         const float aperture = registeredPluckAperture(
             contactSamples, physical.apertureScale, apertureReferenceDelay,
@@ -3177,7 +3221,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // q(z)=sigma*phi(|z|/sigma)-|z|*Phi(-|z|/sigma), q''=G-delta.
         // For R>=1 the four omitted image tails sum to no more than
         // 4*sigma*(1+sigma)*phi(R)*cornerScale. This R bounds that by epsilon.
-        const double radius = sigma * std::sqrt(-2.0 * std::log(
+        const double radius = sigma * exact::sqrt(-2.0 * std::log(
             epsilon / (4.0 * sigma * (1.0 + sigma) * cornerScale)));
         const double inverseSigma = 1.0 / sigma;
         const auto gaussianCorner = [] (double z)
@@ -3200,10 +3244,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         {
             double sum = 0.0;
             const int first = static_cast<int>(std::ceil(phase - radius));
-            const int last = static_cast<int>(std::floor(phase + radius));
+            const int last = static_cast<int>(exact::floor(phase + radius));
             for (int image = first; image <= last; ++image)
             {
-                const double distance = std::abs(phase - image);
+                const double distance = exact::abs(phase - image);
                 sum += sigma * gaussianCorner(distance * inverseSigma);
             }
             return sum;
@@ -3212,7 +3256,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         {
             // The caller's phase is in (-1,1). With radius < 1/2, at most
             // the nearest periodic image contributes to the existing sum.
-            const double absolute = std::abs(phase);
+            const double absolute = exact::abs(phase);
             const double distance = std::min(absolute, 1.0 - absolute);
             return distance <= radius
                 ? sigma * gaussianCorner(distance * inverseSigma) : 0.0;
@@ -3243,7 +3287,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                     const float shifted = phase + static_cast<float>(shift)
                                                   / static_cast<float>(modes);
                     sum += smoothedTriangleAt(static_cast<double>(shifted)
-                                              - std::floor(shifted));
+                                              - exact::floor(shifted));
                 }
                 return sum / static_cast<float>(modes);
             };
@@ -3274,7 +3318,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                 // edges; cornerAt retains the exact original radius check.
                 const auto firstAt = [&] (double phase)
                 {
-                    return std::clamp(static_cast<int>(std::floor(phase * length)) - 1,
+                    return std::clamp(static_cast<int>(exact::floor(phase * length)) - 1,
                                       0, length);
                 };
                 const auto lastAt = [&] (double phase)
@@ -3335,7 +3379,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             }
             slopeEnergy += static_cast<double>(length) * squaredDifferences;
         }
-        voice.attackSlopeEnergy = std::isfinite(slopeEnergy)
+        voice.attackSlopeEnergy = exact::isfinite(slopeEnergy)
             ? static_cast<float>(std::max(slopeEnergy, 0.0)) : 0.0f;
         voice.observedSlopeEnergy = voice.attackSlopeEnergy;
         updateAttackPitch(voice, stringIndex);
@@ -3703,7 +3747,7 @@ double AcustraEngine::plectrumSlipPole(const Voice& voice,
     // c = 2 L0 f0 of the open string: fretting shortens the string, not the
     // wave speed.
     const float waveSpeed = 2.0f * scaleLength * midiFrequency(voice.openMidi);
-    const float heldMetres = std::abs(releasedAmplitude)
+    const float heldMetres = exact::abs(releasedAmplitude)
         * std::max(physicalCalibration_.steelDisplacementScaleMetres, 1.0e-4f);
     const float a = clamp(heldDistance, 1.0e-3f, 0.999f * soundingLength);
     const float releaseSpeed = 0.5f * waveSpeed * heldMetres
@@ -3712,7 +3756,7 @@ double AcustraEngine::plectrumSlipPole(const Voice& voice,
         return 0.0;
     const double tauSamples = static_cast<double>(edgeRadius / releaseSpeed)
         * static_cast<double>(sampleRate_);
-    if (!(tauSamples > 1.0e-3) || !std::isfinite(tauSamples))
+    if (!(tauSamples > 1.0e-3) || !exact::isfinite(tauSamples))
         return 0.0;
     return std::exp(-1.0 / tauSamples);
 }
@@ -3762,12 +3806,12 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     const double apex = static_cast<double>(p);
     const auto bridgeFraction = [] (double phase)
     {
-        phase -= std::floor(phase);
+        phase -= exact::floor(phase);
         return phase < 0.5 ? 2.0 * phase : 2.0 * (1.0 - phase);
     };
     const auto displacementWave = [&] (double phase)
     {
-        const double wrapped = phase - std::floor(phase);
+        const double wrapped = phase - exact::floor(phase);
         const double fraction = bridgeFraction(wrapped);
         const double triangle = fraction < apex ? fraction / apex
                                                 : (1.0 - fraction) / (1.0 - apex);
@@ -3805,7 +3849,7 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     };
     const auto corner = [&] (double z)
     {
-        return sigma * unitCorner(std::abs(z) / sigma);
+        return sigma * unitCorner(exact::abs(z) / sigma);
     };
     const auto step = [&] (double z)
     {
@@ -3813,7 +3857,7 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     };
     const auto images = [] (double z, const auto& kernel)
     {
-        const double wrapped = z - std::floor(z + 0.5);
+        const double wrapped = z - exact::floor(z + 0.5);
         double sum = 0.0;
         for (int image = -2; image <= 2; ++image)
             sum += kernel(wrapped + static_cast<double>(image));
@@ -3826,7 +3870,7 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     };
     const auto smoothedVelocity = [&] (double phase)
     {
-        const double wrapped = phase - std::floor(phase);
+        const double wrapped = phase - exact::floor(phase);
         double sum = 0.0;
         for (int image = -2; image <= 2; ++image)
             sum += step(wrapped - cornerA + static_cast<double>(image))
@@ -3890,8 +3934,8 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
         const double added = static_cast<double>(releaseShare)
                            * displacementEnergy;
         const double magnitude = added
-            / (std::abs(crossEnergy)
-               + std::sqrt(crossEnergy * crossEnergy + added * velocityEnergy));
+            / (exact::abs(crossEnergy)
+               + exact::sqrt(crossEnergy * crossEnergy + added * velocityEnergy));
         hump = rest * static_cast<float>(crossEnergy < 0.0 ? -magnitude
                                                             : magnitude);
     }
@@ -3959,8 +4003,8 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
         }
         const double added = static_cast<double>(releaseShare) * slippedEnergy;
         const double magnitude = added
-            / (std::abs(slippedCross)
-               + std::sqrt(slippedCross * slippedCross + added * velocityEnergy));
+            / (exact::abs(slippedCross)
+               + exact::sqrt(slippedCross * slippedCross + added * velocityEnergy));
         hump = rest * static_cast<float>(slippedCross < 0.0 ? -magnitude
                                                              : magnitude);
     }
@@ -4057,7 +4101,7 @@ void AcustraEngine::liftFinger(Voice& voice, int stringIndex,
     {
         // Kinetic energy of v*tri over the segment is mu v^2 L/6.
         const float speed = waveSpeed
-            * std::sqrt(6.0f * energy / std::max(tension * targetLength, 1.0e-9f));
+            * exact::sqrt(6.0f * energy / std::max(tension * targetLength, 1.0e-9f));
         addTriangleVelocity(voice.loops[0],
             0.5f * speed / waveSpeed * targetLength / displacementScale, apex,
             1.0f);
@@ -4145,7 +4189,7 @@ void AcustraEngine::hammerString(Voice& voice, int stringIndex,
     float speed = 0.0f;
     float width = soundingLength;
     if (energy <= threshold)
-        speed = waveSpeed * std::sqrt(2.0f * energy
+        speed = waveSpeed * exact::sqrt(2.0f * energy
             / std::max(tension * soundingLength, 1.0e-9f));
     else
     {
@@ -4377,7 +4421,7 @@ int AcustraEngine::chooseString(int midiNote) const noexcept
         bool better = best < 0;
         if (!better && steal != bestSteal)
             better = !steal;
-        else if (!better && std::abs(cost - bestCost) > tie)
+        else if (!better && exact::abs(cost - bestCost) > tie)
             better = cost < bestCost;
         else if (!better && open != bestOpen)
             better = open;
@@ -4484,7 +4528,7 @@ AcustraEngine::chooseHarmonic(int midiNote) const noexcept
         for (int harmonic = 2; harmonic <= highestHarmonic; ++harmonic)
         {
             const float sounding = open * static_cast<float>(harmonic);
-            if (std::abs(1200.0f * std::log2(sounding / wanted))
+            if (exact::abs(1200.0f * std::log2(sounding / wanted))
                 > toleranceCents)
                 continue;
             // Prefer a string nobody is using, then the lowest node, which is
@@ -4506,7 +4550,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
                            int pluckDelaySamples, bool strumMember) noexcept
 {
     if (!prepared_ || midiNote < 0 || midiNote > 127
-        || !std::isfinite(velocity) || velocity <= 0.0f
+        || !exact::isfinite(velocity) || velocity <= 0.0f
         || midiChannel < 1 || midiChannel > midiChannelCount)
         return;
 
@@ -4718,7 +4762,7 @@ bool AcustraEngine::betterShape(const ShapeScore& candidate,
         return candidate.impossible < incumbent.impossible;
     if (candidate.moves != incumbent.moves)
         return candidate.moves < incumbent.moves;
-    if (std::abs(candidate.cost - incumbent.cost) > tie)
+    if (exact::abs(candidate.cost - incumbent.cost) > tie)
         return candidate.cost < incumbent.cost;
     if (candidate.misses != incumbent.misses)
         return candidate.misses < incumbent.misses;
@@ -5056,7 +5100,7 @@ void AcustraEngine::noteOff(int midiNote, int midiChannel,
         return;
     // MIDI release speed alone does not request a new pluck. In particular,
     // fast key-up must not retune a fretted note to open and add fret energy.
-    const float lift = legato_ && std::isfinite(fingerLift)
+    const float lift = legato_ && exact::isfinite(fingerLift)
         ? clamp(fingerLift, 0.0f, 1.0f) : 0.0f;
     if (releaseLegatoNote(midiNote, midiChannel, lift))
         return;
@@ -5230,12 +5274,12 @@ void AcustraEngine::setPitchBend(float semitones, int midiChannel) noexcept
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return;
     pitchBendSemitones_[static_cast<std::size_t>(midiChannel - 1)]
-        = clamp(std::isfinite(semitones) ? semitones : 0.0f, -96.0f, 96.0f);
+        = clamp(exact::isfinite(semitones) ? semitones : 0.0f, -96.0f, 96.0f);
 }
 
 void AcustraEngine::setVibrato(float amount) noexcept
 {
-    vibrato_ = clamp(std::isfinite(amount) ? amount : 0.0f, 0.0f, 1.0f);
+    vibrato_ = clamp(exact::isfinite(amount) ? amount : 0.0f, 0.0f, 1.0f);
 }
 
 void AcustraEngine::setMpeTimbre(float value, int midiChannel) noexcept
@@ -5243,7 +5287,7 @@ void AcustraEngine::setMpeTimbre(float value, int midiChannel) noexcept
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return;
     mpeTimbre_[static_cast<std::size_t>(midiChannel - 1)]
-        = std::isfinite(value) && value >= 0.0f
+        = exact::isfinite(value) && value >= 0.0f
             ? clamp(value, 0.0f, 1.0f) : -1.0f;
 }
 
@@ -5252,7 +5296,7 @@ void AcustraEngine::setMpePressure(float value, int midiChannel) noexcept
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return;
     mpePressure_[static_cast<std::size_t>(midiChannel - 1)]
-        = std::isfinite(value) && value >= 0.0f
+        = exact::isfinite(value) && value >= 0.0f
             ? clamp(value, 0.0f, 1.0f) : -1.0f;
 }
 
@@ -5335,7 +5379,7 @@ void AcustraEngine::allSoundOff(int midiChannel) noexcept
 
 void AcustraEngine::setPalmMutePressure(float pressure) noexcept
 {
-    targetPalmMute_ = std::isfinite(pressure)
+    targetPalmMute_ = exact::isfinite(pressure)
         ? clamp(pressure, 0.0f, 1.0f) : 0.0f;
 }
 
@@ -5451,8 +5495,8 @@ std::array<float, 2> AcustraEngine::ContactTravel::process(float source) noexcep
         constexpr double silent = 0.25 * std::numeric_limits<float>::denorm_min();
         bool silentState = true;
         for (const auto& tap : taps)
-            silentState = silentState && std::abs(tap.y1) <= silent
-                                      && std::abs(tap.y2) <= silent;
+            silentState = silentState && exact::abs(tap.y1) <= silent
+                                      && exact::abs(tap.y2) <= silent;
         if (silentState)
             active = false;
     }
@@ -5465,7 +5509,7 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
     if (voice.excitationEnvelope > 1.0e-8f)
     {
         const float rateRatio = static_cast<float>(sampleRate_) / 48000.0f;
-        const float noise = nextNoise(voice) * std::sqrt(rateRatio);
+        const float noise = nextNoise(voice) * exact::sqrt(rateRatio);
         if (voice.excitationWhite)
             excitation = noise * voice.excitationEnvelope;
         else
@@ -5544,7 +5588,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                 + voice.longitudinalA2[mode] * voice.longitudinalY2[mode];
             voice.longitudinalY2[mode] = voice.longitudinalY1[mode];
             voice.longitudinalY1[mode]
-                = std::isfinite(output) ? output : 0.0f;
+                = exact::isfinite(output) ? output : 0.0f;
             longitudinalForce += physicalCalibration_.longitudinalGain
                 * voice.longitudinalY1[mode];
         }
@@ -5563,9 +5607,9 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             -1.0f / std::max(voice.loops[0].currentDelay, 1.0f));
         const float observed = voice.observedSlopeEnergy
             + alpha * (rawEnergy - voice.observedSlopeEnergy);
-        voice.observedSlopeEnergy = std::isfinite(observed)
+        voice.observedSlopeEnergy = exact::isfinite(observed)
             ? std::max(observed, 0.0f) : 0.0f;
-        voice.attackSlopeEnergy = std::isfinite(voice.attackSlopeEnergy)
+        voice.attackSlopeEnergy = exact::isfinite(voice.attackSlopeEnergy)
             ? std::min(std::max(voice.attackSlopeEnergy, 0.0f),
                        voice.observedSlopeEnergy)
             : 0.0f;
@@ -5587,7 +5631,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
         const float tailForce = voice.tailCharacteristicImpedance
             * (2.0f * tailVelocity - bridgeVelocity);
         voice.tailLevel += levelSmoothing_
-            * (std::abs(tailForce) - voice.tailLevel);
+            * (exact::abs(tailForce) - voice.tailLevel);
         if (voice.tailLevel < 2.0e-7f)
             ++voice.tailQuietSamples;
         else
@@ -5618,7 +5662,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
     directLeft += direct * (1.0f - 0.18f * pan);
     directRight += direct * (1.0f + 0.18f * pan);
 
-    const float magnitude = std::abs(localReactionForce);
+    const float magnitude = exact::abs(localReactionForce);
     voice.level += levelSmoothing_ * (magnitude - voice.level);
     // A released string is handed back once its release damping has had its
     // T60 and the hand's 80 ms; waiting for it to fall silent would wait for
@@ -5678,13 +5722,13 @@ AcustraEngine::BodyOutput AcustraEngine::renderBody(float bridgeInput,
         for (auto& mode : modes)
         {
             mode.process(bridgeInput, bodyMoment, output.left, output.right, output.upper);
-            if (std::abs(mode.real) < 1.0e-30f)
+            if (exact::abs(mode.real) < 1.0e-30f)
                 mode.real = 0.0f;
-            if (std::abs(mode.imaginary) < 1.0e-30f)
+            if (exact::abs(mode.imaginary) < 1.0e-30f)
                 mode.imaginary = 0.0f;
-            if (std::abs(mode.momentReal) < 1.0e-30f)
+            if (exact::abs(mode.momentReal) < 1.0e-30f)
                 mode.momentReal = 0.0f;
-            if (std::abs(mode.momentImaginary) < 1.0e-30f)
+            if (exact::abs(mode.momentImaginary) < 1.0e-30f)
                 mode.momentImaginary = 0.0f;
         }
         return output;
@@ -5710,7 +5754,7 @@ float AcustraEngine::renderLoadedPiezo(float force) noexcept
     piezoLoadOutput_ = piezoLoadPole_ * piezoLoadOutput_
         + piezoLoadGain_ * (force - piezoLoadInput_);
     piezoLoadInput_ = force;
-    if (std::abs(piezoLoadOutput_) < 1.0e-30f)
+    if (exact::abs(piezoLoadOutput_) < 1.0e-30f)
         piezoLoadOutput_ = 0.0f;
     return piezoLoadOutput_;
 }
@@ -5936,7 +5980,7 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         }
         const float sampleRateRatio = static_cast<float>(sampleRate_) / 48000.0f;
         if (bridgeDerivativesNeedPriming_
-            && (std::abs(reactionWave) + std::abs(bridgeDisplacement)
+            && (exact::abs(reactionWave) + exact::abs(bridgeDisplacement)
                 > 1.0e-12f))
         {
             bridgeVelocityDerivative_.reset(bridgeDisplacement);
@@ -6082,7 +6126,7 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
                     parameters_.capture) ? 1.0f : 0.0f;
                 float& mix = captureMix_[index];
                 mix += parameterSmoothing_ * (target - mix);
-                if (std::abs(target - mix) < 1.0e-4f)
+                if (exact::abs(target - mix) < 1.0e-4f)
                     mix = target;
             }
             // One physical microphone, with its own measured complex response,
@@ -6100,8 +6144,8 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         // compressed for pathological automation and dense repicks.
         outputLeft = safetyLimit(outputLeft);
         outputRight = safetyLimit(outputRight);
-        left[sample] = std::isfinite(outputLeft) ? outputLeft : 0.0f;
-        right[sample] = std::isfinite(outputRight) ? outputRight : 0.0f;
+        left[sample] = exact::isfinite(outputLeft) ? outputLeft : 0.0f;
+        right[sample] = exact::isfinite(outputRight) ? outputRight : 0.0f;
     }
     sampleClock_ += static_cast<std::uint64_t>(numSamples);
 }
