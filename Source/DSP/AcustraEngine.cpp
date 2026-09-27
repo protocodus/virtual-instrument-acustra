@@ -2792,12 +2792,30 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // reusing only a solve with exactly the same complete input tuple.
         if (voice.dispersionDesignArguments != arguments)
         {
-            const auto calibration = calibrateDispersion(
-                inharmonicity, unbentFrequency, sampleRate_,
-                designBroadLossCoefficient, broadLoss,
-                lowpassCoefficient, highLoss, 10.0, 4.0);
-            voice.dispersionDecayRatio = static_cast<float>(calibration.decayRatio);
-            voice.dispersionPoleRatio = static_cast<float>(calibration.poleRatio);
+            const auto solved = std::find_if(dispersionSolves_.begin(),
+                dispersionSolves_.end(), [&arguments] (const DispersionSolve& solve)
+                {
+                    return solve.valid && solve.arguments == arguments;
+                });
+            if (solved != dispersionSolves_.end())
+            {
+                voice.dispersionDecayRatio = solved->decayRatio;
+                voice.dispersionPoleRatio = solved->poleRatio;
+            }
+            else
+            {
+                const auto calibration = calibrateDispersion(
+                    inharmonicity, unbentFrequency, sampleRate_,
+                    designBroadLossCoefficient, broadLoss,
+                    lowpassCoefficient, highLoss, 10.0, 4.0);
+                voice.dispersionDecayRatio = static_cast<float>(calibration.decayRatio);
+                voice.dispersionPoleRatio = static_cast<float>(calibration.poleRatio);
+                auto& slot = dispersionSolves_[static_cast<std::size_t>(nextDispersionSolve_)];
+                slot = { arguments, voice.dispersionDecayRatio,
+                         voice.dispersionPoleRatio, true };
+                nextDispersionSolve_ = (nextDispersionSolve_ + 1)
+                    % static_cast<int>(dispersionSolves_.size());
+            }
             voice.dispersionDesignArguments = arguments;
         }
         voice.dispersionDesignFrequency = unbentFrequency;

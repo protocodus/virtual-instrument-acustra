@@ -959,6 +959,20 @@ private:
     BodyMaterial configuredBodyMaterial_ { BodyMaterial::Spruce };
     StringMaterial configuredBodyStringMaterial_ { StringMaterial::Steel };
     bool bodyUpdatePending_ { false };
+    // Completed dispersion solves by their exact arguments, shared by the
+    // six strings: a chord change asks for a handful of designs a playing
+    // hand keeps returning to, and each solve is an iterative 3x3 fit that
+    // made the note-on batch several times a normal one. The solve is a pure
+    // function of its arguments, so a hit is the same result.
+    struct DispersionSolve
+    {
+        std::array<double, 7> arguments {};
+        float decayRatio { 10.0f };
+        float poleRatio { 4.0f };
+        bool valid { false };
+    };
+    std::array<DispersionSolve, 64> dispersionSolves_ {};
+    int nextDispersionSolve_ { 0 };
     // Advanced whenever engine state that configureVoice reads changes; see
     // VoiceConfigurationKey. Starts past the keys' never-matching zero.
     std::uint64_t voiceConfigurationGeneration_ { 1 };

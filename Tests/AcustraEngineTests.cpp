@@ -36,6 +36,8 @@ struct AcustraEngineTestAccess
     {
         for (auto& voice : engine.voices_)
             voice.dispersionDesignArguments.fill(0.0);
+        for (auto& solve : engine.dispersionSolves_)
+            solve.valid = false;
     }
 
     // Generation 0 matches no key, so every configureVoice runs in full.
