@@ -1490,11 +1490,17 @@ float AcustraEngine::StringLoop::readDelay(float samples) noexcept
     // transients in time-varying allpass fractional delay filters with
     // application to digital waveguide modeling", ICMC 1995, 327-334, which
     // for a line-read section is exactly this signal-valued state.
-    double a1 = 0.0;
-    double a2 = 0.0;
-    thiranCoefficients(static_cast<double>(fraction), a1, a2);
-    const float first = static_cast<float>(a1);
-    const float second = static_cast<float>(a2);
+    if (exact::bits(fraction) != exact::bits(thiranFraction))
+    {
+        double a1 = 0.0;
+        double a2 = 0.0;
+        thiranCoefficients(static_cast<double>(fraction), a1, a2);
+        thiranFraction = fraction;
+        thiranFirst = static_cast<float>(a1);
+        thiranSecond = static_cast<float>(a2);
+    }
+    const float first = thiranFirst;
+    const float second = thiranSecond;
     const float output = second * at(whole) + first * at(whole + 1)
                        + at(whole + 2)
                        - first * allpassY1 - second * allpassY2;

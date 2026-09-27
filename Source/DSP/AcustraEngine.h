@@ -336,6 +336,13 @@ private:
         // The fractional-delay allpass's state: its two previous outputs.
         float allpassY1 { 0.0f };
         float allpassY2 { 0.0f };
+        // Its coefficients for the last fraction read: once a delay has
+        // slewed to its target the fraction repeats, and the two double
+        // divisions that design it give the same coefficients again.
+        // The fraction always lies in [1.1, 2.1), so -1 matches nothing.
+        float thiranFraction { -1.0f };
+        float thiranFirst { 0.0f };
+        float thiranSecond { 0.0f };
         FixedDerivative bridgeDerivative {};
         bool derivativeNeedsPriming { true };
         bool derivativeCrossesRelease { false };
