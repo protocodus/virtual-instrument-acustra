@@ -5850,8 +5850,13 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                                     * referenceRate * horizontalVelocity;
         const float rawEnergy = verticalSlope * verticalSlope
                               + horizontalSlope * horizontalSlope;
-        const float alpha = 1.0f - std::exp(
-            -1.0f / std::max(voice.loops[0].currentDelay, 1.0f));
+        if (exact::bits(voice.loops[0].currentDelay) != voice.observedSlopeDelay)
+        {
+            voice.observedSlopeAlpha = 1.0f - std::exp(
+                -1.0f / std::max(voice.loops[0].currentDelay, 1.0f));
+            voice.observedSlopeDelay = exact::bits(voice.loops[0].currentDelay);
+        }
+        const float alpha = voice.observedSlopeAlpha;
         const float observed = voice.observedSlopeEnergy
             + alpha * (rawEnergy - voice.observedSlopeEnergy);
         voice.observedSlopeEnergy = exact::isfinite(observed)

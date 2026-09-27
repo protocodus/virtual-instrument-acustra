@@ -660,6 +660,10 @@ private:
         std::array<float, longitudinalModeCount> longitudinalB0 {};
         float longitudinalDrive { 0.0f };
         float observedSlopeEnergy { 0.0f };
+        // finishVoice's follower coefficient for the normal loop's current
+        // delay: an expf per sample until the delay has slewed to its target.
+        std::uint32_t observedSlopeDelay { 0xffffffffu };
+        float observedSlopeAlpha { 0.0f };
         float dispersionDesignFrequency { 0.0f };
         float dispersionDesignInharmonicity { -1.0f };
         float dispersionDesignAge { -1.0f };
