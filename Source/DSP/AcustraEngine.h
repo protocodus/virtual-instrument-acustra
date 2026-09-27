@@ -706,7 +706,12 @@ private:
     // node like the plucked shape. Replaces the line's first length samples.
     void writePickRelease(StringLoop& loop, int length, float height,
                           float position, float aperture, int modes,
-                          float releaseShare) noexcept;
+                          float releaseShare, double slipPole) noexcept;
+    double plectrumSlipPole(const Voice& voice, float releasedAmplitude,
+                            float heldDistance, float soundingLength,
+                            float scaleLength) const noexcept;
+    static void applyPlectrumSlip(StringLoop& loop, int length,
+                                  double slipPole) noexcept;
     void liftFinger(Voice& voice, int stringIndex, int targetMidi) noexcept;
     void hammerString(Voice& voice, int stringIndex, int previousMidi,
                       float velocity) noexcept;

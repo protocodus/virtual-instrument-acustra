@@ -4,6 +4,74 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-27 — a plectrum lets go as the string slides round its edge
+
+What was measured. On the picked archtop's same-root pairs, the recordings'
+loud-over-soft partial levels (relative to H1, 5-80 ms) rise 5 dB below
+500 Hz, 15 dB at 0.5-1 kHz and 16-19 dB from 1 to 12 kHz between MIDI 16
+and 112; the shipping Pick's rise 0-2 dB everywhere. A rise that climbs
+from a few hundred hertz and then levels off is what a first-order low-pass
+whose corner moves in proportion to the stroke would leave, and a fixed
+contact width cannot: at the Pick's width its Gaussian touches nothing below
+about the 50th harmonic.
+
+What was built. The string leaves a plectrum by sliding round the tip's
+rounded edge, and while it does the held force falls to nothing. The pluck
+point answers a force change dF with a velocity dF/(2Z); linearising the
+edge's hold as F0 (1 - y/r), the string's own motion carries it off and
+the force unloads as e^(t/tau), tau = 2 Z r / F0 = r / u, with
+u = (c/2) y0 (1/a + 1/(L - a)) the speed an instantly released pluck point
+starts with. Each partial is the instant release's times 1/(1 - j omega
+tau): a first-order low-pass in absolute frequency, no zeros, corner rising
+with the force the tip held (engine: plectrumSlipPole, applied to the
+written loop as a periodic anticausal one-pole, Pick only). The bridge
+sample is re-zeroed after it: smoothing the corner across the loop's seam
+and leaving it raised met the loop's empty filter states as a broadband
+click, which first read as H10/H11 rising 15 dB on a soft high note. The
+release-velocity hump is added after the slip and its share is of the
+slipped displacement's energy.
+
+How it differs from what was rejected. The 2026-09-04 declared plectrum
+spread a boxcar over c r / v_pick with v_pick the strum map; its zeros
+inverted partials once c t exceeded the sounding length, and it darkened
+both layers alike. Here the speed is the string's own, from the force law
+the engine already releases at, so the slip shortens as the stroke hardens,
+and the kernel has no zero. Adding the strum map's 0.51-2.46 m/s to u read
+worse on both splits (training 5.975 -> 6.001, validation 5.580 -> 5.618 at
+the best radius of each), so r is fitted without it and absorbs it.
+
+Calibration. The edge radius was swept on the picked archtop training rows
+under Pick with the pick-release stage refitted at each of 0.10, 0.15 and
+0.20 mm (42 evaluations each to the step floor). Every refit sends the
+release-velocity share and the pick burst to their zero bounds; the stage's
+steel objective reads 5.3985, 5.3664 and 5.3842, so 0.15 mm. A radius is
+below the 0.2-0.75 mm edge a 0.4-1.5 mm pick has, as it absorbs the pick's
+own unmeasured speed and is read against a displacement scale known to
+within a factor.
+
+What it did (paired, Pick, picked archtop steel rows): training 5.9391 ->
+5.5639 (-6.3%), development validation 5.5588 -> 5.4839 (-1.3%), the frozen
+188-row test split 5.6678 -> 5.4272 (-4.2%), every term of the test split
+better or level; the pick refit alone at zero radius reads training 5.9164,
+validation 5.4930, test 5.6161, so the slip carries most of the training and
+test gain and a little of validation's. The Eastman E1D's 49 picked rows,
+never fitted, 6.6596 -> 6.5254 (-2.0%; harmonics +3.5%, body -8.4%). Finger
+and Thumb are bit-identical: the Fylde and Original Finger benchmarks, the
+frozen split under Finger, Eastman finger, the Martin HD28, the UIowa nylon
+rows and GuitarSet do not move. Soft-to-loud H5-H12 over H1-H4 balance rise
+(v16 -> v112): recordings +8.43 dB, shipping +0.65, this +4.07; 0-12 ms
+centroid rise +1944 / +183 / +554 cents; validation (v48 -> v80) balance
++4.47 / +0.33 / +0.87 dB. Signed early-window residuals, model minus
+recording, H1: v16 -2.7 -> +1.7, v48 +6.0 -> +8.1, v80 +10.1 -> +11.1,
+v112 +8.4 -> +9.2; H11/H12 at v16 +5.6/+6.1 -> +1.7/+2.9. The soft layer is
+corrected and every louder layer, already too dark, gets slightly darker:
+what is left at the loud end is not the release's (the string's own
+nonlinearity, 2026-09-04, and the high-frequency loss).
+
+What was decided. Built on the benchmark; it changes every picked note's
+colour, so it goes to a blind pair (listening/2026-09-27-dyntimbre, A the
+shipping Pick, B this) and ships or not on that verdict.
+
 ## 2026-09-27 — the narrow ringing is g21's body, not its room
 
 What was measured. Mores' guitar list puts g14-g19 and g21-g26 in the same

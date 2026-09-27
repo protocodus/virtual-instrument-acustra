@@ -1237,7 +1237,9 @@ PhysicalCalibration AcustraEngine::sanitise(
         bounded(source.pickReleaseVelocityExponent, 0.0f, 4.0f,
                 fittedPhysicalCalibration.pickReleaseVelocityExponent),
         bounded(source.pickTransientGain, 0.0f, 8.0f,
-                fittedPhysicalCalibration.pickTransientGain)
+                fittedPhysicalCalibration.pickTransientGain),
+        bounded(source.pickEdgeRadiusMetres, 0.0f, 1.0e-3f,
+                fittedPhysicalCalibration.pickEdgeRadiusMetres)
     };
 }
 
@@ -3089,6 +3091,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         ? physicalCalibration_.pickReleaseVelocityShare
             * std::pow(v, physicalCalibration_.pickReleaseVelocityExponent)
         : 0.0f;
+    const double slipPole = pick
+        ? plectrumSlipPole(voice, releasedAmplitude, heldDistance,
+                           soundingLength, scaleLength)
+        : 0.0;
 
     // The caller has already retained any preceding wave. This full-period
     // triangle initializes a fresh pluck, but its time origin is not the
@@ -3137,7 +3143,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         if (releaseShare > 0.0f)
         {
             writePickRelease(loop, length, releasedAmplitude * polarisationGain,
-                             localPosition, aperture, modes, releaseShare);
+                             localPosition, aperture, modes, releaseShare,
+                             slipPole);
             continue;
         }
         const auto triangleAt = [localPosition] (double phase)
@@ -3294,6 +3301,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             initialise(nearestCorner);
         else
             initialise(periodicCorner);
+        applyPlectrumSlip(loop, length, slipPole);
     }
 
     if (steel)
@@ -3651,9 +3659,95 @@ void AcustraEngine::addTriangleVelocity(StringLoop& loop, float scale,
 // alone: no tension, length or unit enters the share. The two components'
 // partials sit in quadrature (cosine and sine phases at release), so their
 // powers add and the hump's sign is immaterial.
+// A plectrum does not let the string go at an instant: the string slides
+// round the rounded edge of the tip, and while it does the force the tip
+// holds falls from F0 to nothing. The pluck point answers a change dF in
+// that force at once with a velocity dF/(2Z): each half of the string
+// presents its characteristic impedance Z = T/c = sqrt(T mu) until the first
+// reflection returns (Fletcher and Rossing, The Physics of Musical
+// Instruments, 2nd ed. 1998, ch. 2). Linearising the edge's hold as falling
+// in proportion to how far round it the string has moved, F = F0 (1 - y/r)
+// for an edge of radius r, the string's own motion carries it off,
+// dy/dt = F0 y / (2 Z r), so the force unloads as e^(t/tau) with
+//     tau = 2 Z r / F0 = r / u,   u = F0 / (2Z) = (c/2) y0 (1/a + 1/(L - a)),
+// u being the speed an instantly released pluck point starts with: y0 the
+// held displacement, a its distance from the bridge, L the speaking length.
+// Every partial of the released string is then the instant release's times
+// 1/(1 - j omega tau), the transform of that one-sided exponential ending at
+// release: a first-order low-pass in absolute frequency, with no zero to
+// invert a partial, whose corner rises with the force the tip held. A hard
+// stroke is let go fast and bright, a soft one slowly and dark, which is the
+// velocity-to-brightness law the picked archtop rows show and a pluck with
+// a fixed contact width cannot make (Docs/decisions.md, 2026-09-27). The
+// pick's own speed would add to u; it is not measured for single notes and
+// adding the strum map's 0.51-2.46 m/s read worse on both splits, so r is
+// fitted with it absent and absorbs it. Returns the one-pole's pole, or 0.
+double AcustraEngine::plectrumSlipPole(const Voice& voice,
+                                       float releasedAmplitude,
+                                       float heldDistance,
+                                       float soundingLength,
+                                       float scaleLength) const noexcept
+{
+    const float edgeRadius = physicalCalibration_.pickEdgeRadiusMetres;
+    if (!(edgeRadius > 0.0f))
+        return 0.0;
+    // c = 2 L0 f0 of the open string: fretting shortens the string, not the
+    // wave speed.
+    const float waveSpeed = 2.0f * scaleLength * midiFrequency(voice.openMidi);
+    const float heldMetres = std::abs(releasedAmplitude)
+        * std::max(physicalCalibration_.steelDisplacementScaleMetres, 1.0e-4f);
+    const float a = clamp(heldDistance, 1.0e-3f, 0.999f * soundingLength);
+    const float releaseSpeed = 0.5f * waveSpeed * heldMetres
+        * (1.0f / a + 1.0f / (soundingLength - a));
+    if (!(releaseSpeed > 0.0f))
+        return 0.0;
+    const double tauSamples = static_cast<double>(edgeRadius / releaseSpeed)
+        * static_cast<double>(sampleRate_);
+    if (!(tauSamples > 1.0e-3) || !std::isfinite(tauSamples))
+        return 0.0;
+    return std::exp(-1.0 / tauSamples);
+}
+
+// The written loop holds one period of the released waves, read oldest
+// first, so a later output sits at a lower sample index. The anticausal
+// 1/(1 - j omega tau) is then y[s] = (1-b) x[s] + b y[s-1] run upward over
+// the period from its periodic steady state, exact per loop harmonic. The
+// sample at the bridge is re-zeroed afterwards, as the pluck itself is: the
+// loop's loss and dispersion states start empty, which only agrees with a
+// line that starts at rest there (smoothing the corner across that point and
+// leaving it raised put a broadband click into every note).
+void AcustraEngine::applyPlectrumSlip(StringLoop& loop, int length,
+                                      double slipPole) noexcept
+{
+    if (!(slipPole > 0.0))
+        return;
+    const double b = slipPole;
+    const auto at = [&loop] (int sample) -> float&
+    {
+        return loop.delay[static_cast<std::size_t>(
+            maximumDelaySamples - sample - 1)];
+    };
+    double state = 0.0;
+    double weight = 1.0;
+    for (int k = 0; k < length; ++k)
+    {
+        state += weight * static_cast<double>(at(length - 1 - k));
+        weight *= b;
+    }
+    state *= (1.0 - b) / (1.0 - weight);
+    double first = 0.0;
+    for (int sample = 0; sample < length; ++sample)
+    {
+        state = (1.0 - b) * static_cast<double>(at(sample)) + b * state;
+        if (sample == 0)
+            first = state;
+        at(sample) = static_cast<float>(state - first);
+    }
+}
+
 void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                                      float position, float aperture, int modes,
-                                     float releaseShare) noexcept
+                                     float releaseShare, double slipPole) noexcept
 {
     const float p = clamp(position, 0.05f, 0.48f);
     const double apex = static_cast<double>(p);
@@ -3807,10 +3901,64 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
         return -(rest * released(smoothedDisplacement, phase)
                  + hump * released(smoothedVelocity, phase));
     };
-    const float endpoint = frame(phaseOf(1));
+    if (!(slipPole > 0.0))
+    {
+        const float endpoint = frame(phaseOf(1));
+        for (int sample = 1; sample <= length; ++sample)
+            loop.delay[static_cast<std::size_t>(wrapDelayIndex(
+                loop.writeIndex - sample))] = frame(phaseOf(sample)) - endpoint;
+        return;
+    }
+    const auto restFrame = [&] (float phase)
+    {
+        return -rest * released(smoothedDisplacement, phase);
+    };
+    const auto humpFrame = [&] (float phase)
+    {
+        return -hump * released(smoothedVelocity, phase);
+    };
+    const float restEndpoint = restFrame(phaseOf(1));
     for (int sample = 1; sample <= length; ++sample)
         loop.delay[static_cast<std::size_t>(wrapDelayIndex(
-            loop.writeIndex - sample))] = frame(phaseOf(sample)) - endpoint;
+            loop.writeIndex - sample))] = restFrame(phaseOf(sample)) - restEndpoint;
+    applyPlectrumSlip(loop, length, slipPole);
+    // The displacement the tip leaves behind is now the slipped one, so the
+    // share is of its energy and the cross term is read against it: the
+    // same exact solve on what is written.
+    if (velocityEnergy > 0.0 && rest != 0.0f)
+    {
+        const auto lineAt = [&] (int sample)
+        {
+            return static_cast<double>(loop.delay[static_cast<std::size_t>(
+                wrapDelayIndex(loop.writeIndex - sample))])
+                / static_cast<double>(-rest);
+        };
+        double slippedEnergy = 0.0;
+        double slippedCross = 0.0;
+        double previousLine = lineAt(length);
+        float previousVelocity = released(smoothedVelocity, phaseOf(length));
+        for (int sample = 1; sample <= length; ++sample)
+        {
+            const double line = lineAt(sample);
+            const float velocity = released(smoothedVelocity, phaseOf(sample));
+            const double lineStep = line - previousLine;
+            const double velocityStep = velocity - previousVelocity;
+            slippedEnergy += lineStep * lineStep;
+            slippedCross += lineStep * velocityStep;
+            previousLine = line;
+            previousVelocity = velocity;
+        }
+        const double added = static_cast<double>(releaseShare) * slippedEnergy;
+        const double magnitude = added
+            / (std::abs(slippedCross)
+               + std::sqrt(slippedCross * slippedCross + added * velocityEnergy));
+        hump = rest * static_cast<float>(slippedCross < 0.0 ? -magnitude
+                                                             : magnitude);
+    }
+    const float humpEndpoint = humpFrame(phaseOf(1));
+    for (int sample = 1; sample <= length; ++sample)
+        loop.delay[static_cast<std::size_t>(wrapDelayIndex(
+            loop.writeIndex - sample))] += humpFrame(phaseOf(sample)) - humpEndpoint;
 }
 
 // The finger leaves a stopped string. The string was pressed to the fret by

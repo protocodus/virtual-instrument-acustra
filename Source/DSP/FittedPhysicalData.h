@@ -122,6 +122,12 @@ struct PhysicalCalibration
     float pickReleaseVelocityShare { 0.0f };
     float pickReleaseVelocityExponent { 2.0f };
     float pickTransientGain { 0.0f };
+    // The Pick technique only. The radius of the plectrum edge the string
+    // slides round as it is let go (AcustraEngine::plectrumSlipPole): the
+    // release takes r / u, u the speed the string's own held force gives it,
+    // so it low-passes the pluck at a corner that rises with the stroke's
+    // force. Zero is the instant release.
+    float pickEdgeRadiusMetres { 0.0f };
 };
 
 // Refit on 2026-09-04 around the two-way junction and the saddle anchor, by a
@@ -247,7 +253,25 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // 0.0117 v^0.45, and a pick transient at 0.031 of the Finger burst:
     // training 6.133475 -> 6.103277 under Pick, development validation
     // 5.742850 -> 5.702917.
-    0.01171875f, 0.453125f, 0.03125f
+    // 2026-09-27: once the string slides off the tip's edge (below), the
+    // same stage, run from the shipping vector at edge radii 0.10, 0.15 and
+    // 0.20 mm (42 evaluations each to the step floor), sends the share and
+    // the transient gain to their zero bounds at every radius: the release
+    // velocity's slower-falling partials were standing in for the dynamic
+    // brightness the slip now supplies, and the pick's own burst for the
+    // Finger law. With the share at zero the exponent reads nothing.
+    0.0f, 0.453125f, 0.0f,
+    // The plectrum edge, fitted on the picked archtop training rows rendered
+    // with Pick (the pick-release stage's steel objective 5.917 / 5.915 /
+    // 5.943 at 0.10 / 0.15 / 0.20 mm before and 5.3985 / 5.3664 / 5.3842
+    // after refitting the three values above): 0.15 mm. Against the whole
+    // shipping Pick, archtop training 5.9391 -> 5.5639 and held-out
+    // development validation 5.5588 -> 5.4839 (steel rows). Commercial picks
+    // run about 0.4-1.5 mm thick, so a rounded edge of 0.2-0.75 mm; the
+    // fitted radius sits below that because it also absorbs the pick's own
+    // speed, which shortens the slip and is not measured here, and because
+    // the displacement scale it is read against is known to within a factor.
+    0.15e-3f
 };
 
 } // namespace acustra

@@ -586,6 +586,21 @@ velocity. What the plectrum still lacks is any measurement of its own: the
 share and exponent are fitted, not a beam and friction solver, and the
 archtop's four layers are the only picked recordings in the bank.
 
+Nor does the string leave the tip at an instant. It slides round the
+tip's rounded edge, and while it does the held force F0 falls away; the
+pluck point answers at once with a velocity dF/(2Z), so, linearising the
+edge's hold, the force unloads as e^(t/tau) with tau = r/u,
+u = (c/2) y0 (1/a + 1/(L - a)) the speed an instantly released pluck point
+starts with. Every partial is multiplied by 1/(1 - j omega tau), a
+first-order low-pass whose corner rises with the force the tip held: a soft
+stroke is let go slowly and dark, a hard one fast and bright. The radius r,
+0.15 mm, is fitted on the picked archtop training rows (the pick-release
+stage, refitted around it, then wants the release-velocity share and the
+pick burst at zero), and it moves Pick only: archtop training under Pick
+5.9391 -> 5.5639, development validation 5.5588 -> 5.4839, the frozen test
+split 5.6678 -> 5.4272, the Eastman's picked rows 6.6596 -> 6.5254
+(Docs/decisions.md).
+
 Transverse motion stretches the string, and the tension that adds can also be
 represented as a longitudinal wave with the string's own axial
 resonances, at `c_long/2L` with `c_long = sqrt(EA/mu)`. For this steel set that
@@ -978,7 +993,7 @@ uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
 | **Body Material** | Spruce, Cedar, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. |
 | **String Material** | Selects the dedicated nylon or steel geometry, impedance, stiffness, loss and fitted calibration. |
 | **Tuning** | Changes the six open-string/fret constraints. |
-| **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and releases the string with velocity over the contact width, its share of the pluck's energy and its broadband contact transient growing with MIDI velocity as fitted on the picked archtop recordings. Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
+| **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius fitted on the picked archtop recordings; its release-velocity share and pick burst refit to zero around it). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or electrically loaded saddle-force piezo. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Explicit MPE position overrides that ratio. |
@@ -1446,17 +1461,20 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   chord still correlate 0.93 on a bass-first downstroke and 0.995 on a
   treble-first upstroke, because a pluck point moves a treble string's
   waveform far less than a bass string's.
-- Velocity reaches attack brightness under Pick at the loud end, but the
-  soft end is too bright. On the merged engine the archtop's picked layers,
-  rendered with Pick, read an H5-H12 over H1-H4 balance 7.6, 7.0, 4.3 and
-  -1.0 dB from the recordings at MIDI 16, 48, 80 and 112, and a 0-12 ms
-  centroid +792, -18, -770 and -602 cents from them: the recordings' balance
-  rises 9.1 dB from the softest layer to the loudest and the model's 1.3. The
-  merged Pick's narrow contact already makes a soft stroke as bright as a
-  loud one, and its release velocity adds little on top; rendered with
-  Finger the same rows sit within a decibel at the soft layer and 9.6 dB too
-  dark at the loud one. What a soft plectrum stroke's release looks like -
-  how wide the string's roll off the tip is at low speed - is not measured
+- Velocity reaches attack brightness under Pick only in part. The string
+  now slides off the plectrum's edge in r/u, u the speed its own held force
+  gives it, so a soft stroke is released darker than a hard one: on the
+  archtop's picked training layers the H5-H12 over H1-H4 balance rises
+  4.07 dB from MIDI 16 to 112 against the recordings' 8.43 (0.65 before),
+  and the 0-12 ms centroid 554 cents against 1944 (183 before). The soft
+  layer's excess treble is gone (H11/H12 +1.7/+2.9 dB from +5.6/+6.1), but
+  every louder layer was already too dark and the slip darkens it slightly
+  more (H1 at MIDI 80 +11.1 dB, at 112 +9.2); the remaining loud-end
+  brightness belongs to the string's nonlinearity and the high-frequency
+  loss, not the release. Rendered with Finger, which the slip does not
+  touch, the same rows sit within a decibel at the soft layer and 9.6 dB
+  too dark at the loud one. The edge radius is fitted (0.15 mm) because a
+  single note's pick speed is not measured
   here. Finger is untouched by the plectrum, so what follows still describes
   the finger-plucked instrument. A fresh comparison uses all 54 already-opened Shinyguitar
   training recordings: nine roots, MIDI layers 16/112 and three takes each,

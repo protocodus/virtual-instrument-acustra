@@ -7026,6 +7026,81 @@ void testEachStringMaterialPlaysItsOwnMeasuredGuitar()
             }
 }
 
+// A plectrum lets the string go as the string slides round its edge, which
+// takes the edge radius over the speed the string's own held force gives it
+// (AcustraEngine::plectrumSlipPole), so a soft stroke is released slowly and
+// dark and a hard one fast and bright. Finger and Thumb never read the edge.
+void testAPlectrumSlipsOffItsEdgeFasterWhenHarder()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    using acustra::PickingTechnique;
+    const auto shipping = acustra::fittedPhysicalCalibration;
+    expect(shipping.pickEdgeRadiusMetres > 0.0f,
+           "the shipping plectrum has no edge to slide round");
+    auto instant = shipping;
+    instant.pickEdgeRadiusMetres = 0.0f;
+    const auto partialPower = [] (const std::vector<double>& line, int harmonic)
+    {
+        std::complex<double> sum {};
+        for (std::size_t sample = 0; sample < line.size(); ++sample)
+            sum += line[sample] * std::polar(1.0, -2.0 * std::numbers::pi
+                * harmonic * static_cast<double>(sample)
+                / static_cast<double>(line.size()));
+        return std::norm(sum);
+    };
+    const auto balanceDb = [&] (const std::vector<double>& line)
+    {
+        double low = 0.0, high = 0.0;
+        for (int harmonic = 1; harmonic <= 4; ++harmonic)
+            low += partialPower(line, harmonic);
+        for (int harmonic = 5; harmonic <= 12; ++harmonic)
+            high += partialPower(line, harmonic);
+        return 10.0 * std::log10(std::max(high, 1.0e-40) / std::max(low, 1.0e-40));
+    };
+    for (const int midi : { 40, 52, 64, 76 })
+    {
+        for (const auto picking : { PickingTechnique::Finger, PickingTechnique::Thumb })
+        {
+            const auto a = Access::pluckedLine(shipping, picking, midi, 0.5f);
+            const auto b = Access::pluckedLine(instant, picking, midi, 0.5f);
+            expect(a == b, "the plectrum's edge reached a finger or thumb pluck");
+        }
+        double drop[2] {};
+        int index = 0;
+        for (const float velocity : { 0.15f, 0.9f })
+        {
+            const auto slipped = Access::pluckedLine(shipping, PickingTechnique::Pick, midi, velocity);
+            const auto sharp = Access::pluckedLine(instant, PickingTechnique::Pick, midi, velocity);
+            expect(slipped.size() == sharp.size() && slipped.size() > 8,
+                   "the slip changed the line's length");
+            double peak = 0.0;
+            for (const double value : slipped)
+                peak = std::max(peak, std::abs(value));
+            // The loop's empty filter states need the line at rest at the
+            // bridge, as the instant pluck is.
+            expect(std::abs(slipped.front()) <= 1.0e-6 * peak,
+                   "the slipped line does not start at rest at the bridge");
+            drop[index++] = balanceDb(slipped) - balanceDb(sharp);
+            // A first-order low-pass with unit DC gain: the fundamental of a
+            // loud stroke on the low strings is barely touched.
+            if (velocity > 0.5f && midi <= 52)
+            {
+                const double h1 = 10.0 * std::log10(partialPower(slipped, 1)
+                    / partialPower(sharp, 1));
+                expect(h1 > -1.0 && h1 <= 1.0e-6,
+                       "the slip did more than low-pass a loud fundamental");
+            }
+        }
+        std::cout << "Acustra plectrum slip H5-H12/H1-H4 change at MIDI " << midi
+                  << ": soft " << drop[0] << " dB, loud " << drop[1] << " dB\n";
+        // Measured at the shipping 0.15 mm: soft -3.3/-3.3/-3.1/-8.4 dB and
+        // loud -0.34/-0.34/-0.30/-1.7 dB at MIDI 40/52/64/76; the bound keeps
+        // the soft stroke at least 2 dB darker than the hard one.
+        expect(drop[0] < 0.0 && drop[1] < 0.0 && drop[0] < drop[1] - 2.0,
+               "a soft plectrum stroke was not released darker than a hard one");
+    }
+}
+
 // A string does not leave a plectrum's tip from rest (FittedPhysicalData.h).
 // Under Pick the written line carries, beside the fitted displacement, a
 // velocity over the contact width whose energy is the fitted share of the
@@ -7758,6 +7833,7 @@ int main()
     testEachStringMaterialPlaysItsOwnMeasuredGuitar();
     testBodyShapesFollowTheCoupledTopAndCavity();
     testAPlectrumReleasesWithVelocity();
+    testAPlectrumSlipsOffItsEdgeFasterWhenHarder();
     testTheNormalPolarisationIsTheHigherMemberByALength();
     testTheParallelPolarisationRadiatesThroughTheRockingSaddle();
     testPerformance();
