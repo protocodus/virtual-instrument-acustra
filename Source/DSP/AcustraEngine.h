@@ -785,6 +785,34 @@ private:
     };
     [[nodiscard]] PortMobility bridgePortMobility(float frequency,
                                                   int stringIndex) const noexcept;
+    // bridgePortMobility's per-mode terms that do not depend on the string's
+    // frequency - each included mode's prewarped omega (a tanf), its damping
+    // and residues, and the plate floor's - for the bank, shape, host rate
+    // and calibration in the key. configureVoice asks for them six times per
+    // control update; they change only when one of those does.
+    struct BridgeMobilityTable
+    {
+        struct Mode
+        {
+            float omega { 0.0f };
+            float damping { 0.0f };
+            float heave { 0.0f };
+            float cross { 0.0f };
+            float rock { 0.0f };
+        };
+        const void* bank { nullptr };
+        std::array<std::uint32_t, 9> key {};
+        bool valid { false };
+        int count { 0 };
+        std::array<Mode, bridgeModeCount> modes {};
+        float scale { 1.0f };
+        bool plate { false };
+        float plateOmega { 0.0f };
+        float plateDamping { 0.0f };
+        float plateWeight { 0.0f };
+    };
+    const BridgeMobilityTable& bridgeMobilityTable() const noexcept;
+    mutable BridgeMobilityTable bridgeMobilityTable_ {};
     float bridgePhaseDelay(const PortMobility& port, float frequency,
                            int stringIndex) const noexcept;
     // How far, as a fraction of the request, the pair of modes the two

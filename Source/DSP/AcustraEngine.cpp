@@ -2323,6 +2323,59 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
     return -std::arg(selfReflection) / digitalOmega;
 }
 
+const AcustraEngine::BridgeMobilityTable&
+AcustraEngine::bridgeMobilityTable() const noexcept
+{
+    // Every input the terms below are computed from, as exact bits.
+    const float rate = static_cast<float>(sampleRate_);
+    const auto bank = measuredBridgeBank(parameters_.stringMaterial,
+        parameters_.bridgeModel, parameters_.guitarModel);
+    const float scale = physicalCalibration_.bridgeMobilityScale
+        / (parameters_.guitarModel == GuitarModel::Original ? 1.0f
+           : fittedPhysicalCalibration.bridgeMobilityScale);
+    const auto plate = plateConductanceMode(physicalCalibration_);
+    const std::array<std::uint32_t, 9> key {
+        exact::bits(rate), exact::bits(bridgeShapeA0_), exact::bits(bridgeShapeT1_),
+        exact::bits(bridgeShapePlate_), exact::bits(bridgeShapeT1UpperHz_),
+        exact::bits(scale), exact::bits(plate.frequency), exact::bits(plate.q),
+        exact::bits(parameters_.guitarModel == GuitarModel::Original
+                    ? plate.weight : -1.0f) };
+    auto& table = bridgeMobilityTable_;
+    if (table.valid && table.bank == bank.begin() && table.key == key)
+        return table;
+    // The terms as bridgePortMobility computed them in its mode loop.
+    const float bilinear = 2.0f * rate;
+    table.count = 0;
+    for (const auto& source : bank)
+    {
+        const auto measured = shapeBridgeMode(source, bridgeShapeA0_,
+            bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
+        if (measured.frequency >= 0.45f * rate
+            || !includeMeasuredBridgeMode(source))
+            continue;
+        auto& mode = table.modes[static_cast<std::size_t>(table.count++)];
+        mode.omega = bilinear * std::tan(
+            pi * measured.frequency / rate);
+        mode.damping = mode.omega / (2.0f * measured.q);
+        mode.heave = measured.heave;
+        mode.cross = measured.cross;
+        mode.rock = measured.rock;
+    }
+    table.scale = scale;
+    table.plate = parameters_.guitarModel == GuitarModel::Original
+        && plate.weight > 0.0f && plate.frequency < 0.45f * rate;
+    if (table.plate)
+    {
+        table.plateOmega = bilinear * std::tan(pi * plate.frequency / rate);
+        table.plateDamping = table.plateOmega / (2.0f * plate.q);
+        table.plateWeight = plate.weight;
+    }
+    table.bank = bank.begin();
+    table.key = key;
+    table.valid = true;
+    return table;
+}
+
 AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
     float frequency, int stringIndex) const noexcept
 {
@@ -2342,34 +2395,24 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
     std::complex<float> mobilityHeave {};
     std::complex<float> mobilityCross {};
     std::complex<float> mobilityRock {};
-    for (const auto& source
-         : measuredBridgeBank(parameters_.stringMaterial, parameters_.bridgeModel, parameters_.guitarModel))
+    const auto& table = bridgeMobilityTable();
+    for (int index = 0; index < table.count; ++index)
     {
-        const auto measured = shapeBridgeMode(source, bridgeShapeA0_,
-            bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
-        if (measured.frequency >= 0.45f * rate
-            || !includeMeasuredBridgeMode(source))
-            continue;
-        const float omega = bilinear * std::tan(
-            pi * measured.frequency / rate);
-        const float damping = omega / (2.0f * measured.q);
-        const std::complex<float> shape
-            = (physicalCalibration_.bridgeMobilityScale
-               / (parameters_.guitarModel == GuitarModel::Original ? 1.0f
-                  : fittedPhysicalCalibration.bridgeMobilityScale)) * s
+        const auto& mode = table.modes[static_cast<std::size_t>(index)];
+        const float omega = mode.omega;
+        const float damping = mode.damping;
+        const std::complex<float> shape = table.scale * s
             / (s * s + 2.0f * damping * s + omega * omega);
-        mobilityHeave += measured.heave * shape;
-        mobilityCross += measured.cross * shape;
-        mobilityRock += measured.rock * shape;
+        mobilityHeave += mode.heave * shape;
+        mobilityCross += mode.cross * shape;
+        mobilityRock += mode.rock * shape;
     }
 
-    const auto plate = plateConductanceMode(physicalCalibration_);
-    if (parameters_.guitarModel == GuitarModel::Original
-        && plate.weight > 0.0f && plate.frequency < 0.45f * rate)
+    if (table.plate)
     {
-        const float omega = bilinear * std::tan(pi * plate.frequency / rate);
-        const float damping = omega / (2.0f * plate.q);
-        mobilityHeave += plate.weight * s
+        const float omega = table.plateOmega;
+        const float damping = table.plateDamping;
+        mobilityHeave += table.plateWeight * s
             / (s * s + 2.0f * damping * s + omega * omega);
     }
 
