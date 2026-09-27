@@ -287,13 +287,37 @@ and opaque plugin states remain private; reproduction needs the installed librar
 
 MIDI first selects one of six guitar strings. Each string covers its open note
 plus twenty frets. The allocator replucks a note on the string still sounding
-it once its key is up, as a guitarist does, then prefers a free string
-requiring the lowest valid fret, preserves duplicate-note ownership, and steals
-deterministically only when all playable strings are occupied. Before the
-first of those rules a repeated E4 hopped across five strings, one per repeat,
-and left every one of them ringing. Standard, Drop D, DADGAD, Open G and
-half-step-down tunings change those six physical constraints rather than
-transposing the final mix.
+it once its key is up, as a guitarist does; before that rule a repeated E4
+hopped across five strings, one per repeat, and left every one of them
+ringing. It preserves duplicate-note ownership and never takes a string whose
+key is still down while another string can sound the note.
+
+Beyond that it places notes with a fretting hand, the rule the listener set:
+"imagine a player's hand on the frets that are currently playing or were
+playing previously - try to fit a fret that a finger would reach. then,
+prefer empty strings, then prefer lower frets." Each string remembers the
+last fretted note it sounded. Held notes, key or pedal, place the hand with
+weight 1; released ones with exp(-age / 1 s), and not at all after 2 s. A
+hand in position covers four frets, the highest at most three above the
+lowest, and reaches a fifth by stretching: the small and large finger spans
+of [Heijink and Meulenbroek, J. Motor Behavior 34(4), 2002](https://www.socsci.ru.nl/meulenbroek/Publications/Heijink%20en%20Meulenbroek%202002.pdf),
+where the five-fret span was rated harder and six professional guitarists,
+fingering note sequences themselves, moved the hand in 2 of 31 fingerings and
+then by one fret. A candidate string and fret costs nothing when the hand
+reaches it where it is, half a fret for each fret held outside the four-fret
+position, and each remembered finger's weight per fret the hand would have to
+move; notes the hand must hold that no hand spans are impossible. The
+allocator takes the cheapest, then an open string, then the lower fret, then
+a silent string before a ringing one. With nothing fretted held or released
+in the last two seconds (a fresh engine, or a rest as long as the one after
+which a strum restarts on a downstroke) the hand is forgotten, and a note is
+placed exactly as before the hand existed: the free string with the lowest
+fret, else the string released longest ago, else the oldest. That keeps every
+single-note benchmark render bit-identical. String-per-channel controllers
+and MPE member channels keep their own strings and the handless allocator.
+
+Standard, Drop D, DADGAD, Open G and half-step-down tunings change those six
+physical constraints rather than transposing the final mix.
 
 Alternate steel tunings retain each string's standard linear mass and derive
 the new tension from its tuned open frequency. Drop D therefore loosens the
@@ -428,15 +452,34 @@ at the saddle; the pick's speed is a player's map of velocity over the
 establish that velocity-to-speed relationship. Chords whose notes arrive
 spread in time are played as sent, unless Gather Chords is on.
 
+Notes that land on one sample and one channel are fretted as one shape
+(AcustraEngine::planChord, which the plug-in calls before sounding them):
+every way of putting them one to a string is scored by the hand's rules, a
+shape that takes no held string, fits one hand and is reached from where the
+hand is with the fewest frets moved, re-strikes a still-ringing note where it
+rings, and has the most open strings and the lowest frets. E major, A minor,
+G, C and D land in their first-position open shapes; C4-E4-G4 on its own
+becomes G fret 5, B fret 8 and open E.
+
 A chord played live reaches the plug-in one key at a time, in whatever order
 the fingers land, and each note used to take the free string with the lowest
 fret before the next was known. Played low to high, C4-E4-G4 became G fret
 12, B fret 1 and open E, an 11-fret stretch no hand makes, and a note high on
-a wound string does not sound like the same note on a plain one. Gather
-Chords, the CHORDS switch beside PANIC, holds every MIDI event back by 30 ms.
+a wound string does not sound like the same note on a plain one. The hand now
+refrets a chord still forming: when a note arrives within 30 ms of the one
+before it on its channel and would otherwise take a held string or leave the
+hand an impossible stretch, the chord so far is refretted with it as one
+shape, moving as few of its notes as the shape allows. A moved note is
+replucked on its new string, inside the chord's own onset spread, and the
+string it leaves is taken by another note of the shape or damped by the
+leaving finger. The same C4-E4-G4 rolled over 20 ms becomes G fret 5, B fret
+8 and open E, with C4 plucked twice, 20 ms apart. Gather Chords, the CHORDS
+switch beside PANIC, avoids that second pluck at the cost of latency: it
+holds every MIDI event back by 30 ms.
 A Note On that comes due takes along the Note Ons its channel received in the
-30 ms after it, and the group reaches the allocator as one wrist event: voiced
-high to low and strummed exactly as the same chord sent on one sample. Thirty
+30 ms after it, and the group reaches the allocator as one wrist event:
+fretted as one shape and strummed exactly as the same chord sent on one
+sample. Thirty
 milliseconds is where one chord ends and notes meant apart begin. A pianist's
 louder melody note strikes 20 to 30 ms before the rest of its chord, mostly
 because a faster key travels sooner, which a keyboard's key-bottom contact
@@ -1253,6 +1296,14 @@ The JUCE-free suites cover:
 - pick/thumb excitation and exact preservation of ringing notes, hammer-ons
   and finger lifts when the picking tool changes;
 - six-string bounds, deterministic allocation and block partitioning;
+- the fretting hand (Tests/HandAllocatorTests.cpp): rolled triads within one
+  hand, E major, A minor, G and C one key at a time in their open shapes, a
+  scale that stays in position and then shifts, a melody that leaves a held
+  bass string alone, repeats replucked where they ring, string-per-channel
+  and MPE member notes unchanged, hammer-ons and pull-offs on the hand's
+  string, one-sample chords planned as one shape, the handless allocator
+  exactly whenever the hand is forgotten, and the allocator's cost per
+  note-on;
 - tuning, pitch bend, duplicate ownership, note-off and sustain behavior;
 - release-from-rest onset, settled pitch, physical decay and stiff-string
   dispersion across steel, nylon, notes and sample rates;
@@ -1390,7 +1441,8 @@ cannot modify reference targets.
 The wrapper suite additionally checks that CC68 reaches the engine as legato,
 sample-accurate MIDI, canonical
 same-time chord order, gathered live chords (a triad rolled low to high over
-20 ms sounds bit-identical to the same triad on one sample, while notes more
+20 ms, and a six-string E major rolled over 25 ms after a D major the hand
+remembers, sound bit-identical to the same chord on one sample, while notes more
 than the window apart, a key repeated inside it and a legato run sound
 bit-identical to the same timeline played 30 ms later, and the 30 ms is
 reported as latency), conventional channel isolation, lower-zone MPE setup,
@@ -1401,11 +1453,18 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
 ## Known gaps
 
 - With Gather Chords off, its default, a chord played live on a keyboard is
-  still fretted one note at a time: played low to high, C4-E4-G4 lands on G
-  fret 12, B fret 1 and open E, and D4-F#4-A4 and E4-G4-B4 stretch 12 and 8
-  frets. Switching it on voices them as a guitarist would, at 30 ms of
-  latency. A chord whose notes spread over more than 30 ms, such as a slow
-  roll, is still fretted as it arrives.
+  fretted as it arrives and refretted by the hand when the shape it has
+  started cannot take the next note: rolled low to high over 20 ms,
+  C4-E4-G4, D4-F#4-A4 and E4-G4-B4 now land within one hand (G5 B8 e0, G7
+  B7 e5 and e0 G12 B12; before the hand they stretched 11, 12 and 8 frets),
+  but a moved note is plucked a second time, when the note that moved it
+  arrives (within 30 ms of the note before it).
+  Switching Gather Chords on voices them once, as a guitarist would, at 30 ms
+  of latency. A chord whose notes spread over more than 30 ms, such as a slow
+  roll, is taken as melody: each note goes where the hand reaches, and a
+  shape that has run out of strings within reach is not refretted. The
+  hand's span, memory and costs are set by the listener's direction and the
+  finger-span study above, not fitted to recorded fingerings.
 - Capture choices provide measured microphone positions and one measured
   piezo/preamp electrical load. The piezo's mechanical sensor response and
   sensitivity and named microphone electronics remain unidentified. Matched

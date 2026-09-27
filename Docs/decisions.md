@@ -23,6 +23,33 @@ finger would reach. then, prefer empty strings, then prefer lower frets." The
 switch and that allocation rule are built together. The rule is a direction
 set by the listener, not a measurement.
 
+Implementation note (the hand, 2026-09-27). Each string remembers the last
+fretted note it sounded; held notes (key or pedal) weigh 1, released ones
+exp(-age / 1 s) until 2 s, then nothing. The hand is an index finger at fret
+p covering p..p+3; a held fret one outside that is a stretch at half a fret's
+cost, a remembered finger outside it costs its weight per fret the hand moves,
+and held frets more than four apart are an impossible shape. The four- and
+five-fret spans are Heijink and Meulenbroek's small and large finger spans
+(J. Motor Behavior 34(4), 339-351, 2002: the large rated harder; their six
+professionals moved the hand in 2 of 31 self-chosen fingerings, by one fret),
+which is also why stretching is cheaper than moving; the half, the 1 s and
+the 2 s are ordering and convention (2 s is the plug-in's strum-restart rest),
+not fits. A note takes, in order: the string still ringing it; no string whose
+key is down if another serves; the lowest cost; an open string; the lower
+fret; a silent string over a ringing one. With no remembered finger at all the
+allocator is the handless one bit for bit, so every single-note benchmark
+render is unchanged (fylde and pick, all 79 model renders byte-identical to
+realism-2). Chords on one sample are placed as one shape by an exhaustive
+search (at most 6! assignments), and the plug-in calls it for every group it
+flushes, gathered or not, so a gathered roll is the same chord as the
+one-sample one by construction. Without the switch a chord still forming
+(onsets within 30 ms, Goebl's window) is refretted when its next note would
+steal or not fit, moving as few notes as possible; a moved note is plucked
+again. String-per-channel and MPE member notes keep their strings and the
+handless allocator. Measured cost: 0.06 us for a single note-on's choice with
+five strings held, 1-3 us for a six-note plan, about 45 us for the rolled
+triad's refret, almost all of it the two replucks; no allocation.
+
 ## 2026-09-27 — a plectrum lets go as the string slides round its edge
 
 What was measured. On the picked archtop's same-root pairs, the recordings'
