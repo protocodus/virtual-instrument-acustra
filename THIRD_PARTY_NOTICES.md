@@ -174,12 +174,22 @@ states drive all three microphone outputs. This basis reconstructs the two
 measured inputs; extending it to arbitrary strings assumes a rigid saddle and
 does not identify a horizontal-force response.
 
-No corpus averaging, FIR remainder, per-path peak/RMS normalisation or authored
+Apart from the plate-mode Q below, no corpus averaging, FIR remainder, per-path
+peak/RMS normalisation or authored
 left/right gain spread is used. The causal fades, modal reduction, force-pair
 basis conversion, global gain and shape/material transformations are Acustra
 changes; the selected body calibration has neutral frequency/Q scales, residue
 tilt and low-mode gain. Runtime output has no RMS matching and is not calibrated
 to absolute sound pressure. No DAFx-26 coefficient is used in this body model.
+
+Since 2026-09-27 the g21 bank's plate modes between 300 Hz and 10 kHz carry the
+damping of five flamenca blancas the same archive measured anechoically, g37,
+g38, g39, g42 and g43, each fitted by the same generator and gates at its own
+converged window (g41 fails them): each g21 mode's Q is scaled by the
+population's median Q over g21's own median in the octave round it, and never
+raised (`Tools/GenerateBodyForcePair.py --plate-q median`). The air mode, T1,
+the 287 Hz mode and every frequency and residue are as fitted from g21. This
+Q scaling is an Acustra change to the archive's data.
 
 Acustra ships only those transformed numerical coefficients. It does not ship
 the source MAT file, recorded impulses, photographs or documentation from the
