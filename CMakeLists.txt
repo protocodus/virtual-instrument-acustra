@@ -179,6 +179,12 @@ if(ACUSTRA_BUILD_TOOLS)
         PRIVATE AcustraDSP AcustraReferenceBank)
     target_compile_features(AcustraPhysicalFitRenderer PRIVATE cxx_std_20)
 
+    # PhysicalFitRenderer's model half for corpora outside the embedded bank;
+    # driven by Tools/BenchmarkOpenCorpora.py.
+    add_executable(AcustraExternalCorpusRenderer Tools/ExternalCorpusRenderer.cpp)
+    target_link_libraries(AcustraExternalCorpusRenderer PRIVATE AcustraDSP)
+    target_compile_features(AcustraExternalCorpusRenderer PRIVATE cxx_std_20)
+
     add_executable(AcustraBridgeProbe Tools/BridgeProbe.cpp)
     target_link_libraries(AcustraBridgeProbe PRIVATE AcustraDSP)
     target_compile_features(AcustraBridgeProbe PRIVATE cxx_std_20)
@@ -190,11 +196,15 @@ if(ACUSTRA_BUILD_TOOLS)
         target_compile_options(AcustraRenderDemos PRIVATE /W4 /permissive-)
         target_compile_options(AcustraPhysicalFitRenderer
             PRIVATE /W4 /permissive-)
+        target_compile_options(AcustraExternalCorpusRenderer
+            PRIVATE /W4 /permissive-)
         target_compile_options(AcustraBridgeProbe PRIVATE /W4 /permissive-)
     else()
         target_compile_options(AcustraRenderDemos PRIVATE
             -Wall -Wextra -Wpedantic)
         target_compile_options(AcustraPhysicalFitRenderer PRIVATE
+            -Wall -Wextra -Wpedantic)
+        target_compile_options(AcustraExternalCorpusRenderer PRIVATE
             -Wall -Wextra -Wpedantic)
         target_compile_options(AcustraBridgeProbe PRIVATE
             -Wall -Wextra -Wpedantic)
