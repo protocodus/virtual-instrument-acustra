@@ -4,6 +4,50 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-27 — the narrow ringing is g21's body, not its room
+
+What was measured. Mores' guitar list puts g14-g19 and g21-g26 in the same
+Freiburg music room, so the room can be measured apart from g21.
+`Tools/RemoveRoomTail.py` takes, per third-octave band, the room's decay
+from the eleven other guitars' 200-500 ms energy (T60 0.74-1.18 s from
+400 Hz to 8 kHz) and its coupling to the direct sound as their late energy
+less that of the nine anechoic guitars (g34-g43), in a Sabine energy
+balance delayed by the 6 m first-reflection loop. The room's excess is
+significant (one-sided Mann-Whitney, 5%) at 63-79 Hz and from 157 Hz to
+8 kHz, not at 100 or 125 Hz, where the air mode's own ringing fills the
+late window in both. Held out, g21's own coupling agrees with it within
+2.5 dB from 315 Hz to 8 kHz; at 198 and 250 Hz g21 carries 10 and 5 dB more
+late energy than the room explains, its own modes. With the room subtracted
+and each band gated where the room carries half its remaining energy,
+g21's 1.6-4 kHz levels at 100 ms go from 17-29 dB over the anechoic
+flamencas' median to within 5 dB of it, and by 200 ms every band from
+315 Hz up is at or under it. From 400 to 800 Hz, at 100 ms, g21 stays 2-6 dB
+over them and the removal moves it by under 1 dB: that excess is the body.
+Room-free, g21 still converges at 250 ms (worst Q change 4.3% to 500 ms),
+and its 655 Hz mode reads Q 59 already at 125 ms, where the room is more
+than 10 dB under the body; the Q under 40 at 62.5 ms was that window's own
+bandwidth. The regenerated bank (126 modes, was 132) moves the air mode's
+Q 19.3 -> 16.6, the 655 Hz mode's 61 -> 58 and the 1.2-2.4 kHz median 44.9
+-> 37.1. The rocking path's strongest peaks stand 9.4 dB (655 Hz, was 9.6)
+and 7.8 dB (209 Hz, unchanged) over their third octave; the strongest of
+four anechoic flamencas' stand 8.3-8.7 dB. g21's 600-1200 Hz median Q is
+47.8, against 31.6-43.9 for g37, g39, g42 and g43.
+
+What the corpus says. Fylde training 6.432400 -> 6.535177, development
+validation 5.996174 -> 6.017741, flat-top 7.181437 -> 7.216254; Pick
+6.219866 -> 6.329458 and 5.633686 -> 5.626541; the frozen test split
+6.113401 -> 6.214427. Eastman picked 6.6596 -> 6.7219, finger 7.4777 ->
+7.5292, Martin HD28 7.3638 -> 7.4864. GuitarSet log error 12.9824 ->
+12.9511, convergence 0.8784 -> 0.8771, chroma 0.2240 -> 0.2235. The rows
+were themselves recorded in rooms, and the engine adds none.
+
+What is open. Not shipped: the room-free bank reads worse on every split
+but development validation under Pick, and it does not remove the
+listener's narrow resonance, which is g21's own. Set 12,
+`2026-09-27-roomfree`, puts it against the shipping body on four steel
+performances, key unread. The generator's `--room-free` option reproduces
+it; without it the committed header is reproduced byte for byte.
+
 ## 2026-09-25 — the narrow ringing is the room in g21's 250 ms window
 
 What was heard. Of the Set 9 renders the listener said "both are quite harsh

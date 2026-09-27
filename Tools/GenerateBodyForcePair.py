@@ -45,6 +45,7 @@ import numpy as np
 import scipy
 
 import AuditBodyForcePair as pair
+import RemoveRoomTail
 
 spatial, body = pair.spatial, pair.spatial.body
 MICROPHONES = ("upper", "treble", "bass")
@@ -222,14 +223,26 @@ def self_test() -> None:
 
 
 def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
-        steel_keep: int | None = None) -> None:
+        steel_keep: int | None = None, room_free: bool = False) -> None:
     if output.exists() or not output.parent.is_dir():
         raise ValueError("output must be a new directory inside an existing parent")
     if steel != 21 and steel not in body.ANECHOIC_GUITARS:
         raise ValueError(f"g{steel}: only g21 or an anechoically measured guitar may be steel's body")
     if steel_keep is None:
         steel_keep = g21_keep if steel == 21 else body.converged_keep_samples(raw, steel)[0]
-    responses, quality = spatial.extract(spatial.bridge.load_matrix(raw), (steel, 34))
+    values = spatial.bridge.load_matrix(raw)
+    responses, quality = spatial.extract(values, (steel, 34))
+    room = None
+    if room_free:
+        if steel != 21:
+            raise ValueError("--room-free applies to g21, the one body measured in a room")
+        # The music room's reverberant tail is removed from every g21 path the
+        # fit reads, with the room measured on the other eleven guitars
+        # recorded in it (RemoveRoomTail.py).
+        room = RemoveRoomTail.fit_room(values, held_out=21)
+        for impact in RemoveRoomTail.IMPACTS:
+            for channel in RemoveRoomTail.MICROPHONES:
+                responses[21, impact, channel] = RemoveRoomTail.remove(responses[21, impact, channel], room)
     banks, arrays = [], {"frequency": FREQUENCY}
     for guitar, keep in ((steel, steel_keep), (34, 12000)):
         bank, values = fit_bank(guitar, keep, responses)
@@ -241,7 +254,8 @@ def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
         raw_md5=spatial.bridge.digest(raw), raw_sha256=spatial.sha256(raw),
         tool_sha256=spatial.sha256(Path(__file__)),
         helper_sha256={name: spatial.sha256(Path(__file__).with_name(name)) for name in
-            ("GenerateMeasuredBody.py", "GenerateMeasuredBridge.py", "AuditBridgeSpatialMap.py", "AuditBodyForcePair.py")},
+            ("GenerateMeasuredBody.py", "GenerateMeasuredBridge.py", "AuditBridgeSpatialMap.py",
+             "AuditBodyForcePair.py", "RemoveRoomTail.py")},
         versions=dict(python=sys.version.split()[0], numpy=np.__version__, scipy=scipy.__version__),
         sample_rate=body.SAMPLE_RATE, fft_size=body.FFT_SIZE,
         response_units="Pa/N for endpoint forces and normalized moment T=M/a",
@@ -256,7 +270,12 @@ def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
             magnitude_p90_db=body.MAX_P90_MAGNITUDE_ERROR_DB,
             endpoint_mic_balance_p90_db=body.MAX_STEREO_RATIO_P90_ERROR_DB,
             erb_5k_to_10k_level_abs_db=body.MAX_BAND_MAGNITUDE_ERROR_DB),
-        force_quality=quality, banks=banks)
+        force_quality=quality, banks=banks,
+        room_removed=None if room is None else dict(
+            band_centres_hz=RemoveRoomTail.CENTRES.tolist(),
+            t60_s=(3.0 * np.log(10.0) / room["delta"]).tolist(),
+            coupling=room["kappa"].tolist(), room_coupling=room["room_kappa"].tolist(),
+            anechoic_coupling=room["anechoic_kappa"].tolist(), mann_whitney_p=room["p"].tolist()))
     json.dumps(report, allow_nan=False)
     output.mkdir()
     np.savez(output / "body-force-pair.npz", **arrays)
@@ -276,6 +295,9 @@ def main() -> int:
     parser.add_argument("--steel-guitar", type=int, default=21,
                         help="archive guitar steel's body is fitted from: g21, or an "
                              "anechoically measured one at its converged window")
+    parser.add_argument("--room-free", action="store_true",
+                        help="remove the music room's reverberant tail from g21 before "
+                             "fitting (Tools/RemoveRoomTail.py)")
     args = parser.parse_args()
     try:
         if args.self_test:
@@ -285,7 +307,7 @@ def main() -> int:
         else:
             if args.raw_mat is None or args.output is None:
                 parser.error("--raw-mat and --output are required")
-            run(args.raw_mat, args.output, args.g21_keep, args.steel_guitar)
+            run(args.raw_mat, args.output, args.g21_keep, args.steel_guitar, room_free=args.room_free)
         return 0
     except (OSError, ValueError, AssertionError) as error:
         parser.exit(1, f"{error}\n")
