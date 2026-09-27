@@ -4,6 +4,24 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-27 — blind verdicts: steel keeps g21, and the plectrum slip is heard as right
+
+Set 11 put the shipping steel body of 599a34c, g21 (a flamenca measured in a
+music room), as A against the anechoic g39 with its own bridge and string
+height as B (candidate/anechoic-body, 922c5b7), on steel travis picking, a bass
+run into a chord, chords up the neck and a high melody, level-matched on
+whole-excerpt RMS with B trimmed by -3.09, -2.86, +0.32 and -0.40 dB. The
+listener chose A on pairs 1, 2 and 4 and B on pair 3, with no overall verdict
+given; three pairs of four is A. g39 does not ship and the branch is
+dropped; steel keeps g21, since damped to the anechoic flamencas' plate-mode Q
+(the entry below), which Set 15 puts against g39 again.
+
+Set 13 put the plectrum of 91f566f, which let go of the string at an instant,
+as A against the adopted slip release as B (the entry "a plectrum lets go as
+the string slides round its edge"), on a soft-to-hard ladder and three picked
+steel performances. The listener chose B on all four pairs and overall. The
+slip was adopted on the measurement; the ear agrees.
+
 ## 2026-09-27 — g21's plate modes damped to the anechoic flamencas'
 
 What was measured. Fitted by the same generator and gates, each at its own
