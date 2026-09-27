@@ -1869,9 +1869,10 @@ void testGatheredChordsVoiceLikeSequencedChords()
 {
     // A keyboard hand's C major triad arriving low to high over 20 ms. Taken
     // one key at a time, C4 claims the B string's first fret before G4
-    // arrives, leaving G4 only the G string's twelfth fret; gathered, the
-    // triad reaches the allocator as one wrist event and sounds exactly as
-    // the same chord placed on one sample does.
+    // arrives, and the engine's hand has to refret the chord under way
+    // (replucking C4 on the G string); gathered, the triad reaches the
+    // allocator as one wrist event, is fretted as one shape (planChord) and
+    // sounds exactly as the same chord placed on one sample does.
     constexpr int onset = 1000;
     constexpr int length = 24 * blockSize;
     const std::vector<TimedMidi> rolled {
@@ -1895,11 +1896,41 @@ void testGatheredChordsVoiceLikeSequencedChords()
     expect (std::any_of (gatheredRoll.begin(), gatheredRoll.end(),
                          [] (float value) { return std::abs (value) > 0.001f; }),
             "the gathered chord rendered silence");
-    // Without gathering the same roll is fretted differently, which is what
+    // Without gathering the same roll sounds differently, which is what
     // the switch is for; if this ever matched, the check above proves nothing.
     expect (renderTimeline (rolled, length, false)
                 != renderTimeline (together, length, false),
             "the rolled chord no longer needs gathering to voice like a chord");
+
+    // A six-string E major rolled over 25 ms, after a D major the hand still
+    // remembers: the gathered roll and the one-sample chord are the same
+    // shape from the same hand.
+    std::vector<TimedMidi> earlier {
+        { 200, juce::MidiMessage::noteOn (1, 50, 0.7f) },
+        { 200, juce::MidiMessage::noteOn (1, 57, 0.7f) },
+        { 200, juce::MidiMessage::noteOn (1, 62, 0.7f) },
+        { 200, juce::MidiMessage::noteOn (1, 66, 0.7f) },
+        { 9000, juce::MidiMessage::noteOff (1, 50) },
+        { 9000, juce::MidiMessage::noteOff (1, 57) },
+        { 9000, juce::MidiMessage::noteOff (1, 62) },
+        { 9000, juce::MidiMessage::noteOff (1, 66) }
+    };
+    constexpr std::array<int, 6> eMajor { 40, 47, 52, 56, 59, 64 };
+    constexpr int later = 14000;
+    auto rolledE = earlier;
+    auto togetherE = earlier;
+    for (std::size_t index = 0; index < eMajor.size(); ++index)
+    {
+        rolledE.push_back ({ later + static_cast<int> (index) * 240,
+                             juce::MidiMessage::noteOn (1, eMajor[index], 0.8f) });
+        togetherE.push_back ({ later,
+                               juce::MidiMessage::noteOn (1, eMajor[index], 0.8f) });
+    }
+    constexpr int lengthE = 360 * blockSize;
+    expect (renderTimeline (rolledE, lengthE, true)
+                == renderTimeline (togetherE, lengthE, true),
+            "a gathered six-string roll did not sound as the same chord on one "
+            "sample");
 }
 
 void testGatheringOnlyDelaysNotesMeantApart()

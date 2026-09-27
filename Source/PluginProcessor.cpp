@@ -427,6 +427,23 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             strumUpstroke = ! strumUpstroke;
             engine.beginStrum();
         }
+        // Notes that land together on one channel are one fretting-hand
+        // shape: the engine places them as a chord before they sound.
+        // Legato groups are hammer-ons onto what is already held.
+        const bool oneChannel = std::all_of (
+            pendingNoteOns.begin(), pendingNoteOns.begin() + pendingNoteOnCount,
+            [&] (const PendingNoteOn& note)
+            { return note.channel == pendingNoteOns[0].channel; });
+        if (pendingNoteOnCount >= 2 && oneChannel && ! legatoDown
+            && pendingNoteOnCount <= acustra::AcustraEngine::stringCount)
+        {
+            std::array<int, acustra::AcustraEngine::stringCount> chord {};
+            for (int index = 0; index < pendingNoteOnCount; ++index)
+                chord[static_cast<std::size_t> (index)]
+                    = pendingNoteOns[static_cast<std::size_t> (index)].note;
+            engine.planChord (chord.data(), pendingNoteOnCount,
+                              pendingNoteOns[0].channel);
+        }
         for (int index = 0; index < pendingNoteOnCount; ++index)
         {
             const auto& note = pendingNoteOns[static_cast<std::size_t> (index)];
