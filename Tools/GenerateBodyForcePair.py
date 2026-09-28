@@ -36,6 +36,9 @@ at its own converged window with the same gates: over the octave round each
 mode, the mode's Q is scaled by the population's median Q over g21's own,
 never raised. Frequencies and residues are kept. The committed header is
 written this way; without the option the measured Qs are written unchanged.
+The report keeps g21's as-fitted Q (plate_q.measured_frequency_q) beside the
+population's banks: GenerateMeasuredBridge.py --body-report reads both to pair
+the bridge's modes with the radiation's and to damp the unpaired ones alike.
 
     python3 Tools/GenerateBodyForcePair.py --self-test
     python3 Tools/GenerateBodyForcePair.py --raw-mat /path/qualified_selected_impulses.mat --output /new/fit-directory
@@ -68,6 +71,24 @@ PLATE_Q_POPULATION = (37, 38, 39, 41, 42, 43)
 PLATE_Q_BAND_HZ = (300.0, 10_000.0)
 
 
+def octave_q(frequency_q: np.ndarray, frequency: float) -> np.ndarray:
+    """The Qs of the modes in the octave centred on frequency (f/sqrt2 to f*sqrt2)."""
+    low, high = frequency / np.sqrt(2.0), frequency * np.sqrt(2.0)
+    return frequency_q[(frequency_q[:, 0] >= low) & (frequency_q[:, 0] < high), 1]
+
+
+def plate_q_factor(frequency: float, steel_q: np.ndarray, population_q: list) -> float:
+    """The "median" rule's factor at a frequency: over the octave round it, the
+    population's median Q over the steel bank's own, never above 1.
+
+    GenerateMeasuredBridge.py reads the same factor at a bridge mode that has
+    no radiation twin, so the bridge's own modes are damped as the plate's are.
+    """
+    pooled = np.concatenate([np.asarray(bank)[:, :2] for bank in population_q])
+    return min(1.0, np.median(octave_q(pooled, frequency))
+                    / np.median(octave_q(np.asarray(steel_q)[:, :2], frequency)))
+
+
 def plate_q_correction(steel_q: np.ndarray, population_q: list, rule: str,
                        band: tuple = PLATE_Q_BAND_HZ) -> np.ndarray:
     """g21's Q per mode in band read against the anechoic population.
@@ -83,13 +104,10 @@ def plate_q_correction(steel_q: np.ndarray, population_q: list, rule: str,
     for index, (frequency, q) in enumerate(steel_q):
         if not band[0] <= frequency < band[1]:
             continue
-        low, high = frequency / np.sqrt(2.0), frequency * np.sqrt(2.0)
-        reference = pooled[(pooled[:, 0] >= low) & (pooled[:, 0] < high), 1]
-        own = steel_q[(steel_q[:, 0] >= low) & (steel_q[:, 0] < high), 1]
         if rule == "median":
-            corrected[index, 1] = q * min(1.0, np.median(reference) / np.median(own))
+            corrected[index, 1] = q * plate_q_factor(frequency, steel_q, population_q)
         elif rule == "ceiling":
-            corrected[index, 1] = min(q, np.percentile(reference, 75))
+            corrected[index, 1] = min(q, np.percentile(octave_q(pooled, frequency), 75))
         else:
             raise ValueError(f"unknown --plate-q rule {rule}")
     corrected[:, 1] = corrected[:, 1].astype(np.float32).astype(float)
@@ -353,7 +371,9 @@ def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
             erb_5k_to_10k_level_abs_db=body.MAX_BAND_MAGNITUDE_ERROR_DB),
         force_quality=quality, banks=banks,
         plate_q=None if population is None else dict(rule=plate_q, band_hz=list(plate_q_band),
-            population=population, corrected_frequency_q=arrays["g21_frequency_q"].tolist()),
+            population=population,
+            measured_frequency_q=arrays["g21_measured_frequency_q"].tolist(),
+            corrected_frequency_q=arrays["g21_frequency_q"].tolist()),
         room_removed=None if room is None else dict(
             band_centres_hz=RemoveRoomTail.CENTRES.tolist(),
             t60_s=(3.0 * np.log(10.0) / room["delta"]).tolist(),

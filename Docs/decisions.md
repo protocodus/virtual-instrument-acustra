@@ -4,6 +4,95 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — one body at the saddle: steel's own bridge on its radiation's poles (listening candidate, not shipped)
+
+What was measured. On D the steel string is loaded by one guitar and heard
+through another. The Fylde bridge (Carcagno et al., JASA 2018) drains the
+normal plane at the Fylde's own modes, whose prominence correlates with
+g21's radiation at r +0.12/+0.14/+0.05 on strings 1/3/5; the parallel plane,
+about 70% of a steel pluck, meets a rigid saddle (the Fylde has no rocking
+path) yet radiates through g21's measured moment paths. So partials that land
+on a radiation peak lose nothing there: fixed band-pass filters driven by
+undamped partials, which is what the listener describes ("like a highly
+resonant BP filter"). In a modal body one mode carries both the mobility
+residue phi_k(bridge)^2/m_k and the radiation residue phi_k(bridge)psi_k(mic)/m_k
+on one pole. g21's own bridge measurement comes from the same guitar and
+hammer impacts, but the shipped Original bridge sat at the measured
+frequencies while configureBody moves the radiation 165-205 cents down (the
+wide anchor, by ear) and damps it (the plate-Q rule): its best correlation
+needed a 215-235 cent shift. And the flamenca's top is about 3.6 times as
+compliant as a steel-string guitar's: the Fylde measures 0.274 of g21's |Y|
+(geometric mean over 80 Hz-4 kHz at the Fylde's point, g21's u = -1;
+0.232-0.301 over other bands and conductance), the same quarter the
+2026-09-04 corpus search wanted for the g21 bridge.
+
+What was built (cand/body-one-pole-steel-body, from cand/d 913b392).
+`Tools/GenerateMeasuredBridge.py` now reads the radiation header, the
+GenerateBodyForcePair report (which now also stores g21's as-fitted Q) and
+the Fylde header, and emits into `MeasuredBridgeData.h` a twin index per g21
+bridge mode, a Q ratio per unpaired mode and `steelTopMobilityRatio = 0.274`.
+A twin is the nearest radiation mode, taken only inside its as-fitted
+half-power band and when the bridge mode is narrower than the local mode
+spacing: 18 of 47 pair (90.8, 178.7, 208.7, 412.4, 484.1, 517.8, 591.1,
+656.3, 728.8, 766.1, 793.2, 867.9, 919.9, 1032.7, 1084.7, 1330.8, 1374.8,
+2341.6 Hz). The unpaired modes take the plate-Q rule's octave factor
+(0.68-0.91 above 300 Hz). The engine factors configureBody's per-mode pole
+into radiationPole() (radiation bit-identical; the Fylde and nylon renders
+are byte-identical to D) and, for steel on Original with the Original
+bridge only, gives each twinned bridge mode its twin's pole exactly and each
+unpaired mode the same anchor/Shape/Wood/calibration maps by class; residues
+are scaled by the ratio under the unchanged fitted 0.754677154 (0.207 of g21
+overall, D's Fylde level), the plate floor is not. Residue matrices are
+kept, so the bridge stays passive. Wood now reconfigures this bridge as Shape
+does; the mobility table's key gains the wood factors. The steel presets, a
+new session, the demos and (in the Rack Extension, not synced here) the
+default and patches select the Original bridge; the Fylde stays selectable
+as another guitar's bridge with no map applied. No value is fitted; every
+BY_EAR value, the wide anchor, air x4, the 3.25 mm stub and SHIPPING are
+unchanged.
+
+What it measures, against D (Fylde). Radiation/conductance prominence r at
+zero offset +0.41/+0.46/+0.41, best lag +10 cents. 88-note E2-B5 v91 sweep,
+200-2000 Hz, Pick/Finger: prominent partials' fade -2.09/-0.48 dB (D
+-0.86/-0.34; Eastman picked -0.79, finger -0.82, Martin -1.75), early-rate
+residual -2.11/-0.74 dB/s (D -1.01/-1.32; recordings -4.0 to -5.4),
+persistence (median) -0.38/-0.31 (D -0.13/-0.21; recordings -0.14 to -0.34),
+ring gain 3.8/4.5 dB (D 4.0/4.4; recordings 6.9-8.5), late flatness
+0.074/0.019 (D 0.070/0.033; recordings 0.08-0.29). Picked E2-D3 against the
+Eastman: centroid falls x1.41 from 50 ms to 1.75 s (D x1.17, Eastman x2.51);
+sustain 100-200 Hz -8.4 dB (D -7.5, Eastman -3.0), 200-400 Hz -2.9 (D -4.0,
+Eastman -7.6). H1 over H3, mean E2-B3, Pick/Finger +3.9/+12.9 dB (D
++2.6/+11.5); E2 alone -5.3/+2.2 (D -1.6/+6.0). Beating (AM std median)
+0.138/0.106 dB (D 0.142/0.113). Five-chord sweep (E, G, Am, D, C; 26 notes,
+heterodyne on each fundamental, +-3% band): worst note 10.1 cents early and
+7.4 late (D 10.7 and 5.3; the late worst is B3 in the E chord), mean 2.8/2.2
+(D 3.0/1.3).
+
+The corpora, paired with D (lower is closer; never-fitted rows are the
+guard). Bank Finger: steel training +0.03%, development validation +0.39%,
+flat-top -0.05%; Pick: steel training +0.94%, validation -0.16%; nylon
+bit-identical. The frozen test split 6.3473 -> 6.3558 (Finger, +0.13%) and
+5.6644 -> 5.6586 (Pick, -0.10%), the body term rising (12.68 -> 13.03, 11.46
+-> 11.75) and every other term falling. Eastman picked 6.4850 -> 6.3768
+(-1.67%), finger 6.8981 -> 6.8240 (-1.07%), Martin HD28 7.2750 -> 7.1049
+(-2.34%). GuitarSet log error 14.88 -> 14.79 dB, spectral convergence 0.873
+-> 0.829, chroma 0.223 -> 0.228. CPU per 64-frame block at 48 kHz (thread
+time, median of 3, loaded host): a strum every 250 ms 67.6 -> 70.5 us
+(+4%), a held chord 50.4 -> 54.0 us (+7%), the same as D on its Original
+bridge (the 30 rocking sections).
+
+What was decided. Nothing ships on these numbers: the audible change is
+moderate and the benchmark is split (the never-fitted open corpora all move
+closer, bank Pick training and the test split's body term the other way).
+It is a listening candidate for the blind set: D against this, level-matched,
+on the Set 11/15 steel pieces; a third letter at the flamenca's full
+mobility (ratio 1) would show what the stronger drain costs (a picked E2's
+H1-H3 13 dB lower through the anchor stub). Known costs: the ratio rests on
+one steel guitar measured with its strings damped; G2's fundamental rises
+and E2's falls against D; the one-second pull of the E chord's B string is
+2 cents worse; ring gain, late flatness and beating stay at D's values,
+well under the recordings'.
+
 ## 2026-09-28 — blind verdicts: snap between B and C, no pluck click, the damped plate body
 
 Set 14 put shipping (A, 1a2c7e1) against two ways of letting the strings'

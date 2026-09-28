@@ -191,6 +191,18 @@ raised (`Tools/GenerateBodyForcePair.py --plate-q median`). The air mode, T1,
 the 287 Hz mode and every frequency and residue are as fitted from g21. This
 Q scaling is an Acustra change to the archive's data.
 
+On the listening candidate of 2026-09-28 (steel on the Original bridge) the
+g21 bridge bank plays on its radiation bank's poles: `MeasuredBridgeData.h`
+records, for each of its 47 modes, the radiation mode that is the same
+resonance (18 of them: the nearest, inside that mode's as-fitted half-power
+band, the bridge mode narrower than the radiation bank's local spacing), and
+the engine gives such a mode that radiation mode's frequency and Q after the
+anchor, Shape and Wood transforms and the plate-Q rule above; the other modes
+keep their measured frequency under the same transforms and take the plate-Q
+rule's octave factor on their Q. Every bridge residue is scaled by 0.274, the
+Fylde Falstaff's measured mobility over g21's (below). These are Acustra
+changes to the archive's data (`Tools/GenerateMeasuredBridge.py`).
+
 Acustra ships only those transformed numerical coefficients. It does not ship
 the source MAT file, recorded impulses, photographs or documentation from the
 archive. The attribution, source link, licence link and description of changes
@@ -245,6 +257,10 @@ Acustra selects measured peaks, pins the three lowest body frequencies and
 Q values to Table I, infers a polarity and phase alignment from a constrained fit,
 and fits nonnegative scalar residues while retaining measured SI magnitude.
 The bank supplies no measured rocking, cross-admittance or body radiation.
+The same coefficients also supply one derived scalar, `steelTopMobilityRatio`
+in `MeasuredBridgeData.h`: the geometric mean over 80 Hz–4 kHz of this bank's
+|Y| over the Mores g21 bridge bank's at the matching (bass-side) position,
+0.274, which scales the flamenca's bridge to a steel-string guitar's level.
 The source MAT, recorded/synthesized audio and experimental participant data
 are not distributed. This attribution, licence link, source link and
 description of changes must accompany distributions of these coefficients.

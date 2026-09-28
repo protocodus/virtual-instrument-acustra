@@ -886,8 +886,9 @@ they reach 32–76%. Narrow-band microphone errors near 794 and 891 Hz reach
 at every mode. Shorter common windows leave the high-frequency discrepancy.
 The full frequency and sensor results are retained in the fit report.
 
-The steel construction presets, and a new session, play a separate 44-mode
-passive **Fylde bridge** fitted to the first instrument in [Carcagno et al.'s
+The steel construction presets and a new session play steel's own bridge,
+g21's, on its radiation's poles (the paragraphs after the next). A separate
+44-mode passive **Fylde bridge**, fitted to the first instrument in [Carcagno et al.'s
 steel-guitar measurements](https://doi.org/10.1121/1.5084735): a custom Fylde Falstaff with
 Sitka spruce top and Brazilian rosewood back and sides. Its normal bridge
 velocity/force was measured with the strings damped, between strings 5 and 6.
@@ -897,15 +898,46 @@ The fit retains measured SI gain and has 0.230 relative complex error and
 fits only the measured response, and records the inferred phase alignment.
 There is no measured rocking or microphone response in this dataset: all six
 strings share its scalar bridge, and microphone radiation still comes from the
-existing body bank. This is a measured bridge, not a complete Fylde replica. It
-retains the string calibration and anchor model that were fitted on the
-flamenca's bridge, and with that same calibration it sits closer to every split
-of the dry-note recordings (the paired table in Real dry-note benchmark), which
-is why the steel presets select it. The fitted flamenca bridge remains the
-**Original bridge / steel** preset and the benchmark's reference; nylon does
-not read the choice. The host's appended `bridgeModel` parameter preserves the
-choice in sessions, and a session saved before it existed keeps the Original
-bridge it was made with.
+existing body bank. This is a measured bridge, not a complete Fylde replica:
+another guitar's bridge under the flamenca's radiation, with no anchor, Shape
+or Wood map applied, so its modes do not line up with the radiation's
+(prominence correlation r +0.12/+0.14/+0.05 on strings 1/3/5), and with no
+rocking path the parallel polarisation meets a rigid saddle yet still radiates
+through g21's moment paths. It remains selectable as the **Fylde bridge /
+steel** preset; nylon does not read the choice. The host's appended
+`bridgeModel` parameter preserves the choice in sessions, and a session saved
+before it existed keeps the Original bridge it was made with.
+
+On the Original bridge, steel's string is loaded by the guitar it is heard
+through. In a modal body one mode supplies both halves on one pole: the
+mobility residue phi_k(bridge)^2/m_k and the radiation residue
+phi_k(bridge)psi_k(mic)/m_k, so a partial landing on a radiation peak also
+meets a conductance peak and blooms, then fades faster than its neighbours.
+g21's bridge measurement comes from the same guitar and hammer impacts as its
+radiation bank, and [the generator](Tools/GenerateMeasuredBridge.py) records
+which of its 47 modes is the same resonance as a radiation mode: the nearest,
+inside that mode's as-fitted half-power band (`|f_b - f_k| < f_k/(2Q_k)`),
+with the bridge mode itself resolved (`f_b/Q_b` under the radiation bank's
+local spacing). 18 pair, at 90.8, 178.7, 208.7, 412.4, 484.1, 517.8, 591.1,
+656.3, 728.8, 766.1, 793.2, 867.9, 919.9, 1032.7, 1084.7, 1330.8, 1374.8 and
+2341.6 Hz, and each takes its twin's engine pole exactly - the wide steel
+anchor's 165-205 cent shift, Shape, Wood and the plate-Q rule included (a
+unit test pins it to the float for every Shape and Wood). The unpaired modes
+(82.8, 1269 and 1466 Hz and the broad fill modes, Q 5-14, at 371, 848 and 955
+Hz and 1.7-9.1 kHz) take the same maps by class, and the plate-Q rule's octave
+factor on their Q. The flamenca's top is about 3.6 times as compliant as a
+steel-string guitar's: the Fylde measures 0.274 of g21's |Y| (geometric mean
+over 80 Hz-4 kHz at the Fylde's measurement point, g21's bass side; 0.23-0.30
+over other bands and conductance), so the residues are scaled by that ratio
+under the unchanged fitted mobility scale, and every residue matrix and so
+passivity is kept; the plate conductance floor is not scaled. Without the
+ratio the 3.25 mm anchor stub takes the low strings' force from the softer
+top and a picked E2's fundamental falls 13 dB against its 2nd and 3rd
+harmonics. With it, the radiation/conductance prominence correlation is
++0.41/+0.46/+0.41 at zero offset, and on picked notes the partials that stand
+out at onset fade 2.1 dB against their neighbours by the late window (0.9 on
+the Fylde; the recordings 0.8-1.8). Wood now moves this bridge with the
+radiation, exchanging the load as Shape does.
 
 The model represents each short segment behind the saddle as a spring between
 the bridge and ground. All six are there whether or not
@@ -1073,8 +1105,8 @@ Auditorium / Taylor style (spruce and steel, the
 [Grand Auditorium family](https://blog.taylorguitars.com/buyers-resources/an-introduction-to-taylor-acoustic-guitar-body-shapes)),
 Parlor / Fender style (spruce and steel, as in the
 [PS-220E](https://www.fender.com/products/ps-220e-parlor)), and Classical nylon
-(Auditorium/Cedar/Nylon). The three steel presets play the measured Fylde
-steel-string bridge; Original bridge / steel keeps the fitted flamenca bridge.
+(Auditorium/Cedar/Nylon). The three steel presets play steel's own bridge on
+its radiation's poles; Fylde bridge / steel selects the measured Fylde bridge.
 These reuse the bounded construction directions;
 they are not independently measured models of those manufacturers. The menu
 changes Shape, Material, Strings and the bridge with host automation gestures,
@@ -1098,10 +1130,13 @@ radiation - its A0 group, its modes up to the body's T1 and the plate modes
 above - so it also changes the saddle-force Piezo capture and the body's
 interaction with the strings. Only modal stiffness moves: each bridge residue
 matrix and Q is retained, so a fixed shape keeps the passive modal
-construction. Body Material continues to change radiation. Both preserve
-ringing strings and overlapping re-pluck tails. Each anchor leaves both the
-bridge and the radiation exactly as fitted or measured: Original's steel
-Dreadnought and nylon Auditorium, and the Bellido's own box, a classical.
+construction. Body Material changes radiation, and on steel's own bridge the
+bridge's modes too, which take the radiation's poles (Bridge, sympathetic
+strings and body). Both preserve ringing strings and overlapping re-pluck
+tails. Each anchor leaves the radiation exactly as fitted or measured:
+Original's steel Dreadnought and nylon Auditorium, and the Bellido's own box, a
+classical; so it leaves nylon's and the Bellido's bridges and the Fylde, while
+steel's own bridge follows its radiation's anchor transform.
 If a body crossfade is already sounding,
 the latest selection waits for its remaining duration (at most 40 ms), then
 uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
@@ -1961,8 +1996,16 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   box chosen by ear - and the E1D rows place a real dreadnought's A0/T1 above
   both (Construction controls). What would settle it is a measured body of
   each size. The original steel bank adapts a nylon-strung flamenca blanca;
-  the archive lists Savarez Tomatito strings for g21. The Fylde bridge the
-  steel presets play adds actual steel-guitar mobility. The separate Model
+  the archive lists Savarez Tomatito strings for g21. Steel's own bridge
+  takes a steel-string guitar's mobility level from one measured Fylde
+  Falstaff (strings damped) against one flamenca: 0.274, 0.23-0.30 over bands
+  and statistics. On it the picked notes' prominent partials now fade as the
+  recordings' do, but ring gain (3.8/4.5 dB against the recordings' 6.9-8.5),
+  late flatness and beating stay where the Fylde left them, finger-played
+  notes' early decay residual does not improve, and the flamenca's full
+  mobility, which drains far more, thins the low E through the 3.25 mm anchor
+  stub. The one-second chord pull on the B string of an E chord reads 7.4
+  cents against the Fylde's 5.3. The separate Model
   menu adds the matched Bellido bridge/radiation bank; the three steel
   guitars once beside it are retired (Construction controls).
 - The band audits now measure a distance the build chose rather than an error
@@ -2853,13 +2896,14 @@ downloaded CC BY 4.0 Mores archive, including the passive bridge and force-pair
 body regression gates, use a new output directory for the body generator:
 
 ```sh
-python3 Tools/GenerateMeasuredBridge.py \
-  --raw-mat /path/to/qualified_selected_impulses.mat --check
 python3 Tools/GenerateBodyForcePair.py \
-  --raw-mat /path/to/qualified_selected_impulses.mat \
+  --raw-mat /path/to/qualified_selected_impulses.mat --plate-q median \
   --output /tmp/acustra-body-force-pair-regeneration
 cmp /tmp/acustra-body-force-pair-regeneration/MeasuredBodyData.h \
   Source/DSP/MeasuredBodyData.h
+python3 Tools/GenerateMeasuredBridge.py \
+  --raw-mat /path/to/qualified_selected_impulses.mat \
+  --body-report /tmp/acustra-body-force-pair-regeneration/report.json --check
 ```
 
 To preflight a commissioned calibration pilot or full standard-tuning delivery
