@@ -2163,18 +2163,56 @@ void AcustraEngine::prepare(double sampleRate, int)
     sampleRate_ = std::clamp(sampleRate, 8000.0, 384000.0);
     ++voiceConfigurationGeneration_;
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
-    // Measured Adamas SMT piezo capacitance 450pF and installed preamp input 2MΩ:
-    // M. Zollner, Physics of the Electric Guitar, ch.6, p.6-13 (2005).
-    // https://www.gitec-forum-eng.de/wp-content/uploads/2019/03/poteg-6-piezo-pickups.pdf
-    // Only the electrical loading is used: H(s)=sRC/(1+sRC), ~177Hz corner.
-    // The measured mechanical response, preamp EQ and sensitivity are not
-    // identified here. Trapezoidal/bilinear discretization preserves passivity;
-    // its small frequency warping is retained, with no fitted corner correction.
-    constexpr double piezoTimeConstant = 450.0e-12 * 2.0e6;
+    // The piezo chain's filters (renderPiezo; the values and their sources
+    // are in PiezoDesign).
+    // Saddle resonance: H(s) = w0^2 / (s^2 + s w0/Q + w0^2). The bilinear
+    // transform, even prewarped at f0, folds everything above f0 toward
+    // Nyquist: at 44.1 kHz its response is 9 dB low at 15 kHz, which would
+    // put the 44.1 and 96 kHz piezo 7.6 dB apart there. Instead the poles map exactly
+    // (z = e^{sT}) and b0, b1 (b2 = 0) match the analog magnitude at DC and
+    // at f0, where it is Q: M. Vicanek, "Matched Second Order Digital
+    // Filters" (2016), lowpass case. It stays within 0.3 dB of the analog
+    // response to 15 kHz at 44.1 kHz. f0 is held below 0.4 fs so the 8 kHz
+    // minimum rate still has a resonance to place.
+    {
+        const double f0 = std::min(PiezoDesign::saddleHz, 0.4 * sampleRate_);
+        const double omega = 2.0 * piDouble * f0 / sampleRate_;
+        const double zeta = 0.5 / PiezoDesign::saddleQ;
+        const double radius = std::exp(-zeta * omega);
+        const double a1 = -2.0 * radius
+            * std::cos(omega * std::sqrt(1.0 - zeta * zeta));
+        const double a2 = radius * radius;
+        const double a0Squared = (1.0 + a1 + a2) * (1.0 + a1 + a2);
+        const double aNyquistSquared = (1.0 - a1 + a2) * (1.0 - a1 + a2);
+        const double half = std::sin(0.5 * omega);
+        const double phi1 = half * half;
+        const double phi0 = 1.0 - phi1;
+        const double phi2 = 4.0 * phi0 * phi1;
+        const double atF0 = (a0Squared * phi0 + aNyquistSquared * phi1
+                             - 4.0 * a2 * phi2)
+            * PiezoDesign::saddleQ * PiezoDesign::saddleQ;
+        const double b1Squared = (atF0 - a0Squared * phi0) / phi1;
+        const double b0 = 0.5 * (std::sqrt(a0Squared)
+                                 + std::sqrt(std::max(0.0, b1Squared)));
+        piezoSaddleB0_ = static_cast<float>(b0);
+        piezoSaddleB1_ = static_cast<float>(std::sqrt(a0Squared) - b0);
+        piezoSaddleA1_ = static_cast<float>(a1);
+        piezoSaddleA2_ = static_cast<float>(a2);
+    }
+    // Electrical load: the element's capacitance into the preamp's input
+    // resistance, H(s) = sRC/(1+sRC), a 177 Hz corner. Trapezoidal/bilinear
+    // discretization preserves passivity; its small frequency warping is
+    // retained, with no fitted corner correction.
+    constexpr double piezoTimeConstant
+        = PiezoDesign::capacitance * PiezoDesign::loadResistance;
     const double piezoBilinear = 2.0 * sampleRate_ * piezoTimeConstant;
     piezoLoadPole_ = static_cast<float>((piezoBilinear - 1.0)
                                       / (piezoBilinear + 1.0));
     piezoLoadGain_ = 0.5f * (1.0f + piezoLoadPole_);
+    // Output coupling: y = x - x1 + R y1, R = e^{-2 pi fc / fs}.
+    piezoBlockerPole_ = static_cast<float>(std::exp(
+        -2.0 * piDouble * PiezoDesign::couplingHz / sampleRate_));
+    piezoStringWeights_ = PiezoDesign::stringWeights;
     delaySmoothing_ = 1.0f - std::exp(-1.0f
         / (0.006f * static_cast<float>(sampleRate_)));
     parameterSmoothing_ = 1.0f - std::exp(-1.0f
@@ -2217,6 +2255,7 @@ void AcustraEngine::reset() noexcept
     width_ = parameters_.stereoWidth;
     outputGain_ = parameters_.outputGain;
     materialReference_ = materialReferenceFor(parameters_.stringMaterial);
+    piezoTrim_ = PiezoDesign::trimFor(parameters_.stringMaterial);
     captureMix_.fill(0.0f);
     captureMix_[static_cast<std::size_t>(parameters_.capture)] = 1.0f;
     bodyConfigured_ = false;
@@ -2259,6 +2298,11 @@ void AcustraEngine::resetSoundState() noexcept
     bodyRadiationDelay_.reset();
     fadingBodyRadiationDelay_.reset();
     piezoLoadInput_ = piezoLoadOutput_ = 0.0f;
+    piezoSaddleState1_ = piezoSaddleState2_ = 0.0f;
+    piezoBlockerInput_ = piezoBlockerOutput_ = 0.0f;
+    piezoForceDerivative_.reset();
+    lastPiezoWave_ = lastPiezoForce_ = lastPiezoVoltage_ = 0.0f;
+    lastPiezoImpedanceSum_ = lastPiezoImpedanceMoment_ = 0.0f;
     bridgeLoad_.reset();
     for (auto& derivative : bridgePowerDerivatives_)
         derivative.reset();
@@ -5622,8 +5666,10 @@ void AcustraEngine::setBridgeCouplingEnabled(bool enabled) noexcept
     bridgeBodyMomentDerivative_.reset();
     bridgeTailForceDerivative_.reset();
     bridgeTailMomentDerivative_.reset();
+    piezoForceDerivative_.reset();
     lastBridgeVelocity_ = 0.0f;
     lastBridgeReactionForce_ = 0.0f;
+    lastPiezoWave_ = lastPiezoForce_ = 0.0f;
     lastBridgeBodyForce_ = 0.0f;
     lastBridgeTailForce_ = 0.0f;
     lastSympatheticRadiationForce_ = 0.0f;
@@ -6365,14 +6411,89 @@ AcustraEngine::BodyOutput AcustraEngine::renderBody(float bridgeInput,
     return result;
 }
 
-float AcustraEngine::renderLoadedPiezo(float force) noexcept
+float AcustraEngine::renderLoadedPiezo(float volts) noexcept
 {
     piezoLoadOutput_ = piezoLoadPole_ * piezoLoadOutput_
-        + piezoLoadGain_ * (force - piezoLoadInput_);
-    piezoLoadInput_ = force;
+        + piezoLoadGain_ * (volts - piezoLoadInput_);
+    piezoLoadInput_ = volts;
     if (exact::abs(piezoLoadOutput_) < 1.0e-30f)
         piezoLoadOutput_ = 0.0f;
     return piezoLoadOutput_;
+}
+
+float AcustraEngine::piezoPreamp(float volts) noexcept
+{
+    // Exactly linear to the knee, then the C1 rational curve safetyLimit
+    // uses, toward the rail on that side. f(0) = 0, and with 1 + 2ac > 0
+    // everywhere between the rails the whole curve is monotonic.
+    const float rail = volts >= 0.0f ? PiezoDesign::positiveRail
+                                     : PiezoDesign::negativeRail;
+    const float knee = PiezoDesign::kneeShare * rail;
+    const float magnitude = exact::abs(volts);
+    float buffered = volts;
+    if (magnitude > knee)
+    {
+        const float excess = magnitude - knee;
+        buffered = exact::copysign(
+            knee + excess / (1.0f + excess / (rail - knee)), volts);
+    }
+    // Below 1 uV the even-order term is under half an ulp of the signal, so
+    // skipping it changes nothing, and it keeps a decaying tail's square out
+    // of the denormal range.
+    if (magnitude < 1.0e-6f)
+        return buffered;
+    return buffered + PiezoDesign::evenOrder * buffered * buffered;
+}
+
+float AcustraEngine::renderPiezoSaddle(float force) noexcept
+{
+    // 2. Saddle resonance, transposed direct form II with b2 = 0.
+    const float saddle = piezoSaddleB0_ * force + piezoSaddleState1_;
+    piezoSaddleState1_ = piezoSaddleB1_ * force - piezoSaddleA1_ * saddle
+        + piezoSaddleState2_;
+    piezoSaddleState2_ = -piezoSaddleA2_ * saddle;
+    // Flushed together: zeroing one state of the pair while the other rings
+    // is itself an input, and at 44.1 kHz it held the two near the floor
+    // indefinitely.
+    if (exact::abs(piezoSaddleState1_) < 1.0e-30f
+        && exact::abs(piezoSaddleState2_) < 1.0e-30f)
+        piezoSaddleState1_ = piezoSaddleState2_ = 0.0f;
+    return saddle;
+}
+
+float AcustraEngine::renderPiezoCoupling(float buffered) noexcept
+{
+    // 5. Output coupling. Its 5 Hz pole is slow, so its floor is higher:
+    // from a millivolt it reaches it in about 1.25 s.
+    piezoBlockerOutput_ = buffered - piezoBlockerInput_
+        + piezoBlockerPole_ * piezoBlockerOutput_;
+    piezoBlockerInput_ = buffered;
+    if (exact::abs(piezoBlockerOutput_) < 1.0e-20f)
+        piezoBlockerOutput_ = 0.0f;
+    return piezoBlockerOutput_;
+}
+
+// The under-saddle piezo, from the force its strings press on it to the
+// voltage a DI takes from its onboard preamp (PiezoDesign has each block's
+// values and sources). The chain runs every sample whatever Capture
+// selects, so a switch or a newly cabled output lands on warm state. Every
+// block maps 0 to 0 and every recursive state is flushed at a floor, so an
+// idle instrument reaches exact zero. The result is in the old force-domain
+// units: dividing by the sensitivity leaves the small-signal gain at the
+// trim alone.
+float AcustraEngine::renderPiezo(float force) noexcept
+{
+    const float saddle = renderPiezoSaddle(force);
+    // 3. Charge to voltage, across the preamp's input resistance.
+    const float volts = renderLoadedPiezo(PiezoDesign::sensitivity * saddle);
+    lastPiezoVoltage_ = volts;
+    // 4 and 5. The preamp's buffer and its output coupling.
+    const float coupled = renderPiezoCoupling(piezoPreamp(volts));
+    // 7. The level match, smoothed like the material reference under it.
+    piezoTrim_ += parameterSmoothing_
+        * (PiezoDesign::trimFor(parameters_.stringMaterial) - piezoTrim_);
+    constexpr float inverseSensitivity = 1.0f / PiezoDesign::sensitivity;
+    return piezoTrim_ * inverseSensitivity * coupled;
 }
 
 void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
@@ -6420,6 +6541,13 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         std::array<float, stringCount> tailIncident {};
         std::array<float, stringCount> tailParallelIncident {};
         BridgeDrive drive {};
+        // The same heave sums with each string's piezo sensitivity: the
+        // incident force and the two impedance moments a weighted saddle
+        // force needs (renderPiezo). Unit weights reproduce the junction's
+        // own sums bit for bit.
+        float piezoIncident = 0.0f;
+        float piezoImpedance0 = 0.0f;
+        float piezoImpedance1 = 0.0f;
         const float saddleHeight = saddleHeightRatio();
         for (int string = 0; string < stringCount; ++string)
         {
@@ -6549,6 +6677,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 drive.impedance2 += arm * arm * branchImpedance;
                 drive.incidentHeave += incident;
                 drive.incidentRock += arm * incident;
+                const float piezoWeight
+                    = piezoStringWeights_[static_cast<std::size_t>(string)];
+                const float piezoBranch = piezoWeight * branchImpedance;
+                piezoImpedance0 += piezoBranch;
+                piezoImpedance1 += arm * piezoBranch;
+                piezoIncident += piezoWeight * incident;
                 // The parallel polarisation's port on the rocking coordinate
                 // (see saddleHeightRatio): its incident force times h/a is a
                 // moment, and it presents (h/a)^2 of its impedance there. The
@@ -6584,12 +6718,16 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             lastImpedanceSum_ = drive.impedance0;
             lastImpedanceMoment_ = drive.impedance1;
             lastImpedanceInertia_ = drive.impedance2;
+            lastPiezoImpedanceSum_ = piezoImpedance0;
+            lastPiezoImpedanceMoment_ = piezoImpedance1;
         }
         else if (lastImpedanceSum_ > 1.0e-6f)
         {
             drive.impedance0 = lastImpedanceSum_;
             drive.impedance1 = lastImpedanceMoment_;
             drive.impedance2 = lastImpedanceInertia_;
+            piezoImpedance0 = lastPiezoImpedanceSum_;
+            piezoImpedance1 = lastPiezoImpedanceMoment_;
         }
         const bool portIsLoaded = drive.impedance0 > 1.0e-6f;
         float bridgeDisplacement = 0.0f;
@@ -6612,6 +6750,14 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             tailForceWave = bridgeLoad_.tailIntegratedForce;
             tailMomentWave = bridgeLoad_.tailIntegratedMoment;
         }
+        // Each string's saddle force is its incident force less its port
+        // moving with the saddle, F_i = inc_i - Z_i (x + u_i r); the piezo
+        // reads their weighted sum, written as mainIntegratedForce is.
+        float piezoWave = portIsLoaded ? piezoIncident : 0.0f;
+        if (bridgeCouplingEnabled_ && portIsLoaded)
+            piezoWave = piezoIncident - piezoImpedance0 * bridgeDisplacement
+                - piezoImpedance1 * bridgeRotation;
+        lastPiezoWave_ = piezoWave;
         const float sampleRateRatio = static_cast<float>(sampleRate_) / 48000.0f;
         if (bridgeDerivativesNeedPriming_
             && (exact::abs(reactionWave) + exact::abs(bridgeDisplacement)
@@ -6620,6 +6766,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             bridgeVelocityDerivative_.reset(bridgeDisplacement);
             bridgeRotationDerivative_.reset(bridgeRotation);
             bridgeForceDerivative_.reset(reactionWave);
+            piezoForceDerivative_.reset(piezoWave);
             bridgeForceMomentDerivative_.reset(reactionMoment);
             bridgeBodyForceDerivative_.reset(bodyForceWave);
             bridgeBodyMomentDerivative_.reset(bodyMomentWave);
@@ -6656,6 +6803,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         const float bridgeRotationRate = motion(
             bridgeRotationDerivative_, bridgeRotation);
         lastBridgeReactionForce_ = motion(bridgeForceDerivative_, reactionWave);
+        lastPiezoForce_ = motion(piezoForceDerivative_, piezoWave);
         lastBridgeBodyForce_ = motion(bridgeBodyForceDerivative_, bodyForceWave);
         const float bodyMomentRate
             = motion(bridgeBodyMomentDerivative_, bodyMomentWave);
@@ -6768,9 +6916,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // Capture is an observation: every route shares the unchanged
         // vibrating instrument, so switching sensors never resets a note.
         // Keep the default stereo path bit-for-bit, including its width law.
-        // Advance the electrical load even while unheard, so selecting it
-        // crossfades to the voltage of the already-ringing instrument.
-        const float loadedPiezo = renderLoadedPiezo(lastBridgeReactionForce_);
+        // Advance the whole piezo chain even while unheard, so selecting it
+        // crossfades to the voltage of the already-ringing instrument. The
+        // axial force presses on the saddle as it does on the body, so it
+        // enters at unit weight (zero while longitudinalGain ships at 0).
+        const float loadedPiezo
+            = renderPiezo(lastPiezoForce_ + lastLongitudinalForce_);
         if (piezo != nullptr)
         {
             // Written as the mono route's product below: with only the piezo
@@ -6854,6 +7005,11 @@ float AcustraEngine::getLastSympatheticRadiationForce() const noexcept
 float AcustraEngine::getLastLongitudinalForce() const noexcept
 {
     return lastLongitudinalForce_;
+}
+
+float AcustraEngine::getLastPiezoVoltage() const noexcept
+{
+    return lastPiezoVoltage_;
 }
 
 float AcustraEngine::getLastBridgePower() const noexcept

@@ -4,6 +4,122 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-29 — at the user's request: an analog model of the piezo (its sound awaits Set 20)
+
+Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
+"add analog component modelling for the piezo so it is more realistic". The
+constants below marked chosen are this project's choices, not measurements,
+and the model as a whole has not been heard blind. Its sound awaits Set 20's
+blind pair: the previous piezo (the 177 Hz electrical load alone, 9937b0a)
+against this chain. The verdict is recorded here when it comes.
+
+The chain (`AcustraEngine::PiezoDesign`, `renderPiezo`), in signal order. It
+feeds both Capture = Piezo on Main and the Piezo output, which read the same
+sample:
+1. Weighted saddle force. Each string's force on the saddle,
+   F_i = inc_i - Z_i (x + u_i r), weighted -0.8, +0.4, +0.9, -0.3, +0.6 and
+   -1.0 dB low E to high E, scaled to sum to six (chosen, inside the +-1-2 dB
+   of a good install), plus the axial force at unit weight (zero while
+   longitudinalGain ships at 0). Three sums per string alongside the
+   junction's own and a second derivative; unit weights reproduce the
+   reaction force bit for bit.
+2. Saddle mass on the element: a resonant low-pass, unit DC gain, f0 = 5 kHz,
+   Q = 3 (placed from Zollner's bridge-piece stiffness; f0 and Q chosen).
+3. Charge to voltage: sensitivity S = 108.328 V per engine force unit, set by
+   `Tools/CalibratePiezo.py` so the reference hard strum (default
+   construction, steel, Finger, velocity 127, open E major downstroke at
+   48 kHz) peaks at Zollner's 1 V. The physical cross-check (tension times
+   slope at 0.2 V/N, with the fitted 6.1 mm displacement unit) gives
+   58.56 V/unit, a ratio of 1.85, inside the factor of two the design
+   allows. Then the existing 450 pF / 2 MOhm electrical load, unchanged.
+4. Preamp buffer: exactly linear to 0.8 of its rails, then safetyLimit's C1
+   curve toward them, plus a*c^2 with a = 0.01 (0.5% second harmonic at 1 V).
+   Rails 1.01 V positive and 1.23 V negative (chosen asymmetry).
+5. Output coupling: a 5 Hz DC blocker. No EQ.
+6. Level: per-material trim on top of the material reference, steel 2.61767
+   (+8.36 dB) and nylon 3.01828 (+9.60 dB): the median BS.1770 loudness of
+   Capture = Piezo equals the stereo microphones' over the loudness grid
+   (six constructions x both strings x Finger and Pick x six performances,
+   72 pairs per material; residual median 0.00 LU). The piezo was 8.4 LU
+   (steel) and 9.6 LU (nylon) below the microphones before.
+
+Where the implementation departs from the design spec, each for a measured
+reason:
+- The saddle resonance is Vicanek's matched biquad, not a prewarped TPT SVF.
+  Prewarped bilinear reads 9.1 dB low at 15 kHz at 44.1 kHz (7.2 dB at
+  48 kHz; computed from its transfer function), so the spec's own
+  44.1-vs-96 kHz consistency test would fail by 7.6 dB at 15 kHz. The
+  matched design is within 0.28 dB of the analog
+  response to 15 kHz at 44.1 kHz, with the same DC gain, gain Q at f0 and
+  peak (9.665 dB).
+- The rails are swapped from the spec's 1.23 V positive / 1.01 V negative.
+  The reference strum peaks at -1.00 / +0.78 V, so with the lower rail on
+  the negative side a velocity-100 strum reached the knee (0.811 V against
+  0.808 V), which the spec's test forbids. Which sign the element's wiring
+  gives a downward force is arbitrary. Now the hardest strum loses 0.01 dB
+  to the knee and the velocity-100 strum stays linear.
+- The saddle filter's two states are flushed together: flushed one at a time
+  they held each other near the 1e-30 floor indefinitely at 44.1 kHz.
+- Tests changed where the spec's target was not the analytic one: the
+  resonance's peak frequency is checked against the analog peak,
+  f0 sqrt(1 - 1/(2Q^2)) = 0.972 f0, not f0; its roll-off against the analog
+  slope (-13.8 dB/oct from 2 f0 to 4 f0, not -11 to -13); the second harmonic
+  at 0.5 V (a 1 V sine reaches the lower knee at 0.808 V and reads -32 dB,
+  from the knee's asymmetry, not the -46 dB of the even-order term).
+- Aliasing is gated on the hardest strum only, against an 8x-oversampled run
+  with the host-rate coupling applied to both (-97 dB at 48 kHz, -101 dB at
+  44.1 kHz). Run through the coupling at each rate, the coupling's own
+  0.003 dB high-frequency difference read as -70 dB "aliasing". The spec's
+  1.2 V sine sweep is not adopted: straight into the curve it folds back at
+  -25 dB from 8 kHz up (at -18 dB through the saddle peak at 5 kHz), which
+  only oversampling could meet (measured with the spec's rails), and no
+  playing puts that much steady signal there.
+- Rate consistency is tested on the chain (saddle and load: 0.28 dB, 44.1 vs
+  96 kHz, 50 Hz-15 kHz). The whole instrument's piezo spectra differ by up to
+  4.2 dB between those rates with the previous piezo too (the strings, on
+  nylon strums at 12.7 kHz); the new chain changes that by at most 0.52 dB
+  in any third octave (strums, single notes and an arpeggio, both strings).
+- A Capture switch is gated against its own crossfade. Against the unswitched
+  renders alone it rose up to 1.26x, the crossfade's level change where mic
+  and piezo differ for that note; the switched render equals the crossfade of
+  the two unswitched renders to 3.7e-9.
+- Silence: the engine's saddle force does not reach exact zero after a note
+  (still nonzero 120 s after release, with the previous piezo too), so the
+  chain's own ring-down is tested: exact zero 1.09-1.23 s after its hardest
+  moment, at 44.1-192 kHz. After a steel chord's release the Piezo output
+  now stays above the Rack Extension's 1e-6 idle threshold for 4.18 s
+  (3.45 s before), the level match's 8.4 dB.
+- The per-phrase level spread is reported, not gated: microphones minus
+  piezo runs -3.42 to +4.80 LU on steel (46% within 2 LU of the median) and
+  -3.08 to +4.56 on nylon (62%). It follows the body (the piezo hears the
+  bridge force, not the radiating top: Dreadnought 10.3 LU, Bellido 5.5 LU
+  before trim) and Pick against Finger (6.5 against 10.3), which one trim per
+  material cannot remove.
+- Not done: no open recording was measured (nothing is downloaded), and the
+  outboard-DI candidate (1 nF, 10 MOhm, 16 Hz) is not built; it is the spec's
+  second pair, only if the first picks this chain.
+
+Unchanged: the microphones. Harness renders through the player (the battery
+at 44.1/48/96 kHz, blocks 64/127, gathering and not, plus a sweep of both
+materials): all 246 Mic-output renders and 232 of 246 Main renders are
+byte-identical to 9937b0a; the 14 that differ are the ones with Capture on
+Piezo. Through the SDK-native Rack Extension module, 60 of 64 renders are
+byte-identical; the four that differ are the Capture = Piezo ones.
+
+Cost per 64-frame block, six ringing strings at 44.1 kHz, 40 interleaved
+runs, host build: +0.7% to +1.7% on the median (plug-in flags, and C++17 with
+-fno-builtin), under the design's 2%. Through
+the SDK-native module (the Rack Extension's `Tests/cpu/build_native.py` and
+`run_cpu_matrix.py`, the wrapper on branch acustra-outputs over each DSP):
++0.6% to +1.9% of the mean per 64-frame batch over chord, strums, pick run,
+changes, bends and tail at 44.1 and 48 kHz (3 runs each; tail at 48 kHz read
++3.1% there and +1.4% over 7 runs, chord +1.7-1.8%), about 0.4-1.2 us on
+40-75 us; idle stays at 0.2 us.
+
+Existing sessions on Capture = Piezo (and the retired Saddle piezo and
+Magnetic, which load as it) sound different and play 8-10 dB louder. The
+Rack Extension's goldens for Piezo patches change with the submodule bump.
+
 ## 2026-09-28 — at the user's request: separate Mic and Piezo outputs
 
 Not a listening verdict: the user asked for it. On 2026-09-28 they wrote

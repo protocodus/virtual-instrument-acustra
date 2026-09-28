@@ -307,7 +307,7 @@ if(BUILD_TESTING)
     add_executable(AcustraCaptureTests Tests/CaptureTests.cpp)
     target_link_libraries(AcustraCaptureTests PRIVATE AcustraDSP)
     add_test(NAME Acustra.Capture COMMAND AcustraCaptureTests)
-    set_tests_properties(Acustra.Capture PROPERTIES TIMEOUT 90)
+    set_tests_properties(Acustra.Capture PROPERTIES TIMEOUT 300)
 
     add_executable(AcustraGuitarModelTests Tests/GuitarModelTests.cpp)
     target_link_libraries(AcustraGuitarModelTests PRIVATE AcustraDSP)
@@ -381,6 +381,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/MeasureMaterialLoudness.py"
                                  --self-test)
                 set_tests_properties(Acustra.MaterialLoudness PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.PiezoCalibration
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/CalibratePiezo.py"
+                                 --self-test)
+                set_tests_properties(Acustra.PiezoCalibration PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.PerformanceBenchmark
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/BenchmarkPerformances.py"

@@ -420,7 +420,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         "technique. MIDI: CC2 bridge-hand damping.");
     configureSetupMenu (
         2, "CAPTURE", "Stereo body microphones, one mono body microphone, or "
-        "saddle piezo with pickup/preamp electrical loading. Mono mic and piezo "
+        "an under-saddle piezo through its onboard preamp. Mono mic and piezo "
         "send the same signal to both channels and ignore Stereo Width.");
     configureSetupMenu (
         3, "MODEL", "Choose the measured guitar body. Original follows the "

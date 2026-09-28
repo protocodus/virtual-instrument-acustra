@@ -5,6 +5,9 @@
 // precede note-ons. Output is headerless little-endian float32 stereo.
 // Optional material/tuning flags follow the existing capture/picking/bridge
 // positionals; omitting them preserves the original steel/Standard rendering.
+// --observe piezo_voltage writes, on both channels, the under-saddle piezo's
+// voltage where it enters the preamp (getLastPiezoVoltage) instead of the
+// output; Tools/CalibratePiezo.py sets the element's sensitivity from it.
 #include "DSP/AcustraEngine.h"
 #include "CalibrationFile.h"
 
@@ -42,7 +45,7 @@ int main(int argc, char** argv)
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
                      "[--body-material spruce|cedar|mahogany|maple] "
                      "[--guitar-model original|bellido1978] "
-                     "[--calibration FILE]\n";
+                     "[--calibration FILE] [--observe piezo_voltage]\n";
         return 2;
     }
     try
@@ -83,6 +86,7 @@ int main(int argc, char** argv)
         }
         bool materialSeen = false, tuningSeen = false;
         bool shapeSeen = false, woodSeen = false, calibrationSeen = false, guitarSeen = false;
+        bool observeSeen = false, observePiezoVoltage = false;
         for (int index = optionStart; index < argc; index += 2)
         {
             if (index + 1 >= argc)
@@ -129,6 +133,13 @@ int main(int argc, char** argv)
                     throw std::runtime_error("unknown guitar model");
                 parameters.guitarModel = static_cast<acustra::GuitarModel>(found - choices.begin());
                 guitarSeen = true;
+            }
+            else if (option == "--observe" && !observeSeen)
+            {
+                if (value != "piezo_voltage")
+                    throw std::runtime_error("unknown observation");
+                observePiezoVoltage = true;
+                observeSeen = true;
             }
             else if (option == "--calibration" && !calibrationSeen)
             {
@@ -200,7 +211,16 @@ int main(int argc, char** argv)
             }
             const auto nextFrame = nextEvent < events.size() ? events[nextEvent].frame : frames;
             const int count = static_cast<int>(std::min<std::int64_t>(blockSize, nextFrame - frame));
-            engine.process(left.data(), right.data(), count);
+            if (observePiezoVoltage)
+                for (int index = 0; index < count; ++index)
+                {
+                    // The engine renders identically at any block size.
+                    const auto at = static_cast<std::size_t>(index);
+                    engine.process(left.data() + at, right.data() + at, 1);
+                    left[at] = right[at] = engine.getLastPiezoVoltage();
+                }
+            else
+                engine.process(left.data(), right.data(), count);
             for (int index = 0; index < count; ++index)
                 for (float value : { left[static_cast<std::size_t>(index)],
                                      right[static_cast<std::size_t>(index)] })
