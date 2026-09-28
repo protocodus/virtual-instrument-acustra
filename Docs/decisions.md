@@ -4,6 +4,43 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — blind verdicts: the snap confirmed, and one body at the saddle
+
+Set 17 put the engine before the snap (A, edd820f) against D, the snap chosen
+by ear at 70% of the way from Set 14's C toward its B (B, now shipping), on
+steel travis picking, a picked top-string melody, finger chords up the neck, a
+soft-to-hard ladder under finger and under pick, and two nylon pieces. The
+listener chose B on all seven pairs and overall: D, already shipped on that
+direction, is confirmed by ear.
+
+Set 18 asked which body sounds most like wood, with resonances that bloom and
+fade instead of band-pass filters ringing on, against the shipping engine (A,
+D) on five steel pieces (single notes ringing out E2-E5, open chords left to
+ring, travis picking, a picked melody with held notes, picked strums):
+- B: one body at the saddle - steel plays g21's own bridge measurement, each
+  bridge mode that is the same resonance as a radiation mode on that mode's
+  pole (frequency and Q, through the same anchor, Shape and Wood maps), at a
+  steel-string guitar's measured mobility level (0.274 of g21's, from the
+  Fylde; cand/body-one-pole-steel-body 09f7b4e).
+- C: g21 above 1 kHz rebuilt on a dense decay-Q pole grid (3e1ceae).
+- D: the plate-Q median rule extended down to 150 Hz, damping the 209 Hz
+  rocking peak (Q 37 to 27) and T1 (731128a).
+- E: one jointly fitted pole set for g21's bridge and microphones (1813a88).
+The listener chose D on the single notes and the ringing chords, B on the
+travis and the picked strums, E on the picked melody, and B overall, with the
+note "B and D are best". What this licenses, by ear: B ships, and D with it -
+the two were designed to combine and the listener named both. The combination
+itself was not heard as one letter; a confirmation pair follows its build.
+Why B was built: the engine moved every radiation mode about 1.9 semitones
+down (the wide steel anchor) but left the bridge where it was measured, and
+the steel presets drained the strings through another guitar's bridge, so a
+partial on a radiation peak never met its drain and rang on. On the flat-top
+recordings partials that stand out at the onset decay 4.0-5.4 dB/s faster
+than their neighbours; D-on-Fylde managed 0.3-1.4, B 2.1 (picked). Its
+benchmark: every never-fitted open corpus closer (Eastman picked -1.67%,
+finger -1.07%, Martin -2.34%), the bank within +-1%; its E-chord late pull is
+7.4 cents against the 5.0 gate.
+
 ## 2026-09-28 — blind verdicts: snap between B and C, no pluck click, the damped plate body
 
 Set 14 put shipping (A, 1a2c7e1) against two ways of letting the strings'
