@@ -74,7 +74,14 @@ acustra::BodyShape renderShapeFor(acustra::StringMaterial material) noexcept
 constexpr int modelSampleRate = 48000;
 constexpr int renderBlockSize = 127;
 constexpr double renderSeconds = 4.2;
-constexpr std::size_t calibrationValueCount = 32;
+constexpr std::size_t calibrationValueCount = 48;
+// The vector before the plectrum edge and the strings' bending loss were
+// fitted values: a 32-value command line takes those five from
+// fittedPhysicalCalibration, the values this build ships.
+constexpr std::size_t legacyCalibrationValueCount = 32;
+// The vector before the contact noise's eleven values: a 37-value command
+// line takes them from fittedPhysicalCalibration too.
+constexpr std::size_t bendingCalibrationValueCount = 37;
 constexpr float int16Scale = 1.0f / 32768.0f;
 
 enum class Material
@@ -138,6 +145,9 @@ constexpr CalibrationValues calibrationMinimums {{
     -1.0f, 0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f, 0.00325f,
     0.0f, 10.0f, 0.0f,
     0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 100.0f, 100.0f, 100.0f, 0.0005f,
+    0.0f, 0.0f, 0.0f,
 }};
 
 constexpr CalibrationValues calibrationMaximums {{
@@ -147,6 +157,9 @@ constexpr CalibrationValues calibrationMaximums {{
     1.0f, 32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f, 0.060f,
     0.5f, 400.0f, 0.82e-3f,
     2.0f, 4.0f, 8.0f,
+    1.0e-3f, 2.0f, 2.0f, 2.0f, 2.0f,
+    4.0f, 4.0f, 4.0f, 4.0f, 20000.0f, 20000.0f, 20000.0f, 0.05f,
+    64.0f, 64.0f, 64.0f,
 }};
 
 const char* materialName(Material material) noexcept
@@ -447,6 +460,22 @@ PhysicalCalibration makeCalibration(const CalibrationValues& values)
     calibration.pickReleaseVelocityShare = values[29];
     calibration.pickReleaseVelocityExponent = values[30];
     calibration.pickTransientGain = values[31];
+    calibration.pickEdgeRadiusMetres = values[32];
+    calibration.steelWoundBendingLoss = values[33];
+    calibration.steelPlainBendingLoss = values[34];
+    calibration.nylonWoundBendingLoss = values[35];
+    calibration.nylonPlainBendingLoss = values[36];
+    calibration.contactNoiseFinger = values[37];
+    calibration.contactNoiseNylon = values[38];
+    calibration.contactNoisePick = values[39];
+    calibration.contactNoiseVelocityExponent = values[40];
+    calibration.contactNoiseCornerHz = values[41];
+    calibration.nylonContactNoiseCornerHz = values[42];
+    calibration.pickContactNoiseCornerHz = values[43];
+    calibration.contactNoiseDecaySeconds = values[44];
+    calibration.contactClickFinger = values[45];
+    calibration.contactClickNylon = values[46];
+    calibration.contactClickPick = values[47];
     return calibration;
 }
 
@@ -570,7 +599,14 @@ std::string calibrationOrderJson()
            "\"longitudinalGain\", \"longitudinalQ\", "
            "\"polarisationEndCorrectionMetres\", "
            "\"pickReleaseVelocityShare\", \"pickReleaseVelocityExponent\", "
-           "\"pickTransientGain\"]";
+           "\"pickTransientGain\", \"pickEdgeRadiusMetres\", "
+           "\"steelWoundBendingLoss\", \"steelPlainBendingLoss\", "
+           "\"nylonWoundBendingLoss\", \"nylonPlainBendingLoss\", "
+           "\"contactNoiseFinger\", \"contactNoiseNylon\", "
+           "\"contactNoisePick\", \"contactNoiseVelocityExponent\", "
+           "\"contactNoiseCornerHz\", \"nylonContactNoiseCornerHz\", "
+           "\"pickContactNoiseCornerHz\", \"contactNoiseDecaySeconds\", "
+           "\"contactClickFinger\", \"contactClickNylon\", \"contactClickPick\"]";
 }
 
 std::string calibrationJson(const CalibrationValues& values)
@@ -904,17 +940,44 @@ void validateModelsOnlyInputs(const std::filesystem::path& directory,
         validateModelsOnlySplit(directory, "flattop.json", schedule.flatTop);
 }
 
+// Which referenced models a models-only render replaces. A search scores one
+// split, often of one material, and every other model it would render is
+// never read: the training scopes render only those, and leave every
+// manifest marked incomplete (its other models are the previous
+// candidate's) until a full models-only render.
+enum class ModelScope
+{
+    All,
+    Train,
+    TrainSteel,
+    TrainNylon
+};
+
+constexpr std::array modelScopeNames { "all", "train", "train-steel", "train-nylon" };
+
 std::size_t renderReferencedModels(
     const std::filesystem::path& directory, const Schedule& schedule,
-    const PhysicalCalibration& calibration)
+    const PhysicalCalibration& calibration,
+    ModelScope scope = ModelScope::All)
 {
     validateModelsOnlyInputs(directory, schedule);
     std::map<ModelKey, Example> unique;
     for (const auto* examples : { &schedule.train, &schedule.validation,
                                   &schedule.flatTop })
+    {
+        if (scope != ModelScope::All && examples != &schedule.train)
+            continue;
         for (const auto& example : *examples)
+        {
+            if ((scope == ModelScope::TrainSteel
+                 && example.material != Material::Steel)
+                || (scope == ModelScope::TrainNylon
+                    && example.material != Material::Nylon))
+                continue;
             unique.emplace(ModelKey {
                 example.material, example.midi, example.velocity }, example);
+        }
+    }
 
     for (const auto& [key, example] : unique)
     {
@@ -1173,7 +1236,8 @@ void renderTestCorpus(const std::filesystem::path& directory,
 }
 
 void renderModelsOnlyCorpus(const std::filesystem::path& directory,
-                            const CalibrationValues& values)
+                            const CalibrationValues& values,
+                            ModelScope scope = ModelScope::All)
 {
     const auto schedule = makeSchedule(false);
     validateModelsOnlyInputs(directory, schedule);
@@ -1201,13 +1265,15 @@ void renderModelsOnlyCorpus(const std::filesystem::path& directory,
     for (const auto& [path, text] : manifests)
         writeManifestText(path, text);
     const auto count = renderReferencedModels(
-        directory, schedule, makeCalibration(values));
-    for (const auto& [path, text] : manifests)
-        writeManifestText(path, replaceModelMetadata(
-            text, "model_render_complete", "true"));
-    std::printf("Wrote %zu unique model renders and calibration metadata to %s; "
-                "targets were left unchanged.\n",
-                count, directory.string().c_str());
+        directory, schedule, makeCalibration(values), scope);
+    if (scope == ModelScope::All)
+        for (const auto& [path, text] : manifests)
+            writeManifestText(path, replaceModelMetadata(
+                text, "model_render_complete", "true"));
+    std::printf("Wrote %zu unique model renders (%s) and calibration metadata "
+                "to %s; targets were left unchanged.\n",
+                count, modelScopeNames[static_cast<std::size_t>(scope)],
+                directory.string().c_str());
 }
 
 bool parseFloat(const char* text, float& value)
@@ -1224,7 +1290,8 @@ bool parseFloat(const char* text, float& value)
 void printUsage()
 {
     std::printf(
-        "usage: AcustraPhysicalFitRenderer [--smoke|--models-only|--test] "
+        "usage: AcustraPhysicalFitRenderer "
+        "[--smoke|--models-only [--scope all|train|train-steel|train-nylon]|--test] "
         "[--bridge-model original|fylde] "
         "[--shape parlor|auditorium|dreadnought|jumbo] "
         "[--archtop-picking finger|pick|thumb] "
@@ -1242,7 +1309,9 @@ void printUsage()
         "LONGITUDINAL_GAIN LONGITUDINAL_Q "
         "POLARISATION_END_CORRECTION_METRES "
         "PICK_RELEASE_VELOCITY_SHARE PICK_RELEASE_VELOCITY_EXPONENT "
-        "PICK_TRANSIENT_GAIN\n");
+        "PICK_TRANSIENT_GAIN [PICK_EDGE_RADIUS_METRES "
+        "STEEL_WOUND_BENDING_LOSS STEEL_PLAIN_BENDING_LOSS "
+        "NYLON_WOUND_BENDING_LOSS NYLON_PLAIN_BENDING_LOSS]\n");
 }
 } // namespace
 
@@ -1268,6 +1337,19 @@ int main(int argc, char** argv)
     {
         modelsOnly = true;
         ++first;
+    }
+    ModelScope scope = ModelScope::All;
+    if (modelsOnly && argc > first && std::string(argv[first]) == "--scope")
+    {
+        const auto name = std::find(modelScopeNames.begin(), modelScopeNames.end(),
+            argc > first + 1 ? std::string(argv[first + 1]) : std::string());
+        if (name == modelScopeNames.end())
+        {
+            printUsage();
+            return 2;
+        }
+        scope = static_cast<ModelScope>(std::distance(modelScopeNames.begin(), name));
+        first += 2;
     }
     else if (argc > 1 && std::string(argv[1]) == "--test")
     {
@@ -1326,14 +1408,33 @@ int main(int argc, char** argv)
             std::distance(guitarModelNames.begin(), name));
         first += 2;
     }
-    if (argc - first != static_cast<int>(calibrationValueCount + 1))
+    const int given = argc - first - 1;
+    if (given != static_cast<int>(calibrationValueCount)
+        && given != static_cast<int>(bendingCalibrationValueCount)
+        && given != static_cast<int>(legacyCalibrationValueCount))
     {
         printUsage();
         return 2;
     }
 
     CalibrationValues values {};
-    for (std::size_t index = 0; index < values.size(); ++index)
+    values[32] = fittedPhysicalCalibration.pickEdgeRadiusMetres;
+    values[33] = fittedPhysicalCalibration.steelWoundBendingLoss;
+    values[34] = fittedPhysicalCalibration.steelPlainBendingLoss;
+    values[35] = fittedPhysicalCalibration.nylonWoundBendingLoss;
+    values[36] = fittedPhysicalCalibration.nylonPlainBendingLoss;
+    values[37] = fittedPhysicalCalibration.contactNoiseFinger;
+    values[38] = fittedPhysicalCalibration.contactNoiseNylon;
+    values[39] = fittedPhysicalCalibration.contactNoisePick;
+    values[40] = fittedPhysicalCalibration.contactNoiseVelocityExponent;
+    values[41] = fittedPhysicalCalibration.contactNoiseCornerHz;
+    values[42] = fittedPhysicalCalibration.nylonContactNoiseCornerHz;
+    values[43] = fittedPhysicalCalibration.pickContactNoiseCornerHz;
+    values[44] = fittedPhysicalCalibration.contactNoiseDecaySeconds;
+    values[45] = fittedPhysicalCalibration.contactClickFinger;
+    values[46] = fittedPhysicalCalibration.contactClickNylon;
+    values[47] = fittedPhysicalCalibration.contactClickPick;
+    for (std::size_t index = 0; index < static_cast<std::size_t>(given); ++index)
     {
         if (!parseFloat(argv[first + 1 + static_cast<int>(index)], values[index]))
         {
@@ -1359,7 +1460,7 @@ int main(int argc, char** argv)
     {
         const auto directory = normaliseDirectory(argv[first]);
         if (modelsOnly)
-            renderModelsOnlyCorpus(directory, values);
+            renderModelsOnlyCorpus(directory, values, scope);
         else if (test)
             renderTestCorpus(directory, values);
         else

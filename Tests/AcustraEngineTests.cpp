@@ -59,7 +59,23 @@ struct AcustraEngineTestAccess
         double dispersionA2;
         double inharmonicity;
         double sampleRate { 48000.0 };
+        // The string's own bending-loss section (unit gain at DC).
+        double bendingGain { 1.0 };
+        double bendingA1 { 0.0 };
+        double bendingA2 { 0.0 };
     };
+
+    static StringLoopSnapshot withBendingLoss(StringLoopSnapshot snapshot,
+                                              const AcustraEngine::StringLoop& loop)
+    {
+        if (loop.bendingLossActive)
+        {
+            snapshot.bendingGain = loop.bendingLossGain;
+            snapshot.bendingA1 = loop.bendingLossA1;
+            snapshot.bendingA2 = loop.bendingLossA2;
+        }
+        return snapshot;
+    }
 
     struct BodyModeSnapshot
     {
@@ -240,10 +256,11 @@ struct AcustraEngineTestAccess
         voice.attackPitchCents = 0.0f;
         engine.configureVoice(voice, stringIndex, midiNote, true);
         const auto& loop = voice.loops[0];
-        return { loop.targetDelay, loop.loopGain, loop.broadLossCoefficient,
+        return withBendingLoss({ loop.targetDelay, loop.loopGain,
+                 loop.broadLossCoefficient,
                  loop.broadLossMix, loop.lowpassCoefficient,
                  loop.highLossMix, loop.dispersionA1, loop.dispersionA2,
-                 voice.dispersionDesignInharmonicity, rate };
+                 voice.dispersionDesignInharmonicity, rate }, loop);
     }
 
     static std::array<double, 3> lossFilterCoefficients(float pole, double rate)
@@ -347,6 +364,42 @@ struct AcustraEngineTestAccess
         return engine.bodyUpdatePending_;
     }
 
+    // The bending-loss section each polarisation carries, and the design
+    // inputs, for one configured note (bridge coupling off).
+    struct BendingSections
+    {
+        std::array<double, 3> normal;
+        std::array<double, 3> parallel;
+        bool normalActive;
+        bool parallelActive;
+    };
+
+    static BendingSections bendingSections(StringMaterial material,
+                                           int midiNote, double rate,
+                                           PhysicalCalibration calibration)
+    {
+        AcustraEngine engine;
+        engine.setPhysicalCalibration(calibration);
+        engine.prepare(rate, 64);
+        engine.setBridgeCouplingEnabled(false);
+        EngineParameters parameters;
+        parameters.stringMaterial = material;
+        engine.setParameters(parameters);
+        const int stringIndex = engine.chooseString(midiNote);
+        auto& voice = engine.voices_[static_cast<std::size_t>(stringIndex)];
+        voice.attackPitchCents = 0.0f;
+        engine.configureVoice(voice, stringIndex, midiNote, true);
+        const auto section = [] (const AcustraEngine::StringLoop& loop)
+        {
+            return std::array<double, 3> { loop.bendingLossGain,
+                                           loop.bendingLossA1,
+                                           loop.bendingLossA2 };
+        };
+        return { section(voice.loops[0]), section(voice.loops[1]),
+                 voice.loops[0].bendingLossActive,
+                 voice.loops[1].bendingLossActive };
+    }
+
     static double playedDelay(PhysicalCalibration calibration)
     {
         AcustraEngine engine;
@@ -404,10 +457,11 @@ struct AcustraEngineTestAccess
         engine.setPitchBend(memberBend, 2);
         engine.configureVoice(*selected, stringIndex, midiNote, false);
         const auto& loop = selected->loops[0];
-        return { { loop.targetDelay, loop.loopGain, loop.broadLossCoefficient,
+        return { withBendingLoss({ loop.targetDelay, loop.loopGain,
+                   loop.broadLossCoefficient,
                    loop.broadLossMix, loop.lowpassCoefficient,
                    loop.highLossMix, loop.dispersionA1, loop.dispersionA2,
-                   selected->dispersionDesignInharmonicity, rate },
+                   selected->dispersionDesignInharmonicity, rate }, loop),
                  unbent, selected->tensionNewtons,
                  selected->bendImpedanceScale, selected->fret, stringIndex };
     }
@@ -443,11 +497,13 @@ struct AcustraEngineTestAccess
             if (selected == engine.voices_.end())
                 break;
             const auto& loop = selected->loops[0];
-            trace.push_back({ loop.currentDelay, loop.loopGain,
+            trace.push_back(withBendingLoss({ loop.currentDelay,
+                              loop.loopGain,
                               loop.broadLossCoefficient, loop.broadLossMix,
                               loop.lowpassCoefficient, loop.highLossMix,
                               loop.dispersionA1, loop.dispersionA2,
-                              selected->dispersionDesignInharmonicity, rate });
+                              selected->dispersionDesignInharmonicity, rate },
+                              loop));
         }
         return trace;
     }
@@ -2827,9 +2883,16 @@ double loopPhase(const acustra::AcustraEngineTestAccess::StringLoopSnapshot& loo
     while (allpassPhase >= 2.0 * std::numbers::pi)
         allpassPhase -= 2.0 * std::numbers::pi;
 
+    // The bending-loss section is designed at the host rate, so its lag is
+    // read at the host frequency.
+    const double bendingLag = std::atan2(
+        -loop.bendingA1 * sine - loop.bendingA2 * sine2,
+        1.0 + loop.bendingA1 * cosine + loop.bendingA2 * cosine2);
+
     return delayPhase
         + mixedPolePhase(loop.broadCoefficient, loop.broadMix)
         + mixedPolePhase(loop.highCoefficient, loop.highMix)
+        + bendingLag
         + allpassPhase;
 }
 
@@ -4882,9 +4945,15 @@ void testHighLossCutoffScaleChangesOnlyUpperLoss()
             return std::hypot((1.0 - mix) + mix * lowReal,
                               mix * lowImaginary);
         };
+        const double bending = loop.bendingGain / std::hypot(
+            1.0 + loop.bendingA1 * std::cos(omega)
+                + loop.bendingA2 * std::cos(2.0 * omega),
+            loop.bendingA1 * std::sin(omega)
+                + loop.bendingA2 * std::sin(2.0 * omega));
         return loop.loopGain
             * mixedPoleMagnitude(loop.broadCoefficient, loop.broadMix)
-            * mixedPoleMagnitude(loop.highCoefficient, loop.highMix);
+            * mixedPoleMagnitude(loop.highCoefficient, loop.highMix)
+            * bending;
     };
 
     constexpr int midiNote = 40;
@@ -4916,6 +4985,311 @@ void testHighLossCutoffScaleChangesOnlyUpperLoss()
             / loopResonance(low, 1, fundamentalOmega));
         expect(std::abs(pitchChangeCents) < 0.01,
                name + " high-loss cutoff moved requested fundamental pitch");
+    }
+}
+
+// The string's own bending loss (bendingLossSection in AcustraEngine.cpp).
+// With every factor at zero no section enters the loop. With them on, the
+// section each loop carries adds, per round trip of the fundamental period,
+// Valette's and Woodhouse's loss pi (f_n / f0) eta B n^2 / (1 + B n^2) to
+// within 12% wherever that loss adds 20 to 160 dB/s below 0.3 of the host
+// rate - the band the section is designed to follow - at 44.1, 48 and 96 kHz
+// alike; both polarisations
+// carry the same section, since the loss is the string's; and the
+// fundamental keeps the decay the loop gain asks for and the pitch the
+// tuning asks for.
+void testBendingLossFollowsItsLaw()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    auto off = acustra::fittedPhysicalCalibration;
+    off.steelWoundBendingLoss = off.steelPlainBendingLoss = 0.0f;
+    off.nylonWoundBendingLoss = off.nylonPlainBendingLoss = 0.0f;
+    auto on = acustra::fittedPhysicalCalibration;
+    on.steelWoundBendingLoss = 0.1f;
+    on.steelPlainBendingLoss = 0.006f;
+    on.nylonWoundBendingLoss = 0.03f;
+    on.nylonPlainBendingLoss = 0.006f;
+
+    struct Case
+    {
+        acustra::StringMaterial material;
+        int midiNote;
+        double factor;
+        const char* name;
+    };
+    const Case cases[] {
+        { acustra::StringMaterial::Steel, 40, 0.1, "steel E2" },
+        { acustra::StringMaterial::Steel, 51, 0.1, "steel D#3" },
+        { acustra::StringMaterial::Steel, 64, 0.006, "steel E4" },
+        { acustra::StringMaterial::Steel, 72, 0.006, "steel C5" },
+        { acustra::StringMaterial::Nylon, 45, 0.03, "nylon A2" },
+        { acustra::StringMaterial::Nylon, 59, 0.006, "nylon B3" },
+    };
+    const auto sectionLoss = [] (double gain, double a1, double a2, double omega)
+    {
+        return -std::log(gain / std::hypot(
+            1.0 + a1 * std::cos(omega) + a2 * std::cos(2.0 * omega),
+            a1 * std::sin(omega) + a2 * std::sin(2.0 * omega)));
+    };
+    const auto magnitude = [&] (
+        const acustra::AcustraEngineTestAccess::StringLoopSnapshot& loop,
+        double omega)
+    {
+        const double lossOmega = loop.sampleRate == 48000.0 ? omega
+            : 2.0 * std::atan((loop.sampleRate / 48000.0) * std::tan(0.5 * omega));
+        const auto mixedPoleMagnitude = [lossOmega] (double coefficient, double mix)
+        {
+            const std::complex<double> low = (1.0 - coefficient)
+                / (1.0 - coefficient * std::polar(1.0, -lossOmega));
+            return std::abs((1.0 - mix) + mix * low);
+        };
+        return loop.loopGain
+            * mixedPoleMagnitude(loop.broadCoefficient, loop.broadMix)
+            * mixedPoleMagnitude(loop.highCoefficient, loop.highMix)
+            * std::exp(-sectionLoss(loop.bendingGain, loop.bendingA1,
+                                    loop.bendingA2, omega));
+    };
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const auto& item : cases)
+        {
+            const std::string name = std::string(item.name) + " at "
+                + std::to_string(static_cast<int>(rate)) + " Hz";
+            const auto clear = Access::configuredLoop(item.material,
+                item.midiNote, rate, off);
+            const auto lossy = Access::configuredLoop(item.material,
+                item.midiNote, rate, on);
+            expect(clear.bendingA1 == 0.0 && clear.bendingA2 == 0.0
+                       && clear.bendingGain == 1.0,
+                   name + ": a zero bending-loss factor left a section");
+            const auto planes = Access::bendingSections(item.material,
+                item.midiNote, rate, on);
+            expect(planes.normalActive && planes.parallelActive
+                       && planes.normal == planes.parallel,
+                   name + ": the polarisations lose the string's bending "
+                          "differently");
+
+            const double fundamental = 440.0 * std::exp2(
+                (static_cast<double>(item.midiNote) - 69.0) / 12.0);
+            const double inharmonicity = lossy.inharmonicity;
+            int checked = 0;
+            double worst = 0.0;
+            for (int partial = 1;; ++partial)
+            {
+                const double n = static_cast<double>(partial);
+                const double stretched = n * std::sqrt(
+                    (1.0 + inharmonicity * n * n) / (1.0 + inharmonicity));
+                const double frequency = stretched * fundamental;
+                if (frequency > 0.3 * rate)
+                    break;
+                const double bending = inharmonicity * n * n;
+                const double law = std::numbers::pi * stretched * item.factor
+                    * bending / (1.0 + bending);
+                const double lawRate = 20.0 * std::log10(std::exp(1.0))
+                    * law * fundamental;
+                if (lawRate < 20.0 || lawRate > 160.0)
+                    continue;
+                const double omega = 2.0 * std::numbers::pi * frequency / rate;
+                const double actual = sectionLoss(lossy.bendingGain,
+                    lossy.bendingA1, lossy.bendingA2, omega);
+                worst = std::max(worst, std::abs(actual / law - 1.0));
+                ++checked;
+            }
+            expect(checked >= 2,
+                   name + ": no partial fell in the section's design band");
+            expect(worst < 0.12,
+                   name + ": the section missed the bending-loss law by "
+                       + std::to_string(100.0 * worst) + "%");
+
+            const double fundamentalOmega
+                = 2.0 * std::numbers::pi * fundamental / rate;
+            const double decayChangeDb = 20.0 * std::log10(
+                magnitude(lossy, fundamentalOmega)
+                / magnitude(clear, fundamentalOmega));
+            expect(std::abs(decayChangeDb) < 1.0e-3,
+                   name + ": the bending loss moved the fundamental's decay by "
+                       + std::to_string(decayChangeDb) + " dB per pass");
+            const double pitchChangeCents = 1200.0 * std::log2(
+                loopResonance(lossy, 1, fundamentalOmega)
+                / loopResonance(clear, 1, fundamentalOmega));
+            expect(std::abs(pitchChangeCents) < 0.01,
+                   name + ": the bending loss retuned the fundamental by "
+                       + std::to_string(pitchChangeCents) + " cents");
+        }
+}
+
+// The contact's noise (AcustraEngine::renderContactNoise). With its string
+// and click levels at zero nothing else it reads is heard. The click reaches
+// the microphones without touching the string or the body, so the difference
+// it makes is the click alone: it is linear in its level, it ends when its
+// twelve time constants and the filter's ring-down have run, its level at
+// 44.1 and 96 kHz is the 48 kHz one, it grows with the stroke's velocity, its
+// spectrum moves up with it, and a thumb's sits under a finger's. The
+// string-borne force is heard through the string and stays finite.
+void testContactNoiseFollowsItsLaw()
+{
+    auto off = acustra::fittedPhysicalCalibration;
+    off.contactNoiseFinger = off.contactNoiseNylon = off.contactNoisePick = 0.0f;
+    off.contactClickFinger = off.contactClickNylon = off.contactClickPick = 0.0f;
+    auto offOther = off;
+    offOther.contactNoiseVelocityExponent = 2.5f;
+    offOther.contactNoiseCornerHz = 900.0f;
+    offOther.nylonContactNoiseCornerHz = 900.0f;
+    offOther.pickContactNoiseCornerHz = 900.0f;
+    offOther.contactNoiseDecaySeconds = 0.002f;
+    acustra::EngineParameters steel;
+    steel.stringMaterial = acustra::StringMaterial::Steel;
+    const auto quiet = renderCalibrated(steel, off, 57, 0.85f, 1.0);
+    const auto other = renderCalibrated(steel, offOther, 57, 0.85f, 1.0);
+    expect(quiet.left == other.left && quiet.right == other.right,
+           "the contact noise's shape was heard at zero levels");
+
+    const auto difference = [] (const Audio& a, const Audio& b)
+    {
+        Audio result { std::vector<float>(a.left.size()),
+                       std::vector<float>(a.right.size()) };
+        for (std::size_t i = 0; i < a.left.size(); ++i)
+        {
+            result.left[i] = a.left[i] - b.left[i];
+            result.right[i] = a.right[i] - b.right[i];
+        }
+        return result;
+    };
+    const auto rms = [] (const Audio& audio, double rate, double begin, double end)
+    {
+        const auto first = static_cast<std::size_t>(begin * rate);
+        const auto last = std::min(audio.left.size(),
+                                   static_cast<std::size_t>(end * rate));
+        double sum = 0.0;
+        for (std::size_t i = first; i < last; ++i)
+            sum += 0.5 * (double(audio.left[i]) * audio.left[i]
+                          + double(audio.right[i]) * audio.right[i]);
+        return last > first ? std::sqrt(sum / double(last - first)) : 0.0;
+    };
+    const auto centroid = [] (const Audio& audio, double rate)
+    {
+        // Power-weighted mean frequency of the first 60 ms, by DFT bins.
+        const int count = static_cast<int>(0.060 * rate);
+        double weighted = 0.0;
+        double total = 0.0;
+        for (int bin = 1; bin < count / 2; bin += 2)
+        {
+            const double angle = -2.0 * std::numbers::pi * bin / count;
+            double real = 0.0;
+            double imaginary = 0.0;
+            for (int n = 0; n < count; ++n)
+            {
+                const double value = 0.5 * (audio.left[static_cast<std::size_t>(n)]
+                    + audio.right[static_cast<std::size_t>(n)]);
+                real += value * std::cos(angle * n);
+                imaginary += value * std::sin(angle * n);
+            }
+            const double power = real * real + imaginary * imaginary;
+            weighted += power * bin * rate / count;
+            total += power;
+        }
+        return total > 0.0 ? weighted / total : 0.0;
+    };
+
+    auto click = off;
+    click.contactClickFinger = 4.0f;
+    auto clickTwice = off;
+    clickTwice.contactClickFinger = 8.0f;
+    const auto withClick = renderCalibrated(steel, click, 57, 0.85f, 1.0);
+    const auto withTwice = renderCalibrated(steel, clickTwice, 57, 0.85f, 1.0);
+    const auto once = difference(withClick, quiet);
+    const auto twice = difference(withTwice, quiet);
+    const double onceRms = rms(once, sampleRate, 0.0, 0.1);
+    const double twiceRms = rms(twice, sampleRate, 0.0, 0.1);
+    expect(onceRms > 0.0, "a finger's click was not heard");
+    expect(std::abs(twiceRms / std::max(onceRms, 1.0e-30) - 2.0) < 1.0e-3,
+           "the click was not linear in its level");
+    // 12 x 20.7 ms and the filters' ring-down: silent by 0.5 s, exactly.
+    bool silent = true;
+    for (std::size_t i = static_cast<std::size_t>(0.5 * sampleRate);
+         i < once.left.size(); ++i)
+        silent = silent && once.left[i] == 0.0f && once.right[i] == 0.0f;
+    expect(silent, "the click went on after its noise had ended");
+
+    for (const double rate : { 44100.0, 96000.0 })
+    {
+        const auto base = renderAtRate(steel, 57, 0.85f, 0.2, rate, blockSize,
+                                       true, off);
+        const auto clicked = renderAtRate(steel, 57, 0.85f, 0.2, rate, blockSize,
+                                          true, click);
+        const auto clickAtRate = difference(clicked, base);
+        const auto base48 = renderAtRate(steel, 57, 0.85f, 0.2, sampleRate,
+                                         blockSize, true, off);
+        const auto clicked48 = renderAtRate(steel, 57, 0.85f, 0.2, sampleRate,
+                                            blockSize, true, click);
+        const double change = 20.0 * std::log10(
+            rms(clickAtRate, rate, 0.0, 0.1)
+            / rms(difference(clicked48, base48), sampleRate, 0.0, 0.1));
+        expect(std::abs(change) < 1.5,
+               "the click's level moved " + std::to_string(change)
+                   + " dB at " + std::to_string(static_cast<int>(rate)) + " Hz");
+    }
+
+    const auto clickAt = [&] (float velocity, acustra::PickingTechnique tool)
+    {
+        auto parameters = steel;
+        parameters.picking = tool;
+        auto calibration = click;
+        calibration.contactClickPick = 4.0f;
+        return difference(renderCalibrated(parameters, calibration, 57,
+                                           velocity, 0.2),
+                          renderCalibrated(parameters, off, 57, velocity, 0.2));
+    };
+    const auto soft = clickAt(0.25f, acustra::PickingTechnique::Finger);
+    const auto loud = clickAt(0.9f, acustra::PickingTechnique::Finger);
+    const auto thumb = clickAt(0.9f, acustra::PickingTechnique::Thumb);
+    expect(rms(loud, sampleRate, 0.0, 0.1) > 2.0 * rms(soft, sampleRate, 0.0, 0.1),
+           "a harder stroke did not click louder");
+    expect(centroid(loud, sampleRate) > 1.5 * centroid(soft, sampleRate),
+           "a harder stroke's click did not move up in frequency");
+    expect(centroid(thumb, sampleRate) < 0.8 * centroid(loud, sampleRate),
+           "a thumb's click was not darker than a finger's");
+
+    auto string = off;
+    string.contactNoiseFinger = 0.05f;
+    const auto withNoise = renderCalibrated(steel, string, 57, 0.85f, 1.0);
+    expect(withNoise.left != quiet.left, "the string-borne noise was not heard");
+    for (std::size_t i = 0; i < withNoise.left.size(); ++i)
+        expect(std::isfinite(withNoise.left[i]) && std::isfinite(withNoise.right[i]),
+               "a string-borne contact noise render was not finite");
+    const double early = tailBandRms(withNoise, sampleRate, 0.0, 0.04, 2000.0, 12000.0);
+    const double earlyOff = tailBandRms(quiet, sampleRate, 0.0, 0.04, 2000.0, 12000.0);
+    expect(early > earlyOff, "the string-borne noise added no early upper band");
+
+    // A repluck while the noise is still in flight hands it to the retained
+    // tail, as the contact transport's waves are, and nothing blows up.
+    {
+        auto both = string;
+        both.contactClickPick = 8.0f;
+        both.contactNoisePick = 0.2f;
+        acustra::AcustraEngine engine;
+        auto parameters = steel;
+        parameters.picking = acustra::PickingTechnique::Pick;
+        engine.setParameters(parameters);
+        engine.setPhysicalCalibration(both);
+        engine.prepare(sampleRate, blockSize);
+        std::vector<float> left(static_cast<std::size_t>(blockSize));
+        std::vector<float> right(static_cast<std::size_t>(blockSize));
+        bool finite = true;
+        double peak = 0.0;
+        for (int block = 0; block < 400; ++block)
+        {
+            if (block % 7 == 0)
+                engine.noteOn(52, 0.3f + 0.1f * static_cast<float>(block % 5));
+            engine.process(left.data(), right.data(), blockSize);
+            for (int i = 0; i < blockSize; ++i)
+            {
+                finite = finite && std::isfinite(left[static_cast<std::size_t>(i)])
+                    && std::isfinite(right[static_cast<std::size_t>(i)]);
+                peak = std::max(peak, static_cast<double>(std::abs(left[static_cast<std::size_t>(i)])));
+            }
+        }
+        expect(finite && peak < 1.0,
+               "replucking through a contact noise in flight was not finite and bounded");
     }
 }
 
@@ -7922,7 +8296,9 @@ int main()
     testPickingChangesTheContactWithoutRetuningOrReplucking();
     testPickingStylesChangeMoreThanGainAtEveryVelocity();
     testHighLossCutoffScaleChangesOnlyUpperLoss();
+    testBendingLossFollowsItsLaw();
     testPlateConductanceFloorDampsOnlyTheUpperBand();
+    testContactNoiseFollowsItsLaw();
     testStolenStringKeepsRingingUnderHandDamping();
     testBridgeHandPressureShortensAndDarkens();
     testNaturalHarmonicsReachAboveTheFretboard();

@@ -128,6 +128,59 @@ struct PhysicalCalibration
     // so it low-passes the pluck at a corner that rises with the stroke's
     // force. Zero is the instant release.
     float pickEdgeRadiusMetres { 0.0f };
+    // The loss factor eta of a string's viscoelastic bending stiffness,
+    // EI(1 + i eta), one per construction: Valette's and Woodhouse's bending
+    // loss 1/Q_n = eta B n^2 / (1 + B n^2) (bendingLossSection in
+    // AcustraEngine.cpp). Zero is an exact no-op.
+    float steelWoundBendingLoss { 0.0f };
+    float steelPlainBendingLoss { 0.0f };
+    float nylonWoundBendingLoss { 0.0f };
+    float nylonPlainBendingLoss { 0.0f };
+    // The noise a fingertip, nail or plectrum makes as it leaves the string
+    // (AcustraEngine::initialiseContactNoise and renderContactNoise). One
+    // random contact force per pluck, along the stroke: white between the
+    // string's fundamental and a corner, above which the contact smooths it,
+    // with the corner at the tool's full-velocity value times the MIDI
+    // velocity v (sliding-contact noise moves up in frequency with the
+    // sliding speed and grows with it: Akay, "Acoustics of friction", JASA 111
+    // (2002) 1525-1548), an RMS of v^contactNoiseVelocityExponent times the
+    // force F0 the hand held, and one decay from the release. It reaches the
+    // microphones two ways. Its string-borne part (contactNoiseFinger, Nylon,
+    // Pick: the RMS as a fraction of F0 at v = 1) enters the string at the
+    // contact point as velocity waves F / (2Z) both ways, so it reaches the
+    // bridge and body as the string's first arrivals do. Its airborne part
+    // (contactClickFinger, Nylon, Pick) is the tool's own click, a small
+    // source at the contact whose pressure follows the force's rate of
+    // change up to where a 3 mm radiator stops being small (18 kHz), heard
+    // through the direct path after its flight to the microphone, without
+    // touching the string or the body. The levels are per tool and material (a steel string's
+    // finger, a classical player's nail, a plectrum on either); Thumb takes
+    // the finger's with its corner lowered by the ratio of the two contact
+    // widths. Zero levels are an exact no-op.
+    //
+    // What the recordings asked for (Tools/MeasureAttackTransient.py on the
+    // bank's training rows, 2026-09-28): in the first 12 ms a loud picked
+    // note carries 14-29 dB more energy between its partials at 1-12.5 kHz
+    // than the engine renders, a soft one 7-20 dB and a classical note 5-28
+    // dB, rising with frequency; that energy falls at a median 420 dB/s over
+    // 12-40 ms (contactNoiseDecaySeconds, 20.7 ms, is that decay, not a fit);
+    // and on the loud layer it does not recur at the string's period (its
+    // 2-14 kHz content correlates 0.18-0.54 with itself a period later, where
+    // the engine's and the soft layer's correlate 0.80-0.96; the anechoic
+    // Iowa nylon notes' 8-14 kHz 0.16-0.38), so it is not the string's own
+    // vibration nor a room's. A force launched into the string recurs with the
+    // string, and the fits drive the string-borne levels to zero.
+    float contactNoiseFinger { 0.0f };
+    float contactNoiseNylon { 0.0f };
+    float contactNoisePick { 0.0f };
+    float contactNoiseVelocityExponent { 1.0f };
+    float contactNoiseCornerHz { 4000.0f };
+    float nylonContactNoiseCornerHz { 4000.0f };
+    float pickContactNoiseCornerHz { 8000.0f };
+    float contactNoiseDecaySeconds { 0.0207f };
+    float contactClickFinger { 0.0f };
+    float contactClickNylon { 0.0f };
+    float contactClickPick { 0.0f };
 };
 
 // Refit on 2026-09-04 around the two-way junction and the saddle anchor, by a

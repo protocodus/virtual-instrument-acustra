@@ -337,6 +337,17 @@ private:
         float lowpassCoefficient { 0.5f };
         float dispersionA1 { 0.0f };
         float dispersionA2 { 0.0f };
+        // The string's own bending loss (bendingLossSection in
+        // AcustraEngine.cpp): g / (1 + a1 z^-1 + a2 z^-2), unit gain at DC,
+        // designed at the host rate from the loss law rather than mapped
+        // from 48 kHz. Inactive leaves the loop exactly as it was.
+        bool bendingLossActive { false };
+        bool bendingLossSeed { false };
+        float bendingLossGain { 1.0f };
+        float bendingLossA1 { 0.0f };
+        float bendingLossA2 { 0.0f };
+        float bendingLossY1 { 0.0f };
+        float bendingLossY2 { 0.0f };
         OnePole broadLossFilter {};
         OnePole lossFilter {};
         SecondOrderAllpass dispersion {};
@@ -623,6 +634,48 @@ private:
         // The Pick technique's contact transient is an impact and enters
         // broadband, bypassing the Finger burst's colour filter.
         bool excitationWhite { false };
+        // renderContactNoise's state for the pluck in progress: the drive's
+        // amplitude in the loop's per-sample wave units and its per-sample
+        // decay; the coefficients of the three one-pole stages that shape
+        // the launched displacement (two at the contact's corner, one at the
+        // fundamental), their states, and the gain that makes the force they
+        // imply unit RMS; the samples left to run; the shares of
+        // the stroke's direction normal and parallel to the top; its own
+        // generator, so that switching the noise on leaves every other draw
+        // as it was; and its travel from the contact point to the bridge,
+        // direct and by the nut, with the retained tail's copy at a repluck.
+        float contactNoiseAmplitude { 0.0f };
+        float contactNoiseDecay { 0.0f };
+        float contactNoiseCoefficient { 0.0f };
+        float contactNoiseStage1 { 0.0f };
+        float contactNoiseStage2 { 0.0f };
+        float contactNoiseStage3 { 0.0f };
+        float contactNoiseLowCoefficient { 0.0f };
+        // Its string-borne and airborne levels for this pluck, the last
+        // launched displacement and force at unit level, the click's
+        // radiated term and its per-reference-sample scale.
+        float contactNoiseString { 0.0f };
+        float contactNoiseClick { 0.0f };
+        float contactNoiseLaunched { 0.0f };
+        float contactNoiseForce { 0.0f };
+        float contactNoiseAir { 0.0f };
+        float contactNoiseAirScale { 1.0f };
+        // The click's radiation corner (a one-pole low-pass on dF/dt) and
+        // its flight to the microphone, in whole samples.
+        float contactNoiseAirCoefficient { 1.0f };
+        float contactNoiseAirLowpass { 0.0f };
+        int contactNoiseAirDelay { 1 };
+        int contactNoiseAirWrite { 0 };
+        std::array<float, 512> contactNoiseAirLine {};
+        float contactNoiseGain { 0.0f };
+        int contactNoiseSamples { 0 };
+        float contactNoiseNormal { 0.0f };
+        float contactNoiseParallel { 0.0f };
+        float tailContactNoiseNormal { 0.0f };
+        float tailContactNoiseParallel { 0.0f };
+        std::uint32_t contactNoiseState { 1 };
+        ContactTravel contactNoiseTravel {};
+        ContactTravel tailContactNoiseTravel {};
         ContactTravel contactTravel {};
         float contactPeriodSamples { 0.0f };
         // Routing identity survives transport retirement: a drained contact
@@ -670,7 +723,12 @@ private:
         float dispersionDesignFrequencyLossScale { -1.0f };
         // Exact arguments of the last completed dispersion solve. Frequency
         // is positive, so the zero-initialized key cannot be a valid hit.
-        std::array<double, 7> dispersionDesignArguments {};
+        std::array<double, 9> dispersionDesignArguments {};
+        // The bending-loss section designed with that solve, for the
+        // unbent string; both polarisations carry it.
+        float bendingLossGain { 1.0f };
+        float bendingLossA1 { 0.0f };
+        float bendingLossA2 { 0.0f };
         // The fraction both polarisation loops were lengthened by so that the
         // pair of modes they form through a rocking saddle is heard at the
         // requested pitch (coupledPolarisationDetune); zero elsewhere.
@@ -962,6 +1020,10 @@ private:
     };
     [[nodiscard]] HarmonicChoice chooseHarmonic(int midiNote) const noexcept;
     float renderExcitation(Voice& voice) noexcept;
+    void initialiseContactNoise(Voice& voice, float velocity, float position,
+                                float contactDistance, float releasedAmplitude,
+                                float contactWidthRatio) noexcept;
+    float renderContactNoise(Voice& voice) noexcept;
     void finishVoice(Voice& voice, int stringIndex, float verticalIncident,
                      float horizontalIncident, float excitation,
                      float tailIncident, float tailParallelIncident,
@@ -998,7 +1060,7 @@ private:
     // function of its arguments, so a hit is the same result.
     struct DispersionSolve
     {
-        std::array<double, 7> arguments {};
+        std::array<double, 9> arguments {};
         float decayRatio { 10.0f };
         float poleRatio { 4.0f };
         bool valid { false };
@@ -1150,6 +1212,13 @@ private:
     // corpus's absolute-ms one, is what a single per-stroke speed draw
     // should match. std of h*U(-1,1) is h/sqrt(3), so h = 0.3647*sqrt(3).
     static constexpr float strumSpeedJitterHalfWidth = 0.6317f;
+    // Each pluck's contact noise may draw its own level within this many dB
+    // either way (initialiseContactNoise). It draws none: across the picked
+    // archtop's three takes of a note the recordings' 0-12 ms energy between
+    // partials ranges a median 1.6 dB (pooled SD 1.2 dB), and a noise of its
+    // own on every pluck already ranges a median 1.1-2.9 dB over three
+    // repeats of a note at MIDI 112 and 16 (Docs/decisions.md, 2026-09-28).
+    static constexpr float contactNoiseTakeSpreadDb = 0.0f;
 };
 
 } // namespace acustra
