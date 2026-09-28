@@ -15,6 +15,16 @@
 #include <cstring>
 #include <limits>
 
+// Keeps a rarely taken path's body out of the per-sample loop that calls it,
+// where inlined it would cost the loop even when it never runs.
+#if defined(__GNUC__) || defined(__clang__)
+#define ACUSTRA_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define ACUSTRA_NOINLINE __declspec(noinline)
+#else
+#define ACUSTRA_NOINLINE
+#endif
+
 namespace acustra
 {
 namespace
@@ -6314,6 +6324,36 @@ float AcustraEngine::renderContactNoise(Voice& voice) noexcept
     return launched * voice.contactNoiseString;
 }
 
+ACUSTRA_NOINLINE void AcustraEngine::addContactNoise(
+    Voice& voice, float& verticalIncident, float& horizontalIncident) noexcept
+{
+    const float noise = renderContactNoise(voice);
+    if (voice.contactNoiseTravel.active || noise != 0.0f)
+    {
+        const auto paths = voice.contactNoiseTravel.process(noise);
+        const float local = paths[0] - paths[1];
+        const float vertical = voice.contactNoiseNormal * local;
+        const float horizontal = voice.contactNoiseParallel * local;
+        verticalIncident += voice.loops[0].appliedReleaseGain == 1.0f
+            ? vertical
+            : vertical * voice.loops[0].appliedReleaseGain;
+        horizontalIncident += voice.loops[1].appliedReleaseGain == 1.0f
+            ? horizontal
+            : horizontal * voice.loops[1].appliedReleaseGain;
+    }
+}
+
+ACUSTRA_NOINLINE void AcustraEngine::addTailContactNoise(
+    Voice& voice, float& tailIncident, float& tailParallelIncident) noexcept
+{
+    const auto paths = voice.tailContactNoiseTravel.process(0.0f);
+    const float local = paths[0] - paths[1];
+    tailIncident += voice.tailContactNoiseNormal * local
+        * voice.tailLoop.appliedReleaseGain;
+    tailParallelIncident += voice.tailContactNoiseParallel * local
+        * voice.tailParallelLoop.appliedReleaseGain;
+}
+
 float AcustraEngine::renderExcitation(Voice& voice) noexcept
 {
     float excitation = 0.0f;
@@ -6486,10 +6526,15 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
     // The tool's own click reaches the microphones through the air, not
     // through the string or the body: a small source at the contact whose
     // pressure follows its force's rate of change (renderContactNoise).
-    const float click = voice.contactNoiseSamples > 0
-        ? voice.contactNoiseClick * 2.0f * impedance * voice.contactNoiseAir
-        : 0.0f;
-    const float direct = physicalCalibration_.directGain * directForce + click;
+    // Without a click the sum is the product alone (adding zero changes at
+    // most the sign of a zero, which the stereo sums below absorb).
+    float direct = physicalCalibration_.directGain * directForce;
+    if (voice.contactNoiseSamples > 0)
+    {
+        const float click = voice.contactNoiseClick * 2.0f * impedance
+                          * voice.contactNoiseAir;
+        direct = physicalCalibration_.directGain * directForce + click;
+    }
     directLeft += direct * (1.0f - 0.18f * pan);
     directRight += direct * (1.0f + 0.18f * pan);
 
@@ -6782,25 +6827,14 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
                     += 0.51f * horizontalContact;
             }
             // The contact's noise force, launched both ways from the contact
-            // point along the stroke; the nut inverts what reaches it.
-            {
-                const float noise = renderContactNoise(voice);
-                if (voice.contactNoiseTravel.active || noise != 0.0f)
-                {
-                    const auto paths = voice.contactNoiseTravel.process(noise);
-                    const float local = paths[0] - paths[1];
-                    const float vertical = voice.contactNoiseNormal * local;
-                    const float horizontal = voice.contactNoiseParallel * local;
-                    verticalIncident[static_cast<std::size_t>(string)]
-                        += voice.loops[0].appliedReleaseGain == 1.0f
-                            ? vertical
-                            : vertical * voice.loops[0].appliedReleaseGain;
-                    horizontalIncident[static_cast<std::size_t>(string)]
-                        += voice.loops[1].appliedReleaseGain == 1.0f
-                            ? horizontal
-                            : horizontal * voice.loops[1].appliedReleaseGain;
-                }
-            }
+            // point along the stroke; the nut inverts what reaches it. Out of
+            // line and behind the two fields it would read first: at zero
+            // levels neither is ever set, and inlined it cost the voice loop
+            // about a tenth of the engine's time.
+            if (voice.contactNoiseSamples > 0 || voice.contactNoiseTravel.active)
+                addContactNoise(voice,
+                    verticalIncident[static_cast<std::size_t>(string)],
+                    horizontalIncident[static_cast<std::size_t>(string)]);
             if (voice.tailActive)
             {
                 tailIncident[static_cast<std::size_t>(string)]
@@ -6820,16 +6854,9 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
                             * voice.tailParallelLoop.appliedReleaseGain;
                 }
                 if (voice.tailContactNoiseTravel.active)
-                {
-                    const auto paths = voice.tailContactNoiseTravel.process(0.0f);
-                    const float local = paths[0] - paths[1];
-                    tailIncident[static_cast<std::size_t>(string)]
-                        += voice.tailContactNoiseNormal * local
-                         * voice.tailLoop.appliedReleaseGain;
-                    tailParallelIncident[static_cast<std::size_t>(string)]
-                        += voice.tailContactNoiseParallel * local
-                         * voice.tailParallelLoop.appliedReleaseGain;
-                }
+                    addTailContactNoise(voice,
+                        tailIncident[static_cast<std::size_t>(string)],
+                        tailParallelIncident[static_cast<std::size_t>(string)]);
             }
             // Every string is anchored behind the saddle whether or not it
             // is being played, so the anchor the junction sees is a constant

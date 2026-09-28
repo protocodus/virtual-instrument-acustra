@@ -22,6 +22,16 @@
 #define ACUSTRA_BODY_MODE_COUNT 141
 #endif
 
+// Asks the compiler to inline a function at every call it can see, whatever
+// its size (StringLoop::advance).
+#if defined(__clang__)
+#define ACUSTRA_ALWAYS_INLINE __attribute__((always_inline))
+#elif defined(_MSC_VER)
+#define ACUSTRA_ALWAYS_INLINE __forceinline
+#else
+#define ACUSTRA_ALWAYS_INLINE
+#endif
+
 namespace acustra
 {
 
@@ -377,7 +387,13 @@ private:
         // Read-only point observation of both travelling waves; does not
         // advance the feedback allpass or alter the vibrating string.
         [[nodiscard]] float displacementAt(float fraction) const noexcept;
-        float advance(float delaySmoothing, float releaseGain) noexcept;
+        // Inlined into the voice loop whatever its size. The Rack Extension's
+        // build inlined it until the bending section grew it past its limit;
+        // called instead, four times per string per sample, it cost about a
+        // tenth of the engine there, and inlining gains a few percent on the
+        // host, which never did.
+        ACUSTRA_ALWAYS_INLINE float advance(float delaySmoothing,
+                                            float releaseGain) noexcept;
         // A plucked string is released from rest, so the wave the bridge
         // reads was already standing there when the finger let go. Prime the
         // finite difference from the first value this loop actually produces
@@ -643,7 +659,8 @@ private:
         // the stroke's direction normal and parallel to the top; its own
         // generator, so that switching the noise on leaves every other draw
         // as it was; and its travel from the contact point to the bridge,
-        // direct and by the nut, with the retained tail's copy at a repluck.
+        // direct and by the nut, with the retained tail's copy at a repluck
+        // (those buffers, and the click's flight line, end the voice).
         float contactNoiseAmplitude { 0.0f };
         float contactNoiseDecay { 0.0f };
         float contactNoiseCoefficient { 0.0f };
@@ -666,7 +683,6 @@ private:
         float contactNoiseAirLowpass { 0.0f };
         int contactNoiseAirDelay { 1 };
         int contactNoiseAirWrite { 0 };
-        std::array<float, 512> contactNoiseAirLine {};
         float contactNoiseGain { 0.0f };
         int contactNoiseSamples { 0 };
         float contactNoiseNormal { 0.0f };
@@ -674,8 +690,6 @@ private:
         float tailContactNoiseNormal { 0.0f };
         float tailContactNoiseParallel { 0.0f };
         std::uint32_t contactNoiseState { 1 };
-        ContactTravel contactNoiseTravel {};
-        ContactTravel tailContactNoiseTravel {};
         ContactTravel contactTravel {};
         float contactPeriodSamples { 0.0f };
         // Routing identity survives transport retirement: a drained contact
@@ -760,6 +774,12 @@ private:
         // The engine's sample clock when this note was fretted; a chord
         // still forming is the run of notes whose onsets are close together.
         std::uint64_t onsetSample { 0 };
+        // The contact noise's buffers (renderContactNoise), last: at zero
+        // levels nothing reads them, and between the per-sample fields they
+        // would put 66 KB between the excitation's and the contact's.
+        std::array<float, 512> contactNoiseAirLine {};
+        ContactTravel contactNoiseTravel {};
+        ContactTravel tailContactNoiseTravel {};
     };
 
     struct BodyOutput
@@ -1024,6 +1044,12 @@ private:
                                 float contactDistance, float releasedAmplitude,
                                 float contactWidthRatio) noexcept;
     float renderContactNoise(Voice& voice) noexcept;
+    // The contact noise's per-sample work, kept out of the voice loop
+    // (process): only a voice whose noise or its travel is running calls it.
+    void addContactNoise(Voice& voice, float& verticalIncident,
+                         float& horizontalIncident) noexcept;
+    void addTailContactNoise(Voice& voice, float& tailIncident,
+                             float& tailParallelIncident) noexcept;
     void finishVoice(Voice& voice, int stringIndex, float verticalIncident,
                      float horizontalIncident, float excitation,
                      float tailIncident, float tailParallelIncident,
