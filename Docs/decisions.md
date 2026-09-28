@@ -4,6 +4,44 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — blind verdict: B+D over the weighted blend, and a midpoint to try
+
+The listener asked whether the Set 18 candidates could all be combined with
+weights, B and D near 70% and the others at 10-20%. That blend was built on
+cand/body-blend (3c98653). Its weights live in Source/DSP/SteelBodyBlend.h:
+- B at 1.0 rather than 0.7. A 30% share of the Fylde bridge, blended as a
+  passive admittance, moved the drains the string sees 0.7-0.85 semitone off
+  B's poles in the T1 and rocking band. In renders F#3 started 13 dB weak and
+  G2 lost 13 dB. That was measured, not heard.
+- D at 0.7 (log-Q).
+- C's decay-Q grid at 0.15 above 1 kHz.
+- E's joint body at 0.15, in parallel.
+
+Set 19 put three letters on the same five steel pieces as Set 18:
+- A: the engine before B+D (201a664, Fylde bridge).
+- B: B+D (main ac1687e).
+- C: the blend.
+
+The listener chose C on the finger single notes and the travis picking, and B
+on the ringing chords, the picked melody and the picked strums. Overall they
+chose B, with the note "something between B and C is the best - B sounds like
+a stronger body but C is too bright".
+
+What this licenses, by ear:
+- B+D stays the shipping body.
+- The blend does not ship.
+- A candidate halfway between B and C is built and heard against B+D before
+  anything changes.
+
+The measured differences:
+- C's difference from B sat 15-20 dB below the music.
+- Octave bands matched within about 1 dB: C was 0.1-1.0 dB lower from 500 Hz
+  up on three pieces and 1.1 dB higher at 125 Hz on one.
+- Its level-match trims were up to 0.9 dB (against A, like B's).
+
+Which component the listener hears as brightness is not yet measured; the
+midpoint's build has to find it.
+
 ## 2026-09-28 — listening candidate: Set 18's bodies blended by weight (awaiting Set 19)
 
 After Set 18 the listener asked: "if B-E are model enhancenments, could we
