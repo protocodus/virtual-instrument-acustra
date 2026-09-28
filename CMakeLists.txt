@@ -366,6 +366,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FitPhysicalModel.py"
                                  --self-test)
                 set_tests_properties(Acustra.PhysicalScorer PROPERTIES TIMEOUT 180)
+                add_test(NAME Acustra.MaterialLoudness
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/MeasureMaterialLoudness.py"
+                                 --self-test)
+                set_tests_properties(Acustra.MaterialLoudness PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.PerformanceBenchmark
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/BenchmarkPerformances.py"

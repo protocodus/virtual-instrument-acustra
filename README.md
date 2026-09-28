@@ -71,15 +71,15 @@ reverb, room effect or recorded-note layer.
 | File | What it is | Length | Rendered peak | Normalisation |
 | --- | --- | ---: | ---: | ---: |
 | `01-steel-sustain-range.wav` | Steel sustain from open E2 to B5, one held pluck at a time | 9.5 s | −19.4 dBFS | +16.4 dB |
-| `02-nylon-fingerstyle.wav` | A fingertip nylon arpeggio with overlapping held notes | 4.2 s | −21.1 dBFS | +18.1 dB |
+| `02-nylon-fingerstyle.wav` | A fingertip nylon arpeggio with overlapping held notes | 4.2 s | −15.7 dBFS | +12.7 dB |
 | `03-shape-material-anchors.wav` | One chord: Parlor/Jumbo, then Cedar/Maple anchor settings | 13.7 s | −7.4 dBFS | +4.4 dB |
 | `04-string-age.wav` | The same steel phrase with fresh strings, then fully aged strings | 6.5 s | −12.8 dBFS | +9.8 dB |
 | `05-alternate-tunings.wav` | Drop D, DADGAD and Open G chords | 12.3 s | −11.3 dBFS | +8.3 dB |
 | `06-playing-behaviours.wav` | A chord change over a ringing chord, CC2 bridge-hand damping, then two natural harmonics above the fretted range | 10.7 s | −11.6 dBFS | +8.6 dB |
 | `08-strummed-chords.wav` | Same-sample chords swept as alternating strums, then one chord eight times hand-damped, no two strokes the same take | 6.9 s | −6.4 dBFS | +3.4 dB |
-| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −23.7 dBFS | +20.7 dB |
-| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −24.2 dBFS | +21.2 dB |
-| `11-picking-techniques.wav` | Finger, pick and thumb on steel, then on nylon; same notes and velocity | 10.6 s | −18.1 dBFS | +15.1 dB |
+| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −18.3 dBFS | +15.3 dB |
+| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −18.8 dBFS | +15.8 dB |
+| `11-picking-techniques.wav` | Finger, pick and thumb on steel, then on nylon; same notes and velocity | 10.6 s | −16.7 dBFS | +13.7 dB |
 | `12-capture-types.wav` | Stereo mic, mono mic, piezo | 7.3 s | −22.4 dBFS | +19.4 dB |
 <!-- peaks-table-end -->
 
@@ -755,8 +755,14 @@ classical rows (training +0.54%, development validation -2.4%), and the
 listener preferred the normal-led pluck on all three nylon pairs and again
 whenever the branch was heard whole, so nylon's share was chosen by ear
 (Docs/decisions.md); a classical stroke pushes the string toward the top.
-Each pluck draws its own +-0.025 about its share. Steel's output reference rises by the 5.41 dB its
-demos lost at the same controls, so a session keeps its loudness. The effect
+Each pluck draws its own +-0.025 about its share. Steel's output reference
+rises by the 5.41 dB its demos lost at the same controls, so a session keeps
+its loudness. Nylon's rises by 5.47 dB, at the user's request, so that it
+plays as loud as steel: that is the median BS.1770 loudness nylon measured
+below steel across the six factory constructions strung with each material,
+playing single notes, strums, an arpeggio and ringing chords with Finger and
+Pick ([`MeasureMaterialLoudness.py`](Tools/MeasureMaterialLoudness.py)). The
+effect
 is audible as the slow beating a guitar partial has and a single radiating
 plane cannot: over 0.3-2.3 s, the median RMS envelope residual of H1-H6
 after a quadratic trend is 0.33-1.74 dB on the flat-top rows against the
@@ -2189,6 +2195,15 @@ git history rather than here.
 
 ### 2026-09-28
 
+- **Nylon plays as loud as steel, at the user's request.** Nylon's output
+  reference rises by 5.47 dB, the median loudness (BS.1770) it measured below
+  steel over the factory constructions strung with each material and typical
+  playing with Finger and Pick. Over that grid the two medians are now equal;
+  the nylon presets themselves remain 3.5 dB below the steel presets, since
+  their Auditorium cedar body is itself quieter than the Dreadnought. Saved
+  sessions that play nylon get louder too, as asked. Steel is untouched, and
+  nylon changes by that one gain: every nylon sample is the old one times
+  1.8774 to within one float rounding.
 - **Legato is gone, at the user's request.** CC68 no longer switches the
   fretting hand to hammer-ons and pull-offs, and release velocity no longer
   lifts a finger: every note is plucked, every key-up damps, and CC68 is

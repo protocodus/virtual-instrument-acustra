@@ -4,6 +4,68 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — at the user's request: nylon as loud as steel
+
+Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
+"nylon is a bit quite, normalize it with the steel".
+
+Measured with Tools/MeasureMaterialLoudness.py through the shipping renderer:
+the six factory constructions (the plug-in's Guitar presets), each strung
+with steel and with nylon; soft, medium and hard single notes up the neck,
+alternating strums, a Travis-style arpeggio and two ringing chords; Finger
+and Pick; default Output, stereo microphones. That is 72 renders per material,
+measured as BS.1770-4 integrated loudness and as RMS.
+
+| median | steel | nylon before | nylon after |
+| --- | ---: | ---: | ---: |
+| whole grid, LUFS | -27.03 | -32.50 | -27.03 |
+| whole grid, RMS dB | -29.95 | -35.97 | -30.49 |
+| presets as they ship, LUFS | -25.45 | -34.46 | -28.99 |
+| presets as they ship, RMS dB | -29.53 | -37.82 | -32.35 |
+
+The paired median of steel minus nylon on the same construction and playing
+was 6.21 LU before and 0.75 after.
+
+What changed: nylon's output reference, 1 since it kept the normal-led pluck,
+is now 1.8774 (+5.47 dB). That is the whole-grid median gap, so nylon's median
+loudness over the grid equals steel's.
+
+Why the grid and not the presets alone: the reference is a factor per string
+material, applied whatever the body. The nylon presets play an Auditorium
+cedar body, which is itself about 2.4 dB quieter than the Dreadnought with
+steel strings on it too. Closing the full 9.01 LU preset gap would leave
+nylon about 3 dB louder than steel on any one body. If the user wants the
+Classical preset itself level with the Dreadnought preset, that is a
+further 3.5 dB, a preset-level question for the Rack Extension's factory
+patches rather than this reference.
+
+Saved sessions: when steel's reference rose (the comment above
+`steelParallelPluckReference`), the aim was that a session keeps its
+loudness through a model change the user did not ask for. This change is the
+opposite case: the user asked for nylon to be louder. So there is no
+migration, and every nylon session, saved ones included, plays 5.47 dB
+louder at the same Output. A session whose Output was raised by hand to make
+up for quiet nylon will now be louder by the same amount. The Rack
+Extension's nylon factory patches, whose Output sits at the top of its range
+to make up for the old gap, need retuning there.
+
+What did not change: every steel sample, and every nylon sample apart from
+that one gain.
+- Harness renders through the player: new/old = 1.8774 to within 1.4e-7
+  on every nonzero sample, all captures, both bridges, both models and all
+  knobs. The only exception is the battery performance that switches
+  material mid-note, where the reference glides to the new value instead.
+- All 39 nylon models of the physical-fit corpus: within 1.2e-7 (one float
+  rounding). All steel models and all targets are byte-identical.
+- The benchmark does not see the gain. FitPhysicalModel.py mean-subtracts
+  its attack, spectral and body levels; its onset, pitch and decay floors
+  are relative to each note's own peak; and its dynamics term is
+  mean-subtracted within each group. Nylon's scores moved by float rounding
+  only (training 7.031332769 to 7.031332692, validation 6.041761395 to
+  6.041761148), and steel's and the flat-top rows' did not move at all.
+- The loudest nylon grid render now peaks at -4.29 dBFS, below the output
+  safety limiter.
+
 ## 2026-09-28 — at the user's request: legato removed everywhere
 
 Not a listening verdict: the user asked for it. On 2026-09-28 they wrote

@@ -205,8 +205,21 @@ constexpr float radiationReferenceGain = 18.0f;
 // Releasing most of a steel pluck parallel to the top (initialisePluck) left
 // the demos a median 5.41 dB quieter at the same controls, so steel's
 // reference rises by that much and a session keeps the loudness it had.
-// Nylon keeps the normal-led pluck and the reference it had.
 constexpr float steelParallelPluckReference = 1.8637f;
+// Nylon kept the normal-led pluck and the reference it had, 1, and played a
+// median 5.47 dB (BS.1770 integrated loudness) below steel: the six factory
+// constructions, each strung with steel and with nylon, playing soft, medium
+// and hard single notes, strums, an arpeggio and ringing chords with Finger
+// and with Pick at the default Output (Docs/decisions.md, 2026-09-28). The
+// user asked for nylon to be as loud as steel, so nylon's reference rises by
+// that much. Unlike steel's rise this one is meant to be heard: sessions that
+// play nylon, saved ones included, get louder by it.
+constexpr float nylonReference = 1.8774f;
+constexpr float materialReferenceFor(StringMaterial material) noexcept
+{
+    return material == StringMaterial::Steel ? steelParallelPluckReference
+                                             : nylonReference;
+}
 // The share of a pluck's energy released normal to the soundboard at a Touch,
 // with a pluck's own draw about it; initialisePluck says where it comes from.
 float pluckNormalShare(bool steel, float touch, float draw = 0.0f) noexcept
@@ -2203,8 +2216,7 @@ void AcustraEngine::reset() noexcept
     bodyAmount_ = parameters_.bodyAmount;
     width_ = parameters_.stereoWidth;
     outputGain_ = parameters_.outputGain;
-    materialReference_ = parameters_.stringMaterial == StringMaterial::Steel
-        ? steelParallelPluckReference : 1.0f;
+    materialReference_ = materialReferenceFor(parameters_.stringMaterial);
     captureMix_.fill(0.0f);
     captureMix_[static_cast<std::size_t>(parameters_.capture)] = 1.0f;
     bodyConfigured_ = false;
@@ -6719,8 +6731,8 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         const float spreadRight = monoBody + width_ * (body.right - monoBody);
         // A material change reaches the reference over the same smoothing
         // as the output control, so it never steps a ringing instrument.
-        const float materialReference = parameters_.stringMaterial
-            == StringMaterial::Steel ? steelParallelPluckReference : 1.0f;
+        const float materialReference
+            = materialReferenceFor(parameters_.stringMaterial);
         materialReference_ += parameterSmoothing_
             * (materialReference - materialReference_);
         const float reference = radiationReferenceGain * materialReference_;
