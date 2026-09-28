@@ -222,12 +222,19 @@ def _ssl_context(cafile: str | None) -> ssl.SSLContext:
 
 def fetch(url: str, path: Path, context: ssl.SSLContext,
           expected_bytes: int | None = None, attempts: int = 8) -> bytes:
-    """Download url to path, resuming with Range after a truncated read."""
+    """Download url to path, resuming with Range after a truncated read.
+
+    The server often closes a response early, and urllib reads that as a
+    normal end of file, so a download counts as complete only at the size the
+    caller pins or, failing that, the size the server declares (Content-Length,
+    or the total of a 206's Content-Range). Only complete files reach path.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     partial = path.with_suffix(path.suffix + ".part")
     if path.exists() and (expected_bytes is None
                           or path.stat().st_size == expected_bytes):
         return path.read_bytes()
+    declared: int | None = None
     for attempt in range(attempts):
         have = partial.stat().st_size if partial.exists() else 0
         request = urllib.request.Request(url, headers={
@@ -239,6 +246,12 @@ def fetch(url: str, path: Path, context: ssl.SSLContext,
                 if have and response.status != 206:
                     have = 0
                     partial.unlink(missing_ok=True)
+                total = response.headers.get("Content-Range", "").rpartition("/")[2]
+                length = response.headers.get("Content-Length")
+                if response.status == 206 and total.isdigit():
+                    declared = int(total)
+                elif response.status != 206 and length and length.isdigit():
+                    declared = int(length)
                 with partial.open("ab") as stream:
                     while True:
                         block = response.read(1 << 20)
@@ -250,11 +263,14 @@ def fetch(url: str, path: Path, context: ssl.SSLContext,
             time.sleep(min(30, 2 ** attempt))
             continue
         size = partial.stat().st_size
-        if expected_bytes is None or size == expected_bytes:
+        target = expected_bytes if expected_bytes is not None else declared
+        if target is None or size == target:
             partial.replace(path)
             return path.read_bytes()
-        if size > expected_bytes:
+        if size > target:
             partial.unlink()
+        print(f"  {url}: {size} of {target} bytes; retry {attempt + 1}",
+              file=sys.stderr)
     raise RuntimeError(f"could not download {url}")
 
 
