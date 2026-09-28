@@ -4,6 +4,82 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — listening candidate: halfway from B+D to the blend (awaiting Set 21)
+
+Set 19's verdict chose B+D overall and asked for "something between B and C
+... B sounds like a stronger body but C is too bright". This is the midpoint,
+on `cand/body-mid` (cand/body-blend 3c98653 with main cd73763 merged). **The
+weights are by-ear candidate values taken from that sentence, not a
+verdict**; Set 21 decides. Each is halfway between B+D (B 1, D 1, C 0, E 0)
+and the Set 19 blend (B 1, D 0.7, C 0.15, E 0.15):
+- **B 1**, as in both parents.
+- **D 0.85**, in log Q, as data: `MeasuredBodyData.h` rewritten with
+  `GenerateBodyForcePair.py --reweight` from the same `--plate-q median` fit
+  the blend's 0.7 header came from (that run reproduces the committed 0.7
+  header byte for byte). T1 178.5 Hz Q 14.31 (blend 14.83, D 13.82),
+  208.7 Hz 28.67 (30.04, 27.37), 229.0 Hz 12.79 (13.55, 12.07), 286.8 Hz
+  2.47 (2.65, 2.30; the Q >= 4 floor holds it either way). The header records
+  0.85 and the engine static-asserts it against `SteelBodyBlend.h`. The decay
+  grid was refitted beside it with `GenerateBodyDecayGrid.py` (the same tool
+  reproduces the blend's grid byte for byte from the 0.7 header): its residues
+  move 0.022%, and every gate passes (heard complex error 0.133, third-octave
+  error 0.77 dB rms and 1.77 dB max).
+- **C 0.075** above 1 kHz and **E 0.075** in parallel.
+
+So on steel's own bridge the bridge is 0.925 B + 0.075 E and the radiation
+is 0.925 g21 (0.8556 above 1 kHz) + 0.0694 grid + 0.075 E. The Fylde bridge
+choice and nylon behave as in the blend.
+
+**What "C is too bright" and "B stronger body" measure as (numbers, not
+verdicts).** Set 19's renders, each RMS-matched to A over the piece as heard,
+pieces 1-5; each component's effect is the blend against a build with only
+that weight moved to B+D's value (D's header at 1, C's or E's macro at 0),
+and the three effects sum to the measured C-B within 0.1 dB.
+- C is not brighter than B in any spectral measure. Tilt (energy above
+  2 kHz against 100-400 Hz): C-B -0.09 / -0.66 / -0.32 / -0.69 / -0.51 dB
+  over the piece, +0.03 to -0.80 in the first 300 ms after each onset and
+  -0.21 to -0.44 in the ring after it;
+  Zwicker-weighted sharpness is lower on every piece; the 12.8 and 16 kHz
+  third-octaves are 1.3-3.3 dB lower. Piece 1's eight notes: C's ring is
+  darker on seven (E3 +0.4 dB tilt). The partials in C's ring are not louder
+  above 400 Hz either (median per-peak change -0.7 to 0.0 dB). Of the tilt,
+  E carries +0.12 / -0.37 / -0.13 / -0.61 / -0.18, D's remaining 0.3
+  -0.13 / -0.21 / -0.11 / -0.01 / -0.15, and C's grid -0.02 / -0.01 / -0.02
+  / -0.03 / -0.08 (the grid's difference signal sits 24-26 dB below the
+  music).
+- The 80-300 Hz body level is the same (C-B -0.04 / +0.08 / -0.09 / +0.04 /
+  +0.05 dB), but inside it the weight moves up: in the first 300 ms after
+  each onset the 159 Hz third-octave is 0.5-0.9 dB lower in C on every piece
+  (E: -0.4 to -0.7; D's remaining 0.3: within 0.1), while 317 Hz is up to 0.7 dB higher (E) and 200 Hz up to
+  0.5 dB higher (D's shortfall: T1 damped less). A thinner 160 Hz under a
+  fuller 200-320 Hz is the most plausible "weaker body", and E is the
+  component that does it. If "too bright" means the balance against that
+  body rather than treble, it is E too.
+- What C plausibly won on the finger single notes and the travis picking:
+  a fuller bottom (63-80 Hz +0.4 to +0.7 dB, E) and more body under the
+  treble notes (piece 1's ring, 80-300 Hz under E4 / A4 / E5 +0.9 / +1.4 /
+  +1.6 dB, E +0.8 / +1.1 / +1.3, D's shortfall +0.1 to +0.3). The same
+  component, E, carries these wins and the thinner 160 Hz, so no variant
+  that removes one component would keep C's wins without the percept the
+  listener named; none was built. The midpoint keeps about half of each
+  (the treble notes' body +0.5 / +0.7 / +0.8 dB, 159 Hz -0.2 to -0.5 dB).
+
+The midpoint on Set 19's pieces (numbers, not verdicts): its waveform differs
+from B+D by -20.6 to -25.2 dB and from the blend by -21.3 to -25.6 dB (the
+blend from B+D -15.1 to -19.6), RMS within 0.2 dB of B+D, and every band
+descriptor above sits between the two, at about half of C-B.
+
+Cost: a weight above 0 plays all of its part's modes, so the midpoint costs
+what the blend did. Thread CPU per 64-frame batch at 48 kHz, steel on the
+Original bridge, a C++17 -O2 -fno-builtin host build of the engine driven
+for 12 s (a six-note strum every 250 ms / one chord held), median of 5
+interleaved rounds: B+D 57.5 / 41.6 us, the blend
+80.8 / 64.2, the midpoint 80.2 / 64.5 (+40% / +55% over B+D). The Rack
+Extension native module's figures for the blend (Set 19's entry) therefore
+stand for the midpoint too. `ctest` 25/25 and `AcustraDSPCxx17` (C++17,
+-Wall -Wextra -Werror) build; `testSteelBlend` holds with E at 0.075 (B's
+share 0.925).
+
 ## 2026-09-28 — blind verdict: B+D over the weighted blend, and a midpoint to try
 
 The listener asked whether the Set 18 candidates could all be combined with

@@ -3,8 +3,12 @@
 // The listener chose Set 18's B ("one body at the saddle") and D ("the
 // plate-Q rule down through T1") and asked whether the other model
 // enhancements could come in too, weighted: "all 10-20% but B and D maybe
-// 70%". These four weights are that blend. They are by-ear candidate values
-// awaiting Blind Set 19 (Docs/decisions.md, 2026-09-28), not a verdict.
+// 70%". Blind Set 19 heard that blend (B 1, D 0.7, C 0.15, E 0.15) against
+// B+D (B 1, D 1, C 0, E 0) and chose B+D overall, with "something between B
+// and C is the best - B sounds like a stronger body but C is too bright".
+// These four weights are the midpoint between the two: B 1, D 0.85,
+// C 0.075, E 0.075. They are by-ear candidate values awaiting a blind verdict
+// (Docs/decisions.md, 2026-09-28), not a verdict.
 //
 // Each weight blends a passive part with a passive part, so the result stays
 // passive: a non-negative sum of positive-real driving-point admittances is
@@ -89,13 +93,13 @@
 #define ACUSTRA_STEEL_BLEND_OWN_BRIDGE 1.0f
 #endif
 #if !defined(ACUSTRA_STEEL_BLEND_T1_PLATE_Q)
-#define ACUSTRA_STEEL_BLEND_T1_PLATE_Q 0.7f
+#define ACUSTRA_STEEL_BLEND_T1_PLATE_Q 0.85f
 #endif
 #if !defined(ACUSTRA_STEEL_BLEND_DECAY_GRID)
-#define ACUSTRA_STEEL_BLEND_DECAY_GRID 0.15f
+#define ACUSTRA_STEEL_BLEND_DECAY_GRID 0.075f
 #endif
 #if !defined(ACUSTRA_STEEL_BLEND_JOINT_BODY)
-#define ACUSTRA_STEEL_BLEND_JOINT_BODY 0.15f
+#define ACUSTRA_STEEL_BLEND_JOINT_BODY 0.075f
 #endif
 
 namespace acustra::detail
