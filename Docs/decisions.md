@@ -4,6 +4,34 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — blind verdicts: snap between B and C, no pluck click, the damped plate body
+
+Set 14 put shipping (A, 1a2c7e1) against two ways of letting the strings'
+upper partials die as the recordings' do: B, half the steel bending loss the
+recordings' early decay measures (wound 0.05, plain 0.003) with the pluck
+refitted around it (Finger contact 0.35, finger burst 3.0, velocity
+brightness 1.120, pick release share 0.83 v^1.02, edge 0.114 mm), and C, the
+joint refit's own optimum (steel wound loss 0, plain 0.00078, contact 0.811,
+burst 0.377, velocity brightness 1.073, share 0.008 v^0.49, edge 0.122 mm);
+both give nylon a wound-string loss of 0.029 and velocity brightness 0.15.
+A won no pair: B on pairs 1, 3, 4 and 8, C on 2, 6 and 7 (pair 5 unanswered),
+C overall, with the note "something between B and C is best - B pick is too
+intense, i would dial it to 70%". The benchmark rejected B and found C level;
+the listener prefers both to shipping. What this licenses, by ear: steel moves
+70% of the way from C toward B in every value that differs, and nylon takes the
+two sets' shared values. It is recorded as chosen by ear.
+
+Set 15 put the previous steel body (A), the g21 plate modes damped to the
+anechoic flamencas' median Q (B, shipping since 9efc25b) and the anechoic g39
+(C) side by side: B on pairs 2 and 3, C on 1 and 4, B overall, "B and C is
+good, B a bit better". The damped g21 stays.
+
+Set 16 put shipping (A) against a measured contact click per pluck with the
+pluck refitted around it (B, cand/transient f379b1b) and against that with
+half the steel bending loss (C): A on every picked and nylon pair, B on the
+finger-plucked travis pair, C on the finger ladder; A overall, "the pick is
+TOO LOUD". The click does not ship; its mechanism stays in the code at zero.
+
 ## 2026-09-27 — blind verdicts: steel keeps g21, and the plectrum slip is heard as right
 
 Set 11 put the shipping steel body of 599a34c, g21 (a flamenca measured in a
