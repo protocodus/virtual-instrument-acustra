@@ -182,26 +182,31 @@ changes; the selected body calibration has neutral frequency/Q scales, residue
 tilt and low-mode gain. Runtime output has no RMS matching and is not calibrated
 to absolute sound pressure. No DAFx-26 coefficient is used in this body model.
 
-Since 2026-09-27 the g21 bank's plate modes between 300 Hz and 10 kHz carry the
-damping of five flamenca blancas the same archive measured anechoically, g37,
-g38, g39, g42 and g43, each fitted by the same generator and gates at its own
-converged window (g41 fails them): each g21 mode's Q is scaled by the
-population's median Q over g21's own median in the octave round it, and never
-raised (`Tools/GenerateBodyForcePair.py --plate-q median`). The air mode, T1,
-the 287 Hz mode and every frequency and residue are as fitted from g21. This
-Q scaling is an Acustra change to the archive's data.
+Since 2026-09-27 the g21 bank's plate modes carry the damping of five flamenca
+blancas the same archive measured anechoically, g37, g38, g39, g42 and g43,
+each fitted by the same generator and gates at its own converged window (g41
+fails them): each g21 mode's Q is scaled by the population's median Q over
+g21's own median in the octave round it, and never raised
+(`Tools/GenerateBodyForcePair.py --plate-q median`). Until 2026-09-27 the rule
+covered 300 Hz-10 kHz; since 2026-09-28 it reaches down to 150 Hz, so T1 (178.5
+Hz), the 208.7 Hz rocking mode, the 229.0 Hz mode and the 287 Hz broad mode are
+damped by it too. The air group below 150 Hz and every frequency and residue
+are as fitted from g21. This Q scaling is an Acustra change to the archive's
+data.
 
-On the listening candidate of 2026-09-28 (steel on the Original bridge) the
-g21 bridge bank plays on its radiation bank's poles: `MeasuredBridgeData.h`
-records, for each of its 47 modes, the radiation mode that is the same
-resonance (18 of them: the nearest, inside that mode's as-fitted half-power
-band, the bridge mode narrower than the radiation bank's local spacing), and
-the engine gives such a mode that radiation mode's frequency and Q after the
-anchor, Shape and Wood transforms and the plate-Q rule above; the other modes
-keep their measured frequency under the same transforms and take the plate-Q
-rule's octave factor on their Q. Every bridge residue is scaled by 0.274, the
-Fylde Falstaff's measured mobility over g21's (below). These are Acustra
-changes to the archive's data (`Tools/GenerateMeasuredBridge.py`).
+Since 2026-09-28 steel's own bridge, the g21 bridge bank that the steel presets
+and a new session select, plays on its radiation bank's poles:
+`MeasuredBridgeData.h` records, for each of its 47 modes, the radiation mode
+that is the same resonance (18 of them: the nearest, inside that mode's
+as-fitted half-power band, the bridge mode narrower than the radiation bank's
+local spacing), and the engine gives such a mode that radiation mode's
+frequency and Q after the anchor, Shape and Wood transforms and the plate-Q
+rule above; the other modes keep their measured frequency under the same
+transforms and take the plate-Q rule's octave factor on their Q, inside the
+same 150 Hz-10 kHz band. Every bridge residue is scaled by 0.274, the Fylde
+Falstaff's measured mobility over g21's (below), so the flamenca's bridge
+drains at a steel-string guitar's level. These are Acustra changes to the
+archive's data (`Tools/GenerateMeasuredBridge.py`).
 
 Acustra ships only those transformed numerical coefficients. It does not ship
 the source MAT file, recorded impulses, photographs or documentation from the

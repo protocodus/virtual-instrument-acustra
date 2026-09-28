@@ -30,15 +30,18 @@ response NPZ and native MeasuredBodyData.h inside the new output directory,
 with axes and Pa/N units recorded in the report. Cross-product
 diagnostics compare Ht*conj(Hb), with the existing 1%-of-product-peak mask.
 
---plate-q median reads g21's plate modes (300 Hz-10 kHz, above the air mode
-and T1) against the anechoic flamenca blancas of the same archive, each fitted
-at its own converged window with the same gates: over the octave round each
-mode, the mode's Q is scaled by the population's median Q over g21's own,
-never raised. Frequencies and residues are kept. The committed header is
-written this way; without the option the measured Qs are written unchanged.
-The report keeps g21's as-fitted Q (plate_q.measured_frequency_q) beside the
-population's banks: GenerateMeasuredBridge.py --body-report reads both to pair
-the bridge's modes with the radiation's and to damp the unpaired ones alike.
+--plate-q median reads g21's modes from 150 Hz to 10 kHz (T1, the rocking
+modes and the plate modes, above the air group) against the anechoic flamenca
+blancas of the same archive, each fitted at its own converged window with the
+same gates: over the octave round each mode, the mode's Q is scaled by the
+population's median Q over g21's own, never raised. Frequencies and residues
+are kept. The committed header is written this way (--plate-q-band 150 10000,
+the default); without the option the measured Qs are written unchanged, and
+--plate-q-band 300 10000 writes the earlier band that left T1 alone.
+The report keeps g21's as-fitted Q (plate_q.measured_frequency_q) and the band
+beside the population's banks: GenerateMeasuredBridge.py --body-report reads
+them to pair the bridge's modes with the radiation's and to damp the unpaired
+ones in the same band by the same rule.
 
     python3 Tools/GenerateBodyForcePair.py --self-test
     python3 Tools/GenerateBodyForcePair.py --raw-mat /path/qualified_selected_impulses.mat --output /new/fit-directory
@@ -65,10 +68,11 @@ FREQUENCY = np.fft.rfftfreq(body.FFT_SIZE, 1 / body.SAMPLE_RATE)
 # population g21's plate-mode damping is read against (--plate-q). g41 is kept
 # in the list and left out where its bank fails the generator's gates.
 PLATE_Q_POPULATION = (37, 38, 39, 41, 42, 43)
-# The band corrected by default: every plate mode above the air mode, T1 and
-# the 287 Hz broad mode (which the by-ear air-mode gain and the shape anchors
-# read) up to the fit's 10 kHz limit.
-PLATE_Q_BAND_HZ = (300.0, 10_000.0)
+# The band corrected by default: every mode above the air group (below 150 Hz,
+# where the by-ear air-mode gain acts), T1 and the 209 Hz rocking mode
+# included, up to the fit's 10 kHz limit. Only Q changes, so the shape anchors,
+# which read frequencies and residues, see the same modes.
+PLATE_Q_BAND_HZ = (150.0, 10_000.0)
 
 
 def octave_q(frequency_q: np.ndarray, frequency: float) -> np.ndarray:
@@ -407,7 +411,7 @@ def main() -> int:
                              "over the octave round each mode: their median over g21's, "
                              "or a ceiling at their upper quartile")
     parser.add_argument("--plate-q-band", type=float, nargs=2, default=PLATE_Q_BAND_HZ,
-                        metavar=("LOW_HZ", "HIGH_HZ"), help="band --plate-q corrects (default 300 10000)")
+                        metavar=("LOW_HZ", "HIGH_HZ"), help="band --plate-q corrects (default 150 10000)")
     args = parser.parse_args()
     try:
         if args.self_test:
