@@ -5117,6 +5117,182 @@ void testBendingLossFollowsItsLaw()
         }
 }
 
+// The contact's noise (AcustraEngine::renderContactNoise). With its string
+// and click levels at zero nothing else it reads is heard. The click reaches
+// the microphones without touching the string or the body, so the difference
+// it makes is the click alone: it is linear in its level, it ends when its
+// twelve time constants and the filter's ring-down have run, its level at
+// 44.1 and 96 kHz is the 48 kHz one, it grows with the stroke's velocity, its
+// spectrum moves up with it, and a thumb's sits under a finger's. The
+// string-borne force is heard through the string and stays finite.
+void testContactNoiseFollowsItsLaw()
+{
+    auto off = acustra::fittedPhysicalCalibration;
+    off.contactNoiseFinger = off.contactNoiseNylon = off.contactNoisePick = 0.0f;
+    off.contactClickFinger = off.contactClickNylon = off.contactClickPick = 0.0f;
+    auto offOther = off;
+    offOther.contactNoiseVelocityExponent = 2.5f;
+    offOther.contactNoiseCornerHz = 900.0f;
+    offOther.nylonContactNoiseCornerHz = 900.0f;
+    offOther.pickContactNoiseCornerHz = 900.0f;
+    offOther.contactNoiseDecaySeconds = 0.002f;
+    acustra::EngineParameters steel;
+    steel.stringMaterial = acustra::StringMaterial::Steel;
+    const auto quiet = renderCalibrated(steel, off, 57, 0.85f, 1.0);
+    const auto other = renderCalibrated(steel, offOther, 57, 0.85f, 1.0);
+    expect(quiet.left == other.left && quiet.right == other.right,
+           "the contact noise's shape was heard at zero levels");
+
+    const auto difference = [] (const Audio& a, const Audio& b)
+    {
+        Audio result { std::vector<float>(a.left.size()),
+                       std::vector<float>(a.right.size()) };
+        for (std::size_t i = 0; i < a.left.size(); ++i)
+        {
+            result.left[i] = a.left[i] - b.left[i];
+            result.right[i] = a.right[i] - b.right[i];
+        }
+        return result;
+    };
+    const auto rms = [] (const Audio& audio, double rate, double begin, double end)
+    {
+        const auto first = static_cast<std::size_t>(begin * rate);
+        const auto last = std::min(audio.left.size(),
+                                   static_cast<std::size_t>(end * rate));
+        double sum = 0.0;
+        for (std::size_t i = first; i < last; ++i)
+            sum += 0.5 * (double(audio.left[i]) * audio.left[i]
+                          + double(audio.right[i]) * audio.right[i]);
+        return last > first ? std::sqrt(sum / double(last - first)) : 0.0;
+    };
+    const auto centroid = [] (const Audio& audio, double rate)
+    {
+        // Power-weighted mean frequency of the first 60 ms, by DFT bins.
+        const int count = static_cast<int>(0.060 * rate);
+        double weighted = 0.0;
+        double total = 0.0;
+        for (int bin = 1; bin < count / 2; bin += 2)
+        {
+            const double angle = -2.0 * std::numbers::pi * bin / count;
+            double real = 0.0;
+            double imaginary = 0.0;
+            for (int n = 0; n < count; ++n)
+            {
+                const double value = 0.5 * (audio.left[static_cast<std::size_t>(n)]
+                    + audio.right[static_cast<std::size_t>(n)]);
+                real += value * std::cos(angle * n);
+                imaginary += value * std::sin(angle * n);
+            }
+            const double power = real * real + imaginary * imaginary;
+            weighted += power * bin * rate / count;
+            total += power;
+        }
+        return total > 0.0 ? weighted / total : 0.0;
+    };
+
+    auto click = off;
+    click.contactClickFinger = 4.0f;
+    auto clickTwice = off;
+    clickTwice.contactClickFinger = 8.0f;
+    const auto withClick = renderCalibrated(steel, click, 57, 0.85f, 1.0);
+    const auto withTwice = renderCalibrated(steel, clickTwice, 57, 0.85f, 1.0);
+    const auto once = difference(withClick, quiet);
+    const auto twice = difference(withTwice, quiet);
+    const double onceRms = rms(once, sampleRate, 0.0, 0.1);
+    const double twiceRms = rms(twice, sampleRate, 0.0, 0.1);
+    expect(onceRms > 0.0, "a finger's click was not heard");
+    expect(std::abs(twiceRms / std::max(onceRms, 1.0e-30) - 2.0) < 1.0e-3,
+           "the click was not linear in its level");
+    // 12 x 20.7 ms and the filters' ring-down: silent by 0.5 s, exactly.
+    bool silent = true;
+    for (std::size_t i = static_cast<std::size_t>(0.5 * sampleRate);
+         i < once.left.size(); ++i)
+        silent = silent && once.left[i] == 0.0f && once.right[i] == 0.0f;
+    expect(silent, "the click went on after its noise had ended");
+
+    for (const double rate : { 44100.0, 96000.0 })
+    {
+        const auto base = renderAtRate(steel, 57, 0.85f, 0.2, rate, blockSize,
+                                       true, off);
+        const auto clicked = renderAtRate(steel, 57, 0.85f, 0.2, rate, blockSize,
+                                          true, click);
+        const auto clickAtRate = difference(clicked, base);
+        const auto base48 = renderAtRate(steel, 57, 0.85f, 0.2, sampleRate,
+                                         blockSize, true, off);
+        const auto clicked48 = renderAtRate(steel, 57, 0.85f, 0.2, sampleRate,
+                                            blockSize, true, click);
+        const double change = 20.0 * std::log10(
+            rms(clickAtRate, rate, 0.0, 0.1)
+            / rms(difference(clicked48, base48), sampleRate, 0.0, 0.1));
+        expect(std::abs(change) < 1.5,
+               "the click's level moved " + std::to_string(change)
+                   + " dB at " + std::to_string(static_cast<int>(rate)) + " Hz");
+    }
+
+    const auto clickAt = [&] (float velocity, acustra::PickingTechnique tool)
+    {
+        auto parameters = steel;
+        parameters.picking = tool;
+        auto calibration = click;
+        calibration.contactClickPick = 4.0f;
+        return difference(renderCalibrated(parameters, calibration, 57,
+                                           velocity, 0.2),
+                          renderCalibrated(parameters, off, 57, velocity, 0.2));
+    };
+    const auto soft = clickAt(0.25f, acustra::PickingTechnique::Finger);
+    const auto loud = clickAt(0.9f, acustra::PickingTechnique::Finger);
+    const auto thumb = clickAt(0.9f, acustra::PickingTechnique::Thumb);
+    expect(rms(loud, sampleRate, 0.0, 0.1) > 2.0 * rms(soft, sampleRate, 0.0, 0.1),
+           "a harder stroke did not click louder");
+    expect(centroid(loud, sampleRate) > 1.5 * centroid(soft, sampleRate),
+           "a harder stroke's click did not move up in frequency");
+    expect(centroid(thumb, sampleRate) < 0.8 * centroid(loud, sampleRate),
+           "a thumb's click was not darker than a finger's");
+
+    auto string = off;
+    string.contactNoiseFinger = 0.05f;
+    const auto withNoise = renderCalibrated(steel, string, 57, 0.85f, 1.0);
+    expect(withNoise.left != quiet.left, "the string-borne noise was not heard");
+    for (std::size_t i = 0; i < withNoise.left.size(); ++i)
+        expect(std::isfinite(withNoise.left[i]) && std::isfinite(withNoise.right[i]),
+               "a string-borne contact noise render was not finite");
+    const double early = tailBandRms(withNoise, sampleRate, 0.0, 0.04, 2000.0, 12000.0);
+    const double earlyOff = tailBandRms(quiet, sampleRate, 0.0, 0.04, 2000.0, 12000.0);
+    expect(early > earlyOff, "the string-borne noise added no early upper band");
+
+    // A repluck while the noise is still in flight hands it to the retained
+    // tail, as the contact transport's waves are, and nothing blows up.
+    {
+        auto both = string;
+        both.contactClickPick = 8.0f;
+        both.contactNoisePick = 0.2f;
+        acustra::AcustraEngine engine;
+        auto parameters = steel;
+        parameters.picking = acustra::PickingTechnique::Pick;
+        engine.setParameters(parameters);
+        engine.setPhysicalCalibration(both);
+        engine.prepare(sampleRate, blockSize);
+        std::vector<float> left(static_cast<std::size_t>(blockSize));
+        std::vector<float> right(static_cast<std::size_t>(blockSize));
+        bool finite = true;
+        double peak = 0.0;
+        for (int block = 0; block < 400; ++block)
+        {
+            if (block % 7 == 0)
+                engine.noteOn(52, 0.3f + 0.1f * static_cast<float>(block % 5));
+            engine.process(left.data(), right.data(), blockSize);
+            for (int i = 0; i < blockSize; ++i)
+            {
+                finite = finite && std::isfinite(left[static_cast<std::size_t>(i)])
+                    && std::isfinite(right[static_cast<std::size_t>(i)]);
+                peak = std::max(peak, static_cast<double>(std::abs(left[static_cast<std::size_t>(i)])));
+            }
+        }
+        expect(finite && peak < 1.0,
+               "replucking through a contact noise in flight was not finite and bounded");
+    }
+}
+
 void testPlateConductanceFloorDampsOnlyTheUpperBand()
 {
     // The plate conductance floor restores the flat conductance a real
@@ -8122,6 +8298,7 @@ int main()
     testHighLossCutoffScaleChangesOnlyUpperLoss();
     testBendingLossFollowsItsLaw();
     testPlateConductanceFloorDampsOnlyTheUpperBand();
+    testContactNoiseFollowsItsLaw();
     testStolenStringKeepsRingingUnderHandDamping();
     testBridgeHandPressureShortensAndDarkens();
     testNaturalHarmonicsReachAboveTheFretboard();

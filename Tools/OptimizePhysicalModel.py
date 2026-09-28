@@ -77,6 +77,17 @@ NAMES = (
     "steelPlainBendingLoss",
     "nylonWoundBendingLoss",
     "nylonPlainBendingLoss",
+    "contactNoiseFinger",
+    "contactNoiseNylon",
+    "contactNoisePick",
+    "contactNoiseVelocityExponent",
+    "contactNoiseCornerHz",
+    "nylonContactNoiseCornerHz",
+    "pickContactNoiseCornerHz",
+    "contactNoiseDecaySeconds",
+    "contactClickFinger",
+    "contactClickNylon",
+    "contactClickPick",
 )
 LOWER = np.asarray((
     0.96, 0.05, 0.25, -6.0, 0.0,
@@ -85,6 +96,8 @@ LOWER = np.asarray((
     -1.0, 0.25, 0.0, -0.06, 0.5, 0.0, 100.0, 0.00325, 0.0, 10.0, 0.0,
     0.0, 0.0, 0.0,
     0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 100.0, 0.0005,
+    0.0, 0.0, 0.0,
 ))
 UPPER = np.asarray((
     1.04, 1.8, 4.0, 6.0, 0.12,
@@ -93,6 +106,8 @@ UPPER = np.asarray((
     1.0, 32.0, 0.04, 0.05, 4.0, 0.02, 8000.0, 0.060, 0.5, 400.0, 0.82e-3,
     2.0, 4.0, 8.0,
     0.5e-3, 0.25, 0.05, 0.25, 0.05,
+    4.0, 4.0, 4.0, 4.0, 20000.0, 20000.0, 20000.0, 0.05,
+    64.0, 64.0, 64.0,
 ))
 INITIAL = np.asarray((
     1.0, 1.0, 1.0, 0.0, 0.0,
@@ -101,6 +116,8 @@ INITIAL = np.asarray((
     1.0, 1.0, 0.0061, -0.030, 1.30, 0.0, 1000.0, 0.020, 0.0, 80.0, 0.0008,
     0.0, 2.0, 0.0,
     0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 1.0, 4000.0, 4000.0, 8000.0, 0.0207,
+    0.0, 0.0, 0.0,
 ))
 # The shipping vector, mirroring fittedPhysicalCalibration in
 # Source/DSP/FittedPhysicalData.h, for --start shipping: a stage that fits a
@@ -114,6 +131,8 @@ SHIPPING = np.asarray((
     2187.76023, 0.00325, 0.0, 35.0, 0.0,
     0.0, 0.453125, 0.0,
     0.15e-3, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 1.0, 4000.0, 4000.0, 8000.0, 0.0207,
+    0.0, 0.0, 0.0,
 ))
 # The bridge-local direct path is deliberately fixed off. Its score direction
 # was flat (and slightly worse on validation), so fitting it only lets a
@@ -153,7 +172,14 @@ INERT = (
 )
 # Values that are a published measurement rather than a fit. The one it held,
 # the polarisation end correction, is now chosen by ear (BY_EAR above).
-MEASURED: tuple[str, ...] = ()
+MEASURED: tuple[str, ...] = (
+    # The contact's noise decays as the recordings' energy between partials
+    # does over 12-40 ms: 420 dB/s, the median over the bank's training
+    # rows in the registers where a nine-period window resolves that time
+    # (Docs/decisions.md, 2026-09-28). Left free, the search lengthens it to
+    # stand in for the recordings' room and hiss.
+    "contactNoiseDecaySeconds",
+)
 FROZEN = frozenset(NAMES.index(name) for name in BY_EAR + MEASURED + INERT)
 
 
@@ -170,6 +196,8 @@ STEEL = _free(np.append(np.arange(11, 18), (20, 21)))
 # pick) and by nothing else; the finger-plucked flat-top and classical rows
 # render with Finger whatever this stage does.
 PICK = np.asarray((29, 30, 31, 32))
+# Every value only the Pick technique reads: the plectrum's and its noise's.
+PICK_READ = np.asarray((29, 30, 31, 32, 39, 43, 47))
 # The steel excitation and the plectrum together, on the same picked rows:
 # the four steel values that shape the pluck's contact, level law and
 # brightness were fitted with Finger on recordings that were picked.
@@ -190,6 +218,27 @@ NYLON_SNAP = _free(np.asarray((7, 8, 10, 35, 36)))
 # attack has been rebuilt around it is found by profiling the loss instead.
 STEEL_SNAP_PLUCK = _free(np.asarray((14, 15, 17, 29, 30, 31, 32)))
 NYLON_SNAP_PLUCK = _free(np.asarray((7, 8, 10)))
+# The contact's noise (Docs/decisions.md, 2026-09-28): a steel stage over the
+# Finger and Pick noises and what they share - the velocity exponent and the
+# decay - with the burst it would replace and the strings' bending loss, run
+# with --joint-picking finger,pick; a nylon stage over the nylon finger's
+# level and corner with nylon's burst and loss; and the noise alone for
+# either (a loss --set holds).
+STEEL_TRANSIENT = _free(np.asarray((14, 15, 17, 29, 30, 31, 32, 33, 34,
+                                     37, 39, 40, 41, 43, 45, 47)))
+NYLON_TRANSIENT = _free(np.asarray((7, 8, 10, 35, 36, 38, 42, 46)))
+STEEL_NOISE = _free(np.asarray((37, 39, 40, 41, 43, 45, 47)))
+NYLON_NOISE = _free(np.asarray((38, 42, 46)))
+# The steel stage without the finger's click: a fingertip's flesh has no hard
+# edge to click with, and the finger-plucked flat-top rows hold less energy
+# between their partials than the engine already renders (2026-09-28), while
+# the steel training rows were all picked.
+STEEL_TRANSIENT_NO_FINGER_CLICK = _free(np.asarray((14, 15, 17, 29, 30, 31, 32,
+                                                    33, 34, 37, 39, 40, 41, 43,
+                                                    47)))
+# The steel stage with the strings' loss held where --set puts it.
+STEEL_TRANSIENT_PLUCK = _free(np.asarray((14, 15, 17, 29, 30, 31, 32,
+                                          37, 39, 40, 41, 43, 47)))
 
 STAGES = {
     "shared-body": (None, GLOBAL),
@@ -202,6 +251,12 @@ STAGES = {
     "snap-nylon": ("nylon", NYLON_SNAP),
     "snap-steel-pluck": ("steel", STEEL_SNAP_PLUCK),
     "snap-nylon-pluck": ("nylon", NYLON_SNAP_PLUCK),
+    "transient-steel": ("steel", STEEL_TRANSIENT),
+    "transient-nylon": ("nylon", NYLON_TRANSIENT),
+    "noise-steel": ("steel", STEEL_NOISE),
+    "noise-nylon": ("nylon", NYLON_NOISE),
+    "transient-steel-pluck": ("steel", STEEL_TRANSIENT_PLUCK),
+    "transient-steel-pick": ("steel", STEEL_TRANSIENT_NO_FINGER_CLICK),
 }
 DEFAULT_STAGES = ("shared-body", "nylon-string", "steel-string",
                   "shared-body-refine")
@@ -545,7 +600,7 @@ def main() -> int:
     # The plectrum's values are read by Pick only, so a stage over them
     # rendered with any other tool would search inert coordinates.
     needs_pick = [name for name in stage_names
-                  if np.intersect1d(STAGES[name][1], PICK).size > 0]
+                  if np.intersect1d(STAGES[name][1], PICK_READ).size > 0]
     renderer = arguments.renderer.resolve()
     output = arguments.output.resolve()
     if not renderer.is_file():

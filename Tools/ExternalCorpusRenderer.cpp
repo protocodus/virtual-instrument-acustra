@@ -6,7 +6,7 @@
 //
 // This is PhysicalFitRenderer's model half with the schedule read from a file
 // instead of the embedded bank, so a score on an external corpus is a score of
-// the same renders: the options, the 37-value calibration vector, its bounds
+// the same renders: the options, the 48-value calibration vector, its bounds
 // and makeCalibration, and renderModel (a fresh engine per note, 48 kHz,
 // 127-sample blocks, default public controls, nylon on the Auditorium slot
 // unless --shape is given) are copied from Tools/PhysicalFitRenderer.cpp and
@@ -71,11 +71,14 @@ acustra::BodyShape renderShapeFor(acustra::StringMaterial material) noexcept
 constexpr int modelSampleRate = 48000;
 constexpr int renderBlockSize = 127;
 constexpr double renderSeconds = 4.2;
-constexpr std::size_t calibrationValueCount = 37;
+constexpr std::size_t calibrationValueCount = 48;
 // The vector before the plectrum edge and the strings' bending loss were
 // fitted values: a 32-value command line takes those five from
 // fittedPhysicalCalibration, the values this build ships.
 constexpr std::size_t legacyCalibrationValueCount = 32;
+// The vector before the contact noise's eleven values: a 37-value command
+// line takes them from fittedPhysicalCalibration too.
+constexpr std::size_t bendingCalibrationValueCount = 37;
 
 using CalibrationValues = std::array<float, calibrationValueCount>;
 
@@ -90,6 +93,8 @@ constexpr CalibrationValues calibrationMinimums {{
     0.0f, 10.0f, 0.0f,
     0.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 100.0f, 100.0f, 100.0f, 0.0005f,
+    0.0f, 0.0f, 0.0f,
 }};
 
 constexpr CalibrationValues calibrationMaximums {{
@@ -100,6 +105,8 @@ constexpr CalibrationValues calibrationMaximums {{
     0.5f, 400.0f, 0.82e-3f,
     2.0f, 4.0f, 8.0f,
     1.0e-3f, 2.0f, 2.0f, 2.0f, 2.0f,
+    4.0f, 4.0f, 4.0f, 4.0f, 20000.0f, 20000.0f, 20000.0f, 0.05f,
+    64.0f, 64.0f, 64.0f,
 }};
 
 struct Job
@@ -205,6 +212,17 @@ PhysicalCalibration makeCalibration(const CalibrationValues& values)
     calibration.steelPlainBendingLoss = values[34];
     calibration.nylonWoundBendingLoss = values[35];
     calibration.nylonPlainBendingLoss = values[36];
+    calibration.contactNoiseFinger = values[37];
+    calibration.contactNoiseNylon = values[38];
+    calibration.contactNoisePick = values[39];
+    calibration.contactNoiseVelocityExponent = values[40];
+    calibration.contactNoiseCornerHz = values[41];
+    calibration.nylonContactNoiseCornerHz = values[42];
+    calibration.pickContactNoiseCornerHz = values[43];
+    calibration.contactNoiseDecaySeconds = values[44];
+    calibration.contactClickFinger = values[45];
+    calibration.contactClickNylon = values[46];
+    calibration.contactClickPick = values[47];
     return calibration;
 }
 
@@ -521,6 +539,7 @@ int main(int argc, char** argv)
     }
     const int given = argc - first - 2;
     if (given != static_cast<int>(calibrationValueCount)
+        && given != static_cast<int>(bendingCalibrationValueCount)
         && given != static_cast<int>(legacyCalibrationValueCount))
     {
         printUsage();
@@ -533,6 +552,17 @@ int main(int argc, char** argv)
     values[34] = fittedPhysicalCalibration.steelPlainBendingLoss;
     values[35] = fittedPhysicalCalibration.nylonWoundBendingLoss;
     values[36] = fittedPhysicalCalibration.nylonPlainBendingLoss;
+    values[37] = fittedPhysicalCalibration.contactNoiseFinger;
+    values[38] = fittedPhysicalCalibration.contactNoiseNylon;
+    values[39] = fittedPhysicalCalibration.contactNoisePick;
+    values[40] = fittedPhysicalCalibration.contactNoiseVelocityExponent;
+    values[41] = fittedPhysicalCalibration.contactNoiseCornerHz;
+    values[42] = fittedPhysicalCalibration.nylonContactNoiseCornerHz;
+    values[43] = fittedPhysicalCalibration.pickContactNoiseCornerHz;
+    values[44] = fittedPhysicalCalibration.contactNoiseDecaySeconds;
+    values[45] = fittedPhysicalCalibration.contactClickFinger;
+    values[46] = fittedPhysicalCalibration.contactClickNylon;
+    values[47] = fittedPhysicalCalibration.contactClickPick;
     const int valueArgument = first + 2;
     for (std::size_t index = 0; index < static_cast<std::size_t>(given); ++index)
     {

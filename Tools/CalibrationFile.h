@@ -54,18 +54,32 @@ inline PhysicalCalibration readCalibration(const std::string& path)
         std::pair { "steelWoundBendingLoss", &result.steelWoundBendingLoss },
         std::pair { "steelPlainBendingLoss", &result.steelPlainBendingLoss },
         std::pair { "nylonWoundBendingLoss", &result.nylonWoundBendingLoss },
-        std::pair { "nylonPlainBendingLoss", &result.nylonPlainBendingLoss }
+        std::pair { "nylonPlainBendingLoss", &result.nylonPlainBendingLoss },
+        std::pair { "contactNoiseFinger", &result.contactNoiseFinger },
+        std::pair { "contactNoiseNylon", &result.contactNoiseNylon },
+        std::pair { "contactNoisePick", &result.contactNoisePick },
+        std::pair { "contactNoiseVelocityExponent", &result.contactNoiseVelocityExponent },
+        std::pair { "contactNoiseCornerHz", &result.contactNoiseCornerHz },
+        std::pair { "nylonContactNoiseCornerHz", &result.nylonContactNoiseCornerHz },
+        std::pair { "pickContactNoiseCornerHz", &result.pickContactNoiseCornerHz },
+        std::pair { "contactNoiseDecaySeconds", &result.contactNoiseDecaySeconds },
+        std::pair { "contactClickFinger", &result.contactClickFinger },
+        std::pair { "contactClickNylon", &result.contactClickNylon },
+        std::pair { "contactClickPick", &result.contactClickPick }
     };
     // Match the engine's accepted domain. Reject an invalid experiment rather
     // than reporting a requested value that the engine silently clamps.
-    constexpr std::array<std::pair<float, float>, 37> limits {{
+    constexpr std::array<std::pair<float, float>, 48> limits {{
         { .96f, 1.04f }, { .05f, 1.8f }, { .25f, 4.f }, { -6.f, 6.f }, { 0.f, .12f },
         { .4f, 2.f }, { .35f, 3.f }, { .35f, 2.5f }, { 0.f, 3.f }, { .7f, 3.f }, { 0.f, 1.2f },
         { .25f, 4.f }, { .4f, 2.f }, { .35f, 3.f }, { .35f, 2.5f }, { 0.f, 3.f }, { .7f, 3.f }, { 0.f, 1.2f },
         { -1.f, 1.f }, { .25f, 32.f }, { 0.f, .04f }, { -.06f, .05f }, { .5f, 4.f },
         { 0.f, .02f }, { 100.f, 8000.f }, { .00325f, .060f }, { 0.f, .5f }, { 10.f, 400.f }, { 0.f, .00082f },
         { 0.f, 2.f }, { 0.f, 4.f }, { 0.f, 8.f }, { 0.f, .001f },
-        { 0.f, 2.f }, { 0.f, 2.f }, { 0.f, 2.f }, { 0.f, 2.f }
+        { 0.f, 2.f }, { 0.f, 2.f }, { 0.f, 2.f }, { 0.f, 2.f },
+        { 0.f, 4.f }, { 0.f, 4.f }, { 0.f, 4.f }, { 0.f, 4.f },
+        { 100.f, 20000.f }, { 100.f, 20000.f }, { 100.f, 20000.f }, { .0005f, .05f },
+        { 0.f, 64.f }, { 0.f, 64.f }, { 0.f, 64.f }
     }};
     static_assert(fields.size() == limits.size());
     if (!std::filesystem::is_regular_file(path))
