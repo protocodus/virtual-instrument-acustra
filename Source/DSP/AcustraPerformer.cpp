@@ -217,7 +217,7 @@ void Performer::flushNoteGroup() noexcept
         // blocks its strums fall in.
         const bool restarted = lastStrumSample_ < 0
             || processedSamples_ - lastStrumSample_
-                   > static_cast<std::int64_t>(2.0 * sampleRate_);
+                   > static_cast<std::int64_t>(strumRestSeconds * sampleRate_);
         if (restarted)
             strumUpstroke_ = false;
         lastStrumSample_ = processedSamples_;

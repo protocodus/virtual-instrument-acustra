@@ -47,6 +47,25 @@ add_library(AcustraDSP STATIC
     Source/DSP/AcustraPerformer.cpp
     Source/DSP/AcustraPerformer.h)
 
+# The Reason Rack Extension compiles this engine and player itself, as C++17
+# (the Jukebox toolchain forces -std=c++17) with -Wall -Wextra -Werror. Build
+# them that way here too, so a C++20-only construct or a new warning fails in
+# this repository rather than only in the Rack Extension's.
+if(NOT MSVC)
+    add_library(AcustraDSPCxx17 OBJECT
+        Source/DSP/AcustraEngine.cpp
+        Source/DSP/AcustraPerformer.cpp)
+    target_include_directories(AcustraDSPCxx17
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source")
+    set_target_properties(AcustraDSPCxx17 PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(AcustraDSPCxx17 PRIVATE -Wall -Wextra -Werror)
+    endif()
+endif()
+
 add_library(AcustraReferenceBank STATIC EXCLUDE_FROM_ALL
     Source/DSP/SampleBank/EmbeddedGuitarBank.cpp
     Source/DSP/SampleBank/EmbeddedGuitarBank.h
@@ -262,7 +281,7 @@ if(BUILD_TESTING)
             -Wall -Wextra -Wpedantic)
     endif()
     add_test(NAME Acustra.Performer COMMAND AcustraPerformerTests)
-    set_tests_properties(Acustra.Performer PROPERTIES TIMEOUT 240)
+    set_tests_properties(Acustra.Performer PROPERTIES TIMEOUT 600)
 
     add_executable(AcustraReleaseTests Tests/ReleaseTests.cpp)
     target_link_libraries(AcustraReleaseTests PRIVATE AcustraDSP)

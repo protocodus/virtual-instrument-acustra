@@ -60,6 +60,12 @@ public:
     // is applied at once, ahead of the group's Note Ons.
     static constexpr int sampleGroupCapacity = 128;
 
+    // A strum after a rest longer than this starts again on a downstroke
+    // instead of alternating from the last stroke. A front end that stops
+    // rendering while silent (the Rack Extension idles) must not idle for
+    // less than this after the last note, or the rest would go unmeasured.
+    static constexpr double strumRestSeconds = 2.0;
+
     // The Gather Chords window, and so its latency, at this sample rate.
     [[nodiscard]] static int gatherWindowSamples(double sampleRate) noexcept;
 
