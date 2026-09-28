@@ -957,7 +957,8 @@ static_assert(detail::measuredSteelBodyModes.size() % 4 == 0,
 static_assert(steelBlendBodyModeCount <= ACUSTRA_BODY_MODE_COUNT,
               "the steel blend's radiation exceeds the body slots");
 static_assert(steelBlendBridgeModeCount <= ACUSTRA_BRIDGE_MODE_COUNT,
-              "the steel blend's bridge exceeds the bridge slots");
+              "the steel blend's bridge exceeds the bridge slots: with its B "
+              "weight below 1 it needs -DACUSTRA_BRIDGE_MODE_COUNT=147");
 static_assert(detail::steelDecayGridFirstIndex > 0
               && static_cast<std::size_t>(detail::steelDecayGridFirstIndex)
                   < detail::measuredSteelBodyModes.size()

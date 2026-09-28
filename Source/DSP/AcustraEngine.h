@@ -15,11 +15,13 @@
 // Capacity of the measured banks: the largest bank a construction plays.
 // That is the steel blend (SteelBodyBlend.h): g21's 132 radiation modes, the
 // decay-Q grid's 234 and the joint-pole body's 131, and a bridge of B's 47
-// modes, the Fylde's 44 and the joint body's 56. AcustraEngine.cpp
-// static-asserts that every bank fits, so a regenerated header that grows
-// fails to build rather than to sound. Slots past a bank cost nothing.
+// modes and the joint body's 56 (147 with the Fylde's 44 when the blend's B
+// weight is below 1). AcustraEngine.cpp static-asserts that every bank fits,
+// so a regenerated header that grows fails to build rather than to sound.
+// Slots past a bank cost no CPU, but every instance carries them as memory,
+// nylon and the Bellido guitar too (sizes in Docs/decisions.md, 2026-09-28).
 #if !defined(ACUSTRA_BRIDGE_MODE_COUNT)
-#define ACUSTRA_BRIDGE_MODE_COUNT 147
+#define ACUSTRA_BRIDGE_MODE_COUNT 103
 #endif
 #if !defined(ACUSTRA_BODY_MODE_COUNT)
 #define ACUSTRA_BODY_MODE_COUNT 497

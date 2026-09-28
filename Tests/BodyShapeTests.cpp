@@ -34,6 +34,38 @@ struct AcustraEngineTestAccess
     { return AcustraEngine::radiationModePole(p, c, index); }
     static std::array<int, 2> bodyCounts(const AcustraEngine& e)
     { return { e.bodyBank_.count, e.bodyBank_.ordered }; }
+    // The normal port a string drains into: bridge and anchors in parallel.
+    static std::complex<float> port(const AcustraEngine& e, float f, int string)
+    { return e.bridgePortMobility(f, string).normal; }
+    // The frequencies of the tuning table's first `ordered` modes: steel's
+    // own bridge modes (B's), which sit on their radiation's poles.
+    static std::vector<float> ownBridgePoles(const AcustraEngine& e)
+    {
+        const auto& table = e.bridgeMobilityTable();
+        const float rate = static_cast<float>(e.sampleRate_);
+        std::vector<float> poles;
+        for (int i = 0; i < table.ordered; ++i)
+            poles.push_back(rate / std::numbers::pi_v<float> * std::atan(
+                table.modes[std::size_t(i)].omega / (2.0f * rate)));
+        return poles;
+    }
+    // Leaves only B's own modes in the tuning table, at full level (their
+    // blended residues over `share`): the bridge B+D would play with this
+    // build's Q. The table is a cache keyed on its inputs, so it stays.
+    static void keepOwnBridgeOnly(AcustraEngine& e, float share)
+    {
+        const auto& cached = e.bridgeMobilityTable();
+        auto& table = e.bridgeMobilityTable_;
+        (void) cached;
+        table.count = table.ordered;
+        for (int i = 0; i < table.ordered; ++i)
+        {
+            auto& mode = table.modes[std::size_t(i)];
+            mode.heave /= share;
+            mode.cross /= share;
+            mode.rock /= share;
+        }
+    }
 };
 }
 
@@ -322,6 +354,38 @@ void testSteelBlend()
               << worstLevel << ", least relative residue determinant " << worstDefinite << '\n';
     expect(worstLevel < 1e-5, "a blended bridge part is not at its share");
     expect(worstDefinite >= -1e-6, "a blended bridge section is not positive semidefinite");
+
+    // A passive part in parallel is not a linear share at the string: the
+    // string drains into the port, (Y^-1 + K/s)^-1 with the anchors' K, whose
+    // peaks sit at the summed Y's zeros, so a part ringing at other
+    // frequencies moves them. At each of B's aligned poles the port must keep
+    // at least B's share of the conductance B's modes alone give it; the
+    // Fylde's unaligned modes at 0.3 left 0.26-0.49 of it at 100 and
+    // 178-190 Hz and a new drain peak at 209 Hz (Docs/decisions.md).
+    {
+        const float share = float(rest * d::steelBlendOwnBridgeWeight);
+        const auto poles = Access::ownBridgePoles(*e);
+        std::vector<std::array<float, 6>> blended(poles.size());
+        for (std::size_t k = 0; k < poles.size(); ++k)
+            for (int s = 0; s < 6; ++s)
+                blended[k][std::size_t(s)] = Access::port(*e, poles[k], s).real();
+        Access::keepOwnBridgeOnly(*e, share);
+        double worstPort = 1e9; float worstAt = 0.0f;
+        for (std::size_t k = 0; k < poles.size(); ++k)
+            for (int s = 0; s < 6; ++s)
+            {
+                const double alone = Access::port(*e, poles[k], s).real();
+                if (!(alone > 0.0)) continue;
+                const double ratio = blended[k][std::size_t(s)] / alone;
+                if (ratio < worstPort) { worstPort = ratio; worstAt = poles[k]; }
+            }
+        std::cout << "steel blend: " << poles.size() << " own-bridge poles, least port "
+                  << "conductance over B's alone " << worstPort << " at " << worstAt
+                  << " Hz (B's share " << share << ")\n";
+        expect(!poles.empty() && poles.size() <= own, "the tuning table does not start with B's own modes");
+        expect(worstPort >= share,
+               "a blended part pulls the string's drain off one of B's aligned poles");
+    }
 
     // The Fylde choice is the Fylde alone; nylon plays its own banks.
     p.bridgeModel = acustra::BridgeModel::FyldeSteel;
