@@ -217,9 +217,10 @@ public:
     // directly, bypassing chooseString's fret-distance guess. It is the
     // layout Roland's GK and Fishman's TriplePlay produce in "mono mode",
     // but neither is documented to transmit a message requesting it -- see
-    // the CC126 handler in PluginProcessor.cpp for what actually toggles it. A note
-    // on channel 1-6 with no playable fret on that channel's string is
-    // dropped rather than reassigned. Off, the default, is an exact no-op.
+    // the CC126 handler in AcustraPerformer.cpp for what actually toggles
+    // it. A note on channel 1-6 with no playable fret on that channel's
+    // string is dropped rather than reassigned. Off, the default, is an
+    // exact no-op.
     void setStringPerChannelMode(bool enabled) noexcept;
     [[nodiscard]] bool isStringPerChannelMode() const noexcept
     {
