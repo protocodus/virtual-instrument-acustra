@@ -1,0 +1,476 @@
+// The player (DSP/AcustraPerformer) without JUCE: the performance battery
+// through handleMidi, the MIDI helpers a front end without MIDI uses, the
+// Gather Chords window, overflow accounting and real-time safety.
+#include "DSP/AcustraPerformer.h"
+#include "PerformanceBattery.h"
+
+#include <algorithm>
+#include <atomic>
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+#include <memory>
+#include <new>
+#include <string>
+#include <vector>
+
+// Counts every allocation, so a test can prove the player makes none while
+// it plays.
+namespace
+{
+std::atomic<long> allocationCount { 0 };
+}
+
+void* operator new(std::size_t size)
+{
+    ++allocationCount;
+    if (void* pointer = std::malloc(size == 0 ? 1 : size))
+        return pointer;
+    throw std::bad_alloc {};
+}
+void operator delete(void* pointer) noexcept { std::free(pointer); }
+void operator delete(void* pointer, std::size_t) noexcept { std::free(pointer); }
+
+namespace
+{
+using acustra::Performer;
+using namespace acustra::battery;
+
+int failures = 0;
+
+void expect(bool condition, const std::string& message)
+{
+    if (! condition)
+    {
+        ++failures;
+        std::cerr << "FAIL: " << message << '\n';
+    }
+}
+
+// How the events reach the player: as raw MIDI bytes, or spelt through the
+// helpers a front end without MIDI calls.
+enum class Feed { Raw, Helpers };
+
+void feed(Performer& performer, int offset, const Event& event, Feed how)
+{
+    const auto kind = event.size > 0 ? event.bytes[0] & 0xf0u : 0u;
+    const int channel = static_cast<int>(event.bytes[0] & 0x0fu) + 1;
+    if (how == Feed::Helpers && event.size == 3 && kind == 0x90u)
+        performer.noteOn(offset, channel, event.bytes[1], event.bytes[2]);
+    else if (how == Feed::Helpers && event.size == 3 && kind == 0x80u)
+        performer.noteOff(offset, channel, event.bytes[1], event.bytes[2]);
+    else if (how == Feed::Helpers && event.size == 3 && kind == 0xb0u)
+        performer.controlChange(offset, channel, event.bytes[1], event.bytes[2]);
+    else if (how == Feed::Helpers && event.size == 2 && kind == 0xd0u)
+        performer.channelPressure(offset, channel, event.bytes[1]);
+    else if (how == Feed::Helpers && event.size == 3 && kind == 0xe0u)
+    {
+        const int raw = event.bytes[1] | (event.bytes[2] << 7);
+        performer.pitchWheel(offset, channel,
+                             raw < 8192 ? static_cast<float>(raw - 8192) / 8192.0f
+                                        : static_cast<float>(raw - 8192) / 8191.0f);
+    }
+    else
+        performer.handleMidi(offset, event.bytes.data(), event.size);
+}
+
+void applyControl(acustra::EngineParameters& parameters, bool& gather,
+                  bool& panic, const Control& control)
+{
+    using Kind = Control::Kind;
+    const int index = static_cast<int>(control.value);
+    switch (control.kind)
+    {
+        case Kind::GatherChords: gather = control.value >= 0.5f; break;
+        case Kind::Panic: panic = true; break;
+        case Kind::StringMaterial:
+            parameters.stringMaterial = index == 0 ? acustra::StringMaterial::Nylon
+                                                   : acustra::StringMaterial::Steel;
+            break;
+        case Kind::CaptureMode:
+            parameters.capture = index == 0 ? acustra::CaptureType::StereoMic
+                : index == 1 ? acustra::CaptureType::MonoMic
+                             : acustra::CaptureType::Piezo;
+            break;
+        case Kind::Picking:
+            parameters.picking = static_cast<acustra::PickingTechnique>(index);
+            break;
+        case Kind::Tuning: parameters.tuning = static_cast<acustra::Tuning>(index); break;
+        case Kind::BodyAmount: parameters.bodyAmount = 0.01f * control.value; break;
+        case Kind::Output:
+            parameters.outputGain = std::pow(10.0f, 0.05f * control.value);
+            break;
+    }
+}
+
+struct Render
+{
+    std::vector<float> left;
+    std::vector<float> right;
+    int latency { 0 };
+    std::uint32_t dropped { 0 };
+    long allocations { 0 };
+
+    bool operator==(const Render& other) const
+    {
+        return left == other.left && right == other.right;
+    }
+    bool operator!=(const Render& other) const { return ! (*this == other); }
+};
+
+// Plays a scenario as the plug-in does: controls before the block that
+// contains them, then the block's events in time order (a stable sort, as a
+// MIDI buffer keeps them) at their offsets.
+Render render(const Scenario& scenario, double sampleRate, int blockSize,
+              bool gather, Feed how = Feed::Raw)
+{
+    auto performer = std::make_unique<Performer>();
+    acustra::EngineParameters parameters;
+    performer->setParameters(parameters);
+    performer->prepare(sampleRate, blockSize);
+    performer->engine().setPortObserversEnabled(false);
+
+    const int length = sampleAt(scenario.seconds, sampleRate);
+    Render result;
+    result.left.assign(static_cast<std::size_t>(length + blockSize), 0.0f);
+    result.right.assign(static_cast<std::size_t>(length + blockSize), 0.0f);
+    std::vector<bool> applied(scenario.controls.size(), false);
+    std::vector<std::pair<int, const Event*>> block;
+    block.reserve(scenario.events.size());
+
+    const long allocationsBefore = allocationCount.load();
+    for (int start = 0; start < length; start += blockSize)
+    {
+        bool panic = false;
+        for (std::size_t index = 0; index < scenario.controls.size(); ++index)
+            if (! applied[index]
+                && sampleAt(scenario.controls[index].seconds, sampleRate)
+                       < start + blockSize)
+            {
+                applyControl(parameters, gather, panic, scenario.controls[index]);
+                applied[index] = true;
+            }
+        block.clear();
+        for (const auto& event : scenario.events)
+        {
+            const int at = sampleAt(event.seconds, sampleRate);
+            if (at >= start && at < start + blockSize)
+                block.emplace_back(at - start + event.skew, &event);
+        }
+        // A stable insertion sort: std::stable_sort would allocate inside
+        // the loop the allocation count watches.
+        for (std::size_t index = 1; index < block.size(); ++index)
+            for (std::size_t at = index;
+                 at > 0 && block[at].first < block[at - 1].first; --at)
+                std::swap(block[at], block[at - 1]);
+
+        performer->setParameters(parameters);
+        if (panic)
+            performer->reset();
+        performer->setGatherChords(gather);
+        result.latency = std::max(result.latency, performer->latencySamples());
+        performer->beginBlock(result.left.data() + start,
+                              result.right.data() + start, blockSize);
+        for (const auto& [offset, event] : block)
+            feed(*performer, offset, *event, how);
+        performer->endBlock();
+    }
+    result.allocations = allocationCount.load() - allocationsBefore;
+    result.left.resize(static_cast<std::size_t>(length));
+    result.right.resize(static_cast<std::size_t>(length));
+    result.dropped = performer->droppedEventCount();
+    return result;
+}
+
+float peak(const Render& render)
+{
+    float result = 0.0f;
+    for (const auto* channel : { &render.left, &render.right })
+        for (const float value : *channel)
+            result = std::max(result, std::abs(value));
+    return result;
+}
+
+bool finite(const Render& render)
+{
+    for (const auto* channel : { &render.left, &render.right })
+        for (const float value : *channel)
+            if (! std::isfinite(value))
+                return false;
+    return true;
+}
+
+const Scenario& scenarioNamed(const std::vector<Scenario>& battery,
+                              const std::string& name)
+{
+    for (const auto& scenario : battery)
+        if (name == scenario.name)
+            return scenario;
+    std::cerr << "no scenario " << name << '\n';
+    std::abort();
+}
+
+void testBatteryPlaysSoundsAndRepeats(const std::vector<Scenario>& battery)
+{
+    for (const auto& scenario : battery)
+        for (const bool gather : { false, true })
+        {
+            const std::string label = std::string { scenario.name }
+                + (gather ? " (gathering)" : "");
+            const auto first = render(scenario, 48000.0, 64, gather);
+            expect(finite(first), label + " rendered a nonfinite sample");
+            expect(peak(first) > 1.0e-3f, label + " rendered silence");
+            expect(first.allocations == 0,
+                   label + " allocated while playing ("
+                       + std::to_string(first.allocations) + ")");
+            expect(render(scenario, 48000.0, 64, gather) == first,
+                   label + " did not repeat to the bit");
+            expect(render(scenario, 48000.0, 64, gather, Feed::Helpers) == first,
+                   label + " sounded differently spelt through the helpers");
+        }
+}
+
+// The player is sample-accurate: only front-end controls, which land
+// between blocks, events a host places outside their block, and the strum
+// rest clock, which reads the block's start (see flushNoteGroup) and so
+// could only move a rest within a block of two seconds, hear the block size.
+void testBlockSizeDoesNotChangeThePerformance(const std::vector<Scenario>& battery)
+{
+    for (const auto& scenario : battery)
+    {
+        if (! scenario.controls.empty()
+            || std::any_of(scenario.events.begin(), scenario.events.end(),
+                           [](const Event& event) { return event.skew != 0; }))
+            continue;
+        for (const bool gather : { false, true })
+        {
+            const auto reference = render(scenario, 44100.0, 64, gather);
+            for (const int blockSize : { 1, 127, 512 })
+                expect(render(scenario, 44100.0, blockSize, gather) == reference,
+                       std::string { scenario.name } + (gather ? " (gathering)" : "")
+                           + " changed with block size "
+                           + std::to_string(blockSize));
+        }
+    }
+}
+
+Scenario custom(const char* name, double seconds, std::vector<Event> events)
+{
+    Scenario scenario;
+    scenario.name = name;
+    scenario.seconds = seconds;
+    scenario.events = std::move(events);
+    return scenario;
+}
+
+Event message(double seconds, std::uint8_t status, int data1, int data2,
+              int size = 3)
+{
+    Event event;
+    event.seconds = seconds;
+    event.bytes[0] = status;
+    event.bytes[1] = static_cast<std::uint8_t>(data1);
+    event.bytes[2] = static_cast<std::uint8_t>(data2);
+    event.size = size;
+    return event;
+}
+
+// One sample's notes are one canonical wrist event whatever order a host
+// stored them in; a zero-length note does not stick; All Notes Off owns its
+// sample: no Note On of its channels sounds on that sample, whether a host
+// inserted it before or after.
+void testOneSampleIsOneCanonicalEvent()
+{
+    const auto chord = [](std::array<int, 4> order)
+    {
+        std::vector<Event> events;
+        for (const int note : order)
+            events.push_back(message(0.01, 0x90, note, 100));
+        return custom("chord", 0.5, events);
+    };
+    const auto lowFirst = render(chord({ 40, 47, 52, 56 }), 48000.0, 64, false);
+    expect(lowFirst == render(chord({ 56, 40, 52, 47 }), 48000.0, 64, false)
+               && lowFirst == render(chord({ 52, 56, 47, 40 }), 48000.0, 64, false),
+           "a same-sample chord depended on its insertion order");
+
+    // Which of these keys are down after one sample's events.
+    const auto keysDown = [](std::vector<Event> events)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 256);
+        std::vector<float> left(256), right(256);
+        performer->beginBlock(left.data(), right.data(), 256);
+        for (const auto& event : events)
+            performer->handleMidi(10, event.bytes.data(), event.size);
+        performer->endBlock();
+        return std::pair { performer->engine().heldString(45) >= 0,
+                           performer->engine().heldString(52) >= 0 };
+    };
+    expect(keysDown({ message(0.0, 0x80, 45, 64), message(0.0, 0x90, 45, 100) })
+               == std::pair { false, false },
+           "a zero-length note stuck when its Off came first");
+    expect(keysDown({ message(0.0, 0x90, 45, 100), message(0.0, 0xb0, 123, 0),
+                      message(0.0, 0x90, 52, 100) })
+               == std::pair { false, false },
+           "All Notes Off did not own its sample");
+}
+
+void testGatheredRollSoundsAsOneSampleChord()
+{
+    const auto rolled = custom("rolled", 0.6, {
+        message(0.02, 0x90, 60, 100), message(0.03, 0x90, 64, 100),
+        message(0.04, 0x90, 67, 100) });
+    const auto together = custom("together", 0.6, {
+        message(0.02, 0x90, 60, 100), message(0.02, 0x90, 64, 100),
+        message(0.02, 0x90, 67, 100) });
+    for (const double sampleRate : { 44100.0, 48000.0, 96000.0 })
+    {
+        const auto gathered = render(rolled, sampleRate, 64, true);
+        expect(gathered.latency == Performer::gatherWindowSamples(sampleRate)
+                   && gathered.latency
+                          == static_cast<int>(std::lround(0.030 * sampleRate)),
+               "Gather Chords did not report its 30 ms window as latency");
+        expect(render(rolled, sampleRate, 64, false).latency == 0,
+               "the player reported latency without gathering");
+        expect(gathered == render(together, sampleRate, 64, true),
+               "a chord rolled inside the window did not sound as the same "
+               "chord on one sample");
+        expect(render(rolled, sampleRate, 64, false)
+                   != render(together, sampleRate, 64, false),
+               "the rolled chord no longer needs gathering to voice like a chord");
+    }
+}
+
+void testHelpersSpellMidi()
+{
+    // Every 14-bit wheel position survives the float helper: a note bent to
+    // each probe sounds the same spelt either way.
+    for (const int raw : { 0, 1, 4000, 8191, 8192, 8193, 12000, 16382, 16383 })
+    {
+        const auto bent = custom("bent", 0.15, {
+            message(0.0, 0xe0, raw & 0x7f, raw >> 7), message(0.001, 0x90, 45, 100) });
+        expect(render(bent, 48000.0, 64, false, Feed::Raw)
+                   == render(bent, 48000.0, 64, false, Feed::Helpers),
+               "pitchWheel did not spell 14-bit bend " + std::to_string(raw));
+    }
+
+    // setPitchBendRange is RPN 0 then the null RPN.
+    const auto viaRpn = custom("rpn", 0.3, {
+        message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 0),
+        message(0.0, 0xb0, 6, 7), message(0.0, 0xb0, 38, 25),
+        message(0.0, 0xe0, 0x7f, 0x7f), message(0.001, 0x90, 45, 100) });
+    const auto raw = render(viaRpn, 48000.0, 64, false);
+    auto performer = std::make_unique<Performer>();
+    performer->setParameters(acustra::EngineParameters {});
+    performer->prepare(48000.0, 64);
+    std::vector<float> left(raw.left.size()), right(raw.right.size());
+    for (std::size_t start = 0; start < left.size(); start += 64)
+    {
+        performer->setParameters(acustra::EngineParameters {});
+        performer->beginBlock(left.data() + start, right.data() + start, 64);
+        if (start == 0)
+        {
+            performer->setPitchBendRange(0, 1, 7, 25);
+            performer->pitchWheel(0, 1, 1.0f);
+            performer->noteOn(48, 1, 45, 100);
+        }
+        performer->endBlock();
+    }
+    expect(left == raw.left && right == raw.right,
+           "setPitchBendRange did not set RPN 0");
+}
+
+// Master tune rides on every channel's bend, survives Reset All
+// Controllers, and zero changes nothing.
+void testMasterTune()
+{
+    const auto play = [](float cents, std::vector<Event> events)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 64);
+        performer->setMasterTuneCents(cents);
+        std::vector<float> left(64 * 150), right(64 * 150);
+        for (std::size_t start = 0; start < left.size(); start += 64)
+        {
+            performer->beginBlock(left.data() + start, right.data() + start, 64);
+            if (start == 0)
+                for (const auto& event : events)
+                    performer->handleMidi(sampleAt(event.seconds, 48000.0),
+                                          event.bytes.data(), event.size);
+            performer->endBlock();
+        }
+        left.insert(left.end(), right.begin(), right.end());
+        return left;
+    };
+    const std::vector<Event> note { message(0.0, 0x90, 45, 100) };
+    const std::vector<Event> resetThenNote {
+        message(0.0, 0xb0, 121, 0), message(0.0002, 0x90, 45, 100) };
+    const std::vector<Event> semitoneUp {
+        message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 0),
+        message(0.0, 0xb0, 6, 1), message(0.0, 0xe0, 0x7f, 0x7f),
+        message(0.0002, 0x90, 45, 100) };
+    expect(play(0.0f, note) == play(0.0f, note) && play(0.0f, note) != play(100.0f, note),
+           "master tune did not reach the strings");
+    const auto tunedAfterPause = play(100.0f, { message(0.0002, 0x90, 45, 100) });
+    expect(tunedAfterPause == play(0.0f, semitoneUp),
+           "100 cents of master tune did not sound as a semitone of bend");
+    expect(play(100.0f, resetThenNote) == tunedAfterPause,
+           "Reset All Controllers dropped the master tune");
+}
+
+void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
+{
+    // 130 Note Ons on one sample: the group holds 128.
+    const auto& edges = scenarioNamed(battery, "host-edge-cases");
+    expect(render(edges, 48000.0, 64, false).dropped == 2,
+           "a same-sample group's overflow was not counted");
+
+    // 1100 controllers inside one gathered block: the queue holds 1024.
+    std::vector<Event> flood;
+    for (int index = 0; index < 1100; ++index)
+        flood.push_back(message(0.01, 0xb0, 1, index % 128));
+    flood.push_back(message(0.011, 0x90, 45, 100));
+    const auto flooded = render(custom("flood", 0.2, flood), 48000.0, 1024, true);
+    expect(flooded.dropped == 1100 + 1 - 1024,
+           "the gathering queue's overflow was not counted ("
+               + std::to_string(flooded.dropped) + ")");
+    expect(flooded.allocations == 0, "a full gathering queue allocated");
+}
+
+void testResetSilences()
+{
+    auto performer = std::make_unique<Performer>();
+    performer->prepare(48000.0, 256);
+    std::vector<float> left(256), right(256);
+    performer->beginBlock(left.data(), right.data(), 256);
+    performer->noteOn(0, 1, 40, 120);
+    performer->endBlock();
+    performer->reset();
+    performer->process(left.data(), right.data(), 256);
+    expect(std::all_of(left.begin(), left.end(), [](float v) { return v == 0.0f; }),
+           "reset did not silence the engine");
+    expect(performer->engine().getActiveVoiceCount() == 0,
+           "reset left a string playing");
+}
+} // namespace
+
+int main()
+{
+    const auto battery = makeBattery();
+    testBatteryPlaysSoundsAndRepeats(battery);
+    testBlockSizeDoesNotChangeThePerformance(battery);
+    testOneSampleIsOneCanonicalEvent();
+    testGatheredRollSoundsAsOneSampleChord();
+    testHelpersSpellMidi();
+    testMasterTune();
+    testOverflowIsCountedNotAllocated(battery);
+    testResetSilences();
+
+    if (failures != 0)
+    {
+        std::cerr << failures << " Acustra performer test(s) failed\n";
+        return 1;
+    }
+    std::cout << "All Acustra performer tests passed\n";
+    return 0;
+}

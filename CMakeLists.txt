@@ -43,7 +43,9 @@ file(GLOB ACUSTRA_BANK_PARTS CONFIGURE_DEPENDS
 
 add_library(AcustraDSP STATIC
     Source/DSP/AcustraEngine.cpp
-    Source/DSP/AcustraEngine.h)
+    Source/DSP/AcustraEngine.h
+    Source/DSP/AcustraPerformer.cpp
+    Source/DSP/AcustraPerformer.h)
 
 add_library(AcustraReferenceBank STATIC EXCLUDE_FROM_ALL
     Source/DSP/SampleBank/EmbeddedGuitarBank.cpp
@@ -249,6 +251,18 @@ if(BUILD_TESTING)
     target_compile_features(AcustraHandAllocatorTests PRIVATE cxx_std_20)
     add_test(NAME Acustra.HandAllocator COMMAND AcustraHandAllocatorTests)
     set_tests_properties(Acustra.HandAllocator PROPERTIES TIMEOUT 120)
+
+    add_executable(AcustraPerformerTests Tests/PerformerTests.cpp)
+    target_link_libraries(AcustraPerformerTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraPerformerTests PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(AcustraPerformerTests PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(AcustraPerformerTests PRIVATE
+            -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME Acustra.Performer COMMAND AcustraPerformerTests)
+    set_tests_properties(Acustra.Performer PROPERTIES TIMEOUT 240)
 
     add_executable(AcustraReleaseTests Tests/ReleaseTests.cpp)
     target_link_libraries(AcustraReleaseTests PRIVATE AcustraDSP)
