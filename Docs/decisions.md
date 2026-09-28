@@ -4,6 +4,60 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — listening candidate: the plate-Q rule down through T1
+
+Not shipped: a candidate for blind listening (cand/body-t1-band-plate-q).
+
+What was measured. The rocking path carries about 70% of a steel pluck, and
+its strongest low peak is g21's 208.7 Hz mode (190 Hz in the engine's
+Dreadnought anchor) at Q 37.3, standing 7.8 dB over its third octave: the
+Set 9 note "too narrow band resonating, like a highly resonant BP filter".
+The room analysis of 2026-09-27 found 10 dB more late energy at 198 Hz and
+5 dB more at 250 Hz than g21's room explains, so these are its own modes. The
+anechoic population's rocking modes in 200-280 Hz have Q 11-21 (g37 265 Hz
+11.1, g38 245 Hz 19.3, g39 219 Hz 20.5, g43 276 Hz 19.3; the classical g34
+262 Hz 18.3) and their T1s 8.8-15.5.
+
+What was built. The plate-Q median rule approved in Set 15 stopped at 300 Hz
+only to leave the air mode, T1 and the 287 Hz broad mode alone. Its lower
+edge moves to 150 Hz (`Tools/GenerateBodyForcePair.py --plate-q median
+--plate-q-band 150 10000`, now the default band): the air group below 150 Hz,
+where the by-ear x4 acts, every frequency and residue, the shape anchors,
+nylon and the bridge are unchanged. The header differs in four Q fields:
+T1 178.5 Hz 17.48 -> 13.82, 208.7 Hz 37.33 -> 27.37, 229.0 Hz 17.76 ->
+12.07, 286.8 Hz 3.67 -> 2.30 (held at 4 by the engine's Q floor, so without
+effect). No engine code; CPU unchanged (strum every 250 ms 68.4 -> 67.8 us
+per 64-frame block, held chord 51.3 -> 52.1, medians of 3 on a loaded host).
+
+What the bank says (engine dump, treble-bridge microphone, 50 ms EDC in the
+157/198 Hz third octaves): moment path -8.0/-5.8 -> -10.4/-8.1 dB, force path
+-10.3/-16.6 -> -12.9/-22.5 dB (the anechoic median at 157 Hz is -22.6); the
+190 Hz ring's T60 0.43 -> 0.32 s, its peak 7.8 -> 6.6 dB over its third
+octave. On notes the change is small: the Eastman picked low notes' sustain
+at 100-200 / 200-400 Hz -7.5/-4.0 -> -7.7/-3.9 dB (recordings -3.0/-7.6),
+centroid fall x1.17 -> x1.18 (x2.51), the 200-2000 Hz ringing descriptors
+within 0.03 dB.
+
+What the corpus says, paired with D (the Fylde bridge): training steel
+6.5070 -> 6.4877 (-0.30%), development validation 6.4598 -> 6.4355
+(-0.38%), flat-top 7.2714 -> 7.2989 (+0.38%); Pick steel training 5.8335 ->
+5.8254, validation 5.6838 -> 5.6718; the frozen test split 6.3473 -> 6.3256
+(Finger) and 5.6644 -> 5.6552 (Pick). Eastman picked 6.4850 -> 6.4962
+(+0.17%), finger 6.8981 -> 6.9290 (+0.45%); Martin HD28 7.2750 -> 7.2678;
+GuitarSet log error 14.8777 -> 14.8651. Nylon is bit-identical. Every
+reference moves by under half a percent, the archtop rows and the test split
+closer, the flat-tops (Eastman body term +0.6-0.8%) a little further.
+
+What is open. T1 is the main low-mid resonance, and the listener asked for
+more of the "massive wooden resonance": a broader, shorter T1 may read as
+less of it. The 3000-sample window that once set T1 at Q 10 and the 209 Hz
+mode at Q 15 was the low ring a listener missed (README, body); this
+candidate goes about half of that way back, by the anechoic population rather
+than by a window. The octave rule halves the rocking mode's excess (37 -> 27)
+rather than reaching the population's 11-21. The pair belongs on strums,
+staccato chords and a bass run, where the 190 Hz ring is exposed, not on held
+single notes.
+
 ## 2026-09-28 — blind verdicts: snap between B and C, no pluck click, the damped plate body
 
 Set 14 put shipping (A, 1a2c7e1) against two ways of letting the strings'

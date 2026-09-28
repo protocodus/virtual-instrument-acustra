@@ -187,9 +187,12 @@ damping of five flamenca blancas the same archive measured anechoically, g37,
 g38, g39, g42 and g43, each fitted by the same generator and gates at its own
 converged window (g41 fails them): each g21 mode's Q is scaled by the
 population's median Q over g21's own median in the octave round it, and never
-raised (`Tools/GenerateBodyForcePair.py --plate-q median`). The air mode, T1,
-the 287 Hz mode and every frequency and residue are as fitted from g21. This
-Q scaling is an Acustra change to the archive's data.
+raised (`Tools/GenerateBodyForcePair.py --plate-q median`). On the listening
+candidate cand/body-t1-band-plate-q (2026-09-28) the same rule reaches down to
+150 Hz, so T1 (178.5 Hz), the 208.7 Hz rocking mode, the 229.0 Hz mode and the
+287 Hz broad mode are damped by it too. The air group below 150 Hz and every
+frequency and residue are as fitted from g21. This Q scaling is an Acustra
+change to the archive's data.
 
 Acustra ships only those transformed numerical coefficients. It does not ship
 the source MAT file, recorded impulses, photographs or documentation from the

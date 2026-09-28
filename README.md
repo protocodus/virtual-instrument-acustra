@@ -1008,6 +1008,25 @@ likewise), with the body, attack and decay terms all better. These remain
 windowed measurements, not identified intrinsic body decays.
 No independent minimum-phase conversion or convolution remainder is added.
 
+g21 rang longer than the flamenca blancas the same archive measured
+anechoically (g37, g38, g39, g42 and g43, each fitted by this generator and
+its gates at its own converged window; g41 fails them), in every band from
+its top-plate mode up, and the music room does not explain it. Every g21 mode
+from 150 Hz to 10 kHz therefore has its Q scaled by the population's median Q
+over g21's own median in the octave round it, never raised
+(`--plate-q median`); frequencies and residues are kept, so a mode starts at
+the level it was measured at and rings for a shorter time. The air group below
+150 Hz, where the by-ear gain below acts, is left as measured. Up to
+2026-09-27 the band started at 300 Hz; this listening candidate
+(cand/body-t1-band-plate-q) brings T1 and the rocking modes under the same
+rule: T1 at 178.5 Hz Q 17.5 -> 13.8 (the population's T1s 8.8-15.5), the
+208.7 Hz rocking mode Q 37.3 -> 27.4 (the population's rocking modes in
+200-280 Hz: Q 11-21), 229.0 Hz Q 17.8 -> 12.1, and 286.8 Hz Q 3.7 -> 2.3,
+which the engine's Q >= 4 floor leaves where it was. In the engine's
+Dreadnought anchor those are the 159, 190 and 204 Hz modes; the rocking
+path's 190 Hz ring falls from T60 0.43 to 0.32 s and its peak from 7.8 to
+6.6 dB over its third octave.
+
 The selected bank uses neutral body calibration factors: frequency and Q scales
 of 1 and residue tilt of 0 dB/octave. One exception was chosen by ear: steel's
 air mode (the g21 modes between 85 and 145 Hz) radiates four times stronger
@@ -1962,7 +1981,12 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   both (Construction controls). What would settle it is a measured body of
   each size. The original steel bank adapts a nylon-strung flamenca blanca;
   the archive lists Savarez Tomatito strings for g21. The Fylde bridge the
-  steel presets play adds actual steel-guitar mobility. The separate Model
+  steel presets play adds actual steel-guitar mobility. g21's damping is
+  read against five anechoic flamencas by one octave-median rule: its
+  208.7 Hz rocking mode keeps Q 27.4 where the population's rocking modes
+  in 200-280 Hz measure Q 11-21, because the rule halves an excess that is
+  concentrated in one mode; a rule by mode class would bring in a
+  classification and a constant of its own, and is not made. The separate Model
   menu adds the matched Bellido bridge/radiation bank; the three steel
   guitars once beside it are retired (Construction controls).
 - The band audits now measure a distance the build chose rather than an error
