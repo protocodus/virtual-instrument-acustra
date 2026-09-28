@@ -352,6 +352,11 @@ struct AcustraEngineTestAccess
 
     static constexpr int bodyModeCapacity = AcustraEngine::bodyModeCount;
 
+    static int bodyModesInUse(const AcustraEngine& engine)
+    {
+        return engine.bodyBank_.count;
+    }
+
     static int retainedTailCount(const AcustraEngine& engine)
     {
         return static_cast<int>(std::count_if(engine.voices_.begin(),
@@ -7497,15 +7502,32 @@ void testEachStringMaterialPlaysItsOwnMeasuredGuitar()
                <= 1.0e-12,
            "switching to nylon left the steel bridge bank in place");
 
-    // The arrays are sized to the larger bank; the surplus slots the shorter
-    // one leaves must be silent, not stale.
+    // The arrays are sized to the largest bank, the steel blend
+    // (SteelBodyBlend.h); the surplus slots a shorter one leaves must be
+    // silent, not stale. Nylon, after the steel blend, leaves the most.
     acustra::AcustraEngine steelEngine;
     steelEngine.prepare(48000.0, 64);
-    for (int index = static_cast<int>(
-             acustra::detail::measuredSteelBodyModes.size());
+    expect(Access::bodyModesInUse(steelEngine)
+               >= static_cast<int>(acustra::detail::measuredSteelBodyModes.size()),
+           "steel does not play g21's whole bank");
+    for (int index = Access::bodyModesInUse(steelEngine);
          index < Access::bodyModeCapacity; ++index)
         expect(Access::bodyResidueOf(steelEngine, index) == 0.0,
                "a surplus body slot kept the other bank's mode");
+    parameters.stringMaterial = acustra::StringMaterial::Nylon;
+    steelEngine.setParameters(parameters);
+    for (int i = 0; i < 64 * 40; i += 64)
+    {
+        std::array<float, 64> left {}, right {};
+        steelEngine.process(left.data(), right.data(), 64);
+    }
+    expect(Access::bodyModesInUse(steelEngine)
+               == static_cast<int>(acustra::detail::measuredNylonBodyModes.size()),
+           "nylon does not play its own bank alone");
+    for (int index = Access::bodyModesInUse(steelEngine);
+         index < Access::bodyModeCapacity; ++index)
+        expect(Access::bodyResidueOf(steelEngine, index) == 0.0,
+               "a surplus body slot kept the steel blend's mode");
 
     // Both bridge banks must stay positive real. With two degrees of freedom
     // that is a matrix condition: a string at lever arm u sees

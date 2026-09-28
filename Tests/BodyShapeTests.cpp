@@ -1,5 +1,9 @@
 #include "DSP/AcustraEngine.h"
+#include "DSP/MeasuredBodyDecayGridData.h"
 #include "DSP/MeasuredBridgeData.h"
+#include "DSP/MeasuredJointBodyData.h"
+#include "DSP/MeasuredSteelBridgeData.h"
+#include "DSP/SteelBodyBlend.h"
 
 #include <algorithm>
 #include <array>
@@ -8,6 +12,7 @@
 #include <iostream>
 #include <memory>
 #include <numbers>
+#include <vector>
 
 namespace acustra
 {
@@ -27,6 +32,8 @@ struct AcustraEngineTestAccess
     static std::array<float, 2> radiationPole(const EngineParameters& p,
                                               const PhysicalCalibration& c, int index)
     { return AcustraEngine::radiationModePole(p, c, index); }
+    static std::array<int, 2> bodyCounts(const AcustraEngine& e)
+    { return { e.bodyBank_.count, e.bodyBank_.ordered }; }
 };
 }
 
@@ -243,6 +250,141 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
     expect(worst < 1e-12, "a twinned bridge mode is not its radiation mode's pole");
 }
 
+// The steel blend (SteelBodyBlend.h): on steel's own bridge the bridge is
+// B's aligned modes, the Fylde's and the joint-pole body's, each at its
+// share, and on the Original guitar the radiation is g21's bank, the decay-Q
+// grid and the joint body's radiation. Every section keeps a positive
+// semidefinite residue matrix, so each string's sum stays positive real
+// (testPhaseAndPassivity reads the digital bridge); here the parts, their
+// levels and a long ring and a sustained strum, which must not grow.
+void testSteelBlend()
+{
+    namespace d = acustra::detail;
+    const double rest = 1.0 - d::steelBlendJointBodyWeight;
+    std::size_t jointBridge = 0;
+    for (const auto& mode : d::measuredSteelJointBodyModes)
+        jointBridge += mode.heave > 0.0f || mode.rock > 0.0f;
+    const bool fylde = d::steelBlendOwnBridgeWeight < 1.0f;
+    const bool joint = d::steelBlendJointBodyWeight > 0.0f;
+    const std::size_t own = d::measuredSteelBridgeModes.size();
+    const std::size_t fyldeCount = fylde ? d::measuredFyldeBridgeModes.size() : 0;
+    const std::size_t jointCount = joint ? jointBridge : 0;
+    const int body = int(d::measuredSteelBodyModes.size()
+        + (d::steelBlendDecayGridWeight > 0.0f ? d::steelDecayGridBodyModes.size() : 0)
+        + (joint ? d::measuredSteelJointBodyModes.size() : 0));
+
+    acustra::EngineParameters p;
+    p.stringMaterial = acustra::StringMaterial::Steel;
+    p.bridgeModel = acustra::BridgeModel::Original;
+    auto e = std::make_unique<Engine>();
+    e->setParameters(p); e->prepare(48000, 64);
+    const auto bridge = Access::bridge(*e);
+    const double scale = Access::calibration(*e).bridgeMobilityScale;
+    expect(bridge.activeModeCount == int(own + fyldeCount + jointCount) + 1,
+           "the blended bridge does not play each part's modes and the plate floor once");
+    expect(Access::bodyCounts(*e)[0] == body
+               && Access::bodyCounts(*e)[1] == int(d::measuredSteelBodyModes.size()),
+           "the blended radiation does not play each part, g21's bank in order first");
+    double worstLevel = 0.0, worstDefinite = 0.0;
+    const auto level = [&] (std::size_t slot, const d::MeasuredBridgeMode& source, double share)
+    {
+        const double expected = source.heave * scale * share;
+        worstLevel = std::max(worstLevel,
+            std::abs(bridge.residueHeave[slot] - expected) / expected);
+    };
+    for (std::size_t i = 0; i < own; ++i)
+        level(i, d::measuredSteelBridgeModes[i],
+              rest * d::steelBlendOwnBridgeWeight * d::steelTopMobilityRatio);
+    for (std::size_t i = 0; i < fyldeCount; ++i)
+        level(own + i, d::measuredFyldeBridgeModes[i],
+              rest * (1.0 - d::steelBlendOwnBridgeWeight));
+    for (std::size_t i = 0, slot = own + fyldeCount; i < d::measuredSteelJointBodyModes.size() && joint; ++i)
+    {
+        const auto& mode = d::measuredSteelJointBodyModes[i];
+        if (!(mode.heave > 0.0f || mode.rock > 0.0f)) continue;
+        if (mode.heave > 0.0f)
+            level(slot, { mode.frequency, mode.q, mode.heave, mode.cross, mode.rock },
+                  d::steelBlendJointBodyWeight * d::steelJointTopMobilityRatio);
+        ++slot;
+    }
+    for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
+    {
+        const double h = bridge.residueHeave[i], c = bridge.residueCross[i], r = bridge.residueRock[i];
+        expect(h >= 0.0 && r >= 0.0, "a blended bridge section has a negative residue");
+        // Rank-one sections (h r = c^2) carry float rounding, 1e-7 of h r.
+        if (h > 0.0 && r > 0.0)
+            worstDefinite = std::min(worstDefinite, (h * r - c * c) / (h * r));
+        else
+            expect(c == 0.0, "a blended bridge section couples without rocking");
+    }
+    std::cout << "steel blend: " << bridge.activeModeCount - 1 << " bridge modes, "
+              << Access::bodyCounts(*e)[0] << " radiation modes, worst part level error "
+              << worstLevel << ", least relative residue determinant " << worstDefinite << '\n';
+    expect(worstLevel < 1e-5, "a blended bridge part is not at its share");
+    expect(worstDefinite >= -1e-6, "a blended bridge section is not positive semidefinite");
+
+    // The Fylde choice is the Fylde alone; nylon plays its own banks.
+    p.bridgeModel = acustra::BridgeModel::FyldeSteel;
+    auto other = std::make_unique<Engine>();
+    other->setParameters(p); other->prepare(48000, 64);
+    expect(Access::bridge(*other).activeModeCount
+               == int(d::measuredFyldeBridgeModes.size()) + 1,
+           "the Fylde bridge choice took the blend's other parts");
+    p.stringMaterial = acustra::StringMaterial::Nylon;
+    auto nylon = std::make_unique<Engine>();
+    nylon->setParameters(p); nylon->prepare(48000, 64);
+    expect(Access::bodyCounts(*nylon)[0] == Access::bodyCounts(*nylon)[1],
+           "nylon's radiation took a parallel part");
+
+    // A full chord left to ring for 20 s and a strum every 250 ms for 20 s:
+    // no one-second window louder than every earlier one after the first
+    // three, and the sustained level not creeping up.
+    for (int sustained = 0; sustained < 2; ++sustained)
+    {
+        p.stringMaterial = acustra::StringMaterial::Steel;
+        p.bridgeModel = acustra::BridgeModel::Original;
+        p.outputGain = 0.04f;
+        auto ring = std::make_unique<Engine>();
+        ring->setParameters(p); ring->prepare(48000, 64);
+        const std::array<std::array<int, 6>, 2> chords {{ { 40, 47, 52, 56, 59, 64 },
+                                                          { 43, 47, 50, 55, 59, 67 } }};
+        std::vector<double> seconds;
+        for (int second = 0, strum = 0; second < 20; ++second)
+        {
+            double energy = 0.0;
+            for (int quarter = 0; quarter < 4; ++quarter)
+            {
+                if ((second == 0 && quarter == 0) || sustained)
+                {
+                    if (strum > 0)
+                        for (int note : chords[std::size_t((strum - 1) % 2)]) ring->noteOff(note);
+                    for (int note : chords[std::size_t(strum % 2)]) ring->noteOn(note, sustained ? 0.8f : 1.0f);
+                    ++strum;
+                }
+                process(*ring, 12000, &energy);
+            }
+            seconds.push_back(energy);
+        }
+        double rise = 0.0, runningMax = std::max({ seconds[0], seconds[1], seconds[2] });
+        for (std::size_t k = 3; k < seconds.size(); ++k)
+        {
+            rise = std::max(rise, seconds[k] / runningMax);
+            runningMax = std::max(runningMax, seconds[k]);
+        }
+        const double late = sustained ? (seconds[16] + seconds[17] + seconds[18] + seconds[19])
+                                          / (seconds[4] + seconds[5] + seconds[6] + seconds[7])
+                                      : seconds[19] / runningMax;
+        std::cout << "steel blend " << (sustained ? "sustained strums" : "free ring")
+                  << ": worst window over the running maximum " << rise
+                  << (sustained ? ", seconds 16-20 over 4-8 " : ", last second over loudest ")
+                  << late << '\n';
+        if (sustained)
+            expect(late < 1.25, "the blend's level crept up under sustained strumming");
+        else
+            expect(rise <= 1.0 && late < 1e-2, "the blend's free ring grew or did not decay");
+    }
+}
+
 void process(Engine& e, int frames, double* energy, float* peak)
 {
     std::array<float,64> left {}, right {};
@@ -387,6 +529,7 @@ void testStaticWorkAndRapidChanges()
 int main()
 {
     testSteelOwnBridgeSharesTheRadiationPoles();
+    testSteelBlend();
     testPhaseAndPassivity();
     testRetuneAndTailOwnership();
     testStaticWorkAndRapidChanges();
