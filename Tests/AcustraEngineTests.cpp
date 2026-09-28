@@ -1139,42 +1139,6 @@ struct AcustraEngineTestAccess
             engine.vibratoSemitones(*selected, selected->fret));
     }
 
-    // A pull-off's radiated tail energy at a given lift velocity and member
-    // channel pressure (see AcustraEngine::liftFinger, which no longer reads
-    // pressure at all -- this is the regression that keeps it that way).
-    // -1 pressure means the CC message is never sent.
-    static double pullOffRadiatedEnergy(float lift, float pressure,
-                                        int midiChannel, double sampleRate)
-    {
-        AcustraEngine engine;
-        EngineParameters parameters;
-        parameters.stringMaterial = StringMaterial::Steel;
-        engine.setParameters(parameters);
-        engine.prepare(sampleRate, 64);
-        engine.setLegato(true);
-        if (midiChannel > 1)
-            engine.setLowerZoneMemberCount(2);
-        if (pressure >= 0.0f)
-            engine.setMpePressure(pressure, midiChannel);
-        constexpr int fretted = 70;
-        engine.noteOn(fretted, 0.8f, midiChannel);
-        const int settleBlocks = static_cast<int>(sampleRate * 4.0 / 64.0);
-        std::vector<float> left(64, 0.0f), right(64, 0.0f);
-        for (int block = 0; block < settleBlocks; ++block)
-            engine.process(left.data(), right.data(), 64);
-        engine.noteOff(fretted, midiChannel, lift);
-        double energy = 0.0;
-        const int tailBlocks = static_cast<int>(sampleRate * 2.0 / 64.0);
-        for (int block = 0; block < tailBlocks; ++block)
-        {
-            engine.process(left.data(), right.data(), 64);
-            for (int i = 0; i < 64; ++i)
-                energy += static_cast<double>(left[i]) * left[i]
-                        + static_cast<double>(right[i]) * right[i];
-        }
-        return energy;
-    }
-
     struct StringModeSnapshot
     {
         int activeWithAllocator;
@@ -1212,81 +1176,6 @@ struct AcustraEngineTestAccess
         const int after = engine.getActiveVoiceCount();
 
         return { before, forced, landed, leaked, after };
-    }
-
-    static std::array<float, 2> frettingGeometry(StringMaterial material,
-        int string, float point, float heldPoint)
-    {
-        AcustraEngine engine;
-        engine.parameters_.stringMaterial = material;
-        return { engine.actionHeight(string, point),
-                 engine.frettingClearance(string, point, heldPoint) };
-    }
-
-    struct FrettingStateSnapshot
-    {
-        std::vector<double> displacement;
-        std::vector<double> velocity;
-        double energy { 0.0 };
-    };
-
-    static FrettingStateSnapshot frettingState(int period, float nutPosition,
-                                               float height, float uniformSpeed,
-                                               float triangleSpeed)
-    {
-        // Ideal string of length 1 m, tension 1 N, sampled at 48 kHz.
-        // An integer round trip makes readDelay exact. Bypass loss and
-        // dispersion to test state conversion, not a fitted sounding note.
-        constexpr double rate = 48000.0;
-        const double speed = 2.0 * rate / period;
-        AcustraEngine engine;
-        AcustraEngine::StringLoop loop;
-        loop.currentDelay = loop.targetDelay = static_cast<float>(period);
-        loop.reset();
-        engine.addReleasedTriangle(loop, std::abs(height), nutPosition,
-                                    std::copysign(1.0f, height));
-        engine.addUniformVelocity(loop,
-            static_cast<float>(0.5 * std::abs(uniformSpeed) * nutPosition / speed),
-            nutPosition, std::copysign(1.0f, uniformSpeed));
-        engine.addTriangleVelocity(loop,
-            static_cast<float>(0.5 * std::abs(triangleSpeed) / speed),
-            nutPosition, std::copysign(1.0f, triangleSpeed));
-        const auto step = [period] (AcustraEngine::StringLoop& state)
-        {
-            state.write(state.readDelay(static_cast<float>(period)));
-        };
-        auto after = loop;
-        auto before = loop;
-        step(after);
-        // One period minus a sample is exactly the preceding state of this
-        // lossless rigid-end loop. The centred difference measures release
-        // velocity without confusing a pluck's first acceleration with it.
-        for (int sample = 1; sample < period; ++sample)
-            step(before);
-        FrettingStateSnapshot result;
-        const int intervals = period / 2;
-        for (int point = 0; point <= intervals; ++point)
-        {
-            const float fromBridge = static_cast<float>(point) / intervals;
-            result.displacement.push_back(loop.displacementAt(fromBridge));
-            result.velocity.push_back(0.5 * rate
-                * (static_cast<double>(after.displacementAt(fromBridge))
-                    - before.displacementAt(fromBridge)));
-        }
-        const double dx = 1.0 / intervals;
-        for (int point = 0; point <= intervals; ++point)
-        {
-            const double velocity = result.velocity[static_cast<std::size_t>(point)];
-            const double weight = point == 0 || point == intervals ? 0.5 : 1.0;
-            result.energy += 0.5 * dx * weight * velocity * velocity / (speed * speed);
-            if (point > 0)
-            {
-                const double change = result.displacement[static_cast<std::size_t>(point)]
-                    - result.displacement[static_cast<std::size_t>(point - 1)];
-                result.energy += 0.5 * change * change / dx;
-            }
-        }
-        return result;
     }
 
     static std::array<float, 8> bridgePortWaves(const AcustraEngine& engine)
@@ -1355,65 +1244,6 @@ struct AcustraEngineTestAccess
         return state;
     }
 
-    struct LiftStateSnapshot
-    {
-        double normalEnergy;
-        double parallelEnergy;
-        int period;
-        float bridgeSample;
-        bool releasedToOpen;
-    };
-
-    static LiftStateSnapshot isolatedOpenLift(StringMaterial material,
-                                               float velocity, double rate)
-    {
-        AcustraEngine engine;
-        EngineParameters parameters;
-        parameters.stringMaterial = material;
-        engine.setParameters(parameters);
-        engine.prepare(rate, 64);
-        engine.setLegato(true);
-        engine.setStringPerChannelMode(true);
-        engine.noteOn(43, 0.8f, 1);
-        auto& voice = engine.voices_[0];
-        // Isolate the release increment while retaining the real stopped
-        // note's ownership and current/target delay. The public note-off,
-        // rather than a direct primitive call, must perform the lift.
-        for (auto& loop : voice.loops)
-            loop.reset();
-        engine.noteOff(43, 1, velocity);
-        const auto waveEnergy = [] (const AcustraEngine::StringLoop& loop)
-        {
-            const int period = static_cast<int>(std::round(loop.currentDelay));
-            const auto at = [&] (int age)
-            {
-                const int index = (loop.writeIndex - age
-                    + AcustraEngine::maximumDelaySamples)
-                    % AcustraEngine::maximumDelaySamples;
-                return static_cast<double>(loop.delay[static_cast<std::size_t>(index)]);
-            };
-            double sum = 0.0;
-            double previous = at(period);
-            for (int age = 1; age <= period; ++age)
-            {
-                const double current = at(age);
-                sum += (current - previous) * (current - previous);
-                previous = current;
-            }
-            // Total elastic + kinetic energy of the folded ideal-string
-            // state, in units T*displacementScale^2/(2*targetLength).
-            // This excludes subsequent loss, bridge and delay-slew work.
-            return period * sum;
-        };
-        const auto& normal = voice.loops[0];
-        return { waveEnergy(normal), waveEnergy(voice.loops[1]),
-                 static_cast<int>(std::round(normal.currentDelay)),
-                 normal.delay[static_cast<std::size_t>(
-                     (normal.writeIndex - 1 + AcustraEngine::maximumDelaySamples)
-                     % AcustraEngine::maximumDelaySamples)],
-                 voice.midiNote == 40 && !voice.keyDown && !voice.pedalHeld
-                     && voice.fingerLift == 0.0f && voice.played };
-    }
 };
 } // namespace acustra
 
@@ -3975,40 +3805,6 @@ void testMpePressureBiasesVibratoDepthWithinTheWheelsOwnBound()
            "a light grip did not sit at the authored 50% depth floor");
 }
 
-// A prior version biased liftFinger's elastic threshold with member
-// pressure; measured up to 1.61x the unbiased release's injected energy on
-// some lifts (Docs/decisions.md-worthy finding, reverted -- see the comment
-// in liftFinger). This is the regression: pressure must not move a single
-// joule of a pull-off's radiated tail energy, at any lift or rate.
-void testMpePressureNeverChangesAPullOffsRadiatedEnergy()
-{
-    using acustra::AcustraEngineTestAccess;
-
-    for (const double rate : { 44100.0, 48000.0, 96000.0 })
-    {
-        for (float lift = 0.05f; lift <= 0.95f; lift += 0.05f)
-        {
-            const double unset = AcustraEngineTestAccess::pullOffRadiatedEnergy(
-                lift, -1.0f, 2, rate);
-            const double firm = AcustraEngineTestAccess::pullOffRadiatedEnergy(
-                lift, 1.0f, 2, rate);
-            expect(unset == firm,
-                   "full member pressure changed a pull-off's radiated "
-                   "energy at lift " + std::to_string(lift) + ", rate "
-                   + std::to_string(rate) + ": " + std::to_string(unset)
-                   + " vs " + std::to_string(firm));
-        }
-    }
-
-    const double conventionalUnset
-        = AcustraEngineTestAccess::pullOffRadiatedEnergy(0.265f, -1.0f, 1, 48000.0);
-    const double conventionalFirm
-        = AcustraEngineTestAccess::pullOffRadiatedEnergy(0.265f, 1.0f, 1, 48000.0);
-    expect(conventionalUnset == conventionalFirm,
-           "channel pressure changed a pull-off on a conventional, "
-           "non-member channel");
-}
-
 void testStringPerChannelModeIsOptInAndBypassesTheAllocator()
 {
     using acustra::AcustraEngineTestAccess;
@@ -4771,48 +4567,6 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
             expect(normalisedDifference(picked, thumbed) > 0.01,
                    "pick/thumb excitation did not reach audible output");
 
-            // A different picking tool cannot change the fretting finger's
-            // next hammer-on or lift after identical initial plucks.
-            for (const auto technique : { PickingTechnique::Pick,
-                                          PickingTechnique::Thumb })
-                for (const bool hammer : { false, true })
-                {
-                    parameters.picking = PickingTechnique::Finger;
-                    reference.setParameters(parameters);
-                    changed.setParameters(parameters);
-                    reference.reset();
-                    changed.reset();
-                    reference.setStringPerChannelMode(true);
-                    changed.setStringPerChannelMode(true);
-                    reference.setLegato(true);
-                    changed.setLegato(true);
-                    reference.noteOn(43, 0.5f);
-                    changed.noteOn(43, 0.5f);
-                    for (int block = 0; block < 100; ++block)
-                    {
-                        reference.process(a.data(), ar.data(), 64);
-                        changed.process(b.data(), br.data(), 64);
-                    }
-                    parameters.picking = technique;
-                    changed.setParameters(parameters);
-                    if (hammer)
-                    {
-                        reference.noteOn(47, 0.5f);
-                        changed.noteOn(47, 0.5f);
-                    }
-                    else
-                    {
-                        reference.noteOff(43, 1, 0.2f);
-                        changed.noteOff(43, 1, 0.2f);
-                    }
-                    for (int block = 0; block < 200; ++block)
-                    {
-                        reference.process(a.data(), ar.data(), 64);
-                        changed.process(b.data(), br.data(), 64);
-                        expect(a == b && ar == br,
-                               "the picking tool changed a fretting-hand gesture");
-                    }
-                }
         }
     }
 }
@@ -5993,131 +5747,6 @@ void testSwitchingStringsOrTuningUnderAChordDoesNotClick()
 }
 
 
-void testLegatoHammersOnAndPullsOff()
-{
-    // A hammer-on stops the string with the fretting finger; it does not
-    // release it from rest. So the loop keeps what it holds and only its
-    // length changes, with the finger's own strike added to it. The
-    // footswitch is what separates a hammer-on from a strum, which the model
-    // alone cannot do: one note arriving over a held string is a hammer-on,
-    // six arriving together are a chord.
-    const int block = 64;
-    const auto phrase = [&] (double rate, bool legato, bool touchTheSwitch)
-    {
-        acustra::AcustraEngine engine;
-        acustra::EngineParameters parameters;
-        parameters.stringMaterial = acustra::StringMaterial::Steel;
-        parameters.outputGain = 0.04f;
-        engine.setParameters(parameters);
-        engine.prepare(rate, block);
-        if (touchTheSwitch)
-        {
-            engine.setLegato(true);
-            engine.setLegato(false);
-        }
-        engine.setLegato(legato);
-        engine.setSympatheticStringsEnabled(false);
-        std::vector<float> left, right;
-        const auto sweep = [&] (double seconds)
-        {
-            const int samples = static_cast<int>(seconds * rate);
-            std::vector<float> l(static_cast<std::size_t>(block));
-            std::vector<float> r(static_cast<std::size_t>(block));
-            for (int i = 0; i < samples; i += block)
-            {
-                engine.process(l.data(), r.data(), block);
-                left.insert(left.end(), l.begin(), l.end());
-                right.insert(right.end(), r.begin(), r.end());
-            }
-        };
-        engine.noteOn(52, 0.85f);
-        sweep(1.0);
-        const std::size_t hammer = left.size();
-        engine.noteOn(55, 0.85f);
-        sweep(1.0);
-        const std::size_t pull = left.size();
-        engine.noteOff(55);
-        sweep(1.0);
-        return std::tuple { Audio { left, right }, hammer, pull };
-    };
-
-    // The switch up is exactly what it was, including after being pressed and
-    // released again.
-    const auto [plain, plainHammer, plainPull] = phrase(sampleRate, false, false);
-    const auto [touched, touchedHammer, touchedPull]
-        = phrase(sampleRate, false, true);
-    expect(plain.left == touched.left && plain.right == touched.right,
-           "the legato footswitch was not an exact no-op when up");
-
-    for (const double rate : { 44100.0, 48000.0, 96000.0 })
-    {
-        const auto [audio, hammer, pull] = phrase(rate, true, false);
-        for (std::size_t index = 0; index < audio.left.size(); ++index)
-            expect(std::isfinite(audio.left[index])
-                       && std::isfinite(audio.right[index])
-                       && std::abs(audio.left[index]) <= 1.0f
-                       && std::abs(audio.right[index]) <= 1.0f,
-                   "a legato phrase left headroom or went non-finite");
-
-        const auto band = [&] (double frequency, std::size_t begin,
-                               std::size_t end)
-        {
-            double real = 0.0;
-            double imaginary = 0.0;
-            const double count = static_cast<double>(end - begin);
-            for (std::size_t index = begin; index < end; ++index)
-            {
-                const double window = 0.5 - 0.5 * std::cos(
-                    2.0 * std::numbers::pi
-                    * static_cast<double>(index - begin) / count);
-                const double mono = window * 0.5
-                    * (audio.left[index] + audio.right[index]);
-                const double angle = 2.0 * std::numbers::pi * frequency
-                    * static_cast<double>(index) / rate;
-                real += mono * std::cos(angle);
-                imaginary += mono * std::sin(angle);
-            }
-            return 2.0 * std::hypot(real, imaginary) / count;
-        };
-        const double lower = 440.0 * std::exp2((52.0 - 69.0) / 12.0);
-        const double upper = 440.0 * std::exp2((55.0 - 69.0) / 12.0);
-        const auto quarter = static_cast<std::size_t>(0.25 * rate);
-        const auto half = static_cast<std::size_t>(0.5 * rate);
-
-        // Hammered on, the string sounds the new note and not the old one.
-        expect(band(upper, hammer + quarter, hammer + half)
-                   > 4.0 * band(lower, hammer + quarter, hammer + half),
-               "a hammer-on did not move the string to the new note");
-        // Released, it falls back to the note the hand is still holding.
-        expect(band(lower, pull + quarter, pull + half)
-                   > 4.0 * band(upper, pull + quarter, pull + half),
-               "a pull-off did not return the string to the held note");
-
-        // The finger's strike is on the string now: the arrival is louder
-        // than what the string had, but it is not a step - nothing on the
-        // first sample is above the note under it.
-        const auto peakOver = [&] (std::size_t begin, std::size_t end)
-        {
-            double maximum = 0.0;
-            for (std::size_t index = begin;
-                 index < std::min(end, audio.left.size()); ++index)
-                maximum = std::max(maximum, static_cast<double>(std::max(
-                    std::abs(audio.left[index]),
-                    std::abs(audio.right[index]))));
-            return maximum;
-        };
-        const double sounding = peakOver(hammer - half, hammer);
-        const double firstSample = peakOver(hammer, hammer + 1);
-        expect(sounding > 1.0e-6, "the note under the hammer-on was silent");
-        // The written dent's first sample reaches the bridge through the
-        // junction; the stiffer anchor returns 1.29x the sounding peak where
-        // the 17 mm spring returned 1.1x. The defect this guards against was
-        // the whole shape arriving at once, ten times the note.
-        expect(firstSample <= 1.5 * sounding,
-               "a hammer-on stepped the wave on its first sample");
-    }
-}
-
 
 void testLongitudinalModesGrowWithVelocity()
 {
@@ -6248,19 +5877,13 @@ void testTodaysMechanismsSurviveEachOther()
                     case 3:
                         engine.setPitchBend(2.0f);
                         engine.setPalmMutePressure(0.0f);
-                        // Legato goes through the same grinder: hammered on
-                        // over held strings, chained, released out of order,
-                        // and switched off mid-phrase so the fretting hand's
-                        // stack is dropped while the strings are still
-                        // sounding.
-                        engine.setLegato(true);
+                        // Notes over held strings, released out of order
+                        // while the strings are still sounding.
                         engine.noteOn(45, 0.8f);
                         engine.noteOn(48, 0.8f);
                         engine.noteOn(52, 0.8f);
                         engine.noteOff(48);
                         engine.noteOff(52);
-                        if ((step / 6) % 2 == 0)
-                            engine.setLegato(false);
                         break;
                     case 4:
                         parameters.stringMaterial
@@ -6841,32 +6464,6 @@ void testCancelledScheduledAttacksKeepOnlyTheExistingWave()
                 }
             }
 
-        for (const bool releaseAll : { false, true })
-            for (const bool sustain : { false, true })
-            {
-                acustra::AcustraEngine engine;
-                acustra::AcustraEngine reference;
-                for (auto* instrument : { &engine, &reference })
-                {
-                    instrument->prepare(rate, blockSize);
-                    instrument->noteOn(52, 0.35f);
-                    instrument->process(left.data(), right.data(), 2400);
-                    instrument->setLegato(true);
-                    instrument->noteOn(54, 0.4f);
-                    instrument->setSustainPedal(sustain);
-                }
-                engine.noteOn(54, 0.85f, 1, delay);
-                for (auto* instrument : { &engine, &reference })
-                {
-                    instrument->noteOff(54);
-                    if (releaseAll)
-                        instrument->noteOff(52);
-                }
-                compare(engine, reference,
-                        "a released legato pitch fired its queued attack" + at
-                            + (releaseAll ? ", empty stack" : ", fallback held")
-                            + (sustain ? ", pedal down" : ", pedal up"));
-            }
     }
 }
 
@@ -6938,7 +6535,7 @@ void testRepeatedStrumsCrossTheStringsLikeRepeatedRealStrums()
                     ++inBand;
             }
             for (const int note : chord)
-                engine.noteOff(note, 1, 1.0f);
+                engine.noteOff(note, 1);
             engine.reset(); // frees every voice without waiting out its tail
         }
     }
@@ -6991,7 +6588,7 @@ void testRepeatedStrumsVaryLikeRepeatedRealStrums()
             done += n;
         }
         stringPeakDb[static_cast<std::size_t>(r)] = 20.0 * std::log10(std::max(peak, 1e-9));
-        engine.noteOff(52, 1, 1.0f);
+        engine.noteOff(52, 1);
         engine.reset();
     }
     const auto meanOf = [] (const auto& values)
@@ -7049,7 +6646,7 @@ void testRepeatedStrumsVaryLikeRepeatedRealStrums()
         strokeSum[static_cast<std::size_t>(r)] = std::move(sum);
 
         for (const int note : chord)
-            engine.noteOff(note, 1, 1.0f);
+            engine.noteOff(note, 1);
         for (int done = 0; done < quietSamples; )
         {
             const int n = std::min(blockSize, quietSamples - done);
@@ -7248,217 +6845,6 @@ void testNoteOffDoesNotCreateANewAttack()
                        label + ": the release adds " + std::to_string(removed)
                        + " against a held " + std::to_string(before));
             }
-}
-
-// The fretting hand's own excitations. A hammer-on is a finger driving a
-// dent down onto the fret; a lift is the pressed string following the
-// finger back to its rest line, or a pull-off when the finger is faster than
-// the string; either carries the energy the pluck's velocity law assigns to
-// the same MIDI velocity, so the hand's articulations sit at the loudness a
-// player expects of that velocity. Lift zero is the hand staying on the
-// string and must be exactly the note-off it always was.
-void testFrettingHandFollowsThePluckLaw()
-{
-    struct Phrase
-    {
-        Audio audio;
-        std::size_t event;
-    };
-    const auto render = [] (acustra::StringMaterial material, double rate,
-                            bool legato, int first, int second, float velocity,
-                            int release, float lift, double eventAt)
-    {
-        acustra::AcustraEngine engine;
-        acustra::EngineParameters parameters;
-        parameters.stringMaterial = material;
-        parameters.outputGain = 0.06f;
-        engine.setParameters(parameters);
-        engine.prepare(rate, blockSize);
-        engine.setParameters(parameters);
-        engine.setLegato(legato);
-        engine.setSympatheticStringsEnabled(false);
-        const int total = static_cast<int>(3.0 * rate);
-        Audio audio { std::vector<float>(static_cast<std::size_t>(total)),
-                      std::vector<float>(static_cast<std::size_t>(total)) };
-        int rendered = 0;
-        const auto renderTo = [&] (int target)
-        {
-            while (rendered < target)
-            {
-                const int count = std::min(blockSize, target - rendered);
-                engine.process(audio.left.data() + rendered,
-                               audio.right.data() + rendered, count);
-                rendered += count;
-            }
-        };
-        renderTo(static_cast<int>(0.2 * rate));
-        if (first > 0)
-            engine.noteOn(first, 0.8f);
-        renderTo(static_cast<int>(eventAt * rate));
-        const auto event = static_cast<std::size_t>(rendered);
-        if (second > 0)
-            engine.noteOn(second, velocity);
-        if (release > 0)
-        {
-            const auto history = acustra::AcustraEngineTestAccess::radiationHistory(engine);
-            engine.noteOff(release, 1, lift);
-            expect(history == acustra::AcustraEngineTestAccess::radiationHistory(engine),
-                   "note-off reset or stepped the existing body/derivative history");
-        }
-        renderTo(total);
-        return Phrase { audio, event };
-    };
-    const auto peakAfter = [] (const Phrase& phrase, double rate,
-                               double begin, double end)
-    {
-        const auto from = static_cast<int>(phrase.event)
-                          + static_cast<int>(std::round(begin * rate));
-        const auto to = static_cast<int>(phrase.event)
-                        + static_cast<int>(std::round(end * rate));
-        return peak(phrase.audio, from, to);
-    };
-    const auto energyAfter = [] (const Phrase& phrase, double rate,
-                                 double begin, double end)
-    {
-        const auto from = static_cast<int>(phrase.event)
-                          + static_cast<int>(std::round(begin * rate));
-        const auto to = static_cast<int>(phrase.event)
-                        + static_cast<int>(std::round(end * rate));
-        const double r = rms(phrase.audio, from, to);
-        return r * r * static_cast<double>(to - from);
-    };
-    const auto bandAfter = [] (const Phrase& phrase, double rate,
-                               double frequency, double begin, double end)
-    {
-        return spectralPeakFrequency(phrase.audio, frequency, 60.0,
-            static_cast<double>(phrase.event) / rate + begin,
-            static_cast<double>(phrase.event) / rate + end, rate);
-    };
-    // Energies, so decibels are 10 log.
-    const auto within = [] (double a, double b, double dB)
-    {
-        return a > 0.0 && b > 0.0
-            && std::abs(10.0 * std::log10(a / b)) <= dB;
-    };
-
-    for (const auto material : { acustra::StringMaterial::Steel,
-                                 acustra::StringMaterial::Nylon })
-        for (const double rate : { 44100.0, 48000.0, 96000.0 })
-        {
-            const std::string label = std::string(
-                material == acustra::StringMaterial::Steel ? "steel" : "nylon")
-                + " at " + std::to_string(static_cast<int>(rate));
-            // Lift zero is exactly the note-off it always was.
-            const auto plain = render(material, rate, false, 43, 0, 0.0f, 43,
-                                      0.0f, 1.0);
-            const auto zero = render(material, rate, false, 43, 0, 0.0f, 43,
-                                     0.0f, 1.0);
-            expect(plain.audio.left == zero.audio.left
-                       && plain.audio.right == zero.audio.right,
-                   label + ": a zero lift is not the plain note-off");
-
-            // Lifted, the string sounds its open pitch, not the fretted one,
-            // and carries about the energy a pluck at that velocity would.
-            double previousEnergy = 0.0;
-            for (const float lift : { 0.3f, 0.6f, 1.0f })
-            {
-                const auto lifted = render(material, rate, true, 43, 0, 0.0f,
-                                           43, lift, 1.0);
-                const auto plucked = render(material, rate, false, 40, 0, 0.0f,
-                                            0, 0.0f, 1.0);
-                // The pluck lands at 0.2 s; its own attack window.
-                Phrase pluckedAt { plucked.audio,
-                                   static_cast<std::size_t>(0.2 * rate) };
-                const auto openPluck = render(material, rate, false, 0, 40,
-                                              lift, 0, 0.0f, 1.0);
-                const double openHz = 440.0 * std::exp2((40.0 - 69.0) / 12.0);
-                const double found = bandAfter(lifted, rate, openHz, 0.25, 0.75);
-                expect(std::abs(1200.0 * std::log2(found / openHz)) < 30.0,
-                       label + ": a lift of " + std::to_string(lift)
-                       + " did not leave the open string sounding");
-                const double liftEnergy = energyAfter(lifted, rate, 0.0, 1.0);
-                const double pluckEnergy = energyAfter(openPluck, rate, 0.0, 1.0);
-                // A lifted open string now shares what it carries with the
-                // strings the two-way junction couples it to, and the stub
-                // anchor drives the body less at its fundamental, so a full
-                // lift renders 8 dB under a pluck where it rendered within 6.
-                expect(within(liftEnergy, pluckEnergy, 10.0),
-                       label + ": lift " + std::to_string(lift) + " carries "
-                       + std::to_string(10.0 * std::log10(liftEnergy / pluckEnergy))
-                       + " dB against a pluck at that velocity");
-                // Once the finger outruns the string the release is the
-                // pressed shape whole, so faster is no louder.
-                expect(liftEnergy >= 0.999 * previousEnergy,
-                       label + ": lift energy falls with velocity");
-                previousEnergy = liftEnergy;
-                // This future envelope ratio is a diagnostic, not an onset
-                // continuity condition: the finger intentionally adds energy.
-                // The native lift-state test checks its capped physical
-                // increment and zero bridge endpoint; render() checks that
-                // the event itself preserves the body's existing history.
-                std::cout << "Acustra " << label << " lift " << lift
-                          << " first-ms/preceding-50ms peak: "
-                          << peakAfter(lifted, rate, 0.0, 0.001)
-                              / peakAfter(plain, rate, -0.05, 0.0) << '\n';
-                (void) pluckedAt;
-            }
-
-            // A hammer-on lands at the loudness of a pluck at its velocity
-            // and gets louder with velocity.
-            double previousHammer = 0.0;
-            for (const float velocity : { 0.3f, 0.6f, 1.0f })
-            {
-                const auto hammered = render(material, rate, true, 43, 45,
-                                             velocity, 0, 0.0f, 1.0);
-                const auto plucked = render(material, rate, false, 0, 45,
-                                            velocity, 0, 0.0f, 1.0);
-                const double hammerEnergy = energyAfter(hammered, rate, 0.0, 1.0);
-                const double pluckEnergy = energyAfter(plucked, rate, 0.0, 1.0);
-                expect(within(hammerEnergy, pluckEnergy, 8.0),
-                       label + ": hammer-on at " + std::to_string(velocity)
-                       + " carries " + std::to_string(
-                           10.0 * std::log10(hammerEnergy / pluckEnergy))
-                       + " dB against a pluck at that velocity");
-                // The one-second energy of a hammer-on is the string's own
-                // decay through its own point on the two-point bridge, so it
-                // carries whatever coupled pair that point sits on. Nylon at
-                // 96 kHz dips 0.125 dB between two of these three velocities
-                // where the one-point bridge rose monotonically; the bound
-                // admits that and still catches a hammer-on that gets
-                // quieter as it is hit harder.
-                expect(hammerEnergy >= 0.97 * previousHammer,
-                       label + ": hammer-on energy falls with velocity, "
-                       + std::to_string(10.0 * std::log10(
-                           hammerEnergy / std::max(previousHammer, 1.0e-30)))
-                       + " dB from the velocity below");
-                previousHammer = hammerEnergy;
-                const double newHz = 440.0 * std::exp2((45.0 - 69.0) / 12.0);
-                const double found = bandAfter(hammered, rate, newHz, 0.25, 0.75);
-                expect(std::abs(1200.0 * std::log2(found / newHz)) < 30.0,
-                       label + ": a hammer-on did not sound the new note");
-                for (std::size_t index = 0; index < hammered.audio.left.size();
-                     ++index)
-                    expect(std::isfinite(hammered.audio.left[index])
-                               && std::abs(hammered.audio.left[index]) <= 1.0f,
-                           label + ": a hammer-on left headroom or finiteness");
-            }
-
-            // A pull-off falls to the held note and is plucked by the finger
-            // that left, as loud as the lift was fast.
-            {
-                const auto pulled = render(material, rate, true, 43, 47, 0.8f,
-                                           47, 0.8f, 1.0);
-                const double heldHz = 440.0 * std::exp2((43.0 - 69.0) / 12.0);
-                const double found = bandAfter(pulled, rate, heldHz, 0.25, 0.75);
-                expect(std::abs(1200.0 * std::log2(found / heldHz)) < 30.0,
-                       label + ": a pull-off did not fall to the held note");
-                const auto plucked = render(material, rate, false, 0, 43, 0.8f,
-                                            0, 0.0f, 1.0);
-                expect(within(energyAfter(pulled, rate, 0.0, 1.0),
-                              energyAfter(plucked, rate, 0.0, 1.0), 8.0),
-                       label + ": a pull-off at 0.8 is not at a pluck's energy");
-            }
-        }
 }
 
 void testEachStringMaterialPlaysItsOwnMeasuredGuitar()
@@ -8097,181 +7483,6 @@ void testTheParallelPolarisationRadiatesThroughTheRockingSaddle()
     }
 }
 
-void testFrettingGeometryUsesTheOpenNutAndActualFretPositions()
-{
-    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
-        for (int string = 0; string < 6; ++string)
-        {
-            const bool steel = material == acustra::StringMaterial::Steel;
-            const double length = steel ? 0.648 : 0.650;
-            const double firstX = length * (1.0 - std::exp2(-1.0 / 12.0));
-            const double firstH = steel ? 0.0005 : 0.0007;
-            const double twelfthH = steel ? 0.0024 - 0.0008 * string / 5.0
-                                          : 0.0040 - 0.0010 * string / 5.0;
-            const double slope = (twelfthH - firstH) / (0.5 * length - firstX);
-            const double saddleH = firstH + slope * (length - firstX);
-            for (int fret : { 1, 3, 7, 12, 20 })
-                for (int heldFret = 0; heldFret <= fret; ++heldFret)
-                {
-                    const double x = length * (1.0 - std::exp2(-fret / 12.0));
-                    const double heldX = length * (1.0 - std::exp2(-heldFret / 12.0));
-                    const double openH = firstH + slope * (x - firstX);
-                    // Independently construct the line from a held crown
-                    // (height zero) to the saddle, or the actual open line.
-                    const double expected = heldFret == 0 ? openH
-                        : saddleH * (x - heldX) / (length - heldX);
-                    const auto actual = acustra::AcustraEngineTestAccess::frettingGeometry(
-                        material, string, static_cast<float>(x), static_cast<float>(heldX));
-                    expect(std::abs(actual[0] - openH) < 1.0e-8,
-                           "open action does not pass through the first/twelfth fret setup points");
-                    expect(std::abs(actual[1] - expected) < 1.0e-8,
-                           "fretting clearance does not follow the open nut or held crown-to-saddle line");
-                }
-        }
-}
-
-void testFrettingImpulsesHaveTheRequestedPhysicalState()
-{
-    using Access = acustra::AcustraEngineTestAccess;
-    // Geometry and energy are checked on the reconstructed string, not on
-    // the helper's stored waveform. The observer's origin is the bridge;
-    // the finger's apex and moving interval are measured from the nut.
-    for (const int period : { 128, 512, 2048 })
-        for (const float position : { 0.125f, 0.375f, 0.75f })
-            for (const float sign : { -1.0f, 1.0f })
-            {
-                const float height = sign * 0.002f;
-                const auto rest = Access::frettingState(period, position, height, 0, 0);
-                const auto uniform = Access::frettingState(period, position, 0, sign, 0);
-                const auto triangle = Access::frettingState(period, position, 0, 0, sign);
-                const double speed = 96000.0 / period;
-                const double dx = 2.0 / period;
-                // Float history interpolation followed by a time difference
-                // magnifies displacement roundoff by the sample rate.
-                const double displacementTolerance = 64.0 * std::numeric_limits<float>::epsilon()
-                    * std::max(std::abs(static_cast<double>(height)), 0.5 / speed);
-                const double velocityTolerance = 48000.0 * displacementTolerance;
-                double shapeError = 0.0, restVelocity = 0.0;
-                double velocityDisplacement = 0.0, uniformError = 0.0, triangleError = 0.0;
-                for (std::size_t point = 0; point < rest.displacement.size(); ++point)
-                {
-                    const double fromNut = 1.0 - point * dx;
-                    const double shape = std::min(fromNut / position,
-                                                  (1.0 - fromNut) / (1.0 - position));
-                    shapeError = std::max(shapeError, std::abs(rest.displacement[point] - height * shape));
-                    restVelocity = std::max(restVelocity, std::abs(rest.velocity[point]));
-                    velocityDisplacement = std::max({ velocityDisplacement,
-                        std::abs(uniform.displacement[point]), std::abs(triangle.displacement[point]) });
-                    // A centred time difference averages across the moving
-                    // front at a kink. Compare the constant/linear interiors.
-                    if (fromNut > 2.0 * dx && fromNut < 1.0 - 2.0 * dx
-                        && std::abs(fromNut - position) > 2.0 * dx)
-                    {
-                        uniformError = std::max(uniformError,
-                            std::abs(uniform.velocity[point] - (fromNut < position ? sign : 0.0)));
-                        triangleError = std::max(triangleError,
-                            std::abs(triangle.velocity[point] - sign * shape));
-                    }
-                }
-                const std::string label = "fretting state D=" + std::to_string(period)
-                    + " nut=" + std::to_string(position) + " sign=" + std::to_string(sign);
-                expect(shapeError < displacementTolerance, label + ": released shape has wrong height or nut position");
-                expect(restVelocity < velocityTolerance, label + ": released displacement is not at rest");
-                expect(velocityDisplacement < displacementTolerance, label + ": velocity injection moves the initial string");
-                expect(uniformError < velocityTolerance, label + ": hammer velocity has wrong sign or end of string");
-                expect(triangleError < velocityTolerance, label + ": lift velocity has wrong sign or nut position");
-                const double elastic = 0.5 * height * height / (position * (1.0 - position));
-                const double kineticUniform = 0.5 * position / (speed * speed);
-                const double kineticTriangle = 1.0 / (6.0 * speed * speed);
-                const double quadratureTolerance = 2.0 * dx / std::min(position, 1.0f - position) + 1.0e-4;
-                expect(std::abs(rest.energy / elastic - 1.0) < quadratureTolerance
-                    && std::abs(uniform.energy / kineticUniform - 1.0) < quadratureTolerance
-                    && std::abs(triangle.energy / kineticTriangle - 1.0) < quadratureTolerance,
-                    label + ": reconstructed energy differs from the physical displacement/velocity energy");
-                // Potential and kinetic increments are orthogonal at release,
-                // including the hammer's opposing displacement and velocity.
-                const auto mixedUniform = Access::frettingState(period, position, height, -sign, 0);
-                const auto mixedTriangle = Access::frettingState(period, position, height, 0, sign);
-                expect(std::abs(mixedUniform.energy / (rest.energy + uniform.energy) - 1.0) < 1.0e-4
-                    && std::abs(mixedTriangle.energy / (rest.energy + triangle.energy) - 1.0) < 1.0e-4,
-                    label + ": mixed displacement/velocity increments have a spurious energy cross term");
-            }
-}
-
-void testAnOpenLiftInjectsItsCappedPhysicalEnergy()
-{
-    // Independent target geometry: the low E's open line passes through the
-    // first- and twelfth-fret setup heights. Releasing fret 3 does not press
-    // the open nut onto the fret-crown plane. Do not call the engine's height,
-    // energy or excitation helpers to construct the expected result.
-    const double firstFraction = 1.0 - std::exp2(-1.0 / 12.0);
-    const double apex = 1.0 - std::exp2(-3.0 / 12.0);
-    double worstRelativeError = 0.0;
-    for (const auto material : { acustra::StringMaterial::Steel,
-                                 acustra::StringMaterial::Nylon })
-    {
-        const bool steel = material == acustra::StringMaterial::Steel;
-        const auto& calibration = acustra::fittedPhysicalCalibration;
-        const auto& physical = steel ? calibration.steel : calibration.nylon;
-        const double length = steel ? 0.648 : 0.650;
-        const double firstHeight = steel ? 0.0005 : 0.0007;
-        const double twelfthHeight = steel ? 0.0024 : 0.0040;
-        const double fraction = (apex - firstFraction) / (0.5 - firstFraction);
-        const double height = firstHeight * (1.0 - fraction)
-                            + twelfthHeight * fraction;
-        const double scale = std::max<double>(calibration.steelDisplacementScaleMetres,
-                                              1.0e-4);
-        const double elastic = (height / scale) * (height / scale)
-                             / (apex * (1.0 - apex));
-        const acustra::EngineParameters defaults;
-        const double position = std::clamp(
-            (0.045 + 0.135 * defaults.pluckPosition)
-                * physical.pluckDistanceScale / length, 0.05, 0.46);
-        for (const float velocity : { 0.3f, 0.6f, 1.0f })
-        {
-            // The specified unsmoothed Finger-reference triangle, before
-            // ordinary picking-hand position jitter and contact smoothing.
-            const double touch = std::clamp(defaults.touch
-                + physical.velocityBrightnessDepth * (velocity - 0.5), 0.0, 1.0);
-            const double amplitude = (steel ? 0.24 : 0.29)
-                * std::pow(velocity, 1.32 - 0.50 * physical.velocityBrightnessDepth)
-                * (0.92 + 0.08 * touch);
-            // The fretting finger's gestures carry what a pluck at the same
-            // velocity puts in the normal plane: its share 0.30 - 0.08 Touch
-            // on steel, bounded to 0.17-0.35, and 0.91 - 0.08 Touch on nylon,
-            // bounded to 0.78-0.96, without the per-pluck angle draw.
-            const double normalShare = steel
-                ? std::clamp(0.30 - 0.08 * touch, 0.17, 0.35)
-                : std::clamp(0.91 - 0.08 * touch, 0.78, 0.96);
-            const double requested = normalShare * amplitude * amplitude
-                                   / (position * (1.0 - position));
-            const double expected = std::min(requested, elastic);
-            for (const double rate : { 44100.0, 48000.0, 96000.0 })
-            {
-                const auto state = acustra::AcustraEngineTestAccess::isolatedOpenLift(
-                    material, velocity, rate);
-                // First differences average the slope across a kink's grid
-                // cell. The two triangle corners lose at most half this
-                // O(1/N) bound; the integrated velocity shape is smoother.
-                const double tolerance = 1.0 / (state.period * apex * (1.0 - apex))
-                    + 128.0 * std::numeric_limits<float>::epsilon();
-                const double error = std::abs(state.normalEnergy / expected - 1.0);
-                worstRelativeError = std::max(worstRelativeError, error);
-                const std::string label = std::string(steel ? "steel" : "nylon")
-                    + " lift " + std::to_string(velocity) + " at "
-                    + std::to_string(static_cast<int>(rate));
-                expect(state.releasedToOpen, label + ": note-off did not release fret 3 to open E");
-                expect(std::isfinite(error) && error < tolerance,
-                       label + ": injected wave energy differs from its capped physical target");
-                expect(state.parallelEnergy == 0.0 && state.bridgeSample == 0.0f,
-                       label + ": release moved the parallel wave or stepped the bridge sample");
-            }
-        }
-    }
-    std::cout << "Acustra isolated lift energy worst relative error: "
-              << worstRelativeError << '\n';
-}
-
 void testPerformance()
 {
     acustra::AcustraEngine engine;
@@ -8296,9 +7507,6 @@ void testPerformance()
 
 int main()
 {
-    testFrettingGeometryUsesTheOpenNutAndActualFretPositions();
-    testFrettingImpulsesHaveTheRequestedPhysicalState();
-    testAnOpenLiftInjectsItsCappedPhysicalEnergy();
     testDecayEstimatorFollowsPitchGlides();
     testLossFiltersPreserveTheReferenceTransfer();
     testSilenceAndFiniteOutput();
@@ -8335,7 +7543,6 @@ int main()
     testTheVibratoWheelAtZeroIsExact();
     testMpeTimbreSetsPerNotePluckPointOnMemberChannelOnly();
     testMpePressureBiasesVibratoDepthWithinTheWheelsOwnBound();
-    testMpePressureNeverChangesAPullOffsRadiatedEnergy();
     testStringPerChannelModeIsOptInAndBypassesTheAllocator();
     testTheVibratoWheelStaysInsideItsPublishedBounds();
     testAMemberBendRetunesOnlyItsOwnString();
@@ -8361,7 +7568,6 @@ int main()
     testBodyChangesPreserveTheSoundingStrings();
     testBodyChangesPreserveAnUnfinishedFade();
     testSwitchingStringsOrTuningUnderAChordDoesNotClick();
-    testLegatoHammersOnAndPullsOff();
     testLongitudinalModesGrowWithVelocity();
     testTodaysMechanismsSurviveEachOther();
     testNoteAfterSilenceDoesNotClick();
@@ -8376,7 +7582,6 @@ int main()
     testRepeatedStrumsCrossTheStringsLikeRepeatedRealStrums();
     testRepeatedStrumsVaryLikeRepeatedRealStrums();
     testNoTwoPlucksLandInTheSamePlace();
-    testFrettingHandFollowsThePluckLaw();
     testEachStringMaterialPlaysItsOwnMeasuredGuitar();
     testBodyShapesFollowTheCoupledTopAndCavity();
     testAPlectrumReleasesWithVelocity();

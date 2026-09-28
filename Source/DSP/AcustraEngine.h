@@ -172,23 +172,14 @@ public:
     // the pick's speed for this velocity and the string spacing.
     [[nodiscard]] int strumDelaySamples(int stringRank,
                                         float velocity) const noexcept;
-    // Ordinary key-up damps the existing note at every release velocity.
-    // With CC68 legato explicitly enabled, fingerLift requests an active
-    // fretting-hand lift/pull-off; zero keeps the finger touching the string.
-    // That articulation adds the velocity law's energy capped by the fret's
-    // stored elastic energy, so it can audibly excite the target/open note.
-    void noteOff(int midiNote, int midiChannel = 1,
-                 float fingerLift = 0.0f) noexcept;
+    // Key-up damps the note at every release velocity: lifting a key is the
+    // fretting hand letting go, never a new stroke.
+    void noteOff(int midiNote, int midiChannel = 1) noexcept;
     void setSustainPedal(bool down, int midiChannel = 1) noexcept;
     // Continuous bridge-hand damping, 0 open to 1 fully muted. Exposed as a
     // controller rather than a panel control: it is a playing pressure, and
     // zero is an exact no-op.
     void setPalmMutePressure(float pressure) noexcept;
-    // MIDI's Legato Footswitch, CC68. While it is down a note that a string
-    // already sounding can reach is hammered on rather than replucked, and
-    // releasing it pulls off to whatever that string is still holding. Up is
-    // an exact no-op, which is the default.
-    void setLegato(bool on) noexcept;
     void setPitchBend(float semitones, int midiChannel = 1) noexcept;
     // MIDI's Modulation Wheel, CC1, as the left hand's vibrato. Zero is an
     // exact no-op, which is the default; see the vibrato map in
@@ -208,10 +199,8 @@ public:
     // MPE channel pressure, 0xD0, on a lower-zone member channel: the
     // fretting hand's grip. It biases how deep the wheel's vibrato reaches
     // (see vibratoSemitones) and nothing else; it adds no string energy of
-    // its own. It does NOT reach a pull-off's lift -- liftFinger's own
-    // comment records the energy discontinuity that took it back out.
-    // 0-1; inert on a conventional or manager channel and inert with no
-    // lower zone.
+    // its own. 0-1; inert on a conventional or manager channel and inert with
+    // no lower zone.
     void setMpePressure(float value, int midiChannel) noexcept;
     // Opt-in guitar-controller mode: channels 1-6 are the six strings
     // directly, bypassing chooseString's fret-distance guess. It is the
@@ -271,7 +260,6 @@ private:
     static_assert(bridgeModeCount < 255, "BridgeLoad::activeModes holds a byte");
     static constexpr int controlPeriod = 32;
     static constexpr int midiChannelCount = 16;
-    static constexpr int legatoHeldLimit = 8;
 
     struct OnePole
     {
@@ -624,12 +612,6 @@ private:
         int midiChannel { 1 };
         int fret { 0 };
         int ownerCount { 0 };
-        // Notes the fretting hand is holding on this string, oldest first, so
-        // that releasing the top one pulls off to the one under it. Empty
-        // unless the legato footswitch is down, which is what keeps every
-        // other path exactly as it was.
-        std::array<int, legatoHeldLimit> legatoHeld {};
-        int legatoHeldCount { 0 };
         bool played { false };
         bool keyDown { false };
         bool pedalHeld { false };
@@ -752,11 +734,6 @@ private:
         float dispersionPoleRatio { 4.0f };
         float level { 0.0f };
         float releaseDamping { 1.0f };
-        float fingerLift { 0.0f };
-        // The lifting finger still touches the string until it has risen
-        // clear of it; that contact is the hand loss for this many samples.
-        float touchDamping { 1.0f };
-        int touchSamples { 0 };
         // Samples until a released string is handed back to the allocator.
         int returnSamples { 0 };
         // Samples until a scheduled pluck is released; zero when none waits.
@@ -937,19 +914,6 @@ private:
     void firePluck(Voice& voice, int stringIndex) noexcept;
     void beginRelease(Voice& voice, int stringIndex) noexcept;
     void captureTail(Voice& voice) noexcept;
-    [[nodiscard]] float actionHeight(int stringIndex,
-                                     float nutDistance) const noexcept;
-    [[nodiscard]] float frettingClearance(int stringIndex, float fretDistance,
-                                          float heldDistance) const noexcept;
-    [[nodiscard]] float handContactGain(float frequency) const noexcept;
-    [[nodiscard]] float pluckEnergy(float velocity, float soundingLength,
-                                    float tension) const noexcept;
-    void addReleasedTriangle(StringLoop& loop, float height,
-                             float apexFraction, float sign) noexcept;
-    void addUniformVelocity(StringLoop& loop, float plateau,
-                            float extentFraction, float sign) noexcept;
-    void addTriangleVelocity(StringLoop& loop, float scale,
-                             float apexFraction, float sign) noexcept;
     // The Pick technique's released state (FittedPhysicalData.h): a rest
     // triangle of this height with its apex at position, a fraction of the
     // sounding length from the bridge, smoothed by the contact aperture (in
@@ -965,9 +929,6 @@ private:
                             float scaleLength) const noexcept;
     static void applyPlectrumSlip(StringLoop& loop, int length,
                                   double slipPole) noexcept;
-    void liftFinger(Voice& voice, int stringIndex, int targetMidi) noexcept;
-    void hammerString(Voice& voice, int stringIndex, int previousMidi,
-                      float velocity) noexcept;
     void resetSoundState() noexcept;
     void freezeMemberPitchBend(Voice& voice) noexcept;
     [[nodiscard]] bool isLowerZoneMaster(int midiChannel) const noexcept;
@@ -975,10 +936,6 @@ private:
     [[nodiscard]] bool channelControlsVoice(int midiChannel,
                                             const Voice& voice) const noexcept;
     [[nodiscard]] bool sustainIsDown(const Voice& voice) const noexcept;
-    [[nodiscard]] int chooseLegatoString(int midiNote,
-                                        int midiChannel) const noexcept;
-    bool releaseLegatoNote(int midiNote, int midiChannel,
-                           float fingerLift) noexcept;
     int chooseString(int midiNote) const noexcept;
     int chooseStringWithoutHand(int midiNote) const noexcept;
     // The fretting hand (see chooseString). Each string remembers the last
@@ -1183,7 +1140,6 @@ private:
     float lastImpedanceInertia_ { 0.0f };
     bool bridgeDerivativesNeedPriming_ { true };
     bool bridgeDerivativesCrossRelease_ { false };
-    bool legato_ { false };
     bool prepared_ { false };
     bool bodyConfigured_ { false };
     std::uint64_t noteOrder_ { 0 };

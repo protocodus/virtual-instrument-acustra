@@ -7,17 +7,6 @@ namespace acustra
 {
 namespace
 {
-// In explicit CC68 legato mode, release velocity controls an active finger
-// lift. Unsensed/default 64 and below keep the finger touching; 127 requests
-// the full lift. The engine ignores this active gesture outside legato, so
-// a fast ordinary key-up damps the note without generating another stroke.
-// A Note On at velocity zero carries no sensed release velocity.
-float fingerLiftFromReleaseVelocity(unsigned velocity) noexcept
-{
-    return velocity <= 64u ? 0.0f
-                           : static_cast<float>(velocity - 64u) / 63.0f;
-}
-
 // MIDI's MPE Configuration Message is RPN 6 (MPE specification 1.0, 2.1).
 constexpr int mpeZoneLayoutRpn = 6;
 
@@ -145,9 +134,9 @@ void Performer::endBlock() noexcept
         // sounds, voiced and strummed (see flushNoteGroup), at the first
         // key's time plus the window, which is the latency the host is told.
         // A key repeated inside the window, or a controller that changes how
-        // notes are allocated, ends the chord. Legato groups and
-        // string-per-channel controllers already say how each note is
-        // played, so they pass through in time without gathering.
+        // notes are allocated, ends the chord. String-per-channel
+        // controllers already say how each note is played, so they pass
+        // through in time without gathering.
         const auto blockEnd = processedSamples_ + blockSamples_;
         int next = 0;
         for (; next < heldCount_
@@ -160,8 +149,7 @@ void Performer::endBlock() noexcept
                 static_cast<int>(std::max<std::int64_t>(
                     0, held.due - processedSamples_)),
                 held.bytes.data(), held.size);
-            if (joined && gatherChords_ && ! legatoDown_
-                && ! engine_.isStringPerChannelMode())
+            if (joined && gatherChords_ && ! engine_.isStringPerChannelMode())
                 gatherChord(next);
         }
         int kept = 0;
@@ -204,13 +192,12 @@ void Performer::flushNoteGroup() noexcept
     // a strum reaches its strings one after another, low to high on a
     // downstroke and back on the return, so consecutive strums alternate. A
     // rest long enough to start over starts over with a downstroke; two
-    // seconds is that convention, not a measurement. Legato groups are
-    // hammer-ons and stay as they are.
+    // seconds is that convention, not a measurement.
     const bool oneChannel = std::all_of(
         pendingNoteOns_.begin(), pendingNoteOns_.begin() + pendingNoteOnCount_,
         [&](const PendingNoteOn& note)
         { return note.channel == pendingNoteOns_[0].channel; });
-    const bool strum = pendingNoteOnCount_ >= 3 && ! legatoDown_ && oneChannel;
+    const bool strum = pendingNoteOnCount_ >= 3 && oneChannel;
     if (strum)
     {
         // The clock is the block's start, so a rest is measured between the
@@ -238,9 +225,8 @@ void Performer::flushNoteGroup() noexcept
         engine_.beginStrum();
     }
     // Notes that land together on one channel are one fretting-hand shape:
-    // the engine places them as a chord before they sound. Legato groups are
-    // hammer-ons onto what is already held.
-    if (pendingNoteOnCount_ >= 2 && oneChannel && ! legatoDown_
+    // the engine places them as a chord before they sound.
+    if (pendingNoteOnCount_ >= 2 && oneChannel
         && pendingNoteOnCount_ <= AcustraEngine::stringCount)
     {
         std::array<int, AcustraEngine::stringCount> chord {};
@@ -271,7 +257,7 @@ void Performer::flushNoteGroup() noexcept
     for (int index = 0; index < pendingNoteOffCount_; ++index)
     {
         const auto& note = pendingNoteOffs_[static_cast<std::size_t>(index)];
-        engine_.noteOff(note.note, note.channel, note.lift);
+        engine_.noteOff(note.note, note.channel);
     }
     pendingNoteOffCount_ = 0;
 }
@@ -313,11 +299,9 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
     }
     else if (noteOff && pendingNoteOffCount_ < sampleGroupCapacity)
     {
-        const unsigned releaseVelocity = status == 0x80u && size >= 3
-            ? static_cast<unsigned>(data[2] & 0x7fu) : 64u;
+        // Release velocity is read by nothing: a key-up damps its note.
         pendingNoteOffs_[static_cast<std::size_t>(pendingNoteOffCount_++)] = {
-            static_cast<int>(data[1] & 0x7fu), midiChannel,
-            fingerLiftFromReleaseVelocity(releaseVelocity)
+            static_cast<int>(data[1] & 0x7fu), midiChannel
         };
     }
     else
@@ -364,11 +348,11 @@ void Performer::gatherChord(int first) noexcept
         const auto status = static_cast<unsigned>(held.bytes[0]) & 0xf0u;
         if (status == 0xb0u && held.size >= 3)
         {
-            // Legato, reset, sound/notes off, mono/poly and the RPNs that lay
-            // out an MPE zone all change the allocation.
+            // Reset, sound/notes off, mono/poly and the RPNs that lay out an
+            // MPE zone all change the allocation.
             switch (held.bytes[1] & 0x7fu)
             {
-                case 6: case 38: case 68: case 96: case 97: case 98:
+                case 6: case 38: case 96: case 97: case 98:
                 case 99: case 100: case 101: case 120: case 121:
                 case 123: case 126: case 127:
                     return;
@@ -413,10 +397,7 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
     }
     else if (kind == 0x80u && size >= 2)
     {
-        engine_.noteOff(static_cast<int>(data[1] & 0x7fu), midiChannel,
-                        fingerLiftFromReleaseVelocity(
-                            size >= 3 ? static_cast<unsigned>(data[2] & 0x7fu)
-                                      : 64u));
+        engine_.noteOff(static_cast<int>(data[1] & 0x7fu), midiChannel);
     }
     else if (kind == 0xe0u && size >= 3)
     {
@@ -490,16 +471,6 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
         else if (controller == 127u && midiChannel == 1)
         {
             engine_.setStringPerChannelMode(false);
-        }
-        else if (controller == 68u)
-        {
-            // MIDI's Legato Footswitch. While it is down a note a sounding
-            // string can reach is hammered on rather than replucked, and
-            // releasing it pulls off to what that string is still holding.
-            // Like the bridge hand it is one gesture across the instrument,
-            // not a per-channel setting.
-            legatoDown_ = value >= 64u;
-            engine_.setLegato(legatoDown_);
         }
         else if (controller == 120u)
         {

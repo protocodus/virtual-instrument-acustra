@@ -372,35 +372,6 @@ void testControllerStringsAreUnchanged()
            "MPE member notes were not allocated as before: " + describe(shape));
 }
 
-void testLegatoStillHammersAndPullsOff()
-{
-    auto engine = freshEngine();
-    engine->setLegato(true);
-    engine->noteOn(60, 0.8f);          // B string, fret 1
-    run(*engine, 0.2);
-    const int string = engine->heldString(60);
-    engine->noteOn(62, 0.8f);          // hammered to fret 3
-    expect(engine->heldString(62) == string,
-           "a legato D4 over C4 was not hammered on the same string");
-    run(*engine, 0.2);
-    engine->noteOn(64, 0.8f);          // and to fret 5
-    expect(engine->heldString(64) == string,
-           "a second hammer-on left the string");
-    run(*engine, 0.2);
-    engine->noteOff(64, 1, 0.8f);      // pulled off to fret 3
-    expect(Access::soundingNote(*engine, string) == 62,
-           "releasing the hammered note did not pull off to D4");
-    engine->noteOff(62, 1, 0.8f);
-    expect(Access::soundingNote(*engine, string) == 60,
-           "releasing D4 did not pull off to C4");
-    // A note outside the hammering hand still goes where the hand reaches.
-    engine->noteOn(57, 0.8f);
-    const auto a3 = placed(*engine, 57);
-    expect(a3.string >= 0 && a3.string != string && a3.fret <= 4,
-           "a new note under legato left the hand: string "
-               + std::to_string(a3.string) + " fret " + std::to_string(a3.fret));
-}
-
 void testChordsOnOneSampleAreOneShape()
 {
     struct Case
@@ -581,7 +552,6 @@ int main()
     testMelodyOverHeldBassKeepsTheBass();
     testRepeatedNotesReplickTheirString();
     testControllerStringsAreUnchanged();
-    testLegatoStillHammersAndPullsOff();
     testChordsOnOneSampleAreOneShape();
     testForgottenHandIsTheHandlessAllocator();
     testAllocatorCost();

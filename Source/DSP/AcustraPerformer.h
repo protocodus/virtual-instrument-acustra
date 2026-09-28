@@ -13,12 +13,12 @@ namespace acustra
 // behaviour instead of each porting it.
 //
 // It covers sample-accurate splitting of a block at its events, MIDI channel
-// messages (notes with release velocity, pitch bend per channel with its RPN 0
-// range, CC1 vibrato, CC2 bridge hand, CC64 sustain, CC68 legato, CC74 and
-// channel pressure for MPE, CC120/121/123, CC126/127 string-per-channel
-// mode), the MPE lower zone (RPN 6 on channel 1) and its controller scope,
-// same-sample note grouping (canonical order, strums, chord shapes) and the
-// Gather Chords window with the latency it costs.
+// messages (notes, pitch bend per channel with its RPN 0 range, CC1 vibrato,
+// CC2 bridge hand, CC64 sustain, CC74 and channel pressure for MPE,
+// CC120/121/123, CC126/127 string-per-channel mode), the MPE lower zone
+// (RPN 6 on channel 1) and its controller scope, same-sample note grouping
+// (canonical order, strums, chord shapes) and the Gather Chords window with
+// the latency it costs.
 //
 // Front-end neutral and real-time safe: no JUCE, no allocation after
 // construction, no exceptions, fixed-size storage only, C++17.
@@ -73,7 +73,7 @@ public:
 
     // Not real-time. Prepares the engine and starts the performance clock
     // from zero. Channel layout the player was given (MPE zone, conventional
-    // bend ranges, legato, string-per-channel mode) is kept; bend wheels,
+    // bend ranges, string-per-channel mode) is kept; bend wheels,
     // RPN selections and held events are cleared.
     void prepare(double sampleRate, int maximumBlockSize);
 
@@ -121,7 +121,8 @@ public:
     // --- MIDI spelt for front ends without MIDI ------------------------------
     // Channels are 1-16, data values 0-127; out-of-range values are clamped.
     void noteOn(int sampleOffset, int channel, int note, int velocity) noexcept;
-    // Release velocity 64 is "unsensed" (see fingerLiftFromReleaseVelocity).
+    // Release velocity is spelt into the Note Off and read by nothing: a
+    // key-up damps its note however fast it is lifted.
     void noteOff(int sampleOffset, int channel, int note,
                  int releaseVelocity = 64) noexcept;
     void controlChange(int sampleOffset, int channel, int controller,
@@ -159,7 +160,6 @@ private:
     {
         int note { 0 };
         int channel { 1 };
-        float lift { 0.0f };
     };
 
     // A due time counts samples since prepare.
@@ -199,7 +199,6 @@ private:
     AcustraEngine engine_;
 
     // Playing state that outlives a block.
-    bool legatoDown_ { false };
     // A strum's stroke alternates; the sample clock tells a rest from a beat.
     bool strumUpstroke_ { false };
     bool gatherChords_ { false };

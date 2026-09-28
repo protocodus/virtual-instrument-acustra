@@ -4,6 +4,43 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — at the user's request: legato removed everywhere
+
+Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
+"remove \"legato\"", and when asked where it should go they answered
+"Everywhere": off the Rack Extension's panel, automation and CC68, and out of
+the instrument's shared playing logic, so neither the plug-in nor Reason has
+it.
+
+What went, in this repository:
+- the engine's legato mode (`setLegato`): the hammer-on (`hammerString`), the
+  fretting hand's stack of held notes per string and the pull-off to the note
+  under the top one (`chooseLegatoString`, `releaseLegatoNote`);
+- the finger lift that release velocity drove in legato mode (`liftFinger`,
+  the engine's `noteOff` lift argument, the lifting finger's touch damping),
+  and the helpers only those gestures used (action height, fretting
+  clearance, the fretting-hand energy law and the three wave-state writers);
+- the player's CC68 handling (`legatoDown_`): CC68 no longer turns off strums
+  or chord shapes, no longer ends a gathered chord, and does nothing at all;
+- the fretting-hand demo (07), its tests, and the text in the plug-in's
+  Picking tooltip and the README.
+
+What stays, because it is not CC68 legato:
+- note-off damping at every release velocity, exactly as it sounded with the
+  footswitch up, which was the default;
+- a repeated key replucking its own string, sustain, CC2, CC1, MPE (its
+  channel pressure only ever biased vibrato; a comment about pull-offs went),
+  string-per-channel mode, same-sample strums and chord shapes, Gather Chords;
+- the Performer's `noteOff` still takes a release velocity, so a front end's
+  MIDI spelling is unchanged; nothing reads it;
+- the recording-only AG-PT hammer-on audit (Tools/BenchmarkHammerOnNotes.py),
+  which never ran the engine.
+
+Every render that does not send CC68 is byte-identical to main (cd73763): 234
+of 246 renders of main's performance battery and a parameter sweep through
+the player at 44.1/48/96 kHz, and all eleven remaining demos. The twelve that
+differ are the two battery performances that sent CC68.
+
 ## 2026-09-28 — blind verdict: B+D over the weighted blend, and a midpoint to try
 
 The listener asked whether the Set 18 candidates could all be combined with

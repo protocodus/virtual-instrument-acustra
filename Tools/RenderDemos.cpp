@@ -1,4 +1,4 @@
-// Renders Acustra's twelve demonstrations through AcustraEngine, the
+// Renders Acustra's eleven demonstrations through AcustraEngine, the
 // same JUCE-free signal path used by the plug-in. Every score and engine seed
 // is deterministic. The engine's strings, passive bridge, and modal body are
 // the source; no sample playback, convolution, room, or post-effect is used.
@@ -59,11 +59,7 @@ public:
     }
 
     void noteOn(int note, float velocity) { engine_.noteOn(note, velocity); }
-    void noteOff(int note, float lift = 0.0f)
-    {
-        engine_.noteOff(note, 1, lift);
-    }
-    void legato(bool on) { engine_.setLegato(on); }
+    void noteOff(int note) { engine_.noteOff(note, 1); }
 
     void rest(double seconds)
     {
@@ -372,49 +368,6 @@ Audio playingBehaviours()
     return take.finish();
 }
 
-Audio frettingHand()
-{
-    // The fretting hand's own sounds, all from MIDI the player already sends:
-    // hammer-ons at two velocities, a pull-off, and then the same fretted
-    // note released three ways by its note-off velocity - the finger staying
-    // on the string, a brisk lift that leaves the open string ringing, and a
-    // full pull-off to open. Nothing here is a control.
-    auto parameters = baseParameters();
-    parameters.stringMaterial = StringMaterial::Steel;
-    parameters.shape = BodyShape::Dreadnought;
-    parameters.bodyMaterial = BodyMaterial::Spruce;
-    parameters.pluckPosition = 0.26f;
-    parameters.touch = 0.60f;
-
-    Take take(parameters);
-    take.legato(true);
-    // A plucked G3 on the D string, hammered to A3 softly, released, then
-    // hammered hard, then a pull-off back down.
-    take.noteOn(55, 0.72f);
-    take.rest(0.60);
-    take.noteOn(57, 0.35f);
-    take.rest(0.55);
-    take.noteOff(57);
-    take.rest(0.45);
-    take.noteOn(57, 0.95f);
-    take.rest(0.55);
-    take.noteOff(57, 0.80f);
-    take.rest(0.80);
-    take.noteOff(55);
-    take.rest(0.50);
-    // Keep explicit legato enabled for the active finger-lift demonstration.
-    // The same fretted G2 three times: the finger stays on the string, then
-    // lifts briskly, then lifts as fast as the string can follow.
-    for (const float lift : { 0.0f, 0.35f, 1.0f })
-    {
-        take.noteOn(43, 0.78f);
-        take.rest(0.70);
-        take.noteOff(43, lift);
-        take.rest(lift > 0.0f ? 1.30 : 0.60);
-    }
-    return take.finish();
-}
-
 Audio tuningChord(EngineParameters parameters,
                   std::initializer_list<int> notes)
 {
@@ -574,7 +527,7 @@ struct Demo
     Audio (*render)();
 };
 
-constexpr std::array<Demo, 12> demos {{
+constexpr std::array<Demo, 11> demos {{
     { "01-steel-sustain-range.wav",
       "Steel sustain from open E2 to B5, one held pluck at a time",
       steelSustainRange },
@@ -594,10 +547,6 @@ constexpr std::array<Demo, 12> demos {{
       "A chord change over a ringing chord, CC2 bridge-hand damping, then two "
       "natural harmonics above the fretted range",
       playingBehaviours },
-    { "07-fretting-hand.wav",
-      "Hammer-ons at two velocities and a pull-off under CC68, then one "
-      "fretted note released three ways by its note-off velocity",
-      frettingHand },
     { "08-strummed-chords.wav",
       "Same-sample chords swept as alternating strums, then one chord eight "
       "times hand-damped, no two strokes the same take",

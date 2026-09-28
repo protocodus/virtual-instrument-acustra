@@ -143,7 +143,7 @@ void testOrdinaryAndPedalRelease()
         auto& voice = Access::voice(*engine);
         expect(voice.contactTravel.active && voice.excitationEnvelope > 1.0e-8f,
                "early release probe did not contain an active source and travelling waves");
-        engine->noteOff(43, 1, 1.0f);
+        engine->noteOff(43, 1);
         expect(voice.excitationEnvelope == 0.0f && voice.contactTravel.active,
                "ordinary release continued emission or discarded already emitted waves");
 
@@ -151,7 +151,7 @@ void testOrdinaryAndPedalRelease()
         engine->setSustainPedal(true);
         engine->noteOn(43, 1.0f, 1);
         Access::advance(*engine, std::max(1, static_cast<int>(0.001 * rate)));
-        engine->noteOff(43, 1, 1.0f);
+        engine->noteOff(43, 1);
         expect(Access::voice(*engine).excitationEnvelope > 1.0e-8f,
                "pedal-held key-up prematurely changed the contact");
         engine->setSustainPedal(false);
@@ -159,15 +159,6 @@ void testOrdinaryAndPedalRelease()
                "pedal-up did not end ordinary contact emission");
     }
     auto engine = fresh();
-    engine->setLegato(true);
-    engine->noteOn(43, 1.0f);
-    Access::advance(*engine, 48);
-    const float envelope = Access::voice(*engine).excitationEnvelope;
-    engine->noteOff(43, 1, 1.0f);
-    expect(Access::voice(*engine).excitationEnvelope == envelope,
-           "ordinary-release change altered an explicitly requested legato lift");
-
-    engine = fresh();
     engine->noteOn(43, 1.0f, 1, 200);
     engine->noteOff(43);
     Access::advance(*engine, 256);

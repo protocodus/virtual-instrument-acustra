@@ -402,10 +402,9 @@ void testSameSampleChordsAreStrummedAndAlternate()
     AcustraAudioProcessor processor;
     processor.prepareToPlay (sampleRate, blockSize);
     juce::AudioBuffer<float> audio { 2, blockSize };
-    const auto upperRegisterDelay = [&] (bool legato, double restSeconds)
+    const auto upperRegisterDelay = [&] (double restSeconds)
     {
         juce::MidiBuffer chord;
-        chord.addEvent (juce::MidiMessage::controllerEvent (1, 68, legato ? 127 : 0), 0);
         for (const int note : { 41, 46, 51, 56, 61, 84 })
             chord.addEvent (juce::MidiMessage::noteOn (1, note, 0.8f), 0);
         std::vector<float> mono;
@@ -421,7 +420,6 @@ void testSameSampleChordsAreStrummedAndAlternate()
         juce::MidiBuffer off;
         for (const int note : { 41, 46, 51, 56, 61, 84 })
             off.addEvent (juce::MidiMessage::noteOff (1, note), 0);
-        off.addEvent (juce::MidiMessage::controllerEvent (1, 68, 0), 0);
         const int restBlocks = static_cast<int> (restSeconds * sampleRate / blockSize);
         for (int block = 0; block < restBlocks; ++block)
         {
@@ -435,22 +433,19 @@ void testSameSampleChordsAreStrummedAndAlternate()
         std::sort (values.begin(), values.end());
         return values[values.size() / 2];
     };
-    std::vector<double> downs, ups, downAgains, hammereds;
+    std::vector<double> downs, ups, downAgains;
     for (int stroke = 0; stroke < 8; ++stroke)
     {
         // The odd-length group ends on a downstroke: the next stroke must
         // restart down after the long rest, overriding its pending upstroke.
-        downs.push_back (upperRegisterDelay (false, 0.5));
-        ups.push_back (upperRegisterDelay (false, 0.5));
-        downAgains.push_back (upperRegisterDelay (false, 2.5));
+        downs.push_back (upperRegisterDelay (0.5));
+        ups.push_back (upperRegisterDelay (0.5));
+        downAgains.push_back (upperRegisterDelay (2.5));
     }
-    for (int group = 0; group < 4; ++group)
-        hammereds.push_back (upperRegisterDelay (true, 2.5));
     const double down = median (downs);
     const double up = median (ups);
     const double downAgain = median (downAgains);
     const double restarted = median ({ downs.begin() + 1, downs.end() });
-    const double hammered = median (hammereds);
     // Medians allow the existing measured stroke-speed and string-level
     // variation. At the shipping defaults they are 13/0/12/13/0 ms; the
     // direction margins are several analysis hops, not threshold rounding.
@@ -464,12 +459,10 @@ void testSameSampleChordsAreStrummedAndAlternate()
             "the third strum did not alternate back to low to high");
     expect (restarted > 0.006 && restarted > 2.0 * up,
             "a long rest did not restart with a low-to-high strum");
-    expect (hammered < 0.5 * down,
-            "a legato group was swept like a strum");
     std::cout << "Acustra strum sweep medians: down " << down * 1000.0
               << " ms, up " << up * 1000.0 << " ms, down again "
               << downAgain * 1000.0 << " ms, restart " << restarted * 1000.0
-              << " ms, legato " << hammered * 1000.0 << " ms\n";
+              << " ms\n";
 }
 
 void testRepeatedHeldChordsKeepTheirAudibleSweep()
@@ -642,64 +635,13 @@ void testTheModulationWheelReachesTheEngineAsVibrato()
               << largest << "\n";
 }
 
-void testLegatoControllerReachesTheEngine()
+void testReleaseVelocityAndCc68ChangeNothing()
 {
-    // CC68 is MIDI's Legato Footswitch. With it down, a second note a
-    // sounding string can reach is hammered on rather than replucked: the
-    // string it was on is the string it stays on, so one voice sounds where
-    // a repluck would have taken a second string.
-    const auto arrivalRise = [] (bool legato)
-    {
-        AcustraAudioProcessor processor;
-        processor.prepareToPlay (sampleRate, blockSize);
-        juce::AudioBuffer<float> audio { 2, blockSize };
-        const auto sweep = [&] (double seconds, juce::MidiBuffer& first)
-        {
-            double peak = 0.0;
-            const int blocks = std::max (1,
-                static_cast<int> (seconds * sampleRate / blockSize));
-            for (int block = 0; block < blocks; ++block)
-            {
-                juce::MidiBuffer empty;
-                processor.processBlock (audio, block == 0 ? first : empty);
-                for (int sample = 0; sample < blockSize; ++sample)
-                    peak = std::max (peak, static_cast<double> (std::max (
-                        std::abs (audio.getSample (0, sample)),
-                        std::abs (audio.getSample (1, sample)))));
-            }
-            return peak;
-        };
-        juce::MidiBuffer start;
-        if (legato)
-            start.addEvent (juce::MidiMessage::controllerEvent (1, 68, 127), 0);
-        start.addEvent (juce::MidiMessage::noteOn (1, 52, 0.85f), 1);
-        sweep (0.5, start);
-        juce::MidiBuffer none;
-        const double before = sweep (0.1, none);
-        juce::MidiBuffer second;
-        second.addEvent (juce::MidiMessage::noteOn (1, 57, 0.85f), 0);
-        const double after = sweep (0.2, second);
-        return std::pair { after / std::max (before, 1.0e-9),
-                           processor.getActiveVoiceCount() };
-    };
-    const auto [plucked, pluckedVoices] = arrivalRise (false);
-    const auto [hammered, hammeredVoices] = arrivalRise (true);
-    expect (plucked > 2.0, "the replucked reference arrival did not rise");
-    expect (hammered > 1.5, "the hammered arrival did not rise");
-    std::cout << "Acustra legato wrapper rise: plucked=" << plucked
-              << " hammered=" << hammered << "\n";
-    // The engine suite measures the mechanism itself. This one only has to
-    // prove the controller arrives: hammered on, the second note stays on
-    // the first note's string instead of taking another.
-    expect (pluckedVoices == 2 && hammeredVoices == 1,
-            "CC68 did not reach the engine as legato");
-}
-
-void testReleaseVelocityRequiresExplicitLegato()
-{
-    // Fast keyboard release must damp the existing note. Only explicit CC68
-    // requests an active fretting-hand lift that excites the open string.
-    const auto phrase = [] (const juce::MidiMessage& off, bool legato = false)
+    // A key-up damps its note however fast it is lifted, and CC68, MIDI's
+    // Legato Footswitch, is not read: legato was removed everywhere at the
+    // user's request (Docs/decisions.md, 2026-09-28). Every release
+    // encoding, with or without the footswitch down, renders the same wave.
+    const auto phrase = [] (const juce::MidiMessage& off, bool footswitch = false)
     {
         AcustraAudioProcessor processor;
         processor.prepareToPlay (sampleRate, blockSize);
@@ -719,75 +661,33 @@ void testReleaseVelocityRequiresExplicitLegato()
             }
         };
         juce::MidiBuffer start;
-        if (legato)
+        if (footswitch)
             start.addEvent (juce::MidiMessage::controllerEvent (1, 68, 127), 0);
         start.addEvent (juce::MidiMessage::noteOn (1, 43, 1.0f), 0);
         sweep (0.8, start);
         juce::MidiBuffer release;
         release.addEvent (off, 0);
-        const auto releasedAt = mono.size();
-        sweep (1.0, release);
-        return std::pair { mono, releasedAt };
+        sweep (0.2, release);
+        juce::MidiBuffer next;
+        if (footswitch)
+            next.addEvent (juce::MidiMessage::controllerEvent (1, 68, 0), 0);
+        next.addEvent (juce::MidiMessage::noteOn (1, 45, 0.8f), 0);
+        next.addEvent (juce::MidiMessage::noteOn (1, 47, 0.8f), 480);
+        sweep (0.8, next);
+        return mono;
     };
-    const auto tailEnergy = [] (const std::vector<float>& mono,
-                                std::size_t from)
-    {
-        double energy = 0.0;
-        for (std::size_t index = from + static_cast<std::size_t> (0.3 * sampleRate);
-             index < mono.size(); ++index)
-            energy += static_cast<double> (mono[index]) * mono[index];
-        return energy;
-    };
-    const auto [plain, plainAt] = phrase (juce::MidiMessage::noteOff (1, 43));
-    const auto [sixtyFour, sixtyFourAt]
+    const auto plain = phrase (juce::MidiMessage::noteOff (1, 43));
+    const auto sixtyFour
         = phrase (juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (64)));
-    const auto [zeroOn, zeroOnAt]
+    const auto zeroOn
         = phrase (juce::MidiMessage::noteOn (1, 43, static_cast<juce::uint8> (0)));
-    const auto [fast, fastAt]
+    const auto fast
         = phrase (juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (127)));
-    const auto [lifted, liftedAt]
+    const auto footswitch
         = phrase (juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (127)), true);
     expect (plain == sixtyFour && plain == zeroOn && plain == fast,
-            "ordinary release velocity re-excited or changed the damped note");
-    expect (plainAt == sixtyFourAt && plainAt == zeroOnAt && plainAt == fastAt,
-            "release encodings were rendered at different sample boundaries");
-    // A plain note-off no longer leaves near silence: the two-way junction
-    // lets the strings the note drove ring on, so the lifted string's tail
-    // exceeds the damped one's by a few times rather than the ten it did.
-    expect (tailEnergy (lifted, liftedAt) > 2.0 * tailEnergy (plain, plainAt),
-            "CC68 with release velocity 127 did not lift the finger");
-    // What rings afterwards is the open string, not the fretted note.
-    const auto bandAt = [&] (const std::vector<float>& mono, std::size_t from,
-                             double frequency)
-    {
-        double real = 0.0;
-        double imaginary = 0.0;
-        const auto begin = from + static_cast<std::size_t> (0.3 * sampleRate);
-        const auto end = std::min (mono.size(),
-                                   from + static_cast<std::size_t> (0.9 * sampleRate));
-        for (std::size_t index = begin; index < end; ++index)
-        {
-            const double angle = 2.0 * juce::MathConstants<double>::pi
-                * frequency * static_cast<double> (index) / sampleRate;
-            real += mono[index] * std::cos (angle);
-            imaginary += mono[index] * std::sin (angle);
-        }
-        return std::hypot (real, imaginary);
-    };
-    const double openHz = 440.0 * std::exp2 ((40.0 - 69.0) / 12.0);
-    const double frettedHz = 440.0 * std::exp2 ((43.0 - 69.0) / 12.0);
-    const double openBand = bandAt (lifted, liftedAt, openHz);
-    const double frettedBand = bandAt (lifted, liftedAt, frettedHz);
-    std::cout << "Acustra lift open/fretted band ratio: "
-              << (openBand / std::max (frettedBand, 1.0e-12)) << std::endl;
-    // 2.2 rather than 3.0 since the 2026-09-04 refit: the open string still
-    // dominates what the lift leaves behind, but by 2.67 rather than the 3.4
-    // the previous calibration gave, because the refit lowers the open
-    // fundamental's share of the first 0.9 s. The clause still says what it
-    // set out to say - a lifted string rings at its open pitch, not the
-    // fretted one - with a third of the former margin.
-    expect (openBand > 2.2 * frettedBand,
-            "the lifted string did not ring at its open pitch");
+            "release velocity re-excited or changed the damped note");
+    expect (plain == footswitch, "CC68 changed the performance");
 }
 
 void testResetAllControllersReleasesSustain()
@@ -1795,9 +1695,9 @@ void testMpePressureReachesTheEngineOnMemberChannelOnly()
 {
     // MPE channel pressure, status 0xD0, biases this note's own vibrato
     // depth (see AcustraEngine::mpePressureFor) and must be inert off a
-    // member channel or with no lower zone. It does not reach a pull-off:
-    // the phrase below therefore holds CC1 up and frets the note, so the
-    // difference it asserts on comes through the vibrato path alone.
+    // member channel or with no lower zone. The phrase below therefore holds
+    // CC1 up and frets the note, so the difference it asserts on comes
+    // through the vibrato path alone.
     const auto phrase = [] (int pressure, int channel, bool memberZone)
     {
         AcustraAudioProcessor processor;
@@ -1937,8 +1837,8 @@ void testGatheredChordsVoiceLikeSequencedChords()
 
 void testGatheringOnlyDelaysNotesMeantApart()
 {
-    // Notes more than the window apart, a key repeated inside it, a legato
-    // run, a string-per-channel controller's notes, notes either side of an
+    // Notes more than the window apart, a key repeated inside it, a
+    // string-per-channel controller's notes, notes either side of an
     // All Notes Off and notes on two channels are not chords to gather: each
     // sounds exactly as the same timeline played ungathered with every event
     // 30 ms later.
@@ -1957,12 +1857,6 @@ void testGatheringOnlyDelaysNotesMeantApart()
             { 300, juce::MidiMessage::noteOn (1, 60, 0.8f) },
             { 300 + 240, juce::MidiMessage::noteOff (1, 60) },
             { 300 + 720, juce::MidiMessage::noteOn (1, 60, 0.8f) }
-        },
-        {
-            { 200, juce::MidiMessage::controllerEvent (1, 68, 127) },
-            { 300, juce::MidiMessage::noteOn (1, 57, 0.8f) },
-            { 300 + 480, juce::MidiMessage::noteOn (1, 59, 0.8f) },
-            { 300 + 960, juce::MidiMessage::noteOn (1, 60, 0.8f) }
         },
         {
             // Channel 1 is the low E string, channel 2 the A string.
@@ -2171,8 +2065,7 @@ int main()
     testMpePressureReachesTheEngineOnMemberChannelOnly();
     testStringPerChannelModeViaMonoModeOn();
     testTheAdapterPlaysExactlyThePerformer();
-    testLegatoControllerReachesTheEngine();
-    testReleaseVelocityRequiresExplicitLegato();
+    testReleaseVelocityAndCc68ChangeNothing();
     testResetAllControllersReleasesSustain();
     testMemberChannelOwnershipAndControllers();
     testMemberPitchBendDoesNotLeakChannels();

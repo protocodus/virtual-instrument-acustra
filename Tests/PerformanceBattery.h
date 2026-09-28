@@ -1,9 +1,9 @@
 // A battery of MIDI performances that exercises every path of the player
 // (DSP/AcustraPerformer): single notes, same-sample chords of two to seven
 // notes, rolled chords, alternating strums and the rest that restarts them,
-// legato hammer-ons and finger lifts, sustain, bridge-hand and vibrato
-// sweeps, pitch bend under RPN range changes, the MPE lower zone, the
-// string-per-channel mode, All Notes/Sound Off and resets, controller
+// overlapping notes released at every release velocity, sustain,
+// bridge-hand and vibrato sweeps, pitch bend under RPN range changes, the MPE
+// lower zone, the string-per-channel mode, All Notes/Sound Off and resets, controller
 // changes and the edge cases a host can send. PerformerTests plays it through
 // the player alone; PluginProcessorTests plays it through the plug-in and
 // requires the same samples. JUCE-free.
@@ -223,13 +223,13 @@ inline std::vector<Scenario> makeBattery()
         result.push_back(std::move(b.scenario));
     }
     {
-        Builder b("legato", 2.6);
-        b.cc(0.0, 1, 68, 127).on(0.05, 1, 45, 100).on(0.3, 1, 47, 80)
+        Builder b("release-velocities", 2.6);
+        b.on(0.05, 1, 45, 100).on(0.3, 1, 47, 80)
             .off(0.31, 1, 45, 64).on(0.55, 1, 48, 80).off(0.8, 1, 48, 127)
             .off(1.0, 1, 47, 100);
         b.chord(1.2, 1, std::array<int, 3> { 55, 52, 59 }, 90);
         b.off(1.6, 1, 52, 90).off(1.6, 1, 55, 127).off(1.6, 1, 59, 0);
-        b.cc(1.8, 1, 68, 0).on(1.9, 1, 57, 100).off(2.2, 1, 57, 127);
+        b.on(1.9, 1, 57, 100).off(2.2, 1, 57, 127);
         result.push_back(std::move(b.scenario));
     }
     {
@@ -323,13 +323,12 @@ inline std::vector<Scenario> makeBattery()
             .on(0.025, 1, 59);
         b.release(0.45, 1, std::array<int, 5> { 40, 47, 52, 56, 59 });
         b.on(0.5, 1, 45).on(0.51, 1, 50).on(0.515, 1, 45).on(0.52, 1, 55);
-        b.on(1.0, 1, 43).on(1.01, 1, 47).cc(1.012, 1, 68, 127).on(1.02, 1, 50)
-            .cc(1.3, 1, 68, 0);
+        b.on(1.0, 1, 43).on(1.01, 1, 47).on(1.02, 1, 50);
         b.on(1.5, 1, 48).cc(1.505, 1, 64, 127).on(1.51, 1, 52).on(1.52, 1, 55)
             .cc(1.7, 1, 64, 0);
         b.on(1.8, 1, 40).on(1.805, 2, 60).on(1.81, 1, 44).on(1.815, 2, 64);
         b.chord(2.1, 1, std::array<int, 4> { 52, 45, 57, 40 });
-        b.cc(2.4, 1, 68, 127).on(2.45, 1, 57).on(2.46, 1, 59).cc(2.7, 1, 68, 0);
+        b.on(2.45, 1, 57).on(2.46, 1, 59);
         b.on(2.8, 1, 50).rpn(2.805, 1, 0, 4).on(2.81, 1, 54);
         result.push_back(std::move(b.scenario));
     }

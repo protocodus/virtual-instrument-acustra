@@ -458,7 +458,7 @@
   "pitch_bend": "RPN 0 supports 0--96 semitones; lower-zone defaults are manager 2 and members 48; released tails freeze member bend while manager bend remains live",
   "controller_scope": "manager bend, sustain, CC120, CC121 and CC123 address the lower zone; member controls stay scoped to their channel",
   "limitations": "no upper MPE zone, per-note pressure or CC74 timbre",
-  "legato_footswitch_cc68": "a note a sounding string can reach is hammered on rather than replucked, and releasing it pulls off to what that string still holds; exact no-op while up, which is the default"
+  "legato_footswitch_cc68": "removed on 2026-09-28 at the user's request (Docs/decisions.md): CC68 is ignored, every note is plucked and every key-up damps"
  },
  "historical_score_compatibility": "Earlier aperture, body-mode and direct-path ablations used a six-term objective. The mechanism-ablation grids predate the frozen 50-mode bridge extension and the post-bridge joint calibration continuation. They remain historical topology-selection evidence and are not relabeled as current 50-mode scores.",
  "corpus_integrity": {

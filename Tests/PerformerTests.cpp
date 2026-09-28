@@ -341,6 +341,41 @@ void testGatheredRollSoundsAsOneSampleChord()
     }
 }
 
+// CC68 was MIDI's Legato Footswitch here until the user asked for legato to
+// be removed everywhere (Docs/decisions.md, 2026-09-28), and release
+// velocity only ever reached a legato finger lift. Neither may change a
+// sample now: every scenario is played again with CC68 pressed and let go
+// around its notes and every Note Off at the fastest release, gathering and
+// not, and must come out bit-identical.
+void testCc68AndReleaseVelocityChangeNothing(const std::vector<Scenario>& battery)
+{
+    for (const auto& scenario : battery)
+    {
+        auto changed = scenario;
+        for (auto& event : changed.events)
+            if (event.size == 3 && (event.bytes[0] & 0xf0u) == 0x80u)
+                event.bytes[2] = 127;
+        std::vector<Event> pedal;
+        for (const auto& event : scenario.events)
+            if (event.size == 3 && (event.bytes[0] & 0xf0u) == 0x90u)
+            {
+                const auto channel = static_cast<std::uint8_t>(event.bytes[0] & 0x0fu);
+                pedal.push_back(message(event.seconds,
+                                        static_cast<std::uint8_t>(0xb0u | channel), 68, 127));
+                pedal.push_back(message(event.seconds + 0.004,
+                                        static_cast<std::uint8_t>(0xb0u | channel), 68, 0));
+            }
+        // render() orders each block's events by time, keeping the order
+        // given within a sample, so these land after the notes they sit on.
+        changed.events.insert(changed.events.end(), pedal.begin(), pedal.end());
+        for (const bool gather : { false, true })
+            expect(render(changed, 48000.0, 64, gather)
+                       == render(scenario, 48000.0, 64, gather),
+                   std::string { scenario.name } + (gather ? " (gathering)" : "")
+                       + ": CC68 or release velocity changed the performance");
+    }
+}
+
 void testHelpersSpellMidi()
 {
     // Every 14-bit wheel position survives the float helper: a note bent to
@@ -461,6 +496,7 @@ int main()
     testBlockSizeDoesNotChangeThePerformance(battery);
     testOneSampleIsOneCanonicalEvent();
     testGatheredRollSoundsAsOneSampleChord();
+    testCc68AndReleaseVelocityChangeNothing(battery);
     testHelpersSpellMidi();
     testMasterTune();
     testOverflowIsCountedNotAllocated(battery);
