@@ -613,7 +613,13 @@ records the small, mixed improvement against real guitar recordings. Its current
 empty filter/body histories do not describe a complete release from rest.
 A short deterministic noise burst adds the
 release detail; the bridge-local direct path's fitted gain is zero, so the
-measured body is the only radiator. Pluck Position moves the
+measured body is the only radiator. On steel the burst's level (2.21 of the
+authored law), the contact's width (0.49 of its reference) and the velocity
+brightness (1.106) were chosen by ear with the strings' bending loss below
+(Docs/decisions.md, 2026-09-28): 70% of the way from the joint refit's
+optimum (0.38, 0.81, 1.073) toward the pluck refitted around half the loss
+the recordings measure (3.0 on its ceiling, 0.35 on its floor, 1.120). Nylon's
+velocity brightness is 0.15, the value both of those fits gave it. Pluck Position moves the
 displacement point; Touch and MIDI velocity alter its aperture, level and
 brightness. The hand lets the string go at the force it can hold, not at a
 set displacement: a point force at distance a from the bridge deflects a
@@ -652,7 +658,12 @@ validation 6.271127 → 6.256259). Once a pluck released most of its energy
 parallel to the top (below), the same stage refitted again wants only a
 small, nearly flat share, 0.0625·v^0.47, and the transient gain on its zero
 bound, which is the Finger burst law (archtop training under Pick 6.334019 →
-6.284861, development validation 5.941904 → 5.904206). The velocity hump is smoothed by that same
+6.284861, development validation 5.941904 → 5.904206). With the strings'
+bending loss the share returns: since 2026-09-28 it is 0.582·v^0.859, chosen
+by ear 70% of the way from the joint refit's 0.008·v^0.49 toward the
+0.83·v^1.02 the plectrum was refitted to around half the measured loss, whose
+pick the listener heard as too intense (Docs/decisions.md); the transient gain
+stays at zero. The velocity hump is smoothed by that same
 Gaussian contact as the displacement, exactly: the rest wave gains the
 tabulated corner function at its two folded apex corners and the velocity box
 is the difference of two Gaussian edges. The velocity's
@@ -683,13 +694,15 @@ edge's hold, the force unloads as e^(t/tau) with tau = r/u,
 u = (c/2) y0 (1/a + 1/(L - a)) the speed an instantly released pluck point
 starts with. Every partial is multiplied by 1/(1 - j omega tau), a
 first-order low-pass whose corner rises with the force the tip held: a soft
-stroke is let go slowly and dark, a hard one fast and bright. The radius r,
-0.15 mm, is fitted on the picked archtop training rows (the pick-release
-stage, refitted around it, then wants the release-velocity share and the
-pick burst at zero), and it moves Pick only: archtop training under Pick
-5.9391 -> 5.5639, development validation 5.5588 -> 5.4839, the frozen test
-split 5.6678 -> 5.4272, the Eastman's picked rows 6.6596 -> 6.5254
-(Docs/decisions.md).
+stroke is let go slowly and dark, a hard one fast and bright. The radius r
+was first fitted at 0.15 mm on the picked archtop training rows (the
+pick-release stage, refitted around it, then wanted the release-velocity
+share and the pick burst at zero), moving Pick only: archtop training under
+Pick 5.9391 -> 5.5639, development validation 5.5588 -> 5.4839, the frozen
+test split 5.6678 -> 5.4272, the Eastman's picked rows 6.6596 -> 6.5254
+(Docs/decisions.md). It ships at 0.116 mm, chosen by ear with the bending
+loss on 2026-09-28: 70% of the way from the joint refit's 0.122 mm toward the
+0.114 mm refitted around half the measured loss.
 
 Transverse motion stretches the string, and the tension that adds can also be
 represented as a longitudinal wave with the string's own axial
@@ -729,7 +742,24 @@ delay currently occupies so a bend or vibrato's slewing fractional part does
 not stall the solve. String Age lowers the high-frequency cutoff and
 increases loss. A shared fitted cutoff scale of 2.286 reduces excess
 upper-partial damping found across both materials; a regression proves that it
-does not move the requested fundamental T60 or compensated pitch. A second,
+does not move the requested fundamental T60 or compensated pitch. Each string
+can also lose its upper partials through its own bending stiffness, the
+viscoelastic term of Valette's string damping model (*Mechanics of Musical
+Instruments*, Springer 1995) and the bending-loss term of Woodhouse's (Acta
+Acustica 90 (2004) 928-944): a stiffness EI(1 + i eta) loses
+1/Q_n = eta B n^2 / (1 + B n^2), with B the inharmonicity the dispersion
+uses, so the added decay grows as the cube of frequency. Both polarisations
+carry it as a unit-DC two-pole section designed at the host rate, with its
+phase in the tuning and dispersion collocation and its H1 magnitude in the
+loop gain. A factor of zero is an exact no-op. The recordings' 20-300 ms
+upper-partial decay measures steel wound 0.10 and plain 0.006; the benchmark
+refuses that even with the pluck refitted around it, and its joint optimum
+over Finger and Pick keeps wound 0 and plain 0.00078. What ships was chosen
+by ear on 2026-09-28 (Docs/decisions.md): steel wound 0.035 and plain
+0.0023, 70% of the way from that optimum toward half the measured loss (0.05,
+0.003), with the pluck moved the same way (above), and nylon wound 0.029
+(its own fit; its recordings read 0.03) and plain 0. What the benchmark
+says of it is in Known gaps. A second,
 orthogonal polarisation loop can be detuned from the first by an end
 correction at the string terminations: Woodhouse (Acta Acustica 90 (2004)
 945-965, Sec. 4.3) measured the polarisation parallel to the soundboard as
@@ -1083,7 +1113,7 @@ uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
 | **Body Material** | Spruce, Cedar, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. |
 | **String Material** | Selects the dedicated nylon or steel geometry, impedance, stiffness, loss and fitted calibration. |
 | **Tuning** | Changes the six open-string/fret constraints. |
-| **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius fitted on the picked archtop recordings; its release-velocity share and pick burst refit to zero around it). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
+| **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or electrically loaded saddle-force piezo. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Explicit MPE position overrides that ratio. |
@@ -1514,6 +1544,68 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   string field is not fully converged either. The tool records those limits
   and both displacement and velocity; it changes no runtime excitation.
 
+- The recordings snap and then mellow; the engine mellows part of the way and
+  does not snap. Over their
+  first 300 ms the archtop's low steel strings lose 1-12 kHz at 96-121 dB/s
+  and the never-fitted Eastman E1D's wound strings 2-4, 4-8 and 8-12 kHz at
+  86, 153 and 300 dB/s (picked); the engine's fall at 15-32. The strings'
+  bending loss (above) reaches those rates at a steel wound factor of 0.10,
+  and the benchmark refuses it even with the pluck refitted around it: a joint
+  fit over Finger and Pick (the loss with the contact width, burst, velocity
+  brightness, plectrum edge, release velocity and pick burst) takes steel's
+  wound loss back to zero from shipping and from the measured value alike, and
+  holding it at half or all of that value leaves training 5-8% worse with the
+  Finger contact on its 0.35 floor, the finger burst on its 3.0 ceiling and,
+  under Pick alone, the release-velocity share on its 2.0 ceiling. Three
+  measurements say why. The attack the lost partials were standing in for is
+  missing: at the loud archtop layer the recordings' energy between partials
+  at 2.3-12 kHz stands 10-25 dB over the engine's in the first 15 ms (a pick
+  transient, then a tail falling at 100-200 dB/s), the Eastman's wound strings
+  start 13-21 dB brighter at 1-5 kHz, and the engine's first period carries
+  its first corner as a/L of the real step, since the held string's static
+  load is not released (2026-09-10), so its loud onset comes a period late.
+  The recordings have a hiss floor the engine does not: the soft archtop
+  layer's 5-12 kHz is that floor from the first frame, and strings whose upper
+  partials die as fast as the recordings' fall a median 12-16 dB under it by
+  0.6-0.9 s (shipping sits 3-5 dB over), which the log-averaged and band
+  descriptors charge. With each recording's own floor added to both engines
+  ([`AuditRecordingFloor.py`](Tools/AuditRecordingFloor.py), a diagnostic, not
+  the benchmark), the half-loss candidate of the listening set beats shipping
+  under Finger on training, validation and the frozen test split (-1.3, -2.3,
+  -1.8%) and on the Eastman finger rows (-7.4%); under Pick it trails on
+  training and the test split (+1.7, +0.6%), leads on validation (-2.3%) and
+  is level on the Eastman picked rows (+0.4%). And the recordings' partials
+  decay in two stages, faster before 0.3 s than over the decay term's 0.12-4
+  s, which one loss per partial cannot follow. The finger-plucked flat-top and
+  the picked archtop also disagree about the attack itself: against the
+  Eastman finger rows the engine's plain strings are 13-18 dB too bright at
+  5-12 kHz and its wound strings 7-14 dB too dark at 1-5 kHz, the opposite of
+  the authored contact law's extra width on the three wound strings, while the
+  archtop, rendered with Finger, wants every Finger contact narrower. Nylon's
+  wound loss fits at 0.029 (its measured decay reads 0.03): classical training
+  -5.9% and development validation -5.3%, the anechoic UIowa rows +1.3% (-1.6%
+  with their floor added). A blind listener preferred both the half-loss snap
+  and the joint optimum to the loss-free engine and asked for something
+  between them, and what ships since 2026-09-28 is that, chosen by ear
+  (Docs/decisions.md): steel 70% of the way from the joint optimum toward the
+  half-loss snap in the loss and in every pluck value the two fits set (wound
+  0.035, plain 0.0023), nylon's wound loss 0.029. What it closes: steel's
+  upper partials now die at about 70% of the half-loss snap's added rate, 35%
+  of the rate the recordings measure, and nylon's at its recordings' rate. What
+  it does not: the attack those partials stood in for is still missing. A
+  measured contact noise and click per pluck (after Akay, JASA 111 (2002)
+  1525-1548: one random contact force from the release, decaying at the
+  recordings' 420 dB/s) is in the code at zero, because a blind listener
+  rejected it as too loud on every picked and nylon pair; the static-load step
+  is not modelled. So the benchmark charges the shipped loss: steel training
+  +4.6% (Finger) and +5.7% (Pick), development validation +3.9% and +3.1%,
+  the frozen test split 6.1015 -> 6.3473 (+4.0%) and 5.4031 -> 5.6644 (+4.8%),
+  the flat-top rows +2.1%; nylon training -5.9% and validation -5.3%. With
+  each recording's floor added it is level: steel under Finger -0.3%, -0.6%
+  and -1.1% on training, validation and test, under Pick +1.8%, +0.1% and
+  +1.7%. What would settle it by measurement is a noise-free or
+  floor-documented finger-plucked steel corpus and an attack that supplies
+  the recordings' transient at a level a listener accepts.
 - The highest steel partials still vary with host rate. The loop-loss filters
   now map the calibrated 48 kHz transfer to the host rate, preserving the
   existing 48 kHz sound; bilinear frequency warping leaves H8 decay spread of
@@ -1578,9 +1670,10 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   brightness belongs to the string's nonlinearity and the high-frequency
   loss, not the release. Rendered with Finger, which the slip does not
   touch, the same rows sit within a decibel at the soft layer and 9.6 dB
-  too dark at the loud one. The edge radius is fitted (0.15 mm) because a
-  single note's pick speed is not measured
-  here. Finger is untouched by the plectrum, so what follows still describes
+  too dark at the loud one. These figures are at the fitted 0.15 mm edge
+  with no release share; the edge is a fitted length (0.116 mm since
+  2026-09-28, chosen by ear between two fits) because a single note's pick
+  speed is not measured here. Finger is untouched by the plectrum, so what follows still describes
   the finger-plucked instrument. A fresh comparison uses all 54 already-opened Shinyguitar
   training recordings: nine roots, MIDI layers 16/112 and three takes each,
   against 18 deterministic model renders. On the shared finite same-root
@@ -2117,6 +2210,25 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
 A concise ledger of the changes that move what Acustra sounds like or how it is
 controlled. Pure refactors, deduplications and test-coverage additions are in
 git history rather than here.
+
+### 2026-09-28
+
+- **The strings' upper partials die faster, and the pluck is rebuilt around
+  them, chosen by ear.** Each string now loses its high partials through its
+  own bending stiffness (Valette; Woodhouse 2004): steel wound 0.035 and plain
+  0.0023, about a third of the rate the recordings' first 300 ms measure, and
+  nylon's wound strings at their recordings' rate. Steel's pluck moves with
+  it: a narrower contact, a louder finger burst and, under Pick, a
+  release-velocity share of 0.58 at full velocity with a 0.116 mm edge. A
+  blind listener preferred both a half-measured loss with its refitted pluck
+  and the benchmark's own optimum to the previous engine and asked for 70% of
+  the way from the optimum toward the half loss; that is what ships. The
+  benchmark reads steel 3-6% further from the recordings (the frozen test
+  split +4.0% Finger, +4.8% Pick) and classical rows 5-6% closer; with each
+  recording's hiss floor added steel is level. The pluck's contact noise and
+  click stay at zero, rejected by ear as too loud. A steel strum costs about
+  15% more CPU (48.5 -> 56.0 us per 64-frame block at 48 kHz), most of it the
+  contact-noise code carried at zero (54.9 us with every value as before).
 
 ### 2026-09-27
 

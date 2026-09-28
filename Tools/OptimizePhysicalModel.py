@@ -25,10 +25,12 @@ import argparse
 import json
 import multiprocessing
 import os
+import queue as threadqueue
 import shutil
 import subprocess
 import sys
-from concurrent.futures import ProcessPoolExecutor
+import threading
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -70,12 +72,31 @@ NAMES = (
     "pickReleaseVelocityShare",
     "pickReleaseVelocityExponent",
     "pickTransientGain",
+    "pickEdgeRadiusMetres",
+    "steelWoundBendingLoss",
+    "steelPlainBendingLoss",
+    "nylonWoundBendingLoss",
+    "nylonPlainBendingLoss",
+    "contactNoiseFinger",
+    "contactNoiseNylon",
+    "contactNoisePick",
+    "contactNoiseVelocityExponent",
+    "contactNoiseCornerHz",
+    "nylonContactNoiseCornerHz",
+    "pickContactNoiseCornerHz",
+    "contactNoiseDecaySeconds",
+    "contactClickFinger",
+    "contactClickNylon",
+    "contactClickPick",
 )
 LOWER = np.asarray((
     0.96, 0.05, 0.25, -6.0, 0.0,
     0.4, 0.35, 0.35, 0.0, 0.7, 0.0,
     0.25, 0.4, 0.35, 0.35, 0.0, 0.7, 0.0,
     -1.0, 0.25, 0.0, -0.06, 0.5, 0.0, 100.0, 0.00325, 0.0, 10.0, 0.0,
+    0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 100.0, 0.0005,
     0.0, 0.0, 0.0,
 ))
 UPPER = np.asarray((
@@ -84,6 +105,9 @@ UPPER = np.asarray((
     4.0, 2.0, 3.0, 2.5, 3.0, 3.0, 1.2,
     1.0, 32.0, 0.04, 0.05, 4.0, 0.02, 8000.0, 0.060, 0.5, 400.0, 0.82e-3,
     2.0, 4.0, 8.0,
+    0.5e-3, 0.25, 0.05, 0.25, 0.05,
+    4.0, 4.0, 4.0, 4.0, 20000.0, 20000.0, 20000.0, 0.05,
+    64.0, 64.0, 64.0,
 ))
 INITIAL = np.asarray((
     1.0, 1.0, 1.0, 0.0, 0.0,
@@ -91,6 +115,9 @@ INITIAL = np.asarray((
     1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0,
     1.0, 1.0, 0.0061, -0.030, 1.30, 0.0, 1000.0, 0.020, 0.0, 80.0, 0.0008,
     0.0, 2.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 1.0, 4000.0, 4000.0, 8000.0, 0.0207,
+    0.0, 0.0, 0.0,
 ))
 # The shipping vector, mirroring fittedPhysicalCalibration in
 # Source/DSP/FittedPhysicalData.h, for --start shipping: a stage that fits a
@@ -98,11 +125,14 @@ INITIAL = np.asarray((
 # neutral baseline.
 SHIPPING = np.asarray((
     1.0, 1.0, 0.754677154, 0.0, 0.0,
-    1.4, 1.65213516, 2.39142268, 0.0, 2.14375, 0.1125,
-    0.749355465, 1.53, 0.52, 0.643124355, 0.494086432, 1.8, 1.1859375,
+    1.4, 1.65213516, 2.39142268, 0.0, 2.14375, 0.15,
+    0.749355465, 1.53, 0.52, 0.4883279315, 2.2130696796, 1.8, 1.10625,
     -0.0706290118, 4.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011,
     2187.76023, 0.00325, 0.0, 35.0, 0.0,
-    0.0, 0.453125, 0.0,
+    0.58203125, 0.85859375, 0.0,
+    0.1162109375e-3, 0.035, 0.002334375, 0.029296875, 0.0,
+    0.0, 0.0, 0.0, 1.0, 4000.0, 4000.0, 8000.0, 0.0207,
+    0.0, 0.0, 0.0,
 ))
 # The bridge-local direct path is deliberately fixed off. Its score direction
 # was flat (and slightly worse on validation), so fitting it only lets a
@@ -134,6 +164,21 @@ BY_EAR = (
     # archtop rows it was fitted on were picked near the bridge, and the
     # finger-played flat-top rows agree with the listener.
     "steel.pluckDistanceScale",
+    # Chosen by ear on 2026-09-28 (Docs/decisions.md, Set 14): steel at 70% of
+    # the way from the joint refit's optimum (C) toward the half-loss snap with
+    # its refitted pluck (B), nylon at the two sets' shared values. A
+    # direction a listener chose between two fits, so no stage may refit it.
+    "steel.apertureScale",
+    "steel.transientScale",
+    "steel.velocityBrightnessDepth",
+    "pickReleaseVelocityShare",
+    "pickReleaseVelocityExponent",
+    "pickEdgeRadiusMetres",
+    "steelWoundBendingLoss",
+    "steelPlainBendingLoss",
+    "nylon.velocityBrightnessDepth",
+    "nylonWoundBendingLoss",
+    "nylonPlainBendingLoss",
 )
 # With longitudinalGain frozen at zero the axial resonators are not summed at
 # all, so their Q multiplies nothing and any value renders the same audio.
@@ -142,7 +187,14 @@ INERT = (
 )
 # Values that are a published measurement rather than a fit. The one it held,
 # the polarisation end correction, is now chosen by ear (BY_EAR above).
-MEASURED: tuple[str, ...] = ()
+MEASURED: tuple[str, ...] = (
+    # The contact's noise decays as the recordings' energy between partials
+    # does over 12-40 ms: 420 dB/s, the median over the bank's training
+    # rows in the registers where a nine-period window resolves that time
+    # (Docs/decisions.md, 2026-09-28). Left free, the search lengthens it to
+    # stand in for the recordings' room and hiss.
+    "contactNoiseDecaySeconds",
+)
 FROZEN = frozenset(NAMES.index(name) for name in BY_EAR + MEASURED + INERT)
 
 
@@ -157,12 +209,52 @@ STEEL = _free(np.append(np.arange(11, 18), (20, 21)))
 # The plectrum's three values are read by the Pick technique only, so they
 # are fitted on the picked archtop rows rendered with it (--archtop-picking
 # pick) and by nothing else; the finger-plucked flat-top and classical rows
-# render with Finger whatever this stage does.
-PICK = np.asarray((29, 30, 31))
+# render with Finger whatever this stage does. Those a listener chose
+# (BY_EAR, 2026-09-28) stay where they are.
+PICK = _free(np.asarray((29, 30, 31, 32)))
+# Every value only the Pick technique reads: the plectrum's and its noise's.
+PICK_READ = np.asarray((29, 30, 31, 32, 39, 43, 47))
 # The steel excitation and the plectrum together, on the same picked rows:
 # the four steel values that shape the pluck's contact, level law and
 # brightness were fitted with Finger on recordings that were picked.
-PICK_EXCITATION = np.asarray((14, 15, 16, 17, 29, 30, 31))
+PICK_EXCITATION = _free(np.asarray((14, 15, 16, 17, 29, 30, 31)))
+# A string's bending loss and the excitation that has to supply the attack it
+# takes away, together (Docs/decisions.md, 2026-09-28). Taking the upper
+# partials' sustain to the recordings' decay removes the energy that stood
+# in for the attack's, so the loss is fitted with the values that set how
+# much upper-partial energy a pluck starts with: steel's contact width, burst
+# and velocity brightness under Finger and the plectrum's edge, release
+# velocity and burst under Pick (run with --joint-picking finger,pick, so one
+# steel loss serves both), and nylon's contact, burst and velocity
+# brightness. Each is scored on its own material's training rows.
+STEEL_SNAP = _free(np.asarray((14, 15, 17, 29, 30, 31, 32, 33, 34)))
+NYLON_SNAP = _free(np.asarray((7, 8, 10, 35, 36)))
+# The same excitation with the loss held where --set puts it: a compass
+# search moves one coordinate at a time, so a loss that only pays once the
+# attack has been rebuilt around it is found by profiling the loss instead.
+STEEL_SNAP_PLUCK = _free(np.asarray((14, 15, 17, 29, 30, 31, 32)))
+NYLON_SNAP_PLUCK = _free(np.asarray((7, 8, 10)))
+# The contact's noise (Docs/decisions.md, 2026-09-28): a steel stage over the
+# Finger and Pick noises and what they share - the velocity exponent and the
+# decay - with the burst it would replace and the strings' bending loss, run
+# with --joint-picking finger,pick; a nylon stage over the nylon finger's
+# level and corner with nylon's burst and loss; and the noise alone for
+# either (a loss --set holds).
+STEEL_TRANSIENT = _free(np.asarray((14, 15, 17, 29, 30, 31, 32, 33, 34,
+                                     37, 39, 40, 41, 43, 45, 47)))
+NYLON_TRANSIENT = _free(np.asarray((7, 8, 10, 35, 36, 38, 42, 46)))
+STEEL_NOISE = _free(np.asarray((37, 39, 40, 41, 43, 45, 47)))
+NYLON_NOISE = _free(np.asarray((38, 42, 46)))
+# The steel stage without the finger's click: a fingertip's flesh has no hard
+# edge to click with, and the finger-plucked flat-top rows hold less energy
+# between their partials than the engine already renders (2026-09-28), while
+# the steel training rows were all picked.
+STEEL_TRANSIENT_NO_FINGER_CLICK = _free(np.asarray((14, 15, 17, 29, 30, 31, 32,
+                                                    33, 34, 37, 39, 40, 41, 43,
+                                                    47)))
+# The steel stage with the strings' loss held where --set puts it.
+STEEL_TRANSIENT_PLUCK = _free(np.asarray((14, 15, 17, 29, 30, 31, 32,
+                                          37, 39, 40, 41, 43, 47)))
 
 STAGES = {
     "shared-body": (None, GLOBAL),
@@ -171,6 +263,16 @@ STAGES = {
     "shared-body-refine": (None, GLOBAL),
     "pick-release": ("steel", PICK),
     "pick-excitation": ("steel", PICK_EXCITATION),
+    "snap-steel": ("steel", STEEL_SNAP),
+    "snap-nylon": ("nylon", NYLON_SNAP),
+    "snap-steel-pluck": ("steel", STEEL_SNAP_PLUCK),
+    "snap-nylon-pluck": ("nylon", NYLON_SNAP_PLUCK),
+    "transient-steel": ("steel", STEEL_TRANSIENT),
+    "transient-nylon": ("nylon", NYLON_TRANSIENT),
+    "noise-steel": ("steel", STEEL_NOISE),
+    "noise-nylon": ("nylon", NYLON_NOISE),
+    "transient-steel-pluck": ("steel", STEEL_TRANSIENT_PLUCK),
+    "transient-steel-pick": ("steel", STEEL_TRANSIENT_NO_FINGER_CLICK),
 }
 DEFAULT_STAGES = ("shared-body", "nylon-string", "steel-string",
                   "shared-body-refine")
@@ -180,20 +282,32 @@ RENDER_OPTIONS: list[str] = []
 
 
 def _command(renderer: Path, directory: Path, values: np.ndarray,
-             models_only: bool) -> list[str]:
+             models_only: bool, scope: str | None = None,
+             options: list[str] | None = None) -> list[str]:
     command = [str(renderer)]
     if models_only:
         command.append("--models-only")
-    command.extend(RENDER_OPTIONS)
+        if scope is not None:
+            command.extend(("--scope", scope))
+    command.extend(RENDER_OPTIONS if options is None else options)
     command.append(str(directory))
     command.extend(format(float(value), ".9g") for value in values)
     return command
 
 
+def _scope(material: str | None) -> str:
+    # A candidate is scored on one material's training rows, or on both; the
+    # renderer replaces only the models that score reads (the final render
+    # after the search replaces every one).
+    return {"steel": "train-steel", "nylon": "train-nylon"}.get(
+        material or "", "train")
+
+
 def _run_renderer(renderer: Path, directory: Path, values: np.ndarray,
-                  models_only: bool) -> None:
+                  models_only: bool, scope: str | None = None,
+                  options: list[str] | None = None) -> None:
     completed = subprocess.run(
-        _command(renderer, directory, values, models_only),
+        _command(renderer, directory, values, models_only, scope, options),
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -219,37 +333,70 @@ def _small_report(report: dict[str, Any]) -> dict[str, Any]:
 # run at once. Each candidate is independent and the renderer is deterministic,
 # so a worker owns its own copy of the corpus directory and the result does not
 # depend on how many workers there are.
-_WORKER: dict[str, Any] = {}
+# A worker's state is its own whether the workers are processes or, with
+# --threads, threads of this one (where a sandbox forbids the semaphores a
+# process pool needs; the renders are subprocesses either way).
+_LOCAL = threading.local()
+
+
+class _WorkerState:
+    def __getitem__(self, key: str) -> Any:
+        return _LOCAL.__dict__[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        _LOCAL.__dict__[key] = value
+
+
+_WORKER = _WorkerState()
 
 
 def _worker_setup(renderer: Path, directories: Any,
-                  render_options: list[str]) -> None:
-    directory = Path(directories.get())
+                  protocols: list[list[str]]) -> None:
+    # One corpus per protocol (the renderer options it is rendered with);
+    # a single protocol is the ordinary search.
+    corpora = [Path(directory) for directory in directories.get()]
     _WORKER["renderer"] = renderer
-    _WORKER["directory"] = directory
-    _WORKER["train"] = PreparedManifest(directory / "train.json")
-    RENDER_OPTIONS[:] = render_options
+    _WORKER["corpora"] = [
+        (options, directory, PreparedManifest(directory / "train.json"))
+        for options, directory in zip(protocols, corpora)]
+    RENDER_OPTIONS[:] = protocols[0]
 
 
 def _worker_evaluate(job: tuple[list[float], str | None]) -> dict[str, Any]:
     values, material = job
-    _run_renderer(_WORKER["renderer"], _WORKER["directory"],
-                  np.asarray(values, dtype=float), True)
-    return _small_report(_WORKER["train"].score(material=material))
+    reports = []
+    for options, directory, train in _WORKER["corpora"]:
+        _run_renderer(_WORKER["renderer"], directory,
+                      np.asarray(values, dtype=float), True,
+                      _scope(material), options)
+        reports.append(_small_report(train.score(material=material)))
+    if len(reports) == 1:
+        return reports[0]
+    # Several protocols score one calibration: the objective is their mean,
+    # so it stays on the scale of one training score.
+    return {
+        "score": float(np.mean([report["score"] for report in reports])),
+        "protocols": {" ".join(options) or "default": report
+                      for (options, _, _), report
+                      in zip(_WORKER["corpora"], reports)},
+    }
 
 
 def _worker_directories(output: Path, jobs: int) -> list[Path]:
     """Give every worker but the first its own copy of targets and manifests.
 
     Model renders are not copied: the renderer writes every model the manifests
-    reference on the first evaluation.
+    reference on the first evaluation. Nor are the sample player's control
+    renders, which no training score reads.
     """
     directories = [output]
     for index in range(1, jobs):
         directory = output.parent / f"{output.name}-worker{index}"
         directory.mkdir(parents=True, exist_ok=True)
         for source in sorted(output.iterdir()):
-            if not source.is_file() or source.name.startswith("model-"):
+            if (not source.is_file() or source.name.startswith("model-")
+                    or (source.name.startswith("sample-")
+                        and source.suffix == ".f32")):
                 continue
             destination = directory / source.name
             if not destination.is_file():
@@ -259,7 +406,7 @@ def _worker_directories(output: Path, jobs: int) -> list[Path]:
 
 
 class Objective:
-    def __init__(self, executor: ProcessPoolExecutor, base: np.ndarray,
+    def __init__(self, executor: Any, base: np.ndarray,
                  active: np.ndarray, material: str | None,
                  evaluations: list[dict[str, Any]],
                  checkpoint: Path | None = None,
@@ -377,7 +524,7 @@ def _pattern_search(objective: Objective, unit: np.ndarray, budget: int,
 
 
 def _fit_stage(name: str, material: str | None, active: np.ndarray,
-               values: np.ndarray, executor: ProcessPoolExecutor,
+               values: np.ndarray, executor: Any,
                budget: int, evaluations: list[dict[str, Any]],
                checkpoint: Path | None = None,
                provenance: dict[str, Any] | None = None,
@@ -415,6 +562,11 @@ def main() -> int:
              "(default: 1)",
     )
     parser.add_argument(
+        "--threads", action="store_true",
+        help="run the --jobs workers as threads of this process rather than "
+             "as processes (the same renders and scores)",
+    )
+    parser.add_argument(
         "--resume", action="store_true",
         help="reuse an existing renderer corpus and its current calibration",
     )
@@ -422,6 +574,11 @@ def main() -> int:
         "--start", choices=("neutral", "shipping"), default="neutral",
         help="calibration the search starts from: the neutral baseline "
              "(default) or the vector that ships",
+    )
+    parser.add_argument(
+        "--set", nargs="*", default=[], metavar="NAME=VALUE",
+        help="start the search with these values in place of --start's "
+             "(e.g. a measured value the stages are to be fitted around)",
     )
     parser.add_argument(
         "--stages", default=",".join(DEFAULT_STAGES),
@@ -433,6 +590,19 @@ def main() -> int:
         help="render the picked archtop rows with this tool (the renderer's "
              "own default otherwise); stages over the plectrum's values "
              "(pick-release, pick-excitation) need pick",
+    )
+    parser.add_argument(
+        "--joint-picking",
+        help="comma-separated tools (finger, pick, thumb) to render the "
+             "picked archtop rows with, one corpus each under OUTPUT; every "
+             "candidate is rendered with all of them and scored by the mean "
+             "of their training scores, so values the tools share (a "
+             "string's loss) are fitted once for all of them",
+    )
+    parser.add_argument(
+        "--bridge-model", choices=("original", "fylde"),
+        help="the steel bridge every render uses (the renderer's own "
+             "default, Original, otherwise); the steel presets play fylde",
     )
     arguments = parser.parse_args()
     if arguments.evaluations < 1:
@@ -446,7 +616,7 @@ def main() -> int:
     # The plectrum's values are read by Pick only, so a stage over them
     # rendered with any other tool would search inert coordinates.
     needs_pick = [name for name in stage_names
-                  if np.intersect1d(STAGES[name][1], PICK).size > 0]
+                  if np.intersect1d(STAGES[name][1], PICK_READ).size > 0]
     renderer = arguments.renderer.resolve()
     output = arguments.output.resolve()
     if not renderer.is_file():
@@ -454,9 +624,38 @@ def main() -> int:
 
     values = (SHIPPING if arguments.start == "shipping" else INITIAL).copy()
     start = arguments.start
+    if arguments.set and arguments.resume:
+        parser.error("--set starts a search; a resumed one continues from its "
+                     "checkpoint")
+    for item in arguments.set:
+        name, separator, text = item.partition("=")
+        if not separator or name not in NAMES:
+            parser.error(f"--set expects NAME=VALUE with a calibration name, "
+                         f"not {item!r}")
+        index = NAMES.index(name)
+        value = float(text)
+        if not LOWER[index] <= value <= UPPER[index]:
+            parser.error(f"--set {name}={value} is outside "
+                         f"[{LOWER[index]}, {UPPER[index]}]")
+        values[index] = value
+    if arguments.set:
+        start = f"{start} with {' '.join(arguments.set)}"
     archtop_picking = arguments.archtop_picking
+    joint = ([name.strip() for name in arguments.joint_picking.split(",")
+              if name.strip()] if arguments.joint_picking else [])
+    if joint and archtop_picking is not None:
+        parser.error("--joint-picking and --archtop-picking are exclusive")
+    if any(name not in ("finger", "pick", "thumb") for name in joint) \
+            or len(set(joint)) != len(joint):
+        parser.error("--joint-picking takes distinct tools from finger, "
+                     "pick, thumb")
+    bridge_options = (["--bridge-model", arguments.bridge_model]
+                      if arguments.bridge_model else [])
+    # Each protocol is one corpus: OUTPUT itself, or OUTPUT/TOOL per tool.
+    corpora = ([(bridge_options + ["--archtop-picking", name], output / name)
+                for name in joint] if joint else None)
     if arguments.resume:
-        manifest_path = output / "train.json"
+        manifest_path = (corpora[0][1] if joint else output) / "train.json"
         if not manifest_path.is_file():
             parser.error("--resume output has no train.json")
         manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -468,7 +667,15 @@ def main() -> int:
         controls = manifest_data.get("model_controls")
         stored_picking = (controls.get("archtop_picking")
                           if isinstance(controls, dict) else None)
-        if archtop_picking is None:
+        if joint:
+            for options, directory in corpora:
+                stored = json.loads((directory / "train.json").read_text(
+                    encoding="utf-8")).get("model_controls") or {}
+                if stored.get("archtop_picking") not in (None, options[-1]):
+                    parser.error(f"{directory} was rendered with "
+                                 f"--archtop-picking "
+                                 f"{stored.get('archtop_picking')}")
+        elif archtop_picking is None:
             archtop_picking = stored_picking
         elif stored_picking not in (None, archtop_picking):
             parser.error(f"the corpus was rendered with --archtop-picking "
@@ -523,26 +730,40 @@ def main() -> int:
         values[4] = 0.0
     elif output.exists():
         parser.error("output already exists; use a new path or --resume")
-    if needs_pick and archtop_picking != "pick":
+    if needs_pick and archtop_picking != "pick" and "pick" not in joint:
         parser.error(f"{', '.join(needs_pick)}: a stage over the plectrum's "
-                     "values needs --archtop-picking pick")
-    if archtop_picking is not None:
-        RENDER_OPTIONS[:] = ["--archtop-picking", archtop_picking]
-    _run_renderer(renderer, output, values, arguments.resume)
+                     "values needs --archtop-picking pick (or pick among "
+                     "--joint-picking)")
+    if not joint:
+        RENDER_OPTIONS[:] = bridge_options + (
+            ["--archtop-picking", archtop_picking]
+            if archtop_picking is not None else [])
+        corpora = [(list(RENDER_OPTIONS), output)]
+    else:
+        RENDER_OPTIONS[:] = corpora[0][0]
+        output.mkdir(parents=True, exist_ok=arguments.resume)
+    for options, directory in corpora:
+        _run_renderer(renderer, directory, values, arguments.resume,
+                      None, options)
 
-    train = PreparedManifest(output / "train.json")
-    baseline = train.score()
-    print(f"baseline train score={baseline['score']:.6f}", flush=True)
+    trains = [PreparedManifest(directory / "train.json")
+              for _, directory in corpora]
+    baselines = [train.score() for train in trains]
+    for (options, _), report in zip(corpora, baselines):
+        print(f"baseline train score={report['score']:.6f} "
+              f"{' '.join(options)}", flush=True)
     evaluations: list[dict[str, Any]] = []
     stages: list[dict[str, Any]] = []
-    directories = _worker_directories(output, arguments.jobs)
-    queue: Any = multiprocessing.Queue()
-    for directory in directories:
-        queue.put(str(directory))
-    with ProcessPoolExecutor(
+    workers = [_worker_directories(directory, arguments.jobs)
+               for _, directory in corpora]
+    queue: Any = (threadqueue.Queue() if arguments.threads
+                  else multiprocessing.Queue())
+    for index in range(arguments.jobs):
+        queue.put([str(directories[index]) for directories in workers])
+    with (ThreadPoolExecutor if arguments.threads else ProcessPoolExecutor)(
         max_workers=arguments.jobs,
         initializer=_worker_setup,
-        initargs=(renderer, queue, list(RENDER_OPTIONS)),
+        initargs=(renderer, queue, [options for options, _ in corpora]),
     ) as executor:
         for name in stage_names:
             material, active = STAGES[name]
@@ -550,7 +771,8 @@ def main() -> int:
                 name, material, active, values, executor,
                 arguments.evaluations, evaluations,
                 output / "fit-best.json",
-                {"start": start, "render_options": list(RENDER_OPTIONS)},
+                {"start": start, "render_options": list(RENDER_OPTIONS),
+                 "protocols": [options for options, _ in corpora]},
             )
             stages.append(stage)
             # A full run is hours long; leave each stage's answer on disk so a
@@ -561,24 +783,43 @@ def main() -> int:
                             "stages": stages}, indent=2) + "\n",
                 encoding="utf-8",
             )
-    for directory in directories[1:]:
-        shutil.rmtree(directory, ignore_errors=True)
+    for directories in workers:
+        for directory in directories[1:]:
+            shutil.rmtree(directory, ignore_errors=True)
 
-    _run_renderer(renderer, output, values, True)
-    final_train = train.score()
-    validation = PreparedManifest(output / "validation.json").score()
+    finals = []
+    validations = []
+    for (options, directory), train in zip(corpora, trains):
+        _run_renderer(renderer, directory, values, True, None, options)
+        finals.append(train.score())
+        validations.append(
+            PreparedManifest(directory / "validation.json").score())
+    final_train = {"score": float(np.mean([r["score"] for r in finals]))}
+    validation = {"score": float(np.mean([r["score"] for r in validations]))}
     result = {
         "parameter_order": NAMES,
         "values": values.tolist(),
         "start": start,
         "resumed": arguments.resume,
         "render_options": list(RENDER_OPTIONS),
-        "baseline_train": _small_report(baseline),
-        "final_train": _small_report(final_train),
-        "validation": _small_report(validation),
+        "baseline_train": _small_report(baselines[0]),
+        "final_train": _small_report(finals[0]),
+        "validation": _small_report(validations[0]),
         "stages": stages,
         "evaluations": evaluations,
     }
+    if joint:
+        # The mean the search minimised, and each protocol's own reading.
+        result["baseline_train"] = {
+            "score": float(np.mean([r["score"] for r in baselines]))}
+        result["final_train"] = final_train
+        result["validation"] = validation
+        result["protocols"] = {
+            " ".join(options): {"baseline_train": _small_report(b),
+                                "final_train": _small_report(f),
+                                "validation": _small_report(v)}
+            for (options, _), b, f, v
+            in zip(corpora, baselines, finals, validations)}
     (output / "fit-result.json").write_text(
         json.dumps(result, indent=2) + "\n", encoding="utf-8"
     )

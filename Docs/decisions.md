@@ -32,6 +32,117 @@ half the steel bending loss (C): A on every picked and nylon pair, B on the
 finger-plucked travis pair, C on the finger ladder; A overall, "the pick is
 TOO LOUD". The click does not ship; its mechanism stays in the code at zero.
 
+Implemented on cand/d (D = C + 0.7 (B - C) in every steel value that
+differs, Set 14's shared nylon values, every contact noise and click level
+at zero), in `Source/DSP/FittedPhysicalData.h` and
+`Tools/OptimizePhysicalModel.py` SHIPPING, all eleven values added to BY_EAR
+so no stage refits them: steel.apertureScale 0.4883279315 (C 0.811093105, B
+0.35), steel.transientScale 2.2130696796 (C 0.376898932, B 3.0),
+steel.velocityBrightnessDepth 1.10625 (C 1.0734375, B 1.1203125),
+pickReleaseVelocityShare 0.58203125 and pickReleaseVelocityExponent
+0.85859375 (C 0.0078125 v^0.4921875, B 0.828125 v^1.015625),
+pickEdgeRadiusMetres 0.1162109375 mm (C 0.1216796875, B 0.1138671875),
+steelWoundBendingLoss 0.035 (C 0, B 0.05), steelPlainBendingLoss 0.002334375
+(C 0.00078125, B 0.003); nylon.velocityBrightnessDepth 0.15,
+nylonWoundBendingLoss 0.029296875, nylonPlainBendingLoss 0. The Fylde
+bridge's bank benchmark, paired with shipping: steel training +4.60%
+(Finger) and +5.75% (Pick), development validation +3.87% and +3.13%,
+flat-top +2.10%, the frozen test split 6.1015 -> 6.3473 and 5.4031 ->
+5.6644; nylon training 7.4698 -> 7.0313, validation 6.3790 -> 6.0418.
+Floor-matched (`Tools/AuditRecordingFloor.py`, steel rows), Finger training,
+validation and test -0.31%, -0.63%, -1.10%, Pick +1.77%, +0.10%, +1.66%.
+The benchmark does not choose D; the listener did.
+
+## 2026-09-28 — snap then mellow: the strings' bending loss against a pluck that cannot yet supply the attack
+
+What was measured. The bending loss of 84dcdc1 (Valette; Woodhouse, Acta
+Acustica 90 (2004) 928-944: 1/Q_n = eta B n^2 / (1 + B n^2)) brings the
+upper partials' 20-300 ms decay to the recordings' at steel wound 0.10,
+plain 0.006, but every reference but the Eastman finger rows rejects it at
+the shipping pluck, because the engine's attack lacks what the slow partials
+were standing in for. Where, in the scorer's own attack array (model minus
+recording, dB, mean-normalised; Pick, archtop training, loud layer): 0-12 ms
+at 1-2.3, 2.3-5.2 and 5.2-12 kHz -9.4, -6.6, -14.9, and 40-100 ms -2.0,
++3.5, -2.1; with the loss the late windows fall to where the attack already
+was (5.2-12 kHz -14.1, -18.5, -18.2). The attack term is 60% the multiscale
+log magnitude over 900 ms and 40% these bands (latency 0.4%). Three sources
+were read off the renders. (1) Between the partials: on the loud layer's mid
+and high notes the recordings' 2.3-12 kHz energy between harmonics stands
+10-25 dB over the engine's in the first 15 ms, then falls at 100-200 dB/s -
+a pick transient and a tail - and on the Eastman E1D's picked E3 it exceeds
+the partials' own; the Eastman's wound E2 starts 13-21 dB brighter than the
+engine at 1-5 kHz. (2) The first period: a Finger A2's saddle force holds
+-13 dB for (1 - p)T = 6.3 ms before its big pulse; without the held string's
+static load (2026-09-10) the first corner arrives as a/L of the real step,
+so the loud onset is a period late (the archtop's onsets 0.1-8.7 ms behind
+the recordings'). (3) The recordings' hiss: the soft archtop layer's 5-12
+kHz is its noise floor from the first frame (flat to 3.8 s, 6-31 dB under
+the attack); at 0.6-0.9 s the half-loss candidate below sits a median 12
+(soft) and 16 dB (loud) under the recordings' 5-12 kHz, down to 48, where
+shipping sits 3-5 dB over. Adding each recording's own floor (its last 0.4
+s, or its lead-in, above 1.5 kHz) to both engines before scoring
+(`Tools/AuditRecordingFloor.py`, a diagnostic, not the benchmark) takes the
+loss alone at the shipping pluck from +1.09 to +0.49 on the picked archtop
+training rows (5.5639 -> 6.6560 plainly, 5.4793 -> 5.9728 floor-matched),
+and the anechoic UIowa nylon rows read the nylon loss +1.3% plainly and
+-1.6% floor-matched. And the finger-plucked flat-top disagrees with the
+picked archtop about the attack: against the 55 Eastman finger rows the
+plain strings are 13-18 dB too bright at 5-12 kHz and the wound 7-14 dB too
+dark at 1-5 kHz, the opposite of the authored contact law's extra width on
+the three wound strings.
+
+What was built. The loss factors and the plectrum edge join the optimizer's
+vector (37 values; 8d49671), with stages that fit the loss with the pluck
+(snap-steel, snap-nylon) or the pluck at a held loss (snap-steel-pluck), a
+--joint-picking finger,pick objective (the mean of the two protocols'
+training scores, one steel loss for both), --bridge-model fylde, --set, and
+a training-only render scope.
+
+Calibration (Fylde bridge, training rows, compass search to its step floor).
+The joint steel fit from shipping, 377 evaluations: wound loss 0, plain
+0.00078, contact 0.643 -> 0.811, finger burst 0.494 -> 0.377, velocity
+brightness 1.186 -> 1.073, edge 0.150 -> 0.122 mm, release share 0.008;
+objective 5.9145 -> 5.9006. Started at the measured loss it took both losses
+back to zero in its first polls. Held at the loss and every pluck value
+refitted: at 0.05/0.003, 6.684 -> 6.188 (290 evaluations) with the contact
+on its 0.35 floor, the finger burst on its 3.0 ceiling, share 0.83 at
+v^1.02, edge 0.114 mm; at 0.10/0.006, 6.892 -> 6.352 (500), contact 0.35,
+burst 2.74, share 1.63 at v^1.70, pick burst 0.75, edge 0.091 mm; under Pick
+alone at 0.10/0.006 the steel rows go 6.656 -> 5.982 with the share on its
+2.0 ceiling (shipping 5.564). Nylon, 91 evaluations: wound loss 0.029 (the
+recordings' decay reads 0.03), plain 0, velocity brightness 0.113 -> 0.150;
+nylon training 7.4698 -> 7.0313.
+
+What it did, paired with shipping (the plain benchmark). The joint optimum
+(C below): bank training -2.30% Finger, -2.52% Pick (steel -0.13, -0.35%;
+nylon -5.87%), validation -2.34%, -2.33% (steel -0.38, -0.13%; nylon
+-5.29%), flat-top -1.68%, Eastman picked -0.17%, finger -2.26%, Martin HD28
+-0.96%, UIowa +1.29%, GuitarSet 12.98 -> 13.05 dB (convergence 0.8784 ->
+0.8784, chroma 0.2240 -> 0.2236), the frozen test split 6.1134 -> 6.1150
+(Finger) and 5.4272 -> 5.4276 (Pick). The half-loss snap (B): steel training
++3.78% Finger, +5.56% Pick, validation +2.50%, +1.90%, flat-top +4.62%,
+Eastman picked +3.42%, finger -5.19%, Martin +1.02%, GuitarSet 14.95 dB,
+test 6.2842 (+2.79%) and 5.6489 (+4.08%); its 0-12 ms loud-layer residual at
+5.2-12 kHz goes -14.9 -> -3.7 dB and the late-minus-early excess above 2.26
+kHz +10.5 -> +4.9, while the flat-top's attack goes brighter still (+5.7 ->
++14.4). Floor-matched, the same pair: Finger training -1.3%, validation
+-2.3%, test -1.8%, Pick training +1.7%, validation -2.3%, test +0.6%,
+Eastman finger -7.4%, picked +0.4%. The measured loss with its refitted
+pluck is worse than the half on every reference but the Eastman finger rows
+(training +6.8, +7.7%; Eastman picked +12.1%; GuitarSet 15.54 dB). CPU: B
+costs 4% more per steel block (median 86.5 -> 90.0 us per 64 frames at 48
+kHz), nylon 1.5%.
+
+What was decided. Nothing ships: the snap candidates lose on the plain
+benchmark and the joint optimum is level on the frozen test split and split
+on nylon (validation against UIowa). The loss factors stay at zero and the
+pluck as it was. Set `2026-09-28-snap` puts A (shipping) against B (the
+half-loss snap with its pluck and nylon's loss) and C (the joint optimum),
+with its verdicts in the entry above; B and C are the same nylon. What would
+settle it by measurement: a noise-free (or floor-documented) finger-plucked
+steel corpus, and an attack model that supplies the recordings' transient - the static-load step
+and the pick's own - rather than a contact law pushed to its bounds.
+
 ## 2026-09-27 — blind verdicts: steel keeps g21, and the plectrum slip is heard as right
 
 Set 11 put the shipping steel body of 599a34c, g21 (a flamenca measured in a
