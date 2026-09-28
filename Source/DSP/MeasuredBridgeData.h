@@ -27,6 +27,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 namespace acustra::detail
 {
@@ -95,6 +96,76 @@ inline constexpr std::array<MeasuredBridgeMode, 47> measuredSteelBridgeModes {{
     { 7551.26953f, 5.1309967f, 47.6505737f, 0.0f, 0.0f },
     { 8229.49219f, 5.20765686f, 0.668715119f, 0.0f, 0.0f },
     { 9120.11719f, 4.91801691f, 19.0153008f, 0.0f, 0.0f },
+}};
+
+// Steel's own bridge on its radiation's poles. 18 of the 47 g21 bridge
+// modes are the same resonance as a mode of measuredSteelBodyModes
+// (MeasuredBodyData.h): the nearest one, inside its as-fitted half-power
+// band, with the bridge mode narrower than the radiation bank's local
+// spacing; each takes that mode's engine pole. The others (-1) keep their
+// own frequency and take the plate-Q rule's octave factor on their Q
+// (GenerateBodyForcePair.py, median of the anechoic flamencas over g21's
+// own, never raising, 1 outside its band). steelTopMobilityRatio brings the
+// flamenca's mobility to a steel-string guitar's: the geometric mean over
+// 80 Hz-4 kHz of |Y| of the Fylde Falstaff (MeasuredSteelBridgeData.h;
+// Carcagno, Bucknall, Woodhouse, Fritz and Plack, JASA 144 (2018) 3533,
+// https://doi.org/10.1121/1.5084735, data https://osf.io/f4pqa/, CC BY 4.0)
+// over g21's at u = -1, 0.27406, to three figures; over other bands and
+// conductance it spans 0.232-0.301.
+inline constexpr float steelTopMobilityRatio = 0.274f;
+inline constexpr std::array<std::int16_t, 47> steelBridgeRadiationTwins {{
+    -1, 0, 1, 2, -1, 5, 6, 7, 8, 9, 10, 11, 12, -1, 14, 15, -1, 17, 19, -1,
+    21, 22, -1, -1, -1, -1, -1, -1, -1, -1, 39, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1
+}};
+inline constexpr std::array<float, 47> steelBridgeUnpairedQRatio {{
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    0.675680399f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    0.814062834f,
+    1.0f,
+    1.0f,
+    0.801757932f,
+    1.0f,
+    1.0f,
+    0.788220286f,
+    1.0f,
+    1.0f,
+    0.844318807f,
+    0.856214464f,
+    0.853504479f,
+    0.901469469f,
+    0.872089446f,
+    0.881033897f,
+    0.880816221f,
+    0.900976896f,
+    1.0f,
+    0.875701725f,
+    0.857225478f,
+    0.830740511f,
+    0.852900386f,
+    0.873275042f,
+    0.88263303f,
+    0.876568675f,
+    0.881898165f,
+    0.854757488f,
+    0.853785634f,
+    0.882313251f,
+    0.891320467f,
+    0.904469013f,
+    0.905237675f,
+    0.895353615f,
+    0.88925904f,
 }};
 
 // g34, a 1971 Manuel Contreras classical Spanish, cedar/Rio palisander,

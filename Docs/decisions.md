@@ -41,6 +41,72 @@ benchmark: every never-fitted open corpus closer (Eastman picked -1.67%,
 finger -1.07%, Martin -2.34%), the bank within +-1%; its E-chord late pull is
 7.4 cents against the 5.0 gate.
 
+Implemented on cand/body-bd (merges of cand/body-one-pole-steel-body 09f7b4e
+and cand/body-t1-band-plate-q 731128a onto main). B and D ship combined. Each
+had been written up as a listening candidate; this note replaces both entries.
+- B: `Tools/GenerateMeasuredBridge.py` reads the radiation header, the
+  GenerateBodyForcePair report (g21's as-fitted Q, the population, the band)
+  and the Fylde header. It writes into `MeasuredBridgeData.h`: a twin per g21
+  bridge mode (18 of 47: the nearest radiation mode, inside its as-fitted
+  half-power band, the bridge mode narrower than the local mode spacing), a
+  plate-Q octave factor per unpaired mode, and `steelTopMobilityRatio` 0.274.
+  The engine gives a twinned bridge mode its twin's engine pole
+  (anchor, Shape, Wood, plate-Q rule). The steel presets, new sessions and
+  RenderDemos select the Original bridge. The Fylde stays selectable, with
+  no map.
+- D: `--plate-q-band 150 10000` is now the default. It changes four Q
+  fields: T1 17.48 -> 13.82, 208.7 Hz 37.33 -> 27.37, 229.0 Hz 17.76 ->
+  12.07, and 286.8 Hz, which the Q >= 4 floor holds.
+- Made consistent: the bridge generator was rerun against the merged body
+  header and a body report written with the 150 Hz band. The twin test reads
+  only frequencies and as-fitted Qs, which D does not change, so the twins are
+  the same 18. The unpaired modes take the factor inside the report's band,
+  now 150 Hz up. No unpaired g21 bridge mode lies between 150 and 300 Hz
+  (82.8 Hz is below the band, 178.7 and 208.7 Hz are twins, the next is
+  371 Hz), so every Q ratio, and `MeasuredBridgeData.h`, is byte-identical
+  to B's. D reaches the bridge through the twins instead: the 178.7 and
+  208.7 Hz bridge modes now sit on T1's and the rocking mode's damped poles.
+  Nylon and the Fylde bridge are unaffected by B, and D moves only steel's
+  four Qs.
+
+What the combination measures against main (D on the Fylde; lower is closer).
+- The bank, Finger on steel's own bridge: steel training -1.02%, development
+  validation -0.72%, flat-top +0.05%.
+- The bank, Pick: steel training +0.05%, validation -1.27%.
+- The frozen test split: 6.3473 -> 6.2868 (Finger, -0.95%) and 5.6644 ->
+  5.6034 (Pick, -1.08%). The body term rises (12.68 -> 12.81, 11.46 ->
+  11.55) and attack, harmonics, tuning and decay all fall.
+- The never-fitted corpora: Eastman picked 6.4850 -> 6.3767 (-1.67%), finger
+  6.8981 -> 6.8426 (-0.80%), Martin HD28 7.2750 -> 7.0770 (-2.72%).
+- GuitarSet: log error 14.88 -> 14.73 dB, spectral convergence 0.873 ->
+  0.824, chroma 0.223 -> 0.226.
+- Nylon is bit-identical.
+- Descriptors, 200-2000 Hz, 88-note sweep, Pick/Finger:
+  - Early-rate residual of onset-prominent partials: -2.21/-0.76 dB/s (main
+    -1.01/-1.32; recordings -4.0 to -5.4).
+  - Prominent fade: -2.13/-0.49 dB.
+  - Ring gain: 3.8/4.5 dB (recordings 6.9-8.5).
+  - Late flatness: 0.07/0.02 (recordings 0.08-0.29).
+- CPU per 64-frame block at 48 kHz (thread time, median of 3 interleaved
+  medians of 3, host load 130-300): a strum every 250 ms 58.2 -> 64.2 us
+  (+5% paired), a held chord 43.4 -> 46.0 us (+8%). This is the Original
+  bridge's 30 rocking sections.
+
+The chord pull is not fixed. The five-chord sweep's late worst is 8.6 cents,
+G3 in the G chord (B alone 1.0), and the E chord's B3 stays at 7.4. Neither is
+the string detuned by its bridge: rendered alone, G3 reads +1.9 and B3 +0.1.
+Each is a coincident partial read as the note:
+- G2's 2nd partial sits on G3 (+9.0 as a G2+G3 pair).
+- E2's 3rd sits on B3. E2 alone reads +6.7 cents at B3, from equal
+  temperament's +2 and stiffness.
+The strings couple through the bridge. D's broader 190 Hz rocking pole lowers
+the bridge's |Y| at 196 Hz (0.038 -> 0.032) but changes which member of the
+G2/G3 doublet survives the late window. The only levers are the measured
+level and the measured damping the listener chose. No correction is derived.
+
+A confirmation pair (main against this, Set 18's five steel pieces) is
+rendered.
+
 ## 2026-09-28 — blind verdicts: snap between B and C, no pluck click, the damped plate body
 
 Set 14 put shipping (A, 1a2c7e1) against two ways of letting the strings'

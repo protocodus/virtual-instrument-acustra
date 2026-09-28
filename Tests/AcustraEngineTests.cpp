@@ -4456,10 +4456,15 @@ void testBodyAndBridgeCalibrationChangePhysicalDescriptors()
     // The plate conductance floor extrapolates past the measured band and
     // carries its own level, so the measured weights must be checked with it
     // switched off; the floor must then add conductance on top of them.
+    // Steel's own bridge takes the radiation's poles, so the body's frequency
+    // and Q calibration moves its modes too; hold those equal so the ratio
+    // reads the mobility scale alone.
     auto lowMeasured = low;
     lowMeasured.bridgeConductanceFloor = 0.0f;
     auto highMeasured = high;
     highMeasured.bridgeConductanceFloor = 0.0f;
+    highMeasured.bodyFrequencyScale = lowMeasured.bodyFrequencyScale;
+    highMeasured.bodyQScale = lowMeasured.bodyQScale;
     const double mobilityRatio
         = acustra::AcustraEngineTestAccess::bridgeAdmittance(highMeasured)
         / acustra::AcustraEngineTestAccess::bridgeAdmittance(lowMeasured);
@@ -5791,10 +5796,17 @@ void testBodyChangesPreserveTheSoundingStrings()
                                acustra::CaptureType::Magnetic })
         for (const bool repluck : { false, true })
             for (const bool wood : { false, true })
+            for (const auto bridge : { acustra::BridgeModel::Original,
+                                       acustra::BridgeModel::FyldeSteel })
             {
                 acustra::EngineParameters parameters;
                 parameters.outputGain = 0.04f;
                 parameters.capture = capture;
+                parameters.bridgeModel = bridge;
+                // Steel's own bridge takes the radiation's poles, so there
+                // Wood moves the bridge as Shape does; on the Fylde, another
+                // guitar's bridge, it changes radiation only.
+                const bool woodOnly = wood && bridge == acustra::BridgeModel::FyldeSteel;
                 acustra::AcustraEngine held, changed;
                 for (auto* engine : { &held, &changed })
                 {
@@ -5818,15 +5830,16 @@ void testBodyChangesPreserveTheSoundingStrings()
                        "a body change deleted a connected string tail");
                 const auto expected = continueConstructionProbe(held, 480);
                 const auto actual = continueConstructionProbe(changed, 480);
-                // Wood changes microphone radiation only; shape also changes
-                // the bridge loading. Both must retain the connected tails.
-                if (wood)
+                // Wood on the Fylde changes microphone radiation only; shape,
+                // and Wood on steel's own bridge, also change the bridge
+                // loading. All must retain the connected tails.
+                if (woodOnly)
                     expect(actual.left == expected.left && actual.right == expected.right,
                            "a wood-only change altered the pickup's ringing strings");
                 else
                 {
                     expect(actual.left != expected.left || actual.right != expected.right,
-                           "a shape change did not reach the pickup's bridge loading");
+                           "a shape or own-bridge wood change did not reach the pickup's bridge loading");
                     expect(std::all_of(actual.left.begin(), actual.left.end(),
                                        [] (float value) { return std::isfinite(value); })
                                && std::all_of(actual.right.begin(), actual.right.end(),
@@ -5841,6 +5854,9 @@ void testBodyChangesPreserveAnUnfinishedFade()
     using Access = acustra::AcustraEngineTestAccess;
     acustra::EngineParameters parameters;
     parameters.outputGain = 0.04f;
+    // Wood moves steel's own bridge with the radiation; the Fylde, another
+    // guitar's bridge, holds the mechanics still while Wood changes the bank.
+    parameters.bridgeModel = acustra::BridgeModel::FyldeSteel;
     acustra::AcustraEngine reference, changed;
     for (auto* engine : { &reference, &changed })
     {
@@ -6407,10 +6423,12 @@ void testRepluckLandsTheHandOnTheString()
         std::vector<double> firstSamples;
         std::vector<double> levels;
         std::vector<int> voices;
+        std::vector<double> tails;
         double before = 0.0;
         for (int repeat = 0; repeat < 6; ++repeat)
         {
             engine.noteOn(note, 0.62f);
+            double tail = 0.0;
             voices.push_back(engine.getActiveVoiceCount());
             double peakValue = 0.0;
             double firstSample = 0.0;
@@ -6436,9 +6454,13 @@ void testRepluckLandsTheHandOnTheString()
                         ++counted;
                     }
                     if (i + k >= span - static_cast<int>(0.01 * rate))
+                    {
                         before = std::max(before, value);
+                        tail = std::max(tail, value);
+                    }
                 }
             }
+            tails.push_back(tail);
             peaks.push_back(peakValue);
             firstSamples.push_back(firstSample);
             levels.push_back(std::sqrt(energy / std::max(counted, 1)));
@@ -6451,7 +6473,7 @@ void testRepluckLandsTheHandOnTheString()
                                    std::min(blockSize, gap - i));
             }
         }
-        return std::tuple { peaks, firstSamples, levels, voices, before };
+        return std::tuple { peaks, firstSamples, levels, voices, before, tails };
     };
 
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
@@ -6459,7 +6481,7 @@ void testRepluckLandsTheHandOnTheString()
         const std::string at = " at " + std::to_string(static_cast<int>(rate));
         // Held key, replucked six times at 250 ms: the level neither climbs
         // nor clicks.
-        const auto [peaks, firsts, levels, voices, before]
+        const auto [peaks, firsts, levels, voices, before, tails]
             = repeated(43, false, rate);
         expect(peaks[0] > 1.0e-4, "the first pluck was silent" + at);
         for (std::size_t index = 1; index < peaks.size(); ++index)
@@ -6470,7 +6492,13 @@ void testRepluckLandsTheHandOnTheString()
                    + " times the first" + at);
             expect(levels[index] < 1.6 * levels[0],
                    "repluck " + std::to_string(index) + " piled up energy" + at);
-            expect(firsts[index] < 0.5 * peaks[index],
+            // A click is a step above what was sounding: on steel's own
+            // bridge the G2 fundamental still rings at about two thirds of
+            // the next pluck's peak after 250 ms (the air-mode twin blooms
+            // it), so the first samples are held against the ring they
+            // continue as well as against the new peak.
+            expect(firsts[index] < std::max(0.5 * peaks[index],
+                                            1.05 * tails[index - 1]),
                    "repluck " + std::to_string(index)
                    + " clicked on its first samples" + at);
         }
@@ -6478,7 +6506,7 @@ void testRepluckLandsTheHandOnTheString()
 
         // Released between repeats, a note three strings can reach stays on
         // the string that was sounding it, and one voice is enough.
-        const auto [hopPeaks, hopFirsts, hopLevels, hopVoices, hopBefore]
+        const auto [hopPeaks, hopFirsts, hopLevels, hopVoices, hopBefore, hopTails]
             = repeated(64, true, rate);
         for (const int count : hopVoices)
             expect(count == 1, "a repeated E4 hopped to another string" + at);

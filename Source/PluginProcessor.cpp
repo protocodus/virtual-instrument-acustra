@@ -108,8 +108,8 @@ void addMissingParameterDefaults (
         juce::ValueTree parameterState { parameterType };
         parameterState.setProperty (idProperty, ranged->paramID, nullptr);
         // A session saved before the bridge parameter existed was made on the
-        // Original bridge, so it keeps that bridge rather than taking the
-        // measured steel bridge a new session starts on.
+        // Original bridge, so it keeps that bridge, which is also the one a
+        // new session starts on.
         const float value = ranged->paramID == ids::bridgeModel
             ? 0.0f
             : ranged->convertFrom0to1 (ranged->getDefaultValue());
@@ -207,13 +207,14 @@ AcustraAudioProcessor::createParameterLayout()
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::picking, 2 }, "Picking",
         juce::StringArray { "Finger", "Pick", "Thumb" }, 0));
-    // New sessions start on the measured steel-string bridge, which the steel
-    // construction presets select; a session saved before this parameter
-    // existed keeps the Original bridge it was made with (see
-    // addMissingParameterDefaults), not this default.
+    // New sessions start on the Original bridge, which the steel construction
+    // presets select: steel's own (g21) bridge on its radiation's poles. A
+    // session saved on the measured Fylde steel-string bridge keeps it; one
+    // saved before this parameter existed keeps the Original bridge it was
+    // made with (see addMissingParameterDefaults).
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::bridgeModel, 3 }, "Bridge Model",
-        juce::StringArray { "Original", "Measured Fylde (steel)" }, 1));
+        juce::StringArray { "Original", "Measured Fylde (steel)" }, 0));
     // Retain old parameter IDs, indices and ranges for saved-state migration.
     // Only the appended three-choice Capture parameter drives new sessions.
     result.push_back (std::make_unique<juce::AudioParameterBool> (
