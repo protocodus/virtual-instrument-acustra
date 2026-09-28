@@ -32,6 +32,27 @@ half the steel bending loss (C): A on every picked and nylon pair, B on the
 finger-plucked travis pair, C on the finger ladder; A overall, "the pick is
 TOO LOUD". The click does not ship; its mechanism stays in the code at zero.
 
+Implemented on cand/d (D = C + 0.7 (B - C) in every steel value that
+differs, Set 14's shared nylon values, every contact noise and click level
+at zero), in `Source/DSP/FittedPhysicalData.h` and
+`Tools/OptimizePhysicalModel.py` SHIPPING, all eleven values added to BY_EAR
+so no stage refits them: steel.apertureScale 0.4883279315 (C 0.811093105, B
+0.35), steel.transientScale 2.2130696796 (C 0.376898932, B 3.0),
+steel.velocityBrightnessDepth 1.10625 (C 1.0734375, B 1.1203125),
+pickReleaseVelocityShare 0.58203125 and pickReleaseVelocityExponent
+0.85859375 (C 0.0078125 v^0.4921875, B 0.828125 v^1.015625),
+pickEdgeRadiusMetres 0.1162109375 mm (C 0.1216796875, B 0.1138671875),
+steelWoundBendingLoss 0.035 (C 0, B 0.05), steelPlainBendingLoss 0.002334375
+(C 0.00078125, B 0.003); nylon.velocityBrightnessDepth 0.15,
+nylonWoundBendingLoss 0.029296875, nylonPlainBendingLoss 0. The Fylde
+bridge's bank benchmark, paired with shipping: steel training +4.60%
+(Finger) and +5.75% (Pick), development validation +3.87% and +3.13%,
+flat-top +2.10%, the frozen test split 6.1015 -> 6.3473 and 5.4031 ->
+5.6644; nylon training 7.4698 -> 7.0313, validation 6.3790 -> 6.0418.
+Floor-matched (`Tools/AuditRecordingFloor.py`, steel rows), Finger training,
+validation and test -0.31%, -0.63%, -1.10%, Pick +1.77%, +0.10%, +1.66%.
+The benchmark does not choose D; the listener did.
+
 ## 2026-09-28 — snap then mellow: the strings' bending loss against a pluck that cannot yet supply the attack
 
 What was measured. The bending loss of 84dcdc1 (Valette; Woodhouse, Acta

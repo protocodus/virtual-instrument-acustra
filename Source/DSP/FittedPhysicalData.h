@@ -244,8 +244,15 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // contact and more upper-partial loss (2026-09-24): nylon training
     // 7.554 -> 7.164, development validation 6.911 -> 6.418. The T60 scale
     // (1.4) is chosen by ear and was held.
+    // Nylon's velocity brightness is 0.15, chosen by ear on 2026-09-28
+    // (Docs/decisions.md, Set 14) over 0.1125: the value both of that set's
+    // candidates gave nylon, B (the half-loss snap) and C (the joint refit's
+    // optimum), which the listener preferred to shipping. It is the
+    // snap-nylon stage's fit with the wound strings' bending loss below
+    // (Tools/OptimizePhysicalModel.py, 91 evaluations: nylon training 7.4698
+    // -> 7.0313), and it is not refit.
     { 1.0f, 1.4f, 1.65213516f, 2.39142268f,
-      0.0f, 2.14375f, 0.1125f },
+      0.0f, 2.14375f, 0.15f },
     // Steel's pluck distance scale is 1.8, chosen by ear on 2026-09-25 over
     // the fitted 0.888 (Docs/decisions.md): at the default Pluck Position a
     // finger meets the string 149 mm from the bridge instead of 74 mm, at
@@ -254,8 +261,22 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // prefer 149 mm, and a blind listener chose it on all three pairs. Pick
     // keeps 0.40 of the Finger's distance, 60 mm, and the picked archtop
     // rows rendered with it improve (steel training 6.106 -> 5.803).
-    { 0.749355465f, 1.53f, 0.52f, 0.643124355f,
-      0.494086432f, 1.8f, 1.1859375f },
+    // Steel's contact width (aperture), finger burst (transient) and velocity
+    // brightness, with the plectrum's release and the strings' bending loss
+    // below, were chosen by ear on 2026-09-28 (Docs/decisions.md, Set 14) at
+    // 70% of the way from that set's C toward its B, the listener's own
+    // "something between B and C ... dial it to 70%". C is the joint refit's
+    // optimum (Tools/OptimizePhysicalModel.py, snap-steel over Finger and
+    // Pick on the Fylde bridge's training rows, 377 evaluations from
+    // shipping): aperture 0.811093105, burst 0.376898932, velocity brightness
+    // 1.0734375. B holds the steel bending loss at half what the recordings'
+    // 20-300 ms decay measures and refits the pluck around it
+    // (snap-steel-pluck, 290 evaluations): aperture 0.35 (its floor), burst
+    // 3.0 (its ceiling), velocity brightness 1.1203125. Shipping was 0.643,
+    // 0.494 and 1.186. D = C + 0.7 (B - C) is a direction chosen by ear, not a
+    // fit, and none of its values is refit.
+    { 0.749355465f, 1.53f, 0.52f, 0.4883279315f,
+      2.2130696796f, 1.8f, 1.10625f },
     // lowBodyModeGain 4 (+12 dB), chosen by ear on 2026-09-25 over 1 on all
     // three pairs (Docs/decisions.md): the Eastman dreadnought's picked E2
     // and A#2 stand 11-13 dB stronger against their 2nd and 3rd harmonics
@@ -313,7 +334,12 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // velocity's slower-falling partials were standing in for the dynamic
     // brightness the slip now supplies, and the pick's own burst for the
     // Finger law. With the share at zero the exponent reads nothing.
-    0.0f, 0.453125f, 0.0f,
+    // 2026-09-28, by ear (Docs/decisions.md, Set 14): the share and its
+    // exponent at 70% of the way from C, the joint refit's 0.0078125
+    // v^0.4921875, toward B, the half-loss snap's 0.828125 v^1.015625, so
+    // 0.58203125 v^0.85859375. The listener heard B's pick as "too intense"
+    // and asked for 70% of it. The pick burst stays at zero (both endpoints).
+    0.58203125f, 0.85859375f, 0.0f,
     // The plectrum edge, fitted on the picked archtop training rows rendered
     // with Pick (the pick-release stage's steel objective 5.917 / 5.915 /
     // 5.943 at 0.10 / 0.15 / 0.20 mm before and 5.3985 / 5.3664 / 5.3842
@@ -324,7 +350,25 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // fitted radius sits below that because it also absorbs the pick's own
     // speed, which shortens the slip and is not measured here, and because
     // the displacement scale it is read against is known to within a factor.
-    0.15e-3f
+    // 2026-09-28, by ear (Docs/decisions.md, Set 14): 0.1162109375 mm, 70% of
+    // the way from C's 0.1216796875 mm toward B's 0.1138671875 mm, both
+    // refitted with the pluck around their bending loss on the Fylde
+    // bridge's training rows.
+    0.1162109375e-3f,
+    // The strings' bending loss, chosen by ear on 2026-09-28
+    // (Docs/decisions.md, Set 14). The recordings' 20-300 ms upper-partial
+    // decay measures steel wound 0.10 and plain 0.006. B held half of it,
+    // wound 0.05 and plain 0.003, with the pluck refitted around it; C, the
+    // joint refit's optimum, took the wound loss to 0 and the plain to
+    // 0.00078125. Steel ships 70% of the way from C toward B: wound 0.035,
+    // plain 0.002334375, so its upper partials die at about 70% of B's added
+    // rate and 35% of the rate the recordings measure. Nylon takes both
+    // sets' shared values: wound 0.029296875 (the snap-nylon stage's fit;
+    // the recordings' decay reads 0.03) and plain 0. None of the four is
+    // refit.
+    0.035f, 0.002334375f, 0.029296875f, 0.0f
+    // The contact noise and click levels keep their zero defaults: the click
+    // was rejected by ear on 2026-09-28 (Set 16, "the pick is TOO LOUD").
 };
 
 } // namespace acustra

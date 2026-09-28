@@ -3150,10 +3150,21 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
         // And the steel attack glide, which slews the delay by its own few
         // cents while the pluck is still loud: no frame rises on the two
         // before it by more than the ordinary beating of the band does.
+        // Read while the band is still there: with the strings' bending loss
+        // (FittedPhysicalData.h, 2026-09-28) an E3's partials above 14 kHz
+        // fall 60 dB under their attack within 30-65 ms and then sit about
+        // 110 dB under the note, where frame-to-frame ratios of that residue
+        // reached 2.2-5.9 at 170-215 ms and say nothing about a click. Over
+        // the frames above that floor the largest rise is 0.33-0.72; without
+        // the loss the band stays above it to 300 ms and rises 1.40-1.53.
         const auto attack = frames(bent(false), 0.005, 0.30);
+        double attackPeak = 0.0;
+        for (std::size_t i = 0; i < std::min<std::size_t>(4, attack.size()); ++i)
+            attackPeak = std::max(attackPeak, attack[i]);
         double rise = 0.0;
         for (std::size_t i = 2; i < attack.size(); ++i)
-            rise = std::max(rise, attack[i] / std::max(attack[i - 2], 1.0e-30));
+            if (attack[i - 2] >= 1.0e-3 * attackPeak)
+                rise = std::max(rise, attack[i] / std::max(attack[i - 2], 1.0e-30));
         expect(rise < 2.0,
                "the steel attack glide at "
                    + std::to_string(static_cast<int>(rate))
@@ -4972,8 +4983,12 @@ void testHighLossCutoffScaleChangesOnlyUpperLoss()
         const std::string name = material == acustra::StringMaterial::Steel
             ? "steel" : "nylon";
 
+        // Relative, since the strings' bending loss (2026-09-28) multiplies
+        // both round trips by the same factor, which the cutoff does not
+        // touch: at 8 kHz on the E2 0.162 for steel and 0.408 for nylon,
+        // so steel's 0.934 -> 0.979 became 0.152 -> 0.159, the same 4.8%.
         expect(roundTripMagnitude(high, upperOmega)
-                   > roundTripMagnitude(low, upperOmega) + 0.01,
+                   > 1.01 * roundTripMagnitude(low, upperOmega),
                name + " high-loss cutoff did not reduce upper-string loss");
         const double fundamentalChangeDb = 20.0 * std::log10(
             roundTripMagnitude(high, fundamentalOmega)
@@ -7572,21 +7587,32 @@ void testAPlectrumSlipsOffItsEdgeFasterWhenHarder()
                    "the slipped line does not start at rest at the bridge");
             drop[index++] = balanceDb(slipped) - balanceDb(sharp);
             // A first-order low-pass with unit DC gain: the fundamental of a
-            // loud stroke on the low strings is barely touched.
+            // loud stroke on the low strings is barely touched. With a
+            // release-velocity share (0.582 v^0.859 since 2026-09-28) the
+            // share is re-solved against the slipped displacement's energy,
+            // which lifts a loud H1 by 0.002-0.003 dB (without the share it
+            // falls 0.007), so the bound allows a hundredth of a decibel.
             if (velocity > 0.5f && midi <= 52)
             {
                 const double h1 = 10.0 * std::log10(partialPower(slipped, 1)
                     / partialPower(sharp, 1));
-                expect(h1 > -1.0 && h1 <= 1.0e-6,
+                expect(h1 > -1.0 && h1 <= 0.01,
                        "the slip did more than low-pass a loud fundamental");
             }
         }
         std::cout << "Acustra plectrum slip H5-H12/H1-H4 change at MIDI " << midi
                   << ": soft " << drop[0] << " dB, loud " << drop[1] << " dB\n";
-        // Measured at the shipping 0.15 mm: soft -3.3/-3.3/-3.1/-8.4 dB and
-        // loud -0.34/-0.34/-0.30/-1.7 dB at MIDI 40/52/64/76; the bound keeps
-        // the soft stroke at least 2 dB darker than the hard one.
-        expect(drop[0] < 0.0 && drop[1] < 0.0 && drop[0] < drop[1] - 2.0,
+        // Measured at the 0.15 mm edge with no release share: soft
+        // -3.3/-3.3/-3.1/-8.4 dB and loud -0.34/-0.34/-0.30/-1.7 dB at MIDI
+        // 40/52/64/76. At the 0.116 mm edge and the 0.582 v^0.859 share
+        // chosen by ear on 2026-09-28: soft -2.05/-2.05/-1.92/-4.99 and loud
+        // +0.06/+0.04/+0.01/-0.21, the share's re-solve against the slipped
+        // displacement taking back what the fast loud slip removes (with the
+        // share at zero, loud -0.21/-0.21/-0.18/-1.07, soft 2.2-6.3 dB
+        // darker). The bound keeps the soft stroke darker than the instant
+        // release, the loud one within a tenth of a decibel of it or darker,
+        // and the soft at least 1.5 dB darker than the loud.
+        expect(drop[0] < 0.0 && drop[1] < 0.1 && drop[0] < drop[1] - 1.5,
                "a soft plectrum stroke was not released darker than a hard one");
     }
 }

@@ -125,12 +125,12 @@ INITIAL = np.asarray((
 # neutral baseline.
 SHIPPING = np.asarray((
     1.0, 1.0, 0.754677154, 0.0, 0.0,
-    1.4, 1.65213516, 2.39142268, 0.0, 2.14375, 0.1125,
-    0.749355465, 1.53, 0.52, 0.643124355, 0.494086432, 1.8, 1.1859375,
+    1.4, 1.65213516, 2.39142268, 0.0, 2.14375, 0.15,
+    0.749355465, 1.53, 0.52, 0.4883279315, 2.2130696796, 1.8, 1.10625,
     -0.0706290118, 4.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011,
     2187.76023, 0.00325, 0.0, 35.0, 0.0,
-    0.0, 0.453125, 0.0,
-    0.15e-3, 0.0, 0.0, 0.0, 0.0,
+    0.58203125, 0.85859375, 0.0,
+    0.1162109375e-3, 0.035, 0.002334375, 0.029296875, 0.0,
     0.0, 0.0, 0.0, 1.0, 4000.0, 4000.0, 8000.0, 0.0207,
     0.0, 0.0, 0.0,
 ))
@@ -164,6 +164,21 @@ BY_EAR = (
     # archtop rows it was fitted on were picked near the bridge, and the
     # finger-played flat-top rows agree with the listener.
     "steel.pluckDistanceScale",
+    # Chosen by ear on 2026-09-28 (Docs/decisions.md, Set 14): steel at 70% of
+    # the way from the joint refit's optimum (C) toward the half-loss snap with
+    # its refitted pluck (B), nylon at the two sets' shared values. A
+    # direction a listener chose between two fits, so no stage may refit it.
+    "steel.apertureScale",
+    "steel.transientScale",
+    "steel.velocityBrightnessDepth",
+    "pickReleaseVelocityShare",
+    "pickReleaseVelocityExponent",
+    "pickEdgeRadiusMetres",
+    "steelWoundBendingLoss",
+    "steelPlainBendingLoss",
+    "nylon.velocityBrightnessDepth",
+    "nylonWoundBendingLoss",
+    "nylonPlainBendingLoss",
 )
 # With longitudinalGain frozen at zero the axial resonators are not summed at
 # all, so their Q multiplies nothing and any value renders the same audio.
@@ -194,14 +209,15 @@ STEEL = _free(np.append(np.arange(11, 18), (20, 21)))
 # The plectrum's three values are read by the Pick technique only, so they
 # are fitted on the picked archtop rows rendered with it (--archtop-picking
 # pick) and by nothing else; the finger-plucked flat-top and classical rows
-# render with Finger whatever this stage does.
-PICK = np.asarray((29, 30, 31, 32))
+# render with Finger whatever this stage does. Those a listener chose
+# (BY_EAR, 2026-09-28) stay where they are.
+PICK = _free(np.asarray((29, 30, 31, 32)))
 # Every value only the Pick technique reads: the plectrum's and its noise's.
 PICK_READ = np.asarray((29, 30, 31, 32, 39, 43, 47))
 # The steel excitation and the plectrum together, on the same picked rows:
 # the four steel values that shape the pluck's contact, level law and
 # brightness were fitted with Finger on recordings that were picked.
-PICK_EXCITATION = np.asarray((14, 15, 16, 17, 29, 30, 31))
+PICK_EXCITATION = _free(np.asarray((14, 15, 16, 17, 29, 30, 31)))
 # A string's bending loss and the excitation that has to supply the attack it
 # takes away, together (Docs/decisions.md, 2026-09-28). Taking the upper
 # partials' sustain to the recordings' decay removes the energy that stood
