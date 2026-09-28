@@ -107,10 +107,10 @@ public:
     {
         beginBlock(left, right, AcustraEngine::OutputBuses {}, numSamples);
     }
-    // Main plus the separate outputs (see AcustraEngine::OutputBuses): each
-    // non-null bus pointer also receives numSamples samples, all rendered in
-    // the same pass as Main; a null one is not rendered. Main is the same
-    // whichever are wanted.
+    // Main plus the separate Piezo output (see AcustraEngine::OutputBuses):
+    // a non-null buses.piezo also receives numSamples samples, rendered in
+    // the same pass as Main and split at events with it; a null one is not
+    // rendered. Main is the same whether or not it is wanted.
     void beginBlock(float* left, float* right,
                     const AcustraEngine::OutputBuses& buses,
                     int numSamples) noexcept;

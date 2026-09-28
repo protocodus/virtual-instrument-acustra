@@ -2046,69 +2046,69 @@ void testTheAdapterPlaysExactlyThePerformer()
         }
 }
 
-// Main plus the optional Mic (stereo) and Piezo (mono) output buses: off by
-// default, so hosts and sessions that know only the stereo output see what
-// they always did; when a host enables them they carry the sensors
-// themselves, and Main is the same either way.
-void testOptionalSensorOutputBuses()
+// Main plus the optional Piezo (mono) output bus: off by default, so hosts
+// and sessions that know only the stereo output see what they always did;
+// when a host enables it, it carries the piezo itself, and Main is the same
+// either way. A session saved with it enabled loads like any other.
+void testOptionalPiezoOutputBus()
 {
     namespace ids = acustra::parameters;
     {
         AcustraAudioProcessor processor;
-        expect (processor.getBusCount (false) == 3 && processor.getBusCount (true) == 0,
-                "the plug-in must offer Main plus two optional output buses");
+        expect (processor.getBusCount (false) == 2 && processor.getBusCount (true) == 0,
+                "the plug-in must offer Main plus one optional output bus");
         expect (processor.getBus (false, 0)->getName() == "Output"
-                    && processor.getBus (false, 1)->getName() == "Mic"
-                    && processor.getBus (false, 2)->getName() == "Piezo",
+                    && processor.getBus (false, 1)->getName() == "Piezo",
                 "the output buses are misnamed");
         expect (processor.getBus (false, 0)->isEnabled()
                     && ! processor.getBus (false, 1)->isEnabled()
-                    && ! processor.getBus (false, 2)->isEnabled()
                     && processor.getTotalNumOutputChannels() == 2,
-                "the Mic and Piezo buses must be off by default");
+                "the Piezo bus must be off by default");
         expect (processor.getBus (false, 1)->getDefaultLayout()
-                        == juce::AudioChannelSet::stereo()
-                    && processor.getBus (false, 2)->getDefaultLayout()
-                        == juce::AudioChannelSet::mono(),
-                "Mic must default to stereo and Piezo to mono");
+                    == juce::AudioChannelSet::mono(),
+                "Piezo must default to mono");
 
-        const auto layout = [&] (juce::AudioChannelSet main, juce::AudioChannelSet mic,
-                                 juce::AudioChannelSet piezo)
+        const auto layout = [&] (juce::AudioChannelSet main, juce::AudioChannelSet piezo)
         {
             auto result = processor.getBusesLayout();
             result.outputBuses.getReference (0) = main;
-            result.outputBuses.getReference (1) = mic;
-            result.outputBuses.getReference (2) = piezo;
+            result.outputBuses.getReference (1) = piezo;
             return result;
         };
         const auto stereo = juce::AudioChannelSet::stereo();
         const auto mono = juce::AudioChannelSet::mono();
         const auto off = juce::AudioChannelSet::disabled();
-        expect (processor.isBusesLayoutSupported (layout (stereo, off, off))
-                    && processor.isBusesLayoutSupported (layout (stereo, stereo, off))
-                    && processor.isBusesLayoutSupported (layout (stereo, off, mono))
-                    && processor.isBusesLayoutSupported (layout (stereo, stereo, mono)),
-                "Main alone or Main with either or both separate outputs was refused");
-        expect (! processor.isBusesLayoutSupported (layout (mono, off, off))
-                    && ! processor.isBusesLayoutSupported (layout (off, stereo, mono))
-                    && ! processor.isBusesLayoutSupported (layout (stereo, mono, off))
-                    && ! processor.isBusesLayoutSupported (layout (stereo, off, stereo)),
+        expect (processor.isBusesLayoutSupported (layout (stereo, off))
+                    && processor.isBusesLayoutSupported (layout (stereo, mono)),
+                "Main alone or Main with the Piezo output was refused");
+        expect (! processor.isBusesLayoutSupported (layout (mono, off))
+                    && ! processor.isBusesLayoutSupported (layout (off, mono))
+                    && ! processor.isBusesLayoutSupported (layout (stereo, stereo)),
                 "a layout with the wrong format on a bus was accepted");
+        // The retired three-bus layout (Main, Mic, Piezo) is not offered.
+        auto three = layout (stereo, off);
+        three.outputBuses.add (mono);
+        expect (! processor.isBusesLayoutSupported (three),
+                "a layout with a Mic bus was accepted");
     }
 
     struct Render
     {
         std::vector<std::vector<float>> channels;
+        juce::MemoryBlock state;
     };
     // A strummed chord and a single note over 0.5 s at odd block offsets.
-    const auto play = [] (int captureChoice, bool mic, bool piezo)
+    const auto play = [] (int captureChoice, bool piezo,
+                          const juce::MemoryBlock* restore = nullptr)
     {
         AcustraAudioProcessor processor;
-        setValue (processor, ids::captureMode, static_cast<float> (captureChoice));
+        if (restore != nullptr)
+            processor.setStateInformation (restore->getData(),
+                                           static_cast<int> (restore->getSize()));
+        else
+            setValue (processor, ids::captureMode, static_cast<float> (captureChoice));
         auto layout = processor.getBusesLayout();
-        layout.outputBuses.getReference (1) = mic ? juce::AudioChannelSet::stereo()
-                                                  : juce::AudioChannelSet::disabled();
-        layout.outputBuses.getReference (2) = piezo ? juce::AudioChannelSet::mono()
+        layout.outputBuses.getReference (1) = piezo ? juce::AudioChannelSet::mono()
                                                     : juce::AudioChannelSet::disabled();
         expect (processor.setBusesLayout (layout), "a supported layout was refused");
         processor.prepareToPlay (sampleRate, blockSize);
@@ -2132,6 +2132,7 @@ void testOptionalSensorOutputBuses()
                     audio.getReadPointer (channel) + blockSize);
         }
         processor.releaseResources();
+        processor.getStateInformation (result.state);
         return result;
     };
     const auto audible = [] (const std::vector<float>& channel)
@@ -2140,43 +2141,38 @@ void testOptionalSensorOutputBuses()
                             [] (float value) { return std::abs (value) > 1.0e-4f; });
     };
 
+    const auto reference = play (0, true);
     for (const int capture : { 0, 1, 2 })
     {
-        const auto plain = play (capture, false, false);
-        const auto both = play (capture, true, true);
-        const auto micOnly = play (capture, true, false);
-        const auto piezoOnly = play (capture, false, true);
-        expect (plain.channels.size() == 2 && both.channels.size() == 5
-                    && micOnly.channels.size() == 4 && piezoOnly.channels.size() == 3,
-                "the enabled buses did not reach processBlock's buffer");
-        if (both.channels.size() != 5 || micOnly.channels.size() != 4
-            || piezoOnly.channels.size() != 3 || plain.channels.size() != 2)
+        const auto plain = play (capture, false);
+        const auto withPiezo = play (capture, true);
+        expect (plain.channels.size() == 2 && withPiezo.channels.size() == 3,
+                "the enabled bus did not reach processBlock's buffer");
+        if (plain.channels.size() != 2 || withPiezo.channels.size() != 3
+            || reference.channels.size() != 3)
             continue;
-        for (const auto* render : { &both, &micOnly, &piezoOnly })
-            expect (render->channels[0] == plain.channels[0]
-                        && render->channels[1] == plain.channels[1],
-                    "enabling a separate output changed Main");
-        expect (micOnly.channels[2] == both.channels[2]
-                    && micOnly.channels[3] == both.channels[3]
-                    && piezoOnly.channels[2] == both.channels[4],
-                "a separate output differs with the other one enabled");
-        expect (audible (both.channels[2]) && audible (both.channels[3])
-                    && audible (both.channels[4]),
-                "a separate output is silent while the guitar plays");
-        if (capture == 0)
-            expect (both.channels[2] == both.channels[0]
-                        && both.channels[3] == both.channels[1],
-                    "the Mic bus is not Main with Capture on Stereo mic");
+        expect (withPiezo.channels[0] == plain.channels[0]
+                    && withPiezo.channels[1] == plain.channels[1],
+                "enabling the Piezo output changed Main");
+        expect (audible (withPiezo.channels[2]),
+                "the Piezo output is silent while the guitar plays");
         if (capture == 2)
-            expect (both.channels[4] == both.channels[0]
-                        && both.channels[4] == both.channels[1],
+            expect (withPiezo.channels[2] == withPiezo.channels[0]
+                        && withPiezo.channels[2] == withPiezo.channels[1],
                     "the Piezo bus is not Main with Capture on Piezo");
-        const auto reference = play (0, true, true);
-        expect (reference.channels.size() == 5
-                    && reference.channels[2] == both.channels[2]
-                    && reference.channels[3] == both.channels[3]
-                    && reference.channels[4] == both.channels[4],
-                "a separate output depends on what Capture selects");
+        expect (reference.channels[2] == withPiezo.channels[2],
+                "the Piezo output depends on what Capture selects");
+
+        // A session saved with the Piezo output enabled loads into a
+        // processor with it off, and the other way round, and plays the same.
+        const auto reloadedOff = play (0, false, &withPiezo.state);
+        const auto reloadedOn = play (0, true, &plain.state);
+        expect (reloadedOff.channels.size() == 2 && reloadedOn.channels.size() == 3
+                    && reloadedOff.channels[0] == plain.channels[0]
+                    && reloadedOff.channels[1] == plain.channels[1]
+                    && reloadedOn.channels[0] == plain.channels[0]
+                    && reloadedOn.channels[2] == withPiezo.channels[2],
+                "a session did not reload the same across the Piezo bus's state");
     }
 }
 
@@ -2186,7 +2182,7 @@ int main()
 
     testParameterContract();
     testProcessorContractAndSampleAccurateMidi();
-    testOptionalSensorOutputBuses();
+    testOptionalPiezoOutputBus();
     testSameSampleChordOrderIsCanonical();
     testSameSampleNoteOnOffDoesNotStick();
     testSameSampleChordsAreStrummedAndAlternate();

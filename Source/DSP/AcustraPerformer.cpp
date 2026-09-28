@@ -180,7 +180,7 @@ void Performer::renderTo(int sample) noexcept
         return bus != nullptr ? bus + renderedTo_ : nullptr;
     };
     engine_.process(left_ + renderedTo_, right_ + renderedTo_,
-                    { at(buses_.micLeft), at(buses_.micRight), at(buses_.piezo) },
+                    AcustraEngine::OutputBuses { at(buses_.piezo) },
                     sample - renderedTo_);
     renderedTo_ = sample;
 }

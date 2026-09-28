@@ -9,8 +9,8 @@ contains no sample player and no recorded note audio.
 
 Start with Guitar, Model, Picking and Capture: construction presets and four
 additional measured guitars, finger/pick/thumb styles, and stereo mic, mono
-mic or an under-saddle piezo through its onboard preamp, with the microphone
-pair and the piezo also available as separate outputs. Shape and Material directions,
+mic or an under-saddle piezo through its onboard preamp, with the piezo also
+available as a separate output. Shape and Material directions,
 steel or nylon strings, String Age, Tuning, Pluck Position, Touch, Body Amount, Stereo Width
 and Output remain directly accessible. Bridge-hand damping is a playing gesture
 rather than a setting, so it arrives on CC2 and costs the panel nothing.
@@ -1189,32 +1189,27 @@ retired sensors rather than keeping hidden magnetic or unloaded-piezo paths.
 | Output | Channels | What it carries |
 | --- | --- | --- |
 | **Main** (`Output`) | stereo, always on | Whatever Capture selects, exactly as before. |
-| **Mic** | stereo, optional | The stereo microphone pair, with Stereo Width, whatever Capture selects. |
 | **Piezo** | mono, optional | The under-saddle piezo and its preamp, whatever Capture selects. |
 
-Every sensor observes the same vibrating instrument in the same pass, so Mic
-and Piezo can be recorded, processed or blended separately while Main keeps
-following Capture. Each separate output plays at the level Main has when
-Capture selects it (the same Output and string-material reference) and has its
-own copy of the headroom-only safety limiter. With Capture on Stereo mic, Mic
-is Main sample for sample; with Capture on Piezo, Piezo is either side of Main.
-Enabling them never changes Main by a bit, and an idle instrument is exact
-silence on all three.
+The piezo observes the same vibrating instrument in the same pass, so it can be
+recorded, processed or blended separately while Main keeps following Capture.
+It plays at the level Main has when Capture selects Piezo (the same Output and
+string-material reference) and has its own copy of the headroom-only safety
+limiter, so with Capture on Piezo it is either side of Main sample for sample.
+Enabling it never changes Main by a bit, and an idle instrument is exact
+silence on both.
 
-In the VST3 plug-in, Mic and Piezo are optional auxiliary output buses, off by
+In the VST3 plug-in, Piezo is an optional auxiliary output bus, off by
 default, so hosts and saved sessions that know only the stereo output are
-unchanged; enable them in the host's output/bus configuration. Audio Units
-have no disabled buses, so an AU host sees all three outputs; Main is still
-the first. A disabled bus is
-not rendered; an enabled one adds under 1% to a block's cost, the price of
-two limiters and three stores a sample, since the sensors are computed for
-Main anyway.
+unchanged; enable it in the host's output/bus configuration. Audio Units have
+no disabled buses, so an AU host sees both outputs; Main is still the first.
+A disabled bus is not rendered; an enabled one adds a limiter and a store a
+sample, since the piezo is computed for Main anyway.
 
 In code, `AcustraEngine::process(left, right, buses, numSamples)` and
 `Performer::beginBlock(left, right, buses, numSamples)` take an
-`AcustraEngine::OutputBuses { micLeft, micRight, piezo }` whose null pointers
-mean "not wanted"; the two-pointer forms render Main alone and are the same
-samples as before these outputs existed.
+`AcustraEngine::OutputBuses { piezo }` whose null pointer means "not wanted";
+the two-pointer forms render Main alone and are the same samples.
 
 ## Why this architecture
 
@@ -1426,11 +1421,11 @@ The JUCE-free suites cover:
   spelt through the helpers a front end without MIDI uses; plus canonical
   same-sample order, the gathered roll, master tune and overflow counts, and
   that CC68 and release velocity change no sample of any of it;
-- the separate outputs (Tests/OutputBusTests.cpp), over that battery: Main
-  bit-identical whether or not Mic and Piezo are wanted, Mic equal to Main
-  with Capture on Stereo mic and Piezo to Main with Capture on Piezo for both
-  materials, each output independent of Capture and of the others, exact
-  silence when idle, and their cost per 64-frame block;
+- the separate Piezo output (Tests/OutputBusTests.cpp), over that battery:
+  Main bit-identical whether or not Piezo is wanted, Piezo equal to Main with
+  Capture on Piezo for both materials and independent of Capture, a null
+  pointer never written, exact silence when idle, and its cost per 64-frame
+  block;
 - the piezo chain (Tests/CaptureTests.cpp), block by block against its
   analytic targets: unit string weights reproduce the junction's reaction
   force bit for bit through bends, tails, releases and an uncoupled bridge,
@@ -2299,12 +2294,12 @@ git history rather than here.
 
 ### 2026-09-28
 
-- **Separate Mic and Piezo outputs, at the user's request.** Alongside Main,
-  which still follows Capture, the stereo microphone pair and the saddle
-  piezo can be taken as outputs of their own, rendered in the same pass: in
-  the plug-in as optional auxiliary buses (off by default), and through the
-  engine and player for the Rack Extension's back panel. Main is unchanged down to the bit whether or
-  not they are enabled, and costs the same when they are not.
+- **A separate Piezo output, at the user's request.** Alongside Main, which
+  still follows Capture, the saddle piezo can be taken as an output of its
+  own, rendered in the same pass: in the plug-in as an optional auxiliary bus
+  (off by default), and through the engine and player for the Rack
+  Extension's back panel. Main is unchanged down to the bit whether or not it
+  is enabled, and costs the same when it is not.
 - **Nylon plays as loud as steel, at the user's request.** Nylon's output
   reference rises by 5.47 dB, the median loudness (BS.1770) it measured below
   steel over the factory constructions strung with each material and typical

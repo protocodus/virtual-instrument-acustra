@@ -1,9 +1,8 @@
-// The separate outputs (AcustraEngine::OutputBuses): the Mic pair and the
-// Piezo line render alongside Main in one pass. Wanting them must not change
-// Main by a bit; the Mic pair must be Main whenever Capture is on Stereo mic
-// and the Piezo line Main's mono whenever Capture is on Piezo; neither may
-// depend on what Capture selects; and not wanting them must cost nothing.
-// The whole performance battery is played through the player to check it.
+// The separate output (AcustraEngine::OutputBuses): the Piezo line renders
+// alongside Main in one pass. Wanting it must not change Main by a bit; it
+// must be Main's mono whenever Capture is on Piezo; it may not depend on what
+// Capture selects; and not wanting it must cost nothing. The whole
+// performance battery is played through the player to check it.
 #include "DSP/AcustraPerformer.h"
 #include "PerformanceBattery.h"
 
@@ -40,8 +39,12 @@ void expect(bool condition, const std::string& message)
 
 struct Buses
 {
-    std::vector<float> left, right, micLeft, micRight, piezo;
+    std::vector<float> left, right, piezo;
 };
+
+// The only separate output is the mono Piezo line: Main plus one pointer.
+static_assert(sizeof(AcustraEngine::OutputBuses) == sizeof(float*),
+              "OutputBuses carries the Piezo pointer alone");
 
 bool bitwiseEqual(const std::vector<float>& a, const std::vector<float>& b)
 {
@@ -109,7 +112,7 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
 
 // Plays a scenario through the player as the plug-in does (controls before
 // the block containing them, events at their offsets), with the separate
-// outputs wanted or not. The capture and material a Force names are set
+// output wanted or not. The capture and material a Force names are set
 // before prepare, so no crossfade separates the routes being compared.
 Buses render(const Scenario& scenario, int blockSize, bool wantBuses,
              const Force& force = {}, double sampleRate = 48000.0)
@@ -132,8 +135,6 @@ Buses render(const Scenario& scenario, int blockSize, bool wantBuses,
     if (wantBuses)
     {
         // A sentinel, so a sample the engine forgets to write shows.
-        result.micLeft.assign(padded, 7.0f);
-        result.micRight.assign(padded, 7.0f);
         result.piezo.assign(padded, 7.0f);
     }
     bool gather = false;
@@ -168,9 +169,8 @@ Buses render(const Scenario& scenario, int blockSize, bool wantBuses,
         if (wantBuses)
             performer->beginBlock(result.left.data() + offset,
                                   result.right.data() + offset,
-                                  { result.micLeft.data() + offset,
-                                    result.micRight.data() + offset,
-                                    result.piezo.data() + offset },
+                                  AcustraEngine::OutputBuses {
+                                      result.piezo.data() + offset },
                                   blockSize);
         else
             performer->beginBlock(result.left.data() + offset,
@@ -179,8 +179,7 @@ Buses render(const Scenario& scenario, int blockSize, bool wantBuses,
             performer->handleMidi(at, event->bytes.data(), event->size);
         performer->endBlock();
     }
-    for (auto* channel : { &result.left, &result.right, &result.micLeft,
-                           &result.micRight, &result.piezo })
+    for (auto* channel : { &result.left, &result.right, &result.piezo })
         if (! channel->empty())
             channel->resize(static_cast<std::size_t>(length));
     return result;
@@ -200,8 +199,8 @@ bool finiteAndBounded(const std::vector<float>& channel)
     });
 }
 
-// Wanting the separate outputs leaves Main as it was, down to the bit, over
-// the whole battery (which switches capture, material, picking, gathering and
+// Wanting the Piezo output leaves Main as it was, down to the bit, over the
+// whole battery (which switches capture, material, picking, gathering and
 // resets mid-performance) at two block sizes; every bus sample is written.
 void testWantingBusesLeavesMainUnchanged(const std::vector<Scenario>& battery)
 {
@@ -214,18 +213,16 @@ void testWantingBusesLeavesMainUnchanged(const std::vector<Scenario>& battery)
                 + std::to_string(blockSize);
             expect(bitwiseEqual(plain.left, withBuses.left)
                        && bitwiseEqual(plain.right, withBuses.right),
-                   "wanting the separate outputs changed Main on " + name);
-            for (const auto* channel : { &withBuses.micLeft, &withBuses.micRight,
-                                         &withBuses.piezo })
-                expect(finiteAndBounded(*channel),
-                       "a separate output left a sample unwritten or unbounded on "
-                           + name);
+                   "wanting the Piezo output changed Main on " + name);
+            expect(finiteAndBounded(withBuses.piezo),
+                   "the Piezo output left a sample unwritten or unbounded on "
+                       + name);
         }
 }
 
-// With Capture held on one route for the whole performance, that route's
-// separate output is Main; and each separate output is the same whatever
-// Capture selects, for both string materials.
+// With Capture held on Piezo for the whole performance, the Piezo output is
+// Main; and it is the same whatever Capture selects, for both string
+// materials.
 void testBusesAreTheCaptureRoutes(const std::vector<Scenario>& battery)
 {
     long signedZeros = 0;
@@ -242,29 +239,24 @@ void testBusesAreTheCaptureRoutes(const std::vector<Scenario>& battery)
             const auto piezo = render(scenario, 127, true,
                                       { CaptureType::Piezo, material });
 
-            expect(bitwiseEqual(stereo.micLeft, stereo.left)
-                       && bitwiseEqual(stereo.micRight, stereo.right),
-                   "the Mic pair is not Main with Capture on Stereo mic on " + name);
             expect(valueEqual(piezo.piezo, piezo.left, &signedZeros)
                        && valueEqual(piezo.piezo, piezo.right, &signedZeros),
                    "the Piezo line is not Main with Capture on Piezo on " + name);
             piezoSamples += 2 * static_cast<long>(piezo.piezo.size());
             for (const auto* other : { &mono, &piezo })
-                expect(bitwiseEqual(other->micLeft, stereo.micLeft)
-                           && bitwiseEqual(other->micRight, stereo.micRight)
-                           && bitwiseEqual(other->piezo, stereo.piezo),
-                       "a separate output depends on what Capture selects on " + name);
+                expect(bitwiseEqual(other->piezo, stereo.piezo),
+                       "the Piezo output depends on what Capture selects on " + name);
             if (anyAudible(stereo.left))
-                expect(anyAudible(stereo.piezo) && anyAudible(stereo.micLeft),
-                       "a separate output is silent while Main plays on " + name);
+                expect(anyAudible(stereo.piezo),
+                       "the Piezo output is silent while Main plays on " + name);
         }
     std::cout << "Piezo line vs Main on Piezo: equal as floats on " << piezoSamples
               << " samples, " << signedZeros << " differing only in a zero's sign\n";
 }
 
-// While Capture crossfades between routes, the separate outputs keep
-// observing the unchanged instrument: a mid-note switch to Piezo and back
-// leaves them bit-identical to a performance that never switched.
+// While Capture crossfades between routes, the Piezo output keeps observing
+// the unchanged instrument: a mid-note switch to Piezo and back leaves it
+// bit-identical to a performance that never switched.
 void testCaptureSwitchLeavesBusesAlone()
 {
     Scenario scenario;
@@ -282,21 +274,20 @@ void testCaptureSwitchLeavesBusesAlone()
     still.controls.clear();
     const auto switched = render(scenario, 64, true);
     const auto held = render(still, 64, true);
-    expect(bitwiseEqual(switched.micLeft, held.micLeft)
-               && bitwiseEqual(switched.micRight, held.micRight)
-               && bitwiseEqual(switched.piezo, held.piezo),
-           "switching Capture changed a separate output");
+    expect(bitwiseEqual(switched.piezo, held.piezo),
+           "switching Capture changed the Piezo output");
     expect(! bitwiseEqual(switched.left, held.left),
            "the Capture switch did not reach Main");
 }
 
-// Each bus pointer is its own request: any subset renders what the full set
-// does, and an unwanted pointer is never touched.
-void testEachBusIsItsOwnRequest()
+// The Piezo pointer is a request: null renders Main exactly as a given
+// pointer does and never writes anywhere, and a given pointer is written in
+// full.
+void testPiezoIsARequest()
 {
     constexpr int rate = 48000;
     constexpr int length = rate / 2;
-    const auto run = [] (bool micLeft, bool micRight, bool piezo)
+    const auto run = [] (bool piezo)
     {
         auto engine = std::make_unique<AcustraEngine>();
         engine->prepare(rate, 64);
@@ -305,60 +296,51 @@ void testEachBusIsItsOwnRequest()
         Buses out;
         out.left.assign(length, 0.0f);
         out.right.assign(length, 0.0f);
-        out.micLeft.assign(length, 7.0f);
-        out.micRight.assign(length, 7.0f);
         out.piezo.assign(length, 7.0f);
         for (int start = 0; start < length; start += 64)
         {
             const auto at = static_cast<std::size_t>(start);
             engine->process(out.left.data() + at, out.right.data() + at,
-                            { micLeft ? out.micLeft.data() + at : nullptr,
-                              micRight ? out.micRight.data() + at : nullptr,
-                              piezo ? out.piezo.data() + at : nullptr },
+                            AcustraEngine::OutputBuses {
+                                piezo ? out.piezo.data() + at : nullptr },
                             std::min(64, length - start));
         }
         return out;
     };
-    const auto all = run(true, true, true);
-    const std::vector<float> untouched(length, 7.0f);
-    for (int mask = 0; mask < 8; ++mask)
-    {
-        const bool l = mask & 1, r = mask & 2, p = mask & 4;
-        const auto some = run(l, r, p);
-        expect(bitwiseEqual(some.left, all.left) && bitwiseEqual(some.right, all.right),
-               "a subset of separate outputs changed Main");
-        expect(bitwiseEqual(some.micLeft, l ? all.micLeft : untouched)
-                   && bitwiseEqual(some.micRight, r ? all.micRight : untouched)
-                   && bitwiseEqual(some.piezo, p ? all.piezo : untouched),
-               "a separate output was written unwanted, or differs when wanted alone");
-    }
+    const auto wanted = run(true);
+    const auto unwanted = run(false);
+    expect(bitwiseEqual(unwanted.left, wanted.left)
+               && bitwiseEqual(unwanted.right, wanted.right),
+           "requesting the Piezo output changed Main");
+    expect(bitwiseEqual(unwanted.piezo, std::vector<float>(length, 7.0f)),
+           "the Piezo output was written unwanted");
+    expect(anyAudible(wanted.piezo) && finiteAndBounded(wanted.piezo),
+           "the Piezo output was not written when wanted");
     // The player's block forms, with a note inside the block and without.
     auto performer = std::make_unique<Performer>();
     performer->prepare(rate, 64);
-    std::vector<float> left(4800), right(4800), micLeft(4800), micRight(4800),
-        piezo(4800);
+    std::vector<float> left(4800), right(4800), piezo(4800, 7.0f);
     performer->beginBlock(left.data(), right.data(),
-                          { micLeft.data(), micRight.data(), piezo.data() }, 64);
+                          AcustraEngine::OutputBuses { piezo.data() }, 64);
     performer->noteOn(17, 1, 52, 100);
     performer->endBlock();
     performer->process(left.data() + 64, right.data() + 64,
-                       { micLeft.data() + 64, micRight.data() + 64,
-                         piezo.data() + 64 }, 4800 - 64);
-    expect(anyAudible(left) && bitwiseEqual(micLeft, left)
-               && bitwiseEqual(micRight, right) && anyAudible(piezo),
-           "Performer::process did not render the separate outputs");
+                       AcustraEngine::OutputBuses { piezo.data() + 64 }, 4800 - 64);
+    expect(anyAudible(left) && anyAudible(piezo) && finiteAndBounded(piezo),
+           "Performer::process did not render the Piezo output");
 }
 
-// Before any note, and after a reset, every output is exact silence, so a
+// Before any note, and after a reset, Main and Piezo are exact silence, so a
 // host may idle the instrument whichever outputs are cabled.
 void testIdleOutputsAreExactSilence()
 {
     auto performer = std::make_unique<Performer>();
     performer->prepare(48000.0, 64);
-    std::vector<float> left(64), right(64), micLeft(64), micRight(64), piezo(64);
+    std::vector<float> left(64), right(64), piezo(64);
+    const AcustraEngine::OutputBuses buses { piezo.data() };
     const auto silent = [&]
     {
-        for (const auto* channel : { &left, &right, &micLeft, &micRight, &piezo })
+        for (const auto* channel : { &left, &right, &piezo })
             if (std::any_of(channel->begin(), channel->end(),
                             [] (float value) { return value != 0.0f; }))
                 return false;
@@ -368,26 +350,26 @@ void testIdleOutputsAreExactSilence()
     for (int block = 0; block < 750; ++block)
     {
         performer->process(left.data(), right.data(),
-                           { micLeft.data(), micRight.data(), piezo.data() }, 64);
+                           buses, 64);
         quiet = quiet && silent();
     }
-    expect(quiet, "an idle instrument's separate outputs are not exact silence");
+    expect(quiet, "an idle instrument's outputs are not exact silence");
     performer->beginBlock(left.data(), right.data(),
-                          { micLeft.data(), micRight.data(), piezo.data() }, 64);
+                          buses, 64);
     performer->noteOn(0, 1, 45, 110);
     performer->endBlock();
     for (int block = 0; block < 100; ++block)
         performer->process(left.data(), right.data(),
-                           { micLeft.data(), micRight.data(), piezo.data() }, 64);
+                           buses, 64);
     expect(! silent(), "the note before the reset did not sound");
     performer->reset();
     performer->process(left.data(), right.data(),
-                       { micLeft.data(), micRight.data(), piezo.data() }, 64);
-    expect(silent(), "a reset instrument's separate outputs are not exact silence");
+                       buses, 64);
+    expect(silent(), "a reset instrument's outputs are not exact silence");
 }
 
 // The cost, per 64-frame block of a ringing six-string chord re-plucked every
-// half second: Main alone and Main with every separate output, interleaved,
+// half second: Main alone and Main with the Piezo output, interleaved,
 // best of several passes. Printed for the record; the gate is loose so a
 // busy machine cannot fail it, while a second render pass would.
 void testCost()
@@ -399,9 +381,8 @@ void testCost()
         auto engine = std::make_unique<AcustraEngine>();
         engine->prepare(rate, 64);
         engine->setPortObserversEnabled(false);
-        std::array<float, 64> left {}, right {}, micLeft {}, micRight {}, piezo {};
-        const AcustraEngine::OutputBuses buses { micLeft.data(), micRight.data(),
-                                                 piezo.data() };
+        std::array<float, 64> left {}, right {}, piezo {};
+        const AcustraEngine::OutputBuses buses { piezo.data() };
         float sink = 0.0f;
         const auto start = std::chrono::steady_clock::now();
         for (int block = 0; block < blocks; ++block)
@@ -426,10 +407,10 @@ void testCost()
         withBuses = std::min(withBuses, pass(true));
     }
     std::cout << "Cost per 64-frame block, six ringing strings: Main "
-              << plain << " us, Main + Mic + Piezo " << withBuses << " us ("
+              << plain << " us, Main + Piezo " << withBuses << " us ("
               << 100.0 * (withBuses / plain - 1.0) << "%)\n";
     expect(withBuses < 1.25 * plain,
-           "rendering the separate outputs costs more than a quarter of Main");
+           "rendering the Piezo output costs more than a quarter of Main");
 }
 } // namespace
 
@@ -439,7 +420,7 @@ int main()
     testWantingBusesLeavesMainUnchanged(battery);
     testBusesAreTheCaptureRoutes(battery);
     testCaptureSwitchLeavesBusesAlone();
-    testEachBusIsItsOwnRequest();
+    testPiezoIsARequest();
     testIdleOutputsAreExactSilence();
     testCost();
 

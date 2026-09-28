@@ -4,6 +4,48 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-29 — at the user's request: the separate Mic output withdrawn, Piezo stays
+
+Not a listening verdict: the user asked for it. After the separate Mic and
+Piezo outputs below, they wrote on 2026-09-28 "remove legato control and
+feature. put piezo output separately to the backside." and then "back side:
+only L+R+piezo, cv inputs, icons, that is it." Later messages narrow earlier
+ones, so the stereo Mic output is gone and only the Piezo output stays
+alongside Main, in the Rack Extension's back panel and in the plug-in.
+
+What this repository now does:
+- `AcustraEngine::OutputBuses` is `{ float* piezo }`: `process(left, right,
+  buses, numSamples)` renders Main (still Capture-selected) and, when
+  `buses.piezo` is not null, the mono Piezo line in the same pass; a null
+  pointer is never written and costs nothing (the piezo chain runs for
+  Capture anyway). `Performer::beginBlock` and `Performer::process` take the
+  same struct and split it at events like Main. The two-pointer forms are
+  unchanged.
+- The plug-in has two output buses: "Output" (stereo, always on) and the
+  optional "Piezo" (mono, disabled by default), now bus 1. Saved sessions
+  load as before, since the bus layout is the host's and not part of the
+  plug-in state; a session saved with Piezo enabled reloads with it off and
+  the other way round and plays the same samples (PluginProcessorTests).
+  The Mic bus was never released.
+- The microphones still reach Main through Capture = Stereo mic or Mono mic.
+
+Evidence: Main and Piezo are byte-identical to 688d687. A harness plays the
+performance battery through the player at 44.1/48/96 kHz, blocks 64 and 127,
+gathering and not, plus a sweep of both materials over every construction,
+body, capture, picking, tuning, bridge, model and the knobs (246 renders),
+each twice: Main alone, and Main with the Piezo output requested. All 984
+hashes (Main alone, Main with Piezo, Piezo, and the unrequested Piezo buffer
+left untouched) match the same harness built from 688d687, where the Piezo
+output was requested as `{ nullptr, nullptr, piezo }`. Through the plug-in's
+processBlock, the battery at 44.1 and 48 kHz, blocks 127 and 256, gathering
+and not, plus every Capture with each string material (134 renders), each
+with the Piezo bus off and on: all 402 hashes (Main off, Main on, Piezo)
+match a 688d687 build of the plug-in with Mic off and Piezo on. With Capture
+held on Piezo, the Piezo output equals both sides of Main on all 7,392,000
+compared samples of the battery, both materials. Cost per 64-frame block of
+six ringing strings at 48 kHz, best of 9 interleaved runs: 49.79 us Main
+alone, 49.92 us with Piezo (+0.27%).
+
 ## 2026-09-29 — at the user's request: an analog model of the piezo (its sound awaits Set 20)
 
 Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
@@ -121,6 +163,9 @@ Magnetic, which load as it) sound different and play 8-10 dB louder. The
 Rack Extension's goldens for Piezo patches change with the submodule bump.
 
 ## 2026-09-28 — at the user's request: separate Mic and Piezo outputs
+
+Superseded in part on 2026-09-29: the Mic output was withdrawn at the
+user's request and only the Piezo output stays (see above).
 
 Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
 "add mic + piezo as separate outputs to the back side", and when asked

@@ -93,9 +93,9 @@ public:
 
 private:
     static constexpr double maximumTailLengthSeconds = 30.0;
-    // Output bus indices: 0 is Main (Capture-selected, stereo).
-    static constexpr int micBus = 1;
-    static constexpr int piezoBus = 2;
+    // Output bus indices: 0 is Main (Capture-selected, stereo), 1 the
+    // optional mono Piezo.
+    static constexpr int piezoBus = 1;
 
     void parameterChanged (const juce::String& parameterID,
                            float newValue) override;

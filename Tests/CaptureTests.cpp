@@ -731,15 +731,15 @@ void testPiezoSilence()
         auto engine = std::make_unique<acustra::AcustraEngine>();
         engine->setParameters(parameters);
         engine->prepare(rate, 64);
-        std::array<float, 64> left {}, right {}, micLeft {}, micRight {}, piezo {};
+        std::array<float, 64> left {}, right {}, piezo {};
         bool silent = true;
         for (int block = 0; block < rate / 64; ++block)
         {
             engine->process(left.data(), right.data(),
-                            { micLeft.data(), micRight.data(), piezo.data() }, 64);
+                            acustra::AcustraEngine::OutputBuses { piezo.data() }, 64);
             for (std::size_t i = 0; i < 64; ++i)
                 silent = silent && left[i] == 0.0f && right[i] == 0.0f
-                    && piezo[i] == 0.0f && micLeft[i] == 0.0f;
+                    && piezo[i] == 0.0f;
         }
         expect(silent, "a never-played engine was not exact silence");
     }
@@ -931,13 +931,14 @@ void testPiezoSwitchingIsClickFree()
         bool same = true;
         for (int block = 0; block < 800; ++block)
         {
-            always->process(left.data(), right.data(), { nullptr, nullptr, piezo.data() }, 64);
+            always->process(left.data(), right.data(),
+                            acustra::AcustraEngine::OutputBuses { piezo.data() }, 64);
             if (block < 300)
                 later->process(laterLeft.data(), laterRight.data(), 64);
             else
             {
                 later->process(laterLeft.data(), laterRight.data(),
-                               { nullptr, nullptr, laterPiezo.data() }, 64);
+                               acustra::AcustraEngine::OutputBuses { laterPiezo.data() }, 64);
                 same = same && laterPiezo == piezo;
             }
             same = same && laterLeft == left;
@@ -946,8 +947,8 @@ void testPiezoSwitchingIsClickFree()
     }
 }
 
-// 8. The microphones never hear the piezo: whatever its weights, the Mic
-// pair and Main on the microphones are the same samples.
+// 8. The microphones never hear the piezo: whatever its weights, Main on
+// the microphones is the same samples.
 void testPiezoDoesNotReachTheMicrophones()
 {
     for (auto capture : { acustra::CaptureType::StereoMic, acustra::CaptureType::MonoMic })
@@ -967,15 +968,12 @@ void testPiezoDoesNotReachTheMicrophones()
             for (int note : { 40, 47, 52, 56, 59, 64 })
                 engine->noteOn(note, 1.0f);
             std::vector<float> out;
-            std::array<float, 64> left {}, right {}, micLeft {}, micRight {};
+            std::array<float, 64> left {}, right {};
             for (int block = 0; block < 750; ++block)
             {
-                engine->process(left.data(), right.data(),
-                                { micLeft.data(), micRight.data(), nullptr }, 64);
+                engine->process(left.data(), right.data(), 64);
                 out.insert(out.end(), left.begin(), left.end());
                 out.insert(out.end(), right.begin(), right.end());
-                out.insert(out.end(), micLeft.begin(), micLeft.end());
-                out.insert(out.end(), micRight.begin(), micRight.end());
             }
             renders.push_back(out);
         }

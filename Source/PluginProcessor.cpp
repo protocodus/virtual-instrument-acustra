@@ -127,15 +127,13 @@ Enum choiceValue (float value, int maximumIndex) noexcept
 } // namespace
 
 AcustraAudioProcessor::AcustraAudioProcessor()
-    // Main follows the Capture selector, as it always has. The two optional
-    // buses are the sensors themselves, whatever Capture selects: a host that
-    // enables them gets the stereo microphone pair and the bridge piezo in
-    // the same pass (see acustra::AcustraEngine::OutputBuses). Disabled by
-    // default, so a session and a host that know only the stereo output
-    // are unchanged.
+    // Main follows the Capture selector, as it always has. The optional
+    // Piezo bus is the under-saddle piezo itself, whatever Capture selects:
+    // a host that enables it gets it in the same pass (see
+    // acustra::AcustraEngine::OutputBuses). Disabled by default, so a
+    // session and a host that know only the stereo output are unchanged.
     : AudioProcessor (BusesProperties()
           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-          .withOutput ("Mic", juce::AudioChannelSet::stereo(), false)
           .withOutput ("Piezo", juce::AudioChannelSet::mono(), false)),
       parameters (*this, nullptr, "ACUSTRA_STATE", createParameterLayout())
 {
@@ -312,13 +310,11 @@ bool AcustraAudioProcessor::isBusesLayoutSupported (
 {
     if (! layouts.getMainInputChannelSet().isDisabled()
         || layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo()
-        || layouts.outputBuses.size() != 3)
+        || layouts.outputBuses.size() != 2)
         return false;
-    // Each separate output is either off or in its own format.
-    const auto& mic = layouts.getChannelSet (false, micBus);
+    // The separate Piezo output is either off or mono.
     const auto& piezo = layouts.getChannelSet (false, piezoBus);
-    return (mic.isDisabled() || mic == juce::AudioChannelSet::stereo())
-        && (piezo.isDisabled() || piezo == juce::AudioChannelSet::mono());
+    return piezo.isDisabled() || piezo == juce::AudioChannelSet::mono();
 }
 
 void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
@@ -341,7 +337,7 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // DSP/AcustraPerformer.h.
     performer.setGatherChords (parameterPointers[slotGatherChords]->load (
                                    std::memory_order_relaxed) >= 0.5f);
-    // Only the separate outputs the host enabled are rendered; a null
+    // The Piezo output is rendered only when the host enabled it; a null
     // pointer tells the engine not to.
     const auto channel = [&] (int bus, int index) -> float*
     {
@@ -350,9 +346,7 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         const int at = getChannelIndexInProcessBlockBuffer (false, bus, index);
         return at < buffer.getNumChannels() ? buffer.getWritePointer (at) : nullptr;
     };
-    const acustra::AcustraEngine::OutputBuses buses {
-        channel (micBus, 0), channel (micBus, 1), channel (piezoBus, 0)
-    };
+    const acustra::AcustraEngine::OutputBuses buses { channel (piezoBus, 0) };
     performer.beginBlock (buffer.getWritePointer (0), buffer.getWritePointer (1),
                           buses, numSamples);
     for (const auto metadata : midiMessages)
