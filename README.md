@@ -121,7 +121,7 @@ calibration, the two lines of development merged on 2026-09-24 - the same
 protocol at the shipping calibration read 6.392396 on training, 6.378758 on
 development validation and 9.256751 on the flat-top rows with the benchmark's
 reference Original bridge, and 6.268767, 6.172187 and 8.591335 with the Fylde
-bridge the steel presets play; with the parallel polarisation radiating
+bridge the steel presets then played; with the parallel polarisation radiating
 (Pluck and strings) they read 6.167890, 6.042989 and 8.559757, and 6.148927,
 6.008802 and 8.232583; with a steel pluck releasing most of its energy
 parallel to the top and nylon's normal-led, 6.087514, 5.938380 and
@@ -142,8 +142,12 @@ rows read 6.103277 and 5.702917. With the plectrum released as the string
 slides round its edge and steel's plate modes damped to the anechoic
 flamencas' measured Q (2026-09-27), the Fylde reading is 6.403167, 6.019245
 and 7.121675, and under Pick with the Fylde bridge 5.943771 and 5.605528
-(steel alone 5.516350 and 5.511048); these are the current base. The
-renderer renders each material at its anchor body - steel the default
+(steel alone 5.516350 and 5.511048). With the pluck and bending loss chosen
+by ear on 2026-09-28 the Fylde reads 6.4472, 6.0328 and 7.2714, and under Pick
+6.0173 and 5.5799. On steel's own bridge, which the steel presets play since
+that day, with the plate-Q rule down to 150 Hz, the readings are 6.4040,
+6.0056 and 7.2752, and under Pick 6.0182 and 5.5377. These are the current
+base. The renderer renders each material at its anchor body - steel the default
 Dreadnought, nylon the Auditorium slot that is the measured classical.
 
 The bank's steel rows are an archtop, and its only flat-top is eight notes
@@ -161,8 +165,9 @@ high-passed at 60 Hz against the microphone's rumble and tuned 22 cents flat,
 which its tuning term reads as error
 ([`PrepareIowaGuitarCorpus.py`](Tools/PrepareIowaGuitarCorpus.py)). Its
 renderer is the fit renderer's model half, byte-identical to it. On the
-current engine they read 6.453504 (Eastman picked), 7.391678 (Eastman finger),
-7.322244 (Martin HD28) and 9.741938 (Iowa nylon). None of them is fitted; a
+current engine (steel on its own bridge, 2026-09-28) they read 6.3767 (Eastman
+picked), 6.8426 (Eastman finger), 7.0770 (Martin HD28) and 9.8673 (Iowa
+nylon). None of them is fitted; a
 split used to choose a calibration stops being a held-out reading. Two of the
 bank's eight flat-top targets (E2, E3) start after their attack has begun,
 which the corpus tool's onset rule catches and the bank's export did not.
@@ -2001,14 +2006,23 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   it doubles the open low E's own fundamental decay rate away from its
   recorded target and fails eleven engine regressions, so it was held back
   for the ear rather than adopted (Docs/decisions.md).
-- Chords still pull. The worst note in E, G, Am, D and C chords sits 9 cents
-  off equal temperament early and 5 cents late on steel (7 and 7 on nylon)
-  where it sat 23 and 10 (23 and 28); the remaining pulls are the anchor's
-  resonance at 306 and 668 Hz coupling E4 and E5 to their coincident
-  partials, and coupled doublets at exact coincidences (E3 on the low E's
-  second partial sits on the lower member, −1.5 cents). A matched bridge
-  mobility for a steel-string and a classical body, measured strung, is what
-  would remove the artefact rather than move it.
+- Chords still pull. On the Fylde bridge the worst note in E, G, Am, D and
+  C chords sits 11 cents off equal temperament early and 5 cents late (7 and
+  7 on nylon) where it once sat 23 and 10 (23 and 28). On steel's own bridge,
+  the steel default, it sits 7 early and 9 late: G3 in the G chord reads +8.6
+  cents at one second and B3 in the E chord +7.4. Neither string is detuned by
+  its bridge. G3 alone reads +1.9 and B3 alone +0.1. Each reading is a
+  coincident partial of a lower string coupled through the bridge: G2's
+  second partial on G3, and E2's third on B3, which equal temperament and
+  stiffness put 6.7 cents sharp. Damping the 190 Hz rocking pole changed
+  which member of the G2/G3 doublet outlasts the other (1.0 cents before it).
+  The other pulls are the anchor's resonance at 306 and 668 Hz coupling E4 and
+  E5 to their coincident partials, and coupled doublets at exact coincidences
+  (E3 on the low E's second partial sits on the lower member, -1.5 cents).
+  The levers are measured values the listener chose, the steel mobility level
+  and the plate-Q damping, and no correction is derived from them. A bridge
+  mobility measured strung on the same body would show whether a real guitar
+  pulls as far.
 - Shape and Body Material morph whichever measured body the string material
   selects — the g21 flamenca on steel, a 1971 Manuel Contreras classical
   (g34) on nylon — and are not separate measurements of four guitar sizes or
@@ -2026,8 +2040,8 @@ VST3, Audio Unit and Standalone targets are built from the same engine.
   late flatness and beating stay where the Fylde left them, finger-played
   notes' early decay residual does not improve, and the flamenca's full
   mobility, which drains far more, thins the low E through the 3.25 mm anchor
-  stub. The one-second chord pull on the B string of an E chord reads 7.4
-  cents against the Fylde's 5.3. g21's damping is
+  stub. The one-second chord pull reads 8.6 cents (G3 in a G chord)
+  against the Fylde's 5.3 (below). g21's damping is
   read against five anechoic flamencas by one octave-median rule: its
   208.7 Hz rocking mode keeps Q 27.4 where the population's rocking modes
   in 200-280 Hz measure Q 11-21, because the rule halves an excess that is
@@ -2283,6 +2297,25 @@ git history rather than here.
 
 ### 2026-09-28
 
+- **The snap is confirmed by ear, steel plays one body at the saddle, and
+  the plate-Q rule reaches down to 150 Hz.** In a blind pair the listener
+  chose the snap on every piece. Steel's presets and new sessions now play
+  g21's own bridge measurement. Each bridge mode that is the same resonance
+  as a radiation mode (18 of 47) sits on that mode's pole. The whole bridge
+  is scaled to a steel-string guitar's mobility, measured on the Fylde at
+  0.274 of the flamenca's. A partial on a body peak now blooms and drains
+  instead of ringing on through a band-pass filter. T1, the 209 Hz rocking
+  mode and the 229 Hz mode now take the anechoic flamencas' damping, as the
+  plate modes did (the rocking mode's Q 37 to 27). The listener chose both
+  changes, and they ship together. Against the previous engine every
+  never-fitted corpus reads closer (Eastman picked 1.7%, finger 0.8%,
+  Martin 2.7%), and so does the frozen test split (Finger 1.0%, Pick 1.1%).
+  GuitarSet's log error falls from 14.88 to 14.73 dB. Picked notes' prominent
+  partials now decay 2.2 dB/s faster than their neighbours, against 1.0
+  before and 4.0-5.4 on the recordings. G2's fundamental rings on the air
+  mode, E2's is 5-8 dB lower, and the one-second chord pull is 8.6 cents
+  (Known gaps). A steel strum costs about 5% more CPU, 8% on a held chord.
+  The Fylde bridge stays selectable.
 - **The strings' upper partials die faster, and the pluck is rebuilt around
   them, chosen by ear.** Each string now loses its high partials through its
   own bending stiffness (Valette; Woodhouse 2004): steel wound 0.035 and plain
