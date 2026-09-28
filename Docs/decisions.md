@@ -50,11 +50,17 @@ and the three effects sum to the measured C-B within 0.1 dB.
 - The 80-300 Hz body level is the same (C-B -0.04 / +0.08 / -0.09 / +0.04 /
   +0.05 dB), but inside it the weight moves up: in the first 300 ms after
   each onset the 159 Hz third-octave is 0.5-0.9 dB lower in C on every piece
-  (E: -0.4 to -0.7; D's remaining 0.3: within 0.1), while 317 Hz is up to 0.7 dB higher (E) and 200 Hz up to
-  0.5 dB higher (D's shortfall: T1 damped less). A thinner 160 Hz under a
-  fuller 200-320 Hz is the most plausible "weaker body", and E is the
-  component that does it. If "too bright" means the balance against that
-  body rather than treble, it is E too.
+  (E: -0.4 to -0.7; D's remaining 0.3: within 0.1), while 317 Hz is up to
+  0.8 dB higher (E). 200 Hz moves with the piece: on the picked melody it is
+  +0.9 to +1.3 dB (up to +2.9 at the onsets in a second analysis), half from
+  E and half from D's shortfall (T1 damped less); on the finger single notes
+  it is -0.6 at the onsets, from E. A thinner 160 Hz under a fuller
+  200-320 Hz is the most plausible "weaker body". E does most of it, and D's
+  shortfall shares the 200 Hz part. If "too bright" means the balance
+  against that body rather than treble, it is mostly E too. The one place a
+  brighter C shows up is piece 1's onsets: tilt +0.03 to +0.20 dB, E alone
+  +0.29 to +0.51. The grid darkens the 12.5 and 16 kHz third-octaves by
+  0.5-0.9 dB, so it is not neutral up there, though it barely moves the tilt.
 - What C plausibly won on the finger single notes and the travis picking:
   a fuller bottom (63-80 Hz +0.4 to +0.7 dB, E) and more body under the
   treble notes (piece 1's ring, 80-300 Hz under E4 / A4 / E5 +0.9 / +1.4 /
