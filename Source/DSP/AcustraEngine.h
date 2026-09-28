@@ -342,6 +342,7 @@ private:
         // designed at the host rate from the loss law rather than mapped
         // from 48 kHz. Inactive leaves the loop exactly as it was.
         bool bendingLossActive { false };
+        bool bendingLossSeed { false };
         float bendingLossGain { 1.0f };
         float bendingLossA1 { 0.0f };
         float bendingLossA2 { 0.0f };

@@ -1696,6 +1696,7 @@ void AcustraEngine::StringLoop::reset() noexcept
     lossFilter.reset();
     bendingLossY1 = 0.0f;
     bendingLossY2 = 0.0f;
+    bendingLossSeed = false;
     dispersion.reset();
     bridgeDerivative.reset();
     derivativeNeedsPriming = true;
@@ -1837,6 +1838,12 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
     reflected += highLossMix * (low - reflected);
     if (bendingLossActive)
     {
+        if (bendingLossSeed)
+        {
+            // The section's unit-DC rest state for the wave it meets.
+            bendingLossY1 = bendingLossY2 = reflected;
+            bendingLossSeed = false;
+        }
         const float bent = bendingLossGain * reflected
             - bendingLossA1 * bendingLossY1 - bendingLossA2 * bendingLossY2;
         bendingLossY2 = bendingLossY1;
@@ -3340,8 +3347,15 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         loop.broadLossFilter.configureRate(broadLossCoefficient, sampleRate_);
         loop.lossFilter.configureRate(lowpassCoefficient, sampleRate_);
         // Intrinsic to the string, so both planes lose it alike.
+        const bool wasBending = loop.bendingLossActive;
         loop.bendingLossActive = voice.bendingLossA1 != 0.0f
                               || voice.bendingLossA2 != 0.0f;
+        // A section switched on under a sounding wave - a string set with a
+        // loss exchanged for one without - starts from the wave it meets,
+        // not from rest, which would drop the loop's output to g x for a few
+        // samples and click (StringLoop::advance).
+        if (loop.bendingLossActive && !wasBending)
+            loop.bendingLossSeed = true;
 #if defined(ACUSTRA_ANALYSIS_BENDING_LOSS_NORMAL_ONLY)
         // Analysis only: the same loss confined to the plane normal to the
         // top, as a bridge-side loss would be. Not the intrinsic mechanism.
