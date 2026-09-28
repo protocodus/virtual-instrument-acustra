@@ -4,6 +4,40 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — at the user's request: separate Mic and Piezo outputs
+
+Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
+"add mic + piezo as separate outputs to the back side", and when asked
+chose "Main + Mic + Piezo (Recommended)" for the Rack Extension's back panel
+and, for the plug-in, "Yes, as an aux bus (Recommended)".
+
+What this repository now does:
+- `AcustraEngine::process(left, right, buses, numSamples)` renders Main
+  (still Capture-selected) plus any of `OutputBuses { micLeft, micRight,
+  piezo }` in the same pass; a null pointer is an output not wanted.
+  `Performer::beginBlock` and `Performer::process` take the same buses and
+  split them at events like Main. The two-pointer forms remain and render
+  exactly the samples they did before.
+- Mic is the stereo microphone pair with the Width law, whatever Capture
+  selects; Piezo is the loaded saddle piezo (the electrical load already
+  shipping), mono. Each is at the level Main has for that route and passes
+  its own copy of the safety limiter; nothing is shared between outputs.
+- The plug-in has optional "Mic" (stereo) and "Piezo" (mono) output buses,
+  disabled by default; Main is unchanged and so are saved sessions (bus
+  layout is the host's, not part of the plug-in state). AU enables every
+  bus, as Audio Units have no disabled buses.
+
+Evidence: 246 harness renders (the battery through the player at
+44.1/48/96 kHz, blocks 64/127, gathering and not, plus a sweep of both
+materials) are byte-identical before and after. Over the whole battery at
+blocks 64 and 127, Main is bit-identical with and without the outputs
+wanted; with Capture held on Stereo mic, Mic is Main bit for bit; with it held
+on Piezo, Piezo equals both sides of Main on all 7,392,000 compared samples,
+both materials; each output is identical whatever Capture selects. Cost per
+64-frame block of six ringing strings at 44.1 kHz, best of 12 interleaved
+runs: 52.09 us before, 52.12 us after with no outputs wanted, 52.49 us with
+Mic and Piezo both wanted (+0.7%).
+
 ## 2026-09-28 — at the user's request: nylon as loud as steel
 
 Not a listening verdict: the user asked for it. On 2026-09-28 they wrote

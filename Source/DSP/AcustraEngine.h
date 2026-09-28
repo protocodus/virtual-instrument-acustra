@@ -230,7 +230,31 @@ public:
     // tests and tools that read them; switching restarts them from rest.
     void setPortObserversEnabled(bool enabled) noexcept;
 
+    // The separate outputs a host can take alongside Main. Each pointer
+    // receives numSamples samples; null means that output is not wanted and
+    // nothing is written to it. Every sensor observes the same vibrating
+    // instrument in one pass, so wanting one changes nothing else.
+    //   micLeft, micRight: the stereo microphone pair, with the Width law,
+    //     whatever Capture selects. Each side is written independently.
+    //   piezo: the loaded bridge piezo, mono.
+    // Each is at the level Main has when Capture selects it (the same
+    // material reference and Output gain) and passes its own copy of Main's
+    // safety limiter; the outputs share no state, so Main is bit-for-bit
+    // what it would be without them. Main with Capture on Stereo mic equals
+    // the Mic pair, and with Capture on Piezo equals the Piezo output on
+    // both sides, once a Capture change's 20 ms crossfade has settled.
+    struct OutputBuses
+    {
+        float* micLeft { nullptr };
+        float* micRight { nullptr };
+        float* piezo { nullptr };
+    };
+
+    // Main only: left and right follow Capture.
     void process(float* left, float* right, int numSamples) noexcept;
+    // Main plus the requested outputs, in one pass.
+    void process(float* left, float* right, const OutputBuses& buses,
+                 int numSamples) noexcept;
 
     [[nodiscard]] int getActiveVoiceCount() const noexcept;
     [[nodiscard]] int getSympatheticStringCount() const noexcept;

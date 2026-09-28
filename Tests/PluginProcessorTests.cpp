@@ -2046,12 +2046,147 @@ void testTheAdapterPlaysExactlyThePerformer()
         }
 }
 
+// Main plus the optional Mic (stereo) and Piezo (mono) output buses: off by
+// default, so hosts and sessions that know only the stereo output see what
+// they always did; when a host enables them they carry the sensors
+// themselves, and Main is the same either way.
+void testOptionalSensorOutputBuses()
+{
+    namespace ids = acustra::parameters;
+    {
+        AcustraAudioProcessor processor;
+        expect (processor.getBusCount (false) == 3 && processor.getBusCount (true) == 0,
+                "the plug-in must offer Main plus two optional output buses");
+        expect (processor.getBus (false, 0)->getName() == "Output"
+                    && processor.getBus (false, 1)->getName() == "Mic"
+                    && processor.getBus (false, 2)->getName() == "Piezo",
+                "the output buses are misnamed");
+        expect (processor.getBus (false, 0)->isEnabled()
+                    && ! processor.getBus (false, 1)->isEnabled()
+                    && ! processor.getBus (false, 2)->isEnabled()
+                    && processor.getTotalNumOutputChannels() == 2,
+                "the Mic and Piezo buses must be off by default");
+        expect (processor.getBus (false, 1)->getDefaultLayout()
+                        == juce::AudioChannelSet::stereo()
+                    && processor.getBus (false, 2)->getDefaultLayout()
+                        == juce::AudioChannelSet::mono(),
+                "Mic must default to stereo and Piezo to mono");
+
+        const auto layout = [&] (juce::AudioChannelSet main, juce::AudioChannelSet mic,
+                                 juce::AudioChannelSet piezo)
+        {
+            auto result = processor.getBusesLayout();
+            result.outputBuses.getReference (0) = main;
+            result.outputBuses.getReference (1) = mic;
+            result.outputBuses.getReference (2) = piezo;
+            return result;
+        };
+        const auto stereo = juce::AudioChannelSet::stereo();
+        const auto mono = juce::AudioChannelSet::mono();
+        const auto off = juce::AudioChannelSet::disabled();
+        expect (processor.isBusesLayoutSupported (layout (stereo, off, off))
+                    && processor.isBusesLayoutSupported (layout (stereo, stereo, off))
+                    && processor.isBusesLayoutSupported (layout (stereo, off, mono))
+                    && processor.isBusesLayoutSupported (layout (stereo, stereo, mono)),
+                "Main alone or Main with either or both separate outputs was refused");
+        expect (! processor.isBusesLayoutSupported (layout (mono, off, off))
+                    && ! processor.isBusesLayoutSupported (layout (off, stereo, mono))
+                    && ! processor.isBusesLayoutSupported (layout (stereo, mono, off))
+                    && ! processor.isBusesLayoutSupported (layout (stereo, off, stereo)),
+                "a layout with the wrong format on a bus was accepted");
+    }
+
+    struct Render
+    {
+        std::vector<std::vector<float>> channels;
+    };
+    // A strummed chord and a single note over 0.5 s at odd block offsets.
+    const auto play = [] (int captureChoice, bool mic, bool piezo)
+    {
+        AcustraAudioProcessor processor;
+        setValue (processor, ids::captureMode, static_cast<float> (captureChoice));
+        auto layout = processor.getBusesLayout();
+        layout.outputBuses.getReference (1) = mic ? juce::AudioChannelSet::stereo()
+                                                  : juce::AudioChannelSet::disabled();
+        layout.outputBuses.getReference (2) = piezo ? juce::AudioChannelSet::mono()
+                                                    : juce::AudioChannelSet::disabled();
+        expect (processor.setBusesLayout (layout), "a supported layout was refused");
+        processor.prepareToPlay (sampleRate, blockSize);
+        const int channels = processor.getTotalNumOutputChannels();
+        Render result;
+        result.channels.assign (static_cast<std::size_t> (channels), {});
+        juce::AudioBuffer<float> audio { channels, blockSize };
+        for (int block = 0; block < 94; ++block)
+        {
+            juce::MidiBuffer midi;
+            if (block == 0)
+                for (const int note : { 40, 47, 52, 56, 59, 64 })
+                    midi.addEvent (juce::MidiMessage::noteOn (1, note, 0.8f), 37);
+            if (block == 40)
+                midi.addEvent (juce::MidiMessage::noteOn (1, 69, 0.9f), 201);
+            processor.processBlock (audio, midi);
+            for (int channel = 0; channel < channels; ++channel)
+                result.channels[static_cast<std::size_t> (channel)].insert (
+                    result.channels[static_cast<std::size_t> (channel)].end(),
+                    audio.getReadPointer (channel),
+                    audio.getReadPointer (channel) + blockSize);
+        }
+        processor.releaseResources();
+        return result;
+    };
+    const auto audible = [] (const std::vector<float>& channel)
+    {
+        return std::any_of (channel.begin(), channel.end(),
+                            [] (float value) { return std::abs (value) > 1.0e-4f; });
+    };
+
+    for (const int capture : { 0, 1, 2 })
+    {
+        const auto plain = play (capture, false, false);
+        const auto both = play (capture, true, true);
+        const auto micOnly = play (capture, true, false);
+        const auto piezoOnly = play (capture, false, true);
+        expect (plain.channels.size() == 2 && both.channels.size() == 5
+                    && micOnly.channels.size() == 4 && piezoOnly.channels.size() == 3,
+                "the enabled buses did not reach processBlock's buffer");
+        if (both.channels.size() != 5 || micOnly.channels.size() != 4
+            || piezoOnly.channels.size() != 3 || plain.channels.size() != 2)
+            continue;
+        for (const auto* render : { &both, &micOnly, &piezoOnly })
+            expect (render->channels[0] == plain.channels[0]
+                        && render->channels[1] == plain.channels[1],
+                    "enabling a separate output changed Main");
+        expect (micOnly.channels[2] == both.channels[2]
+                    && micOnly.channels[3] == both.channels[3]
+                    && piezoOnly.channels[2] == both.channels[4],
+                "a separate output differs with the other one enabled");
+        expect (audible (both.channels[2]) && audible (both.channels[3])
+                    && audible (both.channels[4]),
+                "a separate output is silent while the guitar plays");
+        if (capture == 0)
+            expect (both.channels[2] == both.channels[0]
+                        && both.channels[3] == both.channels[1],
+                    "the Mic bus is not Main with Capture on Stereo mic");
+        if (capture == 2)
+            expect (both.channels[4] == both.channels[0]
+                        && both.channels[4] == both.channels[1],
+                    "the Piezo bus is not Main with Capture on Piezo");
+        const auto reference = play (0, true, true);
+        expect (reference.channels.size() == 5
+                    && reference.channels[2] == both.channels[2]
+                    && reference.channels[3] == both.channels[3]
+                    && reference.channels[4] == both.channels[4],
+                "a separate output depends on what Capture selects");
+    }
+}
+
 int main()
 {
     juce::ScopedJuceInitialiser_GUI gui;
 
     testParameterContract();
     testProcessorContractAndSampleAccurateMidi();
+    testOptionalSensorOutputBuses();
     testSameSampleChordOrderIsCanonical();
     testSameSampleNoteOnOffDoesNotStick();
     testSameSampleChordsAreStrummedAndAlternate();

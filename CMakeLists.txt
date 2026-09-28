@@ -294,6 +294,16 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.ContactTravel COMMAND AcustraContactTravelTests)
     set_tests_properties(Acustra.ContactTravel PROPERTIES TIMEOUT 90)
 
+    add_executable(AcustraOutputBusTests Tests/OutputBusTests.cpp)
+    target_link_libraries(AcustraOutputBusTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraOutputBusTests PRIVATE cxx_std_17)
+    if(NOT MSVC)
+        target_compile_options(AcustraOutputBusTests PRIVATE
+            -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME Acustra.OutputBuses COMMAND AcustraOutputBusTests)
+    set_tests_properties(Acustra.OutputBuses PROPERTIES TIMEOUT 600)
+
     add_executable(AcustraCaptureTests Tests/CaptureTests.cpp)
     target_link_libraries(AcustraCaptureTests PRIVATE AcustraDSP)
     add_test(NAME Acustra.Capture COMMAND AcustraCaptureTests)

@@ -70,10 +70,13 @@ void Performer::reset() noexcept
     pendingNoteOffCount_ = 0;
 }
 
-void Performer::beginBlock(float* left, float* right, int numSamples) noexcept
+void Performer::beginBlock(float* left, float* right,
+                           const AcustraEngine::OutputBuses& buses,
+                           int numSamples) noexcept
 {
     left_ = left;
     right_ = right;
+    buses_ = buses;
     blockSamples_ = std::max(0, numSamples);
     renderedTo_ = 0;
     groupedSample_ = -1;
@@ -164,6 +167,7 @@ void Performer::endBlock() noexcept
     renderTo(blockSamples_);
     processedSamples_ += blockSamples_;
     left_ = right_ = nullptr;
+    buses_ = {};
     blockSamples_ = 0;
 }
 
@@ -171,7 +175,12 @@ void Performer::renderTo(int sample) noexcept
 {
     if (sample <= renderedTo_)
         return;
+    const auto at = [this] (float* bus)
+    {
+        return bus != nullptr ? bus + renderedTo_ : nullptr;
+    };
     engine_.process(left_ + renderedTo_, right_ + renderedTo_,
+                    { at(buses_.micLeft), at(buses_.micRight), at(buses_.piezo) },
                     sample - renderedTo_);
     renderedTo_ = sample;
 }

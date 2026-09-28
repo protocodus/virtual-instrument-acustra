@@ -103,7 +103,17 @@ public:
     // --- one block -----------------------------------------------------------
     // left and right receive numSamples samples; endBlock overwrites all of
     // them. The pointers must stay valid until endBlock.
-    void beginBlock(float* left, float* right, int numSamples) noexcept;
+    void beginBlock(float* left, float* right, int numSamples) noexcept
+    {
+        beginBlock(left, right, AcustraEngine::OutputBuses {}, numSamples);
+    }
+    // Main plus the separate outputs (see AcustraEngine::OutputBuses): each
+    // non-null bus pointer also receives numSamples samples, all rendered in
+    // the same pass as Main; a null one is not rendered. Main is the same
+    // whichever are wanted.
+    void beginBlock(float* left, float* right,
+                    const AcustraEngine::OutputBuses& buses,
+                    int numSamples) noexcept;
     // One MIDI message at sampleOffset in this block (clamped to
     // [0, numSamples]). Offsets must not decrease within a block, as a
     // MidiBuffer's do; one earlier than an event already handled plays at
@@ -115,6 +125,13 @@ public:
     void process(float* left, float* right, int numSamples) noexcept
     {
         beginBlock(left, right, numSamples);
+        endBlock();
+    }
+    void process(float* left, float* right,
+                 const AcustraEngine::OutputBuses& buses,
+                 int numSamples) noexcept
+    {
+        beginBlock(left, right, buses, numSamples);
         endBlock();
     }
 
@@ -220,6 +237,7 @@ private:
     // The block being played.
     float* left_ { nullptr };
     float* right_ { nullptr };
+    AcustraEngine::OutputBuses buses_ {};
     int blockSamples_ { 0 };
     int renderedTo_ { 0 };
     bool direct_ { true };

@@ -6377,8 +6377,18 @@ float AcustraEngine::renderLoadedPiezo(float force) noexcept
 
 void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
 {
+    process(left, right, OutputBuses {}, numSamples);
+}
+
+void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
+                            int numSamples) noexcept
+{
     if (!prepared_ || left == nullptr || right == nullptr || numSamples <= 0)
         return;
+    float* const micLeft = buses.micLeft;
+    float* const micRight = buses.micRight;
+    float* const piezo = buses.piezo;
+    const bool wantsMic = micLeft != nullptr || micRight != nullptr;
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
@@ -6741,12 +6751,33 @@ void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
         float outputRight = reference * outputGain_
             * (bodyScale * spreadRight + directScale * spreadDirectRight);
 
+        // The separate outputs observe before Capture chooses: the stereo
+        // pair as it stands here, the piezo at the level the mono route
+        // below gives it. Each passes its own copy of the safety limiter,
+        // and neither is read back, so Main is untouched by wanting them.
+        if (wantsMic)
+        {
+            const float micOutLeft = safetyLimit(outputLeft);
+            const float micOutRight = safetyLimit(outputRight);
+            if (micLeft != nullptr)
+                micLeft[sample] = exact::isfinite(micOutLeft) ? micOutLeft : 0.0f;
+            if (micRight != nullptr)
+                micRight[sample] = exact::isfinite(micOutRight) ? micOutRight : 0.0f;
+        }
+
         // Capture is an observation: every route shares the unchanged
         // vibrating instrument, so switching sensors never resets a note.
         // Keep the default stereo path bit-for-bit, including its width law.
         // Advance the electrical load even while unheard, so selecting it
         // crossfades to the voltage of the already-ringing instrument.
         const float loadedPiezo = renderLoadedPiezo(lastBridgeReactionForce_);
+        if (piezo != nullptr)
+        {
+            // Written as the mono route's product below: with only the piezo
+            // selected that route adds exact zeros to this, so the two agree.
+            const float piezoOut = safetyLimit(reference * outputGain_ * loadedPiezo);
+            piezo[sample] = exact::isfinite(piezoOut) ? piezoOut : 0.0f;
+        }
         if (parameters_.capture != CaptureType::StereoMic
             || captureMix_[0] != 1.0f)
         {
