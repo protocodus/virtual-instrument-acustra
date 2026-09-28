@@ -313,6 +313,19 @@ and opaque plugin states remain private; reproduction needs the installed librar
 
 ## How it works
 
+Acustra is two layers, and only the outer one knows a host. The instrument is
+JUCE-free C++17 under `Source/DSP/`: `AcustraEngine` is the physical model,
+and `AcustraPerformer` is the player in front of it. The player splits each
+block at its events and turns MIDI into engine calls - channels, the MPE lower
+zone and its controller scope, RPN bend ranges, CC1/2/64/68/74, channel
+pressure and the string-per-channel mode, same-sample chord grouping and
+strums, and the Gather Chords window with the latency it costs. The plug-in's
+processor is a thin JUCE adapter around it (parameters, saved state, editor,
+bus layout) that decides nothing about how a note is played. A front end
+without MIDI, such as the Reason Rack Extension, spells its notes and
+controllers as the same MIDI messages at their sample offsets, so every front
+end plays one behaviour rather than a port of it.
+
 ### Six-string performance model
 
 MIDI first selects one of six guitar strings. Each string covers its open note
@@ -1413,6 +1426,15 @@ The JUCE-free suites cover:
 - pick/thumb excitation and exact preservation of ringing notes, hammer-ons
   and finger lifts when the picking tool changes;
 - six-string bounds, deterministic allocation and block partitioning;
+- the player (Tests/PerformerTests.cpp) on a battery of performances
+  (Tests/PerformanceBattery.h: single notes, two- to seven-note same-sample
+  chords, rolled chords, alternating strums and their two-second restart,
+  legato and finger lifts, sustain, bridge-hand and vibrato sweeps, bend under
+  RPN changes, the MPE lower zone, string-per-channel, notes off and panic,
+  host edge cases, control changes), with and without Gather Chords: finite,
+  repeatable, allocation-free, independent of block size, and identical when
+  spelt through the helpers a front end without MIDI uses; plus canonical
+  same-sample order, the gathered roll, master tune and overflow counts;
 - the fretting hand (Tests/HandAllocatorTests.cpp): rolled triads within one
   hand, E major, A minor, G and C one key at a time in their open shapes, a
   scale that stays in position and then shifts, a melody that leaves a held
@@ -1564,8 +1586,10 @@ than the window apart, a key repeated inside it and a legato run sound
 bit-identical to the same timeline played 30 ms later, and the 30 ms is
 reported as latency), conventional channel isolation, lower-zone MPE setup,
 RPN 0/RPN 6 ranges and lifecycle, frozen member-tail bends,
-panic/controller-reset behavior, state migration and editor rendering.
-VST3, Audio Unit and Standalone targets are built from the same engine.
+panic/controller-reset behavior, state migration and editor rendering, and
+that the processor plays the whole performance battery bit-identically to the
+player alone. VST3, Audio Unit and Standalone targets are built from the same
+engine.
 
 ## Known gaps
 
@@ -2786,8 +2810,11 @@ git history rather than here.
 
 ## Build
 
-The DSP core, physical-engine tests, offline reference-bank tests and renderers
-require CMake 3.22 and a C++20 compiler; they do not require JUCE:
+The DSP core - the engine and the player (`Source/DSP/AcustraEngine.*` and
+`Source/DSP/AcustraPerformer.*`, the `AcustraDSP` library, which also builds
+as C++17 for the Rack Extension) - physical-engine tests, offline
+reference-bank tests and renderers require CMake 3.22 and a C++20 compiler;
+they do not require JUCE:
 
 ```sh
 cmake -S . -B build-dsp -DACUSTRA_BUILD_PLUGIN=OFF -DCMAKE_BUILD_TYPE=Release

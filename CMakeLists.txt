@@ -43,7 +43,28 @@ file(GLOB ACUSTRA_BANK_PARTS CONFIGURE_DEPENDS
 
 add_library(AcustraDSP STATIC
     Source/DSP/AcustraEngine.cpp
-    Source/DSP/AcustraEngine.h)
+    Source/DSP/AcustraEngine.h
+    Source/DSP/AcustraPerformer.cpp
+    Source/DSP/AcustraPerformer.h)
+
+# The Reason Rack Extension compiles this engine and player itself, as C++17
+# (the Jukebox toolchain forces -std=c++17) with -Wall -Wextra -Werror. Build
+# them that way here too, so a C++20-only construct or a new warning fails in
+# this repository rather than only in the Rack Extension's.
+if(NOT MSVC)
+    add_library(AcustraDSPCxx17 OBJECT
+        Source/DSP/AcustraEngine.cpp
+        Source/DSP/AcustraPerformer.cpp)
+    target_include_directories(AcustraDSPCxx17
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source")
+    set_target_properties(AcustraDSPCxx17 PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(AcustraDSPCxx17 PRIVATE -Wall -Wextra -Werror)
+    endif()
+endif()
 
 add_library(AcustraReferenceBank STATIC EXCLUDE_FROM_ALL
     Source/DSP/SampleBank/EmbeddedGuitarBank.cpp
@@ -249,6 +270,18 @@ if(BUILD_TESTING)
     target_compile_features(AcustraHandAllocatorTests PRIVATE cxx_std_20)
     add_test(NAME Acustra.HandAllocator COMMAND AcustraHandAllocatorTests)
     set_tests_properties(Acustra.HandAllocator PROPERTIES TIMEOUT 120)
+
+    add_executable(AcustraPerformerTests Tests/PerformerTests.cpp)
+    target_link_libraries(AcustraPerformerTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraPerformerTests PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(AcustraPerformerTests PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(AcustraPerformerTests PRIVATE
+            -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME Acustra.Performer COMMAND AcustraPerformerTests)
+    set_tests_properties(Acustra.Performer PROPERTIES TIMEOUT 600)
 
     add_executable(AcustraReleaseTests Tests/ReleaseTests.cpp)
     target_link_libraries(AcustraReleaseTests PRIVATE AcustraDSP)

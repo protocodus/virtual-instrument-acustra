@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
+#include "PerformanceBattery.h"
 
 #include <algorithm>
 #include <array>
@@ -2075,6 +2076,82 @@ void testStringPerChannelModeViaMonoModeOn()
             "Poly Mode On did not restore the fret-distance allocator");
 }
 
+// The processor is only an adapter: everything it plays, the player
+// (DSP/AcustraPerformer) plays alone from the same parameters, to the bit.
+void testTheAdapterPlaysExactlyThePerformer()
+{
+    namespace ids = acustra::parameters;
+    using namespace acustra::battery;
+    constexpr int block = 127; // odd, so events land everywhere in a block
+    for (const auto& scenario : makeBattery())
+        for (const bool gather : { false, true })
+        {
+            AcustraAudioProcessor processor;
+            setValue (processor, ids::gatherChords, gather ? 1.0f : 0.0f);
+            processor.prepareToPlay (sampleRate, block);
+            auto performer = std::make_unique<acustra::Performer>();
+            performer->setParameters (processor.snapshotEngineParameters());
+            performer->prepare (sampleRate, block);
+
+            const int length = sampleAt (scenario.seconds, sampleRate);
+            std::vector<bool> applied (scenario.controls.size(), false);
+            juce::AudioBuffer<float> audio { 2, block };
+            std::vector<float> left (block), right (block);
+            bool same = true;
+            for (int start = 0; start < length && same; start += block)
+            {
+                bool panic = false;
+                for (std::size_t index = 0; index < scenario.controls.size(); ++index)
+                {
+                    const auto& control = scenario.controls[index];
+                    if (applied[index] || sampleAt (control.seconds, sampleRate) >= start + block)
+                        continue;
+                    applied[index] = true;
+                    using Kind = Control::Kind;
+                    const char* id = control.kind == Kind::GatherChords ? ids::gatherChords
+                        : control.kind == Kind::StringMaterial ? ids::stringMaterial
+                        : control.kind == Kind::CaptureMode ? ids::captureMode
+                        : control.kind == Kind::Picking ? ids::picking
+                        : control.kind == Kind::Tuning ? ids::tuning
+                        : control.kind == Kind::BodyAmount ? ids::bodyAmount
+                        : control.kind == Kind::Output ? ids::output : nullptr;
+                    if (id != nullptr)
+                        setValue (processor, id, control.value);
+                    else
+                    {
+                        processor.requestPanic();
+                        panic = true;
+                    }
+                }
+                juce::MidiBuffer midi;
+                for (const auto& event : scenario.events)
+                {
+                    const int at = sampleAt (event.seconds, sampleRate);
+                    if (at >= start && at < start + block)
+                        midi.addEvent (event.bytes.data(), event.size,
+                                       at - start + event.skew);
+                }
+                processor.processBlock (audio, midi);
+
+                performer->setParameters (processor.snapshotEngineParameters());
+                if (panic)
+                    performer->reset();
+                performer->setGatherChords (valueOf (processor, ids::gatherChords) >= 0.5f);
+                performer->beginBlock (left.data(), right.data(), block);
+                for (const auto metadata : midi)
+                    performer->handleMidi (metadata.samplePosition, metadata.data,
+                                           metadata.numBytes);
+                performer->endBlock();
+
+                same = std::equal (left.begin(), left.end(), audio.getReadPointer (0))
+                    && std::equal (right.begin(), right.end(), audio.getReadPointer (1))
+                    && processor.getLatencySamples() == performer->latencySamples();
+            }
+            expect (same, std::string { "the processor and the performer diverged on " }
+                              + scenario.name + (gather ? " (gathering)" : ""));
+        }
+}
+
 int main()
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -2093,6 +2170,7 @@ int main()
     testMpeTimbreReachesTheEngineOnMemberChannelOnly();
     testMpePressureReachesTheEngineOnMemberChannelOnly();
     testStringPerChannelModeViaMonoModeOn();
+    testTheAdapterPlaysExactlyThePerformer();
     testLegatoControllerReachesTheEngine();
     testReleaseVelocityRequiresExplicitLegato();
     testResetAllControllersReleasesSustain();

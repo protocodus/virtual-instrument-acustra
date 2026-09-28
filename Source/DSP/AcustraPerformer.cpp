@@ -1,0 +1,722 @@
+#include "AcustraPerformer.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace acustra
+{
+namespace
+{
+// In explicit CC68 legato mode, release velocity controls an active finger
+// lift. Unsensed/default 64 and below keep the finger touching; 127 requests
+// the full lift. The engine ignores this active gesture outside legato, so
+// a fast ordinary key-up damps the note without generating another stroke.
+// A Note On at velocity zero carries no sensed release velocity.
+float fingerLiftFromReleaseVelocity(unsigned velocity) noexcept
+{
+    return velocity <= 64u ? 0.0f
+                           : static_cast<float>(velocity - 64u) / 63.0f;
+}
+
+// MIDI's MPE Configuration Message is RPN 6 (MPE specification 1.0, 2.1).
+constexpr int mpeZoneLayoutRpn = 6;
+
+int dataByte(int value) noexcept { return std::clamp(value, 0, 127); }
+
+std::uint8_t statusByte(unsigned kind, int channel) noexcept
+{
+    return static_cast<std::uint8_t>(
+        kind | static_cast<unsigned>(std::clamp(channel, 1, 16) - 1));
+}
+} // namespace
+
+int Performer::gatherWindowSamples(double sampleRate) noexcept
+{
+    return static_cast<int>(std::lround(chordGatherSeconds * sampleRate));
+}
+
+Performer::Performer() noexcept
+{
+    conventionalPitchBendRanges_.fill(2.0f);
+}
+
+void Performer::prepare(double sampleRate, int maximumBlockSize)
+{
+    rawPitchWheels_.fill(0.0f);
+    rpnStates_.fill(RpnState {});
+    engine_.prepare(sampleRate, maximumBlockSize);
+    sampleRate_ = sampleRate;
+    processedSamples_ = 0;
+    lastStrumSample_ = -1;
+    strumUpstroke_ = false;
+    heldCount_ = 0;
+    droppedEvents_ = 0;
+    gatherWindow_ = gatherWindowSamples(sampleRate);
+    engine_.setLowerZoneMemberCount(lowerZoneMemberCount_);
+}
+
+void Performer::setParameters(const EngineParameters& parameters) noexcept
+{
+    engine_.setParameters(parameters);
+}
+
+void Performer::setMasterTuneCents(float cents) noexcept
+{
+    const float semitones = 0.01f * cents;
+    if (semitones == masterTuneSemitones_)
+        return;
+    masterTuneSemitones_ = semitones;
+    for (int channel = 1; channel <= 16; ++channel)
+        refreshPitchBend(channel);
+}
+
+void Performer::reset() noexcept
+{
+    rawPitchWheels_.fill(0.0f);
+    rpnStates_.fill(RpnState {});
+    engine_.reset();
+    heldCount_ = 0;
+    // A reset inside a block also drops that sample's pending notes.
+    pendingNoteOnCount_ = 0;
+    pendingNoteOffCount_ = 0;
+}
+
+void Performer::beginBlock(float* left, float* right, int numSamples) noexcept
+{
+    left_ = left;
+    right_ = right;
+    blockSamples_ = std::max(0, numSamples);
+    renderedTo_ = 0;
+    groupedSample_ = -1;
+    pendingNoteOnCount_ = 0;
+    pendingNoteOffCount_ = 0;
+    cancelledNoteOns_.fill(false);
+
+    // Without gathering, and nothing left held from when it was on, events
+    // play as they arrive; otherwise they queue (see endBlock).
+    direct_ = ! gatherChords_ && heldCount_ == 0;
+    // Switched off with events still held: they are due now, in order,
+    // ahead of everything that arrives from here on.
+    if (! direct_ && ! gatherChords_)
+        for (int index = 0; index < heldCount_; ++index)
+            held_[static_cast<std::size_t>(index)].due = std::min(
+                held_[static_cast<std::size_t>(index)].due, processedSamples_);
+}
+
+void Performer::handleMidi(int sampleOffset, const std::uint8_t* data,
+                           int size) noexcept
+{
+    if (data == nullptr)
+        size = 0;
+    const int sample = std::clamp(sampleOffset, 0, blockSamples_);
+    if (direct_)
+    {
+        static_cast<void>(handleEvent(sample, data, size));
+        return;
+    }
+
+    // Only channel messages of one to three bytes reach dispatchMidiData.
+    if (size < 1 || size > 3)
+        return;
+    if (heldCount_ == heldEventCapacity)
+    {
+        ++droppedEvents_;
+        return;
+    }
+    auto& held = held_[static_cast<std::size_t>(heldCount_++)];
+    held.due = processedSamples_ + sample
+        + (gatherChords_ ? gatherWindow_ : 0);
+    held.size = size;
+    std::copy_n(data, size, held.bytes.begin());
+    held.gathered = false;
+}
+
+void Performer::endBlock() noexcept
+{
+    if (! direct_)
+    {
+        // Gather Chords: a hand's chord reaches the keys spread over the
+        // gathering window (see chordGatherSeconds), in whatever order the
+        // fingers land. The allocator can only fret it as a guitarist would
+        // if it sees the whole chord as one wrist event, as it does a
+        // sequencer's same-sample chord, so every event is held back by the
+        // window; a Note On that comes due takes along the Note Ons its
+        // channel received within the window after it. The group then
+        // sounds, voiced and strummed (see flushNoteGroup), at the first
+        // key's time plus the window, which is the latency the host is told.
+        // A key repeated inside the window, or a controller that changes how
+        // notes are allocated, ends the chord. Legato groups and
+        // string-per-channel controllers already say how each note is
+        // played, so they pass through in time without gathering.
+        const auto blockEnd = processedSamples_ + blockSamples_;
+        int next = 0;
+        for (; next < heldCount_
+               && held_[static_cast<std::size_t>(next)].due < blockEnd; ++next)
+        {
+            const auto& held = held_[static_cast<std::size_t>(next)];
+            if (held.gathered)
+                continue;
+            const bool joined = handleEvent(
+                static_cast<int>(std::max<std::int64_t>(
+                    0, held.due - processedSamples_)),
+                held.bytes.data(), held.size);
+            if (joined && gatherChords_ && ! legatoDown_
+                && ! engine_.isStringPerChannelMode())
+                gatherChord(next);
+        }
+        int kept = 0;
+        for (int index = next; index < heldCount_; ++index)
+            if (! held_[static_cast<std::size_t>(index)].gathered)
+                held_[static_cast<std::size_t>(kept++)]
+                    = held_[static_cast<std::size_t>(index)];
+        heldCount_ = kept;
+    }
+
+    flushNoteGroup();
+    renderTo(blockSamples_);
+    processedSamples_ += blockSamples_;
+    left_ = right_ = nullptr;
+    blockSamples_ = 0;
+}
+
+void Performer::renderTo(int sample) noexcept
+{
+    if (sample <= renderedTo_)
+        return;
+    engine_.process(left_ + renderedTo_, right_ + renderedTo_,
+                    sample - renderedTo_);
+    renderedTo_ = sample;
+}
+
+// Hosts may store simultaneous chord members in any insertion order. A
+// physical six-string allocator must see one canonical wrist event, or the
+// same MIDI chord can land on different strings in different hosts.
+void Performer::flushNoteGroup() noexcept
+{
+    std::sort(pendingNoteOns_.begin(),
+              pendingNoteOns_.begin() + pendingNoteOnCount_,
+              [](const PendingNoteOn& left, const PendingNoteOn& right)
+              {
+                  return left.note != right.note ? left.note > right.note
+                                                 : left.channel < right.channel;
+              });
+    // Three or more notes on one sample are a chord nobody can play at once:
+    // a strum reaches its strings one after another, low to high on a
+    // downstroke and back on the return, so consecutive strums alternate. A
+    // rest long enough to start over starts over with a downstroke; two
+    // seconds is that convention, not a measurement. Legato groups are
+    // hammer-ons and stay as they are.
+    const bool oneChannel = std::all_of(
+        pendingNoteOns_.begin(), pendingNoteOns_.begin() + pendingNoteOnCount_,
+        [&](const PendingNoteOn& note)
+        { return note.channel == pendingNoteOns_[0].channel; });
+    const bool strum = pendingNoteOnCount_ >= 3 && ! legatoDown_ && oneChannel;
+    if (strum)
+    {
+        // The clock is the block's start, so a rest is measured between the
+        // blocks its strums fall in.
+        const bool restarted = lastStrumSample_ < 0
+            || processedSamples_ - lastStrumSample_
+                   > static_cast<std::int64_t>(strumRestSeconds * sampleRate_);
+        if (restarted)
+            strumUpstroke_ = false;
+        lastStrumSample_ = processedSamples_;
+        float meanVelocity = 0.0f;
+        for (int index = 0; index < pendingNoteOnCount_; ++index)
+            meanVelocity += pendingNoteOns_[static_cast<std::size_t>(index)].velocity;
+        meanVelocity /= static_cast<float>(pendingNoteOnCount_);
+        // The list is sorted high to low, so a downstroke's rank counts from
+        // the end.
+        for (int index = 0; index < pendingNoteOnCount_; ++index)
+        {
+            const int rank = strumUpstroke_ ? index
+                                            : pendingNoteOnCount_ - 1 - index;
+            pendingNoteOns_[static_cast<std::size_t>(index)].pluckDelay
+                = engine_.strumDelaySamples(rank, meanVelocity);
+        }
+        strumUpstroke_ = ! strumUpstroke_;
+        engine_.beginStrum();
+    }
+    // Notes that land together on one channel are one fretting-hand shape:
+    // the engine places them as a chord before they sound. Legato groups are
+    // hammer-ons onto what is already held.
+    if (pendingNoteOnCount_ >= 2 && oneChannel && ! legatoDown_
+        && pendingNoteOnCount_ <= AcustraEngine::stringCount)
+    {
+        std::array<int, AcustraEngine::stringCount> chord {};
+        for (int index = 0; index < pendingNoteOnCount_; ++index)
+            chord[static_cast<std::size_t>(index)]
+                = pendingNoteOns_[static_cast<std::size_t>(index)].note;
+        engine_.planChord(chord.data(), pendingNoteOnCount_,
+                          pendingNoteOns_[0].channel);
+    }
+    for (int index = 0; index < pendingNoteOnCount_; ++index)
+    {
+        const auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
+        engine_.noteOn(note.note, note.velocity, note.channel,
+                       strum ? note.pluckDelay : 0, strum);
+    }
+    pendingNoteOnCount_ = 0;
+
+    // Resolve a zero-duration Note On/Off at one sample in the same direction
+    // regardless of insertion order. The On must establish ownership before
+    // the Off can release it.
+    std::sort(pendingNoteOffs_.begin(),
+              pendingNoteOffs_.begin() + pendingNoteOffCount_,
+              [](const PendingNoteOff& left, const PendingNoteOff& right)
+              {
+                  return left.note != right.note ? left.note > right.note
+                                                 : left.channel < right.channel;
+              });
+    for (int index = 0; index < pendingNoteOffCount_; ++index)
+    {
+        const auto& note = pendingNoteOffs_[static_cast<std::size_t>(index)];
+        engine_.noteOff(note.note, note.channel, note.lift);
+    }
+    pendingNoteOffCount_ = 0;
+}
+
+// Renders up to the event, then groups it with the other Note Ons and Offs
+// of its sample or dispatches it. Returns true when a Note On joined the
+// group at its sample.
+bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
+                            int size) noexcept
+{
+    if (groupedSample_ >= 0 && eventSample != groupedSample_)
+    {
+        flushNoteGroup();
+        cancelledNoteOns_.fill(false);
+    }
+    renderTo(eventSample);
+    groupedSample_ = eventSample;
+
+    const auto status = size > 0 ? static_cast<unsigned>(data[0]) & 0xf0u : 0u;
+    const int midiChannel = size > 0 ? static_cast<int>(data[0] & 0x0fu) + 1 : 1;
+    const bool positiveNoteOn = status == 0x90u && size >= 3
+        && (data[2] & 0x7fu) != 0u;
+    const bool noteOff = size >= 2
+        && (status == 0x80u
+            || (status == 0x90u && size >= 3 && (data[2] & 0x7fu) == 0u));
+    if (positiveNoteOn)
+    {
+        if (! cancelledNoteOns_[static_cast<std::size_t>(midiChannel - 1)])
+        {
+            if (pendingNoteOnCount_ < sampleGroupCapacity)
+            {
+                pendingNoteOns_[static_cast<std::size_t>(pendingNoteOnCount_++)]
+                    = { static_cast<int>(data[1] & 0x7fu), midiChannel,
+                        static_cast<float>(data[2] & 0x7fu) / 127.0f, 0 };
+                return true;
+            }
+            ++droppedEvents_;
+        }
+    }
+    else if (noteOff && pendingNoteOffCount_ < sampleGroupCapacity)
+    {
+        const unsigned releaseVelocity = status == 0x80u && size >= 3
+            ? static_cast<unsigned>(data[2] & 0x7fu) : 64u;
+        pendingNoteOffs_[static_cast<std::size_t>(pendingNoteOffCount_++)] = {
+            static_cast<int>(data[1] & 0x7fu), midiChannel,
+            fingerLiftFromReleaseVelocity(releaseVelocity)
+        };
+    }
+    else
+    {
+        // All Sound/Notes Off at a chord boundary owns that boundary and must
+        // not be undone by Note Ons merely inserted before it.
+        if (status == 0xb0u && size >= 3
+            && ((data[1] & 0x7fu) == 120u || (data[1] & 0x7fu) == 123u))
+        {
+            for (int channel = 1; channel <= 16; ++channel)
+                if (channelIsInControllerScope(midiChannel, channel))
+                    cancelledNoteOns_[static_cast<std::size_t>(channel - 1)] = true;
+            const auto removeChannel = [this, midiChannel](const auto& note)
+            {
+                return channelIsInControllerScope(midiChannel, note.channel);
+            };
+            pendingNoteOnCount_ = static_cast<int>(std::remove_if(
+                pendingNoteOns_.begin(),
+                pendingNoteOns_.begin() + pendingNoteOnCount_,
+                removeChannel) - pendingNoteOns_.begin());
+            pendingNoteOffCount_ = static_cast<int>(std::remove_if(
+                pendingNoteOffs_.begin(),
+                pendingNoteOffs_.begin() + pendingNoteOffCount_,
+                removeChannel) - pendingNoteOffs_.begin());
+        }
+        dispatchMidiData(data, size);
+    }
+    return false;
+}
+
+// A Note On that comes due takes along the Note Ons its channel received
+// within the window after it (see endBlock).
+void Performer::gatherChord(int first) noexcept
+{
+    const auto& lead = held_[static_cast<std::size_t>(first)];
+    const int channel = static_cast<int>(lead.bytes[0] & 0x0fu) + 1;
+    for (int index = first + 1; index < heldCount_; ++index)
+    {
+        auto& held = held_[static_cast<std::size_t>(index)];
+        if (held.due > lead.due + gatherWindow_)
+            return;
+        if (held.gathered)
+            continue;
+        const auto status = static_cast<unsigned>(held.bytes[0]) & 0xf0u;
+        if (status == 0xb0u && held.size >= 3)
+        {
+            // Legato, reset, sound/notes off, mono/poly and the RPNs that lay
+            // out an MPE zone all change the allocation.
+            switch (held.bytes[1] & 0x7fu)
+            {
+                case 6: case 38: case 68: case 96: case 97: case 98:
+                case 99: case 100: case 101: case 120: case 121:
+                case 123: case 126: case 127:
+                    return;
+                default:
+                    continue;
+            }
+        }
+        if (status != 0x90u || held.size < 3 || (held.bytes[2] & 0x7fu) == 0u
+            || static_cast<int>(held.bytes[0] & 0x0fu) + 1 != channel)
+            continue;
+        const int note = static_cast<int>(held.bytes[1] & 0x7fu);
+        if (pendingNoteOnCount_ == sampleGroupCapacity
+            || std::any_of(pendingNoteOns_.begin(),
+                           pendingNoteOns_.begin() + pendingNoteOnCount_,
+                           [&](const PendingNoteOn& pending)
+                           {
+                               return pending.note == note
+                                   && pending.channel == channel;
+                           }))
+            return;
+        pendingNoteOns_[static_cast<std::size_t>(pendingNoteOnCount_++)]
+            = { note, channel, static_cast<float>(held.bytes[2] & 0x7fu) / 127.0f, 0 };
+        held.gathered = true;
+    }
+}
+
+void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
+{
+    if (data == nullptr || size < 1)
+        return;
+
+    const auto kind = static_cast<unsigned>(data[0]) & 0xf0u;
+    const int midiChannel = static_cast<int>(data[0] & 0x0fu) + 1;
+    if (kind == 0x90u && size >= 3)
+    {
+        const auto note = static_cast<int>(data[1] & 0x7fu);
+        if ((data[2] & 0x7fu) != 0u)
+            engine_.noteOn(note, static_cast<float>(data[2] & 0x7fu) / 127.0f,
+                           midiChannel);
+        else
+            engine_.noteOff(note, midiChannel);
+    }
+    else if (kind == 0x80u && size >= 2)
+    {
+        engine_.noteOff(static_cast<int>(data[1] & 0x7fu), midiChannel,
+                        fingerLiftFromReleaseVelocity(
+                            size >= 3 ? static_cast<unsigned>(data[2] & 0x7fu)
+                                      : 64u));
+    }
+    else if (kind == 0xe0u && size >= 3)
+    {
+        const auto raw = static_cast<int>(data[1] & 0x7fu)
+                       | (static_cast<int>(data[2] & 0x7fu) << 7);
+        const float normalised = raw < 8192
+            ? static_cast<float>(raw - 8192) / 8192.0f
+            : static_cast<float>(raw - 8192) / 8191.0f;
+        rawPitchWheels_[static_cast<std::size_t>(midiChannel - 1)] = normalised;
+        refreshPitchBend(midiChannel);
+    }
+    else if (kind == 0xd0u && size >= 2)
+    {
+        // MPE channel pressure: the fretting hand's grip on this note's own
+        // member channel. Forwarded unconditionally; the engine applies it
+        // only on a channel the lower zone actually made a member (see
+        // AcustraEngine::mpePressureFor), so it is inert without an MPE zone.
+        engine_.setMpePressure(static_cast<float>(data[1] & 0x7fu) / 127.0f,
+                               midiChannel);
+    }
+    else if (kind == 0xb0u && size >= 3)
+    {
+        const auto controller = data[1] & 0x7fu;
+        const auto value = data[2] & 0x7fu;
+        static_cast<void>(processRpnController(
+            midiChannel, static_cast<int>(controller), static_cast<int>(value)));
+
+        if (controller == 1u)
+        {
+            // The modulation wheel is the fretting hand's vibrato. Like the
+            // bridge hand it is one gesture across the instrument rather than
+            // a per-channel setting, and zero is an exact no-op.
+            engine_.setVibrato(static_cast<float>(value) / 127.0f);
+        }
+        else if (controller == 2u)
+        {
+            // Bridge-hand pressure. It is a playing gesture rather than a
+            // construction setting, so it stays a controller and the panel
+            // keeps its ten controls. It is global to the instrument: one hand
+            // rests across the strings, not per channel.
+            engine_.setPalmMutePressure(static_cast<float>(value) / 127.0f);
+        }
+        else if (controller == 64u)
+        {
+            engine_.setSustainPedal(value >= 64u, midiChannel);
+        }
+        else if (controller == 74u)
+        {
+            // MPE Timbre: where this one note's own member channel met the
+            // string. Forwarded unconditionally; the engine reads it only on a
+            // lower-zone member channel, at that note's own pluck (see
+            // AcustraEngine::initialisePluck), so it is inert without an MPE
+            // zone.
+            engine_.setMpeTimbre(static_cast<float>(value) / 127.0f, midiChannel);
+        }
+        else if (controller == 126u && midiChannel == 1)
+        {
+            // MIDI 1.0's own Mono Mode On channel-mode message on the basic
+            // channel: value is how many consecutive channels become
+            // monophonic voices. M=6 is the standard spelling of "six
+            // channels, one voice each", which is why it is the toggle here
+            // -- not a message either Roland's GK or Fishman's TriplePlay is
+            // documented to transmit (their own manuals describe only the
+            // resulting one-string-per-channel layout, not a message that
+            // requests it), so today nothing sends this on those rigs; a
+            // future control surface or the host's own MIDI editor can. Any
+            // other value, including 0, turns the mode back off.
+            engine_.setStringPerChannelMode(
+                value == static_cast<unsigned>(AcustraEngine::stringCount));
+        }
+        else if (controller == 127u && midiChannel == 1)
+        {
+            engine_.setStringPerChannelMode(false);
+        }
+        else if (controller == 68u)
+        {
+            // MIDI's Legato Footswitch. While it is down a note a sounding
+            // string can reach is hammered on rather than replucked, and
+            // releasing it pulls off to what that string is still holding.
+            // Like the bridge hand it is one gesture across the instrument,
+            // not a per-channel setting.
+            legatoDown_ = value >= 64u;
+            engine_.setLegato(legatoDown_);
+        }
+        else if (controller == 120u)
+        {
+            engine_.allSoundOff(midiChannel);
+        }
+        else if (controller == 121u)
+        {
+            resetControllerScope(midiChannel);
+        }
+        else if (controller == 123u)
+        {
+            engine_.allNotesOff(midiChannel);
+        }
+    }
+}
+
+// RPN parsing follows MIDI 1.0 (and JUCE's MidiRPNDetector, which the
+// plug-in used before this layer): CC101/100 select an RPN, CC99/98 an NRPN,
+// CC6 sets the value's MSB and clears its LSB, CC38 sets the LSB; a value is
+// delivered on every CC6 or CC38 once a parameter and an MSB are known.
+bool Performer::processRpnController(int midiChannel, int controller,
+                                     int value) noexcept
+{
+    if (midiChannel < 1 || midiChannel > 16)
+        return false;
+    auto& state = rpnStates_[static_cast<std::size_t>(midiChannel - 1)];
+    const auto byte = static_cast<std::uint8_t>(value);
+    switch (controller)
+    {
+        case 98: case 100:
+            state.parameterLsb = byte;
+            state.valueMsb = state.valueLsb = 0xff;
+            state.nrpn = controller == 98;
+            return false;
+        case 99: case 101:
+            state.parameterMsb = byte;
+            state.valueMsb = state.valueLsb = 0xff;
+            state.nrpn = controller == 99;
+            return false;
+        case 6:
+            state.valueMsb = byte;
+            state.valueLsb = 0xff;
+            break;
+        case 38:
+            state.valueLsb = byte;
+            break;
+        default:
+            return false;
+    }
+    if (state.parameterMsb >= 0x80 || state.parameterLsb >= 0x80
+        || state.valueMsb >= 0x80 || state.nrpn)
+        return false;
+
+    const int parameterNumber = (state.parameterMsb << 7) + state.parameterLsb;
+    const bool is14BitValue = state.valueLsb < 0x80;
+    const int parsedValue = is14BitValue
+        ? (state.valueMsb << 7) + state.valueLsb : state.valueMsb;
+
+    const int wholeValue = is14BitValue ? parsedValue / 128 : parsedValue;
+    if (parameterNumber == mpeZoneLayoutRpn && midiChannel == 1
+        && wholeValue >= 0 && wholeValue <= 15)
+    {
+        setLowerZoneMemberCount(wholeValue);
+        return true;
+    }
+    if (parameterNumber != 0)
+        return false;
+
+    const int cents = is14BitValue ? std::min(parsedValue % 128, 99) : 0;
+    const float range = std::clamp(
+        static_cast<float>(wholeValue) + 0.01f * static_cast<float>(cents),
+        0.0f, 96.0f);
+    if (lowerZoneMemberCount_ > 0 && midiChannel == 1)
+    {
+        lowerMasterPitchBendRange_ = range;
+        for (int channel = 1; channel <= lowerZoneMemberCount_ + 1; ++channel)
+            refreshPitchBend(channel);
+    }
+    else if (lowerZoneMemberCount_ > 0 && midiChannel >= 2
+             && midiChannel <= lowerZoneMemberCount_ + 1)
+    {
+        lowerMemberPitchBendRange_ = range;
+        for (int channel = 2; channel <= lowerZoneMemberCount_ + 1; ++channel)
+            refreshPitchBend(channel);
+    }
+    else
+    {
+        conventionalPitchBendRanges_[static_cast<std::size_t>(midiChannel - 1)]
+            = range;
+        refreshPitchBend(midiChannel);
+    }
+    return true;
+}
+
+void Performer::setLowerZoneMemberCount(int memberCount) noexcept
+{
+    const int next = std::clamp(memberCount, 0, 15);
+    if (next == lowerZoneMemberCount_)
+    {
+        if (next > 0)
+        {
+            lowerMasterPitchBendRange_ = 2.0f;
+            lowerMemberPitchBendRange_ = 48.0f;
+            for (int channel = 1; channel <= next + 1; ++channel)
+                refreshPitchBend(channel);
+        }
+        return;
+    }
+
+    const int lastAffected = std::max(next, lowerZoneMemberCount_) + 1;
+    for (int channel = 1; channel <= lastAffected; ++channel)
+    {
+        rawPitchWheels_[static_cast<std::size_t>(channel - 1)] = 0.0f;
+        rpnStates_[static_cast<std::size_t>(channel - 1)] = RpnState {};
+    }
+    lowerMasterPitchBendRange_ = 2.0f;
+    lowerMemberPitchBendRange_ = 48.0f;
+    lowerZoneMemberCount_ = next;
+    engine_.setLowerZoneMemberCount(next);
+    for (int channel = 1; channel <= lastAffected; ++channel)
+        refreshPitchBend(channel);
+}
+
+void Performer::refreshPitchBend(int midiChannel) noexcept
+{
+    if (midiChannel < 1 || midiChannel > 16)
+        return;
+    float range = conventionalPitchBendRanges_[static_cast<std::size_t>(
+        midiChannel - 1)];
+    if (lowerZoneMemberCount_ > 0 && midiChannel == 1)
+        range = lowerMasterPitchBendRange_;
+    else if (lowerZoneMemberCount_ > 0 && midiChannel >= 2
+             && midiChannel <= lowerZoneMemberCount_ + 1)
+        range = lowerMemberPitchBendRange_;
+    const float bend
+        = rawPitchWheels_[static_cast<std::size_t>(midiChannel - 1)] * range;
+    engine_.setPitchBend(masterTuneSemitones_ == 0.0f
+                             ? bend : bend + masterTuneSemitones_,
+                         midiChannel);
+}
+
+bool Performer::channelIsInControllerScope(int controllerChannel,
+                                           int targetChannel) const noexcept
+{
+    return lowerZoneMemberCount_ > 0 && controllerChannel == 1
+        ? targetChannel >= 1 && targetChannel <= lowerZoneMemberCount_ + 1
+        : targetChannel == controllerChannel;
+}
+
+void Performer::resetControllerScope(int midiChannel) noexcept
+{
+    for (int channel = 1; channel <= 16; ++channel)
+    {
+        if (! channelIsInControllerScope(midiChannel, channel))
+            continue;
+        rawPitchWheels_[static_cast<std::size_t>(channel - 1)] = 0.0f;
+        rpnStates_[static_cast<std::size_t>(channel - 1)] = RpnState {};
+        engine_.setPitchBend(masterTuneSemitones_, channel);
+        engine_.setSustainPedal(false, channel);
+    }
+}
+
+void Performer::queueMessage(int sampleOffset, std::uint8_t status, int data1,
+                             int data2, int size) noexcept
+{
+    const std::array<std::uint8_t, 3> bytes {
+        status, static_cast<std::uint8_t>(dataByte(data1)),
+        static_cast<std::uint8_t>(dataByte(data2))
+    };
+    handleMidi(sampleOffset, bytes.data(), size);
+}
+
+void Performer::noteOn(int sampleOffset, int channel, int note,
+                       int velocity) noexcept
+{
+    queueMessage(sampleOffset, statusByte(0x90u, channel), note, velocity, 3);
+}
+
+void Performer::noteOff(int sampleOffset, int channel, int note,
+                        int releaseVelocity) noexcept
+{
+    queueMessage(sampleOffset, statusByte(0x80u, channel), note,
+                 releaseVelocity, 3);
+}
+
+void Performer::controlChange(int sampleOffset, int channel, int controller,
+                              int value) noexcept
+{
+    queueMessage(sampleOffset, statusByte(0xb0u, channel), controller, value, 3);
+}
+
+void Performer::pitchWheel(int sampleOffset, int channel, float position) noexcept
+{
+    // The inverse of dispatchMidiData's decoding: 8192 is centre, 0 is -1
+    // and 16383 is +1. NaN reads as centre.
+    const float clamped = position == position
+        ? std::clamp(position, -1.0f, 1.0f) : 0.0f;
+    const float scaled = 8192.0f
+        + clamped * (clamped < 0.0f ? 8192.0f : 8191.0f);
+    const int raw = std::clamp(static_cast<int>(scaled + 0.5f), 0, 16383);
+    queueMessage(sampleOffset, statusByte(0xe0u, channel), raw & 0x7f,
+                 raw >> 7, 3);
+}
+
+void Performer::channelPressure(int sampleOffset, int channel, int value) noexcept
+{
+    queueMessage(sampleOffset, statusByte(0xd0u, channel), value, 0, 2);
+}
+
+void Performer::setPitchBendRange(int sampleOffset, int channel, int semitones,
+                                  int cents) noexcept
+{
+    controlChange(sampleOffset, channel, 101, 0);
+    controlChange(sampleOffset, channel, 100, 0);
+    controlChange(sampleOffset, channel, 6, semitones);
+    controlChange(sampleOffset, channel, 38, cents);
+    controlChange(sampleOffset, channel, 101, 127);
+    controlChange(sampleOffset, channel, 100, 127);
+}
+} // namespace acustra

@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "DSP/AcustraEngine.h"
+#include "DSP/AcustraPerformer.h"
 
 #include <array>
 #include <atomic>
@@ -96,42 +96,14 @@ private:
 
     void parameterChanged (const juce::String& parameterID,
                            float newValue) override;
-    void dispatchMidiData (const juce::uint8* data, int numBytes) noexcept;
-    bool processRpnController (int midiChannel, int controller,
-                               int value) noexcept;
-    void setLowerZoneMemberCount (int memberCount) noexcept;
-    void refreshPitchBend (int midiChannel) noexcept;
-    void resetControllerScope (int midiChannel) noexcept;
-    [[nodiscard]] bool channelIsInControllerScope (
-        int controllerChannel, int targetChannel) const noexcept;
     void updateEngineParameters() noexcept;
 
     std::array<std::atomic<float>*, acustra::parameters::parameterCount>
         parameterPointers {};
-    acustra::AcustraEngine engine;
-    bool legatoDown { false };
-    // A strum's stroke alternates; the sample clock tells a rest from a beat.
-    bool strumUpstroke { false };
-    double currentSampleRate { 48000.0 };
-    std::int64_t processedSamples { 0 };
-    std::int64_t lastStrumSample { -1 };
-    std::array<juce::MidiRPNDetector, 16> rpnDetectors {};
-    std::array<float, 16> rawPitchWheels {};
-    std::array<float, 16> conventionalPitchBendRanges {};
-    float lowerMasterPitchBendRange { 2.0f };
-    float lowerMemberPitchBendRange { 48.0f };
-    int lowerZoneMemberCount { 0 };
-    // Gather Chords holds every MIDI event back by the gathering window;
-    // see processBlock. A due time counts samples since prepareToPlay.
-    struct HeldMidi
-    {
-        std::int64_t due { 0 };
-        std::array<juce::uint8, 3> bytes {};
-        int size { 0 };
-        bool gathered { false };
-    };
-    std::array<HeldMidi, 1024> heldMidi {};
-    int heldMidiCount { 0 };
+    // Everything between MIDI and the engine: see DSP/AcustraPerformer.h.
+    acustra::Performer performer;
+    // The performer's Gather Chords window, for the latency the listener
+    // reports from the message thread.
     std::atomic<int> gatherWindowSamples { 0 };
     std::atomic<bool> panicRequested { false };
     std::atomic<bool> engineReady { false };
