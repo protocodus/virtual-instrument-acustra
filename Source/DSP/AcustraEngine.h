@@ -853,6 +853,12 @@ private:
     void updateControlState() noexcept;
     void configureBody() noexcept;
     void configureBridge() noexcept;
+    // The frequency and Q configureBody gives radiation mode `index` of the
+    // bank these parameters select, before the host-rate clamp: the pole
+    // steel's own bridge modes share (tests).
+    static std::array<float, 2> radiationModePole(
+        const EngineParameters& parameters,
+        const PhysicalCalibration& calibration, int index) noexcept;
     float bridgePhaseDelay(float frequency, int stringIndex) const noexcept;
     // The saddle's mobility at one string's two ports, bridge and anchors in
     // parallel, at a frequency: the normal port at its lever arm, the
@@ -883,7 +889,7 @@ private:
             float rock { 0.0f };
         };
         const void* bank { nullptr };
-        std::array<std::uint32_t, 9> key {};
+        std::array<std::uint32_t, 11> key {};
         bool valid { false };
         int count { 0 };
         std::array<Mode, bridgeModeCount> modes {};

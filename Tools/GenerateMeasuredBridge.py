@@ -53,6 +53,35 @@ NumPy and SciPy are required.  Regenerate or verify with:
 ``--nylon-guitar`` selects a different archive record for the nylon bank; it
 exists so the choice between measured classicals can be screened, and the
 committed header is the default.
+
+Steel's own bridge plays on its radiation's poles. The same modal body gives
+mode k's mobility residue phi_k(bridge)^2/m_k and its radiation residue
+phi_k(bridge) psi_k(mic)/m_k on one pole, so every steel bridge mode that is
+the same resonance as a radiation mode of MeasuredBodyData.h (--radiation-
+header) is given that mode as its twin: the nearest radiation mode k, taken
+only when the bridge mode lies inside k's as-fitted half-power band,
+|f_b - f_k| < f_k/(2 Q_k), and is itself one resolved resonance, f_b/Q_b <
+(f_k+1 - f_k-1)/2. The as-fitted Qs (before the plate-Q rule) and the
+anechoic population come from GenerateBodyForcePair.py's report
+(--body-report). A mode without a twin is damped as the radiation's plate
+modes were: GenerateBodyForcePair.plate_q_factor at its own frequency inside
+the report's band, else 1. The engine gives a twinned mode its twin's engine
+pole (AcustraEngine.cpp, steelOwnBridgePole).
+
+The flamenca's top is far more compliant than a steel-string guitar's.
+steelTopMobilityRatio is the geometric mean over 1000 log-spaced frequencies
+in 80 Hz-4 kHz of |Y_Fylde(f)| / |Y_steel(f, u=-1)|, both the committed modal
+sums with no anchor and no plate floor: the Fylde Falstaff of
+MeasuredSteelBridgeData.h (--steel-reference; Carcagno et al., JASA 144
+(2018) 3533, https://doi.org/10.1121/1.5084735, data https://osf.io/f4pqa/,
+CC BY 4.0) was measured between strings 5 and 6, which is the flamenca's
+bass-side point u = -1. The run prints its spread over other bands and over
+conductance.
+
+    python3 Tools/GenerateBodyForcePair.py --raw-mat /path/qualified_selected_impulses.mat \
+        --plate-q median --output /tmp/body
+    python3 Tools/GenerateMeasuredBridge.py --raw-mat /path/qualified_selected_impulses.mat \
+        --body-report /tmp/body/report.json --check
 """
 
 from __future__ import annotations
@@ -60,7 +89,9 @@ from __future__ import annotations
 import argparse
 import difflib
 import hashlib
+import json
 from pathlib import Path
+import re
 import sys
 import textwrap
 
@@ -475,6 +506,123 @@ def fit_bank(path: Path, guitar: int) -> dict:
     }
 
 
+REPOSITORY = Path(__file__).resolve().parents[1]
+DEFAULT_RADIATION_HEADER = REPOSITORY / "Source" / "DSP" / "MeasuredBodyData.h"
+DEFAULT_STEEL_REFERENCE = REPOSITORY / "Source" / "DSP" / "MeasuredSteelBridgeData.h"
+MOBILITY_RATIO_BAND_HZ = (80.0, 4000.0)
+MOBILITY_RATIO_POINTS = 1000
+MOBILITY_RATIO_POSITION = -1.0
+
+
+def header_rows(path: Path, name: str) -> np.ndarray:
+    """The numeric rows of one constexpr std::array in a generated header."""
+    text = path.read_text(encoding="utf-8")
+    start = text.index(f" {name} {{{{")
+    block = text[start:text.index("}};", start)]
+    rows = [[float(value.strip().rstrip("f")) for value in match.split(",")]
+            for match in re.findall(r"^\s*\{ ([^{}]*) \},$", block, flags=re.M)]
+    if not rows:
+        raise ValueError(f"{path}: no rows in {name}")
+    return np.array(rows)
+
+
+def modal_mobility(modes: np.ndarray, frequency: np.ndarray, position: float) -> np.ndarray:
+    """Y(f) = sum (heave + 2u cross + u^2 rock) s/(s^2 + (w/q) s + w^2)."""
+    s = 2j * np.pi * frequency[:, None]
+    omega = 2.0 * np.pi * modes[:, 0]
+    residue = modes[:, 2] + 2.0 * position * modes[:, 3] + position**2 * modes[:, 4]
+    return (residue * s / (s * s + omega / modes[:, 1] * s + omega * omega)).sum(axis=1)
+
+
+def top_mobility_ratio(reference: np.ndarray, steel: np.ndarray) -> tuple[float, dict]:
+    def ratio(high: float, statistic) -> float:
+        frequency = np.geomspace(MOBILITY_RATIO_BAND_HZ[0], high, MOBILITY_RATIO_POINTS)
+        return float(np.exp(np.mean(
+            np.log(statistic(modal_mobility(reference, frequency, MOBILITY_RATIO_POSITION)))
+            - np.log(statistic(modal_mobility(steel, frequency, MOBILITY_RATIO_POSITION))))))
+    spread = {f"{name} 80-{high:.0f} Hz": ratio(high, statistic)
+              for name, statistic in (("|Y|", np.abs), ("conductance", np.real))
+              for high in (1000.0, 2000.0, 4000.0, 10000.0)}
+    return ratio(MOBILITY_RATIO_BAND_HZ[1], np.abs), spread
+
+
+def radiation_twins(bridge: np.ndarray, radiation: np.ndarray, fitted_q: np.ndarray) -> list:
+    frequencies = radiation[:, 0]
+    twins = []
+    for frequency, q in bridge[:, :2]:
+        k = int(np.argmin(np.abs(frequencies - frequency)))
+        below = frequencies[k] - frequencies[k - 1] if k > 0 else np.inf
+        above = frequencies[k + 1] - frequencies[k] if k + 1 < len(frequencies) else np.inf
+        spacing = 0.5 * (below + above) if np.isfinite(below) and np.isfinite(above) \
+            else min(below, above)
+        inside = abs(frequency - frequencies[k]) < frequencies[k] / (2.0 * fitted_q[k])
+        resolved = frequency / q < spacing
+        twins.append(k if inside and resolved else -1)
+    return twins
+
+
+def radiation_poles(bank: dict, radiation_header: Path, body_report: Path,
+                    steel_reference: Path) -> dict:
+    """Steel's twins, unpaired-mode Q ratios and top mobility ratio."""
+    radiation = header_rows(radiation_header, "measuredSteelBodyModes")[:, :2]
+    report = json.loads(body_report.read_text(encoding="utf-8"))
+    plate_q = report.get("plate_q")
+    if not plate_q or "measured_frequency_q" not in plate_q:
+        raise ValueError(f"{body_report}: no as-fitted Q; rerun GenerateBodyForcePair.py --plate-q")
+    fitted = np.array(plate_q["measured_frequency_q"])
+    corrected = np.array(plate_q["corrected_frequency_q"])
+    if (fitted.shape != radiation.shape
+            or not np.array_equal(fitted[:, 0].astype(np.float32), radiation[:, 0].astype(np.float32))
+            or not np.array_equal(corrected[:, 1].astype(np.float32), radiation[:, 1].astype(np.float32))):
+        raise ValueError(f"{body_report} is not the report of {radiation_header}")
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from GenerateBodyForcePair import plate_q_factor
+    population = [entry["frequency_q"] for entry in plate_q["population"].values()]
+    low, high = plate_q["band_hz"]
+    modes = np.array(bank["modes"])
+    twins = radiation_twins(modes, radiation, fitted[:, 1])
+    ratios = [1.0 if twin >= 0 or not low <= frequency < high
+              else plate_q_factor(frequency, fitted, population)
+              for frequency, twin in zip(modes[:, 0], twins)]
+    reference = header_rows(steel_reference, "measuredFyldeBridgeModes")
+    ratio, spread = top_mobility_ratio(reference, modes)
+    return dict(twins=twins, q_ratios=ratios, mobility_ratio=ratio, spread=spread)
+
+
+def poles_block(poles: dict, steel_guitar: int) -> str:
+    twins = poles["twins"]
+    paired = sum(1 for twin in twins if twin >= 0)
+    comment = textwrap.fill(
+        f'Steel\'s own bridge on its radiation\'s poles. {paired} of the'
+        f' {len(twins)} g{steel_guitar} bridge modes are the same resonance as a'
+        f' mode of measuredSteelBodyModes (MeasuredBodyData.h): the nearest'
+        f' one, inside its as-fitted half-power band, with the bridge mode'
+        f' narrower than the radiation bank\'s local spacing; each takes that'
+        f' mode\'s engine pole. The others (-1) keep their own frequency and'
+        f' take the plate-Q rule\'s octave factor on their Q'
+        f' (GenerateBodyForcePair.py, median of the anechoic flamencas over'
+        f' g{steel_guitar}\'s own, never raising, 1 outside its band).'
+        f' steelTopMobilityRatio brings the flamenca\'s mobility to a'
+        f' steel-string guitar\'s: the geometric mean over 80 Hz-4 kHz of'
+        f' |Y| of the Fylde Falstaff (MeasuredSteelBridgeData.h; Carcagno,'
+        f' Bucknall, Woodhouse, Fritz and Plack, JASA 144 (2018) 3533,'
+        f' https://doi.org/10.1121/1.5084735, data https://osf.io/f4pqa/, CC BY'
+        f' 4.0) over g{steel_guitar}\'s at u = -1, {poles["mobility_ratio"]:.5f},'
+        f' to three figures; over other bands and conductance it spans'
+        f' {min(poles["spread"].values()):.3f}-{max(poles["spread"].values()):.3f}.',
+        width=76, initial_indent="// ", subsequent_indent="// ")
+    rows = ", ".join(str(twin) for twin in twins)
+    ratios = "\n".join(f"    {cpp_float(value)}," for value in poles["q_ratios"])
+    return f'''{comment}
+inline constexpr float steelTopMobilityRatio = {round(poles["mobility_ratio"], 3)}f;
+inline constexpr std::array<std::int16_t, {len(twins)}> steelBridgeRadiationTwins {{{{
+{textwrap.fill(rows, width=76, initial_indent="    ", subsequent_indent="    ")}
+}}}};
+inline constexpr std::array<float, {len(twins)}> steelBridgeUnpairedQRatio {{{{
+{ratios}
+}}}};'''
+
+
 def cpp_float(value: float) -> str:
     text = format(float(np.float32(value)), ".9g")
     if "." not in text and "e" not in text:
@@ -506,7 +654,7 @@ inline constexpr std::array<MeasuredBridgeMode, {len(bank["modes"])}> {name} {{{
 }}}};'''
 
 
-def render_header(steel: dict, nylon: dict) -> str:
+def render_header(steel: dict, nylon: dict, poles: dict) -> str:
     return f'''// Generated by Tools/GenerateMeasuredBridge.py; do not hand-edit.
 // Passive spatial approximations fitted to each guitar's bass and treble
 // impacts and two accelerometers behind the saddle (Method.pdf Fig. 3).
@@ -536,6 +684,7 @@ def render_header(steel: dict, nylon: dict) -> str:
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 namespace acustra::detail
 {{
@@ -549,6 +698,8 @@ struct MeasuredBridgeMode
 }};
 
 {bank_block("measuredSteelBridgeModes", steel)}
+
+{poles_block(poles, steel["guitar"])}
 
 {bank_block("measuredNylonBridgeModes", nylon)}
 }} // namespace acustra::detail
@@ -591,6 +742,15 @@ def main() -> int:
              "flamenca whose radiation steel may play (default: %(default)s)",
     )
     parser.add_argument(
+        "--body-report", required=True, type=Path,
+        help="GenerateBodyForcePair.py --plate-q report.json of the radiation header")
+    parser.add_argument(
+        "--radiation-header", type=Path, default=DEFAULT_RADIATION_HEADER,
+        help="MeasuredBodyData.h whose steel modes the bridge's twins index")
+    parser.add_argument(
+        "--steel-reference", type=Path, default=DEFAULT_STEEL_REFERENCE,
+        help="MeasuredSteelBridgeData.h, the steel-string mobility level")
+    parser.add_argument(
         "--check",
         action="store_true",
         help="compare generated content with --output without writing it",
@@ -599,7 +759,16 @@ def main() -> int:
 
     steel = fit_bank(arguments.raw_mat, arguments.steel_guitar)
     nylon = fit_bank(arguments.raw_mat, arguments.nylon_guitar)
-    header = render_header(steel, nylon)
+    poles = radiation_poles(steel, arguments.radiation_header,
+                            arguments.body_report, arguments.steel_reference)
+    header = render_header(steel, nylon, poles)
+    twins = poles["twins"]
+    print(f"steel bridge on its radiation's poles: {sum(t >= 0 for t in twins)} of "
+          f"{len(twins)} modes twinned at "
+          + ", ".join(f"{mode[0]:.1f}" for mode, t in zip(steel["modes"], twins) if t >= 0)
+          + " Hz")
+    print(f"steel top mobility ratio {poles['mobility_ratio']:.5f} (80 Hz-4 kHz |Y|); spread "
+          + ", ".join(f"{name} {value:.3f}" for name, value in poles["spread"].items()))
     if arguments.check:
         return 0 if check_output(arguments.output, header) else 1
     with arguments.output.open("w", encoding="utf-8", newline="\n") as stream:

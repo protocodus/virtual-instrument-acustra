@@ -1,4 +1,5 @@
 #include "DSP/AcustraEngine.h"
+#include "DSP/MeasuredBridgeData.h"
 
 #include <algorithm>
 #include <array>
@@ -21,6 +22,11 @@ struct AcustraEngineTestAccess
     static bool bodySettled(const AcustraEngine& e, BodyShape shape)
     { return e.configuredBodyShape_ == shape && e.bodyModelFade_ == 1.0f; }
     static float saddle(const AcustraEngine& e) { return e.saddleHeightRatio(); }
+    static const PhysicalCalibration& calibration(const AcustraEngine& e)
+    { return e.physicalCalibration_; }
+    static std::array<float, 2> radiationPole(const EngineParameters& p,
+                                              const PhysicalCalibration& c, int index)
+    { return AcustraEngine::radiationModePole(p, c, index); }
 };
 }
 
@@ -161,7 +167,83 @@ void testPhaseAndPassivity()
     expect(worstCents < 1.0, "shape tuning differs from its actual digital bridge");
 }
 
-void process(Engine& e, int frames, double* energy = nullptr, float* peak = nullptr)
+void process(Engine& e, int frames, double* energy = nullptr, float* peak = nullptr);
+
+// The denominators configureBridge builds from a mode's float frequency and
+// Q, in the engine's double arithmetic (prewarped bilinear, 2*damping = w/q).
+std::array<double, 2> denominators(float frequency, float q, double rate)
+{
+    const double bilinear = 2.0*rate;
+    const double omega = bilinear*std::tan(double(3.14159265358979323846f)*frequency/rate);
+    const double damping = omega/(2.0*q);
+    const double d0 = bilinear*bilinear + 2.0*damping*bilinear + omega*omega;
+    return { (-2.0*bilinear*bilinear + 2.0*omega*omega)/d0,
+             (bilinear*bilinear - 2.0*damping*bilinear + omega*omega)/d0 };
+}
+
+// Steel's own bridge is g21's, the radiation's guitar: every bridge mode that
+// is the same resonance as a radiation mode (the generator's twin) takes that
+// mode's engine pole, frequency and Q to the float, under every Shape and
+// Wood, so a partial on a radiation peak meets the same conductance peak.
+// The anchor no longer leaves this bridge as fitted: the wide steel anchor
+// and the plate-Q rule move it with the radiation. The Fylde, another
+// guitar's bridge, is left as measured and does not follow Wood.
+void testSteelOwnBridgeSharesTheRadiationPoles()
+{
+    const auto& twins = acustra::detail::steelBridgeRadiationTwins;
+    int paired = 0;
+    for (const auto twin : twins) paired += twin >= 0;
+    expect(paired == 18, "steel's own bridge does not twin its 18 resolved modes");
+    double worst = 0;
+    std::array<double, 2> fyldeReference {};
+    for (int shape = 0; shape < 4; ++shape)
+        for (int wood = 0; wood < 4; ++wood)
+        {
+            acustra::EngineParameters p;
+            p.stringMaterial = acustra::StringMaterial::Steel;
+            p.bridgeModel = acustra::BridgeModel::Original;
+            p.shape = static_cast<acustra::BodyShape>(shape);
+            p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+            auto e = std::make_unique<Engine>();
+            e->setParameters(p); e->prepare(48000, 64);
+            const auto bridge = Access::bridge(*e);
+            for (std::size_t i = 0; i < twins.size(); ++i)
+            {
+                if (twins[i] < 0) continue;
+                const auto pole = Access::radiationPole(p, Access::calibration(*e), twins[i]);
+                const auto expected = denominators(pole[0], pole[1], 48000.0);
+                const auto& mode = bridge.heaveModes[i];
+                worst = std::max({ worst,
+                    std::abs(mode.denominator1-expected[0])/std::abs(expected[0]),
+                    std::abs(mode.denominator2-expected[1])/std::abs(expected[1]) });
+            }
+            // Changing Wood live reaches the bridge as a fresh engine does.
+            auto live = std::make_unique<Engine>();
+            auto first = p; first.bodyMaterial = acustra::BodyMaterial::Spruce;
+            live->setParameters(first); live->prepare(48000, 64);
+            live->setParameters(p); process(*live, 64);
+            const auto liveBridge = Access::bridge(*live);
+            bool same = true;
+            for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
+                same = same && liveBridge.heaveModes[i].denominator1 == bridge.heaveModes[i].denominator1
+                            && liveBridge.heaveModes[i].denominator2 == bridge.heaveModes[i].denominator2;
+            expect(same, "a live Wood change did not move steel's own bridge");
+
+            p.bridgeModel = acustra::BridgeModel::FyldeSteel;
+            auto fylde = std::make_unique<Engine>();
+            fylde->setParameters(p); fylde->prepare(48000, 64);
+            const auto fyldeMode = Access::bridge(*fylde).heaveModes[5];
+            if (wood == 0) fyldeReference = { fyldeMode.denominator1, fyldeMode.denominator2 };
+            expect(fyldeMode.denominator1 == fyldeReference[0]
+                       && fyldeMode.denominator2 == fyldeReference[1],
+                   "Wood moved the Fylde bridge, another guitar's measurement");
+        }
+    std::cout << "steel own bridge twin pole relative error=" << worst << '\n';
+    // A one-ulp change of a float frequency or Q moves these by ~1e-7.
+    expect(worst < 1e-12, "a twinned bridge mode is not its radiation mode's pole");
+}
+
+void process(Engine& e, int frames, double* energy, float* peak)
 {
     std::array<float,64> left {}, right {};
     while (frames > 0)
@@ -304,6 +386,7 @@ void testStaticWorkAndRapidChanges()
 
 int main()
 {
+    testSteelOwnBridgeSharesTheRadiationPoles();
     testPhaseAndPassivity();
     testRetuneAndTailOwnership();
     testStaticWorkAndRapidChanges();

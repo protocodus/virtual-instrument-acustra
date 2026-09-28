@@ -209,9 +209,10 @@ EngineParameters baseParameters()
     EngineParameters parameters;
     // Render at the public default. Whole-file normalisation owns listening
     // level, so driving the safety limiter here would only alter transients.
-    // The steel presets and a new session play the measured Fylde bridge, so
-    // the demos do too; nylon does not read this field.
-    parameters.bridgeModel = BridgeModel::FyldeSteel;
+    // The steel presets and a new session play the Original bridge (steel's
+    // own, on its radiation's poles), so the demos do too; nylon does not
+    // read this field.
+    parameters.bridgeModel = BridgeModel::Original;
     return parameters;
 }
 

@@ -542,6 +542,62 @@ constexpr std::array<WoodSpec, 4> woodSpecs {{
     { 1.025f, 1.08f, 1.08f, 0.96f }  // maple: stiffer/brighter direction
 }};
 
+// What Wood does to a mode's frequency and Q, relative to the bank's own
+// wood: spruce for Original, the Bellido's cedar for it.
+struct WoodFactors
+{
+    float frequency;
+    float q;
+};
+
+WoodFactors woodFactorsFor(BodyMaterial material, GuitarModel guitar) noexcept
+{
+    const bool named = guitar != GuitarModel::Original;
+    const auto wood = woodSpecs[static_cast<std::size_t>(material)];
+    const auto reference = woodSpecs[guitar == GuitarModel::Bellido1978 ? 1 : 0];
+    return { wood.frequencyScale / (named ? reference.frequencyScale : 1.0f),
+             wood.qScale / (named ? reference.qScale : 1.0f) };
+}
+
+struct ModalPole
+{
+    float frequency;
+    float q;
+};
+
+// One radiation mode's engine pole: the anchor transform, the Shape morph's
+// class factor, Wood and the calibration applied to the measured frequency
+// and Q. configureBody sounds it (clamping the frequency to the host rate);
+// steel's own bridge takes it for each bridge mode that is the same
+// resonance (steelOwnBridgePole below).
+ModalPole radiationPole(ConstSpan<detail::MeasuredBodyMode> bank, int index,
+                        const AnchorTransform& anchor,
+                        const BodyShapeMorph& morph, WoodFactors wood,
+                        bool named,
+                        const PhysicalCalibration& calibration) noexcept
+{
+    const auto& measured = bank[static_cast<std::size_t>(index)];
+    const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
+    const bool lowBodyMode = measured.frequency > 85.0f
+        && measured.frequency < 145.0f;
+    const float lowModeMorph = lowBodyMode
+        ? anchor.airHz / 107.0f : anchor.modeScale;
+    // The A0 group, T1 and the plate modes above it each take their own
+    // factor from the coupled pair; the anchor shape's are exactly 1.
+    const float shapeFrequency = measured.frequency < lowBodyGroupUpperHz
+        ? morph.a0Frequency
+        : index <= morph.t1Index ? morph.t1Frequency : morph.plateFrequency;
+    const float frequency = measured.frequency * lowModeMorph * shapeFrequency
+        * wood.frequency * calibration.bodyFrequencyScale
+        * (1.0f + alternating * anchor.asymmetry
+           / exact::sqrt(static_cast<float>(index + 1)));
+    // AcustraEngine::clamp: a non-finite Q takes the lower bound.
+    const float q = measured.q * wood.q * calibration.bodyQScale;
+    const float low = named ? 1.0f : 4.0f;
+    return { frequency, exact::isfinite(q) ? std::max(low, std::min(150.0f, q))
+                                           : low };
+}
+
 float safetyLimit(float sample) noexcept
 {
     // Exactly linear through -1 dBFS, then C1-continuous into unit headroom.
@@ -732,6 +788,55 @@ detail::MeasuredBridgeMode shapeBridgeMode(
     mode.frequency *= mode.frequency < lowBodyGroupUpperHz ? a0Frequency
         : mode.frequency <= t1UpperHz ? t1Frequency : plateFrequency;
     return mode;
+}
+
+// Steel's own bridge is g21's, the guitar its radiation bank is, so one body
+// loads the string and radiates it: a modal body's mode k carries both the
+// mobility residue phi_k(bridge)^2/m_k and the radiation residue
+// phi_k(bridge) psi_k(mic)/m_k on the same pole. Only for steel on Original
+// with the Original bridge; the Fylde and the Bellido are other guitars, and
+// nylon's g34 map has not been fitted or heard.
+bool steelOwnBridge(StringMaterial material, BridgeModel bridge,
+                    GuitarModel guitar) noexcept
+{
+    return material == StringMaterial::Steel && guitar == GuitarModel::Original
+        && bridge == BridgeModel::Original;
+}
+
+// The engine pole of steel's own bridge mode `index` (see steelOwnBridge).
+// A mode that is the same resonance as radiation mode j (the generator's twin
+// test: inside j's as-fitted half-power band, and itself narrower than the
+// radiation bank's local mode spacing) takes radiationPole(j) exactly, so the
+// anchor transform, Shape, Wood and the plate-Q rule move both together. An
+// unpaired mode takes the same maps by class: Shape's (shaped, as for any
+// bridge), the anchor's air or plate factor, Wood and the calibration; its Q
+// the plate-Q rule's octave factor where it applies, then Wood's and the
+// calibration's. The residue matrix is kept, so the mode stays passive.
+static_assert(detail::steelBridgeRadiationTwins.size()
+                  == detail::measuredSteelBridgeModes.size()
+              && detail::steelBridgeUnpairedQRatio.size()
+                  == detail::measuredSteelBridgeModes.size(),
+              "one twin and one Q ratio per steel bridge mode");
+
+ModalPole steelOwnBridgePole(std::size_t index,
+                             const detail::MeasuredBridgeMode& source,
+                             const detail::MeasuredBridgeMode& shaped,
+                             const AnchorTransform& anchor,
+                             const BodyShapeMorph& morph, WoodFactors wood,
+                             const PhysicalCalibration& calibration) noexcept
+{
+    const int twin = detail::steelBridgeRadiationTwins[index];
+    if (twin >= 0)
+        return radiationPole(detail::measuredSteelBodyModes, twin, anchor,
+                             morph, wood, false, calibration);
+    const bool lowBodyMode = source.frequency > 85.0f
+        && source.frequency < 145.0f;
+    const float lowModeMorph = lowBodyMode
+        ? anchor.airHz / 107.0f : anchor.modeScale;
+    return { shaped.frequency * lowModeMorph * wood.frequency
+                 * calibration.bodyFrequencyScale,
+             source.q * detail::steelBridgeUnpairedQRatio[index] * wood.q
+                 * calibration.bodyQScale };
 }
 
 // Where a string crosses the saddle, in units of the half-separation between
@@ -2186,6 +2291,9 @@ void AcustraEngine::setPhysicalCalibration(
     const PhysicalCalibration& calibration) noexcept
 {
     physicalCalibration_ = sanitise(calibration);
+    // Steel's own bridge follows the body's frequency and Q calibration,
+    // which the mobility table's key does not hold.
+    bridgeMobilityTable_.valid = false;
     ++voiceConfigurationGeneration_;
     if (!prepared_)
         return;
@@ -2198,7 +2306,12 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     const bool constructionChanged = force
         || !sameStringConstruction(next, parameters_);
     const bool modelChanged = force || next.guitarModel != parameters_.guitarModel;
-    const bool shapeChanged = next.shape != parameters_.shape;
+    // On steel's own bridge Wood moves the bridge's poles with the
+    // radiation's, so there it exchanges the mechanical load as Shape does.
+    const bool shapeChanged = next.shape != parameters_.shape
+        || (next.bodyMaterial != parameters_.bodyMaterial
+            && steelOwnBridge(next.stringMaterial, next.bridgeModel,
+                              next.guitarModel));
     const bool bodyChanged = modelChanged || shapeChanged
         || next.bodyMaterial != parameters_.bodyMaterial;
     const bool ageChanged = force
@@ -2213,7 +2326,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
         || next.tuning != parameters_.tuning
         || next.bridgeModel != parameters_.bridgeModel
         || next.guitarModel != parameters_.guitarModel
-        || next.shape != parameters_.shape
+        || shapeChanged
         || exact::bits(next.stringAge) != exact::bits(parameters_.stringAge))
         ++voiceConfigurationGeneration_;
     parameters_ = next;
@@ -2257,7 +2370,8 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     // A tail belongs to the string construction it was taken from, and its
     // loop is not redesigned below. Shape changes the body attached to that
     // string, not its ownership or construction, so it keeps the tail and its
-    // still-connected junction port. Wood continues to change radiation only.
+    // still-connected junction port. Wood changes radiation only, except on
+    // steel's own bridge, where it moves the bridge like Shape (above).
     if (constructionChanged || ageChanged || stringChanged || tuningChanged)
         for (auto& voice : voices_)
         {
@@ -2317,6 +2431,27 @@ void AcustraEngine::updateControlState() noexcept
     }
 }
 
+std::array<float, 2> AcustraEngine::radiationModePole(
+    const EngineParameters& parameters, const PhysicalCalibration& calibration,
+    int index) noexcept
+{
+    const auto bank = measuredBodyBank(parameters.stringMaterial,
+                                       parameters.guitarModel);
+    if (index < 0 || static_cast<std::size_t>(index) >= bank.size())
+        return { 0.0f, 0.0f };
+    const AnchorTransform& anchor = anchorTransformFor(parameters.guitarModel,
+                                                       parameters.stringMaterial);
+    const auto morph = bodyShapeMorph(
+        bank, anchor,
+        anchorBodyFor(parameters.stringMaterial, parameters.guitarModel),
+        targetBodyFor(parameters.stringMaterial, parameters.guitarModel,
+                      parameters.shape));
+    const auto pole = radiationPole(bank, index, anchor, morph,
+        woodFactorsFor(parameters.bodyMaterial, parameters.guitarModel),
+        parameters.guitarModel != GuitarModel::Original, calibration);
+    return { pole.frequency, pole.q };
+}
+
 void AcustraEngine::configureBody() noexcept
 {
     if (bodyConfigured_
@@ -2366,6 +2501,8 @@ void AcustraEngine::configureBody() noexcept
                       parameters_.shape));
     const auto referenceWood = woodSpecs[parameters_.guitarModel == GuitarModel::Bellido1978 ? 1 : 0];
     const bool named = parameters_.guitarModel != GuitarModel::Original;
+    const auto woodFactors = woodFactorsFor(parameters_.bodyMaterial,
+                                            parameters_.guitarModel);
     // lowBodyModeGain raises the air mode where steel's g21 bank under-hears
     // it: at the treble-bridge microphone, 10 cm over the bridge, 82 Hz
     // radiates 15 dB under 330 Hz where the upper-bout one hears it 2 dB
@@ -2386,39 +2523,25 @@ void AcustraEngine::configureBody() noexcept
             continue;
         }
         const auto& measured = bank[static_cast<std::size_t>(index)];
-        const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
         const bool lowBodyMode = measured.frequency > 85.0f
             && measured.frequency < 145.0f;
-        const float lowModeMorph = lowBodyMode
-            ? anchor.airHz / 107.0f : anchor.modeScale;
         // The A0 group, T1 and the plate modes above it each take their own
-        // factor from the coupled pair; the anchor shape's are exactly 1.
-        float shapeFrequency = morph.plateFrequency;
+        // level from the coupled pair; the anchor shape's are exactly 1.
         float shapeLevel = morph.plateLevel;
         if (measured.frequency < lowBodyGroupUpperHz)
-        {
-            shapeFrequency = morph.a0Frequency;
             shapeLevel = morph.a0Level;
-        }
         else if (index <= morph.t1Index)
-        {
-            shapeFrequency = morph.t1Frequency;
             shapeLevel = morph.t1Level;
-        }
-        float frequency = measured.frequency * lowModeMorph * shapeFrequency
-            * (wood.frequencyScale / (named ? referenceWood.frequencyScale : 1.0f))
-            * physicalCalibration_.bodyFrequencyScale
-            * (1.0f + alternating * anchor.asymmetry
-               / exact::sqrt(static_cast<float>(index + 1)));
+        const auto engine = radiationPole(bank, index, anchor, morph,
+            woodFactors, named, physicalCalibration_);
+        float frequency = engine.frequency;
         const float highestMode = 0.46f * static_cast<float>(sampleRate_);
         const bool audibleAtThisRate = frequency < highestMode;
         frequency = clamp(frequency, 45.0f, highestMode);
 
         const float upper = clamp(std::log2(std::max(frequency, 120.0f)
             / 120.0f) / 6.0f, 0.0f, 1.0f);
-        const float q = clamp(measured.q
-            * (wood.qScale / (named ? referenceWood.qScale : 1.0f))
-            * physicalCalibration_.bodyQScale, named ? 1.0f : 4.0f, 150.0f);
+        const float q = engine.q;
         const float radius = std::exp(-pi * frequency
                                       / (q * static_cast<float>(sampleRate_)));
         const std::complex<float> pole = std::polar(
@@ -2583,9 +2706,20 @@ void AcustraEngine::configureBridge() noexcept
     // corpus compensation and high-band conductance floor belong to Original.
     // Keep the fitting control as a relative multiplier around the new body's
     // measured response, with unit gain at the shipped calibration.
+    // Steel's own bridge is the flamenca's: its top is about 3.6 times as
+    // compliant as a steel-string guitar's, so its residues are brought to the
+    // Fylde's measured level (steelTopMobilityRatio) under the same fitted
+    // scale. The plate floor below is not scaled.
+    const bool ownBridge = steelOwnBridge(parameters_.stringMaterial,
+        parameters_.bridgeModel, parameters_.guitarModel);
     const float scale = physicalCalibration_.bridgeMobilityScale
         / (parameters_.guitarModel == GuitarModel::Original ? 1.0f
-           : fittedPhysicalCalibration.bridgeMobilityScale);
+           : fittedPhysicalCalibration.bridgeMobilityScale)
+        * (ownBridge ? detail::steelTopMobilityRatio : 1.0f);
+    const auto anchor = anchorTransformFor(parameters_.guitarModel,
+                                           parameters_.stringMaterial);
+    const auto wood = woodFactorsFor(parameters_.bodyMaterial,
+                                     parameters_.guitarModel);
     for (std::size_t index = 0;
          index < static_cast<std::size_t>(bridgeModeCount); ++index)
     {
@@ -2595,8 +2729,15 @@ void AcustraEngine::configureBridge() noexcept
             continue;
         }
         const bool include = includeMeasuredBridgeMode(bank[index]);
-        const auto measured = shapeBridgeMode(bank[index], bridgeShapeA0_,
+        auto measured = shapeBridgeMode(bank[index], bridgeShapeA0_,
             bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
+        if (ownBridge)
+        {
+            const auto pole = steelOwnBridgePole(index, bank[index], measured,
+                anchor, morph, wood, physicalCalibration_);
+            measured.frequency = pole.frequency;
+            measured.q = pole.q;
+        }
         configure(index, measured.frequency, measured.q,
                   include ? measured.heave * scale : 0.0f,
                   include ? measured.cross * scale : 0.0f,
@@ -2671,26 +2812,50 @@ AcustraEngine::bridgeMobilityTable() const noexcept
     const float rate = static_cast<float>(sampleRate_);
     const auto bank = measuredBridgeBank(parameters_.stringMaterial,
         parameters_.bridgeModel, parameters_.guitarModel);
+    const bool ownBridge = steelOwnBridge(parameters_.stringMaterial,
+        parameters_.bridgeModel, parameters_.guitarModel);
     const float scale = physicalCalibration_.bridgeMobilityScale
         / (parameters_.guitarModel == GuitarModel::Original ? 1.0f
-           : fittedPhysicalCalibration.bridgeMobilityScale);
+           : fittedPhysicalCalibration.bridgeMobilityScale)
+        * (ownBridge ? detail::steelTopMobilityRatio : 1.0f);
     const auto plate = plateConductanceMode(physicalCalibration_);
-    const std::array<std::uint32_t, 9> key {
+    const auto wood = woodFactorsFor(parameters_.bodyMaterial,
+                                     parameters_.guitarModel);
+    const std::array<std::uint32_t, 11> key {
         exact::bits(rate), exact::bits(bridgeShapeA0_), exact::bits(bridgeShapeT1_),
         exact::bits(bridgeShapePlate_), exact::bits(bridgeShapeT1UpperHz_),
         exact::bits(scale), exact::bits(plate.frequency), exact::bits(plate.q),
         exact::bits(parameters_.guitarModel == GuitarModel::Original
-                    ? plate.weight : -1.0f) };
+                    ? plate.weight : -1.0f),
+        exact::bits(wood.frequency), exact::bits(wood.q) };
     auto& table = bridgeMobilityTable_;
     if (table.valid && table.bank == bank.begin() && table.key == key)
         return table;
     // The terms as bridgePortMobility computed them in its mode loop.
     const float bilinear = 2.0f * rate;
+    const auto anchor = anchorTransformFor(parameters_.guitarModel,
+                                           parameters_.stringMaterial);
+    const auto morph = ownBridge
+        ? bodyShapeMorph(measuredBodyBank(parameters_.stringMaterial,
+                                          parameters_.guitarModel),
+              anchor,
+              anchorBodyFor(parameters_.stringMaterial, parameters_.guitarModel),
+              targetBodyFor(parameters_.stringMaterial, parameters_.guitarModel,
+                            parameters_.shape))
+        : BodyShapeMorph {};
     table.count = 0;
-    for (const auto& source : bank)
+    for (std::size_t index = 0; index < bank.size(); ++index)
     {
-        const auto measured = shapeBridgeMode(source, bridgeShapeA0_,
+        const auto& source = bank[index];
+        auto measured = shapeBridgeMode(source, bridgeShapeA0_,
             bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
+        if (ownBridge)
+        {
+            const auto pole = steelOwnBridgePole(index, source, measured,
+                anchor, morph, wood, physicalCalibration_);
+            measured.frequency = pole.frequency;
+            measured.q = pole.q;
+        }
         if (measured.frequency >= 0.45f * rate
             || !includeMeasuredBridgeMode(source))
             continue;
