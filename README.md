@@ -905,7 +905,8 @@ at every mode. Shorter common windows leave the high-frequency discrepancy.
 The full frequency and sensor results are retained in the fit report.
 
 The steel construction presets and a new session play steel's own bridge,
-g21's, on its radiation's poles (the paragraphs after the next). A separate
+g21's, on its radiation's poles (the paragraphs after the next), on this
+branch as part of the steel blend described after them. A separate
 44-mode passive **Fylde bridge**, fitted to the first instrument in [Carcagno et al.'s
 steel-guitar measurements](https://doi.org/10.1121/1.5084735): a custom Fylde Falstaff with
 Sitka spruce top and Brazilian rosewood back and sides. Its normal bridge
@@ -956,6 +957,29 @@ harmonics. With it, the radiation/conductance prominence correlation is
 out at onset fade 2.1 dB against their neighbours by the late window (0.9 on
 the Fylde; the recordings 0.8-1.8). Wood now moves this bridge with the
 radiation, exchanging the load as Shape does.
+
+**The steel blend (a listening candidate awaiting Blind Set 19).** After Set
+18 the listener asked for its model enhancements combined by weight, B and D
+at about 70% and the others at 10-20%. On this branch steel plays that blend,
+with the four by-ear weights in
+[`SteelBodyBlend.h`](Source/DSP/SteelBodyBlend.h): steel's own bridge is 0.7
+of the aligned g21 bridge above in parallel with 0.3 of the Fylde's (B's
+poles are never moved part of the way, which would reopen the gap between a
+bridge mode and its radiation peak); T1 and the rocking modes are damped 0.7
+of the way in log Q from their as-fitted Q to the 150 Hz plate-Q rule's (D,
+below); above 1 kHz the radiation is 0.85 of g21's fitted top band plus 0.15
+of a decay-Q pole grid fitted to the same measurement
+([`MeasuredBodyDecayGridData.h`](Source/DSP/MeasuredBodyDecayGridData.h), C);
+and a jointly fitted pole set for g21's bridge and microphones
+([`MeasuredJointBodyData.h`](Source/DSP/MeasuredJointBodyData.h), E) plays
+its radiation and bridge in parallel at 0.15, everything else at 0.85. Every
+part is passive and the sums are too. Only steel on its Original guitar reads
+it; the Fylde bridge choice keeps the Fylde alone as its bridge under the
+same blended radiation, and nylon is bit-identical.
+With B at 1, D at 1 and C and E at 0 the engine is the unblended B+D bit for
+bit. The blend costs about half as much again as B+D on the CPU (a strummed
+64-frame block 62 -> 95 us at 48 kHz). The benchmark readings quoted above are
+B+D's; the blend's are in Docs/decisions.md (2026-09-28).
 
 The model represents each short segment behind the saddle as a spring between
 the bridge and ground. All six are there whether or not
@@ -1068,7 +1092,9 @@ over g21's own median in the octave round it, never raised
 the level it was measured at and rings for a shorter time. The air group below
 150 Hz, where the by-ear gain below acts, is left as measured. Up to
 2026-09-27 the band started at 300 Hz; since 2026-09-28 (chosen by ear,
-Docs/decisions.md) T1 and the rocking modes are under the same rule: T1 at 178.5 Hz Q 17.5 -> 13.8 (the population's T1s 8.8-15.5), the
+Docs/decisions.md) T1 and the rocking modes are under the same rule (in the
+steel blend 0.7 of the way in log Q: 14.8, 30.0, 13.6 and 2.6 for the four
+below): T1 at 178.5 Hz Q 17.5 -> 13.8 (the population's T1s 8.8-15.5), the
 208.7 Hz rocking mode Q 37.3 -> 27.4 (the population's rocking modes in
 200-280 Hz: Q 11-21), 229.0 Hz Q 17.8 -> 12.1, and 286.8 Hz Q 3.7 -> 2.3,
 which the engine's Q >= 4 floor leaves where it was. In the engine's
@@ -1146,7 +1172,8 @@ Auditorium / Taylor style (spruce and steel, the
 Parlor / Fender style (spruce and steel, as in the
 [PS-220E](https://www.fender.com/products/ps-220e-parlor)), and Classical nylon
 (Auditorium/Cedar/Nylon). The three steel presets play steel's own bridge on
-its radiation's poles; Fylde bridge / steel selects the measured Fylde bridge.
+its radiation's poles (on this branch, the steel blend's bridge); Fylde bridge
+/ steel selects the measured Fylde bridge.
 These reuse the bounded construction directions;
 they are not independently measured models of those manufacturers. The menu
 changes Shape, Material, Strings and the bridge with host automation gestures,

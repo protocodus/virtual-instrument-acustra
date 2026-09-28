@@ -208,6 +208,31 @@ Falstaff's measured mobility over g21's (below), so the flamenca's bridge
 drains at a steel-string guitar's level. These are Acustra changes to the
 archive's data (`Tools/GenerateMeasuredBridge.py`).
 
+On the `cand/body-blend` listening candidate (the steel blend,
+`Source/DSP/SteelBodyBlend.h`) three further transformations of the same
+archive ship. (1) The four g21 modes between 150 and 300 Hz take their Q
+0.7 of the way, in log Q, from the as-fitted value to the plate-Q rule's
+(`GenerateBodyForcePair.py --plate-q-t1-weight`). (2) A decay-Q pole grid,
+`MeasuredBodyDecayGridData.h` (`Tools/GenerateBodyDecayGrid.py`): one pole
+per decay bandwidth f/Q(f) from 1 to 10 kHz, Q(f) from the median
+third-octave T20 (Schroeder integration, noise-subtracted) of g37, g38, g39,
+g42 and g43's microphone responses, each pole jittered by a seeded uniform
+draw, and complex residues fitted by weighted least squares, 800 Hz-10 kHz,
+to g21's six paths with the music room's tail removed
+(`Tools/RemoveRoomTail.py`) and the g21 modes below 1 kHz subtracted; the
+engine plays it at 0.15 beside g21's own modes above 1 kHz at 0.85. (3) A
+jointly fitted body, `MeasuredJointBodyData.h` (`Tools/GenerateJointBody.py`):
+131 frequency/Q pairs fitted jointly to g21's six microphone paths and its
+four accelerometer paths (velocity/force over the whole record, the hammer
+differentiated, a 2-sample alignment), refined by variable projection below
+the bridge's 2245 Hz cross-side corner, 56 modes carrying
+positive-semidefinite heave/rocking mobility residues, the plate-Q rule from
+300 Hz on the common Q, and the mobility scaled by 0.32275, the RMS ratio of
+the Fylde Falstaff's measured mobility (Carcagno et al., below) to g21's at
+the bass impact over 80 Hz-4 kHz; the engine plays its radiation and bridge
+at 0.15 in parallel with the rest. The weights, the grid, its jitter, these
+fits and the level ratio are Acustra changes to the archive's data.
+
 Acustra ships only those transformed numerical coefficients. It does not ship
 the source MAT file, recorded impulses, photographs or documentation from the
 archive. The attribution, source link, licence link and description of changes

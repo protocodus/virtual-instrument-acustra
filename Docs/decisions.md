@@ -4,6 +4,100 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-28 — listening candidate: Set 18's bodies blended by weight (awaiting Set 19)
+
+After Set 18 the listener asked: "if B-E are model enhancenments, could we
+somehow combine them all, but weight them - all 10-20% but B and D maybe
+70%?" This is that blend, built on `cand/body-blend` (cand/body-bd with the
+C++17 Performer main merged, 43b3501). **The four weights are by-ear
+candidate values taken from that sentence, not a verdict and not a
+measurement**; Blind Set 19 (A main, B the B+D merge, C this blend) decides.
+They are the four named constants of `Source/DSP/SteelBodyBlend.h`. None is
+in the calibration vector, so BY_EAR in `Tools/OptimizePhysicalModel.py` is
+unchanged.
+
+- **B 0.7, blended as bridges.** Steel's own bridge is 0.7 of B's aligned
+  bridge (g21's, on its radiation's poles, x0.274) in parallel with 0.3 of
+  the Fylde bridge the steel presets played before B. B's poles are not moved
+  part of the way: 30% of the 1.9-semitone anchor shift would leave about 0.6
+  semitone between each bridge mode and its radiation peak, wider than the
+  resonance, which is the band-pass ringing B removed. A non-negative sum of
+  positive-real driving-point admittances is positive real.
+- **D 0.7, in log Q, as data.** The modes only the 150 Hz band reaches move
+  0.7 of the way: Q = Q_asfitted^0.3 x Q_D^0.7. T1 17.48 -> 14.83 (D 13.82),
+  208.7 Hz 37.33 -> 30.04 (27.37), 229.0 Hz 17.76 -> 13.55 (12.07), 286.8 Hz
+  3.67 -> 2.65 (2.30; the engine's Q >= 4 floor holds it either way).
+  `GenerateBodyForcePair.py --plate-q-t1-weight` (default: the blend header's
+  value; `--reweight DIR` rewrites an earlier fit's header in seconds) writes
+  it and records it as `measuredSteelT1PlateQWeight`, which the engine
+  static-asserts against the blend header. The steel bridge generator applies
+  the same power to an unpaired mode in 150-300 Hz; there is none, so
+  `MeasuredBridgeData.h` is unchanged.
+- **C 0.15, blended as bodies.** Above 1 kHz the radiation is 0.85 of g21's
+  fitted top band plus 0.15 of C's decay-Q grid (`MeasuredBodyDecayGridData.h`,
+  234 poles, `Tools/GenerateBodyDecayGrid.py` now writing the grid alone,
+  refitted beside this bank's modes below 1 kHz: its residues move 0.09% from
+  C's; the tool reproduces C's grid byte for byte from C's bank). Both
+  reproduce the same measured response, so the sum does; what 0.15 brings is
+  C's longer ring above 1 kHz, about 16 dB down.
+- **E 0.15, a parallel copy.** E's joint-pole body (`MeasuredJointBodyData.h`,
+  as 1813a88 wrote it, its level constant renamed
+  `steelJointTopMobilityRatio`) plays its radiation (131 modes, on its own
+  Shape morph and bank indices) and its bridge (56 modes on those poles,
+  x0.323) at 0.15; everything above carries 0.85. It is expected to be
+  inaudible at 0.15; Set 19 is also the test of whether it is heard at all.
+
+So on steel's own bridge (steel, Original guitar, Original bridge: what the
+steel presets and a new session select) the bridge is 0.595 B + 0.255 Fylde +
+0.15 E and the radiation is 0.85 g21 (0.7225 above 1 kHz) + 0.1275 grid +
+0.15 E. The Fylde bridge choice keeps the Fylde alone under the same blended
+radiation. Nylon does not read any of it.
+
+What the build shows (numbers, not verdicts):
+- Exactness. With B=1, D=1, C=0, E=0 (the four macros, and D's header
+  rewritten at 1.0) the engine renders Set 18's five steel pieces on both
+  bridges and the nylon piece byte-identically to the merge commit, and a
+  sweep of 3 rates x both materials x both bridges x 4 Shapes x 4 Woods with
+  a live Wood change is identical too. Nylon in the blend is byte-identical to
+  main over the same sweep. A zero weight plays no modes.
+- Passivity and stability. Every bridge section keeps a positive
+  semidefinite residue matrix (rank-one ones to float rounding, 3e-7 of
+  h r); the digital bridge's conductance is non-negative for every string
+  from 60 Hz to 10 kHz at 8-96 kHz under every Shape. A full chord left to
+  ring 60 s sets no new one-second maximum after 3 s and its last second is
+  below 1e-11 of its loudest (RMS); strums every 250 ms for 60 s stay within
+  1.2% of their level and die away after release, at 44.1/48/96 kHz, on both
+  bridges and under all 16 Shape x Wood pairs.
+- Level against B+D (Set 18's pieces, level matched): the waveform differs by
+  -3.0 to -5.9 dB (the picked top-string melody -13.9); the 63 Hz octave (the
+  E2 fundamental, which B had thinned) is 2.3-4.4 dB up and 125 Hz 1.4-2.6 dB
+  down; above 250 Hz within about 1 dB except the single notes (+1.6-2.4).
+- CPU per 64-frame block at 48 kHz, thread time, median of three interleaved
+  medians of three, a strum every 250 ms / a held chord: main (Fylde) 58.8 /
+  42.1 us, B+D 62.5 / 46.2, the blend 94.6 / 74.7 (+51% / +62% over B+D). With
+  C++17 -O2 -fno-builtin: 60.3 / 42.2, 64.0 / 46.2, 93.2 / 76.4. Of the
+  +30 us: C's 234 radiation modes about 13, E's 131 modes and 56 bridge modes
+  about 12.5, the Fylde's 44 bridge modes about 4. The parts after g21's bank
+  are summed in vector accumulators and the parts' tuning terms in a real
+  form (a few us); g21's own sums keep their order, which is what keeps the
+  exact case exact. More than the +35-45% estimated, still a small share of
+  the Rack Extension's ~1.5 ms batch budget.
+- The benchmark against B+D (lower is closer; totals, not paired): the bank
+  on steel's own bridge, Finger, steel training 6.4407 -> 6.5261 (+1.3%),
+  development validation 6.4131 -> 6.5149 (+1.6%), flat-top 7.2752 -> 7.1821
+  (-1.3%); Pick, training 5.8366 -> 5.8923 (+1.0%), validation 5.6115 ->
+  5.7752 (+2.9%); the frozen test split 6.2868 -> 6.3966 (Finger, +1.7%) and
+  5.6034 -> 5.7103 (Pick, +1.9%), the body term carrying most of it. The
+  never-fitted corpora: Eastman picked 6.3767 -> 6.3605 (-0.3%), finger
+  6.8426 -> 6.7960 (-0.7%), Martin HD28 7.0770 -> 7.1328 (+0.8%). Nylon is
+  unchanged.
+To hear one weight changed, rebuild with its macro, e.g.
+`-DACUSTRA_STEEL_BLEND_DECAY_GRID=0.3f` (B `_OWN_BRIDGE`, E `_JOINT_BODY`);
+for D edit `ACUSTRA_STEEL_BLEND_T1_PLATE_Q`, run `GenerateBodyForcePair.py
+--reweight <fit dir> --output <dir>` and copy its `MeasuredBodyData.h` in (the
+grid is refitted beside it with `GenerateBodyDecayGrid.py`; at D's full swing
+that moves its residues 0.09%).
+
 ## 2026-09-28 — blind verdicts: the snap confirmed, and one body at the saddle
 
 Set 17 put the engine before the snap (A, edd820f) against D, the snap chosen
