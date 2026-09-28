@@ -2226,9 +2226,10 @@ git history rather than here.
   benchmark reads steel 3-6% further from the recordings (the frozen test
   split +4.0% Finger, +4.8% Pick) and classical rows 5-6% closer; with each
   recording's hiss floor added steel is level. The pluck's contact noise and
-  click stay at zero, rejected by ear as too loud. A steel strum costs about
-  15% more CPU (48.5 -> 56.0 us per 64-frame block at 48 kHz), most of it the
-  contact-noise code carried at zero (54.9 us with every value as before).
+  click stay at zero, rejected by ear as too loud, and cost nothing there: the
+  string's bending section now costs a few percent of a 48 kHz block (a
+  held chord 40.6 -> 39.6 us with the loop inlined; the Rack Extension's
+  build 41.2 -> 42.8 us), every sample unchanged by that rearrangement.
 
 ### 2026-09-27
 
