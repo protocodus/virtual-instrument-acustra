@@ -110,17 +110,17 @@ void testParameterContract()
     namespace ids = acustra::parameters;
 
     constexpr std::array<const char*, ids::parameterCount> expectedIds {
-        ids::shape, ids::bodyMaterial, ids::stringMaterial, ids::tuning,
+        ids::shape, ids::bodyMaterial, ids::tuning,
         ids::stringAge, ids::pluckPosition, ids::touch, ids::bodyAmount,
-        ids::stereoWidth, ids::output, ids::capture, ids::picking, ids::bridgeModel,
+        ids::stereoWidth, ids::output, ids::capture, ids::picking,
         ids::upperMic, ids::piezoLoading, ids::captureMode, ids::guitarModel,
-        ids::gatherChords
+        ids::gatherChords, ids::piezoMix
     };
-    // bridgeModel's factory default is the Original bridge (0), steel's own
-    // on its radiation's poles; sessions saved before the parameter existed
-    // restore the same one.
+    static_assert (ids::parameterCount == 17,
+                   "String Material and Bridge Model are gone; Piezo Mix is appended");
+    // Piezo Mix defaults to 0, so Main is the microphones alone.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
-        2.0f, 0.0f, 1.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, -7.5f,
+        2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, -7.5f,
         0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
     };
 
@@ -149,8 +149,6 @@ void testParameterContract()
         processor.parameters.getParameter (ids::shape));
     const auto* wood = dynamic_cast<const juce::AudioParameterChoice*> (
         processor.parameters.getParameter (ids::bodyMaterial));
-    const auto* strings = dynamic_cast<const juce::AudioParameterChoice*> (
-        processor.parameters.getParameter (ids::stringMaterial));
     const auto* tuning = dynamic_cast<const juce::AudioParameterChoice*> (
         processor.parameters.getParameter (ids::tuning));
     const auto* capture = dynamic_cast<const juce::AudioParameterChoice*> (
@@ -163,11 +161,12 @@ void testParameterContract()
         processor.parameters.getParameter (ids::piezoLoading));
     expect (shape != nullptr && shape->choices.size() == 4,
             "Shape does not expose four bodies");
-    expect (wood != nullptr && wood->choices.size() == 4,
-            "Body Material does not expose four woods");
-    expect (strings != nullptr && strings->choices
-                == juce::StringArray { "Nylon", "Steel" },
-            "String Material no longer exposes Nylon and Steel");
+    expect (wood != nullptr && wood->choices
+                == juce::StringArray { "Spruce", "Mahogany", "Maple" },
+            "Body Material does not expose Spruce, Mahogany and Maple");
+    expect (processor.parameters.getParameter ("stringMaterial") == nullptr
+                && processor.parameters.getParameter ("bridgeModel") == nullptr,
+            "the retired String Material or Bridge Model parameter is still public");
     expect (tuning != nullptr && tuning->choices.size() == 5,
             "Tuning does not expose the five supported tunings");
 
@@ -176,10 +175,10 @@ void testParameterContract()
                 "Magnetic (steel)" },
             "the five legacy capture choices changed their automation contract");
     expect (upperMic != nullptr && upperMic->getVersionHint() == 4
-                && upperMic->getParameterIndex() == 13,
+                && upperMic->getParameterIndex() == 11,
             "Upper mic is not an appended boolean with AU version hint 4");
     expect (piezoLoading != nullptr && piezoLoading->getVersionHint() == 5
-                && piezoLoading->getParameterIndex() == 14,
+                && piezoLoading->getParameterIndex() == 12,
             "Piezo loading changed the legacy parameter order or AU version hint");
     expect (picking != nullptr && picking->choices
                 == juce::StringArray { "Finger", "Pick", "Thumb" },
@@ -187,7 +186,7 @@ void testParameterContract()
     const auto* model = dynamic_cast<const juce::AudioParameterChoice*> (
         processor.parameters.getParameter (ids::guitarModel));
     expect (model != nullptr && model->getVersionHint() == 7
-                && model->getParameterIndex() == 16
+                && model->getParameterIndex() == 14
                 && model->choices == juce::StringArray { "Original", "Bellido 1978" },
             "Guitar Model must append the two measured-body choices with AU version hint 7");
     if (auto* modelParameter = processor.parameters.getParameter (ids::guitarModel))
@@ -204,12 +203,20 @@ void testParameterContract()
     const auto* gather = dynamic_cast<const juce::AudioParameterBool*> (
         processor.parameters.getParameter (ids::gatherChords));
     expect (gather != nullptr && gather->getVersionHint() == 8
-                && gather->getParameterIndex() == 17 && ! gather->isAutomatable(),
+                && gather->getParameterIndex() == 15 && ! gather->isAutomatable(),
             "Gather Chords must append a non-automatable switch with AU version hint 8");
+    const auto* piezoMix = dynamic_cast<const juce::AudioParameterFloat*> (
+        processor.parameters.getParameter (ids::piezoMix));
+    expect (piezoMix != nullptr && piezoMix->getVersionHint() == 9
+                && piezoMix->getParameterIndex() == 16 && piezoMix->isAutomatable()
+                && piezoMix->getName (32) == "Piezo Mix"
+                && piezoMix->range.start == 0.0f && piezoMix->range.end == 100.0f,
+            "Piezo Mix must append a 0-100% parameter with AU version hint 9");
+    expect (processor.snapshotEngineParameters().piezoMix == 0.0f,
+            "a new session mixes the piezo into Main");
 
     setValue (processor, ids::shape, 3.0f);
     setValue (processor, ids::bodyMaterial, 2.0f);
-    setValue (processor, ids::stringMaterial, 0.0f);
     setValue (processor, ids::tuning, 2.0f);
     setValue (processor, ids::stringAge, 73.0f);
     setValue (processor, ids::pluckPosition, 41.0f);
@@ -219,23 +226,22 @@ void testParameterContract()
     setValue (processor, ids::output, -3.0f);
     setValue (processor, ids::captureMode, 2.0f);
     setValue (processor, ids::picking, 2.0f);
-    setValue (processor, ids::bridgeModel, 1.0f);
     setValue (processor, ids::guitarModel, 1.0f);
+    setValue (processor, ids::piezoMix, 37.0f);
     const auto engine = processor.snapshotEngineParameters();
     expect (engine.shape == acustra::BodyShape::Jumbo
-                && engine.bodyMaterial == acustra::BodyMaterial::Mahogany
-                && engine.stringMaterial == acustra::StringMaterial::Nylon
+                && engine.bodyMaterial == acustra::BodyMaterial::Maple
                 && engine.tuning == acustra::Tuning::Dadgad
                 && engine.capture == acustra::CaptureType::Piezo
                 && engine.picking == acustra::PickingTechnique::Thumb
-                && engine.bridgeModel == acustra::BridgeModel::FyldeSteel
                 && engine.guitarModel == acustra::GuitarModel::Bellido1978,
             "choice parameters did not reach the engine snapshot");
     expect (std::abs (engine.stringAge - 0.73f) < 0.002f
                 && std::abs (engine.pluckPosition - 0.41f) < 0.002f
                 && std::abs (engine.touch - 0.19f) < 0.002f
                 && std::abs (engine.bodyAmount - 0.66f) < 0.002f
-                && std::abs (engine.stereoWidth - 0.35f) < 0.002f,
+                && std::abs (engine.stereoWidth - 0.35f) < 0.002f
+                && std::abs (engine.piezoMix - 0.37f) < 0.002f,
             "continuous parameters did not reach the engine snapshot");
     expect (std::abs (engine.outputGain
                       - juce::Decibels::decibelsToGain (-3.0f)) < 0.001f,
@@ -245,7 +251,7 @@ void testParameterContract()
         processor.parameters.getParameter (ids::captureMode));
     expect (publicCapture != nullptr && publicCapture->choices == juce::StringArray {
                 "Stereo mic", "Mono mic", "Piezo" }
-                && publicCapture->getVersionHint() == 6 && publicCapture->getParameterIndex() == 15,
+                && publicCapture->getVersionHint() == 6 && publicCapture->getParameterIndex() == 13,
             "the public capture must append exactly three supported observations");
     expect (! capture->isAutomatable() && ! upperMic->isAutomatable()
                 && ! piezoLoading->isAutomatable(),
@@ -1203,35 +1209,68 @@ void testStateRoundTripAndMigration()
     auto sourceOwner = std::make_unique<AcustraAudioProcessor>();
     auto& source = *sourceOwner;
     setValue (source, ids::shape, 0.0f);
-    setValue (source, ids::bodyMaterial, 3.0f);
-    setValue (source, ids::stringMaterial, 0.0f);
+    setValue (source, ids::bodyMaterial, 2.0f);
     setValue (source, ids::tuning, 4.0f);
     setValue (source, ids::stringAge, 87.0f);
     setValue (source, ids::pluckPosition, 64.0f);
     setValue (source, ids::output, -2.4f);
     setValue (source, ids::capture, 4.0f);
     setValue (source, ids::picking, 1.0f);
-    setValue (source, ids::bridgeModel, 1.0f);
     setValue (source, ids::upperMic, 1.0f);
     setValue (source, ids::piezoLoading, 1.0f);
     setValue (source, ids::captureMode, 1.0f);
     setValue (source, ids::guitarModel, 1.0f);
+    setValue (source, ids::piezoMix, 45.0f);
 
     juce::MemoryBlock stored;
     source.getStateInformation (stored);
     expect (stored.getSize() > 0, "getStateInformation returned no state");
+    // A state saved now says which layout it holds, so a reload does not
+    // migrate it: its Body Material 2 is Maple, not the old layout's Mahogany.
+    {
+        const auto xml = juce::AudioProcessor::getXmlFromBinary (
+            stored.getData(), static_cast<int> (stored.getSize()));
+        expect (xml != nullptr && xml->getIntAttribute ("stateVersion") == 2,
+                "a saved state does not carry stateVersion 2");
+    }
 
     auto restoredOwner = std::make_unique<AcustraAudioProcessor>();
     auto& restored = *restoredOwner;
     restored.setStateInformation (stored.getData(),
                                   static_cast<int> (stored.getSize()));
-    for (const char* id : { ids::shape, ids::bodyMaterial, ids::stringMaterial,
-                            ids::tuning, ids::stringAge, ids::pluckPosition,
-                            ids::output, ids::capture, ids::picking, ids::bridgeModel,
-                            ids::upperMic, ids::piezoLoading, ids::captureMode,
-                            ids::guitarModel })
-        expect (std::abs (valueOf (restored, id) - valueOf (source, id)) < 0.011f,
-                std::string { "state round trip lost " } + id);
+    const auto roundTripped = [&] (const AcustraAudioProcessor& from,
+                                   const AcustraAudioProcessor& to)
+    {
+        bool same = true;
+        for (const char* id : { ids::shape, ids::bodyMaterial,
+                                ids::tuning, ids::stringAge, ids::pluckPosition,
+                                ids::touch, ids::bodyAmount, ids::stereoWidth,
+                                ids::output, ids::capture, ids::picking,
+                                ids::upperMic, ids::piezoLoading, ids::captureMode,
+                                ids::guitarModel, ids::gatherChords, ids::piezoMix })
+        {
+            const bool kept = std::abs (valueOf (to, id) - valueOf (from, id)) < 0.011f;
+            expect (kept, std::string { "state round trip lost " } + id);
+            same = same && kept;
+        }
+        return same;
+    };
+    roundTripped (source, restored);
+    expect (restored.snapshotEngineParameters().bodyMaterial == acustra::BodyMaterial::Maple
+                && std::abs (restored.snapshotEngineParameters().piezoMix - 0.45f) < 0.002f,
+            "a current state's Body Material or Piezo Mix changed on reload");
+    {
+        // And again: saving the reloaded state and reloading it changes nothing.
+        juce::MemoryBlock again;
+        restored.getStateInformation (again);
+        const auto xml = juce::AudioProcessor::getXmlFromBinary (
+            again.getData(), static_cast<int> (again.getSize()));
+        expect (xml != nullptr && xml->getIntAttribute ("stateVersion") == 2,
+                "a reloaded state was saved without stateVersion 2");
+        auto secondOwner = std::make_unique<AcustraAudioProcessor>();
+        secondOwner->setStateInformation (again.getData(), static_cast<int> (again.getSize()));
+        roundTripped (source, *secondOwner);
+    }
 
     constexpr std::array models { acustra::GuitarModel::Original,
         acustra::GuitarModel::Bellido1978 };
@@ -1244,7 +1283,7 @@ void testStateRoundTripAndMigration()
                 "a measured guitar model did not survive save/reload");
     }
     // A session saved with a retired model (2-4: the Washburn, Santa Cruz and
-    // Martin) reloads as Original, not clamped onto the nylon Bellido.
+    // Martin) reloads as Original, not clamped onto the Bellido.
     for (const float retired : { 2.0f, 3.0f, 4.0f })
     {
         auto old = source.parameters.copyState();
@@ -1306,7 +1345,7 @@ void testStateRoundTripAndMigration()
     setValue (restored, ids::output, 5.0f);
     setValue (restored, ids::capture, 3.0f);
     setValue (restored, ids::picking, 2.0f);
-    setValue (restored, ids::bridgeModel, 1.0f);
+    setValue (restored, ids::piezoMix, 80.0f);
     setValue (restored, ids::upperMic, 1.0f);
     setValue (restored, ids::piezoLoading, 1.0f);
     setValue (restored, ids::guitarModel, 4.0f);
@@ -1326,12 +1365,79 @@ void testStateRoundTripAndMigration()
                 && std::abs (valueOf (restored, ids::output) + 7.5f) < 0.011f
                 && valueOf (restored, ids::capture) == 0.0f
                 && valueOf (restored, ids::picking) == 0.0f
-                && valueOf (restored, ids::bridgeModel) == 0.0f
+                && valueOf (restored, ids::piezoMix) == 0.0f
                 && valueOf (restored, ids::upperMic) == 0.0f
                 && valueOf (restored, ids::piezoLoading) == 0.0f
                 && valueOf (restored, ids::captureMode) == 0.0f
                 && valueOf (restored, ids::guitarModel) == 0.0f,
             "parameters absent from an old state did not receive defaults");
+    expect (restored.snapshotEngineParameters().piezoMix == 0.0f,
+            "a session saved before Piezo Mix existed mixes the piezo into Main");
+
+    // A state saved before the simplification (no stateVersion): its String
+    // Material and Bridge Model are dropped, and its Body Material from
+    // Spruce, Cedar, Mahogany, Maple moves to Spruce, Mahogany, Maple, Cedar
+    // to Mahogany. Every such session plays steel on the Original bridge.
+    constexpr std::array<float, 4> migratedWood { 0.0f, 1.0f, 1.0f, 2.0f };
+    constexpr std::array woods { acustra::BodyMaterial::Spruce, acustra::BodyMaterial::Mahogany,
+        acustra::BodyMaterial::Mahogany, acustra::BodyMaterial::Maple };
+    for (int oldWood = 0; oldWood < 4; ++oldWood)
+        for (int oldStrings = 0; oldStrings < 2; ++oldStrings)
+        {
+            juce::ValueTree versionOne { restored.parameters.state.getType() };
+            const auto add = [&] (const char* id, float value)
+            {
+                juce::ValueTree parameter { "PARAM" };
+                parameter.setProperty ("id", id, nullptr);
+                parameter.setProperty ("value", value, nullptr);
+                versionOne.appendChild (parameter, nullptr);
+            };
+            add (ids::shape, 3.0f);
+            add (ids::bodyMaterial, static_cast<float> (oldWood));
+            add ("stringMaterial", static_cast<float> (oldStrings));
+            add ("bridgeModel", 1.0f);
+            add (ids::tuning, 2.0f);
+            add (ids::captureMode, 2.0f);
+            juce::MemoryBlock bytes;
+            if (const auto xml = versionOne.createXml())
+                juce::AudioProcessor::copyXmlToBinary (*xml, bytes);
+            // Start from Maple, so a missed migration shows.
+            setValue (restored, ids::bodyMaterial, 2.0f);
+            restored.setStateInformation (bytes.getData(), static_cast<int> (bytes.getSize()));
+            const std::string label = "a version 1 state with Body Material "
+                + std::to_string (oldWood) + " and String Material "
+                + std::to_string (oldStrings);
+            expect (valueOf (restored, ids::bodyMaterial)
+                            == migratedWood[static_cast<std::size_t> (oldWood)]
+                        && restored.snapshotEngineParameters().bodyMaterial
+                            == woods[static_cast<std::size_t> (oldWood)],
+                    label + " did not migrate its Body Material");
+            expect (valueOf (restored, ids::shape) == 3.0f
+                        && valueOf (restored, ids::tuning) == 2.0f
+                        && valueOf (restored, ids::captureMode) == 2.0f,
+                    label + " lost a parameter it kept");
+            bool retiredDropped = true;
+            for (auto child : restored.parameters.state)
+            {
+                const auto id = child.getProperty ("id").toString();
+                retiredDropped = retiredDropped && id != "stringMaterial" && id != "bridgeModel";
+            }
+            expect (retiredDropped, label + " kept its String Material or Bridge Model");
+            // Saved again, it is a current state and reloads unchanged.
+            juce::MemoryBlock resaved;
+            restored.getStateInformation (resaved);
+            const auto xml = juce::AudioProcessor::getXmlFromBinary (
+                resaved.getData(), static_cast<int> (resaved.getSize()));
+            expect (xml != nullptr && xml->getIntAttribute ("stateVersion") == 2
+                        && xml->toString().indexOf ("stringMaterial") < 0
+                        && xml->toString().indexOf ("bridgeModel") < 0,
+                    label + " was resaved without stateVersion 2 or with a retired parameter");
+            auto reloadOwner = std::make_unique<AcustraAudioProcessor>();
+            reloadOwner->setStateInformation (resaved.getData(), static_cast<int> (resaved.getSize()));
+            expect (valueOf (*reloadOwner, ids::bodyMaterial)
+                        == migratedWood[static_cast<std::size_t> (oldWood)],
+                    label + " migrated its Body Material twice");
+        }
 
     const char garbage[] = "not an Acustra state";
     restored.setStateInformation (garbage, static_cast<int> (sizeof garbage));
@@ -1400,8 +1506,8 @@ void testEditorRendering()
         }
         expect (false, "the editor display timer did not run");
     };
-    expect (choiceButtons.size() == 15,
-            "the four compact choices do not expose all 15 options");
+    expect (choiceButtons.size() == 12,
+            "the three compact choices do not expose all 12 options");
     expect (std::all_of (choiceButtons.begin(), choiceButtons.end(),
                         [] (const auto* button)
                         {
@@ -1413,8 +1519,15 @@ void testEditorRendering()
     std::set<juce::Component*> choiceGroups;
     for (auto* button : choiceButtons)
         choiceGroups.insert (button->getParentComponent());
-    expect (choiceGroups.size() == 4,
-            "choice buttons are not split into four radio groups");
+    expect (choiceGroups.size() == 3,
+            "choice buttons are not split into three radio groups");
+    expect (std::none_of (choiceButtons.begin(), choiceButtons.end(),
+                          [] (const auto* button)
+                          {
+                              return button->getName().startsWith ("STRINGS")
+                                  || button->getName().contains ("Cedar");
+                          }),
+            "the editor still offers a string material or Cedar");
     for (auto* group : choiceGroups)
     {
         const auto selected = std::count_if (
@@ -1470,75 +1583,39 @@ void testEditorRendering()
             setValue (processor, ids::tuning, 2.0f);
             setValue (processor, ids::output, -4.0f);
             setValue (processor, ids::captureMode, 2.0f);
-            menu->setSelectedId (5, juce::sendNotificationSync);
-            auto state = processor.snapshotEngineParameters();
-            expect (state.shape == acustra::BodyShape::Auditorium
-                        && state.bodyMaterial == acustra::BodyMaterial::Cedar
-                        && state.stringMaterial == acustra::StringMaterial::Nylon
-                        && state.capture == acustra::CaptureType::Piezo,
-                    "the classical preset changed capture or missed its construction");
-            expect (engineStatus != nullptr && engineStatus->getText().contains ("kHz"),
-                    "a supported nylon capture shows an obsolete magnetic warning");
-            menu->setSelectedId (2, juce::sendNotificationSync);
-            expect (engineStatus != nullptr
-                        && engineStatus->getText().contains ("kHz"),
-                    "the compatible guitar preset did not restore normal status");
-            state = processor.snapshotEngineParameters();
-            expect (state.shape == acustra::BodyShape::Dreadnought
-                        && state.bodyMaterial == acustra::BodyMaterial::Spruce
-                        && state.stringMaterial == acustra::StringMaterial::Steel
-                        && state.bridgeModel == acustra::BridgeModel::Original,
-                    "the dreadnought preset did not restore steel construction "
-                    "on steel's own bridge");
-            menu->setSelectedId (6, juce::sendNotificationSync);
-            state = processor.snapshotEngineParameters();
-            expect (state.bridgeModel == acustra::BridgeModel::FyldeSteel
-                        && state.stringMaterial == acustra::StringMaterial::Steel,
-                    "the Fylde bridge preset did not select the measured Fylde bridge");
-            juce::Timer::callPendingTimersSynchronously();
-            expect (menu->getSelectedId() == 6,
-                    "the Fylde bridge preset caption was lost");
-            menu->setSelectedId (2, juce::sendNotificationSync);
-            expect (processor.snapshotEngineParameters().bridgeModel
-                        == acustra::BridgeModel::Original,
-                    "the dreadnought preset retained the Fylde bridge");
+            expect (menu->getNumItems() == 5 && menu->getItemText (4) == "Bellido 1978",
+                    "the guitar menu does not hold Custom, the three style presets and the Bellido");
+            expect (! menu->getTooltip().contains ("Fylde") && ! menu->getTooltip().contains ("nylon"),
+                    "the guitar menu still describes a retired bridge or string choice");
+            struct Expected { int id; acustra::BodyShape shape; acustra::BodyMaterial wood;
+                              acustra::GuitarModel model; };
+            constexpr std::array presets {
+                Expected { 2, acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce,
+                           acustra::GuitarModel::Original },
+                Expected { 3, acustra::BodyShape::Auditorium, acustra::BodyMaterial::Spruce,
+                           acustra::GuitarModel::Original },
+                Expected { 4, acustra::BodyShape::Parlor, acustra::BodyMaterial::Spruce,
+                           acustra::GuitarModel::Original },
+                Expected { 5, acustra::BodyShape::Auditorium, acustra::BodyMaterial::Mahogany,
+                           acustra::GuitarModel::Bellido1978 } };
+            for (const auto& preset : presets)
+            {
+                menu->setSelectedId (preset.id, juce::sendNotificationSync);
+                const auto state = processor.snapshotEngineParameters();
+                expect (state.shape == preset.shape && state.bodyMaterial == preset.wood
+                            && state.guitarModel == preset.model
+                            && state.capture == acustra::CaptureType::Piezo,
+                        "guitar preset " + std::to_string (preset.id)
+                            + " missed its construction or changed capture");
+                refreshDisplayTimer();
+                expect (menu->getSelectedId() == preset.id,
+                        "guitar preset " + std::to_string (preset.id) + " lost its caption");
+                expect (engineStatus != nullptr && engineStatus->getText().contains ("kHz"),
+                        "a guitar preset did not show normal status");
+            }
             expect (valueOf (processor, ids::tuning) == 2.0f
                         && std::abs (valueOf (processor, ids::output) + 4.0f) < 0.011f,
                     "a guitar construction preset changed tuning or output");
-            expect (menu->getNumItems() == 7,
-                    "the measured guitar construction preset is missing");
-            constexpr std::array models { acustra::GuitarModel::Bellido1978 };
-            constexpr std::array shapes { acustra::BodyShape::Auditorium };
-            for (std::size_t index = 0; index < models.size(); ++index)
-            {
-                menu->setSelectedId (static_cast<int> (index) + 7, juce::sendNotificationSync);
-                const auto measured = processor.snapshotEngineParameters();
-                expect (measured.guitarModel == models[index] && measured.shape == shapes[index]
-                            && measured.stringMaterial == (index == 0 ? acustra::StringMaterial::Nylon
-                                                                     : acustra::StringMaterial::Steel)
-                            && measured.bodyMaterial == (index == 0 ? acustra::BodyMaterial::Cedar
-                                                                   : acustra::BodyMaterial::Spruce)
-                            && measured.bridgeModel == acustra::BridgeModel::Original
-                            && measured.capture == acustra::CaptureType::Piezo,
-                        "a measured preset missed its body/string construction or changed capture");
-                refreshDisplayTimer();
-                expect (menu->getSelectedId() == static_cast<int> (index) + 7,
-                        "a measured construction preset lost its caption");
-            }
-            // The Bridge choice selects nothing on the Bellido or on nylon
-            // (audit F17): the menu says so, a Fylde choice left over there
-            // keeps the preset's caption, and the host's name for the
-            // parameter says where it applies.
-            expect (menu->getTooltip().contains ("steel strings on the original body only"),
-                    "the guitar menu does not say where the bridge choice applies");
-            setValue (processor, ids::bridgeModel, 1.0f);
-            refreshDisplayTimer();
-            expect (menu->getSelectedId() == 7,
-                    "an inert Fylde choice cost the Bellido preset its caption");
-            setValue (processor, ids::bridgeModel, 0.0f);
-            if (auto* bridge = processor.parameters.getParameter (ids::bridgeModel))
-                expect (bridge->getName (64).contains ("steel"),
-                        "the Bridge Model parameter does not say where it applies");
             menu->setSelectedId (2, juce::sendNotificationSync);
             expect (processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Original,
                     "an original construction preset retained a measured body override");
@@ -1657,32 +1734,32 @@ void testEditorRendering()
         // Reload an actual serialized state into an already-open editor. The
         // composite capture menu, preset caption and radio groups must all agree
         // with the restored construction, not retain the intervening controls.
-        juce::MemoryBlock initialState, nylonState;
+        juce::MemoryBlock initialState, bellidoState;
         processor.getStateInformation (initialState);
-        guitarMenu->setSelectedId (7, juce::sendNotificationSync);
+        guitarMenu->setSelectedId (5, juce::sendNotificationSync);
         pickingMenu->setSelectedId (3, juce::sendNotificationSync);
         captureMenu->setSelectedId (2, juce::sendNotificationSync);
-        processor.getStateInformation (nylonState);
+        processor.getStateInformation (bellidoState);
         guitarMenu->setSelectedId (2, juce::sendNotificationSync);
         pickingMenu->setSelectedId (1, juce::sendNotificationSync);
         captureMenu->setSelectedId (1, juce::sendNotificationSync);
-        processor.setStateInformation (nylonState.getData(),
-                                      static_cast<int> (nylonState.getSize()));
+        processor.setStateInformation (bellidoState.getData(),
+                                      static_cast<int> (bellidoState.getSize()));
         refreshDisplayTimer();
-        const auto nylon = std::find_if (choiceButtons.begin(), choiceButtons.end(),
-            [] (const auto* button) { return button->getName() == "STRINGS: Nylon"; });
-        expect (guitarMenu->getSelectedId() == 7 && pickingMenu->getSelectedId() == 3
+        const auto mahogany = std::find_if (choiceButtons.begin(), choiceButtons.end(),
+            [] (const auto* button) { return button->getName() == "BODY MATERIAL: Mahogany"; });
+        expect (guitarMenu->getSelectedId() == 5 && pickingMenu->getSelectedId() == 3
                     && modelMenu->getSelectedId() == 2
                     && captureMenu->getSelectedId() == 2 && captureMenu->isItemEnabled (3)
-                    && nylon != choiceButtons.end() && (*nylon)->getToggleState()
+                    && mahogany != choiceButtons.end() && (*mahogany)->getToggleState()
                     && processor.snapshotEngineParameters().capture == acustra::CaptureType::MonoMic
                     && processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Bellido1978,
                 "live state reload left the editor showing a different guitar or capture");
-        saveImage (renderAt (editorWidth, editorHeight), "-restored-nylon-mono");
+        saveImage (renderAt (editorWidth, editorHeight), "-restored-bellido-mono");
 
         setValue (processor, acustra::parameters::captureMode, 2.0f);
         refreshDisplayTimer();
-        saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-nylon-piezo");
+        saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-bellido-piezo");
         captureMenu->setSelectedId (3, juce::sendNotificationSync);
         juce::MemoryBlock loadedState;
         processor.getStateInformation (loadedState);
@@ -2064,7 +2141,6 @@ void testTheAdapterPlaysExactlyThePerformer()
                     applied[index] = true;
                     using Kind = Control::Kind;
                     const char* id = control.kind == Kind::GatherChords ? ids::gatherChords
-                        : control.kind == Kind::StringMaterial ? ids::stringMaterial
                         : control.kind == Kind::CaptureMode ? ids::captureMode
                         : control.kind == Kind::Picking ? ids::picking
                         : control.kind == Kind::Tuning ? ids::tuning
@@ -2072,12 +2148,12 @@ void testTheAdapterPlaysExactlyThePerformer()
                         : control.kind == Kind::Output ? ids::output
                         : control.kind == Kind::Shape ? ids::shape
                         : control.kind == Kind::Wood ? ids::bodyMaterial
-                        : control.kind == Kind::Bridge ? ids::bridgeModel
                         : control.kind == Kind::Model ? ids::guitarModel
                         : control.kind == Kind::Width ? ids::stereoWidth
                         : control.kind == Kind::Age ? ids::stringAge
                         : control.kind == Kind::Pluck ? ids::pluckPosition
-                        : control.kind == Kind::Touch ? ids::touch : nullptr;
+                        : control.kind == Kind::Touch ? ids::touch
+                        : control.kind == Kind::PiezoMix ? ids::piezoMix : nullptr;
                     if (id != nullptr)
                         setValue (processor, id, control.value);
                     else

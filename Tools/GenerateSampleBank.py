@@ -8,6 +8,13 @@ ASCII85 so the generated C++ remains toolchain-portable.
 
 Required at generation time: Python 3 and ffmpeg/ffprobe.  Runtime has no codec,
 filesystem, or third-party dependency.
+
+The bank holds the steel recordings only: Karoryfer's Shinyguitar
+acoustic-microphone sustains (steel_picked) and the Eastman E1D finger-plucked
+anchors (steel_plucked). The FreePats Spanish classical (nylon) zones it once
+held were removed with the instrument's nylon strings on 2026-09-29; the
+remaining zones were re-emitted from the committed data with this file's own
+encoder and emitter, every zone's bytes and decoded FNV-1a unchanged.
 """
 
 from __future__ import annotations
@@ -166,44 +173,6 @@ def find_onset(pcm: array, channels: int) -> tuple[int, int]:
         if max(abs(pcm[frame * channels + channel]) for channel in range(channels)) >= threshold:
             return frame, peak
     return 0, peak
-
-
-def estimate_root_hz(pcm: array, sample_rate: int, channels: int, onset: int,
-                     root_midi: int, settle_seconds: float = 0.0) -> float:
-    """Constrained autocorrelation; the narrow search prevents octave errors."""
-    nominal = 440.0 * 2.0 ** ((root_midi - 69) / 12.0)
-    decimation = max(1, sample_rate // 12000)
-    start = min(len(pcm) // channels,
-                onset + round((0.035 + settle_seconds) * sample_rate))
-    stop = min(len(pcm) // channels, start + round(0.55 * sample_rate))
-    mono = [
-        sum(pcm[frame * channels : frame * channels + channels]) / channels
-        for frame in range(start, stop, decimation)
-    ]
-    if len(mono) < 256:
-        return nominal
-    mean = sum(mono) / len(mono)
-    mono = [value - mean for value in mono]
-    rate = sample_rate / decimation
-    low_hz = nominal * 2.0 ** (-80.0 / 1200.0)
-    high_hz = nominal * 2.0 ** (80.0 / 1200.0)
-    low_lag = max(2, math.floor(rate / high_hz))
-    high_lag = min(len(mono) // 3, math.ceil(rate / low_hz))
-    scores: dict[int, float] = {}
-    for lag in range(low_lag, high_lag + 1):
-        count = len(mono) - lag
-        cross = sum(mono[i] * mono[i + lag] for i in range(count))
-        left = sum(mono[i] * mono[i] for i in range(count))
-        right = sum(mono[i + lag] * mono[i + lag] for i in range(count))
-        scores[lag] = cross / math.sqrt(max(1.0, left * right))
-    best = max(scores, key=scores.get)
-    fractional = float(best)
-    if best - 1 in scores and best + 1 in scores:
-        y0, y1, y2 = scores[best - 1], scores[best], scores[best + 1]
-        denominator = y0 - 2.0 * y1 + y2
-        if abs(denominator) > 1.0e-12:
-            fractional += 0.5 * (y0 - y2) / denominator
-    return rate / fractional
 
 
 def estimate_spectral_root_hz(pcm: array, sample_rate: int, channels: int,
@@ -450,44 +419,6 @@ def apply_terminal_fade(pcm: array, channels: int, fade_frames: int) -> None:
         for channel in range(channels):
             index = frame * channels + channel
             pcm[index] = round(pcm[index] * gain)
-
-
-def build_nylon(source: Path) -> list[Zone]:
-    sfz = next(source.glob("*.sfz"))
-    zones: list[Zone] = []
-    for region in parse_sfz(sfz):
-        low = int(region.get("lokey", region.get("key", region.get("pitch_keycenter", "-1"))))
-        high = int(region.get("hikey", region.get("key", region.get("pitch_keycenter", "-1"))))
-        if high < TARGET_LOW or low > TARGET_HIGH:
-            continue
-        root = int(region.get("pitch_keycenter", region.get("key", str(low))))
-        sample_path = source / region["sample"]
-        sample_rate, channels, pcm = decode(sample_path)
-        if channels != 1:
-            raise RuntimeError(f"FreePats zone is not mono: {sample_path}")
-        onset, peak = find_onset(pcm, channels)
-        root_hz = estimate_root_hz(pcm, sample_rate, channels, onset, root)
-        zones.append(
-            Zone(
-                "nylon",
-                sample_path.stem,
-                sample_path.name,
-                max(TARGET_LOW, low),
-                min(TARGET_HIGH, high),
-                root,
-                root_hz,
-                sample_rate,
-                channels,
-                len(pcm),
-                onset,
-                peak,
-                pcm,
-            )
-        )
-    covered = {key for zone in zones for key in range(zone.low_key, zone.high_key + 1)}
-    if covered != set(range(TARGET_LOW, TARGET_HIGH + 1)):
-        raise RuntimeError(f"FreePats map does not cover MIDI 38-84: {sorted(set(range(38, 85)) - covered)}")
-    return zones
 
 
 def key_ranges(roots: list[int]) -> list[tuple[int, int]]:
@@ -757,11 +688,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     base = Path(__file__).resolve().parent
     parser.add_argument(
-        "--freepats",
-        type=Path,
-        required=True,
-    )
-    parser.add_argument(
         "--eastman",
         type=Path,
         required=True,
@@ -780,9 +706,7 @@ def main() -> None:
     args = parser.parse_args()
 
     shiny_zones, shiny_files = build_shiny(args.shiny)
-    zones = build_nylon(args.freepats) + shiny_zones + build_eastman(args.eastman)
-    if len([zone for zone in zones if zone.bank == "nylon"]) != 41:
-        raise RuntimeError("expected all 41 FreePats zones serving MIDI 38-84")
+    zones = shiny_zones + build_eastman(args.eastman)
     if len([zone for zone in zones if zone.bank == "steel_picked"]) != 272:
         raise RuntimeError("expected all 272 Shinyguitar acoustic-mic sustains")
     if len([zone for zone in zones if zone.bank == "steel_plucked"]) != 8:
@@ -831,15 +755,6 @@ def main() -> None:
     ascii85 = fixed_ascii85(bytes(payload))
     generated_paths = write_cpp(args.output, zones, bytes(payload), ascii85)
     sources = {
-        "freepats": {
-            "page": "https://freepats.zenvoid.org/Guitar/acoustic-guitar.html",
-            "creator": "roberto@zenvoid.org for FreePats",
-            "version": "2019-06-18",
-            "archive": "SpanishClassicalGuitar-SFZ+FLAC-20190618.7z",
-            "archiveSha256": "903916921a21662d2237ade7f0e98e55de93cb7b86da219e4e10f4ad385b8f5e",
-            "license": "CC0-1.0",
-            "policy": "full native-rate files for every SFZ region intersecting MIDI 38-84",
-        },
         "eastman": {
             "page": "https://github.com/0x4D44/ferrosintesis/tree/810318c92e33e31b36638b0ffa7ffc834a2ae6a2/samples/acoustic-guitar-eastman-e1d",
             "sourceCommit": "810318c92e33e31b36638b0ffa7ffc834a2ae6a2",

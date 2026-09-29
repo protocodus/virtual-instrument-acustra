@@ -7,16 +7,15 @@
 #include <string>
 #include <vector>
 int main(int argc,char**argv){
- if(argc!=10){std::cerr<<"OUTPUT material shape style note velocity timbre capture touch\n";return 2;}
+ if(argc!=9){std::cerr<<"OUTPUT shape style note velocity timbre capture touch\n";return 2;}
  acustra::EngineParameters p;
- p.stringMaterial=std::string(argv[2])=="steel"?acustra::StringMaterial::Steel:acustra::StringMaterial::Nylon;
  const std::array<std::string,4> shapes{"parlor","auditorium","dreadnought","jumbo"};
  const std::array<std::string,3> styles{"finger","pick","thumb"};
- for(int i=0;i<4;++i)if(shapes[i]==argv[3])p.shape=static_cast<acustra::BodyShape>(i);
- for(int i=0;i<3;++i)if(styles[i]==argv[4])p.picking=static_cast<acustra::PickingTechnique>(i);
- const int note=std::stoi(argv[5]),velocity=std::stoi(argv[6]);const float timbre=std::stof(argv[7]);
- p.capture=std::string(argv[8])=="piezo"?acustra::CaptureType::Piezo:acustra::CaptureType::StereoMic;
- p.touch=std::stof(argv[9]);
+ for(int i=0;i<4;++i)if(shapes[i]==argv[2])p.shape=static_cast<acustra::BodyShape>(i);
+ for(int i=0;i<3;++i)if(styles[i]==argv[3])p.picking=static_cast<acustra::PickingTechnique>(i);
+ const int note=std::stoi(argv[4]),velocity=std::stoi(argv[5]);const float timbre=std::stof(argv[6]);
+ p.capture=std::string(argv[7])=="piezo"?acustra::CaptureType::Piezo:acustra::CaptureType::StereoMic;
+ p.touch=std::stof(argv[8]);
  acustra::AcustraEngine engine;engine.setPhysicalCalibration(acustra::fittedPhysicalCalibration);engine.setParameters(p);engine.prepare(48000,127);
  const std::array<int,6> opens{40,45,50,55,59,64};int string=0;for(int i=0;i<6;++i)if(note>=opens[i])string=i;
  int channel=string+1;

@@ -108,11 +108,8 @@ double energy(const Audio& audio)
 void testCaptureObservations()
 {
     using acustra::CaptureType;
-    for (auto material : { acustra::StringMaterial::Steel,
-                           acustra::StringMaterial::Nylon })
     {
         acustra::EngineParameters parameters;
-        parameters.stringMaterial = material;
         parameters.stereoWidth = 1.0f;
         const auto stereo = render(parameters);
         expect(stereo.left != stereo.right, "stereo mic lost its measured spatial response");
@@ -292,19 +289,27 @@ struct Strum
 };
 
 Strum hardStrum(double rate, float velocity, float touch,
-                acustra::StringMaterial material = acustra::StringMaterial::Steel,
                 acustra::PickingTechnique picking = acustra::PickingTechnique::Finger,
-                double seconds = 2.5, int strokes = 0, float pluckPosition = 0.28f)
+                double seconds = 2.5, int strokes = 0, float pluckPosition = 0.28f,
+                float driveScale = 1.0f)
 {
     acustra::EngineParameters parameters;
     parameters.touch = touch;
-    parameters.stringMaterial = material;
     parameters.picking = picking;
     parameters.pluckPosition = pluckPosition;
     auto engine = std::make_unique<acustra::AcustraEngine>();
     engine->setParameters(parameters);
     engine->prepare(rate, 64);
     engine->setStringPerChannelMode(true);
+    if (driveScale != 1.0f)
+    {
+        // The saddle driven harder than any playing does, through heavier
+        // string weights (the chain is linear in them up to its clip).
+        auto weights = Design::stringWeights;
+        for (auto& weight : weights)
+            weight *= driveScale;
+        Access::setWeights(*engine, weights);
+    }
     constexpr std::array notes { 40, 47, 52, 56, 59, 64 };
     Strum strum;
     const auto period = std::lround(rate * 1.2);
@@ -456,8 +461,7 @@ void testPiezoSilence()
     }
     for (int rate : { 44100, 48000, 96000, 192000 })
     {
-        const auto strum = hardStrum(rate, 1.0f, 1.0f, acustra::StringMaterial::Steel,
-                                     acustra::PickingTechnique::Pick, 0.3);
+        const auto strum = hardStrum(rate, 1.0f, 1.0f, acustra::PickingTechnique::Pick, 0.3);
         // Cut where the chain is driven hardest, and leave it to ring down.
         std::size_t cut = 0;
         for (std::size_t i = 0; i < strum.open.size(); ++i)
@@ -490,38 +494,35 @@ void testPiezoSilence()
 // Piezo output cabled mid-note gives what one cabled from the start does.
 void testLoadedPiezoStaysWarmWhileUnheard()
 {
-    for (auto material : { acustra::StringMaterial::Steel,
-                           acustra::StringMaterial::Nylon })
-        for (int rate : { 44100, 48000, 96000 })
+    for (int rate : { 44100, 48000, 96000 })
+    {
+        acustra::EngineParameters parameters;
+        auto switched = std::make_unique<acustra::AcustraEngine>();
+        auto reference = std::make_unique<acustra::AcustraEngine>();
+        switched->setParameters(parameters);
+        parameters.capture = acustra::CaptureType::Piezo;
+        reference->setParameters(parameters);
+        for (auto* engine : { switched.get(), reference.get() })
         {
-            acustra::EngineParameters parameters;
-            parameters.stringMaterial = material;
-            auto switched = std::make_unique<acustra::AcustraEngine>();
-            auto reference = std::make_unique<acustra::AcustraEngine>();
-            switched->setParameters(parameters);
-            parameters.capture = acustra::CaptureType::Piezo;
-            reference->setParameters(parameters);
-            for (auto* engine : { switched.get(), reference.get() })
-            {
-                engine->prepare(rate, 64);
-                engine->noteOn(45, 0.7f);
-            }
-            std::array<float, 64> left {}, right {}, referenceLeft {}, referenceRight {};
-            for (int block = 0; block < 600; ++block)
-            {
-                if (block == 40)
-                    switched->setParameters(parameters);
-                switched->process(left.data(), right.data(), 64);
-                reference->process(referenceLeft.data(), referenceRight.data(), 64);
-                expect(Access::chainState(*switched) == Access::chainState(*reference),
-                       "the unheard piezo chain lost its state");
-                expect(switched->getLastBridgeBodyForce()
-                           == reference->getLastBridgeBodyForce(),
-                       "piezo electrical observation changed the mechanical bridge");
-            }
-            expect(left == right && left == referenceLeft && right == referenceRight,
-                   "switching to warmed piezo did not reach the continuously observed output");
+            engine->prepare(rate, 64);
+            engine->noteOn(45, 0.7f);
         }
+        std::array<float, 64> left {}, right {}, referenceLeft {}, referenceRight {};
+        for (int block = 0; block < 600; ++block)
+        {
+            if (block == 40)
+                switched->setParameters(parameters);
+            switched->process(left.data(), right.data(), 64);
+            reference->process(referenceLeft.data(), referenceRight.data(), 64);
+            expect(Access::chainState(*switched) == Access::chainState(*reference),
+                   "the unheard piezo chain lost its state");
+            expect(switched->getLastBridgeBodyForce()
+                       == reference->getLastBridgeBodyForce(),
+                   "piezo electrical observation changed the mechanical bridge");
+        }
+        expect(left == right && left == referenceLeft && right == referenceRight,
+               "switching to warmed piezo did not reach the continuously observed output");
+    }
 }
 
 // The largest rise of the band above 200 Hz from one 5 ms frame to the
@@ -570,60 +571,56 @@ void testPiezoSwitchingIsClickFree()
     // for that note (up to 1.26x here), so it is reported, not gated.
     double worstRatio = 0.0, worstRawRatio = 0.0, worstError = 0.0;
     using acustra::CaptureType;
-    for (auto material : { acustra::StringMaterial::Steel,
-                           acustra::StringMaterial::Nylon })
-        for (int rate : { 44100, 48000, 96000 })
-            for (int note : { 45, 52, 64 })
-                for (bool toPiezo : { true, false })
+    for (int rate : { 44100, 48000, 96000 })
+        for (int note : { 45, 52, 64 })
+            for (bool toPiezo : { true, false })
+            {
+                const CaptureType from = toPiezo ? CaptureType::StereoMic : CaptureType::Piezo;
+                const CaptureType to = toPiezo ? CaptureType::Piezo : CaptureType::StereoMic;
+                std::array<std::unique_ptr<acustra::AcustraEngine>, 3> engines;
+                const std::array<CaptureType, 3> starts { from, CaptureType::StereoMic,
+                                                          CaptureType::Piezo };
+                for (std::size_t index = 0; index < 3; ++index)
                 {
-                    const CaptureType from = toPiezo ? CaptureType::StereoMic : CaptureType::Piezo;
-                    const CaptureType to = toPiezo ? CaptureType::Piezo : CaptureType::StereoMic;
-                    std::array<std::unique_ptr<acustra::AcustraEngine>, 3> engines;
-                    const std::array<CaptureType, 3> starts { from, CaptureType::StereoMic,
-                                                              CaptureType::Piezo };
-                    for (std::size_t index = 0; index < 3; ++index)
+                    acustra::EngineParameters parameters;
+                    parameters.capture = starts[index];
+                    engines[index] = std::make_unique<acustra::AcustraEngine>();
+                    engines[index]->setParameters(parameters);
+                    engines[index]->prepare(rate, 64);
+                    engines[index]->noteOn(note, 0.8f);
+                }
+                std::array<std::vector<float>, 3> outputs;
+                std::vector<float> crossfade;
+                for (int sample = 0; sample < rate * 7 / 10; ++sample)
+                {
+                    if (sample == rate / 2)
                     {
                         acustra::EngineParameters parameters;
-                        parameters.stringMaterial = material;
-                        parameters.capture = starts[index];
-                        engines[index] = std::make_unique<acustra::AcustraEngine>();
-                        engines[index]->setParameters(parameters);
-                        engines[index]->prepare(rate, 64);
-                        engines[index]->noteOn(note, 0.8f);
+                        parameters.capture = to;
+                        engines[0]->setParameters(parameters);
                     }
-                    std::array<std::vector<float>, 3> outputs;
-                    std::vector<float> crossfade;
-                    for (int sample = 0; sample < rate * 7 / 10; ++sample)
+                    for (std::size_t index = 0; index < 3; ++index)
                     {
-                        if (sample == rate / 2)
-                        {
-                            acustra::EngineParameters parameters;
-                            parameters.stringMaterial = material;
-                            parameters.capture = to;
-                            engines[0]->setParameters(parameters);
-                        }
-                        for (std::size_t index = 0; index < 3; ++index)
-                        {
-                            float left = 0.0f, right = 0.0f;
-                            engines[index]->process(&left, &right, 1);
-                            outputs[index].push_back(left);
-                        }
-                        const auto mix = Access::captureMix(*engines[0]);
-                        crossfade.push_back(mix[0] * outputs[1].back()
-                                            + mix[6] * outputs[2].back());
-                        worstError = std::max(worstError, static_cast<double>(
-                            std::abs(outputs[0].back() - crossfade.back())));
+                        float left = 0.0f, right = 0.0f;
+                        engines[index]->process(&left, &right, 1);
+                        outputs[index].push_back(left);
                     }
-                    const double switched = largestRise(outputs[0], rate, 0.45, 0.65);
-                    const double expected = largestRise(crossfade, rate, 0.45, 0.65);
-                    const double stayed = std::max(largestRise(outputs[1], rate, 0.45, 0.65),
-                                                   largestRise(outputs[2], rate, 0.45, 0.65));
-                    worstRatio = std::max(worstRatio, switched / expected);
-                    worstRawRatio = std::max(worstRawRatio, switched / stayed);
-                    expect(switched <= 1.1 * expected,
-                           "switching Capture mid-note rose more than its crossfade at "
-                               + std::to_string(rate));
+                    const auto mix = Access::captureMix(*engines[0]);
+                    crossfade.push_back(mix[0] * outputs[1].back()
+                                        + mix[6] * outputs[2].back());
+                    worstError = std::max(worstError, static_cast<double>(
+                        std::abs(outputs[0].back() - crossfade.back())));
                 }
+                const double switched = largestRise(outputs[0], rate, 0.45, 0.65);
+                const double expected = largestRise(crossfade, rate, 0.45, 0.65);
+                const double stayed = std::max(largestRise(outputs[1], rate, 0.45, 0.65),
+                                               largestRise(outputs[2], rate, 0.45, 0.65));
+                worstRatio = std::max(worstRatio, switched / expected);
+                worstRawRatio = std::max(worstRawRatio, switched / stayed);
+                expect(switched <= 1.1 * expected,
+                       "switching Capture mid-note rose more than its crossfade at "
+                           + std::to_string(rate));
+            }
     expect(worstError < 1.0e-6, "a Capture switch is not the crossfade of the two sensors");
     std::cout << "Piezo capture switch: largest rise " << worstRatio
               << "x its crossfade's (" << worstRawRatio
@@ -702,11 +699,9 @@ void testPiezoDoesNotReachTheMicrophones()
 void testPiezoSilentAfterPlaying()
 {
     for (int rate : { 44100, 48000 })
-    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
     {
         acustra::EngineParameters parameters;
         parameters.capture = acustra::CaptureType::Piezo;
-        parameters.stringMaterial = material;
         auto engine = std::make_unique<acustra::AcustraEngine>();
         engine->setParameters(parameters);
         engine->prepare(rate, 64);
@@ -730,11 +725,9 @@ void testPiezoSilentAfterPlaying()
         }
         const double seconds = static_cast<double>((lastNonzero + 1) * 64) / rate;
         expect(seconds < 25.0, "the piezo was not exact silence after playing at "
-                                   + std::to_string(rate)
-                                   + (material == acustra::StringMaterial::Steel
-                                          ? " (steel)" : " (nylon)"));
-        std::cout << "Piezo exact silence " << seconds << " s after a chord at " << rate << " Hz ("
-                  << (material == acustra::StringMaterial::Steel ? "steel" : "nylon") << ")\n";
+                                   + std::to_string(rate));
+        std::cout << "Piezo exact silence " << seconds << " s after a chord at " << rate
+                  << " Hz\n";
     }
 }
 
@@ -765,7 +758,7 @@ void testPiezoRateConsistency()
 }
 
 // 9. Headroom on real playing. Reference strums at velocity 100 and 127, with
-// Finger and Pick, both string materials and any Touch, and the player's own
+// Finger and Pick and any Touch, and the player's own
 // strums, never reach U1B's output swing or U1A's input range: the circuit
 // only clips when played far past normal (the Pick at velocity 127 at the
 // bridge, Pluck Position 0). The hottest strum's open-circuit voltage stays
@@ -774,10 +767,9 @@ void testPiezoRateConsistency()
 // checks every preset).
 void testPiezoHeadroom()
 {
-    const auto name = [] (acustra::StringMaterial material, acustra::PickingTechnique picking)
+    const auto name = [] (acustra::PickingTechnique picking)
     {
-        return std::string(material == acustra::StringMaterial::Steel ? "steel " : "nylon ")
-            + (picking == acustra::PickingTechnique::Pick ? "Pick" : "Finger");
+        return std::string(picking == acustra::PickingTechnique::Pick ? "Pick" : "Finger");
     };
     // Headroom in dB to the nearer limit of U1B's swing and U1A's range.
     const auto headroom = [] (const Strum& strum)
@@ -803,35 +795,34 @@ void testPiezoHeadroom()
         return largest;
     };
     double hottest = 0.0, least = 300.0;
-    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
     for (auto picking : { acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick })
     {
         for (float touch : { 0.0f, 0.58f, 1.0f })
             for (float velocity : { 100.0f / 127.0f, 1.0f })
             {
-                const auto strum = hardStrum(48000, velocity, touch, material, picking);
+                const auto strum = hardStrum(48000, velocity, touch, picking);
                 const double room = headroom(strum);
                 least = std::min(least, room);
                 hottest = std::max(hottest, peak(strum.open));
-                expect(room > 0.0, "a reference " + name(material, picking)
+                expect(room > 0.0, "a reference " + name(picking)
                                        + " strum clipped the piezo preamp");
                 if (touch == 1.0f && velocity == 1.0f)
-                    std::cout << "Piezo " << name(material, picking) << " strum, velocity 127: "
+                    std::cout << "Piezo " << name(picking) << " strum, velocity 127: "
                               << "open-circuit peak " << peak(strum.open) << " V, jack "
                               << peak(strum.volts) << " V, headroom " << room << " dB\n";
             }
         if (picking == acustra::PickingTechnique::Pick)
         {
-            const auto strummed = hardStrum(48000, 1.0f, 0.58f, material, picking, 0.0, 12);
+            const auto strummed = hardStrum(48000, 1.0f, 0.58f, picking, 0.0, 12);
             const double room = headroom(strummed);
             least = std::min(least, room);
-            expect(room > 0.0, "the player's " + name(material, picking)
+            expect(room > 0.0, "the player's " + name(picking)
                                    + " strums clipped the piezo preamp");
-            std::cout << "Piezo player's " << name(material, picking) << " strums, velocity 127: "
+            std::cout << "Piezo player's " << name(picking) << " strums, velocity 127: "
                       << "open-circuit peak " << peak(strummed.open) << " V, headroom "
                       << room << " dB\n";
-            const auto bridge = hardStrum(48000, 1.0f, 1.0f, material, picking, 2.5, 0, 0.0f);
-            std::cout << "Piezo " << name(material, picking)
+            const auto bridge = hardStrum(48000, 1.0f, 1.0f, picking, 2.5, 0, 0.0f);
+            std::cout << "Piezo " << name(picking)
                       << " at velocity 127, Pluck Position 0: open-circuit peak "
                       << peak(bridge.open) << " V, headroom " << headroom(bridge) << " dB\n";
         }
@@ -842,11 +833,11 @@ void testPiezoHeadroom()
               << least << " dB\n";
 }
 
-// 5b. The clip's aliasing on the hardest playing: nylon with the Pick at
-// velocity 127 at the bridge (Pluck Position 0), the one playing that drives
-// U1B past its swing (steel there keeps 2 dB of headroom). U1B's drive,
-// band-limited and run through the same clip 8x oversampled, then brought
-// back to the host rate, is the reference for the chain's clipped output;
+// 5b. The clip's aliasing: the Pick at velocity 127 at the bridge (Pluck
+// Position 0), the hottest playing, keeps 2.2 dB of U1B's swing, so it is
+// driven 4.4 dB harder here (string weights 1.66 times) to pass the swing by
+// 2.2 dB. U1B's drive, band-limited and run through the same clip 8x
+// oversampled, then brought back to the host rate, is the reference for the chain's clipped output;
 // what differs below 0.45 fs is what the host-rate clip folded back, less
 // what the BLAMP took out - and what the BLAMP's own kernel does to the band,
 // which a bare clip, reported beside it, does not.
@@ -854,9 +845,8 @@ void testPiezoClipAliasing()
 {
     for (int rate : { 44100, 48000 })
     {
-        constexpr auto material = acustra::StringMaterial::Nylon;
-        auto strum = hardStrum(rate, 1.0f, 1.0f, material, acustra::PickingTechnique::Pick,
-                               1.0, 0, 0.0f);
+        auto strum = hardStrum(rate, 1.0f, 1.0f, acustra::PickingTechnique::Pick,
+                               1.0, 0, 0.0f, 1.66f);
         auto& drive = strum.drive;
         std::vector<double> stage(strum.stage.begin() + 7, strum.stage.end());
         drive.resize(stage.size());
@@ -914,14 +904,14 @@ void testPiezoClipAliasing()
         const double aliasDb = 10.0 * std::log10(std::max(error, 1.0e-300) / signal);
         const double bareDb = 10.0 * std::log10(std::max(bare, 1.0e-300) / signal);
         const double lowDb = 10.0 * std::log10(std::max(lowError, 1.0e-300) / lowSignal);
-        const std::string label = std::string(material == acustra::StringMaterial::Steel
-                                                  ? "steel" : "nylon")
-            + " at " + std::to_string(rate);
-        expect(clipped > 0, "the Pick at the bridge no longer clips the piezo preamp, " + label);
-        expect(aliasDb < -62.0 && aliasDb < bareDb - 5.0,
-               "piezo clip aliasing on the hardest strum is above -62 dB or not 5 dB under a bare clip, "
+        const std::string label = "at " + std::to_string(rate);
+        expect(clipped > 0, "the Pick at the bridge driven 4.4 dB harder does not clip the piezo preamp, "
+                                + label);
+        // Steel measures -62.0 and -65.4 dB here, a bare clip -56.7 and -58.4.
+        expect(aliasDb < -60.0 && aliasDb < bareDb - 5.0,
+               "piezo clip aliasing on an overdriven strum is above -60 dB or not 5 dB under a bare clip, "
                    + label);
-        std::cout << "Piezo clip aliasing, Pick at velocity 127 at the bridge, " << label << ": "
+        std::cout << "Piezo clip aliasing, Pick at velocity 127 at the bridge +4.4 dB, " << label << ": "
                   << aliasDb << " dB, below 0.25 fs " << lowDb << " dB; a bare clip "
                   << bareDb << " dB (" << clipped / static_cast<long>(factor)
                   << " host samples past the swing)\n";

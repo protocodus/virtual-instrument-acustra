@@ -3,8 +3,8 @@
 
 OptimizePhysicalModel.NAMES is the calibration vector the renderers take.
 Both renderers' usage must list one argument per value, README must give the
-same count, and the renderers must accept the full vector as well as their
-two legacy lengths.
+same count, and the renderers must accept the full vector and no other
+length (the builds that had nylon strings took 48 values).
 
     CalibrationVectorTests.py PHYSICAL_FIT_RENDERER EXTERNAL_CORPUS_RENDERER
 """
@@ -45,17 +45,21 @@ def main() -> int:
             failures.append(f"README no longer says {pattern!r}")
         failures.extend(f"README says {value} for {pattern!r}, the vector has {count}"
                         for value in found if int(value) != count)
-    # The renderer takes the full shipping vector, and the legacy 32 and 37.
+    # The renderer takes the full shipping vector and refuses a short one or
+    # the nylon builds' 48.
+    shipping = [format(float(value), ".9g") for value in optimiser.SHIPPING]
     with tempfile.TemporaryDirectory(prefix="acustra-calibration-") as temporary:
-        for length in (count, 37, 32):
-            values = [format(float(value), ".9g")
-                      for value in optimiser.SHIPPING[:length]]
+        for values in (shipping, shipping[:-1], shipping + ["0"] * (48 - count)):
+            length = len(values)
             output = Path(temporary) / f"smoke-{length}"
             result = subprocess.run([str(fit), "--smoke", str(output), *values],
                                     capture_output=True, text=True)
-            if result.returncode != 0:
+            if length == count and result.returncode != 0:
                 failures.append(f"{fit.name} --smoke with {length} values: "
                                 f"{result.stderr.strip()}")
+            if length != count and result.returncode == 0:
+                failures.append(f"{fit.name} --smoke accepted {length} values, "
+                                f"the vector has {count}")
     for failure in failures:
         print(f"FAIL: {failure}")
     if failures:

@@ -36,21 +36,20 @@ struct Control
     {
         GatherChords, // value 0/1
         Panic,
-        StringMaterial, // plug-in choice index: 0 nylon, 1 steel
         CaptureMode,    // 0 stereo, 1 mono, 2 piezo
         Picking,        // 0 finger, 1 pick, 2 thumb
         Tuning,         // 0-4
         BodyAmount,     // percent
         Output,         // dB
-        // The construction, appended so the kinds above keep their values.
+        // The construction and the other knobs.
         Shape,          // 0 parlor .. 3 jumbo
-        Wood,           // 0 spruce, 1 cedar, 2 mahogany, 3 maple
-        Bridge,         // 0 original, 1 Fylde
+        Wood,           // 0 spruce, 1 mahogany, 2 maple
         Model,          // 0 original, 1 Bellido 1978
         Width,          // percent
         Age,            // percent
         Pluck,          // percent (Pluck Position)
-        Touch           // percent
+        Touch,          // percent
+        PiezoMix        // percent
     };
     double seconds { 0.0 };
     Kind kind { Kind::Panic };
@@ -384,7 +383,7 @@ inline std::vector<Scenario> makeBattery()
     {
         Builder b("controls", 2.0);
         b.chord(0.0, 1, std::array<int, 3> { 45, 52, 57 });
-        b.control(0.5, Kind::StringMaterial, 0.0f).on(0.55, 1, 64)
+        b.control(0.5, Kind::PiezoMix, 60.0f).on(0.55, 1, 64)
             .control(0.8, Kind::CaptureMode, 2.0f).on(0.85, 1, 59)
             .control(1.0, Kind::Picking, 1.0f).on(1.05, 1, 50)
             .control(1.2, Kind::BodyAmount, 20.0f)
@@ -398,17 +397,14 @@ inline std::vector<Scenario> makeBattery()
         Builder b("construction", 3.0);
         b.chord(0.0, 1, std::array<int, 3> { 45, 52, 57 });
         b.control(0.2, Kind::Shape, 0.0f).on(0.25, 1, 64)
-            .control(0.4, Kind::Wood, 3.0f).on(0.45, 1, 59)
-            .control(0.6, Kind::Bridge, 1.0f).on(0.65, 1, 55)
+            .control(0.4, Kind::Wood, 2.0f).on(0.45, 1, 59)
             .control(0.8, Kind::Model, 1.0f).on(0.85, 1, 50)
-            .control(1.0, Kind::Bridge, 0.0f)
             .control(1.1, Kind::Width, 0.0f).on(1.15, 1, 57)
             .control(1.3, Kind::Age, 90.0f).on(1.35, 1, 62)
             .control(1.5, Kind::Pluck, 5.0f).on(1.55, 1, 60)
             .control(1.7, Kind::Touch, 100.0f).on(1.75, 1, 52)
             .control(1.9, Kind::Tuning, 3.0f)
             .chord(1.95, 1, std::array<int, 3> { 38, 43, 50 })
-            .control(2.2, Kind::StringMaterial, 0.0f)
             .control(2.3, Kind::Model, 0.0f).control(2.3, Kind::Shape, 3.0f)
             .control(2.4, Kind::Tuning, 4.0f)
             .chord(2.45, 1, std::array<int, 3> { 39, 44, 49 })

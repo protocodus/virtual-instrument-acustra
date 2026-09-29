@@ -9,8 +9,8 @@ here sets it. This tool
 
 1. checks it: the hottest reference strum - an open E major downstroke
    across all six strings at velocity 127 with the Pick, the playing that
-   drives the saddle hardest, at 48 kHz, over the six Guitar presets strung
-   with each material and Touch at 0, 0.58 and 1 - must leave the element
+   drives the saddle hardest, at 48 kHz, over the Guitar presets with Touch
+   at 0, 0.58 and 1 - must leave the element
    at 0.7-2.5 V open-circuit (Zollner gives 1-2 V for a piezo played loudly,
    M. Zollner, Physics of the Electric Guitar, 2005, ch.6 section 6.7; the
    margin allows for the Ovation element standing in for a strip). It
@@ -19,27 +19,26 @@ here sets it. This tool
    `piezo_stages`). A one-pluck physical estimate - tension times string
    slope at 0.2 V/N - is printed beside it.
 
-2. calibrates steelTrim and nylonTrim, the piezo's level match to the stereo
+2. calibrates PiezoDesign::trim, the piezo's level match to the stereo
    microphones. Every construction the loudness tool renders
-   (Tools/MeasureMaterialLoudness.py: the plug-in's six Guitar presets, each
-   strung with steel and with nylon, Finger and Pick, single notes at three
-   velocities, strums, an arpeggio and ringing chords) is rendered with
-   Capture on the stereo microphones and on the piezo, and measured as
-   ITU-R BS.1770-4 integrated loudness. A material's trim is the one that
-   makes the median of (microphones - piezo) zero. Loudness rather than RMS:
+   (Tools/MeasureMaterialLoudness.py: the plug-in's Guitar presets, Finger
+   and Pick, single notes at three velocities, strums, an arpeggio and
+   ringing chords) is rendered with Capture on the stereo microphones and on
+   the piezo, and measured as ITU-R BS.1770-4 integrated loudness. The trim
+   is the one that makes the median of (microphones - piezo) zero. Loudness rather than RMS:
    the two sensors' spectra differ by up to 15 dB per third octave (Zollner
    Figs 6.24/6.25), and plain RMS would weigh the microphones' bass.
-   These trims are the base: Tools/CalibrateConstructionLoudness.py then
-   sets the piezo's level per construction and Picking on top of them
-   (Source/DSP/ConstructionLoudnessData.h), so after a trim changes, run it
-   again to re-level the table.
+   The trim is the base: Tools/CalibrateConstructionLoudness.py then sets
+   the piezo's level per construction and Picking on top of it
+   (Source/DSP/ConstructionLoudnessData.h), so after the trim changes, run
+   it again to re-level the table.
 
   python3 Tools/CalibratePiezo.py --renderer ./build-dsp/AcustraPerformanceRenderer
   python3 Tools/CalibratePiezo.py --renderer ... --headroom-only
   python3 Tools/CalibratePiezo.py --self-test
 
-The report prints the trims to write into PiezoDesign and, with the values
-already built in, how far each is from its target. Renders go to a temporary
+The report prints the trim to write into PiezoDesign and, with the value
+already built in, how far it is from its target. Renders go to a temporary
 directory and are removed once measured; nothing is downloaded and no audio is
 kept. NumPy and SciPy are required.
 """
@@ -77,8 +76,7 @@ def built_design() -> dict:
     """The PiezoDesign values the engine was last built with."""
     text = ENGINE_HEADER.read_text()
     values = {}
-    for name, kind in (("steelTrim", "float"), ("nylonTrim", "float"),
-                       ("railHigh", "double"), ("railLow", "double"),
+    for name, kind in (("trim", "float"), ("railHigh", "double"), ("railLow", "double"),
                        ("commonModeLimit", "double")):
         match = re.search(rf"static constexpr {kind} {name} = ([0-9.eE+-]+)f?;", text)
         if not match:
@@ -107,25 +105,22 @@ ANCHOR_TOUCHES = (0.0, 0.58, 1.0)
 
 
 def anchor_grid():
-    """Every construction, string material and Touch the anchor strum is
-    played with, all with the Pick at velocity 127."""
-    return [(preset, material, touch) for preset in loudness.PRESETS
-            for material in ("steel", "nylon") for touch in ANCHOR_TOUCHES]
+    """Every construction and Touch the anchor strum is played with, all
+    with the Pick at velocity 127."""
+    return [(preset, touch) for preset in loudness.PRESETS for touch in ANCHOR_TOUCHES]
 
 
 def strum_observation(renderer: str, work: Path, picking: str, preset: str,
-                      material: str, touch: float, observation: str) -> np.ndarray:
+                      touch: float, observation: str) -> np.ndarray:
     """One reference strum's (frames, 2) observation, in volts."""
-    shape, wood, _strings, bridge, model = loudness.PRESETS[preset]
     rows, seconds = reference_strum()
-    tag = f"{preset}-{material}-{picking}-{touch}-{observation}".replace(" ", "_")
+    tag = f"{preset}-{picking}-{touch}-{observation}".replace(" ", "_")
     events = work / f"{tag}.txt"
     output = work / f"{tag}.f32"
     loudness.write_performance(rows, seconds, events)
-    subprocess.run([renderer, str(events), str(output), "stereo_mic", picking,
-                    bridge, "--string-material", material, "--body-shape", shape,
-                    "--body-material", wood, "--guitar-model", model,
-                    "--touch", f"{touch}", "--observe", observation],
+    subprocess.run(loudness.render_command(renderer, events, output, "stereo_mic", picking,
+                                           preset, "--touch", f"{touch}",
+                                           "--observe", observation),
                    check=True)
     values = np.fromfile(output, dtype="<f4").reshape(-1, 2).astype(np.float64)
     output.unlink()
@@ -147,15 +142,15 @@ def strum_peaks(renderer: str, work: Path, jobs: int, design: dict) -> dict:
     """The anchor grid's open-circuit and jack peaks and headroom, the
     hottest of them, and a Finger strum for comparison."""
     def peak(job):
-        preset, material, touch, picking = job
-        levels = strum_observation(renderer, work, picking, preset, material, touch, "piezo_levels")
-        stages = strum_observation(renderer, work, picking, preset, material, touch, "piezo_stages")
-        return {"preset": preset, "material": material, "touch": touch, "picking": picking,
+        preset, touch, picking = job
+        levels = strum_observation(renderer, work, picking, preset, touch, "piezo_levels")
+        stages = strum_observation(renderer, work, picking, preset, touch, "piezo_stages")
+        return {"preset": preset, "touch": touch, "picking": picking,
                 "open_circuit": float(np.max(np.abs(levels[:, 0]))),
                 "jack": float(np.max(np.abs(levels[:, 1]))), **headroom_db(stages, design)}
     grid = [job + ("pick",) for job in anchor_grid()]
     with ThreadPoolExecutor(max_workers=jobs) as pool:
-        rows = list(pool.map(peak, grid + [("Dreadnought", "steel", 0.58, "finger")]))
+        rows = list(pool.map(peak, grid + [("Dreadnought", 0.58, "finger")]))
     return {"hottest": max(rows[:-1], key=lambda row: row["open_circuit"]),
             "least_headroom": min(rows[:-1], key=lambda row: min(row["u1a_db"], row["u1b_db"])),
             "grid": rows[:-1], "finger_reference": rows[-1]}
@@ -180,16 +175,12 @@ def level_rows(renderer: str, jobs: int) -> list[dict]:
             loudness.write_performance(rows, seconds, work / f"{name}.txt")
 
         def render(job):
-            preset, material, picking, performance = job
-            shape, wood, _strings, bridge, model = loudness.PRESETS[preset]
+            preset, picking, performance = job
             levels = {}
             for capture in ("stereo_mic", "piezo"):
-                output = work / f"{preset}-{material}-{picking}-{performance}-{capture}.f32"
-                subprocess.run(
-                    [renderer, str(work / f"{performance}.txt"), str(output),
-                     capture, picking, bridge,
-                     "--string-material", material, "--body-shape", shape,
-                     "--body-material", wood, "--guitar-model", model],
+                output = work / f"{preset}-{picking}-{performance}-{capture}.f32".replace(" ", "_")
+                subprocess.run(loudness.render_command(
+                    renderer, work / f"{performance}.txt", output, capture, picking, preset),
                     check=True)
                 audio = np.fromfile(output, dtype="<f4").reshape(-1, 2)
                 output.unlink()
@@ -197,7 +188,7 @@ def level_rows(renderer: str, jobs: int) -> list[dict]:
                     "lufs": loudness.integrated_loudness(audio),
                     "peak_dbfs": float(20.0 * np.log10(np.max(np.abs(audio)))),
                 }
-            return {"preset": preset, "material": material, "picking": picking,
+            return {"preset": preset, "picking": picking,
                     "performance": performance,
                     "mic_lufs": levels["stereo_mic"]["lufs"],
                     "piezo_lufs": levels["piezo"]["lufs"],
@@ -205,8 +196,7 @@ def level_rows(renderer: str, jobs: int) -> list[dict]:
                     "mic_minus_piezo": levels["stereo_mic"]["lufs"]
                                        - levels["piezo"]["lufs"]}
 
-        grid = [(preset, material, picking, performance)
-                for preset in loudness.PRESETS for material in ("steel", "nylon")
+        grid = [(preset, picking, performance) for preset in loudness.PRESETS
                 for picking in ("finger", "pick")
                 for performance in loudness.PERFORMANCES]
         with ThreadPoolExecutor(max_workers=jobs) as pool:
@@ -214,18 +204,15 @@ def level_rows(renderer: str, jobs: int) -> list[dict]:
 
 
 def summarise_levels(rows: list[dict], design: dict) -> dict:
-    summary = {}
-    for material, key in (("steel", "steelTrim"), ("nylon", "nylonTrim")):
-        deltas = np.array([row["mic_minus_piezo"] for row in rows
-                           if row["material"] == material])
-        median = float(np.median(deltas))
-        summary[material] = {
-            "median_mic_minus_piezo_lu": median,
-            "min_lu": float(deltas.min()), "max_lu": float(deltas.max()),
-            "within_2_lu_of_median": float(np.mean(np.abs(deltas - median) <= 2.0)),
-            "built_trim": design[key],
-            "calibrated_trim": design[key] * 10.0 ** (median / 20.0),
-        }
+    deltas = np.array([row["mic_minus_piezo"] for row in rows])
+    median = float(np.median(deltas))
+    summary = {
+        "median_mic_minus_piezo_lu": median,
+        "min_lu": float(deltas.min()), "max_lu": float(deltas.max()),
+        "within_2_lu_of_median": float(np.mean(np.abs(deltas - median) <= 2.0)),
+        "built_trim": design["trim"],
+        "calibrated_trim": design["trim"] * 10.0 ** (median / 20.0),
+    }
     summary["loudest_piezo_peak_dbfs"] = max(row["piezo_peak_dbfs"] for row in rows)
     return summary
 
@@ -234,8 +221,7 @@ def self_test() -> None:
     rows, seconds = reference_strum()
     assert len(rows) == 6 and all(row[4] == 127 for row in rows)
     grid = anchor_grid()
-    assert len(grid) == len(loudness.PRESETS) * 2 * len(ANCHOR_TOUCHES)
-    assert {material for _, material, _ in grid} == {"steel", "nylon"}
+    assert len(grid) == len(loudness.PRESETS) * len(ANCHOR_TOUCHES)
     assert [row[1] for row in rows] == [40, 47, 52, 56, 59, 64]
     with tempfile.TemporaryDirectory() as scratch:
         loudness.write_performance(rows, seconds, Path(scratch) / "p.txt")
@@ -246,12 +232,9 @@ def self_test() -> None:
     stages = np.array([[1.0, 1.63125], [-2.5, -3.9125]])
     room = headroom_db(stages, design)
     assert abs(room["u1a_db"]) < 1e-6 and abs(room["u1b_db"]) < 1e-3, room
-    fake = [{"material": m, "mic_minus_piezo": d, "piezo_peak_dbfs": -6.0}
-            for m, d in (("steel", 1.0), ("steel", 2.0), ("steel", 3.0),
-                         ("nylon", -2.0), ("nylon", -2.0), ("nylon", 4.0))]
-    summary = summarise_levels(fake, {"steelTrim": 1.0, "nylonTrim": 2.0})
-    assert abs(summary["steel"]["calibrated_trim"] - 10 ** (2.0 / 20)) < 1e-12
-    assert abs(summary["nylon"]["calibrated_trim"] - 2.0 * 10 ** (-2.0 / 20)) < 1e-12
+    fake = [{"mic_minus_piezo": d, "piezo_peak_dbfs": -6.0} for d in (1.0, 2.0, 3.0)]
+    summary = summarise_levels(fake, {"trim": 1.5})
+    assert abs(summary["calibrated_trim"] - 1.5 * 10 ** (2.0 / 20)) < 1e-12
     print("CalibratePiezo self-test passed")
 
 
@@ -275,13 +258,13 @@ def main() -> int:
     finger = peaks["finger_reference"]
     predicted = physical_peak_volts()
     report = {"built": design, "reference_strums": peaks, "physical_peak_volts": predicted}
-    print(f"hottest Pick strum ({hottest['preset']}, {hottest['material']}, Touch "
+    print(f"hottest Pick strum ({hottest['preset']}, Touch "
           f"{hottest['touch']}): {hottest['open_circuit']:.3f} V open-circuit, "
           f"{hottest['jack']:.3f} V at the jack; headroom {hottest['u1a_db']:+.2f} dB to "
           f"U1A's input range, {hottest['u1b_db']:+.2f} dB to U1B's swing")
-    print(f"least headroom ({least['preset']}, {least['material']}, Touch {least['touch']}): "
+    print(f"least headroom ({least['preset']}, Touch {least['touch']}): "
           f"U1A {least['u1a_db']:+.2f} dB, U1B {least['u1b_db']:+.2f} dB")
-    print(f"the Finger strum (Dreadnought, steel): {finger['open_circuit']:.3f} V open-circuit")
+    print(f"the Finger strum (Dreadnought): {finger['open_circuit']:.3f} V open-circuit")
     print(f"physical check: one hard pluck's tension x slope at "
           f"{PIEZO_VOLTS_PER_NEWTON} V/N is a {predicted:.2f} V step")
     low, high = OPEN_CIRCUIT_RANGE
@@ -296,13 +279,11 @@ def main() -> int:
         summary = summarise_levels(rows, design)
         report["levels"] = summary
         report["rows"] = rows
-        for material in ("steel", "nylon"):
-            entry = summary[material]
-            print(f"{material}: microphones - piezo median "
-                  f"{entry['median_mic_minus_piezo_lu']:+.2f} LU "
-                  f"(range {entry['min_lu']:+.2f} to {entry['max_lu']:+.2f}, "
-                  f"{100 * entry['within_2_lu_of_median']:.0f}% within 2 LU of it); "
-                  f"trim {entry['built_trim']:.6g} -> {entry['calibrated_trim']:.6g}")
+        print(f"microphones - piezo median "
+              f"{summary['median_mic_minus_piezo_lu']:+.2f} LU "
+              f"(range {summary['min_lu']:+.2f} to {summary['max_lu']:+.2f}, "
+              f"{100 * summary['within_2_lu_of_median']:.0f}% within 2 LU of it); "
+              f"trim {summary['built_trim']:.6g} -> {summary['calibrated_trim']:.6g}")
         print(f"{len(rows)} pairs, loudest piezo peak "
               f"{summary['loudest_piezo_peak_dbfs']:.2f} dBFS")
     if arguments.json:

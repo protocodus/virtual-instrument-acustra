@@ -11,7 +11,6 @@ namespace acustra::parameters
 {
 inline constexpr auto shape = "shape";
 inline constexpr auto bodyMaterial = "bodyMaterial";
-inline constexpr auto stringMaterial = "stringMaterial";
 inline constexpr auto tuning = "tuning";
 inline constexpr auto stringAge = "stringAge";
 inline constexpr auto pluckPosition = "pluckPosition";
@@ -21,15 +20,15 @@ inline constexpr auto stereoWidth = "stereoWidth";
 inline constexpr auto output = "output";
 inline constexpr auto capture = "capture";
 inline constexpr auto picking = "picking";
-inline constexpr auto bridgeModel = "bridgeModel";
 inline constexpr auto upperMic = "upperMic";
 inline constexpr auto piezoLoading = "piezoLoading";
 
 inline constexpr auto captureMode = "captureMode";
 inline constexpr auto guitarModel = "guitarModel";
 inline constexpr auto gatherChords = "gatherChords";
+inline constexpr auto piezoMix = "piezoMix";
 
-inline constexpr int parameterCount = 18;
+inline constexpr int parameterCount = 17;
 } // namespace acustra::parameters
 
 class AcustraAudioProcessorEditor;

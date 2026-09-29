@@ -1,5 +1,12 @@
 # Guitar realism work, 2026-09-08
 
+Update 2026-09-29: at the user's request Acustra is now steel-strung only.
+The nylon strings, their calibration and the Yamaha/classical results below
+are no longer part of the instrument; the Bellido 1978 remains as a Model,
+strung with steel. Body Material is Spruce, Mahogany or Maple, and the
+optional Fylde bridge is removed. The rest of this document records the
+work as of 2026-09-08 (Docs/decisions.md has the 2026-09-29 entry).
+
 The requested end state is more realistic steel and nylon guitars, three
 capture choices (stereo microphone, mono microphone, loaded piezo), normal
 high-velocity note release without a second stroke, and physical models
@@ -50,7 +57,8 @@ With the original contact kernel, the selected nylon candidate changes
 8.280994 → 8.016665 and development score 8.182101 → 7.947889. In the separate
 embedded classical-guitar corpus, nylon training changes 7.530845 → 7.443032
 and development 7.472233 → 7.158937. Steel audio is unchanged by these two
-nylon-only parameters. These two values are now in the instrument; the full
+nylon-only parameters. These two values were then put in the instrument (and
+left it with the nylon strings on 2026-09-29); the full
 engine, release, capture, renderer-control and plugin-processor suites pass.
 
 The steel training winner improves 9.133216 → 8.952589 but worsens its

@@ -4,8 +4,7 @@
 // Tools/CalibrateConstructionLoudness.py).
 //
 // This plays its own phrase - not the calibration's - on every construction
-// that sounds different (Strings x Model x the Bridge where it selects one x
-// Shape x Wood) with every Picking, measures ITU-R BS.1770-4 integrated
+// that sounds different (Model x Shape x Wood) with every Picking, measures ITU-R BS.1770-4 integrated
 // loudness, and requires each within a few LU of the default construction:
 // before the gains the same phrase spread over about 15 LU. The mono
 // microphone and the piezo are held to the same target on a spread of
@@ -177,12 +176,9 @@ double loudnessOf(acustra::EngineParameters parameters)
 std::string describe(const acustra::EngineParameters& p)
 {
     static const char* shapes[] { "Parlor", "Auditorium", "Dreadnought", "Jumbo" };
-    static const char* woods[] { "Spruce", "Cedar", "Mahogany", "Maple" };
+    static const char* woods[] { "Spruce", "Mahogany", "Maple" };
     static const char* pickings[] { "Finger", "Pick", "Thumb" };
-    std::string text = p.stringMaterial == acustra::StringMaterial::Steel ? "steel " : "nylon ";
-    text += p.guitarModel == acustra::GuitarModel::Original ? "Original " : "Bellido ";
-    if (acustra::AcustraEngine::bridgeSelectable(p.stringMaterial, p.guitarModel))
-        text += p.bridgeModel == acustra::BridgeModel::Original ? "(own bridge) " : "(Fylde) ";
+    std::string text = p.guitarModel == acustra::GuitarModel::Original ? "Original " : "Bellido ";
     text += shapes[static_cast<int>(p.shape)];
     text += ' ';
     text += woods[static_cast<int>(p.bodyMaterial)];
@@ -198,66 +194,49 @@ std::string describe(const acustra::EngineParameters& p)
 std::vector<acustra::EngineParameters> constructions()
 {
     std::vector<acustra::EngineParameters> result;
-    for (const auto strings : { acustra::StringMaterial::Nylon, acustra::StringMaterial::Steel })
-        for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
-            for (const auto bridge : { acustra::BridgeModel::Original, acustra::BridgeModel::FyldeSteel })
+    for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
+        for (int shape = 0; shape < 4; ++shape)
+            for (int wood = 0; wood < 3; ++wood)
             {
-                if (bridge == acustra::BridgeModel::FyldeSteel
-                    && !acustra::AcustraEngine::bridgeSelectable(strings, model))
-                    continue;
-                for (int shape = 0; shape < 4; ++shape)
-                    for (int wood = 0; wood < 4; ++wood)
-                    {
-                        acustra::EngineParameters p;
-                        p.stringMaterial = strings;
-                        p.guitarModel = model;
-                        p.bridgeModel = bridge;
-                        p.shape = static_cast<acustra::BodyShape>(shape);
-                        p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
-                        result.push_back(p);
-                    }
+                acustra::EngineParameters p;
+                p.guitarModel = model;
+                p.shape = static_cast<acustra::BodyShape>(shape);
+                p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+                result.push_back(p);
             }
     return result;
 }
 
 #ifndef ACUSTRA_CONSTRUCTION_LOUDNESS_BEFORE
-// The table's own shape: the default construction's microphone cells are
-// exactly 1, so the default patch renders as it did, and a Bridge choice
-// that selects nothing holds the played bridge's values.
-void testTheTableLeavesTheDefaultAndFollowsThePlayedBridge()
+// The table's own shape: one cell per construction and Picking, and the
+// default construction's microphone cells exactly 1, so the default patch
+// renders as it did.
+void testTheTableLeavesTheDefault()
 {
     using namespace acustra;
-    const auto cell = [] (int strings, int model, int bridge, int shape, int wood, int picking)
+    const auto cell = [] (int model, int shape, int wood, int picking)
     {
-        return static_cast<std::size_t>(
-            ((((strings * 2 + model) * 2 + bridge) * 4 + shape) * 4 + wood) * 3 + picking);
+        return static_cast<std::size_t>(((model * 4 + shape) * 3 + wood) * 3 + picking);
     };
-    const auto defaults = cell(1, 0, 0, 2, 0, 0);
+    static_assert(detail::constructionMicReference.size() == 2 * 4 * 3 * 3
+                      && detail::constructionMonoTrim.size() == 2 * 4 * 3 * 3
+                      && detail::constructionPiezoTrim.size() == 2 * 4 * 3 * 3,
+                  "the construction tables are not one cell per Model, Shape, Wood and Picking");
+    EngineParameters defaultParameters;
+    const auto defaults = cell(static_cast<int>(defaultParameters.guitarModel),
+                               static_cast<int>(defaultParameters.shape),
+                               static_cast<int>(defaultParameters.bodyMaterial),
+                               static_cast<int>(defaultParameters.picking));
+    expect(defaults == cell(0, 2, 0, 0), "the default construction moved");
     expect(detail::constructionMicReference[defaults] == 1.0f
                && detail::constructionMonoTrim[defaults] == 1.0f,
            "the default construction's microphone levels are not exactly 1");
-    bool played = true, finite = true;
-    for (int strings = 0; strings < 2; ++strings)
-        for (int model = 0; model < 2; ++model)
-            for (int shape = 0; shape < 4; ++shape)
-                for (int wood = 0; wood < 4; ++wood)
-                    for (int picking = 0; picking < 3; ++picking)
-                    {
-                        const auto own = cell(strings, model, 0, shape, wood, picking);
-                        const auto fylde = cell(strings, model, 1, shape, wood, picking);
-                        for (const auto* table : { &detail::constructionMicReference,
-                                                   &detail::constructionMonoTrim,
-                                                   &detail::constructionPiezoTrim })
-                        {
-                            finite = finite && std::isfinite((*table)[own])
-                                && (*table)[own] > 0.1f && (*table)[own] < 10.0f;
-                            if (!AcustraEngine::bridgeSelectable(
-                                    static_cast<StringMaterial>(strings),
-                                    static_cast<GuitarModel>(model)))
-                                played = played && (*table)[own] == (*table)[fylde];
-                        }
-                    }
-    expect(played, "a Bridge choice that selects nothing moved the level");
+    bool finite = true;
+    for (const auto* table : { &detail::constructionMicReference,
+                               &detail::constructionMonoTrim,
+                               &detail::constructionPiezoTrim })
+        for (const float value : *table)
+            finite = finite && std::isfinite(value) && value > 0.1f && value < 10.0f;
     expect(finite, "a construction level is out of range");
 }
 #endif
@@ -336,7 +315,7 @@ void testEveryConstructionAndPickingPlaysAtOneLoudness()
 int main()
 {
 #ifndef ACUSTRA_CONSTRUCTION_LOUDNESS_BEFORE
-    testTheTableLeavesTheDefaultAndFollowsThePlayedBridge();
+    testTheTableLeavesTheDefault();
 #endif
     testEveryConstructionAndPickingPlaysAtOneLoudness();
     if (failures != 0)

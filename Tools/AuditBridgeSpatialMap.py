@@ -4,7 +4,8 @@
 This is a spatial interpolation diagnostic, not a horizontal-admittance
 measurement. A rigid heave/rock reduction predicts Hcenter=(Hbass+Htreble)/2.
 No gain, delay, sign or minimum-phase fit is allowed to improve this prediction.
-Both accelerometers and all three microphones are checked for g21 and g34.
+Both accelerometers and all three microphones are checked for g21, the
+guitar the engine plays.
 
 Full-record complex FRFs are primary. Sixth-octave errors are essential:
 broadband energy weighting can conceal individual modal/antiresonance failures.
@@ -82,7 +83,7 @@ def metrics(center: np.ndarray, prediction: np.ndarray) -> dict:
 
 
 def extract(values: np.ndarray,
-            guitars: tuple[int, ...] = (21, 34)) -> tuple[dict, dict]:
+            guitars: tuple[int, ...] = (21,)) -> tuple[dict, dict]:
     frequency = np.fft.rfftfreq(bridge.FFT_SIZE, 1 / bridge.SAMPLE_RATE)
     taper = 0.5 + 0.5 * np.cos(np.arange(1, 48001) * np.pi / 48000)
     responses, force_quality = {}, {}
@@ -112,7 +113,7 @@ def extract(values: np.ndarray,
 
 def audit(frequency: np.ndarray, responses: dict) -> tuple[list, list]:
     broad, narrow = [], []
-    for guitar in (21, 34):
+    for guitar in sorted({key[0] for key in responses}):
         for channel, name in CHANNELS.items():
             for window, keep in WINDOWS:
                 bass, center, treble = [windowed(responses[guitar, i, channel], keep)
@@ -144,7 +145,7 @@ def self_test() -> None:
     # independently evaluated at position zero, never constructed by averaging
     # the endpoint records that the audit is asked to predict from.
     responses = {}
-    for guitar in (21, 34):
+    for guitar in (21,):
         for channel in CHANNELS:
             for impact, position in enumerate((-1, 0, 1)):
                 responses[guitar, impact, channel] = (

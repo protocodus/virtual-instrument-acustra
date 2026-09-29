@@ -39,9 +39,9 @@ struct AcustraEngineTestAccess
         return engine.piezoOutputVolts_;
     }
     static float chain(AcustraEngine& engine, float force) { return engine.renderPiezo(force); }
-    static AcustraEngine::PiezoSaddleFilter saddle(const AcustraEngine& engine, int material)
+    static AcustraEngine::PiezoSaddleFilter saddle(const AcustraEngine& engine)
     {
-        return engine.piezoSaddle_[static_cast<std::size_t>(material)];
+        return engine.piezoSaddle_;
     }
     // C3's, C4's and C5's voltages (C4 and C5 seven samples back, with the
     // output) and U1B's clipped output seven samples back.
@@ -62,10 +62,6 @@ struct AcustraEngineTestAccess
         all.insert(all.end(), engine.piezoDrive_.begin(), engine.piezoDrive_.end());
         all.insert(all.end(), engine.piezoStage_.begin(), engine.piezoStage_.end());
         return all;
-    }
-    static void setMaterial(AcustraEngine& engine, StringMaterial material)
-    {
-        engine.parameters_.stringMaterial = material;
     }
 };
 } // namespace acustra
@@ -163,9 +159,9 @@ struct Reference
     std::vector<std::complex<double>> vout;
 };
 
-Reference readAc(const std::string& material)
+Reference readAc()
 {
-    const auto table = readTable("piezo-reference-ac-" + material + ".csv");
+    const auto table = readTable("piezo-reference-ac-steel.csv");
     Reference reference;
     for (const auto& row : table.rows)
     {
@@ -192,13 +188,10 @@ std::complex<double> interpolate(const Reference& reference, double hz)
     return std::polar(magnitude, (1.0 - t) * phase0 + t * phase1);
 }
 
-std::unique_ptr<acustra::AcustraEngine> engineAt(int rate,
-    acustra::StringMaterial material = acustra::StringMaterial::Steel)
+std::unique_ptr<acustra::AcustraEngine> engineAt(int rate)
 {
     auto engine = std::make_unique<acustra::AcustraEngine>();
-    acustra::EngineParameters parameters;
-    parameters.stringMaterial = material;
-    engine->setParameters(parameters);
+    engine->setParameters(acustra::EngineParameters {});
     engine->prepare(rate, 64);
     return engine;
 }
@@ -287,9 +280,9 @@ void testOperatingPoint()
 // ------------------------------------------------------------ 2. small signal
 // The impulse response to a 10 N force sample (u1b stays within 1.5 V), with
 // the seven-sample latency removed, against the reference's AC analysis.
-std::vector<double> impulseResponse(int rate, acustra::StringMaterial material)
+std::vector<double> impulseResponse(int rate)
 {
-    auto engine = engineAt(rate, material);
+    auto engine = engineAt(rate);
     constexpr double newtons = 10.0;
     std::vector<double> response;
     long lastNonzero = 0;
@@ -306,13 +299,11 @@ std::vector<double> impulseResponse(int rate, acustra::StringMaterial material)
 
 void testSmallSignal()
 {
-    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
     {
-        const std::string name = material == acustra::StringMaterial::Steel ? "steel" : "nylon";
-        const auto reference = readAc(name);
+        const auto reference = readAc();
         for (int rate : { 44100, 48000, 96000, 192000 })
         {
-            const auto response = impulseResponse(rate, material);
+            const auto response = impulseResponse(rate);
             double worstLow = 0.0, worstMagnitude = 0.0, worstPhase = 0.0, worstTop = 0.0;
             double worstAt = 0.0;
             for (std::size_t i = 0; i < reference.hz.size(); ++i)
@@ -336,7 +327,7 @@ void testSmallSignal()
                 else if (rate < 88200)
                     worstTop = std::max(worstTop, magnitude);
             }
-            const std::string where = name + " at " + std::to_string(rate);
+            const std::string where = "at " + std::to_string(rate);
             expect(worstLow <= 0.1, "piezo 5-20 Hz departs from the circuit by "
                                         + std::to_string(worstLow) + " dB, " + where);
             // At 44.1 kHz the saddle filter's own fit error reaches 0.34 dB
@@ -384,7 +375,7 @@ void testSaddleFilter()
                              Gate { 192000, 0.25, 2.0, 0.25 } })
     {
         auto engine = engineAt(gate.rate);
-        const auto filter = Access::saddle(*engine, 0);
+        const auto filter = Access::saddle(*engine);
         double worstDb = 0.0, worstDeg = 0.0, worstTop = 0.0, dc = 0.0;
         for (float b : filter.b)
             dc += b;
@@ -420,7 +411,7 @@ void testSaddleFilter()
             std::cout << ", " << worstTop << " dB to " << top << " Hz";
         std::cout << '\n';
     }
-    // The analog peak itself: 5980 Hz, +10.5 dB, Q 3.26 for steel.
+    // The analog peak itself: 5980 Hz, +10.5 dB, Q 3.26.
     double peak = 0.0, at = 0.0;
     for (double f = 4000.0; f < 8000.0; f += 1.0)
         if (std::abs(analogSaddle(f, steel)) > peak)
@@ -430,10 +421,10 @@ void testSaddleFilter()
         }
     expect(std::abs(decibels(peak) - 10.5) < 0.2 && std::abs(at - 5950.0) < 150.0,
            "the analog saddle's peak moved");
-    std::cout << "Analog saddle (steel): peak " << decibels(peak) << " dB at " << at << " Hz\n";
+    std::cout << "Analog saddle: peak " << decibels(peak) << " dB at " << at << " Hz\n";
     // Below 16 kHz, four taps and no poles.
     auto low = engineAt(8000);
-    const auto fir = Access::saddle(*low, 0);
+    const auto fir = Access::saddle(*low);
     expect(fir.a1 == 0.0f && fir.a2 == 0.0f && fir.b[4] == 0.0f,
            "the 8 kHz saddle filter is not a four-tap FIR");
 }
@@ -442,9 +433,9 @@ void testSaddleFilter()
 void testHarmonics()
 {
     constexpr int rate = 48000, block = 16384;
-    const auto reference = readAc("steel");
+    const auto reference = readAc();
     const auto table = readTable("piezo-reference-thd.csv");
-    const auto response = impulseResponse(rate, acustra::StringMaterial::Steel);
+    const auto response = impulseResponse(rate);
     double worst = 0.0;
     for (const auto& row : table.rows)
     {
@@ -540,7 +531,7 @@ void testHarmonics()
 // U1A's input range stops it too, and from 5 dB the diodes conduct.
 void testAliasing()
 {
-    const auto reference = readAc("steel");
+    const auto reference = readAc();
     constexpr int block = 16384;
     for (int rate : { 44100, 48000 })
         for (int nominal : { 1000, 3000 })
@@ -734,39 +725,7 @@ void testSilenceAndGuards()
            "an infinite force reached the piezo output");
 }
 
-// ------------------------------------------------------------ 8. material
-// Swapping the string material swaps the saddle filter under a ringing
-// chain: a step no larger than the two filters' own difference.
-void testMaterialSwap()
-{
-    auto engine = engineAt(48000);
-    std::vector<double> swapped, steel, nylon;
-    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
-    {
-        auto held = engineAt(48000);
-        Access::setMaterial(*held, material);
-        auto& out = material == acustra::StringMaterial::Steel ? steel : nylon;
-        for (int i = 0; i < 9600; ++i)
-            out.push_back(Access::volts(*held, 5.0 * std::sin(2.0 * pi * 997.0 * i / 48000.0)));
-    }
-    for (int i = 0; i < 9600; ++i)
-    {
-        if (i == 4800)
-            Access::setMaterial(*engine, acustra::StringMaterial::Nylon);
-        swapped.push_back(Access::volts(*engine, 5.0 * std::sin(2.0 * pi * 997.0 * i / 48000.0)));
-    }
-    double worst = 0.0, between = 0.0;
-    for (std::size_t i = 4800; i < 9600; ++i)
-    {
-        worst = std::max(worst, std::abs(swapped[i] - nylon[i]));
-        between = std::max(between, std::abs(steel[i] - nylon[i]));
-    }
-    expect(worst <= between, "a material swap stepped the piezo past the two filters' difference");
-    std::cout << "Piezo material swap: largest departure from the held nylon render "
-              << worst << " V, against " << between << " V between the two materials\n";
-}
-
-// ------------------------------------------------------------ 9. CPU
+// ------------------------------------------------------------ 8. CPU
 void testCost()
 {
     auto engine = engineAt(48000);
@@ -792,7 +751,7 @@ void testCost()
 int main(int argc, char** argv)
 {
     // With arguments, only the named parts run (dc saddle small harmonics
-    // aliasing overload silence material cost).
+    // aliasing overload silence cost).
     const auto wanted = [&] (const std::string& name)
     {
         if (argc < 2)
@@ -809,7 +768,6 @@ int main(int argc, char** argv)
     if (wanted("aliasing")) testAliasing();
     if (wanted("overload")) testOverload();
     if (wanted("silence")) testSilenceAndGuards();
-    if (wanted("material")) testMaterialSwap();
     if (wanted("cost")) testCost();
     if (failures == 0)
         std::cout << "All Acustra piezo circuit tests passed\n";

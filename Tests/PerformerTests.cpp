@@ -83,10 +83,6 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
     {
         case Kind::GatherChords: gather = control.value >= 0.5f; break;
         case Kind::Panic: panic = true; break;
-        case Kind::StringMaterial:
-            parameters.stringMaterial = index == 0 ? acustra::StringMaterial::Nylon
-                                                   : acustra::StringMaterial::Steel;
-            break;
         case Kind::CaptureMode:
             parameters.capture = index == 0 ? acustra::CaptureType::StereoMic
                 : index == 1 ? acustra::CaptureType::MonoMic
@@ -104,9 +100,6 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
         case Kind::Wood:
             parameters.bodyMaterial = static_cast<acustra::BodyMaterial>(index);
             break;
-        case Kind::Bridge:
-            parameters.bridgeModel = static_cast<acustra::BridgeModel>(index);
-            break;
         case Kind::Model:
             parameters.guitarModel = static_cast<acustra::GuitarModel>(index);
             break;
@@ -114,6 +107,7 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
         case Kind::Age: parameters.stringAge = 0.01f * control.value; break;
         case Kind::Pluck: parameters.pluckPosition = 0.01f * control.value; break;
         case Kind::Touch: parameters.touch = 0.01f * control.value; break;
+        case Kind::PiezoMix: parameters.piezoMix = 0.01f * control.value; break;
     }
 }
 

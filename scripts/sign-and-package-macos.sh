@@ -93,12 +93,11 @@ ditto "${APP}" "${PACKAGE_ROOT}/Applications/Acustra.app"
 NOTICE_ROOT="${PACKAGE_ROOT}/Library/Application Support/Acustra/Documentation"
 JUCE_NOTICE="${PROJECT_DIR}/ThirdParty/JUCE-LICENSE.md"
 CC0_NOTICE="${PROJECT_DIR}/ThirdParty/CC0-1.0.txt"
-FREEPATS_NOTICE="${PROJECT_DIR}/ThirdParty/FreePats-Spanish-Classical-Guitar-README.txt"
 EASTMAN_NOTICE="${PROJECT_DIR}/ThirdParty/Eastman-E1D-README.md"
 SHINY_NOTICE="${PROJECT_DIR}/ThirdParty/Shinyguitar-README.txt"
 BANK_MANIFEST="${PROJECT_DIR}/Assets/SampleBank/manifest.json"
 for notice in "${PROJECT_DIR}/LICENSE" "${PROJECT_DIR}/THIRD_PARTY_NOTICES.md" \
-              "${JUCE_NOTICE}" "${CC0_NOTICE}" "${FREEPATS_NOTICE}" \
+              "${JUCE_NOTICE}" "${CC0_NOTICE}" \
               "${EASTMAN_NOTICE}" "${SHINY_NOTICE}" "${BANK_MANIFEST}"; do
     if [[ ! -f "${notice}" ]]; then
         echo "error: missing distribution notice: ${notice}" >&2
@@ -115,8 +114,6 @@ copy_documentation() {
         "${destination}/THIRD_PARTY_NOTICES.md"
     ditto "${JUCE_NOTICE}" "${destination}/ThirdParty/JUCE-LICENSE.md"
     ditto "${CC0_NOTICE}" "${destination}/ThirdParty/CC0-1.0.txt"
-    ditto "${FREEPATS_NOTICE}" \
-        "${destination}/ThirdParty/FreePats-Spanish-Classical-Guitar-README.txt"
     ditto "${EASTMAN_NOTICE}" \
         "${destination}/ThirdParty/Eastman-E1D-README.md"
     ditto "${SHINY_NOTICE}" \

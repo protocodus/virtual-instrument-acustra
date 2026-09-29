@@ -851,7 +851,7 @@ PROBE_CONDITIONS = (("coupled", "on", "on"),
 def probe_render(probe: Path, work: Path, condition: str, coupling: str,
                  sympathy: str, control: float, midi: int) -> Path:
     out = work / f"probe-{condition}-{control:.1f}.f32"
-    subprocess.run([str(probe), str(out), "steel", coupling, f"{control}",
+    subprocess.run([str(probe), str(out), coupling, f"{control}",
                     "dreadnought", str(midi), sympathy],
                    check=True, stdout=subprocess.DEVNULL)
     return out

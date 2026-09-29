@@ -22,7 +22,7 @@
 // Q from 300 to 10000 Hz read against the anechoic flamencas
 // (median over the octave), for the radiation and the bridge alike.
 // steelJointTopMobilityRatio: the Fylde Falstaff's measured bridge mobility
-// (MeasuredSteelBridgeData.h) over this bank's at u = -1, RMS |Y| on a
+// (Carcagno et al. 2018) over this bank's at u = -1, RMS |Y| on a
 // log-frequency grid over 80 Hz-4 kHz.
 
 #pragma once

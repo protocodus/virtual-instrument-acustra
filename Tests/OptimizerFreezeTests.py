@@ -13,8 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "Tools"))
 import OptimizePhysicalModel as optimiser  # noqa: E402
 
 REJECTED_BY_EAR = (
-    "contactNoiseFinger", "contactNoiseNylon", "contactNoisePick",
-    "contactClickFinger", "contactClickNylon", "contactClickPick",
+    "contactNoiseFinger", "contactNoisePick",
+    "contactClickFinger", "contactClickPick",
 )
 
 
@@ -33,7 +33,7 @@ def main() -> int:
             failures.append(f"{name} (index {index}) is not frozen")
         if optimiser.SHIPPING[index] != 0.0:
             failures.append(f"{name} ships at {optimiser.SHIPPING[index]}, not 0")
-    for stage, (_, free) in optimiser.STAGES.items():
+    for stage, free in optimiser.STAGES.items():
         refit = sorted(names[index] for index in free
                        if index in optimiser.FROZEN)
         if refit:

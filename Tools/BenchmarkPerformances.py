@@ -28,8 +28,6 @@ hammer-on; explicit capture/picking choices are reported. Previously measured
 GuitarSet strum statistics informed the engine, so this is a different-instrument
 performance evaluation, not a completely untouched holdout. The renderer
 replays annotated timing, so this does not evaluate automatic MIDI strumming.
-The optional --bridge-model fylde uses the measured steel bridge alternative;
-all other controls and the microphone radiation remain as in the baseline.
 
 Score at 48 kHz after one whole-clip RMS match. Reuse the dry-note scorer's six
 prime STFT lengths for mean log-magnitude error (dB) and spectral convergence;
@@ -204,7 +202,7 @@ def archive_entry(archive: zipfile.ZipFile, filename: str) -> bytes:
 
 
 def benchmark(dataset: Path, renderer: Path, output: Path, capture: str, picking: str,
-              bridge: str = "original", reference_capture: str = "microphone") -> dict:
+              reference_capture: str = "microphone") -> dict:
     if reference_capture not in ("microphone", "magnetic_pickup"):
         raise ValueError("unknown reference capture")
     archive_name = "audio_mono-mic.zip" if reference_capture == "microphone" else "audio_mono-pickup_mix.zip"
@@ -223,7 +221,7 @@ def benchmark(dataset: Path, renderer: Path, output: Path, capture: str, picking
             event_path = output / (track + ".events")
             write_events(event_path, events)
             model_path = output / (track + ".f32")
-            subprocess.run([str(renderer), str(event_path), str(model_path), capture, picking, bridge], check=True)
+            subprocess.run([str(renderer), str(event_path), str(model_path), capture, picking], check=True)
             source_rate, target = wavfile.read(io.BytesIO(recording_bytes))
             if target.ndim != 1 or len(target) < source_rate * SECONDS:
                 raise ValueError(f"{track}: expected at least 12 seconds of {reference_capture} mono audio")
@@ -253,7 +251,7 @@ def benchmark(dataset: Path, renderer: Path, output: Path, capture: str, picking
         "scorer_sha256": digest(Path(__file__)),
         "numpy_version": np.__version__, "scipy_version": scipy.__version__,
         "analysis_rate": RATE, "start_seconds": 0, "duration_seconds": SECONDS,
-        "velocity": VELOCITY, "capture": capture, "picking": picking, "bridge_model": bridge,
+        "velocity": VELOCITY, "capture": capture, "picking": picking,
         "reference_capture": reference_capture,
         "reference_transducer": ("Neumann U87 condenser, about 30 cm from the 18th fret"
                                  if reference_capture == "microphone" else
@@ -320,32 +318,31 @@ def self_test(renderer: Path | None) -> None:
             default_hash = digest(root / "a.f32")
             for name, options in (
                 ("legacy-capture", ["stereo_mic", "finger"]),
-                ("explicit-default", ["stereo_mic", "finger", "original",
-                                      "--string-material", "steel", "--tuning", "standard"]),
-                ("flags-only", ["--tuning", "standard", "--string-material", "steel"]),
+                ("explicit-default", ["stereo_mic", "finger", "--tuning", "standard",
+                                      "--body-shape", "dreadnought", "--body-material", "spruce",
+                                      "--guitar-model", "original"]),
+                ("flags-only", ["--tuning", "standard", "--body-material", "spruce"]),
             ):
                 output = root / (name + ".f32")
                 subprocess.run([str(renderer), str(event_path), str(output), *options], check=True)
-                assert digest(output) == default_hash, "default material/tuning changed existing audio"
+                assert digest(output) == default_hash, "explicit defaults changed existing audio"
             rendered = np.fromfile(root / "a.f32", dtype="<f4")
             assert len(rendered) == RATE * 2 and np.isfinite(rendered).all() and np.max(np.abs(rendered)) > 0
-            alternative = root / "fylde.f32"
+            alternative = root / "bellido.f32"
             subprocess.run([str(renderer), str(event_path), str(alternative),
-                            "stereo_mic", "finger", "fylde"], check=True)
-            assert alternative.read_bytes() != (root / "a.f32").read_bytes()
-            nylon = root / "nylon.f32"
-            subprocess.run([str(renderer), str(event_path), str(nylon),
-                            "stereo_mic", "finger", "--string-material", "nylon"], check=True)
-            nylon_audio = np.fromfile(nylon, dtype="<f4")
-            assert np.isfinite(nylon_audio).all() and np.max(np.abs(nylon_audio)) > 0
-            assert digest(nylon) != default_hash, "nylon selection did not change the physical strings"
+                            "stereo_mic", "finger", "--guitar-model", "bellido1978"], check=True)
+            alternative_audio = np.fromfile(alternative, dtype="<f4")
+            assert np.isfinite(alternative_audio).all() and np.max(np.abs(alternative_audio)) > 0
+            assert digest(alternative) != default_hash, "the Bellido did not change the body"
+            # A third positional (the retired bridge model) and the retired
+            # string-material and Cedar options are refused, not ignored.
             rejected = subprocess.run([str(renderer), str(event_path), str(root / "invalid.f32"),
-                                       "stereo_mic", "finger", "unknown"], capture_output=True)
+                                       "stereo_mic", "finger", "original"], capture_output=True)
             assert rejected.returncode != 0 and not (root / "invalid.f32").exists()
-            for options in (["--string-material", "bronze"], ["--tuning", "open_z"],
-                            ["--tuning"], ["--unknown", "steel"],
+            for options in (["--string-material", "steel"], ["--body-material", "cedar"],
+                            ["--tuning", "open_z"], ["--tuning"], ["--unknown", "steel"],
                             ["--tuning", "standard", "--tuning", "drop_d"],
-                            ["--string-material", "steel", "--string-material", "nylon"]):
+                            ["--body-material", "spruce", "--body-material", "maple"]):
                 rejected = subprocess.run([str(renderer), str(event_path), str(root / "invalid.f32"),
                                            *options], capture_output=True)
                 assert rejected.returncode != 0 and not (root / "invalid.f32").exists(), options
@@ -357,12 +354,11 @@ def self_test(renderer: Path | None) -> None:
             rejected = subprocess.run([str(renderer), str(event_path), str(root / "invalid.f32")],
                                       capture_output=True)
             assert rejected.returncode != 0 and not (root / "invalid.f32").exists()
-            for material in ("steel", "nylon"):
-                output = root / ("drop-d-" + material + ".f32")
-                subprocess.run([str(renderer), str(event_path), str(output), "stereo_mic", "finger", "original",
-                                "--string-material", material, "--tuning", "drop_d"], check=True)
-                audio = np.fromfile(output, dtype="<f4")
-                assert len(audio) == RATE * 2 and np.isfinite(audio).all() and np.max(np.abs(audio)) > 0
+            output = root / "drop-d.f32"
+            subprocess.run([str(renderer), str(event_path), str(output), "stereo_mic", "finger",
+                            "--tuning", "drop_d"], check=True)
+            audio = np.fromfile(output, dtype="<f4")
+            assert len(audio) == RATE * 2 and np.isfinite(audio).all() and np.max(np.abs(audio)) > 0
             for note, channel in ((37, 1), (38, 2), (59, 1)):
                 write_events(event_path, [(0, channel, note, 91, 0.0)], RATE)
                 rejected = subprocess.run([str(renderer), str(event_path), str(root / "invalid.f32"),
@@ -402,7 +398,6 @@ def main() -> None:
     parser.add_argument("--capture", default="stereo_mic", choices=("stereo_mic", "mono_mic", "piezo"))
     parser.add_argument("--reference-capture", default="microphone", choices=("microphone", "magnetic_pickup"))
     parser.add_argument("--picking", default="finger", choices=("finger", "pick", "thumb"))
-    parser.add_argument("--bridge-model", default="original", choices=("original", "fylde"))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -411,7 +406,7 @@ def main() -> None:
         if args.dataset is None or args.renderer is None or args.output is None:
             parser.error("--dataset, --renderer and --output are required")
         report = benchmark(args.dataset, args.renderer.resolve(), args.output,
-                           args.capture, args.picking, args.bridge_model, args.reference_capture)
+                           args.capture, args.picking, args.reference_capture)
         (args.output / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8")
 
 

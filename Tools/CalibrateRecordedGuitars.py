@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Calibrate or evaluate Acustra against two named, recorded acoustic guitars.
+"""Calibrate or evaluate Acustra against a named, recorded steel-string guitar.
 
-The first two filename-ordered finger/thumb takes at fixed disjoint pitches
+The guitar is the Walden G551E of Acoustic Guitar Notes v3
+(BenchmarkTechniqueNotes.py); the corpus's nylon-string Yamaha CM-40 is left
+out, since Acustra is steel-strung only (2026-09-29). The first two
+filename-ordered finger/thumb takes at fixed disjoint pitches
 form training/development splits. The archive hash and selection precede audio
 analysis. The optional bounded search reads only training scores. Validation
 is evaluated once after its winner is selected; it never selects a replacement.
@@ -41,8 +44,8 @@ def loss(target, model):
             for name in WEIGHTS}
 
 def evaluate(job):
-    material, name, values, split = job
-    directory = OUT/material/name/split
+    name, values, split = job
+    directory = OUT/name/split
     directory.mkdir(parents=True, exist_ok=False)
     calibration = directory/'calibration.txt'
     calibration.write_text(''.join(f'{key} {value:.10g}\n' for key,value in values.items()))
@@ -52,22 +55,21 @@ def evaluate(job):
         event = directory/f'{midi}.events'
         model = directory/f'{midi}.f32'
         data.write_events(event, [(0,fingering['channel'],midi,91,0.)], 96000)
-        subprocess.run([str(RENDERER),str(event),str(model),'stereo_mic','finger','original',
-                        '--string-material',material,'--tuning',fingering['tuning'],
-                        '--body-shape','auditorium','--body-material',
-                        'mahogany' if material == 'steel' else 'spruce',
+        subprocess.run([str(RENDERER),str(event),str(model),'stereo_mic','finger',
+                        '--tuning',fingering['tuning'],
+                        '--body-shape','auditorium','--body-material','mahogany',
                         '--calibration',str(calibration)],check=True,capture_output=True)
         audio = np.fromfile(model,dtype='<f4').reshape(-1,2).mean(axis=1).astype(float)
         if not np.isfinite(audio).all() or not np.any(audio):
             raise ValueError('invalid render')
         model_features = features.extract_features(audio,48000,midi)
-        for target in TARGETS[material,midi]:
+        for target in TARGETS[midi]:
             terms.append(loss(target,model_features))
     average = {key:float(np.mean([term[key] for term in terms])) for key in WEIGHTS}
-    result = {'material':material,'candidate':name,'split':split,'values':values,
+    result = {'candidate':name,'split':split,'values':values,
               'score':sum(WEIGHTS[key]*average[key] for key in WEIGHTS),'terms':average}
     (directory/'score.json').write_text(json.dumps(result,indent=2)+'\n')
-    print(material,name,split,round(result['score'],6),flush=True)
+    print(name,split,round(result['score'],6),flush=True)
     return result
 
 def main():
@@ -88,7 +90,7 @@ def main():
     if set(BASE) != set(NAMES) or any(not isinstance(BASE[k],(float,int))
             or not np.isfinite(BASE[k]) or not LOWER[i] <= BASE[k] <= UPPER[i]
             for i,k in enumerate(NAMES)):
-        parser.error('calibration must contain exactly 29 finite, bounded named values')
+        parser.error(f'calibration must contain exactly {len(NAMES)} finite, bounded named values')
     if not RENDERER.is_file() or not ARCHIVE.is_file():
         parser.error('renderer and archive must exist')
     OUT.mkdir(parents=True, exist_ok=False)
@@ -115,67 +117,62 @@ def main():
     selection=[]
     with zipfile.ZipFile(ARCHIVE) as archive:
         for row in data.select_targets(archive.namelist()):
-            if row['label'] not in ('sfn','nfn') or row['midi'] not in TRAIN+VALID:
+            if row['label'] != 'sfn' or row['midi'] not in TRAIN+VALID:
                 continue
             raw=archive.read(row['source_member'])
             target=features.extract_features(data.read_reference(raw,row['source_member']),48000,row['midi'])
-            TARGETS.setdefault((row['material'],row['midi']),[]).append(target)
+            TARGETS.setdefault(row['midi'],[]).append(target)
             selection.append({**row,'sha256':hashlib.sha256(raw).hexdigest(),
                               'split':'train' if row['midi'] in TRAIN else 'validation'})
     (OUT/'selection.json').write_text(json.dumps(selection,indent=2)+'\n')
     results=[]
-    chosen={}
     # Thread pool: NumPy feature extraction and subprocess rendering release
     # the GIL; each job writes its own new directory and immutable controls.
     with cf.ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        for material in ('nylon','steel'):
-            current=BASE.copy()
-            baseline=evaluate((material,'baseline',current,'train'))
-            results.append(baseline)
-            best=baseline
-            for iteration in range(2 if args.fit else 0):
-                jobs=[]
-                for field in ('fundamentalT60Scale','frequencyLossScale','apertureScale','pluckDistanceScale'):
-                    key=material+'.'+field
-                    lower,upper=LOWER[NAMES.index(key)],UPPER[NAMES.index(key)]
-                    for multiplier in (.8,1.2):
-                        values=current.copy()
-                        values[key]=float(np.clip(current[key]*multiplier,lower,upper))
-                        jobs.append((material,f'i{iteration}-{field}-{multiplier}',values,'train'))
-                evaluated=list(pool.map(evaluate,jobs))
-                results.extend(evaluated)
-                winner=min([best]+evaluated,key=lambda row:row['score'])
-                if winner['score'] >= best['score']:
-                    break
-                best=winner
-                current=best['values'].copy()
-            chosen[material]=best
-            # Validation is first read after selecting the training winner;
-            # its result never selects a different candidate.
-            validation_jobs=[(material,'baseline',BASE,'validation')]
-            if args.fit:
-                validation_jobs.append((material,'selected',current,'validation'))
-            results.extend(pool.map(evaluate,validation_jobs))
-            (OUT/f'{material}-selected.json').write_text(json.dumps(best,indent=2)+'\n')
+        current=BASE.copy()
+        baseline=evaluate(('baseline',current,'train'))
+        results.append(baseline)
+        best=baseline
+        for iteration in range(2 if args.fit else 0):
+            jobs=[]
+            for field in ('fundamentalT60Scale','frequencyLossScale','apertureScale','pluckDistanceScale'):
+                key='steel.'+field
+                lower,upper=LOWER[NAMES.index(key)],UPPER[NAMES.index(key)]
+                for multiplier in (.8,1.2):
+                    values=current.copy()
+                    values[key]=float(np.clip(current[key]*multiplier,lower,upper))
+                    jobs.append((f'i{iteration}-{field}-{multiplier}',values,'train'))
+            evaluated=list(pool.map(evaluate,jobs))
+            results.extend(evaluated)
+            winner=min([best]+evaluated,key=lambda row:row['score'])
+            if winner['score'] >= best['score']:
+                break
+            best=winner
+            current=best['values'].copy()
+        # Validation is first read after selecting the training winner;
+        # its result never selects a different candidate.
+        validation_jobs=[('baseline',BASE,'validation')]
+        if args.fit:
+            validation_jobs.append(('selected',current,'validation'))
+        results.extend(pool.map(evaluate,validation_jobs))
+        (OUT/'selected.json').write_text(json.dumps(best,indent=2)+'\n')
     report={'protocol':'fixed disjoint pitches; two author-labeled finger/thumb takes each; training-only two-step bounded coordinate poll; no source latency/pitch/dynamics inference',
             'fitting_enabled':args.fit,'source':data.SOURCE,'archive_sha256':data.ARCHIVE_SHA256,
             **provenance,
-            'instruments':{'steel':'Walden G551E grand auditorium, mahogany top',
-                           'nylon':'Yamaha CM-40 classical; auditorium model proxy'},
+            'instrument':'Walden G551E grand auditorium, mahogany top',
             'render_controls':{'sample_rate':48000,'frames':96000,'velocity':91,
                                'picking':'finger','capture':'stereo_mic',
                                'analysis_mix':'arithmetic mean of left and right',
-                               'bridge_model':'original','body_shape':'auditorium',
-                               'body_material':{'steel':'mahogany','nylon':'spruce'},
+                               'body_shape':'auditorium','body_material':'mahogany',
                                'bend_semitones':0,'note_off':False,
                                'fingering':{str(midi):data.fingering(midi) for midi in TRAIN+VALID},
                                'other_controls':'compiled defaults pinned in renderer-snapshot',
-                               'calibration':'all 29 values explicitly supplied for every candidate'},
+                               'calibration':f'all {len(NAMES)} values explicitly supplied for every candidate'},
             'train_midi':TRAIN,'validation_midi':VALID,'weights':WEIGHTS,
-            'selected':chosen,'results':results,
+            'selected':best,'results':results,
             'limitations':['microphone/pickup and pluck velocity not documented',
                            'source fingering not documented; least-fret channel inferred',
-                           'both model bodies are proxies, not independently identified target instruments',
+                           'the model body is a proxy, not the independently identified target instrument',
                            'training has six open-string model pitches; validation has none (open-to-fretted distribution shift)',
                            'no perceptual claim; cross-instrument validation required before promotion']}
     (OUT/'report.json').write_text(json.dumps(report,indent=2)+'\n')

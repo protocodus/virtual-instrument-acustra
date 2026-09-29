@@ -46,19 +46,52 @@ void expect(bool value, const char* message)
     if (!value) { ++failures; std::cerr << "FAIL: " << message << '\n'; }
 }
 
+// A guitar at its own Shape; the Bellido at Mahogany, as its preset plays it.
 acustra::EngineParameters parametersFor(acustra::GuitarModel model)
 {
     acustra::EngineParameters p;
     p.guitarModel = model;
     p.shape = acustra::BodyShape::Auditorium;
     if (model == acustra::GuitarModel::Bellido1978)
-    { p.stringMaterial = acustra::StringMaterial::Nylon; p.bodyMaterial = acustra::BodyMaterial::Cedar; }
+        p.bodyMaterial = acustra::BodyMaterial::Mahogany;
     return p;
 }
 
+// The radiation bank as the engine should hear it at parametersFor(model):
+// each mode on its engine pole (the anchor, Shape and Wood; the Bellido's
+// measured wood is not a Body Material choice, so Wood always moves it) and
+// its residues at Wood's radiation and brightness. The engine's own
+// recurrence, rate conversion and delay are what the tests below check.
 template <typename Bank>
-void testRadiation(acustra::GuitarModel model, const Bank& bank, int delay48)
+std::vector<acustra::detail::MeasuredBodyMode> heardBank(acustra::GuitarModel model,
+                                                         const Bank& bank)
 {
+    const auto p = parametersFor(model);
+    const auto wood = acustra::AcustraEngineTestAccess::woodFactors(p);
+    std::vector<acustra::detail::MeasuredBodyMode> heard(bank.begin(), bank.end());
+    for (std::size_t i = 0; i < heard.size(); ++i)
+    {
+        auto& m = heard[i];
+        const auto pole = acustra::AcustraEngineTestAccess::radiationPole(p, static_cast<int>(i));
+        m.frequency = pole[0];
+        m.q = pole[1];
+        const double upper = std::clamp(std::log2(std::max(double(m.frequency), 120.0) / 120.0) / 6.0,
+                                        0.0, 1.0);
+        const auto gain = static_cast<float>(wood[3] * std::pow(double(wood[2]), upper));
+        for (float* residue : { &m.leftReal, &m.leftImaginary, &m.rightReal, &m.rightImaginary,
+                                &m.upperReal, &m.upperImaginary, &m.leftMomentReal,
+                                &m.leftMomentImaginary, &m.rightMomentReal,
+                                &m.rightMomentImaginary, &m.upperMomentReal,
+                                &m.upperMomentImaginary })
+            *residue *= gain;
+    }
+    return heard;
+}
+
+template <typename Bank>
+void testRadiation(acustra::GuitarModel model, const Bank& measured, int delay48)
+{
+    const auto bank = heardBank(model, measured);
     for (int rate : { 24000, 48000, 96000 })
     {
         auto engine = std::make_unique<acustra::AcustraEngine>();
@@ -117,8 +150,9 @@ std::array<std::complex<double>, 3> dtft(
 }
 
 template <typename Bank>
-void testFractionalRadiation(acustra::GuitarModel model, const Bank& bank, int delay48)
+void testFractionalRadiation(acustra::GuitarModel model, const Bank& measured, int delay48)
 {
+    const auto bank = heardBank(model, measured);
     const double pi = std::acos(-1.);
     std::vector<double> frequencies;
     for (int i = 0; i < 96; ++i)
@@ -221,23 +255,13 @@ void testNominalBridge(acustra::GuitarModel model, const Bank& bank)
     auto engine = std::make_unique<acustra::AcustraEngine>();
     engine->setParameters(parametersFor(model));
     engine->prepare(48000, 64);
+    // Its steel strings leave the measured guitar its own top's full
+    // mobility: steel's own bridge's steelTopMobilityRatio corrects the
+    // Original's flamenca proxy, not a measured classical strung with steel
+    // (audit F18). Wood moves the bridge's poles, not its residues.
     expect(acustra::AcustraEngineTestAccess::nominalBridgeMatches(*engine, bank),
-           "a nominal measured bridge inherited legacy mobility gain or conductance floor");
-    // With steel strings too the measured guitar keeps its own top's full
-    // mobility, whichever Bridge is chosen: steel's own bridge's
-    // steelTopMobilityRatio corrects the Original's flamenca proxy, not a
-    // measured classical strung with steel (audit F18).
-    for (auto bridge : { acustra::BridgeModel::Original, acustra::BridgeModel::FyldeSteel })
-    {
-        auto steel = parametersFor(model);
-        steel.stringMaterial = acustra::StringMaterial::Steel;
-        steel.bridgeModel = bridge;
-        auto strung = std::make_unique<acustra::AcustraEngine>();
-        strung->setParameters(steel);
-        strung->prepare(48000, 64);
-        expect(acustra::AcustraEngineTestAccess::nominalBridgeMatches(*strung, bank),
-               "steel strings scaled a measured guitar's own bridge");
-    }
+           "a nominal measured bridge inherited legacy mobility gain, conductance floor "
+           "or a steel-string scale");
 }
 
 // Values 2-4 were the Washburn 1897, Santa Cruz OM 2022 and Martin D18V 2007,
@@ -261,16 +285,12 @@ std::vector<float> renderChord(acustra::EngineParameters p)
 
 void testRetiredModelsPlayOriginal()
 {
-    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
+    auto p = parametersFor(acustra::GuitarModel::Original);
+    const auto original = renderChord(p);
+    for (int retired : { 2, 3, 4 })
     {
-        auto p = parametersFor(acustra::GuitarModel::Original);
-        p.stringMaterial = material;
-        const auto original = renderChord(p);
-        for (int retired : { 2, 3, 4 })
-        {
-            p.guitarModel = static_cast<acustra::GuitarModel>(retired);
-            expect(renderChord(p) == original, "a retired guitar model did not play Original");
-        }
+        p.guitarModel = static_cast<acustra::GuitarModel>(retired);
+        expect(renderChord(p) == original, "a retired guitar model did not play Original");
     }
 }
 
@@ -320,48 +340,60 @@ void testCoupledModels()
 }
 }
 // Body Material moves a measured body relative to the wood it was built of,
-// so at that wood it is heard as measured. g34, Original nylon's body, is a
-// cedar-topped classical, like the Bellido; Wood used to take spruce as its
-// reference, so the Classical preset (Cedar) put a cedar warp (-31 cents,
-// Q x0.88, darker, +4% radiation) on a cedar measurement and was not the
-// construction the benchmark scores (audit F19).
+// so at that wood it is heard as measured: g21, the Original's body, at
+// Spruce. The Bellido is cedar-topped, which is not a Body Material choice;
+// its three woods take the same directions from cedar as the Original's take
+// from spruce. Wood used to take spruce as every body's reference, and put a
+// cedar warp (-31 cents, Q x0.88, darker, +4% radiation) on the cedar
+// measurement (audit F19).
 void testEachBodyIsAsMeasuredAtItsOwnWood()
 {
     using namespace acustra;
-    struct Case { StringMaterial strings; GuitarModel model; BodyMaterial own; };
-    const Case cases[] {
-        { StringMaterial::Steel, GuitarModel::Original, BodyMaterial::Spruce },
-        { StringMaterial::Nylon, GuitarModel::Original, BodyMaterial::Cedar },
-        { StringMaterial::Nylon, GuitarModel::Bellido1978, BodyMaterial::Cedar },
-        { StringMaterial::Steel, GuitarModel::Bellido1978, BodyMaterial::Cedar },
-    };
-    for (const auto& c : cases)
-    {
-        expect(AcustraEngine::measuredBankWood(c.strings, c.model) == c.own,
-               "a measured body is not referenced to the wood it was built of");
-        EngineParameters p;
-        p.stringMaterial = c.strings; p.guitarModel = c.model; p.bodyMaterial = c.own;
-        const auto own = AcustraEngineTestAccess::woodFactors(p);
-        expect(own == std::array<float, 4> { 1.0f, 1.0f, 1.0f, 1.0f },
-               "Body Material warps a measured body at its own wood");
-        for (int wood = 0; wood < 4; ++wood)
+    EngineParameters original;
+    original.guitarModel = GuitarModel::Original;
+    original.bodyMaterial = BodyMaterial::Spruce;
+    expect(AcustraEngineTestAccess::woodFactors(original)
+               == std::array<float, 4> { 1.0f, 1.0f, 1.0f, 1.0f },
+           "Body Material warps the Original's measured body at its own wood");
+    EngineParameters bellido = original;
+    bellido.guitarModel = GuitarModel::Bellido1978;
+    std::array<double, 4> cedarShift {};
+    for (int wood = 0; wood < 3; ++wood)
+        for (const auto model : { GuitarModel::Original, GuitarModel::Bellido1978 })
         {
-            auto q = p; q.bodyMaterial = static_cast<BodyMaterial>(wood);
-            const auto factors = AcustraEngineTestAccess::woodFactors(q);
-            // The two cedar-topped bodies take one set of directions.
-            auto cedarTopped = q;
-            cedarTopped.stringMaterial = StringMaterial::Nylon;
-            cedarTopped.guitarModel = GuitarModel::Bellido1978;
-            if (c.own == BodyMaterial::Cedar)
-                expect(factors == AcustraEngineTestAccess::woodFactors(cedarTopped),
-                       "two cedar-topped bodies take different Wood directions");
-            // The radiation takes the frequency factor.
-            const double ratio = double(AcustraEngineTestAccess::radiationPole(q, 3)[0])
-                / AcustraEngineTestAccess::radiationPole(p, 3)[0];
-            expect(std::abs(ratio / factors[0] - 1.0) < 1.0e-6,
+            EngineParameters p;
+            p.guitarModel = model;
+            p.bodyMaterial = static_cast<BodyMaterial>(wood);
+            const auto factors = AcustraEngineTestAccess::woodFactors(p);
+            if (model == GuitarModel::Bellido1978)
+            {
+                // The Bellido's factors over the Original's: one constant,
+                // its measured wood's shift from spruce, for every wood.
+                auto q = p; q.guitarModel = GuitarModel::Original;
+                const auto spruceRelative = AcustraEngineTestAccess::woodFactors(q);
+                for (std::size_t k = 0; k < 4; ++k)
+                {
+                    const double shift = double(factors[k]) / spruceRelative[k];
+                    if (wood == 0)
+                        cedarShift[k] = shift;
+                    expect(std::abs(shift / cedarShift[k] - 1.0) < 1.0e-6,
+                           "the Bellido's woods take other directions than the Original's");
+                }
+            }
+            // The radiation takes the frequency factor, against the body at
+            // its own wood (the factor's identity).
+            auto own = p; own.bodyMaterial = BodyMaterial::Spruce;
+            const auto ownFactors = AcustraEngineTestAccess::woodFactors(own);
+            const double ratio = double(AcustraEngineTestAccess::radiationPole(p, 3)[0])
+                / AcustraEngineTestAccess::radiationPole(own, 3)[0];
+            expect(std::abs(ratio / (double(factors[0]) / ownFactors[0]) - 1.0) < 1.0e-6,
                    "the radiation does not move by Body Material's frequency factor");
         }
-    }
+    // Cedar is softer and more damped than spruce: the Bellido at Spruce
+    // sits higher and rings longer than as measured.
+    const auto bellidoAtSpruce = AcustraEngineTestAccess::woodFactors(bellido);
+    expect(bellidoAtSpruce[0] > 1.0f && bellidoAtSpruce[1] > 1.0f,
+           "the Bellido is not referenced to its cedar top");
 }
 
 int main()

@@ -1,20 +1,18 @@
-// Every construction a player can choose, played. Strings x Model x Bridge x
-// Shape x Wood x Tuning x Capture is 1,920 settings; each one strums its
+// Every construction a player can choose, played. Model x Shape x Wood x
+// Tuning x Capture is 360 settings; each one strums its
 // tuning's six open strings at 48 kHz, with the Piezo output requested, and
 // must stay finite, under full scale and audible, at a level near the
 // default's. Between cells the routes and choices must agree:
 //   - the Piezo output is the same instrument whatever Capture selects, bit
 //     for bit, and on Capture = Piezo it is Main (as floats);
 //   - the mono microphone is one signal on both channels;
-//   - requesting the Piezo output leaves Main bit-identical;
-//   - where Bridge selects nothing (nylon strings, or the Bellido) its two
-//     choices are one sound, bit for bit.
+//   - requesting the Piezo output leaves Main bit-identical.
 // Then a reduced set, in which every value of every control appears, at
 // 44.1, 88.2 and 192 kHz.
 //
 // Before this, the construction's own controls were tested one or two at a
 // time from the default (audit F28): Open G and Half-step down were played
-// by no test, and no test crossed Model, Bridge, Tuning and Capture with
+// by no test, and no test crossed Model, Tuning and Capture with
 // Shape and Wood.
 #include "DSP/AcustraEngine.h"
 
@@ -25,10 +23,8 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
-#include <map>
 #include <memory>
 #include <string>
-#include <tuple>
 #include <vector>
 
 namespace
@@ -36,11 +32,9 @@ namespace
 using acustra::AcustraEngine;
 using acustra::BodyMaterial;
 using acustra::BodyShape;
-using acustra::BridgeModel;
 using acustra::CaptureType;
 using acustra::EngineParameters;
 using acustra::GuitarModel;
-using acustra::StringMaterial;
 using acustra::Tuning;
 
 int failures = 0;
@@ -59,14 +53,12 @@ constexpr std::array<CaptureType, 3> captures { CaptureType::StereoMic,
 std::string name(const EngineParameters& p)
 {
     constexpr const char* shapes[] { "Parlor", "Auditorium", "Dreadnought", "Jumbo" };
-    constexpr const char* woods[] { "Spruce", "Cedar", "Mahogany", "Maple" };
+    constexpr const char* woods[] { "Spruce", "Mahogany", "Maple" };
     constexpr const char* tunings[] { "Standard", "Drop D", "DADGAD", "Open G",
                                       "Half-step down" };
     const char* capture = p.capture == CaptureType::StereoMic ? "stereo mic"
         : p.capture == CaptureType::MonoMic ? "mono mic" : "piezo";
-    return std::string(p.stringMaterial == StringMaterial::Steel ? "steel" : "nylon")
-        + (p.guitarModel == GuitarModel::Original ? " Original" : " Bellido")
-        + (p.bridgeModel == BridgeModel::Original ? "/Original bridge" : "/Fylde bridge")
+    return std::string(p.guitarModel == GuitarModel::Original ? "Original" : "Bellido")
         + " " + shapes[static_cast<int>(p.shape)] + " "
         + woods[static_cast<int>(p.bodyMaterial)] + ", "
         + tunings[static_cast<int>(p.tuning)] + ", " + capture;
@@ -186,15 +178,14 @@ Played play(const EngineParameters& parameters, double rate, bool wantPiezo)
 }
 
 // How far a construction's K-weighted level may sit from the default
-// construction's on the same strings, tuning and capture: a guard against a
+// construction's on the same tuning and capture: a guard against a
 // construction that plays silent, blows up or takes the wrong route, not a
 // loudness match. Tools/CalibrateConstructionLoudness.py levels every
 // construction within 1 LU on its phrase set in Standard tuning, and
 // ConstructionLoudnessTests holds its own phrase within 3 LU. One open strum
 // of 0.35 s in five tunings meets the body's resonances note by note: on
-// 2026-09-29 it spread from -8.0 dB (nylon Bellido Jumbo Maple, DADGAD, mono
-// mic) to +5.5 dB (steel's own bridge, Jumbo Spruce, Half-step down, whose
-// low E-flat sits on the Jumbo's air mode).
+// 2026-09-29 it spread from -5.6 dB to +5.5 dB (the Original, Jumbo Spruce,
+// Half-step down, whose low E-flat sits on the Jumbo's air mode).
 constexpr double levelTolerance = 9.0;
 
 // What every played cell must be on its own; the level is checked when a
@@ -221,12 +212,10 @@ void checkCell(const EngineParameters& p, const Played& played, double rate,
         expect(played.piezoIsMain, label + ": the Piezo output is not Main on Capture = Piezo");
 }
 
-// The default construction's level on the same strings, capture and tuning.
-double referenceLevel(StringMaterial strings, CaptureType capture, Tuning tuning,
-                      double rate)
+// The default construction's level on the same capture and tuning.
+double referenceLevel(CaptureType capture, Tuning tuning, double rate)
 {
     EngineParameters p;
-    p.stringMaterial = strings;
     p.capture = capture;
     p.tuning = tuning;
     return play(p, rate, true).weightedDb;
@@ -235,29 +224,21 @@ double referenceLevel(StringMaterial strings, CaptureType capture, Tuning tuning
 void testEveryConstruction()
 {
     constexpr double rate = 48000.0;
-    std::array<std::array<std::array<double, 3>, 5>, 2> reference {};
-    for (int strings = 0; strings < 2; ++strings)
-        for (int tuning = 0; tuning < 5; ++tuning)
-            for (std::size_t c = 0; c < captures.size(); ++c)
-                reference[std::size_t(strings)][std::size_t(tuning)][c]
-                    = referenceLevel(static_cast<StringMaterial>(strings), captures[c],
-                                     static_cast<Tuning>(tuning), rate);
+    std::array<std::array<double, 3>, 5> reference {};
+    for (int tuning = 0; tuning < 5; ++tuning)
+        for (std::size_t c = 0; c < captures.size(); ++c)
+            reference[std::size_t(tuning)][c]
+                = referenceLevel(captures[c], static_cast<Tuning>(tuning), rate);
 
-    // (strings, model, shape, wood, tuning, capture) -> the two bridges' cells.
-    std::map<std::tuple<int, int, int, int, int, int>, std::array<Played, 2>> byBridge;
     double lowest = 1.0e9, highest = -1.0e9, loudestPeak = 0.0;
     int cells = 0;
-    for (int strings = 0; strings < 2; ++strings)
     for (int model = 0; model < 2; ++model)
-    for (int bridge = 0; bridge < 2; ++bridge)
     for (int shape = 0; shape < 4; ++shape)
-    for (int wood = 0; wood < 4; ++wood)
+    for (int wood = 0; wood < 3; ++wood)
     for (int tuning = 0; tuning < 5; ++tuning)
     {
         EngineParameters p;
-        p.stringMaterial = static_cast<StringMaterial>(strings);
         p.guitarModel = static_cast<GuitarModel>(model);
-        p.bridgeModel = static_cast<BridgeModel>(bridge);
         p.shape = static_cast<BodyShape>(shape);
         p.bodyMaterial = static_cast<BodyMaterial>(wood);
         p.tuning = static_cast<Tuning>(tuning);
@@ -266,13 +247,11 @@ void testEveryConstruction()
         {
             p.capture = captures[c];
             played[c] = play(p, rate, true);
-            const double level = reference[std::size_t(strings)][std::size_t(tuning)][c];
+            const double level = reference[std::size_t(tuning)][c];
             checkCell(p, played[c], rate, level);
             lowest = std::min(lowest, played[c].weightedDb - level);
             highest = std::max(highest, played[c].weightedDb - level);
             loudestPeak = std::max(loudestPeak, played[c].peak);
-            byBridge[{ strings, model, shape, wood, tuning, int(c) }][std::size_t(bridge)]
-                = played[c];
             ++cells;
         }
         p.capture = CaptureType::StereoMic;
@@ -281,20 +260,9 @@ void testEveryConstruction()
             expect(played[c].piezo == played[0].piezo,
                    label + ": the Piezo output depends on what Capture selects");
         // Main without the Piezo output, once per construction.
-        if ((shape + wood + strings + model + bridge) % 5 == tuning)
+        if ((shape + wood + model) % 5 == tuning)
             expect(play(p, rate, false).main == played[0].main,
                    label + ": requesting the Piezo output changed Main");
-    }
-    for (const auto& [key, pair] : byBridge)
-    {
-        const auto strings = static_cast<StringMaterial>(std::get<0>(key));
-        const auto model = static_cast<GuitarModel>(std::get<1>(key));
-        if (AcustraEngine::bridgeSelectable(strings, model))
-            expect(pair[0].main != pair[1].main,
-                   "the Bridge choice changed nothing where it selects a bank");
-        else
-            expect(pair[0].main == pair[1].main && pair[0].piezo == pair[1].piezo,
-                   "the Bridge choice changed a construction whose bridge it does not select");
     }
     std::cout << "Construction matrix: " << cells << " settings at 48 kHz, level "
               << lowest << " to " << highest
@@ -310,11 +278,9 @@ void testOtherRates()
         for (int index = 0; index < 20; ++index)
         {
             EngineParameters p;
-            p.stringMaterial = static_cast<StringMaterial>(index % 2);
             p.guitarModel = static_cast<GuitarModel>((index / 2) % 2);
-            p.bridgeModel = static_cast<BridgeModel>((index / 4) % 2);
             p.shape = static_cast<BodyShape>(index % 4);
-            p.bodyMaterial = static_cast<BodyMaterial>((index / 4 + index) % 4);
+            p.bodyMaterial = static_cast<BodyMaterial>((index / 4 + index) % 3);
             p.tuning = static_cast<Tuning>(index % 5);
             const std::size_t c = static_cast<std::size_t>(index % 3);
             p.capture = captures[c];

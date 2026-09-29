@@ -32,29 +32,21 @@
 // hears. testSteelBlend (Tests/BodyShapeTests.cpp) checks that at each of B's
 // aligned poles the port keeps at least B's share of B's own conductance.
 //
-//   B  steelBlendOwnBridgeWeight   The steel bridge is this share of B's
-//                                  aligned bridge (g21's own, on its
-//                                  radiation's poles, at steel-string
-//                                  mobility) in parallel with the rest of the
-//                                  measured Fylde bridge the steel presets
-//                                  played before B. It is 1: B whole. At the
-//                                  0.7 first asked for, the Fylde's 30%, whose
-//                                  modes are not on the radiation's poles,
-//                                  left the port 0.37 of B's conductance at
-//                                  the 189.7 Hz radiation pole (0.26-0.49 over
-//                                  100 and 178-190 Hz) and a new drain peak at
-//                                  209 Hz: F#3 13 dB weak at onset and then
-//                                  ringing on, G#3 10 dB down, G2 13 dB down,
-//                                  outside both parents (Docs/decisions.md,
-//                                  2026-09-28). B's poles are never moved part
-//                                  of the way either: a 30% misalignment
-//                                  leaves about 0.6 semitone between a bridge
-//                                  mode and its radiation, wider than the
-//                                  resonance, which is the band-pass ringing
-//                                  B removed. Below 1 the Fylde's modes come
-//                                  back as they were (raise
-//                                  ACUSTRA_BRIDGE_MODE_COUNT by their 44
-//                                  too), and testSteelBlend fails.
+//   B                              The steel bridge is B's aligned bridge
+//                                  (g21's own, on its radiation's poles, at
+//                                  steel-string mobility), whole. At the 0.7
+//                                  first asked for, the other 30% (the
+//                                  measured Fylde bridge, whose modes are not
+//                                  on the radiation's poles) left the port
+//                                  0.37 of B's conductance at the 189.7 Hz
+//                                  radiation pole and a new drain peak at
+//                                  209 Hz (Docs/decisions.md, 2026-09-28), so
+//                                  it is not blended. B's poles are never
+//                                  moved part of the way either: a 30%
+//                                  misalignment leaves about 0.6 semitone
+//                                  between a bridge mode and its radiation,
+//                                  wider than the resonance, which is the
+//                                  band-pass ringing B removed.
 //   D  steelBlendT1PlateQWeight    For the modes the plate-Q rule reaches only
 //                                  when it runs down to 150 Hz (T1 and the
 //                                  rocking modes, 150-300 Hz), Q moves this
@@ -89,14 +81,11 @@
 //                                  pieces, at 0 (g21 whole) 0.1-0.2 dB over;
 //                                  at 0.2 within 0.06.
 //
-// So, on steel's own bridge (steel, the Original guitar, the Original
-// bridge, which the steel presets select), with E_lo the joint modes below
-// the band and f the measured frequency of each g21 or B mode:
-//   bridge = w E_lo + [f < band ? (1-w) : 1] [wB Y_own + (1-wB) Y_Fylde]
+// So, on the Original guitar, with E_lo the joint modes below the band and f
+// the measured frequency of each g21 or B mode:
+//   bridge = w E_lo + [f < band ? (1-w) : 1] Y_own
 //   body   = w E_lo + [f < band ? (1-w) : 1 - 0.2 w] g21
-// (the Fylde's modes, played only when B is below 1, at (1-w)). The Fylde
-// bridge choice keeps the Fylde bridge alone as its bridge, under the blended
-// radiation; nylon reads none of it.
+// The Bellido reads none of it.
 //
 // To hear E changed, rebuild with its macros, for example
 //   cmake -DCMAKE_CXX_FLAGS='-DACUSTRA_STEEL_BLEND_JOINT_BAND_HZ=20000.0f
@@ -114,9 +103,6 @@
 
 #pragma once
 
-#if !defined(ACUSTRA_STEEL_BLEND_OWN_BRIDGE)
-#define ACUSTRA_STEEL_BLEND_OWN_BRIDGE 1.0f
-#endif
 #if !defined(ACUSTRA_STEEL_BLEND_T1_PLATE_Q)
 #define ACUSTRA_STEEL_BLEND_T1_PLATE_Q 0.85f
 #endif
@@ -132,14 +118,12 @@
 
 namespace acustra::detail
 {
-inline constexpr float steelBlendOwnBridgeWeight = ACUSTRA_STEEL_BLEND_OWN_BRIDGE;
 inline constexpr float steelBlendT1PlateQWeight = ACUSTRA_STEEL_BLEND_T1_PLATE_Q;
 inline constexpr float steelBlendJointBodyWeight = ACUSTRA_STEEL_BLEND_JOINT_BODY;
 inline constexpr float steelBlendJointBandHz = ACUSTRA_STEEL_BLEND_JOINT_BAND_HZ;
 inline constexpr float steelBlendHighJointFraction = ACUSTRA_STEEL_BLEND_HIGH_JOINT_FRACTION;
 
-static_assert(steelBlendOwnBridgeWeight >= 0.0f && steelBlendOwnBridgeWeight <= 1.0f
-                  && steelBlendT1PlateQWeight >= 0.0f && steelBlendT1PlateQWeight <= 1.0f
+static_assert(steelBlendT1PlateQWeight >= 0.0f && steelBlendT1PlateQWeight <= 1.0f
                   && steelBlendJointBodyWeight >= 0.0f && steelBlendJointBodyWeight <= 1.0f
                   && steelBlendHighJointFraction >= 0.0f && steelBlendHighJointFraction <= 1.0f,
               "a blend weight is a share between 0 and 1: a negative one would "

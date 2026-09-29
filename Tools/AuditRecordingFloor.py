@@ -17,7 +17,7 @@ partials are gone by then; it is synthesised as stationary random-phase noise
 model at the level it has relative to the recording's 20-500 ms level, the
 scorer's own level window, so the model keeps its own velocity law.
 
-usage: AuditRecordingFloor.py MANIFEST.json [--material steel|nylon|flattop]
+usage: AuditRecordingFloor.py MANIFEST.json [--material steel|flattop]
 Prints the plain and the floor-matched score with their terms.
 """
 

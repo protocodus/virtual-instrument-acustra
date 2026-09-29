@@ -25,33 +25,6 @@ indication or editorial marking is read or reproduced, and none appears in
 velocities in that header are an authored performance written by this project,
 not data from either file.
 
-## FreePats Spanish classical guitar recordings
-
-Work: *Spanish classical guitar*, version 2019-06-18
-
-Creator: `roberto@zenvoid.org` for the FreePats project; recorded in 2008
-
-Source: <https://freepats.zenvoid.org/Guitar/acoustic-guitar.html>
-
-Source archive:
-[`SpanishClassicalGuitar-SFZ+FLAC-20190618.7z`](https://freepats.zenvoid.org/Guitar/SpanishClassicalGuitar/SpanishClassicalGuitar-SFZ%2BFLAC-20190618.7z)
-(4,713,892 bytes)
-
-Archive SHA-256:
-`903916921a21662d2237ade7f0e98e55de93cb7b86da219e4e10f4ad385b8f5e`
-
-Licence: [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/)
-
-The offline `AcustraReferenceBank` target embeds the 41 source regions used by
-MIDI 38–84 for fitting and tests; the plug-in and standalone application do
-not link that target. The full native 44.1-kHz mono recordings are converted
-to signed PCM16, assigned measured roots, and losslessly Rice-delta packed.
-The reference archive does not truncate, loop, resample or apply a terminal
-fade to these regions. The original source note and a local CC0 legal-code
-copy are distributed as
-`ThirdParty/FreePats-Spanish-Classical-Guitar-README.txt` and
-`ThirdParty/CC0-1.0.txt`.
-
 ## Shinyguitar microphone recordings (steel bank)
 
 Work: *Shinyguitar* archtop-guitar sample library
@@ -138,9 +111,8 @@ Licence: [Creative Commons Attribution 4.0 International](https://creativecommon
 `Source/DSP/MeasuredBodyData.h` is adapted from the archive's
 `qualified_selected_impulses.mat` (MD5
 `733cb10baf5ce36d8bf333610ffbb260`). Acustra selects g21, the archive's 2018
-Lester DeVoe flamenca blanca with spruce top and cypress back and sides, and
-g34, a 1971 Manuel Contreras classical guitar with cedar top and Rio palisander
-back and sides. It uses each guitar's first and third one-second segments,
+Lester DeVoe flamenca blanca with spruce top and cypress back and sides. It
+uses the guitar's first and third one-second segments,
 containing bass-side and treble-side normal bridge impacts. After applying the
 archive's full-record half-cosine taper and SI calibration scales, it forms
 complex H1 force-to-pressure responses to the upper, treble-side and bass-side
@@ -149,24 +121,20 @@ relative phase are retained.
 
 The archive's physical-measures table identifies g21's strings as Savarez
 Tomatito, with nylon/KF trebles and wound multifilament basses. Acustra adapts
-this flamenco measurement for its original steel setting; it is not a measured
-steel-strung body. The nylon setting uses g34, measured anechoically rather
-than in g21's semi-reverberant music room. Both `MeasuredBodyData.h` and
+this flamenco measurement for its steel strings; it is not a measured
+steel-strung body. Both `MeasuredBodyData.h` and
 `MeasuredBridgeData.h` derive from these records; the bridge adaptation fits
 positive-semidefinite heave/rocking residues to the calibrated bass/treble
 acceleration-to-force measurements.
 
 For each g21 microphone/impact path, Acustra inverse-transforms the H1 response,
 retains 3000 samples, leaves the first 2700 unchanged and applies an authored
-300-sample raised-cosine fade. The g34 paths use 12000 retained samples and a
-fade over the final tenth, following the earlier low-frequency Q-convergence
-check. These common causal windows preserve inter-path phase; no independent
+300-sample raised-cosine fade. These common causal windows preserve inter-path phase; no independent
 minimum-phase reconstruction or delay alignment is applied.
 
 Acustra jointly selects shared frequencies and Q values over 80 Hz–10 kHz
-from all six paths per guitar and fits regularised complex endpoint residues.
-The smallest passing prominence-ordered prefix has 127 poles for g21 and 141
-for g34, with frequencies, Q values and residue components rounded to float32.
+from all six paths and fits regularised complex endpoint residues.
+The smallest passing prominence-ordered prefix has 127 poles for g21, with frequencies, Q values and residue components rounded to float32.
 For bass/treble forces `Fb`/`Ft`, the transformed inputs are `F = Fb + Ft` and
 `T = Ft - Fb = M/a`, where `a` is the assumed impact half-spacing. The pressure
 paths are `(Ht + Hb)/2` and `(Ht - Hb)/2`, respectively. Separate force/moment
@@ -194,8 +162,9 @@ damped by it too. The air group below 150 Hz and every frequency and residue
 are as fitted from g21. This Q scaling is an Acustra change to the archive's
 data.
 
-Since 2026-09-28 steel's own bridge, the g21 bridge bank that the steel presets
-and a new session select, plays on its radiation bank's poles:
+Since 2026-09-28 steel's own bridge, the g21 bridge bank, plays on its
+radiation bank's poles (since 2026-09-29 it is the Original model's only
+bridge):
 `MeasuredBridgeData.h` records, for each of its 47 modes, the radiation mode
 that is the same resonance (18 of them: the nearest, inside that mode's
 as-fitted half-power band, the bridge mode narrower than the radiation bank's
@@ -203,8 +172,9 @@ local spacing), and the engine gives such a mode that radiation mode's
 frequency and Q after the anchor, Shape and Wood transforms and the plate-Q
 rule above; the other modes keep their measured frequency under the same
 transforms and take the plate-Q rule's octave factor on their Q, inside the
-same 150 Hz-10 kHz band. Every bridge residue is scaled by 0.274, the Fylde
-Falstaff's measured mobility over g21's (below), so the flamenca's bridge
+same 150 Hz-10 kHz band. Every bridge residue is scaled by 0.274
+(`steelTopMobilityRatio`), the Fylde Falstaff's measured mobility over g21's
+(below), so the flamenca's bridge
 drains at a steel-string guitar's level. These are Acustra changes to the
 archive's data (`Tools/GenerateMeasuredBridge.py`).
 
@@ -218,7 +188,8 @@ four accelerometer paths (velocity/force over the whole record, the hammer
 differentiated, a 2-sample alignment), refined by variable projection below
 the bridge's 2245 Hz cross-side corner, 56 modes carrying
 positive-semidefinite heave/rocking mobility residues, the plate-Q rule from
-300 Hz on the common Q, and the mobility scaled by 0.32275, the RMS ratio of
+300 Hz on the common Q, and the mobility scaled by 0.32275
+(`steelJointTopMobilityRatio`), the RMS ratio of
 the Fylde Falstaff's measured mobility (Carcagno et al., below) to g21's at
 the bass impact over 80 Hz-4 kHz. The header carries all 131 modes; the
 engine plays the 9 below 550 Hz, radiation and bridge, at 0.075 in parallel
@@ -233,14 +204,20 @@ above must accompany distributions containing the coefficient table.
 
 ### Additional Bellido body
 
-The 2026-09-08 Model selector additionally uses Mores g35, a 1978 Manuel
-Lopez Bellido classical guitar (cedar/Rio palisander), under the same CC BY
-4.0 archive license above. `NylonG35CandidateData.h` contains 134 fitted
-force/moment radiation modes and 50 positive-semidefinite bridge modes;
-the modifications include calibrated H1 extraction, causal tapering and
-bounded frequency/Q/residue fitting. See
-[`Docs/body-models-2026-09-08.md`](Docs/body-models-2026-09-08.md) and the linked
-fit reports. The unused g36 candidate is also adapted from that archive.
+The Bellido 1978 Model uses Mores g35, a 1978 Manuel Lopez Bellido classical
+guitar (cedar/Rio palisander), under the same CC BY 4.0 archive license above;
+Acustra plays it with steel strings. `Source/DSP/BellidoData.h`
+(`Tools/GenerateBellidoBody.py`) contains 134 fitted force/moment radiation
+modes and 50 positive-semidefinite bridge modes; the modifications include
+calibrated H1 extraction, causal tapering and bounded frequency/Q/residue
+fitting. See [`Docs/body-models-2026-09-08.md`](Docs/body-models-2026-09-08.md)
+and the linked fit reports.
+
+The archive's other records are no longer shipped: g34 (a 1971 Manuel
+Contreras classical, which the nylon strings played until 2026-09-29) and the
+unused g36 candidate were removed with the nylon model. g37, g38, g39, g42 and
+g43 contribute only the plate-Q statistic above; none of their coefficients
+ship.
 
 ## Mark Rau guitar measurements: not distributed
 
@@ -255,7 +232,7 @@ built from them are retired. `Tools/GenerateRauGuitarCandidates.py` fits them
 locally from the source ZIP, and `.gitignore` keeps its header and report out
 of commits.
 
-## Measured Fylde steel-string bridge
+## Measured Fylde steel-string bridge: derived constants only
 
 Samuele Carcagno, Roger Bucknall, Jim Woodhouse, Claudia Fritz and Christopher
 J. Plack, *Effect of back wood choice on the perceived quality of steel-string
@@ -269,41 +246,46 @@ SHA-256 `1d35dd28ece660eadc165be34995255fae6f56c9cb3d8d6d96bd00fe2902e582`.
 Licence: [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
 The dataset's licence is supplied in its `LICENCE.txt` and OSF record.
 
-`Source/DSP/MeasuredSteelBridgeData.h` contains Acustra's transformed modal
-coefficients from the first `specSet` column in `bridge_admittance_all.mat`:
-the commissioned Fylde Falstaff with Sitka spruce top, Brazilian rosewood back
+Acustra uses the first `specSet` column in `bridge_admittance_all.mat`: the
+commissioned Fylde Falstaff with Sitka spruce top, Brazilian rosewood back
 and sides, ebony bridge and Elixir Nanoweb Light 80/20 Bronze steel strings.
 The manufacture year is unspecified. The measurement is normal bridge
 velocity/force between the fifth and sixth strings, with strings damped.
 
-Acustra selects measured peaks, pins the three lowest body frequencies and
-Q values to Table I, infers a polarity and phase alignment from a constrained fit,
-and fits nonnegative scalar residues while retaining measured SI magnitude.
-The bank supplies no measured rocking, cross-admittance or body radiation.
-The same coefficients also supply one derived scalar, `steelTopMobilityRatio`
-in `MeasuredBridgeData.h`: the geometric mean over 80 Hz–4 kHz of this bank's
-|Y| over the Mores g21 bridge bank's at the matching (bass-side) position,
-0.274, which scales the flamenca's bridge to a steel-string guitar's level.
-The source MAT, recorded/synthesized audio and experimental participant data
-are not distributed. This attribution, licence link, source link and
-description of changes must accompany distributions of these coefficients.
+No bank of this measurement ships. Until 2026-09-29 Acustra shipped a 44-mode
+modal fit of it (`MeasuredSteelBridgeData.h`) as an optional bridge; that
+choice and its coefficients were removed. The measurement still underlies
+three derived constants, fitted by `Tools/FyldeBridgeReference.py` (which
+selects measured peaks, pins the three lowest body frequencies and Q values
+to Table I, infers a polarity and phase alignment from a constrained fit, and
+fits nonnegative scalar residues while retaining measured SI magnitude):
+`steelTopMobilityRatio` in `MeasuredBridgeData.h`, the geometric mean over
+80 Hz–4 kHz of the fit's |Y| over the Mores g21 bridge bank's at the matching
+(bass-side) position, 0.274, which scales the flamenca's bridge to a
+steel-string guitar's level; `steelJointTopMobilityRatio` in
+`MeasuredJointBodyData.h`, the corresponding RMS ratio for the jointly fitted
+body, 0.32275; and the piezo's bridge conductance (`PiezoDesign` in
+`AcustraEngine.h`), below. The source MAT, recorded/synthesized audio and
+experimental participant data are not distributed. This attribution, licence
+link, source link and description of changes must accompany distributions of
+these derived values.
 
-## DAFx-26 EJ45 construction data
+## DAFx-26 nonlinear modal synthesis paper: no licensed material
 
 Michele Ducceschi, Riccardo Russo and Craig J. Webb, *Measurement-Informed
 Nonlinear Modal Synthesis of 65 Classical Guitars*, Proceedings of the 29th
-International Conference on Digital Audio Effects (DAFx-26), 2026.
+International Conference on Digital Audio Effects (DAFx-26), 2026,
+<https://dafx26.mit.edu/assets/papers/DAFx26_paper_40.pdf>, CC BY 4.0.
 
-Source: <https://dafx26.mit.edu/assets/papers/DAFx26_paper_40.pdf>
-
-Licence: [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/)
-
-The EJ45 diameters, effective densities and Young's moduli in
-`Source/DSP/AcustraEngine.cpp` reproduce Table 1, reordered from the paper's
-high-E-to-low-E presentation into Acustra's low-E-to-high-E engine order.
-Acustra's loss and excitation laws are not taken from that table. The paper's
-measurement-to-modal procedure also informs the Mores-data adaptation described
-above, but no coefficient from the paper or its companion audio is included.
+Until 2026-09-29 `Source/DSP/AcustraEngine.cpp` reproduced the paper's Table 1
+(the EJ45 nylon strings' diameters, effective densities and Young's moduli)
+for Acustra's nylon strings. That table was removed with the nylon strings,
+and no coefficient table, figure, text or audio from the paper is included
+now. The engine still cites the paper for methods and single published
+values: its fixed-end attachment (the 3.25 mm stub that its xi_b = 0.995
+leaves on a 650 mm scale) and its longitudinal tension-increase expression.
+The paper's measurement-to-modal procedure also informs the Mores-data
+adaptation described above.
 
 ## Published figures behind the piezo chain: no licensed material
 
@@ -345,9 +327,9 @@ in the source.
   own Kaiser-windowed sinc, tabulated by `Tools/PiezoReference.py`; no code
   or table from the paper is included.
 
-The bridge conductance under the saddle is the mean of the measured Fylde
-mobility already shipped in `Source/DSP/MeasuredSteelBridgeData.h` (see its
-entry above); no new data is added for it.
+The bridge conductance under the saddle (1.59e-3 s/kg) is the mean of Re(Y)
+over 5-7 kHz of the measured Fylde mobility (see its entry above); no new
+data is added for it.
 
 ## JUCE 8.0.14
 
@@ -372,7 +354,7 @@ source tree. The VST3 SDK portions used through JUCE are identified there as
 MIT-licensed; Apple's Audio Unit frameworks are supplied by the macOS SDK and
 remain subject to Apple's terms.
 
-Acustra's source tree and offline reference tools include the three CC0
+Acustra's source tree and offline reference tools include the two CC0
 recording families described above. The distributed plug-in and standalone
 binaries include none of their recorded audio, and include no convolution
 impulse response, neural model or added room/reverb capture.

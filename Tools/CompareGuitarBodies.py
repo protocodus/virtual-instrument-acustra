@@ -44,18 +44,18 @@ def main():
         shutil.copy2(source, frozen)
         frozen.chmod(frozen.stat().st_mode | 0o111)
         report['renderers'][version] = {'source': str(source.resolve()), 'sha256': digest(frozen)}
-        cases = [(material, shape, 'original') for material in ['steel', 'nylon']
-                 for shape in ['parlor', 'auditorium', 'dreadnought', 'jumbo']]
+        cases = [(shape, 'original') for shape in ['parlor', 'auditorium', 'dreadnought', 'jumbo']]
         if version == 'current':
-            cases += [('nylon','auditorium','bellido1978')]
+            cases += [('auditorium', 'bellido1978')]
         spectra = {}
         audio = {}
-        for material, shape, model in cases:
-            key = f'{material}-{shape}-{model}'
+        for shape, model in cases:
+            key = f'{shape}-{model}'
             raw = args.output / f'{version}-{key}.f32'
+            # The Bellido in Mahogany, as its Guitar preset plays it.
             command = [str(frozen.resolve()), str(events.resolve()), str(raw.resolve()), 'stereo_mic', 'finger',
-                       '--string-material', material, '--body-shape', shape,
-                       '--body-material', 'cedar' if model == 'bellido1978' else 'spruce']
+                       '--body-shape', shape,
+                       '--body-material', 'mahogany' if model == 'bellido1978' else 'spruce']
             if model != 'original':
                 command += ['--guitar-model', model]
             subprocess.run(command, check=True, capture_output=True)
@@ -74,11 +74,10 @@ def main():
             audio[key] = signal
             report['renders'][f'{version}-{key}'] = {'sha256': digest(raw), 'rms': float(np.sqrt(np.mean(signal**2))),
                                                      'peak': float(np.max(abs(signal))), 'command': command}
-        for material in ['steel', 'nylon']:
-            keys = [f'{material}-{s}-original' for s in ['parlor','auditorium','dreadnought','jumbo']]
-            report['shape_distances_db'][f'{version}-{material}'] = {
-                f'{a.split("-")[1]} vs {b.split("-")[1]}': float(np.mean(abs(spectra[a]-spectra[b])))
-                for a, b in itertools.combinations(keys, 2)}
+        keys = [f'{s}-original' for s in ['parlor','auditorium','dreadnought','jumbo']]
+        report['shape_distances_db'][version] = {
+            f'{a.split("-")[0]} vs {b.split("-")[0]}': float(np.mean(abs(spectra[a]-spectra[b])))
+            for a, b in itertools.combinations(keys, 2)}
         for key, signal in audio.items():
             rms = np.sqrt(np.mean(signal**2))
             normalized = signal * (.055 / max(rms, 1e-12))

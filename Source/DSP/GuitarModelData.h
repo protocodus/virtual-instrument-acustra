@@ -8,7 +8,7 @@
 #else
 #include "MeasuredBridgeData.h"
 #endif
-#include "NylonG35CandidateData.h"
+#include "BellidoData.h"
 
 namespace acustra::detail
 {
@@ -20,10 +20,10 @@ namespace acustra::detail
 inline constexpr std::array<float, 2> guitarMicrophoneTrims { 1.0f, 1.10f };
 
 inline constexpr auto bellidoBodyModes = [] {
-    std::array<MeasuredBodyMode, experimental::nylonG35Radiation.size()> result {};
+    std::array<MeasuredBodyMode, experimental::bellidoRadiation.size()> result {};
     for (std::size_t i = 0; i < result.size(); ++i)
     {
-        const auto& m = experimental::nylonG35Radiation[i];
+        const auto& m = experimental::bellidoRadiation[i];
         result[i] = { m.frequency, m.q,
             m.trebleReal, m.trebleImaginary, m.bassReal, m.bassImaginary,
             m.upperReal, m.upperImaginary,
@@ -34,10 +34,10 @@ inline constexpr auto bellidoBodyModes = [] {
     return result;
 }();
 inline constexpr auto bellidoBridgeModes = [] {
-    std::array<MeasuredBridgeMode, experimental::nylonG35Mobility.size()> result {};
+    std::array<MeasuredBridgeMode, experimental::bellidoMobility.size()> result {};
     for (std::size_t i = 0; i < result.size(); ++i)
     {
-        const auto& m = experimental::nylonG35Mobility[i];
+        const auto& m = experimental::bellidoMobility[i];
         result[i] = { m.frequency, m.q, m.heave, m.cross, m.rock };
     }
     return result;

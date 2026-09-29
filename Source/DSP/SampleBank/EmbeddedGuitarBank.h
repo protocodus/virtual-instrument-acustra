@@ -121,7 +121,7 @@ private:
     double outputSampleRate_{48000.0};
     float pitchBendSemitones_{};
     std::uint64_t ageCounter_{};
-    std::array<std::array<std::uint8_t, 128>, 3> roundRobin_{};
+    std::array<std::array<std::uint8_t, 128>, 2> roundRobin_{};
 };
 
 } // namespace acustra::dense

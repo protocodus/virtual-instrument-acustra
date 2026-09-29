@@ -6,7 +6,6 @@
 namespace acustra::dense {
 
 enum class Bank : std::uint8_t {
-    Nylon,
     SteelPicked,
     SteelPlucked,
 };

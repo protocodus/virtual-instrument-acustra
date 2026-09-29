@@ -69,8 +69,8 @@ jobs:
           # Written by hand so a demo that stops writing fails here; the
           # Acustra.DemoCount test keeps it equal to AcustraRenderDemos --list.
           rendered=$(find "Docs/audio" -maxdepth 1 -name '*.wav' | wc -l)
-          if (( rendered != 11 )); then
-            echo "error: rendered $rendered demo WAVs, expected 11" >&2
+          if (( rendered != 10 )); then
+            echo "error: rendered $rendered demo WAVs, expected 10" >&2
             exit 1
           fi
           echo "Acustra: rendered all $rendered demo WAVs"

@@ -45,46 +45,46 @@ def contrast(a,b):
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--renderer',action='append',required=True);ap.add_argument('--output',type=Path,required=True);args=ap.parse_args();out=args.output;out.mkdir()
     specs=set()
-    for material,note,velocity,timbre,style in itertools.product(['steel','nylon'],NOTES,VELOCITIES,[-1,.3],['finger','pick','thumb']):
-        specs.add((material,'auditorium',style,note,velocity,timbre,'stereo_mic',.58))
-    for material,note,shape,capture in itertools.product(['steel','nylon'],NOTES,['parlor','auditorium','dreadnought','jumbo'],['stereo_mic','piezo']):
-        specs.add((material,shape,'finger',note,91,-1,capture,.58))
+    for note,velocity,timbre,style in itertools.product(NOTES,VELOCITIES,[-1,.3],['finger','pick','thumb']):
+        specs.add(('auditorium',style,note,velocity,timbre,'stereo_mic',.58))
+    for note,shape,capture in itertools.product(NOTES,['parlor','auditorium','dreadnought','jumbo'],['stereo_mic','piezo']):
+        specs.add((shape,'finger',note,91,-1,capture,.58))
     renderers={};jobs=[]
     for item in args.renderer:
         label,path=item.split('=',1);directory=out/label;directory.mkdir();exe=directory/'renderer';shutil.copy2(path,exe);exe.chmod(0o700)
         renderers[label]={'path':str(Path(path).resolve()),'sha256':sha(exe)}
         for spec in sorted(specs):jobs.append((label,exe,spec))
     def render(job):
-        label,exe,spec=job;mat,shape,style,note,velocity,timbre,capture,touch=spec
-        name=f'{mat}-{shape}-{style}-n{note}-v{velocity}-p{timbre}-{capture}'
+        label,exe,spec=job;shape,style,note,velocity,timbre,capture,touch=spec
+        name=f'{shape}-{style}-n{note}-v{velocity}-p{timbre}-{capture}'
         raw=exe.parent/(name+'.f32');cmd=[str(exe.resolve()),str(raw.resolve()),*map(str,spec)]
         subprocess.run(cmd,check=True,capture_output=True)
         audio=np.fromfile(raw,'<f4').reshape(-1,2).astype(float);assert audio.shape==(96000,2) and np.isfinite(audio).all() and np.any(audio)
         f=features(audio);gain=.035/f['rms_0_500'];peak=np.max(np.abs(audio*gain));assert peak<.99,('audition peak exceeds fixed target',peak)
         wav=raw.with_suffix('.wav');wavfile.write(wav,RATE,(audio*gain).astype(np.float32))
-        return {'label':label,'material':mat,'shape':shape,'picking':style,'note':note,'velocity':velocity,'timbre':timbre,'capture':capture,'touch':touch,'raw_path':str(raw),'wav_path':str(wav),'sha256':sha(raw),'command':cmd,'features':f,'audition_gain':gain}
+        return {'label':label,'shape':shape,'picking':style,'note':note,'velocity':velocity,'timbre':timbre,'capture':capture,'touch':touch,'raw_path':str(raw),'wav_path':str(wav),'sha256':sha(raw),'command':cmd,'features':f,'audition_gain':gain}
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:models=list(pool.map(render,jobs))
-    def get(label,mat,shape,style,note,vel,timbre,capture):
-        return next(x for x in models if (x['label'],x['material'],x['shape'],x['picking'],x['note'],x['velocity'],x['timbre'],x['capture'])==(label,mat,shape,style,note,vel,timbre,capture))
+    def get(label,shape,style,note,vel,timbre,capture):
+        return next(x for x in models if (x['label'],x['shape'],x['picking'],x['note'],x['velocity'],x['timbre'],x['capture'])==(label,shape,style,note,vel,timbre,capture))
     pairs=[]
-    for label,mat,vel,timbre,note in itertools.product(renderers,['steel','nylon'],VELOCITIES,[-1,.3],NOTES):
+    for label,vel,timbre,note in itertools.product(renderers,VELOCITIES,[-1,.3],NOTES):
         for first,second in [('finger','pick'),('finger','thumb'),('thumb','pick')]:
-            a=get(label,mat,'auditorium',first,note,vel,timbre,'stereo_mic');b=get(label,mat,'auditorium',second,note,vel,timbre,'stereo_mic')
-            pairs.append({'type':'picking','label':label,'material':mat,'velocity':vel,'timbre':timbre,'note':note,'pair':first+'_'+second,**contrast(a,b)})
-    for label,mat,capture,note in itertools.product(renderers,['steel','nylon'],['stereo_mic','piezo'],NOTES):
+            a=get(label,'auditorium',first,note,vel,timbre,'stereo_mic');b=get(label,'auditorium',second,note,vel,timbre,'stereo_mic')
+            pairs.append({'type':'picking','label':label,'velocity':vel,'timbre':timbre,'note':note,'pair':first+'_'+second,**contrast(a,b)})
+    for label,capture,note in itertools.product(renderers,['stereo_mic','piezo'],NOTES):
         for first,second in itertools.combinations(['parlor','auditorium','dreadnought','jumbo'],2):
-            a=get(label,mat,first,'finger',note,91,-1,capture);b=get(label,mat,second,'finger',note,91,-1,capture)
-            pairs.append({'type':'shape','label':label,'material':mat,'capture':capture,'note':note,'pair':first+'_'+second,**contrast(a,b)})
+            a=get(label,first,'finger',note,91,-1,capture);b=get(label,second,'finger',note,91,-1,capture)
+            pairs.append({'type':'shape','label':label,'capture':capture,'note':note,'pair':first+'_'+second,**contrast(a,b)})
     summaries={}
     for row in pairs:
-        key='|'.join(str(row.get(k,'')) for k in ['type','label','material','velocity','timbre','capture','pair']);summaries.setdefault(key,[]).append(row)
+        key='|'.join(str(row.get(k,'')) for k in ['type','label','velocity','timbre','capture','pair']);summaries.setdefault(key,[]).append(row)
     summaries={key:{'count':len(rows),'byte_identical':sum(x['byte_identical'] for x in rows),'raw_rms_delta_db_median':float(np.median([x['raw_rms_delta_db'] for x in rows])),
          **{w:{k:float(np.median([x[w][k] for x in rows])) for k in ['active_band_mean_abs_db','power_weighted_abs_db','centroid_ratio','centroid_delta_hz','high_fraction_delta_db']} for w in WINDOWS}} for key,rows in summaries.items()}
     preservation=[];labels=list(renderers)
     for label in labels[1:]:
         rows=[x for x in models if x['label']==labels[0] and x['picking']=='finger'];same=0
         for r in rows:
-            b=get(label,r['material'],r['shape'],r['picking'],r['note'],r['velocity'],r['timbre'],r['capture']);same+=r['sha256']==b['sha256']
+            b=get(label,r['shape'],r['picking'],r['note'],r['velocity'],r['timbre'],r['capture']);same+=r['sha256']==b['sha256']
         preservation.append({'reference':labels[0],'label':label,'finger_count':len(rows),'finger_byte_identical':same})
     report={'status':'complete','protocol':__doc__,'script_sha256':sha(__file__),'renderers':renderers,'notes':NOTES,'velocities':VELOCITIES,'band_edges_hz':BANDS.tolist(),'windows_seconds':WINDOWS,
             'normalization':'Stereo average power, each note divided by its own0–500ms stereoRMS². WAVs match that RMS to0.035. Fixed note-on windows; no onset/time shift. Default Spruce/Original/Touch.58/Pluck.28/Body.82/Stereo.62, same seed per fresh engine.',

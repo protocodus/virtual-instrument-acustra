@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the two measured normal-force radiation inputs of Mores g21/g34.
+"""Audit the two measured normal-force radiation inputs of Mores g21.
 
 For bass/treble forces Fb,Ft, F=Fb+Ft and T=Ft-Fb give
 
@@ -20,8 +20,8 @@ relative phase: no individual minimum-phase conversion, gain or delay fitting.
 Unmasked norm ratios compare unit F and unit T pressure, not equal mechanical
 energy. Secondary magnitude/phase summaries retain the existing 1%-of-band-peak
 mask and report coverage. Sixth-octave errors expose local interpolation failures.
-The selected archive has no repeats for uncertainty estimates. Both guitars
-were nylon-strung; this does not create a measured steel body or change a model.
+The selected archive has no repeats for uncertainty estimates. The guitar was
+nylon-strung; this does not create a measured steel body or change a model.
 
     python3 Tools/AuditBodyForcePair.py --self-test
     python3 Tools/AuditBodyForcePair.py --raw-mat /path/qualified_selected_impulses.mat --output /new/audit-directory
@@ -114,7 +114,7 @@ def run(raw: Path, output: Path) -> None:
     center_narrow = {(r["guitar"], r["channel"], r["center_hz"]): r for r in center_narrow}
     broad, narrow, maps = [], [], {}
     reconstruction_error = 0.0
-    for guitar in (21, 34):
+    for guitar in sorted({key[0] for key in responses}):
         for channel, name in MICROPHONES.items():
             bass, treble = responses[guitar, 0, channel], responses[guitar, 2, channel]
             heave, rock = force_pair(bass, treble)

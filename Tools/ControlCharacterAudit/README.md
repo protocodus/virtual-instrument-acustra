@@ -3,9 +3,12 @@
 These are the exact small renderer and analysis sources used for the September
 2026 picking/body feedback comparison. They are offline audit tools, not plugin
 code. Each note starts a fresh engine with the same seed. MIDI 40/55/64/74 and
-velocities 91/127 cover steel and nylon, the three picking styles, four shapes,
-normal panel position and actual MPE CC74=0.3. Shape comparisons include Stereo
-mic and Piezo. The full fixed matrix has 152 renders per executable.
+velocities 91/127 cover the three picking styles, four shapes, normal panel
+position and actual MPE CC74=0.3. Shape comparisons include Stereo mic and
+Piezo. The fixed matrix has 76 renders per executable. (The September 2026
+comparison also rendered nylon strings, 152 renders per executable; nylon
+strings were retired on 2026-09-29, so an engine from before that date gives a
+renderer this protocol can no longer drive.)
 
 Build an adapter against each source revision being compared:
 

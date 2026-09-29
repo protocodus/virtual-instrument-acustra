@@ -42,9 +42,9 @@ bool parseInt(const char* text, int& value) noexcept
 
 int main(int argc, char** argv)
 {
-    if (argc < 4 || argc > 8)
+    if (argc < 3 || argc > 7)
     {
-        std::cerr << "usage: BridgeProbe output.f32 steel|nylon on|off "
+        std::cerr << "usage: BridgeProbe output.f32 on|off "
                      "[pluck-position-0-to-1] [auditorium|dreadnought] "
                      "[midi-note] [sympathy-on|off]\n";
         return EXIT_FAILURE;
@@ -57,13 +57,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    const std::string material(argv[2]);
-    if (material != "steel" && material != "nylon")
-    {
-        std::cerr << "material must be steel or nylon\n";
-        return EXIT_FAILURE;
-    }
-    const std::string coupling(argv[3]);
+    const std::string coupling(argv[2]);
     if (coupling != "on" && coupling != "off")
     {
         std::cerr << "bridge coupling must be on or off\n";
@@ -75,11 +69,9 @@ int main(int argc, char** argv)
     acustra::AcustraEngine engine;
     engine.prepare(rate, 1);
     acustra::EngineParameters parameters;
-    parameters.stringMaterial = material == "nylon"
-        ? acustra::StringMaterial::Nylon : acustra::StringMaterial::Steel;
-    if (argc >= 6)
+    if (argc >= 5)
     {
-        const std::string shape(argv[5]);
+        const std::string shape(argv[4]);
         if (shape != "auditorium" && shape != "dreadnought")
         {
             std::cerr << "shape must be auditorium or dreadnought\n";
@@ -91,10 +83,10 @@ int main(int argc, char** argv)
     }
     parameters.bodyMaterial = acustra::BodyMaterial::Spruce;
     parameters.stringAge = 0.0f;
-    if (argc >= 5)
+    if (argc >= 4)
     {
         float pluckPosition = 0.0f;
-        if (!parseFloat(argv[4], pluckPosition)
+        if (!parseFloat(argv[3], pluckPosition)
             || pluckPosition < 0.0f || pluckPosition > 1.0f)
         {
             std::cerr << "pluck position must be finite and between 0 and 1\n";
@@ -102,12 +94,11 @@ int main(int argc, char** argv)
         }
         parameters.pluckPosition = pluckPosition;
     }
-    parameters.touch = parameters.stringMaterial == acustra::StringMaterial::Nylon
-        ? 0.08f : 0.72f;
+    parameters.touch = 0.72f;
     engine.setParameters(parameters);
     engine.setBridgeCouplingEnabled(coupling == "on");
     int midiNote = 40;
-    if (argc >= 7 && !parseInt(argv[6], midiNote))
+    if (argc >= 6 && !parseInt(argv[5], midiNote))
     {
         std::cerr << "MIDI note must be an integer between 0 and 127\n";
         return EXIT_FAILURE;
@@ -115,9 +106,9 @@ int main(int argc, char** argv)
     // The idle strings' one-way radiation sum, separable from the bridge so a
     // probe can hold the excitation fixed and change only what the played
     // string's wave meets on its way out.
-    if (argc == 8)
+    if (argc == 7)
     {
-        const std::string sympathy(argv[7]);
+        const std::string sympathy(argv[6]);
         if (sympathy != "on" && sympathy != "off")
         {
             std::cerr << "sympathy must be on or off\n";

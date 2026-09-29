@@ -1,4 +1,4 @@
-// Renders Acustra's eleven demonstrations through AcustraEngine, the
+// Renders Acustra's ten demonstrations through AcustraEngine, the
 // same JUCE-free signal path used by the plug-in. Every score and engine seed
 // is deterministic. The engine's strings, passive bridge, and modal body are
 // the source; no sample playback, convolution, room, or post-effect is used.
@@ -31,9 +31,8 @@ namespace
 using acustra::AcustraEngine;
 using acustra::BodyMaterial;
 using acustra::BodyShape;
-using acustra::BridgeModel;
 using acustra::EngineParameters;
-using acustra::StringMaterial;
+using acustra::GuitarModel;
 using acustra::Tuning;
 
 constexpr double demoSampleRate = 44100.0;
@@ -202,20 +201,14 @@ void append(Audio& destination, Audio source, double silenceSeconds = 0.0)
 
 EngineParameters baseParameters()
 {
-    EngineParameters parameters;
     // Render at the public default. Whole-file normalisation owns listening
     // level, so driving the safety limiter here would only alter transients.
-    // The steel presets and a new session play the Original bridge (steel's
-    // own, on its radiation's poles), so the demos do too; nylon does not
-    // read this field.
-    parameters.bridgeModel = BridgeModel::Original;
-    return parameters;
+    return EngineParameters {};
 }
 
 Audio steelSustainRange()
 {
     auto parameters = baseParameters();
-    parameters.stringMaterial = StringMaterial::Steel;
     parameters.shape = BodyShape::Dreadnought;
     parameters.bodyMaterial = BodyMaterial::Spruce;
     parameters.stringAge = 0.12f;
@@ -228,42 +221,6 @@ Audio steelSustainRange()
     take.play(64, 0.83f, 1.15, 0.38); // E4
     take.play(76, 0.79f, 1.05, 0.35); // E5
     take.play(83, 0.76f, 1.20, 1.10); // B5, nineteenth fret
-    return take.finish();
-}
-
-Audio nylonFingerstyle()
-{
-    auto parameters = baseParameters();
-    parameters.stringMaterial = StringMaterial::Nylon;
-    parameters.shape = BodyShape::Auditorium;
-    parameters.bodyMaterial = BodyMaterial::Cedar;
-    parameters.stringAge = 0.08f;
-    parameters.pluckPosition = 0.43f;
-    parameters.touch = 0.08f;
-    parameters.bodyAmount = 0.88f;
-
-    Take take(parameters);
-    constexpr std::array<std::array<int, 6>, 2> chords {{
-        {{ 40, 47, 52, 55, 59, 64 }},
-        {{ 43, 48, 52, 55, 60, 64 }}
-    }};
-    for (const auto& chord : chords)
-    {
-        for (std::size_t index = 0; index < chord.size(); ++index)
-        {
-            // The refitted nylon string is quieter than the previous
-            // calibration; this keeps the demo inside the renderer's safe
-            // pre-normalisation peak band without touching the engine.
-            const float velocity = 0.66f
-                + 0.05f * static_cast<float>(index % 3);
-            take.noteOn(chord[index], velocity);
-            take.rest(0.16);
-        }
-        take.rest(0.42);
-        for (const int note : chord)
-            take.noteOff(note);
-        take.rest(0.70);
-    }
     return take.finish();
 }
 
@@ -280,7 +237,6 @@ Audio anchorChord(EngineParameters parameters)
 Audio shapeAndMaterialAnchors()
 {
     auto parameters = baseParameters();
-    parameters.stringMaterial = StringMaterial::Steel;
     parameters.stringAge = 0.15f;
     parameters.bodyAmount = 0.90f;
     parameters.stereoWidth = 0.55f;
@@ -292,7 +248,7 @@ Audio shapeAndMaterialAnchors()
     parameters.shape = BodyShape::Jumbo;
     append(result, anchorChord(parameters), 0.45);
     parameters.shape = BodyShape::Auditorium;
-    parameters.bodyMaterial = BodyMaterial::Cedar;
+    parameters.bodyMaterial = BodyMaterial::Mahogany;
     append(result, anchorChord(parameters), 0.45);
     parameters.bodyMaterial = BodyMaterial::Maple;
     append(result, anchorChord(parameters));
@@ -312,7 +268,6 @@ Audio agePhrase(EngineParameters parameters)
 Audio stringAge()
 {
     auto parameters = baseParameters();
-    parameters.stringMaterial = StringMaterial::Steel;
     parameters.shape = BodyShape::Dreadnought;
     parameters.bodyMaterial = BodyMaterial::Spruce;
     parameters.pluckPosition = 0.20f;
@@ -334,7 +289,6 @@ Audio playingBehaviours()
     // above the fretted range is played as the natural harmonic that reaches
     // it. No demo control is used that a player does not have.
     auto parameters = baseParameters();
-    parameters.stringMaterial = StringMaterial::Steel;
     parameters.shape = BodyShape::Dreadnought;
     parameters.bodyMaterial = BodyMaterial::Spruce;
     parameters.pluckPosition = 0.24f;
@@ -387,7 +341,6 @@ Audio strummedChords()
     // times hand-damped. No two strums are the same take - the stroke
     // alternates and every pluck lands in its own place.
     auto parameters = baseParameters();
-    parameters.stringMaterial = StringMaterial::Steel;
     parameters.shape = BodyShape::Dreadnought;
     parameters.bodyMaterial = BodyMaterial::Spruce;
     parameters.pluckPosition = 0.26f;
@@ -424,7 +377,6 @@ Audio strummedChords()
 Audio alternateTunings()
 {
     auto parameters = baseParameters();
-    parameters.stringMaterial = StringMaterial::Steel;
     parameters.shape = BodyShape::Jumbo;
     parameters.bodyMaterial = BodyMaterial::Mahogany;
     parameters.stringAge = 0.18f;
@@ -447,11 +399,13 @@ Audio recuerdosDeLaAlhambra()
     // middle and index fingers repeat one melody note on one string, eleven
     // strokes a second. Every stroke lands on a string that is still ringing
     // from the last, which is what the two-way junction and the take-to-take
-    // pluck point are for.
+    // pluck point are for. Played on the Bellido 1978, the measured
+    // classical guitar, strung with steel as the instrument's only strings;
+    // Auditorium and Mahogany are its preset's.
     auto parameters = baseParameters();
-    parameters.stringMaterial = StringMaterial::Nylon;
+    parameters.guitarModel = GuitarModel::Bellido1978;
     parameters.shape = BodyShape::Auditorium;
-    parameters.bodyMaterial = BodyMaterial::Cedar;
+    parameters.bodyMaterial = BodyMaterial::Mahogany;
     parameters.stringAge = 0.10f;
     parameters.pluckPosition = 0.38f;
     parameters.touch = 0.10f;
@@ -468,9 +422,9 @@ Audio lagrima()
     // sustain and the beating between coupled strings carry the piece rather
     // than the attack.
     auto parameters = baseParameters();
-    parameters.stringMaterial = StringMaterial::Nylon;
+    parameters.guitarModel = GuitarModel::Bellido1978;
     parameters.shape = BodyShape::Auditorium;
-    parameters.bodyMaterial = BodyMaterial::Cedar;
+    parameters.bodyMaterial = BodyMaterial::Mahogany;
     parameters.stringAge = 0.06f;
     parameters.pluckPosition = 0.44f;
     parameters.touch = 0.08f;
@@ -485,18 +439,16 @@ Audio pickingTechniques()
 {
     Audio result;
     auto parameters = baseParameters();
-    for (auto strings : { StringMaterial::Steel, StringMaterial::Nylon })
-        for (auto picking : { acustra::PickingTechnique::Finger,
-                               acustra::PickingTechnique::Pick,
-                               acustra::PickingTechnique::Thumb })
-        {
-            parameters.stringMaterial = strings;
-            parameters.picking = picking;
-            Take take(parameters);
-            take.play(52, 0.70f, 0.45, 0.12);
-            take.play(59, 0.70f, 0.45, 0.50);
-            append(result, take.finish(), 0.25);
-        }
+    for (auto picking : { acustra::PickingTechnique::Finger,
+                           acustra::PickingTechnique::Pick,
+                           acustra::PickingTechnique::Thumb })
+    {
+        parameters.picking = picking;
+        Take take(parameters);
+        take.play(52, 0.70f, 0.45, 0.12);
+        take.play(59, 0.70f, 0.45, 0.50);
+        append(result, take.finish(), 0.25);
+    }
     return result;
 }
 
@@ -527,15 +479,14 @@ struct Demo
     Audio (*render)();
 };
 
-constexpr std::array<Demo, 11> demos {{
+// File numbers stay as published: 02 (nylon fingerstyle) was retired with
+// the nylon strings, and 07 before it; neither number is reused.
+constexpr std::array<Demo, 10> demos {{
     { "01-steel-sustain-range.wav",
       "Steel sustain from open E2 to B5, one held pluck at a time",
       steelSustainRange },
-    { "02-nylon-fingerstyle.wav",
-      "A fingertip nylon arpeggio with overlapping held notes",
-      nylonFingerstyle },
     { "03-shape-material-anchors.wav",
-      "One chord: Parlor/Jumbo, then Cedar/Maple anchor settings",
+      "One chord: Parlor/Jumbo, then Mahogany/Maple anchor settings",
       shapeAndMaterialAnchors },
     { "04-string-age.wav",
       "The same steel phrase with fresh strings, then fully aged strings",
@@ -552,14 +503,15 @@ constexpr std::array<Demo, 11> demos {{
       "times hand-damped, no two strokes the same take",
       strummedChords },
     { "09-recuerdos-de-la-alhambra.wav",
-      "Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a "
-      "thumb arpeggio",
+      "Tarrega, Recuerdos de la Alhambra, bars 1-12: a tremolo over a thumb "
+      "arpeggio on the steel-strung Bellido 1978",
       recuerdosDeLaAlhambra },
     { "10-lagrima.wav",
-      "Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass",
+      "Tarrega, Lagrima, bars 1-8: a sung melody over held bass on the "
+      "steel-strung Bellido 1978",
       lagrima },
     { "11-picking-techniques.wav",
-      "Finger, pick and thumb on steel, then on nylon; same notes and velocity",
+      "Finger, pick and thumb on the same notes and velocity",
       pickingTechniques },
     { "12-capture-types.wav",
       "Stereo mic, mono mic, piezo",

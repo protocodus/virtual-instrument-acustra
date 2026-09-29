@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Acustra's two passive spatial bridge approximations.
+"""Generate Acustra's passive spatial bridge approximation, steel's own bridge.
 
 The input is Robert Mores' ``qualified_selected_impulses.mat``.  Method.pdf
 section 2b describes three hammer positions on the bridge inlay and two
@@ -37,22 +37,14 @@ Below the corner the target is the symmetrized spatial approximation;
 above it every string gets the mean of the two side responses, and no mode
 carries a cross or rocking residue.
 
-Two measured nylon-string guitars are emitted for the original material
-settings. The g21 DeVoe flamenco is adapted for steel; it was not steel-strung.
-The archive's physical-measures table lists Savarez Tomatito strings for g21:
+One measured guitar is emitted, for the Original model: the g21 DeVoe
+flamenco, adapted for steel; it was not steel-strung. The archive's
+physical-measures table lists Savarez Tomatito strings for g21:
 https://www.savarez.com/tomatito-normal-tension-t50r (nylon/KF trebles).
-GenerateMeasuredSteelBridge.py supplies a separate measured steel alternative.
-Both fits must meet the same relative-complex and median-magnitude limits;
-those limits were pinned on the g21 scalar fit and are not relaxed here.
+The fit must meet relative-complex and median-magnitude limits pinned on the
+g21 scalar fit.
 
-NumPy and SciPy are required.  Regenerate or verify with:
-
-    python3 Tools/GenerateMeasuredBridge.py --raw-mat /path/to/qualified_selected_impulses.mat
-    python3 Tools/GenerateMeasuredBridge.py --raw-mat /path/to/qualified_selected_impulses.mat --check
-
-``--nylon-guitar`` selects a different archive record for the nylon bank; it
-exists so the choice between measured classicals can be screened, and the
-committed header is the default.
+NumPy and SciPy are required (the command lines are at the end).
 
 Steel's own bridge plays on its radiation's poles. The same modal body gives
 mode k's mobility residue phi_k(bridge)^2/m_k and its radiation residue
@@ -72,18 +64,18 @@ pole (AcustraEngine.cpp, steelOwnBridgePole).
 
 The flamenca's top is far more compliant than a steel-string guitar's.
 steelTopMobilityRatio is the geometric mean over 1000 log-spaced frequencies
-in 80 Hz-4 kHz of |Y_Fylde(f)| / |Y_steel(f, u=-1)|, both the committed modal
-sums with no anchor and no plate floor: the Fylde Falstaff of
-MeasuredSteelBridgeData.h (--steel-reference; Carcagno et al., JASA 144
-(2018) 3533, https://doi.org/10.1121/1.5084735, data https://osf.io/f4pqa/,
-CC BY 4.0) was measured between strings 5 and 6, which is the flamenca's
+in 80 Hz-4 kHz of |Y_Fylde(f)| / |Y_steel(f, u=-1)|, both modal sums with no
+anchor and no plate floor: the Fylde Falstaff (Carcagno et
+al., JASA 144 (2018) 3533, https://doi.org/10.1121/1.5084735, data
+https://osf.io/f4pqa/, CC BY 4.0), fitted by FyldeBridgeReference.py from
+--fylde-mat, was measured between strings 5 and 6, which is the flamenca's
 bass-side point u = -1. The run prints its spread over other bands and over
 conductance.
 
     python3 Tools/GenerateBodyForcePair.py --raw-mat /path/qualified_selected_impulses.mat \
         --plate-q median --output /tmp/body
     python3 Tools/GenerateMeasuredBridge.py --raw-mat /path/qualified_selected_impulses.mat \
-        --body-report /tmp/body/report.json --check
+        --body-report /tmp/body/report.json --fylde-mat /path/bridge_admittance_all.mat --check
 """
 
 from __future__ import annotations
@@ -136,7 +128,6 @@ MAX_MEDIAN_MAGNITUDE_ERROR_DB = 1.6
 RAW_MD5 = "733cb10baf5ce36d8bf333610ffbb260"
 HAMMER_NEWTONS_PER_FULL_SCALE = (10_000.0 / 92.90) * 4.4482
 ACCELERATION_MPS2_PER_FULL_SCALE = (10_000.0 / 10.64) * 9.80665
-DEFAULT_NYLON_GUITAR = 34
 # Provenance from the archive's List_of_guitars_description.pdf.
 GUITAR_DESCRIPTION = {
     21: "a 2018 Lester DeVoe flamenca blanca, spruce/cypress, measured in a "
@@ -510,7 +501,6 @@ def fit_bank(path: Path, guitar: int) -> dict:
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 DEFAULT_RADIATION_HEADER = REPOSITORY / "Source" / "DSP" / "MeasuredBodyData.h"
-DEFAULT_STEEL_REFERENCE = REPOSITORY / "Source" / "DSP" / "MeasuredSteelBridgeData.h"
 MOBILITY_RATIO_BAND_HZ = (80.0, 4000.0)
 MOBILITY_RATIO_POINTS = 1000
 MOBILITY_RATIO_POSITION = -1.0
@@ -564,7 +554,7 @@ def radiation_twins(bridge: np.ndarray, radiation: np.ndarray, fitted_q: np.ndar
 
 
 def radiation_poles(bank: dict, radiation_header: Path, body_report: Path,
-                    steel_reference: Path) -> dict:
+                    fylde_mat: Path) -> dict:
     """Steel's twins, unpaired-mode Q ratios and top mobility ratio."""
     radiation = header_rows(radiation_header, "measuredSteelBodyModes")[:, :2]
     report = json.loads(body_report.read_text(encoding="utf-8"))
@@ -589,7 +579,8 @@ def radiation_poles(bank: dict, radiation_header: Path, body_report: Path,
               else plate_q_factor(frequency, fitted, population)
                   ** (t1_weight if frequency < t1_upper else 1.0)
               for frequency, twin in zip(modes[:, 0], twins)]
-    reference = header_rows(steel_reference, "measuredFyldeBridgeModes")
+    from FyldeBridgeReference import reference_modes
+    reference = reference_modes(fylde_mat)
     ratio, spread = top_mobility_ratio(reference, modes)
     return dict(twins=twins, q_ratios=ratios, mobility_ratio=ratio, spread=spread)
 
@@ -597,6 +588,7 @@ def radiation_poles(bank: dict, radiation_header: Path, body_report: Path,
 def poles_block(poles: dict, steel_guitar: int) -> str:
     twins = poles["twins"]
     paired = sum(1 for twin in twins if twin >= 0)
+    # The citation is wrapped on its own, as the committed header has it.
     comment = textwrap.fill(
         f'Steel\'s own bridge on its radiation\'s poles. {paired} of the'
         f' {len(twins)} g{steel_guitar} bridge modes are the same resonance as a'
@@ -609,8 +601,9 @@ def poles_block(poles: dict, steel_guitar: int) -> str:
         f' g{steel_guitar}\'s own, never raising, 1 outside its band).'
         f' steelTopMobilityRatio brings the flamenca\'s mobility to a'
         f' steel-string guitar\'s: the geometric mean over 80 Hz-4 kHz of'
-        f' |Y| of the Fylde Falstaff (MeasuredSteelBridgeData.h; Carcagno,'
-        f' Bucknall, Woodhouse, Fritz and Plack, JASA 144 (2018) 3533,'
+        f' |Y| of the Fylde Falstaff',
+        width=76, initial_indent="// ", subsequent_indent="// ") + "\n" + textwrap.fill(
+        f'(Carcagno, Bucknall, Woodhouse, Fritz and Plack, JASA 144 (2018) 3533,'
         f' https://doi.org/10.1121/1.5084735, data https://osf.io/f4pqa/, CC BY'
         f' 4.0) over g{steel_guitar}\'s at u = -1, {poles["mobility_ratio"]:.5f},'
         f' to three figures; over other bands and conductance it spans'
@@ -659,7 +652,7 @@ inline constexpr std::array<MeasuredBridgeMode, {len(bank["modes"])}> {name} {{{
 }}}};'''
 
 
-def render_header(steel: dict, nylon: dict, poles: dict) -> str:
+def render_header(steel: dict, poles: dict) -> str:
     return f'''// Generated by Tools/GenerateMeasuredBridge.py; do not hand-edit.
 // Passive spatial approximations fitted to each guitar's bass and treble
 // impacts and two accelerometers behind the saddle (Method.pdf Fig. 3).
@@ -677,9 +670,8 @@ def render_header(steel: dict, nylon: dict, poles: dict) -> str:
 // Each mode's residue matrix [[heave, cross], [cross, rock]] is positive
 // semidefinite, so the model's Y(u) is positive real. This constraint does
 // not establish passivity or collocation of the measured response matrix.
-// The original material settings select two measured nylon-string guitars:
-// g{steel['guitar']} flamenco is adapted for steel, g{nylon['guitar']} classical for nylon. The separate
-// MeasuredSteelBridgeData.h contains actual steel-string bridge measurements.
+// The Original model plays g{steel['guitar']}, a measured flamenco guitar adapted for steel
+// strings.
 // Adapted from Robert Mores, "Archive for the acoustical documentation of
 // classical Spanish guitars, flamenco guitars and romantic guitars from
 // private and public collections -- bridge mobility" (2021),
@@ -705,8 +697,6 @@ struct MeasuredBridgeMode
 {bank_block("measuredSteelBridgeModes", steel)}
 
 {poles_block(poles, steel["guitar"])}
-
-{bank_block("measuredNylonBridgeModes", nylon)}
 }} // namespace acustra::detail
 '''
 
@@ -736,11 +726,6 @@ def main() -> int:
     parser.add_argument("--raw-mat", required=True, type=Path)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument(
-        "--nylon-guitar", type=int, default=DEFAULT_NYLON_GUITAR,
-        choices=sorted(GUITAR_DESCRIPTION),
-        help="archive record for the nylon bank (default: %(default)s)",
-    )
-    parser.add_argument(
         "--steel-guitar", type=int, default=DEFAULT_STEEL_GUITAR,
         choices=(21, 39),
         help="archive record for the steel bank: g21, or g39, the anechoic "
@@ -753,8 +738,9 @@ def main() -> int:
         "--radiation-header", type=Path, default=DEFAULT_RADIATION_HEADER,
         help="MeasuredBodyData.h whose steel modes the bridge's twins index")
     parser.add_argument(
-        "--steel-reference", type=Path, default=DEFAULT_STEEL_REFERENCE,
-        help="MeasuredSteelBridgeData.h, the steel-string mobility level")
+        "--fylde-mat", required=True, type=Path,
+        help="bridge_admittance_all.mat (FyldeBridgeReference.py), the "
+             "steel-string mobility level")
     parser.add_argument(
         "--check",
         action="store_true",
@@ -763,10 +749,9 @@ def main() -> int:
     arguments = parser.parse_args()
 
     steel = fit_bank(arguments.raw_mat, arguments.steel_guitar)
-    nylon = fit_bank(arguments.raw_mat, arguments.nylon_guitar)
     poles = radiation_poles(steel, arguments.radiation_header,
-                            arguments.body_report, arguments.steel_reference)
-    header = render_header(steel, nylon, poles)
+                            arguments.body_report, arguments.fylde_mat)
+    header = render_header(steel, poles)
     twins = poles["twins"]
     print(f"steel bridge on its radiation's poles: {sum(t >= 0 for t in twins)} of "
           f"{len(twins)} modes twinned at "
@@ -778,15 +763,14 @@ def main() -> int:
         return 0 if check_output(arguments.output, header) else 1
     with arguments.output.open("w", encoding="utf-8", newline="\n") as stream:
         stream.write(header)
-    for name, bank in (("steel", steel), ("nylon", nylon)):
-        print(
-            f"generated {name} bank g{bank['guitar']}: {len(bank['modes'])} "
-            f"passive modes ({bank['rocking']} rocking below "
-            f"{bank['corner']:.0f} Hz), complex error "
-            f"{bank['relative_error']:.4f}, median magnitude error per string "
-            + "/".join(f"{value:.3f}" for value in bank["magnitude_errors"])
-            + " dB"
-        )
+    print(
+        f"generated steel bank g{steel['guitar']}: {len(steel['modes'])} "
+        f"passive modes ({steel['rocking']} rocking below "
+        f"{steel['corner']:.0f} Hz), complex error "
+        f"{steel['relative_error']:.4f}, median magnitude error per string "
+        + "/".join(f"{value:.3f}" for value in steel["magnitude_errors"])
+        + " dB"
+    )
     print(f"wrote {arguments.output}")
     return 0
 

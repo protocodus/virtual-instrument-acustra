@@ -6,6 +6,13 @@ because Mark Rau's measurements carry no redistribution license. The
 instrument offers the Bellido alone beside Original; the rest of this
 document records how the three were built and measured locally.
 
+Update 2026-09-29: Acustra is steel-strung only, Body Material is Spruce,
+Mahogany or Maple, and the Bridge Model choice is gone. The Bellido stays,
+strung with steel; its Guitar preset is Auditorium, Mahogany (the kept wood
+nearest the cedar it was built of, which remains its wood reference). Original
+is g21 on its own bridge; the g34 nylon bank and the optional Fylde bridge are
+removed. The table and text below describe the instrument as of 2026-09-08.
+
 The local instrument now offers four additional measured bridge/body pairs.
 The **Guitar** presets choose their native family, wood reference and string
 material together; **Model** independently selects the measured bank.

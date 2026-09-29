@@ -20,39 +20,24 @@ struct ConstructionPreset
     const char* name;
     acustra::BodyShape shape;
     acustra::BodyMaterial wood;
-    acustra::StringMaterial strings;
-    acustra::BridgeModel bridge { acustra::BridgeModel::Original };
     acustra::GuitarModel model { acustra::GuitarModel::Original };
 };
 
 // Construction directions, not measured replicas of manufacturer models.
-// The steel presets play the Original bridge: g21's own, the flamenca whose
-// radiation steel plays, on its radiation's poles and at a steel-string
-// guitar's measured mobility, so one body loads the string and radiates it
-// (README, How it works). The measured Fylde steel-string bridge, another
-// guitar's, stays reachable as its own preset: Shape moves its modes as it
-// moves every bridge bank's, but no Wood or anchor map is applied to it. The
-// Bridge choice selects a bank only for steel strings on the Original model;
-// nylon and the Bellido play their own guitar's bridge whatever it says. The
-// appended presets select a measured body plus suitable string construction.
-constexpr std::array<ConstructionPreset, 6> constructionPresets {{
+// The style presets play the Original body: g21's radiation and its own
+// bridge on the radiation's poles, at a steel-string guitar's measured
+// mobility, so one body loads the string and radiates it (README, How it
+// works). The Bellido preset selects that measured guitar in its own family,
+// in Mahogany, the kept wood nearest the cedar it was built of.
+constexpr std::array<ConstructionPreset, 4> constructionPresets {{
     { "Dreadnought / Martin style", acustra::BodyShape::Dreadnought,
-      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
-      acustra::BridgeModel::Original },
+      acustra::BodyMaterial::Spruce },
     { "Auditorium / Taylor style", acustra::BodyShape::Auditorium,
-      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
-      acustra::BridgeModel::Original },
+      acustra::BodyMaterial::Spruce },
     { "Parlor / Fender style", acustra::BodyShape::Parlor,
-      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
-      acustra::BridgeModel::Original },
-    { "Classical nylon", acustra::BodyShape::Auditorium,
-      acustra::BodyMaterial::Cedar, acustra::StringMaterial::Nylon },
-    { "Fylde bridge / steel", acustra::BodyShape::Dreadnought,
-      acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
-      acustra::BridgeModel::FyldeSteel },
-    { "Bellido 1978 / nylon", acustra::BodyShape::Auditorium,
-      acustra::BodyMaterial::Cedar, acustra::StringMaterial::Nylon,
-      acustra::BridgeModel::Original, acustra::GuitarModel::Bellido1978 }
+      acustra::BodyMaterial::Spruce },
+    { "Bellido 1978", acustra::BodyShape::Auditorium,
+      acustra::BodyMaterial::Mahogany, acustra::GuitarModel::Bellido1978 }
 }};
 
 // Palette drawn from the classical-guitar reference: pale soundboard, ebony
@@ -383,11 +368,8 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
             gatherChordsButton);
 
     configureSetupMenu (
-        0, "GUITAR", "Set the body model, shape, wood and strings together. "
+        0, "GUITAR", "Set the body model, shape and wood together. "
         "Style presets use the original body; named years select measured bodies. "
-        "Fylde selects steel-string bridge mobility with the original microphones; "
-        "the bridge choice applies to steel strings on the original body only, "
-        "since nylon and the Bellido always play their own guitar's bridge. "
         "Adjust any construction control below to make your own guitar.");
     auto& guitarMenu = setupControls[0];
     guitarMenu.addItem ("Custom construction", 1);
@@ -413,8 +395,6 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         };
         setChoice (acustra::parameters::shape, preset.shape);
         setChoice (acustra::parameters::bodyMaterial, preset.wood);
-        setChoice (acustra::parameters::stringMaterial, preset.strings);
-        setChoice (acustra::parameters::bridgeModel, preset.bridge);
         setChoice (acustra::parameters::guitarModel, preset.model);
         timerCallback();
     };
@@ -427,10 +407,10 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         "an under-saddle piezo through its onboard preamp. Mono mic and piezo "
         "send the same signal to both channels and ignore Stereo Width.");
     configureSetupMenu (
-        3, "MODEL", "Choose the measured guitar body. Original follows the "
-        "string material; Bellido is a measured 1978 classical with three "
-        "microphones. Guitar presets also set the matching string construction; "
-        "shape and wood controls remain adjustable construction changes.");
+        3, "MODEL", "Choose the measured guitar body. Original is the "
+        "steel-string voice; Bellido is a measured 1978 classical strung with "
+        "steel, with three microphones. Shape and wood controls remain "
+        "adjustable construction changes.");
     if (auto* parameter = dynamic_cast<juce::AudioParameterChoice*> (
             audioProcessor.parameters.getParameter (acustra::parameters::picking)))
     {
@@ -466,10 +446,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         1, "BODY MATERIAL", acustra::parameters::bodyMaterial,
         "Bounded high-frequency wood direction, not captured wood identification");
     configureChoice (
-        2, "STRINGS", acustra::parameters::stringMaterial,
-        "Switch the physical string construction between nylon and steel");
-    configureChoice (
-        3, "TUNING", acustra::parameters::tuning,
+        2, "TUNING", acustra::parameters::tuning,
         "Open-string tuning used by the six-string allocator");
 
     configureSlider (
@@ -488,7 +465,12 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         4, "STEREO", acustra::parameters::stereoWidth,
         "Width between body microphones. Mono mic and piezo ignore this control.");
     configureSlider (
-        5, "OUTPUT", acustra::parameters::output,
+        5, "PIEZO", acustra::parameters::piezoMix,
+        "Mix the under-saddle piezo into the main output beneath the "
+        "microphones. With Capture on Piezo the piezo is already the whole "
+        "output, so this has no effect.");
+    configureSlider (
+        6, "OUTPUT", acustra::parameters::output,
         "Final output level in decibels", true);
 
     keyboard.setName ("Acustra MIDI keyboard");
@@ -545,13 +527,7 @@ void AcustraAudioProcessorEditor::updateConstructionControls()
     {
         const auto& preset = constructionPresets[index];
         if (state.guitarModel == preset.model
-            && state.shape == preset.shape && state.bodyMaterial == preset.wood
-            && state.stringMaterial == preset.strings
-            // Where the Bridge choice selects nothing (nylon, the Bellido),
-            // the engine ignores it, and so does the match.
-            && (! acustra::AcustraEngine::bridgeSelectable (state.stringMaterial,
-                                                            state.guitarModel)
-                || state.bridgeModel == preset.bridge))
+            && state.shape == preset.shape && state.bodyMaterial == preset.wood)
         {
             presetId = static_cast<int> (index) + 2;
             break;
@@ -661,7 +637,7 @@ void AcustraAudioProcessorEditor::paint (juce::Graphics& g)
     drawPanel (g, choicePanelBounds);
     drawPanel (g, tonePanelBounds);
 
-    // A restrained soundboard/sound-hole watermark anchors the six controls
+    // A restrained soundboard/sound-hole watermark anchors the seven controls
     // visually to the instrument they alter while leaving every label clear.
     const auto watermark = tonePanelBounds.toFloat().reduced (18.0f);
     const auto centre = watermark.getCentre();
@@ -755,8 +731,9 @@ void AcustraAudioProcessorEditor::resized()
     auto choiceArea = choicePanelBounds.reduced (14);
     choiceArea.removeFromTop (20);
     const int choiceGap = 10;
+    const int choiceCount = static_cast<int> (choiceControls.size());
     const int choiceWidth =
-        (choiceArea.getWidth() - choiceGap * 3) / 4;
+        (choiceArea.getWidth() - choiceGap * (choiceCount - 1)) / choiceCount;
     for (std::size_t index = 0; index < choiceControls.size(); ++index)
     {
         auto cell = choiceArea.removeFromLeft (choiceWidth);
@@ -770,8 +747,9 @@ void AcustraAudioProcessorEditor::resized()
     auto toneArea = tonePanelBounds.reduced (13);
     toneArea.removeFromTop (20);
     const int sliderGap = 3;
+    const int sliderCount = static_cast<int> (sliderControls.size());
     const int sliderWidth =
-        (toneArea.getWidth() - sliderGap * 5) / 6;
+        (toneArea.getWidth() - sliderGap * (sliderCount - 1)) / sliderCount;
     for (std::size_t index = 0; index < sliderControls.size(); ++index)
     {
         auto cell = toneArea.removeFromLeft (sliderWidth);

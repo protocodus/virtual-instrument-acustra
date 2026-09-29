@@ -14,12 +14,11 @@
 
 // Capacity of the measured banks: the largest bank a construction plays.
 // That is the steel blend (SteelBodyBlend.h), g21's 132 radiation modes and
-// the joint-pole body's 9 below its band, and nylon's largest bank; the
-// bridge is B's 47 modes and the joint body's 8 (44 more with the Fylde's
-// when the blend's B weight is below 1). AcustraEngine.cpp static-asserts
-// that every bank fits, so a regenerated header that grows fails to build
-// rather than to sound. Slots past a bank cost no CPU, but every instance
-// carries them as memory, nylon and the Bellido guitar too.
+// the joint-pole body's 9 below its band; the bridge is B's 47 modes and the
+// joint body's 8. AcustraEngine.cpp static-asserts that every bank fits, so
+// a regenerated header that grows fails to build rather than to sound.
+// Slots past a bank cost no CPU, but every instance carries them as memory,
+// the Bellido guitar too.
 #if !defined(ACUSTRA_BRIDGE_MODE_COUNT)
 #define ACUSTRA_BRIDGE_MODE_COUNT 56
 #endif
@@ -51,15 +50,8 @@ enum class BodyShape
 enum class BodyMaterial
 {
     Spruce,
-    Cedar,
     Mahogany,
     Maple
-};
-
-enum class StringMaterial
-{
-    Nylon,
-    Steel
 };
 
 // Legacy numeric values remain valid for offline renderers; sanitisation maps
@@ -93,12 +85,6 @@ enum class PickingTechnique
     Thumb
 };
 
-enum class BridgeModel
-{
-    Original,
-    FyldeSteel
-};
-
 // Values 2-4 were the Washburn 1897, Santa Cruz OM 2022 and Martin D18V 2007,
 // fitted from Mark Rau's measurements, which carry no redistribution license.
 // They are retired: sanitisation maps any of those values to Original.
@@ -112,11 +98,9 @@ struct EngineParameters
 {
     BodyShape shape { BodyShape::Dreadnought };
     BodyMaterial bodyMaterial { BodyMaterial::Spruce };
-    StringMaterial stringMaterial { StringMaterial::Steel };
     CaptureType capture { CaptureType::StereoMic };
     Tuning tuning { Tuning::Standard };
     PickingTechnique picking { PickingTechnique::Finger };
-    BridgeModel bridgeModel { BridgeModel::Original };
     GuitarModel guitarModel { GuitarModel::Original };
     float stringAge { 0.15f };       // 0 fresh, 1 worn/dead
     float pluckPosition { 0.28f };   // 0 bridgeward, 1 neckward
@@ -124,6 +108,11 @@ struct EngineParameters
     float bodyAmount { 0.82f };      // measurement-derived body radiation
     float stereoWidth { 0.62f };     // authored per-mode stereo gain spread
     float outputGain { 0.42f };      // linear
+    // The piezo mixed into Main under a microphone Capture, 0 none to 1 the
+    // piezo at its full level (as Capture Piezo plays it) beside the
+    // microphones. With Capture on Piezo the piezo is already all of Main,
+    // so it adds nothing there.
+    float piezoMix { 0.0f };
 };
 
 struct AcustraEngineTestAccess;
@@ -149,23 +138,6 @@ public:
     // calibration resets the engine; do not call it from the audio thread.
     void setPhysicalCalibration(const PhysicalCalibration&) noexcept;
 
-    // Whether the Bridge choice selects a bank for this construction: only
-    // for steel strings on the Original model. The Bellido plays its own
-    // measured bridge and nylon g34's, whatever the choice, which is kept
-    // for when the guitar returns to steel on Original.
-    [[nodiscard]] static constexpr bool bridgeSelectable(
-        StringMaterial strings, GuitarModel guitar) noexcept
-    {
-        return strings == StringMaterial::Steel
-            && guitar == GuitarModel::Original;
-    }
-
-    // The wood the measured body these select was built of: Body Material
-    // leaves that body as measured there and moves it relative to it
-    // elsewhere. Spruce for steel on the Original model (g21), cedar for
-    // nylon on it (g34) and for the Bellido.
-    [[nodiscard]] static BodyMaterial measuredBankWood(StringMaterial strings,
-                                                       GuitarModel guitar) noexcept;
     // The MIDI notes of the open strings, low E string first, in a tuning:
     // what the engine tunes to and the lowest note each string can play.
     [[nodiscard]] static std::array<int, stringCount> openNotes(Tuning) noexcept;
@@ -377,7 +349,7 @@ private:
         // bound on material loss (M. Zollner, Physics of the Electric
         // Guitar, 2005, ch.6). G: the bridge's conductance under the saddle,
         // the mean of Re(Y) over 5-7 kHz of the measured Fylde mobility the
-        // steel bridge is fitted to (MeasuredSteelBridgeData.h, Carcagno et
+        // steel bridge's level is fitted to (the Fylde Falstaff, Carcagno et
         // al. 2018), saddle removed. SZ: the six strings' summed wave
         // impedance at their standard open notes (stringImpedance).
         static constexpr double saddleMass = 3.8e-3;
@@ -420,20 +392,15 @@ private:
         // model), at 25 C: N kT/q = 45.0 mV.
         static constexpr double diodeSaturation = 2.52e-9;
         static constexpr double diodeThermalVoltage = 1.752 * 0.025692579;
-        // 6. The level match to the stereo microphones per material
+        // 6. The level match to the stereo microphones
         // (Tools/CalibratePiezo.py): the median BS.1770 loudness difference.
-        // It sits on the output reference, so a later change to either
-        // material's loudness moves both sensors together, and the
+        // It sits on the output reference, so a later change to the
+        // strings' loudness moves both sensors together, and the
         // construction loudness table (ConstructionLoudnessData.h) refines
         // it per construction and Picking.
-        static constexpr float steelTrim = 2.4417f;
-        static constexpr float nylonTrim = 2.49109f;
-        static constexpr float trimFor(StringMaterial material) noexcept
-        {
-            return material == StringMaterial::Steel ? steelTrim : nylonTrim;
-        }
+        static constexpr float trim = 2.4417f;
     };
-    // The saddle filter for one string material at the host rate: matched
+    // The saddle filter at the host rate: matched
     // poles and least-squares zeros (renderPiezo).
     struct PiezoSaddleFilter
     {
@@ -729,7 +696,6 @@ private:
         std::uint32_t tensionSemitones { 0 };
         std::uint32_t age { 0 };
         std::uint32_t palmMute { 0 };
-        bool steel { false };
 
         bool operator==(const VoiceConfigurationKey& other) const noexcept
         {
@@ -738,8 +704,7 @@ private:
                 && openMidi == other.openMidi
                 && frequency == other.frequency
                 && tensionSemitones == other.tensionSemitones
-                && age == other.age && palmMute == other.palmMute
-                && steel == other.steel;
+                && age == other.age && palmMute == other.palmMute;
         }
     };
 
@@ -1003,7 +968,8 @@ private:
         const EngineParameters& parameters,
         const PhysicalCalibration& calibration, int index) noexcept;
     // Body Material's factors on frequency, Q, brightness and radiation for
-    // these parameters, relative to measuredBankWood (tests).
+    // these parameters, relative to the wood the model's measured bank was
+    // built of (tests).
     static std::array<float, 4> bodyWoodFactors(
         const EngineParameters& parameters) noexcept;
     float bridgePhaseDelay(float frequency, int stringIndex) const noexcept;
@@ -1228,7 +1194,6 @@ private:
     GuitarModel configuredGuitarModel_ { GuitarModel::Original };
     BodyShape configuredBodyShape_ { BodyShape::Dreadnought };
     BodyMaterial configuredBodyMaterial_ { BodyMaterial::Spruce };
-    StringMaterial configuredBodyStringMaterial_ { StringMaterial::Steel };
     bool bodyUpdatePending_ { false };
     // Completed dispersion solves by their exact arguments, shared by the
     // six strings: a chord change asks for a handful of designs a playing
@@ -1275,9 +1240,8 @@ private:
     FixedDerivative piezoForceDerivative_ {};
     float lastPiezoWave_ { 0.0f };
     float lastPiezoForce_ { 0.0f };
-    // The saddle filter, one design per string material (index 0 steel,
-    // 1 nylon), in direct form I; histories are force units.
-    std::array<PiezoSaddleFilter, 2> piezoSaddle_ {};
+    // The saddle filter, in direct form I; histories are force units.
+    PiezoSaddleFilter piezoSaddle_ {};
     std::array<float, 5> piezoSaddleInput_ {};
     std::array<float, 2> piezoSaddleOutput_ {};
     // The preamp's input section, trapezoidal, as deviations from its
@@ -1315,7 +1279,7 @@ private:
     float lastPiezoInput_ { 0.0f };
     float lastPiezoDrive_ { 0.0f };
     // The piezo's whole level over radiationReferenceGain: its match to the
-    // microphones (PiezoDesign::trimFor) times its reference for the
+    // microphones (PiezoDesign::trim) times its reference for the
     // construction and Picking (piezoReferenceFor), smoothed like the
     // microphones' reference.
     float piezoTrim_ { 1.0f };
@@ -1348,10 +1312,11 @@ private:
     float bodyAmount_ { 0.82f };
     float width_ { 0.62f };
     float outputGain_ { 0.42f };
+    float piezoMix_ { 0.0f };
     // The output reference's per-material and per-construction factor
     // (outputReferenceFor in AcustraEngine.cpp), smoothed like the output
     // control, and the mono microphone's own (monoReferenceFor).
-    float materialReference_ { 1.0f };
+    float outputReference_ { 1.0f };
     float monoReference_ { 1.0f };
     float palmMute_ { 0.0f };
     float targetPalmMute_ { 0.0f };
