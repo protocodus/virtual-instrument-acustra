@@ -4326,7 +4326,18 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     const float basePosition = hasTimbre
         ? 0.05f + 0.41f * mpeTimbre_[channelIndex]
         : distanceFromBridge / soundingLength;
-    const float position = clamp(basePosition + takeOffset, 0.05f, 0.46f);
+    // The band is 0.05-0.46 of the sounding length. Past it - a hand at its
+    // distance from the bridge high on the neck, or a Thumb - the base point
+    // stops at the band's edge and the take's draw is reflected back inside
+    // it, so a clamped pluck still varies from take to take. Clamping the
+    // drawn point instead put every such pluck on exactly 0.46.
+    constexpr float lowestPoint = 0.05f;
+    constexpr float highestPoint = 0.46f;
+    float position = clamp(basePosition, lowestPoint, highestPoint) + takeOffset;
+    if (position > highestPoint)
+        position = 2.0f * highestPoint - position;
+    else if (position < lowestPoint)
+        position = 2.0f * lowestPoint - position;
     voice.pluckPoint = position;
     // Freeze the two transport paths at contact. D=2L/c, x=pL, hence the
     // direct arrival is pD/2 and the nut-reflected arrival is (1-p/2)D.

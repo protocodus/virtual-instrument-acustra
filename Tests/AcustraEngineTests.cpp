@@ -7050,28 +7050,41 @@ void testRepeatedStrumsVaryLikeRepeatedRealStrums()
 void testNoTwoPlucksLandInTheSamePlace()
 {
     // Each pluck draws its own point within the take-to-take spread the
-    // recordings show, and stays inside it.
-    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
-    auto& engine = *engineOwner;
-    engine.prepare(sampleRate, blockSize);
-    std::vector<float> left(static_cast<std::size_t>(blockSize));
-    std::vector<float> right(static_cast<std::size_t>(blockSize));
-    std::vector<double> points;
-    for (int take = 0; take < 6; ++take)
+    // recordings show, and stays inside it - also where the hand's distance
+    // from the bridge reaches the band's mid-string limit (a Finger high on
+    // the neck, a Thumb from the low frets up), where the draw used to be
+    // clamped away and every pluck landed on exactly the same point.
+    struct Case { int note; acustra::PickingTechnique picking; };
+    for (const Case pluck : { Case { 52, acustra::PickingTechnique::Finger },
+                              Case { 79, acustra::PickingTechnique::Finger },
+                              Case { 76, acustra::PickingTechnique::Thumb } })
     {
-        engine.noteOn(52, 0.8f);
-        points.push_back(acustra::AcustraEngineTestAccess::lastPluckPoint(engine));
-        for (int block = 0; block < 40; ++block)
-            engine.process(left.data(), right.data(), blockSize);
-        engine.noteOff(52);
-        for (int block = 0; block < 400; ++block)
-            engine.process(left.data(), right.data(), blockSize);
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
+        acustra::EngineParameters parameters;
+        parameters.picking = pluck.picking;
+        engine.setParameters(parameters);
+        engine.prepare(sampleRate, blockSize);
+        std::vector<float> left(static_cast<std::size_t>(blockSize));
+        std::vector<float> right(static_cast<std::size_t>(blockSize));
+        std::vector<double> points;
+        for (int take = 0; take < 6; ++take)
+        {
+            engine.noteOn(pluck.note, 0.8f);
+            points.push_back(acustra::AcustraEngineTestAccess::lastPluckPoint(engine));
+            for (int block = 0; block < 40; ++block)
+                engine.process(left.data(), right.data(), blockSize);
+            engine.noteOff(pluck.note);
+            for (int block = 0; block < 400; ++block)
+                engine.process(left.data(), right.data(), blockSize);
+        }
+        const auto [lowest, highest] = std::minmax_element(points.begin(), points.end());
+        const std::string name = "MIDI " + std::to_string(pluck.note);
+        expect(*highest - *lowest <= 0.0401 && *lowest > 0.0 && *highest <= 0.46,
+               "a pluck of " + name + " landed outside the measured take-to-take spread");
+        expect(*highest - *lowest > 1.0e-4,
+               "six plucks of " + name + " all landed in the same place");
     }
-    const auto [lowest, highest] = std::minmax_element(points.begin(), points.end());
-    expect(*highest - *lowest <= 0.0401 && *lowest > 0.0,
-           "a pluck landed outside the measured take-to-take spread");
-    expect(*highest - *lowest > 1.0e-4,
-           "six plucks of one note all landed in the same place");
 }
 
 void testNoteOffDoesNotCreateANewAttack()
