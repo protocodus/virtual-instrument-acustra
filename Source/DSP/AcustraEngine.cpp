@@ -6259,11 +6259,19 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         voice.startOrder = move.startOrder;
         voice.onsetSample = move.onsetSample;
         // A strum member already let go keeps its pending key-up on the
-        // string it moved to (startNote cleared it).
-        if (move.releaseAfterPluck && voice.pluckDelay > 0)
+        // string it moved to (startNote cleared it). One whose pick was due
+        // on this very sample has just been plucked by startNote, so its
+        // key-up is due now too: left pending, the key stayed down with no
+        // owner and the note rang on unreleased.
+        if (move.releaseAfterPluck)
         {
-            voice.releaseAfterPluck = true;
-            voice.pedalHeldAtKeyUp = move.pedalHeldAtKeyUp;
+            if (voice.pluckDelay > 0)
+            {
+                voice.releaseAfterPluck = true;
+                voice.pedalHeldAtKeyUp = move.pedalHeldAtKeyUp;
+            }
+            else
+                completeKeyUp(voice, move.to, move.pedalHeldAtKeyUp);
         }
     }
     for (int string = 0; string < stringCount; ++string)

@@ -42,6 +42,14 @@ struct AcustraEngineTestAccess
     {
         return engine.reshapeFormingChord(midiNote, channel, chosen);
     }
+    static int pluckDelay(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].pluckDelay;
+    }
+    static bool keyDown(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].keyDown;
+    }
 };
 } // namespace acustra
 
@@ -200,6 +208,49 @@ void testRolledTriadStaysInOneHand()
     expect(before[0].string == after[0].string
                && before[1].string == after[1].string,
            "notes 200 ms apart were refretted as a chord");
+}
+
+// A strum member let go before the pick reaches it is still plucked, and let
+// go then (audit F2). When a note joining the forming chord refrets it onto
+// another string, its key-up goes with it - also when its pick was due on the
+// very sample the refret lands on, where the move plucks it at once. That one
+// used to keep its key down with no owner: C4 rang on unreleased.
+void testRefrettedStrumMemberLetGoIsReleased()
+{
+    for (const int lead : { 3, 2, 1 })
+    {
+        auto engine = freshEngine();
+        // E4 then C4, strummed; C4's key comes up before its pick.
+        engine->beginStrum();
+        engine->noteOn(64, 0.8f, 1, 150, true);
+        engine->noteOn(60, 0.8f, 1, 300, true);
+        engine->noteOff(60);
+        const int string = engine->heldString(60, 1);
+        std::array<float, 1> left {}, right {};
+        for (int guard = 0; string >= 0 && guard < 2000
+                            && Access::pluckDelay(*engine, string) != lead; ++guard)
+            engine->process(left.data(), right.data(), 1);
+        expect(string >= 0 && Access::pluckDelay(*engine, string) == lead,
+               "the let-go strum member's pick was not pending");
+        // G4 joins the chord: the rolled C-E-G refrets C4 onto the G string.
+        engine->noteOn(67, 0.8f);
+        int moved = -1;
+        for (int s = 0; s < AcustraEngine::stringCount; ++s)
+            if (Access::soundingNote(*engine, s) == 60)
+                moved = s;
+        run(*engine, 1.0);
+        bool released = true;
+        for (int s = 0; s < AcustraEngine::stringCount; ++s)
+            if (Access::soundingNote(*engine, s) == 60 && Access::keyDown(*engine, s))
+                released = false;
+        std::cout << "Acustra let-go strum member refretted " << lead
+                  << " sample(s) before its pick: string " << string << " -> "
+                  << moved << ", " << (released ? "released" : "still held") << '\n';
+        expect(moved >= 0 && moved != string,
+               "the rolled chord did not refret the let-go C4");
+        expect(released, "a let-go strum member refretted as its pick fell due "
+                         "kept its key down: lead " + std::to_string(lead));
+    }
 }
 
 void playOneKeyAtATime(AcustraEngine& engine, const std::vector<int>& notes,
@@ -567,6 +618,7 @@ void testAllocatorCost()
 int main()
 {
     testRolledTriadStaysInOneHand();
+    testRefrettedStrumMemberLetGoIsReleased();
     testOpenChordsOneKeyAtATime();
     testScaleRunStaysInPositionThenShifts();
     testMelodyOverHeldBassKeepsTheBass();
