@@ -223,6 +223,21 @@ void testNominalBridge(acustra::GuitarModel model, const Bank& bank)
     engine->prepare(48000, 64);
     expect(acustra::AcustraEngineTestAccess::nominalBridgeMatches(*engine, bank),
            "a nominal measured bridge inherited legacy mobility gain or conductance floor");
+    // With steel strings too the measured guitar keeps its own top's full
+    // mobility, whichever Bridge is chosen: steel's own bridge's
+    // steelTopMobilityRatio corrects the Original's flamenca proxy, not a
+    // measured classical strung with steel (audit F18).
+    for (auto bridge : { acustra::BridgeModel::Original, acustra::BridgeModel::FyldeSteel })
+    {
+        auto steel = parametersFor(model);
+        steel.stringMaterial = acustra::StringMaterial::Steel;
+        steel.bridgeModel = bridge;
+        auto strung = std::make_unique<acustra::AcustraEngine>();
+        strung->setParameters(steel);
+        strung->prepare(48000, 64);
+        expect(acustra::AcustraEngineTestAccess::nominalBridgeMatches(*strung, bank),
+               "steel strings scaled a measured guitar's own bridge");
+    }
 }
 
 // Values 2-4 were the Washburn 1897, Santa Cruz OM 2022 and Martin D18V 2007,

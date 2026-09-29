@@ -817,6 +817,8 @@ ConstSpan<detail::MeasuredBridgeMode> measuredBridgeBank(
     StringMaterial material, BridgeModel model,
     GuitarModel guitar = GuitarModel::Original) noexcept
 {
+    // The Bellido plays its own measured bridge with either string, whatever
+    // the Bridge choice (see configureBridge for its mobility with steel).
     if (guitar == GuitarModel::Bellido1978)
         return detail::bellidoBridgeModes;
     if (material == StringMaterial::Steel)
@@ -2969,7 +2971,14 @@ void AcustraEngine::configureBridge() noexcept
     // Steel's own bridge is the flamenca's: its top is about 3.6 times as
     // compliant as a steel-string guitar's, so its residues are brought to the
     // Fylde's measured level (steelTopMobilityRatio) under the same fitted
-    // scale. The plate floor below is not scaled.
+    // scale. The plate floor below is not scaled. That ratio corrects a
+    // proxy - a nylon-strung flamenca standing in for a steel-string guitar
+    // - and nothing else: Classical 78 with steel strings is deliberately
+    // steel on the Bellido's own measured classical top, at that top's full
+    // mobility (about 1.8 times the level steel's own bridge is brought to).
+    // It drains the strings faster (E4 at 11.7 dB/s against 10.0 on the
+    // Original Auditorium) and is not scaled toward a steel-string guitar
+    // no measurement of this pair describes.
     const bool ownBridge = steelOwnBridge(parameters_.stringMaterial,
         parameters_.bridgeModel, parameters_.guitarModel);
     const float scale = physicalCalibration_.bridgeMobilityScale

@@ -1123,7 +1123,7 @@ uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
 
 | Control | Audible behavior |
 | --- | --- |
-| **Model** | Original or Bellido 1978; the named model selects its own measured bridge and radiation. |
+| **Model** | Original or Bellido 1978; the named model selects its own measured bridge and radiation. With steel strings the Bellido is steel on its own classical top at that top's measured mobility, about 1.8 times the steel-string level steel's own bridge is brought to, so it drains the strings a little faster (E4 11.7 dB/s against 10.0); its microphone trim was matched on nylon. |
 | **Bridge Model** | Original (the radiation's own guitar, g21) or the measured Fylde steel-string bridge, for steel strings on the Original model only (the Fylde bridge / steel preset); nylon and the Bellido always play their own guitar's bridge and ignore it. |
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
 | **Body Material** | Spruce, Cedar, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. Each measured body is heard as measured at the wood it was built of and moved relative to it elsewhere: Spruce for steel's g21, Cedar for nylon's g34 and for the Bellido. |
