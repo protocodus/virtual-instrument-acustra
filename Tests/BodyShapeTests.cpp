@@ -1,5 +1,7 @@
 #include "DSP/AcustraEngine.h"
+#include "DSP/GuitarModelData.h"
 #include "DSP/MeasuredBridgeData.h"
+#include "DSP/MeasuredSteelBridgeData.h"
 
 #include <algorithm>
 #include <array>
@@ -243,6 +245,106 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
     expect(worst < 1e-12, "a twinned bridge mode is not its radiation mode's pole");
 }
 
+// The analog frequency a configured bridge section was designed at, from its
+// prewarped bilinear denominators: 1+d1+d2 = 4w^2/d0 and 1-d1+d2 = 4B^2/d0.
+double sectionFrequency(const auto& mode, double rate)
+{
+    const double ratio = (1.0+mode.denominator1+mode.denominator2)
+                       / (1.0-mode.denominator1+mode.denominator2);
+    return rate/pi*std::atan(std::sqrt(ratio));
+}
+
+// Shape moves a bridge bank by the same three class factors (A0 group, T1
+// group, plate) as the radiation it belongs to, so each bridge mode must move
+// as the radiation mode beside it does: the nearest one in log frequency, on
+// the same side of the A0 group's 150 Hz limit. The Bellido's bridge T1
+// (216.4 Hz, just over its radiation T1 at 212.2 Hz) took the plate factor
+// instead and landed 0.8-1.2 semitones off it on Parlor, Dreadnought and
+// Jumbo (audit F9).
+void testBridgeModesMoveWithTheirRadiationNeighbours()
+{
+    struct Bank { acustra::StringMaterial material; acustra::GuitarModel model;
+                  acustra::BridgeModel bridge; const char* name; };
+    const Bank banks[] {
+        { acustra::StringMaterial::Steel, acustra::GuitarModel::Original, acustra::BridgeModel::Original, "steel own" },
+        { acustra::StringMaterial::Steel, acustra::GuitarModel::Original, acustra::BridgeModel::FyldeSteel, "Fylde" },
+        { acustra::StringMaterial::Nylon, acustra::GuitarModel::Original, acustra::BridgeModel::Original, "nylon" },
+        { acustra::StringMaterial::Nylon, acustra::GuitarModel::Bellido1978, acustra::BridgeModel::Original, "Bellido nylon" },
+        { acustra::StringMaterial::Steel, acustra::GuitarModel::Bellido1978, acustra::BridgeModel::Original, "Bellido steel" },
+    };
+    const auto bridgeBank = [] (const Bank& b)
+    {
+        using namespace acustra::detail;
+        if (b.model == acustra::GuitarModel::Bellido1978)
+            return std::vector<MeasuredBridgeMode>(bellidoBridgeModes.begin(), bellidoBridgeModes.end());
+        if (b.material == acustra::StringMaterial::Nylon)
+            return std::vector<MeasuredBridgeMode>(measuredNylonBridgeModes.begin(), measuredNylonBridgeModes.end());
+        if (b.bridge == acustra::BridgeModel::FyldeSteel)
+            return std::vector<MeasuredBridgeMode>(measuredFyldeBridgeModes.begin(), measuredFyldeBridgeModes.end());
+        return std::vector<MeasuredBridgeMode>(measuredSteelBridgeModes.begin(), measuredSteelBridgeModes.end());
+    };
+    const auto radiationBank = [] (const Bank& b)
+    {
+        using namespace acustra::detail;
+        std::vector<float> f;
+        if (b.model == acustra::GuitarModel::Bellido1978)
+            for (const auto& m : bellidoBodyModes) f.push_back(m.frequency);
+        else if (b.material == acustra::StringMaterial::Nylon)
+            for (const auto& m : measuredNylonBodyModes) f.push_back(m.frequency);
+        else
+            for (const auto& m : measuredSteelBodyModes) f.push_back(m.frequency);
+        return f;
+    };
+    double worst = 0;
+    const char* worstBank = "";
+    int worstShape = -1;
+    double worstHz = 0;
+    for (const auto& b : banks)
+    {
+        const auto bridgeModes = bridgeBank(b);
+        const auto radiation = radiationBank(b);
+        acustra::EngineParameters p;
+        p.stringMaterial = b.material; p.guitarModel = b.model; p.bridgeModel = b.bridge;
+        p.shape = b.material == acustra::StringMaterial::Steel
+                && b.model == acustra::GuitarModel::Original
+            ? acustra::BodyShape::Dreadnought : acustra::BodyShape::Auditorium;
+        const auto anchorShape = p.shape;
+        auto anchor = std::make_unique<Engine>();
+        anchor->setParameters(p); anchor->prepare(48000, 64);
+        const auto anchorBridge = Access::bridge(*anchor);
+        for (int shape = 0; shape < 4; ++shape)
+        {
+            if (static_cast<acustra::BodyShape>(shape) == anchorShape) continue;
+            auto q = p; q.shape = static_cast<acustra::BodyShape>(shape);
+            auto e = std::make_unique<Engine>();
+            e->setParameters(q); e->prepare(48000, 64);
+            const auto bridge = Access::bridge(*e);
+            for (std::size_t i = 0; i < bridgeModes.size(); ++i)
+            {
+                const double measured = bridgeModes[i].frequency;
+                if (measured > 0.4*48000) continue;
+                std::size_t nearest = 0;
+                for (std::size_t j = 1; j < radiation.size(); ++j)
+                    if (std::abs(std::log(radiation[j]/measured))
+                        < std::abs(std::log(radiation[nearest]/measured)))
+                        nearest = j;
+                if ((measured < 150.0) != (radiation[nearest] < 150.0f)) continue;
+                const double bridgeCents = 1200*std::log2(
+                    sectionFrequency(bridge.heaveModes[i], 48000)
+                    / sectionFrequency(anchorBridge.heaveModes[i], 48000));
+                const double radiationCents = 1200*std::log2(
+                    double(Access::radiationPole(q, Access::calibration(*e), int(nearest))[0])
+                    / Access::radiationPole(p, Access::calibration(*anchor), int(nearest))[0]);
+                const double gap = std::abs(bridgeCents-radiationCents);
+                if (gap > worst) { worst = gap; worstBank = b.name; worstShape = shape; worstHz = measured; }
+            }
+        }
+    }
+    std::cout << "bridge vs neighbouring radiation shape move, worst cents=" << worst
+              << " (" << worstBank << ", shape " << worstShape << ", " << worstHz << " Hz)\n";
+    expect(worst < 0.5, "Shape moved a bridge mode by another class than its radiation neighbour");
+}
+
 void process(Engine& e, int frames, double* energy, float* peak)
 {
     std::array<float,64> left {}, right {};
@@ -387,6 +489,7 @@ void testStaticWorkAndRapidChanges()
 int main()
 {
     testSteelOwnBridgeSharesTheRadiationPoles();
+    testBridgeModesMoveWithTheirRadiationNeighbours();
     testPhaseAndPassivity();
     testRetuneAndTailOwnership();
     testStaticWorkAndRapidChanges();

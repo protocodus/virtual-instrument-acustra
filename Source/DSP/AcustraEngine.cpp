@@ -388,8 +388,12 @@ LowBodyPair coupledLowBodyPair(float plateFrequency, float cavitySpringFrequency
 struct BodyShapeMorph
 {
     int t1Index { -1 };
-    // The measured (unwarped) frequency of T1, which bounds the T1 group
-    // when the same factors are applied to a bridge bank.
+    // Where a bridge bank's T1 group ends when the same factors are applied
+    // to it: half way (on a log scale) from the measured radiation T1 to the
+    // next radiation mode, so a bridge mode takes the class of the radiation
+    // mode it sits beside. At T1 itself, the Bellido's bridge T1 (216.4 Hz,
+    // over its radiation T1 at 212.2 Hz) took the plate factor and landed a
+    // semitone from the radiation T1 under every Shape but its own.
     float t1UpperHz { 0.0f };
     float a0Frequency { 1.0f };
     float a0Level { 1.0f };
@@ -432,7 +436,12 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
         }
     }
     if (morph.t1Index >= 0)
-        morph.t1UpperHz = bank[static_cast<std::size_t>(morph.t1Index)].frequency;
+    {
+        const auto t1 = static_cast<std::size_t>(morph.t1Index);
+        morph.t1UpperHz = t1 + 1 < bank.size()
+            ? exact::sqrt(bank[t1].frequency * bank[t1 + 1].frequency)
+            : bank[t1].frequency;
+    }
     const bool sameBox = body.width == anchorBody.width
         && body.length == anchorBody.length && body.depth == anchorBody.depth
         && body.soundhole == anchorBody.soundhole
