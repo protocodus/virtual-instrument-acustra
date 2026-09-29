@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <numbers>
+#include <vector>
 
 namespace acustra
 {
@@ -170,6 +171,7 @@ void testPhaseAndPassivity()
 }
 
 void process(Engine& e, int frames, double* energy = nullptr, float* peak = nullptr);
+double sectionFrequency(const auto& mode, double rate);
 
 // The denominators configureBridge builds from a mode's float frequency and
 // Q, in the engine's double arithmetic (prewarped bilinear, 2*damping = w/q).
@@ -243,6 +245,119 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
     std::cout << "steel own bridge twin pole relative error=" << worst << '\n';
     // A one-ulp change of a float frequency or Q moves these by ~1e-7.
     expect(worst < 1e-12, "a twinned bridge mode is not its radiation mode's pole");
+}
+
+// Every bridge that belongs to its radiation's guitar keeps each mode that is
+// the same resonance as a radiation mode on it, under every Shape and Wood:
+// steel's own bridge takes its twin's pole (above); nylon's g34 and the
+// Bellido, with either string, keep the offset from it they have at their
+// anchor (the Bellido's is the identity, so its measured offset). Before,
+// their bridges ignored Wood: a Maple Bellido's drains sat 60-85 cents under
+// their radiation peaks, and nylon's moved 30-50 cents against theirs from
+// wood to wood (audit F10). The twins are the generator's test
+// (GenerateMeasuredBridge.py), recomputed here from the banks.
+void testEveryBodysBridgeKeepsItsDrainsOnItsRadiation()
+{
+    struct Bank { acustra::StringMaterial material; acustra::GuitarModel model; const char* name; };
+    const Bank banks[] {
+        { acustra::StringMaterial::Nylon, acustra::GuitarModel::Original, "nylon" },
+        { acustra::StringMaterial::Nylon, acustra::GuitarModel::Bellido1978, "Bellido nylon" },
+        { acustra::StringMaterial::Steel, acustra::GuitarModel::Bellido1978, "Bellido steel" },
+    };
+    double worst = 0;
+    for (const auto& b : banks)
+    {
+        using namespace acustra::detail;
+        const bool bellido = b.model == acustra::GuitarModel::Bellido1978;
+        std::vector<MeasuredBridgeMode> bridgeModes;
+        std::vector<MeasuredBodyMode> radiation;
+        if (bellido)
+        {
+            bridgeModes.assign(bellidoBridgeModes.begin(), bellidoBridgeModes.end());
+            radiation.assign(bellidoBodyModes.begin(), bellidoBodyModes.end());
+        }
+        else
+        {
+            bridgeModes.assign(measuredNylonBridgeModes.begin(), measuredNylonBridgeModes.end());
+            radiation.assign(measuredNylonBodyModes.begin(), measuredNylonBodyModes.end());
+        }
+        std::vector<int> twins;
+        for (const auto& mode : bridgeModes)
+        {
+            std::size_t k = 0;
+            for (std::size_t j = 1; j < radiation.size(); ++j)
+                if (std::abs(double(radiation[j].frequency)-mode.frequency)
+                    < std::abs(double(radiation[k].frequency)-mode.frequency)) k = j;
+            const double below = k > 0 ? double(radiation[k].frequency)-radiation[k-1].frequency : 1e30;
+            const double above = k+1 < radiation.size() ? double(radiation[k+1].frequency)-radiation[k].frequency : 1e30;
+            const double spacing = k > 0 && k+1 < radiation.size() ? .5*(below+above) : std::min(below, above);
+            const bool inside = std::abs(double(mode.frequency)-radiation[k].frequency)
+                < radiation[k].frequency/(2.0*radiation[k].q);
+            twins.push_back(inside && double(mode.frequency)/mode.q < spacing ? int(k) : -1);
+        }
+        int paired = 0;
+        for (int twin : twins) paired += twin >= 0;
+        expect(paired >= 9, "a body's bridge twins too few of its modes");
+        // The offsets at the anchor: the classical box, at the body's wood.
+        std::vector<double> anchorOffset(twins.size(), 0.0);
+        {
+            acustra::EngineParameters p;
+            p.stringMaterial = b.material; p.guitarModel = b.model;
+            p.shape = acustra::BodyShape::Auditorium;
+            p.bodyMaterial = acustra::AcustraEngine::measuredBankWood(b.material, b.model);
+            auto e = std::make_unique<Engine>();
+            e->setParameters(p); e->prepare(48000, 64);
+            const auto bridge = Access::bridge(*e);
+            for (std::size_t i = 0; i < twins.size(); ++i)
+                if (twins[i] >= 0)
+                {
+                    anchorOffset[i] = 1200*std::log2(sectionFrequency(bridge.heaveModes[i], 48000)
+                        / Access::radiationPole(p, Access::calibration(*e), twins[i])[0]);
+                    if (bellido)
+                        expect(std::abs(anchorOffset[i] - 1200*std::log2(double(bridgeModes[i].frequency)
+                                   / radiation[std::size_t(twins[i])].frequency)) < 0.01,
+                               "the Bellido's bridge is not its measurement at its anchor");
+                }
+        }
+        for (int shape = 0; shape < 4; ++shape)
+            for (int wood = 0; wood < 4; ++wood)
+            {
+                acustra::EngineParameters p;
+                p.stringMaterial = b.material; p.guitarModel = b.model;
+                p.shape = static_cast<acustra::BodyShape>(shape);
+                p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+                auto e = std::make_unique<Engine>();
+                e->setParameters(p); e->prepare(48000, 64);
+                const auto bridge = Access::bridge(*e);
+                double sum = 0;
+                for (std::size_t i = 0; i < twins.size(); ++i)
+                {
+                    if (twins[i] < 0) continue;
+                    const double measured = anchorOffset[i];
+                    const double engine = 1200*std::log2(sectionFrequency(bridge.heaveModes[i], 48000)
+                        / Access::radiationPole(p, Access::calibration(*e), twins[i])[0]);
+                    worst = std::max(worst, std::abs(engine-measured));
+                    sum += std::abs(engine);
+                }
+                if (shape == 1 && (wood == 1 || wood == 3))
+                    std::cout << b.name << (wood == 1 ? " Auditorium/Cedar" : " Auditorium/Maple")
+                              << ": mean |bridge - radiation twin| " << sum/paired << " cents over "
+                              << paired << " pairs\n";
+                // Changing Wood live reaches the bridge as a fresh engine does.
+                auto live = std::make_unique<Engine>();
+                auto first = p; first.bodyMaterial = acustra::BodyMaterial::Spruce;
+                live->setParameters(first); live->prepare(48000, 64);
+                live->setParameters(p); process(*live, 64);
+                const auto liveBridge = Access::bridge(*live);
+                bool same = true;
+                for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
+                    same = same && liveBridge.heaveModes[i].denominator1 == bridge.heaveModes[i].denominator1
+                                && liveBridge.heaveModes[i].denominator2 == bridge.heaveModes[i].denominator2;
+                expect(same, "a live Wood change did not move a body's bridge");
+            }
+    }
+    std::cout << "body bridges' twin offsets vs their anchor's, worst cents=" << worst << '\n';
+    expect(worst < 0.01, "a bridge drain left its radiation twin under Shape, Wood or the anchor");
 }
 
 // The analog frequency a configured bridge section was designed at, from its
@@ -490,6 +605,7 @@ int main()
 {
     testSteelOwnBridgeSharesTheRadiationPoles();
     testBridgeModesMoveWithTheirRadiationNeighbours();
+    testEveryBodysBridgeKeepsItsDrainsOnItsRadiation();
     testPhaseAndPassivity();
     testRetuneAndTailOwnership();
     testStaticWorkAndRapidChanges();

@@ -860,8 +860,9 @@ detail::MeasuredBridgeMode shapeBridgeMode(
 // loads the string and radiates it: a modal body's mode k carries both the
 // mobility residue phi_k(bridge)^2/m_k and the radiation residue
 // phi_k(bridge) psi_k(mic)/m_k on the same pole. Only for steel on Original
-// with the Original bridge; the Fylde and the Bellido are other guitars, and
-// nylon's g34 map has not been fitted or heard.
+// with the Original bridge; the Fylde is another guitar, and nylon's g34 and
+// the Bellido follow their radiation by the lighter rule of
+// bodyBridgePole below.
 bool steelOwnBridge(StringMaterial material, BridgeModel bridge,
                     GuitarModel guitar) noexcept
 {
@@ -903,6 +904,115 @@ ModalPole steelOwnBridgePole(std::size_t index,
                  * calibration.bodyFrequencyScale,
              source.q * detail::steelBridgeUnpairedQRatio[index] * wood.q
                  * calibration.bodyQScale };
+}
+
+// The generator's twin test (Tools/GenerateMeasuredBridge.py,
+// radiation_twins) applied to a bridge bank and the radiation bank of the
+// same guitar, at compile time: the nearest radiation mode k, when the bridge
+// mode lies inside k's half-power band, |f_b - f_k| < f_k/(2 Q_k), and is
+// itself one resolved resonance, f_b/Q_b < the radiation's local spacing.
+// Nylon's g34 and the Bellido keep their radiation's Qs as fitted, so their
+// headers are the test's input (steel's are plate-Q corrected, so its twins
+// are the generator's table instead).
+constexpr double constexprAbs(double value) noexcept
+{
+    return value < 0.0 ? -value : value;
+}
+
+template <std::size_t BridgeModes, std::size_t RadiationModes>
+constexpr std::array<std::int16_t, BridgeModes> radiationTwins(
+    const std::array<detail::MeasuredBridgeMode, BridgeModes>& bridge,
+    const std::array<detail::MeasuredBodyMode, RadiationModes>& radiation) noexcept
+{
+    std::array<std::int16_t, BridgeModes> twins {};
+    for (std::size_t i = 0; i < BridgeModes; ++i)
+    {
+        const double frequency = bridge[i].frequency;
+        std::size_t k = 0;
+        for (std::size_t j = 1; j < RadiationModes; ++j)
+            if (constexprAbs(radiation[j].frequency - frequency)
+                < constexprAbs(radiation[k].frequency - frequency))
+                k = j;
+        const double centre = radiation[k].frequency;
+        const bool hasBelow = k > 0;
+        const bool hasAbove = k + 1 < RadiationModes;
+        const double below = hasBelow ? centre - radiation[k - 1].frequency : 0.0;
+        const double above = hasAbove ? radiation[k + 1].frequency - centre : 0.0;
+        const double spacing = hasBelow && hasAbove ? 0.5 * (below + above)
+                             : hasBelow ? below : above;
+        const bool inside = constexprAbs(frequency - centre)
+            < centre / (2.0 * static_cast<double>(radiation[k].q));
+        const bool resolved = frequency / static_cast<double>(bridge[i].q) < spacing;
+        twins[i] = inside && resolved ? static_cast<std::int16_t>(k)
+                                      : static_cast<std::int16_t>(-1);
+    }
+    return twins;
+}
+
+constexpr auto nylonBridgeRadiationTwins = radiationTwins(
+    detail::measuredNylonBridgeModes, detail::measuredNylonBodyModes);
+constexpr auto bellidoBridgeRadiationTwins = radiationTwins(
+    detail::bellidoBridgeModes, detail::bellidoBodyModes);
+
+// Whether a construction's bridge belongs to its radiation's guitar and so
+// moves with it under the anchor transform and Wood as well as Shape: every
+// bank but the Fylde, which is another guitar's bridge under g21's
+// radiation and keeps its measurement (Shape alone moves it).
+bool bridgeFollowsBody(StringMaterial material, BridgeModel bridge,
+                       GuitarModel guitar) noexcept
+{
+    return effectiveBridge(material, bridge, guitar) != BridgeModel::FyldeSteel;
+}
+
+// The engine pole of mode `index` of a bridge that belongs to its radiation's
+// body but is not steel's own (nylon's g34, the Bellido with either string).
+// Each keeps, under every Shape and Wood, the relation to its radiation that
+// it has at its anchor: a mode twinned with radiation mode j (radiationTwins)
+// is moved by exactly the factor radiationPole moves j by from the anchor's
+// own pole (Shape's class factor, Wood and the calibration), so a drain
+// stays on the resonance it drains wherever the construction goes. An
+// unpaired mode takes the same maps by class, as steel's unpaired modes do.
+// Q takes Wood's and the calibration's factor. The anchor transform itself
+// is not applied to these bridges: nylon's radiation there is the fitted
+// transform, whose fit and every nylon benchmark row played this bridge as
+// measured (moving the bridge with it too scored 2.6% worse on the held-out
+// nylon rows and 2.1% worse on the Iowa classical; Docs/decisions.md,
+// 2026-09-29). The Bellido's anchor is the identity, so at its own box and
+// wood its bridge is its measurement to the bit. The residue matrix is
+// kept, so the mode stays passive.
+ModalPole bodyBridgePole(std::size_t index,
+                         const detail::MeasuredBridgeMode& source,
+                         const detail::MeasuredBridgeMode& shaped,
+                         StringMaterial material, GuitarModel guitar,
+                         const AnchorTransform& anchor,
+                         const BodyShapeMorph& morph, WoodFactors wood,
+                         const PhysicalCalibration& calibration) noexcept
+{
+    const bool bellido = guitar == GuitarModel::Bellido1978;
+    const auto radiation = measuredBodyBank(material, guitar);
+    const int twin = bellido
+        ? (index < bellidoBridgeRadiationTwins.size()
+               ? bellidoBridgeRadiationTwins[index] : -1)
+        : (index < nylonBridgeRadiationTwins.size()
+               ? nylonBridgeRadiationTwins[index] : -1);
+    const float q = source.q * wood.q * calibration.bodyQScale;
+    if (twin >= 0)
+    {
+        const auto pole = radiationPole(radiation, twin, anchor, morph, wood,
+                                        bellido, calibration);
+        // The same mode at the anchor: the anchor transform alone, computed
+        // in the same order, so at the anchor the ratio is exactly 1.
+        PhysicalCalibration unit = calibration;
+        unit.bodyFrequencyScale = 1.0f;
+        unit.bodyQScale = 1.0f;
+        const auto anchored = radiationPole(radiation, twin, anchor,
+            BodyShapeMorph {}, WoodFactors { 1.0f, 1.0f, 1.0f, 1.0f },
+            bellido, unit);
+        return { source.frequency * (pole.frequency / anchored.frequency), q };
+    }
+    return { shaped.frequency * wood.frequency
+                 * calibration.bodyFrequencyScale,
+             q };
 }
 
 // Where a string crosses the saddle, in units of the half-separation between
@@ -2437,12 +2547,13 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     const bool constructionChanged = force
         || !sameStringConstruction(next, parameters_);
     const bool modelChanged = force || next.guitarModel != parameters_.guitarModel;
-    // On steel's own bridge Wood moves the bridge's poles with the
-    // radiation's, so there it exchanges the mechanical load as Shape does.
+    // Where the bridge belongs to its radiation's body (every bank but the
+    // Fylde), Wood moves the bridge's poles with the radiation's, so there it
+    // exchanges the mechanical load as Shape does.
     const bool shapeChanged = next.shape != parameters_.shape
         || (next.bodyMaterial != parameters_.bodyMaterial
-            && steelOwnBridge(next.stringMaterial, next.bridgeModel,
-                              next.guitarModel));
+            && bridgeFollowsBody(next.stringMaterial, next.bridgeModel,
+                                 next.guitarModel));
     const bool bodyChanged = modelChanged || shapeChanged
         || next.bodyMaterial != parameters_.bodyMaterial;
     const bool ageChanged = force
@@ -2504,8 +2615,8 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     // A tail belongs to the string construction it was taken from, and its
     // loop is not redesigned below. Shape changes the body attached to that
     // string, not its ownership or construction, so it keeps the tail and its
-    // still-connected junction port. Wood changes radiation only, except on
-    // steel's own bridge, where it moves the bridge like Shape (above).
+    // still-connected junction port. Wood moves the radiation and, except
+    // on the Fylde, the bridge like Shape (above), and keeps the tail too.
     if (constructionChanged || ageChanged || stringChanged || tuningChanged)
         for (auto& voice : voices_)
         {
@@ -2868,6 +2979,8 @@ void AcustraEngine::configureBridge() noexcept
         / (parameters_.guitarModel == GuitarModel::Original ? 1.0f
            : fittedPhysicalCalibration.bridgeMobilityScale)
         * (ownBridge ? detail::steelTopMobilityRatio : 1.0f);
+    const bool followsBody = bridgeFollowsBody(parameters_.stringMaterial,
+        parameters_.bridgeModel, parameters_.guitarModel);
     const auto anchor = anchorTransformFor(parameters_.guitarModel,
                                            parameters_.stringMaterial);
     const auto wood = woodFactorsFor(parameters_.bodyMaterial,
@@ -2888,6 +3001,14 @@ void AcustraEngine::configureBridge() noexcept
         {
             const auto pole = steelOwnBridgePole(index, bank[index], measured,
                 anchor, morph, wood, physicalCalibration_);
+            measured.frequency = pole.frequency;
+            measured.q = pole.q;
+        }
+        else if (followsBody)
+        {
+            const auto pole = bodyBridgePole(index, bank[index], measured,
+                parameters_.stringMaterial, parameters_.guitarModel, anchor,
+                morph, wood, physicalCalibration_);
             measured.frequency = pole.frequency;
             measured.q = pole.q;
         }
@@ -2989,7 +3110,9 @@ AcustraEngine::bridgeMobilityTable() const noexcept
     const float bilinear = 2.0f * rate;
     const auto anchor = anchorTransformFor(parameters_.guitarModel,
                                            parameters_.stringMaterial);
-    const auto morph = ownBridge
+    const bool followsBody = bridgeFollowsBody(parameters_.stringMaterial,
+        parameters_.bridgeModel, parameters_.guitarModel);
+    const auto morph = followsBody
         ? bodyShapeMorph(measuredBodyBank(parameters_.stringMaterial,
                                           parameters_.guitarModel),
               anchor,
@@ -3007,6 +3130,14 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         {
             const auto pole = steelOwnBridgePole(index, source, measured,
                 anchor, morph, wood, physicalCalibration_);
+            measured.frequency = pole.frequency;
+            measured.q = pole.q;
+        }
+        else if (followsBody)
+        {
+            const auto pole = bodyBridgePole(index, source, measured,
+                parameters_.stringMaterial, parameters_.guitarModel, anchor,
+                morph, wood, physicalCalibration_);
             measured.frequency = pole.frequency;
             measured.q = pole.q;
         }

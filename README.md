@@ -1093,13 +1093,25 @@ radiation - its A0 group, its modes up to the body's T1 and the plate modes
 above - so it also changes the saddle-force Piezo capture and the body's
 interaction with the strings. Only modal stiffness moves: each bridge residue
 matrix and Q is retained, so a fixed shape keeps the passive modal
-construction. Body Material changes radiation, and on steel's own bridge the
-bridge's modes too, which take the radiation's poles (Bridge, sympathetic
-strings and body). Both preserve ringing strings and overlapping re-pluck
-tails. Each anchor leaves the radiation exactly as fitted or measured:
-Original's steel Dreadnought and nylon Auditorium, and the Bellido's own box, a
-classical; so it leaves nylon's and the Bellido's bridges and the Fylde, while
-steel's own bridge follows its radiation's anchor transform.
+construction. Body Material changes radiation and every bridge that belongs
+to the radiation's guitar - all but the Fylde, another guitar's bridge, which
+keeps its measurement under Wood. Steel's own bridge takes the radiation's
+poles (Bridge, sympathetic strings and body). Nylon's g34 and the Bellido's
+bridges, with either string, keep under every Shape and Wood the relation to
+their radiation they have at their anchor: a bridge mode that is the same
+resonance as a radiation mode (the generator's twin test: inside its
+half-power band and itself resolved; 9 of g34's 46 modes, 23 of the Bellido's
+50) moves by exactly the factor that radiation mode moves by from the anchor,
+and the others take the same maps by class, so a drain stays on the resonance
+it drains. Both preserve ringing strings and overlapping re-pluck tails. Each
+anchor leaves the radiation exactly as fitted or measured: Original's steel
+Dreadnought and nylon Auditorium, and the Bellido's own box, a classical.
+The anchor transform moves only steel's own bridge: nylon's radiation there
+is its fitted transform (air 101 Hz, modes x0.972), fitted and benchmarked
+with g34's bridge as measured, and moving the bridge with it as well scored
+2.6% worse on the held-out nylon rows and 2.1% worse on the Iowa classical,
+so it waits for a listening test. The Bellido's anchor is the identity, so at
+its own box and wood its bridge is its measurement to the bit.
 If a body crossfade is already sounding,
 the latest selection waits for its remaining duration (at most 40 ms), then
 uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
