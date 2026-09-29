@@ -443,9 +443,18 @@ private:
         // A released shape entering the junction moves the wave variable
         // without the bridge having moved: the shape was standing on the
         // string before the finger let go. Re-reference the history to the
-        // new level so this sample reports the motion the bridge already had
+        // new level so this sample reads no step - at 48 kHz exactly zero
+        // motion, at other rates the history's own interpolated remainder -
         // and the samples after it are differences again.
         float processAcrossRelease(float input, float sampleRateRatio) noexcept;
+        // A construction change (strings, tuning, the bridge) steps the
+        // junction's wave variables while the bridge keeps moving.
+        // Re-reference the history to the step's linear extrapolation, so
+        // this sample reports the motion the bridge already had - the
+        // previous sample's - at every rate, and the samples after it are
+        // differences again. processAcrossRelease reports none, a one-sample
+        // hole in every bridge force that sounded as a tick (audit F14).
+        float processAcrossStep(float input, float sampleRateRatio) noexcept;
     };
 
     struct StringLoop
@@ -602,6 +611,15 @@ private:
 
         void reset() noexcept;
         void process(const BridgeDrive& drive, float samplePeriod) noexcept;
+        // The same, with the mobility crossfading from `fading`'s modes to
+        // this load's: weight is this load's share of the immediate and past
+        // mobility, 1 - weight fading's. Both mode sets are driven by the
+        // same body force, the anchor stubs are this load's alone.
+        void process(const BridgeDrive& drive, float samplePeriod,
+                     BridgeLoad& fading, float weight) noexcept;
+        // Advance the modes by one sample of body force and moment, leaving
+        // their past mobility response in pastHeave and pastRock.
+        void advanceModes(float bodyForce, float bodyMoment) noexcept;
     };
 
     struct BodyMode
@@ -967,7 +985,10 @@ private:
     void applyDiscreteParameters(bool force) noexcept;
     void updateControlState() noexcept;
     void configureBody() noexcept;
-    void configureBridge() noexcept;
+    // keepModalState keeps the sounding modes' state (a live reconfigure
+    // of the same measured bank: Shape, Wood); otherwise every mode starts
+    // from rest.
+    void configureBridge(bool keepModalState = false) noexcept;
     // The frequency and Q configureBody gives radiation mode `index` of the
     // bank these parameters select, before the host-rate clamp: the pole
     // steel's own bridge modes share (tests).
@@ -1295,6 +1316,12 @@ private:
     float palmMuteSmoothing_ { 0.5f };
     float bodyModelFade_ { 1.0f };
     float bodyModelFadeStep_ { 1.0f / 1920.0f };
+    // A live bridge rebuild crossfades the mobility from the modes that were
+    // sounding (fadingBridgeLoad_) to the new ones over 20 ms, as the body
+    // crossfades its radiation: bridgeLoadFade_ is the new modes' share.
+    BridgeLoad fadingBridgeLoad_ {};
+    float bridgeLoadFade_ { 1.0f };
+    float bridgeLoadFadeStep_ { 1.0f / 960.0f };
     int controlCounter_ { 0 };
     int lowerZoneMemberCount_ { 0 };
     // -1 means no CC74 (mpeTimbre_) or channel pressure (mpePressure_) has
@@ -1317,6 +1344,9 @@ private:
     float lastImpedanceInertia_ { 0.0f };
     bool bridgeDerivativesNeedPriming_ { true };
     bool bridgeDerivativesCrossRelease_ { false };
+    // A live construction change stepped the junction's wave variables on
+    // the next sample (FixedDerivative::processAcrossStep).
+    bool bridgeDerivativesCrossConfigure_ { false };
     bool prepared_ { false };
     bool bodyConfigured_ { false };
     std::uint64_t noteOrder_ { 0 };

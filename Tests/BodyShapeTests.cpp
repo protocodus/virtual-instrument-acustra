@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <numbers>
+#include <string>
 #include <vector>
 
 namespace acustra
@@ -21,7 +22,7 @@ struct AcustraEngineTestAccess
     static float phase(const AcustraEngine& e, float f, int string)
     { return e.bridgePhaseDelay(f, string); }
     static bool rebasePending(const AcustraEngine& e)
-    { return e.bridgeDerivativesCrossRelease_; }
+    { return e.bridgeDerivativesCrossRelease_ || e.bridgeDerivativesCrossConfigure_; }
     static bool bodySettled(const AcustraEngine& e, BodyShape shape)
     { return e.configuredBodyShape_ == shape && e.bodyModelFade_ == 1.0f; }
     static float saddle(const AcustraEngine& e) { return e.saddleHeightRatio(); }
@@ -502,6 +503,7 @@ void testRetuneAndTailOwnership()
             oldPhase[i] = Access::phase(*e,static_cast<float>(frequency[i]),i);
         }
         expect(tailCount == 2,"retune fixture did not retain both repluck tails");
+        const float forceBefore = e->getLastBridgeReactionForce();
         p.shape = acustra::BodyShape::Parlor;
         e->setParameters(p);
         const auto& after = Access::voices(*e);
@@ -533,10 +535,14 @@ void testRetuneAndTailOwnership()
         expect(Access::rebasePending(*e),"shape forgot the bridge derivative transition");
         process(*e,1);
         expect(!Access::rebasePending(*e),"bridge derivative transition did not finish");
-        // At 48 kHz a step at a newly established load is not instantaneous
-        // bridge motion. An omitted rebase emits the entire step as a force.
-        expect(e->getLastBridgeReactionForce() == 0.0f,
-               "shape emitted the instantaneous load change as a force impulse");
+        // A step at a newly established load is not instantaneous bridge
+        // motion: an omitted rebase emits the entire step as a force. Nor
+        // did the bridge stop: the rebase carries the force it had on, where
+        // it once reported none, a one-sample hole heard as a tick (F14).
+        expect(std::abs(e->getLastBridgeReactionForce())
+                   <= 2.0f*std::abs(forceBefore)+1e-6f
+               && (forceBefore == 0.0f || e->getLastBridgeReactionForce() != 0.0f),
+               "shape emitted the load change as a force impulse or dropped the force");
         process(*e,9600);
         for (const auto& voice : Access::voices(*e))
             expect(std::abs(voice.loops[0].targetDelay-voice.loops[0].currentDelay)<.02f,
@@ -553,6 +559,137 @@ void testRetuneAndTailOwnership()
     }
     std::cout << "largest immediate shape delay-target change samples=" << largestRetune << '\n';
     expect(largestRetune>.001,"shape changed no actual string delay targets");
+}
+
+// A construction switched under a ringing chord must not tick: above 5 kHz,
+// the largest 2 ms RMS in the 100 ms after the switch stays within 6 dB of
+// the louder of the two steady settings, or under -95 dBFS where both are
+// quieter than that (nylon's). Rebuilding the bridge used to zero every
+// mode and to report no bridge motion for a sample, 20-48 dB over both
+// (audit F14).
+struct SwitchCase
+{
+    const char* name;
+    acustra::EngineParameters from;
+    acustra::EngineParameters to;
+    double allowedDb;
+};
+
+std::vector<float> renderSwitch(const acustra::EngineParameters& from,
+                                const acustra::EngineParameters* to,
+                                int rate, double switchAt, double seconds)
+{
+    auto e = std::make_unique<Engine>();
+    e->setParameters(from); e->prepare(rate, 256);
+    const int n = static_cast<int>(seconds * rate);
+    std::vector<float> mono(static_cast<std::size_t>(n));
+    std::array<float, 256> left {}, right {};
+    const int switchSample = static_cast<int>(switchAt * rate);
+    e->beginStrum();
+    const std::array<int, 6> chord { 40, 47, 52, 56, 59, 64 };
+    for (std::size_t k = 0; k < chord.size(); ++k)
+        e->noteOn(chord[k], 0.8f, 1, static_cast<int>(k) * 300, true);
+    for (int pos = 0; pos < n; pos += 256)
+    {
+        const int count = std::min(256, n - pos);
+        if (to != nullptr && switchSample >= pos && switchSample < pos + count)
+            e->setParameters(*to);
+        e->process(left.data(), right.data(), count);
+        for (int i = 0; i < count; ++i)
+            mono[static_cast<std::size_t>(pos + i)] = left[static_cast<std::size_t>(i)]
+                + right[static_cast<std::size_t>(i)];
+    }
+    return mono;
+}
+
+double highBandPeakDb(const std::vector<float>& x, int rate, double from, double to)
+{
+    // Fourth-order Butterworth high-pass at 5 kHz, then the largest 2 ms RMS.
+    std::array<std::array<double, 5>, 2> section {};
+    const std::array<double, 2> qs { 0.54119610, 1.30656296 };
+    for (std::size_t k = 0; k < 2; ++k)
+    {
+        const double w = 2*pi*5000/rate, c = std::cos(w), a = std::sin(w)/(2*qs[k]), a0 = 1+a;
+        section[k] = { (1+c)/2/a0, -(1+c)/a0, (1+c)/2/a0, -2*c/a0, (1-a)/a0 };
+    }
+    std::array<double, 4> z {};
+    std::vector<double> y(x.size());
+    for (std::size_t i = 0; i < x.size(); ++i)
+    {
+        double v = x[i];
+        for (std::size_t k = 0; k < 2; ++k)
+        {
+            const auto& b = section[k];
+            const double out = b[0]*v + z[2*k];
+            z[2*k] = b[1]*v - b[3]*out + z[2*k+1];
+            z[2*k+1] = b[2]*v - b[4]*out;
+            v = out;
+        }
+        y[i] = v*v;
+    }
+    const int window = static_cast<int>(0.002*rate);
+    double best = 1e-30;
+    for (int start = static_cast<int>(from*rate); start + window <= static_cast<int>(to*rate); start += window/2)
+    {
+        double sum = 0;
+        for (int i = start; i < start + window; ++i) sum += y[static_cast<std::size_t>(i)];
+        best = std::max(best, sum/window);
+    }
+    return 10*std::log10(best);
+}
+
+void testConstructionSwitchesDoNotTick()
+{
+    using acustra::EngineParameters;
+    using acustra::StringMaterial;
+    using acustra::GuitarModel;
+    using acustra::BodyShape;
+    const auto make = [] (StringMaterial m, GuitarModel g, acustra::BridgeModel b, BodyShape s)
+    {
+        EngineParameters p; p.stringMaterial = m; p.guitarModel = g; p.bridgeModel = b; p.shape = s;
+        p.outputGain = 0.2f;
+        return p;
+    };
+    const auto steel = make(StringMaterial::Steel, GuitarModel::Original,
+                            acustra::BridgeModel::Original, BodyShape::Dreadnought);
+    const auto fylde = make(StringMaterial::Steel, GuitarModel::Original,
+                            acustra::BridgeModel::FyldeSteel, BodyShape::Dreadnought);
+    const auto nylon = make(StringMaterial::Nylon, GuitarModel::Original,
+                            acustra::BridgeModel::Original, BodyShape::Dreadnought);
+    const auto bellido = make(StringMaterial::Steel, GuitarModel::Bellido1978,
+                              acustra::BridgeModel::Original, BodyShape::Auditorium);
+    const auto with = [] (EngineParameters p, auto change) { change(p); return p; };
+    const std::vector<SwitchCase> cases {
+        { "steel Shape", steel, with(steel, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
+        { "steel Wood", steel, with(steel, [] (auto& p) { p.bodyMaterial = acustra::BodyMaterial::Maple; }), 6.0 },
+        { "steel Bridge", steel, with(steel, [] (auto& p) { p.bridgeModel = acustra::BridgeModel::FyldeSteel; }), 6.0 },
+        { "Fylde Shape", fylde, with(fylde, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
+        { "steel Model", steel, with(steel, [] (auto& p) { p.guitarModel = GuitarModel::Bellido1978; }), 6.0 },
+        { "Bellido Model", bellido, with(bellido, [] (auto& p) { p.guitarModel = GuitarModel::Original; }), 6.0 },
+        { "Bellido Shape", bellido, with(bellido, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
+        { "nylon Shape", nylon, with(nylon, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
+        { "nylon Wood", nylon, with(nylon, [] (auto& p) { p.bodyMaterial = acustra::BodyMaterial::Maple; }), 6.0 },
+        { "steel Tuning", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 6.0 },
+    };
+    double worst = -1e9;
+    const char* worstName = "";
+    for (int rate : { 44100, 48000 })
+        for (const auto& c : cases)
+        {
+            const double at = std::ceil(0.5*rate/256)*256/rate;
+            const auto a = renderSwitch(c.from, nullptr, rate, at, at + 0.11);
+            const auto b = renderSwitch(c.to, nullptr, rate, at, at + 0.11);
+            const auto switched = renderSwitch(c.from, &c.to, rate, at, at + 0.11);
+            const double steady = std::max({ highBandPeakDb(a, rate, at, at + 0.1),
+                                             highBandPeakDb(b, rate, at, at + 0.1), -95.0 });
+            const double excess = highBandPeakDb(switched, rate, at, at + 0.1) - steady;
+            if (excess - c.allowedDb > worst) { worst = excess - c.allowedDb; worstName = c.name; }
+            expect(excess <= c.allowedDb,
+                   (std::string(c.name) + " switched under a chord ticked "
+                    + std::to_string(excess) + " dB over its steady sound above 5 kHz").c_str());
+        }
+    std::cout << "construction switch tick, worst margin over its bound " << worst
+              << " dB (" << worstName << ")\n";
 }
 
 void testStaticWorkAndRapidChanges()
@@ -609,6 +746,7 @@ int main()
     testPhaseAndPassivity();
     testRetuneAndTailOwnership();
     testStaticWorkAndRapidChanges();
+    testConstructionSwitchesDoNotTick();
     std::cout << "Body shape failures=" << failures << '\n';
     return failures == 0 ? 0 : 1;
 }

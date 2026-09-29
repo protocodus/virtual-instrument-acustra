@@ -2093,6 +2093,25 @@ float AcustraEngine::FixedDerivative::processAcrossRelease(
     return process(input, sampleRateRatio);
 }
 
+float AcustraEngine::FixedDerivative::processAcrossStep(
+    float input, float sampleRateRatio) noexcept
+{
+    int previous = index - 1;
+    while (previous < 0)
+        previous += static_cast<int>(history.size());
+    int earlier = previous - 1;
+    while (earlier < 0)
+        earlier += static_cast<int>(history.size());
+    // Where the wave would have been had nothing stepped: the last two
+    // samples' line carried one sample on.
+    const float extrapolated = 2.0f * history[static_cast<std::size_t>(previous)]
+        - history[static_cast<std::size_t>(earlier)];
+    const float shift = input - extrapolated;
+    for (auto& value : history)
+        value += shift;
+    return process(input, sampleRateRatio);
+}
+
 float AcustraEngine::StringLoop::readDelay(float samples) noexcept
 {
     const float bounded = AcustraEngine::clamp(
@@ -2237,6 +2256,54 @@ void AcustraEngine::BridgeLoad::reset() noexcept
         mode.reset();
 }
 
+void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
+                                             float bodyMoment) noexcept
+{
+    double nextPastHeave = 0.0;
+    double nextPastRock = 0.0;
+    for (int active = 0; active < activeModeCount; ++active)
+    {
+        const std::size_t index = activeModes[static_cast<std::size_t>(active)];
+        const double heaveState = heaveModes[index].processPast(bodyForce);
+        nextPastHeave += residueHeave[index] * heaveState;
+        if (!rocking[index])
+            continue;
+        const double rockState = rockModes[index].processPast(bodyMoment);
+        nextPastHeave += residueCross[index] * rockState;
+        nextPastRock += residueCross[index] * heaveState
+                      + residueRock[index] * rockState;
+    }
+    pastHeave = exact::isfinite(nextPastHeave)
+        ? static_cast<float>(nextPastHeave) : 0.0f;
+    pastRock = exact::isfinite(nextPastRock)
+        ? static_cast<float>(nextPastRock) : 0.0f;
+}
+
+void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
+                                        float samplePeriod,
+                                        BridgeLoad& fading,
+                                        float weight) noexcept
+{
+    // One junction with the two mode sets' mobilities mixed: modal
+    // mobilities add as positive-real sums, so each share is passive. The
+    // anchor stubs and the junction's own state are this load's.
+    const float keep = 1.0f - weight;
+    const float heave = immediateHeave, cross = immediateCross,
+                rock = immediateRock, pastH = pastHeave, pastR = pastRock;
+    immediateHeave = weight * heave + keep * fading.immediateHeave;
+    immediateCross = weight * cross + keep * fading.immediateCross;
+    immediateRock = weight * rock + keep * fading.immediateRock;
+    pastHeave = weight * pastH + keep * fading.pastHeave;
+    pastRock = weight * pastR + keep * fading.pastRock;
+    process(drive, samplePeriod);
+    // process advanced this load's modes on the body force; advance the
+    // fading ones on the same, and restore this load's own immediates.
+    immediateHeave = heave;
+    immediateCross = cross;
+    immediateRock = rock;
+    fading.advanceModes(bodyIntegratedForce, bodyIntegratedMoment);
+}
+
 void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
                                         float samplePeriod) noexcept
 {
@@ -2306,24 +2373,7 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     const float bodyForce = b0 - g00 * displacement - g01 * rotation;
     const float bodyMoment = b1 - g01 * displacement - g11 * rotation;
 
-    double nextPastHeave = 0.0;
-    double nextPastRock = 0.0;
-    for (int active = 0; active < activeModeCount; ++active)
-    {
-        const std::size_t index = activeModes[static_cast<std::size_t>(active)];
-        const double heaveState = heaveModes[index].processPast(bodyForce);
-        nextPastHeave += residueHeave[index] * heaveState;
-        if (!rocking[index])
-            continue;
-        const double rockState = rockModes[index].processPast(bodyMoment);
-        nextPastHeave += residueCross[index] * rockState;
-        nextPastRock += residueCross[index] * heaveState
-                      + residueRock[index] * rockState;
-    }
-    pastHeave = exact::isfinite(nextPastHeave)
-        ? static_cast<float>(nextPastHeave) : 0.0f;
-    pastRock = exact::isfinite(nextPastRock)
-        ? static_cast<float>(nextPastRock) : 0.0f;
+    advanceModes(bodyForce, bodyMoment);
     previousDisplacement = displacement;
     previousRotation = rotation;
     tailIntegratedForce = nextTailForce;
@@ -2409,6 +2459,8 @@ void AcustraEngine::prepare(double sampleRate, int)
         * 48000.0f / static_cast<float>(sampleRate_));
     bodyModelFadeStep_ = 1.0f
         / (0.040f * static_cast<float>(sampleRate_));
+    bridgeLoadFadeStep_ = 1.0f
+        / (0.020f * static_cast<float>(sampleRate_));
     prepared_ = true;
     restartRandomDraws();
     reset();
@@ -2509,6 +2561,8 @@ void AcustraEngine::resetSoundState() noexcept
     lastBridgeTailPower_ = 0.0f;
     bridgeDerivativesNeedPriming_ = true;
     bridgeDerivativesCrossRelease_ = false;
+    bridgeDerivativesCrossConfigure_ = false;
+    bridgeLoadFade_ = 1.0f;
     lastImpedanceSum_ = 0.0f;
     lastImpedanceMoment_ = 0.0f;
     lastImpedanceInertia_ = 0.0f;
@@ -2573,16 +2627,36 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
         || shapeChanged
         || exact::bits(next.stringAge) != exact::bits(parameters_.stringAge))
         ++voiceConfigurationGeneration_;
+    // Shape and Wood retune the same measured bank; Model, Strings and the
+    // Bridge choice exchange it for another guitar's.
+    const bool sameBridgeBank = !force && !modelChanged && !stringChanged
+        && !bridgeModelChanged;
+    // What each string presented to the junction, for a retune under a
+    // ringing chord (below).
+    std::array<float, stringCount> previousImpedance {};
+    for (int string = 0; string < stringCount; ++string)
+        previousImpedance[static_cast<std::size_t>(string)]
+            = voices_[static_cast<std::size_t>(string)].characteristicImpedance;
     parameters_ = next;
 
     // The string material selects which measured guitar the bridge and body
-    // banks come from, so it reconfigures both. configureBody crossfades; the
-    // bridge filters are a different instrument's and are rebuilt, which the
-    // junction's cross-release below already covers.
+    // banks come from, so it reconfigures both. configureBody crossfades its
+    // radiation over 40 ms; a live bridge rebuild crossfades its mobility
+    // from the modes that were sounding over 20 ms (bridgeLoadFade_), and
+    // the same bank retuned keeps its modes ringing. Rebuilding the bridge
+    // at once used to zero every mode under a ringing chord, a tick 20-30 dB
+    // over either steady sound above 5 kHz (audit F14).
     if (bodyChanged || stringChanged)
         configureBody();
     if (bridgeChanged)
-        configureBridge();
+    {
+        if (!force && bridgeLoadFade_ >= 1.0f)
+        {
+            fadingBridgeLoad_ = bridgeLoad_;
+            bridgeLoadFade_ = 0.0f;
+        }
+        configureBridge(sameBridgeBank);
+    }
 
     const auto notes = openNotes(parameters_.tuning);
     for (int string = 0; string < stringCount; ++string)
@@ -2606,10 +2680,12 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     // every string's impedance at once, so the junction's wave variables step
     // with the port. That is the strings being exchanged, not the bridge
     // moving, and differencing it made a click 26 times the chord it landed
-    // on. A Shape change now exchanges the mechanical load too; reuse this
-    // boundary-step treatment while the string delay targets slew normally.
+    // on. A bridge rebuild can step them too. The derivatives carry the
+    // bridge's own motion across that sample (processAcrossStep); reading it
+    // as no motion at all, as a released shape is read, left a one-sample
+    // hole in every bridge force.
     if (bridgeChanged || tuningChanged)
-        bridgeDerivativesCrossRelease_ = true;
+        bridgeDerivativesCrossConfigure_ = true;
 
     // A tail belongs to the string construction it was taken from, and its
     // loop is not redesigned below. Shape changes the body attached to that
@@ -2635,6 +2711,22 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
                 configureVoice(voices_[static_cast<std::size_t>(string)], string,
                                voices_[static_cast<std::size_t>(string)].midiNote,
                                false);
+
+    if ((stringChanged || tuningChanged) && !force)
+        for (int string = 0; string < stringCount; ++string)
+        {
+            auto& voice = voices_[static_cast<std::size_t>(string)];
+            const float before = previousImpedance[static_cast<std::size_t>(string)];
+            const float after = voice.characteristicImpedance;
+            if (!(before > 0.0f && after > 0.0f)
+                || !exact::isfinite(before / after))
+                continue;
+            // A retuned string's port moves to its new impedance at the
+            // delay's own rate, as a bend's does, instead of stepping under
+            // its ringing wave. An exchanged string set steps, as it did.
+            if (!stringChanged)
+                voice.appliedBendImpedanceScale *= before / after;
+        }
 }
 
 void AcustraEngine::updateControlState() noexcept
@@ -2735,6 +2827,15 @@ void AcustraEngine::configureBody() noexcept
         return;
     }
     bodyUpdatePending_ = false;
+    // Shape and Wood retune the same measured bank, whose modes keep ringing
+    // from where they were, as the bridge's do: restarted from rest under a
+    // ringing chord they beat against it while they settle, and on nylon
+    // that sounded 30-45 dB over the steady sound above 5 kHz (audit F14).
+    // Model and Strings exchange it for another guitar's, whose modes start
+    // from rest.
+    const bool sameBodyBank = bodyConfigured_
+        && configuredGuitarModel_ == parameters_.guitarModel
+        && configuredBodyStringMaterial_ == parameters_.stringMaterial;
     if (bodyConfigured_)
     {
         if (bodyModelFade_ >= 1.0f)
@@ -2878,7 +2979,8 @@ void AcustraEngine::configureBody() noexcept
             mode.reset();
     }
     bodyBank_.load(bodyModes_, static_cast<int>(std::min(
-        bank.size(), static_cast<std::size_t>(bodyModeCount))), bodyConfigured_);
+        bank.size(), static_cast<std::size_t>(bodyModeCount))),
+        bodyConfigured_ && !sameBodyBank);
     configuredGuitarModel_ = parameters_.guitarModel;
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
@@ -2886,7 +2988,7 @@ void AcustraEngine::configureBody() noexcept
     bodyConfigured_ = true;
 }
 
-void AcustraEngine::configureBridge() noexcept
+void AcustraEngine::configureBridge(bool keepModalState) noexcept
 {
     ++voiceConfigurationGeneration_;
     bridgeLoad_.immediateHeave = 0.0f;
@@ -2938,7 +3040,10 @@ void AcustraEngine::configureBridge() noexcept
             mode->numerator1 = -static_cast<double>(immediate) * denominator1;
             mode->numerator2 = -static_cast<double>(immediate)
                 * (1.0 + denominator2);
-            mode->reset();
+            // The same bank retuned (Shape, Wood) keeps ringing as it was;
+            // the new coefficients carry the state on from here.
+            if (!keepModalState)
+                mode->reset();
         }
         bridgeLoad_.residueHeave[index] = heave;
         bridgeLoad_.residueCross[index] = cross;
@@ -3031,8 +3136,11 @@ void AcustraEngine::configureBridge() noexcept
     configure(static_cast<std::size_t>(bridgeModeCount), plate.frequency,
               plate.q, parameters_.guitarModel == GuitarModel::Original ? plate.weight : 0.0f,
               0.0f, 0.0f);
-    bridgeLoad_.pastHeave = 0.0f;
-    bridgeLoad_.pastRock = 0.0f;
+    if (!keepModalState)
+    {
+        bridgeLoad_.pastHeave = 0.0f;
+        bridgeLoad_.pastRock = 0.0f;
+    }
     // A slot whose sections and residues are all zero returns +-0 and adds
     // +-0 to sums that start at +0, so leaving it out changes no bit.
     bridgeLoad_.activeModeCount = 0;
@@ -3862,9 +3970,9 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // Z = sqrt(T*mu) with Grimes' stretched mass per length is Z0 times the
     // frequency ratio the same tension produces - 12.3% for a whole tone -
     // and saturates with the tension where his law stops. The junction reads
-    // characteristicImpedance times the applied scale, so a string set or
-    // tuning switched under a ringing chord still steps the port exactly as
-    // it did, and only a bend slews it.
+    // characteristicImpedance times the applied scale; a tuning switched
+    // under a ringing chord slews it too, from the old string's impedance
+    // (applyDiscreteParameters), while a string set exchanged steps it.
     const float stretchedMass = 1.0f
         + (bentTension - tension) / std::max(axialRigidity, 1.0f);
     voice.tensionNewtons = bentTension;
@@ -6048,6 +6156,8 @@ void AcustraEngine::setBridgeCouplingEnabled(bool enabled) noexcept
     lastBridgeTailPower_ = 0.0f;
     bridgeDerivativesNeedPriming_ = true;
     bridgeDerivativesCrossRelease_ = false;
+    bridgeDerivativesCrossConfigure_ = false;
+    bridgeLoadFade_ = 1.0f;
     if (!prepared_)
         return;
     for (int string = 0; string < stringCount; ++string)
@@ -7112,7 +7222,15 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         float tailMomentWave = 0.0f;
         if (bridgeCouplingEnabled_ && portIsLoaded)
         {
-            bridgeLoad_.process(drive, inverseSampleRate_);
+            if (bridgeLoadFade_ < 1.0f)
+            {
+                bridgeLoad_.process(drive, inverseSampleRate_,
+                                    fadingBridgeLoad_, bridgeLoadFade_);
+                bridgeLoadFade_ = std::min(1.0f,
+                    bridgeLoadFade_ + bridgeLoadFadeStep_);
+            }
+            else
+                bridgeLoad_.process(drive, inverseSampleRate_);
             bridgeDisplacement = bridgeLoad_.displacement;
             bridgeRotation = bridgeLoad_.rotation;
             reactionWave = bridgeLoad_.mainIntegratedForce;
@@ -7160,11 +7278,15 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // displacement: an impulse about ten times the note it belongs to,
         // on every note-on after the first.
         const bool crossingRelease = bridgeDerivativesCrossRelease_;
+        const bool crossingConfigure = bridgeDerivativesCrossConfigure_;
         bridgeDerivativesCrossRelease_ = false;
+        bridgeDerivativesCrossConfigure_ = false;
         const auto motion = [&] (FixedDerivative& derivative, float wave)
         {
             return crossingRelease
                 ? derivative.processAcrossRelease(wave, sampleRateRatio)
+                : crossingConfigure
+                ? derivative.processAcrossStep(wave, sampleRateRatio)
                 : derivative.process(wave, sampleRateRatio);
         };
         lastBridgeVelocity_ = motion(

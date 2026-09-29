@@ -1120,6 +1120,15 @@ its own box and wood its bridge is its measurement to the bit.
 If a body crossfade is already sounding,
 the latest selection waits for its remaining duration (at most 40 ms), then
 uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
+A construction changed under a ringing chord rebuilds the bridge the same
+way: its mobility crossfades over 20 ms from the modes that were sounding,
+and where Shape or Wood only retune the same measured bank its bridge and
+body modes keep ringing from where they were rather than restarting from
+rest; the bridge's motion is carried across the switch sample. Above 5 kHz a
+Shape, Wood, Bridge or Model switch now stays within about 2 dB of the
+steady sound where it used to tick 12-48 dB over it; a retune stays within
+about 2 dB on steel, and an exchanged string set, whose every loop filter
+changes at once, still ticks 13-20 dB over (from 24-28).
 
 | Control | Audible behavior |
 | --- | --- |
