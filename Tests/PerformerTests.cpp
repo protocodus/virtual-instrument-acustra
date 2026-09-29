@@ -986,6 +986,40 @@ void testChordWindowIsPerChannel()
     expect(busy.first == quiet.first && busy.second == quiet.second,
            "another channel's notes kept a chord forming and refretted a held note");
 }
+// A same-sample chord with a note only a natural harmonic reaches leaves
+// that harmonic its string, as the same chord rolled does: the shape used
+// to take it, and the harmonic then found no string and never sounded.
+void testChordLeavesAHarmonicItsString()
+{
+    const auto strings = [](const std::vector<int>& notes, int spacing)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 64);
+        std::vector<float> left(64), right(64);
+        performer->beginBlock(left.data(), right.data(), 64);
+        for (std::size_t index = 0; index < notes.size(); ++index)
+            performer->noteOn(static_cast<int>(index) * spacing, 1, notes[index], 100);
+        performer->endBlock();
+        for (int block = 0; block < 20; ++block)
+        {
+            performer->beginBlock(left.data(), right.data(), 64);
+            performer->endBlock();
+        }
+        std::vector<int> held;
+        for (const int note : notes)
+            held.push_back(performer->engine().heldString(note, 1));
+        return held;
+    };
+    for (const auto& chord : { std::vector<int> { 88, 67, 64, 60 },
+                               std::vector<int> { 91, 64, 59, 55 } })
+    {
+        const auto together = strings(chord, 0);
+        expect(std::all_of(together.begin(), together.end(), [](int s) { return s >= 0; }),
+               "a same-sample chord dropped its harmonic " + std::to_string(chord[0]));
+        expect(together == strings(chord, 5),
+               "a same-sample chord was placed unlike the same chord rolled");
+    }
+}
 } // namespace
 
 int main()
@@ -1011,6 +1045,7 @@ int main()
     testUnsoundableNotesMakeNoStrum();
     testMasterTuneSurvivesPrepareAndReset();
     testChordWindowIsPerChannel();
+    testChordLeavesAHarmonicItsString();
 
     if (failures != 0)
     {

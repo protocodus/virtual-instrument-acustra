@@ -5768,6 +5768,7 @@ void AcustraEngine::planChord(const int* midiNotes, int count,
     ShapeSearch search {};
     search.frets.fill(-1);
     search.weights = handWeights();
+    unsigned harmonicStrings = 0u;
     for (int index = 0; index < count; ++index)
     {
         const int midiNote = midiNotes[index];
@@ -5782,7 +5783,15 @@ void AcustraEngine::planChord(const int* midiNotes, int count,
             frettable |= midiNote - voice.openMidi >= 0
                 && midiNote - voice.openMidi <= fretCount;
         // A repeat of a note the chord already has, or one only a natural
-        // harmonic reaches, is left to the note-by-note allocator.
+        // harmonic reaches, is left to the note-by-note allocator. The
+        // harmonic's string is kept out of the shape where the shape allows,
+        // or the note would find it taken and never sound.
+        if (!frettable && !duplicate)
+        {
+            const auto harmonic = chooseHarmonic(midiNote);
+            if (harmonic.string >= 0)
+                harmonicStrings |= 1u << harmonic.string;
+        }
         if (duplicate || !frettable)
             continue;
         ShapeNote note {};
@@ -5805,7 +5814,9 @@ void AcustraEngine::planChord(const int* midiNotes, int count,
     }
     if (search.count < 2)
         return;
-    searchShape(search, 0, 0u);
+    searchShape(search, 0, harmonicStrings);
+    if (!search.found && harmonicStrings != 0u)
+        searchShape(search, 0, 0u);
     if (!search.found)
         return;
     for (int index = 0; index < search.count; ++index)
