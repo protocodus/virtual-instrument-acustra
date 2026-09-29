@@ -775,6 +775,60 @@ void testCoupledPitchPullIsBounded()
     expect(worst < 5.0, "the bridge pulled a note 5 cents or more from its request");
 }
 
+// Note to note, the radiated level of single notes (1 s RMS, E2-C6) is
+// rougher than the open recordings': RMS deviation from a seven-note
+// neighbourhood 3.0-3.7 dB finger-played against 1.8 (Eastman E1D fingered)
+// to 2.4 (Iowa classical mf), the deepest one-note hole 7.8-11.2 dB against
+// 4.4-9.3 (audit F40; README Known gaps). It is the measured bodies'
+// single-point near-field microphone responses (same-sign modal pairs such
+// as g21's 515 and 589 Hz leave an antiresonance under C#5 at the bridge
+// microphone), not an engine fault, and it is left as measured; this keeps
+// it from getting worse unnoticed.
+void testNoteToNoteLevelSpreadIsBounded()
+{
+    struct Case { const char* name; acustra::StringMaterial strings; acustra::BridgeModel bridge;
+                  acustra::BodyShape shape; acustra::BodyMaterial wood; float velocity; };
+    const Case cases[] {
+        { "steel Dreadnought", acustra::StringMaterial::Steel, acustra::BridgeModel::Original,
+          acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce, 91.0f/127.0f },
+        { "Fylde Dreadnought", acustra::StringMaterial::Steel, acustra::BridgeModel::FyldeSteel,
+          acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce, 91.0f/127.0f },
+        { "Classical nylon", acustra::StringMaterial::Nylon, acustra::BridgeModel::Original,
+          acustra::BodyShape::Auditorium, acustra::BodyMaterial::Cedar, 80.0f/127.0f },
+    };
+    for (const auto& c : cases)
+    {
+        acustra::EngineParameters p;
+        p.stringMaterial = c.strings; p.bridgeModel = c.bridge; p.shape = c.shape; p.bodyMaterial = c.wood;
+        std::array<double, 45> level {};
+        for (int note = 40; note <= 84; ++note)
+        {
+            auto e = std::make_unique<Engine>();
+            e->setParameters(p); e->prepare(48000, 256);
+            e->noteOn(note, c.velocity);
+            double energy = 0;
+            process(*e, 48000, &energy);
+            level[static_cast<std::size_t>(note-40)] = 10*std::log10(energy/48000);
+        }
+        double squares = 0; int count = 0; double hole = 0;
+        for (int i = 0; i < 45; ++i)
+        {
+            double sum = level[static_cast<std::size_t>(i)]; int n = 1;
+            for (int j = std::max(0, i-3); j <= std::min(44, i+3); ++j)
+                if (j != i) { sum += level[static_cast<std::size_t>(j)]; ++n; }
+            if (n >= 4) { const double d = level[static_cast<std::size_t>(i)] - sum/n; squares += d*d; ++count; }
+            if (i > 0 && i < 44)
+                hole = std::max(hole, 0.5*(level[static_cast<std::size_t>(i-1)]
+                    + level[static_cast<std::size_t>(i+1)]) - level[static_cast<std::size_t>(i)]);
+        }
+        const double rough = std::sqrt(squares/count);
+        std::cout << "note-to-note level, " << c.name << ": rough " << rough
+                  << " dB, deepest hole " << hole << " dB\n";
+        expect(rough < 4.0, "note-to-note level grew rougher than 4 dB");
+        expect(hole < 12.0, "a single note fell 12 dB or more under its neighbours");
+    }
+}
+
 void testStaticWorkAndRapidChanges()
 {
     double minimumWork = 0;
@@ -831,6 +885,7 @@ int main()
     testStaticWorkAndRapidChanges();
     testConstructionSwitchesDoNotTick();
     testCoupledPitchPullIsBounded();
+    testNoteToNoteLevelSpreadIsBounded();
     std::cout << "Body shape failures=" << failures << '\n';
     return failures == 0 ? 0 : 1;
 }

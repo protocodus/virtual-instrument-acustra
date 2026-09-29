@@ -1625,6 +1625,21 @@ engine.
 
 ## Known gaps
 
+- Single notes' radiated level is rougher from note to note than the open
+  recordings'. Over E2-C6, 1 s RMS at the Stereo mic, the RMS deviation from
+  a seven-note neighbourhood is 3.2 dB finger-played on the steel
+  Dreadnought, 3.7 on the Fylde, 3.4 on the Classical preset and 2.8 on the
+  Bellido, against 1.8 on the Eastman E1D played with fingers, 2.2 with a
+  pick and 2.2-2.4 on the Iowa classical; the deepest one-note hole is
+  8.9 dB (C#5 on the Dreadnought), 11.2 on the Fylde and 7.8 on the
+  Classical, against 4.4-9.3 in the recordings. Picked, the steel
+  Dreadnought is within them (2.3 dB, 4.3 dB). The holes are the measured
+  bodies' own: a close microphone over the bridge hears same-sign modal
+  pairs, such as g21's 515 and 589 Hz, as an antiresonance, and they move
+  with Shape. Smoothing them would change every microphone construction the
+  listener chose; a fit of the bridge microphone as a blend of the archive's
+  measured positions, heard before it ships, would be the way to close it.
+  BodyShapeTests keeps it from getting rougher.
 - A note near a strong, lossy low bridge or body mode sounds a few cents
   from its request: the loop is tuned to cancel the bridge's reflection
   phase at the note (bridgePhaseDelay), but the damped string-body pole sits
