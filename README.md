@@ -1625,6 +1625,22 @@ engine.
 
 ## Known gaps
 
+- A note near a strong, lossy low bridge or body mode sounds a few cents
+  from its request: the loop is tuned to cancel the bridge's reflection
+  phase at the note (bridgePhaseDelay), but the damped string-body pole sits
+  where the reflection's loss also changes fastest. Sustained pitch against
+  the same note with the bridge decoupled, 1-2 s, default sympathetic
+  strings, 48 kHz: G3 on the Fylde Dreadnought +3.6 cents and A3 +1.6 (+5.1
+  with sympathetic strings off), G3 on the steel Jumbo -2.0, C4 on nylon's
+  Dreadnought +4.0 and on the Classical preset -3.8; open strings and notes
+  away from those modes within 0.3 (the rates agree within 0.6). A
+  first-order correction of the loop's pole (one Newton step on the
+  single-string loop, through the measured port's slope) accounts for at
+  most 2 of the 5 cents and none of the Classical C4's, so it is not
+  applied: the rest is the parallel polarisation and the other strings'
+  anchors, which the tuning leaves out. A real guitar pulls similarly near
+  its body resonances; a bridge mobility measured strung would say by how
+  much. BodyShapeTests keeps it within 5 cents.
 - With Gather Chords off, its default, a chord played live on a keyboard is
   fretted as it arrives and refretted by the hand when the shape it has
   started cannot take the next note: rolled low to high over 20 ms,

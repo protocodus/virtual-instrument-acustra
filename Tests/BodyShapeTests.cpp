@@ -695,6 +695,86 @@ void testConstructionSwitchesDoNotTick()
               << " dB (" << worstName << ")\n";
 }
 
+// A note near a strong, lossy low bridge or body mode is pulled a few cents
+// from its request (README, Known gaps; audit F15): the loop is tuned to
+// the bridge's reflection phase at the note, not to the damped pole. Keep
+// that within 5 cents on the notes that pull most, measured as sustained
+// pitch (1-2 s) against the same note with the bridge decoupled.
+double sustainedPitchHz(const acustra::EngineParameters& p, int note, bool coupled)
+{
+    auto e = std::make_unique<Engine>();
+    e->setParameters(p); e->prepare(48000, 256);
+    e->setBridgeCouplingEnabled(coupled);
+    e->noteOn(note, 0.8f);
+    const int n = static_cast<int>(2.0 * 48000);
+    std::vector<double> x(static_cast<std::size_t>(n));
+    std::array<float, 256> left {}, right {};
+    for (int pos = 0; pos < n; pos += 256)
+    {
+        e->process(left.data(), right.data(), 256);
+        for (int i = 0; i < 256 && pos + i < n; ++i)
+            x[static_cast<std::size_t>(pos + i)] = double(left[static_cast<std::size_t>(i)])
+                + right[static_cast<std::size_t>(i)];
+    }
+    const int a = 48000, b = n;
+    const auto power = [&] (double f)
+    {
+        Complex sum {};
+        for (int i = a; i < b; ++i)
+        {
+            const double w = 0.5 - 0.5*std::cos(2*pi*(i-a)/(b-a));
+            sum += w * x[static_cast<std::size_t>(i)] * std::polar(1.0, -2*pi*f*i/48000.0);
+        }
+        return std::norm(sum);
+    };
+    const double nominal = 440*std::exp2((note-69)/12.0);
+    double best = nominal, bestPower = -1;
+    for (int cents = -20; cents <= 20; ++cents)
+    {
+        const double f = nominal*std::exp2(cents/1200.0);
+        const double pw = power(f);
+        if (pw > bestPower) { bestPower = pw; best = f; }
+    }
+    double low = best*std::exp2(-1/1200.0), high = best*std::exp2(1/1200.0);
+    for (int step = 0; step < 30; ++step)
+    {
+        const double m1 = low + 0.382*(high-low), m2 = low + 0.618*(high-low);
+        if (power(m1) > power(m2)) high = m2; else low = m1;
+    }
+    return 0.5*(low+high);
+}
+
+void testCoupledPitchPullIsBounded()
+{
+    using acustra::StringMaterial;
+    struct Case { const char* name; StringMaterial strings; acustra::BridgeModel bridge;
+                  acustra::BodyShape shape; acustra::BodyMaterial wood; int note; };
+    const Case cases[] {
+        { "Fylde Dreadnought G3", StringMaterial::Steel, acustra::BridgeModel::FyldeSteel,
+          acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce, 55 },
+        { "Fylde Dreadnought A3", StringMaterial::Steel, acustra::BridgeModel::FyldeSteel,
+          acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce, 57 },
+        { "steel Jumbo G3", StringMaterial::Steel, acustra::BridgeModel::Original,
+          acustra::BodyShape::Jumbo, acustra::BodyMaterial::Spruce, 55 },
+        { "nylon Dreadnought C4", StringMaterial::Nylon, acustra::BridgeModel::Original,
+          acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Cedar, 60 },
+        { "Classical C4", StringMaterial::Nylon, acustra::BridgeModel::Original,
+          acustra::BodyShape::Auditorium, acustra::BodyMaterial::Cedar, 60 },
+    };
+    double worst = 0;
+    for (const auto& c : cases)
+    {
+        acustra::EngineParameters p;
+        p.stringMaterial = c.strings; p.bridgeModel = c.bridge; p.shape = c.shape;
+        p.bodyMaterial = c.wood;
+        const double cents = 1200*std::log2(sustainedPitchHz(p, c.note, true)
+                                            / sustainedPitchHz(p, c.note, false));
+        std::cout << "coupled pitch pull, " << c.name << ": " << cents << " cents\n";
+        worst = std::max(worst, std::abs(cents));
+    }
+    expect(worst < 5.0, "the bridge pulled a note 5 cents or more from its request");
+}
+
 void testStaticWorkAndRapidChanges()
 {
     double minimumWork = 0;
@@ -750,6 +830,7 @@ int main()
     testRetuneAndTailOwnership();
     testStaticWorkAndRapidChanges();
     testConstructionSwitchesDoNotTick();
+    testCoupledPitchPullIsBounded();
     std::cout << "Body shape failures=" << failures << '\n';
     return failures == 0 ? 0 : 1;
 }

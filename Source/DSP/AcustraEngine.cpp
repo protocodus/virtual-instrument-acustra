@@ -3221,7 +3221,13 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
     // This estimates one string's return phase from the body and anchors.
     // Other strings' frequency-dependent loopback impedances are omitted here,
     // although the runtime junction includes their returning waves. It is an
-    // isolated-port tuning approximation, not the coupled instrument's poles.
+    // isolated-port tuning approximation, not the coupled instrument's poles:
+    // zero loop phase at the note is not where the damped string-body pole
+    // sits beside a strong lossy mode, whose reflection loss changes fastest
+    // there. Measured (audit F15, README Known gaps): up to about 4 cents
+    // (G3 on the Fylde Dreadnought, C4 on nylon), 5 with the other strings
+    // silenced; a one-step pole correction recovers at most 2 of those, so
+    // it is not applied.
     const float characteristicAdmittance = 1.0f / impedance;
     // This is the folded full-round-trip multiplier -b/a.  Its phase is the
     // phase contributed by both measured body motion and the saddle anchor; the
