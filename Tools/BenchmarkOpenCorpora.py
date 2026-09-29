@@ -87,15 +87,24 @@ Usage:
       [--bridge-model original|fylde] [--shape parlor|auditorium|dreadnought|jumbo] \
       [--guitar-model original|bellido1978] \
       [--picking-default finger|pick|thumb] [--picking-override finger|pick|thumb] \
-      [--values V1 ... V32 | --set INDEX_OR_NAME=VALUE ...] \
+      [--values V1 ... V48 | --set INDEX_OR_NAME=VALUE ...] \
       [--splits SPLIT_OR_CORPUS.SPLIT,...] [--keep] [--compare BASEDIR] \
       [--jobs N] [--lenient] [--allow-unfaded]
+  python3 Tools/BenchmarkOpenCorpora.py --smoke \
+      --renderer BUILD/AcustraExternalCorpusRenderer
+
+--smoke runs the whole pipeline - protocol checks, renders, manifests,
+scoring, summary - on a tiny synthetic corpus it writes to a temporary
+directory (three synthesised notes and one row that breaks the protocol, run
+with --lenient) and checks that every score it reports is finite. It
+downloads nothing and writes nothing outside that directory.
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import tempfile
 import json
 import math
 import os
@@ -448,12 +457,97 @@ def _change(entry: dict[str, Any]) -> str:
     return f"{percent:+.2f}%" if percent is not None else "n/a"
 
 
-def main() -> int:
+def _synthetic_target(path: Path, midi: int, velocity: int, rate: int,
+                      seconds: float) -> None:
+    """A plucked-string stand-in in the protocol's cut: 20 ms of silence, a
+    decaying harmonic tone, and the 60 ms terminal half-cosine fade."""
+    frames = round(seconds * rate)
+    onset = round(PRE_ROLL * rate)
+    time_axis = np.arange(frames - onset) / rate
+    f0 = 440.0 * 2.0 ** ((midi - 69) / 12.0)
+    note = np.zeros(frames - onset)
+    for harmonic in range(1, 13):
+        if harmonic * f0 >= 0.45 * rate:
+            break
+        note += (np.sin(2.0 * np.pi * harmonic * f0 * time_axis)
+                 * np.exp(-time_axis * (1.5 + 0.8 * harmonic)) / harmonic)
+    note *= (velocity / 127.0) * 0.5 / np.max(np.abs(note))
+    audio = np.concatenate((np.zeros(onset), note))
+    fade = round(0.060 * rate)
+    audio[-fade:] *= 0.5 * (1.0 + np.cos(np.pi * np.arange(1, fade + 1) / fade))
+    audio.astype("<f4").tofile(path)
+
+
+def smoke(renderer: Path) -> int:
+    with tempfile.TemporaryDirectory(prefix="acustra-open-corpora-smoke-") as temporary:
+        root = Path(temporary)
+        corpus = root / "corpus"
+        (corpus / "targets").mkdir(parents=True)
+        rate, seconds = 44_100, 1.6
+        notes = [("steel", "finger", 52, 60, "smoke-steel-e3"),
+                 ("steel", "finger", 52, 110, "smoke-steel-e3"),
+                 ("nylon", None, 57, 90, None),
+                 ("steel", "pick", 64, 90, None)]
+        rows = []
+        for index, (material, picking, midi, velocity, group) in enumerate(notes):
+            identifier = f"smoke-{index}"
+            _synthetic_target(corpus / "targets" / f"{identifier}.f32", midi,
+                              velocity, rate, seconds)
+            rows.append({
+                "id": identifier, "split": "test", "material": material,
+                "picking": picking, "midi": midi, "velocity": velocity,
+                "round_robin": 0, "dynamic_group": group, "dynamic_marking": None,
+                "target": {"path": f"targets/{identifier}.f32",
+                           "sample_rate": rate, "channels": 1},
+                "onset_seconds_in_source": 0.0,
+                # The last row breaks the protocol, so --lenient must drop it.
+                "isolation_db": 10.0 if index == len(notes) - 1 else 60.0,
+                "clean_seconds": seconds - PRE_ROLL, "measured_f0_hz": None,
+                "cents_from_midi": 0.0, "peak_dbfs": -6.0, "notes": "synthetic"})
+        (corpus / "rows.json").write_text(json.dumps({
+            "corpus": "smoke", "license": "CC0-1.0", "source": "synthetic",
+            "rows": rows}), encoding="utf-8")
+        output = root / "benchmark"
+        status = main([str(corpus / "rows.json"), "--renderer", str(renderer),
+                       "--output", str(output), "--lenient", "--jobs", "2"])
+        summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+        problems = []
+        if status != 0:
+            problems.append(f"the pipeline returned {status}")
+        if [row["id"] for row in summary["rejected_rows"]] != [f"smoke-{len(notes) - 1}"]:
+            problems.append(f"rejected {summary['rejected_rows']}, expected the "
+                            "row that breaks the protocol")
+        split = summary["splits"].get("smoke.test")
+        if split is None or split["example_count"] != len(notes) - 1:
+            problems.append(f"expected one split of {len(notes) - 1} rows: "
+                            f"{list(summary['splits'])}")
+        else:
+            reported = [split["score"], *split["by_material"].values(),
+                        *(value for value in split["terms"].values() if value is not None)]
+            if not all(isinstance(value, float) and math.isfinite(value)
+                       for value in reported):
+                problems.append(f"a score is not finite: {split}")
+            if split["terms"]["dynamics"] is None:
+                problems.append("the two-velocity group was not scored for dynamics")
+        if list(output.glob("model-*.f32")):
+            problems.append("model renders were kept without --keep")
+        for problem in problems:
+            print(f"FAIL: {problem}", file=sys.stderr)
+        if problems:
+            return 1
+    print(f"BenchmarkOpenCorpora smoke passed: {split['example_count']} rows, "
+          f"score {split['score']:.4f}")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("rows", nargs="+", type=Path, metavar="CORPUS_ROWS_JSON")
+    parser.add_argument("rows", nargs="*", type=Path, metavar="CORPUS_ROWS_JSON")
     parser.add_argument("--renderer", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True, metavar="NEWDIR")
+    parser.add_argument("--output", type=Path, metavar="NEWDIR")
+    parser.add_argument("--smoke", action="store_true",
+                        help="run the pipeline on a tiny synthetic corpus and check it")
     parser.add_argument("--bridge-model", choices=("original", "fylde"))
     parser.add_argument("--shape", choices=("parlor", "auditorium", "dreadnought", "jumbo"))
     parser.add_argument("--guitar-model", choices=("original", "bellido1978"))
@@ -477,11 +571,19 @@ def main() -> int:
                         help="drop rows that violate the protocol instead of stopping")
     parser.add_argument("--allow-unfaded", action="store_true",
                         help="accept targets without the terminal fade (bank exports)")
-    arguments = parser.parse_args()
+    arguments = parser.parse_args(argv)
 
     renderer = arguments.renderer.resolve()
     if not renderer.is_file() or not os.access(renderer, os.X_OK):
         raise SystemExit(f"renderer is not an executable file: {renderer}")
+    if arguments.smoke:
+        if arguments.rows or arguments.output is not None:
+            parser.error("--smoke writes its own corpus and output")
+        return smoke(renderer)
+    if not arguments.rows:
+        parser.error("give at least one CORPUS_ROWS_JSON")
+    if arguments.output is None:
+        parser.error("--output is required")
     output = arguments.output.resolve()
     if output.exists():
         raise SystemExit(f"output already exists: {output}")

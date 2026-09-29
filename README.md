@@ -165,6 +165,10 @@ nylon). None of them is fitted; a
 split used to choose a calibration stops being a held-out reading. Two of the
 bank's eight flat-top targets (E2, E3) start after their attack has begun,
 which the corpus tool's onset rule catches and the bank's export did not.
+`BenchmarkOpenCorpora.py --smoke --renderer ./build-dsp/AcustraExternalCorpusRenderer`
+runs the whole pipeline on a synthetic corpus it writes itself, downloading
+nothing; ctest runs it (Acustra.OpenCorporaBenchmark) beside every other
+Python tool's self-test.
 
 Run `python3 Tools/SummarizePhysicalBenchmark.py` to print the compact split
 table, historical sample-player control and five retained realism paths from

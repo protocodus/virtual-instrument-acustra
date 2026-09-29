@@ -493,6 +493,49 @@ if(BUILD_TESTING)
                                  --probe "$<TARGET_FILE:AcustraBridgeProbe>"
                                  --work "${CMAKE_CURRENT_BINARY_DIR}/excitation-selftest")
                 set_tests_properties(Acustra.ExtractExcitation PROPERTIES TIMEOUT 180)
+                # The offline audit and corpus tools' own self-tests: each
+                # synthesises what it checks and downloads nothing.
+                add_test(NAME Acustra.AuditAttackBands
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditAttackBands.py"
+                                 --self-test)
+                set_tests_properties(Acustra.AuditAttackBands PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.AuditDampingCurve
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditDampingCurve.py"
+                                 --self-test)
+                set_tests_properties(Acustra.AuditDampingCurve PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.AuditBridgeSpatialMap
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditBridgeSpatialMap.py"
+                                 --self-test)
+                set_tests_properties(Acustra.AuditBridgeSpatialMap PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.PrepareIowaGuitarCorpus
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/PrepareIowaGuitarCorpus.py"
+                                 --self-test)
+                set_tests_properties(Acustra.PrepareIowaGuitarCorpus PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.PrototypePlectrumContact
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/PrototypePlectrumContact.py"
+                                 --self-test)
+                set_tests_properties(Acustra.PrototypePlectrumContact PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.ValidateCapture
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/ValidateCapture.py"
+                                 --self-test)
+                set_tests_properties(Acustra.ValidateCapture PROPERTIES TIMEOUT 60)
+                # The open-corpus benchmark end to end on a synthetic corpus.
+                add_test(NAME Acustra.OpenCorporaBenchmark
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/BenchmarkOpenCorpora.py"
+                                 --smoke --renderer "$<TARGET_FILE:AcustraExternalCorpusRenderer>")
+                set_tests_properties(Acustra.OpenCorporaBenchmark PROPERTIES TIMEOUT 180)
+                # Every tool with a self-test is one of the above.
+                add_test(NAME Acustra.SelfTestRegistry
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tests/SelfTestRegistryTests.py")
+                set_tests_properties(Acustra.SelfTestRegistry PROPERTIES TIMEOUT 30)
                 if(NOT WIN32)
                     add_test(NAME Acustra.PythonTestsReported
                              COMMAND "${CMAKE_COMMAND}"
