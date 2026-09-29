@@ -407,6 +407,13 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FitPhysicalModel.py"
                                  --self-test)
                 set_tests_properties(Acustra.PhysicalScorer PROPERTIES TIMEOUT 180)
+                # The calibration vector's size, as documented and accepted.
+                add_test(NAME Acustra.CalibrationVector
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CalibrationVectorTests.py"
+                                 "$<TARGET_FILE:AcustraPhysicalFitRenderer>"
+                                 "$<TARGET_FILE:AcustraExternalCorpusRenderer>")
+                set_tests_properties(Acustra.CalibrationVector PROPERTIES TIMEOUT 120)
                 # No stage may refit a value a listener chose.
                 add_test(NAME Acustra.OptimizerFreeze
                          COMMAND "${Python3_EXECUTABLE}"

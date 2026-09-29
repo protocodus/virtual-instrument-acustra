@@ -76,7 +76,7 @@ def main():
     parser.add_argument('--renderer', type=Path, required=True)
     parser.add_argument('--archive', type=Path, required=True)
     parser.add_argument('--initial-calibration', type=Path, required=True,
-                        help='JSON object of the 29 named physical calibration values')
+                        help=f'JSON object of the {len(NAMES)} named physical calibration values')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--fit', action='store_true', help='run bounded training-only search')
     parser.add_argument('--jobs', type=int, default=4)

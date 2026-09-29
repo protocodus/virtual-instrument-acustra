@@ -1426,10 +1426,14 @@ does to a note is a level difference and after t seconds that difference is
 exactly the rate error times t; the relative form scored the same 1.4x error
 identically whether it meant 25 dB or 3 dB after one second. The trajectory
 term measures common H1--H8 pitch movement over 20--100, 80--200 and
-180--400 ms relative to settled partials. The calibration stores 32 bounded
-values; 30 are active, the last three of them the plectrum's, fitted on the
-picked archtop rows alone. The unidentifiable optional direct branch is fixed off,
-and several values are chosen by ear rather than fitted (BY_EAR in
+180--400 ms relative to settled partials. The calibration stores 48 bounded
+values, in the order of `NAMES` in
+[`OptimizePhysicalModel.py`](Tools/OptimizePhysicalModel.py); the stages
+search 15 of them. The plectrum's values (29-32) are fitted on the picked
+archtop rows alone. The unidentifiable optional direct branch is fixed off, one
+value is a published measurement (the contact noise's decay), five are inert
+while the values they shape are off (the axial resonators' Q; the contact
+noise's velocity law and corners), and 26 are chosen by ear rather than fitted (BY_EAR in
 [`OptimizePhysicalModel.py`](Tools/OptimizePhysicalModel.py)), among them the
 string-polarisation end correction (zero, over Woodhouse's published 0.8 mm,
 which the corpus mildly prefers) and nylon's fundamental T60 scale (1.4, over
@@ -3084,7 +3088,9 @@ checks the scoring, string scheduling and renderer without downloading audio.
 For dry-note comparisons, add `--bridge-model fylde` after the optional
 `--models-only`/`--smoke` mode and before the output directory in
 `AcustraPhysicalFitRenderer`; `--shape`, `--archtop-picking` and
-`--guitar-model` may follow it, and then the 32 calibration arguments. With
+`--guitar-model` may follow it, and then the 48 calibration arguments (the
+legacy 32 and 37 are still accepted; the values left out take the shipped
+calibration). With
 the string calibration fitted on Original, the since-retired named steel
 guitars read worse than Original with the Fylde bridge on every split
 (Martin D18V training +12%, flat-top +10%; Santa Cruz OM +6% and +4%), so the
