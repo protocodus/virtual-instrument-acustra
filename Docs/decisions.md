@@ -4,6 +4,64 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-29 — at the user's request: engine audit, tests, tools and documentation
+
+Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
+"now, wrap up - walk through the engine and fix any gaps, obvious issues,
+and ensure compatibility between different woods, models, et". This entry
+covers the audit's findings about the tests, tools, documentation and code
+hygiene (F5, F16, F25, F28, F29, F32-F39), one commit each. None of them
+changes a sound: 648 hashed renders (every construction on Main and the
+Piezo output, 44.1/96 kHz, Mono and Piezo capture, 90 live switches and the
+performance battery with its probes) are byte-identical across the group.
+
+Fixed:
+- CI's demo check expected 12 WAVs after demo 07 was dropped, so it failed
+  every run; it expects 11, and Acustra.DemoCount keeps it equal to the
+  renderer's list (F5).
+- The engine and processor test binaries crashed when run directly or under
+  a debugger: 1.7 MB engines parked on the stack of inlined helpers, hidden
+  because ctest raises the stack limit on macOS. The tests hold them on the
+  heap, and the C++ suites run under ctest at a shell's 8 MB (F16). Windows
+  keeps CI's /STACK flag, since BodyShapeTests' main still holds 1.6 MB.
+- Guitar Model went from five choices to two under one ID: accepted, not
+  migrated, because no pushed or packaged build had five, while every
+  packaged build stores Bellido as normalised 1.0; the choice list and the
+  normalised 0 and 1 are pinned (F25; see the 2026-09-25 entry).
+- Coverage (F28): Acustra.ConstructionMatrix plays all 1,920 settings of
+  Strings x Model x Bridge x Shape x Wood x Tuning x Capture and holds the
+  routes and the Bridge choice to their identities; every tuning's open
+  strings and retuned gauge are tested; the battery switches every
+  construction control and plays Open G and Half-step down; the automation
+  stress moves Model, Bridge, Tuning and Capture at seven rates; the
+  performance renderer takes all five tunings.
+- The Python self-tests say when numpy/scipy are missing, and CI installs
+  them and requires them (F29); every tool with a self-test is registered,
+  and the open-corpus benchmark has a synthetic smoke test (F34).
+- The hand allocator's timing gate takes the best of several passes, so a
+  loaded machine no longer fails it (F32).
+- The contact noise and click Set 16 rejected are frozen in the optimiser
+  (F33, with a correction in that entry).
+- The calibration vector is 48 values in README and both renderers' usage
+  (F35); the legato leftovers are gone from the current docs (F36); README
+  counts one additional measured guitar (F37).
+- Dead engine state is removed - BodyMode's own processing, the unread
+  fading body copy, the always-identity radiation delay and the
+  always-zero sympathetic-force observer - and the engine is 27 KB smaller
+  (F38); four -Wshadow warnings are cleared and AcustraDSPCxx17 keeps
+  -Wshadow under -Werror (F39).
+
+Measured and left for the user (README Known gaps): "nylon is a bit quite,
+normalize it with the steel" was answered by matching loudness over a phrase
+set, and it is matched there. Nylon's own dynamics remain: with the fingers,
+an open strum on nylon plays 9.5 dB under steel at velocity 0.2, 4.7 dB at
+0.6 and 2.5 dB at 1.0 (the Classical preset 8.3, 3.6 and 1.4), while a
+single E4 plays 1-9 dB over steel. Evening that out means changing nylon's
+velocity response and string balance, which is a sound for the ear, not a
+level; it was not done here. One strum across constructions and tunings
+also sits -8.0 to +5.5 dB from the default construction's on the same
+strings, at the body's resonances.
+
 ## 2026-09-29 — at the user's request: every construction as loud as the default
 
 Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
