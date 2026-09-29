@@ -1894,6 +1894,18 @@ nylon Bellido. The generator stays for local comparison, with its output
 ignored by git. Commits before this one select those three models with an
 empty bank and are not meant to be played.
 
+(Added 2026-09-29, audit F25.) Guitar Model kept its ID and version
+(`guitarModel`, 7) when its choices went from five to two. The
+setStateInformation migration covers saved XML state, but not host automation
+or a host's normalised snapshot: a five-choice build's Bellido (0.25) would
+read as Original and its Santa Cruz and Martin (0.75, 1.0) as Bellido. That is
+accepted rather than migrated, because no pushed or CI-packaged build ever
+had the five-choice layout, only local builds from 2026-09-08 to 2026-09-25,
+while every packaged build stores Bellido as normalised 1.0. Going back to
+five choices or bumping the ID would break those. The choice list stays
+exactly {Original, Bellido 1978}, and `PluginProcessorTests` pins it and the
+normalised 0 and 1.
+
 ## 2026-09-24 — steel's missing low end is the air mode at the bridge microphones
 
 What was measured. On the eight Eastman E1D flat-top rows the model's H1

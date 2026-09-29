@@ -238,6 +238,11 @@ AcustraAudioProcessor::createParameterLayout()
     // Its choices 2-4, the Washburn 1897, Santa Cruz OM 2022 and Martin D18V
     // 2007, were fitted from measurements with no redistribution license and
     // are retired; setStateInformation moves a state that chose one to Original.
+    // The ID and version stayed when the list went from five choices to two,
+    // so host automation and normalised snapshots from a five-choice build
+    // would read differently; no pushed or packaged build had five (Docs/
+    // decisions.md, 2026-09-25). Every packaged build stores Bellido as
+    // normalised 1.0, so the list must stay exactly these two, in this order.
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::guitarModel, 7 }, "Guitar Model",
         juce::StringArray { "Original", "Bellido 1978" }, 0));

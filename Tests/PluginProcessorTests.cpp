@@ -189,6 +189,17 @@ void testParameterContract()
                 && model->getParameterIndex() == 16
                 && model->choices == juce::StringArray { "Original", "Bellido 1978" },
             "Guitar Model must append the two measured-body choices with AU version hint 7");
+    if (auto* modelParameter = processor.parameters.getParameter (ids::guitarModel))
+    {
+        // What a host's automation lane or normalised snapshot holds: every
+        // packaged build stores Original as 0 and Bellido as 1.
+        const auto* choice = dynamic_cast<const juce::AudioParameterChoice*> (modelParameter);
+        modelParameter->setValueNotifyingHost (1.0f);
+        const bool bellido = choice != nullptr && choice->getIndex() == 1;
+        modelParameter->setValueNotifyingHost (0.0f);
+        expect (bellido && choice->getIndex() == 0,
+                "Guitar Model's normalised 0 and 1 must stay Original and Bellido 1978");
+    }
     const auto* gather = dynamic_cast<const juce::AudioParameterBool*> (
         processor.parameters.getParameter (ids::gatherChords));
     expect (gather != nullptr && gather->getVersionHint() == 8
