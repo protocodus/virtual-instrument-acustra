@@ -369,7 +369,14 @@ void testSlidNotesAreDampedAtTheirSlidPitch()
                   << " A4 released/held 50-100 ms after key-up: unslid -" << plain
                   << " dB, slid two octaves down -" << slid << " dB, slid down after key-up -"
                   << slidAfter << " dB\n";
-        expect(slid > plain - 6.0 && slidAfter > plain - 6.0,
+        // Damped per trip as if unslid, the slide drops a quarter to a half
+        // as far as the unslid note in this window (steel 6.8 and 12.0 dB
+        // against 20.0, nylon 6.9 and 11.8 against 25.4); damped at its slid
+        // pitch, 0.7-1.1 of it. The rest is the body: at A2 the default
+        // construction's low modes ring on under the damped string, and how
+        // long depends on where Shape and Wood put them, so the gate is a
+        // fraction of the unslid drop rather than a fixed number of dB.
+        expect(slid > 0.65 * plain && slidAfter > 0.65 * plain,
                std::string(materialName(material))
                    + ": a slid note was not damped at its slid pitch");
     }
