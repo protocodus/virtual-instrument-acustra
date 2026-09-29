@@ -5844,6 +5844,73 @@ void testBodyChangesPreserveAnUnfinishedFade()
                "reset did not configure the latest requested body bank");
 }
 
+// String Age is a continuous, automatable control: each change redesigns
+// every string's loss, and a host sends a new value every block. The tail a
+// re-pluck left on its string rings out under the hand as it did before the
+// change; deleting it made every age step over a re-struck note or chord a
+// click (a 0.001 nudge moved the output by up to 2.4 times the note's own
+// peak, and strums under an age ramp stood 12-20 dB over the same strums
+// without it above 4 kHz).
+void testStringAgeKeepsARepluckedTail()
+{
+    const int block = 16;
+    for (const int delay : { 1, 16, 64, 256 })
+    {
+        const auto render = [&] (bool nudge, int& tailsAfter)
+        {
+            auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+            auto& engine = *engineOwner;
+            acustra::EngineParameters parameters;
+            engine.setParameters(parameters);
+            engine.prepare(sampleRate, block);
+            std::vector<float> left(static_cast<std::size_t>(block));
+            std::vector<float> right(static_cast<std::size_t>(block));
+            const auto run = [&] (int samples, std::vector<float>* out)
+            {
+                for (int done = 0; done < samples; done += block)
+                {
+                    engine.process(left.data(), right.data(), block);
+                    if (out != nullptr)
+                        out->insert(out->end(), left.begin(), left.end());
+                }
+            };
+            engine.noteOn(52, 0.8f);
+            run(static_cast<int>(0.25 * sampleRate), nullptr);
+            engine.noteOn(52, 0.8f);
+            std::vector<float> output;
+            run(delay, &output);
+            expect(acustra::AcustraEngineTestAccess::retainedTailCount(engine) > 0,
+                   "a re-pluck of a sounding string left no tail to test");
+            if (nudge)
+            {
+                parameters.stringAge += 0.001f;
+                engine.setParameters(parameters);
+            }
+            run(static_cast<int>(0.1 * sampleRate), &output);
+            tailsAfter = acustra::AcustraEngineTestAccess::retainedTailCount(engine);
+            return output;
+        };
+        int steadyTails = 0, nudgedTails = 0;
+        const auto steady = render(false, steadyTails);
+        const auto nudged = render(true, nudgedTails);
+        double peak = 0.0, difference = 0.0;
+        for (std::size_t index = 0; index < steady.size(); ++index)
+        {
+            peak = std::max(peak, std::abs(static_cast<double>(steady[index])));
+            difference = std::max(difference, std::abs(
+                static_cast<double>(nudged[index]) - steady[index]));
+        }
+        expect(nudgedTails == steadyTails,
+               "a String Age step " + std::to_string(delay)
+                   + " samples after a re-pluck removed its tail");
+        expect(difference <= 1.0e-4 * peak,
+               "a 0.001 String Age step " + std::to_string(delay)
+                   + " samples after a re-pluck moved the output by "
+                   + std::to_string(difference / std::max(peak, 1.0e-12))
+                   + " of its peak");
+    }
+}
+
 void testSwitchingTuningOrModelUnderAChordDoesNotClick()
 {
     // Changing the tuning changes every string's impedance at once, so the
@@ -7695,6 +7762,7 @@ int main()
     testBodyChangesPreserveTheSoundingStrings();
     testBodyChangesPreserveAnUnfinishedFade();
     testSwitchingTuningOrModelUnderAChordDoesNotClick();
+    testStringAgeKeepsARepluckedTail();
     testLongitudinalModesGrowWithVelocity();
     testTodaysMechanismsSurviveEachOther();
     testNoteAfterSilenceDoesNotClick();

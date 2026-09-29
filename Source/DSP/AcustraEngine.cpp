@@ -2803,8 +2803,12 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     // loop is not redesigned below. Shape changes the body attached to that
     // string, not its ownership or construction, so it keeps the tail and its
     // still-connected junction port. Wood moves the radiation and the bridge
-    // like Shape (above), and keeps the tail too.
-    if (constructionChanged || ageChanged || tuningChanged)
+    // like Shape (above), and keeps the tail too. So does String Age: a host
+    // automates it every block, and the tail already dies under the hand's
+    // loss, which outweighs any change of the string's own; deleting it cut
+    // the ringing re-plucked string off mid-wave, a click on every age step
+    // over a re-struck note.
+    if (constructionChanged || tuningChanged)
         for (auto& voice : voices_)
         {
             if (!voice.tailActive)
