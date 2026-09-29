@@ -2,6 +2,7 @@
 #include "DSP/GuitarModelData.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <complex>
 #include <iostream>
@@ -13,6 +14,10 @@ namespace acustra
 struct AcustraEngineTestAccess
 {
     static auto body(AcustraEngine& e, float f, float m) { return e.renderBody(f, m); }
+    static std::array<float, 4> woodFactors(const EngineParameters& p)
+    { return AcustraEngine::bodyWoodFactors(p); }
+    static std::array<float, 2> radiationPole(const EngineParameters& p, int index)
+    { return AcustraEngine::radiationModePole(p, fittedPhysicalCalibration, index); }
     static bool hasModel(const AcustraEngine& e, GuitarModel model)
     { return e.configuredGuitarModel_ == model; }
     template <typename Bank>
@@ -299,6 +304,51 @@ void testCoupledModels()
         }
 }
 }
+// Body Material moves a measured body relative to the wood it was built of,
+// so at that wood it is heard as measured. g34, Original nylon's body, is a
+// cedar-topped classical, like the Bellido; Wood used to take spruce as its
+// reference, so the Classical preset (Cedar) put a cedar warp (-31 cents,
+// Q x0.88, darker, +4% radiation) on a cedar measurement and was not the
+// construction the benchmark scores (audit F19).
+void testEachBodyIsAsMeasuredAtItsOwnWood()
+{
+    using namespace acustra;
+    struct Case { StringMaterial strings; GuitarModel model; BodyMaterial own; };
+    const Case cases[] {
+        { StringMaterial::Steel, GuitarModel::Original, BodyMaterial::Spruce },
+        { StringMaterial::Nylon, GuitarModel::Original, BodyMaterial::Cedar },
+        { StringMaterial::Nylon, GuitarModel::Bellido1978, BodyMaterial::Cedar },
+        { StringMaterial::Steel, GuitarModel::Bellido1978, BodyMaterial::Cedar },
+    };
+    for (const auto& c : cases)
+    {
+        expect(AcustraEngine::measuredBankWood(c.strings, c.model) == c.own,
+               "a measured body is not referenced to the wood it was built of");
+        EngineParameters p;
+        p.stringMaterial = c.strings; p.guitarModel = c.model; p.bodyMaterial = c.own;
+        const auto own = AcustraEngineTestAccess::woodFactors(p);
+        expect(own == std::array<float, 4> { 1.0f, 1.0f, 1.0f, 1.0f },
+               "Body Material warps a measured body at its own wood");
+        for (int wood = 0; wood < 4; ++wood)
+        {
+            auto q = p; q.bodyMaterial = static_cast<BodyMaterial>(wood);
+            const auto factors = AcustraEngineTestAccess::woodFactors(q);
+            // The two cedar-topped bodies take one set of directions.
+            auto cedarTopped = q;
+            cedarTopped.stringMaterial = StringMaterial::Nylon;
+            cedarTopped.guitarModel = GuitarModel::Bellido1978;
+            if (c.own == BodyMaterial::Cedar)
+                expect(factors == AcustraEngineTestAccess::woodFactors(cedarTopped),
+                       "two cedar-topped bodies take different Wood directions");
+            // The radiation takes the frequency factor.
+            const double ratio = double(AcustraEngineTestAccess::radiationPole(q, 3)[0])
+                / AcustraEngineTestAccess::radiationPole(p, 3)[0];
+            expect(std::abs(ratio / factors[0] - 1.0) < 1.0e-6,
+                   "the radiation does not move by Body Material's frequency factor");
+        }
+    }
+}
+
 int main()
 {
     using namespace acustra;
@@ -307,5 +357,6 @@ int main()
     testNominalBridge(GuitarModel::Bellido1978, detail::bellidoBridgeModes);
     testRetiredModelsPlayOriginal();
     testCoupledModels();
+    testEachBodyIsAsMeasuredAtItsOwnWood();
     return failures == 0 ? 0 : 1;
 }

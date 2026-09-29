@@ -68,6 +68,18 @@ acustra::BodyShape renderShapeFor(acustra::StringMaterial material) noexcept
         ? acustra::BodyShape::Auditorium : acustra::EngineParameters {}.shape;
 }
 
+// Each Original bank at the wood it was built of (AcustraEngine::
+// measuredBankWood), which Body Material leaves as measured: spruce for
+// steel's g21, cedar for nylon's g34. A named model keeps the default wood,
+// as its evaluations always have.
+acustra::BodyMaterial renderWoodFor(acustra::StringMaterial material) noexcept
+{
+    if (renderGuitarModel != acustra::GuitarModel::Original)
+        return acustra::EngineParameters {}.bodyMaterial;
+    return acustra::AcustraEngine::measuredBankWood(material,
+                                                    acustra::GuitarModel::Original);
+}
+
 constexpr int modelSampleRate = 48000;
 constexpr int renderBlockSize = 127;
 constexpr double renderSeconds = 4.2;
@@ -239,6 +251,7 @@ std::vector<float> renderModel(StringMaterial material,
     parameters.bridgeModel = renderBridgeModel;
     parameters.guitarModel = renderGuitarModel;
     parameters.shape = renderShapeFor(parameters.stringMaterial);
+    parameters.bodyMaterial = renderWoodFor(parameters.stringMaterial);
     parameters.picking = picking;
     engine.setParameters(parameters);
     engine.setPhysicalCalibration(calibration);
@@ -294,7 +307,14 @@ std::string modelControlsJson()
              << shapeNames[static_cast<std::size_t>(
                     renderShapeFor(StringMaterial::Nylon))]
              << " (the measured classical) for nylon";
-    text << "\", \"body_material\": " << static_cast<int>(parameters.bodyMaterial)
+    text << "\", \"body_material\": ";
+    if (renderGuitarModel == acustra::GuitarModel::Original)
+        text << "\"per material: " << static_cast<int>(renderWoodFor(StringMaterial::Steel))
+             << " for steel, " << static_cast<int>(renderWoodFor(StringMaterial::Nylon))
+             << " for nylon (each bank's own wood)\"";
+    else
+        text << static_cast<int>(parameters.bodyMaterial);
+    text
          << ", \"string_material\": \"per job row: nylon or steel\""
          << ", \"bridge_model\": \""
          << (renderBridgeModel == acustra::BridgeModel::FyldeSteel ? "fylde" : "original")

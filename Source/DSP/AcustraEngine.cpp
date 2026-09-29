@@ -564,21 +564,29 @@ constexpr std::array<WoodSpec, 4> woodSpecs {{
     { 1.025f, 1.08f, 1.08f, 0.96f }  // maple: stiffer/brighter direction
 }};
 
-// What Wood does to a mode's frequency and Q, relative to the bank's own
-// wood: spruce for Original, the Bellido's cedar for it.
+// What Wood does to a mode's frequency, Q, brightness and radiation,
+// relative to the wood the measured bank was built of
+// (AcustraEngine::measuredBankWood), so every bank is heard as measured at
+// its own wood: spruce for steel's g21, cedar for nylon's g34 and the
+// Bellido. Every factor is then exactly 1 there (x/x in IEEE arithmetic).
 struct WoodFactors
 {
     float frequency;
     float q;
+    float brightness;
+    float radiation;
 };
 
-WoodFactors woodFactorsFor(BodyMaterial material, GuitarModel guitar) noexcept
+WoodFactors woodFactorsFor(BodyMaterial material, StringMaterial strings,
+                           GuitarModel guitar) noexcept
 {
-    const bool named = guitar != GuitarModel::Original;
     const auto wood = woodSpecs[static_cast<std::size_t>(material)];
-    const auto reference = woodSpecs[guitar == GuitarModel::Bellido1978 ? 1 : 0];
-    return { wood.frequencyScale / (named ? reference.frequencyScale : 1.0f),
-             wood.qScale / (named ? reference.qScale : 1.0f) };
+    const auto reference = woodSpecs[static_cast<std::size_t>(
+        AcustraEngine::measuredBankWood(strings, guitar))];
+    return { wood.frequencyScale / reference.frequencyScale,
+             wood.qScale / reference.qScale,
+             wood.brightness / reference.brightness,
+             wood.radiation / reference.radiation };
 }
 
 struct ModalPole
@@ -2573,9 +2581,28 @@ std::array<float, 2> AcustraEngine::radiationModePole(
         targetBodyFor(parameters.stringMaterial, parameters.guitarModel,
                       parameters.shape));
     const auto pole = radiationPole(bank, index, anchor, morph,
-        woodFactorsFor(parameters.bodyMaterial, parameters.guitarModel),
+        woodFactorsFor(parameters.bodyMaterial, parameters.stringMaterial,
+                       parameters.guitarModel),
         parameters.guitarModel != GuitarModel::Original, calibration);
     return { pole.frequency, pole.q };
+}
+
+BodyMaterial AcustraEngine::measuredBankWood(StringMaterial strings,
+                                             GuitarModel guitar) noexcept
+{
+    // g21 (MeasuredBridgeData.h) is spruce/cypress; g34 there and the
+    // Bellido's g35 (NylonG35CandidateData.h) are cedar/Rio palisander.
+    return guitar == GuitarModel::Bellido1978 || strings == StringMaterial::Nylon
+        ? BodyMaterial::Cedar : BodyMaterial::Spruce;
+}
+
+std::array<float, 4> AcustraEngine::bodyWoodFactors(
+    const EngineParameters& parameters) noexcept
+{
+    const auto wood = woodFactorsFor(parameters.bodyMaterial,
+                                     parameters.stringMaterial,
+                                     parameters.guitarModel);
+    return { wood.frequency, wood.q, wood.brightness, wood.radiation };
 }
 
 void AcustraEngine::configureBody() noexcept
@@ -2615,7 +2642,6 @@ void AcustraEngine::configureBody() noexcept
 
     const AnchorTransform& anchor = anchorTransformFor(parameters_.guitarModel,
                            parameters_.stringMaterial);
-    const auto wood = woodSpecs[static_cast<std::size_t>(parameters_.bodyMaterial)];
     const auto bank = measuredBodyBank(parameters_.stringMaterial,
                                        parameters_.guitarModel);
     // A named guitar is unwarped at its own family/wood setting. Moving Shape
@@ -2625,9 +2651,9 @@ void AcustraEngine::configureBody() noexcept
         anchorBodyFor(parameters_.stringMaterial, parameters_.guitarModel),
         targetBodyFor(parameters_.stringMaterial, parameters_.guitarModel,
                       parameters_.shape));
-    const auto referenceWood = woodSpecs[parameters_.guitarModel == GuitarModel::Bellido1978 ? 1 : 0];
     const bool named = parameters_.guitarModel != GuitarModel::Original;
     const auto woodFactors = woodFactorsFor(parameters_.bodyMaterial,
+                                            parameters_.stringMaterial,
                                             parameters_.guitarModel);
     // lowBodyModeGain raises the air mode where steel's g21 bank under-hears
     // it: at the treble-bridge microphone, 10 cm over the bridge, 82 Hz
@@ -2677,14 +2703,14 @@ void AcustraEngine::configureBody() noexcept
 
         const float bassTilt = 1.0f + (anchor.bass - 1.0f)
             * std::exp(-frequency / 520.0f);
-        const float brilliance = std::pow(wood.brightness / (named ? referenceWood.brightness : 1.0f), upper);
+        const float brilliance = std::pow(woodFactors.brightness, upper);
         const float residueTilt = std::exp2(
             physicalCalibration_.residueTiltDbPerOctave
             * std::log2(frequency / 1000.0f) / 6.02059991f);
         const float drive = audibleAtThisRate
             ? detail::guitarMicrophoneTrims[static_cast<std::size_t>(parameters_.guitarModel)]
                 * anchor.volume * shapeLevel
-                * (wood.radiation / (named ? referenceWood.radiation : 1.0f))
+                * woodFactors.radiation
                 * bassTilt * brilliance
                 * residueTilt
             : 0.0f;
@@ -2845,6 +2871,7 @@ void AcustraEngine::configureBridge() noexcept
     const auto anchor = anchorTransformFor(parameters_.guitarModel,
                                            parameters_.stringMaterial);
     const auto wood = woodFactorsFor(parameters_.bodyMaterial,
+                                     parameters_.stringMaterial,
                                      parameters_.guitarModel);
     for (std::size_t index = 0;
          index < static_cast<std::size_t>(bridgeModeCount); ++index)
@@ -2946,6 +2973,7 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         * (ownBridge ? detail::steelTopMobilityRatio : 1.0f);
     const auto plate = plateConductanceMode(physicalCalibration_);
     const auto wood = woodFactorsFor(parameters_.bodyMaterial,
+                                     parameters_.stringMaterial,
                                      parameters_.guitarModel);
     const std::array<std::uint32_t, 11> key {
         exact::bits(rate), exact::bits(bridgeShapeA0_), exact::bits(bridgeShapeT1_),

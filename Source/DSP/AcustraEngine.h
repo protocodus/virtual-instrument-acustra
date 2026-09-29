@@ -144,6 +144,13 @@ public:
     // calibration resets the engine; do not call it from the audio thread.
     void setPhysicalCalibration(const PhysicalCalibration&) noexcept;
 
+    // The wood the measured body these select was built of: Body Material
+    // leaves that body as measured there and moves it relative to it
+    // elsewhere. Spruce for steel on the Original model (g21), cedar for
+    // nylon on it (g34) and for the Bellido.
+    [[nodiscard]] static BodyMaterial measuredBankWood(StringMaterial strings,
+                                                       GuitarModel guitar) noexcept;
+
     // Call once before the noteOn() calls for one strum's strings (not for a
     // single note): draws this stroke's own pick-speed variation, shared by
     // every string noteOn() schedules with strumMember set until the next
@@ -956,6 +963,10 @@ private:
     static std::array<float, 2> radiationModePole(
         const EngineParameters& parameters,
         const PhysicalCalibration& calibration, int index) noexcept;
+    // Body Material's factors on frequency, Q, brightness and radiation for
+    // these parameters, relative to measuredBankWood (tests).
+    static std::array<float, 4> bodyWoodFactors(
+        const EngineParameters& parameters) noexcept;
     float bridgePhaseDelay(float frequency, int stringIndex) const noexcept;
     // The saddle's mobility at one string's two ports, bridge and anchors in
     // parallel, at a frequency: the normal port at its lever arm, the
