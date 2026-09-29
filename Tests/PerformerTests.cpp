@@ -706,15 +706,17 @@ void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
 double bandLevel(const Render& render, double sampleRate, double frequency,
                  double from, double to)
 {
+    // M_PI is POSIX, not standard C++: MSVC does not define it.
+    constexpr double pi = 3.14159265358979323846;
     double real = 0.0, imaginary = 0.0;
     const auto begin = static_cast<std::size_t>(from * sampleRate);
     const auto end = std::min(static_cast<std::size_t>(to * sampleRate),
                               render.left.size());
     for (std::size_t n = begin; n < end; ++n)
     {
-        const double window = 0.5 - 0.5 * std::cos(2.0 * M_PI
+        const double window = 0.5 - 0.5 * std::cos(2.0 * pi
             * static_cast<double>(n - begin) / static_cast<double>(end - begin));
-        const double phase = 2.0 * M_PI * frequency * static_cast<double>(n) / sampleRate;
+        const double phase = 2.0 * pi * frequency * static_cast<double>(n) / sampleRate;
         const double value = window * (render.left[n] + render.right[n]);
         real += value * std::cos(phase);
         imaginary += value * std::sin(phase);
