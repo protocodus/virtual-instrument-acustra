@@ -1370,9 +1370,9 @@ private:
     // are timed on it.
     std::uint64_t sampleClock_ { 0 };
     std::array<HandFinger, stringCount> hand_ {};
-    std::uint64_t lastNoteOnSample_ { 0 };
-    std::uint64_t chordStartSample_ { 0 };
-    bool noteOnSeen_ { false };
+    std::array<std::uint64_t, midiChannelCount> lastNoteOnSample_ {};
+    std::array<std::uint64_t, midiChannelCount> chordStartSample_ {};
+    std::array<bool, midiChannelCount> noteOnSeen_ {};
     // planChord's shape for the notes of one sample.
     std::array<int, stringCount> plannedNotes_ {};
     std::array<int, stringCount> plannedStrings_ {};

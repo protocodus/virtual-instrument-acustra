@@ -2613,9 +2613,9 @@ void AcustraEngine::reset() noexcept
     noteOrder_ = 0;
     sampleClock_ = 0;
     hand_.fill({});
-    lastNoteOnSample_ = 0;
-    chordStartSample_ = 0;
-    noteOnSeen_ = false;
+    lastNoteOnSample_.fill(0);
+    chordStartSample_.fill(0);
+    noteOnSeen_.fill(false);
     plannedCount_ = 0;
     controlCounter_ = 0;
     parameters_ = sanitise(targetParameters_);
@@ -5517,14 +5517,17 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             std::round(static_cast<float>(delaySamples) * strumSpeedScale_)));
     }
 
-    // A chord still forming is a run of onsets each within the chord window
-    // of the one before it.
+    // A chord still forming is a run of one channel's onsets each within the
+    // chord window of the one before it; another channel's notes are
+    // another hand's and neither open nor extend it.
     const auto chordWindow = static_cast<std::uint64_t>(
         static_cast<double>(chordWindowSeconds) * sampleRate_);
-    if (!noteOnSeen_ || sampleClock_ - lastNoteOnSample_ > chordWindow)
-        chordStartSample_ = sampleClock_;
-    lastNoteOnSample_ = sampleClock_;
-    noteOnSeen_ = true;
+    const auto channelIndex = static_cast<std::size_t>(midiChannel - 1);
+    if (!noteOnSeen_[channelIndex]
+        || sampleClock_ - lastNoteOnSample_[channelIndex] > chordWindow)
+        chordStartSample_[channelIndex] = sampleClock_;
+    lastNoteOnSample_[channelIndex] = sampleClock_;
+    noteOnSeen_[channelIndex] = true;
 
     for (int string = 0; string < stringCount; ++string)
     {
@@ -5851,7 +5854,8 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         if (!voice.played || !voice.keyDown || voice.harmonic != 1
             || voice.mpeMember
             || voice.midiChannel != midiChannel
-            || voice.onsetSample < chordStartSample_
+            || voice.onsetSample
+                < chordStartSample_[static_cast<std::size_t>(midiChannel - 1)]
             || voice.midiNote == midiNote)
             continue;
         ShapeNote note {};

@@ -945,6 +945,47 @@ void testMasterTuneSurvivesPrepareAndReset()
     expect(play(100.0f, Then::Reset) != play(0.0f, Then::Reset),
            "reset dropped the master tune");
 }
+// A chord still forming is one channel's: another channel's notes every
+// 20 ms must not keep channel 1's window open, so a note it has held for a
+// second is not refretted and plucked again when channel 1 plays the next.
+void testChordWindowIsPerChannel()
+{
+    const auto heldAfter = [](int busyChannel)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 64);
+        std::vector<float> left(64), right(64);
+        int before = -1;
+        for (int start = 0; start < 48000 + 1920; start += 64)
+        {
+            performer->beginBlock(left.data(), right.data(), 64);
+            for (int offset = 0; offset < 64; ++offset)
+            {
+                const int at = start + offset;
+                if (at == 480)
+                    performer->noteOn(offset, 1, 52, 90);
+                if (busyChannel > 0 && at > 960 && at < 48000 && (at - 961) % 960 == 0)
+                {
+                    const int note = (at - 961) / 960 % 2 != 0 ? 45 : 40;
+                    performer->noteOn(offset, busyChannel, note, 60);
+                    performer->noteOff(offset, busyChannel, note);
+                }
+                if (at == 48480)
+                    performer->noteOn(offset, 1, 72, 90);
+            }
+            performer->endBlock();
+            if (start == 48000 - 64)
+                before = performer->engine().heldString(52, 1);
+        }
+        return std::pair { before, performer->engine().heldString(52, 1) };
+    };
+    const auto quiet = heldAfter(0);
+    const auto busy = heldAfter(2);
+    expect(quiet.first >= 0 && quiet.second == quiet.first,
+           "a note held a second was refretted by the next note on its channel");
+    expect(busy.first == quiet.first && busy.second == quiet.second,
+           "another channel's notes kept a chord forming and refretted a held note");
+}
 } // namespace
 
 int main()
@@ -969,6 +1010,7 @@ int main()
     testResetAllControllersLiftsThePedalInOrder();
     testUnsoundableNotesMakeNoStrum();
     testMasterTuneSurvivesPrepareAndReset();
+    testChordWindowIsPerChannel();
 
     if (failures != 0)
     {
