@@ -438,6 +438,9 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/BenchmarkTechniqueNotes.py"
                                  --self-test)
                 set_tests_properties(Acustra.TechniqueBenchmark PROPERTIES TIMEOUT 180)
+                # Recording-only: audits the AG-PT-set hammer-on plateau and
+                # never drives the engine, which plays no hammer-on since
+                # legato was removed on 2026-09-28.
                 add_test(NAME Acustra.HammerOnBenchmark
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/BenchmarkHammerOnNotes.py"

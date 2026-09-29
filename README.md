@@ -313,7 +313,7 @@ Acustra is two layers, and only the outer one knows a host. The instrument is
 JUCE-free C++17 under `Source/DSP/`: `AcustraEngine` is the physical model,
 and `AcustraPerformer` is the player in front of it. The player splits each
 block at its events and turns MIDI into engine calls - channels, the MPE lower
-zone and its controller scope, RPN bend ranges, CC1/2/64/68/74, channel
+zone and its controller scope, RPN bend ranges, CC1/2/64/74 (CC68 is ignored; see below), channel
 pressure and the string-per-channel mode, same-sample chord grouping and
 strums, and the Gather Chords window with the latency it costs. The plug-in's
 processor is a thin JUCE adapter around it (parameters, saved state, editor,

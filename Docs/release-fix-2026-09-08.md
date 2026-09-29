@@ -1,5 +1,10 @@
 # High-velocity note-release correction
 
+> Historical record. Legato (CC68), hammer-ons and pull-offs were removed
+> on 2026-09-28 at the user's request (Docs/decisions.md); every key-up now
+> damps and CC68 is ignored. The measurements below describe the engine as
+> it was on 2026-09-08.
+
 Ordinary MIDI note-off now damps the existing fretted/open note at every
 release velocity. It does not inject fretting energy or retune a fretted note
 to the open string. Active finger lifts and pull-offs remain available when

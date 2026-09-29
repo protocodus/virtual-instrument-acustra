@@ -1,5 +1,10 @@
 # Physical guitar modelling review — 8 September 2026
 
+> Historical record. Legato (CC68), hammer-ons and pull-offs were removed
+> on 2026-09-28 at the user's request (Docs/decisions.md); every key-up now
+> damps and CC68 is ignored. The measurements below describe the engine as
+> it was on 2026-09-08.
+
 This is a targeted review of primary publications and publicly obtainable
 implementations, checked on 8 September 2026. It is not a claim that one method
 is universally the most advanced or that publication recency establishes

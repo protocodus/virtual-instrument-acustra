@@ -1,5 +1,10 @@
 # Steel contact travels from the picking point
 
+> Historical record. Legato (CC68), hammer-ons and pull-offs were removed
+> on 2026-09-28 at the user's request (Docs/decisions.md); every key-up now
+> damps and CC68 is ignored. The measurements below describe the engine as
+> it was on 2026-09-08.
+
 Dated 2026-09-08. Ordinary steel notes now send the existing short contact burst
 toward the bridge and nut from the physical picking point. Previously the burst
 was written at the collapsed round-trip boundary, delaying its first bridge
