@@ -4285,6 +4285,8 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.returnSamples = 0;
     voice.pluckDelay = 0;
     voice.repluckPending = false;
+    voice.releaseAfterPluck = false;
+    voice.pedalHeldAtKeyUp = false;
     voice.tailActive = false;
     voice.tailContactTravel.active = false;
     voice.tailCharacteristicImpedance = 0.0f;
@@ -5076,6 +5078,9 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             voice.velocity = clamp(velocity, 0.001f, 1.0f);
             voice.strumming = strumMember;
             voice.repluckPending = true;
+            // The key is down again before the pick came: its key-up is
+            // void, and one pick serves both strokes, as it always has.
+            voice.releaseAfterPluck = false;
             if (delaySamples > 0)
                 voice.pluckDelay = delaySamples + 1;
             else
@@ -5182,6 +5187,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     rememberFinger(string);
     voice.strumming = strumMember;
     voice.repluckPending = false;
+    voice.releaseAfterPluck = false;
     if (delaySamples > 0)
     {
         // Fretted and waiting: a junction member with nothing on it until
@@ -5421,7 +5427,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
     {
         int from, to, midiNote, channel, ownerCount, delay;
         float velocity;
-        bool strumming;
+        bool strumming, releaseAfterPluck, pedalHeldAtKeyUp;
         std::uint64_t startOrder, onsetSample;
     };
     std::array<Moved, stringCount> moved {};
@@ -5438,13 +5444,14 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         moved[static_cast<std::size_t>(movedCount++)] = {
             from, to, voice.midiNote, voice.midiChannel, voice.ownerCount,
             voice.pluckDelay > 0 ? voice.pluckDelay - 1 : 0,
-            voice.velocity, voice.strumming, voice.startOrder,
-            voice.onsetSample };
+            voice.velocity, voice.strumming, voice.releaseAfterPluck,
+            voice.pedalHeldAtKeyUp, voice.startOrder, voice.onsetSample };
         voice.keyDown = false;
         voice.pedalHeld = false;
         voice.ownerCount = 0;
         voice.pluckDelay = 0;
         voice.repluckPending = false;
+        voice.releaseAfterPluck = false;
         hand_[static_cast<std::size_t>(from)].valid = false;
         vacated |= 1u << from;
     }
@@ -5461,6 +5468,13 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         voice.ownerCount = move.ownerCount;
         voice.startOrder = move.startOrder;
         voice.onsetSample = move.onsetSample;
+        // A strum member already let go keeps its pending key-up on the
+        // string it moved to (startNote cleared it).
+        if (move.releaseAfterPluck && voice.pluckDelay > 0)
+        {
+            voice.releaseAfterPluck = true;
+            voice.pedalHeldAtKeyUp = move.pedalHeldAtKeyUp;
+        }
     }
     for (int string = 0; string < stringCount; ++string)
         if (((vacated >> string) & 1u) != 0u && ((taken >> string) & 1u) == 0u)
@@ -5528,6 +5542,8 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
     initialisePluck(voice, stringIndex, voice.velocity);
     bridgeDerivativesCrossRelease_ = true;
     configureVoice(voice, stringIndex, voice.midiNote, false);
+    if (voice.releaseAfterPluck)
+        completeKeyUp(voice, stringIndex, voice.pedalHeldAtKeyUp);
 }
 
 int AcustraEngine::strumDelaySamples(int stringRank,
@@ -5579,13 +5595,33 @@ void AcustraEngine::noteOff(int midiNote, int midiChannel) noexcept
     if (--candidate.ownerCount > 0)
         return;
     candidate.ownerCount = 0;
+    freezeMemberPitchBend(candidate);
+    if (candidate.pluckDelay > 0 && candidate.strumming)
+    {
+        // A strum's key-up that comes before the pick reaches this string
+        // does not stop the pick: the stroke was played as one gesture, and
+        // the same note played alone and let go at once still sounds. The
+        // string stays fretted until the pick arrives and is let go then,
+        // under the pedal as it was at this key-up (setSustainPedal keeps
+        // that current). An explicit, non-strum delay is still cancelled.
+        candidate.releaseAfterPluck = true;
+        candidate.pedalHeldAtKeyUp = sustainIsDown(candidate);
+        return;
+    }
     candidate.pluckDelay = 0;
     candidate.repluckPending = false;
-    freezeMemberPitchBend(candidate);
-    candidate.keyDown = false;
-    candidate.pedalHeld = sustainIsDown(candidate);
-    if (!candidate.pedalHeld)
-        beginRelease(candidate, candidateIndex);
+    completeKeyUp(candidate, candidateIndex, sustainIsDown(candidate));
+}
+
+void AcustraEngine::completeKeyUp(Voice& voice, int stringIndex,
+                                  bool pedalHeld) noexcept
+{
+    voice.releaseAfterPluck = false;
+    voice.pedalHeldAtKeyUp = false;
+    voice.keyDown = false;
+    voice.pedalHeld = pedalHeld;
+    if (!voice.pedalHeld)
+        beginRelease(voice, stringIndex);
 }
 
 void AcustraEngine::setSustainPedal(bool down, int midiChannel) noexcept
@@ -5601,6 +5637,9 @@ void AcustraEngine::setSustainPedal(bool down, int midiChannel) noexcept
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
+        if (voice.releaseAfterPluck && channelControlsVoice(midiChannel, voice)
+            && !sustainIsDown(voice))
+            voice.pedalHeldAtKeyUp = false;
         if (!voice.pedalHeld || voice.keyDown
             || !channelControlsVoice(midiChannel, voice)
             || sustainIsDown(voice))
@@ -5689,6 +5728,8 @@ void AcustraEngine::allNotesOff(int midiChannel) noexcept
         voice.ownerCount = 0;
         voice.pluckDelay = 0;
         voice.repluckPending = false;
+        voice.releaseAfterPluck = false;
+        voice.pedalHeldAtKeyUp = false;
         freezeMemberPitchBend(voice);
         voice.keyDown = false;
         voice.pedalHeld = sustainIsDown(voice);

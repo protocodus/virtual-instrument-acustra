@@ -4738,7 +4738,9 @@ delay; the string is taken and fretted at once - the fretting hand forms the
 chord - and the pluck is released that many samples later, at the top of
 that sample, so a pluck scheduled D samples ahead is the note-on issued then
 to the bit (tested at 1, 97, 480 and 2000 samples), a release or All Sound
-Off before the pick arrives cancels it silently, and until then the string
+Off before the pick arrives cancels it silently (since 2026-09-29 a strum
+member's release no longer does: its pick still arrives and the key-up is
+applied then; see the audit entry of that date), and until then the string
 is a junction member with nothing on it. Second, the plug-in sweeps every
 same-sample group of three or more notes on one channel outside legato: the
 k-th string the pick reaches sounds k spacings later at the pick's speed,

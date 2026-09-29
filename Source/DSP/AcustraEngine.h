@@ -843,6 +843,11 @@ private:
         int pluckDelay { 0 };
         // A held string keeps its wave until this scheduled re-pluck fires.
         bool repluckPending { false };
+        // A strum member whose key came up before the pick reached it: the
+        // pick still arrives and the key-up is applied right after it, held
+        // by the pedal if the pedal held it at key-up and still does.
+        bool releaseAfterPluck { false };
+        bool pedalHeldAtKeyUp { false };
         // Where this pluck landed, as a fraction of the sounding length.
         float pluckPoint { 0.0f };
         // Set by noteOn's strumMember argument and read once by
@@ -1016,6 +1021,7 @@ private:
                             bool clearDelay) noexcept;
     void firePluck(Voice& voice, int stringIndex) noexcept;
     void beginRelease(Voice& voice, int stringIndex) noexcept;
+    void completeKeyUp(Voice& voice, int stringIndex, bool pedalHeld) noexcept;
     void captureTail(Voice& voice) noexcept;
     // The Pick technique's released state (FittedPhysicalData.h): a rest
     // triangle of this height with its apex at position, a fraction of the

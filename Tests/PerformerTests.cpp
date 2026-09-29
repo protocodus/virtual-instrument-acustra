@@ -472,6 +472,121 @@ void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
     expect(flooded.allocations == 0, "a full gathering queue allocated");
 }
 
+// The level at one frequency over [from, to) seconds, from both channels.
+double bandLevel(const Render& render, double sampleRate, double frequency,
+                 double from, double to)
+{
+    double real = 0.0, imaginary = 0.0;
+    const auto begin = static_cast<std::size_t>(from * sampleRate);
+    const auto end = std::min(static_cast<std::size_t>(to * sampleRate),
+                              render.left.size());
+    for (std::size_t n = begin; n < end; ++n)
+    {
+        const double window = 0.5 - 0.5 * std::cos(2.0 * M_PI
+            * static_cast<double>(n - begin) / static_cast<double>(end - begin));
+        const double phase = 2.0 * M_PI * frequency * static_cast<double>(n) / sampleRate;
+        const double value = window * (render.left[n] + render.right[n]);
+        real += value * std::cos(phase);
+        imaginary += value * std::sin(phase);
+    }
+    return 10.0 * std::log10(real * real + imaginary * imaginary + 1.0e-30);
+}
+
+// A strum's key-ups that come before the pick reaches every string do not
+// stop the pick: a short, sequenced stab still sounds all six strings, each
+// released as it is plucked, as the same six notes sounded one at a time
+// would (audit F2). At velocity 20 the pick takes 66 ms to cross them.
+void testShortStrumsSoundEveryString()
+{
+    const int notes[] { 40, 45, 50, 55, 59, 64 };
+    const auto stab = [&] (double seconds, int velocity, bool pedal)
+    {
+        std::vector<Event> events;
+        if (pedal)
+            events.push_back(message(0.0, 0xb0, 64, 127));
+        for (const int note : notes)
+            events.push_back(message(0.01, 0x90, note, velocity));
+        for (const int note : notes)
+            events.push_back(message(0.01 + seconds, 0x80, note, 64));
+        return render(custom("stab", 0.4, events), 48000.0, 64, false);
+    };
+    for (const int velocity : { 20, 100 })
+    {
+        const auto held = stab(0.2, velocity, false);
+        for (const double seconds : { 0.015, 0.040 })
+            for (const bool pedal : { false, true })
+            {
+                const auto shortStab = stab(seconds, velocity, pedal);
+                for (const int note : notes)
+                {
+                    const double frequency = 440.0 * std::exp2((note - 69) / 12.0);
+                    const double missing = bandLevel(held, 48000.0, frequency, 0.08, 0.18)
+                        - bandLevel(shortStab, 48000.0, frequency, 0.08, 0.18);
+                    expect(missing < 8.0,
+                           "a " + std::to_string(static_cast<int>(seconds * 1000.0))
+                               + " ms strum at velocity " + std::to_string(velocity)
+                               + (pedal ? " under the pedal" : "") + " lost MIDI "
+                               + std::to_string(note) + " (" + std::to_string(missing)
+                               + " dB below held)");
+                }
+            }
+    }
+    // Under the pedal the stab rings on; without it every string is let go.
+    auto performer = std::make_unique<Performer>();
+    performer->prepare(48000.0, 64);
+    std::vector<float> left(64), right(64);
+    for (int block = 0; block < 300; ++block)
+    {
+        performer->beginBlock(left.data(), right.data(), 64);
+        if (block == 1)
+            for (const int note : notes)
+                performer->noteOn(0, 1, note, 20);
+        if (block == 20)
+            for (const int note : notes)
+                performer->noteOff(0, 1, note);
+        performer->endBlock();
+    }
+    for (const int note : notes)
+        expect(performer->engine().heldString(note) < 0,
+               "a short strum's key-up left MIDI " + std::to_string(note) + " held");
+
+    // The pedal the key-up was under decides, as it stands when the pick
+    // arrives: a string let go under the pedal is held while it stays down;
+    // one let go without it, or whose pedal came up before the pick, is not
+    // caught by a pedal pressed after its key-up.
+    enum class Pedal { Throughout, UpBeforePicks, DownAfterKeyUp };
+    for (const auto pedal : { Pedal::Throughout, Pedal::UpBeforePicks,
+                              Pedal::DownAfterKeyUp })
+    {
+        performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 64);
+        for (int block = 0; block < 1400; ++block)
+        {
+            performer->beginBlock(left.data(), right.data(), 64);
+            if (block == 1)
+            {
+                if (pedal != Pedal::DownAfterKeyUp)
+                    performer->controlChange(0, 1, 64, 127);
+                for (const int note : notes)
+                    performer->noteOn(0, 1, note, 20);
+            }
+            if (block == 4)
+                for (const int note : notes)
+                    performer->noteOff(0, 1, note);
+            if (block == 6)
+                performer->controlChange(0, 1, 64,
+                                         pedal == Pedal::UpBeforePicks ? 0 : 127);
+            performer->endBlock();
+        }
+        // Released open strings are handed back 1.33 s after key-up.
+        expect(performer->engine().getActiveVoiceCount()
+                   == (pedal == Pedal::Throughout ? 6 : 0),
+               pedal == Pedal::Throughout
+                   ? "a strum let go under the pedal was not held by it"
+                   : "a pedal that did not hold a strum's key-up held its strings");
+    }
+}
+
 // The player keeps the engine's time: at a rate the engine clamps or
 // replaces (AcustraEngine::prepare), the gathering window and the strum
 // rest follow the rate the engine models, and a NaN rate cannot reach a
@@ -522,6 +637,7 @@ int main()
     testHelpersSpellMidi();
     testMasterTune();
     testOverflowIsCountedNotAllocated(battery);
+    testShortStrumsSoundEveryString();
     testPlayerKeepsTheEnginesSampleRate();
     testResetSilences();
 
