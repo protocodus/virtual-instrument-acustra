@@ -7,8 +7,8 @@ hosts. It synthesises every note in real time from six physical string models,
 a passive measured bridge and a measurement-derived guitar body. The plug-in
 contains no sample player and no recorded note audio.
 
-Start with Guitar, Model, Picking and Capture: construction presets and four
-additional measured guitars, finger/pick/thumb styles, and stereo mic, mono
+Start with Guitar, Model, Picking and Capture: construction presets and one
+additional measured guitar (Bellido 1978), finger/pick/thumb styles, and stereo mic, mono
 mic or an under-saddle piezo through its onboard preamp, with the piezo also
 available as a separate output. Shape and Material directions,
 steel or nylon strings, String Age, Tuning, Pluck Position, Touch, Body Amount, Stereo Width
