@@ -178,6 +178,10 @@ public:
     // the pick's speed for this velocity and the string spacing.
     [[nodiscard]] int strumDelaySamples(int stringRank,
                                         float velocity) const noexcept;
+    // Whether noteOn() would sound this note at all in the current tuning
+    // and channel mode, rather than drop it (below the lowest string with no
+    // harmonic to reach it, or off a string-per-channel string's frets).
+    [[nodiscard]] bool canSound(int midiNote, int midiChannel = 1) const noexcept;
     // Key-up damps the note at every release velocity: lifting a key is the
     // fretting hand letting go, never a new stroke.
     void noteOff(int midiNote, int midiChannel = 1) noexcept;

@@ -337,6 +337,34 @@ void testOneSampleIsOneCanonicalEvent()
            "All Notes Off did not own its sample");
 }
 
+// A strum is timed by the strings it reaches: a note the tuning cannot
+// sound (C2 below Standard's low E, with no harmonic to reach it) takes no
+// place in the stroke and no part in its speed, so the stroke starts on its
+// first real string at once instead of a string spacing late (audit F24).
+void testStrumsAreTimedByTheNotesThatSound()
+{
+    const auto firstSound = [](std::vector<int> notes, std::vector<int> velocities)
+    {
+        std::vector<Event> events;
+        for (std::size_t index = 0; index < notes.size(); ++index)
+            events.push_back(message(0.01, 0x90, notes[index], velocities[index]));
+        const auto audio = render(custom("strum", 0.2, events), 48000.0, 64, false);
+        std::size_t first = 0;
+        while (first < audio.left.size() && std::abs(audio.left[first]) < 1.0e-6f
+               && std::abs(audio.right[first]) < 1.0e-6f)
+            ++first;
+        return std::pair { first, audio };
+    };
+    const auto [withLowC, lowCAudio] = firstSound({ 36, 40, 43 }, { 40, 40, 40 });
+    const auto [reachable, reachableAudio] = firstSound({ 40, 45, 50 }, { 40, 40, 40 });
+    expect(withLowC == reachable,
+           "a strum with an unreachable C2 started "
+               + std::to_string(static_cast<long>(withLowC) - static_cast<long>(reachable))
+               + " samples late");
+    expect(firstSound({ 36, 40, 43 }, { 127, 40, 40 }).second == lowCAudio,
+           "an unreachable note's velocity changed the strum's speed");
+}
+
 void testGatheredRollSoundsAsOneSampleChord()
 {
     const auto rolled = custom("rolled", 0.6, {
@@ -768,6 +796,7 @@ int main()
     testBlockSizeDoesNotChangeThePerformance(battery);
     testOneSampleIsOneCanonicalEvent();
     testStrumRestIsMeasuredBetweenStrums();
+    testStrumsAreTimedByTheNotesThatSound();
     testGatheredRollSoundsAsOneSampleChord();
     testCc68AndReleaseVelocityChangeNothing(battery);
     testHelpersSpellMidi();

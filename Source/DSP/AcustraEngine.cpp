@@ -5046,6 +5046,28 @@ AcustraEngine::chooseHarmonic(int midiNote) const noexcept
     return best;
 }
 
+bool AcustraEngine::canSound(int midiNote, int midiChannel) const noexcept
+{
+    if (!prepared_ || midiNote < 0 || midiNote > 127
+        || midiChannel < 1 || midiChannel > midiChannelCount)
+        return false;
+    // The drops noteOn makes, which depend on the tuning alone: a
+    // string-per-channel note its own string cannot fret, and a note no
+    // string frets and no natural harmonic reaches.
+    const auto frets = [&] (int string)
+    {
+        const int fret = midiNote
+            - voices_[static_cast<std::size_t>(string)].openMidi;
+        return fret >= 0 && fret <= fretCount;
+    };
+    if (stringPerChannelMode_ && midiChannel <= stringCount)
+        return frets(midiChannel - 1);
+    for (int string = 0; string < stringCount; ++string)
+        if (frets(string))
+            return true;
+    return chooseHarmonic(midiNote).string >= 0;
+}
+
 void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
                            int pluckDelaySamples, bool strumMember) noexcept
 {

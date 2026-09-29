@@ -224,18 +224,37 @@ void Performer::flushNoteGroup() noexcept
         if (restarted)
             strumUpstroke_ = false;
         lastStrumSample_ = strumSample;
+        // The stroke is timed by the strings it reaches: a note the tuning
+        // cannot sound takes no place in it and no part in its speed.
+        std::array<bool, sampleGroupCapacity> sounds {};
+        int sounding = 0;
         float meanVelocity = 0.0f;
         for (int index = 0; index < pendingNoteOnCount_; ++index)
-            meanVelocity += pendingNoteOns_[static_cast<std::size_t>(index)].velocity;
-        meanVelocity /= static_cast<float>(pendingNoteOnCount_);
+        {
+            const auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
+            sounds[static_cast<std::size_t>(index)]
+                = engine_.canSound(note.note, note.channel);
+            if (sounds[static_cast<std::size_t>(index)])
+            {
+                meanVelocity += note.velocity;
+                ++sounding;
+            }
+        }
+        if (sounding > 0)
+            meanVelocity /= static_cast<float>(sounding);
         // The list is sorted high to low, so a downstroke's rank counts from
         // the end.
-        for (int index = 0; index < pendingNoteOnCount_; ++index)
+        for (int index = 0, reached = 0; index < pendingNoteOnCount_; ++index)
         {
-            const int rank = strumUpstroke_ ? index
-                                            : pendingNoteOnCount_ - 1 - index;
-            pendingNoteOns_[static_cast<std::size_t>(index)].pluckDelay
-                = engine_.strumDelaySamples(rank, meanVelocity);
+            auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
+            if (!sounds[static_cast<std::size_t>(index)])
+            {
+                note.pluckDelay = 0;
+                continue;
+            }
+            const int rank = strumUpstroke_ ? reached : sounding - 1 - reached;
+            ++reached;
+            note.pluckDelay = engine_.strumDelaySamples(rank, meanVelocity);
         }
         strumUpstroke_ = ! strumUpstroke_;
         engine_.beginStrum();
