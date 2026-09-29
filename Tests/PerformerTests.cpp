@@ -475,6 +475,64 @@ void testMasterTune()
            "Reset All Controllers on a member put the master tune on it");
 }
 
+// Reset All Controllers (CC121) resets what RP-015 lists, in the reset's
+// own scope: the wheel's vibrato when the channel that set it is in scope
+// (it is one gesture across the instrument, so a reset elsewhere leaves
+// it), and channel pressure (audit F21).
+void testResetAllControllersResetsVibratoAndPressure()
+{
+    const auto play = [](std::vector<Event> events)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 64);
+        std::vector<float> left(64 * 750), right(64 * 750);
+        for (std::size_t start = 0; start < left.size(); start += 64)
+        {
+            performer->beginBlock(left.data() + start, right.data() + start, 64);
+            if (start == 0)
+                for (const auto& event : events)
+                    performer->handleMidi(sampleAt(event.seconds, 48000.0),
+                                          event.bytes.data(), event.size);
+            performer->endBlock();
+        }
+        left.insert(left.end(), right.begin(), right.end());
+        return left;
+    };
+    const auto wheel = message(0.0, 0xb0, 1, 127);
+    const auto note = message(0.001, 0x90, 57, 100);
+    const auto plain = play({ note });
+    const auto vibrato = play({ wheel, note });
+    expect(vibrato != plain, "the wheel's vibrato did not reach the note");
+    expect(play({ wheel, message(0.0, 0xb0, 121, 0), note }) == plain,
+           "Reset All Controllers left the wheel's vibrato");
+    expect(play({ wheel, message(0.0, 0xb2, 121, 0), note }) == vibrato,
+           "Reset All Controllers on another channel took the wheel's vibrato");
+
+    // MPE: a member's reset clears its pressure but not the manager's
+    // wheel; the manager's clears both.
+    const std::vector<Event> zone { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 6),
+                                    message(0.0, 0xb0, 6, 15) };
+    const auto with = [&](std::vector<Event> events)
+    {
+        auto all = zone;
+        all.insert(all.end(), events.begin(), events.end());
+        return all;
+    };
+    const auto memberNote = message(0.001, 0x91, 57, 100);
+    const auto grip = message(0.0, 0xd1, 10, 0, 2);
+    const auto memberWheel = play(with({ wheel, memberNote }));
+    expect(play(with({ wheel, grip, memberNote })) != memberWheel,
+           "a member's pressure did not reach its note");
+    expect(play(with({ wheel, grip, message(0.0, 0xb1, 121, 0), memberNote }))
+               == memberWheel,
+           "a member's Reset All Controllers left its pressure or took the "
+           "manager's wheel");
+    expect(play(with({ wheel, grip, message(0.0, 0xb0, 121, 0), memberNote }))
+               == play(with({ memberNote })),
+           "the manager's Reset All Controllers left the wheel or a member's "
+           "pressure");
+}
+
 void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
 {
     // 130 Note Ons on one sample: the group holds 128.
@@ -658,6 +716,7 @@ int main()
     testCc68AndReleaseVelocityChangeNothing(battery);
     testHelpersSpellMidi();
     testMasterTune();
+    testResetAllControllersResetsVibratoAndPressure();
     testOverflowIsCountedNotAllocated(battery);
     testShortStrumsSoundEveryString();
     testPlayerKeepsTheEnginesSampleRate();

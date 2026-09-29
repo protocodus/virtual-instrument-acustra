@@ -232,6 +232,8 @@ private:
     float lowerMasterPitchBendRange_ { 2.0f };
     float lowerMemberPitchBendRange_ { 48.0f };
     int lowerZoneMemberCount_ { 0 };
+    // The channel whose CC1 set the wheel's vibrato now; 0 for none.
+    int vibratoChannel_ { 0 };
     float masterTuneSemitones_ { 0.0f };
     std::array<HeldEvent, heldEventCapacity> held_ {};
     int heldCount_ { 0 };

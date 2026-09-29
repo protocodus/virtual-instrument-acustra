@@ -33,6 +33,7 @@ void Performer::prepare(double sampleRate, int maximumBlockSize)
 {
     rawPitchWheels_.fill(0.0f);
     rpnStates_.fill(RpnState {});
+    vibratoChannel_ = 0;
     engine_.prepare(sampleRate, maximumBlockSize);
     // The engine's own rate, which it sanitised: the strum rest and the
     // gathering window then keep time with it at any rate a host passes.
@@ -65,6 +66,7 @@ void Performer::reset() noexcept
 {
     rawPitchWheels_.fill(0.0f);
     rpnStates_.fill(RpnState {});
+    vibratoChannel_ = 0;
     engine_.reset();
     heldCount_ = 0;
     // A reset inside a block also drops that sample's pending notes.
@@ -442,6 +444,7 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
             // bridge hand it is one gesture across the instrument rather than
             // a per-channel setting, and zero is an exact no-op.
             engine_.setVibrato(static_cast<float>(value) / 127.0f);
+            vibratoChannel_ = midiChannel;
         }
         else if (controller == 2u)
         {
@@ -654,6 +657,17 @@ void Performer::resetControllerScope(int midiChannel) noexcept
         rpnStates_[static_cast<std::size_t>(channel - 1)] = RpnState {};
         engine_.setPitchBend(tunedBend(channel, 0.0f), channel);
         engine_.setSustainPedal(false, channel);
+        // Pressure back to "never received", the neutral grip, not to a
+        // received zero, which is a light one.
+        engine_.setMpePressure(-1.0f, channel);
+    }
+    // The wheel is one gesture across the instrument, so only a reset that
+    // covers the channel which set it takes it back (RP-015 resets CC1).
+    if (vibratoChannel_ > 0
+        && channelIsInControllerScope(midiChannel, vibratoChannel_))
+    {
+        engine_.setVibrato(0.0f);
+        vibratoChannel_ = 0;
     }
 }
 
