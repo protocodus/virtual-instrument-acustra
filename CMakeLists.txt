@@ -357,6 +357,19 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.BodyShape AcustraBodyShapeTests)
     set_tests_properties(Acustra.BodyShape PROPERTIES TIMEOUT 90)
 
+    # Every construction a player can choose, crossed (audit F28).
+    add_executable(AcustraConstructionMatrixTests Tests/ConstructionMatrixTests.cpp)
+    target_link_libraries(AcustraConstructionMatrixTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraConstructionMatrixTests PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(AcustraConstructionMatrixTests PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(AcustraConstructionMatrixTests PRIVATE
+            -Wall -Wextra -Wpedantic)
+    endif()
+    acustra_add_suite(Acustra.ConstructionMatrix AcustraConstructionMatrixTests)
+    set_tests_properties(Acustra.ConstructionMatrix PROPERTIES TIMEOUT 300)
+
     find_package(Threads REQUIRED)
     add_executable(AcustraConstructionLoudnessTests Tests/ConstructionLoudnessTests.cpp)
     target_link_libraries(AcustraConstructionLoudnessTests PRIVATE AcustraDSP Threads::Threads)

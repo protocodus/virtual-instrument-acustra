@@ -2069,7 +2069,15 @@ void testTheAdapterPlaysExactlyThePerformer()
                         : control.kind == Kind::Picking ? ids::picking
                         : control.kind == Kind::Tuning ? ids::tuning
                         : control.kind == Kind::BodyAmount ? ids::bodyAmount
-                        : control.kind == Kind::Output ? ids::output : nullptr;
+                        : control.kind == Kind::Output ? ids::output
+                        : control.kind == Kind::Shape ? ids::shape
+                        : control.kind == Kind::Wood ? ids::bodyMaterial
+                        : control.kind == Kind::Bridge ? ids::bridgeModel
+                        : control.kind == Kind::Model ? ids::guitarModel
+                        : control.kind == Kind::Width ? ids::stereoWidth
+                        : control.kind == Kind::Age ? ids::stringAge
+                        : control.kind == Kind::Pluck ? ids::pluckPosition
+                        : control.kind == Kind::Touch ? ids::touch : nullptr;
                     if (id != nullptr)
                         setValue (processor, id, control.value);
                     else

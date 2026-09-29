@@ -844,16 +844,17 @@ struct AcustraEngineTestAccess
         return engine.physicalCalibration_;
     }
 
-    static RetunedStringSnapshot retunedLowSteel(Tuning tuning)
+    static RetunedStringSnapshot retunedString(Tuning tuning, int string,
+        StringMaterial material = StringMaterial::Steel)
     {
         auto engineOwner = std::make_unique<AcustraEngine>();
         auto& engine = *engineOwner;
         EngineParameters parameters;
-        parameters.stringMaterial = StringMaterial::Steel;
+        parameters.stringMaterial = material;
         parameters.tuning = tuning;
         engine.setParameters(parameters);
         engine.prepare(48000.0, 64);
-        const auto& voice = engine.voices_[0];
+        const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
         return { voice.characteristicImpedance, voice.bridgeTailStiffness,
                  voice.dispersionDesignInharmonicity };
     }
@@ -1891,42 +1892,92 @@ void testPrepareRestartsThePerformanceExactly()
     }
 }
 
-void testPlayableRangeFollowsTuning()
-{
-    auto standardOwner = std::make_unique<acustra::AcustraEngine>();
-    auto& standard = *standardOwner;
-    standard.prepare(sampleRate, blockSize);
-    standard.noteOn(38, 0.8f);
-    expect(standard.getActiveVoiceCount() == 0,
-           "standard tuning accepted a note below its lowest string");
+constexpr acustra::Tuning allTunings[] { acustra::Tuning::Standard,
+    acustra::Tuning::DropD, acustra::Tuning::Dadgad, acustra::Tuning::OpenG,
+    acustra::Tuning::HalfStepDown };
 
-    auto dropDOwner = std::make_unique<acustra::AcustraEngine>();
-    auto& dropD = *dropDOwner;
-    dropD.prepare(sampleRate, blockSize);
-    acustra::EngineParameters parameters;
-    parameters.tuning = acustra::Tuning::DropD;
-    dropD.setParameters(parameters);
-    dropD.noteOn(38, 0.8f);
-    expect(dropD.getActiveVoiceCount() == 1,
-           "Drop D did not expose its physical low D string");
+std::string tuningName(acustra::Tuning tuning)
+{
+    constexpr const char* names[] { "Standard", "Drop D", "DADGAD", "Open G",
+                                    "Half-step down" };
+    return names[static_cast<int>(tuning)];
 }
 
+// Every tuning, on both string sets: each open note is taken by its own
+// string (open, so the chord of open strings lands one per string), and the
+// note under the lowest string is refused. Open G and Half-step down were
+// played by no test before (audit F28).
+void testPlayableRangeFollowsTuning()
+{
+    for (const auto material : { acustra::StringMaterial::Steel,
+                                 acustra::StringMaterial::Nylon })
+        for (const auto tuning : allTunings)
+        {
+            const std::string name = tuningName(tuning)
+                + (material == acustra::StringMaterial::Steel ? " (steel)" : " (nylon)");
+            acustra::EngineParameters parameters;
+            parameters.stringMaterial = material;
+            parameters.tuning = tuning;
+            const auto open = acustra::AcustraEngine::openNotes(tuning);
+            auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+            auto& engine = *engineOwner;
+            engine.setParameters(parameters);
+            engine.prepare(sampleRate, blockSize);
+            engine.noteOn(open[0] - 1, 0.8f);
+            expect(engine.getActiveVoiceCount() == 0,
+                   name + " accepted a note below its lowest string");
+            for (int string = 0; string < acustra::AcustraEngine::stringCount; ++string)
+            {
+                const int note = open[static_cast<std::size_t>(string)];
+                engine.noteOn(note, 0.8f);
+                expect(engine.heldString(note) == string,
+                       name + " did not play open note " + std::to_string(note)
+                           + " on its own string");
+            }
+            expect(engine.getActiveVoiceCount() == acustra::AcustraEngine::stringCount,
+                   name + " did not ring all six open strings");
+        }
+}
+
+// A retuned steel string keeps its gauge: against Standard its impedance
+// follows the frequency ratio (the same linear mass), its tension the ratio
+// squared and its inharmonicity the inverse, on every string every tuning
+// moves.
 void testSteelRetuningPreservesStringMass()
 {
-    const auto standard = acustra::AcustraEngineTestAccess::retunedLowSteel(
-        acustra::Tuning::Standard);
-    const auto dropD = acustra::AcustraEngineTestAccess::retunedLowSteel(
-        acustra::Tuning::DropD);
-    const double frequencyRatio = std::exp2(-2.0 / 12.0);
-    expect(std::abs(dropD.impedance / standard.impedance - frequencyRatio)
-               < 2.0e-5,
-           "Drop-D steel impedance did not preserve linear mass");
-    expect(std::abs(dropD.tailStiffness / standard.tailStiffness
-                    - frequencyRatio * frequencyRatio) < 2.0e-5,
-           "Drop-D steel tension did not follow the retuned frequency");
-    expect(std::abs(dropD.inharmonicity / standard.inharmonicity
-                    - 1.0 / (frequencyRatio * frequencyRatio)) < 2.0e-4,
-           "Drop-D steel stiffness retained standard-tuning tension");
+    const auto standardNotes = acustra::AcustraEngine::openNotes(acustra::Tuning::Standard);
+    int retuned = 0;
+    for (const auto tuning : allTunings)
+    {
+        const auto notes = acustra::AcustraEngine::openNotes(tuning);
+        for (int string = 0; string < acustra::AcustraEngine::stringCount; ++string)
+        {
+            const int semitones = notes[static_cast<std::size_t>(string)]
+                                - standardNotes[static_cast<std::size_t>(string)];
+            if (semitones == 0)
+                continue;
+            ++retuned;
+            const auto standard = acustra::AcustraEngineTestAccess::retunedString(
+                acustra::Tuning::Standard, string);
+            const auto moved = acustra::AcustraEngineTestAccess::retunedString(
+                tuning, string);
+            const double frequencyRatio = std::exp2(semitones / 12.0);
+            const std::string name = tuningName(tuning) + " string "
+                + std::to_string(string + 1);
+            expect(std::abs(moved.impedance / standard.impedance - frequencyRatio)
+                       < 2.0e-5,
+                   name + ": steel impedance did not preserve linear mass");
+            expect(std::abs(moved.tailStiffness / standard.tailStiffness
+                            - frequencyRatio * frequencyRatio) < 2.0e-5,
+                   name + ": steel tension did not follow the retuned frequency");
+            expect(std::abs(moved.inharmonicity / standard.inharmonicity
+                            - 1.0 / (frequencyRatio * frequencyRatio)) < 2.0e-4,
+                   name + ": steel stiffness retained standard-tuning tension");
+        }
+    }
+    // Drop D moves one string, DADGAD three, Open G three, Half-step six.
+    expect(retuned == 13, "the tunings retune " + std::to_string(retuned)
+                              + " strings, not 13");
 }
 
 void testAudiblePhysicalDecay()
@@ -4195,7 +4246,10 @@ void testBlockPartitionIsDeterministic()
 
 void testSampleRatesAndAutomationStayBounded()
 {
-    constexpr double rates[] { 8000.0, 44100.0, 48000.0,
+    // Every control a host can automate moves, the construction's own
+    // (Model, Bridge, Tuning, Capture) among them, at every rate the engine
+    // models; the Piezo output is requested and held to the same bounds.
+    constexpr double rates[] { 8000.0, 44100.0, 48000.0, 88200.0,
                                96000.0, 192000.0, 384000.0 };
     for (const double rate : rates)
     {
@@ -4208,8 +4262,19 @@ void testSampleRatesAndAutomationStayBounded()
         acustra::EngineParameters parameters;
         std::vector<float> left(73);
         std::vector<float> right(73);
+        std::vector<float> piezo(73);
+        acustra::AcustraEngine::OutputBuses buses;
+        buses.piezo = piezo.data();
         for (int step = 0; step < 180; ++step)
         {
+            parameters.guitarModel = static_cast<acustra::GuitarModel>((step / 29) % 2);
+            parameters.bridgeModel = static_cast<acustra::BridgeModel>((step / 37) % 2);
+            parameters.tuning = static_cast<acustra::Tuning>((step / 13) % 5);
+            constexpr acustra::CaptureType captures[] { acustra::CaptureType::StereoMic,
+                acustra::CaptureType::MonoMic, acustra::CaptureType::Piezo };
+            parameters.capture = captures[(step / 19) % 3];
+            parameters.pluckPosition = static_cast<float>((step * 43) % 101) / 100.0f;
+            parameters.touch = static_cast<float>((step * 53) % 101) / 100.0f;
             parameters.shape = static_cast<acustra::BodyShape>((step / 17) % 4);
             parameters.bodyMaterial = static_cast<acustra::BodyMaterial>((step / 23) % 4);
             parameters.stringMaterial = static_cast<acustra::StringMaterial>((step / 41) % 2);
@@ -4225,15 +4290,16 @@ void testSampleRatesAndAutomationStayBounded()
             }
             if (step % 47 == 0)
                 engine.setPitchBend(step % 94 == 0 ? 2.0f : -2.0f);
-            engine.process(left.data(), right.data(), 73);
+            engine.process(left.data(), right.data(), buses, 73);
             for (int sample = 0; sample < 73; ++sample)
             {
                 const float l = left[static_cast<std::size_t>(sample)];
                 const float r = right[static_cast<std::size_t>(sample)];
-                expect(std::isfinite(l) && std::isfinite(r),
+                const float p = piezo[static_cast<std::size_t>(sample)];
+                expect(std::isfinite(l) && std::isfinite(r) && std::isfinite(p),
                        "automation produced non-finite output at "
                            + std::to_string(rate) + " Hz");
-                expect(std::abs(l) < 4.0f && std::abs(r) < 4.0f,
+                expect(std::abs(l) < 4.0f && std::abs(r) < 4.0f && std::abs(p) < 4.0f,
                        "automation escaped the bounded output knee at "
                            + std::to_string(rate) + " Hz");
             }

@@ -166,6 +166,9 @@ public:
     // nylon on it (g34) and for the Bellido.
     [[nodiscard]] static BodyMaterial measuredBankWood(StringMaterial strings,
                                                        GuitarModel guitar) noexcept;
+    // The MIDI notes of the open strings, low E string first, in a tuning:
+    // what the engine tunes to and the lowest note each string can play.
+    [[nodiscard]] static std::array<int, stringCount> openNotes(Tuning) noexcept;
 
     // Call once before the noteOn() calls for one strum's strings (not for a
     // single note): draws this stroke's own pick-speed variation, shared by
@@ -975,7 +978,6 @@ private:
 
     static EngineParameters sanitise(const EngineParameters&) noexcept;
     static PhysicalCalibration sanitise(const PhysicalCalibration&) noexcept;
-    static std::array<int, stringCount> openNotes(Tuning) noexcept;
     static float midiFrequency(int midiNote) noexcept;
     static float clamp(float value, float low, float high) noexcept;
     static float phaseDelayForOnePoleMix(float coefficient, float mix,

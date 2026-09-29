@@ -3109,8 +3109,9 @@ option measures, it does not choose. The selected bridge, shape and archtop
 picking tool are recorded in each model manifest; without them each material
 renders at its anchor shape and the archtop rows with Finger.
 For an explicit performance event file, `AcustraPerformanceRenderer` also
-accepts trailing `--string-material steel|nylon` and `--tuning standard|drop_d`
-options. String/fret validation uses the selected tuning; omitting these
+accepts trailing `--string-material steel|nylon` and
+`--tuning standard|drop_d|dadgad|open_g|half_step_down` options (the plug-in's
+five tunings). String/fret validation uses the selected tuning; omitting these
 options preserves the original steel/Standard render.
 
 The independent technique-note audit needs the published v3 archive

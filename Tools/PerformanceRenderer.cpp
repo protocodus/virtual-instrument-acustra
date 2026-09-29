@@ -46,7 +46,7 @@ int main(int argc, char** argv)
         std::cerr << "usage: AcustraPerformanceRenderer EVENTS OUTPUT.f32 "
                      "[stereo_mic|mono_mic|piezo "
                      "finger|pick|thumb [original|fylde]] "
-                     "[--string-material steel|nylon] [--tuning standard|drop_d] "
+                     "[--string-material steel|nylon] [--tuning standard|drop_d|dadgad|open_g|half_step_down] "
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
                      "[--body-material spruce|cedar|mahogany|maple] "
                      "[--guitar-model original|bellido1978] "
@@ -110,9 +110,13 @@ int main(int argc, char** argv)
             }
             else if (option == "--tuning" && !tuningSeen)
             {
-                if (value != "standard" && value != "drop_d")
+                // The plug-in's Tuning choices, in their order.
+                const std::array choices { "standard", "drop_d", "dadgad",
+                                           "open_g", "half_step_down" };
+                const auto found = std::find(choices.begin(), choices.end(), value);
+                if (found == choices.end())
                     throw std::runtime_error("unknown tuning");
-                parameters.tuning = value == "standard" ? acustra::Tuning::Standard : acustra::Tuning::DropD;
+                parameters.tuning = static_cast<acustra::Tuning>(found - choices.begin());
                 tuningSeen = true;
             }
             else if (option == "--body-shape" && !shapeSeen)
@@ -177,9 +181,7 @@ int main(int argc, char** argv)
             else
                 throw std::runtime_error("unknown or repeated render option");
         }
-        std::array openNotes { 40, 45, 50, 55, 59, 64 };
-        if (parameters.tuning == acustra::Tuning::DropD)
-            openNotes[0] = 38;
+        const auto openNotes = acustra::AcustraEngine::openNotes(parameters.tuning);
         std::ifstream input(argv[1]);
         input.imbue(std::locale::classic());
         std::string format;

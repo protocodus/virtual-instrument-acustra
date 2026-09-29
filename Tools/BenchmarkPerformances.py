@@ -368,6 +368,23 @@ def self_test(renderer: Path | None) -> None:
                 rejected = subprocess.run([str(renderer), str(event_path), str(root / "invalid.f32"),
                                            "--tuning", "drop_d"], capture_output=True)
                 assert rejected.returncode != 0 and not (root / "invalid.f32").exists(), (note, channel)
+            # Every tuning the plug-in offers: each string's open note plays
+            # on it, and the note below it does not.
+            open_strings = {"standard": (40, 45, 50, 55, 59, 64), "drop_d": (38, 45, 50, 55, 59, 64),
+                            "dadgad": (38, 45, 50, 55, 57, 62), "open_g": (38, 43, 50, 55, 59, 62),
+                            "half_step_down": (39, 44, 49, 54, 58, 63)}
+            for tuning, notes in open_strings.items():
+                write_events(event_path, [(0, channel, note, 91, 0.0)
+                                          for channel, note in enumerate(notes, start=1)], RATE)
+                output = root / f"open-{tuning}.f32"
+                subprocess.run([str(renderer), str(event_path), str(output), "--tuning", tuning], check=True)
+                audio = np.fromfile(output, dtype="<f4")
+                assert np.isfinite(audio).all() and np.max(np.abs(audio)) > 0, tuning
+                for channel, note in enumerate(notes, start=1):
+                    write_events(event_path, [(0, channel, note - 1, 91, 0.0)], RATE)
+                    rejected = subprocess.run([str(renderer), str(event_path), str(root / "invalid.f32"),
+                                               "--tuning", tuning], capture_output=True)
+                    assert rejected.returncode != 0 and not (root / "invalid.f32").exists(), (tuning, channel)
             for invalid in ("not an event", "0 6 40 91 0"):
                 event_path.write_text(f"ACUSTRA_PERFORMANCE_V1 {RATE} {RATE}\n{invalid}\n", encoding="utf-8")
                 rejected = subprocess.run([str(renderer), str(event_path), str(root / "bad.f32")],

@@ -100,6 +100,20 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
         case Kind::Output:
             parameters.outputGain = std::pow(10.0f, 0.05f * control.value);
             break;
+        case Kind::Shape: parameters.shape = static_cast<acustra::BodyShape>(index); break;
+        case Kind::Wood:
+            parameters.bodyMaterial = static_cast<acustra::BodyMaterial>(index);
+            break;
+        case Kind::Bridge:
+            parameters.bridgeModel = static_cast<acustra::BridgeModel>(index);
+            break;
+        case Kind::Model:
+            parameters.guitarModel = static_cast<acustra::GuitarModel>(index);
+            break;
+        case Kind::Width: parameters.stereoWidth = 0.01f * control.value; break;
+        case Kind::Age: parameters.stringAge = 0.01f * control.value; break;
+        case Kind::Pluck: parameters.pluckPosition = 0.01f * control.value; break;
+        case Kind::Touch: parameters.touch = 0.01f * control.value; break;
     }
 }
 
