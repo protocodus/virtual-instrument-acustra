@@ -753,16 +753,18 @@ void testMemberChannelOwnershipAndControllers()
             "member All Sound Off missed its owned string");
     soundOff (1);
 
-    // A channel-scoped boundary controller cancels only pending notes on its
-    // own channel, regardless of same-sample host insertion order.
+    // A boundary controller acts before its sample's notes, whatever the
+    // host's insertion order: the notes that start on its sample sound, on
+    // its own channel and on others.
     juce::MidiBuffer boundary;
     boundary.addEvent (juce::MidiMessage::noteOn (2, 52, 0.8f), 0);
     boundary.addEvent (juce::MidiMessage::noteOn (3, 52, 0.8f), 0);
     boundary.addEvent (juce::MidiMessage::controllerEvent (2, 123, 0), 0);
     render (boundary);
-    expect (processor.getActiveVoiceCount() == 1,
-            "member All Notes Off affected another pending channel (active="
+    expect (processor.getActiveVoiceCount() == 2,
+            "member All Notes Off cancelled a Note On on its own sample (active="
                 + std::to_string (processor.getActiveVoiceCount()) + ")");
+    soundOff (2);
     soundOff (3);
 
     juce::MidiBuffer held;
@@ -1054,9 +1056,9 @@ void testLowerZoneLifecycleAndControllerBoundaries()
             events.addEvent (outside, 0);
             events.addEvent (controllerFirst ? affected : control, 0);
             boundary.processBlock (audio, events);
-            expect (boundary.getActiveVoiceCount() == 1,
+            expect (boundary.getActiveVoiceCount() == 2,
                     "same-sample CC" + std::to_string (controller)
-                        + " failed to cancel zone Note Ons in one insertion order");
+                        + " cancelled a zone Note On in one insertion order");
         }
 
     for (const int controller : { 120, 123 })
@@ -1073,9 +1075,9 @@ void testLowerZoneLifecycleAndControllerBoundaries()
             events.addEvent (outside, 0);
             events.addEvent (controllerFirst ? affected : control, 0);
             boundary.processBlock (audio, events);
-            expect (boundary.getActiveVoiceCount() == 1,
+            expect (boundary.getActiveVoiceCount() == 2,
                     "same-sample conventional CC" + std::to_string (controller)
-                        + " cancellation crossed channels or depended on order");
+                        + " cancelled a Note On or depended on order");
         }
 }
 

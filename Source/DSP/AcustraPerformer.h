@@ -256,6 +256,5 @@ private:
     int pendingNoteOnCount_ { 0 };
     std::array<PendingNoteOff, sampleGroupCapacity> pendingNoteOffs_ {};
     int pendingNoteOffCount_ { 0 };
-    std::array<bool, 16> cancelledNoteOns_ {};
 };
 } // namespace acustra

@@ -1993,7 +1993,9 @@ channel 1 provides manager bend and sustain. RPN 0 supports exact
 with 2/48-semitone MPE manager/member defaults. Released tails freeze their
 member bend so later member-channel reuse cannot retune them, but manager bend
 continues to apply. Zone changes reset only their affected channel union, and
-same-sample CC120/CC123 cancellation is insertion-order independent.
+same-sample CC120/CC123 handling is insertion-order independent (since
+2026-09-29 they act before their sample's notes instead of cancelling its
+Note Ons; see the audit entry of that date).
 
 Acustra advertises MPE support for that tested subset only. Upper zones,
 per-note pressure and CC74 timbre are not implemented.

@@ -298,9 +298,11 @@ void testStrumRestIsMeasuredBetweenStrums()
 }
 
 // One sample's notes are one canonical wrist event whatever order a host
-// stored them in; a zero-length note does not stick; All Notes Off owns its
-// sample: no Note On of its channels sounds on that sample, whether a host
-// inserted it before or after.
+// stored them in; a zero-length note does not stick; All Notes/Sound Off
+// acts before its sample's notes, whether a host inserted it before or
+// after them: it ends what was already sounding, and the notes that start
+// on its sample, a loop's first beat after a host's reset, still sound
+// (audit F41).
 void testOneSampleIsOneCanonicalEvent()
 {
     const auto chord = [](std::array<int, 4> order)
@@ -331,10 +333,30 @@ void testOneSampleIsOneCanonicalEvent()
     expect(keysDown({ message(0.0, 0x80, 45, 64), message(0.0, 0x90, 45, 100) })
                == std::pair { false, false },
            "a zero-length note stuck when its Off came first");
-    expect(keysDown({ message(0.0, 0x90, 45, 100), message(0.0, 0xb0, 123, 0),
-                      message(0.0, 0x90, 52, 100) })
-               == std::pair { false, false },
-           "All Notes Off did not own its sample");
+    for (const int controller : { 120, 123 })
+        expect(keysDown({ message(0.0, 0x90, 45, 100), message(0.0, 0xb0, controller, 0),
+                          message(0.0, 0x90, 52, 100) })
+                   == std::pair { true, true },
+               "CC" + std::to_string(controller)
+                   + " cancelled a Note On on its own sample");
+
+    // Before or after the notes on its sample, the reset sounds the same:
+    // the held note it ends, then the new one.
+    for (const int controller : { 120, 123 })
+    {
+        const auto held = message(0.0, 0x90, 45, 100);
+        const auto reset = message(0.5, 0xb0, controller, 0);
+        const auto next = message(0.5, 0x90, 52, 100);
+        const auto resetFirst = render(custom("reset", 1.0, { held, reset, next }),
+                                       48000.0, 64, false);
+        expect(resetFirst == render(custom("reset", 1.0, { held, next, reset }),
+                                    48000.0, 64, false),
+               "CC" + std::to_string(controller)
+                   + " depended on its place among its sample's notes");
+        expect(resetFirst != render(custom("reset", 1.0, { held, reset }),
+                                    48000.0, 64, false),
+               "the note on CC" + std::to_string(controller) + "'s sample was silent");
+    }
 }
 
 // A strum is timed by the strings it reaches: a note the tuning cannot

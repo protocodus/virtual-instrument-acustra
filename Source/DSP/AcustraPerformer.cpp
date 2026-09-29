@@ -86,7 +86,6 @@ void Performer::beginBlock(float* left, float* right,
     groupedSample_ = -1;
     pendingNoteOnCount_ = 0;
     pendingNoteOffCount_ = 0;
-    cancelledNoteOns_.fill(false);
 
     // Without gathering, and nothing left held from when it was on, events
     // play as they arrive; otherwise they queue (see endBlock).
@@ -307,10 +306,7 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
                             int size) noexcept
 {
     if (groupedSample_ >= 0 && eventSample != groupedSample_)
-    {
         flushNoteGroup();
-        cancelledNoteOns_.fill(false);
-    }
     renderTo(eventSample);
     groupedSample_ = eventSample;
 
@@ -323,17 +319,14 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
             || (status == 0x90u && size >= 3 && (data[2] & 0x7fu) == 0u));
     if (positiveNoteOn)
     {
-        if (! cancelledNoteOns_[static_cast<std::size_t>(midiChannel - 1)])
+        if (pendingNoteOnCount_ < sampleGroupCapacity)
         {
-            if (pendingNoteOnCount_ < sampleGroupCapacity)
-            {
-                pendingNoteOns_[static_cast<std::size_t>(pendingNoteOnCount_++)]
-                    = { static_cast<int>(data[1] & 0x7fu), midiChannel,
-                        static_cast<float>(data[2] & 0x7fu) / 127.0f, 0 };
-                return true;
-            }
-            ++droppedEvents_;
+            pendingNoteOns_[static_cast<std::size_t>(pendingNoteOnCount_++)]
+                = { static_cast<int>(data[1] & 0x7fu), midiChannel,
+                    static_cast<float>(data[2] & 0x7fu) / 127.0f, 0 };
+            return true;
         }
+        ++droppedEvents_;
     }
     else if (noteOff && pendingNoteOffCount_ < sampleGroupCapacity)
     {
@@ -345,27 +338,11 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
     }
     else
     {
-        // All Sound/Notes Off at a chord boundary owns that boundary and must
-        // not be undone by Note Ons merely inserted before it.
-        if (status == 0xb0u && size >= 3
-            && ((data[1] & 0x7fu) == 120u || (data[1] & 0x7fu) == 123u))
-        {
-            for (int channel = 1; channel <= 16; ++channel)
-                if (channelIsInControllerScope(midiChannel, channel))
-                    cancelledNoteOns_[static_cast<std::size_t>(channel - 1)] = true;
-            const auto removeChannel = [this, midiChannel](const auto& note)
-            {
-                return channelIsInControllerScope(midiChannel, note.channel);
-            };
-            pendingNoteOnCount_ = static_cast<int>(std::remove_if(
-                pendingNoteOns_.begin(),
-                pendingNoteOns_.begin() + pendingNoteOnCount_,
-                removeChannel) - pendingNoteOns_.begin());
-            pendingNoteOffCount_ = static_cast<int>(std::remove_if(
-                pendingNoteOffs_.begin(),
-                pendingNoteOffs_.begin() + pendingNoteOffCount_,
-                removeChannel) - pendingNoteOffs_.begin());
-        }
+        // Every controller, All Notes/Sound Off (CC123/CC120) included, acts
+        // at once, and so before its sample's Note Ons and Offs, which wait
+        // for the sample to end (flushNoteGroup): whatever order a host
+        // stored them in, a reset ends what was sounding and the notes that
+        // start on its sample, a loop's first beat after it, still sound.
         // A key-up waits for its sample's Note Ons, but the pedal meets it
         // in the order the host sent them: one pressed after it does not
         // catch it, and one lifted after it lets it go, whatever the pedal
