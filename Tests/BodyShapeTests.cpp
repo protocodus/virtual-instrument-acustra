@@ -1,7 +1,10 @@
 #include "DSP/AcustraEngine.h"
 #include "DSP/GuitarModelData.h"
+#include "DSP/MeasuredBodyData.h"
 #include "DSP/MeasuredBridgeData.h"
+#include "DSP/MeasuredJointBodyData.h"
 #include "DSP/MeasuredSteelBridgeData.h"
+#include "DSP/SteelBodyBlend.h"
 
 #include <algorithm>
 #include <array>
@@ -31,6 +34,54 @@ struct AcustraEngineTestAccess
     static std::array<float, 2> radiationPole(const EngineParameters& p,
                                               const PhysicalCalibration& c, int index)
     { return AcustraEngine::radiationModePole(p, c, index); }
+    static std::array<int, 2> bodyCounts(const AcustraEngine& e)
+    { return { e.bodyBank_.count, e.bodyBank_.ordered }; }
+    // The body bank's digital pole in slot i, as {real, imaginary}.
+    static std::array<double, 2> bodyPole(const AcustraEngine& e, int i)
+    { return { e.bodyBank_.poleReal[std::size_t(i)], e.bodyBank_.poleImaginary[std::size_t(i)] }; }
+    // The largest pole radius of the body bank's active modes.
+    static double bodyPoleRadius(const AcustraEngine& e)
+    {
+        double worst = 0.0;
+        for (int i = 0; i < e.bodyBank_.count; ++i)
+            worst = std::max(worst, std::hypot(double(e.bodyBank_.poleReal[std::size_t(i)]),
+                                               double(e.bodyBank_.poleImaginary[std::size_t(i)])));
+        return worst;
+    }
+    // The normal port a string drains into: bridge and anchors in parallel.
+    static std::complex<float> port(const AcustraEngine& e, float f, int string)
+    { return e.bridgePortMobility(f, string).normal; }
+    // The frequencies of the tuning table's first `ordered` modes: steel's
+    // own bridge modes (B's), which sit on their radiation's poles.
+    static std::vector<float> ownBridgePoles(const AcustraEngine& e)
+    {
+        const auto& table = e.bridgeMobilityTable();
+        const float rate = static_cast<float>(e.sampleRate_);
+        std::vector<float> poles;
+        for (int i = 0; i < table.ordered; ++i)
+            poles.push_back(rate / std::numbers::pi_v<float> * std::atan(
+                table.modes[std::size_t(i)].omega / (2.0f * rate)));
+        return poles;
+    }
+    // Leaves only B's own modes in the tuning table, at full level (each
+    // mode's blended residues over its `shares` entry): the bridge B+D would
+    // play with this build's Q. The table is a cache keyed on its inputs, so
+    // it stays.
+    static void keepOwnBridgeOnly(AcustraEngine& e, const std::vector<float>& shares)
+    {
+        const auto& cached = e.bridgeMobilityTable();
+        auto& table = e.bridgeMobilityTable_;
+        (void) cached;
+        table.count = table.ordered;
+        for (int i = 0; i < table.ordered; ++i)
+        {
+            auto& mode = table.modes[std::size_t(i)];
+            const float share = shares[std::size_t(i)];
+            mode.heave /= share;
+            mode.cross /= share;
+            mode.rock /= share;
+        }
+    }
 };
 }
 
@@ -461,6 +512,330 @@ void testBridgeModesMoveWithTheirRadiationNeighbours()
     expect(worst < 0.5, "Shape moved a bridge mode by another class than its radiation neighbour");
 }
 
+// The steel blend (SteelBodyBlend.h): on steel's own bridge the bridge is
+// B's aligned modes, the Fylde's and the joint-pole body's modes below its
+// band, each at its share, and on the Original guitar the radiation is g21's
+// bank and the joint body's radiation below the band. Every section keeps a
+// positive semidefinite residue matrix, so each string's sum stays positive
+// real (testPhaseAndPassivity reads the digital bridge, and below for every
+// Shape and Wood); here the parts, their levels and a long ring and a
+// sustained strum, which must not grow.
+void testSteelBlend()
+{
+    namespace d = acustra::detail;
+    const double w = d::steelBlendJointBodyWeight;
+    const bool fylde = d::steelBlendOwnBridgeWeight < 1.0f;
+    const bool joint = w > 0.0;
+    std::size_t jointModes = 0, jointBridge = 0;
+    for (const auto& mode : d::measuredSteelJointBodyModes)
+        if (joint && mode.frequency < d::steelBlendJointBandHz)
+        {
+            ++jointModes;
+            jointBridge += mode.heave > 0.0f || mode.rock > 0.0f;
+        }
+    const std::size_t own = d::measuredSteelBridgeModes.size();
+    const std::size_t fyldeCount = fylde ? d::measuredFyldeBridgeModes.size() : 0;
+    const int body = int(d::measuredSteelBodyModes.size() + jointModes);
+    // B's share of its own mode at measured frequency hz: (1 - E) below E's
+    // band, whole above it.
+    const auto ownShare = [&] (float hz)
+    {
+        return float((hz < d::steelBlendJointBandHz ? 1.0 - w : 1.0)
+                     * d::steelBlendOwnBridgeWeight);
+    };
+
+    acustra::EngineParameters p;
+    p.stringMaterial = acustra::StringMaterial::Steel;
+    p.bridgeModel = acustra::BridgeModel::Original;
+    auto e = std::make_unique<Engine>();
+    e->setParameters(p); e->prepare(48000, 64);
+    const auto bridge = Access::bridge(*e);
+    const double scale = Access::calibration(*e).bridgeMobilityScale;
+    expect(bridge.activeModeCount == int(own + fyldeCount + jointBridge) + 1,
+           "the blended bridge does not play each part's modes and the plate floor once");
+    expect(Access::bodyCounts(*e)[0] == body
+               && Access::bodyCounts(*e)[1] == int(d::measuredSteelBodyModes.size()),
+           "the blended radiation does not play each part, g21's bank in order first");
+    double worstLevel = 0.0, worstDefinite = 0.0;
+    const auto level = [&] (std::size_t slot, const d::MeasuredBridgeMode& source, double share)
+    {
+        const double expected = source.heave * scale * share;
+        worstLevel = std::max(worstLevel,
+            std::abs(bridge.residueHeave[slot] - expected) / expected);
+    };
+    for (std::size_t i = 0; i < own; ++i)
+        level(i, d::measuredSteelBridgeModes[i],
+              ownShare(d::measuredSteelBridgeModes[i].frequency) * d::steelTopMobilityRatio);
+    for (std::size_t i = 0; i < fyldeCount; ++i)
+        level(own + i, d::measuredFyldeBridgeModes[i],
+              (1.0 - w) * (1.0 - d::steelBlendOwnBridgeWeight));
+    for (std::size_t i = 0, slot = own + fyldeCount; i < d::measuredSteelJointBodyModes.size() && joint; ++i)
+    {
+        const auto& mode = d::measuredSteelJointBodyModes[i];
+        if (!(mode.frequency < d::steelBlendJointBandHz) || !(mode.heave > 0.0f || mode.rock > 0.0f))
+            continue;
+        if (mode.heave > 0.0f)
+            level(slot, { mode.frequency, mode.q, mode.heave, mode.cross, mode.rock },
+                  w * d::steelJointTopMobilityRatio);
+        ++slot;
+    }
+    for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
+    {
+        const double h = bridge.residueHeave[i], c = bridge.residueCross[i], r = bridge.residueRock[i];
+        expect(h >= 0.0 && r >= 0.0, "a blended bridge section has a negative residue");
+        // Rank-one sections (h r = c^2) carry float rounding, 1e-7 of h r.
+        if (h > 0.0 && r > 0.0)
+            worstDefinite = std::min(worstDefinite, (h * r - c * c) / (h * r));
+        else
+            expect(c == 0.0, "a blended bridge section couples without rocking");
+    }
+    std::cout << "steel blend: " << bridge.activeModeCount - 1 << " bridge modes, "
+              << Access::bodyCounts(*e)[0] << " radiation modes, worst part level error "
+              << worstLevel << ", least relative residue determinant " << worstDefinite << '\n';
+    expect(worstLevel < 1e-5, "a blended bridge part is not at its share");
+    expect(worstDefinite >= -1e-6, "a blended bridge section is not positive semidefinite");
+
+    // A passive part in parallel is not a linear share at the string: the
+    // string drains into the port, (Y^-1 + K/s)^-1 with the anchors' K, whose
+    // peaks sit at the summed Y's zeros, so a part ringing at other
+    // frequencies moves them. At each of B's aligned poles the port must keep
+    // at least that mode's share of the conductance B's modes alone give it;
+    // the Fylde's unaligned modes at 0.3 left 0.26-0.49 of it at 100 and
+    // 178-190 Hz and a new drain peak at 209 Hz (Docs/decisions.md).
+    {
+        std::vector<float> shares;
+        for (const auto& mode : d::measuredSteelBridgeModes)
+            shares.push_back(ownShare(mode.frequency));
+        const auto poles = Access::ownBridgePoles(*e);
+        std::vector<std::array<float, 6>> blended(poles.size());
+        for (std::size_t k = 0; k < poles.size(); ++k)
+            for (int s = 0; s < 6; ++s)
+                blended[k][std::size_t(s)] = Access::port(*e, poles[k], s).real();
+        Access::keepOwnBridgeOnly(*e, shares);
+        double worstPort = 1e9; float worstAt = 0.0f;
+        for (std::size_t k = 0; k < poles.size(); ++k)
+            for (int s = 0; s < 6; ++s)
+            {
+                const double alone = Access::port(*e, poles[k], s).real();
+                if (!(alone > 0.0)) continue;
+                const double ratio = blended[k][std::size_t(s)] / alone / shares[k];
+                if (ratio < worstPort) { worstPort = ratio; worstAt = poles[k]; }
+            }
+        std::cout << "steel blend: " << poles.size() << " own-bridge poles, least port "
+                  << "conductance over B's alone, per its share, " << worstPort << " at "
+                  << worstAt << " Hz\n";
+        expect(!poles.empty() && poles.size() == own, "the tuning table does not start with B's own modes");
+        expect(worstPort >= 1.0,
+               "a blended part pulls the string's drain off one of B's aligned poles");
+    }
+
+    // Every Shape and Wood: the digital bridge stays passive at every string
+    // (60 Hz to 10 kHz), every bridge section and body mode is stable, and a
+    // chord left to ring decays.
+    {
+        double least = 0.0, largestBody = 0.0, largestBridge = 0.0, worstRing = 0.0;
+        for (int shape = 0; shape < 4; ++shape)
+            for (int wood = 0; wood < 4; ++wood)
+            {
+                acustra::EngineParameters q;
+                q.stringMaterial = acustra::StringMaterial::Steel;
+                q.bridgeModel = acustra::BridgeModel::Original;
+                q.shape = static_cast<acustra::BodyShape>(shape);
+                q.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+                q.outputGain = 0.04f;
+                auto x = std::make_unique<Engine>();
+                x->setParameters(q); x->prepare(48000, 64);
+                const auto b = Access::bridge(*x);
+                for (int bin = 0; bin < 400; ++bin)
+                {
+                    const auto y = mobility(b, 60 * std::pow(10000.0 / 60, bin / 399.0), 48000);
+                    for (int string = 0; string < 6; ++string)
+                    {
+                        const double u = (string - 2.5) / 2;
+                        least = std::min(least, (y[0] + 2 * u * y[1] + u * u * y[2]).real());
+                    }
+                }
+                for (std::size_t i = 0; i < b.heaveModes.size(); ++i)
+                {
+                    // Roots of 1 + d1 z^-1 + d2 z^-2.
+                    const Complex d1 = b.heaveModes[i].denominator1, d2 = b.heaveModes[i].denominator2;
+                    const Complex root = std::sqrt(d1 * d1 - 4.0 * d2);
+                    largestBridge = std::max({ largestBridge, std::abs((-d1 + root) / 2.0),
+                                               std::abs((-d1 - root) / 2.0) });
+                }
+                largestBody = std::max(largestBody, Access::bodyPoleRadius(*x));
+                for (int note : { 40, 45, 50, 55, 59, 64 }) x->noteOn(note, 1.0f);
+                double first = 0.0, last = 0.0;
+                process(*x, 48000, &first);
+                process(*x, 48000 * 7, nullptr);
+                process(*x, 48000, &last);
+                worstRing = std::max(worstRing, last / first);
+            }
+        std::cout << "steel blend, every Shape and Wood: least string mobility real " << least
+                  << ", largest bridge pole radius " << largestBridge << ", largest body pole radius "
+                  << largestBody << ", ring second 9 over second 1 " << worstRing << '\n';
+        expect(least >= -2e-6, "a Shape or Wood made the blended bridge active");
+        expect(largestBridge < 1.0 && largestBody < 1.0, "a Shape or Wood made a blended mode unstable");
+        expect(worstRing < 0.1, "a Shape or Wood's blended ring did not decay");
+    }
+
+    // The Fylde choice is the Fylde alone; nylon plays its own banks.
+    p.bridgeModel = acustra::BridgeModel::FyldeSteel;
+    auto other = std::make_unique<Engine>();
+    other->setParameters(p); other->prepare(48000, 64);
+    expect(Access::bridge(*other).activeModeCount
+               == int(d::measuredFyldeBridgeModes.size()) + 1,
+           "the Fylde bridge choice took the blend's other parts");
+    p.stringMaterial = acustra::StringMaterial::Nylon;
+    auto nylon = std::make_unique<Engine>();
+    nylon->setParameters(p); nylon->prepare(48000, 64);
+    expect(Access::bodyCounts(*nylon)[0] == Access::bodyCounts(*nylon)[1],
+           "nylon's radiation took a parallel part");
+
+    // A full chord left to ring for 20 s and a strum every 250 ms for 20 s:
+    // no one-second window louder than every earlier one after the first
+    // three, and the sustained level not creeping up.
+    for (int sustained = 0; sustained < 2; ++sustained)
+    {
+        p.stringMaterial = acustra::StringMaterial::Steel;
+        p.bridgeModel = acustra::BridgeModel::Original;
+        p.outputGain = 0.04f;
+        auto ring = std::make_unique<Engine>();
+        ring->setParameters(p); ring->prepare(48000, 64);
+        const std::array<std::array<int, 6>, 2> chords {{ { 40, 47, 52, 56, 59, 64 },
+                                                          { 43, 47, 50, 55, 59, 67 } }};
+        std::vector<double> seconds;
+        for (int second = 0, strum = 0; second < 20; ++second)
+        {
+            double energy = 0.0;
+            for (int quarter = 0; quarter < 4; ++quarter)
+            {
+                if ((second == 0 && quarter == 0) || sustained)
+                {
+                    if (strum > 0)
+                        for (int note : chords[std::size_t((strum - 1) % 2)]) ring->noteOff(note);
+                    for (int note : chords[std::size_t(strum % 2)]) ring->noteOn(note, sustained ? 0.8f : 1.0f);
+                    ++strum;
+                }
+                process(*ring, 12000, &energy);
+            }
+            seconds.push_back(energy);
+        }
+        double rise = 0.0, runningMax = std::max({ seconds[0], seconds[1], seconds[2] });
+        for (std::size_t k = 3; k < seconds.size(); ++k)
+        {
+            rise = std::max(rise, seconds[k] / runningMax);
+            runningMax = std::max(runningMax, seconds[k]);
+        }
+        const double late = sustained ? (seconds[16] + seconds[17] + seconds[18] + seconds[19])
+                                          / (seconds[4] + seconds[5] + seconds[6] + seconds[7])
+                                      : seconds[19] / runningMax;
+        std::cout << "steel blend " << (sustained ? "sustained strums" : "free ring")
+                  << ": worst window over the running maximum " << rise
+                  << (sustained ? ", seconds 16-20 over 4-8 " : ", last second over loudest ")
+                  << late << '\n';
+        if (sustained)
+            expect(late < 1.25, "the blend's level crept up under sustained strumming");
+        else
+            expect(rise <= 1.0 && late < 1e-2, "the blend's free ring grew or did not decay");
+    }
+}
+
+// The joint-pole body's retained modes (E, below its band) under the audit's
+// construction-coherence rule (Docs/decisions.md, 2026-09-29): each of them
+// that carries a bridge residue must drain the strings on its own radiation
+// resonance under every Shape and Wood, at 44.1, 48 and 96 kHz, and a live
+// Shape or Wood change must reach the bridge as a fresh engine does. The
+// bridge section is prewarped bilinear, the body mode impulse-invariant, so
+// each is read back to its analog frequency and Q and compared. Every
+// blended section's residue matrix stays positive semidefinite under every
+// Shape and Wood (testSteelBlend checks the default), and the strings' port
+// stays passive (testSteelBlend, testPhaseAndPassivity).
+void testSteelBlendJointBridgeRingsOnItsRadiation()
+{
+    namespace d = acustra::detail;
+    if (!(d::steelBlendJointBodyWeight > 0.0f))
+        return;
+    const std::size_t own = d::measuredSteelBridgeModes.size();
+    const std::size_t fylde = d::steelBlendOwnBridgeWeight < 1.0f
+        ? d::measuredFyldeBridgeModes.size() : 0;
+    // (body slot, bridge slot) for each retained joint mode with a bridge
+    // residue: the body's kept modes follow g21's bank, the bridge's follow
+    // B's and the Fylde's.
+    std::vector<std::array<int, 2>> pairs;
+    {
+        int body = int(d::measuredSteelBodyModes.size()), bridge = int(own + fylde);
+        for (const auto& mode : d::measuredSteelJointBodyModes)
+        {
+            if (!(mode.frequency < d::steelBlendJointBandHz)) continue;
+            if (mode.heave > 0.0f || mode.rock > 0.0f) pairs.push_back({ body, bridge++ });
+            ++body;
+        }
+    }
+    expect(pairs.size() == 8, "the retained joint body no longer drains through 8 bridge modes");
+    double worstCents = 0.0, worstQ = 0.0, worstDefinite = 0.0;
+    int liveMismatches = 0;
+    for (int rate : { 44100, 48000, 96000 })
+        for (int shape = 0; shape < 4; ++shape)
+            for (int wood = 0; wood < 4; ++wood)
+            {
+                acustra::EngineParameters p;
+                p.stringMaterial = acustra::StringMaterial::Steel;
+                p.bridgeModel = acustra::BridgeModel::Original;
+                p.shape = static_cast<acustra::BodyShape>(shape);
+                p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+                auto e = std::make_unique<Engine>();
+                e->setParameters(p); e->prepare(rate, 64);
+                const auto bridge = Access::bridge(*e);
+                for (const auto& [bodySlot, bridgeSlot] : pairs)
+                {
+                    const auto pole = Access::bodyPole(*e, bodySlot);
+                    const double radius = std::hypot(pole[0], pole[1]);
+                    const double bodyHz = std::atan2(pole[1], pole[0]) * rate / (2.0 * pi);
+                    const double bodyQ = -pi * bodyHz / (rate * std::log(radius));
+                    const auto& mode = bridge.heaveModes[std::size_t(bridgeSlot)];
+                    const double bridgeHz = sectionFrequency(mode, rate);
+                    const double tangent = std::tan(pi * bridgeHz / rate);
+                    const double bridgeQ = tangent * (1.0 + mode.denominator1 + mode.denominator2)
+                        / (2.0 * tangent * tangent * (1.0 - mode.denominator2));
+                    worstCents = std::max(worstCents, std::abs(1200.0 * std::log2(bridgeHz / bodyHz)));
+                    worstQ = std::max(worstQ, std::abs(bridgeQ / bodyQ - 1.0));
+                }
+                for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
+                {
+                    const double h = bridge.residueHeave[i], c = bridge.residueCross[i],
+                                 r = bridge.residueRock[i];
+                    expect(h >= 0.0 && r >= 0.0, "a blended bridge section has a negative residue");
+                    if (h > 0.0 && r > 0.0)
+                        worstDefinite = std::min(worstDefinite, (h * r - c * c) / (h * r));
+                }
+                if (rate != 48000) continue;
+                // Live: from the default Dreadnought/Spruce to this Shape and Wood.
+                auto live = std::make_unique<Engine>();
+                live->setParameters(acustra::EngineParameters {});
+                live->prepare(rate, 64);
+                live->setParameters(p); process(*live, 64);
+                const auto liveBridge = Access::bridge(*live);
+                for (const auto& pair : pairs)
+                {
+                    const auto slot = std::size_t(pair[1]);
+                    liveMismatches += liveBridge.heaveModes[slot].denominator1 != bridge.heaveModes[slot].denominator1
+                        || liveBridge.heaveModes[slot].denominator2 != bridge.heaveModes[slot].denominator2
+                        || liveBridge.residueHeave[slot] != bridge.residueHeave[slot];
+                    const auto a = Access::bodyPole(*live, pair[0]), b = Access::bodyPole(*e, pair[0]);
+                    liveMismatches += a[0] != b[0] || a[1] != b[1];
+                }
+            }
+    std::cout << "steel blend joint bridge vs its radiation, every Shape, Wood and rate: worst "
+              << worstCents << " cents, worst Q ratio error " << worstQ
+              << ", least relative residue determinant " << worstDefinite
+              << ", live mismatches " << liveMismatches << '\n';
+    expect(worstCents < 0.01, "a retained joint bridge mode left its radiation resonance");
+    expect(worstQ < 5e-3, "a retained joint bridge mode's Q left its radiation's");
+    expect(worstDefinite >= -1e-6, "a Shape or Wood made a blended bridge section indefinite");
+    expect(liveMismatches == 0, "a live Shape or Wood change did not reach the joint body");
+}
+
 void process(Engine& e, int frames, double* energy, float* peak)
 {
     std::array<float,64> left {}, right {};
@@ -880,6 +1255,8 @@ int main()
     testSteelOwnBridgeSharesTheRadiationPoles();
     testBridgeModesMoveWithTheirRadiationNeighbours();
     testEveryBodysBridgeKeepsItsDrainsOnItsRadiation();
+    testSteelBlend();
+    testSteelBlendJointBridgeRingsOnItsRadiation();
     testPhaseAndPassivity();
     testRetuneAndTailOwnership();
     testStaticWorkAndRapidChanges();

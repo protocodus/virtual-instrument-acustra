@@ -459,6 +459,225 @@ of 246 renders of main's performance battery and a parameter sweep through
 the player at 44.1/48/96 kHz, and all eleven remaining demos. The twelve that
 differ are the two battery performances that sent CC68.
 
+## 2026-09-29 — Set 21: the midpoint preferred; a lighter body measured to stand in for it
+
+**Verdict (by ear).** Blind Set 21 put the midpoint (`cand/body-mid`, B 1,
+D 0.85, C 0.075, E 0.075) against B+D (main cd73763) on Set 19's five steel
+pieces. Overall the listener chose the midpoint, with the note "not a big
+difference". (The per-pair answers are not in this record.) Told that the
+midpoint costs about +40% (strums) / +55% (a held chord) CPU per 64-frame
+block over B+D, the listener wrote: "ad cpu usage - as you say, difference is
+small, so maybe go with the cheaper cpu option, given it is so much more cpu
+expensive. but try to get as close to my preference as possible."
+
+**What ships on `cand/body-lite` is a measured stand-in for that by-ear
+choice, not a choice made by ear.** Nobody has heard it against the midpoint.
+It was chosen by the numbers below, as the cheapest body found that measures
+close to the midpoint, and a blind check against the midpoint would be the
+by-ear test of it. In `Source/DSP/SteelBodyBlend.h`:
+- **B 1 and D 0.85** as in the midpoint. D is data (`MeasuredBodyData.h`,
+  unchanged), so it costs nothing.
+- **C is gone.** `MeasuredBodyDecayGridData.h` and its generator
+  `Tools/GenerateBodyDecayGrid.py` (and the generator's ctest) are removed:
+  the header was the tool's only product and nothing else reads either. Both
+  stay in git history (cand/body-decay-q-grid, cand/body-mid). At 0.15 the
+  grid's difference sat 24-26 dB below the music; it cost 234 modes (about
+  11 us per block). Its one measurable trace, a 0.3-0.5 dB darker 12.5 and
+  16 kHz third-octave at 0.075, is lost with it.
+- **E at 0.075, but only its modes below 550 Hz**
+  (`steelBlendJointBandHz`): 9 of the joint body's 131 radiation modes
+  (83.5, 90.3, 179.2, 208.4, 227.7, 371.9, 411.1, 484.6, 516.2 Hz) and the 8
+  bridge modes among them (all but 227.7 Hz, which has no bridge residue).
+  Each is E's own mode at its own index in the joint array, on the whole joint
+  body's Shape morph, so it rings exactly as in the midpoint. A bridge mode is
+  kept only with its radiation twin.
+- **Below 550 Hz** g21's radiation and B's bridge play at 0.925, as in the
+  midpoint. **Above it** E is not played, so B's bridge is whole (1.0) and
+  g21's radiation plays at 1 - 0.2 × 0.075 = 0.985
+  (`steelBlendHighJointFraction` 0.2). At 0.925 this body's energy above
+  2 kHz against 100-400 Hz measured 0.5-0.6 dB under the midpoint's (E's
+  high modes put back most of what the 0.925 takes); at 1.0 it measured
+  0.1-0.2 dB over. 0.2 is the measured value between them, not a heard one.
+- `ACUSTRA_BODY_MODE_COUNT` and `ACUSTRA_BRIDGE_MODE_COUNT` return to main's
+  141 and 56.
+
+**How the set was found.** First each mode's share of the midpoint-minus-
+(midpoint with E off) difference was measured. An analysis build played all
+131 joint modes with run-time masks, on Set 21's five pieces and a 16-note
+sweep of single notes, E2 to C6 in minor thirds (1.4 s each, fingered; E6 is
+fret 24, past the engine's 20).
+- Radiation is exactly linear: the per-mode solo renders sum to the whole
+  within -80 dB of the midpoint-B+D difference. Ranked by energy of each mode's share in 60-400 Hz and over the
+  whole band: 179, 372, 90, 411, 228 and 208 Hz lead below 400 Hz; 729 and
+  516 Hz lead 400 Hz-2 kHz. Above 2 kHz the energy is spread over many modes
+  at 3-9 kHz.
+- The bridge modes are not additive. Removed one at a time they move the
+  waveform more than E does as a whole (179, 90, 83 and 208 Hz most; the
+  mode shifts the string's drain and so the phase of every partial after
+  it), so they were ranked by render, as heard.
+- Then candidate sets were rendered and scored against the midpoint on the
+  diagnosis's descriptors, as heard (each render RMS-matched to B+D per
+  piece). Radiation modes kept by energy alone fell short: 16 modes captured
+  only 38% of the pieces' descriptor move, because tilt was 0.5 dB too dark
+  without E's high modes. The whole-band share rule above fixed that.
+- Sets and bands tried, with the pieces / sweep capture: 7 modes below
+  450 Hz 78% / 83%; 8 below 500 Hz 78% / 83%; **9 below 550 Hz 83% / 85%**;
+  10 below 600 Hz 84% / 85%; 12 below 750 Hz 85% / 85%. Dropping 227.7 Hz
+  from the 10 fell to 66% / 80%, dropping 516 Hz to 67% / 65%. E's weight at 0.065 or 0.085 measured
+  further from the midpoint than 0.075, and so did a lower weight on E's
+  bridge alone. The weight stays 0.075.
+
+**Closeness to the midpoint** (lite = this body; midC0 = the midpoint without
+its grid, the best any C-free body could do). Waveform difference to the
+midpoint, dB re the midpoint's level, full band / 60-400 Hz, and the share of
+B+D's difference energy it removes:
+
+| piece | B+D | lite | midC0 |
+|---|---|---|---|
+| 1 finger singles | -23.9 / -23.6 | -37.0 / -42.7 (95% / 99%) | -48.4 / -60.9 |
+| 2 finger chords | -22.1 / -22.9 | -40.1 / -44.7 (98% / 99%) | -50.0 / -62.3 |
+| 3 travis | -23.4 / -23.9 | -38.8 / -43.4 (97% / 99%) | -49.4 / -61.6 |
+| 4 pick melody | -25.2 / -25.0 | -28.9 / -41.9 (58% / 98%) | -36.1 / -62.9 |
+| 5 pick strums | -20.6 / -21.3 | -33.4 / -43.2 (95% / 99%) | -41.2 / -61.4 |
+| sweep E2-C6 | -22.3 / -21.9 | -34.9 / -41.7 (95% / 99%) | -43.0 / -59.1 |
+
+Piece 4's remaining full-band difference is above 2 kHz: E's high modes and
+the grid, left out. The spectral distance to the midpoint was also measured:
+the rms dB over the third-octaves in the attack (0-40 ms), early (40-300 ms)
+and late windows after each onset. Below 400 Hz the lite body removes 59-76%
+of B+D's per piece, and midC0 91-95%. Over the whole band it removes 17-41%,
+and midC0 59-77%; the rest of midC0's gap is C's 12.5-16 kHz.
+
+The diagnosis's descriptors, each minus B+D (dB):
+
+| descriptor | midpoint | lite | captured |
+|---|---|---|---|
+| body under E4 / A4 / E5 (piece 1, 80-300 Hz, 0.3-1.4 s) | +0.46 / +0.70 / +0.79 | +0.54 / +0.77 / +0.82 | 91% |
+| 63-80 Hz, late, pieces 1-5 | +0.28 +0.06 +0.09 +0.04 +0.18 | +0.25 +0.01 +0.01 +0.01 +0.12 | 62% |
+| 159 Hz third-octave, 40-300 ms | -0.32 +0.22 -0.07 +1.21 +0.03 | -0.27 +0.23 -0.05 +1.23 +0.06 | 93% |
+| 200 Hz, 40-300 ms | -0.07 +0.10 -0.04 +0.11 +0.01 | -0.01 +0.12 -0.00 +0.17 +0.05 | 33% |
+| 317 Hz, 40-300 ms | +0.01 -0.14 +0.13 +0.07 -0.01 | -0.01 -0.18 +0.12 +0.05 -0.04 | 61% |
+| tilt (>2 kHz - 100-400 Hz) | -0.07 -0.35 -0.19 -0.36 -0.28 | -0.11 -0.37 -0.21 -0.37 -0.22 | 87% |
+| sweep, 80-300 Hz in each note's ring | (mean |B+D - midpoint| 0.43) | | 89% |
+| sweep, 63-80 Hz in each note's ring | (0.39) | | 97% |
+| sweep, tilt per note | (0.36) | | 67% |
+
+Captured = 1 - sum |lite - midpoint| / sum |B+D - midpoint| over the entries.
+Over all the pieces' entries it is 83%, per piece 86 / 83 / 66 / 93 / 55%.
+Pieces 3 and 5 move least between B+D and the midpoint, so small residues
+weigh more there. Over the sweep's entries it is 85%. midC0 scores 96% and
+93%. The 200 and 317 Hz entries move by under 0.15 dB between B+D and the
+midpoint, and the lite body's residue there is 0.03-0.04 dB on average.
+
+**Cost.** Thread CPU per 64-frame block at 48 kHz: steel on the Original
+bridge, 12 s, a six-note strum every 250 ms / one chord held
+(`scratchpad/lite/cpu/probe.cpp`, the probe the midpoint's entry used). The
+figures are medians over 15 interleaved rounds (each a median of 3 runs) on a
+loaded machine (load average about 25), with the paired per-round ratio
+against B+D:
+
+| build | B+D (main) | midpoint | lite |
+|---|---|---|---|
+| plug-in library (CMake Release, -O3), strum / held us | 55.9 / 41.1 | 79.0 / 63.4 (+41.5% / +54.7%) | 58.4 / 42.8 (+3.8% / +4.4%) |
+| C++17 -O2 -fno-builtin, strum / held us | 57.3 / 41.1 | 79.4 / 63.7 (+40.5% / +54.8%) | 59.2 / 42.8 (+1.9% / +3.8%) |
+
+**Checks.**
+- Passivity and stability for every Shape and every Wood (`testSteelBlend`,
+  4 × 4): the string-projected bridge mobility's real part is never below 0
+  from 60 Hz to 10 kHz, and every bridge section and body pole lies inside
+  the unit circle (largest radius 0.99983). A full chord left to ring decays
+  (second 9 over second 1 below 6e-8).
+- Every bridge section's residue matrix stays positive semidefinite.
+- At each of B's aligned poles the port keeps at least that mode's share of
+  the conductance B alone gives it (worst ratio 1.00001).
+- Nylon renders are byte-identical to main (Set 21's pieces 1-3 on Original,
+  the Bellido, and Jumbo/maple picked).
+- The analysis build with the same set reproduces the scores to the digit.
+- `ctest` 24/24 (Acustra.GenerateBodyDecayGrid removed), `AcustraDSPCxx17`
+  builds, and the plug-in tests pass.
+
+## 2026-09-28 — listening candidate: halfway from B+D to the blend (awaiting Set 21)
+
+Set 19's verdict chose B+D overall and asked for "something between B and C
+... B sounds like a stronger body but C is too bright". This is the midpoint,
+on `cand/body-mid` (cand/body-blend 3c98653 with main cd73763 merged). **The
+weights are by-ear candidate values taken from that sentence, not a
+verdict**; Set 21 decides. Each is halfway between B+D (B 1, D 1, C 0, E 0)
+and the Set 19 blend (B 1, D 0.7, C 0.15, E 0.15):
+- **B 1**, as in both parents.
+- **D 0.85**, in log Q, as data: `MeasuredBodyData.h` rewritten with
+  `GenerateBodyForcePair.py --reweight` from the same `--plate-q median` fit
+  the blend's 0.7 header came from (that run reproduces the committed 0.7
+  header byte for byte). T1 178.5 Hz Q 14.31 (blend 14.83, D 13.82),
+  208.7 Hz 28.67 (30.04, 27.37), 229.0 Hz 12.79 (13.55, 12.07), 286.8 Hz
+  2.47 (2.65, 2.30; the Q >= 4 floor holds it either way). The header records
+  0.85 and the engine static-asserts it against `SteelBodyBlend.h`. The decay
+  grid was refitted beside it with `GenerateBodyDecayGrid.py` (the same tool
+  reproduces the blend's grid byte for byte from the 0.7 header): its residues
+  move 0.022%, and every gate passes (heard complex error 0.133, third-octave
+  error 0.77 dB rms and 1.77 dB max).
+- **C 0.075** above 1 kHz and **E 0.075** in parallel.
+
+So on steel's own bridge the bridge is 0.925 B + 0.075 E and the radiation
+is 0.925 g21 (0.8556 above 1 kHz) + 0.0694 grid + 0.075 E. The Fylde bridge
+choice and nylon behave as in the blend.
+
+**What "C is too bright" and "B stronger body" measure as (numbers, not
+verdicts).** Set 19's renders, each RMS-matched to A over the piece as heard,
+pieces 1-5; each component's effect is the blend against a build with only
+that weight moved to B+D's value (D's header at 1, C's or E's macro at 0),
+and the three effects sum to the measured C-B within 0.1 dB.
+- C is not brighter than B in any spectral measure. Tilt (energy above
+  2 kHz against 100-400 Hz): C-B -0.09 / -0.66 / -0.32 / -0.69 / -0.51 dB
+  over the piece, +0.03 to -0.80 in the first 300 ms after each onset and
+  -0.21 to -0.44 in the ring after it;
+  Zwicker-weighted sharpness is lower on every piece; the 12.8 and 16 kHz
+  third-octaves are 1.3-3.3 dB lower. Piece 1's eight notes: C's ring is
+  darker on seven (E3 +0.4 dB tilt). The partials in C's ring are not louder
+  above 400 Hz either (median per-peak change -0.7 to 0.0 dB). Of the tilt,
+  E carries +0.12 / -0.37 / -0.13 / -0.61 / -0.18, D's remaining 0.3
+  -0.13 / -0.21 / -0.11 / -0.01 / -0.15, and C's grid -0.02 / -0.01 / -0.02
+  / -0.03 / -0.08 (the grid's difference signal sits 24-26 dB below the
+  music).
+- The 80-300 Hz body level is the same (C-B -0.04 / +0.08 / -0.09 / +0.04 /
+  +0.05 dB), but inside it the weight moves up: in the first 300 ms after
+  each onset the 159 Hz third-octave is 0.5-0.9 dB lower in C on every piece
+  (E: -0.4 to -0.7; D's remaining 0.3: within 0.1), while 317 Hz is up to
+  0.8 dB higher (E). 200 Hz moves with the piece: on the picked melody it is
+  +0.9 to +1.3 dB (up to +2.9 at the onsets in a second analysis), half from
+  E and half from D's shortfall (T1 damped less); on the finger single notes
+  it is -0.6 at the onsets, from E. A thinner 160 Hz under a fuller
+  200-320 Hz is the most plausible "weaker body". E does most of it, and D's
+  shortfall shares the 200 Hz part. If "too bright" means the balance
+  against that body rather than treble, it is mostly E too. The one place a
+  brighter C shows up is piece 1's onsets: tilt +0.03 to +0.20 dB, E alone
+  +0.29 to +0.51. The grid darkens the 12.5 and 16 kHz third-octaves by
+  0.5-0.9 dB, so it is not neutral up there, though it barely moves the tilt.
+- What C plausibly won on the finger single notes and the travis picking:
+  a fuller bottom (63-80 Hz +0.4 to +0.7 dB, E) and more body under the
+  treble notes (piece 1's ring, 80-300 Hz under E4 / A4 / E5 +0.9 / +1.4 /
+  +1.6 dB, E +0.8 / +1.1 / +1.3, D's shortfall +0.1 to +0.3). The same
+  component, E, carries these wins and the thinner 160 Hz, so no variant
+  that removes one component would keep C's wins without the percept the
+  listener named; none was built. The midpoint keeps about half of each
+  (the treble notes' body +0.5 / +0.7 / +0.8 dB, 159 Hz -0.2 to -0.5 dB).
+
+The midpoint on Set 19's pieces (numbers, not verdicts): its waveform differs
+from B+D by -20.6 to -25.2 dB and from the blend by -21.3 to -25.6 dB (the
+blend from B+D -15.1 to -19.6), RMS within 0.2 dB of B+D, and every band
+descriptor above sits between the two, at about half of C-B.
+
+Cost: a weight above 0 plays all of its part's modes, so the midpoint costs
+what the blend did. Thread CPU per 64-frame batch at 48 kHz, steel on the
+Original bridge, a C++17 -O2 -fno-builtin host build of the engine driven
+for 12 s (a six-note strum every 250 ms / one chord held), median of 5
+interleaved rounds: B+D 57.5 / 41.6 us, the blend
+80.8 / 64.2, the midpoint 80.2 / 64.5 (+40% / +55% over B+D). The Rack
+Extension native module's figures for the blend (Set 19's entry) therefore
+stand for the midpoint too. `ctest` 25/25 and `AcustraDSPCxx17` (C++17,
+-Wall -Wextra -Werror) build; `testSteelBlend` holds with E at 0.075 (B's
+share 0.925).
+
 ## 2026-09-28 — blind verdict: B+D over the weighted blend, and a midpoint to try
 
 The listener asked whether the Set 18 candidates could all be combined with
@@ -496,6 +715,152 @@ The measured differences:
 
 Which component the listener hears as brightness is not yet measured; the
 midpoint's build has to find it.
+
+## 2026-09-28 — listening candidate: Set 18's bodies blended by weight (awaiting Set 19)
+
+After Set 18 the listener asked: "if B-E are model enhancenments, could we
+somehow combine them all, but weight them - all 10-20% but B and D maybe
+70%?" This is that blend, built on `cand/body-blend` (cand/body-bd with the
+C++17 Performer main merged, 43b3501). **The weights are by-ear candidate
+values taken from that sentence, not a verdict**; Blind Set 19 (A main, B
+the B+D merge, C this blend) decides. One of them, B, is not the value asked
+for: at 0.7 it measured outside both parents, so B is played whole (below).
+They are the four named constants of `Source/DSP/SteelBodyBlend.h`. None is
+in the calibration vector, so BY_EAR in `Tools/OptimizePhysicalModel.py` is
+unchanged. Since main took cand/body-bd (ac1687e), Set 19's A and B are the
+same sound; A is the pre-B+D sound only if rendered from 201a664 on its
+presets' Fylde bridge.
+
+- **B 1, not the 0.7 asked for (measured, not by ear).** It was first built
+  as asked: steel's own bridge 0.7 of B's aligned bridge (g21's, on its
+  radiation's poles, x0.274) in parallel with 0.3 of the Fylde bridge the
+  steel presets played before B, B's poles never moved part of the way (30%
+  of the 1.9-semitone anchor shift would leave about 0.6 semitone between
+  each bridge mode and its radiation peak, wider than the resonance: the
+  band-pass ringing B removed). That sum is passive, but it is not 70% of B
+  at the string. The string drains into the port the bridge makes with the
+  anchors, (Y^-1 + K/s)^-1, whose peaks sit at the summed Y's zeros, and the
+  Fylde's modes, which are not on the radiation's poles, moved them. Steel,
+  Dreadnought, 48 kHz: the port kept 0.37 of the conductance B's modes alone
+  give it at the 189.7 Hz radiation pole (B's share was 0.595), 0.26-0.49 of
+  B+D's over 100 and 178-190 Hz, and grew a drain peak at 209 Hz (2.9 x
+  B+D's). On Set 18's pieces the F#3 fundamental came in 13 dB weaker than
+  both parents (-37.8 dB against B+D -24.4 and main -27.4 in its first
+  250 ms) and then decayed only 3 dB in a second (B+D 19, main 10); G#3 in
+  the E chord sat about 10 dB below both 0.6-2.2 s in; the G2 fundamental
+  was 13 dB below B+D; piece 1 was 2 dB quieter. That is outside both
+  parents, not between them. Moving the Fylde's modes onto the radiation's
+  anchor/Wood map instead (tried in review) mended F#3 and G2 but left G#3
+  decaying about 6 dB faster than both parents, and it would change what
+  "30% Fylde" means, so it is left for the listener. With B whole, F#3
+  starts at -25.5 dB and falls 16.6 dB in a second (B+D 19.0: D at 0.7 damps
+  less), G#3 is within 1-2 dB of B+D, and G2 is -24.0 (B+D -24.2).
+  `testSteelBlend` now checks, at each of B's 47 aligned poles and every
+  string, that the port keeps at least B's share of B's own conductance:
+  0.904 at worst (586 Hz) against 0.85; the 0.7 build read 0.366 against
+  0.595 and fails it. The macro still takes a weight below 1 (with
+  `-DACUSTRA_BRIDGE_MODE_COUNT=147`).
+- **D 0.7, in log Q, as data.** The modes only the 150 Hz band reaches move
+  0.7 of the way: Q = Q_asfitted^0.3 x Q_D^0.7. T1 17.48 -> 14.83 (D 13.82),
+  208.7 Hz 37.33 -> 30.04 (27.37), 229.0 Hz 17.76 -> 13.55 (12.07), 286.8 Hz
+  3.67 -> 2.65 (2.30; the engine's Q >= 4 floor holds it either way).
+  `GenerateBodyForcePair.py --plate-q-t1-weight` (default: the blend header's
+  value; `--reweight DIR` rewrites an earlier fit's header in seconds) writes
+  it and records it as `measuredSteelT1PlateQWeight`, which the engine
+  static-asserts against the blend header. The steel bridge generator applies
+  the same power to an unpaired mode in 150-300 Hz; there is none, so
+  `MeasuredBridgeData.h` is unchanged.
+- **C 0.15, blended as bodies.** Above 1 kHz the radiation is 0.85 of g21's
+  fitted top band plus 0.15 of C's decay-Q grid (`MeasuredBodyDecayGridData.h`,
+  234 poles, `Tools/GenerateBodyDecayGrid.py` now writing the grid alone,
+  refitted beside this bank's modes below 1 kHz: its residues move 0.09% from
+  C's; the tool reproduces C's grid byte for byte from C's bank). Both
+  reproduce the same measured response, so the sum does; what 0.15 brings is
+  C's longer ring above 1 kHz, about 16 dB down.
+- **E 0.15, a parallel copy.** E's joint-pole body (`MeasuredJointBodyData.h`,
+  as 1813a88 wrote it, its level constant renamed
+  `steelJointTopMobilityRatio`) plays its radiation (131 modes, on its own
+  Shape morph and bank indices) and its bridge (56 modes on those poles,
+  x0.323) at 0.15; everything above carries 0.85. It is E verbatim, so D does
+  not reach it: its plate-Q rule starts at 300 Hz as E was fitted, and its
+  185.9 Hz mode keeps Q 50.5 (162.9 Hz Q 17.1, 206.6 Hz Q 25.3) beside g21's
+  D-damped 189.7 Hz Q 30.0 and 158.6 Hz Q 14.8. At 0.15 (-16.5 dB) that
+  mode outlives g21's and carries the 186 Hz tail after about 0.2-0.3 s,
+  partly undoing D there; its bridge modes ring about 0.35 semitone (about
+  one bandwidth) from g21's radiation. It is expected to be inaudible at
+  0.15; Set 19 is also the test of whether it is heard at all.
+
+So on steel's own bridge (steel, Original guitar, Original bridge: what the
+steel presets and a new session select) the bridge is 0.85 B + 0.15 E and
+the radiation is 0.85 g21 (0.7225 above 1 kHz) + 0.1275 grid + 0.15 E. The
+Fylde bridge choice keeps the Fylde alone as its bridge, under the same
+blended radiation: every microphone capture of it differs from B+D's Fylde
+choice (the saddle piezo, magnetic and loaded-piezo captures, which do not
+read the radiation, do not), so it no longer sounds like the Fylde choice
+before the blend. Whether it should is the listener's call. Nylon does not
+read any of it.
+
+What the build shows (numbers, not verdicts):
+- Exactness. With B=1, D=1, C=0, E=0 (the four macros, and D's header
+  rewritten at 1.0) the engine renders Set 18's five steel pieces on the
+  Original bridge, pieces 1 and 5 on the Fylde, and the nylon piece
+  byte-identically to the merge commit; a sweep of 768 cases (3 rates x both
+  materials x both guitars x both bridges x 4 Shapes x 4 Woods, each also with
+  live Wood, Shape, bridge, guitar and capture changes, 37-frame blocks at
+  44.1 kHz) hashes identically too. Nylon in the blend hashes identically to
+  main 201a664 over its 384 cases. A zero weight plays no modes.
+- Passivity and stability. Every bridge section keeps a positive
+  semidefinite residue matrix (rank-one ones to float rounding, 3e-7 of
+  h r); the digital bridge's conductance is non-negative for every string
+  from 60 Hz to 10 kHz at 8-96 kHz under every Shape. A full chord left to
+  ring 60 s sets no new one-second maximum after 3 s (worst later window
+  0.042 of the running maximum) and its last second is below 4e-12 of its
+  loudest (RMS); strums every 250 ms for 60 s stay within 1.0% of their
+  level and die away after release, at 44.1/48/96 kHz, on both bridges and
+  under all 16 Shape x Wood pairs.
+- Level against B+D (Set 18's pieces 1-5): the waveform differs by -15.1 to
+  -19.6 dB, the octaves 63 Hz-8 kHz within 0.7 dB after level matching, RMS
+  within 0.4 dB. With the Fylde share gone the blend is close to B+D; what is
+  left to hear is D at 0.7 instead of 1, C's ring above 1 kHz and E.
+- CPU per 64-frame batch at 48 kHz, thread-CPU p50, in the Rack Extension's
+  own SDK-native Deployment module (`build_native.py`: SDK clang with -ccdsp
+  -fno-builtin -ffreestanding, the --ph-disable-globals check, the SDK libc;
+  `AcustraNativeCpuBench`), median of 3 interleaved runs, machine loaded:
+  held chord / strums / pick run, main on its Fylde default 42.7 / 61.6 /
+  54.2 us, B+D on the Original bridge 45.3 / 65.5 / 58.3, the blend 76.1 /
+  97.0 / 92.2 (+68% / +48% / +58% over B+D; +78% / +57% / +70% over main),
+  its Fylde choice 65.8 / 86.9 / 80.0. The 0.7 build was 79.1 / 99.8 / 93.9.
+  The SDK IR is scalar, so the vector accumulators for the added radiation
+  modes do not help there. The listener was told +35-45%; it is about
+  +50-70%. At 48 kHz that is about 7% of the 1333 us batch period. At
+  192 kHz (333 us) the blend's p50 is about 29% of the period for one
+  instance and it missed the thread-CPU deadline tens to hundreds of times
+  in 6 s on a loaded machine where B+D missed a few. Host builds (-O3 C++20
+  and C++17 -O2 -fno-builtin, a strum every 250 ms / a held chord) were too
+  noisy on this load to add to that (the blend 95-99 / 73-75 us, B+D 68-69 /
+  48-50). Of the 0.7 build's +30 us strummed: C's 234 radiation modes about
+  13, E's 131 modes and 56 bridge modes about 12.5, the Fylde's 44 bridge
+  modes about 4 (now gone).
+- Memory. The capacities grow from 141 to 497 radiation modes and from 56 to
+  103 bridge modes: `sizeof(AcustraEngine)` 1,725,696 -> 1,823,696 bytes
+  (Performer 1,754,192 -> 1,852,192), the SDK's peak allocation 1,755,280 ->
+  1,853,280. Nylon and the Bellido guitar carry the slots too, unused.
+- The benchmark against B+D (lower is closer; totals, not paired): the bank
+  on steel's own bridge, Finger, steel training 6.4407 -> 6.4715 (+0.5%),
+  development validation 6.4131 -> 6.4617 (+0.8%), flat-top 7.2752 -> 7.2591
+  (-0.2%); Pick, training 5.8366 -> 5.8700 (+0.6%), validation 5.6115 ->
+  5.6944 (+1.5%); the frozen test split 6.2868 -> 6.3362 (Finger, +0.8%) and
+  5.6034 -> 5.6519 (Pick, +0.9%). The never-fitted corpora: Eastman picked
+  6.3767 -> 6.3844 (+0.1%), finger 6.8426 -> 6.7876 (-0.8%), Martin HD28
+  7.0770 -> 7.1476 (+1.0%). Nylon is unchanged. (The 0.7 build: +1.0 to
+  +2.9% on the bank and test splits.)
+To hear one weight changed, rebuild with its macro, e.g.
+`-DACUSTRA_STEEL_BLEND_DECAY_GRID=0.3f` (B `_OWN_BRIDGE`, which below 1 also
+needs `-DACUSTRA_BRIDGE_MODE_COUNT=147`; E `_JOINT_BODY`); for D edit
+`ACUSTRA_STEEL_BLEND_T1_PLATE_Q`, run `GenerateBodyForcePair.py --reweight
+<fit dir> --output <dir>` and copy its `MeasuredBodyData.h` in (the grid is
+refitted beside it with `GenerateBodyDecayGrid.py`; at D's full swing that
+moves its residues 0.09%).
 
 ## 2026-09-28 — blind verdicts: the snap confirmed, and one body at the saddle
 

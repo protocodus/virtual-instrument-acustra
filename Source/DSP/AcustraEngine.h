@@ -12,9 +12,14 @@
 #include <cstddef>
 #include <cstdint>
 
-// Capacity of the per-material measured banks: the larger of the two banks in
-// each generated header. AcustraEngine.cpp static-asserts that both fit, so a
-// regenerated header that grows fails to build rather than to sound.
+// Capacity of the measured banks: the largest bank a construction plays.
+// That is the steel blend (SteelBodyBlend.h), g21's 132 radiation modes and
+// the joint-pole body's 9 below its band, and nylon's largest bank; the
+// bridge is B's 47 modes and the joint body's 8 (44 more with the Fylde's
+// when the blend's B weight is below 1). AcustraEngine.cpp static-asserts
+// that every bank fits, so a regenerated header that grows fails to build
+// rather than to sound. Slots past a bank cost no CPU, but every instance
+// carries them as memory, nylon and the Bellido guitar too.
 #if !defined(ACUSTRA_BRIDGE_MODE_COUNT)
 #define ACUSTRA_BRIDGE_MODE_COUNT 56
 #endif
@@ -938,12 +943,16 @@ private:
         alignas(16) Lanes leftMomentReal {}, leftMomentImaginary {};
         alignas(16) Lanes rightMomentReal {}, rightMomentImaginary {};
         int count { 0 };
+        // The first `ordered` modes (a bank's own) are summed in index order;
+        // the rest (the steel blend's parallel parts, starting on a group of
+        // four) in vector accumulators.
+        int ordered { 0 };
 
         // The first modeCount modes' coefficients; with resetStates their
         // states restart from rest, as configureBody's mode.reset() did.
         // Slots past the bank are zero, as configureBody's mode = {} was.
         void load(const std::array<BodyMode, bodyModeCount>& modes,
-                  int modeCount, bool resetStates) noexcept;
+                  int modeCount, int orderedCount, bool resetStates) noexcept;
         void reset() noexcept
         {
             real.fill(0.0f);
@@ -951,8 +960,10 @@ private:
             momentReal.fill(0.0f);
             momentImaginary.fill(0.0f);
         }
-        // BodyMode::processStereo for every mode in index order, each sum
-        // accumulated in that order, then the same flush of tiny states.
+        // BodyMode::processStereo for every mode, then the same flush of tiny
+        // states. The ordered modes' sums accumulate in index order, as ever;
+        // with vector extensions the modes after them gather four lanes
+        // across their parts and are added to those sums once per sample.
         BodyOutput render(float force, float moment) noexcept;
     };
 
@@ -1029,9 +1040,13 @@ private:
             float rock { 0.0f };
         };
         const void* bank { nullptr };
-        std::array<std::uint32_t, 11> key {};
+        std::array<std::uint32_t, 12> key {};
         bool valid { false };
         int count { 0 };
+        // The first `ordered` modes are evaluated as ever; the steel blend's
+        // parallel parts after them (SteelBodyBlend.h) by a real-arithmetic
+        // form of the same section (bridgePortMobility).
+        int ordered { 0 };
         std::array<Mode, bridgeModeCount> modes {};
         float scale { 1.0f };
         bool plate { false };

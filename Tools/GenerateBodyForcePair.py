@@ -38,6 +38,18 @@ population's median Q over g21's own, never raised. Frequencies and residues
 are kept. The committed header is written this way (--plate-q-band 150 10000,
 the default); without the option the measured Qs are written unchanged, and
 --plate-q-band 300 10000 writes the earlier band that left T1 alone.
+--plate-q-t1-weight w moves the modes only the 150 Hz band reaches (T1 and the
+rocking modes, below the earlier band's 300 Hz edge) w of the way in log Q:
+Q = Q_asfitted^(1-w) * Q_rule^w, the rule's factor raised to w. Its default is
+the steel blend's by-ear weight, read from Source/DSP/SteelBodyBlend.h
+(ACUSTRA_STEEL_BLEND_T1_PLATE_Q), and the header records the weight it was
+written with (measuredSteelT1PlateQWeight), which the engine checks against
+that file. w = 1 writes Blind Set 18's D exactly.
+--reweight DIR rewrites only that: it reads an earlier --plate-q median run's
+body-force-pair.npz and report.json (g21's as-fitted Q and the population's
+banks), applies the rule again with this run's --plate-q-t1-weight and writes
+the header, npz and report to --output without refitting (seconds, not the
+hour a fit takes). Every other field is the earlier run's.
 The report keeps g21's as-fitted Q (plate_q.measured_frequency_q) and the band
 beside the population's banks: GenerateMeasuredBridge.py --body-report reads
 them to pair the bridge's modes with the radiation's and to damp the unpaired
@@ -45,6 +57,7 @@ ones in the same band by the same rule.
 
     python3 Tools/GenerateBodyForcePair.py --self-test
     python3 Tools/GenerateBodyForcePair.py --raw-mat /path/qualified_selected_impulses.mat --output /new/fit-directory
+    python3 Tools/GenerateBodyForcePair.py --reweight /earlier/fit-directory --output /new/directory
 """
 from __future__ import annotations
 
@@ -73,6 +86,19 @@ PLATE_Q_POPULATION = (37, 38, 39, 41, 42, 43)
 # included, up to the fit's 10 kHz limit. Only Q changes, so the shape anchors,
 # which read frequencies and residues, see the same modes.
 PLATE_Q_BAND_HZ = (150.0, 10_000.0)
+# The earlier band's lower edge: the modes from PLATE_Q_BAND_HZ[0] up to here
+# are the ones Set 18's D added, and the ones --plate-q-t1-weight blends.
+PLATE_Q_T1_UPPER_HZ = 300.0
+STEEL_BLEND_HEADER = Path(__file__).resolve().parents[1] / "Source/DSP/SteelBodyBlend.h"
+
+
+def steel_blend_t1_weight(header: Path = STEEL_BLEND_HEADER) -> float:
+    """The by-ear D weight the engine's blend header declares."""
+    import re
+    match = re.search(r"#define ACUSTRA_STEEL_BLEND_T1_PLATE_Q ([0-9.]+)f", header.read_text())
+    if match is None:
+        raise ValueError(f"{header}: no ACUSTRA_STEEL_BLEND_T1_PLATE_Q")
+    return float(match.group(1))
 
 
 def octave_q(frequency_q: np.ndarray, frequency: float) -> np.ndarray:
@@ -94,14 +120,16 @@ def plate_q_factor(frequency: float, steel_q: np.ndarray, population_q: list) ->
 
 
 def plate_q_correction(steel_q: np.ndarray, population_q: list, rule: str,
-                       band: tuple = PLATE_Q_BAND_HZ) -> np.ndarray:
+                       band: tuple = PLATE_Q_BAND_HZ, t1_weight: float = 1.0) -> np.ndarray:
     """g21's Q per mode in band read against the anechoic population.
 
     Each mode is compared over the octave centred on it (f/sqrt2 to f*sqrt2):
     "median" scales it by the population's median Q over g21's own there,
     never raising one; "ceiling" holds it at the population's upper quartile.
     Frequencies and residues are unchanged: a mode given more loss keeps the
-    amplitude it starts with and rings for a shorter time.
+    amplitude it starts with and rings for a shorter time. Below
+    PLATE_Q_T1_UPPER_HZ the "median" factor is raised to t1_weight (1 leaves it
+    as it is), which moves those modes that share of the way in log Q.
     """
     pooled = np.concatenate([np.asarray(bank)[:, :2] for bank in population_q])
     corrected = np.array(steel_q, dtype=float)
@@ -109,7 +137,10 @@ def plate_q_correction(steel_q: np.ndarray, population_q: list, rule: str,
         if not band[0] <= frequency < band[1]:
             continue
         if rule == "median":
-            corrected[index, 1] = q * plate_q_factor(frequency, steel_q, population_q)
+            factor = plate_q_factor(frequency, steel_q, population_q)
+            if frequency < PLATE_Q_T1_UPPER_HZ and t1_weight != 1.0:
+                factor = factor ** t1_weight
+            corrected[index, 1] = q * factor
         elif rule == "ceiling":
             corrected[index, 1] = min(q, np.percentile(octave_q(pooled, frequency), 75))
         else:
@@ -146,7 +177,8 @@ def paired(values: np.ndarray) -> np.ndarray:
     return np.array([pair.force_pair(mic[0], mic[1]) for mic in values])
 
 
-def render_header(arrays: dict, steel: int = 21, plate_q: tuple | None = None) -> str:
+def render_header(arrays: dict, steel: int = 21, plate_q: tuple | None = None,
+                  t1_weight: float | None = None) -> str:
     """Export the auditioned ABI: treble, bass, upper; heave then moment."""
     source = ("// response was measured. Both source guitars are nylon-strung; g21 is",
               "// adapted for steel. These reference residues do not include the")
@@ -175,6 +207,11 @@ def render_header(arrays: dict, steel: int = 21, plate_q: tuple | None = None) -
         "    float leftReal, leftImaginary, rightReal, rightImaginary, upperReal, upperImaginary;",
         "    float leftMomentReal, leftMomentImaginary, rightMomentReal, rightMomentImaginary;",
         "    float upperMomentReal, upperMomentImaginary;", "};"]
+    if t1_weight is not None:
+        lines += ["", "// The share of the way the modes below "
+                  f"{PLATE_Q_T1_UPPER_HZ:.0f} Hz moved in log Q (--plate-q-t1-weight):",
+                  "// the steel blend's D weight (SteelBodyBlend.h).",
+                  f"inline constexpr float measuredSteelT1PlateQWeight = {float(t1_weight)!r}f;"]
     for guitar, name in ((steel, "Steel"), (34, "Nylon")):
         modes = arrays[f"g{guitar}_frequency_q"]
         residues = paired(arrays[f"g{guitar}_endpoint_residues"])
@@ -300,12 +337,26 @@ def self_test() -> None:
         raise AssertionError("the plate-mode Q correction reached a mode outside its band")
     if not np.allclose(median[1:3, 1], [60.0, 20.0]) or not np.allclose(ceiling[1:3, 1], [45.0, 20.0]):
         raise AssertionError("the plate-mode Q correction does not read the population's octave")
+    low_q = np.array([[200.0, 40.0], [250.0, 20.0], [600.0, 60.0]])
+    low_population = [np.array([[190.0, 10.0], [260.0, 10.0], [580.0, 30.0]])]
+    full = plate_q_correction(low_q, low_population, "median", (150.0, 1500.0))
+    none = plate_q_correction(low_q, low_population, "median", (150.0, 1500.0), 0.0)
+    part = plate_q_correction(low_q, low_population, "median", (150.0, 1500.0), 0.7)
+    if (not np.array_equal(plate_q_correction(low_q, low_population, "median", (150.0, 1500.0), 1.0), full)
+            or not np.array_equal(none[:2], low_q[:2]) or none[2, 1] != full[2, 1]
+            or part[2, 1] != full[2, 1]
+            or not np.allclose(part[:2, 1], (low_q[:2, 1] ** 0.3 * full[:2, 1] ** 0.7).astype(np.float32),
+                               rtol=1e-6, atol=0)):
+        raise AssertionError("the T1 weight is not a log-Q share of the rule below 300 Hz")
+    if abs(steel_blend_t1_weight() - 0.5) > 0.5:
+        raise AssertionError("SteelBodyBlend.h's D weight is not a share")
     print("Body force-pair generator self-test passed")
 
 
 def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
         steel_keep: int | None = None, room_free: bool = False,
-        plate_q: str | None = None, plate_q_band: tuple = PLATE_Q_BAND_HZ) -> None:
+        plate_q: str | None = None, plate_q_band: tuple = PLATE_Q_BAND_HZ,
+        t1_weight: float = 1.0) -> None:
     if output.exists() or not output.parent.is_dir():
         raise ValueError("output must be a new directory inside an existing parent")
     if steel != 21 and steel not in body.ANECHOIC_GUITARS:
@@ -351,7 +402,7 @@ def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
         arrays["g21_measured_frequency_q"] = arrays["g21_frequency_q"]
         arrays["g21_frequency_q"] = plate_q_correction(
             arrays["g21_frequency_q"], [entry["frequency_q"] for entry in population.values()],
-            plate_q, tuple(plate_q_band))
+            plate_q, tuple(plate_q_band), t1_weight)
     report = dict(protocol=__doc__, source=str(raw.resolve()),
         source_url="https://zenodo.org/records/4604577", source_license="CC BY 4.0",
         raw_md5=spatial.bridge.digest(raw), raw_sha256=spatial.sha256(raw),
@@ -375,7 +426,7 @@ def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
             erb_5k_to_10k_level_abs_db=body.MAX_BAND_MAGNITUDE_ERROR_DB),
         force_quality=quality, banks=banks,
         plate_q=None if population is None else dict(rule=plate_q, band_hz=list(plate_q_band),
-            population=population,
+            t1_upper_hz=PLATE_Q_T1_UPPER_HZ, t1_weight=t1_weight, population=population,
             measured_frequency_q=arrays["g21_measured_frequency_q"].tolist(),
             corrected_frequency_q=arrays["g21_frequency_q"].tolist()),
         room_removed=None if room is None else dict(
@@ -388,7 +439,38 @@ def run(raw: Path, output: Path, g21_keep: int = 12000, steel: int = 21,
     np.savez(output / "body-force-pair.npz", **arrays)
     report["coefficient_response_npz_sha256"] = spatial.sha256(output / "body-force-pair.npz")
     (output / "MeasuredBodyData.h").write_text(render_header(arrays, steel,
-        None if plate_q is None else (plate_q, *plate_q_band)))
+        None if plate_q is None else (plate_q, *plate_q_band),
+        None if plate_q is None or steel != 21 else t1_weight))
+    report["native_header_sha256"] = spatial.sha256(output / "MeasuredBodyData.h")
+    (output / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False)+"\n")
+
+
+def reweight(source: Path, output: Path, t1_weight: float) -> None:
+    """Rewrite an earlier --plate-q median run's header at another T1 weight."""
+    if output.exists() or not output.parent.is_dir():
+        raise ValueError("output must be a new directory inside an existing parent")
+    report = json.loads((source / "report.json").read_text())
+    plate_q = report.get("plate_q")
+    with np.load(source / "body-force-pair.npz") as data:
+        arrays = {key: data[key] for key in data.files}
+    if not plate_q or plate_q["rule"] != "median" or "g21_measured_frequency_q" not in arrays:
+        raise ValueError(f"{source}: not a --plate-q median run of g21")
+    band = tuple(plate_q["band_hz"])
+    arrays["g21_frequency_q"] = plate_q_correction(
+        arrays["g21_measured_frequency_q"],
+        [entry["frequency_q"] for entry in plate_q["population"].values()],
+        "median", band, t1_weight)
+    output.mkdir()
+    np.savez(output / "body-force-pair.npz", **arrays)
+    report["reweighted_from"] = dict(directory=str(source.resolve()),
+        native_header_sha256=report.get("native_header_sha256"),
+        tool_sha256=report.get("tool_sha256"))
+    report["tool_sha256"] = spatial.sha256(Path(__file__))
+    plate_q.update(t1_upper_hz=PLATE_Q_T1_UPPER_HZ, t1_weight=t1_weight,
+                   measured_frequency_q=arrays["g21_measured_frequency_q"].tolist(),
+                   corrected_frequency_q=arrays["g21_frequency_q"].tolist())
+    report["coefficient_response_npz_sha256"] = spatial.sha256(output / "body-force-pair.npz")
+    (output / "MeasuredBodyData.h").write_text(render_header(arrays, 21, ("median", *band), t1_weight))
     report["native_header_sha256"] = spatial.sha256(output / "MeasuredBodyData.h")
     (output / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False)+"\n")
 
@@ -412,17 +494,36 @@ def main() -> int:
                              "or a ceiling at their upper quartile")
     parser.add_argument("--plate-q-band", type=float, nargs=2, default=PLATE_Q_BAND_HZ,
                         metavar=("LOW_HZ", "HIGH_HZ"), help="band --plate-q corrects (default 150 10000)")
+    parser.add_argument("--reweight", type=Path, metavar="DIR",
+                        help="rewrite an earlier --plate-q median run's header at this "
+                             "--plate-q-t1-weight, without refitting")
+    parser.add_argument("--plate-q-t1-weight", type=float, default=None,
+                        help="share of the way, in log Q, the modes below 300 Hz move under "
+                             "--plate-q (default: ACUSTRA_STEEL_BLEND_T1_PLATE_Q in "
+                             "Source/DSP/SteelBodyBlend.h)")
     args = parser.parse_args()
     try:
         if args.self_test:
             if args.raw_mat or args.output:
                 parser.error("--self-test does not take input/output paths")
             self_test()
+        elif args.reweight is not None:
+            if args.output is None:
+                parser.error("--reweight needs --output")
+            t1_weight = (steel_blend_t1_weight() if args.plate_q_t1_weight is None
+                         else args.plate_q_t1_weight)
+            if not 0.0 <= t1_weight <= 1.0:
+                parser.error("--plate-q-t1-weight is a share between 0 and 1")
+            reweight(args.reweight, args.output, t1_weight)
         else:
             if args.raw_mat is None or args.output is None:
                 parser.error("--raw-mat and --output are required")
+            t1_weight = (steel_blend_t1_weight() if args.plate_q_t1_weight is None
+                         else args.plate_q_t1_weight)
+            if not 0.0 <= t1_weight <= 1.0:
+                parser.error("--plate-q-t1-weight is a share between 0 and 1")
             run(args.raw_mat, args.output, args.g21_keep, args.steel_guitar, room_free=args.room_free,
-                plate_q=args.plate_q, plate_q_band=tuple(args.plate_q_band))
+                plate_q=args.plate_q, plate_q_band=tuple(args.plate_q_band), t1_weight=t1_weight)
         return 0
     except (OSError, ValueError, AssertionError) as error:
         parser.exit(1, f"{error}\n")

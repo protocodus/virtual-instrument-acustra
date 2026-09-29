@@ -65,7 +65,9 @@ only when the bridge mode lies inside k's as-fitted half-power band,
 anechoic population come from GenerateBodyForcePair.py's report
 (--body-report). A mode without a twin is damped as the radiation's plate
 modes were: GenerateBodyForcePair.plate_q_factor at its own frequency inside
-the report's band, else 1. The engine gives a twinned mode its twin's engine
+the report's band, else 1, raised below 300 Hz to the report's T1 weight (the
+steel blend's D weight, --plate-q-t1-weight) as the radiation's modes there
+were. The engine gives a twinned mode its twin's engine
 pole (AcustraEngine.cpp, steelOwnBridgePole).
 
 The flamenca's top is far more compliant than a steel-string guitar's.
@@ -581,8 +583,11 @@ def radiation_poles(bank: dict, radiation_header: Path, body_report: Path,
     low, high = plate_q["band_hz"]
     modes = np.array(bank["modes"])
     twins = radiation_twins(modes, radiation, fitted[:, 1])
+    t1_upper = plate_q.get("t1_upper_hz", 0.0)
+    t1_weight = plate_q.get("t1_weight", 1.0)
     ratios = [1.0 if twin >= 0 or not low <= frequency < high
               else plate_q_factor(frequency, fitted, population)
+                  ** (t1_weight if frequency < t1_upper else 1.0)
               for frequency, twin in zip(modes[:, 0], twins)]
     reference = header_rows(steel_reference, "measuredFyldeBridgeModes")
     ratio, spread = top_mobility_ratio(reference, modes)

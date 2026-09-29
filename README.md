@@ -830,7 +830,8 @@ at every mode. Shorter common windows leave the high-frequency discrepancy.
 The full frequency and sensor results are retained in the fit report.
 
 The steel construction presets and a new session play steel's own bridge,
-g21's, on its radiation's poles (the paragraphs after the next). A separate
+g21's, on its radiation's poles (the paragraphs after the next), as part
+of the steel blend described after them. A separate
 44-mode passive **Fylde bridge**, fitted to the first instrument in [Carcagno et al.'s
 steel-guitar measurements](https://doi.org/10.1121/1.5084735): a custom Fylde Falstaff with
 Sitka spruce top and Brazilian rosewood back and sides. Its normal bridge
@@ -884,6 +885,44 @@ harmonics. With it, the radiation/conductance prominence correlation is
 out at onset fade 2.1 dB against their neighbours by the late window (0.9 on
 the Fylde; the recordings 0.8-1.8). Wood now moves this bridge with the
 radiation, exchanging the load as Shape does.
+
+**The steel blend, lightened (a measured stand-in for a by-ear choice).**
+After Set 18 the listener asked for its model enhancements combined by
+weight. Blind Set 19 heard that blend (B 1, D 0.7, C 0.15, E 0.15) against
+B+D and chose B+D, with "something between B and C is the best"; Blind Set
+21 then preferred the midpoint (B 1, D 0.85, C 0.075, E 0.075) over B+D,
+"not a big difference". The midpoint cost about +40% (strums) / +55% (a held
+chord) CPU over B+D, and the listener asked for the cheaper option, as close
+to the preference as possible. Steel plays a lighter body
+measured to stand in for the midpoint, with the weights in
+[`SteelBodyBlend.h`](Source/DSP/SteelBodyBlend.h). Steel's own bridge is the
+aligned g21 bridge above, whole (B at 1: a Fylde share in parallel, passive
+as it is, moves the peaks of the port the strings drain into, which is not
+linear in the bridge's admittance, and at 30% left the 190 Hz radiation pole
+0.37 of B's drain, outside both parents; B's poles are never moved part of
+the way either, which would reopen the gap between a bridge mode and its
+radiation peak). T1 and the rocking modes are damped 0.85 of the way in log
+Q from their as-fitted Q to the 150 Hz plate-Q rule's (D, below). The
+decay-Q grid (C) is gone: its difference sat 24-26 dB below the music at
+twice this weight. Of a jointly fitted pole set for g21's bridge and
+microphones ([`MeasuredJointBodyData.h`](Source/DSP/MeasuredJointBodyData.h),
+E, verbatim, so D does not damp its own T1 and rocking modes) only the 9
+modes below 550 Hz play, radiation and bridge (8 of them carry a bridge
+residue) in parallel at 0.075. Below 550 Hz g21's radiation and B's bridge
+play at 0.925; above it B's bridge is whole and g21's radiation plays at
+0.985, the level at which the midpoint's balance of highs against 100-400 Hz
+is matched. Every part is passive and the sums are too. Each of E's bridge
+modes rings on its own radiation mode's pole, and Shape and Wood move the
+joint body by its own A0 and T1 as the rest of the construction moves, so
+its drains stay on its radiation everywhere (BodyShapeTests). Only steel on
+its Original guitar reads it; the Fylde bridge choice keeps the Fylde alone
+as its bridge under the same blended radiation, and nylon does not use it.
+On Set 21's pieces and a single-note sweep this body keeps 83% / 85% of the
+midpoint's measured move away from B+D (body under the treble notes, 63-80
+Hz, 159/200/317 Hz early, tilt), and costs +2-4% CPU per 64-frame block over
+B+D (Docs/decisions.md, 2026-09-29). It has not been heard against the
+midpoint. With B at 1, D at 1 and E at 0 the engine is the unblended B+D
+bit for bit. The benchmark readings quoted above are B+D's.
 
 The model represents each short segment behind the saddle as a spring between
 the bridge and ground. All six are there whether or not
@@ -996,7 +1035,9 @@ over g21's own median in the octave round it, never raised
 the level it was measured at and rings for a shorter time. The air group below
 150 Hz, where the by-ear gain below acts, is left as measured. Up to
 2026-09-27 the band started at 300 Hz; since 2026-09-28 (chosen by ear,
-Docs/decisions.md) T1 and the rocking modes are under the same rule: T1 at 178.5 Hz Q 17.5 -> 13.8 (the population's T1s 8.8-15.5), the
+Docs/decisions.md) T1 and the rocking modes are under the same rule (in the
+steel blend 0.85 of the way in log Q: 14.3, 28.7, 12.8 and 2.5 for the four
+below): T1 at 178.5 Hz Q 17.5 -> 13.8 (the population's T1s 8.8-15.5), the
 208.7 Hz rocking mode Q 37.3 -> 27.4 (the population's rocking modes in
 200-280 Hz: Q 11-21), 229.0 Hz Q 17.8 -> 12.1, and 286.8 Hz Q 3.7 -> 2.3,
 which the engine's Q >= 4 floor leaves where it was. In the engine's
@@ -1074,7 +1115,8 @@ Auditorium / Taylor style (spruce and steel, the
 Parlor / Fender style (spruce and steel, as in the
 [PS-220E](https://www.fender.com/products/ps-220e-parlor)), and Classical nylon
 (Auditorium/Cedar/Nylon). The three steel presets play steel's own bridge on
-its radiation's poles; Fylde bridge / steel selects the measured Fylde bridge.
+its radiation's poles (the steel blend's bridge); Fylde bridge
+/ steel selects the measured Fylde bridge.
 These reuse the bounded construction directions;
 they are not independently measured models of those manufacturers. The menu
 changes Shape, Material, Strings and the bridge with host automation gestures,

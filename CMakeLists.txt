@@ -411,6 +411,13 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateBodyForcePair.py"
                                  --self-test)
                 set_tests_properties(Acustra.GenerateBodyForcePair PROPERTIES TIMEOUT 180)
+                # The steel blend's parallel part (Source/DSP/SteelBodyBlend.h).
+                add_test(NAME Acustra.GenerateJointBody
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateJointBody.py"
+                                 --self-test)
+                set_tests_properties(Acustra.GenerateJointBody PROPERTIES TIMEOUT 300
+                                     ENVIRONMENT "OPENBLAS_NUM_THREADS=1")
                 add_test(NAME Acustra.MeasuredSteelFit
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateMeasuredSteelBridge.py"

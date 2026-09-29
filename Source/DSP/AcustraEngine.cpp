@@ -7,6 +7,8 @@
 #include "MeasuredBridgeData.h"
 #endif
 #include "MeasuredSteelBridgeData.h"
+#include "MeasuredJointBodyData.h"
+#include "SteelBodyBlend.h"
 #include "GuitarModelData.h"
 
 #include <algorithm>
@@ -604,13 +606,14 @@ struct ModalPole
 // and Q. configureBody sounds it (clamping the frequency to the host rate);
 // steel's own bridge takes it for each bridge mode that is the same
 // resonance (steelOwnBridgePole below).
-ModalPole radiationPole(ConstSpan<detail::MeasuredBodyMode> bank, int index,
+// `index` is the mode's place in the bank it was fitted in, which the
+// anchor's alternating detune and the Shape morph's T1 group read.
+ModalPole radiationPole(const detail::MeasuredBodyMode& measured, int index,
                         const AnchorTransform& anchor,
                         const BodyShapeMorph& morph, WoodFactors wood,
                         bool named,
                         const PhysicalCalibration& calibration) noexcept
 {
-    const auto& measured = bank[static_cast<std::size_t>(index)];
     const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
     const bool lowBodyMode = measured.frequency > 85.0f
         && measured.frequency < 145.0f;
@@ -630,6 +633,16 @@ ModalPole radiationPole(ConstSpan<detail::MeasuredBodyMode> bank, int index,
     const float low = named ? 1.0f : 4.0f;
     return { frequency, exact::isfinite(q) ? std::max(low, std::min(150.0f, q))
                                            : low };
+}
+
+ModalPole radiationPole(ConstSpan<detail::MeasuredBodyMode> bank, int index,
+                        const AnchorTransform& anchor,
+                        const BodyShapeMorph& morph, WoodFactors wood,
+                        bool named,
+                        const PhysicalCalibration& calibration) noexcept
+{
+    return radiationPole(bank[static_cast<std::size_t>(index)], index, anchor,
+                         morph, wood, named, calibration);
 }
 
 float safetyLimit(float sample) noexcept
@@ -1012,6 +1025,234 @@ ModalPole bodyBridgePole(std::size_t index,
     return { shaped.frequency * wood.frequency
                  * calibration.bodyFrequencyScale,
              q };
+}
+
+// The steel blend (SteelBodyBlend.h). On steel's own bridge the bridge is
+// B's aligned bridge, the Fylde's and the joint-pole body's kept modes in
+// parallel, and on steel's Original guitar the radiation is g21's bank and
+// the joint-pole body's kept radiation in parallel, each part at its share.
+// A part whose share is zero is not played at all, and a share of exactly 1
+// multiplies exactly, so B=1, D=1, E=0 is Set 18's B+D bit for bit.
+//
+// The joint-pole body (MeasuredJointBodyData.h) is one array: the radiation
+// reads the kept modes, the bridge those of them carrying a mobility residue,
+// each remembering the joint mode whose pole it rings on. Both are
+// compile-time views of it.
+template <std::size_t N>
+constexpr std::array<detail::MeasuredBodyMode, N> jointRadiationView(
+    const std::array<detail::MeasuredJointBodyMode, N>& joint) noexcept
+{
+    std::array<detail::MeasuredBodyMode, N> out {};
+    for (std::size_t index = 0; index < N; ++index)
+    {
+        const auto& mode = joint[index];
+        out[index] = detail::MeasuredBodyMode { mode.frequency, mode.q,
+            mode.leftReal, mode.leftImaginary, mode.rightReal, mode.rightImaginary,
+            mode.upperReal, mode.upperImaginary, mode.leftMomentReal,
+            mode.leftMomentImaginary, mode.rightMomentReal,
+            mode.rightMomentImaginary, mode.upperMomentReal,
+            mode.upperMomentImaginary };
+    }
+    return out;
+}
+
+// E plays only its joint modes below steelBlendJointBandHz (SteelBodyBlend.h),
+// each at its place in the joint array, so its pole, its anchor detune and
+// its Shape group are the whole joint body's, and each keeps its own bridge
+// residue when it has one: a kept bridge mode always rings on its kept
+// radiation twin.
+template <std::size_t N>
+constexpr std::size_t jointBandCount(
+    const std::array<detail::MeasuredJointBodyMode, N>& joint, float bandHz) noexcept
+{
+    std::size_t count = 0;
+    for (const auto& mode : joint)
+        if (mode.frequency < bandHz)
+            ++count;
+    return count;
+}
+
+template <std::size_t K, std::size_t N>
+constexpr std::array<std::uint16_t, K> jointBandModes(
+    const std::array<detail::MeasuredJointBodyMode, N>& joint, float bandHz) noexcept
+{
+    std::array<std::uint16_t, K> out {};
+    std::size_t slot = 0;
+    for (std::size_t index = 0; index < N; ++index)
+        if (joint[index].frequency < bandHz)
+            out[slot++] = static_cast<std::uint16_t>(index);
+    return out;
+}
+
+constexpr auto steelJointKept = jointBandModes<jointBandCount(
+    detail::measuredSteelJointBodyModes, detail::steelBlendJointBandHz)>(
+    detail::measuredSteelJointBodyModes, detail::steelBlendJointBandHz);
+
+constexpr bool jointHasMobility(const detail::MeasuredJointBodyMode& mode) noexcept
+{
+    return mode.heave > 0.0f || mode.rock > 0.0f;
+}
+
+template <std::size_t K, std::size_t N>
+constexpr std::size_t jointMobilityCount(
+    const std::array<std::uint16_t, K>& kept,
+    const std::array<detail::MeasuredJointBodyMode, N>& joint) noexcept
+{
+    std::size_t count = 0;
+    for (const auto index : kept)
+        if (jointHasMobility(joint[index]))
+            ++count;
+    return count;
+}
+
+template <std::size_t A, std::size_t K, std::size_t N>
+constexpr std::array<detail::MeasuredBridgeMode, A> jointBridgeView(
+    const std::array<std::uint16_t, K>& kept,
+    const std::array<detail::MeasuredJointBodyMode, N>& joint) noexcept
+{
+    std::array<detail::MeasuredBridgeMode, A> out {};
+    std::size_t slot = 0;
+    for (const auto index : kept)
+        if (jointHasMobility(joint[index]))
+        {
+            const auto& mode = joint[index];
+            out[slot++] = detail::MeasuredBridgeMode { mode.frequency, mode.q,
+                                                       mode.heave, mode.cross, mode.rock };
+        }
+    return out;
+}
+
+template <std::size_t A, std::size_t K, std::size_t N>
+constexpr std::array<std::uint16_t, A> jointBridgeSource(
+    const std::array<std::uint16_t, K>& kept,
+    const std::array<detail::MeasuredJointBodyMode, N>& joint) noexcept
+{
+    std::array<std::uint16_t, A> out {};
+    std::size_t slot = 0;
+    for (const auto index : kept)
+        if (jointHasMobility(joint[index]))
+            out[slot++] = index;
+    return out;
+}
+
+// The whole joint body's radiation: its Shape morph reads A0 and T1 from all
+// of it, and each kept mode is read at its own index.
+constexpr auto steelJointRadiationModes
+    = jointRadiationView(detail::measuredSteelJointBodyModes);
+constexpr std::size_t steelJointRadiationCount = steelJointKept.size();
+constexpr std::size_t steelJointBridgeCount
+    = jointMobilityCount(steelJointKept, detail::measuredSteelJointBodyModes);
+constexpr auto steelJointBridgeModes = jointBridgeView<steelJointBridgeCount>(
+    steelJointKept, detail::measuredSteelJointBodyModes);
+constexpr auto steelJointBridgeSource = jointBridgeSource<steelJointBridgeCount>(
+    steelJointKept, detail::measuredSteelJointBodyModes);
+
+// Each part's share of the whole. Below E's band (1 - E) carries everything
+// but the joint body: g21's radiation, and the bridge, which B and the Fylde
+// share. Above it E is not played: B's bridge is whole there, and g21's
+// radiation gives up steelBlendHighJointFraction of E's share.
+constexpr float steelBlendRestShare = 1.0f - detail::steelBlendJointBodyWeight;
+constexpr float steelBlendHighRadiationShare
+    = 1.0f - detail::steelBlendJointBodyWeight * detail::steelBlendHighJointFraction;
+constexpr float steelBlendOwnBridgeShare
+    = steelBlendRestShare * detail::steelBlendOwnBridgeWeight;
+constexpr float steelBlendFyldeShare
+    = steelBlendRestShare * (1.0f - detail::steelBlendOwnBridgeWeight);
+constexpr float steelBlendJointShare = detail::steelBlendJointBodyWeight;
+
+// The share at which g21's radiation mode, or B's bridge mode, at measured
+// frequency hz is played.
+constexpr float steelBlendG21Share(float hz) noexcept
+{
+    return hz < detail::steelBlendJointBandHz ? steelBlendRestShare
+                                               : steelBlendHighRadiationShare;
+}
+constexpr float steelBlendOwnShare(float hz) noexcept
+{
+    return hz < detail::steelBlendJointBandHz ? steelBlendOwnBridgeShare
+                                               : detail::steelBlendOwnBridgeWeight;
+}
+
+constexpr std::size_t steelBlendBodyModeCount
+    = detail::measuredSteelBodyModes.size()
+    + (steelBlendJointShare > 0.0f ? steelJointRadiationCount : 0);
+constexpr std::size_t steelBlendBridgeModeCount
+    = detail::measuredSteelBridgeModes.size()
+    + (steelBlendFyldeShare > 0.0f ? detail::measuredFyldeBridgeModes.size() : 0)
+    + (steelBlendJointShare > 0.0f ? steelJointBridgeCount : 0);
+// The in-order sum of g21's bank ends on a whole group of four, so the parts
+// after it start on one (BodyBank::render).
+static_assert(detail::measuredSteelBodyModes.size() % 4 == 0,
+              "g21's bank no longer ends on a group of four: pad it in configureBody");
+static_assert(steelBlendBodyModeCount <= ACUSTRA_BODY_MODE_COUNT,
+              "the steel blend's radiation exceeds the body slots: with every "
+              "joint mode (a band above 10 kHz) it needs "
+              "-DACUSTRA_BODY_MODE_COUNT=263");
+static_assert(steelBlendBridgeModeCount <= ACUSTRA_BRIDGE_MODE_COUNT,
+              "the steel blend's bridge exceeds the bridge slots: with its B "
+              "weight below 1 it needs 44 more (the Fylde's), with every joint "
+              "mode (a band above 10 kHz) -DACUSTRA_BRIDGE_MODE_COUNT=103");
+static_assert(detail::measuredSteelT1PlateQWeight == detail::steelBlendT1PlateQWeight,
+              "MeasuredBodyData.h was written with another D weight than "
+              "SteelBodyBlend.h's: rerun Tools/GenerateBodyForcePair.py --plate-q median");
+
+// The joint-pole body's own Shape morph: its A0 and T1 are its own modes.
+BodyShapeMorph steelJointMorph(const AnchorTransform& anchor,
+                               BodyShape shape) noexcept
+{
+    return bodyShapeMorph(steelJointRadiationModes, anchor,
+        anchorBodyFor(StringMaterial::Steel, GuitarModel::Original),
+        targetBodyFor(StringMaterial::Steel, GuitarModel::Original, shape));
+}
+
+// Steel's own bridge in the blend, mode by mode: visit(source, placed, level,
+// own) with the mode as the bank stores it, the mode with its engine pole, its
+// residues' factor relative to B's own level (the fitted scale times
+// steelTopMobilityRatio), so that B's modes keep exactly B's arithmetic, and
+// whether it is one of B's modes, which come first.
+// B's modes are steelOwnBridgePole's; the Fylde's are shaped as the Fylde
+// bridge choice plays them, at the Fylde's own level; the joint body's ring
+// on its radiation's poles at its own steel-top level.
+template <typename Visit>
+void visitSteelBlendBridge(float a0, float t1, float plate, float t1UpperHz,
+                           const AnchorTransform& anchor,
+                           const BodyShapeMorph& morph,
+                           const BodyShapeMorph& jointMorph, WoodFactors wood,
+                           const PhysicalCalibration& calibration,
+                           Visit&& visit) noexcept
+{
+    const auto& own = detail::measuredSteelBridgeModes;
+    for (std::size_t index = 0; index < own.size(); ++index)
+    {
+        auto placed = shapeBridgeMode(own[index], a0, t1, plate, t1UpperHz);
+        const auto pole = steelOwnBridgePole(index, own[index], placed, anchor,
+                                             morph, wood, calibration);
+        placed.frequency = pole.frequency;
+        placed.q = pole.q;
+        visit(own[index], placed, steelBlendOwnShare(own[index].frequency), true);
+    }
+    if (steelBlendFyldeShare > 0.0f)
+    {
+        constexpr float level = steelBlendFyldeShare / detail::steelTopMobilityRatio;
+        for (const auto& source : detail::measuredFyldeBridgeModes)
+            visit(source, shapeBridgeMode(source, a0, t1, plate, t1UpperHz), level,
+                  false);
+    }
+    if (steelBlendJointShare > 0.0f)
+    {
+        constexpr float level = steelBlendJointShare
+            * detail::steelJointTopMobilityRatio / detail::steelTopMobilityRatio;
+        for (std::size_t index = 0; index < steelJointBridgeCount; ++index)
+        {
+            const int source = steelJointBridgeSource[index];
+            const auto pole = radiationPole(steelJointRadiationModes, source,
+                anchor, jointMorph, wood, false, calibration);
+            auto placed = steelJointBridgeModes[index];
+            placed.frequency = pole.frequency;
+            placed.q = pole.q;
+            visit(steelJointBridgeModes[index], placed, level, false);
+        }
+    }
 }
 
 // Where a string crosses the saddle, in units of the half-separation between
@@ -2921,15 +3162,15 @@ void AcustraEngine::configureBody() noexcept
     bodyRadiationDelay_.reset();
     bodyRadiationDelay_.configure(0.0f);
 
-    for (int index = 0; index < bodyModeCount; ++index)
+    // One radiation mode into the next slot: `index` is its place in the bank
+    // it was fitted in and `layerMorph` that bank's Shape morph; `share` is
+    // its part's share of the steel blend (exactly 1 outside it).
+    int slot = 0;
+    const auto place = [&] (const detail::MeasuredBodyMode& measured, int index,
+                            const BodyShapeMorph& layerMorph, float share)
     {
-        auto& mode = bodyModes_[static_cast<std::size_t>(index)];
-        if (static_cast<std::size_t>(index) >= bank.size())
-        {
-            mode = {};
-            continue;
-        }
-        const auto& measured = bank[static_cast<std::size_t>(index)];
+        auto& mode = bodyModes_[static_cast<std::size_t>(slot++)];
+        const auto& morph = layerMorph;
         const bool lowBodyMode = measured.frequency > 85.0f
             && measured.frequency < 145.0f;
         // The A0 group, T1 and the plate modes above it each take their own
@@ -2939,7 +3180,7 @@ void AcustraEngine::configureBody() noexcept
             shapeLevel = morph.a0Level;
         else if (index <= morph.t1Index)
             shapeLevel = morph.t1Level;
-        const auto engine = radiationPole(bank, index, anchor, morph,
+        const auto engine = radiationPole(measured, index, anchor, morph,
             woodFactors, named, physicalCalibration_);
         float frequency = engine.frequency;
         const float highestMode = 0.46f * static_cast<float>(sampleRate_);
@@ -2969,6 +3210,7 @@ void AcustraEngine::configureBody() noexcept
                 * bassTilt * brilliance
                 * residueTilt
             : 0.0f;
+        const float playedDrive = drive * share;
         // The stored residues drive unit-input discrete states fitted at
         // 48 kHz. Convert that state as a zero-order-held continuous mode:
         // q=(p_new-1)/(p_48k-1). The former real 48k/rate approximation lost
@@ -2979,10 +3221,10 @@ void AcustraEngine::configureBody() noexcept
             twoPi * frequency / referenceRate);
         const std::complex<float> residueRateScale
             = (pole - 1.0f) / (referencePole - 1.0f);
-        const auto scaledResidue = [drive, residueRateScale]
+        const auto scaledResidue = [playedDrive, residueRateScale]
             (float real, float imaginary)
         {
-            return drive * std::complex<float>(real, imaginary)
+            return playedDrive * std::complex<float>(real, imaginary)
                 * residueRateScale;
         };
         // The Stereo mic pair is the treble-bridge microphone on the left and
@@ -3021,10 +3263,30 @@ void AcustraEngine::configureBody() noexcept
         mode.upperMomentImaginary = upperMoment.imag();
         if (bodyConfigured_)
             mode.reset();
+    };
+    // Steel on its Original guitar plays the blend (SteelBodyBlend.h): g21's
+    // bank, then the joint-pole body's kept modes on its own morph.
+    const int ownCount = static_cast<int>(std::min(
+        bank.size(), static_cast<std::size_t>(bodyModeCount)));
+    for (int index = 0; index < ownCount; ++index)
+        place(bank[static_cast<std::size_t>(index)], index, morph,
+              steelBank ? steelBlendG21Share(bank[static_cast<std::size_t>(index)].frequency)
+                        : 1.0f);
+    if (steelBank && steelBlendJointShare > 0.0f)
+    {
+        const auto jointMorph = steelJointMorph(anchor, parameters_.shape);
+        for (const auto index : steelJointKept)
+            place(steelJointRadiationModes[index], static_cast<int>(index),
+                  jointMorph, steelBlendJointShare);
     }
-    bodyBank_.load(bodyModes_, static_cast<int>(std::min(
-        bank.size(), static_cast<std::size_t>(bodyModeCount))),
-        bodyConfigured_ && !sameBodyBank);
+    const int count = slot;
+    for (; slot < bodyModeCount; ++slot)
+        bodyModes_[static_cast<std::size_t>(slot)] = {};
+    // g21's own modes are summed in index order, as ever; the parts after
+    // them in vector accumulators (BodyBank::render). Shape and Wood keep
+    // the same modes in the same slots ringing (sameBodyBank, audit F14).
+    bodyBank_.load(bodyModes_, count, ownCount,
+                   bodyConfigured_ && !sameBodyBank);
     configuredGuitarModel_ = parameters_.guitarModel;
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
@@ -3141,36 +3403,54 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     const auto wood = woodFactorsFor(parameters_.bodyMaterial,
                                      parameters_.stringMaterial,
                                      parameters_.guitarModel);
-    for (std::size_t index = 0;
-         index < static_cast<std::size_t>(bridgeModeCount); ++index)
+    if (ownBridge)
     {
-        if (index >= bank.size())
+        // The steel blend's bridge (SteelBodyBlend.h), part after part: B's
+        // modes first, in their slots as ever, the parallel parts after them.
+        std::size_t slot = 0;
+        visitSteelBlendBridge(bridgeShapeA0_, bridgeShapeT1_, bridgeShapePlate_,
+            bridgeShapeT1UpperHz_, anchor, morph,
+            steelJointMorph(anchor, parameters_.shape), wood,
+            physicalCalibration_,
+            [&] (const detail::MeasuredBridgeMode& source,
+                 const detail::MeasuredBridgeMode& measured, float level, bool)
+            {
+                const bool include = includeMeasuredBridgeMode(source);
+                const float heave = include ? measured.heave * scale : 0.0f;
+                const float cross = include ? measured.cross * scale : 0.0f;
+                const float rock = include ? measured.rock * scale : 0.0f;
+                configure(slot++, measured.frequency, measured.q,
+                          heave * level, cross * level, rock * level);
+            });
+        for (; slot < static_cast<std::size_t>(bridgeModeCount); ++slot)
+            configure(slot, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+    }
+    else
+    {
+        for (std::size_t index = 0;
+             index < static_cast<std::size_t>(bridgeModeCount); ++index)
         {
-            configure(index, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-            continue;
+            if (index >= bank.size())
+            {
+                configure(index, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+                continue;
+            }
+            const bool include = includeMeasuredBridgeMode(bank[index]);
+            auto measured = shapeBridgeMode(bank[index], bridgeShapeA0_,
+                bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
+            if (followsBody)
+            {
+                const auto pole = bodyBridgePole(index, bank[index], measured,
+                    parameters_.stringMaterial, parameters_.guitarModel, anchor,
+                    morph, wood, physicalCalibration_);
+                measured.frequency = pole.frequency;
+                measured.q = pole.q;
+            }
+            configure(index, measured.frequency, measured.q,
+                      include ? measured.heave * scale : 0.0f,
+                      include ? measured.cross * scale : 0.0f,
+                      include ? measured.rock * scale : 0.0f);
         }
-        const bool include = includeMeasuredBridgeMode(bank[index]);
-        auto measured = shapeBridgeMode(bank[index], bridgeShapeA0_,
-            bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
-        if (ownBridge)
-        {
-            const auto pole = steelOwnBridgePole(index, bank[index], measured,
-                anchor, morph, wood, physicalCalibration_);
-            measured.frequency = pole.frequency;
-            measured.q = pole.q;
-        }
-        else if (followsBody)
-        {
-            const auto pole = bodyBridgePole(index, bank[index], measured,
-                parameters_.stringMaterial, parameters_.guitarModel, anchor,
-                morph, wood, physicalCalibration_);
-            measured.frequency = pole.frequency;
-            measured.q = pole.q;
-        }
-        configure(index, measured.frequency, measured.q,
-                  include ? measured.heave * scale : 0.0f,
-                  include ? measured.cross * scale : 0.0f,
-                  include ? measured.rock * scale : 0.0f);
     }
 
     // The plate conductance floor is the dense overlap of a plate's own
@@ -3260,13 +3540,15 @@ AcustraEngine::bridgeMobilityTable() const noexcept
     const auto wood = woodFactorsFor(parameters_.bodyMaterial,
                                      parameters_.stringMaterial,
                                      parameters_.guitarModel);
-    const std::array<std::uint32_t, 11> key {
+    const std::array<std::uint32_t, 12> key {
         exact::bits(rate), exact::bits(bridgeShapeA0_), exact::bits(bridgeShapeT1_),
         exact::bits(bridgeShapePlate_), exact::bits(bridgeShapeT1UpperHz_),
         exact::bits(scale), exact::bits(plate.frequency), exact::bits(plate.q),
         exact::bits(parameters_.guitarModel == GuitarModel::Original
                     ? plate.weight : -1.0f),
-        exact::bits(wood.frequency), exact::bits(wood.q) };
+        exact::bits(wood.frequency), exact::bits(wood.q),
+        // The joint-pole body's own Shape morph (visitSteelBlendBridge).
+        static_cast<std::uint32_t>(parameters_.shape) };
     auto& table = bridgeMobilityTable_;
     if (table.valid && table.bank == bank.begin() && table.key == key)
         return table;
@@ -3285,36 +3567,53 @@ AcustraEngine::bridgeMobilityTable() const noexcept
                             parameters_.shape))
         : BodyShapeMorph {};
     table.count = 0;
-    for (std::size_t index = 0; index < bank.size(); ++index)
+    // One mode's terms; `level` multiplies its residues relative to scale.
+    const auto add = [&] (const detail::MeasuredBridgeMode& source,
+                          const detail::MeasuredBridgeMode& measured, float level)
     {
-        const auto& source = bank[index];
-        auto measured = shapeBridgeMode(source, bridgeShapeA0_,
-            bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
-        if (ownBridge)
-        {
-            const auto pole = steelOwnBridgePole(index, source, measured,
-                anchor, morph, wood, physicalCalibration_);
-            measured.frequency = pole.frequency;
-            measured.q = pole.q;
-        }
-        else if (followsBody)
-        {
-            const auto pole = bodyBridgePole(index, source, measured,
-                parameters_.stringMaterial, parameters_.guitarModel, anchor,
-                morph, wood, physicalCalibration_);
-            measured.frequency = pole.frequency;
-            measured.q = pole.q;
-        }
         if (measured.frequency >= 0.45f * rate
             || !includeMeasuredBridgeMode(source))
-            continue;
+            return;
         auto& mode = table.modes[static_cast<std::size_t>(table.count++)];
         mode.omega = bilinear * std::tan(
             pi * measured.frequency / rate);
         mode.damping = mode.omega / (2.0f * measured.q);
-        mode.heave = measured.heave;
-        mode.cross = measured.cross;
-        mode.rock = measured.rock;
+        mode.heave = measured.heave * level;
+        mode.cross = measured.cross * level;
+        mode.rock = measured.rock * level;
+    };
+    table.ordered = 0;
+    if (ownBridge)
+        visitSteelBlendBridge(bridgeShapeA0_, bridgeShapeT1_, bridgeShapePlate_,
+            bridgeShapeT1UpperHz_, anchor, morph,
+            steelJointMorph(anchor, parameters_.shape), wood,
+            physicalCalibration_,
+            [&] (const detail::MeasuredBridgeMode& source,
+                 const detail::MeasuredBridgeMode& measured, float level, bool own)
+            {
+                add(source, measured, level);
+                // B's own modes come first and keep their evaluation.
+                if (own)
+                    table.ordered = table.count;
+            });
+    else
+    {
+        for (std::size_t index = 0; index < bank.size(); ++index)
+        {
+            const auto& source = bank[index];
+            auto measured = shapeBridgeMode(source, bridgeShapeA0_,
+                bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
+            if (followsBody)
+            {
+                const auto pole = bodyBridgePole(index, source, measured,
+                    parameters_.stringMaterial, parameters_.guitarModel, anchor,
+                    morph, wood, physicalCalibration_);
+                measured.frequency = pole.frequency;
+                measured.q = pole.q;
+            }
+            add(source, measured, 1.0f);
+        }
+        table.ordered = table.count;
     }
     table.scale = scale;
     table.plate = parameters_.guitarModel == GuitarModel::Original
@@ -3354,7 +3653,7 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
     // Both are the same numbers for every mode.
     const std::complex<float> scaledS = table.scale * s;
     const std::complex<float> sSquared = s * s;
-    for (int index = 0; index < table.count; ++index)
+    for (int index = 0; index < table.ordered; ++index)
     {
         const auto& mode = table.modes[static_cast<std::size_t>(index)];
         const float omega = mode.omega;
@@ -3364,6 +3663,34 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
         mobilityHeave += mode.heave * shape;
         mobilityCross += mode.cross * shape;
         mobilityRock += mode.rock * shape;
+    }
+    if (table.ordered < table.count)
+    {
+        // The same section at s = jw in real arithmetic: j k / (a + j b) with
+        // k = scale w, a = omega^2 - w^2 and b = 2 damping w is
+        // k (b + j a) / (a^2 + b^2), one real division per mode.
+        const float w = s.imag();
+        const float k = table.scale * w;
+        float heaveRe = 0.0f, heaveIm = 0.0f, crossRe = 0.0f, crossIm = 0.0f;
+        float rockRe = 0.0f, rockIm = 0.0f;
+        for (int index = table.ordered; index < table.count; ++index)
+        {
+            const auto& mode = table.modes[static_cast<std::size_t>(index)];
+            const float a = mode.omega * mode.omega - w * w;
+            const float b = 2.0f * mode.damping * w;
+            const float gain = k / (a * a + b * b);
+            const float re = gain * b;
+            const float im = gain * a;
+            heaveRe += mode.heave * re;
+            heaveIm += mode.heave * im;
+            crossRe += mode.cross * re;
+            crossIm += mode.cross * im;
+            rockRe += mode.rock * re;
+            rockIm += mode.rock * im;
+        }
+        mobilityHeave += std::complex<float>(heaveRe, heaveIm);
+        mobilityCross += std::complex<float>(crossRe, crossIm);
+        mobilityRock += std::complex<float>(rockRe, rockIm);
     }
 
     if (table.plate)
@@ -6803,9 +7130,11 @@ AcustraEngine::BodyOutput AcustraEngine::RadiationDelay::process(BodyOutput inpu
 }
 
 void AcustraEngine::BodyBank::load(const std::array<BodyMode, bodyModeCount>& modes,
-                                   int modeCount, bool resetStates) noexcept
+                                   int modeCount, int orderedCount,
+                                   bool resetStates) noexcept
 {
     count = std::clamp(modeCount, 0, bodyModeCount);
+    ordered = std::clamp(orderedCount, 0, count);
     for (int index = 0; index < capacity; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
@@ -6828,9 +7157,12 @@ void AcustraEngine::BodyBank::load(const std::array<BodyMode, bodyModeCount>& mo
 // BodyMode::processStereo and renderBody's flush, for four modes at a time.
 // Each lane is the scalar expression's own sequence of IEEE operations (the
 // same products, sums and order), so each mode's states and contributions
-// are the scalar ones bit for bit; the two sums then take the contributions
-// one mode at a time in index order, as the scalar loop did. Only modes
-// below count are summed; lanes past it are zero padding.
+// are the scalar ones bit for bit; the two sums then take the ordered modes'
+// contributions one mode at a time in index order, as the scalar loop did.
+// The modes after them (the steel blend's parallel parts) gather in four
+// vector accumulators, added across lanes and to the sums once per sample
+// (about 1.03 against 1.33 ns per mode-sample). Only modes below count are
+// summed; lanes past it are zero padding.
 AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float moment) noexcept
 {
     BodyOutput output;
@@ -6855,9 +7187,8 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
     };
     const Vector forceLanes = { force, force, force, force };
     const Vector momentLanes = { moment, moment, moment, moment };
-    // One group of four lanes, the first valid of them summed. A constant
-    // valid lets the full groups keep their products in vector registers.
-    const auto group = [&] (int index, int valid)
+    // One group of four lanes advanced; its contributions to the two sums.
+    const auto advance = [&] (int index, Vector& leftPart, Vector& rightPart)
     {
         const Vector pr = load(poleReal, index);
         const Vector pi = load(poleImaginary, index);
@@ -6871,29 +7202,61 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
                                     - pi * mi;
         const Vector nextMomentImaginary = pi * mr
                                          + pr * mi;
-        const Vector leftPart = load(leftReal, index) * nextReal
+        leftPart = load(leftReal, index) * nextReal
             - load(leftImaginary, index) * nextImaginary
             + load(leftMomentReal, index) * nextMomentReal
             - load(leftMomentImaginary, index) * nextMomentImaginary;
-        const Vector rightPart = load(rightReal, index) * nextReal
+        rightPart = load(rightReal, index) * nextReal
             - load(rightImaginary, index) * nextImaginary
             + load(rightMomentReal, index) * nextMomentReal
             - load(rightMomentImaginary, index) * nextMomentImaginary;
-        for (int lane = 0; lane < valid; ++lane)
-        {
-            output.left += 2.0f * leftPart[lane];
-            output.right += 2.0f * rightPart[lane];
-        }
         store(real, index, flush(nextReal));
         store(imaginary, index, flush(nextImaginary));
         store(momentReal, index, flush(nextMomentReal));
         store(momentImaginary, index, flush(nextMomentImaginary));
     };
+    // One ordered group, the first valid of its lanes summed in order. A
+    // constant valid lets the full groups keep their products in vector
+    // registers.
+    const auto group = [&] (int index, int valid)
+    {
+        Vector leftPart, rightPart;
+        advance(index, leftPart, rightPart);
+        for (int lane = 0; lane < valid; ++lane)
+        {
+            output.left += 2.0f * leftPart[lane];
+            output.right += 2.0f * rightPart[lane];
+        }
+    };
     int index = 0;
-    for (; index + lanes <= count; index += lanes)
+    for (; index + lanes <= ordered; index += lanes)
         group(index, lanes);
+    if (index < ordered)
+    {
+        group(index, ordered - index);
+        index += lanes;
+    }
     if (index < count)
-        group(index, count - index);
+    {
+        Vector leftSum = { 0.0f, 0.0f, 0.0f, 0.0f };
+        Vector rightSum = { 0.0f, 0.0f, 0.0f, 0.0f };
+        for (; index < count; index += lanes)
+        {
+            Vector leftPart, rightPart;
+            advance(index, leftPart, rightPart);
+            if (index + lanes > count)
+            {
+                const Mask lane = { 0, 1, 2, 3 };
+                const Mask summed = lane < (count - index);
+                leftPart = reinterpret_cast<Vector>(reinterpret_cast<Mask>(leftPart) & summed);
+                rightPart = reinterpret_cast<Vector>(reinterpret_cast<Mask>(rightPart) & summed);
+            }
+            leftSum += leftPart;
+            rightSum += rightPart;
+        }
+        output.left += 2.0f * ((leftSum[0] + leftSum[1]) + (leftSum[2] + leftSum[3]));
+        output.right += 2.0f * ((rightSum[0] + rightSum[1]) + (rightSum[2] + rightSum[3]));
+    }
 #else
     for (int index = 0; index < count; ++index)
     {
