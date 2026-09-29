@@ -7379,10 +7379,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         {
             // Settles onto its target exactly, so a mix returned to zero
             // leaves Main bit for bit as it was without one.
+            // A glide that stops moving snaps too: at 192 kHz a step near 1
+            // is below half an ulp before the 1e-4 test is reached.
             const float target = clamp(targetParameters_.piezoMix, 0.0f, 1.0f);
-            piezoMix_ += parameterSmoothing_ * (target - piezoMix_);
-            if (exact::abs(target - piezoMix_) < 1.0e-4f)
-                piezoMix_ = target;
+            const float next = piezoMix_ + parameterSmoothing_ * (target - piezoMix_);
+            piezoMix_ = next == piezoMix_ || exact::abs(target - next) < 1.0e-4f
+                ? target : next;
         }
 
         std::array<float, stringCount> verticalIncident {};
@@ -7797,9 +7799,9 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 const float target = index == static_cast<std::size_t>(
                     parameters_.capture) ? 1.0f : 0.0f;
                 float& mix = captureMix_[index];
-                mix += parameterSmoothing_ * (target - mix);
-                if (exact::abs(target - mix) < 1.0e-4f)
-                    mix = target;
+                const float next = mix + parameterSmoothing_ * (target - mix);
+                mix = next == mix || exact::abs(target - next) < 1.0e-4f
+                    ? target : next;
             }
             // One physical microphone, with its own measured complex response,
             // avoids phase cancellation from summing two spaced microphones.
