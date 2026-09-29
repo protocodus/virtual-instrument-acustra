@@ -1,0 +1,16 @@
+# Tools/PiezoReference.py: DC operating point (V) and the chain's limits
+name,value
+J,-7.02906192454e-22
+IN,4.4999925
+B,4.4999975
+X,4.49999250001
+Y,4.4999998825
+N,4.4999998825
+M,4.4999998825
+P,4.4999999325
+Q,-5.9061510728e-26
+O2,4.4999999325
+u1b_rail_high,3.26250749251
+u1b_rail_low,-3.91251725752
+u1a_cm_high,2.5000075
+u1a_cm_low,-2.4999925

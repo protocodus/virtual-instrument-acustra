@@ -1184,7 +1184,7 @@ louder steady chord (now about 1.2).
 | **String Material** | Selects the dedicated nylon or steel geometry, impedance, stiffness, loss and fitted calibration. |
 | **Tuning** | Changes the six open-string/fret constraints. |
 | **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
-| **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo and its onboard preamp. |
+| **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Explicit MPE position overrides that ratio. |
 | **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. |
@@ -1199,64 +1199,76 @@ before body radiation. These observations never feed back into the instrument.
 Capture changes crossfade on the existing parameter smoothing, preserving
 ringing notes. All three choices work with both steel and nylon.
 
-Piezo models an under-saddle pickup and the onboard preamp behind it, in
-signal order (`AcustraEngine::PiezoDesign`; values marked chosen are this
-project's and await a blind pair):
+Piezo is a real, documented under-saddle pickup chain modelled at component
+level (`AcustraEngine::PiezoDesign`, Docs/decisions.md 2026-09-29 "Accurate
+piezo chain"); values marked chosen were picked from a documented range. In
+signal order:
 
-1. **The strings' forces on the element.** Each string presses on its own
-   stretch of the element, and a real saddle never seats evenly, so each
-   string's saddle force - its incident force less its port moving with the
-   saddle - is weighted: -0.8, +0.4, +0.9, -0.3, +0.6 and -1.0 dB, low E to
-   high E (chosen, inside the +-1-2 dB a good install gives). The axial
-   force presses on the saddle as it does on the body, at unit weight (zero
-   while its gain ships at 0).
-2. **The saddle's mass on the element's stiffness**, a resonant second-order
-   low-pass at 5 kHz with Q 3 (Zollner's bridge-piece stiffness and resonance,
-   chapter 6 pp.6-5 to 6-7; f0 and Q chosen). The poles map exactly and the
-   zeros match the analog magnitude at DC and at f0 (Vicanek, *Matched Second
-   Order Digital Filters*, 2016), so it stays within 0.3 dB of the analog
-   response to 15 kHz at 44.1 kHz; a bilinear design is 9 dB low there.
-3. **Charge to voltage.** A sensitivity that puts the hottest open-E strum -
-   velocity 127 with the Pick, over the presets, both strings and any Touch -
-   at the 1 V peak Zollner gives for a piezo played loudly
-   (`Tools/CalibratePiezo.py`; a Finger strum at velocity 127 peaks at 0.32 V,
-   and the sensitivity is 0.60 of a physical estimate from tension times
-   string slope at 0.2 V/N), and the electrical high-pass of the measured
-   450 pF Adamas SMT element into its 2 MΩ preamp input,
-   [*Physics of the Electric Guitar*, chapter 6, p. 6-13](https://www.gitec-forum-eng.de/wp-content/uploads/2019/03/poteg-6-piezo-pickups.pdf):
-   `sRC / (1 + sRC)`, a 176.84 Hz corner, discretised passively (bilinear),
-   matching the derived complex transfer within 1.16×10⁻⁶ across 8–384 kHz.
-4. **The preamp's buffer.** Exactly linear to 0.8 of its rails (1.01 V and
-   1.23 V, straddling an onboard preamp's -2 dBV overload by +-10%), then a
-   C1 soft knee toward them, plus a 0.5%-at-1 V second harmonic (chosen).
-   Ordinary playing stays below the knee: velocity-100 strums peak at up to
-   0.70 V (Pick) against a 0.98 V knee, and velocity-127 strums at up to
-   1.03 V lose at most 0.06 dB. The player's own strums, each string at its
-   own drawn level, lost at most 1.4 dB on their hottest instant over twelve
-   strokes. It runs at the host rate; what it folds back, against an
-   8x-oversampled run, is -106 dB or less on the default guitar's hardest
-   Finger and Pick strums of either string, -79 dB on the hottest preset's,
-   and -69 dB on the player's hottest strums (Bellido 1978 at 44.1 kHz). A
-   Pick at velocity 127 right at the saddle (Pluck Position 0) overdrives
-   it, by up to 4.3 dB on nylon and 1.9 dB on steel with -61 to -69 dB
-   folded back, as a hard attack there would a real onboard preamp.
-5. **Output coupling**, a 5 Hz DC blocker for what the second harmonic and
-   the asymmetric rails leave. No EQ follows: a DI takes the buffer flat.
+1. **The strings' forces on the element.** Each string's saddle force - its
+   incident force less its port moving with the saddle - weighted -0.8,
+   +0.4, +0.9, -0.3, +0.6 and -1.0 dB low E to high E (chosen, inside the
+   +-1-2 dB a good install gives), plus the axial force through the strings'
+   rear break angle (sin 25 degrees, chosen; zero while its gain ships at
+   0). In newtons: 292.8 N per engine force unit (the fitted 6.1 mm
+   displacement unit per 48 kHz sample, at every rate).
+2. **The saddle on its element.** A 3.8 g bone saddle (chosen within
+   2.7-5.1 g) on the element's stiffness, placing it at 6 kHz (chosen within
+   5-7 kHz), with the element's loss (Zollner's Q of 18 as a bound), the
+   strings' summed wave impedance loading the saddle and the measured Fylde
+   bridge conductance (1.59e-3 s/kg over 5-7 kHz) under the base:
+   F_p / F_r = Zk Q / (1 + Zk Q), Zk = k/s + c_m, Q = 1/(sM + SZ) + G. A
+   5.98 kHz pole pair of Q 3.26: +10.6 dB at 5.85 kHz, +0.24 dB at 1 kHz,
+   -4.8 dB at 10 kHz. Its poles map exactly; its zeros are a weighted
+   least-squares fit with the DC gain held at 1, within 0.23 dB and 1.1
+   degrees of the analog response to 12 kHz at 48 kHz (0.34 dB, 1.8 degrees
+   at 44.1 kHz; 0.009 dB at 192 kHz).
+3. **The element**: a charge source across its 1.45 nF at 0.2 V/N
+   open-circuit (Zollner, *Physics of the Electric Guitar*, ch.6: the Ovation
+   EA-68), into 3 m of Mogami 2524 (390 pF, chosen length).
+4. **The preamp**: ESP Project 202 Fig. 1 (R. Elliott,
+   [sound-au.com/project202](https://sound-au.com/project202.htm)) on one 9 V
+   battery with OPA2134 halves (TI SBOS058B). C1 (4.7 nF) into a follower
+   whose 1 MOhm bias network is bootstrapped through C2 and R4 (129 MOhm
+   seen), guarded by two 1N4148s solved as Shockley diodes; C3 into R5 || R6
+   (30.8 Hz, the chain's only audible low corner); a gain-of-two stage whose
+   gain falls to one below 0.48 Hz (C4); R9 and C5 into the volume pot at
+   full and a Radial PZ-DI's 1 MOhm. The op-amps stop where the datasheet
+   says: U1A's input at its typical common-mode range (2.5 V either side of
+   the 4.5 V bias), U1B's output at its swing for its 6.7 kOhm load
+   (+3.26 / -3.91 V about the bias). Mid-band gain from the element's
+   open-circuit voltage to the DI: 1.551 (+3.81 dB); -1.5 dB at 20 Hz.
+
+The sections are solved in turn, each as deviations from the 4.5 V operating
+point (so silence maps to exact zero): the input network as a trapezoidal
+two-state system, U1A's range and the diodes by a Newton solve of the diode
+equation in the samples they conduct, C3, C4 and C5 as trapezoidal
+one-poles, and U1B's clip with its corners band-limited by a 12-tap BLAMP
+residual (a Kaiser-windowed sinc integrated twice,
+`Source/DSP/PiezoBlampTable.h`). The chain's output is seven samples behind
+its input at every rate; there is no oversampling. `Tools/PiezoReference.py`
+simulates the same circuit as a stiff ODE system (op-amp macro-models, stray
+capacitance, Shockley diodes) and `Tests/PiezoCircuitTests.cpp` holds the
+engine to its results.
+
+Normal playing never clips it: the hottest reference strum (the Pick at
+velocity 127, over the presets, both strings and any Touch) puts 2.12 V on
+the element and leaves 1.4 dB to U1B's swing; a steel Pick strum leaves
+5.1 dB. Nylon picked at velocity 127 right at the saddle (Pluck Position 0)
+drives U1B 2.2 dB past its swing, the one playing that does.
 
 Its level is matched to the stereo microphones per string material: the
 median BS.1770 loudness difference over the factory constructions, both
-strings, Finger and Pick and typical playing is zero (the piezo was 8.4 LU
-below the microphones on steel and 9.6 on nylon before). The whole chain runs
+strings, Finger and Pick and typical playing is zero. The whole chain runs
 every sample whatever Capture selects, so a Capture change or a newly cabled
 Piezo output lands on warm state; a switch is exactly the 20 ms Capture
-crossfade between the two sensors. Every block maps silence to silence, and
-the chain rings down to exact zero within 1.25 s of its hardest moment; after
-a chord's release the Piezo output reaches exact zero in 15-20 s, though the
-strings' saddle force never quite does (it is read as none below a
-picovolt at the element). It
-costs under 2% of a block. The mechanical response beyond one saddle
-resonance, the string weights' real pattern and any preamp EQ are not
-identified; no matched piezo recording benchmark is available yet.
+crossfade between the two sensors. It rings down to exact zero within 3.5 s
+of the hardest strum's hardest moment (the input network's 1 Hz pair and
+C4's loop take that long in the circuit too); the strings' saddle force never
+quite does, and is read as none below 5 pN. It costs about 0.5 us per
+64-frame block at 48 kHz (C++17 -O2 -fno-builtin), up to 4 us when driven
+far past its clip. The string weights' real
+pattern, the saddle's own bending modes and friction in its slot are not
+modelled; no matched piezo recording benchmark is available yet.
 
 The public three-choice Capture parameter is appended as `captureMode`,
 retaining all previous parameter IDs and indices. On loading an older saved
@@ -1510,25 +1522,28 @@ The JUCE-free suites cover:
   Capture on Piezo for both materials and independent of Capture, a null
   pointer never written, exact silence when idle, and its cost per 64-frame
   block;
-- the piezo chain (Tests/CaptureTests.cpp), block by block against its
-  analytic targets: unit string weights reproduce the junction's reaction
-  force bit for bit through bends, tails, releases and an uncoupled bridge,
-  and the shipped weights give the weighted sum of the six strings' forces;
-  the saddle resonance's DC gain, gain Q at f0, analog peak and roll-off, and
-  its analog magnitude within 0.35 dB to 15 kHz at 8-384 kHz; the electrical
-  load's complex response; the preamp curve (f(0) = 0, monotonic, bounded by
-  its rails, C1 at its knees, exactly c + ac^2 below them, a 0.25% second
-  harmonic at 0.5 V); the output coupling against its analog 5 Hz high-pass;
-  aliasing on the hardest Finger and Pick strums of both strings against an
-  8x-oversampled run; exact silence from a never-played engine, within 1.5 s
+- the piezo chain against its circuit (Tests/PiezoCircuitTests.cpp and the
+  fixtures `Tools/PiezoReference.py` writes to Tests/Fixtures): the DC
+  operating point and clip points; the small-signal response from 5 Hz to
+  0.45 fs at 44.1, 48, 96 and 192 kHz, both string materials; the saddle
+  filter against its analog form; harmonics 2-5 and THD from 1 to 12 dB over
+  the clip at 100 Hz, 1 kHz and 5 kHz, and nothing measurable below it;
+  aliasing 3 and 6 dB over the clip; overload bursts to +20 dB and the
+  recovery of C3, C4, C5 and the input's bias shift; exact silence, a
+  non-finite force, a material swap mid-note; and its cost per block;
+- the piezo in the running instrument (Tests/CaptureTests.cpp): unit string
+  weights reproduce the junction's reaction force bit for bit through bends,
+  tails, releases and an uncoupled bridge, and the shipped weights give the
+  weighted sum of the six strings' forces; the clip's aliasing on the one
+  playing that clips (nylon, Pick at velocity 127 at the bridge) against an
+  8x-oversampled clip; exact silence from a never-played engine, within 5 s
   of the chain's hardest moment, and on Main and the Piezo output within 25 s
-  of a released chord;
-  a Capture switch equal to its crossfade and a Piezo output cabled mid-note
-  equal to one cabled from the start; microphones untouched by the piezo;
-  where the knee sits (velocity-100 strums linear with Finger and Pick, both
-  strings and any Touch; at most 1.5 dB off velocity-127 strums and the
-  player's own strums; the hottest Pick strum at the 1 V anchor); and the
-  chain's response agreeing between 44.1 and 96 kHz;
+  of a released chord; a Capture switch equal to its crossfade and a Piezo
+  output cabled mid-note equal to one cabled from the start; microphones
+  untouched by the piezo; headroom (no reference strum, velocity 100 or 127
+  with Finger and Pick, both strings and any Touch, nor the player's own
+  strums, reaches U1A's range or U1B's swing; the hottest puts 0.7-2.5 V on
+  the element); and the chain's response agreeing between 44.1 and 96 kHz;
 - the fretting hand (Tests/HandAllocatorTests.cpp): rolled triads within one
   hand, E major, A minor, G and C one key at a time in their open shapes, a
   scale that stays in position and then shifts, a melody that leaves a held
@@ -1712,13 +1727,14 @@ engine.
   hand's span, memory and costs are set by the listener's direction and the
   finger-span study above, not fitted to recorded fingerings.
 - Capture choices provide measured microphone positions and a piezo chain
-  built from published component values: one measured electrical load, a
-  saddle resonance placed from a measured bridge-piece stiffness, and a
-  sensitivity anchored to a published 1 V level. The piezo's full mechanical
-  response, its real string-to-string balance and any preamp EQ, and named
-  microphone electronics, remain unidentified. Matched captures with
-  documented loading and channel gains are still needed to identify them.
-  Piezo has no matched reference yet.
+  modelled at component level from published values: a documented preamp
+  circuit (ESP Project 202) with datasheet op-amp and diode behaviour, a
+  published element sensitivity and capacitance, the measured bridge
+  conductance, and a saddle mass and seat stiffness chosen from documented
+  ranges. The saddle's own bending modes, friction in its slot, its real
+  string-to-string balance and named microphone electronics remain
+  unidentified. Matched captures with documented loading and channel gains
+  are still needed to identify them. Piezo has no matched reference yet.
   Pick and Thumb use authored hand-position/contact-width ratios, not measured
   tool dimensions or a beam/friction plectrum solver; Pick adds a fitted
   release velocity and contact transient (Pluck and strings), and the picked
@@ -2400,6 +2416,25 @@ git history rather than here.
 
 ### 2026-09-29
 
+- **Steel plays a lighter body that stands in for the one Set 21
+  preferred.** The user asked for the cheaper CPU option, as close to their
+  preference as possible. B's bridge stays whole, D is at 0.85, and only
+  the jointly fitted body's 9 modes below 550 Hz play, at 0.075. It keeps
+  83-85% of the midpoint's measured move away from B+D, for +2-4% CPU over
+  B+D instead of +40-55%. It has not been heard against the midpoint.
+- **The piezo is modelled as its real circuit, at the user's request**
+  (after Set 20 preferred the analog piezo but found it "maybe too much").
+  Blind Set 22 chose it over the previous piezo on all five pieces.
+  The saddle is a 3.8 g mass on its element over the measured bridge (a
+  6 kHz resonance of Q 3.3, +10.6 dB), the element a 0.2 V/N charge source
+  into its cable, and the preamp ESP Project 202's OPA2134 circuit into a
+  1 MOhm DI, solved as a circuit with its op-amp limits, Shockley diodes and
+  a band-limited clip. Against the chain it replaces, Set 20's pieces have
+  1.6-4.6 dB less in the 4 kHz octave, 2.8-5.6 dB more in the 8 kHz octave
+  and 3.7-7.8 dB more in the 63 Hz octave (loudness matched): the honk is
+  softer and the top less dark, and the bass is the preamp's, whose only
+  audible low corner is 31 Hz rather than the old load's 177 Hz. Level-matched
+  to the microphones again; the microphones are unchanged down to the bit.
 - **The piezo is an under-saddle pickup with an onboard preamp, at the
   user's request.** Piezo, on Capture and on its own output, now weights each
   string's saddle force, rings the saddle's mass on the element at 5 kHz,

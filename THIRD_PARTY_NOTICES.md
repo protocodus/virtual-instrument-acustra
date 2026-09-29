@@ -308,29 +308,46 @@ above, but no coefficient from the paper or its companion audio is included.
 ## Published figures behind the piezo chain: no licensed material
 
 The under-saddle piezo chain (`AcustraEngine::PiezoDesign` in
-`Source/DSP/AcustraEngine.h`, Docs/decisions.md 2026-09-29) takes a handful of
-individual published values. None comes from a dataset, table or file under a
-licence, and no figure, table, text or recording from any of these sources is
-reproduced or distributed; each value is cited beside it in the source.
+`Source/DSP/AcustraEngine.h`, `Tools/PiezoReference.py`, Docs/decisions.md
+2026-09-29) takes individual published values: part values, datasheet
+limits and single measured figures. None comes from a dataset, table or file
+under a licence, and no figure, schematic, table, text or recording from any
+of these sources is reproduced or distributed; each value is cited beside it
+in the source.
 
+- Rod Elliott, Elliott Sound Products, "Project 202 - Piezo Preamps", Fig. 1,
+  <https://sound-au.com/project202.htm>: the preamp circuit's topology and
+  its resistor and capacitor values, read off the published figure. The
+  circuit is modelled from those values; the figure itself is not copied.
+- Texas Instruments, OPAx134 datasheet (SBOS058B),
+  <https://www.ti.com/lit/ds/symlink/opa2134.pdf>: the OPA2134's open-loop
+  gain, gain-bandwidth, slew rate, input capacitance, bias current, input
+  common-mode range and output swing.
+- The 1N4148's saturation current and emission coefficient (2.52 nA, 1.752)
+  and 4 pF junction capacitance, from the widely reposted SPICE model.
 - Manfred Zollner, *Physics of the Electric Guitar* (2005), chapter 6,
   <https://www.gitec-forum-eng.de/wp-content/uploads/2019/03/poteg-6-piezo-pickups.pdf>:
-  the Adamas SMT's 450 pF element and 2 MOhm installed preamp input (p.6-13,
-  already used for the electrical load before this change), the bridge
-  piece's 7.6-8e5 N/m stiffness and the 3.9 kHz resonance with a 1.4 g mass
-  (pp.6-5 to 6-7) that place the saddle resonance, a bridge piezo's
-  sensitivity of about 0.2 V/N and its roughly 1 V output when played loudly
-  (section 6.7), which anchor `Tools/CalibratePiezo.py`. Figs 6.24/6.25 are
-  cited as the reason loudness, not RMS, is matched; nothing is read off them.
-- Fishman Prefix Plus / Prefix Pro Blend owner's manuals: the -2 dBV overload
-  of an onboard preamp, which the preamp's rails straddle.
+  a bridge piezo's sensitivity of about 0.2 V/N at 1.45 nF (the Ovation
+  EA-68), its 1-2 V output when played loudly (section 6.7), which bounds
+  `Tools/CalibratePiezo.py`'s check, and the measurement rig's Q of 18, taken
+  as the bound on the element's loss. Figs 6.24/6.25 are cited as the reason
+  loudness, not RMS, is matched; nothing is read off them.
+- Radial Engineering, PZ-DI product page: the DI's 1 MOhm input setting.
+- Mogami 2524 cable's capacitance (130 pF/m), from the manufacturer's
+  published specification.
 - Martin Keith, "Troubleshooting imbalance between strings on common acoustic
   guitar pickup systems", *Acoustic Guitar*, and US patent 6,822,156 B1: the
   string-to-string imbalance of an installed under-saddle pickup, which bounds
   the per-string weights (their pattern is this project's own choice).
-- Martin Vicanek, *Matched Second Order Digital Filters* (2016): the
-  published method the saddle resonance is discretised with; no code from it
-  is included.
+- F. Esqueda, S. Bilbao and V. Valimaki, "Aliasing reduction in clipped
+  signals", IEEE Transactions on Signal Processing 64(20), 2016: the
+  band-limited ramp (BLAMP) method the clip's corners are corrected with. The engine's residual is its
+  own Kaiser-windowed sinc, tabulated by `Tools/PiezoReference.py`; no code
+  or table from the paper is included.
+
+The bridge conductance under the saddle is the mean of the measured Fylde
+mobility already shipped in `Source/DSP/MeasuredSteelBridgeData.h` (see its
+entry above); no new data is added for it.
 
 ## JUCE 8.0.14
 

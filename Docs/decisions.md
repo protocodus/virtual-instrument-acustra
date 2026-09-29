@@ -4,6 +4,53 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-29 — blind verdict: Set 22 keeps the piezo circuit; it and the lighter steel body join the audit fixes
+
+**Set 22 (blind): the piezo as its real circuit (B, `cand/piezo-circuit`
+2aa7e39) against the previous analog piezo (A, 7e3f22d).** Chosen by ear:
+B on all five pieces and overall B, with no note. The circuit (entry "Set
+20's verdict, and at the user's request: the piezo as its real circuit"
+below) ships: Capture = Piezo and the separate Piezo output both play it,
+and its reference simulation (`Tools/PiezoReference.py`), fixtures,
+`PiezoBlampTable.h` and tests come with it.
+
+**The steel body.** After Set 21 (entry below) the user wrote "ad cpu usage
+- as you say, difference is small, so maybe go with the cheaper cpu option,
+given it is so much more cpu expensive. but try to get as close to my
+preference as possible." `cand/body-lite`, the measured stand-in for the
+midpoint at B+D's cost, ships. It is not itself a by-ear choice: it has not
+been heard against the midpoint, so it awaits the user's ear.
+
+**Merged with the audit fixes.** Both branches were merged into the audit
+branch keeping every change from each side:
+- The construction-coherence rule (audit F9, F10, F14) holds for the lite
+  body's steel bridge too. Each of E's 8 bridge modes rings on its own
+  radiation mode's pole under every Shape and Wood, at 44.1, 48 and
+  96 kHz: worst 0.0003 cents, Q within 0.06%. Every blended section stays
+  positive semidefinite, and a live Shape or Wood change reaches the joint
+  body as a fresh engine does (BodyShapeTests
+  `testSteelBlendJointBridgeRingsOnItsRadiation`; it reads 224 cents off if
+  the joint bridge takes g21's Shape morph). Shape and Wood switches keep
+  the blended body ringing, as F14 does for every bank. Nylon's and the
+  Bellido's bridges still follow their radiation (F10), beside the
+  blend's own-bridge path.
+- Steel on the Original guitar renders bit-identically to `cand/body-lite`
+  for every Shape, Wood, bridge and capture. Nylon's microphone renders are
+  bit-identical to the audit branch before both merges; only Capture =
+  Piezo and the Piezo output differ, as the circuit intends.
+- The piezo's circuit output feeds the idle flush (audit F30) beside the
+  microphones.
+
+**The piezo re-levelled.** The body merge and the audit's nylon changes
+(F10, F19 and nylon's loudness step) moved the microphones against the
+piezo. `Tools/CalibratePiezo.py` measured microphones minus piezo at
++0.08 LU (steel) and -0.58 LU (nylon), with the circuit branch's trims.
+The trims were re-fitted: steel 2.42002 -> 2.4417 and nylon 2.66409 ->
+2.49109, which leaves a residual median of -0.00 LU for both. This is a
+level match only; the circuit and its headroom are unchanged (hottest Pick
+strum 2.12 V on the element, +1.36 dB to U1B's swing). On Capture = Piezo,
+nylon plays 0.58 dB quieter than on the circuit branch.
+
 ## 2026-09-29 — at the user's request: engine audit, how the constructions combine
 
 Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
@@ -121,6 +168,262 @@ Changes of behaviour, recorded as awaiting the user's ear:
   release before the pick arrives cancels it silently) for strum members
   only: a short strummed stab now sounds every string.
 
+## 2026-09-29 — Set 20's verdict, and at the user's request: the piezo as its real circuit
+
+**Set 20 (blind): the analog piezo (B, 7e3f22d) against the previous piezo
+(A, the 177 Hz load alone).** The user's verdict: overall B; per piece
+1 steel pick strums B, 2 steel pick hard accents B, 3 steel travis B,
+4 nylon finger arpeggio A, 5 steel soft-to-hard ladder B; and the note
+"B is better but maybe too much, i would soften the effect a bit". B
+stayed.
+
+**The request.** Then, on the piezo: "on piezo: do accurate analog and
+circuit modelling". Not a listening verdict. The approximate chain below
+(entry "an analog model of the piezo") is replaced by a real, documented
+signal chain modelled at component level, every value from a source or,
+where the value is not published, chosen from a documented range and
+flagged. The listener's "soften a bit" was taken as a hint that B overstated
+the effect, not as a target: nothing was tuned by ear, and whether the
+accurate model comes out softer is measured below. Its sound awaits Set 22
+(this chain, C, against B, both on Capture = Piezo).
+
+**The chain** (`AcustraEngine::PiezoDesign`, `renderPiezo`), in signal
+order:
+1. Force. Each string's saddle force weighted as in B (-0.8 to +0.9 dB,
+   chosen within the +-1-2 dB of a good install), plus the axial force
+   through the strings' rear break angle, sin 25 degrees = 0.42 (chosen
+   within a typical 20-30 degrees; B had unit weight; zero either way while
+   longitudinalGain ships at 0). In newtons: 292.8 N per engine force unit,
+   the fitted 6.1 mm displacement unit (FittedPhysicalData.h) per 48 kHz
+   sample; FixedDerivative differences over the 48 kHz period at every
+   rate, so the scale does not depend on the rate.
+2. The saddle on its element, driven one way by that rigid-saddle force:
+   F_p / F_r = Zk Q / (1 + Zk Q), Zk = k/s + c_m, Q = 1/(sM + SZ) + G.
+   Compressing the element relieves the force through the saddle's side
+   (its mass against the strings' summed wave impedance SZ) and the base's
+   (the bridge's conductance G). M = 3.8 g, a bone saddle 72 x 3 x 9.5 mm
+   at 1.95 g/cc (chosen within 2.7-5.1 g); k puts M at 6.0 kHz (chosen
+   within the documented 5-7 kHz: Fender's "quack" at 6.5 kHz, Zollner's
+   stiffness scaled to a saddle, a contact-mechanics estimate near 7 kHz);
+   c_m from a loss factor of 1/18 (Zollner's rig Q of 18 as the bound on
+   material loss); G = 1.59e-3 s/kg, the mean of Re(Y) over 5-7 kHz of the
+   measured Fylde mobility the steel bridge ships (Carcagno et al. 2018),
+   saddle removed; SZ = 3.73 kg/s steel, 2.22 nylon (stringImpedance at the
+   open notes). The result: a pole pair at 5.98 kHz, Q 3.26 (nylon 3.37),
+   +10.6 dB at 5.85 kHz, +0.24 dB at 1 kHz, -4.8 dB at 10 kHz, -18.1 dB at
+   20 kHz. Across the documented ranges it runs from Q 2.0 / +6.8 dB
+   (M 5.1 g, G 2e-3, loss 0.1) to Q 6.1 / +15.8 dB (M 2.7 g, G 1.05e-3,
+   loss 0.02).
+3. The element: a charge source across 1.45 nF, 0.2 V/N open-circuit
+   (Zollner ch.6, the Ovation EA-68; a strip element's own figures are not
+   published, which only moves the headroom).
+4. The cable: 3 m of Mogami 2524 at 130 pF/m (length chosen), and a stray
+   picofarad at the jack and at the preamp's input (chosen).
+5. The preamp: ESP Project 202 Fig. 1 (R. Elliott, sound-au.com), part
+   values read off the published figure; one 9 V battery; OPA2134 halves
+   (TI SBOS058B). C1 4.7 nF into U1A, a follower whose bias (R1, R2 1 MOhm to
+   the rails' midpoint, R3 1 MOhm to its input) is bootstrapped through C2
+   33 uF and R4 3.9 kOhm (129 MOhm seen); the op-amp's 6 pF common-mode
+   input capacitance; D1/D2, 1N4148s from U1A's input to its output. C3
+   220 nF into R5 || R6 (2 x 47 kOhm): 30.8 Hz, the only audible low
+   corner. U1B: gain 1 + R7/R8 = 2 (10 kOhm each), falling to one below
+   0.48 Hz through C4 33 uF. R9 100 Ohm, C5 10 uF, the 10 kOhm volume pot at
+   full into a Radial PZ-DI's 1 MOhm. The LED branch and the supply
+   decoupling only load the battery and are left out. Limits, about the
+   4.5 V bias: U1A's input at the typical common-mode range, 2 V inside each
+   rail (+-13 V at +-15 V), so +-2.5 V (the guaranteed range would be
+   2.5 / 3.5 V inside, and make U1A clip first: flagged); U1B's output at
+   the datasheet's guaranteed swing for its 6.67 kOhm load, the 10 kOhm and
+   2 kOhm rows interpolated in conductance: +3.2625 / -3.9125 V (the
+   current datasheet publishes no typical curve: flagged). The diodes
+   conduct as Shockley diodes, IS 2.52 nA, N 1.752 (the widely reposted
+   SPICE model). The OPA2134 has no output phase reversal. Gain from the
+   element's open-circuit voltage to the DI: 1.551 (+3.81 dB) mid-band,
+   -1.5 dB at 20 Hz.
+6. The level match to the microphones stays (Capture = Piezo level-matched,
+   `Tools/CalibratePiezo.py`, BS.1770 median over the loudness grid): steel
+   2.42002 (was 2.59727), nylon 2.66409 (was 2.98809); residual median 0.00
+   and -0.01 LU. The output is trim x V_DI / (0.2 V/N x 292.8 N/unit x
+   1.551): an engine force unit through the flat band leaves at the trim.
+
+**How it runs.** Each stage drives the next without being loaded by it
+(op-amp inputs draw no current, and U1B's input stays in range whenever its
+output is not at a rail), so the stages are solved in turn, each as
+deviations from the operating point: silence maps to exact zero.
+- The saddle: matched poles and four least-squares zeros (five from
+  88.2 kHz), weighted |H|^-1/2 over 20 Hz-min(20 kHz, 0.45 fs), DC held at
+  exactly 1, designed in prepare() for both materials and swapped with the
+  material; below 16 kHz four taps and no poles. Float, direct form I.
+- The input section: a trapezoidal two-state system (C1's and C2's
+  charges) in double; U1A's output stops at its input range; past it the
+  diodes take, each sample, the charge that brings their voltage to what
+  that current needs (a backward-Euler Newton solve of the diode equation,
+  only in the samples they conduct). C1 keeps what it gave up: the bias
+  shift a hard overload leaves, recovering over the 1.07 Hz pair.
+- C3, C4 and C5: trapezoidal one-poles. C4 always sees U1B's output through
+  R7 + R8 (0.66 s); while U1B follows its input that is R8 alone on Y, the
+  same equation.
+- U1B's clip, its corners band-limited with a 12-tap BLAMP residual (a
+  Kaiser-windowed sinc, cutoff 0.45 fs, beta 8, integrated twice, less the
+  ramp; `Source/DSP/PiezoBlampTable.h`, generated by the reference tool),
+  the corner found on the cubic through four drives and placed on the drive
+  U1A's input would give if nothing stopped it. The chain's output is seven
+  samples behind its input at every rate; there is no oversampling.
+- Exact silence: a force below 5 pN is none; when the input is zero and
+  every state is under 10 nV (50 dB under the preamp's own 1.2 uV of noise)
+  and the saddle's histories under 50 nN, they are zeroed together. A
+  non-finite force resets the chain and returns 0 (captureMix_ times NaN
+  would reach Main).
+- Observers: `getLastPiezoVoltage` is now the jack's voltage;
+  `getLastPiezoProbe` adds the open-circuit voltage, U1A's input and U1B's
+  drive. PerformanceRenderer gains `--observe piezo_levels|piezo_stages` and
+  `--pluck-position`.
+
+**The reference.** `Tools/PiezoReference.py` writes the same netlist as a
+stiff ODE system: the mechanics as elements (saddle velocity, element
+compression), the element as a source behind Cp with a 1 TOhm leak, every
+node's capacitance (the op-amps' 8 pF differential and 6 pF common-mode
+inputs, the diodes' 4 pF, 1 pF strays, 5 m of cable to the DI), the 9 V
+supply, op-amp macro-models (120 dB, 8 MHz, 20 V/us through a tanh input
+stage, input saturation at the common-mode limits, output limits with a
+1 mV knee) and Shockley diodes. It finds the DC operating point by Newton,
+the small-signal response from the Jacobian there, periodic steady states
+by shooting, and transients with solve_ivp's Radau (rtol 1e-10, 1 nV
+absolute, analytic Jacobian checked against finite differences to 1e-8;
+Radau and BDF agree to 1e-5 V through a clipping burst). Its own ctest
+self-test (`Acustra.PiezoReference`) checks it against closed forms. It
+shares no code or coefficients with the engine. Its results are the CSV
+fixtures in `Tests/Fixtures`, and `Tests/PiezoCircuitTests.cpp`
+(`Acustra.PiezoCircuit`) holds the engine to them:
+
+| Check | Result |
+|---|---|
+| DC: IN, B | 4.499993, 4.499998 V; U1B's rails and U1A's limits about the operating point equal the engine's to 0.1 mV |
+| Small signal, 5-20 Hz | 0.003 dB, every rate |
+| 20 Hz-12 kHz, 44.1 / 48 kHz | 0.33 dB, 1.4 deg / 0.23 dB, 1.3 deg |
+| 12 kHz-0.45 fs, 44.1 / 48 kHz | 0.57 / 0.36 dB |
+| 20 Hz-20 kHz, 96 / 192 kHz | 0.15 dB, 0.38 deg / 0.009 dB, 0.54 deg |
+| HD2-HD5 and THD, 1-12 dB over the clip, 100 Hz / 1 kHz / 5 kHz | within 0.30 dB (100 Hz and 1 kHz within 0.13 dB); HD4 of 5 kHz, at 20 kHz, reported only: 1.1-7.3 dB low |
+| THD below the clip (-40 to -1 dB) | under -150 dB |
+| Aliasing, 1 kHz, 3 / 6 dB over the clip (44.1 / 48 kHz) | -70 / -77 dB; -66 / -73 dB (a bare clip: -53, -49) |
+| Aliasing, 3 kHz, 3 / 6 dB over | -57 / -53 dB; -47 / -46 dB (a bare clip: -37, -33) |
+| Overload bursts, 500 Hz, +3 / +10 / +20 dB | Vout through the burst within -50 to -55 dB of the circuit's; C3, C4, C5 and U1A's input over the 2.96 s after it within 0.02-4.4% (C4's time constant 0.3338 against 0.3339 s at +3 dB, 0.2993 against 0.2992 s at +10 dB) |
+
+Spec gates changed, each for a measured reason:
+- In-band at 44.1 kHz is gated at 0.35 dB, not 0.25: the saddle filter's
+  own fit is 0.34 dB off at 11.6 kHz there (no real filter matches the
+  analog phase that near Nyquist; the spec's own table gave 0.33 dB).
+- Harmonics above 0.375 fs are reported, not gated: HD4 of 5 kHz, at
+  20 kHz, comes out 1.2-7.2 dB low, where the BLAMP's kernel rolls off.
+- Aliasing 6 dB over the clip at 3 kHz is gated at -45 dB, not -50: the
+  BLAMP alone reaches -49 dB there on a bare clip, and U1A's range and the
+  diodes, which engage from 3.7 and about 5 dB over U1B's clip, cost up to
+  2.5 dB more through C3 and C1.
+
+**Departures from the design spec**, each for a measured reason:
+- The spec's 4-point polyBLAMP (Esqueda, Bilbao and Valimaki) was built and
+  measured first. Its cubic B-spline droops inside the band: each corner
+  leaves an extra 1/6 of its slope change at DC (the sampled residuals sum
+  to tau^2/2 - tau/2 + 1/4 against the band-limited 1/12), which moved
+  HD2-HD5 by up to 0.7 dB at 1 kHz and 7 dB at 3 kHz against the
+  band-limited clip, and on the one real playing that clips (nylon, Pick at
+  velocity 127 at the bridge) it left the output 12 dB further from the
+  band-limited clip than a bare clip (-52 against -64 dB). The 12-tap
+  windowed sinc keeps harmonics below 18 kHz within 0.3 dB, folds back as
+  little as the polyBLAMP on sines, and leaves that strum 7 dB better than
+  a bare clip (-65 / -72 dB at 44.1 / 48 kHz, against -58 / -64). It costs
+  four more samples of latency (seven in all, 0.15 ms).
+- The diodes are Shockley diodes, not a fixed 0.40 V drop: at 100 Hz they
+  conduct a few microamps (0.32 V) and at 500 Hz, 20 dB over, a few hundred
+  (about 0.5 V), and the fixed drop put HD4 at 100 Hz, 6 dB over, 0.8 dB
+  off the circuit's (0.12 dB now). The diode equation's backward-Euler
+  solution is a function of the drive alone, so prepare() tabulates it
+  (1025 points to 8 V past U1A's range, cubic Hermite with exact slopes,
+  within 5 nV); a Newton solve per conducting sample cost 13 us per block
+  when driven hard, the table 4 us.
+- The clip's corners are placed on the drive U1A's input would give if its
+  range and the diodes did not stop it. Placed on the actual drive, U1A's
+  corner, a sample or less from U1B's at 3 kHz, bent the cubic: 6 dB over,
+  3 kHz folded back at -41 dB.
+- The op-amp's common-mode input capacitance and a picofarad of stray at
+  the jack and the input are in the engine's input divider (0.783 rather
+  than 0.788, 0.05 dB), because the reference has them.
+- The reference's op-amp outputs are their internal nodes through the swing
+  limit, without the 10 Ohm open-loop output impedance (milliohms closed
+  loop); as a resistor it put 5e9 /s modes in the system that stalled the
+  solver with round-off, as did an absolute tolerance of 1e-13 V on states
+  that sit at zero. The output node carries the DI cable's 500 pF instead of
+  a stray (a 3 MHz pole with R9).
+- Silence takes up to 3.5 s after the hardest strum's hardest moment, 5.4 s
+  after a burst 15 dB over the clip (the gate is 5 s, 7 s for the latter);
+  the spec's 1.5 s would be faster than the circuit settles.
+
+**Is it softer?** Set 20's five pieces rendered with B and with C, Capture =
+Piezo; C minus B in dB per octave band, each render RMS-normalised first:
+
+| Piece | 63 | 125 | 250 | 500 | 1k | 2k | 4k | 8k | 16k |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 steel pick strums | +6.2 | +3.2 | +0.8 | -0.2 | -0.7 | -1.1 | -1.9 | +5.1 | +3.7 |
+| 2 steel pick accents | +7.8 | +3.8 | +0.9 | +0.3 | -0.2 | -0.6 | -1.6 | +5.6 | +4.2 |
+| 3 steel travis | +5.0 | +1.9 | -0.5 | -1.4 | -1.9 | -2.4 | -3.0 | +3.9 | +2.4 |
+| 4 nylon finger arpeggio | +3.7 | +0.8 | -1.3 | -2.6 | -3.1 | -3.5 | -4.6 | +2.8 | +1.2 |
+| 5 steel pick ladder | +6.2 | +2.5 | +0.9 | -0.3 | -0.7 | -1.0 | -1.7 | +5.1 | +3.7 |
+
+It is softer where B was loud: the 4 kHz octave, the honk, drops 1.6-4.6 dB,
+and the saddle's resonance, now at 5.85 kHz with Q 3.3 (+10.6 dB), about as
+strong as B's (+9.7 dB at 4.86 kHz, Q 3), sits higher, where it fills B's
+dark top octave instead (+2.8 to +5.6 dB at 8 kHz; B was 10.4-12.2 dB under
+A there, so C is 5.8-7.6 dB under). And it has more bass: +3.7 to +7.8 dB
+at 63 Hz, because the real preamp's only audible low corner is C3's 31 Hz,
+where A and B both had the Adamas element's 177 Hz. Against A (adding
+Set 20's own B-minus-A octaves), C keeps the piezo character in the treble
+at a little over half of B's excursion: +3.2 to +4.4 dB at 4 kHz where B
+had +5.8 to +7.8, and -5.8 to -7.6 dB at 8 kHz where B had -10.4 to
+-12.2; at 63 Hz it is +3.4 to +7.0 dB over A. Whether that is "softer" as heard is Set 22's
+question; if C is still too much, the documented ranges above give the
+lever (the soft end, Q 2.0 / +6.8 dB, or f0 anywhere in 5-7 kHz), not a
+taste EQ.
+
+**Headroom** (CaptureTests and CalibratePiezo): normal playing never clips.
+The hottest reference strum (the Pick at velocity 127, over the six presets,
+both strings and Touch 0 / 0.58 / 1: Dreadnought, nylon, Touch 1) puts
+2.12 V on the element (Zollner's 1-2 V for a piezo played loudly) and
+1.67 V at the jack, 1.4 dB under U1B's swing and 3.5 dB under U1A's range; a
+steel Pick strum 1.41 V (5.1 dB); a Finger strum 0.67 V (11 dB); the
+player's own nylon strums at velocity 127 come within 0.25 dB. Nylon with
+the Pick at velocity 127 right at the saddle (Pluck Position 0) drives U1B
+2.2 dB past its swing (steel there keeps 2.2 dB), the one playing that
+clips, and the BLAMP keeps what it folds back at -65 / -72 dB.
+
+**Cost.** The chain alone, C++17 -O2 -fno-builtin as the Rack Extension builds
+it, per 64-frame block at 48 kHz, best of 15 on a loaded machine: 1.19-1.44
+us against B's 0.68-0.83 us in normal playing (+0.5 us); driven far past
+the clip, with U1A's range and the diodes in play every sample, up to 4.1 us
+(B 0.9 us). The whole engine, six ringing strings, B and C built into one
+binary and interleaved over 40 runs, plug-in flags and Rack Extension
+flags, Capture on the microphones or on Piezo with the Piezo output: -2.9%
+to +1.0% (-3.6 to +1.1 us on 96-126 us), within the machine's noise; not yet
+run through the Rack Extension's native CPU matrix. No oversampling; the
+same per-sample cost at every rate.
+
+**Unchanged:** the microphones. 288 of 288 renders with Capture on the
+stereo or mono microphone (the six presets, both strings, Finger and Pick,
+the loudness grid's six performances) are byte-identical to 7e3f22d. ctest
+(28 tests, the Python ones with NumPy and SciPy) and the plug-in's tests
+pass; the engine builds warning-free as C++17 with -Wall -Wextra -Werror.
+Sessions on Capture = Piezo sound different; the Rack Extension's goldens for
+Piezo patches change with the submodule bump.
+
+Not modelled, and the likely reasons a real install is softer still:
+friction of the saddle in its slot (some 20 N static against a few newtons
+of dynamic force) that bypasses the element; the saddle's own bending mode
+near 8.4 kHz (a bone-beam estimate); the saddle's inertia under the bridge's
+own motion (exact below 4 kHz but up to 7 dB off above 6 kHz, so left out;
+the one-way model's form error against a fully coupled one is about 0.9 dB
+third-octave below 4 kHz); the piezo's small effect back on the acoustic
+tone; and tension modulation's quasi-static force (Watson's measurements
+put longitudinal forces 7-10x below transverse).
+
 ## 2026-09-29 — at the user's request: the separate Mic output withdrawn, Piezo stays
 
 Not a listening verdict: the user asked for it. After the separate Mic and
@@ -165,6 +468,9 @@ six ringing strings at 48 kHz, best of 9 interleaved runs: 49.79 us Main
 alone, 49.92 us with Piezo (+0.27%).
 
 ## 2026-09-29 — at the user's request: an analog model of the piezo (its sound awaits Set 20)
+
+Superseded the same day by "the piezo as its real circuit" above; Set 20's
+verdict on this chain is recorded there.
 
 Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
 "add analog component modelling for the piezo so it is more realistic". The

@@ -1,31 +1,25 @@
 #!/usr/bin/env python3
-"""Calibrate the under-saddle piezo chain's sensitivity and its level match.
+"""Check the under-saddle piezo chain's headroom and calibrate its level match.
 
-Two numbers in AcustraEngine::PiezoDesign come from here (Docs/decisions.md,
-2026-09-29):
+The chain is the documented circuit in AcustraEngine::PiezoDesign
+(Docs/decisions.md, 2026-09-29, "Accurate piezo chain"): its sensitivity is
+physical - Zollner's 0.2 V/N for a bridge piezo on the engine's force in
+newtons (0.0061 m per displacement unit, FittedPhysicalData.h) - so nothing
+here sets it. This tool
 
-1. sensitivity, S, in volts per engine force unit. The engine's displacement
-   waves have no physical unit, so S is anchored to a physical level instead:
-   the hottest reference strum - an open E major downstroke across all six
-   strings at velocity 127 with the Pick, the playing that drives the saddle
-   hardest, at 48 kHz, over the six Guitar presets strung with each material
-   and Touch at 0, 0.58 and 1 - must peak at 1.0 V where it enters the
-   preamp, the level Zollner gives for a piezo played loudly (M. Zollner,
-   Physics of the Electric Guitar, 2005, ch.6 section 6.7). Anchored on the
-   Finger strum instead, a Pick strum drove the preamp 8 dB past its knee.
-   The renderer's `--observe piezo_voltage` gives that voltage with the S the
-   engine was built with, and the voltage is linear in S, so one pass sets
-   it.
+1. checks it: the hottest reference strum - an open E major downstroke
+   across all six strings at velocity 127 with the Pick, the playing that
+   drives the saddle hardest, at 48 kHz, over the six Guitar presets strung
+   with each material and Touch at 0, 0.58 and 1 - must leave the element
+   at 0.7-2.5 V open-circuit (Zollner gives 1-2 V for a piezo played loudly,
+   M. Zollner, Physics of the Electric Guitar, 2005, ch.6 section 6.7; the
+   margin allows for the Ovation element standing in for a strip). It
+   reports that peak, the jack's, and the headroom left to U1A's input range
+   and U1B's output swing (the renderer's `--observe piezo_levels` and
+   `piezo_stages`). A one-pluck physical estimate - tension times string
+   slope at 0.2 V/N - is printed beside it.
 
-   The tool also predicts the same peak from physics - a saddle force of
-   tension times string slope, at Zollner's 0.2 V/N for a bridge piezo - and
-   stops if the two disagree by more than a factor of two. That needs the
-   engine's displacement unit in metres: the fitted steelDisplacementScaleMetres
-   the attack-pitch glide and the axial drive already read it with
-   (FittedPhysicalData.h, "known to within a factor"). The check bounds S; it
-   does not set it.
-
-2. steelTrim and nylonTrim, the piezo's level match to the stereo
+2. calibrates steelTrim and nylonTrim, the piezo's level match to the stereo
    microphones. Every construction the loudness tool renders
    (Tools/MeasureMaterialLoudness.py: the plug-in's six Guitar presets, each
    strung with steel and with nylon, Finger and Pick, single notes at three
@@ -37,10 +31,10 @@ Two numbers in AcustraEngine::PiezoDesign come from here (Docs/decisions.md,
    Figs 6.24/6.25), and plain RMS would weigh the microphones' bass.
 
   python3 Tools/CalibratePiezo.py --renderer ./build-dsp/AcustraPerformanceRenderer
-  python3 Tools/CalibratePiezo.py --renderer ... --sensitivity-only
+  python3 Tools/CalibratePiezo.py --renderer ... --headroom-only
   python3 Tools/CalibratePiezo.py --self-test
 
-The report prints the values to write into PiezoDesign and, with the values
+The report prints the trims to write into PiezoDesign and, with the values
 already built in, how far each is from its target. Renders go to a temporary
 directory and are removed once measured; nothing is downloaded and no audio is
 kept. NumPy and SciPy are required.
@@ -66,24 +60,23 @@ import MeasureMaterialLoudness as loudness  # noqa: E402
 RATE = loudness.RATE
 ENGINE_HEADER = Path(__file__).resolve().parent.parent / "Source/DSP/AcustraEngine.h"
 FITTED_HEADER = Path(__file__).resolve().parent.parent / "Source/DSP/FittedPhysicalData.h"
-TARGET_PEAK_VOLTS = 1.0            # Zollner ch.6 section 6.7
+OPEN_CIRCUIT_RANGE = (0.7, 2.5)    # V; Zollner ch.6 section 6.7 gives 1-2 V
 PIEZO_VOLTS_PER_NEWTON = 0.2       # Zollner ch.6, a bridge piezo's sensitivity
 STEEL_HARD_AMPLITUDE = 0.24        # initialisePluck: steel's amplitude at v = 1
 STEEL_D_TENSION = 133.892          # N, the D string (steelTensionNewtons)
 # initialisePluck's Finger distance at the default Pluck Position 0.28 with
 # steel's pluckDistanceScale of 1.8, as a share of the 648 mm scale.
 STEEL_FINGER_DISTANCE = (0.045 + 0.135 * 0.28) * 1.8 * 0.648
-# One engine force unit is Z times one displacement unit per 48 kHz sample
-# (FixedDerivative differences over the 48 kHz reference period).
-REFERENCE_RATE = 48000.0
 
 
 def built_design() -> dict:
     """The PiezoDesign values the engine was last built with."""
     text = ENGINE_HEADER.read_text()
     values = {}
-    for name in ("sensitivity", "steelTrim", "nylonTrim"):
-        match = re.search(rf"static constexpr float {name} = ([0-9.eE+-]+)f;", text)
+    for name, kind in (("steelTrim", "float"), ("nylonTrim", "float"),
+                       ("railHigh", "double"), ("railLow", "double"),
+                       ("commonModeLimit", "double")):
+        match = re.search(rf"static constexpr {kind} {name} = ([0-9.eE+-]+)f?;", text)
         if not match:
             raise SystemExit(f"PiezoDesign::{name} not found in {ENGINE_HEADER}")
         values[name] = float(match.group(1))
@@ -116,42 +109,52 @@ def anchor_grid():
             for material in ("steel", "nylon") for touch in ANCHOR_TOUCHES]
 
 
-def strum_volts(renderer: str, work: Path, picking: str, preset: str,
-                material: str, touch: float) -> np.ndarray:
+def strum_observation(renderer: str, work: Path, picking: str, preset: str,
+                      material: str, touch: float, observation: str) -> np.ndarray:
+    """One reference strum's (frames, 2) observation, in volts."""
     shape, wood, _strings, bridge, model = loudness.PRESETS[preset]
     rows, seconds = reference_strum()
-    tag = f"{preset}-{material}-{picking}-{touch}".replace(" ", "_")
+    tag = f"{preset}-{material}-{picking}-{touch}-{observation}".replace(" ", "_")
     events = work / f"{tag}.txt"
     output = work / f"{tag}.f32"
     loudness.write_performance(rows, seconds, events)
     subprocess.run([renderer, str(events), str(output), "stereo_mic", picking,
                     bridge, "--string-material", material, "--body-shape", shape,
                     "--body-material", wood, "--guitar-model", model,
-                    "--touch", f"{touch}", "--observe", "piezo_voltage"],
+                    "--touch", f"{touch}", "--observe", observation],
                    check=True)
-    volts = np.fromfile(output, dtype="<f4").reshape(-1, 2)[:, 0].astype(np.float64)
+    values = np.fromfile(output, dtype="<f4").reshape(-1, 2).astype(np.float64)
     output.unlink()
     events.unlink()
-    return volts
+    return values
 
 
-def voltage_peaks(renderer: str, work: Path, jobs: int) -> dict:
-    """The anchor grid's peaks, the hottest of them, and the Finger strum
-    the sensitivity was first anchored on, for comparison."""
+def headroom_db(stages: np.ndarray, design: dict) -> dict:
+    """dB left to U1A's input range and to U1B's output swing (negative:
+    past it) at the strum's worst sample."""
+    buffer_input, drive = stages[:, 0], stages[:, 1]
+    u1a = 20.0 * np.log10(design["commonModeLimit"] / max(np.max(np.abs(buffer_input)), 1e-30))
+    high = design["railHigh"] / max(np.max(drive), 1e-30)
+    low = design["railLow"] / min(np.min(drive), -1e-30)
+    return {"u1a_db": float(u1a), "u1b_db": float(20.0 * np.log10(min(high, low)))}
+
+
+def strum_peaks(renderer: str, work: Path, jobs: int, design: dict) -> dict:
+    """The anchor grid's open-circuit and jack peaks and headroom, the
+    hottest of them, and a Finger strum for comparison."""
     def peak(job):
-        preset, material, touch = job
-        volts = strum_volts(renderer, work, "pick", preset, material, touch)
-        return {"preset": preset, "material": material, "touch": touch,
-                "positive": float(volts.max()), "negative": float(volts.min()),
-                "peak": float(np.max(np.abs(volts)))}
+        preset, material, touch, picking = job
+        levels = strum_observation(renderer, work, picking, preset, material, touch, "piezo_levels")
+        stages = strum_observation(renderer, work, picking, preset, material, touch, "piezo_stages")
+        return {"preset": preset, "material": material, "touch": touch, "picking": picking,
+                "open_circuit": float(np.max(np.abs(levels[:, 0]))),
+                "jack": float(np.max(np.abs(levels[:, 1]))), **headroom_db(stages, design)}
+    grid = [job + ("pick",) for job in anchor_grid()]
     with ThreadPoolExecutor(max_workers=jobs) as pool:
-        grid = list(pool.map(peak, anchor_grid()))
-    hottest = max(grid, key=lambda row: row["peak"])
-    finger = strum_volts(renderer, work, "finger", "Dreadnought", "steel", 0.58)
-    return {"hottest": hottest, "grid": grid,
-            "finger_reference": {"positive": float(finger.max()),
-                                 "negative": float(finger.min()),
-                                 "peak": float(np.max(np.abs(finger)))}}
+        rows = list(pool.map(peak, grid + [("Dreadnought", "steel", 0.58, "finger")]))
+    return {"hottest": max(rows[:-1], key=lambda row: row["open_circuit"]),
+            "least_headroom": min(rows[:-1], key=lambda row: min(row["u1a_db"], row["u1b_db"])),
+            "grid": rows[:-1], "finger_reference": rows[-1]}
 
 
 def physical_peak_volts() -> float:
@@ -235,12 +238,14 @@ def self_test() -> None:
     predicted = physical_peak_volts()
     assert 0.05 < predicted < 2.0, predicted
     design = built_design()
-    assert design["sensitivity"] > 0.0
+    assert design["railHigh"] > 0.0 > design["railLow"] and design["commonModeLimit"] > 0.0
+    stages = np.array([[1.0, 1.63125], [-2.5, -3.9125]])
+    room = headroom_db(stages, design)
+    assert abs(room["u1a_db"]) < 1e-6 and abs(room["u1b_db"]) < 1e-3, room
     fake = [{"material": m, "mic_minus_piezo": d, "piezo_peak_dbfs": -6.0}
             for m, d in (("steel", 1.0), ("steel", 2.0), ("steel", 3.0),
                          ("nylon", -2.0), ("nylon", -2.0), ("nylon", 4.0))]
-    summary = summarise_levels(fake, {"sensitivity": 1.0, "steelTrim": 1.0,
-                                      "nylonTrim": 2.0})
+    summary = summarise_levels(fake, {"steelTrim": 1.0, "nylonTrim": 2.0})
     assert abs(summary["steel"]["calibrated_trim"] - 10 ** (2.0 / 20)) < 1e-12
     assert abs(summary["nylon"]["calibrated_trim"] - 2.0 * 10 ** (-2.0 / 20)) < 1e-12
     print("CalibratePiezo self-test passed")
@@ -251,7 +256,7 @@ def main() -> int:
     parser.add_argument("--renderer", help="AcustraPerformanceRenderer")
     parser.add_argument("--json", type=Path, help="write the rows and summary here")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
-    parser.add_argument("--sensitivity-only", action="store_true")
+    parser.add_argument("--headroom-only", "--sensitivity-only", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     arguments = parser.parse_args()
     if arguments.self_test:
@@ -261,38 +266,28 @@ def main() -> int:
         parser.error("--renderer is required")
     design = built_design()
     with tempfile.TemporaryDirectory(prefix="acustra-piezo-") as scratch:
-        peaks = voltage_peaks(arguments.renderer, Path(scratch),
-                              max(1, arguments.jobs))
-    hottest = peaks["hottest"]
-    anchored = design["sensitivity"] * TARGET_PEAK_VOLTS / hottest["peak"]
-    predicted = physical_peak_volts()
-    # The same strum through a physically scaled element: an engine force
-    # unit is Z (N s/m) times one displacement unit per 48 kHz sample.
-    newtons_per_unit = REFERENCE_RATE * displacement_metres_per_unit()
-    physical = PIEZO_VOLTS_PER_NEWTON * newtons_per_unit
-    ratio = anchored / physical
-    report = {"built": design, "reference_strum_volts": peaks,
-              "sensitivity_for_1V": anchored,
-              "physical_sensitivity": physical, "anchor_over_physical": ratio,
-              "physical_peak_volts": predicted}
+        peaks = strum_peaks(arguments.renderer, Path(scratch), max(1, arguments.jobs), design)
+    hottest, least = peaks["hottest"], peaks["least_headroom"]
     finger = peaks["finger_reference"]
-    print(f"built sensitivity {design['sensitivity']:.6g} V/unit: the hottest Pick "
-          f"strum ({hottest['preset']}, {hottest['material']}, Touch "
-          f"{hottest['touch']}) peaks {hottest['positive']:+.4f} / "
-          f"{hottest['negative']:+.4f} V; the Finger strum (Dreadnought, steel) "
-          f"{finger['positive']:+.4f} / {finger['negative']:+.4f} V")
-    print(f"sensitivity for a 1 V peak: {anchored:.6g} V/unit")
-    print(f"physical check: {physical:.6g} V/unit at {PIEZO_VOLTS_PER_NEWTON} V/N "
-          f"and {displacement_metres_per_unit() * 1e3:.2f} mm per displacement unit "
-          f"(anchor / physical = {ratio:.3f}); one hard pluck's tension x slope "
-          f"is a {predicted:.2f} V step")
-    if not 0.5 <= ratio <= 2.0:
-        print("STOP: the 1 V anchor and the physical estimate disagree by more "
-              "than 2x; decide which to trust before calibrating further.")
+    predicted = physical_peak_volts()
+    report = {"built": design, "reference_strums": peaks, "physical_peak_volts": predicted}
+    print(f"hottest Pick strum ({hottest['preset']}, {hottest['material']}, Touch "
+          f"{hottest['touch']}): {hottest['open_circuit']:.3f} V open-circuit, "
+          f"{hottest['jack']:.3f} V at the jack; headroom {hottest['u1a_db']:+.2f} dB to "
+          f"U1A's input range, {hottest['u1b_db']:+.2f} dB to U1B's swing")
+    print(f"least headroom ({least['preset']}, {least['material']}, Touch {least['touch']}): "
+          f"U1A {least['u1a_db']:+.2f} dB, U1B {least['u1b_db']:+.2f} dB")
+    print(f"the Finger strum (Dreadnought, steel): {finger['open_circuit']:.3f} V open-circuit")
+    print(f"physical check: one hard pluck's tension x slope at "
+          f"{PIEZO_VOLTS_PER_NEWTON} V/N is a {predicted:.2f} V step")
+    low, high = OPEN_CIRCUIT_RANGE
+    if not low <= hottest["open_circuit"] <= high:
+        print(f"STOP: the hottest strum's open-circuit peak is outside {low}-{high} V; "
+              "the force scale or the element's sensitivity needs a look.")
         if arguments.json:
             arguments.json.write_text(json.dumps(report, indent=1) + "\n")
         return 1
-    if not arguments.sensitivity_only:
+    if not arguments.headroom_only:
         rows = level_rows(arguments.renderer, max(1, arguments.jobs))
         summary = summarise_levels(rows, design)
         report["levels"] = summary

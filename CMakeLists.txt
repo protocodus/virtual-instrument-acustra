@@ -44,6 +44,7 @@ file(GLOB ACUSTRA_BANK_PARTS CONFIGURE_DEPENDS
 add_library(AcustraDSP STATIC
     Source/DSP/AcustraEngine.cpp
     Source/DSP/AcustraEngine.h
+    Source/DSP/PiezoBlampTable.h
     Source/DSP/AcustraPerformer.cpp
     Source/DSP/AcustraPerformer.h)
 
@@ -309,6 +310,20 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.Capture COMMAND AcustraCaptureTests)
     set_tests_properties(Acustra.Capture PROPERTIES TIMEOUT 300)
 
+    # The piezo chain against Tools/PiezoReference.py's circuit simulation,
+    # through the fixtures it wrote (Tests/Fixtures).
+    add_executable(AcustraPiezoCircuitTests Tests/PiezoCircuitTests.cpp)
+    target_link_libraries(AcustraPiezoCircuitTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraPiezoCircuitTests PRIVATE cxx_std_17)
+    target_compile_definitions(AcustraPiezoCircuitTests PRIVATE
+        ACUSTRA_PIEZO_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/Tests/Fixtures")
+    if(NOT MSVC)
+        target_compile_options(AcustraPiezoCircuitTests PRIVATE
+            -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME Acustra.PiezoCircuit COMMAND AcustraPiezoCircuitTests)
+    set_tests_properties(Acustra.PiezoCircuit PROPERTIES TIMEOUT 300)
+
     add_executable(AcustraGuitarModelTests Tests/GuitarModelTests.cpp)
     target_link_libraries(AcustraGuitarModelTests PRIVATE AcustraDSP)
     add_test(NAME Acustra.GuitarModels COMMAND AcustraGuitarModelTests)
@@ -381,6 +396,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/MeasureMaterialLoudness.py"
                                  --self-test)
                 set_tests_properties(Acustra.MaterialLoudness PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.PiezoReference
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/PiezoReference.py"
+                                 --self-test)
+                set_tests_properties(Acustra.PiezoReference PROPERTIES TIMEOUT 120)
                 add_test(NAME Acustra.PiezoCalibration
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/CalibratePiezo.py"
