@@ -1786,7 +1786,6 @@ DispersionCalibration calibrateDispersion(
     double initialDecayRatio, double initialPoleRatio,
     double bendingA1 = 0.0, double bendingA2 = 0.0) noexcept
 {
-    constexpr double piDouble = 3.14159265358979323846;
     constexpr double twoPiDouble = 2.0 * piDouble;
     const double omega0 = twoPiDouble * fundamental / sampleRate;
     DispersionCalibration calibration;
@@ -5468,17 +5467,17 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
         double slippedEnergy = 0.0;
         double slippedCross = 0.0;
         double previousLine = lineAt(length);
-        float previousVelocity = velocityAt(length);
+        float previousSlipVelocity = velocityAt(length);
         for (int sample = 1; sample <= length; ++sample)
         {
             const double line = lineAt(sample);
             const float velocity = velocityAt(sample);
             const double lineStep = line - previousLine;
-            const double velocityStep = velocity - previousVelocity;
+            const double velocityStep = velocity - previousSlipVelocity;
             slippedEnergy += lineStep * lineStep;
             slippedCross += lineStep * velocityStep;
             previousLine = line;
-            previousVelocity = velocity;
+            previousSlipVelocity = velocity;
         }
         const double added = static_cast<double>(releaseShare) * slippedEnergy;
         const double magnitude = added
@@ -7076,9 +7075,9 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
         // added tone.
         for (int mode = 0; mode < Voice::longitudinalModeCount; ++mode)
         {
-            const float excitation = voice.longitudinalB0[mode]
+            const float modeDrive = voice.longitudinalB0[mode]
                 * voice.longitudinalDrive * slopeEnergy;
-            const float output = excitation
+            const float output = modeDrive
                 + voice.longitudinalA1[mode] * voice.longitudinalY1[mode]
                 + voice.longitudinalA2[mode] * voice.longitudinalY2[mode];
             voice.longitudinalY2[mode] = voice.longitudinalY1[mode];
@@ -7288,16 +7287,16 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
     const auto advance = [&] (int index, Vector& leftPart, Vector& rightPart)
     {
         const Vector pr = load(poleReal, index);
-        const Vector pi = load(poleImaginary, index);
+        const Vector pim = load(poleImaginary, index);
         const Vector re = load(real, index);
         const Vector im = load(imaginary, index);
         const Vector mr = load(momentReal, index);
         const Vector mi = load(momentImaginary, index);
-        const Vector nextReal = forceLanes + pr * re - pi * im;
-        const Vector nextImaginary = pi * re + pr * im;
+        const Vector nextReal = forceLanes + pr * re - pim * im;
+        const Vector nextImaginary = pim * re + pr * im;
         const Vector nextMomentReal = momentLanes + pr * mr
-                                    - pi * mi;
-        const Vector nextMomentImaginary = pi * mr
+                                    - pim * mi;
+        const Vector nextMomentImaginary = pim * mr
                                          + pr * mi;
         leftPart = load(leftReal, index) * nextReal
             - load(leftImaginary, index) * nextImaginary

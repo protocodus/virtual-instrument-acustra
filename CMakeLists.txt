@@ -63,7 +63,11 @@ if(NOT MSVC)
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        target_compile_options(AcustraDSPCxx17 PRIVATE -Wall -Wextra -Werror)
+        # -Wshadow on top of the Rack Extension's flags: a local that hides
+        # a namespace constant or an outer variable is how a formula quietly
+        # reads the wrong value.
+        target_compile_options(AcustraDSPCxx17 PRIVATE
+            -Wall -Wextra -Wshadow -Werror)
     endif()
 endif()
 
