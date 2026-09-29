@@ -7,7 +7,6 @@
 #include "MeasuredBridgeData.h"
 #endif
 #include "MeasuredSteelBridgeData.h"
-#include "MeasuredBodyDecayGridData.h"
 #include "MeasuredJointBodyData.h"
 #include "SteelBodyBlend.h"
 #include "GuitarModelData.h"
@@ -854,15 +853,14 @@ ModalPole steelOwnBridgePole(std::size_t index,
 }
 
 // The steel blend (SteelBodyBlend.h). On steel's own bridge the bridge is
-// B's aligned bridge, the Fylde's and the joint-pole body's in parallel, and
-// on steel's Original guitar the radiation is g21's bank, the decay-Q grid
-// above 1 kHz and the joint-pole body's radiation in parallel, each part at
-// its share. A part whose share is zero is not played at all, and a share of
-// exactly 1 multiplies exactly, so B=1, D=1, C=0, E=0 is Set 18's B+D bit for
-// bit.
+// B's aligned bridge, the Fylde's and the joint-pole body's kept modes in
+// parallel, and on steel's Original guitar the radiation is g21's bank and
+// the joint-pole body's kept radiation in parallel, each part at its share.
+// A part whose share is zero is not played at all, and a share of exactly 1
+// multiplies exactly, so B=1, D=1, E=0 is Set 18's B+D bit for bit.
 //
 // The joint-pole body (MeasuredJointBodyData.h) is one array: the radiation
-// reads every mode, the bridge only the modes carrying a mobility residue,
+// reads the kept modes, the bridge those of them carrying a mobility residue,
 // each remembering the joint mode whose pole it rings on. Both are
 // compile-time views of it.
 template <std::size_t N>
@@ -883,69 +881,126 @@ constexpr std::array<detail::MeasuredBodyMode, N> jointRadiationView(
     return out;
 }
 
+// E plays only its joint modes below steelBlendJointBandHz (SteelBodyBlend.h),
+// each at its place in the joint array, so its pole, its anchor detune and
+// its Shape group are the whole joint body's, and each keeps its own bridge
+// residue when it has one: a kept bridge mode always rings on its kept
+// radiation twin.
 template <std::size_t N>
-constexpr std::size_t jointMobilityCount(
-    const std::array<detail::MeasuredJointBodyMode, N>& joint) noexcept
+constexpr std::size_t jointBandCount(
+    const std::array<detail::MeasuredJointBodyMode, N>& joint, float bandHz) noexcept
 {
     std::size_t count = 0;
     for (const auto& mode : joint)
-        if (mode.heave > 0.0f || mode.rock > 0.0f)
+        if (mode.frequency < bandHz)
             ++count;
     return count;
 }
 
-template <std::size_t A, std::size_t N>
-constexpr std::array<detail::MeasuredBridgeMode, A> jointBridgeView(
-    const std::array<detail::MeasuredJointBodyMode, N>& joint) noexcept
+template <std::size_t K, std::size_t N>
+constexpr std::array<std::uint16_t, K> jointBandModes(
+    const std::array<detail::MeasuredJointBodyMode, N>& joint, float bandHz) noexcept
 {
-    std::array<detail::MeasuredBridgeMode, A> out {};
-    std::size_t slot = 0;
-    for (const auto& mode : joint)
-        if (mode.heave > 0.0f || mode.rock > 0.0f)
-            out[slot++] = detail::MeasuredBridgeMode { mode.frequency, mode.q,
-                                                       mode.heave, mode.cross, mode.rock };
-    return out;
-}
-
-template <std::size_t A, std::size_t N>
-constexpr std::array<std::uint16_t, A> jointBridgeSource(
-    const std::array<detail::MeasuredJointBodyMode, N>& joint) noexcept
-{
-    std::array<std::uint16_t, A> out {};
+    std::array<std::uint16_t, K> out {};
     std::size_t slot = 0;
     for (std::size_t index = 0; index < N; ++index)
-        if (joint[index].heave > 0.0f || joint[index].rock > 0.0f)
+        if (joint[index].frequency < bandHz)
             out[slot++] = static_cast<std::uint16_t>(index);
     return out;
 }
 
+constexpr auto steelJointKept = jointBandModes<jointBandCount(
+    detail::measuredSteelJointBodyModes, detail::steelBlendJointBandHz)>(
+    detail::measuredSteelJointBodyModes, detail::steelBlendJointBandHz);
+
+constexpr bool jointHasMobility(const detail::MeasuredJointBodyMode& mode) noexcept
+{
+    return mode.heave > 0.0f || mode.rock > 0.0f;
+}
+
+template <std::size_t K, std::size_t N>
+constexpr std::size_t jointMobilityCount(
+    const std::array<std::uint16_t, K>& kept,
+    const std::array<detail::MeasuredJointBodyMode, N>& joint) noexcept
+{
+    std::size_t count = 0;
+    for (const auto index : kept)
+        if (jointHasMobility(joint[index]))
+            ++count;
+    return count;
+}
+
+template <std::size_t A, std::size_t K, std::size_t N>
+constexpr std::array<detail::MeasuredBridgeMode, A> jointBridgeView(
+    const std::array<std::uint16_t, K>& kept,
+    const std::array<detail::MeasuredJointBodyMode, N>& joint) noexcept
+{
+    std::array<detail::MeasuredBridgeMode, A> out {};
+    std::size_t slot = 0;
+    for (const auto index : kept)
+        if (jointHasMobility(joint[index]))
+        {
+            const auto& mode = joint[index];
+            out[slot++] = detail::MeasuredBridgeMode { mode.frequency, mode.q,
+                                                       mode.heave, mode.cross, mode.rock };
+        }
+    return out;
+}
+
+template <std::size_t A, std::size_t K, std::size_t N>
+constexpr std::array<std::uint16_t, A> jointBridgeSource(
+    const std::array<std::uint16_t, K>& kept,
+    const std::array<detail::MeasuredJointBodyMode, N>& joint) noexcept
+{
+    std::array<std::uint16_t, A> out {};
+    std::size_t slot = 0;
+    for (const auto index : kept)
+        if (jointHasMobility(joint[index]))
+            out[slot++] = index;
+    return out;
+}
+
+// The whole joint body's radiation: its Shape morph reads A0 and T1 from all
+// of it, and each kept mode is read at its own index.
 constexpr auto steelJointRadiationModes
     = jointRadiationView(detail::measuredSteelJointBodyModes);
+constexpr std::size_t steelJointRadiationCount = steelJointKept.size();
 constexpr std::size_t steelJointBridgeCount
-    = jointMobilityCount(detail::measuredSteelJointBodyModes);
+    = jointMobilityCount(steelJointKept, detail::measuredSteelJointBodyModes);
 constexpr auto steelJointBridgeModes = jointBridgeView<steelJointBridgeCount>(
-    detail::measuredSteelJointBodyModes);
+    steelJointKept, detail::measuredSteelJointBodyModes);
 constexpr auto steelJointBridgeSource = jointBridgeSource<steelJointBridgeCount>(
-    detail::measuredSteelJointBodyModes);
+    steelJointKept, detail::measuredSteelJointBodyModes);
 
-// Each part's share of the whole. (1 - E) carries everything but the joint
-// body; within it B and the Fylde share the bridge, and g21's top band and
-// the grid share the radiation above 1 kHz.
+// Each part's share of the whole. Below E's band (1 - E) carries everything
+// but the joint body: g21's radiation, and the bridge, which B and the Fylde
+// share. Above it E is not played: B's bridge is whole there, and g21's
+// radiation gives up steelBlendHighJointFraction of E's share.
 constexpr float steelBlendRestShare = 1.0f - detail::steelBlendJointBodyWeight;
+constexpr float steelBlendHighRadiationShare
+    = 1.0f - detail::steelBlendJointBodyWeight * detail::steelBlendHighJointFraction;
 constexpr float steelBlendOwnBridgeShare
     = steelBlendRestShare * detail::steelBlendOwnBridgeWeight;
 constexpr float steelBlendFyldeShare
     = steelBlendRestShare * (1.0f - detail::steelBlendOwnBridgeWeight);
-constexpr float steelBlendTopBandShare
-    = steelBlendRestShare * (1.0f - detail::steelBlendDecayGridWeight);
-constexpr float steelBlendGridShare
-    = steelBlendRestShare * detail::steelBlendDecayGridWeight;
 constexpr float steelBlendJointShare = detail::steelBlendJointBodyWeight;
+
+// The share at which g21's radiation mode, or B's bridge mode, at measured
+// frequency hz is played.
+constexpr float steelBlendG21Share(float hz) noexcept
+{
+    return hz < detail::steelBlendJointBandHz ? steelBlendRestShare
+                                               : steelBlendHighRadiationShare;
+}
+constexpr float steelBlendOwnShare(float hz) noexcept
+{
+    return hz < detail::steelBlendJointBandHz ? steelBlendOwnBridgeShare
+                                               : detail::steelBlendOwnBridgeWeight;
+}
 
 constexpr std::size_t steelBlendBodyModeCount
     = detail::measuredSteelBodyModes.size()
-    + (steelBlendGridShare > 0.0f ? detail::steelDecayGridBodyModes.size() : 0)
-    + (steelBlendJointShare > 0.0f ? steelJointRadiationModes.size() : 0);
+    + (steelBlendJointShare > 0.0f ? steelJointRadiationCount : 0);
 constexpr std::size_t steelBlendBridgeModeCount
     = detail::measuredSteelBridgeModes.size()
     + (steelBlendFyldeShare > 0.0f ? detail::measuredFyldeBridgeModes.size() : 0)
@@ -955,30 +1010,16 @@ constexpr std::size_t steelBlendBridgeModeCount
 static_assert(detail::measuredSteelBodyModes.size() % 4 == 0,
               "g21's bank no longer ends on a group of four: pad it in configureBody");
 static_assert(steelBlendBodyModeCount <= ACUSTRA_BODY_MODE_COUNT,
-              "the steel blend's radiation exceeds the body slots");
+              "the steel blend's radiation exceeds the body slots: with every "
+              "joint mode (a band above 10 kHz) it needs "
+              "-DACUSTRA_BODY_MODE_COUNT=263");
 static_assert(steelBlendBridgeModeCount <= ACUSTRA_BRIDGE_MODE_COUNT,
               "the steel blend's bridge exceeds the bridge slots: with its B "
-              "weight below 1 it needs -DACUSTRA_BRIDGE_MODE_COUNT=147");
-static_assert(detail::steelDecayGridFirstIndex > 0
-              && static_cast<std::size_t>(detail::steelDecayGridFirstIndex)
-                  < detail::measuredSteelBodyModes.size()
-              && detail::measuredSteelBodyModes[static_cast<std::size_t>(
-                     detail::steelDecayGridFirstIndex - 1)].frequency < 1000.0f
-              && detail::measuredSteelBodyModes[static_cast<std::size_t>(
-                     detail::steelDecayGridFirstIndex)].frequency >= 1000.0f,
-              "the decay-Q grid was fitted beside another bank: rerun "
-              "Tools/GenerateBodyDecayGrid.py");
+              "weight below 1 it needs 44 more (the Fylde's), with every joint "
+              "mode (a band above 10 kHz) -DACUSTRA_BRIDGE_MODE_COUNT=103");
 static_assert(detail::measuredSteelT1PlateQWeight == detail::steelBlendT1PlateQWeight,
               "MeasuredBodyData.h was written with another D weight than "
               "SteelBodyBlend.h's: rerun Tools/GenerateBodyForcePair.py --plate-q median");
-
-// The share at which g21's own radiation mode `index` is played: its top
-// band shares the radiation above 1 kHz with the decay-Q grid.
-constexpr float steelBlendG21Share(int index) noexcept
-{
-    return index >= detail::steelDecayGridFirstIndex ? steelBlendTopBandShare
-                                                     : steelBlendRestShare;
-}
 
 // The joint-pole body's own Shape morph: its A0 and T1 are its own modes.
 BodyShapeMorph steelJointMorph(const AnchorTransform& anchor,
@@ -1013,7 +1054,7 @@ void visitSteelBlendBridge(float a0, float t1, float plate, float t1UpperHz,
                                              morph, wood, calibration);
         placed.frequency = pole.frequency;
         placed.q = pole.q;
-        visit(own[index], placed, steelBlendOwnBridgeShare, true);
+        visit(own[index], placed, steelBlendOwnShare(own[index].frequency), true);
     }
     if (steelBlendFyldeShare > 0.0f)
     {
@@ -2817,23 +2858,17 @@ void AcustraEngine::configureBody() noexcept
             mode.reset();
     };
     // Steel on its Original guitar plays the blend (SteelBodyBlend.h): g21's
-    // bank, the decay-Q grid above 1 kHz as the next indices of the bank it
-    // was fitted beside, and the joint-pole body on its own morph.
+    // bank, then the joint-pole body's kept modes on its own morph.
     const int ownCount = static_cast<int>(std::min(
         bank.size(), static_cast<std::size_t>(bodyModeCount)));
     for (int index = 0; index < ownCount; ++index)
         place(bank[static_cast<std::size_t>(index)], index, morph,
-              steelBank ? steelBlendG21Share(index) : 1.0f);
-    if (steelBank && steelBlendGridShare > 0.0f)
-        for (std::size_t index = 0; index < detail::steelDecayGridBodyModes.size();
-             ++index)
-            place(detail::steelDecayGridBodyModes[index],
-                  detail::steelDecayGridFirstIndex + static_cast<int>(index),
-                  morph, steelBlendGridShare);
+              steelBank ? steelBlendG21Share(bank[static_cast<std::size_t>(index)].frequency)
+                        : 1.0f);
     if (steelBank && steelBlendJointShare > 0.0f)
     {
         const auto jointMorph = steelJointMorph(anchor, parameters_.shape);
-        for (std::size_t index = 0; index < steelJointRadiationModes.size(); ++index)
+        for (const auto index : steelJointKept)
             place(steelJointRadiationModes[index], static_cast<int>(index),
                   jointMorph, steelBlendJointShare);
     }

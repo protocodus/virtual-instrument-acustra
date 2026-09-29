@@ -958,37 +958,40 @@ out at onset fade 2.1 dB against their neighbours by the late window (0.9 on
 the Fylde; the recordings 0.8-1.8). Wood now moves this bridge with the
 radiation, exchanging the load as Shape does.
 
-**The steel blend, at the midpoint (a listening candidate awaiting a blind
-verdict).** After Set 18 the listener asked for its model enhancements
-combined by weight, B and D at about 70% and the others at 10-20%. Blind Set
-19 heard that blend (B 1, D 0.7, C 0.15, E 0.15) against B+D and chose B+D,
-with "something between B and C is the best". On this branch steel plays the
-midpoint between the two, with the by-ear weights in
-[`SteelBodyBlend.h`](Source/DSP/SteelBodyBlend.h): steel's own bridge is the
+**The steel blend, lightened (a measured stand-in for a by-ear choice).**
+After Set 18 the listener asked for its model enhancements combined by
+weight. Blind Set 19 heard that blend (B 1, D 0.7, C 0.15, E 0.15) against
+B+D and chose B+D, with "something between B and C is the best"; Blind Set
+21 then preferred the midpoint (B 1, D 0.85, C 0.075, E 0.075) over B+D,
+"not a big difference". The midpoint cost about +40% (strums) / +55% (a held
+chord) CPU over B+D, and the listener asked for the cheaper option, as close
+to the preference as possible. On this branch steel plays a lighter body
+measured to stand in for the midpoint, with the weights in
+[`SteelBodyBlend.h`](Source/DSP/SteelBodyBlend.h). Steel's own bridge is the
 aligned g21 bridge above, whole (B at 1: a Fylde share in parallel, passive
 as it is, moves the peaks of the port the strings drain into, which is not
 linear in the bridge's admittance, and at 30% left the 190 Hz radiation pole
 0.37 of B's drain, outside both parents; B's poles are never moved part of
 the way either, which would reopen the gap between a bridge mode and its
-radiation peak); T1 and the rocking modes are damped 0.85 of the way in log
-Q from their as-fitted Q to the 150 Hz plate-Q rule's (D, below); above
-1 kHz the radiation is 0.925 of g21's fitted top band plus 0.075 of a
-decay-Q pole grid fitted to the same measurement
-([`MeasuredBodyDecayGridData.h`](Source/DSP/MeasuredBodyDecayGridData.h), C);
-and a jointly fitted pole set for g21's bridge and microphones
-([`MeasuredJointBodyData.h`](Source/DSP/MeasuredJointBodyData.h), E, verbatim,
-so D does not damp its own T1 and rocking modes) plays its radiation and
-bridge in parallel at 0.075, everything else at 0.925. Every part is passive
-and the sums are too. Only steel on its Original guitar reads it; the Fylde
-bridge choice keeps the Fylde alone as its bridge under the same blended
-radiation, and nylon is bit-identical.
-With B at 1, D at 1 and C and E at 0 the engine is the unblended B+D bit for
-bit. A weight above 0 plays all of its part's modes, so the midpoint costs
-what the Set 19 blend did: in the Rack Extension's native module about half
-to two thirds as much again as B+D (a 64-frame batch at 48 kHz, strums
-65 -> 97 us, a held chord 45 -> 76 us, measured on the blend). The benchmark
-readings quoted above are B+D's; the blend's are in Docs/decisions.md
-(2026-09-28).
+radiation peak). T1 and the rocking modes are damped 0.85 of the way in log
+Q from their as-fitted Q to the 150 Hz plate-Q rule's (D, below). The
+decay-Q grid (C) is gone: its difference sat 24-26 dB below the music at
+twice this weight. Of a jointly fitted pole set for g21's bridge and
+microphones ([`MeasuredJointBodyData.h`](Source/DSP/MeasuredJointBodyData.h),
+E, verbatim, so D does not damp its own T1 and rocking modes) only the 9
+modes below 550 Hz play, radiation and bridge (8 of them carry a bridge
+residue) in parallel at 0.075. Below 550 Hz g21's radiation and B's bridge
+play at 0.925; above it B's bridge is whole and g21's radiation plays at
+0.985, the level at which the midpoint's balance of highs against 100-400 Hz
+is matched. Every part is passive and the sums are too. Only steel on its
+Original guitar reads it; the Fylde bridge choice keeps the Fylde alone as
+its bridge under the same blended radiation, and nylon is bit-identical.
+On Set 21's pieces and a single-note sweep this body keeps 83% / 85% of the
+midpoint's measured move away from B+D (body under the treble notes, 63-80
+Hz, 159/200/317 Hz early, tilt), and costs +2-4% CPU per 64-frame block over
+B+D (Docs/decisions.md, 2026-09-29). It has not been heard against the
+midpoint. With B at 1, D at 1 and E at 0 the engine is the unblended B+D
+bit for bit. The benchmark readings quoted above are B+D's.
 
 The model represents each short segment behind the saddle as a spring between
 the bridge and ground. All six are there whether or not
@@ -1102,7 +1105,7 @@ the level it was measured at and rings for a shorter time. The air group below
 150 Hz, where the by-ear gain below acts, is left as measured. Up to
 2026-09-27 the band started at 300 Hz; since 2026-09-28 (chosen by ear,
 Docs/decisions.md) T1 and the rocking modes are under the same rule (in the
-steel blend 0.7 of the way in log Q: 14.8, 30.0, 13.6 and 2.6 for the four
+steel blend 0.85 of the way in log Q: 14.3, 28.7, 12.8 and 2.5 for the four
 below): T1 at 178.5 Hz Q 17.5 -> 13.8 (the population's T1s 8.8-15.5), the
 208.7 Hz rocking mode Q 37.3 -> 27.4 (the population's rocking modes in
 200-280 Hz: Q 11-21), 229.0 Hz Q 17.8 -> 12.1, and 286.8 Hz Q 3.7 -> 2.3,

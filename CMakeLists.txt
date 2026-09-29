@@ -391,12 +391,7 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateBodyForcePair.py"
                                  --self-test)
                 set_tests_properties(Acustra.GenerateBodyForcePair PROPERTIES TIMEOUT 180)
-                # The steel blend's two parallel parts (Source/DSP/SteelBodyBlend.h).
-                add_test(NAME Acustra.GenerateBodyDecayGrid
-                         COMMAND "${Python3_EXECUTABLE}"
-                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateBodyDecayGrid.py"
-                                 --self-test)
-                set_tests_properties(Acustra.GenerateBodyDecayGrid PROPERTIES TIMEOUT 180)
+                # The steel blend's parallel part (Source/DSP/SteelBodyBlend.h).
                 add_test(NAME Acustra.GenerateJointBody
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateJointBody.py"

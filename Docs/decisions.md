@@ -4,6 +4,143 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-29 — Set 21: the midpoint preferred; a lighter body measured to stand in for it
+
+**Verdict (by ear).** Blind Set 21 put the midpoint (`cand/body-mid`, B 1,
+D 0.85, C 0.075, E 0.075) against B+D (main cd73763) on Set 19's five steel
+pieces. Overall the listener chose the midpoint, with the note "not a big
+difference". (The per-pair answers are not in this record.) Told that the
+midpoint costs about +40% (strums) / +55% (a held chord) CPU per 64-frame
+block over B+D, the listener wrote: "ad cpu usage - as you say, difference is
+small, so maybe go with the cheaper cpu option, given it is so much more cpu
+expensive. but try to get as close to my preference as possible."
+
+**What ships on `cand/body-lite` is a measured stand-in for that by-ear
+choice, not a choice made by ear.** Nobody has heard it against the midpoint.
+It was chosen by the numbers below, as the cheapest body found that measures
+close to the midpoint, and a blind check against the midpoint would be the
+by-ear test of it. In `Source/DSP/SteelBodyBlend.h`:
+- **B 1 and D 0.85** as in the midpoint. D is data (`MeasuredBodyData.h`,
+  unchanged), so it costs nothing.
+- **C is gone.** `MeasuredBodyDecayGridData.h` and its generator
+  `Tools/GenerateBodyDecayGrid.py` (and the generator's ctest) are removed:
+  the header was the tool's only product and nothing else reads either. Both
+  stay in git history (cand/body-decay-q-grid, cand/body-mid). At 0.15 the
+  grid's difference sat 24-26 dB below the music; it cost 234 modes (about
+  11 us per block). Its one measurable trace, a 0.3-0.5 dB darker 12.5 and
+  16 kHz third-octave at 0.075, is lost with it.
+- **E at 0.075, but only its modes below 550 Hz**
+  (`steelBlendJointBandHz`): 9 of the joint body's 131 radiation modes
+  (83.5, 90.3, 179.2, 208.4, 227.7, 371.9, 411.1, 484.6, 516.2 Hz) and the 8
+  bridge modes among them (all but 227.7 Hz, which has no bridge residue).
+  Each is E's own mode at its own index in the joint array, on the whole joint
+  body's Shape morph, so it rings exactly as in the midpoint. A bridge mode is
+  kept only with its radiation twin.
+- **Below 550 Hz** g21's radiation and B's bridge play at 0.925, as in the
+  midpoint. **Above it** E is not played, so B's bridge is whole (1.0) and
+  g21's radiation plays at 1 - 0.2 × 0.075 = 0.985
+  (`steelBlendHighJointFraction` 0.2). At 0.925 this body's energy above
+  2 kHz against 100-400 Hz measured 0.5-0.6 dB under the midpoint's (E's
+  high modes put back most of what the 0.925 takes); at 1.0 it measured
+  0.1-0.2 dB over. 0.2 is the measured value between them, not a heard one.
+- `ACUSTRA_BODY_MODE_COUNT` and `ACUSTRA_BRIDGE_MODE_COUNT` return to main's
+  141 and 56.
+
+**How the set was found.** First each mode's share of the midpoint-minus-
+(midpoint with E off) difference was measured. An analysis build played all
+131 joint modes with run-time masks, on Set 21's five pieces and a 16-note
+sweep of single notes, E2 to C6 in minor thirds (1.4 s each, fingered; E6 is
+fret 24, past the engine's 20).
+- Radiation is exactly linear: the per-mode solo renders sum to the whole
+  within -80 dB of the midpoint-B+D difference. Ranked by energy of each mode's share in 60-400 Hz and over the
+  whole band: 179, 372, 90, 411, 228 and 208 Hz lead below 400 Hz; 729 and
+  516 Hz lead 400 Hz-2 kHz. Above 2 kHz the energy is spread over many modes
+  at 3-9 kHz.
+- The bridge modes are not additive. Removed one at a time they move the
+  waveform more than E does as a whole (179, 90, 83 and 208 Hz most; the
+  mode shifts the string's drain and so the phase of every partial after
+  it), so they were ranked by render, as heard.
+- Then candidate sets were rendered and scored against the midpoint on the
+  diagnosis's descriptors, as heard (each render RMS-matched to B+D per
+  piece). Radiation modes kept by energy alone fell short: 16 modes captured
+  only 38% of the pieces' descriptor move, because tilt was 0.5 dB too dark
+  without E's high modes. The whole-band share rule above fixed that.
+- Sets and bands tried, with the pieces / sweep capture: 7 modes below
+  450 Hz 78% / 83%; 8 below 500 Hz 78% / 83%; **9 below 550 Hz 83% / 85%**;
+  10 below 600 Hz 84% / 85%; 12 below 750 Hz 85% / 85%. Dropping 227.7 Hz
+  from the 10 fell to 66% / 80%, dropping 516 Hz to 67% / 65%. E's weight at 0.065 or 0.085 measured
+  further from the midpoint than 0.075, and so did a lower weight on E's
+  bridge alone. The weight stays 0.075.
+
+**Closeness to the midpoint** (lite = this body; midC0 = the midpoint without
+its grid, the best any C-free body could do). Waveform difference to the
+midpoint, dB re the midpoint's level, full band / 60-400 Hz, and the share of
+B+D's difference energy it removes:
+
+| piece | B+D | lite | midC0 |
+|---|---|---|---|
+| 1 finger singles | -23.9 / -23.6 | -37.0 / -42.7 (95% / 99%) | -48.4 / -60.9 |
+| 2 finger chords | -22.1 / -22.9 | -40.1 / -44.7 (98% / 99%) | -50.0 / -62.3 |
+| 3 travis | -23.4 / -23.9 | -38.8 / -43.4 (97% / 99%) | -49.4 / -61.6 |
+| 4 pick melody | -25.2 / -25.0 | -28.9 / -41.9 (58% / 98%) | -36.1 / -62.9 |
+| 5 pick strums | -20.6 / -21.3 | -33.4 / -43.2 (95% / 99%) | -41.2 / -61.4 |
+| sweep E2-C6 | -22.3 / -21.9 | -34.9 / -41.7 (95% / 99%) | -43.0 / -59.1 |
+
+Piece 4's remaining full-band difference is above 2 kHz: E's high modes and
+the grid, left out. The spectral distance to the midpoint was also measured:
+the rms dB over the third-octaves in the attack (0-40 ms), early (40-300 ms)
+and late windows after each onset. Below 400 Hz the lite body removes 59-76%
+of B+D's per piece, and midC0 91-95%. Over the whole band it removes 17-41%,
+and midC0 59-77%; the rest of midC0's gap is C's 12.5-16 kHz.
+
+The diagnosis's descriptors, each minus B+D (dB):
+
+| descriptor | midpoint | lite | captured |
+|---|---|---|---|
+| body under E4 / A4 / E5 (piece 1, 80-300 Hz, 0.3-1.4 s) | +0.46 / +0.70 / +0.79 | +0.54 / +0.77 / +0.82 | 91% |
+| 63-80 Hz, late, pieces 1-5 | +0.28 +0.06 +0.09 +0.04 +0.18 | +0.25 +0.01 +0.01 +0.01 +0.12 | 62% |
+| 159 Hz third-octave, 40-300 ms | -0.32 +0.22 -0.07 +1.21 +0.03 | -0.27 +0.23 -0.05 +1.23 +0.06 | 93% |
+| 200 Hz, 40-300 ms | -0.07 +0.10 -0.04 +0.11 +0.01 | -0.01 +0.12 -0.00 +0.17 +0.05 | 33% |
+| 317 Hz, 40-300 ms | +0.01 -0.14 +0.13 +0.07 -0.01 | -0.01 -0.18 +0.12 +0.05 -0.04 | 61% |
+| tilt (>2 kHz - 100-400 Hz) | -0.07 -0.35 -0.19 -0.36 -0.28 | -0.11 -0.37 -0.21 -0.37 -0.22 | 87% |
+| sweep, 80-300 Hz in each note's ring | (mean |B+D - midpoint| 0.43) | | 89% |
+| sweep, 63-80 Hz in each note's ring | (0.39) | | 97% |
+| sweep, tilt per note | (0.36) | | 67% |
+
+Captured = 1 - sum |lite - midpoint| / sum |B+D - midpoint| over the entries.
+Over all the pieces' entries it is 83%, per piece 86 / 83 / 66 / 93 / 55%.
+Pieces 3 and 5 move least between B+D and the midpoint, so small residues
+weigh more there. Over the sweep's entries it is 85%. midC0 scores 96% and
+93%. The 200 and 317 Hz entries move by under 0.15 dB between B+D and the
+midpoint, and the lite body's residue there is 0.03-0.04 dB on average.
+
+**Cost.** Thread CPU per 64-frame block at 48 kHz: steel on the Original
+bridge, 12 s, a six-note strum every 250 ms / one chord held
+(`scratchpad/lite/cpu/probe.cpp`, the probe the midpoint's entry used). The
+figures are medians over 15 interleaved rounds (each a median of 3 runs) on a
+loaded machine (load average about 25), with the paired per-round ratio
+against B+D:
+
+| build | B+D (main) | midpoint | lite |
+|---|---|---|---|
+| plug-in library (CMake Release, -O3), strum / held us | 55.9 / 41.1 | 79.0 / 63.4 (+41.5% / +54.7%) | 58.4 / 42.8 (+3.8% / +4.4%) |
+| C++17 -O2 -fno-builtin, strum / held us | 57.3 / 41.1 | 79.4 / 63.7 (+40.5% / +54.8%) | 59.2 / 42.8 (+1.9% / +3.8%) |
+
+**Checks.**
+- Passivity and stability for every Shape and every Wood (`testSteelBlend`,
+  4 × 4): the string-projected bridge mobility's real part is never below 0
+  from 60 Hz to 10 kHz, and every bridge section and body pole lies inside
+  the unit circle (largest radius 0.99983). A full chord left to ring decays
+  (second 9 over second 1 below 6e-8).
+- Every bridge section's residue matrix stays positive semidefinite.
+- At each of B's aligned poles the port keeps at least that mode's share of
+  the conductance B alone gives it (worst ratio 1.00001).
+- Nylon renders are byte-identical to main (Set 21's pieces 1-3 on Original,
+  the Bellido, and Jumbo/maple picked).
+- The analysis build with the same set reproduces the scores to the digit.
+- `ctest` 24/24 (Acustra.GenerateBodyDecayGrid removed), `AcustraDSPCxx17`
+  builds, and the plug-in tests pass.
+
 ## 2026-09-28 — listening candidate: halfway from B+D to the blend (awaiting Set 21)
 
 Set 19's verdict chose B+D overall and asked for "something between B and C
