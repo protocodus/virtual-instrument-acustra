@@ -1457,6 +1457,12 @@ Floor-matched (`Tools/AuditRecordingFloor.py`, steel rows), Finger training,
 validation and test -0.31%, -0.63%, -1.10%, Pick +1.77%, +0.10%, +1.66%.
 The benchmark does not choose D; the listener did.
 
+(Corrected 2026-09-29, audit F33: the six contact noise and click levels were
+left out of BY_EAR here, so the transient-* and noise-* stages could still
+refit them. They are frozen now, with the noise's velocity law and corners
+counted as inert; those stages, which then had nothing of their own to
+search, were removed. `Tests/OptimizerFreezeTests.py` checks it.)
+
 ## 2026-09-28 — snap then mellow: the strings' bending loss against a pluck that cannot yet supply the attack
 
 What was measured. The bending loss of 84dcdc1 (Valette; Woodhouse, Acta

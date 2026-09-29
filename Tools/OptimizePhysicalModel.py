@@ -179,11 +179,28 @@ BY_EAR = (
     "nylon.velocityBrightnessDepth",
     "nylonWoundBendingLoss",
     "nylonPlainBendingLoss",
+    # Rejected by ear on 2026-09-28 (Docs/decisions.md, Set 16: "the pick is
+    # TOO LOUD"): every contact noise and click level ships at zero, and no
+    # stage may bring one back. The mechanism stays in the code for a later
+    # candidate, which pins a level with --set NAME=VALUE (--set moves a
+    # frozen value; freezing only keeps the search off it).
+    "contactNoiseFinger",
+    "contactNoiseNylon",
+    "contactNoisePick",
+    "contactClickFinger",
+    "contactClickNylon",
+    "contactClickPick",
 )
 # With longitudinalGain frozen at zero the axial resonators are not summed at
 # all, so their Q multiplies nothing and any value renders the same audio.
+# With every contact noise and click level frozen at zero the noise is never
+# drawn, so its velocity law and corners shape nothing either.
 INERT = (
     "longitudinalQ",
+    "contactNoiseVelocityExponent",
+    "contactNoiseCornerHz",
+    "nylonContactNoiseCornerHz",
+    "pickContactNoiseCornerHz",
 )
 # Values that are a published measurement rather than a fit. The one it held,
 # the polarisation end correction, is now chosen by ear (BY_EAR above).
@@ -234,27 +251,12 @@ NYLON_SNAP = _free(np.asarray((7, 8, 10, 35, 36)))
 # attack has been rebuilt around it is found by profiling the loss instead.
 STEEL_SNAP_PLUCK = _free(np.asarray((14, 15, 17, 29, 30, 31, 32)))
 NYLON_SNAP_PLUCK = _free(np.asarray((7, 8, 10)))
-# The contact's noise (Docs/decisions.md, 2026-09-28): a steel stage over the
-# Finger and Pick noises and what they share - the velocity exponent and the
-# decay - with the burst it would replace and the strings' bending loss, run
-# with --joint-picking finger,pick; a nylon stage over the nylon finger's
-# level and corner with nylon's burst and loss; and the noise alone for
-# either (a loss --set holds).
-STEEL_TRANSIENT = _free(np.asarray((14, 15, 17, 29, 30, 31, 32, 33, 34,
-                                     37, 39, 40, 41, 43, 45, 47)))
-NYLON_TRANSIENT = _free(np.asarray((7, 8, 10, 35, 36, 38, 42, 46)))
-STEEL_NOISE = _free(np.asarray((37, 39, 40, 41, 43, 45, 47)))
-NYLON_NOISE = _free(np.asarray((38, 42, 46)))
-# The steel stage without the finger's click: a fingertip's flesh has no hard
-# edge to click with, and the finger-plucked flat-top rows hold less energy
-# between their partials than the engine already renders (2026-09-28), while
-# the steel training rows were all picked.
-STEEL_TRANSIENT_NO_FINGER_CLICK = _free(np.asarray((14, 15, 17, 29, 30, 31, 32,
-                                                    33, 34, 37, 39, 40, 41, 43,
-                                                    47)))
-# The steel stage with the strings' loss held where --set puts it.
-STEEL_TRANSIENT_PLUCK = _free(np.asarray((14, 15, 17, 29, 30, 31, 32,
-                                          37, 39, 40, 41, 43, 47)))
+# The contact-noise stages that generated Set 16's candidates (transient-*
+# and noise-*, Docs/decisions.md, 2026-09-28) went with its verdict: with
+# every noise and click level frozen at zero, the noise stages had nothing
+# left to search and the transient stages were the snap stages under another
+# name. A new noise candidate takes the levels and shapes out of BY_EAR and
+# INERT and restores those stages from Git history.
 
 STAGES = {
     "shared-body": (None, GLOBAL),
@@ -267,12 +269,6 @@ STAGES = {
     "snap-nylon": ("nylon", NYLON_SNAP),
     "snap-steel-pluck": ("steel", STEEL_SNAP_PLUCK),
     "snap-nylon-pluck": ("nylon", NYLON_SNAP_PLUCK),
-    "transient-steel": ("steel", STEEL_TRANSIENT),
-    "transient-nylon": ("nylon", NYLON_TRANSIENT),
-    "noise-steel": ("steel", STEEL_NOISE),
-    "noise-nylon": ("nylon", NYLON_NOISE),
-    "transient-steel-pluck": ("steel", STEEL_TRANSIENT_PLUCK),
-    "transient-steel-pick": ("steel", STEEL_TRANSIENT_NO_FINGER_CLICK),
 }
 DEFAULT_STAGES = ("shared-body", "nylon-string", "steel-string",
                   "shared-body-refine")

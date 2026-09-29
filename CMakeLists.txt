@@ -407,6 +407,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FitPhysicalModel.py"
                                  --self-test)
                 set_tests_properties(Acustra.PhysicalScorer PROPERTIES TIMEOUT 180)
+                # No stage may refit a value a listener chose.
+                add_test(NAME Acustra.OptimizerFreeze
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tests/OptimizerFreezeTests.py")
+                set_tests_properties(Acustra.OptimizerFreeze PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.MaterialLoudness
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/MeasureMaterialLoudness.py"
