@@ -44,6 +44,7 @@ file(GLOB ACUSTRA_BANK_PARTS CONFIGURE_DEPENDS
 add_library(AcustraDSP STATIC
     Source/DSP/AcustraEngine.cpp
     Source/DSP/AcustraEngine.h
+    Source/DSP/PiezoBlampTable.h
     Source/DSP/AcustraPerformer.cpp
     Source/DSP/AcustraPerformer.h)
 
@@ -381,6 +382,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/MeasureMaterialLoudness.py"
                                  --self-test)
                 set_tests_properties(Acustra.MaterialLoudness PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.PiezoReference
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/PiezoReference.py"
+                                 --self-test)
+                set_tests_properties(Acustra.PiezoReference PROPERTIES TIMEOUT 120)
                 add_test(NAME Acustra.PiezoCalibration
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/CalibratePiezo.py"
