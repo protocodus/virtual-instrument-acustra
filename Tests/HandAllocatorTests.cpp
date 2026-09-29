@@ -486,13 +486,27 @@ void testAllocatorCost()
     for (const int note : { 43, 47, 50, 55, 59 })
         engine->noteOn(note, 0.7f);
     run(*engine, 0.05);
+    // Each figure is the best of several passes, as the output-bus cost
+    // gate does: a scheduler preemption or a cold cache only ever adds time,
+    // so the minimum is the allocator's own cost, and it still fails when
+    // that cost itself is over the gate. A mean of wall-clock time read up to
+    // eight times the quiet figure on a loaded machine and failed there.
     constexpr int repeats = 2000;
+    constexpr int passes = 5;
     volatile int sink = 0;
-    auto start = std::chrono::steady_clock::now();
-    for (int repeat = 0; repeat < repeats; ++repeat)
-        sink = sink + Access::chooseString(*engine, 67 + (repeat & 3));
-    const double single = std::chrono::duration<double, std::micro>(
-        std::chrono::steady_clock::now() - start).count() / repeats;
+    const auto microseconds = [] (auto from)
+    {
+        return std::chrono::duration<double, std::micro>(
+            std::chrono::steady_clock::now() - from).count();
+    };
+    double single = 1.0e30;
+    for (int pass = 0; pass < passes; ++pass)
+    {
+        const auto start = std::chrono::steady_clock::now();
+        for (int repeat = 0; repeat < repeats; ++repeat)
+            sink = sink + Access::chooseString(*engine, 67 + (repeat & 3));
+        single = std::min(single, microseconds(start) / repeats);
+    }
 
     auto chordEngine = freshEngine();
     for (const int note : { 62, 65, 69 })
@@ -502,40 +516,46 @@ void testAllocatorCost()
         chordEngine->noteOff(note);
     }
     const std::array<int, 6> chord { 64, 59, 56, 52, 47, 40 };
-    start = std::chrono::steady_clock::now();
-    for (int repeat = 0; repeat < repeats; ++repeat)
-        chordEngine->planChord(chord.data(), 6);
-    const double plan = std::chrono::duration<double, std::micro>(
-        std::chrono::steady_clock::now() - start).count() / repeats;
+    double plan = 1.0e30;
+    for (int pass = 0; pass < passes; ++pass)
+    {
+        const auto start = std::chrono::steady_clock::now();
+        for (int repeat = 0; repeat < repeats; ++repeat)
+            chordEngine->planChord(chord.data(), 6);
+        plan = std::min(plan, microseconds(start) / repeats);
+    }
     // Six notes each on four or five strings, filling all six: the widest
     // search a six-note chord makes.
     const std::array<int, 6> cluster { 64, 62, 60, 59, 57, 55 };
-    start = std::chrono::steady_clock::now();
-    for (int repeat = 0; repeat < repeats / 10; ++repeat)
-        chordEngine->planChord(cluster.data(), 6);
-    const double widest = std::chrono::duration<double, std::micro>(
-        std::chrono::steady_clock::now() - start).count() / (repeats / 10);
+    double widest = 1.0e30;
+    for (int pass = 0; pass < passes; ++pass)
+    {
+        const auto start = std::chrono::steady_clock::now();
+        for (int repeat = 0; repeat < repeats / 10; ++repeat)
+            chordEngine->planChord(cluster.data(), 6);
+        widest = std::min(widest, microseconds(start) / (repeats / 10));
+    }
 
     // The rolled triad's refret: C4 and E4 down 10 ms apart, G4 chosen on
     // the G string's twelfth fret. The refret changes the engine, so each
-    // timing runs on its own copy.
+    // timing runs cold on its own copy, and the best of them is the refret's
+    // cost.
     auto rolled = freshEngine();
     rolled->noteOn(60, 0.8f);
     run(*rolled, 0.010);
     rolled->noteOn(64, 0.8f);
     run(*rolled, 0.010);
-    double reshape = 0.0;
+    double reshape = 1.0e30;
     constexpr int copies = 100;
     for (int repeat = 0; repeat < copies; ++repeat)
     {
         auto copy = std::make_unique<AcustraEngine>(*rolled);
-        start = std::chrono::steady_clock::now();
+        const auto start = std::chrono::steady_clock::now();
         sink = sink + Access::reshape(*copy, 67, 1, 3);
-        reshape += std::chrono::duration<double, std::micro>(
-            std::chrono::steady_clock::now() - start).count();
+        reshape = std::min(reshape, microseconds(start));
     }
-    reshape /= copies;
-    std::cout << "Acustra allocator cost per note-on: single " << single
+    std::cout << "Acustra allocator cost per note-on (best of "
+              << passes << " passes, refret best of " << copies << "): single " << single
               << " us, six-note plan " << plan << " us (widest search "
               << widest << " us), rolled-chord refret with two replucks "
               << reshape << " us\n";
