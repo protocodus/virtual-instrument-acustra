@@ -213,8 +213,12 @@ constexpr float steelParallelPluckReference = 1.8637f;
 // and with Pick at the default Output (Docs/decisions.md, 2026-09-28). The
 // user asked for nylon to be as loud as steel, so nylon's reference rises by
 // that much. Unlike steel's rise this one is meant to be heard: sessions that
-// play nylon, saved ones included, get louder by it.
-constexpr float nylonReference = 1.8774f;
+// play nylon, saved ones included, get louder by it. On 2026-09-29 nylon's
+// Wood reference moved to g34's cedar and its bridge began to follow Wood
+// (audit F19, F10), which left the same grid's nylon median 0.75 LU under
+// steel's; the reference rises by that too (1.8774 -> 2.0462), so the two
+// stay as loud as the user asked.
+constexpr float nylonReference = 2.0462f;
 constexpr float materialReferenceFor(StringMaterial material) noexcept
 {
     return material == StringMaterial::Steel ? steelParallelPluckReference

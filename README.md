@@ -763,7 +763,9 @@ its loudness. Nylon's rises by 5.47 dB, at the user's request, so that it
 plays as loud as steel: that is the median BS.1770 loudness nylon measured
 below steel across the six factory constructions strung with each material,
 playing single notes, strums, an arpeggio and ringing chords with Finger and
-Pick ([`MeasureMaterialLoudness.py`](Tools/MeasureMaterialLoudness.py)). The
+Pick ([`MeasureMaterialLoudness.py`](Tools/MeasureMaterialLoudness.py)); a
+further 0.75 dB keeps it there since nylon's Wood reference and bridge
+changed (2026-09-29). The
 effect
 is audible as the slow beating a guitar partial has and a single radiating
 plane cannot: over 0.3-2.3 s, the median RMS envelope residual of H1-H6
