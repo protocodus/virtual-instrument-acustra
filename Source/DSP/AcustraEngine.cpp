@@ -8,6 +8,7 @@
 #endif
 #include "MeasuredSteelBridgeData.h"
 #include "GuitarModelData.h"
+#include "PiezoBlampTable.h"
 
 #include <algorithm>
 #include <cmath>
@@ -2163,55 +2164,102 @@ void AcustraEngine::prepare(double sampleRate, int)
     sampleRate_ = std::clamp(sampleRate, 8000.0, 384000.0);
     ++voiceConfigurationGeneration_;
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
-    // The piezo chain's filters (renderPiezo; the values and their sources
-    // are in PiezoDesign).
-    // Saddle resonance: H(s) = w0^2 / (s^2 + s w0/Q + w0^2). The bilinear
-    // transform, even prewarped at f0, folds everything above f0 toward
-    // Nyquist: at 44.1 kHz its response is 9 dB low at 15 kHz, which would
-    // put the 44.1 and 96 kHz piezo 7.6 dB apart there. Instead the poles map exactly
-    // (z = e^{sT}) and b0, b1 (b2 = 0) match the analog magnitude at DC and
-    // at f0, where it is Q: M. Vicanek, "Matched Second Order Digital
-    // Filters" (2016), lowpass case. It stays within 0.3 dB of the analog
-    // response to 15 kHz at 44.1 kHz. f0 is held below 0.4 fs so the 8 kHz
-    // minimum rate still has a resonance to place.
+    // The piezo chain (renderPiezo; PiezoDesign has the parts and their
+    // sources, Tools/PiezoReference.py simulates the same circuit).
     {
-        const double f0 = std::min(PiezoDesign::saddleHz, 0.4 * sampleRate_);
-        const double omega = 2.0 * piDouble * f0 / sampleRate_;
-        const double zeta = 0.5 / PiezoDesign::saddleQ;
-        const double radius = std::exp(-zeta * omega);
-        const double a1 = -2.0 * radius
-            * std::cos(omega * std::sqrt(1.0 - zeta * zeta));
-        const double a2 = radius * radius;
-        const double a0Squared = (1.0 + a1 + a2) * (1.0 + a1 + a2);
-        const double aNyquistSquared = (1.0 - a1 + a2) * (1.0 - a1 + a2);
-        const double half = std::sin(0.5 * omega);
-        const double phi1 = half * half;
-        const double phi0 = 1.0 - phi1;
-        const double phi2 = 4.0 * phi0 * phi1;
-        const double atF0 = (a0Squared * phi0 + aNyquistSquared * phi1
-                             - 4.0 * a2 * phi2)
-            * PiezoDesign::saddleQ * PiezoDesign::saddleQ;
-        const double b1Squared = (atF0 - a0Squared * phi0) / phi1;
-        const double b0 = 0.5 * (std::sqrt(a0Squared)
-                                 + std::sqrt(std::max(0.0, b1Squared)));
-        piezoSaddleB0_ = static_cast<float>(b0);
-        piezoSaddleB1_ = static_cast<float>(std::sqrt(a0Squared) - b0);
-        piezoSaddleA1_ = static_cast<float>(a1);
-        piezoSaddleA2_ = static_cast<float>(a2);
+        using D = PiezoDesign;
+        for (std::size_t material = 0; material < piezoSaddle_.size(); ++material)
+        {
+            double impedance = 0.0;
+            for (int string = 0; string < stringCount; ++string)
+                impedance += static_cast<double>(stringImpedance(
+                    material == 0, string,
+                    standardOpenMidi[static_cast<std::size_t>(string)]));
+            piezoSaddle_[material] = designPiezoSaddle(sampleRate_, impedance);
+        }
+        // The input section as deviations from its operating point. The jack
+        // node carries only capacitors, so its charge stays where it was and
+        // V_J = (Cp V_oc + C1 V_IN) / (Cs + C1); the IN node then sees C1 in
+        // series with the jack's shunt, beside its own capacitance to ground.
+        // With w = V_IN - kin V_oc, V_B from its KCL and U1A's output at
+        // V_IN + e (e is nonzero only while its input range stops it):
+        //   w'    = -(V_IN - V_B) / (R3 Ceq)
+        //   V_C2' = (V_B - V_C2 - O1) / (R4 C2)
+        const double shunt = D::elementCapacitance + D::cableCapacitance
+            + D::strayCapacitance;
+        const double atInput = D::inputCapacitance + D::strayCapacitance;
+        const double total = shunt + D::c1;
+        const double series = D::c1 * shunt + atInput * total;
+        piezoInputShare_ = D::c1 * D::elementCapacitance / series;
+        piezoJackElement_ = D::elementCapacitance / total;
+        piezoJackInput_ = D::c1 / total;
+        const double inputCapacitance = series / total;
+        piezoDiodeScale_ = inputCapacitance * sampleRate_ / D::diodeSaturation;
+        // The diodes' dump z over one sample at a drive x past U1A's range:
+        // Ceq fs z / IS = e^((x - z) / N Vt) - 1, zero at zero, by bisection
+        // (z lies in [0, x], the right side falling in z) and Newton; and
+        // its slope dz/dx = (Kz + 1) / (N Vt K + Kz + 1), K = Ceq fs / IS.
+        // Cubic Hermite between the points is within 5 nV of the solution.
+        for (std::size_t point = 0; point < piezoDiodeDump_.size(); ++point)
+        {
+            const double drive = piezoDiodeStep * static_cast<double>(point);
+            double low = 0.0, high = drive;
+            for (int step = 0; step < 200 && high - low > 1.0e-15; ++step)
+            {
+                const double middle = 0.5 * (low + high);
+                const double balance = piezoDiodeScale_ * middle
+                    - std::expm1((drive - middle) / D::diodeThermalVoltage);
+                (balance > 0.0 ? high : low) = middle;
+            }
+            const double dump = 0.5 * (low + high);
+            piezoDiodeDump_[point] = dump;
+            piezoDiodeSlope_[point] = (piezoDiodeScale_ * dump + 1.0)
+                / (D::diodeThermalVoltage * piezoDiodeScale_ + piezoDiodeScale_ * dump + 1.0);
+        }
+        const double bias = D::r1 * D::r2 / (D::r1 + D::r2);
+        const double node = 1.0 / D::r3 + 1.0 / D::r4 + 1.0 / bias;
+        const double share = 1.0 / (bias * node);
+        const double back = 1.0 / (D::r4 * node);
+        const double inputRate = 1.0 / (D::r3 * inputCapacitance);
+        const double bootstrapRate = 1.0 / (D::r4 * D::c2);
+        const double a00 = -share * inputRate, a01 = back * inputRate;
+        const double a10 = -share * bootstrapRate, a11 = (back - 1.0) * bootstrapRate;
+        const double bv0 = a00 * piezoInputShare_, bv1 = a10 * piezoInputShare_;
+        const double be0 = a01, be1 = a11;
+        // Trapezoidal: x[n] = (I - hA)^-1 ((I + hA) x[n-1] + h B (u[n] + u[n-1])).
+        const double h = 0.5 / sampleRate_;
+        const double m00 = 1.0 - h * a11, m01 = h * a01;
+        const double m10 = h * a10, m11 = 1.0 - h * a00;
+        const double determinant = m11 * m00 - m01 * m10;
+        const auto solve = [&] (double v0, double v1, double& out0, double& out1)
+        {
+            out0 = (m00 * v0 + m01 * v1) / determinant;
+            out1 = (m10 * v0 + m11 * v1) / determinant;
+        };
+        solve(1.0 + h * a00, h * a10, piezoFrontA00_, piezoFrontA10_);
+        solve(h * a01, 1.0 + h * a11, piezoFrontA01_, piezoFrontA11_);
+        solve(h * bv0, h * bv1, piezoFrontB0_, piezoFrontB1_);
+        solve(h * be0, h * be1, piezoFrontE0_, piezoFrontE1_);
+        // C3 into R5 || R6; C4 always sees U1B's output through R7 + R8
+        // (R8 alone while U1B follows its input, since then N = Y and
+        // O2 - V_C4 = (1 + R7/R8)(Y - V_C4)); C5 into R9 and the pot || DI.
+        const auto onePole = [h] (double timeConstant, double& pole, double& gain)
+        {
+            const double k = h / timeConstant;
+            pole = (1.0 - k) / (1.0 + k);
+            gain = k / (1.0 + k);
+        };
+        const double load = D::volume * D::diInput / (D::volume + D::diInput);
+        onePole(D::r5 * D::r6 / (D::r5 + D::r6) * D::c3, piezoC3Pole_, piezoC3Gain_);
+        onePole((D::r7 + D::r8) * D::c4, piezoC4Pole_, piezoC4Gain_);
+        onePole((D::r9 + load) * D::c5, piezoC5Pole_, piezoC5Gain_);
+        // The mid-band gain from the element's open-circuit voltage to the
+        // DI, which the level match divides out with the element's
+        // sensitivity: an engine force unit through the flat band leaves at
+        // the trim alone, as the microphones' reference does.
+        piezoOutputScale_ = 1.0 / (D::voltsPerNewton * D::newtonsPerUnit
+            * piezoInputShare_ * (1.0 + D::r7 / D::r8) * load / (D::r9 + load));
     }
-    // Electrical load: the element's capacitance into the preamp's input
-    // resistance, H(s) = sRC/(1+sRC), a 177 Hz corner. Trapezoidal/bilinear
-    // discretization preserves passivity; its small frequency warping is
-    // retained, with no fitted corner correction.
-    constexpr double piezoTimeConstant
-        = PiezoDesign::capacitance * PiezoDesign::loadResistance;
-    const double piezoBilinear = 2.0 * sampleRate_ * piezoTimeConstant;
-    piezoLoadPole_ = static_cast<float>((piezoBilinear - 1.0)
-                                      / (piezoBilinear + 1.0));
-    piezoLoadGain_ = 0.5f * (1.0f + piezoLoadPole_);
-    // Output coupling: y = x - x1 + R y1, R = e^{-2 pi fc / fs}.
-    piezoBlockerPole_ = static_cast<float>(std::exp(
-        -2.0 * piDouble * PiezoDesign::couplingHz / sampleRate_));
     piezoStringWeights_ = PiezoDesign::stringWeights;
     delaySmoothing_ = 1.0f - std::exp(-1.0f
         / (0.006f * static_cast<float>(sampleRate_)));
@@ -2297,11 +2345,9 @@ void AcustraEngine::resetSoundState() noexcept
 {
     bodyRadiationDelay_.reset();
     fadingBodyRadiationDelay_.reset();
-    piezoLoadInput_ = piezoLoadOutput_ = 0.0f;
-    piezoSaddleState1_ = piezoSaddleState2_ = 0.0f;
-    piezoBlockerInput_ = piezoBlockerOutput_ = 0.0f;
+    resetPiezo();
     piezoForceDerivative_.reset();
-    lastPiezoWave_ = lastPiezoForce_ = lastPiezoVoltage_ = 0.0f;
+    lastPiezoWave_ = lastPiezoForce_ = 0.0f;
     lastPiezoImpedanceSum_ = lastPiezoImpedanceMoment_ = 0.0f;
     bridgeLoad_.reset();
     for (auto& derivative : bridgePowerDerivatives_)
@@ -6411,95 +6457,354 @@ AcustraEngine::BodyOutput AcustraEngine::renderBody(float bridgeInput,
     return result;
 }
 
-float AcustraEngine::renderLoadedPiezo(float volts) noexcept
+// The saddle filter: the analog F_p / F_r (PiezoDesign) with its poles
+// mapped exactly, z = e^{sT}, and its zeros (four coefficients, five from
+// 88.2 kHz) fitted by weighted least squares to the analog response times
+// the poles' denominator over 256 log-spaced points from 20 Hz to
+// min(20 kHz, 0.45 fs), weighted by |H|^-1/2, with the DC gain held at
+// exactly 1. Bilinear designs fold the whole band above the 6 kHz peak
+// toward Nyquist, and a two-zero matched design (Vicanek) cannot place the
+// analog zeros: 55-60 degrees off at 10 kHz. Below 16 kHz a pole at 6 kHz
+// would alias, so there the filter is four taps with no poles.
+AcustraEngine::PiezoSaddleFilter
+AcustraEngine::designPiezoSaddle(double sampleRate, double impedance) noexcept
 {
-    piezoLoadOutput_ = piezoLoadPole_ * piezoLoadOutput_
-        + piezoLoadGain_ * (volts - piezoLoadInput_);
-    piezoLoadInput_ = volts;
-    if (exact::abs(piezoLoadOutput_) < 1.0e-30f)
-        piezoLoadOutput_ = 0.0f;
-    return piezoLoadOutput_;
-}
-
-float AcustraEngine::piezoPreamp(float volts) noexcept
-{
-    // Exactly linear to the knee, then the C1 rational curve safetyLimit
-    // uses, toward the rail on that side. f(0) = 0, and with 1 + 2ac > 0
-    // everywhere between the rails the whole curve is monotonic.
-    const float rail = volts >= 0.0f ? PiezoDesign::positiveRail
-                                     : PiezoDesign::negativeRail;
-    const float knee = PiezoDesign::kneeShare * rail;
-    const float magnitude = exact::abs(volts);
-    float buffered = volts;
-    if (magnitude > knee)
+    using D = PiezoDesign;
+    const double omega0 = 2.0 * piDouble * D::elementHz;
+    const double stiffness = D::saddleMass * omega0 * omega0;
+    const double loss = D::elementLoss * stiffness / omega0;
+    const double g = D::bridgeConductance;
+    // H(s) = (n2 s^2 + n1 s + n0) / (d2 s^2 + d1 s + d0)
+    const double n2 = loss * g * D::saddleMass;
+    const double n1 = loss * (1.0 + g * impedance) + stiffness * g * D::saddleMass;
+    const double n0 = stiffness * (1.0 + g * impedance);
+    const double d2 = n2 + D::saddleMass;
+    const double d1 = n1 + impedance;
+    const double d0 = n0;
+    const double period = 1.0 / sampleRate;
+    double a1 = 0.0, a2 = 0.0;
+    if (sampleRate >= 16000.0)
     {
-        const float excess = magnitude - knee;
-        buffered = exact::copysign(
-            knee + excess / (1.0f + excess / (rail - knee)), volts);
+        const double radius = std::exp(-0.5 * d1 / d2 * period);
+        const double damped = 0.5 * std::sqrt(std::max(0.0, 4.0 * d2 * d0 - d1 * d1)) / d2;
+        a1 = -2.0 * radius * std::cos(damped * period);
+        a2 = radius * radius;
     }
-    // Below 1 uV the even-order term is under half an ulp of the signal, so
-    // skipping it changes nothing, and it keeps a decaying tail's square out
-    // of the denormal range.
-    if (magnitude < 1.0e-6f)
-        return buffered;
-    return buffered + PiezoDesign::evenOrder * buffered * buffered;
+    const int taps = sampleRate >= 88200.0 ? 5 : 4;
+    const int freeTaps = taps - 1;
+    const double dc = 1.0 + a1 + a2;
+    const double bottom = 20.0;
+    const double top = std::min(20000.0, 0.45 * sampleRate);
+    const double logSpan = std::log(top / bottom);
+    std::array<double, 16> normal {};
+    std::array<double, 4> right {};
+    constexpr int points = 256;
+    for (int point = 0; point < points; ++point)
+    {
+        const double frequency = bottom * std::exp(logSpan * point / (points - 1));
+        const double omega = 2.0 * piDouble * frequency;
+        const double numRe = n0 - n2 * omega * omega, numIm = n1 * omega;
+        const double denRe = d0 - d2 * omega * omega, denIm = d1 * omega;
+        const double denNorm = denRe * denRe + denIm * denIm;
+        const double hRe = (numRe * denRe + numIm * denIm) / denNorm;
+        const double hIm = (numIm * denRe - numRe * denIm) / denNorm;
+        std::array<double, 5> zRe {}, zIm {};
+        for (int k = 0; k < taps; ++k)
+        {
+            zRe[static_cast<std::size_t>(k)] = std::cos(k * omega * period);
+            zIm[static_cast<std::size_t>(k)] = -std::sin(k * omega * period);
+        }
+        const double aRe = 1.0 + a1 * zRe[1] + a2 * zRe[2];
+        const double aIm = a1 * zIm[1] + a2 * zIm[2];
+        const double targetRe0 = hRe * aRe - hIm * aIm;
+        const double targetIm0 = hRe * aIm + hIm * aRe;
+        const double hMagnitude = std::sqrt(hRe * hRe + hIm * hIm);
+        const double weight = 1.0 / (hMagnitude * (aRe * aRe + aIm * aIm));
+        const auto last = static_cast<std::size_t>(freeTaps);
+        // b_last = dc - sum of the others: the freeTaps taps multiply
+        // z^-k - z^-last, and dc z^-last moves to the target.
+        const double targetRe = targetRe0 - dc * zRe[last];
+        const double targetIm = targetIm0 - dc * zIm[last];
+        for (int j = 0; j < freeTaps; ++j)
+        {
+            const auto uj = static_cast<std::size_t>(j);
+            const double pjRe = zRe[uj] - zRe[last], pjIm = zIm[uj] - zIm[last];
+            right[uj] += weight * (pjRe * targetRe + pjIm * targetIm);
+            for (int l = 0; l < freeTaps; ++l)
+            {
+                const auto ul = static_cast<std::size_t>(l);
+                const double plRe = zRe[ul] - zRe[last], plIm = zIm[ul] - zIm[last];
+                normal[uj * 4 + ul] += weight * (pjRe * plRe + pjIm * plIm);
+            }
+        }
+    }
+    // Cholesky, in place: normal = L L^T.
+    for (int j = 0; j < freeTaps; ++j)
+    {
+        const auto uj = static_cast<std::size_t>(j);
+        double diagonal = normal[uj * 4 + uj];
+        for (int k = 0; k < j; ++k)
+            diagonal -= normal[uj * 4 + static_cast<std::size_t>(k)]
+                * normal[uj * 4 + static_cast<std::size_t>(k)];
+        diagonal = std::sqrt(std::max(diagonal, 1.0e-300));
+        normal[uj * 4 + uj] = diagonal;
+        for (int i = j + 1; i < freeTaps; ++i)
+        {
+            const auto ui = static_cast<std::size_t>(i);
+            double value = normal[ui * 4 + uj];
+            for (int k = 0; k < j; ++k)
+                value -= normal[ui * 4 + static_cast<std::size_t>(k)]
+                    * normal[uj * 4 + static_cast<std::size_t>(k)];
+            normal[ui * 4 + uj] = value / diagonal;
+        }
+    }
+    std::array<double, 4> solution {};
+    for (int i = 0; i < freeTaps; ++i)
+    {
+        const auto ui = static_cast<std::size_t>(i);
+        double value = right[ui];
+        for (int k = 0; k < i; ++k)
+            value -= normal[ui * 4 + static_cast<std::size_t>(k)]
+                * solution[static_cast<std::size_t>(k)];
+        solution[ui] = value / normal[ui * 4 + ui];
+    }
+    for (int i = freeTaps - 1; i >= 0; --i)
+    {
+        const auto ui = static_cast<std::size_t>(i);
+        double value = solution[ui];
+        for (int k = i + 1; k < freeTaps; ++k)
+            value -= normal[static_cast<std::size_t>(k) * 4 + ui]
+                * solution[static_cast<std::size_t>(k)];
+        solution[ui] = value / normal[ui * 4 + ui];
+    }
+    PiezoSaddleFilter filter;
+    double sum = 0.0;
+    for (int k = 0; k < freeTaps; ++k)
+    {
+        filter.b[static_cast<std::size_t>(k)]
+            = static_cast<float>(solution[static_cast<std::size_t>(k)]);
+        sum += solution[static_cast<std::size_t>(k)];
+    }
+    filter.b[static_cast<std::size_t>(freeTaps)] = static_cast<float>(dc - sum);
+    filter.a1 = static_cast<float>(a1);
+    filter.a2 = static_cast<float>(a2);
+    return filter;
 }
 
-float AcustraEngine::renderPiezoSaddle(float force) noexcept
+void AcustraEngine::resetPiezo() noexcept
 {
-    // 2. Saddle resonance, transposed direct form II with b2 = 0.
-    const float saddle = piezoSaddleB0_ * force + piezoSaddleState1_;
-    piezoSaddleState1_ = piezoSaddleB1_ * force - piezoSaddleA1_ * saddle
-        + piezoSaddleState2_;
-    piezoSaddleState2_ = -piezoSaddleA2_ * saddle;
-    // Flushed together: zeroing one state of the pair while the other rings
-    // is itself an input, and at 44.1 kHz it held the two near the floor
-    // indefinitely.
-    if (exact::abs(piezoSaddleState1_) < 1.0e-30f
-        && exact::abs(piezoSaddleState2_) < 1.0e-30f)
-        piezoSaddleState1_ = piezoSaddleState2_ = 0.0f;
-    return saddle;
+    piezoSaddleInput_.fill(0.0f);
+    piezoSaddleOutput_.fill(0.0f);
+    piezoFrontW_ = piezoFrontC2_ = 0.0;
+    piezoLastOpen_ = piezoLastClamp_ = 0.0;
+    piezoC3_ = piezoC4_ = piezoC5_ = 0.0;
+    piezoLastBuffer_ = piezoLastStage_ = 0.0;
+    piezoDrive_.fill(0.0);
+    piezoStage_.fill(0.0);
+    piezoOutputVolts_ = 0.0;
+    lastPiezoOpen_ = lastPiezoVoltage_ = lastPiezoInput_ = lastPiezoDrive_ = 0.0f;
 }
 
-float AcustraEngine::renderPiezoCoupling(float buffered) noexcept
-{
-    // 5. Output coupling. Its 5 Hz pole is slow, so its floor is higher:
-    // from a millivolt it reaches it in about 1.25 s.
-    piezoBlockerOutput_ = buffered - piezoBlockerInput_
-        + piezoBlockerPole_ * piezoBlockerOutput_;
-    piezoBlockerInput_ = buffered;
-    if (exact::abs(piezoBlockerOutput_) < 1.0e-20f)
-        piezoBlockerOutput_ = 0.0f;
-    return piezoBlockerOutput_;
-}
 
-// The under-saddle piezo, from the force its strings press on it to the
-// voltage a DI takes from its onboard preamp (PiezoDesign has each block's
-// values and sources). The chain runs every sample whatever Capture
-// selects, so a switch or a newly cabled output lands on warm state. Every
-// block maps 0 to 0, and its input and every recursive state are flushed
-// at a floor, so an idle instrument's piezo reaches exact zero. The result
-// is in the old force-domain units: dividing by the sensitivity leaves the
-// small-signal gain at the trim alone.
+// The under-saddle piezo, from the rigid-saddle force its strings press on
+// it to the voltage a DI takes from its preamp, as the circuit PiezoDesign
+// lists (Docs/decisions.md 2026-09-29). Each stage drives the next without
+// being loaded by it - op-amp inputs draw no current, and U1B's input stays
+// in its range whenever its output is not already at a rail - so they are
+// solved in turn, each as deviations from the 4.5 V operating point, and a
+// silent input maps to exact zero. The chain runs every sample whatever
+// Capture selects, so a switch or a newly cabled output lands on warm state.
+// Its output is seven samples behind its input (the BLAMP's look-ahead) at
+// every rate. The result is in force units: dividing by the element's
+// sensitivity and the preamp's mid-band gain leaves the trim alone there.
 float AcustraEngine::renderPiezo(float force) noexcept
 {
-    // Below a picovolt at the element - some 130 dB under the thermal noise
-    // of its own 450 pF - the force is last-bit rounding in the saddle sums,
-    // which after a release keep it near 1e-15 forever and would hold the
-    // chain off exact zero. It is read as none.
-    constexpr float forceFloor = 1.0e-12f / PiezoDesign::sensitivity;
-    const float saddle = renderPiezoSaddle(
-        exact::abs(force) < forceFloor ? 0.0f : force);
-    // 3. Charge to voltage, across the preamp's input resistance.
-    const float volts = renderLoadedPiezo(PiezoDesign::sensitivity * saddle);
-    lastPiezoVoltage_ = volts;
-    // 4 and 5. The preamp's buffer and its output coupling.
-    const float coupled = renderPiezoCoupling(piezoPreamp(volts));
+    using D = PiezoDesign;
+    // Below 5 pN - a picovolt at the element, some 130 dB under the thermal
+    // noise of its own capacitance - the force is last-bit rounding in the
+    // saddle sums, which after a release keep it near 1e-15 forever.
+    constexpr float forceFloor = static_cast<float>(5.0e-12 / D::newtonsPerUnit);
+    // A non-finite force would stay in every state; captureMix_ times NaN
+    // would then reach Main even with the piezo unheard.
+    if (!exact::isfinite(force))
+    {
+        resetPiezo();
+        return 0.0f;
+    }
+    const float input = exact::abs(force) < forceFloor ? 0.0f : force;
+    // 1. The saddle on its element (designPiezoSaddle), direct form I.
+    const auto& saddle = piezoSaddle_[parameters_.stringMaterial == StringMaterial::Steel ? 0 : 1];
+    auto& x = piezoSaddleInput_;
+    auto& y = piezoSaddleOutput_;
+    x[4] = x[3];
+    x[3] = x[2];
+    x[2] = x[1];
+    x[1] = x[0];
+    x[0] = input;
+    const float pressed = saddle.b[0] * x[0] + saddle.b[1] * x[1] + saddle.b[2] * x[2]
+        + saddle.b[3] * x[3] + saddle.b[4] * x[4] - saddle.a1 * y[0] - saddle.a2 * y[1];
+    y[1] = y[0];
+    y[0] = pressed;
+    // 2. The element's open-circuit voltage.
+    const double open = D::voltsPerNewton * D::newtonsPerUnit * static_cast<double>(pressed);
+    // 3. The input section (trapezoidal; U1A's output stopping at its input
+    // range enters a sample late, through C2's bootstrap, 0.13 s).
+    const double drive = open + piezoLastOpen_;
+    const double clampSum = 2.0 * piezoLastClamp_;
+    const double w = piezoFrontA00_ * piezoFrontW_ + piezoFrontA01_ * piezoFrontC2_
+        + piezoFrontB0_ * drive + piezoFrontE0_ * clampSum;
+    piezoFrontC2_ = piezoFrontA10_ * piezoFrontW_ + piezoFrontA11_ * piezoFrontC2_
+        + piezoFrontB1_ * drive + piezoFrontE1_ * clampSum;
+    piezoFrontW_ = w;
+    double bufferInput = w + piezoInputShare_ * open;
+    const double freeInput = bufferInput;
+    // Past U1A's input range its output stops at the limit and D1/D2 see
+    // the rest: they conduct as Shockley diodes, taking from the IN node,
+    // over one sample, the charge Ceq z that brings the diode's voltage
+    // x - z to what that current needs (backward Euler), tabulated in
+    // prepare() (piezoDiodeDump_). C1 keeps the charge it gave up: the bias
+    // shift a hard overload leaves, recovering over the input network's
+    // 1 Hz modes. None of this runs below 3.7 dB over U1B's clip, which no
+    // playing reaches.
+    const double excess = (bufferInput > 0.0 ? bufferInput : -bufferInput) - D::commonModeLimit;
+    if (excess > 0.0)
+    {
+        double dump;
+        constexpr double top = piezoDiodeStep * (piezoDiodePoints - 1);
+        if (excess < top)
+        {
+            // Cubic Hermite between the table's points, its slopes exact.
+            const double position = excess / piezoDiodeStep;
+            const auto point = static_cast<std::size_t>(position);
+            const double t = position - static_cast<double>(point);
+            const double t2 = t * t, t3 = t2 * t;
+            dump = (2.0 * t3 - 3.0 * t2 + 1.0) * piezoDiodeDump_[point]
+                + (t3 - 2.0 * t2 + t) * piezoDiodeStep * piezoDiodeSlope_[point]
+                + (3.0 * t2 - 2.0 * t3) * piezoDiodeDump_[point + 1]
+                + (t3 - t2) * piezoDiodeStep * piezoDiodeSlope_[point + 1];
+        }
+        else
+        {
+            // Past 8 V the diode voltage is a slowly growing logarithm:
+            // z = x - N Vt ln(1 + Ceq fs z / IS), by two fixed-point steps.
+            dump = excess;
+            for (int step = 0; step < 3; ++step)
+                dump = excess - D::diodeThermalVoltage * std::log1p(piezoDiodeScale_ * dump);
+        }
+        const double sign = bufferInput > 0.0 ? 1.0 : -1.0;
+        bufferInput -= sign * dump;
+        piezoFrontW_ -= sign * dump;
+    }
+    const double buffer = bufferInput > D::commonModeLimit ? D::commonModeLimit
+        : (bufferInput < -D::commonModeLimit ? -D::commonModeLimit : bufferInput);
+    piezoLastClamp_ = buffer - bufferInput;
+    piezoLastOpen_ = open;
+    // 4. C3 into U1B's bias network.
+    piezoC3_ = piezoC3Pole_ * piezoC3_ + piezoC3Gain_ * (buffer + piezoLastBuffer_);
+    piezoLastBuffer_ = buffer;
+    const double coupled = buffer - piezoC3_;
+    // 5. U1B: the drive its feedback would give, clipped at its output
+    // swing, with the clip's corners band-limited by a 12-tap BLAMP
+    // (PiezoBlampTable.h). C4's state lags the drive by the eight samples
+    // the pipeline holds, in a 0.48 Hz loop: 5e-4 rad.
+    constexpr double feedback = D::r7 / D::r8;
+    const double stageDrive = (1.0 + feedback) * coupled - feedback * piezoC4_;
+    // The corners are placed on the drive U1A's input would give if neither
+    // its input range nor the diodes stopped it: they only act while U1B
+    // is already past its swing, and their own corners, a sample or less
+    // from U1B's at 3 kHz, would bend the cubic the corner is found on.
+    const double freeDrive = (1.0 + feedback) * (freeInput - piezoC3_)
+        - feedback * piezoC4_;
+    auto& u = piezoDrive_;
+    auto& stage = piezoStage_;
+    u[0] = u[1];
+    u[1] = u[2];
+    u[2] = u[3];
+    u[3] = freeDrive;
+    // stage[m] is sample n - 7 + m: seven held back, this one, and four
+    // ahead that only hold corrections so far.
+    for (std::size_t m = 0; m + 1 < stage.size(); ++m)
+        stage[m] = stage[m + 1];
+    stage[stage.size() - 1] = 0.0;
+    stage[7] += stageDrive > D::railHigh ? D::railHigh
+        : (stageDrive < D::railLow ? D::railLow : stageDrive);
+    for (const double rail : { D::railHigh, D::railLow })
+    {
+        const double before = u[1] - rail, after = u[2] - rail;
+        if (!(before * after < 0.0))
+            continue;
+        // The corner lies between samples n - 2 and n - 1, on the cubic
+        // through the four drives about u[1], relative to the rail.
+        const double p0 = u[0] - rail, p3 = u[3] - rail;
+        const double c1 = -p0 / 3.0 - before / 2.0 + after - p3 / 6.0;
+        const double c2 = 0.5 * p0 - before + 0.5 * after;
+        const double c3 = -p0 / 6.0 + before / 2.0 - after / 2.0 + p3 / 6.0;
+        double d = before / (before - after);
+        for (int step = 0; step < 2; ++step)
+        {
+            const double value = before + d * (c1 + d * (c2 + d * c3));
+            const double slope = c1 + d * (2.0 * c2 + 3.0 * d * c3);
+            if (slope != 0.0)
+                d -= value / slope;
+            d = d < 0.0 ? 0.0 : (d > 0.999999 ? 0.999999 : d);
+        }
+        const double slope = c1 + d * (2.0 * c2 + 3.0 * d * c3);
+        const bool entering = rail > 0.0 ? after > 0.0 : after < 0.0;
+        const double change = entering ? -slope : slope;
+        // The residual at samples n - 7 .. n + 4, between two of the table's
+        // 129 fractional positions.
+        const double position = d * piezoBlampPhases;
+        const auto row = static_cast<std::size_t>(position);
+        const double share = position - static_cast<double>(row);
+        const auto& lower = piezoBlampTable[row];
+        const auto& upper = piezoBlampTable[row + 1];
+        for (std::size_t m = 0; m < stage.size(); ++m)
+            stage[m] += change * (lower[m] + share * (upper[m] - lower[m]));
+    }
+    // 6. The output seven samples back: C4's and C5's states follow it, and
+    // the DI takes it through R9 and C5 off the pot.
+    const double gainStage = stage[0];
+    piezoC4_ = piezoC4Pole_ * piezoC4_ + piezoC4Gain_ * (gainStage + piezoLastStage_);
+    piezoC5_ = piezoC5Pole_ * piezoC5_ + piezoC5Gain_ * (gainStage + piezoLastStage_);
+    piezoLastStage_ = gainStage;
+    constexpr double load = D::volume * D::diInput / (D::volume + D::diInput);
+    piezoOutputVolts_ = load / (D::r9 + load) * (gainStage - piezoC5_);
+    lastPiezoOpen_ = static_cast<float>(open);
+    lastPiezoVoltage_ = static_cast<float>(piezoJackElement_ * open
+                                           + piezoJackInput_ * bufferInput);
+    lastPiezoInput_ = static_cast<float>(bufferInput);
+    lastPiezoDrive_ = static_cast<float>(stageDrive);
+    // Exact silence: once the input has stopped and every state is below
+    // 10 nV (50 dB under the preamp's own 1.2 uV of noise) and the saddle's
+    // histories below 50 nN, they are all zeroed together; zeroing one
+    // while another still moves would itself be an input.
+    if (input == 0.0f)
+    {
+        constexpr float saddleFloor = static_cast<float>(5.0e-8 / D::newtonsPerUnit);
+        constexpr double floor = 1.0e-8;
+        bool quiet = exact::abs(y[0]) < saddleFloor && exact::abs(y[1]) < saddleFloor;
+        for (float value : x)
+            quiet = quiet && exact::abs(value) < saddleFloor;
+        for (double value : { piezoFrontW_, piezoFrontC2_, piezoLastOpen_, piezoLastClamp_,
+                              piezoC3_, piezoC4_, piezoC5_, piezoLastBuffer_,
+                              piezoLastStage_, u[0], u[1], u[2], u[3] })
+            quiet = quiet && exact::abs(value) < floor;
+        for (double value : stage)
+            quiet = quiet && exact::abs(value) < floor;
+        if (quiet)
+            resetPiezo();
+    }
     // 7. The level match, smoothed like the material reference under it.
     piezoTrim_ += parameterSmoothing_
         * (PiezoDesign::trimFor(parameters_.stringMaterial) - piezoTrim_);
-    constexpr float inverseSensitivity = 1.0f / PiezoDesign::sensitivity;
-    return piezoTrim_ * inverseSensitivity * coupled;
+    const auto result = static_cast<float>(
+        static_cast<double>(piezoTrim_) * piezoOutputScale_ * piezoOutputVolts_);
+    if (!exact::isfinite(result))
+    {
+        resetPiezo();
+        return 0.0f;
+    }
+    return result;
 }
 
 void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
@@ -6907,10 +7212,10 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // Keep the default stereo path bit-for-bit, including its width law.
         // Advance the whole piezo chain even while unheard, so selecting it
         // crossfades to the voltage of the already-ringing instrument. The
-        // axial force presses on the saddle as it does on the body, so it
-        // enters at unit weight (zero while longitudinalGain ships at 0).
-        const float loadedPiezo
-            = renderPiezo(lastPiezoForce_ + lastLongitudinalForce_);
+        // axial force presses on the saddle through the strings' break angle
+        // (zero while longitudinalGain ships at 0).
+        const float loadedPiezo = renderPiezo(
+            lastPiezoForce_ + PiezoDesign::axialShare * lastLongitudinalForce_);
         if (piezo != nullptr)
         {
             // The separate Piezo output observes before Capture chooses, at
@@ -7003,6 +7308,11 @@ float AcustraEngine::getLastLongitudinalForce() const noexcept
 float AcustraEngine::getLastPiezoVoltage() const noexcept
 {
     return lastPiezoVoltage_;
+}
+
+AcustraEngine::PiezoProbe AcustraEngine::getLastPiezoProbe() const noexcept
+{
+    return { lastPiezoOpen_, lastPiezoVoltage_, lastPiezoInput_, lastPiezoDrive_ };
 }
 
 float AcustraEngine::getLastBridgePower() const noexcept

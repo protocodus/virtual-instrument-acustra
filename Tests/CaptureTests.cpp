@@ -1,7 +1,9 @@
 // Capture is a read-only observation of the instrument. Verify the microphone
-// channel identity, the piezo chain block by block against its analytic
-// targets (Docs/decisions.md, 2026-09-29), switching and silence; absolute
-// piezo sensitivity is anchored in Tools/CalibratePiezo.py, not here.
+// channel identity, the piezo chain in the running instrument - its string
+// weights, headroom on real strums, the clip's aliasing on the hottest ones,
+// switching and silence (Docs/decisions.md, 2026-09-29). The chain against
+// its circuit simulation is Tests/PiezoCircuitTests.cpp; the level match to
+// the microphones is Tools/CalibratePiezo.py.
 #include "DSP/AcustraEngine.h"
 
 #include <algorithm>
@@ -19,23 +21,12 @@ namespace acustra
 struct AcustraEngineTestAccess
 {
     using Design = AcustraEngine::PiezoDesign;
-    static float loadedPiezo(AcustraEngine& engine, float volts)
-    {
-        return engine.renderLoadedPiezo(volts);
-    }
-    static float saddle(AcustraEngine& engine, float force)
-    {
-        return engine.renderPiezoSaddle(force);
-    }
-    static float coupling(AcustraEngine& engine, float buffered)
-    {
-        return engine.renderPiezoCoupling(buffered);
-    }
     static float chain(AcustraEngine& engine, float force)
     {
         return engine.renderPiezo(force);
     }
-    static float preamp(float volts) { return AcustraEngine::piezoPreamp(volts); }
+    // U1B's clipped output, seven samples behind the drive the probe shows.
+    static double gainStage(const AcustraEngine& engine) { return engine.piezoLastStage_; }
     static void setWeights(AcustraEngine& engine,
                            const std::array<float, 6>& weights)
     {
@@ -49,19 +40,26 @@ struct AcustraEngineTestAccess
     static float piezoForce(const AcustraEngine& engine) { return engine.lastPiezoForce_; }
     static float drivingForce(const AcustraEngine& engine)
     {
-        return engine.lastPiezoForce_ + engine.lastLongitudinalForce_;
+        return engine.lastPiezoForce_
+            + AcustraEngine::PiezoDesign::axialShare * engine.lastLongitudinalForce_;
     }
-    static std::vector<float> chainState(const AcustraEngine& engine)
+    static std::vector<double> chainState(const AcustraEngine& engine)
     {
-        std::vector<float> state {
-            engine.piezoLoadInput_, engine.piezoLoadOutput_,
-            engine.piezoSaddleState1_, engine.piezoSaddleState2_,
-            engine.piezoBlockerInput_, engine.piezoBlockerOutput_,
+        std::vector<double> state { engine.piezoFrontW_, engine.piezoFrontC2_,
+            engine.piezoLastOpen_, engine.piezoLastClamp_, engine.piezoC3_,
+            engine.piezoC4_, engine.piezoC5_, engine.piezoLastBuffer_,
+            engine.piezoLastStage_, engine.piezoOutputVolts_,
             engine.piezoTrim_, engine.lastPiezoWave_, engine.lastPiezoForce_,
             engine.lastPiezoVoltage_ };
+        for (float value : engine.piezoSaddleInput_)
+            state.push_back(value);
+        for (float value : engine.piezoSaddleOutput_)
+            state.push_back(value);
+        state.insert(state.end(), engine.piezoDrive_.begin(), engine.piezoDrive_.end());
+        state.insert(state.end(), engine.piezoStage_.begin(), engine.piezoStage_.end());
         state.insert(state.end(), engine.piezoForceDerivative_.history.begin(),
                      engine.piezoForceDerivative_.history.end());
-        state.push_back(static_cast<float>(engine.piezoForceDerivative_.index));
+        state.push_back(static_cast<double>(engine.piezoForceDerivative_.index));
         return state;
     }
 };
@@ -229,70 +227,6 @@ void testCaptureLifecycle()
            "pickup observation changed the state of the vibrating instrument");
 }
 
-void testLoadedPiezoElectricalResponse()
-{
-    using Access = acustra::AcustraEngineTestAccess;
-    constexpr double pi = 3.14159265358979323846;
-    // Independent circuit reference: the measured 450 pF source capacitance
-    // and 2 MOhm load give H(s)=sRC/(1+sRC). Evaluate that analog transfer at
-    // the bilinear-warped frequency, rather than duplicating the recurrence.
-    constexpr double tau = 450.0e-12 * 2.0e6;
-    double maximumError = 0.0;
-    for (int rate : { 8000, 44100, 48000, 96000, 384000 })
-    {
-        auto engine = std::make_unique<acustra::AcustraEngine>();
-        engine->prepare(rate, 64);
-        std::vector<float> impulse(static_cast<std::size_t>(rate / 10));
-        double impulseEnergy = 0.0;
-        for (std::size_t i = 0; i < impulse.size(); ++i)
-        {
-            impulse[i] = Access::loadedPiezo(*engine, i == 0 ? 1.0f : 0.0f);
-            impulseEnergy += static_cast<double>(impulse[i]) * impulse[i];
-        }
-        expect(std::isfinite(impulseEnergy) && impulseEnergy <= 1.000001,
-               "piezo load increased the impulse's squared signal norm");
-        for (double frequency : { 0.0, 20.0, 82.406889, 1.0 / (2.0 * pi * tau),
-                                   329.627556, 1000.0, 0.2 * rate, 0.45 * rate,
-                                   0.5 * rate })
-        {
-            const auto step = std::polar(1.0, -2.0 * pi * frequency / rate);
-            std::complex<double> phase { 1.0, 0.0 }, actual {};
-            for (float sample : impulse)
-            {
-                actual += static_cast<double>(sample) * phase;
-                phase *= step;
-            }
-            const std::complex<double> s { 0.0,
-                2.0 * rate * std::tan(pi * frequency / rate) };
-            const auto expected = s * tau / (1.0 + s * tau);
-            const double error = std::abs(actual - expected);
-            maximumError = std::max(maximumError, error);
-            expect(error < 5.0e-5,
-                   "piezo complex response differs from the measured RC circuit");
-            expect(std::abs(actual) <= 1.000001,
-                   "piezo electrical loading has gain above unity");
-        }
-        engine->reset();
-        float dc = 0.0f;
-        for (int sample = 0; sample < rate / 10; ++sample)
-            dc = Access::loadedPiezo(*engine, 1.0f);
-        expect(std::abs(dc) < 1.0e-20f, "piezo load passed sustained DC");
-        // Dirty both histories. Each public hard reset must clear both: stale
-        // input produces a negative impulse even if output alone was cleared.
-        for (bool allSoundOff : { false, true })
-        {
-            Access::loadedPiezo(*engine, 0.37f);
-            if (allSoundOff)
-                engine->allSoundOff();
-            else
-                engine->reset();
-            expect(Access::loadedPiezo(*engine, 0.0f) == 0.0f,
-                   "hard reset retained piezo capacitor history");
-        }
-    }
-    std::cout << "Loaded piezo maximum complex RC error: " << maximumError << '\n';
-}
-
 using Access = acustra::AcustraEngineTestAccess;
 using Design = Access::Design;
 constexpr double pi = 3.14159265358979323846;
@@ -344,34 +278,29 @@ void fft(std::vector<std::complex<double>>& data, int sign)
     }
 }
 
-// The analog saddle resonance, H(s) = w0^2 / (s^2 + s w0/Q + w0^2), with
-// its corner held below 0.4 fs as the engine holds it.
-std::complex<double> analogSaddle(double frequency, double rate)
-{
-    const double f0 = std::min(Design::saddleHz, 0.4 * rate);
-    const std::complex<double> s { 0.0, frequency / f0 };
-    return 1.0 / (s * s + s / Design::saddleQ + 1.0);
-}
-
-// One hard strum as the piezo's pre-preamp voltage (getLastPiezoVoltage) and
-// its driving force, sample by sample: an open E major downstroke, low E
-// first, 9 ms apart, as Tools/CalibratePiezo.py plays it. `strokes` > 0
-// instead plays that many of the player's own strums, one every 1.2 s, each
-// string at its own drawn level (strumMember) - the hottest a stroke gets.
+// One hard strum through the piezo, sample by sample: its driving force and
+// the chain's probe (getLastPiezoProbe) - the element's open-circuit
+// voltage, the jack, U1A's input and U1B's drive - and U1B's clipped output
+// seven samples later. An open E major downstroke, low E first, 9 ms apart,
+// as Tools/CalibratePiezo.py plays it. `strokes` > 0 instead plays that many
+// of the player's own strums, one every 1.2 s, each string at its own drawn
+// level (strumMember) - the hottest a stroke gets.
 struct Strum
 {
-    std::vector<float> volts, force;
+    std::vector<float> force, open, volts, input, drive;
+    std::vector<double> stage;
 };
 
 Strum hardStrum(double rate, float velocity, float touch,
                 acustra::StringMaterial material = acustra::StringMaterial::Steel,
                 acustra::PickingTechnique picking = acustra::PickingTechnique::Finger,
-                double seconds = 2.5, int strokes = 0)
+                double seconds = 2.5, int strokes = 0, float pluckPosition = 0.28f)
 {
     acustra::EngineParameters parameters;
     parameters.touch = touch;
     parameters.stringMaterial = material;
     parameters.picking = picking;
+    parameters.pluckPosition = pluckPosition;
     auto engine = std::make_unique<acustra::AcustraEngine>();
     engine->setParameters(parameters);
     engine->prepare(rate, 64);
@@ -396,8 +325,13 @@ Strum hardStrum(double rate, float velocity, float touch,
                                string + 1);
         float left = 0.0f, right = 0.0f;
         engine->process(&left, &right, 1);
-        strum.volts.push_back(engine->getLastPiezoVoltage());
+        const auto probe = engine->getLastPiezoProbe();
         strum.force.push_back(Access::drivingForce(*engine));
+        strum.open.push_back(probe.openCircuit);
+        strum.volts.push_back(probe.jack);
+        strum.input.push_back(probe.bufferInput);
+        strum.drive.push_back(probe.gainStageDrive);
+        strum.stage.push_back(Access::gainStage(*engine));
     }
     return strum;
 }
@@ -494,253 +428,11 @@ void testPiezoStringWeights()
     std::cout << "Piezo weighted force: worst relative error " << worst << '\n';
 }
 
-// 2. The saddle resonance against the analog second-order low-pass.
-void testPiezoSaddleResonance()
-{
-    const double analogPeakDb = decibels(Design::saddleQ
-        / std::sqrt(1.0 - 1.0 / (4.0 * Design::saddleQ * Design::saddleQ)));
-    const double analogPeakRatio
-        = std::sqrt(1.0 - 1.0 / (2.0 * Design::saddleQ * Design::saddleQ));
-    for (int rate : { 8000, 44100, 48000, 96000, 192000, 384000 })
-    {
-        auto engine = std::make_unique<acustra::AcustraEngine>();
-        engine->prepare(rate, 64);
-        std::vector<float> impulse(static_cast<std::size_t>(rate / 20));
-        for (std::size_t i = 0; i < impulse.size(); ++i)
-            impulse[i] = Access::saddle(*engine, i == 0 ? 1.0f : 0.0f);
-        const double f0 = std::min(Design::saddleHz, 0.4 * rate);
-        expect(std::abs(std::abs(responseAt(impulse, 0.0, rate)) - 1.0) < 1.0e-5,
-               "saddle resonance DC gain is not 1 at " + std::to_string(rate));
-        expect(std::abs(decibels(std::abs(responseAt(impulse, f0, rate)))
-                        - decibels(Design::saddleQ)) < 0.02,
-               "saddle resonance gain at f0 is not Q at " + std::to_string(rate));
-        double peak = 0.0, peakFrequency = 0.0;
-        for (double f = 0.5 * f0; f <= std::min(1.5 * f0, 0.49 * rate); f += f0 / 4000.0)
-        {
-            const double magnitude = std::abs(responseAt(impulse, f, rate));
-            if (magnitude > peak)
-            {
-                peak = magnitude;
-                peakFrequency = f;
-            }
-        }
-        expect(std::abs(decibels(peak) - analogPeakDb) < 0.2,
-               "saddle peak gain misses the analog peak at " + std::to_string(rate));
-        expect(std::abs(peakFrequency / (analogPeakRatio * f0) - 1.0) < 0.01,
-               "saddle peak frequency misses the analog peak at " + std::to_string(rate));
-        // Across the band a 44.1 kHz host hears, the magnitude follows the
-        // analog response: a bilinear design is 9 dB low at 15 kHz there.
-        double worst = 0.0;
-        for (double f = 20.0; f <= std::min(15000.0, 0.34 * rate); f *= 1.02)
-            worst = std::max(worst, std::abs(decibels(std::abs(responseAt(impulse, f, rate)))
-                                             - decibels(std::abs(analogSaddle(f, rate)))));
-        expect(worst < 0.35, "saddle resonance departs from the analog magnitude at "
-                                 + std::to_string(rate) + " by " + std::to_string(worst) + " dB");
-        if (4.0 * f0 <= 0.34 * rate)
-        {
-            const double slope = decibels(std::abs(responseAt(impulse, 4.0 * f0, rate))
-                                          / std::abs(responseAt(impulse, 2.0 * f0, rate)));
-            const double analogSlope = decibels(std::abs(analogSaddle(4.0 * f0, rate))
-                                                / std::abs(analogSaddle(2.0 * f0, rate)));
-            expect(std::abs(slope - analogSlope) < 0.5,
-                   "saddle resonance roll-off above f0 is not second order");
-        }
-        std::cout << "Saddle resonance at " << rate << " Hz: peak "
-                  << decibels(peak) << " dB at " << peakFrequency
-                  << " Hz, worst analog error " << worst << " dB\n";
-        for (bool allSoundOff : { false, true })
-        {
-            Access::saddle(*engine, 0.37f);
-            if (allSoundOff)
-                engine->allSoundOff();
-            else
-                engine->reset();
-            expect(Access::saddle(*engine, 0.0f) == 0.0f,
-                   "hard reset retained the saddle resonance's state");
-        }
-    }
-}
-
-// 4. The preamp's buffer: the implementation against the curve it is
-// written from, evaluated in double, and the curve's own properties.
-double referencePreamp(double volts)
-{
-    const double rail = volts >= 0.0 ? Design::positiveRail : Design::negativeRail;
-    const double knee = static_cast<double>(Design::kneeShare) * rail;
-    double clipped = volts;
-    if (std::abs(volts) > knee)
-    {
-        const double excess = std::abs(volts) - knee;
-        clipped = std::copysign(knee + excess / (1.0 + excess / (rail - knee)), volts);
-    }
-    return clipped + Design::evenOrder * clipped * clipped;
-}
-
-void testPiezoPreampCurve()
-{
-    expect(Access::preamp(0.0f) == 0.0f, "preamp does not map 0 to 0");
-    float previous = Access::preamp(-10.0f);
-    bool monotonic = true, bounded = true, faithful = true, exactBelowKnee = true;
-    for (int step = -200000; step <= 200000; ++step)
-    {
-        const float volts = 5.0e-5f * static_cast<float>(step);
-        const float out = Access::preamp(volts);
-        monotonic = monotonic && out >= previous;
-        previous = out;
-        const double rail = volts >= 0.0f ? Design::positiveRail : Design::negativeRail;
-        bounded = bounded && std::abs(out) <= rail + Design::evenOrder * rail * rail;
-        faithful = faithful && std::abs(out - referencePreamp(volts)) <= 4.0e-7;
-        const float knee = Design::kneeShare
-            * (volts >= 0.0f ? Design::positiveRail : Design::negativeRail);
-        if (std::abs(volts) <= knee)
-            exactBelowKnee = exactBelowKnee
-                && std::abs(out - (volts + Design::evenOrder * volts * volts))
-                       <= 1.2e-7f * std::abs(volts);
-    }
-    expect(monotonic, "preamp curve is not monotonic on +-10 V");
-    expect(bounded, "preamp curve leaves its rails");
-    expect(faithful, "preamp implementation departs from its curve");
-    expect(exactBelowKnee, "preamp is not c + a c^2 below the knee");
-    // Below 1 uV the even-order term is under half an ulp: skipping it there
-    // must change nothing.
-    bool tinyExact = true;
-    for (float volts = 1.0e-30f; volts < 1.0e-6f; volts *= 1.01f)
-        for (float sign : { -1.0f, 1.0f })
-        {
-            const float x = sign * volts;
-            tinyExact = tinyExact && Access::preamp(x) == x + Design::evenOrder * x * x;
-        }
-    expect(tinyExact, "skipping the preamp's square below 1 uV changed a sample");
-    // C1 at both knees: the curve's one-sided derivatives, in double.
-    for (double rail : { static_cast<double>(Design::positiveRail),
-                         -static_cast<double>(Design::negativeRail) })
-    {
-        const double knee = Design::kneeShare * rail;
-        constexpr double h = 1.0e-7;
-        const double outer = (referencePreamp(knee + std::copysign(h, rail))
-                              - referencePreamp(knee)) / std::copysign(h, rail);
-        const double inner = (referencePreamp(knee)
-                              - referencePreamp(knee - std::copysign(h, rail)))
-            / std::copysign(h, rail);
-        expect(std::abs(outer - inner) < 1.0e-4, "preamp curve has a slope step at a knee");
-    }
-    // The even-order term's second harmonic is a A / 2 of a sine of peak A
-    // below the knee: the chosen 0.5% at 1 V. A 1 V sine itself would reach
-    // the lower knee (0.808 V), whose asymmetry adds its own, so the term is
-    // measured at 0.5 V, where it gives 0.25%, -52.04 dB.
-    expect(std::abs(Design::evenOrder / 2.0 - 0.005) < 1.0e-9,
-           "the preamp's even-order term is not 0.5% at 1 V");
-    constexpr int rate = 48000, length = 4800;
-    std::vector<float> out(length);
-    for (int i = 0; i < length; ++i)
-        out[static_cast<std::size_t>(i)] = Access::preamp(static_cast<float>(
-            0.5 * std::sin(2.0 * pi * 1000.0 * i / rate)));
-    const double hd2 = decibels(std::abs(responseAt(out, 2000.0, rate))
-                                / std::abs(responseAt(out, 1000.0, rate)));
-    expect(std::abs(hd2 - decibels(0.0025)) < 0.1, "preamp HD2 at 0.5 V is not -52 dB");
-    std::cout << "Piezo preamp: HD2 at 0.5 V " << hd2 << " dB\n";
-}
-
-// 5. The output coupling against its analog high-pass s / (s + wc).
-void testPiezoCoupling()
-{
-    for (int rate : { 8000, 44100, 48000, 96000, 384000 })
-    {
-        auto engine = std::make_unique<acustra::AcustraEngine>();
-        engine->prepare(rate, 64);
-        std::vector<float> impulse(static_cast<std::size_t>(rate) * 2);
-        for (std::size_t i = 0; i < impulse.size(); ++i)
-            impulse[i] = Access::coupling(*engine, i == 0 ? 1.0f : 0.0f);
-        const double pole = std::exp(-2.0 * pi * Design::couplingHz / rate);
-        double worst = 0.0;
-        for (double f = 20.0; f <= 0.45 * rate; f *= 1.05)
-        {
-            const auto z = std::polar(1.0, -2.0 * pi * f / rate);
-            const auto digital = (1.0 - z) / (1.0 - pole * z);
-            const std::complex<double> s { 0.0, f / Design::couplingHz };
-            const auto analog = s / (s + 1.0);
-            const auto actual = responseAt(impulse, f, rate);
-            expect(std::abs(actual - digital) < 1.0e-4,
-                   "output coupling is not its one-pole high-pass");
-            worst = std::max(worst, std::abs(decibels(std::abs(actual))
-                                             - decibels(std::abs(analog))));
-        }
-        expect(worst < 0.02, "output coupling departs from the analog 5 Hz high-pass");
-        engine->reset();
-        float held = 0.0f;
-        for (int i = 0; i < 2 * rate; ++i)
-            held = Access::coupling(*engine, 0.5f);
-        expect(held == 0.0f, "output coupling passed sustained DC");
-    }
-}
-
-// 5b. Aliasing: the preamp runs at the host rate without oversampling. Its
-// output for the hardest strums - velocity 127 at full Touch, Finger and
-// the hotter Pick, on both string materials - is compared with the same
-// curve run 8x oversampled (band-limited interpolation in double) and
-// brought back to the host rate; both then pass the host-rate output
-// coupling. What differs below 0.45 fs is what the curve folded back.
-void testPiezoAliasing()
-{
-    for (int rate : { 44100, 48000 })
-    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
-    for (auto picking : { acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick })
-    {
-        auto strum = hardStrum(rate, 1.0f, 1.0f, material, picking);
-        auto& volts = strum.volts;
-        const std::size_t fade = static_cast<std::size_t>(rate / 10);
-        for (std::size_t i = 0; i < fade; ++i)
-            volts[volts.size() - fade + i] *= static_cast<float>(
-                0.5 * (1.0 + std::cos(pi * static_cast<double>(i) / fade)));
-        std::size_t size = 1;
-        while (size < volts.size())
-            size <<= 1;
-        constexpr std::size_t factor = 8;
-        std::vector<std::complex<double>> direct(size), input(size);
-        for (std::size_t i = 0; i < volts.size(); ++i)
-        {
-            input[i] = volts[i];
-            direct[i] = Access::preamp(volts[i]);
-        }
-        fft(input, -1);
-        std::vector<std::complex<double>> upsampled(size * factor);
-        for (std::size_t k = 0; k < size / 2; ++k)
-        {
-            upsampled[k] = input[k];
-            if (k > 0)
-                upsampled[size * factor - k] = input[size - k];
-        }
-        upsampled[size / 2] = 0.5 * input[size / 2];
-        upsampled[size * factor - size / 2] = 0.5 * input[size / 2];
-        fft(upsampled, 1);
-        for (auto& sample : upsampled)
-            sample = referencePreamp(sample.real() / static_cast<double>(size));
-        fft(upsampled, -1);
-        fft(direct, -1);
-        const double pole = std::exp(-2.0 * pi * Design::couplingHz / rate);
-        double error = 0.0, signal = 0.0;
-        for (std::size_t k = 0; k <= static_cast<std::size_t>(0.45 * size); ++k)
-        {
-            const auto z = std::polar(1.0, -2.0 * pi * static_cast<double>(k) / size);
-            const auto coupling = (1.0 - z) / (1.0 - pole * z);
-            const auto reference = coupling * upsampled[k] / static_cast<double>(factor);
-            error += std::norm(coupling * direct[k] - reference);
-            signal += std::norm(reference);
-        }
-        const double aliasDb = 10.0 * std::log10(error / signal);
-        const std::string name = std::string(
-            material == acustra::StringMaterial::Steel ? "steel " : "nylon ")
-            + (picking == acustra::PickingTechnique::Pick ? "Pick" : "Finger");
-        expect(aliasDb < -70.0, "piezo preamp aliasing is above -70 dB on the "
-                                    + name + " strum at " + std::to_string(rate));
-        std::cout << "Piezo preamp aliasing on the hardest " << name << " strum at "
-                  << rate << " Hz: " << aliasDb << " dB\n";
-    }
-}
-
 // 6. Silence. A never-played engine is exact zero from its first sample on
 // Main and on the Piezo output; after the saddle force stops, the whole
-// chain is exact zero within 1.5 s and stays there.
+// chain is exact zero within 5 s and stays there. The circuit cannot settle
+// faster: its input network's 1 Hz pair and C4's loop decay over 0.34 s,
+// and the chain flushes at 10 nV.
 void testPiezoSilence()
 {
     for (int rate : { 44100, 48000, 96000 })
@@ -768,8 +460,8 @@ void testPiezoSilence()
                                      acustra::PickingTechnique::Pick, 0.3);
         // Cut where the chain is driven hardest, and leave it to ring down.
         std::size_t cut = 0;
-        for (std::size_t i = 0; i < strum.volts.size(); ++i)
-            if (std::abs(strum.volts[i]) > std::abs(strum.volts[cut]))
+        for (std::size_t i = 0; i < strum.open.size(); ++i)
+            if (std::abs(strum.open[i]) > std::abs(strum.open[cut]))
                 cut = i;
         auto engine = std::make_unique<acustra::AcustraEngine>();
         engine->prepare(rate, 64);
@@ -780,11 +472,13 @@ void testPiezoSilence()
             if (Access::chain(*engine, 0.0f) != 0.0f)
                 lastNonzero = i;
         const double seconds = static_cast<double>(lastNonzero + 1) / rate;
-        expect(seconds <= 1.5, "piezo chain took " + std::to_string(seconds)
+        expect(seconds <= 5.0, "piezo chain took " + std::to_string(seconds)
                                    + " s to reach exact silence at " + std::to_string(rate));
         const auto state = Access::chainState(*engine);
-        for (std::size_t index = 0; index < 6; ++index)
-            expect(state[index] == 0.0f, "piezo chain kept state after reaching silence");
+        for (std::size_t index = 0; index < 10; ++index)
+            expect(state[index] == 0.0, "piezo chain kept state after reaching silence");
+        for (std::size_t index = 14; index < state.size() - 11; ++index)
+            expect(state[index] == 0.0, "piezo chain kept state after reaching silence");
         std::cout << "Piezo chain silent " << seconds << " s after its hardest moment at "
                   << rate << " Hz\n";
     }
@@ -1002,77 +696,6 @@ void testPiezoDoesNotReachTheMicrophones()
     }
 }
 
-// 9. Where the preamp's knee sits: velocity-100 reference strums stay on its
-// exactly linear part with Finger and Pick, both string materials and any
-// Touch; the hardest ones - velocity 127, and the player's strums with each
-// string at its own drawn level - lose no more than 1.5 dB of their peak to
-// it; and the hottest Pick strum is the sensitivity's 1 V anchor.
-void testPiezoClipPlacement()
-{
-    const auto clipLossDb = [] (const std::vector<float>& volts)
-    {
-        float peak = 0.0f;
-        double worst = 0.0;
-        for (float value : volts)
-        {
-            if (std::abs(value) > std::abs(peak))
-                peak = value;
-            const double rail = value >= 0.0f ? Design::positiveRail : Design::negativeRail;
-            const double knee = Design::kneeShare * rail;
-            const double magnitude = std::abs(static_cast<double>(value));
-            if (magnitude > knee)
-            {
-                const double excess = magnitude - knee;
-                worst = std::min(worst, decibels(
-                    (knee + excess / (1.0 + excess / (rail - knee))) / magnitude));
-            }
-        }
-        return std::pair<double, double> { std::abs(static_cast<double>(peak)), worst };
-    };
-    const auto name = [] (acustra::StringMaterial material,
-                          acustra::PickingTechnique picking)
-    {
-        return std::string(material == acustra::StringMaterial::Steel ? "steel " : "nylon ")
-            + (picking == acustra::PickingTechnique::Pick ? "Pick" : "Finger");
-    };
-    double hottest = 0.0;
-    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
-    for (auto picking : { acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick })
-    {
-        for (float touch : { 0.0f, 0.58f, 1.0f })
-        {
-            const auto soft = hardStrum(48000, 100.0f / 127.0f, touch, material, picking);
-            bool linear = true;
-            for (float value : soft.volts)
-                linear = linear && std::abs(value) <= Design::kneeShare
-                    * (value >= 0.0f ? Design::positiveRail : Design::negativeRail);
-            expect(linear, "a velocity-100 " + name(material, picking)
-                               + " strum reached the piezo preamp's knee");
-            const auto hard = clipLossDb(hardStrum(48000, 1.0f, touch, material, picking).volts);
-            expect(hard.second >= -1.5, "the preamp's knee took more than 1.5 dB off the "
-                                            + name(material, picking) + " strum");
-            hottest = std::max(hottest, hard.first);
-            if (touch == 1.0f)
-                std::cout << "Piezo " << name(material, picking) << " strum peak, velocity 100: "
-                          << clipLossDb(soft.volts).first << " V; velocity 127: "
-                          << hard.first << " V, knee loss " << hard.second << " dB\n";
-        }
-        if (picking == acustra::PickingTechnique::Pick)
-        {
-            const auto strummed = clipLossDb(hardStrum(48000, 1.0f, 0.58f, material, picking,
-                                                       0.0, 12).volts);
-            expect(strummed.second >= -1.5, "the preamp's knee took more than 1.5 dB off "
-                                                "the player's " + name(material, picking) + " strums");
-            std::cout << "Piezo player's " << name(material, picking) << " strums, velocity 127: peak "
-                      << strummed.first << " V, knee loss " << strummed.second << " dB\n";
-        }
-    }
-    // The anchor is the hottest of every preset (Tools/CalibratePiezo.py);
-    // the default construction's own hottest Pick strum sits just under it.
-    expect(hottest <= 1.0 && hottest > 0.9, "the hottest Pick strum is not near the 1 V anchor: "
-                                                + std::to_string(hottest));
-}
-
 // 6b. An idle instrument after playing: a chord released, then left alone,
 // reaches exact zero on Main (Capture = Piezo) and on the Piezo output and
 // stays there, although the saddle force's rounding never quite does.
@@ -1115,8 +738,8 @@ void testPiezoSilentAfterPlaying()
     }
 }
 
-// 10. The chain's small-signal response - saddle resonance and electrical
-// load - agrees between 44.1 and 96 kHz from 50 Hz to 15 kHz.
+// 10. The chain's small-signal response - saddle, element, cable and
+// preamp - agrees between 44.1 and 96 kHz from 50 Hz to 15 kHz.
 void testPiezoRateConsistency()
 {
     std::array<std::vector<float>, 2> impulses;
@@ -1125,10 +748,12 @@ void testPiezoRateConsistency()
     {
         auto engine = std::make_unique<acustra::AcustraEngine>();
         engine->prepare(rates[index], 64);
-        impulses[index].resize(static_cast<std::size_t>(rates[index] / 10));
+        impulses[index].resize(static_cast<std::size_t>(rates[index]) * 6);
+        // 10 N for one sample: well inside the preamp's range, far above its
+        // 10 nV flush.
+        const auto impulse = static_cast<float>(10.0 / Design::newtonsPerUnit);
         for (std::size_t i = 0; i < impulses[index].size(); ++i)
-            impulses[index][i] = Access::loadedPiezo(*engine,
-                Access::saddle(*engine, i == 0 ? 1.0f : 0.0f));
+            impulses[index][i] = Access::chain(*engine, i == 0 ? impulse : 0.0f);
     }
     double worst = 0.0;
     for (double f = 50.0; f <= 15000.0; f *= 1.02)
@@ -1139,24 +764,184 @@ void testPiezoRateConsistency()
     std::cout << "Piezo chain 44.1 vs 96 kHz: worst " << worst << " dB, 50 Hz - 15 kHz\n";
 }
 
+// 9. Headroom on real playing. Reference strums at velocity 100 and 127, with
+// Finger and Pick, both string materials and any Touch, and the player's own
+// strums, never reach U1B's output swing or U1A's input range: the circuit
+// only clips when played far past normal (the Pick at velocity 127 at the
+// bridge, Pluck Position 0). The hottest strum's open-circuit voltage stays
+// within 0.7-2.5 V, Zollner's 1-2 V for a piezo played loudly with margin
+// for the Ovation element standing in for a strip (Tools/CalibratePiezo.py
+// checks every preset).
+void testPiezoHeadroom()
+{
+    const auto name = [] (acustra::StringMaterial material, acustra::PickingTechnique picking)
+    {
+        return std::string(material == acustra::StringMaterial::Steel ? "steel " : "nylon ")
+            + (picking == acustra::PickingTechnique::Pick ? "Pick" : "Finger");
+    };
+    // Headroom in dB to the nearer limit of U1B's swing and U1A's range.
+    const auto headroom = [] (const Strum& strum)
+    {
+        double worst = 300.0;
+        for (std::size_t i = 0; i < strum.drive.size(); ++i)
+        {
+            const double drive = strum.drive[i], input = strum.input[i];
+            if (drive > 0.0)
+                worst = std::min(worst, decibels(Design::railHigh / drive));
+            if (drive < 0.0)
+                worst = std::min(worst, decibels(Design::railLow / drive));
+            if (input != 0.0)
+                worst = std::min(worst, decibels(Design::commonModeLimit / std::abs(input)));
+        }
+        return worst;
+    };
+    const auto peak = [] (const std::vector<float>& values)
+    {
+        double largest = 0.0;
+        for (float value : values)
+            largest = std::max(largest, static_cast<double>(std::abs(value)));
+        return largest;
+    };
+    double hottest = 0.0, least = 300.0;
+    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
+    for (auto picking : { acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick })
+    {
+        for (float touch : { 0.0f, 0.58f, 1.0f })
+            for (float velocity : { 100.0f / 127.0f, 1.0f })
+            {
+                const auto strum = hardStrum(48000, velocity, touch, material, picking);
+                const double room = headroom(strum);
+                least = std::min(least, room);
+                hottest = std::max(hottest, peak(strum.open));
+                expect(room > 0.0, "a reference " + name(material, picking)
+                                       + " strum clipped the piezo preamp");
+                if (touch == 1.0f && velocity == 1.0f)
+                    std::cout << "Piezo " << name(material, picking) << " strum, velocity 127: "
+                              << "open-circuit peak " << peak(strum.open) << " V, jack "
+                              << peak(strum.volts) << " V, headroom " << room << " dB\n";
+            }
+        if (picking == acustra::PickingTechnique::Pick)
+        {
+            const auto strummed = hardStrum(48000, 1.0f, 0.58f, material, picking, 0.0, 12);
+            const double room = headroom(strummed);
+            least = std::min(least, room);
+            expect(room > 0.0, "the player's " + name(material, picking)
+                                   + " strums clipped the piezo preamp");
+            std::cout << "Piezo player's " << name(material, picking) << " strums, velocity 127: "
+                      << "open-circuit peak " << peak(strummed.open) << " V, headroom "
+                      << room << " dB\n";
+            const auto bridge = hardStrum(48000, 1.0f, 1.0f, material, picking, 2.5, 0, 0.0f);
+            std::cout << "Piezo " << name(material, picking)
+                      << " at velocity 127, Pluck Position 0: open-circuit peak "
+                      << peak(bridge.open) << " V, headroom " << headroom(bridge) << " dB\n";
+        }
+    }
+    expect(hottest >= 0.7 && hottest <= 2.5, "the hottest strum's open-circuit voltage "
+                                                 + std::to_string(hottest) + " V is outside 0.7-2.5 V");
+    std::cout << "Piezo: hottest reference strum " << hottest << " V open-circuit; least headroom "
+              << least << " dB\n";
+}
+
+// 5b. The clip's aliasing on the hardest playing: nylon with the Pick at
+// velocity 127 at the bridge (Pluck Position 0), the one playing that drives
+// U1B past its swing (steel there keeps 2 dB of headroom). U1B's drive,
+// band-limited and run through the same clip 8x oversampled, then brought
+// back to the host rate, is the reference for the chain's clipped output;
+// what differs below 0.45 fs is what the host-rate clip folded back, less
+// what the BLAMP took out - and what the BLAMP's own kernel does to the band,
+// which a bare clip, reported beside it, does not.
+void testPiezoClipAliasing()
+{
+    for (int rate : { 44100, 48000 })
+    {
+        constexpr auto material = acustra::StringMaterial::Nylon;
+        auto strum = hardStrum(rate, 1.0f, 1.0f, material, acustra::PickingTechnique::Pick,
+                               1.0, 0, 0.0f);
+        auto& drive = strum.drive;
+        std::vector<double> stage(strum.stage.begin() + 7, strum.stage.end());
+        drive.resize(stage.size());
+        const std::size_t fade = static_cast<std::size_t>(rate / 20);
+        std::size_t size = 1;
+        while (size < drive.size())
+            size <<= 1;
+        constexpr std::size_t factor = 8;
+        std::vector<std::complex<double>> direct(size), input(size), naive(size);
+        for (std::size_t i = 0; i < drive.size(); ++i)
+        {
+            const double window = i + fade >= drive.size()
+                ? 0.5 * (1.0 + std::cos(pi * static_cast<double>(i + fade - drive.size()) / fade))
+                : 1.0;
+            input[i] = window * drive[i];
+            direct[i] = window * stage[i];
+            naive[i] = window * std::clamp(static_cast<double>(drive[i]), Design::railLow, Design::railHigh);
+        }
+        fft(naive, -1);
+        fft(input, -1);
+        std::vector<std::complex<double>> upsampled(size * factor);
+        for (std::size_t k = 0; k < size / 2; ++k)
+        {
+            upsampled[k] = input[k];
+            if (k > 0)
+                upsampled[size * factor - k] = input[size - k];
+        }
+        fft(upsampled, 1);
+        long clipped = 0;
+        for (auto& sample : upsampled)
+        {
+            const double value = sample.real() / static_cast<double>(size);
+            if (value > Design::railHigh || value < Design::railLow)
+                ++clipped;
+            sample = std::clamp(value, Design::railLow, Design::railHigh);
+        }
+        fft(upsampled, -1);
+        fft(direct, -1);
+        // What differs below 0.45 fs, and, as a check on what that is, what
+        // the bare host-rate clip leaves and what differs below 0.25 fs,
+        // where the BLAMP's own kernel is flat.
+        double error = 0.0, signal = 0.0, bare = 0.0, lowError = 0.0, lowSignal = 0.0;
+        for (std::size_t k = 0; k <= static_cast<std::size_t>(0.45 * size); ++k)
+        {
+            const auto reference = upsampled[k] / static_cast<double>(factor);
+            error += std::norm(direct[k] - reference);
+            bare += std::norm(naive[k] - reference);
+            signal += std::norm(reference);
+            if (k <= size / 4)
+            {
+                lowError += std::norm(direct[k] - reference);
+                lowSignal += std::norm(reference);
+            }
+        }
+        const double aliasDb = 10.0 * std::log10(std::max(error, 1.0e-300) / signal);
+        const double bareDb = 10.0 * std::log10(std::max(bare, 1.0e-300) / signal);
+        const double lowDb = 10.0 * std::log10(std::max(lowError, 1.0e-300) / lowSignal);
+        const std::string label = std::string(material == acustra::StringMaterial::Steel
+                                                  ? "steel" : "nylon")
+            + " at " + std::to_string(rate);
+        expect(clipped > 0, "the Pick at the bridge no longer clips the piezo preamp, " + label);
+        expect(aliasDb < -62.0 && aliasDb < bareDb - 5.0,
+               "piezo clip aliasing on the hardest strum is above -62 dB or not 5 dB under a bare clip, "
+                   + label);
+        std::cout << "Piezo clip aliasing, Pick at velocity 127 at the bridge, " << label << ": "
+                  << aliasDb << " dB, below 0.25 fs " << lowDb << " dB; a bare clip "
+                  << bareDb << " dB (" << clipped / static_cast<long>(factor)
+                  << " host samples past the swing)\n";
+    }
+}
+
 } // namespace
 
 int main()
 {
     testCaptureObservations();
     testCaptureLifecycle();
-    testLoadedPiezoElectricalResponse();
     testPiezoStringWeights();
-    testPiezoSaddleResonance();
-    testPiezoPreampCurve();
-    testPiezoCoupling();
-    testPiezoAliasing();
+    testPiezoClipAliasing();
     testPiezoSilence();
     testPiezoSilentAfterPlaying();
     testLoadedPiezoStaysWarmWhileUnheard();
     testPiezoSwitchingIsClickFree();
     testPiezoDoesNotReachTheMicrophones();
-    testPiezoClipPlacement();
+    testPiezoHeadroom();
     testPiezoRateConsistency();
     if (failures == 0)
         std::cout << "All Acustra capture tests passed\n";

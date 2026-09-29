@@ -264,11 +264,25 @@ public:
     // The played strings' axial wave, observed separately from the two-way
     // junction because its current radiation surrogate remains one-way.
     [[nodiscard]] float getLastLongitudinalForce() const noexcept;
-    // The under-saddle piezo's voltage, in volts, where it enters the preamp:
-    // the weighted saddle force through the saddle resonance, the element's
-    // sensitivity and its electrical load. Read by Tools/CalibratePiezo.py;
-    // it runs every sample whatever Capture selects.
+    // The under-saddle piezo's voltage at the jack, where it enters the
+    // preamp: the element's charge on its own capacitance, the cable's and
+    // the preamp's input network (renderPiezo). Read by
+    // Tools/CalibratePiezo.py; the chain runs every sample whatever Capture
+    // selects.
     [[nodiscard]] float getLastPiezoVoltage() const noexcept;
+    // The same sample at every stage the chain can run out of room at, in
+    // volts: the element's open-circuit voltage, the jack, U1A's input
+    // (about its 4.5 V bias; the typical common-mode limit is 2.5 V
+    // either side) and U1B's drive before its output swing clips it (about
+    // 4.5 V; PiezoDesign::railHigh and railLow).
+    struct PiezoProbe
+    {
+        float openCircuit { 0.0f };
+        float jack { 0.0f };
+        float bufferInput { 0.0f };
+        float gainStageDrive { 0.0f };
+    };
+    [[nodiscard]] PiezoProbe getLastPiezoProbe() const noexcept;
     // Zero-state port-power observers retain the work that enters at note-on.
     // Acoustic derivatives re-reference a newly established pluck shape;
     // they cannot account for that initial state in a passivity ledger.
@@ -287,8 +301,11 @@ private:
     static constexpr int midiChannelCount = 16;
 
     // The under-saddle piezo and the analog chain behind it (renderPiezo in
-    // AcustraEngine.cpp, Docs/decisions.md 2026-09-29), in signal order.
-    // Values marked "chosen" are our choices and await the blind pair.
+    // AcustraEngine.cpp, Docs/decisions.md 2026-09-29 "Accurate piezo
+    // chain"), in signal order: a real, documented chain at component level.
+    // Tools/PiezoReference.py simulates the same parts as a circuit, and
+    // Tests/PiezoCircuitTests.cpp holds this implementation to it. Values
+    // marked "chosen" were picked from a documented range.
     struct PiezoDesign
     {
         // 1. Each string presses on its own stretch of the element, and a
@@ -301,55 +318,88 @@ private:
         static constexpr std::array<float, 6> stringWeights {{
             0.912446483f, 1.04762873f, 1.10970464f,
             0.966512336f, 1.07203114f, 0.891676665f }};
-        // 2. The saddle's mass on the element's stiffness: a resonant
-        // second-order low-pass with unit DC gain. Zollner measured a bridge
-        // piece stiffness of 7.6-8e5 N/m and 3.9 kHz with a 1.4 g mass
-        // (M. Zollner, Physics of the Electric Guitar, 2005, ch.6
-        // pp.6-5 to 6-7); about 0.7 g of saddle per string puts it near
-        // 5.4 kHz. 5 kHz and the installed Q of 3 are chosen.
-        static constexpr double saddleHz = 5000.0;
-        static constexpr double saddleQ = 3.0;
-        // 3. Charge to voltage: the element's sensitivity S in volts per
-        // engine force unit, set by Tools/CalibratePiezo.py so the hottest
-        // reference strum - velocity 127 with the Pick, over the presets,
-        // both string materials and Touch 0 to 1 - peaks at the 1 V Zollner
-        // gives for a piezo played loudly (ch.6 section 6.7); a Finger strum
-        // at velocity 127 then peaks at 0.32 V. The electrical load is the
-        // measured Adamas SMT's, 450 pF into 2 MOhm (ch.6 p.6-13).
-        static constexpr float sensitivity = 35.1104f;
-        static constexpr double capacitance = 450.0e-12;
-        static constexpr double loadResistance = 2.0e6;
-        // 4. The onboard preamp's buffer: exactly linear to a knee at 0.8 of
-        // its rails, then safetyLimit's C1 rational curve toward them, and a
-        // small even-order term. The rails straddle the -2 dBV overload of a
-        // Fishman Prefix-type onboard preamp (1.12 V peak) by +-10%; the
-        // asymmetry and the 0.5% second harmonic at 1 V are chosen. The
-        // saddle force's larger excursions are negative (the anchor strum
-        // peaks at -1.00 and +0.55 V), so the higher rail takes them; which
-        // sign an element's wiring gives a downward force is arbitrary.
-        // Ordinary playing stays below the knee; the Pick at velocity 127
-        // near the bridge (Pluck Position 0) overdrives it, as it would a
-        // real onboard preamp.
-        static constexpr float positiveRail = 1.01f;
-        static constexpr float negativeRail = 1.23f;
-        static constexpr float kneeShare = 0.8f;
-        static constexpr float evenOrder = 0.01f;
-        // 5. The output coupling capacitor: a 5 Hz DC blocker, which removes
-        // what the even-order term and the asymmetric rails leave.
-        static constexpr double couplingHz = 5.0;
-        // 6. No EQ: a DI takes the buffered signal flat.
-        // 7. The level match to the stereo microphones per material
+        // The axial force reaches the saddle through the strings' break
+        // angle behind it: sin 25 degrees (chosen, a typical 20-30 degrees).
+        // Zero while longitudinalGain ships at 0.
+        static constexpr float axialShare = 0.422618262f;
+        // 2. The force in newtons: an engine force unit is a string's wave
+        // impedance times one displacement unit per 48 kHz sample
+        // (FixedDerivative differences over the 48 kHz period at every
+        // rate), and a displacement unit is fittedPhysicalCalibration's
+        // steelDisplacementScaleMetres, 6.1 mm: 0.0061 * 48000 N per unit.
+        static constexpr double newtonsPerUnit = 0.0061 * 48000.0;
+        // The saddle on its element, driven one way by the rigid-saddle
+        // force: F_p / F_r = Zk Q / (1 + Zk Q), Zk = k/s + c_m,
+        // Q = 1/(s M + SZ) + G. M: a bone saddle 72 x 3 x 9.5 mm at
+        // 1.95 g/cc (chosen within 2.7-5.1 g). k: the element and its seat
+        // put M at 6 kHz (chosen within the documented 5-7 kHz). c_m: the
+        // element's loss factor 1/18, Zollner's rig Q of 18 taken as the
+        // bound on material loss (M. Zollner, Physics of the Electric
+        // Guitar, 2005, ch.6). G: the bridge's conductance under the saddle,
+        // the mean of Re(Y) over 5-7 kHz of the measured Fylde mobility the
+        // steel bridge is fitted to (MeasuredSteelBridgeData.h, Carcagno et
+        // al. 2018), saddle removed. SZ: the six strings' summed wave
+        // impedance at their standard open notes (stringImpedance).
+        static constexpr double saddleMass = 3.8e-3;
+        static constexpr double elementHz = 6000.0;
+        static constexpr double elementLoss = 1.0 / 18.0;
+        static constexpr double bridgeConductance = 1.59e-3;
+        // 3. The element: a charge source across its capacitance, 0.2 V/N
+        // open-circuit at 1.45 nF (Zollner ch.6, Ovation EA-68).
+        static constexpr double voltsPerNewton = 0.2;
+        static constexpr double elementCapacitance = 1.45e-9;
+        // 4. The cable: 3 m of Mogami 2524 at 130 pF/m (length chosen), and
+        // a stray picofarad at each input node (chosen).
+        static constexpr double cableCapacitance = 390.0e-12;
+        static constexpr double strayCapacitance = 1.0e-12;
+        // 5. The preamp: ESP Project 202 Fig. 1 (R. Elliott,
+        // sound-au.com/project202.htm) on one 9 V battery, OPA2134 halves
+        // (TI SBOS058B). U1A is a follower whose input network R1-R3 is
+        // bootstrapped through C2 and R4; D1/D2 (1N4148) guard its input;
+        // C3 into R5 || R6 couples U1B, a gain of 1 + R7/R8 falling to one
+        // below C4's corner; R9 and C5 feed the volume pot, at full, into a
+        // Radial PZ-DI's 1 MOhm input.
+        static constexpr double c1 = 4.7e-9;
+        static constexpr double r1 = 1.0e6, r2 = 1.0e6, r3 = 1.0e6;
+        static constexpr double c2 = 33.0e-6, r4 = 3.9e3;
+        static constexpr double c3 = 220.0e-9, r5 = 47.0e3, r6 = 47.0e3;
+        static constexpr double r7 = 10.0e3, r8 = 10.0e3, c4 = 33.0e-6;
+        static constexpr double r9 = 100.0, c5 = 10.0e-6;
+        static constexpr double volume = 10.0e3, diInput = 1.0e6;
+        // The OPA2134's common-mode input capacitance (6 pF), and its
+        // limits about the 4.5 V bias: the typical input common-mode range,
+        // 2 V inside each rail (+-13 V at +-15 V), and the output swing for
+        // U1B's 6.67 kOhm load, the datasheet's guaranteed 10 kOhm and 2 kOhm
+        // rows interpolated in conductance: V+ - 1.2375 V, V- + 0.5875 V.
+        // The OPA2134 has no output phase reversal.
+        static constexpr double inputCapacitance = 6.0e-12;
+        static constexpr double commonModeLimit = 2.5;
+        static constexpr double railHigh = 3.2625075;
+        static constexpr double railLow = -3.9125173;
+        // D1/D2, 1N4148s: IS 2.52 nA, N 1.752 (the widely reposted SPICE
+        // model), at 25 C: N kT/q = 45.0 mV.
+        static constexpr double diodeSaturation = 2.52e-9;
+        static constexpr double diodeThermalVoltage = 1.752 * 0.025692579;
+        // 6. The level match to the stereo microphones per material
         // (Tools/CalibratePiezo.py): the median BS.1770 loudness difference.
         // It sits on the material reference, so a later change to either
         // material's loudness moves both sensors together.
-        static constexpr float steelTrim = 2.59727f;
-        static constexpr float nylonTrim = 2.98809f;
+        static constexpr float steelTrim = 2.42002f;
+        static constexpr float nylonTrim = 2.66409f;
         static constexpr float trimFor(StringMaterial material) noexcept
         {
             return material == StringMaterial::Steel ? steelTrim : nylonTrim;
         }
     };
-    static float piezoPreamp(float volts) noexcept;
+    // The saddle filter for one string material at the host rate: matched
+    // poles and least-squares zeros (renderPiezo).
+    struct PiezoSaddleFilter
+    {
+        std::array<float, 5> b {};
+        float a1 { 0.0f }, a2 { 0.0f };
+    };
+    static PiezoSaddleFilter designPiezoSaddle(double sampleRate,
+                                               double stringImpedanceSum) noexcept;
 
     struct OnePole
     {
@@ -1113,10 +1163,8 @@ private:
                      float& directRight, float& sympatheticForce,
                      float& longitudinalForce) noexcept;
     BodyOutput renderBody(float bridgeInput, float bodyMoment) noexcept;
-    float renderLoadedPiezo(float volts) noexcept;
-    float renderPiezoSaddle(float force) noexcept;
-    float renderPiezoCoupling(float buffered) noexcept;
     float renderPiezo(float force) noexcept;
+    void resetPiezo() noexcept;
     float nextNoise(Voice& voice) noexcept;
 
     EngineParameters targetParameters_ {};
@@ -1171,25 +1219,55 @@ private:
     std::array<FixedDerivative, 8> bridgePowerDerivatives_ {};
     FixedDerivative bridgeVelocityDerivative_ {};
     std::array<float, 8> captureMix_ { 1.0f };
-    float piezoLoadPole_ {}, piezoLoadGain_ {};
-    float piezoLoadInput_ {}, piezoLoadOutput_ {};
-    // The analog piezo chain (renderPiezo). Each string presses on its own
-    // stretch of the element at its own sensitivity; the weighted sums below
-    // mirror the junction's, and like its port they are held while no string
-    // is summed. The saddle resonance is a biquad with b2 = 0 in transposed
-    // direct form II; the output coupling is a one-pole DC blocker.
+    // The piezo chain (renderPiezo). Each string presses on its own stretch
+    // of the element at its own sensitivity; the weighted sums below mirror
+    // the junction's, and like its port they are held while no string is
+    // summed.
     std::array<float, stringCount> piezoStringWeights_ {};
     float lastPiezoImpedanceSum_ { 0.0f };
     float lastPiezoImpedanceMoment_ { 0.0f };
     FixedDerivative piezoForceDerivative_ {};
     float lastPiezoWave_ { 0.0f };
     float lastPiezoForce_ { 0.0f };
+    // The saddle filter, one design per string material (index 0 steel,
+    // 1 nylon), in direct form I; histories are force units.
+    std::array<PiezoSaddleFilter, 2> piezoSaddle_ {};
+    std::array<float, 5> piezoSaddleInput_ {};
+    std::array<float, 2> piezoSaddleOutput_ {};
+    // The preamp's input section, trapezoidal, as deviations from its
+    // operating point: w = V_IN - kin V_oc and C2's voltage.
+    double piezoFrontA00_ {}, piezoFrontA01_ {}, piezoFrontA10_ {}, piezoFrontA11_ {};
+    double piezoFrontB0_ {}, piezoFrontB1_ {}, piezoFrontE0_ {}, piezoFrontE1_ {};
+    double piezoInputShare_ {}, piezoJackInput_ {}, piezoJackElement_ {};
+    double piezoFrontW_ {}, piezoFrontC2_ {};
+    double piezoLastOpen_ {}, piezoLastClamp_ {};
+    // D1/D2: Ceq fs / IS, the IN node's charge per volt and sample over
+    // the diodes' saturation current, and the charge (as volts at IN) they
+    // take in one sample at 0 to 8 V past U1A's range, with its slope.
+    static constexpr int piezoDiodePoints = 1025;
+    static constexpr double piezoDiodeStep = 8.0 / (piezoDiodePoints - 1);
+    double piezoDiodeScale_ {};
+    std::array<double, piezoDiodePoints> piezoDiodeDump_ {};
+    std::array<double, piezoDiodePoints> piezoDiodeSlope_ {};
+    // C3, C4 and C5 as trapezoidal one-poles: state = pole * state
+    // + gain * (input + previous input).
+    double piezoC3Pole_ {}, piezoC3Gain_ {}, piezoC4Pole_ {}, piezoC4Gain_ {};
+    double piezoC5Pole_ {}, piezoC5Gain_ {};
+    double piezoC3_ {}, piezoC4_ {}, piezoC5_ {};
+    double piezoLastBuffer_ {}, piezoLastStage_ {};
+    // U1B's drive for the four samples a corner is found on, and its
+    // clipped output for the twelve the BLAMP spans (seven held back, the
+    // newest, and four ahead that only hold corrections), oldest first; the
+    // chain's output is seven samples behind its input.
+    std::array<double, 4> piezoDrive_ {};
+    std::array<double, 12> piezoStage_ {};
+    double piezoOutputVolts_ { 0.0 };
+    double piezoOutputScale_ { 0.0 };
+    // Observers (getLastPiezoProbe).
+    float lastPiezoOpen_ { 0.0f };
     float lastPiezoVoltage_ { 0.0f };
-    float piezoSaddleB0_ {}, piezoSaddleB1_ {};
-    float piezoSaddleA1_ {}, piezoSaddleA2_ {};
-    float piezoSaddleState1_ {}, piezoSaddleState2_ {};
-    float piezoBlockerPole_ {};
-    float piezoBlockerInput_ {}, piezoBlockerOutput_ {};
+    float lastPiezoInput_ { 0.0f };
+    float lastPiezoDrive_ { 0.0f };
     // The level match to the microphones (piezoTrimFor), smoothed like the
     // material reference it sits on.
     float piezoTrim_ { 1.0f };

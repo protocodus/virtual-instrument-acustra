@@ -5,10 +5,14 @@
 // precede note-ons. Output is headerless little-endian float32 stereo.
 // Optional material/tuning flags follow the existing capture/picking/bridge
 // positionals; omitting them preserves the original steel/Standard rendering.
-// --observe piezo_voltage writes, on both channels, the under-saddle piezo's
-// voltage where it enters the preamp (getLastPiezoVoltage) instead of the
-// output; Tools/CalibratePiezo.py sets the element's sensitivity from it.
-// --touch sets the Touch control (default 0.58).
+// --observe writes, instead of the output, what the under-saddle piezo's
+// chain sees at a stage (getLastPiezoProbe), in volts: piezo_voltage, on both
+// channels, the jack where the preamp takes it; piezo_levels the element's
+// open-circuit voltage (left) and the jack (right); piezo_stages U1A's input
+// (left) and U1B's drive before its output swing (right), both about the
+// preamp's 4.5 V bias. Tools/CalibratePiezo.py checks the chain's headroom
+// from them. --touch sets the Touch control (default 0.58), and
+// --pluck-position the Pluck Position (default 0.28; 0 is at the bridge).
 #include "DSP/AcustraEngine.h"
 #include "CalibrationFile.h"
 
@@ -46,7 +50,8 @@ int main(int argc, char** argv)
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
                      "[--body-material spruce|cedar|mahogany|maple] "
                      "[--guitar-model original|bellido1978] "
-                     "[--touch 0..1] [--calibration FILE] [--observe piezo_voltage]\n";
+                     "[--touch 0..1] [--pluck-position 0..1] [--calibration FILE] "
+                     "[--observe piezo_voltage|piezo_levels|piezo_stages]\n";
         return 2;
     }
     try
@@ -87,7 +92,9 @@ int main(int argc, char** argv)
         }
         bool materialSeen = false, tuningSeen = false;
         bool shapeSeen = false, woodSeen = false, calibrationSeen = false, guitarSeen = false;
-        bool observeSeen = false, observePiezoVoltage = false, touchSeen = false;
+        bool observeSeen = false, touchSeen = false, pluckSeen = false;
+        // 0: the output; 1: piezo_voltage; 2: piezo_levels; 3: piezo_stages.
+        int observation = 0;
         for (int index = optionStart; index < argc; index += 2)
         {
             if (index + 1 >= argc)
@@ -137,9 +144,11 @@ int main(int argc, char** argv)
             }
             else if (option == "--observe" && !observeSeen)
             {
-                if (value != "piezo_voltage")
+                const std::array observations { "piezo_voltage", "piezo_levels", "piezo_stages" };
+                const auto found = std::find(observations.begin(), observations.end(), value);
+                if (found == observations.end())
                     throw std::runtime_error("unknown observation");
-                observePiezoVoltage = true;
+                observation = 1 + static_cast<int>(found - observations.begin());
                 observeSeen = true;
             }
             else if (option == "--touch" && !touchSeen)
@@ -150,6 +159,15 @@ int main(int argc, char** argv)
                     throw std::runtime_error("touch must be between 0 and 1");
                 parameters.touch = touch;
                 touchSeen = true;
+            }
+            else if (option == "--pluck-position" && !pluckSeen)
+            {
+                std::size_t used = 0;
+                const float position = std::stof(value, &used);
+                if (used != value.size() || !(position >= 0.0f && position <= 1.0f))
+                    throw std::runtime_error("pluck position must be between 0 and 1");
+                parameters.pluckPosition = position;
+                pluckSeen = true;
             }
             else if (option == "--calibration" && !calibrationSeen)
             {
@@ -221,13 +239,17 @@ int main(int argc, char** argv)
             }
             const auto nextFrame = nextEvent < events.size() ? events[nextEvent].frame : frames;
             const int count = static_cast<int>(std::min<std::int64_t>(blockSize, nextFrame - frame));
-            if (observePiezoVoltage)
+            if (observation != 0)
                 for (int index = 0; index < count; ++index)
                 {
                     // The engine renders identically at any block size.
                     const auto at = static_cast<std::size_t>(index);
                     engine.process(left.data() + at, right.data() + at, 1);
-                    left[at] = right[at] = engine.getLastPiezoVoltage();
+                    const auto probe = engine.getLastPiezoProbe();
+                    left[at] = observation == 1 ? probe.jack
+                        : observation == 2 ? probe.openCircuit : probe.bufferInput;
+                    right[at] = observation == 1 ? probe.jack
+                        : observation == 2 ? probe.jack : probe.gainStageDrive;
                 }
             else
                 engine.process(left.data(), right.data(), count);
