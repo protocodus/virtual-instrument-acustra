@@ -53,9 +53,11 @@ jobs:
           set -euo pipefail
           cmake --build "build-dsp" --target "AcustraRenderDemos" --parallel
           "./build-dsp/AcustraRenderDemos" "Docs/audio"
+          # Written by hand so a demo that stops writing fails here; the
+          # Acustra.DemoCount test keeps it equal to AcustraRenderDemos --list.
           rendered=$(find "Docs/audio" -maxdepth 1 -name '*.wav' | wc -l)
-          if (( rendered != 12 )); then
-            echo "error: rendered $rendered demo WAVs, expected 12" >&2
+          if (( rendered != 11 )); then
+            echo "error: rendered $rendered demo WAVs, expected 11" >&2
             exit 1
           fi
           echo "Acustra: rendered all $rendered demo WAVs"

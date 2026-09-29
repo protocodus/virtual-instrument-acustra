@@ -355,6 +355,12 @@ if(BUILD_TESTING)
                  COMMAND AcustraRenderDemos --smoke
                          "${CMAKE_CURRENT_BINARY_DIR}/demo-smoke")
         set_tests_properties(Acustra.RenderDemos PROPERTIES TIMEOUT 60)
+        add_test(NAME Acustra.DemoCount
+                 COMMAND "${CMAKE_COMMAND}"
+                         "-DRENDERER=$<TARGET_FILE:AcustraRenderDemos>"
+                         "-DWORKFLOW=${CMAKE_CURRENT_SOURCE_DIR}/.github/workflows/ci.yml"
+                         -P "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CheckDemoCount.cmake")
+        set_tests_properties(Acustra.DemoCount PROPERTIES TIMEOUT 30)
 
         add_test(NAME Acustra.PhysicalFitRenderer
                  COMMAND AcustraPhysicalFitRenderer --smoke

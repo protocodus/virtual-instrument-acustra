@@ -814,6 +814,7 @@ int smokeTest(const std::filesystem::path& directory)
 int main(int argc, char** argv)
 {
     bool smoke = false;
+    bool list = false;
     bool directorySet = false;
     std::filesystem::path directory = "Docs/audio";
     for (int index = 1; index < argc; ++index)
@@ -821,9 +822,11 @@ int main(int argc, char** argv)
         const std::string argument = argv[index];
         if (argument == "--smoke")
             smoke = true;
+        else if (argument == "--list")
+            list = true;
         else if (argument == "--help" || argument == "-h")
         {
-            std::printf("usage: AcustraRenderDemos [--smoke] [output-directory]\n");
+            std::printf("usage: AcustraRenderDemos [--smoke | --list] [output-directory]\n");
             return 0;
         }
         else if (!argument.empty() && argument.front() == '-')
@@ -841,6 +844,15 @@ int main(int argc, char** argv)
             directory = argument;
             directorySet = true;
         }
+    }
+
+    // One file name per line, rendering nothing: what CI counts the rendered
+    // WAVs against (Tests/CheckDemoCount.cmake keeps the two in step).
+    if (list)
+    {
+        for (const auto& demo : demos)
+            std::printf("%s\n", demo.fileName);
+        return 0;
     }
 
     if (smoke)
