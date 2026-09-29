@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <numbers>
 #include <span>
 #include <string>
@@ -1731,6 +1732,42 @@ void testSilenceAndFiniteOutput()
     engine.process(left.data(), right.data(), blockSize);
     expect(std::all_of(left.begin(), left.end(), [] (float value)
         { return std::isfinite(value); }), "note output contained NaN or infinity");
+}
+
+// prepare() models 8 to 384 kHz. A finite rate outside that is clamped to
+// the nearer end, so pitch changes continuously across the bounds, and only
+// a rate that is no rate at all (NaN, infinite, zero or negative) falls back
+// to 48 kHz (audit F31).
+void testUnsupportedSampleRatesClampToTheModelledRange()
+{
+    const auto play = [] (double rate)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->prepare(rate, 128);
+        engine->noteOn(69, 0.8f);
+        std::vector<float> left(128), right(128), all;
+        for (int block = 0; block < 20; ++block)
+        {
+            engine->process(left.data(), right.data(), 128);
+            all.insert(all.end(), left.begin(), left.end());
+            all.insert(all.end(), right.begin(), right.end());
+        }
+        return std::pair { engine->sampleRate(), all };
+    };
+    const auto low = play(8000.0);
+    const auto high = play(384000.0);
+    const auto fallback = play(48000.0);
+    for (const double rate : { 4000.0, 7999.0, 1.0 })
+        expect(play(rate) == low, "a finite rate of " + std::to_string(rate)
+               + " Hz was not clamped to the 8 kHz bound");
+    expect(play(768000.0) == high, "768 kHz was not clamped to 384 kHz");
+    for (const double rate : { std::numeric_limits<double>::quiet_NaN(),
+                               std::numeric_limits<double>::infinity(),
+                               0.0, -44100.0 })
+        expect(play(rate) == fallback,
+               "a rate that is no rate did not fall back to 48 kHz");
+    expect(low.first == 8000.0 && fallback.first == 48000.0,
+           "sampleRate() did not report the rate the engine models");
 }
 
 void testPlayableRangeFollowsTuning()
@@ -7510,6 +7547,7 @@ int main()
     testDecayEstimatorFollowsPitchGlides();
     testLossFiltersPreserveTheReferenceTransfer();
     testSilenceAndFiniteOutput();
+    testUnsupportedSampleRatesClampToTheModelledRange();
     testPlayableRangeFollowsTuning();
     testSteelRetuningPreservesStringMass();
     testAudiblePhysicalDecay();

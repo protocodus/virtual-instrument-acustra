@@ -472,6 +472,28 @@ void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
     expect(flooded.allocations == 0, "a full gathering queue allocated");
 }
 
+// The player keeps the engine's time: at a rate the engine clamps or
+// replaces (AcustraEngine::prepare), the gathering window and the strum
+// rest follow the rate the engine models, and a NaN rate cannot reach a
+// cast (audit F31).
+void testPlayerKeepsTheEnginesSampleRate()
+{
+    for (const auto& [host, modelled] : { std::pair { 4000.0, 8000.0 },
+                                          std::pair { 0.0, 48000.0 },
+                                          std::pair { std::nan(""), 48000.0 },
+                                          std::pair { 44100.0, 44100.0 } })
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->setGatherChords(true);
+        performer->prepare(host, 256);
+        expect(performer->engine().sampleRate() == modelled
+                   && performer->latencySamples()
+                          == Performer::gatherWindowSamples(modelled),
+               "the gathering window did not follow the engine's rate at "
+                   + std::to_string(host) + " Hz");
+    }
+}
+
 void testResetSilences()
 {
     auto performer = std::make_unique<Performer>();
@@ -500,6 +522,7 @@ int main()
     testHelpersSpellMidi();
     testMasterTune();
     testOverflowIsCountedNotAllocated(battery);
+    testPlayerKeepsTheEnginesSampleRate();
     testResetSilences();
 
     if (failures != 0)

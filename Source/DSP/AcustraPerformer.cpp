@@ -34,13 +34,15 @@ void Performer::prepare(double sampleRate, int maximumBlockSize)
     rawPitchWheels_.fill(0.0f);
     rpnStates_.fill(RpnState {});
     engine_.prepare(sampleRate, maximumBlockSize);
-    sampleRate_ = sampleRate;
+    // The engine's own rate, which it sanitised: the strum rest and the
+    // gathering window then keep time with it at any rate a host passes.
+    sampleRate_ = engine_.sampleRate();
     processedSamples_ = 0;
     lastStrumSample_ = -1;
     strumUpstroke_ = false;
     heldCount_ = 0;
     droppedEvents_ = 0;
-    gatherWindow_ = gatherWindowSamples(sampleRate);
+    gatherWindow_ = gatherWindowSamples(sampleRate_);
     engine_.setLowerZoneMemberCount(lowerZoneMemberCount_);
 }
 

@@ -2158,7 +2158,10 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
 
 void AcustraEngine::prepare(double sampleRate, int)
 {
-    if (!exact::isfinite(sampleRate) || sampleRate < 8000.0)
+    // Only a rate that is no rate at all falls back to 48 kHz; a finite one
+    // outside the modelled range is held at its nearer bound, so pitch moves
+    // continuously across it instead of jumping at 8 kHz.
+    if (!exact::isfinite(sampleRate) || sampleRate <= 0.0)
         sampleRate = 48000.0;
     sampleRate_ = std::clamp(sampleRate, 8000.0, 384000.0);
     ++voiceConfigurationGeneration_;

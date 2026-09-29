@@ -131,7 +131,12 @@ public:
 
     AcustraEngine() noexcept;
 
+    // Models 8 kHz to 384 kHz: a finite rate outside that is clamped to the
+    // nearer bound (and so plays off pitch), and one that is no rate at all
+    // (NaN, infinite, zero or negative) falls back to 48 kHz.
     void prepare(double sampleRate, int maximumBlockSize);
+    // The rate prepare() settled on, which every time constant follows.
+    [[nodiscard]] double sampleRate() const noexcept { return sampleRate_; }
     void reset() noexcept;
     void setParameters(const EngineParameters& parameters) noexcept;
 
