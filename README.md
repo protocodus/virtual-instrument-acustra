@@ -3025,6 +3025,13 @@ ctest --test-dir build-dsp --output-on-failure
 ./build-dsp/AcustraRenderDemos Docs/audio
 ```
 
+The Python self-tests (the scorer, calibration, loudness, piezo, benchmark and
+fit-tool checks) are registered only when CMake's Python 3 can import NumPy and
+SciPy. Without them configure prints a warning naming what was skipped; pass
+`-DPython3_EXECUTABLE=<a Python with numpy and scipy>` to run them, and
+`-DACUSTRA_REQUIRE_PYTHON_TESTS=ON` (as CI does, and `scripts/build-macos.sh`
+when `PYTHON` names an interpreter) to make their absence a configure error.
+
 Render the demos from a Release build, which is what CI does. On one platform
 a clean Release build reproduces its own WAVs byte for byte - two independent
 Release builds here agree exactly - while an unoptimised one does not, because

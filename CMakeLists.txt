@@ -33,6 +33,8 @@ option(ACUSTRA_BUILD_PLUGIN "Build the JUCE plug-in and standalone app" ON)
 option(ACUSTRA_BUILD_TOOLS "Build offline Acustra tools" ON)
 option(ACUSTRA_BUILD_PLUGIN_REFERENCE_HOST
     "Build the optional JUCE VST3 reference renderer/editor" OFF)
+option(ACUSTRA_REQUIRE_PYTHON_TESTS
+    "Fail to configure unless every Python self-test can be registered (CI sets it)" OFF)
 set(ACUSTRA_JUCE_PATH "" CACHE PATH
     "Optional path to a local JUCE 8.0.14 checkout (avoids downloading JUCE)")
 
@@ -491,8 +493,39 @@ if(BUILD_TESTING)
                                  --probe "$<TARGET_FILE:AcustraBridgeProbe>"
                                  --work "${CMAKE_CURRENT_BINARY_DIR}/excitation-selftest")
                 set_tests_properties(Acustra.ExtractExcitation PROPERTIES TIMEOUT 180)
+                if(NOT WIN32)
+                    add_test(NAME Acustra.PythonTestsReported
+                             COMMAND "${CMAKE_COMMAND}"
+                                     "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}"
+                                     "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/python-tests-reported"
+                                     "-DPYTHON=${Python3_EXECUTABLE}"
+                                     -P "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CheckPythonTestsReported.cmake")
+                    set_tests_properties(Acustra.PythonTestsReported PROPERTIES TIMEOUT 180)
+                endif()
+            else()
+                string(CONCAT ACUSTRA_PYTHON_TESTS_MISSING
+                    "${Python3_EXECUTABLE} cannot import numpy and scipy, so the Python "
+                    "self-tests that need them (the physical scorer, calibration, loudness, "
+                    "piezo, benchmark and fit-tool checks) are not registered")
+            endif()
+        else()
+            set(ACUSTRA_PYTHON_TESTS_MISSING
+                "no Python 3 interpreter was found, so no Python self-test is registered")
+        endif()
+        if(DEFINED ACUSTRA_PYTHON_TESTS_MISSING)
+            string(CONCAT ACUSTRA_PYTHON_TESTS_MISSING
+                "Acustra: ${ACUSTRA_PYTHON_TESTS_MISSING}. Pass "
+                "-DPython3_EXECUTABLE=<a Python 3 with numpy and scipy> to run them.")
+            if(ACUSTRA_REQUIRE_PYTHON_TESTS)
+                message(FATAL_ERROR "${ACUSTRA_PYTHON_TESTS_MISSING}")
+            else()
+                message(WARNING "${ACUSTRA_PYTHON_TESTS_MISSING}")
             endif()
         endif()
+    elseif(ACUSTRA_REQUIRE_PYTHON_TESTS)
+        message(FATAL_ERROR
+            "Acustra: ACUSTRA_REQUIRE_PYTHON_TESTS needs ACUSTRA_BUILD_TOOLS=ON, "
+            "whose renderers the Python self-tests drive")
     endif()
 
     if(ACUSTRA_BUILD_PLUGIN)

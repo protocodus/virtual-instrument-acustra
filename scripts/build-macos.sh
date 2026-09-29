@@ -43,6 +43,11 @@ fi
 if [[ -n "${JUCE_PATH:-}" ]]; then
     cmake_args+=("-DACUSTRA_JUCE_PATH=${JUCE_PATH}")
 fi
+# A Python with numpy and scipy runs every Python self-test; naming one
+# makes a missing library a configure error rather than fewer tests.
+if [[ -n "${PYTHON:-}" ]]; then
+    cmake_args+=("-DPython3_EXECUTABLE=${PYTHON}" -DACUSTRA_REQUIRE_PYTHON_TESTS=ON)
+fi
 
 cmake "${cmake_args[@]}"
 cmake --build "${BUILD_DIR}" --config "${CONFIG}" --parallel

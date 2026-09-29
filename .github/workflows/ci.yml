@@ -33,6 +33,17 @@ jobs:
             libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
             libxinerama-dev libxrandr-dev libxrender-dev
 
+      # The Python self-tests need numpy and scipy; configure fails rather
+      # than silently registering fewer tests (ACUSTRA_REQUIRE_PYTHON_TESTS).
+      - name: Set up Python for the self-tests
+        id: python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install numpy and scipy
+        run: python -m pip install numpy scipy
+
       - name: Configure
         run: |
           cmake \
@@ -41,7 +52,9 @@ jobs:
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             "-DACUSTRA_BUILD_PLUGIN=OFF" \
-            -DBUILD_TESTING=ON
+            -DBUILD_TESTING=ON \
+            "-DPython3_EXECUTABLE=${{ steps.python.outputs.python-path }}" \
+            -DACUSTRA_REQUIRE_PYTHON_TESTS=ON
 
       - name: Build and test DSP engine
         run: |
@@ -119,11 +132,23 @@ jobs:
       - name: Clear screenshot before rendering
         run: rm -f "Docs/screenshots/acustra-standalone.png"
 
+      # The Python self-tests need numpy and scipy; configure fails rather
+      # than silently registering fewer tests (ACUSTRA_REQUIRE_PYTHON_TESTS).
+      - name: Set up Python for the self-tests
+        id: python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install numpy and scipy
+        run: python -m pip install numpy scipy
+
       # Native-arch only keeps per-push CI fast. The local Xcode-based build
       # script defaults to universal arm64 + x86_64 output and runs the same tests.
       - name: Build plug-in and run tests
         env:
           BUILD_UNIVERSAL: "OFF"
+          PYTHON: "${{ steps.python.outputs.python-path }}"
           ACUSTRA_EDITOR_SNAPSHOT: "${{ github.workspace }}/Docs/screenshots/acustra-standalone.png"
         run: ./scripts/build-macos.sh
 
@@ -154,9 +179,20 @@ jobs:
         with:
           persist-credentials: false
 
+      # The Python self-tests need numpy and scipy; configure fails rather
+      # than silently registering fewer tests (ACUSTRA_REQUIRE_PYTHON_TESTS).
+      - name: Set up Python for the self-tests
+        id: python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install numpy and scipy
+        run: python -m pip install numpy scipy
+
       - name: Configure DSP tests
         run: |
-          cmake -S "." -B "build-win" -A x64 "-DACUSTRA_BUILD_PLUGIN=OFF" -DBUILD_TESTING=ON "-DCMAKE_EXE_LINKER_FLAGS=/STACK:33554432"
+          cmake -S "." -B "build-win" -A x64 "-DACUSTRA_BUILD_PLUGIN=OFF" -DBUILD_TESTING=ON "-DCMAKE_EXE_LINKER_FLAGS=/STACK:33554432" "-DPython3_EXECUTABLE=${{ steps.python.outputs.python-path }}" -DACUSTRA_REQUIRE_PYTHON_TESTS=ON
 
       - name: Build and test DSP engine
         run: |
