@@ -533,6 +533,39 @@ void testResetAllControllersResetsVibratoAndPressure()
            "pressure");
 }
 
+// A sample's Note Offs wait for its Note Ons (testOneSampleIsOneCanonicalEvent),
+// but the sustain pedal still meets them in the order the host sent them: a
+// pedal pressed after a key-up on the same sample does not catch that note,
+// and one lifted and pressed again after it lets the note go (audit F22).
+void testSustainMeetsSameSampleKeyUpsInOrder()
+{
+    const auto on = message(0.0, 0x90, 60, 100);
+    const auto off = message(0.5, 0x80, 60, 64);
+    const auto pedal = [](double seconds, bool down)
+    {
+        return message(seconds, 0xb0, 64, down ? 127 : 0);
+    };
+    const auto play = [](std::vector<Event> events)
+    {
+        return render(custom("pedal", 1.5, std::move(events)), 48000.0, 64, false);
+    };
+    const auto released = play({ on, off });
+    expect(play({ on, off, pedal(0.5, true) }) == released,
+           "a pedal pressed after a key-up on its sample caught the note");
+    const auto pedalled = play({ on, pedal(0.5, true), off });
+    expect(pedalled != released, "a pedal pressed before a key-up did not hold it");
+    const auto lifted = play({ on, pedal(0.2, true), off, pedal(0.5, false) });
+    expect(play({ on, pedal(0.2, true), off, pedal(0.5, false), pedal(0.5, true) })
+               == lifted,
+           "a pedal lifted and pressed again after a key-up held the note");
+    expect(lifted != play({ on, pedal(0.2, true), off }),
+           "a pedal lifted after a key-up on its sample did not let it go");
+    // The same order under Gather Chords, which plays the sample later.
+    expect(render(custom("gathered", 1.5, { on, off, pedal(0.5, true) }), 48000.0, 64, true)
+               == render(custom("gathered", 1.5, { on, off }), 48000.0, 64, true),
+           "a gathered pedal pressed after a key-up caught the note");
+}
+
 void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
 {
     // 130 Note Ons on one sample: the group holds 128.
@@ -717,6 +750,7 @@ int main()
     testHelpersSpellMidi();
     testMasterTune();
     testResetAllControllersResetsVibratoAndPressure();
+    testSustainMeetsSameSampleKeyUpsInOrder();
     testOverflowIsCountedNotAllocated(battery);
     testShortStrumsSoundEveryString();
     testPlayerKeepsTheEnginesSampleRate();

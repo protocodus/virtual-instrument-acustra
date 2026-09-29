@@ -179,6 +179,10 @@ private:
     {
         int note { 0 };
         int channel { 1 };
+        // Whether the pedal held this key-up when it arrived, and whether a
+        // pedal change on its sample came after it (see handleEvent).
+        bool sustained { false };
+        bool pedalMoved { false };
     };
 
     // A due time counts samples since prepare.

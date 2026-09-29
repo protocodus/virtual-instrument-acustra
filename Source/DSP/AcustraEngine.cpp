@@ -5587,6 +5587,26 @@ int AcustraEngine::strumDelaySamples(int stringRank,
 
 void AcustraEngine::noteOff(int midiNote, int midiChannel) noexcept
 {
+    releaseKey(midiNote, midiChannel, false, false);
+}
+
+void AcustraEngine::noteOff(int midiNote, int midiChannel,
+                            bool sustained) noexcept
+{
+    releaseKey(midiNote, midiChannel, true, sustained);
+}
+
+bool AcustraEngine::sustainHolds(int midiChannel) const noexcept
+{
+    if (midiChannel < 1 || midiChannel > midiChannelCount)
+        return false;
+    const bool own = sustainPedals_[static_cast<std::size_t>(midiChannel - 1)];
+    return isLowerZoneMember(midiChannel) ? sustainPedals_[0] || own : own;
+}
+
+void AcustraEngine::releaseKey(int midiNote, int midiChannel,
+                               bool sustainGiven, bool sustained) noexcept
+{
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return;
     int candidateIndex = -1;
@@ -5615,12 +5635,14 @@ void AcustraEngine::noteOff(int midiNote, int midiChannel) noexcept
         // under the pedal as it was at this key-up (setSustainPedal keeps
         // that current). An explicit, non-strum delay is still cancelled.
         candidate.releaseAfterPluck = true;
-        candidate.pedalHeldAtKeyUp = sustainIsDown(candidate);
+        candidate.pedalHeldAtKeyUp = sustainGiven ? sustained
+                                                  : sustainIsDown(candidate);
         return;
     }
     candidate.pluckDelay = 0;
     candidate.repluckPending = false;
-    completeKeyUp(candidate, candidateIndex, sustainIsDown(candidate));
+    completeKeyUp(candidate, candidateIndex,
+                  sustainGiven ? sustained : sustainIsDown(candidate));
 }
 
 void AcustraEngine::completeKeyUp(Voice& voice, int stringIndex,

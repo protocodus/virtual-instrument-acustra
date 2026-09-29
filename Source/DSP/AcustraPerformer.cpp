@@ -270,7 +270,10 @@ void Performer::flushNoteGroup() noexcept
     for (int index = 0; index < pendingNoteOffCount_; ++index)
     {
         const auto& note = pendingNoteOffs_[static_cast<std::size_t>(index)];
-        engine_.noteOff(note.note, note.channel);
+        if (note.pedalMoved)
+            engine_.noteOff(note.note, note.channel, note.sustained);
+        else
+            engine_.noteOff(note.note, note.channel);
     }
     pendingNoteOffCount_ = 0;
 }
@@ -314,7 +317,8 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
     {
         // Release velocity is read by nothing: a key-up damps its note.
         pendingNoteOffs_[static_cast<std::size_t>(pendingNoteOffCount_++)] = {
-            static_cast<int>(data[1] & 0x7fu), midiChannel
+            static_cast<int>(data[1] & 0x7fu), midiChannel,
+            engine_.sustainHolds(midiChannel), false
         };
     }
     else
@@ -339,6 +343,23 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
                 pendingNoteOffs_.begin(),
                 pendingNoteOffs_.begin() + pendingNoteOffCount_,
                 removeChannel) - pendingNoteOffs_.begin());
+        }
+        // A key-up waits for its sample's Note Ons, but the pedal meets it
+        // in the order the host sent them: one pressed after it does not
+        // catch it, and one lifted after it lets it go, whatever the pedal
+        // does next on this sample.
+        if (status == 0xb0u && size >= 3 && (data[1] & 0x7fu) == 64u)
+        {
+            const bool down = (data[2] & 0x7fu) >= 64u;
+            for (int index = 0; index < pendingNoteOffCount_; ++index)
+            {
+                auto& off = pendingNoteOffs_[static_cast<std::size_t>(index)];
+                if (!channelIsInControllerScope(midiChannel, off.channel))
+                    continue;
+                off.pedalMoved = true;
+                if (!down)
+                    off.sustained = false;
+            }
         }
         dispatchMidiData(data, size);
     }

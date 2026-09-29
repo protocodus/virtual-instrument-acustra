@@ -181,6 +181,13 @@ public:
     // Key-up damps the note at every release velocity: lifting a key is the
     // fretting hand letting go, never a new stroke.
     void noteOff(int midiNote, int midiChannel = 1) noexcept;
+    // The same key-up, told whether the sustain pedal held it when it was
+    // made, for a caller that orders the key-ups of one sample after their
+    // Note Ons but a pedal change on that sample after them (the Performer).
+    void noteOff(int midiNote, int midiChannel, bool sustained) noexcept;
+    // Whether a key-up on this channel now would be held by the sustain
+    // pedal: its own, or, on an MPE lower-zone member, the manager's too.
+    [[nodiscard]] bool sustainHolds(int midiChannel) const noexcept;
     void setSustainPedal(bool down, int midiChannel = 1) noexcept;
     // Continuous bridge-hand damping, 0 open to 1 fully muted. Exposed as a
     // controller rather than a panel control: it is a playing pressure, and
@@ -1022,6 +1029,8 @@ private:
     void firePluck(Voice& voice, int stringIndex) noexcept;
     void beginRelease(Voice& voice, int stringIndex) noexcept;
     void completeKeyUp(Voice& voice, int stringIndex, bool pedalHeld) noexcept;
+    void releaseKey(int midiNote, int midiChannel, bool sustainGiven,
+                    bool sustained) noexcept;
     void captureTail(Voice& voice) noexcept;
     // The Pick technique's released state (FittedPhysicalData.h): a rest
     // triangle of this height with its apex at position, a fraction of the
