@@ -1195,7 +1195,11 @@ Original with the fingers or thumb, the Fylde Jumbo with the Pick 5.3 LU
 over the default, picked nylon 3-5 LU over finger-played). Only the level
 moves: each construction's samples are its old ones times its gain, and the
 default construction's microphones are unchanged to the bit. A Pick cell whose hardest playing would come within 1 dB of
-the safety limiter sits up to 0.9 LU under the default (Known gaps).
+the safety limiter sits up to 0.9 LU under the default (Known gaps). The
+match is of loudness over that phrase set, in Standard tuning: one chord at
+one velocity, or one note, can sit several dB either side where the body's
+resonances meet it, and nylon's balance of soft and hard playing, and of low
+and high strings, is its own (Known gaps).
 
 | Control | Audible behavior |
 | --- | --- |
@@ -1204,7 +1208,7 @@ the safety limiter sits up to 0.9 LU under the default (Known gaps).
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
 | **Body Material** | Spruce, Cedar, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. Each measured body is heard as measured at the wood it was built of and moved relative to it elsewhere: Spruce for steel's g21, Cedar for nylon's g34 and for the Bellido. |
 | **String Material** | Selects the dedicated nylon or steel geometry, impedance, stiffness, loss and fitted calibration. |
-| **Tuning** | Changes the six open-string/fret constraints. |
+| **Tuning** | Standard, Drop D, DADGAD, Open G or Half-step down: the six open strings and the notes each can reach. A retuned string keeps its gauge (its linear mass), so its tension, impedance and stiffness follow its new pitch, as on a real guitar. |
 | **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss. |
@@ -1538,6 +1542,16 @@ The JUCE-free suites cover:
   constructions with every Picking, BS.1770, within 3 LU of the default;
   the default's microphone levels exactly 1; a Bridge that selects nothing
   moves nothing);
+- every construction a player can choose, crossed
+  (Tests/ConstructionMatrixTests.cpp): all 1,920 settings of Strings x Model x
+  Bridge x Shape x Wood x Tuning x Capture strum their tuning's open strings
+  at 48 kHz and stay finite, under full scale, audible and within 9 dB
+  (K-weighted) of the default construction on the same strings, tuning and
+  capture (measured -8.0 to +5.5); the Piezo output is bit-identical whatever
+  Capture selects and equals Main on Piezo, the mono mic is one signal,
+  requesting the Piezo output leaves Main unchanged, and a Bridge choice the
+  construction does not play changes no bit; a reduced set covering every
+  value runs at 44.1, 88.2 and 192 kHz;
 - six-string bounds, deterministic allocation and block partitioning;
 - the player (Tests/PerformerTests.cpp) on a battery of performances
   (Tests/PerformanceBattery.h: single notes, two- to seven-note same-sample
@@ -1545,7 +1559,9 @@ The JUCE-free suites cover:
   overlapping notes released at every release velocity, sustain, bridge-hand
   and vibrato sweeps, bend under
   RPN changes, the MPE lower zone, string-per-channel, notes off and panic,
-  host edge cases, control changes), with and without Gather Chords: finite,
+  host edge cases, control changes, and every construction control - Shape,
+  Wood, Bridge, Model, Width, Age, Pluck Position, Touch and all five
+  tunings - switched under a ringing chord), with and without Gather Chords: finite,
   repeatable, allocation-free, independent of block size, and identical when
   spelt through the helpers a front end without MIDI uses; plus canonical
   same-sample order, the gathered roll, master tune and overflow counts, and
@@ -1610,8 +1626,10 @@ The JUCE-free suites cover:
   scaling exactly with bridge mobility;
 - independently ablated body-mode broadening and calibrated 85--145 Hz modal
   balance, followed by a joint bounded refit;
-- alternate steel tunings that preserve physical linear mass and change
-  tension, impedance and inharmonicity together;
+- every tuning on both string sets playing each open note on its own string
+  and refusing the note under its lowest, and every retuned steel string (13
+  across the five tunings) keeping its linear mass while its tension,
+  impedance and inharmonicity change together;
 - passive bridge branch balance, measured-body output and selective audible
   sympathy: an E3/low-E harmonic match changes the 0.30--4.00 s tail by 0.805
   of its RMS, 6.28 times the adjacent F3 case, and raises resonant tail RMS by
@@ -1633,9 +1651,8 @@ The JUCE-free suites cover:
   and the assertions that make it a sympathy test are the off-resonant share
   under 0.30 and a resonant share above five times it;
 - the longitudinal path: its band grows faster than the note that drives it,
-  by more than 3 dB between a quarter velocity and near full on two notes, it
-  is exactly inert at a zero gain, and it stays out of the idle-string
-  accumulator so the sympathetic bypass is still exactly zero;
+  by more than 3 dB between a quarter velocity and near full on two notes, and
+  it is exactly inert at a zero gain;
 - the constant six-string anchor: a note's own decay stays within a quarter of
   its rate whether it sounds alone, beside a neighbour too quiet to hear, or
   inside a six-string chord, where the played-subset anchor moved it 2.15x;
@@ -1652,8 +1669,10 @@ The JUCE-free suites cover:
   100 ms spacing at 44.1 and 384 kHz, and is silenced by All Sound Off;
 - audible construction controls, bounded fitted calibration, finite hostile
   inputs and a final limiter that leaves ordinary output linear;
-- finite output across 44.1--384 kHz and a measured six-string runtime ratio of
-  about 0.06× realtime against a 0.25× gate;
+- finite, bounded Main and Piezo outputs at 8, 44.1, 48, 88.2, 96, 192 and
+  384 kHz while every automatable control moves, Model, Bridge, Tuning and
+  Capture among them, and a measured six-string runtime ratio of about
+  0.035× realtime (Apple silicon) against a 0.25× gate;
 - the fractional-delay read: a slewing bend never clicks above 14 kHz and its
   per-round-trip loss stays within a factor of 2.5 across the fretboard at
   44.1, 48 and 96 kHz;
@@ -1697,7 +1716,19 @@ The JUCE-free suites cover:
 
 The physical-fit scorer has a synthetic closeness self-test. Its C++ renderer
 also smoke-tests manifest/file consistency and verifies that model-only updates
-cannot modify reference targets.
+cannot modify reference targets. Every Python tool that has a `--self-test` or
+`--smoke` runs under ctest (Acustra.SelfTestRegistry fails on one that does
+not), among them the open-corpus benchmark end to end on a synthetic corpus
+it writes itself. Further checks keep the documentation and tooling in step
+with the code: the calibration vector's documented size against the one the
+renderers take (Acustra.CalibrationVector), the optimiser leaving every value
+a listener chose frozen (Acustra.OptimizerFreeze), CI's demo count against the
+renderer's list (Acustra.DemoCount), and a configure without NumPy saying
+which tests it skipped (Acustra.PythonTestsReported).
+
+The C++ suites run under ctest at a shell's default 8 MB stack (ctest itself
+raises the limit on macOS), so each also runs directly or under a debugger;
+the tests keep their engines and processors on the heap.
 
 The wrapper suite additionally checks that release velocity and CC68 change
 nothing, sample-accurate MIDI, canonical
@@ -1727,6 +1758,22 @@ engine.
   steel from the Original to the Bellido reaches 3.3 times the louder
   steady chord for about 0.3 s, the Original's less-drained strings pouring
   through the Bellido's mobile top.
+- Loudness is matched over a phrase set, not note by note, and nylon's
+  dynamics are its own. With the fingers on the default construction and the
+  same with nylon strings (K-weighted level of the first 2 s, stereo mic), a
+  strum of the six open strings plays nylon 9.5 dB under steel at velocity
+  0.2, 4.7 dB under at 0.6 and 2.5 dB under at 1.0 (the Classical preset
+  8.3, 3.6 and 1.4; 5-12 dB under with the thumb), while a single E4 plays
+  nylon 1-9 dB over steel and a single E3 within -6 to +2 dB: nylon's
+  velocity response is steeper and its treble strings stronger. So a
+  moderate strum still sounds quieter on nylon than on steel, which is what
+  "nylon is a bit quite" described; evening that out changes nylon's
+  dynamics and string balance, not only its level, and waits for the user.
+  Across constructions and tunings one open strum sits -8.0 to +5.5 dB from
+  the default construction's on the same strings (ConstructionMatrixTests):
+  the extremes are nylon on the Bellido's Jumbo Maple in DADGAD (mono mic),
+  and steel's own bridge on the Jumbo in Half-step down, whose low E-flat
+  lands on the Jumbo's air mode.
 
 - Single notes' radiated level is rougher from note to note than the open
   recordings'. Over E2-C6, 1 s RMS at the Stereo mic, the RMS deviation from
@@ -2462,6 +2509,28 @@ git history rather than here.
 
 ### 2026-09-29
 
+- **An audit of the engine, at the user's request** ("walk through the
+  engine and fix any gaps, obvious issues, and ensure compatibility between
+  different woods, models"). What a player hears change:
+  - Playing: released natural harmonics and slid notes now damp like the
+    string they sound; a short strummed stab sounds every string (its upper
+    strings used to vanish); a member-channel bend's tension stops at six
+    semitones and a wider glide carries on as a slide instead of blowing up
+    26 dB; All Notes/Sound Off acts before the notes on its own sample, so
+    those notes sound; Reset All Controllers also resets the wheel's vibrato
+    and channel pressure; master tune reaches an MPE note once.
+  - Constructions: Shape keeps each of the Bellido's bridge modes on its
+    radiation; nylon's and the Bellido's bridges follow Wood and Shape; the
+    Classical preset is nylon's measured body at the cedar it was built of
+    (+31 cents, brighter than the cedar warp it was); a Shape, Wood, Bridge
+    or Model change under a ringing chord no longer ticks, and a change onto
+    steel strings no longer swells; a Bridge choice a construction does not
+    play changes nothing; an instrument left to ring out reaches exact
+    silence.
+  - Unchanged: the default construction on its microphones, bit for bit,
+    wherever those playing fixes do not reach. Nylon changes by the body
+    fixes and by its level (below). Test, tool and documentation fixes
+    change no sound. What is left open is in Known gaps.
 - **Every construction and Picking plays as loud as the default, at the
   user's request.** A gain per Strings x Model x Bridge x Shape x Wood x
   Picking cell, measured as BS.1770 loudness, brings each within 1 LU of
