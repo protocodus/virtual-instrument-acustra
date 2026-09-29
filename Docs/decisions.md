@@ -4,6 +4,54 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-29 — at the user's request: engine audit, release and playing fixes
+
+Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
+"now, wrap up - walk through the engine and fix any gaps, obvious issues,
+and ensure compatibility between different woods, models, et". An audit of
+the engine and the player found defects that were then checked
+independently; this entry covers the ones about releasing and playing notes
+(F1, F2, F8, F20-F24, F26, F27, F31, F41), one commit each, each with a test
+that failed before it.
+
+Defects fixed, where a render changes only where the defect was:
+- Released natural harmonics and slid notes are damped by the loop's own
+  fundamental (open string for a harmonic, bent pitch for a bend, re-timed
+  if the slide goes on after key-up). A released harmonic sat 2-5 dB below
+  held where its open string drops 18 dB; it now drops as the open string
+  does (F1).
+- A strum member whose key comes up before the pick reaches it is still
+  plucked and let go then, under the pedal as it stood at the key-up; an
+  explicit non-strum delay is still cancelled (F2). Short strummed stabs
+  used to lose their upper strings by 16-45 dB.
+- An MPE member's master tune is applied once (F20); Reset All Controllers
+  also resets the wheel's vibrato (when the channel that set it is in its
+  scope) and channel pressure (F21); a pedal pressed after a key-up on the
+  same sample no longer catches it (F22); the strum rest is measured
+  between strums, not block starts (F23); a note the tuning cannot sound no
+  longer delays a strum or sets its speed (F24); prepare() restarts the
+  random draws, so a re-prepared engine plays as a new one (F26); noteOn's
+  pluck delay is bounded to 10 s (F27, undefined behaviour before);
+  finite rates under 8 kHz are clamped instead of replaced by 48 kHz (F31).
+- Default steel and nylon renders not touched by these cases are
+  bit-identical to 7e3f22d (a harness hashing the performance battery,
+  gathering and not, both materials, and probes at blocks 64 and 4096).
+
+Changes of behaviour, recorded as awaiting the user's ear:
+- F8: a member bend's tension now stops at twice the open string's r^2
+  (six semitones, about twice the tuning tension, where plain steel
+  breaks); a wider member glide carries on as a slide. Before, a +48 glide
+  reached 170 times the tuning tension and came out 26 dB louder than the
+  same glide as a slide, into the limiter; now it is 1.5-3.6 dB louder. The
+  bound is physical, not fitted or heard.
+- F41: All Notes/Sound Off on the same sample as notes acts before them,
+  whatever the host's order, so the notes on its sample sound (a loop's
+  first beat after a reset). This reverses the rule recorded on 2026-08-30
+  below, that they cancelled those Note Ons.
+- F2 changes the rule recorded with the scheduled pluck on 2026-09-02 (a
+  release before the pick arrives cancels it silently) for strum members
+  only: a short strummed stab now sounds every string.
+
 ## 2026-09-29 — at the user's request: the separate Mic output withdrawn, Piezo stays
 
 Not a listening verdict: the user asked for it. After the separate Mic and
