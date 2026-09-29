@@ -105,7 +105,8 @@ std::vector<float> flattened (const juce::AudioBuffer<float>& audio)
 
 void testParameterContract()
 {
-    AcustraAudioProcessor processor;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
     namespace ids = acustra::parameters;
 
     constexpr std::array<const char*, ids::parameterCount> expectedIds {
@@ -267,7 +268,8 @@ void testParameterContract()
 
 void testProcessorContractAndSampleAccurateMidi()
 {
-    AcustraAudioProcessor processor;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
     expect (processor.acceptsMidi() && ! processor.producesMidi()
                 && ! processor.isMidiEffect() && processor.hasEditor()
                 && processor.supportsMPE(),
@@ -332,7 +334,8 @@ void testProcessorContractAndSampleAccurateMidi()
 std::vector<float> renderChord (const std::array<int, 6>& notes,
                                 int& activeVoiceCount)
 {
-    AcustraAudioProcessor processor;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
     processor.prepareToPlay (sampleRate, blockSize);
     juce::AudioBuffer<float> audio { 2, blockSize };
     juce::MidiBuffer midi;
@@ -410,7 +413,8 @@ void testSameSampleChordsAreStrummedAndAlternate()
     // the top string separates down/up attacks; the old F#4 probe mistook
     // strong 349 Hz partials from the bass strings for its 370 Hz fundamental.
     // No engine scheduling state or private wrapper flags are inspected.
-    AcustraAudioProcessor processor;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
     processor.prepareToPlay (sampleRate, blockSize);
     juce::AudioBuffer<float> audio { 2, blockSize };
     const auto upperRegisterDelay = [&] (double restSeconds)
@@ -484,7 +488,10 @@ void testRepeatedHeldChordsKeepTheirAudibleSweep()
     std::vector<double> downs, ups;
     for (int previousStrokes = 1; previousStrokes <= 6; ++previousStrokes)
     {
-        AcustraAudioProcessor repeated, continuation;
+        auto repeatedOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& repeated = *repeatedOwner;
+        auto continuationOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& continuation = *continuationOwner;
         repeated.prepareToPlay (sampleRate, blockSize);
         continuation.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
@@ -537,7 +544,8 @@ void testSameSampleNoteOnOffDoesNotStick()
 {
     const auto renderOneShot = [] (bool noteOnFirst)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         juce::MidiBuffer midi;
@@ -564,7 +572,8 @@ void testBridgeHandControllerReachesTheEngine()
     // to and leave the panel's parameters alone.
     const auto tailRms = [] (bool muted)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         juce::MidiBuffer start;
@@ -612,7 +621,8 @@ void testTheModulationWheelReachesTheEngineAsVibrato()
     // it is bounded by). Zero is the wheel untouched, down to the sample.
     const auto phrase = [] (int wheel, bool send)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         std::vector<float> mono;
@@ -654,7 +664,8 @@ void testReleaseVelocityAndCc68ChangeNothing()
     // encoding, with or without the footswitch down, renders the same wave.
     const auto phrase = [] (const juce::MidiMessage& off, bool footswitch = false)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         std::vector<float> mono;
@@ -703,7 +714,8 @@ void testReleaseVelocityAndCc68ChangeNothing()
 
 void testResetAllControllersReleasesSustain()
 {
-    AcustraAudioProcessor processor;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
     processor.prepareToPlay (sampleRate, blockSize);
     juce::AudioBuffer<float> audio { 2, blockSize };
 
@@ -729,7 +741,8 @@ void testResetAllControllersReleasesSustain()
 
 void testMemberChannelOwnershipAndControllers()
 {
-    AcustraAudioProcessor processor;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
     processor.prepareToPlay (sampleRate, blockSize);
     juce::AudioBuffer<float> audio { 2, blockSize };
     const auto render = [&] (juce::MidiBuffer& midi)
@@ -856,7 +869,8 @@ void testMemberPitchBendDoesNotLeakChannels()
 {
     const auto render = [] (int bendChannel, int wheel, bool mpe)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         juce::MidiBuffer midi;
@@ -909,7 +923,8 @@ void testRpnPitchRangesAndSelectionState()
 {
     const auto renderConventional = [] (int variant)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         juce::MidiBuffer midi;
@@ -955,7 +970,8 @@ void testRpnPitchRangesAndSelectionState()
     const auto renderSharedMember = [] (int rangeChannel, bool configureRange,
                                         bool resetMaster)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         juce::MidiBuffer midi;
@@ -985,7 +1001,8 @@ void testRpnPitchRangesAndSelectionState()
 
     const auto renderConventionalCrossChannel = [] (int rangeChannel)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         juce::MidiBuffer midi;
@@ -1004,7 +1021,8 @@ void testRpnPitchRangesAndSelectionState()
 
 void testLowerZoneLifecycleAndControllerBoundaries()
 {
-    AcustraAudioProcessor processor;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
     processor.prepareToPlay (sampleRate, blockSize);
     juce::AudioBuffer<float> audio { 2, blockSize };
     const auto render = [&] (juce::MidiBuffer& midi)
@@ -1036,7 +1054,8 @@ void testLowerZoneLifecycleAndControllerBoundaries()
     expect (processor.getActiveVoiceCount() == 0,
             "lower-zone deactivation left an old member voice sounding");
 
-    AcustraAudioProcessor nrpnProcessor;
+    auto nrpnProcessorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& nrpnProcessor = *nrpnProcessorOwner;
     nrpnProcessor.prepareToPlay (sampleRate, blockSize);
     juce::MidiBuffer nrpnNotes;
     nrpnNotes.addEvent (juce::MidiMessage::noteOn (2, 52, 0.8f), 0);
@@ -1053,7 +1072,8 @@ void testLowerZoneLifecycleAndControllerBoundaries()
     for (const int controller : { 120, 123 })
         for (const bool controllerFirst : { false, true })
         {
-            AcustraAudioProcessor boundary;
+            auto boundaryOwner = std::make_unique<AcustraAudioProcessor>();
+            auto& boundary = *boundaryOwner;
             boundary.prepareToPlay (sampleRate, blockSize);
             juce::MidiBuffer setup;
             addLowerZone (setup, 2);
@@ -1075,7 +1095,8 @@ void testLowerZoneLifecycleAndControllerBoundaries()
     for (const int controller : { 120, 123 })
         for (const bool controllerFirst : { false, true })
         {
-            AcustraAudioProcessor boundary;
+            auto boundaryOwner = std::make_unique<AcustraAudioProcessor>();
+            auto& boundary = *boundaryOwner;
             boundary.prepareToPlay (sampleRate, blockSize);
             juce::MidiBuffer events;
             const auto control = juce::MidiMessage::controllerEvent (
@@ -1104,7 +1125,8 @@ void testControllerResetSoundOffAndUiPanic()
         }
     };
 
-    AcustraAudioProcessor preserved;
+    auto preservedOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& preserved = *preservedOwner;
     preserved.prepareToPlay (sampleRate, blockSize);
     juce::AudioBuffer<float> audio { 2, blockSize };
     juce::MidiBuffer setup;
@@ -1131,7 +1153,8 @@ void testControllerResetSoundOffAndUiPanic()
     expect (preserved.getActiveVoiceCount() == 0,
             "preserved CC120 sustain did not release on pedal-up");
 
-    AcustraAudioProcessor panic;
+    auto panicOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& panic = *panicOwner;
     panic.prepareToPlay (sampleRate, blockSize);
     juce::MidiBuffer pedalDown;
     pedalDown.addEvent (juce::MidiMessage::controllerEvent (2, 64, 127), 0);
@@ -1147,7 +1170,8 @@ void testControllerResetSoundOffAndUiPanic()
     expect (panic.getActiveVoiceCount() == 0,
             "front-panel Panic failed to reset controller state fully");
 
-    AcustraAudioProcessor masterReset;
+    auto masterResetOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& masterReset = *masterResetOwner;
     masterReset.prepareToPlay (sampleRate, blockSize);
     juce::MidiBuffer mpe;
     addLowerZone (mpe, 2);
@@ -1176,7 +1200,8 @@ void testControllerResetSoundOffAndUiPanic()
 void testStateRoundTripAndMigration()
 {
     namespace ids = acustra::parameters;
-    AcustraAudioProcessor source;
+    auto sourceOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& source = *sourceOwner;
     setValue (source, ids::shape, 0.0f);
     setValue (source, ids::bodyMaterial, 3.0f);
     setValue (source, ids::stringMaterial, 0.0f);
@@ -1196,7 +1221,8 @@ void testStateRoundTripAndMigration()
     source.getStateInformation (stored);
     expect (stored.getSize() > 0, "getStateInformation returned no state");
 
-    AcustraAudioProcessor restored;
+    auto restoredOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& restored = *restoredOwner;
     restored.setStateInformation (stored.getData(),
                                   static_cast<int> (stored.getSize()));
     for (const char* id : { ids::shape, ids::bodyMaterial, ids::stringMaterial,
@@ -1267,7 +1293,8 @@ void testStateRoundTripAndMigration()
                 expect (std::abs (valueOf (restored, ids::captureMode) - static_cast<float> (expected)) < 0.01f,
                         "a retired capture choice was not migrated deterministically");
                 restored.getStateInformation (bytes);
-                AcustraAudioProcessor roundTrip;
+                auto roundTripOwner = std::make_unique<AcustraAudioProcessor>();
+                auto& roundTrip = *roundTripOwner;
                 roundTrip.setStateInformation (bytes.getData(), static_cast<int> (bytes.getSize()));
                 expect (roundTrip.snapshotEngineParameters().capture == restored.snapshotEngineParameters().capture,
                         "a migrated capture changed on its next save and reload");
@@ -1314,7 +1341,8 @@ void testStateRoundTripAndMigration()
 
 void testEditorRendering()
 {
-    AcustraAudioProcessor processor;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
     processor.prepareToPlay (sampleRate, blockSize);
     std::unique_ptr<juce::AudioProcessorEditor> editor { processor.createEditor() };
     expect (editor != nullptr, "createEditor returned null");
@@ -1688,7 +1716,8 @@ void testMpeTimbreReachesTheEngineOnMemberChannelOnly()
     // single sample.
     const auto phrase = [] (int timbre, int channel, bool memberZone)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         juce::MidiBuffer start;
@@ -1727,7 +1756,8 @@ void testMpePressureReachesTheEngineOnMemberChannelOnly()
     // through the vibrato path alone.
     const auto phrase = [] (int pressure, int channel, bool memberZone)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         juce::MidiBuffer start;
@@ -1771,7 +1801,8 @@ std::vector<float> renderTimeline (const std::vector<TimedMidi>& events,
                                    int length, bool gather,
                                    int* latency = nullptr)
 {
-    AcustraAudioProcessor processor;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
     setValue (processor, acustra::parameters::gatherChords, gather ? 1.0f : 0.0f);
     processor.prepareToPlay (sampleRate, blockSize);
     if (latency != nullptr)
@@ -1920,7 +1951,8 @@ void testGatheringOnlyDelaysNotesMeantApart()
 
 void testGatherSwitchAndPanicReleaseHeldNotes()
 {
-    AcustraAudioProcessor processor;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
     setValue (processor, acustra::parameters::gatherChords, 1.0f);
     processor.prepareToPlay (sampleRate, blockSize);
     juce::AudioBuffer<float> audio { 2, blockSize };
@@ -1973,7 +2005,8 @@ void testStringPerChannelModeViaMonoModeOn()
     const auto activeVoices = [] (bool sendMonoOn, bool sendPolyOnAfter,
                                   int channel, int midiNote)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         juce::MidiBuffer start;
@@ -2007,7 +2040,8 @@ void testTheAdapterPlaysExactlyThePerformer()
     for (const auto& scenario : makeBattery())
         for (const bool gather : { false, true })
         {
-            AcustraAudioProcessor processor;
+            auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+            auto& processor = *processorOwner;
             setValue (processor, ids::gatherChords, gather ? 1.0f : 0.0f);
             processor.prepareToPlay (sampleRate, block);
             auto performer = std::make_unique<acustra::Performer>();
@@ -2081,7 +2115,8 @@ void testOptionalPiezoOutputBus()
 {
     namespace ids = acustra::parameters;
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         expect (processor.getBusCount (false) == 2 && processor.getBusCount (true) == 0,
                 "the plug-in must offer Main plus one optional output bus");
         expect (processor.getBus (false, 0)->getName() == "Output"
@@ -2128,7 +2163,8 @@ void testOptionalPiezoOutputBus()
     const auto play = [] (int captureChoice, bool piezo,
                           const juce::MemoryBlock* restore = nullptr)
     {
-        AcustraAudioProcessor processor;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
         if (restore != nullptr)
             processor.setStateInformation (restore->getData(),
                                            static_cast<int> (restore->getSize()));

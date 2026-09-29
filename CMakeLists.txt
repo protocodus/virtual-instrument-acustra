@@ -240,6 +240,22 @@ if(ACUSTRA_BUILD_TOOLS)
 endif()
 
 if(BUILD_TESTING)
+    # ctest raises the soft stack limit (to 64 MB on macOS), which hid test
+    # suites that overflowed the 8 MB a shell gives a program run directly or
+    # under a debugger (audit F16). The C++ suites therefore run at a shell's
+    # default stack under ctest too, so a test that parks a 1.7 MB engine on
+    # the stack of every nested helper fails here rather than only by hand.
+    # Windows links its own stack size (CI passes /STACK).
+    function(acustra_add_suite name target)
+        if(WIN32)
+            add_test(NAME ${name} COMMAND ${target} ${ARGN})
+        else()
+            add_test(NAME ${name}
+                     COMMAND /bin/sh -c "ulimit -s 8176 2>/dev/null; exec \"$0\" \"$@\""
+                             "$<TARGET_FILE:${target}>" ${ARGN})
+        endif()
+    endfunction()
+
     add_executable(AcustraSampleBankTests Tests/SampleBankTests.cpp)
     target_link_libraries(AcustraSampleBankTests PRIVATE AcustraReferenceBank)
     target_compile_features(AcustraSampleBankTests PRIVATE cxx_std_20)
@@ -251,7 +267,7 @@ if(BUILD_TESTING)
             -Wall -Wextra -Wpedantic)
     endif()
 
-    add_test(NAME Acustra.SampleBank COMMAND AcustraSampleBankTests)
+    acustra_add_suite(Acustra.SampleBank AcustraSampleBankTests)
     set_tests_properties(Acustra.SampleBank PROPERTIES TIMEOUT 90)
 
     add_executable(AcustraEngineTests Tests/AcustraEngineTests.cpp)
@@ -269,13 +285,13 @@ if(BUILD_TESTING)
     # macOS runner (on 2026-09-25 the engine suite ran 268 s against 149 s
     # and the release suite timed out at 90 s against 50 s), so these two
     # long suites keep that much headroom over the slowest runner.
-    add_test(NAME Acustra.Engine COMMAND AcustraEngineTests)
+    acustra_add_suite(Acustra.Engine AcustraEngineTests)
     set_tests_properties(Acustra.Engine PROPERTIES TIMEOUT 600)
 
     add_executable(AcustraHandAllocatorTests Tests/HandAllocatorTests.cpp)
     target_link_libraries(AcustraHandAllocatorTests PRIVATE AcustraDSP)
     target_compile_features(AcustraHandAllocatorTests PRIVATE cxx_std_20)
-    add_test(NAME Acustra.HandAllocator COMMAND AcustraHandAllocatorTests)
+    acustra_add_suite(Acustra.HandAllocator AcustraHandAllocatorTests)
     set_tests_properties(Acustra.HandAllocator PROPERTIES TIMEOUT 120)
 
     add_executable(AcustraPerformerTests Tests/PerformerTests.cpp)
@@ -287,18 +303,18 @@ if(BUILD_TESTING)
         target_compile_options(AcustraPerformerTests PRIVATE
             -Wall -Wextra -Wpedantic)
     endif()
-    add_test(NAME Acustra.Performer COMMAND AcustraPerformerTests)
+    acustra_add_suite(Acustra.Performer AcustraPerformerTests)
     set_tests_properties(Acustra.Performer PROPERTIES TIMEOUT 600)
 
     add_executable(AcustraReleaseTests Tests/ReleaseTests.cpp)
     target_link_libraries(AcustraReleaseTests PRIVATE AcustraDSP)
-    add_test(NAME Acustra.Release COMMAND AcustraReleaseTests)
+    acustra_add_suite(Acustra.Release AcustraReleaseTests)
     set_tests_properties(Acustra.Release PROPERTIES TIMEOUT 240)
 
     add_executable(AcustraContactTravelTests Tests/ContactTravelTests.cpp)
     target_link_libraries(AcustraContactTravelTests PRIVATE AcustraDSP)
     target_compile_features(AcustraContactTravelTests PRIVATE cxx_std_20)
-    add_test(NAME Acustra.ContactTravel COMMAND AcustraContactTravelTests)
+    acustra_add_suite(Acustra.ContactTravel AcustraContactTravelTests)
     set_tests_properties(Acustra.ContactTravel PROPERTIES TIMEOUT 90)
 
     add_executable(AcustraOutputBusTests Tests/OutputBusTests.cpp)
@@ -308,12 +324,12 @@ if(BUILD_TESTING)
         target_compile_options(AcustraOutputBusTests PRIVATE
             -Wall -Wextra -Wpedantic)
     endif()
-    add_test(NAME Acustra.OutputBuses COMMAND AcustraOutputBusTests)
+    acustra_add_suite(Acustra.OutputBuses AcustraOutputBusTests)
     set_tests_properties(Acustra.OutputBuses PROPERTIES TIMEOUT 600)
 
     add_executable(AcustraCaptureTests Tests/CaptureTests.cpp)
     target_link_libraries(AcustraCaptureTests PRIVATE AcustraDSP)
-    add_test(NAME Acustra.Capture COMMAND AcustraCaptureTests)
+    acustra_add_suite(Acustra.Capture AcustraCaptureTests)
     set_tests_properties(Acustra.Capture PROPERTIES TIMEOUT 300)
 
     # The piezo chain against Tools/PiezoReference.py's circuit simulation,
@@ -327,18 +343,18 @@ if(BUILD_TESTING)
         target_compile_options(AcustraPiezoCircuitTests PRIVATE
             -Wall -Wextra -Wpedantic)
     endif()
-    add_test(NAME Acustra.PiezoCircuit COMMAND AcustraPiezoCircuitTests)
+    acustra_add_suite(Acustra.PiezoCircuit AcustraPiezoCircuitTests)
     set_tests_properties(Acustra.PiezoCircuit PROPERTIES TIMEOUT 300)
 
     add_executable(AcustraGuitarModelTests Tests/GuitarModelTests.cpp)
     target_link_libraries(AcustraGuitarModelTests PRIVATE AcustraDSP)
-    add_test(NAME Acustra.GuitarModels COMMAND AcustraGuitarModelTests)
+    acustra_add_suite(Acustra.GuitarModels AcustraGuitarModelTests)
     set_tests_properties(Acustra.GuitarModels PROPERTIES TIMEOUT 180)
 
     add_executable(AcustraBodyShapeTests Tests/BodyShapeTests.cpp)
     target_link_libraries(AcustraBodyShapeTests PRIVATE AcustraDSP)
     target_compile_features(AcustraBodyShapeTests PRIVATE cxx_std_20)
-    add_test(NAME Acustra.BodyShape COMMAND AcustraBodyShapeTests)
+    acustra_add_suite(Acustra.BodyShape AcustraBodyShapeTests)
     set_tests_properties(Acustra.BodyShape PROPERTIES TIMEOUT 90)
 
     find_package(Threads REQUIRED)
@@ -348,12 +364,12 @@ if(BUILD_TESTING)
         target_compile_options(AcustraConstructionLoudnessTests PRIVATE
             -Wall -Wextra -Wpedantic)
     endif()
-    add_test(NAME Acustra.ConstructionLoudness COMMAND AcustraConstructionLoudnessTests)
+    acustra_add_suite(Acustra.ConstructionLoudness AcustraConstructionLoudnessTests)
     set_tests_properties(Acustra.ConstructionLoudness PROPERTIES TIMEOUT 600)
 
     add_executable(AcustraMeasuredSteelBridgeTests Tests/MeasuredSteelBridgeTests.cpp)
     target_link_libraries(AcustraMeasuredSteelBridgeTests PRIVATE AcustraDSP)
-    add_test(NAME Acustra.MeasuredSteelBridge COMMAND AcustraMeasuredSteelBridgeTests)
+    acustra_add_suite(Acustra.MeasuredSteelBridge AcustraMeasuredSteelBridgeTests)
     set_tests_properties(Acustra.MeasuredSteelBridge PROPERTIES TIMEOUT 90)
 
     if(ACUSTRA_BUILD_TOOLS)
@@ -589,8 +605,8 @@ if(BUILD_TESTING)
                 -Wall -Wextra -Wpedantic)
         endif()
 
-        add_test(NAME Acustra.PluginProcessor
-                 COMMAND AcustraPluginProcessorTests)
+        acustra_add_suite(Acustra.PluginProcessor
+                 AcustraPluginProcessorTests)
         set_tests_properties(Acustra.PluginProcessor PROPERTIES TIMEOUT 90)
     endif()
 endif()

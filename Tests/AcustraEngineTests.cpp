@@ -117,7 +117,8 @@ struct AcustraEngineTestAccess
                                                     int rate, int string,
                                                     const ReleasedContactOptions& options)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         auto calibration = options.calibration;
         // Recover the initializer's amplitude from its envelope metadata,
         // including nylon, without duplicating the displacement/velocity law.
@@ -223,7 +224,8 @@ struct AcustraEngineTestAccess
 
     static std::array<double, 2> longitudinalFrequencies(int midiNote)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.prepare(48000.0, 64);
         const int stringIndex = engine.chooseString(midiNote);
         auto& voice = engine.voices_[static_cast<std::size_t>(stringIndex)];
@@ -256,7 +258,8 @@ struct AcustraEngineTestAccess
                                              PhysicalCalibration calibration
                                                  = fittedPhysicalCalibration)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setPhysicalCalibration(calibration);
         engine.prepare(rate, 64);
         engine.setBridgeCouplingEnabled(false);
@@ -301,7 +304,8 @@ struct AcustraEngineTestAccess
         StringMaterial material, int midiNote,
         PhysicalCalibration calibration = fittedPhysicalCalibration)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setPhysicalCalibration(calibration);
         engine.prepare(48000.0, 64);
         engine.setBridgeCouplingEnabled(false);
@@ -320,7 +324,8 @@ struct AcustraEngineTestAccess
         StringMaterial material = StringMaterial::Steel,
         BodyShape shape = EngineParameters {}.shape)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = material;
         parameters.shape = shape;
@@ -345,7 +350,8 @@ struct AcustraEngineTestAccess
         PhysicalCalibration calibration,
         StringMaterial material = StringMaterial::Steel)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = material;
         engine.setParameters(parameters);
@@ -400,7 +406,8 @@ struct AcustraEngineTestAccess
                                            int midiNote, double rate,
                                            PhysicalCalibration calibration)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setPhysicalCalibration(calibration);
         engine.prepare(rate, 64);
         engine.setBridgeCouplingEnabled(false);
@@ -424,7 +431,8 @@ struct AcustraEngineTestAccess
 
     static double playedDelay(PhysicalCalibration calibration)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setPhysicalCalibration(calibration);
         engine.prepare(48000.0, 64);
         engine.noteOn(52, 0.8f);
@@ -454,7 +462,8 @@ struct AcustraEngineTestAccess
                                          float masterBend, float memberBend,
                                          double rate = 48000.0)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = material;
         engine.setParameters(parameters);
@@ -497,7 +506,8 @@ struct AcustraEngineTestAccess
         float wheel, double rate, double seconds, int block,
         int midiNote = 52)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -535,7 +545,8 @@ struct AcustraEngineTestAccess
     // string before and after, then the other string before and after.
     static std::array<double, 8> memberBendIsolation()
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.prepare(48000.0, 64);
         engine.setLowerZoneMemberCount(4);
         engine.noteOn(52, 0.8f, 2);
@@ -580,7 +591,8 @@ struct AcustraEngineTestAccess
                                    StringMaterial material
                                        = StringMaterial::Steel)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = material;
         engine.setParameters(parameters);
@@ -607,7 +619,8 @@ struct AcustraEngineTestAccess
     static double conventionalChannelDelay(float channelOneBend,
                                            float channelTwoBend)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.prepare(48000.0, 64);
         engine.noteOn(52, 0.8f, 2);
         auto selected = std::find_if(engine.voices_.begin(),
@@ -628,7 +641,8 @@ struct AcustraEngineTestAccess
 
     static BendLifecycleSnapshot bendLifecycle(bool mpe)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.prepare(48000.0, 64);
         if (mpe)
             engine.setLowerZoneMemberCount(2);
@@ -686,7 +700,8 @@ struct AcustraEngineTestAccess
 
     static std::array<int, 3> lowerZoneTransitionCounts()
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.prepare(48000.0, 64);
         engine.noteOn(52, 0.8f, 2);
         engine.noteOn(55, 0.8f, 8);
@@ -701,7 +716,8 @@ struct AcustraEngineTestAccess
 
     static bool allSoundOffPreservesControllers()
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.prepare(48000.0, 64);
         engine.setPitchBend(7.0f, 2);
         engine.setSustainPedal(true, 2);
@@ -730,7 +746,8 @@ struct AcustraEngineTestAccess
                                int midiNote = 52,
                                PickingTechnique picking = PickingTechnique::Finger)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setPhysicalCalibration(calibration);
         EngineParameters parameters;
         parameters.stringMaterial = material;
@@ -795,7 +812,8 @@ struct AcustraEngineTestAccess
     static PreparedLossSnapshot changePreparedLoss(
         PhysicalCalibration before, PhysicalCalibration after)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -828,7 +846,8 @@ struct AcustraEngineTestAccess
 
     static RetunedStringSnapshot retunedLowSteel(Tuning tuning)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = StringMaterial::Steel;
         parameters.tuning = tuning;
@@ -842,7 +861,8 @@ struct AcustraEngineTestAccess
     static std::vector<AttackPitchSnapshot> attackPitchTrace(
         StringMaterial material, float velocity, int samples)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = material;
         engine.setParameters(parameters);
@@ -911,7 +931,8 @@ struct AcustraEngineTestAccess
     static TailPortBalance tailPortBalance(double rate, EngineParameters parameters,
                                            int bendChange)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setParameters(parameters);
         engine.prepare(rate, 1);
         engine.setStringPerChannelMode(true);
@@ -1013,7 +1034,8 @@ struct AcustraEngineTestAccess
 
     static StolenStringSnapshot stealStringTail(double rate)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -1041,7 +1063,8 @@ struct AcustraEngineTestAccess
         out.parallelTailEnergyAfterDecay = engine.voices_[0].tailActive
             ? loopEnergy(engine.voices_[0].tailParallelLoop) : 0.0;
 
-        AcustraEngine repluck;
+        auto repluckOwner = std::make_unique<AcustraEngine>();
+        auto& repluck = *repluckOwner;
         repluck.setParameters(parameters);
         repluck.prepare(rate, 128);
         repluck.noteOn(52, 0.8f);
@@ -1060,7 +1083,8 @@ struct AcustraEngineTestAccess
     // repluck (voice 0) rather than the new pluck (voice 1's own string).
     static std::pair<double, double> repluckTailEnergyAt60ms(double rate)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -1119,7 +1143,8 @@ struct AcustraEngineTestAccess
                                       int midiNote = 52,
                                       PickingTechnique picking = PickingTechnique::Finger)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.picking = picking;
         engine.setParameters(parameters);
@@ -1139,7 +1164,8 @@ struct AcustraEngineTestAccess
     static double vibratoDepthCents(float wheel, float pressure,
                                     int midiChannel)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         EngineParameters parameters;
         parameters.stringMaterial = StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -1174,7 +1200,8 @@ struct AcustraEngineTestAccess
     // low note is far below any fret it can reach there.
     static StringModeSnapshot stringPerChannelBehaviour()
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.prepare(48000.0, 64);
         engine.noteOn(40, 0.8f, 6);
         const int before = engine.getActiveVoiceCount();
@@ -1215,7 +1242,8 @@ struct AcustraEngineTestAccess
                                            PickingTechnique picking,
                                            int midiNote, float velocity)
     {
-        AcustraEngine engine;
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setPhysicalCalibration(calibration);
         EngineParameters parameters;
         parameters.picking = picking;
@@ -1297,7 +1325,8 @@ Audio renderAtRate(acustra::EngineParameters parameters, int midiNote,
                    acustra::PhysicalCalibration calibration
                        = acustra::fittedPhysicalCalibration)
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.setPhysicalCalibration(calibration);
     engine.prepare(rate, renderBlock);
     engine.setParameters(parameters);
@@ -1327,7 +1356,8 @@ Audio renderCalibrated(acustra::EngineParameters parameters,
                        acustra::PhysicalCalibration calibration,
                        int midiNote, float velocity, double seconds)
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.setPhysicalCalibration(calibration);
     engine.setParameters(parameters);
     engine.prepare(sampleRate, blockSize);
@@ -1348,7 +1378,8 @@ Audio renderWithInitialParameters(acustra::EngineParameters parameters,
                                   int midiNote, float velocity,
                                   double seconds)
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.setParameters(parameters);
     engine.prepare(sampleRate, blockSize);
     engine.noteOn(midiNote, velocity);
@@ -1367,7 +1398,8 @@ Audio renderWithInitialParameters(acustra::EngineParameters parameters,
 Audio renderWithSympatheticStrings(int midiNote, bool enabled,
                                    double seconds)
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, blockSize);
     engine.setSympatheticStringsEnabled(enabled);
     engine.noteOn(midiNote, 1.0f);
@@ -1739,7 +1771,8 @@ void testDecayEstimatorFollowsPitchGlides()
 
 void testSilenceAndFiniteOutput()
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, blockSize);
     std::vector<float> left(blockSize, 1.0f);
     std::vector<float> right(blockSize, 1.0f);
@@ -1860,13 +1893,15 @@ void testPrepareRestartsThePerformanceExactly()
 
 void testPlayableRangeFollowsTuning()
 {
-    acustra::AcustraEngine standard;
+    auto standardOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& standard = *standardOwner;
     standard.prepare(sampleRate, blockSize);
     standard.noteOn(38, 0.8f);
     expect(standard.getActiveVoiceCount() == 0,
            "standard tuning accepted a note below its lowest string");
 
-    acustra::AcustraEngine dropD;
+    auto dropDOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& dropD = *dropDOwner;
     dropD.prepare(sampleRate, blockSize);
     acustra::EngineParameters parameters;
     parameters.tuning = acustra::Tuning::DropD;
@@ -2035,7 +2070,8 @@ void testZeroWidthCollapsesToMono()
 
 void testReleaseEventuallyReturnsTheString()
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, blockSize);
     engine.noteOn(52, 0.8f); // fretted, therefore finger-damped on release
     std::vector<float> left(blockSize);
@@ -2051,7 +2087,8 @@ void testReleaseEventuallyReturnsTheString()
 
 void testPhysicalVoiceOwnsReleaseLifecycle()
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, blockSize);
     std::vector<float> left(blockSize);
     std::vector<float> right(blockSize);
@@ -2086,7 +2123,8 @@ void testPhysicalVoiceOwnsReleaseLifecycle()
 
 void testMidiChannelOwnershipAndAdditiveBend()
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, blockSize);
     engine.noteOn(52, 0.8f, 2);
     engine.noteOn(52, 0.8f, 3);
@@ -2179,7 +2217,8 @@ void testMidiChannelOwnershipAndAdditiveBend()
 
 void testSharedBodyExcitesIdleStrings()
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, blockSize);
     // E3 is played on the D string, leaving low E idle at the note's second
     // harmonic. This resonant case exposes the frequency-selective coupling.
@@ -2199,8 +2238,10 @@ void testSharedBodyExcitesIdleStrings()
 
 void testSympatheticStringsAreAudibleButBounded()
 {
-    acustra::AcustraEngine activeOn;
-    acustra::AcustraEngine activeOff;
+    auto activeOnOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& activeOn = *activeOnOwner;
+    auto activeOffOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& activeOff = *activeOffOwner;
     activeOn.prepare(sampleRate, blockSize);
     activeOff.prepare(sampleRate, blockSize);
     activeOff.setSympatheticStringsEnabled(false);
@@ -2280,7 +2321,8 @@ void testPassiveBridgeBranchesBalance()
     for (const auto material : { acustra::StringMaterial::Steel,
                                  acustra::StringMaterial::Nylon })
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.prepare(sampleRate, 1);
         acustra::EngineParameters parameters;
         parameters.stringMaterial = material;
@@ -2347,7 +2389,8 @@ void testPowerObserversKeepInitialAndRepeatedPluckWork()
         for (const auto material : { acustra::StringMaterial::Steel,
                                      acustra::StringMaterial::Nylon })
         {
-            acustra::AcustraEngine engine;
+            auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+            auto& engine = *engineOwner;
             acustra::EngineParameters parameters;
             parameters.stringMaterial = material;
             parameters.touch = material == acustra::StringMaterial::Steel ? 0.72f : 0.08f;
@@ -2622,7 +2665,8 @@ void testPhysicalSustainSettlesNearRequestedPitch()
     // pitch untested.
     const auto isolated = [] (int midiNote, bool sympathetic)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.prepare(sampleRate, blockSize);
         engine.setSympatheticStringsEnabled(sympathetic);
         engine.noteOn(midiNote, 0.72f);
@@ -2694,7 +2738,8 @@ void testPhysicalSustainSettlesNearRequestedPitch()
 void testLoadedE2IsCentredAndNotSplit()
 {
     const double expected = 440.0 * std::exp2((40.0 - 69.0) / 12.0);
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, 1);
     engine.noteOn(40, 0.72f);
     Audio audio { std::vector<float>(static_cast<std::size_t>(4.0 * sampleRate)),
@@ -2745,7 +2790,8 @@ void testSteelDispersionTracksTheStiffStringLaw()
     // The normal plane carries the tuning; the parallel plane shares its
     // dispersion, and a steel pluck puts most of its energy there, so it is
     // emptied for this read.
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, blockSize);
     engine.setParameters(parameters);
     engine.setBridgeCouplingEnabled(false);
@@ -2974,7 +3020,8 @@ void testTheFractionalDelayReadIsLossless()
     struct Reading { double perSecond; double perPass; };
     const auto decay = [] (int midiNote, double rate, int partial)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = acustra::StringMaterial::Steel;
         parameters.capture = acustra::CaptureType::SaddlePiezo;
@@ -3056,7 +3103,8 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
         const int block = 64;
         const auto bent = [&] (bool bend)
         {
-            acustra::AcustraEngine engine;
+            auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+            auto& engine = *engineOwner;
             acustra::EngineParameters parameters;
             parameters.stringMaterial = acustra::StringMaterial::Steel;
             engine.setParameters(parameters);
@@ -3133,7 +3181,10 @@ void testDispersionSolveCacheMatchesForcedRecomputation()
     // The reference always misses the memoization key when the unchanged
     // design predicate requests a solve. This exercises the former solver
     // path through public operations rather than mirroring that predicate.
-    acustra::AcustraEngine cached, reference;
+    auto cachedOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& cached = *cachedOwner;
+    auto referenceOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& reference = *referenceOwner;
     std::array<float, blockSize> left {}, right {}, expectedLeft {}, expectedRight {};
     bool heardSignal = false;
     const auto apply = [&] (const auto& operation)
@@ -3219,7 +3270,10 @@ void testConfigurationKeysAndObserversLeaveTheOutputUnchanged()
     // every control update and observes. Their outputs must be identical in
     // every bit, through settling attack glides, bends, vibrato, the bridge
     // hand, construction and tuning changes, releases and a second rate.
-    acustra::AcustraEngine cached, reference;
+    auto cachedOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& cached = *cachedOwner;
+    auto referenceOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& reference = *referenceOwner;
     cached.setPortObserversEnabled(false);
     std::array<float, blockSize> left {}, right {}, expectedLeft {}, expectedRight {};
     bool heardSignal = false;
@@ -3575,7 +3629,8 @@ void testABendDoesNotStepTheJunctionPort()
         const auto bendTo = [&] (bool member, float semitones,
                                  bool instant = false)
         {
-            acustra::AcustraEngine engine;
+            auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+            auto& engine = *engineOwner;
             acustra::EngineParameters parameters;
             parameters.stringMaterial = acustra::StringMaterial::Steel;
             engine.setParameters(parameters);
@@ -3901,7 +3956,8 @@ void testTheVibratoWheelAtZeroIsExact()
         const int block = 64;
         const auto play = [&] (bool sendZero)
         {
-            acustra::AcustraEngine engine;
+            auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+            auto& engine = *engineOwner;
             acustra::EngineParameters parameters;
             parameters.stringMaterial = acustra::StringMaterial::Steel;
             engine.setParameters(parameters);
@@ -4156,7 +4212,8 @@ void testSampleRatesAndAutomationStayBounded()
                                96000.0, 192000.0, 384000.0 };
     for (const double rate : rates)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         auto maximumDisplacement = acustra::fittedPhysicalCalibration;
         maximumDisplacement.steelDisplacementScaleMetres = 0.04f;
         engine.setPhysicalCalibration(maximumDisplacement);
@@ -4201,7 +4258,8 @@ void testSampleRatesAndAutomationStayBounded()
 
 void testHostileParametersAreSanitised()
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, blockSize);
     acustra::EngineParameters parameters;
     parameters.shape = static_cast<acustra::BodyShape>(99);
@@ -4255,7 +4313,8 @@ void testHostilePhysicalCalibrationIsSanitised()
     };
     const auto sanitised = [] (acustra::PhysicalCalibration source)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setPhysicalCalibration(source);
         return acustra::AcustraEngineTestAccess::calibration(engine);
     };
@@ -4344,7 +4403,8 @@ void testHostilePhysicalCalibrationIsSanitised()
                     == values(acustra::fittedPhysicalCalibration.steel),
            "non-finite physical calibration did not use fitted defaults");
 
-    acustra::AcustraEngine resetProbe;
+    auto resetProbeOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& resetProbe = *resetProbeOwner;
     resetProbe.prepare(sampleRate, blockSize);
     resetProbe.noteOn(52, 0.8f);
     expect(resetProbe.getActiveVoiceCount() == 1,
@@ -4357,7 +4417,8 @@ void testHostilePhysicalCalibrationIsSanitised()
     for (const auto material : { acustra::StringMaterial::Nylon,
                                  acustra::StringMaterial::Steel })
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setPhysicalCalibration(calibration);
         acustra::EngineParameters parameters;
         parameters.stringMaterial = material;
@@ -4729,8 +4790,10 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
         {
             acustra::EngineParameters parameters;
             parameters.stringMaterial = material;
-            acustra::AcustraEngine reference;
-            acustra::AcustraEngine changed;
+            auto referenceOwner = std::make_unique<acustra::AcustraEngine>();
+            auto& reference = *referenceOwner;
+            auto changedOwner = std::make_unique<acustra::AcustraEngine>();
+            auto& changed = *changedOwner;
             reference.setParameters(parameters);
             changed.setParameters(parameters);
             reference.prepare(rate, 64);
@@ -5261,7 +5324,8 @@ void testContactNoiseFollowsItsLaw()
         auto both = string;
         both.contactClickPick = 8.0f;
         both.contactNoisePick = 0.2f;
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         auto parameters = steel;
         parameters.picking = acustra::PickingTechnique::Pick;
         engine.setParameters(parameters);
@@ -5373,7 +5437,8 @@ void testStolenStringKeepsRingingUnderHandDamping()
     // changes, some inside one tail's 10 ms, at the sample-rate extremes.
     for (const double rate : { 44100.0, 384000.0 })
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = acustra::StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -5422,7 +5487,8 @@ void testStolenStringKeepsRingingUnderHandDamping()
     // Two chords in sequence must stay finite and bounded at every rate.
     for (const double rate : { 44100.0, 48000.0, 96000.0, 192000.0 })
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = acustra::StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -5459,7 +5525,8 @@ void testBridgeHandPressureShortensAndDarkens()
     // the note and darken it, monotonically, without escaping headroom.
     const auto render = [] (float pressure, int midiNote, bool applyPressure = true)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = acustra::StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -5537,7 +5604,8 @@ void testNaturalHarmonicsReachAboveTheFretboard()
     // whether one exists. Below the lowest open string it does not reach.
     const auto play = [] (int midiNote)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = acustra::StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -5634,7 +5702,8 @@ void testHeldStringsDoNotLengthenANoteDecay()
     const auto renderWith = [] (const std::vector<int>& companions,
                                 float companionVelocity)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = acustra::StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -5696,7 +5765,8 @@ void testANoteOverASoundingInstrumentDoesNotClick()
         const auto peakAfter = [&] (const std::vector<int>& held,
                                     bool release, int note)
         {
-            acustra::AcustraEngine engine;
+            auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+            auto& engine = *engineOwner;
             engine.setParameters(parameters);
             engine.prepare(rate, block);
             std::vector<float> left(static_cast<std::size_t>(block));
@@ -5836,7 +5906,10 @@ void testBodyChangesPreserveTheSoundingStrings()
                 // Wood moves the bridge as Shape does; on the Fylde, another
                 // guitar's bridge, it changes radiation only.
                 const bool woodOnly = wood && bridge == acustra::BridgeModel::FyldeSteel;
-                acustra::AcustraEngine held, changed;
+                auto heldOwner = std::make_unique<acustra::AcustraEngine>();
+                auto& held = *heldOwner;
+                auto changedOwner = std::make_unique<acustra::AcustraEngine>();
+                auto& changed = *changedOwner;
                 for (auto* engine : { &held, &changed })
                 {
                     engine->setParameters(parameters);
@@ -5889,7 +5962,10 @@ void testBodyChangesPreserveAnUnfinishedFade()
     // Wood moves steel's own bridge with the radiation; the Fylde, another
     // guitar's bridge, holds the mechanics still while Wood changes the bank.
     parameters.bridgeModel = acustra::BridgeModel::FyldeSteel;
-    acustra::AcustraEngine reference, changed;
+    auto referenceOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& reference = *referenceOwner;
+    auto changedOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& changed = *changedOwner;
     for (auto* engine : { &reference, &changed })
     {
         engine->setParameters(parameters);
@@ -5987,7 +6063,8 @@ void testSwitchingStringsOrTuningUnderAChordDoesNotClick()
     const int block = 64;
     const auto stepPeak = [&] (acustra::EngineParameters after)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setParameters(steel);
         engine.prepare(sampleRate, block);
         std::vector<float> left(static_cast<std::size_t>(block));
@@ -6053,7 +6130,8 @@ void testSwitchingStringsOrTuningUnderAChordDoesNotClick()
     const auto against = [&] (acustra::EngineParameters from, acustra::EngineParameters to)
     {
         from.outputGain = to.outputGain = 0.04f;
-        acustra::AcustraEngine fresh;
+        auto freshOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& fresh = *freshOwner;
         fresh.setParameters(to);
         fresh.prepare(sampleRate, block);
         std::vector<float> left(static_cast<std::size_t>(block)), right(left);
@@ -6164,10 +6242,12 @@ void testLongitudinalModesGrowWithVelocity()
               << " dB, loud=" << loudGrowth << " dB\n";
 
     // Zero is an exact no-op, and the idle-string path stays separate from it.
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.setPhysicalCalibration(silent);
     engine.prepare(sampleRate, blockSize);
-    acustra::AcustraEngine playing;
+    auto playingOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& playing = *playingOwner;
     playing.setPhysicalCalibration(acustra::fittedPhysicalCalibration);
     playing.prepare(sampleRate, blockSize);
     playing.setSympatheticStringsEnabled(false);
@@ -6201,7 +6281,8 @@ void testTodaysMechanismsSurviveEachOther()
     // across it, and a panic at the end.
     for (const double rate : { 44100.0, 48000.0, 192000.0 })
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = acustra::StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -6291,7 +6372,8 @@ void testNoteAfterSilenceDoesNotClick()
     // until the next note reactivates the port, and it arrives as a click.
     const auto peakOfNoteAfter = [] (double quietSeconds, bool playChordFirst)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = acustra::StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -6330,7 +6412,8 @@ void testNoteAfterSilenceDoesNotClick()
     // outlast the strings, so the moment the last string goes quiet used to
     // switch the port out from under them.
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = acustra::StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -6390,7 +6473,8 @@ void testRepluckLandsTheHandOnTheString()
     // hopped to another string that could reach it.
     const auto repeated = [] (int note, bool releaseBetween, double rate)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = acustra::StringMaterial::Steel;
         engine.setParameters(parameters);
@@ -6515,7 +6599,8 @@ void testRepluckLandsTheHandOnTheString()
     acustra::EngineParameters parameters;
     parameters.stringMaterial = acustra::StringMaterial::Steel;
     const auto plain = renderWithInitialParameters(parameters, 43, 0.62f, 0.5);
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.setParameters(parameters);
     engine.prepare(sampleRate, blockSize);
     engine.noteOn(43, 0.62f);
@@ -6667,8 +6752,10 @@ void testAScheduledPluckIsANoteOnIssuedThen()
     // later, sample for sample, and nothing at all before it.
     for (const int delay : { 1, 97, 480, 2000 })
     {
-        acustra::AcustraEngine scheduled;
-        acustra::AcustraEngine issued;
+        auto scheduledOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& scheduled = *scheduledOwner;
+        auto issuedOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& issued = *issuedOwner;
         scheduled.prepare(sampleRate, blockSize);
         issued.prepare(sampleRate, blockSize);
         const int total = delay + static_cast<int>(0.4 * sampleRate);
@@ -6699,8 +6786,10 @@ void testAScheduledPluckIsANoteOnIssuedThen()
                 {
                     acustra::EngineParameters parameters;
                     parameters.stringMaterial = material;
-                    acustra::AcustraEngine scheduled;
-                    acustra::AcustraEngine issued;
+                    auto scheduledOwner = std::make_unique<acustra::AcustraEngine>();
+                    auto& scheduled = *scheduledOwner;
+                    auto issuedOwner = std::make_unique<acustra::AcustraEngine>();
+                    auto& issued = *issuedOwner;
                     scheduled.setParameters(parameters);
                     issued.setParameters(parameters);
                     scheduled.prepare(rate, blockSize);
@@ -6738,7 +6827,8 @@ void testAScheduledPluckIsANoteOnIssuedThen()
                 }
 
     // The hand leaving before the pick arrives means the string never sounds.
-    acustra::AcustraEngine cancelled;
+    auto cancelledOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& cancelled = *cancelledOwner;
     cancelled.prepare(sampleRate, blockSize);
     std::vector<float> left(static_cast<std::size_t>(sampleRate));
     std::vector<float> right(static_cast<std::size_t>(sampleRate));
@@ -6748,7 +6838,8 @@ void testAScheduledPluckIsANoteOnIssuedThen()
     cancelled.process(left.data(), right.data(), static_cast<int>(sampleRate));
     expect(std::all_of(left.begin(), left.end(), [] (float v) { return v == 0.0f; }),
            "a pluck released before the pick arrived still sounded");
-    acustra::AcustraEngine silenced;
+    auto silencedOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& silenced = *silencedOwner;
     silenced.prepare(sampleRate, blockSize);
     silenced.noteOn(52, 0.8f, 1, 4800);
     silenced.process(left.data(), right.data(), 2400);
@@ -6777,8 +6868,10 @@ void testCancelledScheduledAttacksKeepOnlyTheExistingWave()
         for (const bool held : { false, true })
             for (const bool sustain : { false, true })
             {
-                acustra::AcustraEngine engine;
-                acustra::AcustraEngine reference;
+                auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+                auto& engine = *engineOwner;
+                auto referenceOwner = std::make_unique<acustra::AcustraEngine>();
+                auto& reference = *referenceOwner;
                 for (auto* instrument : { &engine, &reference })
                 {
                     instrument->prepare(rate, blockSize);
@@ -6829,7 +6922,8 @@ void testStrumTimingFollowsThePickAcrossTheStrings()
     // The k-th string a strum reaches sounds k spacings later at the pick's
     // speed for that velocity: later strings later, harder strums faster,
     // and the whole sweep between the map's two endpoints.
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, blockSize);
     expect(engine.strumDelaySamples(0, 0.5f) == 0,
            "the first string of a strum did not sound at once");
@@ -6862,7 +6956,8 @@ void testRepeatedStrumsCrossTheStringsLikeRepeatedRealStrums()
     // independently even when the span comes out right (independent jitter
     // of about a fifth of the inter-string gap scrambles the order well
     // before it broadens the span by the measured amount).
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     acustra::EngineParameters parameters;
     parameters.stringMaterial = acustra::StringMaterial::Steel;
     engine.setParameters(parameters);
@@ -6913,7 +7008,8 @@ void testRepeatedStrumsVaryLikeRepeatedRealStrums()
     // 4.47 dB std, and two adjacent real strokes' raw first-250-ms
     // correlation at a mean of -0.02 (min -0.51, max 0.46) rather than
     // phase-locked.
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     acustra::EngineParameters parameters;
     parameters.stringMaterial = acustra::StringMaterial::Steel;
     engine.setParameters(parameters);
@@ -7063,7 +7159,8 @@ void testNoTwoPlucksLandInTheSamePlace()
 {
     // Each pluck draws its own point within the take-to-take spread the
     // recordings show, and stays inside it.
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, blockSize);
     std::vector<float> left(static_cast<std::size_t>(blockSize));
     std::vector<float> right(static_cast<std::size_t>(blockSize));
@@ -7091,7 +7188,8 @@ void testNoteOffDoesNotCreateANewAttack()
                                 std::initializer_list<int> notes,
                                 bool release, double rate)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
         parameters.stringMaterial = material;
         engine.setParameters(parameters);
@@ -7138,7 +7236,8 @@ void testNoteOffDoesNotCreateANewAttack()
                 std::vector<int> copy = notes;
                 const auto released = [&]
                 {
-                    acustra::AcustraEngine dummy; (void) dummy; (void) list;
+                    auto dummyOwner = std::make_unique<acustra::AcustraEngine>();
+                    auto& dummy = *dummyOwner; (void) dummy; (void) list;
                     return Audio {};
                 };
                 (void) released;
@@ -7228,7 +7327,8 @@ void testEachStringMaterialPlaysItsOwnMeasuredGuitar()
 
     // Changing the material on a prepared engine has to move both banks, not
     // only the strings.
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(48000.0, 64);
     expect(std::abs(Access::bridgeAdmittanceOf(engine) - steelAdmittance)
                <= 1.0e-12,
@@ -7243,7 +7343,8 @@ void testEachStringMaterialPlaysItsOwnMeasuredGuitar()
     // The arrays are sized to the largest bank, the steel blend
     // (SteelBodyBlend.h); the surplus slots a shorter one leaves must be
     // silent, not stale. Nylon, after the steel blend, leaves the most.
-    acustra::AcustraEngine steelEngine;
+    auto steelEngineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& steelEngine = *steelEngineOwner;
     steelEngine.prepare(48000.0, 64);
     expect(Access::bodyModesInUse(steelEngine)
                >= static_cast<int>(acustra::detail::measuredSteelBodyModes.size()),
@@ -7766,7 +7867,8 @@ void testTheParallelPolarisationRadiatesThroughTheRockingSaddle()
     const auto renderNote = [] (acustra::EngineParameters parameters,
                                 int midiNote, bool silenceParallel)
     {
-        acustra::AcustraEngine engine;
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
         engine.setParameters(parameters);
         engine.prepare(sampleRate, blockSize);
         engine.noteOn(midiNote, 0.75f);
@@ -7859,7 +7961,8 @@ void testTheParallelPolarisationRadiatesThroughTheRockingSaddle()
 
 void testPerformance()
 {
-    acustra::AcustraEngine engine;
+    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+    auto& engine = *engineOwner;
     engine.prepare(sampleRate, 64);
     for (const int note : { 40, 45, 50, 55, 59, 64 })
         engine.noteOn(note, 0.9f);
