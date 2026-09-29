@@ -231,9 +231,8 @@ void testBatteryPlaysSoundsAndRepeats(const std::vector<Scenario>& battery)
 }
 
 // The player is sample-accurate: only front-end controls, which land
-// between blocks, events a host places outside their block, and the strum
-// rest clock, which reads the block's start (see flushNoteGroup) and so
-// could only move a rest within a block of two seconds, hear the block size.
+// between blocks, and events a host places outside their block hear the
+// block size.
 void testBlockSizeDoesNotChangeThePerformance(const std::vector<Scenario>& battery)
 {
     for (const auto& scenario : battery)
@@ -273,6 +272,29 @@ Event message(double seconds, std::uint8_t status, int data1, int data2,
     event.bytes[2] = static_cast<std::uint8_t>(data2);
     event.size = size;
     return event;
+}
+
+// The two-second rest that starts strumming over on a downstroke is
+// measured between the strums' own samples, so two strums just inside or
+// just outside it alternate, or not, at every block size (audit F23): the
+// rest used to be read between the starts of the blocks they fell in.
+void testStrumRestIsMeasuredBetweenStrums()
+{
+    for (const double gap : { 1.99, 2.01 })
+        for (const bool gather : { false, true })
+        {
+            std::vector<Event> events;
+            for (const double at : { 0.08, 0.08 + gap })
+                for (const int note : { 40, 45, 50, 55, 59, 64 })
+                    events.push_back(message(at, 0x90, note, 100));
+            const auto strums = custom("strums", gap + 0.4, events);
+            const auto reference = render(strums, 48000.0, 1, gather);
+            for (const int blockSize : { 64, 4096 })
+                expect(render(strums, 48000.0, blockSize, gather) == reference,
+                       "strums " + std::to_string(gap) + " s apart"
+                           + (gather ? " (gathering)" : "")
+                           + " changed with block size " + std::to_string(blockSize));
+        }
 }
 
 // One sample's notes are one canonical wrist event whatever order a host
@@ -745,6 +767,7 @@ int main()
     testBatteryPlaysSoundsAndRepeats(battery);
     testBlockSizeDoesNotChangeThePerformance(battery);
     testOneSampleIsOneCanonicalEvent();
+    testStrumRestIsMeasuredBetweenStrums();
     testGatheredRollSoundsAsOneSampleChord();
     testCc68AndReleaseVelocityChangeNothing(battery);
     testHelpersSpellMidi();

@@ -213,14 +213,17 @@ void Performer::flushNoteGroup() noexcept
     const bool strum = pendingNoteOnCount_ >= 3 && oneChannel;
     if (strum)
     {
-        // The clock is the block's start, so a rest is measured between the
-        // blocks its strums fall in.
+        // The rest is measured between the strums' own samples, so no block
+        // size can move it. groupedSample_ is still this group's sample
+        // wherever it is flushed (handleEvent, endBlock).
+        const auto strumSample = processedSamples_
+            + static_cast<std::int64_t>(std::max(0, groupedSample_));
         const bool restarted = lastStrumSample_ < 0
-            || processedSamples_ - lastStrumSample_
+            || strumSample - lastStrumSample_
                    > static_cast<std::int64_t>(strumRestSeconds * sampleRate_);
         if (restarted)
             strumUpstroke_ = false;
-        lastStrumSample_ = processedSamples_;
+        lastStrumSample_ = strumSample;
         float meanVelocity = 0.0f;
         for (int index = 0; index < pendingNoteOnCount_; ++index)
             meanVelocity += pendingNoteOns_[static_cast<std::size_t>(index)].velocity;
