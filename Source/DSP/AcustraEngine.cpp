@@ -2631,8 +2631,8 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     // Bridge choice exchange it for another guitar's.
     const bool sameBridgeBank = !force && !modelChanged && !stringChanged
         && !bridgeModelChanged;
-    // What each string presented to the junction, for a retune under a
-    // ringing chord (below).
+    // What each string presented to the junction, for a string set exchanged
+    // under a ringing chord (below).
     std::array<float, stringCount> previousImpedance {};
     for (int string = 0; string < stringCount; ++string)
         previousImpedance[static_cast<std::size_t>(string)]
@@ -2721,12 +2721,53 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             if (!(before > 0.0f && after > 0.0f)
                 || !exact::isfinite(before / after))
                 continue;
+            // An exchanged string set carries no more wave power than it
+            // had: onto a stiffer string the stored waves scale by
+            // sqrt(Z_old/Z_new), so a chord switched from nylon to steel,
+            // whose impedance is several times nylon's, does not swell to
+            // four times its level (audit F6). Onto a softer one they are
+            // kept, and lose power as they always did, rather than being
+            // raised into a louder chord than the one playing. A retune
+            // keeps its strings' waves as they are.
+            if (stringChanged)
+            {
+                if (after > before)
+                    scaleStoredWaves(voice, exact::sqrt(before / after));
+            }
             // A retuned string's port moves to its new impedance at the
             // delay's own rate, as a bend's does, instead of stepping under
-            // its ringing wave. An exchanged string set steps, as it did.
-            if (!stringChanged)
+            // its ringing wave. An exchanged set steps with its rescaled
+            // waves: slewing from the old impedance there would first drive
+            // the junction with the rescaled wave at the old port, a burst
+            // of up to twice the chord from steel to nylon.
+            else
                 voice.appliedBendImpedanceScale *= before / after;
         }
+}
+
+void AcustraEngine::scaleStoredWaves(Voice& voice, float gain) noexcept
+{
+    for (auto& loop : voice.loops)
+    {
+        for (auto& sample : loop.delay)
+            sample *= gain;
+        loop.bendingLossY1 *= gain;
+        loop.bendingLossY2 *= gain;
+        loop.allpassY1 *= gain;
+        loop.allpassY2 *= gain;
+        for (auto* filter : { &loop.broadLossFilter, &loop.lossFilter })
+        {
+            filter->state *= gain;
+            filter->previousInput *= gain;
+        }
+        loop.dispersion.x1 *= gain;
+        loop.dispersion.x2 *= gain;
+        loop.dispersion.y1 *= gain;
+        loop.dispersion.y2 *= gain;
+        // What the junction read last from this loop moves with it.
+        for (auto& value : loop.bridgeDerivative.history)
+            value *= gain;
+    }
 }
 
 void AcustraEngine::updateControlState() noexcept

@@ -1071,6 +1071,9 @@ private:
     [[nodiscard]] float vibratoSemitones(const Voice& voice,
                                          int fret) const noexcept;
     void initialisePluck(Voice& voice, int stringIndex, float velocity) noexcept;
+    // Scale every state a string's two loops store of the travelling wave -
+    // the delay line and each filter's memory - by gain.
+    static void scaleStoredWaves(Voice& voice, float gain) noexcept;
     void returnToOpenString(Voice& voice, int stringIndex,
                             bool clearDelay) noexcept;
     void firePluck(Voice& voice, int stringIndex) noexcept;

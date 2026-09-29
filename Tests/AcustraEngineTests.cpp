@@ -5916,6 +5916,67 @@ void testSwitchingStringsOrTuningUnderAChordDoesNotClick()
                std::string("switching ") + item.first
                    + " under a ringing chord produced a transient");
     }
+
+    // Every direction, measured against the louder of the chord before the
+    // switch and the same chord played on the new construction from the
+    // start, at the same moment - a switch to a louder construction may be
+    // louder, but not more than that. Onto stiffer strings the stored waves
+    // keep their power instead of their amplitude: nylon to steel reached
+    // 2.0 times and the Bellido's nylon to steel 3.1 times (audit F6); now
+    // 1.2. A Model switch hands the chord's stored energy to another guitar's
+    // bridge and body, and the new body's modes start from rest under it:
+    // 1.5-1.9 times, and at most twice.
+    const auto against = [&] (acustra::EngineParameters from, acustra::EngineParameters to)
+    {
+        from.outputGain = to.outputGain = 0.04f;
+        acustra::AcustraEngine fresh;
+        fresh.setParameters(to);
+        fresh.prepare(sampleRate, block);
+        std::vector<float> left(static_cast<std::size_t>(block)), right(left);
+        for (const int note : { 40, 47, 52, 56, 59, 64 })
+            fresh.noteOn(note, 0.85f);
+        double reference = 0.0;
+        for (int i = 0; i < static_cast<int>(1.25 * sampleRate); i += block)
+        {
+            fresh.process(left.data(), right.data(), block);
+            if (i >= static_cast<int>(1.2 * sampleRate))
+                for (int k = 0; k < block; ++k)
+                    reference = std::max(reference, static_cast<double>(std::max(
+                        std::abs(left[static_cast<std::size_t>(k)]),
+                        std::abs(right[static_cast<std::size_t>(k)]))));
+        }
+        const auto saved = steel;
+        steel = from;
+        const auto [before, after] = stepPeak(to);
+        steel = saved;
+        return after / std::max(before, reference);
+    };
+    const auto make = [] (acustra::StringMaterial strings, acustra::GuitarModel model)
+    {
+        acustra::EngineParameters p;
+        p.stringMaterial = strings;
+        p.guitarModel = model;
+        return p;
+    };
+    using S = acustra::StringMaterial;
+    using G = acustra::GuitarModel;
+    struct Switch { const char* name; acustra::EngineParameters from, to; double bound; };
+    for (const auto& item : {
+             Switch { "steel to nylon", make(S::Steel, G::Original), make(S::Nylon, G::Original), 1.5 },
+             Switch { "nylon to steel", make(S::Nylon, G::Original), make(S::Steel, G::Original), 1.5 },
+             Switch { "the Bellido's nylon to steel", make(S::Nylon, G::Bellido1978), make(S::Steel, G::Bellido1978), 1.5 },
+             Switch { "steel Bellido to Original", make(S::Steel, G::Bellido1978), make(S::Steel, G::Original), 2.0 },
+             Switch { "steel Original to Bellido", make(S::Steel, G::Original), make(S::Steel, G::Bellido1978), 2.0 },
+             Switch { "nylon Bellido to Original", make(S::Nylon, G::Bellido1978), make(S::Nylon, G::Original), 2.0 },
+             Switch { "nylon Original to Bellido", make(S::Nylon, G::Original), make(S::Nylon, G::Bellido1978), 2.0 } })
+    {
+        const double ratio = against(item.from, item.to);
+        std::cout << "Acustra construction switch under a chord, " << item.name
+                  << ": " << ratio << " x the louder steady chord\n";
+        expect(ratio < item.bound,
+               std::string("switching ") + item.name + " under a ringing chord swelled to "
+                   + std::to_string(ratio) + " times the louder steady chord");
+    }
 }
 
 

@@ -566,7 +566,9 @@ void testRetuneAndTailOwnership()
 // the louder of the two steady settings, or under -95 dBFS where both are
 // quieter than that (nylon's). Rebuilding the bridge used to zero every
 // mode and to report no bridge motion for a sample, 20-48 dB over both
-// (audit F14).
+// (audit F14). An exchanged string set changes every string's loop filters
+// at once and still ticks; it is held to what it now does with its waves
+// kept at their power (13-20 dB, from 24-28 before F6's rescale).
 struct SwitchCase
 {
     const char* name;
@@ -670,6 +672,7 @@ void testConstructionSwitchesDoNotTick()
         { "nylon Shape", nylon, with(nylon, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
         { "nylon Wood", nylon, with(nylon, [] (auto& p) { p.bodyMaterial = acustra::BodyMaterial::Maple; }), 6.0 },
         { "steel Tuning", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 6.0 },
+        { "nylon to steel", nylon, with(nylon, [] (auto& p) { p.stringMaterial = StringMaterial::Steel; }), 22.0 },
     };
     double worst = -1e9;
     const char* worstName = "";
