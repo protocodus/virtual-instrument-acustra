@@ -6189,7 +6189,8 @@ void AcustraEngine::allNotesOff(int midiChannel) noexcept
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
-        if (!voice.played || !channelControlsVoice(midiChannel, voice))
+        if (!voice.played || !voice.keyDown
+            || !channelControlsVoice(midiChannel, voice))
             continue;
         voice.ownerCount = 0;
         voice.pluckDelay = 0;

@@ -856,6 +856,95 @@ void testResetSilences()
     expect(performer->engine().getActiveVoiceCount() == 0,
            "reset left a string playing");
 }
+// All Notes Off (CC123) lets go of keys that are down; a string whose key was
+// already up and is damping is not the pedal's to catch again. It used to be:
+// a note released before the pedal went down rang on under it, ~24 dB up a
+// second later.
+void testAllNotesOffLeavesReleasedStringsAlone()
+{
+    const auto play = [](std::vector<Event> events)
+    {
+        return render(custom("all notes off", 1.5, std::move(events)), 48000.0, 64, false);
+    };
+    for (const int note : { 45, 52 })
+    {
+        const std::vector<Event> released { message(0.01, 0x90, note, 100),
+                                            message(0.30, 0x80, note, 64),
+                                            message(0.40, 0xb0, 64, 127) };
+        auto allOff = released;
+        allOff.push_back(message(0.45, 0xb0, 123, 0));
+        expect(play(allOff) == play(released),
+               "All Notes Off under the pedal caught released note " + std::to_string(note));
+    }
+}
+
+// Reset All Controllers lifts the pedal as CC64 0 does, so after a key-up on
+// its sample a pedal pressed again does not catch the note.
+void testResetAllControllersLiftsThePedalInOrder()
+{
+    const auto on = message(0.0, 0x90, 60, 100);
+    const auto off = message(0.5, 0x80, 60, 64);
+    const auto play = [](std::vector<Event> events)
+    {
+        return render(custom("reset pedal", 1.5, std::move(events)), 48000.0, 64, false);
+    };
+    const auto held = message(0.2, 0xb0, 64, 127);
+    const auto down = message(0.5, 0xb0, 64, 127);
+    expect(play({ on, held, off, message(0.5, 0xb0, 121, 0), down })
+               == play({ on, held, off, message(0.5, 0xb0, 64, 0), down }),
+           "Reset All Controllers after a key-up did not let it go as a lifted pedal does");
+}
+
+// Only notes a string can sound make a stroke: two unreachable notes under
+// one that sounds leave it a single note, not a strum's random stroke.
+void testUnsoundableNotesMakeNoStrum()
+{
+    const auto play = [](std::vector<int> notes)
+    {
+        std::vector<Event> events;
+        for (const int note : notes)
+            events.push_back(message(0.01, 0x90, note, 100));
+        return render(custom("strum count", 0.6, events), 48000.0, 64, false);
+    };
+    expect(play({ 30, 33, 52 }) == play({ 52 }),
+           "two unreachable notes turned a single note into a strum");
+    expect(play({ 36, 48, 52 }) == play({ 48, 52 }),
+           "an unreachable note turned two notes into a strum");
+}
+
+// The master tune rides on every channel's bend, which prepare and reset
+// zero in the engine: it must be put back, as the same tune sent again is
+// ignored.
+void testMasterTuneSurvivesPrepareAndReset()
+{
+    enum class Then { Nothing, Prepare, Reset };
+    const auto play = [](float cents, Then then)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 64);
+        performer->setMasterTuneCents(cents);
+        if (then == Then::Prepare)
+            performer->prepare(48000.0, 64);
+        if (then == Then::Reset)
+            performer->reset();
+        std::vector<float> left(64 * 100), right(64 * 100);
+        for (std::size_t start = 0; start < left.size(); start += 64)
+        {
+            performer->beginBlock(left.data() + start, right.data() + start, 64);
+            if (start == 0)
+                performer->noteOn(0, 1, 45, 100);
+            performer->endBlock();
+        }
+        return left;
+    };
+    const auto tuned = play(100.0f, Then::Nothing);
+    expect(tuned != play(0.0f, Then::Nothing), "master tune did not reach the strings");
+    expect(play(100.0f, Then::Prepare) == tuned, "prepare dropped the master tune");
+    // A reset instrument is not bit for bit a fresh one (its smoothed levels
+    // glide back), so the tune is heard against an untuned reset.
+    expect(play(100.0f, Then::Reset) != play(0.0f, Then::Reset),
+           "reset dropped the master tune");
+}
 } // namespace
 
 int main()
@@ -876,6 +965,10 @@ int main()
     testShortStrumsSoundEveryString();
     testPlayerKeepsTheEnginesSampleRate();
     testResetSilences();
+    testAllNotesOffLeavesReleasedStringsAlone();
+    testResetAllControllersLiftsThePedalInOrder();
+    testUnsoundableNotesMakeNoStrum();
+    testMasterTuneSurvivesPrepareAndReset();
 
     if (failures != 0)
     {
