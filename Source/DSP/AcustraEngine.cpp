@@ -4975,13 +4975,18 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
         || midiChannel < 1 || midiChannel > midiChannelCount)
         return;
 
-    int delaySamples = pluckDelaySamples;
+    // The scheduled delay is bounded before anything scales or counts it:
+    // ten seconds is far beyond any strum (at most about 0.12 s), and at the
+    // highest rate it times the largest speed draw plus the countdown's one
+    // stays far inside an int, so no caller's value can overflow.
+    const int maximumPluckDelay = static_cast<int>(10.0 * sampleRate_);
+    int delaySamples = std::clamp(pluckDelaySamples, 0, maximumPluckDelay);
     if (strumMember)
     {
         // One speed draw belongs to the entire stroke, including strings
         // already held from the preceding stroke (see beginStrum).
         delaySamples = std::max(0, static_cast<int>(
-            std::round(static_cast<float>(pluckDelaySamples) * strumSpeedScale_)));
+            std::round(static_cast<float>(delaySamples) * strumSpeedScale_)));
     }
 
     // A chord still forming is a run of onsets each within the chord window

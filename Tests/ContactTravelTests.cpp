@@ -167,6 +167,50 @@ void testOrdinaryAndPedalRelease()
            "cancelled scheduled pluck emitted a contact burst");
 }
 
+// noteOn's public pluckDelaySamples is bounded to ten seconds before the
+// strum scaling and the countdown's +1, so no delay a caller passes can
+// overflow an int (audit F27): the extremes still schedule a pluck, late or
+// at once, instead of wrapping into a pluck that never fires.
+void testScheduledPluckDelayIsBounded()
+{
+    for (double rate : { 8000.0, 48000.0, 384000.0 })
+    {
+        const int bound = static_cast<int>(10.0 * rate);
+        for (const bool strum : { false, true })
+        {
+            auto engine = fresh(rate);
+            if (strum)
+                engine->beginStrum();
+            engine->noteOn(43, 1.0f, 1, std::numeric_limits<int>::max(), strum);
+            const int delay = Access::voice(*engine).pluckDelay;
+            // A strum's delay is the bounded one times the stroke's speed
+            // draw, which stays inside 1 +- 0.64.
+            expect(delay > (strum ? bound / 2 : bound)
+                       && delay <= (strum ? 2 * bound : bound + 1),
+                   "the largest pluck delay was not bounded to ten seconds ("
+                       + std::to_string(delay) + ")");
+
+            engine = fresh(rate);
+            if (strum)
+                engine->beginStrum();
+            engine->noteOn(43, 1.0f, 1, std::numeric_limits<int>::min(), strum);
+            expect(Access::voice(*engine).pluckDelay == 0
+                       && Access::voice(*engine).excitationEnvelope > 0.0f,
+                   "a negative pluck delay did not pluck at once");
+        }
+    }
+    // Ten seconds on, the bounded pluck sounds.
+    auto engine = fresh(8000.0);
+    engine->noteOn(43, 1.0f, 1, std::numeric_limits<int>::max());
+    Access::advance(*engine, 80000);
+    expect(Access::voice(*engine).excitationEnvelope == 0.0f,
+           "the bounded pluck fired early");
+    Access::advance(*engine, 8);
+    expect(Access::voice(*engine).pluckDelay == 0
+               && Access::voice(*engine).excitationEnvelope > 0.0f,
+           "the bounded pluck did not fire at ten seconds");
+}
+
 double queuedArrivalEnergy(float gain)
 {
     auto engine = fresh();
@@ -370,6 +414,7 @@ int main()
 {
     testAllpassWaveEnergyAndArrival();
     testOrdinaryAndPedalRelease();
+    testScheduledPluckDelayIsBounded();
     testArrivalDampingAndTailRetention();
     testDrainPanicAndExtremeOwnership();
     std::cout << "Contact transport failures: " << failures << '\n';

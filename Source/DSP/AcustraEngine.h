@@ -149,6 +149,7 @@ public:
     // A pluck can be scheduled: the string is taken and fretted now, the
     // fretting hand having formed the chord, and released this many samples
     // later, which is how a strum reaches its strings one after another.
+    // The delay is bounded to [0, ten seconds]; a negative one plucks now.
     // strumMember marks a note as one string of a strum (including its
     // first, undelayed string): its scheduled delay is scaled by the
     // stroke's beginStrum() draw and its level draws its own jitter,
