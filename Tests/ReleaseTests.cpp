@@ -249,6 +249,131 @@ void testHardPluckReleaseDoesNotCreateAnAttack()
             }
     std::cout << "Acustra maximum-velocity release/held 5-ms peak: " << worst << '\n';
 }
+
+double decibels(double ratio) { return 10.0 * std::log10(std::max(ratio, 1.0e-30)); }
+
+// Notes played through the player as raw MIDI on channel 1, each event at
+// the start of the block that contains its time. The idle strings are kept
+// out of it, so what is heard after key-up is the released string itself
+// and not, say, the open A answering an A3.
+struct Timed { double seconds; std::array<std::uint8_t, 3> bytes; };
+
+Audio renderEvents(acustra::EngineParameters parameters, double seconds,
+                   const std::vector<Timed>& events)
+{
+    constexpr double rate = 48000.0;
+    auto performer = std::make_unique<acustra::Performer>();
+    performer->setParameters(parameters);
+    performer->prepare(rate, blockSize);
+    performer->engine().setSympatheticStringsEnabled(false);
+    const auto frames = static_cast<std::size_t>(seconds * rate);
+    Audio audio { std::vector<float>(frames), std::vector<float>(frames), 0 };
+    std::size_t next = 0;
+    for (std::size_t position = 0; position < frames; position += blockSize)
+    {
+        const int count = static_cast<int>(std::min<std::size_t>(blockSize, frames - position));
+        performer->beginBlock(audio.left.data() + position, audio.right.data() + position, count);
+        while (next < events.size()
+               && static_cast<std::size_t>(events[next].seconds * rate)
+                      < position + static_cast<std::size_t>(count))
+        {
+            performer->handleMidi(0, events[next].bytes.data(), 3);
+            ++next;
+        }
+        performer->endBlock();
+    }
+    audio.activeAtEnd = performer->engine().getActiveVoiceCount();
+    return audio;
+}
+
+// How far below the held note the released one is over [from, to).
+double releaseDrop(const acustra::EngineParameters& parameters,
+                   const std::vector<Timed>& held, const std::vector<Timed>& released,
+                   double from, double to)
+{
+    const auto heldAudio = renderEvents(parameters, to + 0.05, held);
+    const auto releasedAudio = renderEvents(parameters, to + 0.05, released);
+    return decibels(energy(heldAudio, 48000.0, from, to)
+                    / energy(releasedAudio, 48000.0, from, to));
+}
+
+const char* materialName(acustra::StringMaterial material)
+{
+    return material == acustra::StringMaterial::Steel ? "steel" : "nylon";
+}
+
+// A released natural harmonic is damped by the hand as its open string is:
+// the loop runs at the open string's period, so the hand's loss per trip
+// round it must be the open string's, not the sounding harmonic's n times
+// smaller one (audit F1). Damped at 1/n of that loss it sounded almost as
+// if it were held (2 to 5 dB below it, against the open string's 18).
+void testReleasedHarmonicsAreDampedLikeTheirOpenString()
+{
+    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
+    {
+        acustra::EngineParameters parameters;
+        parameters.stringMaterial = material;
+        const auto drop = [&] (int note)
+        {
+            const Timed on { 0.1, { 0x90, static_cast<std::uint8_t>(note), 115 } };
+            const Timed off { 0.5, { 0x80, static_cast<std::uint8_t>(note), 64 } };
+            return releaseDrop(parameters, { on }, { on, off }, 0.8, 1.0);
+        };
+        const double open = drop(64);
+        std::cout << "Acustra " << materialName(material)
+                  << " released/held 0.3-0.5 s after key-up: open E4 -" << open << " dB";
+        for (const int note : { 88, 91, 95 })
+        {
+            const double harmonic = drop(note);
+            std::cout << ", harmonic " << note << " -" << harmonic << " dB";
+            expect(harmonic > open - 4.0,
+                   std::string(materialName(material)) + " released harmonic "
+                       + std::to_string(note) + " was only " + std::to_string(harmonic)
+                       + " dB below held, against the open string's "
+                       + std::to_string(open));
+        }
+        std::cout << '\n';
+    }
+}
+
+// A slid note is damped at the pitch it has slid to: the loop runs there,
+// so the hand's loss per trip round it follows the slide, before key-up or
+// after it (audit F1). Two octaves down redoubles the period; damped per
+// trip as if unslid, it rang four times as long. Measured 50 to 100 ms
+// after key-up, while the released string still dominates the sound.
+void testSlidNotesAreDampedAtTheirSlidPitch()
+{
+    const std::vector<Timed> range24 {
+        { 0.0, { 0xb0, 101, 0 } }, { 0.0, { 0xb0, 100, 0 } }, { 0.0, { 0xb0, 6, 24 } },
+        { 0.0, { 0xb0, 101, 127 } }, { 0.0, { 0xb0, 100, 127 } } };
+    const auto with = [&] (std::vector<Timed> events)
+    {
+        auto all = range24;
+        all.insert(all.end(), events.begin(), events.end());
+        return all;
+    };
+    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
+    {
+        acustra::EngineParameters parameters;
+        parameters.stringMaterial = material;
+        const Timed on { 0.1, { 0x90, 69, 100 } };
+        const Timed off { 0.5, { 0x80, 69, 64 } };
+        const Timed down { 0.3, { 0xe0, 0, 0 } };
+        const Timed downAfter { 0.52, { 0xe0, 0, 0 } };
+        const double plain = releaseDrop(parameters, with({ on }), with({ on, off }), 0.55, 0.6);
+        const double slid = releaseDrop(parameters, with({ on, down }),
+                                        with({ on, down, off }), 0.55, 0.6);
+        const double slidAfter = releaseDrop(parameters, with({ on, downAfter }),
+                                             with({ on, off, downAfter }), 0.55, 0.6);
+        std::cout << "Acustra " << materialName(material)
+                  << " A4 released/held 50-100 ms after key-up: unslid -" << plain
+                  << " dB, slid two octaves down -" << slid << " dB, slid down after key-up -"
+                  << slidAfter << " dB\n";
+        expect(slid > plain - 6.0 && slidAfter > plain - 6.0,
+               std::string(materialName(material))
+                   + ": a slid note was not damped at its slid pitch");
+    }
+}
 } // namespace
 
 int main(int argc, char** argv)
@@ -261,6 +386,8 @@ int main(int argc, char** argv)
         testPedalCannotTurnOrdinaryReleaseIntoAnExcitation();
         testCc68ChangesNothing();
         testHardPluckReleaseDoesNotCreateAnAttack();
+        testReleasedHarmonicsAreDampedLikeTheirOpenString();
+        testSlidNotesAreDampedAtTheirSlidPitch();
     }
     return failures == 0 ? 0 : 1;
 }

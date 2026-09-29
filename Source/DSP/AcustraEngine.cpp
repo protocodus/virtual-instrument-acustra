@@ -3230,17 +3230,9 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float unbentFrequency = midiFrequency(stoppedMidi);
     // The bounded Kirchhoff-Carrier surrogate follows the waveguide's inferred
     // slope energy; its delay target slews on the existing 6 ms time constant.
-    const auto channel = static_cast<std::size_t>(voice.midiChannel - 1);
-    float performedBend = voice.played ? pitchBendSemitones_[channel] : 0.0f;
-    float memberBendSemitones = 0.0f;
-    if (voice.played && voice.mpeMember)
-    {
-        const float memberBend = voice.memberPitchBendFrozen
-            ? voice.frozenMemberPitchBendSemitones
-            : pitchBendSemitones_[channel];
-        performedBend = pitchBendSemitones_[0] + memberBend;
-        memberBendSemitones = memberBend;
-    }
+    const auto bend = voiceBend(voice);
+    const float performedBend = bend.performed;
+    const float memberBendSemitones = bend.member;
     // The wheel's vibrato is the fretting hand modulating the string's
     // tension at a fixed length (see vibratoSemitones), and a tension
     // modulation is heard as a pitch modulation: the same excursion goes into
@@ -3670,7 +3662,58 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
     if (voice.keyDown || voice.pedalHeld || !voice.played)
         voice.releaseDamping = 1.0f;
+    else if (voice.releaseSeconds > 0.0f)
+    {
+        // A released string that slides on keeps its hand's T60 in time:
+        // the loss per trip follows the loop's new period.
+        voice.releaseDamping = handDamping(voice.releaseSeconds,
+                                           loopFundamental(voice));
+    }
     voice.configurationKey = configurationKey;
+}
+
+AcustraEngine::VoiceBend AcustraEngine::voiceBend(
+    const Voice& voice) const noexcept
+{
+    // A channel's wheel is a slide; an MPE member adds its own bend, frozen
+    // at key-up, to the manager's zone-wide one (see configureVoice).
+    VoiceBend bend {};
+    if (!voice.played)
+        return bend;
+    const auto channel = static_cast<std::size_t>(voice.midiChannel - 1);
+    bend.performed = pitchBendSemitones_[channel];
+    if (voice.mpeMember)
+    {
+        bend.member = voice.memberPitchBendFrozen
+            ? voice.frozenMemberPitchBendSemitones
+            : pitchBendSemitones_[channel];
+        bend.performed = pitchBendSemitones_[0] + bend.member;
+    }
+    return bend;
+}
+
+// The fundamental the string's loop runs at, which is what a loss applied
+// once per trip round it has to be timed by: a natural harmonic's loop is
+// its open string's (configureVoice), and a slid or bent note's is at the
+// bent pitch, bounded as the loop's own frequency is. The attack glide and
+// the wheel's vibrato, a few cents, stay out of it. Unbent, it is exactly
+// the note's own frequency.
+float AcustraEngine::loopFundamental(const Voice& voice) const noexcept
+{
+    const float unbent = midiFrequency(
+        voice.harmonic > 1 ? voice.openMidi : voice.midiNote);
+    const float bend = voiceBend(voice).performed;
+    if (bend == 0.0f)
+        return unbent;
+    return clamp(unbent * std::exp2(clamp(bend, -192.0f, 192.0f) / 12.0f),
+                 static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+                 0.24f * static_cast<float>(sampleRate_));
+}
+
+// The loss per trip round a loop at this fundamental that gives this T60.
+float AcustraEngine::handDamping(float t60Seconds, float fundamental) noexcept
+{
+    return std::pow(0.001f, 1.0f / std::max(t60Seconds * fundamental, 1.0f));
 }
 
 void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
@@ -4204,6 +4247,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                            releasedAmplitude, contactWidthRatio);
     voice.level = std::max(voice.level, 0.02f * v);
     voice.releaseDamping = 1.0f;
+    voice.releaseSeconds = 0.0f;
     voice.returnSamples = 0;
 }
 
@@ -4237,6 +4281,7 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.longitudinalY2.fill(0.0f);
     voice.harmonic = 1;
     voice.releaseDamping = 1.0f;
+    voice.releaseSeconds = 0.0f;
     voice.returnSamples = 0;
     voice.pluckDelay = 0;
     voice.repluckPending = false;
@@ -4296,8 +4341,7 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     voice.tailCharacteristicImpedance = voice.characteristicImpedance
         * voice.appliedBendImpedanceScale;
     constexpr float tailT60Seconds = 0.010f;
-    voice.tailDamping = std::pow(0.001f,
-        1.0f / std::max(tailT60Seconds * midiFrequency(voice.midiNote), 1.0f));
+    voice.tailDamping = handDamping(tailT60Seconds, loopFundamental(voice));
     voice.tailLevel = voice.level;
     voice.tailQuietSamples = 0;
     voice.tailActive = true;
@@ -4313,8 +4357,8 @@ void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
         voice.excitationEnvelope = 0.0f;
     voice.contactNoiseAmplitude = 0.0f;
     const float releaseSeconds = voice.fret == 0 ? 1.25f : 0.16f;
-    voice.releaseDamping = std::pow(0.001f,
-        1.0f / std::max(releaseSeconds * midiFrequency(voice.midiNote), 1.0f));
+    voice.releaseSeconds = releaseSeconds;
+    voice.releaseDamping = handDamping(releaseSeconds, loopFundamental(voice));
     voice.returnSamples = static_cast<int>(
         (releaseSeconds + 0.08f) * static_cast<float>(sampleRate_));
 }
@@ -5432,8 +5476,8 @@ void AcustraEngine::muteVacatedString(Voice& voice, int stringIndex) noexcept
     if (voice.contactTravelEnabled)
         voice.excitationEnvelope = 0.0f;
     constexpr float releaseSeconds = 0.16f;
-    voice.releaseDamping = std::pow(0.001f,
-        1.0f / std::max(releaseSeconds * midiFrequency(voice.midiNote), 1.0f));
+    voice.releaseSeconds = releaseSeconds;
+    voice.releaseDamping = handDamping(releaseSeconds, loopFundamental(voice));
     voice.returnSamples = static_cast<int>(
         (releaseSeconds + 0.08f) * static_cast<float>(sampleRate_));
 }

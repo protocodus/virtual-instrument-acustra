@@ -834,6 +834,9 @@ private:
         float dispersionPoleRatio { 4.0f };
         float level { 0.0f };
         float releaseDamping { 1.0f };
+        // The hand's T60 for the release under way (beginRelease), from
+        // which releaseDamping follows the loop's period; zero when none.
+        float releaseSeconds { 0.0f };
         // Samples until a released string is handed back to the allocator.
         int returnSamples { 0 };
         // Samples until a scheduled pluck is released; zero when none waits.
@@ -1030,6 +1033,15 @@ private:
     static void applyPlectrumSlip(StringLoop& loop, int length,
                                   double slipPole) noexcept;
     void resetSoundState() noexcept;
+    struct VoiceBend
+    {
+        float performed { 0.0f }; // semitones the loop is tuned by
+        float member { 0.0f };    // an MPE member's own share, a tension bend
+    };
+    [[nodiscard]] VoiceBend voiceBend(const Voice& voice) const noexcept;
+    [[nodiscard]] float loopFundamental(const Voice& voice) const noexcept;
+    [[nodiscard]] static float handDamping(float t60Seconds,
+                                           float fundamental) noexcept;
     void restartRandomDraws() noexcept;
     void freezeMemberPitchBend(Voice& voice) noexcept;
     [[nodiscard]] bool isLowerZoneMaster(int midiChannel) const noexcept;
