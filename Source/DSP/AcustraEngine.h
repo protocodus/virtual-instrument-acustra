@@ -1317,6 +1317,15 @@ private:
     float palmMute_ { 0.0f };
     float targetPalmMute_ { 0.0f };
     float palmMuteSmoothing_ { 0.5f };
+    // An idle instrument settles on a rounding-level residue (about 1e-12 at
+    // the output) that its strings and bridge hold between them; after
+    // idleFlushSeconds with nothing played and everything under
+    // idleFloor it is cleared once, as All Sound Off clears it, so an idle
+    // instrument reaches exact zero (processIdleFlush).
+    int idleQuietSamples_ { 0 };
+    bool idleFlushed_ { true };
+    float idleBlockPeak_ { 0.0f };
+    void processIdleFlush(int numSamples) noexcept;
     float bodyModelFade_ { 1.0f };
     float bodyModelFadeStep_ { 1.0f / 1920.0f };
     // A live bridge rebuild crossfades the mobility from the modes that were

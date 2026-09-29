@@ -2531,6 +2531,9 @@ void AcustraEngine::reset() noexcept
 
 void AcustraEngine::resetSoundState() noexcept
 {
+    idleQuietSamples_ = 0;
+    idleFlushed_ = true;
+    idleBlockPeak_ = 0.0f;
     bodyRadiationDelay_.reset();
     fadingBodyRadiationDelay_.reset();
     piezoLoadInput_ = piezoLoadOutput_ = 0.0f;
@@ -7449,6 +7452,10 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // enters at unit weight (zero while longitudinalGain ships at 0).
         const float loadedPiezo
             = renderPiezo(lastPiezoForce_ + lastLongitudinalForce_);
+        idleBlockPeak_ = std::max({ idleBlockPeak_, exact::abs(body.left),
+            exact::abs(body.right), exact::abs(body.upper),
+            exact::abs(directLeft), exact::abs(directRight),
+            exact::abs(loadedPiezo) });
         if (piezo != nullptr)
         {
             // The separate Piezo output observes before Capture chooses, at
@@ -7491,6 +7498,47 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         right[sample] = exact::isfinite(outputRight) ? outputRight : 0.0f;
     }
     sampleClock_ += static_cast<std::uint64_t>(numSamples);
+    processIdleFlush(numSamples);
+}
+
+void AcustraEngine::processIdleFlush(int numSamples) noexcept
+{
+    // The residue is a string-bridge equilibrium kept up by rounding: each
+    // loop holds a quasi-DC value near 1e-13 and the bridge a matching
+    // static displacement, so flushing any one state alone does not hold.
+    // Every instrument signal before the output gain (body, direct path and
+    // piezo) under 1e-11, about 190 dB under a played note, for 80 ms with
+    // no string played, held, sounding a tail or about to be plucked, is
+    // that residue: clear the whole instrument once, as All Sound Off does
+    // when nothing is playing, and again only after it has sounded.
+    constexpr float idleFloor = 1.0e-11f;
+    constexpr float idleFlushSeconds = 0.08f;
+    const float peak = idleBlockPeak_;
+    idleBlockPeak_ = 0.0f;
+    bool idle = peak < idleFloor;
+    for (const auto& voice : voices_)
+        idle = idle && !voice.played && !voice.keyDown && !voice.pedalHeld
+            && !voice.tailActive && voice.pluckDelay == 0
+            && !voice.repluckPending && !voice.contactTravel.active
+            && !voice.contactNoiseTravel.active && voice.contactNoiseSamples == 0
+            && !voice.tailContactTravel.active
+            && !voice.tailContactNoiseTravel.active;
+    if (!idle)
+    {
+        idleQuietSamples_ = 0;
+        idleFlushed_ = false;
+        return;
+    }
+    if (idleFlushed_)
+        return;
+    idleQuietSamples_ += numSamples;
+    if (static_cast<float>(idleQuietSamples_)
+        < idleFlushSeconds * static_cast<float>(sampleRate_))
+        return;
+    for (int string = 0; string < stringCount; ++string)
+        returnToOpenString(voices_[static_cast<std::size_t>(string)], string, true);
+    resetSoundState();
+    idleFlushed_ = true;
 }
 
 int AcustraEngine::getActiveVoiceCount() const noexcept

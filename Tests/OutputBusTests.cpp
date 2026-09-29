@@ -24,6 +24,8 @@ using acustra::AcustraEngine;
 using acustra::CaptureType;
 using acustra::Performer;
 using acustra::StringMaterial;
+using acustra::BridgeModel;
+using acustra::EngineParameters;
 using namespace acustra::battery;
 
 int failures = 0;
@@ -332,6 +334,56 @@ void testPiezoIsARequest()
 
 // Before any note, and after a reset, Main and Piezo are exact silence, so a
 // host may idle the instrument whichever outputs are cabled.
+// An instrument left to ring out reaches exact silence on Main and the
+// Piezo bus too, not only a fresh or reset one. Its strings and bridge used
+// to hold a rounding-level residue between them for good - about 1e-12 at
+// the output on steel at 96 kHz, nylon at 96 kHz and the Fylde at 44.1 kHz
+// (audit F30) - which a host listening for exact silence never heard end.
+void testRungOutInstrumentReachesExactSilence()
+{
+    struct Case { const char* name; StringMaterial strings; BridgeModel bridge; double rate; };
+    for (const auto& c : { Case { "steel at 96 kHz", StringMaterial::Steel, BridgeModel::Original, 96000.0 },
+                           Case { "nylon at 96 kHz", StringMaterial::Nylon, BridgeModel::Original, 96000.0 },
+                           Case { "the Fylde at 44.1 kHz", StringMaterial::Steel, BridgeModel::FyldeSteel, 44100.0 } })
+    {
+        EngineParameters parameters;
+        parameters.stringMaterial = c.strings;
+        parameters.bridgeModel = c.bridge;
+        auto engine = std::make_unique<AcustraEngine>();
+        engine->setParameters(parameters);
+        engine->prepare(c.rate, 512);
+        engine->beginStrum();
+        const std::array<int, 6> chord { 40, 47, 52, 56, 59, 64 };
+        for (std::size_t k = 0; k < chord.size(); ++k)
+            engine->noteOn(chord[k], 0.8f, 1, static_cast<int>(k) * 300, true);
+        std::vector<float> left(512), right(512), piezo(512);
+        const AcustraEngine::OutputBuses buses { piezo.data() };
+        const int blocksPerSecond = static_cast<int>(c.rate / 512.0);
+        bool silentAtEnd = true;
+        for (int second = 0; second < 25; ++second)
+        {
+            if (second == 3)
+                engine->allNotesOff();
+            for (int block = 0; block < blocksPerSecond; ++block)
+            {
+                engine->process(left.data(), right.data(), buses, 512);
+                if (second == 24)
+                    for (const auto* channel : { &left, &right, &piezo })
+                        silentAtEnd = silentAtEnd && std::all_of(channel->begin(),
+                            channel->end(), [] (float value) { return value == 0.0f; });
+            }
+        }
+        expect(silentAtEnd, std::string(c.name)
+                   + ": a chord left to ring out did not reach exact silence in 21 s");
+        // And it plays again from there as a fresh instrument does.
+        engine->noteOn(45, 0.8f);
+        engine->process(left.data(), right.data(), buses, 512);
+        engine->process(left.data(), right.data(), buses, 512);
+        expect(std::any_of(left.begin(), left.end(), [] (float value) { return value != 0.0f; }),
+               std::string(c.name) + ": a note after the instrument fell silent did not sound");
+    }
+}
+
 void testIdleOutputsAreExactSilence()
 {
     auto performer = std::make_unique<Performer>();
@@ -422,6 +474,7 @@ int main()
     testCaptureSwitchLeavesBusesAlone();
     testPiezoIsARequest();
     testIdleOutputsAreExactSilence();
+    testRungOutInstrumentReachesExactSilence();
     testCost();
 
     if (failures != 0)
