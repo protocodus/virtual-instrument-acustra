@@ -1439,9 +1439,12 @@ void testStateRoundTripAndMigration()
                     label + " migrated its Body Material twice");
         }
 
+    // The migration cases above leave their own Shape; a state that is not
+    // Acustra's must leave whatever is there.
+    const float shapeBeforeGarbage = valueOf (restored, ids::shape);
     const char garbage[] = "not an Acustra state";
     restored.setStateInformation (garbage, static_cast<int> (sizeof garbage));
-    expect (valueOf (restored, ids::shape) == 1.0f,
+    expect (valueOf (restored, ids::shape) == shapeBeforeGarbage,
             "invalid host state was applied instead of ignored");
 }
 
