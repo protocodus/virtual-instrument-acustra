@@ -313,6 +313,11 @@ struct AcustraEngineTestAccess
         EngineParameters parameters;
         parameters.stringMaterial = material;
         parameters.shape = shape;
+        // Each measured body at the wood it was built of, where Body
+        // Material leaves it as measured: spruce for steel's g21, cedar
+        // for nylon's g34.
+        parameters.bodyMaterial = AcustraEngine::measuredBankWood(
+            material, GuitarModel::Original);
         engine.setParameters(parameters);
         engine.setPhysicalCalibration(calibration);
         engine.prepare(48000.0, 64);
