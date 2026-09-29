@@ -5,20 +5,11 @@
     38,
     84
   ],
-  "zoneCount": 321,
-  "rawPcmBytes": 164570228,
-  "packedBytes": 55406674,
-  "compressionRatio": 0.33667495435444134,
+  "zoneCount": 280,
+  "rawPcmBytes": 153115648,
+  "packedBytes": 50013510,
+  "compressionRatio": 0.3266387900471152,
   "sources": {
-    "freepats": {
-      "page": "https://freepats.zenvoid.org/Guitar/acoustic-guitar.html",
-      "creator": "roberto@zenvoid.org for FreePats",
-      "version": "2019-06-18",
-      "archive": "SpanishClassicalGuitar-SFZ+FLAC-20190618.7z",
-      "archiveSha256": "903916921a21662d2237ade7f0e98e55de93cb7b86da219e4e10f4ad385b8f5e",
-      "license": "CC0-1.0",
-      "policy": "full native-rate files for every SFZ region intersecting MIDI 38-84"
-    },
     "eastman": {
       "page": "https://github.com/0x4D44/ferrosintesis/tree/810318c92e33e31b36638b0ffa7ffc834a2ae6a2/samples/acoustic-guitar-eastman-e1d",
       "sourceCommit": "810318c92e33e31b36638b0ffa7ffc834a2ae6a2",
@@ -41,1318 +32,6 @@
     }
   },
   "zones": [
-    {
-      "bank": "nylon",
-      "name": "D2",
-      "source": "D2.flac",
-      "keyRange": [
-        38,
-        38
-      ],
-      "rootMidi": 38,
-      "measuredRootHz": 73.43560149428455,
-      "tuningCentsFrom12Tet": 0.45763708468445363,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 342063,
-      "durationSeconds": 7.756530612244898,
-      "onsetFrame": 269,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 93,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32392,
-      "decodedFnv1a64": "62bbc98b5385ae04",
-      "sourceFnv1a64BeforeTerminalFade": "62bbc98b5385ae04",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 0,
-      "packedBytes": 302462
-    },
-    {
-      "bank": "nylon",
-      "name": "D#2",
-      "source": "D#2.flac",
-      "keyRange": [
-        39,
-        39
-      ],
-      "rootMidi": 39,
-      "measuredRootHz": 77.87027220161103,
-      "tuningCentsFrom12Tet": 1.9692608308388906,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 428590,
-      "durationSeconds": 9.71859410430839,
-      "onsetFrame": 749,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 573,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32395,
-      "decodedFnv1a64": "1089cbffe5e950bc",
-      "sourceFnv1a64BeforeTerminalFade": "1089cbffe5e950bc",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 10,
-      "packedOffset": 302462,
-      "packedBytes": 357822
-    },
-    {
-      "bank": "nylon",
-      "name": "E2",
-      "source": "E2.flac",
-      "keyRange": [
-        40,
-        40
-      ],
-      "rootMidi": 40,
-      "measuredRootHz": 82.50780118679127,
-      "tuningCentsFrom12Tet": 2.1186983404048707,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 220434,
-      "durationSeconds": 4.998503401360544,
-      "onsetFrame": 196,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 20,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32351,
-      "decodedFnv1a64": "17c3c06fe62f99a7",
-      "sourceFnv1a64BeforeTerminalFade": "17c3c06fe62f99a7",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 660284,
-      "packedBytes": 220256
-    },
-    {
-      "bank": "nylon",
-      "name": "F2",
-      "source": "F2.flac",
-      "keyRange": [
-        41,
-        41
-      ],
-      "rootMidi": 41,
-      "measuredRootHz": 87.829206274173,
-      "tuningCentsFrom12Tet": 10.32297678763279,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 235957,
-      "durationSeconds": 5.350498866213152,
-      "onsetFrame": 286,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 110,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32354,
-      "decodedFnv1a64": "fdba5e0488d606f0",
-      "sourceFnv1a64BeforeTerminalFade": "fdba5e0488d606f0",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 7,
-      "packedOffset": 880540,
-      "packedBytes": 207342
-    },
-    {
-      "bank": "nylon",
-      "name": "G2",
-      "source": "G2.flac",
-      "keyRange": [
-        42,
-        43
-      ],
-      "rootMidi": 43,
-      "measuredRootHz": 98.76863977005095,
-      "tuningCentsFrom12Tet": 13.545707441526373,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 230785,
-      "durationSeconds": 5.2332199546485265,
-      "onsetFrame": 3,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 0.06802721088435375,
-      "peakInt16": 32387,
-      "decodedFnv1a64": "98ce5ef8fb3f1ff5",
-      "sourceFnv1a64BeforeTerminalFade": "98ce5ef8fb3f1ff5",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 7,
-      "packedOffset": 1087882,
-      "packedBytes": 210429
-    },
-    {
-      "bank": "nylon",
-      "name": "A2",
-      "source": "A2.flac",
-      "keyRange": [
-        44,
-        45
-      ],
-      "rootMidi": 45,
-      "measuredRootHz": 110.19045817052516,
-      "tuningCentsFrom12Tet": 2.9949322482625664,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 248224,
-      "durationSeconds": 5.628662131519274,
-      "onsetFrame": 766,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 590,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32388,
-      "decodedFnv1a64": "9c749dba45f35009",
-      "sourceFnv1a64BeforeTerminalFade": "9c749dba45f35009",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 1298311,
-      "packedBytes": 207139
-    },
-    {
-      "bank": "nylon",
-      "name": "B2",
-      "source": "B2.flac",
-      "keyRange": [
-        46,
-        47
-      ],
-      "rootMidi": 47,
-      "measuredRootHz": 124.15698846684445,
-      "tuningCentsFrom12Tet": 9.594334623014031,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 170550,
-      "durationSeconds": 3.86734693877551,
-      "onsetFrame": 140,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 3.1746031746031744,
-      "peakInt16": 32414,
-      "decodedFnv1a64": "ec1bbe98cc005cda",
-      "sourceFnv1a64BeforeTerminalFade": "ec1bbe98cc005cda",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 12,
-      "packedOffset": 1505450,
-      "packedBytes": 161027
-    },
-    {
-      "bank": "nylon",
-      "name": "C3",
-      "source": "C3.flac",
-      "keyRange": [
-        48,
-        48
-      ],
-      "rootMidi": 48,
-      "measuredRootHz": 131.0136903971117,
-      "tuningCentsFrom12Tet": 2.6568619759455263,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 189444,
-      "durationSeconds": 4.29578231292517,
-      "onsetFrame": 30,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 0.6802721088435374,
-      "peakInt16": 32385,
-      "decodedFnv1a64": "16c4bc909a5913d4",
-      "sourceFnv1a64BeforeTerminalFade": "16c4bc909a5913d4",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 10,
-      "packedOffset": 1666477,
-      "packedBytes": 163698
-    },
-    {
-      "bank": "nylon",
-      "name": "D3",
-      "source": "D3.flac",
-      "keyRange": [
-        49,
-        50
-      ],
-      "rootMidi": 50,
-      "measuredRootHz": 147.52238933863157,
-      "tuningCentsFrom12Tet": 8.116484624377142,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 233109,
-      "durationSeconds": 5.285918367346939,
-      "onsetFrame": 496,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 320,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 31853,
-      "decodedFnv1a64": "47b10dc7875dc87e",
-      "sourceFnv1a64BeforeTerminalFade": "47b10dc7875dc87e",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 6,
-      "packedOffset": 1830175,
-      "packedBytes": 197609
-    },
-    {
-      "bank": "nylon",
-      "name": "E3",
-      "source": "E3.flac",
-      "keyRange": [
-        51,
-        52
-      ],
-      "rootMidi": 52,
-      "measuredRootHz": 165.45033402407552,
-      "tuningCentsFrom12Tet": 6.673616634860086,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 209482,
-      "durationSeconds": 4.75015873015873,
-      "onsetFrame": 127,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 2.879818594104308,
-      "peakInt16": 32377,
-      "decodedFnv1a64": "2cc833ea859939b1",
-      "sourceFnv1a64BeforeTerminalFade": "2cc833ea859939b1",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 9,
-      "packedOffset": 2027784,
-      "packedBytes": 178305
-    },
-    {
-      "bank": "nylon",
-      "name": "F3",
-      "source": "F3.flac",
-      "keyRange": [
-        53,
-        53
-      ],
-      "rootMidi": 53,
-      "measuredRootHz": 175.25176566331385,
-      "tuningCentsFrom12Tet": 6.310546871598653,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 185084,
-      "durationSeconds": 4.196916099773243,
-      "onsetFrame": 91,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 2.0634920634920637,
-      "peakInt16": 32395,
-      "decodedFnv1a64": "36da4c4fec8893e4",
-      "sourceFnv1a64BeforeTerminalFade": "36da4c4fec8893e4",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 7,
-      "packedOffset": 2206089,
-      "packedBytes": 169007
-    },
-    {
-      "bank": "nylon",
-      "name": "F#3",
-      "source": "F#3.flac",
-      "keyRange": [
-        54,
-        54
-      ],
-      "rootMidi": 54,
-      "measuredRootHz": 185.34392667435648,
-      "tuningCentsFrom12Tet": 3.241581766199216,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 172544,
-      "durationSeconds": 3.912562358276644,
-      "onsetFrame": 598,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 422,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32461,
-      "decodedFnv1a64": "1847964bf7923c8e",
-      "sourceFnv1a64BeforeTerminalFade": "1847964bf7923c8e",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 7,
-      "packedOffset": 2375096,
-      "packedBytes": 168814
-    },
-    {
-      "bank": "nylon",
-      "name": "G3",
-      "source": "G3.flac",
-      "keyRange": [
-        55,
-        55
-      ],
-      "rootMidi": 55,
-      "measuredRootHz": 196.38192247309743,
-      "tuningCentsFrom12Tet": 3.390329290353517,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 205563,
-      "durationSeconds": 4.661292517006803,
-      "onsetFrame": 253,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 77,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32364,
-      "decodedFnv1a64": "0702ab273f492022",
-      "sourceFnv1a64BeforeTerminalFade": "0702ab273f492022",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 2543910,
-      "packedBytes": 184113
-    },
-    {
-      "bank": "nylon",
-      "name": "G#3",
-      "source": "G#3.flac",
-      "keyRange": [
-        56,
-        56
-      ],
-      "rootMidi": 56,
-      "measuredRootHz": 208.6949062832006,
-      "tuningCentsFrom12Tet": 8.670237552209468,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 147249,
-      "durationSeconds": 3.338979591836735,
-      "onsetFrame": 141,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 3.197278911564626,
-      "peakInt16": 32395,
-      "decodedFnv1a64": "753fd47b342ed57e",
-      "sourceFnv1a64BeforeTerminalFade": "753fd47b342ed57e",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 10,
-      "packedOffset": 2728023,
-      "packedBytes": 138059
-    },
-    {
-      "bank": "nylon",
-      "name": "A3",
-      "source": "A3.flac",
-      "keyRange": [
-        57,
-        57
-      ],
-      "rootMidi": 57,
-      "measuredRootHz": 221.67539816054918,
-      "tuningCentsFrom12Tet": 13.134171680156687,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 111369,
-      "durationSeconds": 2.525374149659864,
-      "onsetFrame": 188,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 12,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32377,
-      "decodedFnv1a64": "1f2cbc8e94c4f4be",
-      "sourceFnv1a64BeforeTerminalFade": "1f2cbc8e94c4f4be",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 9,
-      "packedOffset": 2866082,
-      "packedBytes": 105886
-    },
-    {
-      "bank": "nylon",
-      "name": "A#3",
-      "source": "A#3.flac",
-      "keyRange": [
-        58,
-        58
-      ],
-      "rootMidi": 58,
-      "measuredRootHz": 234.6959564718323,
-      "tuningCentsFrom12Tet": 11.947354916397533,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 109794,
-      "durationSeconds": 2.4896598639455783,
-      "onsetFrame": 41,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 0.9297052154195011,
-      "peakInt16": 32364,
-      "decodedFnv1a64": "27ca135a40baaee3",
-      "sourceFnv1a64BeforeTerminalFade": "27ca135a40baaee3",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 2971968,
-      "packedBytes": 100570
-    },
-    {
-      "bank": "nylon",
-      "name": "B3",
-      "source": "B3.flac",
-      "keyRange": [
-        59,
-        59
-      ],
-      "rootMidi": 59,
-      "measuredRootHz": 249.22836342630893,
-      "tuningCentsFrom12Tet": 15.957687784552519,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 100131,
-      "durationSeconds": 2.2705442176870747,
-      "onsetFrame": 752,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 576,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32386,
-      "decodedFnv1a64": "871d803bf2559847",
-      "sourceFnv1a64BeforeTerminalFade": "871d803bf2559847",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 7,
-      "packedOffset": 3072538,
-      "packedBytes": 98200
-    },
-    {
-      "bank": "nylon",
-      "name": "C4",
-      "source": "C4.flac",
-      "keyRange": [
-        60,
-        60
-      ],
-      "rootMidi": 60,
-      "measuredRootHz": 262.97774699924224,
-      "tuningCentsFrom12Tet": 8.924641253695802,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 106627,
-      "durationSeconds": 2.417845804988662,
-      "onsetFrame": 955,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 779,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32373,
-      "decodedFnv1a64": "587b81e9e347e56e",
-      "sourceFnv1a64BeforeTerminalFade": "587b81e9e347e56e",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 6,
-      "packedOffset": 3170738,
-      "packedBytes": 102563
-    },
-    {
-      "bank": "nylon",
-      "name": "C#4",
-      "source": "C#4.flac",
-      "keyRange": [
-        61,
-        61
-      ],
-      "rootMidi": 61,
-      "measuredRootHz": 280.0797982811835,
-      "tuningCentsFrom12Tet": 18.001284887587808,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 127438,
-      "durationSeconds": 2.889750566893424,
-      "onsetFrame": 434,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 258,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32424,
-      "decodedFnv1a64": "5d38961a735de937",
-      "sourceFnv1a64BeforeTerminalFade": "5d38961a735de937",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 11,
-      "packedOffset": 3273301,
-      "packedBytes": 120177
-    },
-    {
-      "bank": "nylon",
-      "name": "D4",
-      "source": "D4.flac",
-      "keyRange": [
-        62,
-        62
-      ],
-      "rootMidi": 62,
-      "measuredRootHz": 295.1780912850892,
-      "tuningCentsFrom12Tet": 8.898546254004803,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 134841,
-      "durationSeconds": 3.0576190476190477,
-      "onsetFrame": 123,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 2.7891156462585034,
-      "peakInt16": 32430,
-      "decodedFnv1a64": "5926cb1cbd80b68b",
-      "sourceFnv1a64BeforeTerminalFade": "5926cb1cbd80b68b",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 9,
-      "packedOffset": 3393478,
-      "packedBytes": 130925
-    },
-    {
-      "bank": "nylon",
-      "name": "D#4",
-      "source": "D#4.flac",
-      "keyRange": [
-        63,
-        63
-      ],
-      "rootMidi": 63,
-      "measuredRootHz": 313.070713445055,
-      "tuningCentsFrom12Tet": 10.782038993890065,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 137845,
-      "durationSeconds": 3.1257369614512474,
-      "onsetFrame": 112,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 2.5396825396825395,
-      "peakInt16": 32373,
-      "decodedFnv1a64": "b2c026c3cb48c357",
-      "sourceFnv1a64BeforeTerminalFade": "b2c026c3cb48c357",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 11,
-      "packedOffset": 3524403,
-      "packedBytes": 136482
-    },
-    {
-      "bank": "nylon",
-      "name": "E4",
-      "source": "E4.flac",
-      "keyRange": [
-        64,
-        64
-      ],
-      "rootMidi": 64,
-      "measuredRootHz": 329.9060162461988,
-      "tuningCentsFrom12Tet": 1.4618764757496738,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 165347,
-      "durationSeconds": 3.7493650793650795,
-      "onsetFrame": 101,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 2.290249433106576,
-      "peakInt16": 31816,
-      "decodedFnv1a64": "55d88354d6778a05",
-      "sourceFnv1a64BeforeTerminalFade": "55d88354d6778a05",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 7,
-      "packedOffset": 3660885,
-      "packedBytes": 163758
-    },
-    {
-      "bank": "nylon",
-      "name": "F4",
-      "source": "F4.flac",
-      "keyRange": [
-        65,
-        65
-      ],
-      "rootMidi": 65,
-      "measuredRootHz": 349.9083103915833,
-      "tuningCentsFrom12Tet": 3.3680866327725774,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 137150,
-      "durationSeconds": 3.1099773242630384,
-      "onsetFrame": 88,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 1.9954648526077097,
-      "peakInt16": 32401,
-      "decodedFnv1a64": "bd8e94b8f242b14c",
-      "sourceFnv1a64BeforeTerminalFade": "bd8e94b8f242b14c",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 3824643,
-      "packedBytes": 136483
-    },
-    {
-      "bank": "nylon",
-      "name": "F#4",
-      "source": "F#4.flac",
-      "keyRange": [
-        66,
-        66
-      ],
-      "rootMidi": 66,
-      "measuredRootHz": 370.72865903630924,
-      "tuningCentsFrom12Tet": 3.4321472436429374,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 138662,
-      "durationSeconds": 3.1442630385487527,
-      "onsetFrame": 96,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 2.17687074829932,
-      "peakInt16": 32527,
-      "decodedFnv1a64": "d76c16b2345e926d",
-      "sourceFnv1a64BeforeTerminalFade": "d76c16b2345e926d",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 3961126,
-      "packedBytes": 134884
-    },
-    {
-      "bank": "nylon",
-      "name": "G4",
-      "source": "G4.flac",
-      "keyRange": [
-        67,
-        67
-      ],
-      "rootMidi": 67,
-      "measuredRootHz": 392.8988963620585,
-      "tuningCentsFrom12Tet": 3.985509892735741,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 106285,
-      "durationSeconds": 2.410090702947846,
-      "onsetFrame": 1578,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 1402,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32469,
-      "decodedFnv1a64": "dca13a781c032390",
-      "sourceFnv1a64BeforeTerminalFade": "dca13a781c032390",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 9,
-      "packedOffset": 4096010,
-      "packedBytes": 111669
-    },
-    {
-      "bank": "nylon",
-      "name": "A4",
-      "source": "A4.flac",
-      "keyRange": [
-        68,
-        69
-      ],
-      "rootMidi": 69,
-      "measuredRootHz": 441.1932525770675,
-      "tuningCentsFrom12Tet": 4.6886440566455585,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 181489,
-      "durationSeconds": 4.115396825396825,
-      "onsetFrame": 559,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 383,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32552,
-      "decodedFnv1a64": "237750a72a8eb940",
-      "sourceFnv1a64BeforeTerminalFade": "237750a72a8eb940",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 13,
-      "packedOffset": 4207679,
-      "packedBytes": 172084
-    },
-    {
-      "bank": "nylon",
-      "name": "A#4",
-      "source": "A#4.flac",
-      "keyRange": [
-        70,
-        70
-      ],
-      "rootMidi": 70,
-      "measuredRootHz": 466.97530274914624,
-      "tuningCentsFrom12Tet": 3.0112728519196397,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 104513,
-      "durationSeconds": 2.3699092970521543,
-      "onsetFrame": 547,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 371,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32251,
-      "decodedFnv1a64": "6a478778724a7e63",
-      "sourceFnv1a64BeforeTerminalFade": "6a478778724a7e63",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 9,
-      "packedOffset": 4379763,
-      "packedBytes": 101374
-    },
-    {
-      "bank": "nylon",
-      "name": "B4",
-      "source": "B4.flac",
-      "keyRange": [
-        71,
-        71
-      ],
-      "rootMidi": 71,
-      "measuredRootHz": 498.82987582320976,
-      "tuningCentsFrom12Tet": 17.253219543780833,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 83809,
-      "durationSeconds": 1.9004308390022675,
-      "onsetFrame": 64,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 1.4512471655328798,
-      "peakInt16": 32294,
-      "decodedFnv1a64": "1620d957e49da2f2",
-      "sourceFnv1a64BeforeTerminalFade": "1620d957e49da2f2",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 10,
-      "packedOffset": 4481137,
-      "packedBytes": 83492
-    },
-    {
-      "bank": "nylon",
-      "name": "C5",
-      "source": "C5.flac",
-      "keyRange": [
-        72,
-        72
-      ],
-      "rootMidi": 72,
-      "measuredRootHz": 526.1447004437067,
-      "tuningCentsFrom12Tet": 9.54732081507847,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 68926,
-      "durationSeconds": 1.5629478458049886,
-      "onsetFrame": 512,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 336,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32216,
-      "decodedFnv1a64": "011727bcf99c07fd",
-      "sourceFnv1a64BeforeTerminalFade": "011727bcf99c07fd",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 11,
-      "packedOffset": 4564629,
-      "packedBytes": 72309
-    },
-    {
-      "bank": "nylon",
-      "name": "C#5",
-      "source": "C#5.flac",
-      "keyRange": [
-        73,
-        73
-      ],
-      "rootMidi": 73,
-      "measuredRootHz": 557.194194601246,
-      "tuningCentsFrom12Tet": 8.812043416974465,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 77368,
-      "durationSeconds": 1.75437641723356,
-      "onsetFrame": 776,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 600,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32385,
-      "decodedFnv1a64": "9922e23be6c8304a",
-      "sourceFnv1a64BeforeTerminalFade": "9922e23be6c8304a",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 4636938,
-      "packedBytes": 84012
-    },
-    {
-      "bank": "nylon",
-      "name": "D5",
-      "source": "D5.flac",
-      "keyRange": [
-        74,
-        74
-      ],
-      "rootMidi": 74,
-      "measuredRootHz": 590.6852562168388,
-      "tuningCentsFrom12Tet": 9.863293972047702,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 55676,
-      "durationSeconds": 1.2624943310657597,
-      "onsetFrame": 896,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 720,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32320,
-      "decodedFnv1a64": "6e2ce9f854f42163",
-      "sourceFnv1a64BeforeTerminalFade": "6e2ce9f854f42163",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 9,
-      "packedOffset": 4720950,
-      "packedBytes": 64100
-    },
-    {
-      "bank": "nylon",
-      "name": "D#5",
-      "source": "D#5.flac",
-      "keyRange": [
-        75,
-        75
-      ],
-      "rootMidi": 75,
-      "measuredRootHz": 625.3858848930413,
-      "tuningCentsFrom12Tet": 8.691760695666005,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 55432,
-      "durationSeconds": 1.2569614512471656,
-      "onsetFrame": 3,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 0.06802721088435375,
-      "peakInt16": 32484,
-      "decodedFnv1a64": "7b699f9adf5be65f",
-      "sourceFnv1a64BeforeTerminalFade": "7b699f9adf5be65f",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 10,
-      "packedOffset": 4785050,
-      "packedBytes": 56878
-    },
-    {
-      "bank": "nylon",
-      "name": "E5",
-      "source": "E5.flac",
-      "keyRange": [
-        76,
-        76
-      ],
-      "rootMidi": 76,
-      "measuredRootHz": 662.6248132296075,
-      "tuningCentsFrom12Tet": 8.826446124435378,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 59060,
-      "durationSeconds": 1.3392290249433108,
-      "onsetFrame": 38,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 0.8616780045351474,
-      "peakInt16": 32219,
-      "decodedFnv1a64": "1f12a8c469f2d989",
-      "sourceFnv1a64BeforeTerminalFade": "1f12a8c469f2d989",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 10,
-      "packedOffset": 4841928,
-      "packedBytes": 61537
-    },
-    {
-      "bank": "nylon",
-      "name": "F5",
-      "source": "F5.flac",
-      "keyRange": [
-        77,
-        77
-      ],
-      "rootMidi": 77,
-      "measuredRootHz": 698.3211107191115,
-      "tuningCentsFrom12Tet": -0.33552406694665293,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 68171,
-      "durationSeconds": 1.545827664399093,
-      "onsetFrame": 2,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 0.045351473922902494,
-      "peakInt16": 31662,
-      "decodedFnv1a64": "f83480137ff4d9ad",
-      "sourceFnv1a64BeforeTerminalFade": "f83480137ff4d9ad",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 4903465,
-      "packedBytes": 71902
-    },
-    {
-      "bank": "nylon",
-      "name": "F#5",
-      "source": "F#5.flac",
-      "keyRange": [
-        78,
-        78
-      ],
-      "rootMidi": 78,
-      "measuredRootHz": 739.5909659623296,
-      "tuningCentsFrom12Tet": -0.9311055497049712,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 61008,
-      "durationSeconds": 1.3834013605442177,
-      "onsetFrame": 980,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 804,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 30944,
-      "decodedFnv1a64": "d7159cb5de9f073a",
-      "sourceFnv1a64BeforeTerminalFade": "d7159cb5de9f073a",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 10,
-      "packedOffset": 4975367,
-      "packedBytes": 66076
-    },
-    {
-      "bank": "nylon",
-      "name": "G5",
-      "source": "G5.flac",
-      "keyRange": [
-        79,
-        79
-      ],
-      "rootMidi": 79,
-      "measuredRootHz": 782.9924210311001,
-      "tuningCentsFrom12Tet": -2.2062168654234244,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 62814,
-      "durationSeconds": 1.4243537414965985,
-      "onsetFrame": 7,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 0.15873015873015872,
-      "peakInt16": 31845,
-      "decodedFnv1a64": "7a482d0d154f188d",
-      "sourceFnv1a64BeforeTerminalFade": "7a482d0d154f188d",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 11,
-      "packedOffset": 5041443,
-      "packedBytes": 72320
-    },
-    {
-      "bank": "nylon",
-      "name": "G#5",
-      "source": "G#5.flac",
-      "keyRange": [
-        80,
-        80
-      ],
-      "rootMidi": 80,
-      "measuredRootHz": 829.5278364593569,
-      "tuningCentsFrom12Tet": -2.255755099848639,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 41877,
-      "durationSeconds": 0.9495918367346938,
-      "onsetFrame": 45,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 1.0204081632653061,
-      "peakInt16": 32254,
-      "decodedFnv1a64": "d0204520e60e0d63",
-      "sourceFnv1a64BeforeTerminalFade": "d0204520e60e0d63",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 5113763,
-      "packedBytes": 48281
-    },
-    {
-      "bank": "nylon",
-      "name": "A5",
-      "source": "A5.flac",
-      "keyRange": [
-        81,
-        81
-      ],
-      "rootMidi": 81,
-      "measuredRootHz": 884.4038317203216,
-      "tuningCentsFrom12Tet": 8.64210235252202,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 71928,
-      "durationSeconds": 1.6310204081632653,
-      "onsetFrame": 827,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 651,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 32495,
-      "decodedFnv1a64": "29870d7a97584b0a",
-      "sourceFnv1a64BeforeTerminalFade": "29870d7a97584b0a",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 12,
-      "packedOffset": 5162044,
-      "packedBytes": 80758
-    },
-    {
-      "bank": "nylon",
-      "name": "A#5",
-      "source": "A#5.flac",
-      "keyRange": [
-        82,
-        82
-      ],
-      "rootMidi": 82,
-      "measuredRootHz": 934.4551393167905,
-      "tuningCentsFrom12Tet": 3.9462583593703395,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 57929,
-      "durationSeconds": 1.3135827664399093,
-      "onsetFrame": 1552,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 1376,
-      "rootNoteOnLatencyMs": 4.0,
-      "peakInt16": 31817,
-      "decodedFnv1a64": "6e4d15a253842b94",
-      "sourceFnv1a64BeforeTerminalFade": "6e4d15a253842b94",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 9,
-      "packedOffset": 5242802,
-      "packedBytes": 64823
-    },
-    {
-      "bank": "nylon",
-      "name": "B5",
-      "source": "B5.flac",
-      "keyRange": [
-        83,
-        83
-      ],
-      "rootMidi": 83,
-      "measuredRootHz": 988.4826272129224,
-      "tuningCentsFrom12Tet": 1.2545041155503902,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 43258,
-      "durationSeconds": 0.9809070294784581,
-      "onsetFrame": 12,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 0.272108843537415,
-      "peakInt16": 32395,
-      "decodedFnv1a64": "3cae5a3bb66d2a5f",
-      "sourceFnv1a64BeforeTerminalFade": "3cae5a3bb66d2a5f",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 7,
-      "packedOffset": 5307625,
-      "packedBytes": 44251
-    },
-    {
-      "bank": "nylon",
-      "name": "C6",
-      "source": "C6.flac",
-      "keyRange": [
-        84,
-        84
-      ],
-      "rootMidi": 84,
-      "measuredRootHz": 1050.2498473161008,
-      "tuningCentsFrom12Tet": 6.188576669788449,
-      "sampleRate": 44100,
-      "channels": 1,
-      "frames": 39465,
-      "durationSeconds": 0.8948979591836734,
-      "onsetFrame": 1,
-      "velocityRange": [
-        1,
-        127
-      ],
-      "roundRobin": 1,
-      "rootPlaybackStartFrame": 0,
-      "rootNoteOnLatencyMs": 0.022675736961451247,
-      "peakInt16": 31491,
-      "decodedFnv1a64": "db08cf0720cf42ff",
-      "sourceFnv1a64BeforeTerminalFade": "db08cf0720cf42ff",
-      "terminalHalfCosineFadeFrames": 0,
-      "terminalHalfCosineFadeMs": 0.0,
-      "terminalMaxAdjacentJumpInt16": 8,
-      "packedOffset": 5351876,
-      "packedBytes": 41288
-    },
     {
       "bank": "steel_picked",
       "name": "db2_vl1_rr1_1",
@@ -1382,7 +61,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 5393164,
+      "packedOffset": 0,
       "packedBytes": 199198
     },
     {
@@ -1414,7 +93,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 5592362,
+      "packedOffset": 199198,
       "packedBytes": 197266
     },
     {
@@ -1446,7 +125,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 5789628,
+      "packedOffset": 396464,
       "packedBytes": 192715
     },
     {
@@ -1478,7 +157,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 5982343,
+      "packedOffset": 589179,
       "packedBytes": 193539
     },
     {
@@ -1510,7 +189,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 6175882,
+      "packedOffset": 782718,
       "packedBytes": 205133
     },
     {
@@ -1542,7 +221,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 6381015,
+      "packedOffset": 987851,
       "packedBytes": 202150
     },
     {
@@ -1574,7 +253,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 6583165,
+      "packedOffset": 1190001,
       "packedBytes": 209404
     },
     {
@@ -1606,7 +285,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 6792569,
+      "packedOffset": 1399405,
       "packedBytes": 207892
     },
     {
@@ -1638,7 +317,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 7000461,
+      "packedOffset": 1607297,
       "packedBytes": 217267
     },
     {
@@ -1670,7 +349,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 7217728,
+      "packedOffset": 1824564,
       "packedBytes": 211628
     },
     {
@@ -1702,7 +381,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 7429356,
+      "packedOffset": 2036192,
       "packedBytes": 212934
     },
     {
@@ -1734,7 +413,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 7642290,
+      "packedOffset": 2249126,
       "packedBytes": 211161
     },
     {
@@ -1766,7 +445,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 7853451,
+      "packedOffset": 2460287,
       "packedBytes": 227459
     },
     {
@@ -1798,7 +477,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 8080910,
+      "packedOffset": 2687746,
       "packedBytes": 229748
     },
     {
@@ -1830,7 +509,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 8310658,
+      "packedOffset": 2917494,
       "packedBytes": 230468
     },
     {
@@ -1862,7 +541,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 8541126,
+      "packedOffset": 3147962,
       "packedBytes": 229186
     },
     {
@@ -1894,7 +573,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 8770312,
+      "packedOffset": 3377148,
       "packedBytes": 155932
     },
     {
@@ -1926,7 +605,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 8926244,
+      "packedOffset": 3533080,
       "packedBytes": 166033
     },
     {
@@ -1958,7 +637,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 9092277,
+      "packedOffset": 3699113,
       "packedBytes": 156265
     },
     {
@@ -1990,7 +669,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 9248542,
+      "packedOffset": 3855378,
       "packedBytes": 165122
     },
     {
@@ -2022,7 +701,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 9413664,
+      "packedOffset": 4020500,
       "packedBytes": 178556
     },
     {
@@ -2054,7 +733,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 9592220,
+      "packedOffset": 4199056,
       "packedBytes": 178873
     },
     {
@@ -2086,7 +765,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 9771093,
+      "packedOffset": 4377929,
       "packedBytes": 170348
     },
     {
@@ -2118,7 +797,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 9941441,
+      "packedOffset": 4548277,
       "packedBytes": 174170
     },
     {
@@ -2150,7 +829,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 10115611,
+      "packedOffset": 4722447,
       "packedBytes": 198399
     },
     {
@@ -2182,7 +861,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 10314010,
+      "packedOffset": 4920846,
       "packedBytes": 197838
     },
     {
@@ -2214,7 +893,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 10511848,
+      "packedOffset": 5118684,
       "packedBytes": 195576
     },
     {
@@ -2246,7 +925,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 10707424,
+      "packedOffset": 5314260,
       "packedBytes": 198593
     },
     {
@@ -2278,7 +957,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 10906017,
+      "packedOffset": 5512853,
       "packedBytes": 217758
     },
     {
@@ -2310,7 +989,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 11123775,
+      "packedOffset": 5730611,
       "packedBytes": 221347
     },
     {
@@ -2342,7 +1021,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 11345122,
+      "packedOffset": 5951958,
       "packedBytes": 216665
     },
     {
@@ -2374,7 +1053,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 11561787,
+      "packedOffset": 6168623,
       "packedBytes": 214569
     },
     {
@@ -2406,7 +1085,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 11776356,
+      "packedOffset": 6383192,
       "packedBytes": 162767
     },
     {
@@ -2438,7 +1117,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 11939123,
+      "packedOffset": 6545959,
       "packedBytes": 163000
     },
     {
@@ -2470,7 +1149,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 12102123,
+      "packedOffset": 6708959,
       "packedBytes": 162772
     },
     {
@@ -2502,7 +1181,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 12264895,
+      "packedOffset": 6871731,
       "packedBytes": 165850
     },
     {
@@ -2534,7 +1213,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 12430745,
+      "packedOffset": 7037581,
       "packedBytes": 178172
     },
     {
@@ -2566,7 +1245,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 12608917,
+      "packedOffset": 7215753,
       "packedBytes": 180590
     },
     {
@@ -2598,7 +1277,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 12789507,
+      "packedOffset": 7396343,
       "packedBytes": 177901
     },
     {
@@ -2630,7 +1309,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 12967408,
+      "packedOffset": 7574244,
       "packedBytes": 184799
     },
     {
@@ -2662,7 +1341,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 13152207,
+      "packedOffset": 7759043,
       "packedBytes": 182589
     },
     {
@@ -2694,7 +1373,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 13334796,
+      "packedOffset": 7941632,
       "packedBytes": 185816
     },
     {
@@ -2726,7 +1405,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 13520612,
+      "packedOffset": 8127448,
       "packedBytes": 185558
     },
     {
@@ -2758,7 +1437,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 13706170,
+      "packedOffset": 8313006,
       "packedBytes": 183864
     },
     {
@@ -2790,7 +1469,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 13890034,
+      "packedOffset": 8496870,
       "packedBytes": 193254
     },
     {
@@ -2822,7 +1501,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 14083288,
+      "packedOffset": 8690124,
       "packedBytes": 198402
     },
     {
@@ -2854,7 +1533,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 14281690,
+      "packedOffset": 8888526,
       "packedBytes": 197011
     },
     {
@@ -2886,7 +1565,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 14478701,
+      "packedOffset": 9085537,
       "packedBytes": 192184
     },
     {
@@ -2918,7 +1597,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 14670885,
+      "packedOffset": 9277721,
       "packedBytes": 155089
     },
     {
@@ -2950,7 +1629,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 14825974,
+      "packedOffset": 9432810,
       "packedBytes": 158437
     },
     {
@@ -2982,7 +1661,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 14984411,
+      "packedOffset": 9591247,
       "packedBytes": 160595
     },
     {
@@ -3014,7 +1693,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 15145006,
+      "packedOffset": 9751842,
       "packedBytes": 162928
     },
     {
@@ -3046,7 +1725,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 15307934,
+      "packedOffset": 9914770,
       "packedBytes": 173815
     },
     {
@@ -3078,7 +1757,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 15481749,
+      "packedOffset": 10088585,
       "packedBytes": 176768
     },
     {
@@ -3110,7 +1789,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 15658517,
+      "packedOffset": 10265353,
       "packedBytes": 173575
     },
     {
@@ -3142,7 +1821,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 15832092,
+      "packedOffset": 10438928,
       "packedBytes": 176050
     },
     {
@@ -3174,7 +1853,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 16008142,
+      "packedOffset": 10614978,
       "packedBytes": 177494
     },
     {
@@ -3206,7 +1885,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 16185636,
+      "packedOffset": 10792472,
       "packedBytes": 176629
     },
     {
@@ -3238,7 +1917,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 16362265,
+      "packedOffset": 10969101,
       "packedBytes": 177002
     },
     {
@@ -3270,7 +1949,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 16539267,
+      "packedOffset": 11146103,
       "packedBytes": 176435
     },
     {
@@ -3302,7 +1981,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 16715702,
+      "packedOffset": 11322538,
       "packedBytes": 177324
     },
     {
@@ -3334,7 +2013,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 16893026,
+      "packedOffset": 11499862,
       "packedBytes": 177666
     },
     {
@@ -3366,7 +2045,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 17070692,
+      "packedOffset": 11677528,
       "packedBytes": 178450
     },
     {
@@ -3398,7 +2077,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 17249142,
+      "packedOffset": 11855978,
       "packedBytes": 177450
     },
     {
@@ -3430,7 +2109,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 17426592,
+      "packedOffset": 12033428,
       "packedBytes": 168135
     },
     {
@@ -3462,7 +2141,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 17594727,
+      "packedOffset": 12201563,
       "packedBytes": 174748
     },
     {
@@ -3494,7 +2173,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 17769475,
+      "packedOffset": 12376311,
       "packedBytes": 175354
     },
     {
@@ -3526,7 +2205,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 17944829,
+      "packedOffset": 12551665,
       "packedBytes": 176513
     },
     {
@@ -3558,7 +2237,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 18121342,
+      "packedOffset": 12728178,
       "packedBytes": 192390
     },
     {
@@ -3590,7 +2269,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 18313732,
+      "packedOffset": 12920568,
       "packedBytes": 189423
     },
     {
@@ -3622,7 +2301,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 18503155,
+      "packedOffset": 13109991,
       "packedBytes": 189951
     },
     {
@@ -3654,7 +2333,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 18693106,
+      "packedOffset": 13299942,
       "packedBytes": 191763
     },
     {
@@ -3686,7 +2365,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 18884869,
+      "packedOffset": 13491705,
       "packedBytes": 194847
     },
     {
@@ -3718,7 +2397,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 19079716,
+      "packedOffset": 13686552,
       "packedBytes": 198913
     },
     {
@@ -3750,7 +2429,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 19278629,
+      "packedOffset": 13885465,
       "packedBytes": 200020
     },
     {
@@ -3782,7 +2461,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 19478649,
+      "packedOffset": 14085485,
       "packedBytes": 194407
     },
     {
@@ -3814,7 +2493,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 19673056,
+      "packedOffset": 14279892,
       "packedBytes": 199496
     },
     {
@@ -3846,7 +2525,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 19872552,
+      "packedOffset": 14479388,
       "packedBytes": 205431
     },
     {
@@ -3878,7 +2557,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 20077983,
+      "packedOffset": 14684819,
       "packedBytes": 199676
     },
     {
@@ -3910,7 +2589,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 20277659,
+      "packedOffset": 14884495,
       "packedBytes": 212369
     },
     {
@@ -3942,7 +2621,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 20490028,
+      "packedOffset": 15096864,
       "packedBytes": 209427
     },
     {
@@ -3974,7 +2653,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 20699455,
+      "packedOffset": 15306291,
       "packedBytes": 218858
     },
     {
@@ -4006,7 +2685,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 20918313,
+      "packedOffset": 15525149,
       "packedBytes": 213447
     },
     {
@@ -4038,7 +2717,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 21131760,
+      "packedOffset": 15738596,
       "packedBytes": 218386
     },
     {
@@ -4070,7 +2749,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 21350146,
+      "packedOffset": 15956982,
       "packedBytes": 235032
     },
     {
@@ -4102,7 +2781,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 21585178,
+      "packedOffset": 16192014,
       "packedBytes": 245782
     },
     {
@@ -4134,7 +2813,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 21830960,
+      "packedOffset": 16437796,
       "packedBytes": 244488
     },
     {
@@ -4166,7 +2845,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 22075448,
+      "packedOffset": 16682284,
       "packedBytes": 248286
     },
     {
@@ -4198,7 +2877,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 22323734,
+      "packedOffset": 16930570,
       "packedBytes": 256777
     },
     {
@@ -4230,7 +2909,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 22580511,
+      "packedOffset": 17187347,
       "packedBytes": 252619
     },
     {
@@ -4262,7 +2941,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 22833130,
+      "packedOffset": 17439966,
       "packedBytes": 255900
     },
     {
@@ -4294,7 +2973,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 23089030,
+      "packedOffset": 17695866,
       "packedBytes": 257029
     },
     {
@@ -4326,7 +3005,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 23346059,
+      "packedOffset": 17952895,
       "packedBytes": 229146
     },
     {
@@ -4358,7 +3037,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 23575205,
+      "packedOffset": 18182041,
       "packedBytes": 269776
     },
     {
@@ -4390,7 +3069,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 23844981,
+      "packedOffset": 18451817,
       "packedBytes": 193682
     },
     {
@@ -4422,7 +3101,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 24038663,
+      "packedOffset": 18645499,
       "packedBytes": 251552
     },
     {
@@ -4454,7 +3133,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 24290215,
+      "packedOffset": 18897051,
       "packedBytes": 178553
     },
     {
@@ -4486,7 +3165,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 24468768,
+      "packedOffset": 19075604,
       "packedBytes": 186746
     },
     {
@@ -4518,7 +3197,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 24655514,
+      "packedOffset": 19262350,
       "packedBytes": 181925
     },
     {
@@ -4550,7 +3229,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 24837439,
+      "packedOffset": 19444275,
       "packedBytes": 174065
     },
     {
@@ -4582,7 +3261,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 25011504,
+      "packedOffset": 19618340,
       "packedBytes": 192420
     },
     {
@@ -4614,7 +3293,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 25203924,
+      "packedOffset": 19810760,
       "packedBytes": 195943
     },
     {
@@ -4646,7 +3325,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 25399867,
+      "packedOffset": 20006703,
       "packedBytes": 198099
     },
     {
@@ -4678,7 +3357,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 25597966,
+      "packedOffset": 20204802,
       "packedBytes": 195101
     },
     {
@@ -4710,7 +3389,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 25793067,
+      "packedOffset": 20399903,
       "packedBytes": 198687
     },
     {
@@ -4742,7 +3421,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 25991754,
+      "packedOffset": 20598590,
       "packedBytes": 196988
     },
     {
@@ -4774,7 +3453,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 26188742,
+      "packedOffset": 20795578,
       "packedBytes": 194383
     },
     {
@@ -4806,7 +3485,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 26383125,
+      "packedOffset": 20989961,
       "packedBytes": 198940
     },
     {
@@ -4838,7 +3517,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 26582065,
+      "packedOffset": 21188901,
       "packedBytes": 192198
     },
     {
@@ -4870,7 +3549,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 26774263,
+      "packedOffset": 21381099,
       "packedBytes": 193642
     },
     {
@@ -4902,7 +3581,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 26967905,
+      "packedOffset": 21574741,
       "packedBytes": 195159
     },
     {
@@ -4934,7 +3613,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 27163064,
+      "packedOffset": 21769900,
       "packedBytes": 188483
     },
     {
@@ -4966,7 +3645,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 27351547,
+      "packedOffset": 21958383,
       "packedBytes": 253043
     },
     {
@@ -4998,7 +3677,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 27604590,
+      "packedOffset": 22211426,
       "packedBytes": 230147
     },
     {
@@ -5030,7 +3709,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 27834737,
+      "packedOffset": 22441573,
       "packedBytes": 248917
     },
     {
@@ -5062,7 +3741,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 28083654,
+      "packedOffset": 22690490,
       "packedBytes": 256396
     },
     {
@@ -5094,7 +3773,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 28340050,
+      "packedOffset": 22946886,
       "packedBytes": 268467
     },
     {
@@ -5126,7 +3805,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 28608517,
+      "packedOffset": 23215353,
       "packedBytes": 268724
     },
     {
@@ -5158,7 +3837,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 28877241,
+      "packedOffset": 23484077,
       "packedBytes": 271998
     },
     {
@@ -5190,7 +3869,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 29149239,
+      "packedOffset": 23756075,
       "packedBytes": 266218
     },
     {
@@ -5222,7 +3901,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 29415457,
+      "packedOffset": 24022293,
       "packedBytes": 261339
     },
     {
@@ -5254,7 +3933,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 29676796,
+      "packedOffset": 24283632,
       "packedBytes": 265670
     },
     {
@@ -5286,7 +3965,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 29942466,
+      "packedOffset": 24549302,
       "packedBytes": 265894
     },
     {
@@ -5318,7 +3997,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 30208360,
+      "packedOffset": 24815196,
       "packedBytes": 264206
     },
     {
@@ -5350,7 +4029,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 30472566,
+      "packedOffset": 25079402,
       "packedBytes": 227484
     },
     {
@@ -5382,7 +4061,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 30700050,
+      "packedOffset": 25306886,
       "packedBytes": 241418
     },
     {
@@ -5414,7 +4093,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 30941468,
+      "packedOffset": 25548304,
       "packedBytes": 210426
     },
     {
@@ -5446,7 +4125,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 31151894,
+      "packedOffset": 25758730,
       "packedBytes": 206466
     },
     {
@@ -5478,7 +4157,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 31358360,
+      "packedOffset": 25965196,
       "packedBytes": 189480
     },
     {
@@ -5510,7 +4189,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 31547840,
+      "packedOffset": 26154676,
       "packedBytes": 201164
     },
     {
@@ -5542,7 +4221,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 31749004,
+      "packedOffset": 26355840,
       "packedBytes": 219314
     },
     {
@@ -5574,7 +4253,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 31968318,
+      "packedOffset": 26575154,
       "packedBytes": 199446
     },
     {
@@ -5606,7 +4285,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 32167764,
+      "packedOffset": 26774600,
       "packedBytes": 203154
     },
     {
@@ -5638,7 +4317,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 32370918,
+      "packedOffset": 26977754,
       "packedBytes": 214031
     },
     {
@@ -5670,7 +4349,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 32584949,
+      "packedOffset": 27191785,
       "packedBytes": 230088
     },
     {
@@ -5702,7 +4381,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 32815037,
+      "packedOffset": 27421873,
       "packedBytes": 217589
     },
     {
@@ -5734,7 +4413,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 33032626,
+      "packedOffset": 27639462,
       "packedBytes": 207810
     },
     {
@@ -5766,7 +4445,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 33240436,
+      "packedOffset": 27847272,
       "packedBytes": 210982
     },
     {
@@ -5798,7 +4477,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 33451418,
+      "packedOffset": 28058254,
       "packedBytes": 201392
     },
     {
@@ -5830,7 +4509,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 33652810,
+      "packedOffset": 28259646,
       "packedBytes": 209541
     },
     {
@@ -5862,7 +4541,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 33862351,
+      "packedOffset": 28469187,
       "packedBytes": 198306
     },
     {
@@ -5894,7 +4573,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 34060657,
+      "packedOffset": 28667493,
       "packedBytes": 198635
     },
     {
@@ -5926,7 +4605,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 34259292,
+      "packedOffset": 28866128,
       "packedBytes": 180960
     },
     {
@@ -5958,7 +4637,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 34440252,
+      "packedOffset": 29047088,
       "packedBytes": 190257
     },
     {
@@ -5990,7 +4669,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 34630509,
+      "packedOffset": 29237345,
       "packedBytes": 135232
     },
     {
@@ -6022,7 +4701,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 34765741,
+      "packedOffset": 29372577,
       "packedBytes": 136893
     },
     {
@@ -6054,7 +4733,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 34902634,
+      "packedOffset": 29509470,
       "packedBytes": 138659
     },
     {
@@ -6086,7 +4765,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 35041293,
+      "packedOffset": 29648129,
       "packedBytes": 134094
     },
     {
@@ -6118,7 +4797,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 35175387,
+      "packedOffset": 29782223,
       "packedBytes": 159065
     },
     {
@@ -6150,7 +4829,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 35334452,
+      "packedOffset": 29941288,
       "packedBytes": 156443
     },
     {
@@ -6182,7 +4861,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 35490895,
+      "packedOffset": 30097731,
       "packedBytes": 148941
     },
     {
@@ -6214,7 +4893,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 35639836,
+      "packedOffset": 30246672,
       "packedBytes": 166843
     },
     {
@@ -6246,7 +4925,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 35806679,
+      "packedOffset": 30413515,
       "packedBytes": 170478
     },
     {
@@ -6278,7 +4957,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 35977157,
+      "packedOffset": 30583993,
       "packedBytes": 168299
     },
     {
@@ -6310,7 +4989,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 36145456,
+      "packedOffset": 30752292,
       "packedBytes": 169390
     },
     {
@@ -6342,7 +5021,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 36314846,
+      "packedOffset": 30921682,
       "packedBytes": 167654
     },
     {
@@ -6374,7 +5053,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 36482500,
+      "packedOffset": 31089336,
       "packedBytes": 170672
     },
     {
@@ -6406,7 +5085,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 36653172,
+      "packedOffset": 31260008,
       "packedBytes": 171874
     },
     {
@@ -6438,7 +5117,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 36825046,
+      "packedOffset": 31431882,
       "packedBytes": 164817
     },
     {
@@ -6470,7 +5149,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 36989863,
+      "packedOffset": 31596699,
       "packedBytes": 168705
     },
     {
@@ -6502,7 +5181,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 37158568,
+      "packedOffset": 31765404,
       "packedBytes": 161986
     },
     {
@@ -6534,7 +5213,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 37320554,
+      "packedOffset": 31927390,
       "packedBytes": 156815
     },
     {
@@ -6566,7 +5245,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 37477369,
+      "packedOffset": 32084205,
       "packedBytes": 157573
     },
     {
@@ -6598,7 +5277,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 37634942,
+      "packedOffset": 32241778,
       "packedBytes": 160759
     },
     {
@@ -6630,7 +5309,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 37795701,
+      "packedOffset": 32402537,
       "packedBytes": 166594
     },
     {
@@ -6662,7 +5341,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 37962295,
+      "packedOffset": 32569131,
       "packedBytes": 166184
     },
     {
@@ -6694,7 +5373,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 38128479,
+      "packedOffset": 32735315,
       "packedBytes": 170111
     },
     {
@@ -6726,7 +5405,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 38298590,
+      "packedOffset": 32905426,
       "packedBytes": 168802
     },
     {
@@ -6758,7 +5437,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 38467392,
+      "packedOffset": 33074228,
       "packedBytes": 174819
     },
     {
@@ -6790,7 +5469,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 38642211,
+      "packedOffset": 33249047,
       "packedBytes": 172925
     },
     {
@@ -6822,7 +5501,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 38815136,
+      "packedOffset": 33421972,
       "packedBytes": 174415
     },
     {
@@ -6854,7 +5533,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 38989551,
+      "packedOffset": 33596387,
       "packedBytes": 171722
     },
     {
@@ -6886,7 +5565,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 39161273,
+      "packedOffset": 33768109,
       "packedBytes": 175031
     },
     {
@@ -6918,7 +5597,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 39336304,
+      "packedOffset": 33943140,
       "packedBytes": 172099
     },
     {
@@ -6950,7 +5629,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 39508403,
+      "packedOffset": 34115239,
       "packedBytes": 170206
     },
     {
@@ -6982,7 +5661,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 39678609,
+      "packedOffset": 34285445,
       "packedBytes": 172400
     },
     {
@@ -7014,7 +5693,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 39851009,
+      "packedOffset": 34457845,
       "packedBytes": 141187
     },
     {
@@ -7046,7 +5725,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 39992196,
+      "packedOffset": 34599032,
       "packedBytes": 143848
     },
     {
@@ -7078,7 +5757,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 40136044,
+      "packedOffset": 34742880,
       "packedBytes": 148216
     },
     {
@@ -7110,7 +5789,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 40284260,
+      "packedOffset": 34891096,
       "packedBytes": 147164
     },
     {
@@ -7142,7 +5821,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 40431424,
+      "packedOffset": 35038260,
       "packedBytes": 160579
     },
     {
@@ -7174,7 +5853,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 40592003,
+      "packedOffset": 35198839,
       "packedBytes": 158285
     },
     {
@@ -7206,7 +5885,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 40750288,
+      "packedOffset": 35357124,
       "packedBytes": 155971
     },
     {
@@ -7238,7 +5917,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 40906259,
+      "packedOffset": 35513095,
       "packedBytes": 160465
     },
     {
@@ -7270,7 +5949,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 41066724,
+      "packedOffset": 35673560,
       "packedBytes": 150137
     },
     {
@@ -7302,7 +5981,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 41216861,
+      "packedOffset": 35823697,
       "packedBytes": 155828
     },
     {
@@ -7334,7 +6013,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 41372689,
+      "packedOffset": 35979525,
       "packedBytes": 158803
     },
     {
@@ -7366,7 +6045,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 41531492,
+      "packedOffset": 36138328,
       "packedBytes": 158491
     },
     {
@@ -7398,7 +6077,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 41689983,
+      "packedOffset": 36296819,
       "packedBytes": 158425
     },
     {
@@ -7430,7 +6109,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 41848408,
+      "packedOffset": 36455244,
       "packedBytes": 153801
     },
     {
@@ -7462,7 +6141,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 42002209,
+      "packedOffset": 36609045,
       "packedBytes": 162104
     },
     {
@@ -7494,7 +6173,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 42164313,
+      "packedOffset": 36771149,
       "packedBytes": 162154
     },
     {
@@ -7526,7 +6205,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 42326467,
+      "packedOffset": 36933303,
       "packedBytes": 154805
     },
     {
@@ -7558,7 +6237,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 42481272,
+      "packedOffset": 37088108,
       "packedBytes": 157704
     },
     {
@@ -7590,7 +6269,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 42638976,
+      "packedOffset": 37245812,
       "packedBytes": 163971
     },
     {
@@ -7622,7 +6301,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 42802947,
+      "packedOffset": 37409783,
       "packedBytes": 164693
     },
     {
@@ -7654,7 +6333,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 42967640,
+      "packedOffset": 37574476,
       "packedBytes": 176922
     },
     {
@@ -7686,7 +6365,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 43144562,
+      "packedOffset": 37751398,
       "packedBytes": 174513
     },
     {
@@ -7718,7 +6397,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 43319075,
+      "packedOffset": 37925911,
       "packedBytes": 176656
     },
     {
@@ -7750,7 +6429,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 43495731,
+      "packedOffset": 38102567,
       "packedBytes": 180816
     },
     {
@@ -7782,7 +6461,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 43676547,
+      "packedOffset": 38283383,
       "packedBytes": 172830
     },
     {
@@ -7814,7 +6493,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 43849377,
+      "packedOffset": 38456213,
       "packedBytes": 173085
     },
     {
@@ -7846,7 +6525,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 44022462,
+      "packedOffset": 38629298,
       "packedBytes": 170577
     },
     {
@@ -7878,7 +6557,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 44193039,
+      "packedOffset": 38799875,
       "packedBytes": 168868
     },
     {
@@ -7910,7 +6589,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 44361907,
+      "packedOffset": 38968743,
       "packedBytes": 171475
     },
     {
@@ -7942,7 +6621,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 44533382,
+      "packedOffset": 39140218,
       "packedBytes": 180905
     },
     {
@@ -7974,7 +6653,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 44714287,
+      "packedOffset": 39321123,
       "packedBytes": 189789
     },
     {
@@ -8006,7 +6685,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 44904076,
+      "packedOffset": 39510912,
       "packedBytes": 182193
     },
     {
@@ -8038,7 +6717,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 45086269,
+      "packedOffset": 39693105,
       "packedBytes": 144922
     },
     {
@@ -8070,7 +6749,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 45231191,
+      "packedOffset": 39838027,
       "packedBytes": 143104
     },
     {
@@ -8102,7 +6781,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 45374295,
+      "packedOffset": 39981131,
       "packedBytes": 140860
     },
     {
@@ -8134,7 +6813,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 45515155,
+      "packedOffset": 40121991,
       "packedBytes": 136722
     },
     {
@@ -8166,7 +6845,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 45651877,
+      "packedOffset": 40258713,
       "packedBytes": 149979
     },
     {
@@ -8198,7 +6877,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 45801856,
+      "packedOffset": 40408692,
       "packedBytes": 150353
     },
     {
@@ -8230,7 +6909,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 45952209,
+      "packedOffset": 40559045,
       "packedBytes": 149907
     },
     {
@@ -8262,7 +6941,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 46102116,
+      "packedOffset": 40708952,
       "packedBytes": 152810
     },
     {
@@ -8294,7 +6973,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 46254926,
+      "packedOffset": 40861762,
       "packedBytes": 147978
     },
     {
@@ -8326,7 +7005,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 46402904,
+      "packedOffset": 41009740,
       "packedBytes": 152895
     },
     {
@@ -8358,7 +7037,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 46555799,
+      "packedOffset": 41162635,
       "packedBytes": 146778
     },
     {
@@ -8390,7 +7069,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 46702577,
+      "packedOffset": 41309413,
       "packedBytes": 150124
     },
     {
@@ -8422,7 +7101,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 46852701,
+      "packedOffset": 41459537,
       "packedBytes": 154020
     },
     {
@@ -8454,7 +7133,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 47006721,
+      "packedOffset": 41613557,
       "packedBytes": 152611
     },
     {
@@ -8486,7 +7165,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 47159332,
+      "packedOffset": 41766168,
       "packedBytes": 154634
     },
     {
@@ -8518,7 +7197,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 47313966,
+      "packedOffset": 41920802,
       "packedBytes": 157591
     },
     {
@@ -8550,7 +7229,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 47471557,
+      "packedOffset": 42078393,
       "packedBytes": 175719
     },
     {
@@ -8582,7 +7261,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 47647276,
+      "packedOffset": 42254112,
       "packedBytes": 176979
     },
     {
@@ -8614,7 +7293,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 47824255,
+      "packedOffset": 42431091,
       "packedBytes": 177133
     },
     {
@@ -8646,7 +7325,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 48001388,
+      "packedOffset": 42608224,
       "packedBytes": 176767
     },
     {
@@ -8678,7 +7357,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 48178155,
+      "packedOffset": 42784991,
       "packedBytes": 178204
     },
     {
@@ -8710,7 +7389,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 48356359,
+      "packedOffset": 42963195,
       "packedBytes": 178050
     },
     {
@@ -8742,7 +7421,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 48534409,
+      "packedOffset": 43141245,
       "packedBytes": 178059
     },
     {
@@ -8774,7 +7453,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 48712468,
+      "packedOffset": 43319304,
       "packedBytes": 178113
     },
     {
@@ -8806,7 +7485,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 48890581,
+      "packedOffset": 43497417,
       "packedBytes": 169773
     },
     {
@@ -8838,7 +7517,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 49060354,
+      "packedOffset": 43667190,
       "packedBytes": 173332
     },
     {
@@ -8870,7 +7549,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 49233686,
+      "packedOffset": 43840522,
       "packedBytes": 171649
     },
     {
@@ -8902,7 +7581,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 49405335,
+      "packedOffset": 44012171,
       "packedBytes": 174512
     },
     {
@@ -8934,7 +7613,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 49579847,
+      "packedOffset": 44186683,
       "packedBytes": 177709
     },
     {
@@ -8966,7 +7645,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 49757556,
+      "packedOffset": 44364392,
       "packedBytes": 164212
     },
     {
@@ -8998,7 +7677,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 49921768,
+      "packedOffset": 44528604,
       "packedBytes": 176507
     },
     {
@@ -9030,7 +7709,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 50098275,
+      "packedOffset": 44705111,
       "packedBytes": 179161
     },
     {
@@ -9062,7 +7741,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 50277436,
+      "packedOffset": 44884272,
       "packedBytes": 111597
     },
     {
@@ -9094,7 +7773,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 50389033,
+      "packedOffset": 44995869,
       "packedBytes": 109615
     },
     {
@@ -9126,7 +7805,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 50498648,
+      "packedOffset": 45105484,
       "packedBytes": 112478
     },
     {
@@ -9158,7 +7837,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 50611126,
+      "packedOffset": 45217962,
       "packedBytes": 115149
     },
     {
@@ -9190,7 +7869,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 50726275,
+      "packedOffset": 45333111,
       "packedBytes": 120465
     },
     {
@@ -9222,7 +7901,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 50846740,
+      "packedOffset": 45453576,
       "packedBytes": 119572
     },
     {
@@ -9254,7 +7933,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 50966312,
+      "packedOffset": 45573148,
       "packedBytes": 119957
     },
     {
@@ -9286,7 +7965,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 51086269,
+      "packedOffset": 45693105,
       "packedBytes": 119927
     },
     {
@@ -9318,7 +7997,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 51206196,
+      "packedOffset": 45813032,
       "packedBytes": 122262
     },
     {
@@ -9350,7 +8029,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 51328458,
+      "packedOffset": 45935294,
       "packedBytes": 121562
     },
     {
@@ -9382,7 +8061,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 51450020,
+      "packedOffset": 46056856,
       "packedBytes": 120934
     },
     {
@@ -9414,7 +8093,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 51570954,
+      "packedOffset": 46177790,
       "packedBytes": 120584
     },
     {
@@ -9446,7 +8125,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 51691538,
+      "packedOffset": 46298374,
       "packedBytes": 117948
     },
     {
@@ -9478,7 +8157,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 51809486,
+      "packedOffset": 46416322,
       "packedBytes": 117993
     },
     {
@@ -9510,7 +8189,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 51927479,
+      "packedOffset": 46534315,
       "packedBytes": 117235
     },
     {
@@ -9542,7 +8221,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52044714,
+      "packedOffset": 46651550,
       "packedBytes": 118348
     },
     {
@@ -9574,7 +8253,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52163062,
+      "packedOffset": 46769898,
       "packedBytes": 88005
     },
     {
@@ -9606,7 +8285,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52251067,
+      "packedOffset": 46857903,
       "packedBytes": 88912
     },
     {
@@ -9638,7 +8317,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52339979,
+      "packedOffset": 46946815,
       "packedBytes": 90634
     },
     {
@@ -9670,7 +8349,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52430613,
+      "packedOffset": 47037449,
       "packedBytes": 84724
     },
     {
@@ -9702,7 +8381,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52515337,
+      "packedOffset": 47122173,
       "packedBytes": 93386
     },
     {
@@ -9734,7 +8413,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52608723,
+      "packedOffset": 47215559,
       "packedBytes": 91601
     },
     {
@@ -9766,7 +8445,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52700324,
+      "packedOffset": 47307160,
       "packedBytes": 92052
     },
     {
@@ -9798,7 +8477,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52792376,
+      "packedOffset": 47399212,
       "packedBytes": 92905
     },
     {
@@ -9830,7 +8509,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52885281,
+      "packedOffset": 47492117,
       "packedBytes": 97386
     },
     {
@@ -9862,7 +8541,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 52982667,
+      "packedOffset": 47589503,
       "packedBytes": 101717
     },
     {
@@ -9894,7 +8573,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 53084384,
+      "packedOffset": 47691220,
       "packedBytes": 99088
     },
     {
@@ -9926,7 +8605,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 53183472,
+      "packedOffset": 47790308,
       "packedBytes": 101039
     },
     {
@@ -9958,7 +8637,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 53284511,
+      "packedOffset": 47891347,
       "packedBytes": 101562
     },
     {
@@ -9990,7 +8669,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 53386073,
+      "packedOffset": 47992909,
       "packedBytes": 104104
     },
     {
@@ -10022,7 +8701,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 53490177,
+      "packedOffset": 48097013,
       "packedBytes": 102632
     },
     {
@@ -10054,7 +8733,7 @@
       "terminalHalfCosineFadeFrames": 2646,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 53592809,
+      "packedOffset": 48199645,
       "packedBytes": 104439
     },
     {
@@ -10086,7 +8765,7 @@
       "terminalHalfCosineFadeFrames": 2880,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 53697248,
+      "packedOffset": 48304084,
       "packedBytes": 192373
     },
     {
@@ -10118,7 +8797,7 @@
       "terminalHalfCosineFadeFrames": 2880,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 53889621,
+      "packedOffset": 48496457,
       "packedBytes": 189324
     },
     {
@@ -10150,7 +8829,7 @@
       "terminalHalfCosineFadeFrames": 2880,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 54078945,
+      "packedOffset": 48685781,
       "packedBytes": 223583
     },
     {
@@ -10182,7 +8861,7 @@
       "terminalHalfCosineFadeFrames": 2880,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 54302528,
+      "packedOffset": 48909364,
       "packedBytes": 214776
     },
     {
@@ -10214,7 +8893,7 @@
       "terminalHalfCosineFadeFrames": 2880,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 54517304,
+      "packedOffset": 49124140,
       "packedBytes": 235432
     },
     {
@@ -10246,7 +8925,7 @@
       "terminalHalfCosineFadeFrames": 2880,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 54752736,
+      "packedOffset": 49359572,
       "packedBytes": 209180
     },
     {
@@ -10278,7 +8957,7 @@
       "terminalHalfCosineFadeFrames": 2880,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 54961916,
+      "packedOffset": 49568752,
       "packedBytes": 229669
     },
     {
@@ -10310,7 +8989,7 @@
       "terminalHalfCosineFadeFrames": 2880,
       "terminalHalfCosineFadeMs": 60.0,
       "terminalMaxAdjacentJumpInt16": 0,
-      "packedOffset": 55191585,
+      "packedOffset": 49798421,
       "packedBytes": 215089
     }
   ]

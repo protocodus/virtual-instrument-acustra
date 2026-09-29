@@ -7,10 +7,6 @@ namespace acustra
 
 struct MaterialCalibration
 {
-    // Nylon's bending stiffness comes from Woodhouse's measured per-string
-    // EI table (nylonBendingEI in AcustraEngine.cpp), not a fitted scale on
-    // a diameter-derived value, so nylon.stiffnessScale is inert: it stays
-    // 1.0 and is not part of the calibration array. Steel still uses it.
     float stiffnessScale;
     float fundamentalT60Scale;
     float frequencyLossScale;
@@ -27,12 +23,11 @@ struct PhysicalCalibration
     float bridgeMobilityScale;
     float residueTiltDbPerOctave;
     float directGain;
-    MaterialCalibration nylon;
     MaterialCalibration steel;
     float apertureRegisterExponent { 1.0f };
     // Radiation gain on steel's measured air mode (the g21 modes between 85
     // and 145 Hz) at the bridge microphone of the Stereo pair only; the
-    // upper-bout microphone, nylon and the named models hear it as measured.
+    // upper-bout microphone and the named models hear it as measured.
     float lowBodyModeGain { 1.0f };
     float steelDisplacementScaleMetres { 0.0061f };
     float steelFretT60Slope { -0.030f };
@@ -52,8 +47,8 @@ struct PhysicalCalibration
     // behind the saddle instead - roughly 12-16 mm at a steel-string's pins,
     // further at a classical's tie block - and the distance is not part of
     // the g21 measurement, so it is bounded and fitted rather than assumed.
-    // Re-swept on the classical bridge rather than inherited from g21, over
-    // E, G, Am, D and C chords. Worst separable note's pull early/late in
+    // Swept on the classical bridge then shipping, over E, G, Am, D and C
+    // chords. Worst separable note's pull early/late in
     // cents: 1.4/3.8 at the 3.25 mm stub, 2.1/2.4 at 8 mm, 2.9/3.2 at
     // 17.2 mm, 25.8/98.2 with no anchor at all. The coincident pairs of the
     // same sweep - a played fundamental landing on a lower played note's
@@ -75,9 +70,8 @@ struct PhysicalCalibration
     // Transverse motion stretches the string; DAFx-26's tension increase
     // EA/(2L) times the mean square slope is a force at the saddle, and it
     // resonates at the string's own longitudinal modes, n*c_long/(2L) with
-    // c_long = sqrt(EA/mu). For this steel set that is 1.5 to 3.9 kHz and for
-    // plain nylon 1.18 kHz, both from the construction data the transverse
-    // model already uses. Because the drive is a squared slope it carries the
+    // c_long = sqrt(EA/mu). For this steel set that is 1.5 to 3.9 kHz, from
+    // the construction data the transverse model already uses. Because the drive is a squared slope it carries the
     // products of transverse partials, so what the resonators pass are the
     // sum and difference phantom partials rather than an added tone. Zero is
     // an exact no-op.
@@ -101,8 +95,8 @@ struct PhysicalCalibration
     // fittable rather than fixed because he calls the attribution tentative
     // and says the exact amount "would require detailed computation"; the
     // bound is one string diameter - his own remark that the correction is of
-    // the order of the string diameter - taken as the 0.82 mm B string the
-    // 0.8 mm was measured on (nylonDiameterMetres in AcustraEngine.cpp).
+    // the order of the string diameter - taken as the 0.82 mm nylon B string
+    // the 0.8 mm was measured on.
     float polarisationEndCorrectionMetres { 0.0008f };
     // The Pick technique only; Finger and Thumb never read these. A string
     // does not leave a plectrum's tip from rest: the contact region is
@@ -134,8 +128,6 @@ struct PhysicalCalibration
     // AcustraEngine.cpp). Zero is an exact no-op.
     float steelWoundBendingLoss { 0.0f };
     float steelPlainBendingLoss { 0.0f };
-    float nylonWoundBendingLoss { 0.0f };
-    float nylonPlainBendingLoss { 0.0f };
     // The noise a fingertip, nail or plectrum makes as it leaves the string
     // (AcustraEngine::initialiseContactNoise and renderContactNoise). One
     // random contact force per pluck, along the stroke: white between the
@@ -145,41 +137,36 @@ struct PhysicalCalibration
     // sliding speed and grows with it: Akay, "Acoustics of friction", JASA 111
     // (2002) 1525-1548), an RMS of v^contactNoiseVelocityExponent times the
     // force F0 the hand held, and one decay from the release. It reaches the
-    // microphones two ways. Its string-borne part (contactNoiseFinger, Nylon,
-    // Pick: the RMS as a fraction of F0 at v = 1) enters the string at the
+    // microphones two ways. Its string-borne part (contactNoiseFinger,
+    // contactNoisePick: the RMS as a fraction of F0 at v = 1) enters the string at the
     // contact point as velocity waves F / (2Z) both ways, so it reaches the
     // bridge and body as the string's first arrivals do. Its airborne part
-    // (contactClickFinger, Nylon, Pick) is the tool's own click, a small
+    // (contactClickFinger, contactClickPick) is the tool's own click, a small
     // source at the contact whose pressure follows the force's rate of
     // change up to where a 3 mm radiator stops being small (18 kHz), heard
     // through the direct path after its flight to the microphone, without
-    // touching the string or the body. The levels are per tool and material (a steel string's
-    // finger, a classical player's nail, a plectrum on either); Thumb takes
+    // touching the string or the body. The levels are per tool (a finger, a
+    // plectrum); Thumb takes
     // the finger's with its corner lowered by the ratio of the two contact
     // widths. Zero levels are an exact no-op.
     //
     // What the recordings asked for (Tools/MeasureAttackTransient.py on the
     // bank's training rows, 2026-09-28): in the first 12 ms a loud picked
     // note carries 14-29 dB more energy between its partials at 1-12.5 kHz
-    // than the engine renders, a soft one 7-20 dB and a classical note 5-28
-    // dB, rising with frequency; that energy falls at a median 420 dB/s over
+    // than the engine renders and a soft one 7-20 dB, rising with frequency; that energy falls at a median 420 dB/s over
     // 12-40 ms (contactNoiseDecaySeconds, 20.7 ms, is that decay, not a fit);
     // and on the loud layer it does not recur at the string's period (its
     // 2-14 kHz content correlates 0.18-0.54 with itself a period later, where
-    // the engine's and the soft layer's correlate 0.80-0.96; the anechoic
-    // Iowa nylon notes' 8-14 kHz 0.16-0.38), so it is not the string's own
+    // the engine's and the soft layer's correlate 0.80-0.96), so it is not the string's own
     // vibration nor a room's. A force launched into the string recurs with the
     // string, and the fits drive the string-borne levels to zero.
     float contactNoiseFinger { 0.0f };
-    float contactNoiseNylon { 0.0f };
     float contactNoisePick { 0.0f };
     float contactNoiseVelocityExponent { 1.0f };
     float contactNoiseCornerHz { 4000.0f };
-    float nylonContactNoiseCornerHz { 4000.0f };
     float pickContactNoiseCornerHz { 8000.0f };
     float contactNoiseDecaySeconds { 0.0207f };
     float contactClickFinger { 0.0f };
-    float contactClickNylon { 0.0f };
     float contactClickPick { 0.0f };
 };
 
@@ -218,41 +205,11 @@ struct PhysicalCalibration
 // the old minimum-phase calibration over suppressed upper bands by 18-28 dB.
 // Keep the remaining string/bridge calibration above. These four neutral
 // factors are the auditioned model, not a new fit or an absolute-SPL claim.
-// 2026-09-08: nylon T60 and contact width calibrated on fixed Yamaha CM-40
-// pitches, then checked on disjoint pitches and the separate classical bank.
-// Both datasets improve; steel is unchanged. See Docs/realism-work.md and
-// Docs/realism-calibration-2026-09-08.json for assumptions and exact scores.
+// Nylon strings were retired on 2026-09-29 (Docs/decisions.md); the notes
+// below that cite nylon evidence record how a value still shared by the
+// steel strings was chosen.
 inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     1.0f, 1.0f, 0.754677154f, 0.0f, 0.0f,
-    // Nylon's fundamental T60 scale is 1.4, chosen by ear on 2026-09-24 over
-    // the fitted 1.037816616 (Docs/decisions.md). The classical bank's open
-    // strings lose their fundamental at 4-11 dB/s where the model's lost
-    // theirs at 15-27, while its upper rows are samples trimmed with a fade,
-    // and the benchmark prefers the fitted value (nylon training 2.0% better);
-    // a blind listener preferred the longer ring over arpeggios on a held
-    // bass and heard no difference on open strings left to ring.
-    // Nylon's pluck was held within 1.3 of its reference distance, about 107
-    // mm from the bridge, while the classical recordings were played about a
-    // third of the way along the string: their open G and B carry almost no
-    // third harmonic (41-47 dB down), the model's fundamental sat 8-16 dB
-    // under theirs against the second and third at 110-310 Hz, and a listener
-    // heard the engine lack substance. With the bound at 3.0 the
-    // nylon-string stage of Tools/OptimizePhysicalModel.py, started from 2.0
-    // (a start from the shipped 1.127 stalls in the near basin), puts the
-    // finger 178 mm from the bridge at the default Pluck Position, the
-    // classical right hand's place at the soundhole's edge, with a wider
-    // contact and more upper-partial loss (2026-09-24): nylon training
-    // 7.554 -> 7.164, development validation 6.911 -> 6.418. The T60 scale
-    // (1.4) is chosen by ear and was held.
-    // Nylon's velocity brightness is 0.15, chosen by ear on 2026-09-28
-    // (Docs/decisions.md, Set 14) over 0.1125: the value both of that set's
-    // candidates gave nylon, B (the half-loss snap) and C (the joint refit's
-    // optimum), which the listener preferred to shipping. It is the
-    // snap-nylon stage's fit with the wound strings' bending loss below
-    // (Tools/OptimizePhysicalModel.py, 91 evaluations: nylon training 7.4698
-    // -> 7.0313), and it is not refit.
-    { 1.0f, 1.4f, 1.65213516f, 2.39142268f,
-      0.0f, 2.14375f, 0.15f },
     // Steel's pluck distance scale is 1.8, chosen by ear on 2026-09-25 over
     // the fitted 0.888 (Docs/decisions.md): at the default Pluck Position a
     // finger meets the string 149 mm from the bridge instead of 74 mm, at
@@ -362,11 +319,8 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // joint refit's optimum, took the wound loss to 0 and the plain to
     // 0.00078125. Steel ships 70% of the way from C toward B: wound 0.035,
     // plain 0.002334375, so its upper partials die at about 70% of B's added
-    // rate and 35% of the rate the recordings measure. Nylon takes both
-    // sets' shared values: wound 0.029296875 (the snap-nylon stage's fit;
-    // the recordings' decay reads 0.03) and plain 0. None of the four is
-    // refit.
-    0.035f, 0.002334375f, 0.029296875f, 0.0f
+    // rate and 35% of the rate the recordings measure. Neither is refit.
+    0.035f, 0.002334375f
     // The contact noise and click levels keep their zero defaults: the click
     // was rejected by ear on 2026-09-28 (Set 16, "the pick is TOO LOUD").
 };

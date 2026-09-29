@@ -51,6 +51,11 @@ def symmetric(values):
     return np.array([[values[0], values[1]], [values[1], values[2]]])
 
 
+# ModalPreloadProbe.cpp's variant index for the steel Original configuration,
+# the only one it exports (the nylon variant, 0, was retired on 2026-09-29).
+STEEL_VARIANT = 1
+
+
 def read_coefficients(data):
     rows = [json.loads(line) for line in data.splitlines() if line.strip()]
     fields = {
@@ -66,7 +71,7 @@ def read_coefficients(data):
         kind = row.get("kind")
         require(isinstance(kind, str) and kind in fields, "Unsupported coefficient row kind")
         require(row.get("rate") == 48000, "The reference requires a 48k export")
-        require(row.get("variant") in (0, 1), "Expected nylon/steel Original variants")
+        require(row.get("variant") == STEEL_VARIANT, "Expected the steel Original variant")
         for name in fields[kind]:
             value = row.get(name)
             values = value if name in ("K", "R") else [value]
@@ -76,7 +81,7 @@ def read_coefficients(data):
             require(all(isinstance(v, (int, float)) and not isinstance(v, bool)
                         and math.isfinite(v) for v in values),
                     f"{name} must contain finite numbers")
-    for variant in (0, 1):
+    for variant in (STEEL_VARIANT,):
         subset = [row for row in rows if row["variant"] == variant]
         configs = [row for row in subset if row["kind"] == "configuration"]
         strings = [row for row in subset if row["kind"] == "string"]
@@ -256,7 +261,7 @@ def build(rows, variant, count):
     require(abs(sum(energy_parts(u0)) - energy0) / energy0 < 1e-12,
             "Independent energy components disagree with total preload energy")
     metadata = {
-        "material": ["nylon", "steel"][variant],
+        "material": "steel",
         "string_modes": count,
         "body_coordinates": body_count,
         "active_bridge_modes": len(projection_errors),
@@ -393,9 +398,9 @@ def run(rows, variant, count):
 
 
 def make_report(rows, provenance):
-    results = [run(rows, variant, count) for variant in (0, 1) for count in (32, 64, 128)]
+    results = [run(rows, STEEL_VARIANT, count) for count in (32, 64, 128)]
     convergence = []
-    for material in ("nylon", "steel"):
+    for material in ("steel",):
         values = [np.array(case["expm_observations"]["values"])
                   for case in results if case["material"] == material]
         differences = []
@@ -458,7 +463,7 @@ def main():
         source = script.parent.parent / "Source" / "DSP"
         source_names = (
             "AcustraEngine.cpp", "AcustraEngine.h", "FittedPhysicalData.h",
-            "MeasuredBodyData.h", "MeasuredBridgeData.h", "MeasuredSteelBridgeData.h",
+            "MeasuredBodyData.h", "MeasuredBridgeData.h",
         )
         provenance = {
             "coefficients_sha256": sha256(data),

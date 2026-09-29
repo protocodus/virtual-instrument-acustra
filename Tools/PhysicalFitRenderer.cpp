@@ -7,6 +7,18 @@
 // makeTestSchedule.
 // --models-only invalidates model_render_complete before overwriting audio;
 // only a completed render can be scored. Failed runs can be rerendered.
+//
+// Steel only. The instrument has had no nylon strings since 2026-09-29, so
+// the schedule holds the bank's steel rows alone: the picked archtop
+// (SteelPicked) for training, validation and the frozen test split, and the
+// plucked Eastman flat-top (SteelPlucked) as its reported reading. The
+// classical recordings the bank once held beside them were removed with the
+// nylon strings: a nylon recording has no model to compare with now. Steel
+// rows render exactly as they did before, sample for sample.
+//
+// The calibration vector is the 37 values of calibrationOrderJson, in that
+// order (OptimizePhysicalModel.NAMES); the 48-value vector of the builds
+// that had nylon strings, and its shorter legacy forms, are not accepted.
 
 #include "DSP/AcustraEngine.h"
 #include "DSP/SampleBank/EmbeddedGuitarBank.h"
@@ -38,23 +50,21 @@ using acustra::AcustraEngine;
 using acustra::EngineParameters;
 using acustra::MaterialCalibration;
 using acustra::PhysicalCalibration;
-using acustra::StringMaterial;
 using acustra::fittedPhysicalCalibration;
 using acustra::dense::Bank;
 using acustra::dense::Library;
 using acustra::dense::Sampler;
 using acustra::dense::ZoneView;
 
-// One model per invocation; the selected bridge and body shape are also
-// written to manifests. Without --shape each material renders the body its
-// calibration was fitted on: steel the public default Dreadnought, nylon the
-// Auditorium slot that is the measured classical (the Classical preset).
-acustra::BridgeModel renderBridgeModel { acustra::BridgeModel::Original };
+// One model per invocation; the selected body shape and guitar model are also
+// written to manifests. Without --shape every row renders the public default
+// Dreadnought, the body steel's calibration was fitted on, in its default
+// wood (Spruce, the wood the measured g21 body was built of).
 std::optional<acustra::BodyShape> renderShapeOverride;
 constexpr std::array shapeNames { "parlor", "auditorium", "dreadnought", "jumbo" };
 // --archtop-picking renders the picked archtop rows (Material::Steel) with
-// that tool; the finger-plucked flat-top and classical rows always render
-// with Finger, which is what was on the string in those recordings.
+// that tool; the finger-plucked flat-top rows always render with Finger,
+// which is what was on the string in those recordings.
 acustra::PickingTechnique archtopPicking { acustra::EngineParameters {}.picking };
 // --guitar-model renders every row through one named measured guitar's
 // bridge and radiation instead of Original's, to ask which measured body the
@@ -63,42 +73,19 @@ acustra::GuitarModel renderGuitarModel { acustra::GuitarModel::Original };
 constexpr std::array guitarModelNames { "original", "bellido1978" };
 constexpr std::array pickingNames { "finger", "pick", "thumb" };
 
-acustra::BodyShape renderShapeFor(acustra::StringMaterial material) noexcept
+acustra::BodyShape renderShape() noexcept
 {
-    if (renderShapeOverride)
-        return *renderShapeOverride;
-    return material == acustra::StringMaterial::Nylon
-        ? acustra::BodyShape::Auditorium : acustra::EngineParameters {}.shape;
-}
-
-// Each Original bank at the wood it was built of (AcustraEngine::
-// measuredBankWood), which Body Material leaves as measured: spruce for
-// steel's g21, cedar for nylon's g34. A named model keeps the default wood,
-// as its evaluations always have.
-acustra::BodyMaterial renderWoodFor(acustra::StringMaterial material) noexcept
-{
-    if (renderGuitarModel != acustra::GuitarModel::Original)
-        return acustra::EngineParameters {}.bodyMaterial;
-    return acustra::AcustraEngine::measuredBankWood(material,
-                                                    acustra::GuitarModel::Original);
+    return renderShapeOverride.value_or(acustra::EngineParameters {}.shape);
 }
 
 constexpr int modelSampleRate = 48000;
 constexpr int renderBlockSize = 127;
 constexpr double renderSeconds = 4.2;
-constexpr std::size_t calibrationValueCount = 48;
-// The vector before the plectrum edge and the strings' bending loss were
-// fitted values: a 32-value command line takes those five from
-// fittedPhysicalCalibration, the values this build ships.
-constexpr std::size_t legacyCalibrationValueCount = 32;
-// The vector before the contact noise's eleven values: a 37-value command
-// line takes them from fittedPhysicalCalibration too.
-constexpr std::size_t bendingCalibrationValueCount = 37;
+constexpr std::size_t calibrationValueCount = 37;
 constexpr float int16Scale = 1.0f / 32768.0f;
 
 enum class Material
 {
-    Nylon,
     Steel,
     // The Eastman E1D regions are the only flat-top steel acoustic in the
     // bank, and the steel fit is against a miked archtop. They are never
@@ -152,26 +139,24 @@ using SampleModelKey = std::tuple<Material, int, int, int>;
 // calibration that was actually rendered. These mirror AcustraEngine's bounds.
 constexpr CalibrationValues calibrationMinimums {{
     0.96f, 0.05f, 0.25f, -6.0f, 0.0f,
-    0.4f, 0.35f, 0.35f, 0.0f, 0.7f, 0.0f,
     0.25f, 0.4f, 0.35f, 0.35f, 0.0f, 0.7f, 0.0f,
     -1.0f, 0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f, 0.00325f,
     0.0f, 10.0f, 0.0f,
     0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 100.0f, 100.0f, 100.0f, 0.0005f,
     0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 100.0f, 100.0f, 0.0005f,
+    0.0f, 0.0f,
 }};
 
 constexpr CalibrationValues calibrationMaximums {{
     1.04f, 1.8f, 4.0f, 6.0f, 0.12f,
-    2.0f, 3.0f, 2.5f, 3.0f, 3.0f, 1.2f,
     4.0f, 2.0f, 3.0f, 2.5f, 3.0f, 3.0f, 1.2f,
     1.0f, 32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f, 0.060f,
     0.5f, 400.0f, 0.82e-3f,
     2.0f, 4.0f, 8.0f,
-    1.0e-3f, 2.0f, 2.0f, 2.0f, 2.0f,
-    4.0f, 4.0f, 4.0f, 4.0f, 20000.0f, 20000.0f, 20000.0f, 0.05f,
-    64.0f, 64.0f, 64.0f,
+    1.0e-3f, 2.0f, 2.0f,
+    4.0f, 4.0f, 4.0f, 20000.0f, 20000.0f, 0.05f,
+    64.0f, 64.0f,
 }};
 
 const char* materialName(Material material) noexcept
@@ -180,8 +165,8 @@ const char* materialName(Material material) noexcept
     {
         case Material::Steel: return "steel";
         case Material::SteelFlatTop: return "flattop";
-        default: return "nylon";
     }
+    return "steel";
 }
 
 Bank targetBank(Material material) noexcept
@@ -190,14 +175,8 @@ Bank targetBank(Material material) noexcept
     {
         case Material::Steel: return Bank::SteelPicked;
         case Material::SteelFlatTop: return Bank::SteelPlucked;
-        default: return Bank::Nylon;
     }
-}
-
-StringMaterial engineMaterial(Material material) noexcept
-{
-    return material == Material::Nylon
-        ? StringMaterial::Nylon : StringMaterial::Steel;
+    return Bank::SteelPicked;
 }
 
 template <std::size_t NoteCount, std::size_t VelocityCount,
@@ -221,15 +200,9 @@ Schedule makeSchedule(bool smoke)
         appendCartesian(result.train, Material::Steel,
                         std::array { 40 }, std::array { 16, 112 },
                         std::array { 0 });
-        appendCartesian(result.train, Material::Nylon,
-                        std::array { 40 }, std::array { 91 },
-                        std::array { 0 });
         appendCartesian(result.validation, Material::Steel,
                         std::array { 42 }, std::array { 48, 80 },
                         std::array { 3 });
-        appendCartesian(result.validation, Material::Nylon,
-                        std::array { 41 }, std::array { 91 },
-                        std::array { 0 });
         return result;
     }
 
@@ -239,19 +212,6 @@ Schedule makeSchedule(bool smoke)
     appendCartesian(result.validation, Material::Steel,
                     std::array { 42, 48, 54, 63, 69, 75, 81 },
                     std::array { 48, 80 }, std::array { 3 });
-    // Every FreePats nylon region the offline bank holds that is playable on
-    // the six modelled strings and is not in the validation split. Nylon has
-    // one captured dynamic per region, so notes are the only axis it has;
-    // fitting seven nylon parameters on ten of forty-one available rows left
-    // that stage close to unidentifiable and it repeatedly stalled.
-    appendCartesian(result.train, Material::Nylon,
-                    std::array { 40, 45, 48, 50, 53, 54, 55, 56, 58, 59, 60,
-                                 62, 63, 64, 65, 67, 69, 70, 72, 73, 74, 75,
-                                 77, 78, 79, 80, 82, 83, 84 },
-                    std::array { 91 }, std::array { 0 });
-    appendCartesian(result.validation, Material::Nylon,
-                    std::array { 41, 43, 47, 52, 57, 61, 66, 71, 76, 81 },
-                    std::array { 91 }, std::array { 0 });
     // The eight Eastman E1D flat-top roots, at the one dynamic they were
     // captured at. This split is reported and never fitted; nothing in the
     // optimiser reads it.
@@ -279,8 +239,6 @@ std::vector<Example> makeTestSchedule()
     for (const auto* examples : { &fit.train, &fit.validation })
         for (const auto& example : *examples)
         {
-            if (example.material != Material::Steel)
-                continue;
             used.push_back({ example.midi, example.velocity,
                              example.roundRobin });
             roots.push_back(example.midi);
@@ -436,58 +394,39 @@ PhysicalCalibration makeCalibration(const CalibrationValues& values)
     calibration.bridgeMobilityScale = values[2];
     calibration.residueTiltDbPerOctave = values[3];
     calibration.directGain = values[4];
-
-    const auto setMaterial = [&] (MaterialCalibration& material,
-                                  std::size_t offset)
-    {
-        material.stiffnessScale = values[offset];
-        material.fundamentalT60Scale = values[offset + 1];
-        material.frequencyLossScale = values[offset + 2];
-        material.apertureScale = values[offset + 3];
-        material.transientScale = values[offset + 4];
-        material.pluckDistanceScale = values[offset + 5];
-        material.velocityBrightnessDepth = values[offset + 6];
-    };
-    // Nylon has no stiffnessScale in the calibration array (its bending
-    // stiffness is Woodhouse's measured EI, not a fitted scale - see
-    // nylonBendingEI in AcustraEngine.cpp), so it gets six values, not seven.
-    calibration.nylon.fundamentalT60Scale = values[5];
-    calibration.nylon.frequencyLossScale = values[6];
-    calibration.nylon.apertureScale = values[7];
-    calibration.nylon.transientScale = values[8];
-    calibration.nylon.pluckDistanceScale = values[9];
-    calibration.nylon.velocityBrightnessDepth = values[10];
-    setMaterial(calibration.steel, 11);
-    calibration.apertureRegisterExponent = values[18];
-    calibration.lowBodyModeGain = values[19];
-    calibration.steelDisplacementScaleMetres = values[20];
-    calibration.steelFretT60Slope = values[21];
-    calibration.highLossCutoffScale = values[22];
-    calibration.bridgeConductanceFloor = values[23];
-    calibration.bridgeConductanceCornerHz = values[24];
-    calibration.bridgeTailLengthMetres = values[25];
-    calibration.longitudinalGain = values[26];
-    calibration.longitudinalQ = values[27];
-    calibration.polarisationEndCorrectionMetres = values[28];
-    calibration.pickReleaseVelocityShare = values[29];
-    calibration.pickReleaseVelocityExponent = values[30];
-    calibration.pickTransientGain = values[31];
-    calibration.pickEdgeRadiusMetres = values[32];
-    calibration.steelWoundBendingLoss = values[33];
-    calibration.steelPlainBendingLoss = values[34];
-    calibration.nylonWoundBendingLoss = values[35];
-    calibration.nylonPlainBendingLoss = values[36];
-    calibration.contactNoiseFinger = values[37];
-    calibration.contactNoiseNylon = values[38];
-    calibration.contactNoisePick = values[39];
-    calibration.contactNoiseVelocityExponent = values[40];
-    calibration.contactNoiseCornerHz = values[41];
-    calibration.nylonContactNoiseCornerHz = values[42];
-    calibration.pickContactNoiseCornerHz = values[43];
-    calibration.contactNoiseDecaySeconds = values[44];
-    calibration.contactClickFinger = values[45];
-    calibration.contactClickNylon = values[46];
-    calibration.contactClickPick = values[47];
+    MaterialCalibration& steel = calibration.steel;
+    steel.stiffnessScale = values[5];
+    steel.fundamentalT60Scale = values[6];
+    steel.frequencyLossScale = values[7];
+    steel.apertureScale = values[8];
+    steel.transientScale = values[9];
+    steel.pluckDistanceScale = values[10];
+    steel.velocityBrightnessDepth = values[11];
+    calibration.apertureRegisterExponent = values[12];
+    calibration.lowBodyModeGain = values[13];
+    calibration.steelDisplacementScaleMetres = values[14];
+    calibration.steelFretT60Slope = values[15];
+    calibration.highLossCutoffScale = values[16];
+    calibration.bridgeConductanceFloor = values[17];
+    calibration.bridgeConductanceCornerHz = values[18];
+    calibration.bridgeTailLengthMetres = values[19];
+    calibration.longitudinalGain = values[20];
+    calibration.longitudinalQ = values[21];
+    calibration.polarisationEndCorrectionMetres = values[22];
+    calibration.pickReleaseVelocityShare = values[23];
+    calibration.pickReleaseVelocityExponent = values[24];
+    calibration.pickTransientGain = values[25];
+    calibration.pickEdgeRadiusMetres = values[26];
+    calibration.steelWoundBendingLoss = values[27];
+    calibration.steelPlainBendingLoss = values[28];
+    calibration.contactNoiseFinger = values[29];
+    calibration.contactNoisePick = values[30];
+    calibration.contactNoiseVelocityExponent = values[31];
+    calibration.contactNoiseCornerHz = values[32];
+    calibration.pickContactNoiseCornerHz = values[33];
+    calibration.contactNoiseDecaySeconds = values[34];
+    calibration.contactClickFinger = values[35];
+    calibration.contactClickPick = values[36];
     return calibration;
 }
 
@@ -496,11 +435,8 @@ std::vector<float> renderModel(Material material, int midi, int velocity,
 {
     AcustraEngine engine;
     EngineParameters parameters;
-    parameters.stringMaterial = engineMaterial(material);
-    parameters.bridgeModel = renderBridgeModel;
     parameters.guitarModel = renderGuitarModel;
-    parameters.shape = renderShapeFor(parameters.stringMaterial);
-    parameters.bodyMaterial = renderWoodFor(parameters.stringMaterial);
+    parameters.shape = renderShape();
     if (material == Material::Steel)
         parameters.picking = archtopPicking;
     engine.setParameters(parameters);
@@ -598,10 +534,7 @@ std::string calibrationOrderJson()
 {
     return "[\"bodyFrequencyScale\", \"bodyQScale\", "
            "\"bridgeMobilityScale\", \"residueTiltDbPerOctave\", \"directGain\", "
-           "\"nylon.fundamentalT60Scale\", "
-           "\"nylon.frequencyLossScale\", \"nylon.apertureScale\", "
-           "\"nylon.transientScale\", \"nylon.pluckDistanceScale\", "
-           "\"nylon.velocityBrightnessDepth\", \"steel.stiffnessScale\", "
+           "\"steel.stiffnessScale\", "
            "\"steel.fundamentalT60Scale\", \"steel.frequencyLossScale\", "
            "\"steel.apertureScale\", \"steel.transientScale\", "
            "\"steel.pluckDistanceScale\", \"steel.velocityBrightnessDepth\", "
@@ -614,12 +547,10 @@ std::string calibrationOrderJson()
            "\"pickReleaseVelocityShare\", \"pickReleaseVelocityExponent\", "
            "\"pickTransientGain\", \"pickEdgeRadiusMetres\", "
            "\"steelWoundBendingLoss\", \"steelPlainBendingLoss\", "
-           "\"nylonWoundBendingLoss\", \"nylonPlainBendingLoss\", "
-           "\"contactNoiseFinger\", \"contactNoiseNylon\", "
-           "\"contactNoisePick\", \"contactNoiseVelocityExponent\", "
-           "\"contactNoiseCornerHz\", \"nylonContactNoiseCornerHz\", "
+           "\"contactNoiseFinger\", \"contactNoisePick\", "
+           "\"contactNoiseVelocityExponent\", \"contactNoiseCornerHz\", "
            "\"pickContactNoiseCornerHz\", \"contactNoiseDecaySeconds\", "
-           "\"contactClickFinger\", \"contactClickNylon\", \"contactClickPick\"]";
+           "\"contactClickFinger\", \"contactClickPick\"]";
 }
 
 std::string calibrationJson(const CalibrationValues& values)
@@ -640,29 +571,9 @@ std::string modelControlsJson()
     std::ostringstream text;
     text.imbue(std::locale::classic());
     text << std::setprecision(9);
-    text << "{\"shape\": \"";
-    if (renderShapeOverride)
-        text << shapeNames[static_cast<std::size_t>(*renderShapeOverride)];
-    else
-        text << "per material: "
-             << shapeNames[static_cast<std::size_t>(
-                    renderShapeFor(StringMaterial::Steel))]
-             << " for steel, "
-             << shapeNames[static_cast<std::size_t>(
-                    renderShapeFor(StringMaterial::Nylon))]
-             << " (the measured classical) for nylon";
-    text << "\", \"body_material\": ";
-    if (renderGuitarModel == acustra::GuitarModel::Original)
-        text << "\"per material: " << static_cast<int>(renderWoodFor(StringMaterial::Steel))
-             << " for steel, " << static_cast<int>(renderWoodFor(StringMaterial::Nylon))
-             << " for nylon (each bank's own wood)\"";
-    else
-        text << static_cast<int>(parameters.bodyMaterial);
-    text
-         << ", \"string_material\": \"per example: nylon or steel\""
-         << ", \"bridge_model\": \""
-         << (renderBridgeModel == acustra::BridgeModel::FyldeSteel ? "fylde" : "original")
-         << "\""
+    text << "{\"shape\": \""
+         << shapeNames[static_cast<std::size_t>(renderShape())]
+         << "\", \"body_material\": " << static_cast<int>(parameters.bodyMaterial)
          << ", \"guitar_model\": \""
          << guitarModelNames[static_cast<std::size_t>(renderGuitarModel)]
          << "\""
@@ -778,7 +689,7 @@ void writeManifest(const std::filesystem::path& path,
         << "    \"model_render\": \""
         << (sampleBaseline
             ? "frozen version-1 dense::Sampler; exact captured MIDI, velocity and round robin; 48000 Hz; 127-sample blocks"
-            : "fresh AcustraEngine per material/MIDI/velocity; 48000 Hz; 127-sample blocks; selected bridge, otherwise default controls; outputGain excluded from calibration")
+            : "fresh AcustraEngine per material/MIDI/velocity; 48000 Hz; 127-sample blocks; model_controls; outputGain excluded from calibration")
         << "\"\n"
         << "  },\n"
         << "  \"calibration_values\": " << calibrationJson(calibrationValues) << ",\n"
@@ -961,19 +872,16 @@ void validateModelsOnlyInputs(const std::filesystem::path& directory,
 }
 
 // Which referenced models a models-only render replaces. A search scores one
-// split, often of one material, and every other model it would render is
-// never read: the training scopes render only those, and leave every
-// manifest marked incomplete (its other models are the previous
+// split, and every other model it would render is never read: the training
+// scope renders only those, and leaves every manifest marked incomplete (its other models are the previous
 // candidate's) until a full models-only render.
 enum class ModelScope
 {
     All,
-    Train,
-    TrainSteel,
-    TrainNylon
+    Train
 };
 
-constexpr std::array modelScopeNames { "all", "train", "train-steel", "train-nylon" };
+constexpr std::array modelScopeNames { "all", "train" };
 
 std::size_t renderReferencedModels(
     const std::filesystem::path& directory, const Schedule& schedule,
@@ -988,15 +896,8 @@ std::size_t renderReferencedModels(
         if (scope != ModelScope::All && examples != &schedule.train)
             continue;
         for (const auto& example : *examples)
-        {
-            if ((scope == ModelScope::TrainSteel
-                 && example.material != Material::Steel)
-                || (scope == ModelScope::TrainNylon
-                    && example.material != Material::Nylon))
-                continue;
             unique.emplace(ModelKey {
                 example.material, example.midi, example.velocity }, example);
-        }
     }
 
     for (const auto& [key, example] : unique)
@@ -1064,7 +965,7 @@ void verifySmoke(const std::filesystem::path& directory,
                  const std::vector<ManifestRow>& train,
                  const std::vector<ManifestRow>& validation)
 {
-    if (train.size() != 3 || validation.size() != 3)
+    if (train.size() != 2 || validation.size() != 2)
         throw std::runtime_error("smoke schedule has the wrong size");
     for (const auto* rows : { &train, &validation })
         for (const auto& row : *rows)
@@ -1215,7 +1116,7 @@ void renderCorpus(const std::filesystem::path& directory,
             throw std::runtime_error("could not prepare models-only smoke");
         const auto modelCount = renderReferencedModels(
             directory, schedule, calibration);
-        if (modelCount != 6
+        if (modelCount != 4
             || before != protectedFingerprints(directory, train, validation))
             throw std::runtime_error(
                 "models-only smoke changed a target/manifest or missed a model");
@@ -1311,15 +1212,12 @@ void printUsage()
 {
     std::printf(
         "usage: AcustraPhysicalFitRenderer "
-        "[--smoke|--models-only [--scope all|train|train-steel|train-nylon]|--test] "
-        "[--bridge-model original|fylde] "
+        "[--smoke|--models-only [--scope all|train]|--test] "
         "[--shape parlor|auditorium|dreadnought|jumbo] "
         "[--archtop-picking finger|pick|thumb] "
         "[--guitar-model original|bellido1978] "
         "OUTPUT "
         "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT DIRECT_GAIN "
-        "NYLON_T60 NYLON_FREQUENCY_LOSS NYLON_APERTURE "
-        "NYLON_TRANSIENT NYLON_PLUCK_DISTANCE NYLON_VELOCITY_BRIGHTNESS "
         "STEEL_STIFFNESS STEEL_T60 STEEL_FREQUENCY_LOSS STEEL_APERTURE "
         "STEEL_TRANSIENT STEEL_PLUCK_DISTANCE STEEL_VELOCITY_BRIGHTNESS "
         "APERTURE_REGISTER_EXPONENT LOW_BODY_MODE_GAIN "
@@ -1329,16 +1227,14 @@ void printUsage()
         "LONGITUDINAL_GAIN LONGITUDINAL_Q "
         "POLARISATION_END_CORRECTION_METRES "
         "PICK_RELEASE_VELOCITY_SHARE PICK_RELEASE_VELOCITY_EXPONENT "
-        "PICK_TRANSIENT_GAIN [PICK_EDGE_RADIUS_METRES "
+        "PICK_TRANSIENT_GAIN PICK_EDGE_RADIUS_METRES "
         "STEEL_WOUND_BENDING_LOSS STEEL_PLAIN_BENDING_LOSS "
-        "NYLON_WOUND_BENDING_LOSS NYLON_PLAIN_BENDING_LOSS "
-        "[CONTACT_NOISE_FINGER CONTACT_NOISE_NYLON CONTACT_NOISE_PICK "
+        "CONTACT_NOISE_FINGER CONTACT_NOISE_PICK "
         "CONTACT_NOISE_VELOCITY_EXPONENT CONTACT_NOISE_CORNER_HZ "
-        "NYLON_CONTACT_NOISE_CORNER_HZ PICK_CONTACT_NOISE_CORNER_HZ "
+        "PICK_CONTACT_NOISE_CORNER_HZ "
         "CONTACT_NOISE_DECAY_SECONDS CONTACT_CLICK_FINGER "
-        "CONTACT_CLICK_NYLON CONTACT_CLICK_PICK]]\n"
-        "Give 48 calibration values (OptimizePhysicalModel.NAMES), or the "
-        "legacy 32 or 37; the values left out take the shipped calibration.\n");
+        "CONTACT_CLICK_PICK\n"
+        "Give all 37 calibration values (OptimizePhysicalModel.NAMES).\n");
 }
 } // namespace
 
@@ -1383,19 +1279,6 @@ int main(int argc, char** argv)
         test = true;
         ++first;
     }
-    if (argc > first && std::string(argv[first]) == "--bridge-model")
-    {
-        if (argc <= first + 1
-            || (std::string(argv[first + 1]) != "original"
-                && std::string(argv[first + 1]) != "fylde"))
-        {
-            printUsage();
-            return 2;
-        }
-        renderBridgeModel = std::string(argv[first + 1]) == "fylde"
-            ? acustra::BridgeModel::FyldeSteel : acustra::BridgeModel::Original;
-        first += 2;
-    }
     if (argc > first && std::string(argv[first]) == "--shape")
     {
         const auto name = std::find(shapeNames.begin(), shapeNames.end(),
@@ -1436,31 +1319,13 @@ int main(int argc, char** argv)
         first += 2;
     }
     const int given = argc - first - 1;
-    if (given != static_cast<int>(calibrationValueCount)
-        && given != static_cast<int>(bendingCalibrationValueCount)
-        && given != static_cast<int>(legacyCalibrationValueCount))
+    if (given != static_cast<int>(calibrationValueCount))
     {
         printUsage();
         return 2;
     }
 
     CalibrationValues values {};
-    values[32] = fittedPhysicalCalibration.pickEdgeRadiusMetres;
-    values[33] = fittedPhysicalCalibration.steelWoundBendingLoss;
-    values[34] = fittedPhysicalCalibration.steelPlainBendingLoss;
-    values[35] = fittedPhysicalCalibration.nylonWoundBendingLoss;
-    values[36] = fittedPhysicalCalibration.nylonPlainBendingLoss;
-    values[37] = fittedPhysicalCalibration.contactNoiseFinger;
-    values[38] = fittedPhysicalCalibration.contactNoiseNylon;
-    values[39] = fittedPhysicalCalibration.contactNoisePick;
-    values[40] = fittedPhysicalCalibration.contactNoiseVelocityExponent;
-    values[41] = fittedPhysicalCalibration.contactNoiseCornerHz;
-    values[42] = fittedPhysicalCalibration.nylonContactNoiseCornerHz;
-    values[43] = fittedPhysicalCalibration.pickContactNoiseCornerHz;
-    values[44] = fittedPhysicalCalibration.contactNoiseDecaySeconds;
-    values[45] = fittedPhysicalCalibration.contactClickFinger;
-    values[46] = fittedPhysicalCalibration.contactClickNylon;
-    values[47] = fittedPhysicalCalibration.contactClickPick;
     for (std::size_t index = 0; index < static_cast<std::size_t>(given); ++index)
     {
         if (!parseFloat(argv[first + 1 + static_cast<int>(index)], values[index]))

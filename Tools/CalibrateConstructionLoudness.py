@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Level every construction and Picking to one loudness, and check headroom.
 
-Every construction (Strings x Model x Bridge x Shape x Wood) and every Picking
+Every construction (Model x Shape x Wood) and every Picking
 is rendered through AcustraPerformanceRenderer (the shipping engine) at the
 default controls and Output, playing one fixed, seeded phrase set: strums
 over a chord progression, single notes low and high on the neck and held
@@ -9,21 +9,17 @@ chords, at velocities from soft to hard. Each render is measured as ITU-R
 BS.1770-4 integrated loudness (Tools/MeasureMaterialLoudness.py's meter),
 on the stereo microphones, the mono microphone and the piezo.
 
-The target is the default construction - steel strings, the Original model
-on its own bridge, Dreadnought, Spruce, Finger - as it plays on the stereo
+The target is the default construction - the Original model, Dreadnought,
+Spruce, Finger - as it plays on the stereo
 microphones, so the default patch keeps its loudness. For every other cell
 the tool writes the gain that brings its stereo microphones to that target,
 and for the mono microphone and the piezo the factor, relative to that gain,
 that brings each of them to the same target: the three captures stay level
 with each other on every construction. The data header it writes,
-Source/DSP/ConstructionLoudnessData.h, holds those gains keyed by the six
-settings (2 x 2 x 2 x 4 x 4 x 3 cells); AcustraEngine applies them where it
-applies the string material's output reference, through the same smoothing.
-A gain changes only the level: each construction keeps its tone.
-
-Where the Bridge choice selects nothing (nylon strings, or the Bellido: see
-AcustraEngine::bridgeSelectable) both Bridge cells hold the one measurement
-of the bridge that construction plays.
+Source/DSP/ConstructionLoudnessData.h, holds those gains keyed by the four
+settings (2 x 4 x 3 x 3 cells); AcustraEngine applies them where it applies
+the strings' output reference, through the same smoothing. A gain changes
+only the level: each construction keeps its tone.
 
 It also plays the hardest case - velocity 127 with the Pick at Touch 1 and
 Pluck Position 0: an open E major downstroke with two strings repicked into
@@ -33,8 +29,8 @@ limiter is inverted exactly; it is linear below its knee at -1 dBFS). The
 aim is that peak at least 1 dB under the knee, but loudness comes first: a
 Pick cell whose hardest case would come nearer sits under the target by
 what it needs, at most 0.9 LU (--max-headroom-cut), inside the tolerance.
-With the loudness fixed, a construction's peak is its own crest factor, so
-nylon picked at the saddle still reaches the limiter (Docs/decisions.md).
+With the loudness fixed, a construction's peak is its own crest factor
+(Docs/decisions.md).
 With the gains built in, `--check` requires every cell within +-1 LU of the
 target on each capture, and every Pick cell whose hardest case is short of
 the 1 dB to have given up the level the tolerance allows; the report lists
@@ -76,16 +72,13 @@ HEADER = (Path(__file__).resolve().parent.parent
 SEED = 20260929
 
 # The engine's enum orders (AcustraEngine.h) and the renderer's spellings.
-STRINGS = ("nylon", "steel")
 MODELS = ("original", "bellido1978")
-BRIDGES = ("original", "fylde")
 SHAPES = ("parlor", "auditorium", "dreadnought", "jumbo")
-WOODS = ("spruce", "cedar", "mahogany", "maple")
+WOODS = ("spruce", "mahogany", "maple")
 PICKINGS = ("finger", "pick", "thumb")
 CAPTURES = ("stereo_mic", "mono_mic", "piezo")
-DEFAULT = ("steel", "original", "original", "dreadnought", "spruce", "finger")
-CELLS = len(STRINGS) * len(MODELS) * len(BRIDGES) * len(SHAPES) * len(WOODS) \
-    * len(PICKINGS)
+DEFAULT = ("original", "dreadnought", "spruce", "finger")
+CELLS = len(MODELS) * len(SHAPES) * len(WOODS) * len(PICKINGS)
 
 LIMIT_KNEE = 0.89125094        # safetyLimit's threshold, -1 dBFS
 LIMIT_HEADROOM = 1.0 - LIMIT_KNEE
@@ -93,30 +86,17 @@ TOLERANCE_LU = 1.0
 HEADROOM_DB = 1.0
 
 
-def index(strings, model, bridge, shape, wood, picking) -> int:
+def index(model, shape, wood, picking) -> int:
     """A cell's place in the header's tables (ConstructionLoudnessData.h)."""
-    value = STRINGS.index(strings)
-    for names, name in ((MODELS, model), (BRIDGES, bridge), (SHAPES, shape),
-                        (WOODS, wood), (PICKINGS, picking)):
+    value = MODELS.index(model)
+    for names, name in ((SHAPES, shape), (WOODS, wood), (PICKINGS, picking)):
         value = value * len(names) + names.index(name)
     return value
 
 
-def bridge_selectable(strings: str, model: str) -> bool:
-    return strings == "steel" and model == "original"
-
-
-def played_bridge(strings: str, model: str, bridge: str) -> str:
-    return bridge if bridge_selectable(strings, model) else "original"
-
-
 def constructions():
-    """Every construction that plays differently: the Bridge only where it
-    selects a bank."""
-    for strings, model in itertools.product(STRINGS, MODELS):
-        bridges = BRIDGES if bridge_selectable(strings, model) else ("original",)
-        for bridge, shape, wood in itertools.product(bridges, SHAPES, WOODS):
-            yield strings, model, bridge, shape, wood
+    """Every construction."""
+    yield from itertools.product(MODELS, SHAPES, WOODS)
 
 
 # The phrase set: (string 1-6, MIDI note, onset s, release s, velocity) rows.
@@ -211,13 +191,13 @@ def built_gains(path: Path = HEADER) -> dict[str, np.ndarray]:
 
 def render(renderer: str, work: Path, performance: str, construction, picking,
            capture, extra=()) -> np.ndarray:
-    strings, model, bridge, shape, wood = construction
+    model, shape, wood = construction
     tag = "-".join((performance, *construction, picking, capture))
     output = work / f"{tag}.f32"
     subprocess.run(
         [renderer, str(work / f"{performance}.txt"), str(output), capture,
-         picking, bridge, "--string-material", strings, "--body-shape", shape,
-         "--body-material", wood, "--guitar-model", model, *extra],
+         picking, "--body-shape", shape, "--body-material", wood,
+         "--guitar-model", model, *extra],
         check=True)
     audio = np.fromfile(output, dtype="<f4").reshape(-1, 2)
     output.unlink()
@@ -277,16 +257,13 @@ def gains(raw: dict, max_cut_db: float = 0.9) -> dict[str, np.ndarray]:
     max_cut_db, which stays inside the loudness tolerance: parity comes
     first, and headroom is taken from the tolerance where it can be."""
     lufs, peaks = raw["lufs"], raw.get("peaks", {})
-    target = lufs[(DEFAULT[:5], DEFAULT[5], "stereo_mic")]
+    target = lufs[(DEFAULT[:3], DEFAULT[3], "stereo_mic")]
     # Aimed a hair under the line, so rounding does not leave a cell on it.
     ceiling = 20.0 * np.log10(LIMIT_KNEE) - HEADROOM_DB - 0.02
     tables = {name: np.ones(CELLS) for name in ("mic", "mono", "piezo")}
-    for strings, model, bridge, shape, wood in itertools.product(
-            STRINGS, MODELS, BRIDGES, SHAPES, WOODS):
-        construction = (strings, model, played_bridge(strings, model, bridge),
-                        shape, wood)
+    for construction in constructions():
         for picking in PICKINGS:
-            cell = index(strings, model, bridge, shape, wood, picking)
+            cell = index(*construction, picking)
             level = {}
             for capture in CAPTURES:
                 gain = target - lufs[(construction, picking, capture)]
@@ -295,7 +272,7 @@ def gains(raw: dict, max_cut_db: float = 0.9) -> dict[str, np.ndarray]:
                     gain -= float(np.clip(peak + gain - ceiling, 0.0, max_cut_db))
                 level[capture] = gain
             mic = 10.0 ** (level["stereo_mic"] / 20.0)
-            if (strings, model, bridge, shape, wood, picking) == DEFAULT:
+            if (*construction, picking) == DEFAULT:
                 # Exactly 1 on both microphone captures: the default patch
                 # renders unchanged. Its piezo is brought to the target like
                 # every other cell's.
@@ -323,13 +300,12 @@ def header_text(tables: dict[str, np.ndarray]) -> str:
     def table(name: str, symbol: str, comment: str) -> str:
         lines = [comment, f"inline constexpr std::array<float, {CELLS}> {symbol} {{{{"]
         values = tables[name]
-        for strings, model, bridge, shape in itertools.product(
-                STRINGS, MODELS, BRIDGES, SHAPES):
-            start = index(strings, model, bridge, shape, WOODS[0], PICKINGS[0])
+        for model, shape in itertools.product(MODELS, SHAPES):
+            start = index(model, shape, WOODS[0], PICKINGS[0])
             chunk = ", ".join(float_literal(v)
                               for v in values[start:start + len(WOODS) * len(PICKINGS)])
-            lines.append(f"    // {strings} {model} {bridge} {shape}: "
-                         "spruce, cedar, mahogany, maple x finger, pick, thumb")
+            lines.append(f"    // {model} {shape}: "
+                         f"{', '.join(WOODS)} x {', '.join(PICKINGS)}")
             lines.append(f"    {chunk},")
         lines[-1] = lines[-1].rstrip(",")
         lines.append("}};")
@@ -338,13 +314,12 @@ def header_text(tables: dict[str, np.ndarray]) -> str:
     return "\n".join([
         "// Generated by Tools/CalibrateConstructionLoudness.py; do not edit by hand.",
         "// Output level references that bring every construction and Picking to",
-        "// the default construction's integrated loudness (steel, Original model and",
-        "// bridge, Dreadnought, Spruce, Finger, on the stereo microphones), each",
-        "// capture on its own (Docs/decisions.md, 2026-09-29, \"Every construction",
-        "// as loud as the default\"). A cell is",
-        "//   ((((strings * 2 + model) * 2 + bridge) * 4 + shape) * 4 + wood) * 3 + picking",
-        "// in the enums' order in AcustraEngine.h. Where the Bridge selects nothing",
-        "// (AcustraEngine::bridgeSelectable) both Bridge cells hold the same value.",
+        "// the default construction's integrated loudness (Original model,",
+        "// Dreadnought, Spruce, Finger, on the stereo microphones), each capture on",
+        "// its own (Docs/decisions.md, 2026-09-29, \"Every construction as loud as",
+        "// the default\"). A cell is",
+        "//   ((model * 4 + shape) * 3 + wood) * 3 + picking",
+        "// in the enums' order in AcustraEngine.h.",
         "#pragma once",
         "",
         "#include <array>",
@@ -352,21 +327,20 @@ def header_text(tables: dict[str, np.ndarray]) -> str:
         "namespace acustra::detail",
         "{",
         table("mic", "constructionMicReference",
-              "// The factor on the output reference (materialReferenceFor)."),
+              "// The factor on the output reference (outputReferenceFor)."),
         table("mono", "constructionMonoTrim",
               "// The mono microphone's factor over constructionMicReference."),
         table("piezo", "constructionPiezoTrim",
               "// The piezo's factor over constructionMicReference, on its own trim\n"
-              "// (PiezoDesign::trimFor)."),
+              "// (PiezoDesign::trim)."),
         "} // namespace acustra::detail",
         "",
     ])
 
 
 def label(construction, picking) -> str:
-    strings, model, bridge, shape, wood = construction
-    bridge_text = f"/{bridge}" if bridge_selectable(strings, model) else ""
-    return f"{strings}/{model}{bridge_text} {shape} {wood} {picking}"
+    model, shape, wood = construction
+    return f"{model} {shape} {wood} {picking}"
 
 
 def report(levels: dict, target: float) -> dict:
@@ -384,12 +358,11 @@ def report(levels: dict, target: float) -> dict:
             "quietest": label(*low[:2]), "loudest": label(*high[:2]),
             "within_tolerance": int(sum(abs(v) <= TOLERANCE_LU for v in rows.values())),
             "cells": len(rows)}
-    for strings, model in itertools.product(STRINGS, MODELS):
+    for model in MODELS:
         for picking in PICKINGS:
             values = [value - target for (c, p, k), value in levels["lufs"].items()
-                      if c[0] == strings and c[1] == model and p == picking
-                      and k == "stereo_mic"]
-            summary["groups"][f"{strings}/{model} {picking}"] = {
+                      if c[0] == model and p == picking and k == "stereo_mic"]
+            summary["groups"][f"{model} {picking}"] = {
                 "min_lu": float(min(values)), "median_lu": float(np.median(values)),
                 "max_lu": float(max(values))}
     knee_db = 20.0 * np.log10(LIMIT_KNEE)
@@ -421,7 +394,7 @@ def print_report(summary: dict, title: str) -> None:
               f" (median {row['median_lu']:+5.2f}; {row['within_tolerance']}/{row['cells']}"
               f" within +-{TOLERANCE_LU:g}); quietest {row['quietest']},"
               f" loudest {row['loudest']}")
-    print("  stereo mic by strings/model and picking (min / median / max LU):")
+    print("  stereo mic by model and picking (min / median / max LU):")
     for group, row in summary["groups"].items():
         print(f"    {group:<26} {row['min_lu']:+6.2f} {row['median_lu']:+6.2f}"
               f" {row['max_lu']:+6.2f}")
@@ -446,13 +419,12 @@ def deserialise(tables: dict) -> dict:
 
 
 def self_test() -> None:
-    assert CELLS == 384
-    assert index(*DEFAULT) == index("steel", "original", "original",
-                                    "dreadnought", "spruce", "finger")
+    assert CELLS == 72
+    assert index(*DEFAULT) == index("original", "dreadnought", "spruce", "finger")
     seen = {index(*cell) for cell in itertools.product(
-        STRINGS, MODELS, BRIDGES, SHAPES, WOODS, PICKINGS)}
+        MODELS, SHAPES, WOODS, PICKINGS)}
     assert seen == set(range(CELLS))
-    assert len(list(constructions())) == 80
+    assert len(list(constructions())) == 24
     # The phrase set is fixed: the same rows every time, playable, under the
     # renderer's minute, and spanning soft to hard.
     first, second = phrase_set(), phrase_set()
@@ -470,8 +442,7 @@ def self_test() -> None:
     limited = np.where(raw <= LIMIT_KNEE, raw, LIMIT_KNEE + (raw - LIMIT_KNEE)
                        / (1.0 + (raw - LIMIT_KNEE) / LIMIT_HEADROOM))
     assert np.allclose(unlimited(limited.astype(np.float32)), raw, rtol=2e-4)
-    # The header round-trips, the default cell is exactly 1, and a bridge
-    # the construction does not select repeats the one it plays.
+    # The header round-trips and the default cell is exactly 1.
     tables = {name: np.linspace(0.5, 2.0, CELLS) for name in ("mic", "mono", "piezo")}
     for name in tables:
         tables[name][index(*DEFAULT)] = 1.0
@@ -488,7 +459,7 @@ def self_test() -> None:
             for offset, capture in enumerate(CAPTURES):
                 fake["lufs"][(construction, picking, capture)] = (
                     -30.0 + 0.5 * offset + 0.1 * PICKINGS.index(picking)
-                    + (3.0 if construction[1] == "bellido1978" else 0.0))
+                    + (3.0 if construction[0] == "bellido1978" else 0.0))
     made = gains(fake)
     assert made["mic"][index(*DEFAULT)] == 1.0
     assert made["mono"][index(*DEFAULT)] == 1.0
@@ -497,7 +468,7 @@ def self_test() -> None:
     # from the tolerance, and no more than that.
     # At the target this Pick cell's stereo microphones would peak 0.4 dB
     # too near the knee, its mono microphone far too near it.
-    pick = ("nylon", "bellido1978", "original", "jumbo", "maple")
+    pick = ("bellido1978", "jumbo", "maple")
     fake["peaks"] = {(pick, "pick", "stereo_mic"): -1.62 + 3.1,
                      (pick, "pick", "mono_mic"): 10.0}
     capped = gains(fake)
@@ -507,11 +478,7 @@ def self_test() -> None:
     # The piezo had no peak to keep under the knee: its level is unchanged.
     assert abs(capped["piezo"][cell] * capped["mic"][cell]
                - made["piezo"][cell] * made["mic"][cell]) < 1e-12
-    for cell in itertools.product(("nylon",), MODELS, BRIDGES, SHAPES, WOODS, PICKINGS):
-        other = (cell[0], cell[1], "fylde" if cell[2] == "original" else "original",
-                 *cell[3:])
-        assert made["mic"][index(*cell)] == made["mic"][index(*other)]
-    bellido = index("steel", "bellido1978", "original", "parlor", "maple", "thumb")
+    bellido = index("bellido1978", "parlor", "maple", "thumb")
     assert abs(20 * np.log10(made["mic"][bellido]) + 3.2) < 1e-9
     assert abs(20 * np.log10(made["mono"][bellido]) + 0.5) < 1e-9
     assert HEADER.exists(), HEADER
@@ -555,7 +522,7 @@ def main() -> int:
         measured = measure(arguments.renderer, max(1, arguments.jobs),
                            PICKINGS if arguments.all_pickings else ("pick",))
         raw = raw_levels(measured, built_gains())
-    target = measured["lufs"][(DEFAULT[:5], DEFAULT[5], "stereo_mic")]
+    target = measured["lufs"][(DEFAULT[:3], DEFAULT[3], "stereo_mic")]
     as_built = report(measured, target)
     if arguments.json:
         arguments.json.write_text(json.dumps({

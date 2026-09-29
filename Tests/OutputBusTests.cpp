@@ -2,7 +2,8 @@
 // alongside Main in one pass. Wanting it must not change Main by a bit; it
 // must be Main's mono whenever Capture is on Piezo; it may not depend on what
 // Capture selects; and not wanting it must cost nothing. The whole
-// performance battery is played through the player to check it.
+// performance battery is played through the player to check it. Piezo Mix
+// puts that same line into Main under the microphones.
 #include "DSP/AcustraPerformer.h"
 #include "PerformanceBattery.h"
 
@@ -23,8 +24,6 @@ namespace
 using acustra::AcustraEngine;
 using acustra::CaptureType;
 using acustra::Performer;
-using acustra::StringMaterial;
-using acustra::BridgeModel;
 using acustra::EngineParameters;
 using namespace acustra::battery;
 
@@ -75,11 +74,10 @@ bool valueEqual(const std::vector<float>& a, const std::vector<float>& b,
 }
 
 // What a scenario's front-end controls do to the parameters. A forced
-// capture or material ignores the battery's own switches of it.
+// capture ignores the battery's own switches of it.
 struct Force
 {
     std::optional<CaptureType> capture;
-    std::optional<StringMaterial> material;
 };
 
 void applyControl(acustra::EngineParameters& parameters, bool& gather,
@@ -91,11 +89,6 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
     {
         case Kind::GatherChords: gather = control.value >= 0.5f; break;
         case Kind::Panic: panic = true; break;
-        case Kind::StringMaterial:
-            if (! force.material)
-                parameters.stringMaterial = index == 0 ? StringMaterial::Nylon
-                                                       : StringMaterial::Steel;
-            break;
         case Kind::CaptureMode:
             if (! force.capture)
                 parameters.capture = index == 0 ? CaptureType::StereoMic
@@ -113,9 +106,6 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
         case Kind::Wood:
             parameters.bodyMaterial = static_cast<acustra::BodyMaterial>(index);
             break;
-        case Kind::Bridge:
-            parameters.bridgeModel = static_cast<acustra::BridgeModel>(index);
-            break;
         case Kind::Model:
             parameters.guitarModel = static_cast<acustra::GuitarModel>(index);
             break;
@@ -123,13 +113,13 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
         case Kind::Age: parameters.stringAge = 0.01f * control.value; break;
         case Kind::Pluck: parameters.pluckPosition = 0.01f * control.value; break;
         case Kind::Touch: parameters.touch = 0.01f * control.value; break;
+        case Kind::PiezoMix: parameters.piezoMix = 0.01f * control.value; break;
     }
 }
 
 // Plays a scenario through the player as the plug-in does (controls before
 // the block containing them, events at their offsets), with the separate
-// output wanted or not. The capture and material a Force names are set
-// before prepare, so no crossfade separates the routes being compared.
+// output wanted or not. The capture a Force names is set before prepare, so no crossfade separates the routes being compared.
 Buses render(const Scenario& scenario, int blockSize, bool wantBuses,
              const Force& force = {}, double sampleRate = 48000.0)
 {
@@ -137,8 +127,6 @@ Buses render(const Scenario& scenario, int blockSize, bool wantBuses,
     acustra::EngineParameters parameters;
     if (force.capture)
         parameters.capture = *force.capture;
-    if (force.material)
-        parameters.stringMaterial = *force.material;
     performer->setParameters(parameters);
     performer->prepare(sampleRate, blockSize);
     performer->engine().setPortObserversEnabled(false);
@@ -216,7 +204,7 @@ bool finiteAndBounded(const std::vector<float>& channel)
 }
 
 // Wanting the Piezo output leaves Main as it was, down to the bit, over the
-// whole battery (which switches capture, material, picking, gathering and
+// whole battery (which switches capture, Piezo Mix, picking, gathering and
 // resets mid-performance) at two block sizes; every bus sample is written.
 void testWantingBusesLeavesMainUnchanged(const std::vector<Scenario>& battery)
 {
@@ -237,35 +225,30 @@ void testWantingBusesLeavesMainUnchanged(const std::vector<Scenario>& battery)
 }
 
 // With Capture held on Piezo for the whole performance, the Piezo output is
-// Main; and it is the same whatever Capture selects, for both string
-// materials.
+// Main (Piezo Mix, which the battery moves, adds nothing there); and it is
+// the same whatever Capture selects.
 void testBusesAreTheCaptureRoutes(const std::vector<Scenario>& battery)
 {
     long signedZeros = 0;
     long piezoSamples = 0;
-    for (const auto material : { StringMaterial::Steel, StringMaterial::Nylon })
-        for (const auto& scenario : battery)
-        {
-            const std::string name = std::string { scenario.name }
-                + (material == StringMaterial::Steel ? " (steel)" : " (nylon)");
-            const auto stereo = render(scenario, 127, true,
-                                       { CaptureType::StereoMic, material });
-            const auto mono = render(scenario, 127, true,
-                                     { CaptureType::MonoMic, material });
-            const auto piezo = render(scenario, 127, true,
-                                      { CaptureType::Piezo, material });
+    for (const auto& scenario : battery)
+    {
+        const std::string name { scenario.name };
+        const auto stereo = render(scenario, 127, true, { CaptureType::StereoMic });
+        const auto mono = render(scenario, 127, true, { CaptureType::MonoMic });
+        const auto piezo = render(scenario, 127, true, { CaptureType::Piezo });
 
-            expect(valueEqual(piezo.piezo, piezo.left, &signedZeros)
-                       && valueEqual(piezo.piezo, piezo.right, &signedZeros),
-                   "the Piezo line is not Main with Capture on Piezo on " + name);
-            piezoSamples += 2 * static_cast<long>(piezo.piezo.size());
-            for (const auto* other : { &mono, &piezo })
-                expect(bitwiseEqual(other->piezo, stereo.piezo),
-                       "the Piezo output depends on what Capture selects on " + name);
-            if (anyAudible(stereo.left))
-                expect(anyAudible(stereo.piezo),
-                       "the Piezo output is silent while Main plays on " + name);
-        }
+        expect(valueEqual(piezo.piezo, piezo.left, &signedZeros)
+                   && valueEqual(piezo.piezo, piezo.right, &signedZeros),
+               "the Piezo line is not Main with Capture on Piezo on " + name);
+        piezoSamples += 2 * static_cast<long>(piezo.piezo.size());
+        for (const auto* other : { &mono, &piezo })
+            expect(bitwiseEqual(other->piezo, stereo.piezo),
+                   "the Piezo output depends on what Capture selects on " + name);
+        if (anyAudible(stereo.left))
+            expect(anyAudible(stereo.piezo),
+                   "the Piezo output is silent while Main plays on " + name);
+    }
     std::cout << "Piezo line vs Main on Piezo: equal as floats on " << piezoSamples
               << " samples, " << signedZeros << " differing only in a zero's sign\n";
 }
@@ -351,18 +334,17 @@ void testPiezoIsARequest()
 // An instrument left to ring out reaches exact silence on Main and the
 // Piezo bus too, not only a fresh or reset one. Its strings and bridge used
 // to hold a rounding-level residue between them for good - about 1e-12 at
-// the output on steel at 96 kHz, nylon at 96 kHz and the Fylde at 44.1 kHz
-// (audit F30) - which a host listening for exact silence never heard end.
+// the output at 96 kHz (audit F30) - which a host listening for exact
+// silence never heard end.
 void testRungOutInstrumentReachesExactSilence()
 {
-    struct Case { const char* name; StringMaterial strings; BridgeModel bridge; double rate; };
-    for (const auto& c : { Case { "steel at 96 kHz", StringMaterial::Steel, BridgeModel::Original, 96000.0 },
-                           Case { "nylon at 96 kHz", StringMaterial::Nylon, BridgeModel::Original, 96000.0 },
-                           Case { "the Fylde at 44.1 kHz", StringMaterial::Steel, BridgeModel::FyldeSteel, 44100.0 } })
+    struct Case { const char* name; acustra::GuitarModel model; double rate; };
+    for (const auto& c : { Case { "the Original at 96 kHz", acustra::GuitarModel::Original, 96000.0 },
+                           Case { "the Original at 44.1 kHz", acustra::GuitarModel::Original, 44100.0 },
+                           Case { "the Bellido at 96 kHz", acustra::GuitarModel::Bellido1978, 96000.0 } })
     {
         EngineParameters parameters;
-        parameters.stringMaterial = c.strings;
-        parameters.bridgeModel = c.bridge;
+        parameters.guitarModel = c.model;
         auto engine = std::make_unique<AcustraEngine>();
         engine->setParameters(parameters);
         engine->prepare(c.rate, 512);
@@ -396,6 +378,130 @@ void testRungOutInstrumentReachesExactSilence()
         expect(std::any_of(left.begin(), left.end(), [] (float value) { return value != 0.0f; }),
                std::string(c.name) + ": a note after the instrument fell silent did not sound");
     }
+}
+
+// Piezo Mix puts the Piezo line into Main under the microphones. Renders a
+// quiet chord (well under the safety limiter) straight through the engine,
+// with the mix set before prepare and then, from block `from`, moved to each
+// of `moves` in turn every `every` blocks.
+Buses renderPiezoMix(CaptureType capture, float mix, std::vector<float> moves = {},
+                     int from = 0, int every = 0)
+{
+    constexpr int rate = 48000;
+    constexpr int blockSize = 64;
+    constexpr int length = rate * 3 / 2;
+    EngineParameters parameters;
+    parameters.capture = capture;
+    parameters.piezoMix = mix;
+    auto engine = std::make_unique<AcustraEngine>();
+    engine->setParameters(parameters);
+    engine->prepare(rate, blockSize);
+    engine->beginStrum();
+    const std::array<int, 6> chord { 40, 47, 52, 56, 59, 64 };
+    for (std::size_t k = 0; k < chord.size(); ++k)
+        engine->noteOn(chord[k], 0.3f, 1, static_cast<int>(k) * 300, true);
+    Buses out;
+    out.left.assign(length, 0.0f);
+    out.right.assign(length, 0.0f);
+    out.piezo.assign(length, 7.0f);
+    for (int start = 0, block = 0; start < length; start += blockSize, ++block)
+    {
+        if (every > 0 && block >= from && (block - from) % every == 0
+            && static_cast<std::size_t>((block - from) / every) < moves.size())
+        {
+            parameters.piezoMix = moves[static_cast<std::size_t>((block - from) / every)];
+            engine->setParameters(parameters);
+        }
+        const auto at = static_cast<std::size_t>(start);
+        engine->process(out.left.data() + at, out.right.data() + at,
+                        AcustraEngine::OutputBuses { out.piezo.data() + at },
+                        std::min(blockSize, length - start));
+    }
+    return out;
+}
+
+double peakOf(const std::vector<float>& channel)
+{
+    double peak = 0.0;
+    for (const float value : channel)
+        peak = std::max(peak, static_cast<double>(std::abs(value)));
+    return peak;
+}
+
+void testPiezoMix()
+{
+    // At 0, set or sanitised from below, Main is the instrument without one,
+    // down to the bit.
+    const auto plain = renderPiezoMix(CaptureType::StereoMic, 0.0f);
+    for (const float zero : { 0.0f, -0.5f })
+    {
+        const auto none = renderPiezoMix(CaptureType::StereoMic, zero);
+        expect(bitwiseEqual(none.left, plain.left) && bitwiseEqual(none.right, plain.right),
+               "Piezo Mix at " + std::to_string(zero) + " changed Main");
+    }
+    {
+        // The default parameters carry no mix.
+        EngineParameters defaults;
+        expect(defaults.piezoMix == 0.0f, "Piezo Mix does not default to 0");
+    }
+    expect(peakOf(plain.left) < 0.5 && peakOf(plain.right) < 0.5 && anyAudible(plain.piezo),
+           "the Piezo Mix chord is not quiet enough to stay off the limiter, or silent");
+
+    // At 1 under the stereo microphones, Main is the stereo render plus the
+    // Piezo line on both sides, to float rounding; the Piezo line itself does
+    // not move.
+    const auto mixed = renderPiezoMix(CaptureType::StereoMic, 1.0f);
+    expect(bitwiseEqual(mixed.piezo, plain.piezo), "Piezo Mix changed the Piezo output");
+    double worst = 0.0, largest = 0.0;
+    for (std::size_t i = 0; i < plain.left.size(); ++i)
+        for (const auto& [with, without] : { std::pair { mixed.left[i], plain.left[i] },
+                                              std::pair { mixed.right[i], plain.right[i] } })
+        {
+            const double difference = static_cast<double>(with) - without;
+            const double scale = std::max({ std::abs(static_cast<double>(with)),
+                                            std::abs(static_cast<double>(without)),
+                                            std::abs(static_cast<double>(mixed.piezo[i])) });
+            // Two float roundings (the sum and the piezo's own) at this scale.
+            const double allowed = 4.0 * 5.96e-8 * scale + 1.0e-30;
+            worst = std::max(worst, std::abs(difference - mixed.piezo[i]) / allowed);
+            largest = std::max(largest, std::abs(difference));
+        }
+    std::cout << "Piezo Mix 1 under Stereo: Main minus Stereo vs the Piezo line, worst "
+              << worst << " of its rounding budget, largest added " << largest << '\n';
+    expect(worst <= 1.0, "Piezo Mix 1 is not the Piezo line added to the stereo microphones");
+    expect(largest > 1.0e-4, "Piezo Mix 1 added nothing audible to Main");
+
+    // With Capture on Piezo the piezo is already all of Main: any mix, set or
+    // moved, leaves Main (and the line) as it was.
+    const auto piezoPlain = renderPiezoMix(CaptureType::Piezo, 0.0f);
+    const auto piezoMixed = renderPiezoMix(CaptureType::Piezo, 1.0f);
+    const auto piezoMoved = renderPiezoMix(CaptureType::Piezo, 0.0f, { 1.0f, 0.3f, 0.0f, 0.8f },
+                                           100, 150);
+    for (const auto* other : { &piezoMixed, &piezoMoved })
+        expect(valueEqual(other->left, piezoPlain.left) && valueEqual(other->right, piezoPlain.right)
+                   && bitwiseEqual(other->piezo, piezoPlain.piezo),
+               "Piezo Mix changed Main with Capture on Piezo");
+
+    // A mix moved up and back to 0 under the microphones glides (no step
+    // into Main) and then settles onto 0 exactly: Main is the plain render's
+    // again, bit for bit.
+    constexpr int from = 100, every = 200;
+    const auto moved = renderPiezoMix(CaptureType::StereoMic, 0.0f, { 1.0f, 0.0f }, from, every);
+    const auto back = static_cast<std::size_t>((from + every) * 64);
+    const auto settled = back + 48000 / 2;
+    expect(bitwiseEqual(std::vector<float>(moved.left.begin(), moved.left.begin() + from * 64),
+                        std::vector<float>(plain.left.begin(), plain.left.begin() + from * 64)),
+           "Piezo Mix changed Main before it moved");
+    expect(! bitwiseEqual(moved.left, plain.left), "a moved Piezo Mix did not reach Main");
+    expect(bitwiseEqual(std::vector<float>(moved.left.begin() + static_cast<long>(settled), moved.left.end()),
+                        std::vector<float>(plain.left.begin() + static_cast<long>(settled), plain.left.end()))
+               && bitwiseEqual(std::vector<float>(moved.right.begin() + static_cast<long>(settled), moved.right.end()),
+                               std::vector<float>(plain.right.begin() + static_cast<long>(settled), plain.right.end())),
+           "a Piezo Mix moved back to 0 did not settle to Main without one");
+    // The first sample after the move carries only a smoothing step of it.
+    const auto first = static_cast<std::size_t>(from * 64);
+    expect(std::abs(moved.left[first] - plain.left[first]) < 0.1 * std::abs(mixed.piezo[first]) + 1.0e-6,
+           "Piezo Mix stepped into Main instead of gliding");
 }
 
 void testIdleOutputsAreExactSilence()
@@ -489,6 +595,7 @@ int main()
     testPiezoIsARequest();
     testIdleOutputsAreExactSilence();
     testRungOutInstrumentReachesExactSilence();
+    testPiezoMix();
     testCost();
 
     if (failures != 0)

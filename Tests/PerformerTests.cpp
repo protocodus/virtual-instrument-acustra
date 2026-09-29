@@ -83,10 +83,6 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
     {
         case Kind::GatherChords: gather = control.value >= 0.5f; break;
         case Kind::Panic: panic = true; break;
-        case Kind::StringMaterial:
-            parameters.stringMaterial = index == 0 ? acustra::StringMaterial::Nylon
-                                                   : acustra::StringMaterial::Steel;
-            break;
         case Kind::CaptureMode:
             parameters.capture = index == 0 ? acustra::CaptureType::StereoMic
                 : index == 1 ? acustra::CaptureType::MonoMic
@@ -104,9 +100,6 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
         case Kind::Wood:
             parameters.bodyMaterial = static_cast<acustra::BodyMaterial>(index);
             break;
-        case Kind::Bridge:
-            parameters.bridgeModel = static_cast<acustra::BridgeModel>(index);
-            break;
         case Kind::Model:
             parameters.guitarModel = static_cast<acustra::GuitarModel>(index);
             break;
@@ -114,6 +107,7 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
         case Kind::Age: parameters.stringAge = 0.01f * control.value; break;
         case Kind::Pluck: parameters.pluckPosition = 0.01f * control.value; break;
         case Kind::Touch: parameters.touch = 0.01f * control.value; break;
+        case Kind::PiezoMix: parameters.piezoMix = 0.01f * control.value; break;
     }
 }
 
@@ -712,15 +706,17 @@ void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
 double bandLevel(const Render& render, double sampleRate, double frequency,
                  double from, double to)
 {
+    // M_PI is POSIX, not standard C++: MSVC does not define it.
+    constexpr double pi = 3.14159265358979323846;
     double real = 0.0, imaginary = 0.0;
     const auto begin = static_cast<std::size_t>(from * sampleRate);
     const auto end = std::min(static_cast<std::size_t>(to * sampleRate),
                               render.left.size());
     for (std::size_t n = begin; n < end; ++n)
     {
-        const double window = 0.5 - 0.5 * std::cos(2.0 * M_PI
+        const double window = 0.5 - 0.5 * std::cos(2.0 * pi
             * static_cast<double>(n - begin) / static_cast<double>(end - begin));
-        const double phase = 2.0 * M_PI * frequency * static_cast<double>(n) / sampleRate;
+        const double phase = 2.0 * pi * frequency * static_cast<double>(n) / sampleRate;
         const double value = window * (render.left[n] + render.right[n]);
         real += value * std::cos(phase);
         imaginary += value * std::sin(phase);

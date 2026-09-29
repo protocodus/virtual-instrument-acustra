@@ -6,7 +6,6 @@
 #else
 #include "MeasuredBridgeData.h"
 #endif
-#include "MeasuredSteelBridgeData.h"
 #include "MeasuredJointBodyData.h"
 #include "SteelBodyBlend.h"
 #include "GuitarModelData.h"
@@ -207,58 +206,30 @@ constexpr int localMaximumDelaySamples = 8192;
 // audition RMS match is applied after render.
 constexpr float radiationReferenceGain = 18.0f;
 // Releasing most of a steel pluck parallel to the top (initialisePluck) left
-// the demos a median 5.41 dB quieter at the same controls, so steel's
+// the demos a median 5.41 dB quieter at the same controls, so the strings'
 // reference rises by that much and a session keeps the loudness it had.
-constexpr float steelParallelPluckReference = 1.8637f;
-// Nylon kept the normal-led pluck and the reference it had, 1, and played a
-// median 5.47 dB (BS.1770 integrated loudness) below steel: the six factory
-// constructions, each strung with steel and with nylon, playing soft, medium
-// and hard single notes, strums, an arpeggio and ringing chords with Finger
-// and with Pick at the default Output (Docs/decisions.md, 2026-09-28). The
-// user asked for nylon to be as loud as steel, so nylon's reference rises by
-// that much. Unlike steel's rise this one is meant to be heard: sessions that
-// play nylon, saved ones included, get louder by it. On 2026-09-29 nylon's
-// Wood reference moved to g34's cedar and its bridge began to follow Wood
-// (audit F19, F10), which left the same grid's nylon median 0.75 LU under
-// steel's; the reference rises by that too (1.8774 -> 2.0462), so the two
-// stay as loud as the user asked. Each construction and Picking is levelled
-// on top of these (outputReferenceFor, ConstructionLoudnessData.h).
-constexpr float nylonReference = 2.0462f;
-constexpr float materialReferenceFor(StringMaterial material) noexcept
-{
-    return material == StringMaterial::Steel ? steelParallelPluckReference
-                                             : nylonReference;
-}
+// Each construction and Picking is levelled on top of it
+// (outputReferenceFor, ConstructionLoudnessData.h).
+constexpr float stringsReference = 1.8637f;
 // The share of a pluck's energy released normal to the soundboard at a Touch,
 // with a pluck's own draw about it; initialisePluck says where it comes from.
-float pluckNormalShare(bool steel, float touch, float draw = 0.0f) noexcept
+float pluckNormalShare(float touch, float draw = 0.0f) noexcept
 {
-    return steel ? std::clamp(0.30f - 0.08f * touch + draw, 0.17f, 0.35f)
-                 : std::clamp(0.91f - 0.08f * touch + draw, 0.78f, 0.96f);
+    return std::clamp(0.30f - 0.08f * touch + draw, 0.17f, 0.35f);
 }
 static_assert(detail::measuredSteelBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
-static_assert(detail::measuredNylonBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
 static_assert(detail::measuredSteelBridgeModes.size()
-              <= ACUSTRA_BRIDGE_MODE_COUNT);
-static_assert(detail::measuredNylonBridgeModes.size()
-              <= ACUSTRA_BRIDGE_MODE_COUNT);
-static_assert(detail::measuredFyldeBridgeModes.size()
               <= ACUSTRA_BRIDGE_MODE_COUNT);
 
 static_assert(detail::bellidoBodyModes.size() <= ACUSTRA_BODY_MODE_COUNT);
 static_assert(detail::bellidoBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
 
-// The measured body each material plays is one guitar of one size, so a
-// Shape is a morph of that measurement, not a second measurement. Both
-// calibrations were fitted with the public default shape's authored
-// transform of the bank in place, and the classical recordings prefer that
-// transformed body to the bare measurement (nylon training rows 7.528
-// against 7.910), so it stays nylon's anchor, in the Auditorium slot the
-// Classical preset uses. Steel's anchor, in the Dreadnought slot, is the
-// wider authored box a blind listener chose over it (wideSteelAnchorTransform
-// below). The other shapes are placed relative to the anchor by the coupled
-// model below. A named guitar is its own measurement at its own box, so its
-// anchor is the identity.
+// The measured body is one guitar of one size, so a Shape is a morph of that
+// measurement, not a second measurement. The Original's anchor, in the
+// Dreadnought slot, is the wider authored box a blind listener chose
+// (wideSteelAnchorTransform below). The other shapes are placed relative to
+// the anchor by the coupled model below. A named guitar is its own
+// measurement at its own box, so its anchor is the identity.
 struct AnchorTransform
 {
     float airHz;
@@ -268,16 +239,13 @@ struct AnchorTransform
     float asymmetry;
 };
 
-constexpr AnchorTransform fittedAnchorTransform { 101.0f, 0.972f, 1.08f,
-                                                  0.97f, 0.009f };
 constexpr AnchorTransform measuredAnchorTransform { 107.0f, 1.0f, 1.0f,
                                                     1.0f, 0.0f };
 // Steel's Dreadnought anchor is the wider box the local line authored: a
 // lower air mode, the plate modes lower and more bass. The benchmark split on
 // it (steel training -0.5%, the never-fitted flat-top rows -5.2%,
 // development validation +3.2%) and a blind listener chose it on all four
-// steel pairs (Docs/decisions.md, 2026-09-24), so it is chosen by ear; nylon,
-// whose rows prefer the fitted transform outright, keeps that.
+// steel pairs (Docs/decisions.md, 2026-09-24), so it is chosen by ear.
 constexpr AnchorTransform wideSteelAnchorTransform { 98.0f, 0.900f, 1.28f,
                                                      0.93f, 0.018f };
 
@@ -293,8 +261,8 @@ constexpr AnchorTransform wideSteelAnchorTransform { 98.0f, 0.900f, 1.28f,
 //   Dreadnought Martin D-28 (15 5/8 x 20 x 3 7/8 to 4 7/8 in)
 //   Jumbo       Gibson SJ-200 (17 x 21 x 4 7/8 in)
 // with the 4 in soundhole a steel-string flat-top carries. The classical is
-// the Torres-derived plantilla both measured guitars follow: 370 mm lower
-// bout, 490 mm body, 95 mm mean depth and an 87 mm soundhole. The outline
+// the Torres-derived plantilla the Bellido follows: 370 mm lower bout,
+// 490 mm body, 95 mm mean depth and an 87 mm soundhole. The outline
 // fraction is an estimate read off those plantillas, not a published figure.
 struct BodyGeometry
 {
@@ -502,55 +470,36 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     return morph;
 }
 
-// For nylon the Auditorium slot is the measured classical's own box; the
-// other three names mean the steel-string sizes above on either material.
-const BodyGeometry& bodyGeometryFor(StringMaterial material,
-                                    BodyShape shape) noexcept
-{
-    if (material == StringMaterial::Nylon && shape == BodyShape::Auditorium)
-        return classicalBody;
-    return steelStringBodies[static_cast<std::size_t>(shape)];
-}
-
-// The Shape slot each bank is heard unwarped in: the material's anchor for
+// The Shape slot each bank is heard unwarped in: the Dreadnought for
 // Original, and the Bellido's own family.
-BodyShape anchorShapeFor(StringMaterial material, GuitarModel model) noexcept
+BodyShape anchorShapeFor(GuitarModel model) noexcept
 {
-    if (model == GuitarModel::Bellido1978)
-        return BodyShape::Auditorium;
-    return material == StringMaterial::Steel ? BodyShape::Dreadnought
-                                             : BodyShape::Auditorium;
+    return model == GuitarModel::Bellido1978 ? BodyShape::Auditorium
+                                             : BodyShape::Dreadnought;
 }
 
-// The box each anchor describes: the dreadnought the steel default is, and
-// the classical guitar nylon's bank and the Bellido were measured on.
-const BodyGeometry& anchorBodyFor(StringMaterial material,
-                                  GuitarModel model) noexcept
+// The box each anchor describes: the dreadnought the Original is, and the
+// classical guitar the Bellido was measured on.
+const BodyGeometry& anchorBodyFor(GuitarModel model) noexcept
 {
     if (model == GuitarModel::Bellido1978)
         return classicalBody;
-    return material == StringMaterial::Steel
-        ? steelStringBodies[static_cast<std::size_t>(BodyShape::Dreadnought)]
-        : classicalBody;
+    return steelStringBodies[static_cast<std::size_t>(BodyShape::Dreadnought)];
 }
 
 // The box a Shape asks for; its anchor slot is the anchor's own box exactly,
 // so every morph factor is 1 there.
-const BodyGeometry& targetBodyFor(StringMaterial material, GuitarModel model,
-                                  BodyShape shape) noexcept
+const BodyGeometry& targetBodyFor(GuitarModel model, BodyShape shape) noexcept
 {
-    if (shape == anchorShapeFor(material, model))
-        return anchorBodyFor(material, model);
-    return bodyGeometryFor(material, shape);
+    if (shape == anchorShapeFor(model))
+        return anchorBodyFor(model);
+    return steelStringBodies[static_cast<std::size_t>(shape)];
 }
 
-const AnchorTransform& anchorTransformFor(GuitarModel model,
-                                          StringMaterial material) noexcept
+const AnchorTransform& anchorTransformFor(GuitarModel model) noexcept
 {
-    if (model != GuitarModel::Original)
-        return measuredAnchorTransform;
-    return material == StringMaterial::Steel ? wideSteelAnchorTransform
-                                             : fittedAnchorTransform;
+    return model == GuitarModel::Original ? wideSteelAnchorTransform
+                                          : measuredAnchorTransform;
 }
 
 struct WoodSpec
@@ -562,22 +511,31 @@ struct WoodSpec
 };
 
 // Effective plate directions, not species-identification claims.  Density,
-// stiffness and loss do not reduce to a single "tonewood" number; keeping four
-// bounded directions is more honest than attaching exact woods to unsupported
-// impulse responses.  The relationship f ~ sqrt(E/rho) and modal loss scaling
-// are the only laws used here.
-constexpr std::array<WoodSpec, 4> woodSpecs {{
+// stiffness and loss do not reduce to a single "tonewood" number; keeping
+// three bounded directions, as far apart as the set allows, is more honest
+// than attaching exact woods to unsupported impulse responses.  The
+// relationship f ~ sqrt(E/rho) and modal loss scaling are the only laws used
+// here.
+constexpr std::array<WoodSpec, 3> woodSpecs {{
     { 1.000f, 1.00f, 1.00f, 1.00f }, // spruce reference
-    { 0.982f, 0.88f, 0.93f, 1.04f }, // cedar: softer/more damped direction
     { 0.991f, 0.82f, 0.87f, 1.02f }, // mahogany: lossier/warmer direction
     { 1.025f, 1.08f, 1.08f, 0.96f }  // maple: stiffer/brighter direction
 }};
 
+// The wood each measured bank was built of: g21 (MeasuredBridgeData.h) is
+// spruce/cypress, the Bellido's g35 (BellidoData.h) cedar/Rio palisander.
+// Cedar is not a Body Material choice; it is only the Bellido's reference,
+// its softer and more damped direction.
+constexpr WoodSpec cedarSpec { 0.982f, 0.88f, 0.93f, 1.04f };
+constexpr WoodSpec measuredBankWood(GuitarModel guitar) noexcept
+{
+    return guitar == GuitarModel::Bellido1978 ? cedarSpec : woodSpecs[0];
+}
+
 // What Wood does to a mode's frequency, Q, brightness and radiation,
-// relative to the wood the measured bank was built of
-// (AcustraEngine::measuredBankWood), so every bank is heard as measured at
-// its own wood: spruce for steel's g21, cedar for nylon's g34 and the
-// Bellido. Every factor is then exactly 1 there (x/x in IEEE arithmetic).
+// relative to the wood the measured bank was built of (measuredBankWood), so
+// every bank is heard as measured at its own wood. Every factor is then
+// exactly 1 there (x/x in IEEE arithmetic).
 struct WoodFactors
 {
     float frequency;
@@ -586,12 +544,10 @@ struct WoodFactors
     float radiation;
 };
 
-WoodFactors woodFactorsFor(BodyMaterial material, StringMaterial strings,
-                           GuitarModel guitar) noexcept
+WoodFactors woodFactorsFor(BodyMaterial material, GuitarModel guitar) noexcept
 {
     const auto wood = woodSpecs[static_cast<std::size_t>(material)];
-    const auto reference = woodSpecs[static_cast<std::size_t>(
-        AcustraEngine::measuredBankWood(strings, guitar))];
+    const auto reference = measuredBankWood(guitar);
     return { wood.frequencyScale / reference.frequencyScale,
              wood.qScale / reference.qScale,
              wood.brightness / reference.brightness,
@@ -663,10 +619,6 @@ float safetyLimit(float sample) noexcept
     return exact::copysign(limited, sample);
 }
 
-constexpr std::array<float, AcustraEngine::stringCount> steelDiameterMetres {{
-    1.346e-3f, 1.067e-3f, 0.813e-3f, 0.610e-3f, 0.406e-3f, 0.305e-3f
-}};
-
 // D'Addario EJ16 published tensions, low E to high E, converted from pounds
 // force.  Wound-string mass cannot be inferred from its outside diameter as a
 // solid steel cylinder; tension and scale length give the effective linear
@@ -690,84 +642,32 @@ constexpr std::array<float, AcustraEngine::stringCount> steelBendingDiameter {{
     0.38e-3f, 0.406e-3f, 0.305e-3f
 }};
 
-constexpr std::array<float, AcustraEngine::stringCount> nylonDiameterMetres {{
-    1.15e-3f, 0.97e-3f, 0.79e-3f, 1.00e-3f, 0.82e-3f, 0.67e-3f
-}};
-
-// DAFx-26 Table 1's EJ45 construction data, reversed from its high-E-to-low-E
-// presentation into engine order. The three wound basses use effective
-// densities rather than pretending their wrap/core composite is homogeneous
-// plain nylon. https://dafx26.mit.edu/assets/papers/DAFx26_paper_40.pdf
-constexpr std::array<float, AcustraEngine::stringCount> nylonDensity {{
-    5900.0f, 5200.0f, 4500.0f, 1140.0f, 1140.0f, 1140.0f
-}};
-
-constexpr std::array<float, AcustraEngine::stringCount> nylonYoungsModulus {{
-    2.5e9f, 2.5e9f, 2.5e9f, 2.7e9f, 2.7e9f, 2.7e9f
-}};
-
-// Woodhouse, Acta Acustica 90 (2004) 945-965, Table I (corrected), D'Addario
-// Pro Arte "Composites, hard tension" strings at L = 0.65 m - a different
-// set from the EJ45 family the density/modulus tables above use, so this
-// pairs Woodhouse's measured EI with the engine's own EJ45-derived tensions
-// rather than his (his string tensions are 71.6/73.9/71.2/58.3/53.4/70.3 N,
-// E2..E4, against the engine's 70.3/78.6/80.4/58.1/62.0/73.8 N - up to a 16%
-// shift in B on B3). EI in N*m^2, published E4/B3/G3/D3/A2/E2
-// 130/160/310/51/40/57 x1e-6 reversed into engine order (E2..E4). Measured
-// directly rather than inferred from the outside diameter and a handbook
-// nylon modulus: bending stiffness of a wound bass or a plasticised jacket
-// is not E*pi*d^4/64 on the outside diameter, and Lynch-Aird and Woodhouse
-// (Materials 10(5):497, 2017) attribute plain nylon's own dynamic bending
-// modulus (~13 GPa implied) exceeding the handbook static 2.7 GPa to the
-// same effect.
-constexpr std::array<float, AcustraEngine::stringCount> nylonBendingEI {{
-    57.0e-6f, 40.0e-6f, 51.0e-6f, 310.0e-6f, 160.0e-6f, 130.0e-6f
-}};
-
 constexpr float steelYoungsModulus = 2.0e11f;
 
-float stringImpedance(bool steel, int stringIndex, int openMidi) noexcept
+float stringImpedance(int stringIndex, int openMidi) noexcept
 {
     const auto index = static_cast<std::size_t>(stringIndex);
     const float frequency = 440.0f
         * std::exp2((static_cast<float>(openMidi) - 69.0f) / 12.0f);
-    const float length = steel ? 0.648f : 0.650f;
+    constexpr float length = 0.648f;
     const float waveSpeed = 2.0f * length * frequency;
-    if (steel)
-    {
-        const float standardFrequency = 440.0f * std::exp2(
-            (static_cast<float>(standardOpenMidi[index]) - 69.0f) / 12.0f);
-        const float standardWaveSpeed = 2.0f * length * standardFrequency;
-        if (openMidi == standardOpenMidi[index])
-            return steelTensionNewtons[index] / standardWaveSpeed;
-        const float linearMass = steelTensionNewtons[index]
-                               / (standardWaveSpeed * standardWaveSpeed);
-        return linearMass * waveSpeed;
-    }
-    const float diameter = nylonDiameterMetres[index];
-    const float linearMass = nylonDensity[index] * pi * 0.25f
-                           * diameter * diameter;
+    const float standardFrequency = 440.0f * std::exp2(
+        (static_cast<float>(standardOpenMidi[index]) - 69.0f) / 12.0f);
+    const float standardWaveSpeed = 2.0f * length * standardFrequency;
+    if (openMidi == standardOpenMidi[index])
+        return steelTensionNewtons[index] / standardWaveSpeed;
+    const float linearMass = steelTensionNewtons[index]
+                           / (standardWaveSpeed * standardWaveSpeed);
     return linearMass * waveSpeed;
 }
 
-// Axial rigidity E*A, in newtons: what a bend works against. Steel uses the
+// Axial rigidity E*A, in newtons: what a bend works against. It uses the
 // same effective core the bending and attack-pitch models use, since a wound
-// string's wrap carries almost no axial load, and plain nylon its own
-// diameter and modulus. Nylon's three wound basses return zero: their
-// tabulated density is an effective composite that is right for transverse
-// mass and wrong for axial stiffness - the same reason the longitudinal drive
-// is left out for them - so what a stretch does to their pitch is not
-// something this data fixes, and they keep the length convention below.
-float stringAxialRigidity(bool steel, int stringIndex) noexcept
+// string's wrap carries almost no axial load.
+float stringAxialRigidity(int stringIndex) noexcept
 {
-    const auto index = static_cast<std::size_t>(stringIndex);
-    if (!steel && stringIndex < 3)
-        return 0.0f;
-    const float diameter = steel ? steelBendingDiameter[index]
-                                 : nylonDiameterMetres[index];
-    const float youngsModulus = steel ? steelYoungsModulus
-                                      : nylonYoungsModulus[index];
-    return youngsModulus * 0.25f * pi * diameter * diameter;
+    const float diameter = steelBendingDiameter[static_cast<std::size_t>(stringIndex)];
+    return steelYoungsModulus * 0.25f * pi * diameter * diameter;
 }
 
 // The tension a requested interval needs, from Grimes, PLoS ONE 9(7):e102088
@@ -807,52 +707,29 @@ float bentStringTension(float tension, float axialRigidity,
     return std::max(tension + added, 0.05f * tension);
 }
 
-// The bridge a construction actually plays: its Bridge choice where that
-// selects one (AcustraEngine::bridgeSelectable: steel on Original), Original
-// everywhere else - the Bellido is one measured guitar with its own bridge,
-// and nylon keeps g34's. The choice is kept, so it returns with steel on
-// Original, but where it has no effect it is not compared as a change.
-constexpr BridgeModel effectiveBridge(StringMaterial material,
-                                      BridgeModel model,
-                                      GuitarModel guitar) noexcept
-{
-    return AcustraEngine::bridgeSelectable(material, guitar)
-        ? model : BridgeModel::Original;
-}
-
-BridgeModel effectiveBridge(const EngineParameters& parameters) noexcept
-{
-    return effectiveBridge(parameters.stringMaterial, parameters.bridgeModel,
-                           parameters.guitarModel);
-}
-
 // Every construction and Picking plays at the default construction's
 // loudness (Docs/decisions.md, 2026-09-29, "Every construction as loud as
 // the default"): a construction's cell in ConstructionLoudnessData.h, which
-// Tools/CalibrateConstructionLoudness.py measures and writes. The Bridge is
-// the one the construction plays, so a choice that selects nothing moves
-// nothing.
+// Tools/CalibrateConstructionLoudness.py measures and writes.
 std::size_t constructionLoudnessCell(const EngineParameters& parameters) noexcept
 {
     const auto place = [] (auto value, int count) noexcept
     {
         return std::clamp(static_cast<int>(value), 0, count - 1);
     };
-    int cell = place(parameters.stringMaterial, 2);
-    cell = cell * 2 + place(parameters.guitarModel, 2);
-    cell = cell * 2 + place(effectiveBridge(parameters), 2);
+    int cell = place(parameters.guitarModel, 2);
     cell = cell * 4 + place(parameters.shape, 4);
-    cell = cell * 4 + place(parameters.bodyMaterial, 4);
+    cell = cell * 3 + place(parameters.bodyMaterial, 3);
     cell = cell * 3 + place(parameters.picking, 3);
     return static_cast<std::size_t>(cell);
 }
-static_assert(detail::constructionMicReference.size() == 2 * 2 * 2 * 4 * 4 * 3);
+static_assert(detail::constructionMicReference.size() == 2 * 4 * 3 * 3);
 
-// The output reference: the string material's, times its construction's
-// level (exactly 1 for the default construction, which renders unchanged).
+// The output reference: the strings', times the construction's level
+// (exactly 1 for the default construction, which renders unchanged).
 float outputReferenceFor(const EngineParameters& parameters) noexcept
 {
-    return materialReferenceFor(parameters.stringMaterial)
+    return stringsReference
         * detail::constructionMicReference[constructionLoudnessCell(parameters)];
 }
 
@@ -865,7 +742,7 @@ float monoReferenceFor(const EngineParameters& parameters) noexcept
         * detail::constructionMonoTrim[constructionLoudnessCell(parameters)];
 }
 
-// The piezo's reference before its material trim (PiezoDesign::trimFor):
+// The piezo's reference before its trim (PiezoDesign::trim):
 // the stereo microphones' times its factor over them.
 float piezoReferenceFor(const EngineParameters& parameters) noexcept
 {
@@ -873,34 +750,21 @@ float piezoReferenceFor(const EngineParameters& parameters) noexcept
         * detail::constructionPiezoTrim[constructionLoudnessCell(parameters)];
 }
 
-// The original steel voice adapts Mores g21, a nylon-strung flamenco guitar.
-// The optional Fylde bank supplies measured steel-string bridge mobility;
-// radiation still uses the existing bank. Nylon retains its own g34 bank.
-ConstSpan<detail::MeasuredBridgeMode> measuredBridgeBank(
-    StringMaterial material, BridgeModel model,
-    GuitarModel guitar = GuitarModel::Original) noexcept
+// The Original voice adapts Mores g21, a flamenco guitar, brought to
+// steel-string mobility. The Bellido plays its own measured bridge (see
+// configureBridge for its mobility with steel).
+ConstSpan<detail::MeasuredBridgeMode> measuredBridgeBank(GuitarModel guitar) noexcept
 {
-    // The Bellido plays its own measured bridge with either string, whatever
-    // the Bridge choice (see configureBridge for its mobility with steel).
     if (guitar == GuitarModel::Bellido1978)
         return detail::bellidoBridgeModes;
-    if (material == StringMaterial::Steel)
-    {
-        if (effectiveBridge(material, model, guitar) == BridgeModel::FyldeSteel)
-            return detail::measuredFyldeBridgeModes;
-        return detail::measuredSteelBridgeModes;
-    }
-    return detail::measuredNylonBridgeModes;
+    return detail::measuredSteelBridgeModes;
 }
 
-ConstSpan<detail::MeasuredBodyMode> measuredBodyBank(
-    StringMaterial material, GuitarModel guitar) noexcept
+ConstSpan<detail::MeasuredBodyMode> measuredBodyBank(GuitarModel guitar) noexcept
 {
     if (guitar == GuitarModel::Bellido1978)
         return detail::bellidoBodyModes;
-    if (material == StringMaterial::Steel)
-        return detail::measuredSteelBodyModes;
-    return detail::measuredNylonBodyModes;
+    return detail::measuredSteelBodyModes;
 }
 
 // The same coupled-model factors the radiation takes, applied to a bridge
@@ -921,16 +785,9 @@ detail::MeasuredBridgeMode shapeBridgeMode(
 // Steel's own bridge is g21's, the guitar its radiation bank is, so one body
 // loads the string and radiates it: a modal body's mode k carries both the
 // mobility residue phi_k(bridge)^2/m_k and the radiation residue
-// phi_k(bridge) psi_k(mic)/m_k on the same pole. Only for steel on Original
-// with the Original bridge; the Fylde is another guitar, and nylon's g34 and
-// the Bellido follow their radiation by the lighter rule of
-// bodyBridgePole below.
-bool steelOwnBridge(StringMaterial material, BridgeModel bridge,
-                    GuitarModel guitar) noexcept
-{
-    return material == StringMaterial::Steel && guitar == GuitarModel::Original
-        && bridge == BridgeModel::Original;
-}
+// phi_k(bridge) psi_k(mic)/m_k on the same pole. Only on the Original; the
+// Bellido follows its radiation by the lighter rule of bellidoBridgePole
+// below.
 
 // The engine pole of steel's own bridge mode `index` (see steelOwnBridge).
 // A mode that is the same resonance as radiation mode j (the generator's twin
@@ -973,9 +830,9 @@ ModalPole steelOwnBridgePole(std::size_t index,
 // same guitar, at compile time: the nearest radiation mode k, when the bridge
 // mode lies inside k's half-power band, |f_b - f_k| < f_k/(2 Q_k), and is
 // itself one resolved resonance, f_b/Q_b < the radiation's local spacing.
-// Nylon's g34 and the Bellido keep their radiation's Qs as fitted, so their
-// headers are the test's input (steel's are plate-Q corrected, so its twins
-// are the generator's table instead).
+// The Bellido keeps its radiation's Qs as fitted, so its header is the
+// test's input (steel's are plate-Q corrected, so its twins are the
+// generator's table instead).
 constexpr double constexprAbs(double value) noexcept
 {
     return value < 0.0 ? -value : value;
@@ -1011,57 +868,34 @@ constexpr std::array<std::int16_t, BridgeModes> radiationTwins(
     return twins;
 }
 
-constexpr auto nylonBridgeRadiationTwins = radiationTwins(
-    detail::measuredNylonBridgeModes, detail::measuredNylonBodyModes);
 constexpr auto bellidoBridgeRadiationTwins = radiationTwins(
     detail::bellidoBridgeModes, detail::bellidoBodyModes);
 
-// Whether a construction's bridge belongs to its radiation's guitar and so
-// moves with it under the anchor transform and Wood as well as Shape: every
-// bank but the Fylde, which is another guitar's bridge under g21's
-// radiation and keeps its measurement (Shape alone moves it).
-bool bridgeFollowsBody(StringMaterial material, BridgeModel bridge,
-                       GuitarModel guitar) noexcept
+// The engine pole of mode `index` of the Bellido's bridge. It keeps, under
+// every Shape and Wood, the relation to its radiation that it has at its
+// anchor: a mode twinned with radiation mode j (radiationTwins) is moved by
+// exactly the factor radiationPole moves j by from the anchor's own pole
+// (Shape's class factor, Wood and the calibration), so a drain stays on the
+// resonance it drains wherever the construction goes. An unpaired mode takes
+// the same maps by class, as steel's unpaired modes do. Q takes Wood's and
+// the calibration's factor. The Bellido's anchor is the identity, so at its
+// own box and wood its bridge is its measurement to the bit. The residue
+// matrix is kept, so the mode stays passive.
+ModalPole bellidoBridgePole(std::size_t index,
+                            const detail::MeasuredBridgeMode& source,
+                            const detail::MeasuredBridgeMode& shaped,
+                            const AnchorTransform& anchor,
+                            const BodyShapeMorph& morph, WoodFactors wood,
+                            const PhysicalCalibration& calibration) noexcept
 {
-    return effectiveBridge(material, bridge, guitar) != BridgeModel::FyldeSteel;
-}
-
-// The engine pole of mode `index` of a bridge that belongs to its radiation's
-// body but is not steel's own (nylon's g34, the Bellido with either string).
-// Each keeps, under every Shape and Wood, the relation to its radiation that
-// it has at its anchor: a mode twinned with radiation mode j (radiationTwins)
-// is moved by exactly the factor radiationPole moves j by from the anchor's
-// own pole (Shape's class factor, Wood and the calibration), so a drain
-// stays on the resonance it drains wherever the construction goes. An
-// unpaired mode takes the same maps by class, as steel's unpaired modes do.
-// Q takes Wood's and the calibration's factor. The anchor transform itself
-// is not applied to these bridges: nylon's radiation there is the fitted
-// transform, whose fit and every nylon benchmark row played this bridge as
-// measured (moving the bridge with it too scored 2.6% worse on the held-out
-// nylon rows and 2.1% worse on the Iowa classical; Docs/decisions.md,
-// 2026-09-29). The Bellido's anchor is the identity, so at its own box and
-// wood its bridge is its measurement to the bit. The residue matrix is
-// kept, so the mode stays passive.
-ModalPole bodyBridgePole(std::size_t index,
-                         const detail::MeasuredBridgeMode& source,
-                         const detail::MeasuredBridgeMode& shaped,
-                         StringMaterial material, GuitarModel guitar,
-                         const AnchorTransform& anchor,
-                         const BodyShapeMorph& morph, WoodFactors wood,
-                         const PhysicalCalibration& calibration) noexcept
-{
-    const bool bellido = guitar == GuitarModel::Bellido1978;
-    const auto radiation = measuredBodyBank(material, guitar);
-    const int twin = bellido
-        ? (index < bellidoBridgeRadiationTwins.size()
-               ? bellidoBridgeRadiationTwins[index] : -1)
-        : (index < nylonBridgeRadiationTwins.size()
-               ? nylonBridgeRadiationTwins[index] : -1);
+    const auto& radiation = detail::bellidoBodyModes;
+    const int twin = index < bellidoBridgeRadiationTwins.size()
+        ? bellidoBridgeRadiationTwins[index] : -1;
     const float q = source.q * wood.q * calibration.bodyQScale;
     if (twin >= 0)
     {
         const auto pole = radiationPole(radiation, twin, anchor, morph, wood,
-                                        bellido, calibration);
+                                        true, calibration);
         // The same mode at the anchor: the anchor transform alone, computed
         // in the same order, so at the anchor the ratio is exactly 1.
         PhysicalCalibration unit = calibration;
@@ -1069,7 +903,7 @@ ModalPole bodyBridgePole(std::size_t index,
         unit.bodyQScale = 1.0f;
         const auto anchored = radiationPole(radiation, twin, anchor,
             BodyShapeMorph {}, WoodFactors { 1.0f, 1.0f, 1.0f, 1.0f },
-            bellido, unit);
+            true, unit);
         return { source.frequency * (pole.frequency / anchored.frequency), q };
     }
     return { shaped.frequency * wood.frequency
@@ -1077,10 +911,10 @@ ModalPole bodyBridgePole(std::size_t index,
              q };
 }
 
-// The steel blend (SteelBodyBlend.h). On steel's own bridge the bridge is
-// B's aligned bridge, the Fylde's and the joint-pole body's kept modes in
-// parallel, and on steel's Original guitar the radiation is g21's bank and
-// the joint-pole body's kept radiation in parallel, each part at its share.
+// The steel blend (SteelBodyBlend.h). On the Original guitar the bridge is
+// B's aligned bridge and the joint-pole body's kept modes in parallel, and
+// the radiation is g21's bank and the joint-pole body's kept radiation in
+// parallel, each part at its share.
 // A part whose share is zero is not played at all, and a share of exactly 1
 // multiplies exactly, so B=1, D=1, E=0 is Set 18's B+D bit for bit.
 //
@@ -1198,16 +1032,12 @@ constexpr auto steelJointBridgeSource = jointBridgeSource<steelJointBridgeCount>
     steelJointKept, detail::measuredSteelJointBodyModes);
 
 // Each part's share of the whole. Below E's band (1 - E) carries everything
-// but the joint body: g21's radiation, and the bridge, which B and the Fylde
-// share. Above it E is not played: B's bridge is whole there, and g21's
-// radiation gives up steelBlendHighJointFraction of E's share.
+// but the joint body: g21's radiation and B's bridge. Above it E is not
+// played: B's bridge is whole there, and g21's radiation gives up
+// steelBlendHighJointFraction of E's share.
 constexpr float steelBlendRestShare = 1.0f - detail::steelBlendJointBodyWeight;
 constexpr float steelBlendHighRadiationShare
     = 1.0f - detail::steelBlendJointBodyWeight * detail::steelBlendHighJointFraction;
-constexpr float steelBlendOwnBridgeShare
-    = steelBlendRestShare * detail::steelBlendOwnBridgeWeight;
-constexpr float steelBlendFyldeShare
-    = steelBlendRestShare * (1.0f - detail::steelBlendOwnBridgeWeight);
 constexpr float steelBlendJointShare = detail::steelBlendJointBodyWeight;
 
 // The share at which g21's radiation mode, or B's bridge mode, at measured
@@ -1219,8 +1049,7 @@ constexpr float steelBlendG21Share(float hz) noexcept
 }
 constexpr float steelBlendOwnShare(float hz) noexcept
 {
-    return hz < detail::steelBlendJointBandHz ? steelBlendOwnBridgeShare
-                                               : detail::steelBlendOwnBridgeWeight;
+    return hz < detail::steelBlendJointBandHz ? steelBlendRestShare : 1.0f;
 }
 
 constexpr std::size_t steelBlendBodyModeCount
@@ -1228,7 +1057,6 @@ constexpr std::size_t steelBlendBodyModeCount
     + (steelBlendJointShare > 0.0f ? steelJointRadiationCount : 0);
 constexpr std::size_t steelBlendBridgeModeCount
     = detail::measuredSteelBridgeModes.size()
-    + (steelBlendFyldeShare > 0.0f ? detail::measuredFyldeBridgeModes.size() : 0)
     + (steelBlendJointShare > 0.0f ? steelJointBridgeCount : 0);
 // The in-order sum of g21's bank ends on a whole group of four, so the parts
 // after it start on one (BodyBank::render).
@@ -1239,9 +1067,9 @@ static_assert(steelBlendBodyModeCount <= ACUSTRA_BODY_MODE_COUNT,
               "joint mode (a band above 10 kHz) it needs "
               "-DACUSTRA_BODY_MODE_COUNT=263");
 static_assert(steelBlendBridgeModeCount <= ACUSTRA_BRIDGE_MODE_COUNT,
-              "the steel blend's bridge exceeds the bridge slots: with its B "
-              "weight below 1 it needs 44 more (the Fylde's), with every joint "
-              "mode (a band above 10 kHz) -DACUSTRA_BRIDGE_MODE_COUNT=103");
+              "the steel blend's bridge exceeds the bridge slots: with every "
+              "joint mode (a band above 10 kHz) it needs "
+              "-DACUSTRA_BRIDGE_MODE_COUNT=103");
 static_assert(detail::measuredSteelT1PlateQWeight == detail::steelBlendT1PlateQWeight,
               "MeasuredBodyData.h was written with another D weight than "
               "SteelBodyBlend.h's: rerun Tools/GenerateBodyForcePair.py --plate-q median");
@@ -1251,8 +1079,8 @@ BodyShapeMorph steelJointMorph(const AnchorTransform& anchor,
                                BodyShape shape) noexcept
 {
     return bodyShapeMorph(steelJointRadiationModes, anchor,
-        anchorBodyFor(StringMaterial::Steel, GuitarModel::Original),
-        targetBodyFor(StringMaterial::Steel, GuitarModel::Original, shape));
+        anchorBodyFor(GuitarModel::Original),
+        targetBodyFor(GuitarModel::Original, shape));
 }
 
 // Steel's own bridge in the blend, mode by mode: visit(source, placed, level,
@@ -1260,9 +1088,8 @@ BodyShapeMorph steelJointMorph(const AnchorTransform& anchor,
 // residues' factor relative to B's own level (the fitted scale times
 // steelTopMobilityRatio), so that B's modes keep exactly B's arithmetic, and
 // whether it is one of B's modes, which come first.
-// B's modes are steelOwnBridgePole's; the Fylde's are shaped as the Fylde
-// bridge choice plays them, at the Fylde's own level; the joint body's ring
-// on its radiation's poles at its own steel-top level.
+// B's modes are steelOwnBridgePole's; the joint body's ring on its
+// radiation's poles at its own steel-top level.
 template <typename Visit>
 void visitSteelBlendBridge(float a0, float t1, float plate, float t1UpperHz,
                            const AnchorTransform& anchor,
@@ -1280,13 +1107,6 @@ void visitSteelBlendBridge(float a0, float t1, float plate, float t1UpperHz,
         placed.frequency = pole.frequency;
         placed.q = pole.q;
         visit(own[index], placed, steelBlendOwnShare(own[index].frequency), true);
-    }
-    if (steelBlendFyldeShare > 0.0f)
-    {
-        constexpr float level = steelBlendFyldeShare / detail::steelTopMobilityRatio;
-        for (const auto& source : detail::measuredFyldeBridgeModes)
-            visit(source, shapeBridgeMode(source, a0, t1, plate, t1UpperHz), level,
-                  false);
     }
     if (steelBlendJointShare > 0.0f)
     {
@@ -1323,8 +1143,7 @@ bool includeMeasuredBridgeMode(const detail::MeasuredBridgeMode& mode) noexcept
     // Analysis only, and applied to whichever bank the material selects: the
     // archive's setup photographs show installed strings.  Of the retained
     // candidates only the steel bank's 82.764 Hz lies within 25 cents of the
-    // one open string this surrogate names (E2, 82.407 Hz); on the nylon bank
-    // it removes nothing.  Do not ship it: the measurement string's impedance
+    // one open string this surrogate names (E2, 82.407 Hz).  Do not ship it: the measurement string's impedance
     // metadata is unavailable, and the generator's own open-string screen
     // already gates every retained mode near a standard open string on its
     // resolved Q.
@@ -1375,10 +1194,7 @@ int wrapDelayIndex(int index) noexcept
 bool sameStringConstruction(const EngineParameters& a,
                             const EngineParameters& b) noexcept
 {
-    return a.guitarModel == b.guitarModel
-        && a.stringMaterial == b.stringMaterial
-        && effectiveBridge(a) == effectiveBridge(b)
-        && a.tuning == b.tuning;
+    return a.guitarModel == b.guitarModel && a.tuning == b.tuning;
 }
 
 struct DispersionCalibration
@@ -1429,15 +1245,15 @@ double mixedOnePolePhase(double coefficient, double mix,
 // other two terms, air damping and a friction that sets a constant Q, have
 // no separate counterpart here: the loop's fundamental T60 and its broad and
 // high shelves, calibrated as a whole, stand in for them, and this section
-// is added to them rather than replacing them (replacing nylon's shelves by
+// is added to them rather than replacing them (replacing the shelves by
 // Woodhouse's published three-term law over-damped 3-6.8 kHz, see
 // Docs/decisions.md, 2026-09-04). Its
 // decay rate sigma_n = omega_n / (2 Q_n) grows as the cube of frequency until
 // B n^2 nears one, which is how a string's highest partials die in tens of
 // milliseconds while its first dozen ring for seconds. Wound strings rub
 // wrap on wrap and wrap on core as they bend, so eta is one number per
-// construction (the four bending-loss factors in FittedPhysicalData.h), not a
-// property of steel or nylon alone.
+// construction (the two bending-loss factors in FittedPhysicalData.h, wound
+// and plain), not a property of the material alone.
 //
 // Per round trip of the loop, one fundamental period, partial n therefore
 // loses L_n = sigma_n / f0 = pi (f_n / f0) eta B n^2 / (1 + B n^2) nepers.
@@ -1945,13 +1761,13 @@ DispersionCalibration calibrateDispersion(
     // corner of the (decayRatio, poleRatio) box instead of reaching the
     // near-zero residual a well-posed collocation admits. Which starting
     // points stall is not a property of the string: at 384 kHz a top-fret
-    // treble stalls at a residual of 0.40 rad from the default start on
-    // steel and 0.22 on nylon, where a coarse sweep of the box shows a
+    // treble stalls at a residual of 0.40 rad from the default start, where
+    // a coarse sweep of the box shows a
     // solution within 0.014 rad of exact, and moving to the Thiran read
     // moved which notes land in which basin. So the fallback restarts the
     // same cheap three-parameter solve from a spread of both starting ratios
     // and keeps the lowest-residual run, which puts every note of the
-    // rate/material/fret matrix back inside 3.0 cents of H2-H12 placement.
+    // rate/fret matrix back inside 3.0 cents of H2-H12 placement.
     // It costs nothing on a note whose first solve converged: the sweep is
     // skipped entirely once the residual is below 1e-9.
     {
@@ -2063,11 +1879,8 @@ EngineParameters AcustraEngine::sanitise(const EngineParameters& source) noexcep
         static_cast<int>(source.shape), 3,
         static_cast<int>(EngineParameters {}.shape)));
     result.bodyMaterial = static_cast<BodyMaterial>(enumOr(
-        static_cast<int>(source.bodyMaterial), 3,
+        static_cast<int>(source.bodyMaterial), 2,
         static_cast<int>(EngineParameters {}.bodyMaterial)));
-    result.stringMaterial = static_cast<StringMaterial>(enumOr(
-        static_cast<int>(source.stringMaterial), 1,
-        static_cast<int>(EngineParameters {}.stringMaterial)));
     switch (source.capture)
     {
         case CaptureType::TrebleMic:
@@ -2091,9 +1904,6 @@ EngineParameters AcustraEngine::sanitise(const EngineParameters& source) noexcep
     result.picking = static_cast<PickingTechnique>(enumOr(
         static_cast<int>(source.picking), 2,
         static_cast<int>(EngineParameters {}.picking)));
-    result.bridgeModel = static_cast<BridgeModel>(enumOr(
-        static_cast<int>(source.bridgeModel), 1,
-        static_cast<int>(EngineParameters {}.bridgeModel)));
     // A retired model's value (2-4) plays Original.
     result.guitarModel = static_cast<GuitarModel>(enumOr(
         static_cast<int>(source.guitarModel), 1,
@@ -2104,6 +1914,7 @@ EngineParameters AcustraEngine::sanitise(const EngineParameters& source) noexcep
     result.bodyAmount = clamp(source.bodyAmount, 0.0f, 1.0f);
     result.stereoWidth = clamp(source.stereoWidth, 0.0f, 1.0f);
     result.outputGain = clamp(source.outputGain, 0.0f, 4.0f);
+    result.piezoMix = clamp(source.piezoMix, 0.0f, 1.0f);
     return result;
 }
 
@@ -2147,7 +1958,6 @@ PhysicalCalibration AcustraEngine::sanitise(
                 fittedPhysicalCalibration.residueTiltDbPerOctave),
         bounded(source.directGain, 0.0f, 0.12f,
                 fittedPhysicalCalibration.directGain),
-        material(source.nylon, fittedPhysicalCalibration.nylon),
         material(source.steel, fittedPhysicalCalibration.steel),
         bounded(source.apertureRegisterExponent, -1.0f, 1.0f,
                 fittedPhysicalCalibration.apertureRegisterExponent),
@@ -2183,30 +1993,20 @@ PhysicalCalibration AcustraEngine::sanitise(
                 fittedPhysicalCalibration.steelWoundBendingLoss),
         bounded(source.steelPlainBendingLoss, 0.0f, 2.0f,
                 fittedPhysicalCalibration.steelPlainBendingLoss),
-        bounded(source.nylonWoundBendingLoss, 0.0f, 2.0f,
-                fittedPhysicalCalibration.nylonWoundBendingLoss),
-        bounded(source.nylonPlainBendingLoss, 0.0f, 2.0f,
-                fittedPhysicalCalibration.nylonPlainBendingLoss),
         bounded(source.contactNoiseFinger, 0.0f, 4.0f,
                 fittedPhysicalCalibration.contactNoiseFinger),
-        bounded(source.contactNoiseNylon, 0.0f, 4.0f,
-                fittedPhysicalCalibration.contactNoiseNylon),
         bounded(source.contactNoisePick, 0.0f, 4.0f,
                 fittedPhysicalCalibration.contactNoisePick),
         bounded(source.contactNoiseVelocityExponent, 0.0f, 4.0f,
                 fittedPhysicalCalibration.contactNoiseVelocityExponent),
         bounded(source.contactNoiseCornerHz, 100.0f, 20000.0f,
                 fittedPhysicalCalibration.contactNoiseCornerHz),
-        bounded(source.nylonContactNoiseCornerHz, 100.0f, 20000.0f,
-                fittedPhysicalCalibration.nylonContactNoiseCornerHz),
         bounded(source.pickContactNoiseCornerHz, 100.0f, 20000.0f,
                 fittedPhysicalCalibration.pickContactNoiseCornerHz),
         bounded(source.contactNoiseDecaySeconds, 0.0005f, 0.05f,
                 fittedPhysicalCalibration.contactNoiseDecaySeconds),
         bounded(source.contactClickFinger, 0.0f, 64.0f,
                 fittedPhysicalCalibration.contactClickFinger),
-        bounded(source.contactClickNylon, 0.0f, 64.0f,
-                fittedPhysicalCalibration.contactClickNylon),
         bounded(source.contactClickPick, 0.0f, 64.0f,
                 fittedPhysicalCalibration.contactClickPick)
     };
@@ -2690,15 +2490,11 @@ void AcustraEngine::prepare(double sampleRate, int)
     // sources, Tools/PiezoReference.py simulates the same circuit).
     {
         using D = PiezoDesign;
-        for (std::size_t material = 0; material < piezoSaddle_.size(); ++material)
-        {
-            double impedance = 0.0;
-            for (int string = 0; string < stringCount; ++string)
-                impedance += static_cast<double>(stringImpedance(
-                    material == 0, string,
-                    standardOpenMidi[static_cast<std::size_t>(string)]));
-            piezoSaddle_[material] = designPiezoSaddle(sampleRate_, impedance);
-        }
+        double impedance = 0.0;
+        for (int string = 0; string < stringCount; ++string)
+            impedance += static_cast<double>(stringImpedance(
+                string, standardOpenMidi[static_cast<std::size_t>(string)]));
+        piezoSaddle_ = designPiezoSaddle(sampleRate_, impedance);
         // The input section as deviations from its operating point. The jack
         // node carries only capacitors, so its charge stays where it was and
         // V_J = (Cp V_oc + C1 V_IN) / (Cs + C1); the IN node then sees C1 in
@@ -2827,16 +2623,16 @@ void AcustraEngine::reset() noexcept
     bodyAmount_ = parameters_.bodyAmount;
     width_ = parameters_.stereoWidth;
     outputGain_ = parameters_.outputGain;
-    materialReference_ = outputReferenceFor(parameters_);
+    piezoMix_ = parameters_.piezoMix;
+    outputReference_ = outputReferenceFor(parameters_);
     monoReference_ = monoReferenceFor(parameters_);
-    piezoTrim_ = PiezoDesign::trimFor(parameters_.stringMaterial)
-        * piezoReferenceFor(parameters_);
+    piezoTrim_ = PiezoDesign::trim * piezoReferenceFor(parameters_);
     captureMix_.fill(0.0f);
     captureMix_[static_cast<std::size_t>(parameters_.capture)] = 1.0f;
     bodyConfigured_ = false;
     bodyUpdatePending_ = false;
-    // Both banks follow the string material, which is only known here: prepare
-    // runs before the pending parameters are adopted.
+    // Both banks follow the model, which is only known here: prepare runs
+    // before the pending parameters are adopted.
     configureBridge();
     configureBody();
     bodyBank_.reset();
@@ -2929,53 +2725,40 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     const bool constructionChanged = force
         || !sameStringConstruction(next, parameters_);
     const bool modelChanged = force || next.guitarModel != parameters_.guitarModel;
-    // Where the bridge belongs to its radiation's body (every bank but the
-    // Fylde), Wood moves the bridge's poles with the radiation's, so there it
-    // exchanges the mechanical load as Shape does.
+    // The bridge belongs to its radiation's body, so Wood moves the bridge's
+    // poles with the radiation's and exchanges the mechanical load as Shape
+    // does.
     const bool shapeChanged = next.shape != parameters_.shape
-        || (next.bodyMaterial != parameters_.bodyMaterial
-            && bridgeFollowsBody(next.stringMaterial, next.bridgeModel,
-                                 next.guitarModel));
-    const bool bodyChanged = modelChanged || shapeChanged
         || next.bodyMaterial != parameters_.bodyMaterial;
+    const bool bodyChanged = modelChanged || shapeChanged;
     const bool ageChanged = force
         || exact::abs(next.stringAge - parameters_.stringAge) > 1.0e-5f;
-    const bool stringChanged = force
-        || next.stringMaterial != parameters_.stringMaterial;
-    // A Bridge choice the construction does not play (nylon, the Bellido)
-    // changes nothing, so it rebuilds nothing under a ringing chord.
-    const bool bridgeModelChanged
-        = effectiveBridge(next) != effectiveBridge(parameters_);
-    const bool bridgeChanged = modelChanged || stringChanged || shapeChanged
-        || bridgeModelChanged;
+    const bool bridgeChanged = modelChanged || shapeChanged;
     const bool tuningChanged = force || next.tuning != parameters_.tuning;
-    if (force || next.stringMaterial != parameters_.stringMaterial
-        || next.tuning != parameters_.tuning
-        || bridgeModelChanged
+    if (force || next.tuning != parameters_.tuning
         || next.guitarModel != parameters_.guitarModel
         || shapeChanged
         || exact::bits(next.stringAge) != exact::bits(parameters_.stringAge))
         ++voiceConfigurationGeneration_;
-    // Shape and Wood retune the same measured bank; Model, Strings and the
-    // Bridge choice exchange it for another guitar's.
-    const bool sameBridgeBank = !force && !modelChanged && !stringChanged
-        && !bridgeModelChanged;
-    // What each string presented to the junction, for a string set exchanged
-    // under a ringing chord (below).
+    // Shape and Wood retune the same measured bank; Model exchanges it for
+    // another guitar's.
+    const bool sameBridgeBank = !force && !modelChanged;
+    // What each string presented to the junction, for a retune under a
+    // ringing chord (below).
     std::array<float, stringCount> previousImpedance {};
     for (int string = 0; string < stringCount; ++string)
         previousImpedance[static_cast<std::size_t>(string)]
             = voices_[static_cast<std::size_t>(string)].characteristicImpedance;
     parameters_ = next;
 
-    // The string material selects which measured guitar the bridge and body
-    // banks come from, so it reconfigures both. configureBody crossfades its
-    // radiation over 40 ms; a live bridge rebuild crossfades its mobility
-    // from the modes that were sounding over 20 ms (bridgeLoadFade_), and
-    // the same bank retuned keeps its modes ringing. Rebuilding the bridge
-    // at once used to zero every mode under a ringing chord, a tick 20-30 dB
-    // over either steady sound above 5 kHz (audit F14).
-    if (bodyChanged || stringChanged)
+    // The model selects which measured guitar the bridge and body banks come
+    // from, so it reconfigures both. configureBody crossfades its radiation
+    // over 40 ms; a live bridge rebuild crossfades its mobility from the
+    // modes that were sounding over 20 ms (bridgeLoadFade_), and the same
+    // bank retuned keeps its modes ringing. Rebuilding the bridge at once
+    // used to zero every mode under a ringing chord, a tick 20-30 dB over
+    // either steady sound above 5 kHz (audit F14).
+    if (bodyChanged)
         configureBody();
     if (bridgeChanged)
     {
@@ -2993,7 +2776,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
         auto& voice = voices_[static_cast<std::size_t>(string)];
         const int newOpen = notes[static_cast<std::size_t>(string)];
         voice.openMidi = newOpen;
-        if (stringChanged)
+        if (force)
         {
             voice.attackPitchCents = 0.0f;
             voice.attackPitchDecay = 1.0f;
@@ -3002,14 +2785,14 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
         }
         if (!voice.played && tuningChanged)
             returnToOpenString(voice, string, true);
-        else if (constructionChanged || ageChanged || stringChanged || shapeChanged)
+        else if (constructionChanged || ageChanged || shapeChanged)
             configureVoice(voice, string, voice.midiNote, false);
     }
-    // Switching the string set or the tuning under a ringing chord changes
-    // every string's impedance at once, so the junction's wave variables step
-    // with the port. That is the strings being exchanged, not the bridge
-    // moving, and differencing it made a click 26 times the chord it landed
-    // on. A bridge rebuild can step them too. The derivatives carry the
+    // Switching the tuning under a ringing chord changes every string's
+    // impedance at once, so the junction's wave variables step with the
+    // port. That is the strings being retuned, not the bridge moving, and
+    // differencing it made a click 26 times the chord it landed on. A bridge
+    // rebuild can step them too. The derivatives carry the
     // bridge's own motion across that sample (processAcrossStep); reading it
     // as no motion at all, as a released shape is read, left a one-sample
     // hole in every bridge force.
@@ -3019,9 +2802,9 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     // A tail belongs to the string construction it was taken from, and its
     // loop is not redesigned below. Shape changes the body attached to that
     // string, not its ownership or construction, so it keeps the tail and its
-    // still-connected junction port. Wood moves the radiation and, except
-    // on the Fylde, the bridge like Shape (above), and keeps the tail too.
-    if (constructionChanged || ageChanged || stringChanged || tuningChanged)
+    // still-connected junction port. Wood moves the radiation and the bridge
+    // like Shape (above), and keeps the tail too.
+    if (constructionChanged || ageChanged || tuningChanged)
         for (auto& voice : voices_)
         {
             if (!voice.tailActive)
@@ -3034,14 +2817,14 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             voice.tailParallelLoop.reset();
         }
 
-    if (constructionChanged || ageChanged || stringChanged || tuningChanged || shapeChanged)
+    if (constructionChanged || ageChanged || tuningChanged || shapeChanged)
         for (int pass = 0; pass < 2; ++pass)
             for (int string = 0; string < stringCount; ++string)
                 configureVoice(voices_[static_cast<std::size_t>(string)], string,
                                voices_[static_cast<std::size_t>(string)].midiNote,
                                false);
 
-    if ((stringChanged || tuningChanged) && !force)
+    if (tuningChanged && !force)
         for (int string = 0; string < stringCount; ++string)
         {
             auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -3050,27 +2833,11 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             if (!(before > 0.0f && after > 0.0f)
                 || !exact::isfinite(before / after))
                 continue;
-            // An exchanged string set carries no more wave power than it
-            // had: onto a stiffer string the stored waves scale by
-            // sqrt(Z_old/Z_new), so a chord switched from nylon to steel,
-            // whose impedance is several times nylon's, does not swell to
-            // four times its level (audit F6). Onto a softer one they are
-            // kept, and lose power as they always did, rather than being
-            // raised into a louder chord than the one playing. A retune
-            // keeps its strings' waves as they are.
-            if (stringChanged)
-            {
-                if (after > before)
-                    scaleStoredWaves(voice, exact::sqrt(before / after));
-            }
-            // A retuned string's port moves to its new impedance at the
-            // delay's own rate, as a bend's does, instead of stepping under
-            // its ringing wave. An exchanged set steps with its rescaled
-            // waves: slewing from the old impedance there would first drive
-            // the junction with the rescaled wave at the old port, a burst
-            // of up to twice the chord from steel to nylon.
-            else
-                voice.appliedBendImpedanceScale *= before / after;
+            // A retune keeps its strings' waves as they are, and a retuned
+            // string's port moves to its new impedance at the delay's own
+            // rate, as a bend's does, instead of stepping under its ringing
+            // wave.
+            voice.appliedBendImpedanceScale *= before / after;
         }
 }
 
@@ -3125,14 +2892,7 @@ void AcustraEngine::updateControlState() noexcept
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
-        if (parameters_.stringMaterial == StringMaterial::Steel)
-            updateAttackPitch(voice, string);
-        else
-        {
-            voice.attackPitchCents *= voice.attackPitchDecay;
-            if (voice.attackPitchCents < 1.0e-4f)
-                voice.attackPitchCents = 0.0f;
-        }
+        updateAttackPitch(voice, string);
         configureVoice(voice, string, voice.midiNote, false);
     }
 }
@@ -3141,38 +2901,23 @@ std::array<float, 2> AcustraEngine::radiationModePole(
     const EngineParameters& parameters, const PhysicalCalibration& calibration,
     int index) noexcept
 {
-    const auto bank = measuredBodyBank(parameters.stringMaterial,
-                                       parameters.guitarModel);
+    const auto bank = measuredBodyBank(parameters.guitarModel);
     if (index < 0 || static_cast<std::size_t>(index) >= bank.size())
         return { 0.0f, 0.0f };
-    const AnchorTransform& anchor = anchorTransformFor(parameters.guitarModel,
-                                                       parameters.stringMaterial);
+    const AnchorTransform& anchor = anchorTransformFor(parameters.guitarModel);
     const auto morph = bodyShapeMorph(
-        bank, anchor,
-        anchorBodyFor(parameters.stringMaterial, parameters.guitarModel),
-        targetBodyFor(parameters.stringMaterial, parameters.guitarModel,
-                      parameters.shape));
+        bank, anchor, anchorBodyFor(parameters.guitarModel),
+        targetBodyFor(parameters.guitarModel, parameters.shape));
     const auto pole = radiationPole(bank, index, anchor, morph,
-        woodFactorsFor(parameters.bodyMaterial, parameters.stringMaterial,
-                       parameters.guitarModel),
+        woodFactorsFor(parameters.bodyMaterial, parameters.guitarModel),
         parameters.guitarModel != GuitarModel::Original, calibration);
     return { pole.frequency, pole.q };
-}
-
-BodyMaterial AcustraEngine::measuredBankWood(StringMaterial strings,
-                                             GuitarModel guitar) noexcept
-{
-    // g21 (MeasuredBridgeData.h) is spruce/cypress; g34 there and the
-    // Bellido's g35 (NylonG35CandidateData.h) are cedar/Rio palisander.
-    return guitar == GuitarModel::Bellido1978 || strings == StringMaterial::Nylon
-        ? BodyMaterial::Cedar : BodyMaterial::Spruce;
 }
 
 std::array<float, 4> AcustraEngine::bodyWoodFactors(
     const EngineParameters& parameters) noexcept
 {
     const auto wood = woodFactorsFor(parameters.bodyMaterial,
-                                     parameters.stringMaterial,
                                      parameters.guitarModel);
     return { wood.frequency, wood.q, wood.brightness, wood.radiation };
 }
@@ -3182,8 +2927,7 @@ void AcustraEngine::configureBody() noexcept
     if (bodyConfigured_
         && configuredGuitarModel_ == parameters_.guitarModel
         && configuredBodyShape_ == parameters_.shape
-        && configuredBodyMaterial_ == parameters_.bodyMaterial
-        && configuredBodyStringMaterial_ == parameters_.stringMaterial)
+        && configuredBodyMaterial_ == parameters_.bodyMaterial)
     {
         bodyUpdatePending_ = false;
         return;
@@ -3199,13 +2943,11 @@ void AcustraEngine::configureBody() noexcept
     bodyUpdatePending_ = false;
     // Shape and Wood retune the same measured bank, whose modes keep ringing
     // from where they were, as the bridge's do: restarted from rest under a
-    // ringing chord they beat against it while they settle, and on nylon
-    // that sounded 30-45 dB over the steady sound above 5 kHz (audit F14).
-    // Model and Strings exchange it for another guitar's, whose modes start
-    // from rest.
+    // ringing chord they beat against it while they settle, 30-45 dB over
+    // the steady sound above 5 kHz (audit F14). Model exchanges it for
+    // another guitar's, whose modes start from rest.
     const bool sameBodyBank = bodyConfigured_
-        && configuredGuitarModel_ == parameters_.guitarModel
-        && configuredBodyStringMaterial_ == parameters_.stringMaterial;
+        && configuredGuitarModel_ == parameters_.guitarModel;
     if (bodyConfigured_)
     {
         if (bodyModelFade_ >= 1.0f)
@@ -3219,27 +2961,21 @@ void AcustraEngine::configureBody() noexcept
         bodyModelFade_ = 1.0f;
     }
 
-    const AnchorTransform& anchor = anchorTransformFor(parameters_.guitarModel,
-                           parameters_.stringMaterial);
-    const auto bank = measuredBodyBank(parameters_.stringMaterial,
-                                       parameters_.guitarModel);
+    const AnchorTransform& anchor = anchorTransformFor(parameters_.guitarModel);
+    const auto bank = measuredBodyBank(parameters_.guitarModel);
     // A named guitar is unwarped at its own family/wood setting. Moving Shape
     // or Wood away from that point is explicitly a construction variation.
     const auto morph = bodyShapeMorph(
-        bank, anchor,
-        anchorBodyFor(parameters_.stringMaterial, parameters_.guitarModel),
-        targetBodyFor(parameters_.stringMaterial, parameters_.guitarModel,
-                      parameters_.shape));
+        bank, anchor, anchorBodyFor(parameters_.guitarModel),
+        targetBodyFor(parameters_.guitarModel, parameters_.shape));
     const bool named = parameters_.guitarModel != GuitarModel::Original;
     const auto woodFactors = woodFactorsFor(parameters_.bodyMaterial,
-                                            parameters_.stringMaterial,
                                             parameters_.guitarModel);
     // lowBodyModeGain raises the air mode where steel's g21 bank under-hears
     // it: at the treble-bridge microphone, 10 cm over the bridge, 82 Hz
     // radiates 15 dB under 330 Hz where the upper-bout one hears it 2 dB
-    // over. Nylon's classical rows want their measured air mode.
-    const bool steelBank = !named
-        && parameters_.stringMaterial == StringMaterial::Steel;
+    // over.
+    const bool steelBank = !named;
     // Every bank that ships keeps its measured phase with no observation
     // delay, so renderBody plays the banks as they are.
 
@@ -3361,7 +3097,6 @@ void AcustraEngine::configureBody() noexcept
     configuredGuitarModel_ = parameters_.guitarModel;
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
-    configuredBodyStringMaterial_ = parameters_.stringMaterial;
     bodyConfigured_ = true;
 }
 
@@ -3431,17 +3166,14 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         bridgeLoad_.immediateRock += rock * immediate;
     };
 
-    const auto bank = measuredBridgeBank(parameters_.stringMaterial,
-                                         parameters_.bridgeModel, parameters_.guitarModel);
+    const auto bank = measuredBridgeBank(parameters_.guitarModel);
     // The bridge belongs to the same body as the radiation, so Shape moves
     // its modes by the coupled model's factors (see shapeBridgeMode).
     const auto morph = bodyShapeMorph(
-        measuredBodyBank(parameters_.stringMaterial, parameters_.guitarModel),
-        anchorTransformFor(parameters_.guitarModel,
-                           parameters_.stringMaterial),
-        anchorBodyFor(parameters_.stringMaterial, parameters_.guitarModel),
-        targetBodyFor(parameters_.stringMaterial, parameters_.guitarModel,
-                      parameters_.shape));
+        measuredBodyBank(parameters_.guitarModel),
+        anchorTransformFor(parameters_.guitarModel),
+        anchorBodyFor(parameters_.guitarModel),
+        targetBodyFor(parameters_.guitarModel, parameters_.shape));
     bridgeShapeA0_ = morph.a0Frequency;
     bridgeShapeT1_ = morph.t1Frequency;
     bridgeShapePlate_ = morph.plateFrequency;
@@ -3451,28 +3183,22 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     // Keep the fitting control as a relative multiplier around the new body's
     // measured response, with unit gain at the shipped calibration.
     // Steel's own bridge is the flamenca's: its top is about 3.6 times as
-    // compliant as a steel-string guitar's, so its residues are brought to the
-    // Fylde's measured level (steelTopMobilityRatio) under the same fitted
-    // scale. The plate floor below is not scaled. That ratio corrects a
-    // proxy - a nylon-strung flamenca standing in for a steel-string guitar
-    // - and nothing else: Classical 78 with steel strings is deliberately
-    // steel on the Bellido's own measured classical top, at that top's full
-    // mobility (about 1.8 times the level steel's own bridge is brought to).
-    // It drains the strings faster (E4 at 11.7 dB/s against 10.0 on the
+    // compliant as a steel-string guitar's, so its residues are brought to a
+    // measured steel-string guitar's level (steelTopMobilityRatio, the Fylde
+    // Falstaff's) under the same fitted scale. The plate floor below is not
+    // scaled. That ratio corrects a proxy - a flamenca standing in for a
+    // steel-string guitar - and nothing else: the Bellido is deliberately
+    // steel on its own measured classical top, at that top's full mobility
+    // (about 1.8 times the level steel's own bridge is brought to). It
+    // drains the strings faster (E4 at 11.7 dB/s against 10.0 on the
     // Original Auditorium) and is not scaled toward a steel-string guitar
     // no measurement of this pair describes.
-    const bool ownBridge = steelOwnBridge(parameters_.stringMaterial,
-        parameters_.bridgeModel, parameters_.guitarModel);
+    const bool ownBridge = parameters_.guitarModel == GuitarModel::Original;
     const float scale = physicalCalibration_.bridgeMobilityScale
-        / (parameters_.guitarModel == GuitarModel::Original ? 1.0f
-           : fittedPhysicalCalibration.bridgeMobilityScale)
+        / (ownBridge ? 1.0f : fittedPhysicalCalibration.bridgeMobilityScale)
         * (ownBridge ? detail::steelTopMobilityRatio : 1.0f);
-    const bool followsBody = bridgeFollowsBody(parameters_.stringMaterial,
-        parameters_.bridgeModel, parameters_.guitarModel);
-    const auto anchor = anchorTransformFor(parameters_.guitarModel,
-                                           parameters_.stringMaterial);
+    const auto anchor = anchorTransformFor(parameters_.guitarModel);
     const auto wood = woodFactorsFor(parameters_.bodyMaterial,
-                                     parameters_.stringMaterial,
                                      parameters_.guitarModel);
     if (ownBridge)
     {
@@ -3509,14 +3235,10 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
             const bool include = includeMeasuredBridgeMode(bank[index]);
             auto measured = shapeBridgeMode(bank[index], bridgeShapeA0_,
                 bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
-            if (followsBody)
-            {
-                const auto pole = bodyBridgePole(index, bank[index], measured,
-                    parameters_.stringMaterial, parameters_.guitarModel, anchor,
-                    morph, wood, physicalCalibration_);
-                measured.frequency = pole.frequency;
-                measured.q = pole.q;
-            }
+            const auto pole = bellidoBridgePole(index, bank[index], measured,
+                anchor, morph, wood, physicalCalibration_);
+            measured.frequency = pole.frequency;
+            measured.q = pole.q;
             configure(index, measured.frequency, measured.q,
                       include ? measured.heave * scale : 0.0f,
                       include ? measured.cross * scale : 0.0f,
@@ -3568,10 +3290,9 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
 {
     if (!port.valid)
         return 0.0f;
-    const bool steel = parameters_.stringMaterial == StringMaterial::Steel;
     const auto notes = openNotes(parameters_.tuning);
     const float impedance = stringImpedance(
-        steel, stringIndex, notes[static_cast<std::size_t>(stringIndex)]);
+        stringIndex, notes[static_cast<std::size_t>(stringIndex)]);
     // This estimates one string's return phase from the body and anchors.
     // Other strings' frequency-dependent loopback impedances are omitted here,
     // although the runtime junction includes their returning waves. It is an
@@ -3579,7 +3300,7 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
     // zero loop phase at the note is not where the damped string-body pole
     // sits beside a strong lossy mode, whose reflection loss changes fastest
     // there. Measured (audit F15, README Known gaps): up to about 4 cents
-    // (G3 on the Fylde Dreadnought, C4 on nylon), 5 with the other strings
+    // (G3 on the Dreadnought then measured), 5 with the other strings
     // silenced; a one-step pole correction recovers at most 2 of those, so
     // it is not applied.
     const float characteristicAdmittance = 1.0f / impedance;
@@ -3599,17 +3320,13 @@ AcustraEngine::bridgeMobilityTable() const noexcept
 {
     // Every input the terms below are computed from, as exact bits.
     const float rate = static_cast<float>(sampleRate_);
-    const auto bank = measuredBridgeBank(parameters_.stringMaterial,
-        parameters_.bridgeModel, parameters_.guitarModel);
-    const bool ownBridge = steelOwnBridge(parameters_.stringMaterial,
-        parameters_.bridgeModel, parameters_.guitarModel);
+    const auto bank = measuredBridgeBank(parameters_.guitarModel);
+    const bool ownBridge = parameters_.guitarModel == GuitarModel::Original;
     const float scale = physicalCalibration_.bridgeMobilityScale
-        / (parameters_.guitarModel == GuitarModel::Original ? 1.0f
-           : fittedPhysicalCalibration.bridgeMobilityScale)
+        / (ownBridge ? 1.0f : fittedPhysicalCalibration.bridgeMobilityScale)
         * (ownBridge ? detail::steelTopMobilityRatio : 1.0f);
     const auto plate = plateConductanceMode(physicalCalibration_);
     const auto wood = woodFactorsFor(parameters_.bodyMaterial,
-                                     parameters_.stringMaterial,
                                      parameters_.guitarModel);
     const std::array<std::uint32_t, 12> key {
         exact::bits(rate), exact::bits(bridgeShapeA0_), exact::bits(bridgeShapeT1_),
@@ -3625,18 +3342,10 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         return table;
     // The terms as bridgePortMobility computed them in its mode loop.
     const float bilinear = 2.0f * rate;
-    const auto anchor = anchorTransformFor(parameters_.guitarModel,
-                                           parameters_.stringMaterial);
-    const bool followsBody = bridgeFollowsBody(parameters_.stringMaterial,
-        parameters_.bridgeModel, parameters_.guitarModel);
-    const auto morph = followsBody
-        ? bodyShapeMorph(measuredBodyBank(parameters_.stringMaterial,
-                                          parameters_.guitarModel),
-              anchor,
-              anchorBodyFor(parameters_.stringMaterial, parameters_.guitarModel),
-              targetBodyFor(parameters_.stringMaterial, parameters_.guitarModel,
-                            parameters_.shape))
-        : BodyShapeMorph {};
+    const auto anchor = anchorTransformFor(parameters_.guitarModel);
+    const auto morph = bodyShapeMorph(measuredBodyBank(parameters_.guitarModel),
+        anchor, anchorBodyFor(parameters_.guitarModel),
+        targetBodyFor(parameters_.guitarModel, parameters_.shape));
     table.count = 0;
     // One mode's terms; `level` multiplies its residues relative to scale.
     const auto add = [&] (const detail::MeasuredBridgeMode& source,
@@ -3674,14 +3383,10 @@ AcustraEngine::bridgeMobilityTable() const noexcept
             const auto& source = bank[index];
             auto measured = shapeBridgeMode(source, bridgeShapeA0_,
                 bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
-            if (followsBody)
-            {
-                const auto pole = bodyBridgePole(index, source, measured,
-                    parameters_.stringMaterial, parameters_.guitarModel, anchor,
-                    morph, wood, physicalCalibration_);
-                measured.frequency = pole.frequency;
-                measured.q = pole.q;
-            }
+            const auto pole = bellidoBridgePole(index, source, measured,
+                anchor, morph, wood, physicalCalibration_);
+            measured.frequency = pole.frequency;
+            measured.q = pole.q;
             add(source, measured, 1.0f);
         }
         table.ordered = table.count;
@@ -3814,8 +3519,7 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
         // with it the whole adjugate above, exactly zero.  The rocking
         // coordinate is then immovable, every string sees the same heave port
         // with the anchor springs in parallel, and the load is the scalar
-        // (1/Yhh + k0/s)^-1. The measured Fylde alternative uses this scalar
-        // case; no unmeasured rocking response is added to it.
+        // (1/Yhh + k0/s)^-1; no unmeasured rocking response is added to it.
         const std::complex<float> denominator
             = s + stiffness0 * mobilityHeave;
         if (!(std::abs(denominator) > 0.0f))
@@ -3931,8 +3635,7 @@ float AcustraEngine::coupledPolarisationDetune(
 // plucks are markedly quieter). h is the published height of the strings over
 // the top at the bridge, to the string's lower bound (R. Mores, "List of
 // guitars measured", 2021, https://zenodo.org/records/4604577, column HSaT):
-// 8.1 mm on g21, whose radiation steel plays whichever bridge it selects,
-// 10.2 mm on g34 and 8.6 mm on the 1978 Bellido, g35. a is the 23.2 mm
+// 8.1 mm on g21, the Original, and 8.6 mm on the 1978 Bellido, g35. a is the 23.2 mm
 // half-spacing the archive's impacts are placed at (saddleLeverArm).
 float AcustraEngine::saddleHeightRatio() const noexcept
 {
@@ -3940,8 +3643,7 @@ float AcustraEngine::saddleHeightRatio() const noexcept
     switch (parameters_.guitarModel)
     {
         case GuitarModel::Original:
-            return (parameters_.stringMaterial == StringMaterial::Steel
-                ? 0.0081f : 0.0102f) / impactHalfSpacing;
+            return 0.0081f / impactHalfSpacing;
         case GuitarModel::Bellido1978:
             return 0.0086f / impactHalfSpacing;
         default:
@@ -3976,9 +3678,7 @@ void AcustraEngine::bridgeAnchorMoments(float& stiffness0,
 void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                                     int midiNote, bool clearDelay) noexcept
 {
-    const bool steel = parameters_.stringMaterial == StringMaterial::Steel;
-    const auto& physical = steel ? physicalCalibration_.steel
-                                 : physicalCalibration_.nylon;
+    const auto& physical = physicalCalibration_.steel;
     const auto index = static_cast<std::size_t>(stringIndex);
     if (clearDelay)
     {
@@ -3987,7 +3687,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         voice.contactNoiseTravel.active = false;
         voice.contactNoiseSamples = 0;
     }
-    const float scaleLength = steel ? 0.648f : 0.650f;
+    constexpr float scaleLength = 0.648f;
     // A natural harmonic is the open string vibrating in its nth mode, so the
     // waveguide runs at the open pitch and the mode number comes from the
     // released shape. voice.midiNote stays the requested note, which is what
@@ -4006,12 +3706,9 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // modulation is heard as a pitch modulation: the same excursion goes into
     // the performed interval, so the tuned delay carries it, and into the
     // tension below, so the inharmonicity and the junction port carry it too.
-    // A string whose axial stiffness this data does not fix - nylon's wound
-    // basses, see stringAxialRigidity - gets none, rather than a pitch move
-    // with no tension behind it. The wheel down is + 0.0f, which is exact.
-    const float axialRigidity = stringAxialRigidity(steel, stringIndex);
-    const float vibratoInterval = axialRigidity > 0.0f
-        ? vibratoSemitones(voice, fret) : 0.0f;
+    // The wheel down is + 0.0f, which is exact.
+    const float axialRigidity = stringAxialRigidity(stringIndex);
+    const float vibratoInterval = vibratoSemitones(voice, fret);
     const float performedSemitones = clamp(performedBend, -192.0f, 192.0f)
         + 0.01f * voice.attackPitchCents + vibratoInterval;
     // An eight-octave RPN range is legal even when the requested pitch is
@@ -4024,24 +3721,15 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         0.24f * static_cast<float>(sampleRate_));
     voice.contactPeriodSamples = static_cast<float>(sampleRate_) / frequency;
 
-    const float diameter = steel ? steelDiameterMetres[index]
-                                 : nylonDiameterMetres[index];
-    const float bendingDiameter = steel ? steelBendingDiameter[index]
-                                        : diameter;
-    const float youngsModulus = steel ? steelYoungsModulus
-                                     : nylonYoungsModulus[index];
+    const float bendingDiameter = steelBendingDiameter[index];
     const float openFrequency = midiFrequency(voice.openMidi);
     const float openWaveSpeed = 2.0f * scaleLength * openFrequency;
     const float standardWaveSpeed = 2.0f * scaleLength
         * midiFrequency(standardOpenMidi[index]);
-    const float linearMass = steel
+    const float linearMass = steelTensionNewtons[index]
+        / (standardWaveSpeed * standardWaveSpeed);
+    const float tension = voice.openMidi == standardOpenMidi[index]
         ? steelTensionNewtons[index]
-            / (standardWaveSpeed * standardWaveSpeed)
-        : nylonDensity[index] * pi * 0.25f * diameter * diameter;
-    const float tension = steel
-        ? (voice.openMidi == standardOpenMidi[index]
-            ? steelTensionNewtons[index]
-            : std::max(linearMass * openWaveSpeed * openWaveSpeed, 1.0f))
         : std::max(linearMass * openWaveSpeed * openWaveSpeed, 1.0f);
     // Slide or bend, settled. A channel's pitch bend is a slide: the fretting
     // hand moves along the neck, the sounding length changes and the tension
@@ -4060,8 +3748,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // few-cent tension transient (updateAttackPitch), already carried as a
     // pitch, and routing it here would modulate the junction port on every
     // note's attack, which no measurement asks for.
-    const float tensionSemitones = axialRigidity > 0.0f
-        ? memberBendSemitones + vibratoInterval : 0.0f;
+    const float tensionSemitones = memberBendSemitones + vibratoInterval;
     const float bentTension = tensionSemitones != 0.0f
         ? bentStringTension(tension, axialRigidity,
                             std::exp2(tensionSemitones / 12.0f))
@@ -4075,7 +3762,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const VoiceConfigurationKey configurationKey {
         voiceConfigurationGeneration_, stoppedMidi, voice.openMidi,
         exact::bits(frequency), exact::bits(tensionSemitones),
-        exact::bits(parameters_.stringAge), exact::bits(palmMute_), steel };
+        exact::bits(parameters_.stringAge), exact::bits(palmMute_) };
     if (!clearDelay && configurationKey == voice.configurationKey)
     {
         voice.midiNote = midiNote;
@@ -4083,31 +3770,24 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             voice.releaseDamping = 1.0f;
         return;
     }
-    // Steel keeps the E*I = E*(pi*d^4/64) solid-cylinder model on its fitted
-    // effective bending diameter and stiffnessScale. Nylon reads Woodhouse's
-    // measured E*I directly (see nylonBendingEI above) rather than deriving
-    // it from a diameter and a handbook modulus, so nylon.stiffnessScale is
-    // not part of the calibration.
-    const float stiffness = steel
-        ? pi * pi * pi * youngsModulus * bendingDiameter * bendingDiameter
-            * bendingDiameter * bendingDiameter / 64.0f
-        : pi * pi * nylonBendingEI[index];
-    const float stiffnessScale = steel ? physical.stiffnessScale : 1.0f;
-    const float inharmonicity = clamp(stiffness * stiffnessScale
+    // The E*I = E*(pi*d^4/64) solid-cylinder model on the fitted effective
+    // bending diameter and stiffnessScale.
+    const float stiffness = pi * pi * pi * steelYoungsModulus
+        * bendingDiameter * bendingDiameter
+        * bendingDiameter * bendingDiameter / 64.0f;
+    const float inharmonicity = clamp(stiffness * physical.stiffnessScale
         / (bentTension * soundingLength * soundingLength), 0.0f, 0.004f);
     const float age = parameters_.stringAge;
     // Preserve the material/age law while allowing one shared fitted cutoff
     // scale to reduce excess upper-partial damping without changing the
     // fundamental T60 target below.
-    const float cutoff = (steel
-        ? 12500.0f * std::exp(-1.25f * age)
-        :  8200.0f * std::exp(-0.78f * age))
+    const float cutoff = 12500.0f * std::exp(-1.25f * age)
         * physicalCalibration_.highLossCutoffScale;
     const float lowpassCoefficient = std::exp(
         -twoPi * clamp(cutoff, 1200.0f,
                        0.44f * 48000.0f)
         * (1.0f / 48000.0f));
-    const float highLoss = clamp(((steel ? 0.035f : 0.095f)
+    const float highLoss = clamp((0.035f
         + 0.42f * age
         + 0.018f * static_cast<float>(stringCount - 1 - stringIndex))
         * physical.frequencyLossScale, 0.0f, 0.95f);
@@ -4139,8 +3819,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // table. DAFx-26 Eq. 25 prints seconds for eta_f, but the coefficient of
     // its angular-frequency damping term is dimensionless. That printed
     // unit does not justify treating the constants below as measured times.
-    const float viscousLoss = (steel ? 1.65e-4f : 2.25e-4f)
-        * (1.0f + 1.35f * age);
+    const float viscousLoss = 1.65e-4f * (1.0f + 1.35f * age);
     const float broadLoss = clamp(72.0f * viscousLoss
         * physical.frequencyLossScale, 0.0f, 0.95f);
     const float broadLossCutoff = 14.3f * frequency;
@@ -4178,15 +3857,12 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     {
         // The string's own bending loss (bendingLossSection), for the unbent
         // string the dispersion is designed for, and held through a bend the
-        // way that design is. Steel's four wound basses and nylon's three are
-        // the wound constructions (steelBendingDiameter and nylonDensity
-        // above say which).
-        const bool wound = steel ? stringIndex <= 3 : stringIndex <= 2;
-        const float bendingFactor = steel
-            ? (wound ? physicalCalibration_.steelWoundBendingLoss
-                     : physicalCalibration_.steelPlainBendingLoss)
-            : (wound ? physicalCalibration_.nylonWoundBendingLoss
-                     : physicalCalibration_.nylonPlainBendingLoss);
+        // way that design is. The four basses are the wound constructions
+        // (steelBendingDiameter above says so).
+        const bool wound = stringIndex <= 3;
+        const float bendingFactor = wound
+            ? physicalCalibration_.steelWoundBendingLoss
+            : physicalCalibration_.steelPlainBendingLoss;
         const auto bending = bendingLossSection(
             static_cast<double>(bendingFactor),
             static_cast<double>(inharmonicity),
@@ -4243,11 +3919,10 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     secondOrderAllpassCoefficients(
         static_cast<double>(omega), voice.dispersionDecayRatio,
         voice.dispersionPoleRatio, dispersionA1, dispersionA2);
-    const float fretT60Factor = steel
-        ? clamp(1.0f - physicalCalibration_.steelFretT60Slope
-                            * static_cast<float>(fret), 0.10f, 2.0f)
-        : clamp(1.0f - 0.018f * static_cast<float>(fret), 0.10f, 2.0f);
-    float fundamentalT60 = (steel ? 5.4f : 4.1f)
+    const float fretT60Factor = clamp(1.0f
+        - physicalCalibration_.steelFretT60Slope * static_cast<float>(fret),
+        0.10f, 2.0f);
+    float fundamentalT60 = 5.4f
         * (1.0f - 0.12f * age)
         * fretT60Factor
         * physical.fundamentalT60Scale;
@@ -4271,19 +3946,10 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // mass; plain strings use the same expression with their own diameter.
     // Both come from the tables the transverse model already uses.
     {
-        // Where the axial construction is determined. Steel's wound basses
-        // have a published core diameter and plain nylon is homogeneous, but
-        // nylon's three wound basses are given an effective composite density
-        // that is right for transverse mass and wrong for axial stiffness -
-        // the wrap carries almost no axial load - so their longitudinal speed
-        // is not something this data fixes, and they are left out rather than
-        // given a frequency nothing supports.
-        const bool axialKnown = steel || stringIndex >= 3;
-        const float axialDiameter = steel ? steelBendingDiameter[index]
-                                          : diameter;
-        const float axialArea = 0.25f * pi * axialDiameter * axialDiameter;
+        // The wound basses' axial load is carried by their published core.
+        const float axialArea = 0.25f * pi * bendingDiameter * bendingDiameter;
         const float longitudinalSpeed = exact::sqrt(std::max(
-            youngsModulus * axialArea / std::max(linearMass, 1.0e-9f), 1.0f));
+            steelYoungsModulus * axialArea / std::max(linearMass, 1.0e-9f), 1.0f));
         const float longitudinal = clamp(
             longitudinalSpeed / (2.0f * soundingLength), 100.0f,
             0.45f * static_cast<float>(sampleRate_));
@@ -4310,18 +3976,16 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // scale the attack-pitch surrogate is calibrated with.
         const float displacement
             = physicalCalibration_.steelDisplacementScaleMetres;
-        voice.longitudinalDrive = axialKnown
-            ? youngsModulus * axialArea * displacement * displacement
-                / (2.0f * soundingLength * soundingLength)
-            : 0.0f;
+        voice.longitudinalDrive = steelYoungsModulus * axialArea
+            * displacement * displacement
+            / (2.0f * soundingLength * soundingLength);
     }
     const auto bridgePort = bridgePortMobility(frequency, stringIndex);
     const float measuredBridgeDelay = bridgePhaseDelay(bridgePort, frequency,
                                                        stringIndex);
     const float desiredPeriodGain = std::pow(0.001f,
         1.0f / std::max(fundamentalT60 * frequency, 1.0f));
-    const float unbentImpedance = stringImpedance(steel, stringIndex,
-                                                  voice.openMidi);
+    const float unbentImpedance = stringImpedance(stringIndex, voice.openMidi);
     const float coupledDetune = coupledPolarisationDetune(
         bridgePort, unbentImpedance, unbentImpedance
             * exact::sqrt((bentTension / tension) / (1.0f
@@ -4414,7 +4078,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     voice.midiNote = midiNote;
     voice.fret = fret;
     voice.characteristicImpedance = stringImpedance(
-        steel, stringIndex, voice.openMidi);
+        stringIndex, voice.openMidi);
     // Z = sqrt(T*mu) with Grimes' stretched mass per length is Z0 times the
     // frequency ratio the same tension produces - 12.3% for a whole tone -
     // and saturates with the tension where his law stops. The junction reads
@@ -4486,8 +4150,6 @@ float AcustraEngine::handDamping(float t60Seconds, float fundamental) noexcept
 
 void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
 {
-    if (parameters_.stringMaterial != StringMaterial::Steel)
-        return;
     if (!voice.played || !(voice.attackSlopeEnergy > 0.0f)
         || !exact::isfinite(voice.attackSlopeEnergy))
     {
@@ -4568,8 +4230,7 @@ float AcustraEngine::vibratoSemitones(const Voice& voice,
 
 float AcustraEngine::effectiveTouch(float velocity) const noexcept
 {
-    const auto& physical = parameters_.stringMaterial == StringMaterial::Steel
-        ? physicalCalibration_.steel : physicalCalibration_.nylon;
+    const auto& physical = physicalCalibration_.steel;
     const float touch = clamp(parameters_.touch + physical.velocityBrightnessDepth
         * (velocity - 0.5f), 0.0f, 1.0f);
     // Touch and velocity keep one displacement/noise law for all techniques.
@@ -4623,11 +4284,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                                     float velocity) noexcept
 {
     const float v = clamp(velocity, 0.001f, 1.0f);
-    const bool steel = parameters_.stringMaterial == StringMaterial::Steel;
-    const auto& physical = steel ? physicalCalibration_.steel
-                                 : physicalCalibration_.nylon;
+    const auto& physical = physicalCalibration_.steel;
     const float touch = effectiveTouch(voice.velocity);
-    const float scaleLength = steel ? 0.648f : 0.650f;
+    constexpr float scaleLength = 0.648f;
     const float soundingLength = scaleLength
         * std::exp2(-static_cast<float>(voice.fret) / 12.0f);
     // A player's hand stays at an approximately fixed physical distance from
@@ -4668,8 +4327,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // Freeze the two transport paths at contact. D=2L/c, x=pL, hence the
     // direct arrival is pD/2 and the nut-reflected arrival is (1-p/2)D.
     // The source's two polarisations meet the same physical pluck point.
-    // This held-note experiment excludes natural-harmonic touches and nylon.
-    voice.contactTravelEnabled = steel && voice.harmonic <= 1;
+    // This held-note experiment excludes natural-harmonic touches.
+    voice.contactTravelEnabled = voice.harmonic <= 1;
     if (voice.contactTravelEnabled)
         voice.contactTravel.reset(0.5f * position * voice.contactPeriodSamples,
             (1.0f - 0.5f * position) * voice.contactPeriodSamples);
@@ -4696,7 +4355,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     const float heldDistance = position * soundingLength;
     const float releaseScale = (1.0f - position)
         / clamp(1.0f - heldDistance / scaleLength, 0.05f, 1.0f);
-    const float amplitude = (steel ? 0.24f : 0.29f)
+    const float amplitude = 0.24f
         * std::pow(v, velocityExponent) * (0.92f + 0.08f * touch)
         * strumLevelGain;
     // The contact noise below follows the force; the shape it leaves, the
@@ -4707,22 +4366,16 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // moving along the top, pressing in only partly, so most of a steel pluck
     // is parallel to it - which radiates only through the rocking saddle,
     // quieter and longer (saddleHeightRatio). When only the normal plane
-    // reached the body the share sat at 0.91 - 0.08 Touch for both
-    // materials. With both planes radiating, a sweep over the benchmark
-    // improves every steel split down to about 0.25 at the default Touch, a
-    // release about 60 degrees from the normal (0.86 -> 0.25: Fylde bridge
-    // training -0.39%, development validation -2.38%, flat-top -3.46%;
-    // Original -1.10%, -2.78%, -5.13%), and a blind listener preferred it on
-    // both steel pairs of the 2026-09-24 set. The same share on nylon split
-    // the classical rows (training +0.54%, validation -2.4%) and the listener
-    // preferred the normal-led pluck on all three nylon pairs, and again
-    // wherever the branch was heard whole: a classical stroke pushes the
-    // string toward the top, so nylon keeps 0.91 - 0.08 Touch
-    // (Docs/decisions.md). Both are selected shares, not measured angles; a
-    // higher Touch turns either further along the top, and each pluck draws
-    // its own.
+    // reached the body the share sat at 0.91 - 0.08 Touch. With both planes
+    // radiating, a sweep over the benchmark improves every steel split down
+    // to about 0.25 at the default Touch, a release about 60 degrees from the
+    // normal (0.86 -> 0.25: training -1.10%, development validation -2.78%,
+    // flat-top -5.13%), and a blind listener preferred it on both steel pairs
+    // of the 2026-09-24 set (Docs/decisions.md). It is a selected share, not
+    // a measured angle; a higher Touch turns it further along the top, and
+    // each pluck draws its own.
     const float randomAngle = 0.025f * nextNoise(voice);
-    voice.polarisationMix = pluckNormalShare(steel, touch, randomAngle);
+    voice.polarisationMix = pluckNormalShare(touch, randomAngle);
     // The shared register law pivots at one fixed 48 kHz MIDI-61 period,
     // independent of material, string choice and host sample rate.
     const float apertureReferenceDelay = 48000.0f / midiFrequency(61);
@@ -4951,41 +4604,33 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         applyPlectrumSlip(loop, length, slipPole);
     }
 
-    if (steel)
+    double slopeEnergy = 0.0;
+    for (auto& loop : voice.loops)
     {
-        double slopeEnergy = 0.0;
-        for (auto& loop : voice.loops)
+        const int length = std::clamp(
+            static_cast<int>(std::round(loop.targetDelay)), 8,
+            maximumDelaySamples - 3);
+        const auto at = [&] (int sample)
         {
-            const int length = std::clamp(
-                static_cast<int>(std::round(loop.targetDelay)), 8,
-                maximumDelaySamples - 3);
-            const auto at = [&] (int sample)
-            {
-                return loop.delay[static_cast<std::size_t>(wrapDelayIndex(
-                    loop.writeIndex - sample))];
-            };
-            float previous = at(length);
-            double squaredDifferences = 0.0;
-            for (int sample = 1; sample <= length; ++sample)
-            {
-                const float current = at(sample);
-                const double difference
-                    = static_cast<double>(current - previous);
-                squaredDifferences += difference * difference;
-                previous = current;
-            }
-            slopeEnergy += static_cast<double>(length) * squaredDifferences;
+            return loop.delay[static_cast<std::size_t>(wrapDelayIndex(
+                loop.writeIndex - sample))];
+        };
+        float previous = at(length);
+        double squaredDifferences = 0.0;
+        for (int sample = 1; sample <= length; ++sample)
+        {
+            const float current = at(sample);
+            const double difference
+                = static_cast<double>(current - previous);
+            squaredDifferences += difference * difference;
+            previous = current;
         }
-        voice.attackSlopeEnergy = exact::isfinite(slopeEnergy)
-            ? static_cast<float>(std::max(slopeEnergy, 0.0)) : 0.0f;
-        voice.observedSlopeEnergy = voice.attackSlopeEnergy;
-        updateAttackPitch(voice, stringIndex);
+        slopeEnergy += static_cast<double>(length) * squaredDifferences;
     }
-    else
-    {
-        voice.attackSlopeEnergy = 0.0f;
-        voice.observedSlopeEnergy = 0.0f;
-    }
+    voice.attackSlopeEnergy = exact::isfinite(slopeEnergy)
+        ? static_cast<float>(std::max(slopeEnergy, 0.0)) : 0.0f;
+    voice.observedSlopeEnergy = voice.attackSlopeEnergy;
+    updateAttackPitch(voice, stringIndex);
 
     voice.velocity = v;
     voice.excitationWhite = pick && physicalCalibration_.pickTransientGain > 0.0f;
@@ -5000,7 +4645,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const float speedRatio = std::pow(
             v, 0.5f * physicalCalibration_.pickReleaseVelocityExponent);
         voice.excitationEnvelope = physicalCalibration_.pickTransientGain
-            * (steel ? 0.24f : 0.29f) * 0.017f * physical.transientScale
+            * 0.24f * 0.017f * physical.transientScale
             * speedRatio;
     }
     else
@@ -5959,19 +5604,8 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     voice.startOrder = ++noteOrder_;
     const float v = clamp(velocity, 0.001f, 1.0f);
     voice.velocity = v;
-    if (parameters_.stringMaterial == StringMaterial::Steel)
-    {
-        voice.attackPitchCents = 0.0f;
-        voice.attackPitchDecay = 1.0f;
-    }
-    else
-    {
-        voice.attackPitchCents = 3.0f * v * v
-            * (0.72f + 0.28f * effectiveTouch(voice.velocity));
-        voice.attackPitchDecay = std::exp(
-            -static_cast<float>(controlPeriod)
-            / (0.075f * static_cast<float>(sampleRate_)));
-    }
+    voice.attackPitchCents = 0.0f;
+    voice.attackPitchDecay = 1.0f;
     configureVoice(voice, string, midiNote, true);
     voice.onsetSample = sampleClock_;
     rememberFinger(string);
@@ -6315,19 +5949,8 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
     if (voice.repluckPending)
     {
         voice.repluckPending = false;
-        if (parameters_.stringMaterial == StringMaterial::Steel)
-        {
-            voice.attackPitchCents = 0.0f;
-            voice.attackPitchDecay = 1.0f;
-        }
-        else
-        {
-            voice.attackPitchCents = 3.0f * voice.velocity * voice.velocity
-                * (0.72f + 0.28f * effectiveTouch(voice.velocity));
-            voice.attackPitchDecay = std::exp(
-                -static_cast<float>(controlPeriod)
-                / (0.075f * static_cast<float>(sampleRate_)));
-        }
+        voice.attackPitchCents = 0.0f;
+        voice.attackPitchDecay = 1.0f;
         // The pick reaches this held string now. Keep its preceding wave
         // intact until then, and carry it under the hand while the new pluck
         // is released, exactly as for an immediate re-pluck.
@@ -6366,8 +5989,7 @@ int AcustraEngine::strumDelaySamples(int stringRank,
     // measurement would give), so the map from MIDI velocity to speed
     // across that measured range stays a player's map, not a fitted
     // dependence.
-    const bool steel = parameters_.stringMaterial == StringMaterial::Steel;
-    const float spacing = steel ? 0.0540f / 5.0f : 0.0580f / 5.0f;
+    constexpr float spacing = 0.0540f / 5.0f;
     const float speed = 0.51f + 1.95f * clamp(velocity, 0.0f, 1.0f);
     return static_cast<int>(static_cast<float>(std::max(stringRank, 0))
         * spacing / speed * static_cast<float>(sampleRate_) + 0.5f);
@@ -6792,15 +6414,12 @@ void AcustraEngine::initialiseContactNoise(Voice& voice, float v,
                                           float releasedAmplitude,
                                           float contactWidthRatio) noexcept
 {
-    const bool steel = parameters_.stringMaterial == StringMaterial::Steel;
     const auto technique = parameters_.picking;
     const bool pick = technique == PickingTechnique::Pick;
     const float level = pick ? physicalCalibration_.contactNoisePick
-        : steel ? physicalCalibration_.contactNoiseFinger
-                : physicalCalibration_.contactNoiseNylon;
+                             : physicalCalibration_.contactNoiseFinger;
     const float click = pick ? physicalCalibration_.contactClickPick
-        : steel ? physicalCalibration_.contactClickFinger
-                : physicalCalibration_.contactClickNylon;
+                             : physicalCalibration_.contactClickFinger;
     voice.contactNoiseSamples = 0;
     voice.contactNoiseAmplitude = 0.0f;
     voice.contactNoiseDecay = 0.0f;
@@ -6816,8 +6435,7 @@ void AcustraEngine::initialiseContactNoise(Voice& voice, float v,
     // the sliding speed, the stroke's velocity, and a thumb's is lower by
     // its broader pad.
     float corner = (pick ? physicalCalibration_.pickContactNoiseCornerHz
-        : steel ? physicalCalibration_.contactNoiseCornerHz
-                : physicalCalibration_.nylonContactNoiseCornerHz)
+                         : physicalCalibration_.contactNoiseCornerHz)
         * std::max(v, 0.05f);
     if (technique == PickingTechnique::Thumb)
         corner *= contactWidthRatio;
@@ -7068,8 +6686,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                 * voice.longitudinalY1[mode];
         }
     }
-    if (voice.played
-        && parameters_.stringMaterial == StringMaterial::Steel)
+    if (voice.played)
     {
         const float referenceRate = 48000.0f / static_cast<float>(sampleRate_);
         const float verticalSlope = voice.loops[0].currentDelay
@@ -7516,7 +7133,7 @@ float AcustraEngine::renderPiezo(float force) noexcept
     }
     const float input = exact::abs(force) < forceFloor ? 0.0f : force;
     // 1. The saddle on its element (designPiezoSaddle), direct form I.
-    const auto& saddle = piezoSaddle_[parameters_.stringMaterial == StringMaterial::Steel ? 0 : 1];
+    const auto& saddle = piezoSaddle_;
     auto& x = piezoSaddleInput_;
     auto& y = piezoSaddleOutput_;
     x[4] = x[3];
@@ -7677,15 +7294,13 @@ float AcustraEngine::renderPiezo(float force) noexcept
         if (quiet)
             resetPiezo();
     }
-    // 7. The level: the match to the microphones for the string material,
-    // on the output reference for the construction and Picking
+    // 7. The level: the match to the microphones, on the output reference
+    // for the construction and Picking
     // (ConstructionLoudnessData.h). It is smoothed as one value, like the
     // microphones' reference, so a change glides along one curve and never
     // overshoots where the two factors move apart.
     piezoTrim_ += parameterSmoothing_
-        * (PiezoDesign::trimFor(parameters_.stringMaterial)
-               * piezoReferenceFor(parameters_)
-           - piezoTrim_);
+        * (PiezoDesign::trim * piezoReferenceFor(parameters_) - piezoTrim_);
     const auto result = static_cast<float>(
         static_cast<double>(piezoTrim_) * piezoOutputScale_ * piezoOutputVolts_);
     if (!exact::isfinite(result))
@@ -7731,6 +7346,14 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             * (targetParameters_.stereoWidth - width_);
         outputGain_ += parameterSmoothing_
             * (targetParameters_.outputGain - outputGain_);
+        {
+            // Settles onto its target exactly, so a mix returned to zero
+            // leaves Main bit for bit as it was without one.
+            const float target = clamp(targetParameters_.piezoMix, 0.0f, 1.0f);
+            piezoMix_ += parameterSmoothing_ * (target - piezoMix_);
+            if (exact::abs(target - piezoMix_) < 1.0e-4f)
+                piezoMix_ = target;
+        }
 
         std::array<float, stringCount> verticalIncident {};
         std::array<float, stringCount> horizontalIncident {};
@@ -8100,12 +7723,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // over the same smoothing as the output control, so it never steps a
         // ringing instrument; the mono microphone's own reference glides
         // beside it.
-        const float materialReference = outputReferenceFor(parameters_);
-        materialReference_ += parameterSmoothing_
-            * (materialReference - materialReference_);
+        const float outputReference = outputReferenceFor(parameters_);
+        outputReference_ += parameterSmoothing_
+            * (outputReference - outputReference_);
         monoReference_ += parameterSmoothing_
             * (monoReferenceFor(parameters_) - monoReference_);
-        const float reference = radiationReferenceGain * materialReference_;
+        const float reference = radiationReferenceGain * outputReference_;
         float outputLeft = reference * outputGain_
             * (bodyScale * spreadLeft + directScale * spreadDirectLeft);
         float outputRight = reference * outputGain_
@@ -8160,6 +7783,16 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 * (captureMix_[6] * loadedPiezo);
             outputLeft = captureMix_[0] * outputLeft + mono;
             outputRight = captureMix_[0] * outputRight + mono;
+        }
+        // Piezo Mix: the piezo, at the level Capture Piezo gives it, under
+        // whichever microphones Capture selects, on both sides. It fades out
+        // as Capture moves onto the piezo itself, which is then all of Main.
+        if (piezoMix_ != 0.0f)
+        {
+            const float blended = piezoMix_ * (1.0f - captureMix_[6])
+                * radiationReferenceGain * outputGain_ * loadedPiezo;
+            outputLeft += blended;
+            outputRight += blended;
         }
 
         // Preserve ordinary notes exactly; only the final 1 dB of headroom is

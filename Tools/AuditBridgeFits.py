@@ -73,11 +73,6 @@ def main() -> int:
     parser.add_argument("--output-directory", type=Path)
     arguments = parser.parse_args()
     frequency, mobility = bridge.extract_mobility(arguments.raw_mat)
-    # Only the steel (g21) bank is screened here. Fit the nylon bank first,
-    # while the module's candidate count and band are still the shipping ones,
-    # so a written header stays the one the engine would compile.
-    nylon = (bridge.fit_bank(arguments.raw_mat, bridge.DEFAULT_NYLON_GUITAR)
-             if arguments.output_directory is not None else None)
     configurations = ((30, 4200.0), (48, 10_000.0),
                       (64, 10_000.0), (96, 10_000.0))
     for candidates, maximum in configurations:
@@ -92,21 +87,20 @@ def main() -> int:
             f"{result['low_p90']:.3f} dB")
         if arguments.output_directory is not None:
             arguments.output_directory.mkdir(parents=True, exist_ok=True)
-            header = bridge.render_header(
-                {
-                    "guitar": 21,
-                    "modes": result["retained"],
-                    "phase_advance": result["advance"],
-                    "relative_error": result["complex"],
-                    "magnitude_error": result["median"],
-                    "corner": bridge.MINIMUM_FREQUENCY,
-                    "rocking": 0,
-                },
-                nylon,
-            )
+            # The candidate bank alone: the twins and Q ratios that sit
+            # beside it in MeasuredBridgeData.h need the radiation's fit.
+            block = bridge.bank_block("measuredSteelBridgeModes", {
+                "guitar": 21,
+                "modes": result["retained"],
+                "phase_advance": result["advance"],
+                "relative_error": result["complex"],
+                "magnitude_error": result["median"],
+                "corner": bridge.MINIMUM_FREQUENCY,
+                "rocking": 0,
+            })
             path = arguments.output_directory / (
                 f"MeasuredBridgeData-{candidates}c-{len(result['retained'])}r.h")
-            path.write_text(header, encoding="utf-8")
+            path.write_text(block + "\n", encoding="utf-8")
             print(f"  wrote {path}")
     return 0
 

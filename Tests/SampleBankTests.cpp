@@ -54,9 +54,8 @@ int main() {
     Library library;
     std::string error;
     REQUIRE(library.prepare(&error) && error.empty());
-    REQUIRE(library.zoneCount() == 321);
+    REQUIRE(library.zoneCount() == 280);
 
-    std::size_t nylonZones = 0;
     std::size_t shinyZones = 0;
     std::size_t eastmanZones = 0;
     for (std::size_t index = 0; index < library.zoneCount(); ++index) {
@@ -82,11 +81,7 @@ int main() {
         const auto nominalHz = 440.0 * std::exp2((static_cast<int>(zone->rootMidi) - 69) / 12.0);
         const auto tuningCents = 1200.0 * std::log2(zone->rootHz / nominalHz);
         REQUIRE(std::abs(tuningCents) < 40.0);
-        if (zone->bank == Bank::Nylon) {
-            ++nylonZones;
-            REQUIRE(zone->channels == 1);
-            REQUIRE(zone->terminalFadeFrames == 0);
-        } else if (zone->bank == Bank::SteelPicked) {
+        if (zone->bank == Bank::SteelPicked) {
             ++shinyZones;
             REQUIRE(zone->channels == 1);
             REQUIRE(zone->frames > zone->sampleRate * 39 / 10);
@@ -105,7 +100,7 @@ int main() {
             REQUIRE(zone->endJump <= 1);
         }
     }
-    REQUIRE(nylonZones == 41 && shinyZones == 272 && eastmanZones == 8);
+    REQUIRE(shinyZones == 272 && eastmanZones == 8);
     REQUIRE(library.find(Bank::SteelPicked, 37, 127, 0) == nullptr);
     REQUIRE(library.find(Bank::SteelPicked, 85, 127, 0) == nullptr);
     REQUIRE(library.find(Bank::SteelPicked, 52, 0, 0) == nullptr);
@@ -178,34 +173,34 @@ int main() {
                                   0.8f, 0.0f, 0.0f, 44));
     REQUIRE(locatedSampler.activeZone(1) == locatedLibrary.zone(4));
 
-    Library nylonRoundRobins;
-    LibraryTestAccess::replaceZones(nylonRoundRobins, {
-        makeZone(Bank::Nylon, 0, 0, 40, 20),
-        makeZone(Bank::Nylon, 1, 0, 40, 20),
-        makeZone(Bank::Nylon, 2, 0, 40, 20),
-        makeZone(Bank::Nylon, 3, 0, 40, 20),
+    Library pluckedRoundRobins;
+    LibraryTestAccess::replaceZones(pluckedRoundRobins, {
+        makeZone(Bank::SteelPlucked, 0, 0, 40, 20),
+        makeZone(Bank::SteelPlucked, 1, 0, 40, 20),
+        makeZone(Bank::SteelPlucked, 2, 0, 40, 20),
+        makeZone(Bank::SteelPlucked, 3, 0, 40, 20),
     });
-    Sampler nylonSampler(nylonRoundRobins);
-    nylonSampler.setOutputSampleRate(48000.0);
+    Sampler pluckedSampler(pluckedRoundRobins);
+    pluckedSampler.setOutputSampleRate(48000.0);
     for (std::uint8_t rr = 0; rr < 4; ++rr) {
-        REQUIRE(nylonSampler.noteOn(0, Bank::Nylon, 60,
-                                    0.8f, 0.0f, 0.0f, 40));
-        REQUIRE(nylonSampler.activeZone(0) == nylonRoundRobins.zone(rr));
+        REQUIRE(pluckedSampler.noteOn(0, Bank::SteelPlucked, 60,
+                                      0.8f, 0.0f, 0.0f, 40));
+        REQUIRE(pluckedSampler.activeZone(0) == pluckedRoundRobins.zone(rr));
     }
 
     Library independentBanks;
     LibraryTestAccess::replaceZones(independentBanks, {
         makeZone(Bank::SteelPicked, 0, 0, 40, 20),
         makeZone(Bank::SteelPicked, 1, 0, 40, 20),
-        makeZone(Bank::Nylon, 0, 0, 40, 20),
-        makeZone(Bank::Nylon, 1, 0, 40, 20),
+        makeZone(Bank::SteelPlucked, 0, 0, 40, 20),
+        makeZone(Bank::SteelPlucked, 1, 0, 40, 20),
     });
     Sampler independentSampler(independentBanks);
     independentSampler.setOutputSampleRate(48000.0);
     REQUIRE(!independentSampler.noteOn(0, static_cast<Bank>(255), 60,
                                        0.8f, 0.0f, 0.0f, 40));
     for (std::size_t rr = 0; rr < 2; ++rr) {
-        REQUIRE(independentSampler.noteOn(0, Bank::Nylon, 60,
+        REQUIRE(independentSampler.noteOn(0, Bank::SteelPlucked, 60,
                                           0.8f, 0.0f, 0.0f, 40));
         REQUIRE(independentSampler.activeZone(0)
                 == independentBanks.zone(2 + rr));
@@ -328,7 +323,7 @@ int main() {
     }
 
     double worstLatencyMs = 0.0;
-    for (const auto bank : {Bank::Nylon, Bank::SteelPicked, Bank::SteelPlucked}) {
+    for (const auto bank : {Bank::SteelPicked, Bank::SteelPlucked}) {
         for (int midi = 38; midi <= 84; ++midi) {
             const auto* zone = library.find(bank, midi);
             REQUIRE(zone != nullptr);
@@ -533,7 +528,7 @@ int main() {
 
     const auto ratio = static_cast<double>(Library::packedBytes()) / library.decodedBytes();
     REQUIRE(ratio < 0.80);
-    std::cout << "PASS zones=321 worst_note_on_ms=" << worstLatencyMs
+    std::cout << "PASS zones=" << library.zoneCount() << " worst_note_on_ms=" << worstLatencyMs
               << " decoded_mib=" << library.decodedBytes() / 1048576.0
               << " packed_mib=" << Library::packedBytes() / 1048576.0
               << " packed_ratio=" << ratio

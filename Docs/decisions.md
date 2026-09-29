@@ -4,6 +4,84 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-29 — at the user's request: a Piezo Mix knob
+
+Not a listening verdict: the user asked for a piezo volume. The plug-in has a
+Piezo Mix knob (PIEZO, 0-100%, default 0, parameter id `piezoMix`, appended
+last so every earlier parameter keeps its ID and index). It mixes the
+under-saddle piezo, at the level Capture = Piezo gives it (the same Output and
+construction reference), into Main beneath whichever microphone Capture
+selects, the same signal on both channels. With Capture on Piezo it does
+nothing, since the piezo is already the whole output. At 0, the default and
+what every older session loads with, the output is exactly what it was. The
+separate Piezo output bus is unchanged.
+
+## 2026-09-29 — at the user's request: steel strings only, three woods, one bridge
+
+Not a listening verdict: the user asked for it. They wrote "simplify acustra:
+remove nylon model. only keep 3 most different woods. cleanup all leftovers."
+and then "the bridge choice does not do much difference". Asked what to keep,
+they kept the Bellido 1978 Model, strung with steel.
+
+What was removed:
+- The nylon strings: the String Material control, nylon's string set (the
+  DAFx-26 EJ45 table, so no licensed material from that paper remains),
+  calibration (its MaterialCalibration and the nylon bending-loss, contact
+  noise and click values), authored pitch cue, output reference and piezo
+  trim, the g34 radiation and bridge banks it played, the unused g36
+  candidate, the nylon demo, the nylon-only tools, tests and reports, and the
+  University of Iowa nylon corpus from the open-corpora benchmark.
+- Cedar, one of the four Body Materials. Body Material is Spruce, Mahogany or
+  Maple.
+- The Bridge Model control and the measured Fylde bridge bank
+  (`MeasuredSteelBridgeData.h`). The Original bridge, steel's own g21 bridge
+  on its radiation's poles (what the old default "Original" played), is the
+  only bridge.
+- The Guitar menu's Classical nylon and Fylde bridge / steel presets, and the
+  editor's STRINGS button group. The presets are Dreadnought / Martin style,
+  Auditorium / Taylor style and Parlor / Fender style (Spruce, Original), and
+  Bellido 1978 (Auditorium, Mahogany, Bellido 1978).
+
+Why Spruce, Mahogany and Maple. The four woods were bounded factors on the
+measured body's frequency, Q, brightness and radiation direction: spruce
+{1, 1, 1, 1}, cedar {0.982, 0.88, 0.93, 1.04}, mahogany {0.991, 0.82, 0.87,
+1.02}, maple {1.025, 1.08, 1.08, 0.96}. Cedar and Mahogany were the closest
+pair: 0.10 as the Euclidean distance of the four log factors, the smallest of
+the six pairs (Spruce-Maple 0.12, Spruce-Cedar 0.15, Spruce-Mahogany 0.24,
+Cedar-Maple 0.27, Mahogany-Maple 0.36). Cedar sits between Spruce and
+Mahogany on Q and brightness, so of that pair it is the one whose sound the
+other two woods bracket; Mahogany keeps the dark, low-Q end of the range and
+Maple the bright end. That choice is a reading of the factors, not a
+listening test.
+
+How saved sessions migrate. The plug-in's state carries `stateVersion` = 2.
+A state without it is migrated on load: its `stringMaterial` and
+`bridgeModel` parameters are dropped, and Body Material 0, 1, 2, 3 (Spruce,
+Cedar, Mahogany, Maple) becomes 0, 1, 1, 2, so Cedar plays Mahogany. A
+session that played nylon, or the Fylde bridge, plays steel on the Original
+bridge (on the Bellido if it chose the Bellido): its construction, tuning and
+controls are kept, but it sounds like a steel guitar, since there is no nylon
+to play. Everything else loads as it was.
+
+What did not change. Steel rendering is unchanged bit for bit: every steel
+construction on the Original bridge in Spruce, Mahogany or Maple, and the
+Bellido with steel, renders the same samples as before. The construction
+loudness table (`ConstructionLoudnessData.h`, now 72 Model x Shape x Wood x
+Picking cells) holds the old steel/Original-bridge cells' values unchanged,
+and steel's golden values and hashes in the tests stay as they were: a change
+in one would be an engine bug, not a value to re-pin.
+The Bellido's wood factors stay relative to the cedar it was built of: Cedar
+survives only as that private reference inside the engine, so every Body
+Material moves the Bellido relative to its measured cedar exactly as before,
+and a Bellido in Mahogany (its preset) plays as a Bellido in Mahogany did.
+The Fylde measurement still underlies three derived constants,
+`steelTopMobilityRatio`, `steelJointTopMobilityRatio` and the piezo's bridge
+conductance, whose values are unchanged; `Tools/FyldeBridgeReference.py`
+regenerates them, and its citation and notice stay.
+
+The dated entries below that mention nylon, Cedar or the Fylde bridge are the
+record of that time and are left as written.
+
 ## 2026-09-29 — at the user's request: engine audit, tests, tools and documentation
 
 Not a listening verdict: the user asked for it. On 2026-09-28 they wrote

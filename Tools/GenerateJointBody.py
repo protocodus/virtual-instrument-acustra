@@ -73,14 +73,16 @@ beside MeasuredBridgeData.h's steelTopMobilityRatio. The committed
 MeasuredJointBodyData.h is the one cand/body-joint-pole-body (1813a88) wrote,
 with only that name changed.
 
-Level. steelJointTopMobilityRatio is the Fylde Falstaff's measured bridge mobility
-(MeasuredSteelBridgeData.h, between strings 5 and 6) over this bank's at the
-bass impact, u = -1, as the RMS of |Y| on a log-frequency grid over
-80 Hz-4 kHz: what the steel presets scale the flamenca's measured bridge by,
-so its modes are g21's own and its level a steel-string top's.
+Level. steelJointTopMobilityRatio is the Fylde Falstaff's measured bridge
+mobility (Carcagno et al. 2018, between strings 5 and 6; FyldeBridgeReference.py
+fits it from --fylde-mat) over this bank's at the bass impact, u = -1, as the
+RMS of |Y| on a log-frequency grid over 80 Hz-4 kHz: what the steel presets
+scale the flamenca's measured bridge by, so its modes are g21's own and its
+level a steel-string top's.
 
     python3 Tools/GenerateJointBody.py --self-test
-    python3 Tools/GenerateJointBody.py --raw-mat /path/qualified_selected_impulses.mat --output /new/dir [--plate-q median]
+    python3 Tools/GenerateJointBody.py --raw-mat /path/qualified_selected_impulses.mat \
+        --fylde-mat /path/bridge_admittance_all.mat --output /new/dir [--plate-q median]
 """
 from __future__ import annotations
 
@@ -534,17 +536,14 @@ def string_mobility(rows: list, frequency: np.ndarray, arm: float) -> np.ndarray
     return total
 
 
-def fylde_rows(repo: Path) -> list:
-    text = (repo / "Source" / "DSP" / "MeasuredSteelBridgeData.h").read_text()
-    block = text[text.index("measuredFyldeBridgeModes"):]
-    block = block[:block.index("}};")]
-    rows = [[float(v.rstrip("f")) for v in re.findall(r"[-+0-9.e]+f", line)]
-            for line in block.splitlines() if line.strip().startswith("{ ")]
-    return [tuple(row) for row in rows]
+def fylde_rows(fylde_mat: Path) -> list:
+    """The Fylde Falstaff's float32 modal fit (FyldeBridgeReference.py)."""
+    from FyldeBridgeReference import reference_modes
+    return [tuple(row) for row in reference_modes(fylde_mat).tolist()]
 
 
 def fylde_mobility(rows: list, frequency: np.ndarray) -> np.ndarray:
-    """The Fylde bank as the engine plays it (MeasuredSteelBridgeData.h)."""
+    """The Fylde fit's scalar mobility, the same at every string."""
     return string_mobility(rows, frequency, 0.0)
 
 
@@ -594,7 +593,7 @@ def render_header(guitar: int, fq: np.ndarray, residues: np.ndarray, rows: list,
                   "flamencas", f"// ({summary['plate_q'][0]} over the octave), for the radiation and the bridge alike."]
     lines += [
         "// steelJointTopMobilityRatio: the Fylde Falstaff's measured bridge mobility",
-        "// (MeasuredSteelBridgeData.h) over this bank's at u = -1, RMS |Y| on a",
+        "// (Carcagno et al. 2018) over this bank's at u = -1, RMS |Y| on a",
         "// log-frequency grid over 80 Hz-4 kHz.",
         "", "#pragma once", "#include <array>", "", "namespace acustra::detail", "{",
         "struct MeasuredJointBodyMode", "{", "    float frequency, q;",
@@ -651,7 +650,7 @@ def self_test() -> None:
 def run(raw: Path, output: Path, guitar: int, plate_q: str | None, plate_q_band: tuple,
         repo: Path, max_nfev: int, verbose: int, cache: Path | None = None,
         max_rounds: int = 1, population_file: Path | None = None,
-        refine_upper: float | None = None) -> None:
+        refine_upper: float | None = None, fylde_mat: Path | None = None) -> None:
     if output.exists() or not output.parent.is_dir():
         raise ValueError("output must be a new directory inside an existing parent")
     started = time.time()
@@ -799,7 +798,7 @@ def run(raw: Path, output: Path, guitar: int, plate_q: str | None, plate_q_band:
     damped_bridge = bridge_errors(rows, bridge_targets, corner)
     print(f"bridge at the common damped Q: complex {damped_bridge[0]:.4f}, magnitude "
           f"{max(damped_bridge[1]):.3f} dB", flush=True)
-    ratio = top_mobility_ratio(rows, fylde_rows(repo))
+    ratio = top_mobility_ratio(rows, fylde_rows(fylde_mat))
     canc = cancellation(fq_measured, residues)
     summary = dict(corner=corner, bridge_relative_error=fit["relative_error"],
                    bridge_magnitude_error=fit["magnitude_error"],
@@ -849,17 +848,21 @@ def main() -> int:
                         help="refine poles below this frequency (default: the cross-side corner)")
     parser.add_argument("--population", type=Path,
                         help="json of the plate-Q population banks (read if present, else written)")
+    parser.add_argument("--fylde-mat", type=Path,
+                        help="bridge_admittance_all.mat, the Fylde Falstaff's measured mobility "
+                             "that sets steelJointTopMobilityRatio (FyldeBridgeReference.py)")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     try:
         if args.self_test:
             self_test()
         else:
-            if args.raw_mat is None or args.output is None:
-                parser.error("--raw-mat and --output are required")
+            if args.raw_mat is None or args.output is None or args.fylde_mat is None:
+                parser.error("--raw-mat, --fylde-mat and --output are required")
             run(args.raw_mat, args.output, args.guitar, args.plate_q, tuple(args.plate_q_band),
                 Path(__file__).resolve().parents[1], args.max_evaluations, args.verbose, args.cache,
-                population_file=args.population, refine_upper=args.refine_upper_hz)
+                population_file=args.population, refine_upper=args.refine_upper_hz,
+                fylde_mat=args.fylde_mat)
         return 0
     except (OSError, ValueError, AssertionError) as error:
         parser.exit(1, f"{error}\n")

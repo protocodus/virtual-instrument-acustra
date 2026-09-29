@@ -158,7 +158,7 @@ def _resample(signal: np.ndarray, source_rate: int, target_rate: int) -> np.ndar
 
 
 def _onset(signal: np.ndarray, rate: int) -> int:
-    # A 1 ms energy follower is stable on both pick noise and soft nylon notes.
+    # A 1 ms energy follower is stable on both pick noise and soft notes.
     width = max(1, round(0.001 * rate))
     energy = np.convolve(signal * signal, np.ones(width) / width, mode="same")
     limit = min(signal.size, round(0.250 * rate))
@@ -921,8 +921,8 @@ def floor_report(
     export's per-zone playback trim on the target and a column read against it
     has to be measured against that same target. Only the level term moves.
 
-    Nylon and the flat-top rows were captured once per note, so they have no
-    floor here and are reported as such.
+    The flat-top rows were captured once per note, so they have no floor here
+    and are reported as such.
     """
     materials = sorted({
         example["material"] for example in prepared.examples

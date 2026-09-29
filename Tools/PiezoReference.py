@@ -69,26 +69,22 @@ from pathlib import Path
 import numpy as np
 from scipy.integrate import cumulative_trapezoid, solve_ivp
 
+# numpy 2 renamed trapz to trapezoid (and removed trapz in 2.x); 1.x has only trapz.
+trapezoid = getattr(np, "trapezoid", None) or np.trapz
+
 # ---------------------------------------------------------------- mechanics
-# The engine's string tables (AcustraEngine.cpp: steelTensionNewtons,
-# nylonDiameterMetres, nylonDensity), for the summed wave impedance the
-# strings load the saddle with: stringImpedance at the standard open notes.
+# The engine's string table (AcustraEngine.cpp: steelTensionNewtons), for
+# the summed wave impedance the strings load the saddle with:
+# stringImpedance at the standard open notes.
 STEEL_TENSION = (110.759, 128.554, 133.002, 133.892, 103.643, 104.088)
-NYLON_DIAMETER = (1.15e-3, 0.97e-3, 0.79e-3, 1.00e-3, 0.82e-3, 0.67e-3)
-NYLON_DENSITY = (5900.0, 5200.0, 4500.0, 1140.0, 1140.0, 1140.0)
 OPEN_MIDI = (40, 45, 50, 55, 59, 64)
 
 
-def string_impedance_sum(material: str) -> float:
+def string_impedance_sum() -> float:
     total = 0.0
     for index, midi in enumerate(OPEN_MIDI):
         frequency = 440.0 * 2.0 ** ((midi - 69) / 12.0)
-        if material == "steel":
-            total += STEEL_TENSION[index] / (2.0 * 0.648 * frequency)
-        else:
-            diameter = NYLON_DIAMETER[index]
-            mass = NYLON_DENSITY[index] * math.pi * 0.25 * diameter * diameter
-            total += mass * 2.0 * 0.650 * frequency
+        total += STEEL_TENSION[index] / (2.0 * 0.648 * frequency)
     return total
 
 
@@ -102,21 +98,21 @@ MECH = {"M": 3.8e-3, "f0": 6000.0, "eta": 1.0 / 18.0, "G": 1.59e-3}
 VOLTS_PER_NEWTON = 0.2          # Zollner ch.6: Ovation EA-68, 0.2 V/N at 1.45 nF
 
 
-def mechanics(material: str = "steel", **override) -> dict:
+def mechanics(**override) -> dict:
     values = dict(MECH)
     values.update(override)
     omega = 2.0 * math.pi * values["f0"]
     values["k"] = values["M"] * omega * omega
     values["cm"] = values["eta"] * values["k"] / omega
-    values["SZ"] = values.get("SZ", string_impedance_sum(material))
+    values["SZ"] = values.get("SZ", string_impedance_sum())
     return values
 
 
-def mechanical_polynomials(material: str = "steel", **override):
+def mechanical_polynomials(**override):
     """F_p / F_r as numerator and denominator polynomials in s (highest
     power first): H = Zk Q / (1 + Zk Q), Zk = k/s + c_m,
     Q = 1/(s M + SZ) + G."""
-    m = mechanics(material, **override)
+    m = mechanics(**override)
     numerator = np.polymul([m["cm"], m["k"]], [m["G"] * m["M"], 1.0 + m["G"] * m["SZ"]])
     denominator = np.polyadd(numerator, [m["M"], m["SZ"], 0.0])
     return numerator, denominator
@@ -200,9 +196,8 @@ class Circuit:
     milliohms closed-loop, and as a resistor it put 5e9 /s modes in the
     system that swamped the solver's tolerance with round-off."""
 
-    def __init__(self, material: str = "steel", **mech_override):
-        self.material = material
-        self.mech = mechanics(material, **mech_override)
+    def __init__(self, **mech_override):
+        self.mech = mechanics(**mech_override)
         m = self.mech
         d1 = 1.0 + m["G"] * m["cm"]
         # Mechanics, linear: xm' = Am xm + Bm F; F_p = Cf xm + Df F.
@@ -579,14 +574,14 @@ def _map(function, jobs):
 
 def _harmonics_job(job):
     frequency, _level, amplitude = job
-    coefficients, thd = Circuit("steel").harmonics(amplitude, frequency)
+    coefficients, thd = Circuit().harmonics(amplitude, frequency)
     return np.abs(coefficients), thd
 
 
 def _burst_job(amplitude):
     """Vout through one burst at 48 kHz, then the slow states every 5 ms
     through its recovery, all about the operating point."""
-    steel = Circuit("steel")
+    steel = Circuit()
     x0 = steel.operating_point()
     force, dforce = burst(amplitude, BURST["frequency"], BURST["length"], BURST["ramp"])
     wave_times = np.arange(int(BURST["waveform"] * THD_RATE)) / THD_RATE
@@ -627,7 +622,7 @@ def blamp_residual():
     """The residual on a fine grid of time in samples, t in [-6, 6]."""
     t = np.linspace(-BLAMP_HALF, BLAMP_HALF, 480001)
     kernel = BLAMP_CUTOFF * np.sinc(BLAMP_CUTOFF * t) * np.kaiser(len(t), BLAMP_BETA)
-    kernel /= np.trapz(kernel, t)
+    kernel /= trapezoid(kernel, t)
     step = cumulative_trapezoid(kernel, t, initial=0.0)
     ramp = cumulative_trapezoid(step, t, initial=0.0)
     return t, ramp - np.maximum(t, 0.0)
@@ -722,7 +717,7 @@ BURST = {"frequency": 500.0, "length": 0.040, "ramp": 0.005, "tail": 3.0,
 
 def write_fixtures(directory: Path, only=None) -> None:
     directory.mkdir(parents=True, exist_ok=True)
-    steel = Circuit("steel")
+    steel = Circuit()
     x0 = steel.operating_point()
     if only is None or 'dc' in only:
         # 1. DC operating point and the clip points about it.
@@ -738,18 +733,16 @@ def write_fixtures(directory: Path, only=None) -> None:
         lines.append(f"u1a_cm_low,{steel.cm_limits[0] - x0[NODE_OFFSET + IN]:.12g}")
         (directory / "piezo-reference-dc.csv").write_text("\n".join(lines) + "\n")
     if only is None or 'ac' in only:
-        # 2. Small-signal responses from F_r (N) to Vout and VJ, both materials.
-        for material in ("steel", "nylon"):
-            circuit = Circuit(material)
-            response = circuit.small_signal(AC_FREQUENCIES, circuit.operating_point())
-            lines = [f"# Tools/PiezoReference.py: small-signal response, {material}, "
-                     "from the rigid-saddle force (N)",
-                     "hz,vout_re,vout_im,vj_re,vj_im,voc_re,voc_im"]
-            for index, frequency in enumerate(AC_FREQUENCIES):
-                v, j, o = (response[k][index] for k in ("Vout", "VJ", "Voc"))
-                lines.append(f"{frequency:.10g},{v.real:.12g},{v.imag:.12g},"
-                             f"{j.real:.12g},{j.imag:.12g},{o.real:.12g},{o.imag:.12g}")
-            (directory / f"piezo-reference-ac-{material}.csv").write_text("\n".join(lines) + "\n")
+        # 2. Small-signal responses from F_r (N) to Vout and VJ.
+        response = steel.small_signal(AC_FREQUENCIES, x0)
+        lines = ["# Tools/PiezoReference.py: small-signal response, steel, "
+                 "from the rigid-saddle force (N)",
+                 "hz,vout_re,vout_im,vj_re,vj_im,voc_re,voc_im"]
+        for index, frequency in enumerate(AC_FREQUENCIES):
+            v, j, o = (response[k][index] for k in ("Vout", "VJ", "Voc"))
+            lines.append(f"{frequency:.10g},{v.real:.12g},{v.imag:.12g},"
+                         f"{j.real:.12g},{j.imag:.12g},{o.real:.12g},{o.imag:.12g}")
+        (directory / "piezo-reference-ac-steel.csv").write_text("\n".join(lines) + "\n")
     if only is None or 'thd' in only:
         # 3. Harmonics against level, steel, above the clip.
         lines = ["# Tools/PiezoReference.py: periodic steady-state harmonics of Vout, steel",
@@ -795,17 +788,16 @@ def write_fixtures(directory: Path, only=None) -> None:
 
 # ---------------------------------------------------------------- report
 def report() -> None:
-    for material in ("steel", "nylon"):
-        num, den = mechanical_polynomials(material)
-        poles = np.roots(den)
-        pole = poles[np.argmax(np.abs(poles.imag))]
-        f0, q = abs(pole) / (2 * math.pi), abs(pole) / (-2 * pole.real)
-        fr = np.array([1000.0, f0, 10000.0, 20000.0])
-        h = np.polyval(num, 2j * np.pi * fr) / np.polyval(den, 2j * np.pi * fr)
-        print(f"{material}: SZ {string_impedance_sum(material):.4f} kg/s, saddle pole "
-              f"{f0:.0f} Hz Q {q:.2f}; |H| 1k {decibels(h[0]):+.2f}, at pole "
-              f"{decibels(h[1]):+.2f}, 10k {decibels(h[2]):+.2f}, 20k {decibels(h[3]):+.2f} dB")
-    circuit = Circuit("steel")
+    num, den = mechanical_polynomials()
+    poles = np.roots(den)
+    pole = poles[np.argmax(np.abs(poles.imag))]
+    f0, q = abs(pole) / (2 * math.pi), abs(pole) / (-2 * pole.real)
+    fr = np.array([1000.0, f0, 10000.0, 20000.0])
+    h = np.polyval(num, 2j * np.pi * fr) / np.polyval(den, 2j * np.pi * fr)
+    print(f"steel: SZ {string_impedance_sum():.4f} kg/s, saddle pole "
+          f"{f0:.0f} Hz Q {q:.2f}; |H| 1k {decibels(h[0]):+.2f}, at pole "
+          f"{decibels(h[1]):+.2f}, 10k {decibels(h[2]):+.2f}, 20k {decibels(h[3]):+.2f} dB")
+    circuit = Circuit()
     x0 = circuit.operating_point()
     print("operating point:", ", ".join(f"{n} {x0[NODE_OFFSET + i]:.6f}" for i, n in enumerate(NODES)))
     freqs = np.array([5.0, 10.0, 20.0, 31.0, 63.0, 1000.0, 6000.0, 10000.0, 20000.0])
@@ -820,7 +812,7 @@ def report() -> None:
 # ---------------------------------------------------------------- self-test
 def self_test() -> None:
     """Runs without fixtures: the component model against closed forms."""
-    steel = Circuit("steel")
+    steel = Circuit()
     x0 = steel.operating_point()
     # DC: the bootstrapped input and the bias sit at half the battery.
     for node in (IN, B, Y):
@@ -828,7 +820,7 @@ def self_test() -> None:
     assert abs(steel.outputs(x0)[0] - 4.5) < 1.0e-5 and abs(steel.outputs(x0)[1] - 4.5) < 1.0e-5
     assert abs(x0[NODE_OFFSET + J]) < 1.0e-5 and abs(x0[NODE_OFFSET + Q]) < 1.0e-9
     # Mechanics: the component model is the closed-form H(s).
-    num, den = mechanical_polynomials("steel")
+    num, den = mechanical_polynomials()
     freqs = np.geomspace(20.0, 20000.0, 40)
     response = steel.small_signal(freqs, x0)
     closed = np.polyval(num, 2j * np.pi * freqs) / np.polyval(den, 2j * np.pi * freqs)
@@ -866,7 +858,9 @@ def self_test() -> None:
     # the band-limited clip's, and folds back less than a bare clip does.
     header = Path(__file__).resolve().parent.parent / "Source/DSP/PiezoBlampTable.h"
     written = [float(v) for v in re.findall(r"-?[0-9][0-9.eE+-]*", header.read_text().split("{{", 1)[1])]
-    assert np.max(np.abs(np.array(written) - blamp_table().ravel())) < 1.0e-15
+    # A few ULP of slack: numpy 2's summation rounds the table's last digit
+    # differently from the numpy 1.26 that wrote it.
+    assert np.max(np.abs(np.array(written) - blamp_table().ravel())) < 1.0e-14
     aliasing, errors = blamp_harmonic_errors(341, 6.0)
     assert aliasing < -65.0 and max(abs(e) for e in errors) < 0.3, (aliasing, errors)
     print("PiezoReference self-test passed")

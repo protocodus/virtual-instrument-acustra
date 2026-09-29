@@ -22,6 +22,10 @@ The extraction rejects notes with clean_seconds < 1.25 s or isolation_db <
 takes midi as the nearest MIDI note to the settled f0 after removing the take's
 global tuning offset. Target paths resolve relative to their rows.json.
 
+Acustra is steel-strung only (since 2026-09-29), so a nylon row has no model
+to compare with: a valid nylon row is skipped before anything is rendered,
+counted per corpus and listed in summary.json under "skipped_nylon_rows".
+
 This tool re-checks what it can before rendering anything: the fields and
 their types, material steel|nylon, integer midi 0-127 and velocity 1-127,
 unique ids across every corpus given, clean_seconds >= 1.25 and isolation_db
@@ -36,10 +40,9 @@ Nothing is trimmed, aligned, equalised, denoised or level-matched here.
 Model side: Tools/ExternalCorpusRenderer.cpp (CMake target
 AcustraExternalCorpusRenderer), which is PhysicalFitRenderer's renderModel and
 calibration mapping with the schedule read from a job file: a fresh
-AcustraEngine per unique (material, picking, midi, velocity), 48 kHz,
-127-sample blocks, 4.2 s of stereo from a note-on at frame zero, default public
-controls, the named bridge and guitar model, nylon on the Auditorium slot (the
-measured classical) unless --shape is given. Round robins and dynamic groups
+AcustraEngine per unique (picking, midi, velocity), 48 kHz, 127-sample blocks,
+4.2 s of stereo from a note-on at frame zero, default public controls, the
+named guitar model, and the default Dreadnought unless --shape is given. Round robins and dynamic groups
 share one render, as in the bank benchmark. The calibration is the shipping
 vector (OptimizePhysicalModel.SHIPPING, which mirrors fittedPhysicalCalibration)
 unless --values or --set say otherwise. A row whose picking is null is played
@@ -55,7 +58,7 @@ harmonics 80-250 and 400-900 ms; settled tuning 400-1200 ms; decay
 120 ms-4.0 s; body bands 80-900 ms; dynamics only inside a dynamic group that
 holds at least two velocities. Lower means closer descriptors on exactly these
 recordings; it is not a listening verdict. The table reports the total, the
-seven terms and each material. This tool neither fits nor selects: a split
+seven terms and each material the scored rows carry. This tool neither fits nor selects: a split
 used to choose a calibration stops being a held-out reading and should be
 named as such.
 
@@ -84,10 +87,10 @@ full); manifests, job files, per-split score reports and summary.json remain.
 Usage:
   python3 Tools/BenchmarkOpenCorpora.py CORPUS/rows.json [MORE/rows.json ...] \
       --renderer BUILD/AcustraExternalCorpusRenderer --output NEWDIR \
-      [--bridge-model original|fylde] [--shape parlor|auditorium|dreadnought|jumbo] \
+      [--shape parlor|auditorium|dreadnought|jumbo] \
       [--guitar-model original|bellido1978] \
       [--picking-default finger|pick|thumb] [--picking-override finger|pick|thumb] \
-      [--values V1 ... V48 | --set INDEX_OR_NAME=VALUE ...] \
+      [--values V1 ... V37 | --set INDEX_OR_NAME=VALUE ...] \
       [--splits SPLIT_OR_CORPUS.SPLIT,...] [--keep] [--compare BASEDIR] \
       [--jobs N] [--lenient] [--allow-unfaded]
   python3 Tools/BenchmarkOpenCorpora.py --smoke \
@@ -95,8 +98,9 @@ Usage:
 
 --smoke runs the whole pipeline - protocol checks, renders, manifests,
 scoring, summary - on a tiny synthetic corpus it writes to a temporary
-directory (three synthesised notes and one row that breaks the protocol, run
-with --lenient) and checks that every score it reports is finite. It
+directory (three synthesised steel notes, a nylon note it must skip and one
+row that breaks the protocol, run with --lenient) and checks that every score
+it reports is finite. It
 downloads nothing and writes nothing outside that directory.
 """
 
@@ -232,8 +236,9 @@ def _row_problems(row: Any, base: Path,
 def load_corpora(paths: list[Path], lenient: bool, check_fade: bool,
                  wanted: set[str] | None) -> tuple[list[dict[str, Any]],
                                                    list[dict[str, Any]],
+                                                   list[dict[str, Any]],
                                                    list[dict[str, Any]]]:
-    corpora, rows, rejected = [], [], []
+    corpora, rows, rejected, skipped = [], [], [], []
     identifiers: set[str] = set()
     failures: list[str] = []
     for path in paths:
@@ -246,7 +251,7 @@ def load_corpora(paths: list[Path], lenient: bool, check_fade: bool,
             raise SystemExit(f"{path}: corpus must be a non-empty string")
         if any(corpus["corpus"] == name for corpus in corpora):
             raise SystemExit(f"{path}: corpus {name} was given twice")
-        used = 0
+        used = nylon = 0
         prefix_warnings = 0
         for index, row in enumerate(document["rows"], 1):
             if (wanted is not None and isinstance(row, dict)
@@ -266,6 +271,11 @@ def load_corpora(paths: list[Path], lenient: bool, check_fade: bool,
                 rejected.append({"corpus": name, "id": label, "problems": problems})
                 failures.append(f"{label}: " + "; ".join(problems))
                 continue
+            if row["material"] == "nylon":
+                # No nylon model to compare with; see the protocol above.
+                skipped.append({"corpus": name, "id": label})
+                nylon += 1
+                continue
             rows.append({**row, "corpus": name, "target_checked": target})
             used += 1
         if prefix_warnings:
@@ -275,7 +285,8 @@ def load_corpora(paths: list[Path], lenient: bool, check_fade: bool,
                         "rows_json_sha256": sha256(path),
                         "license": document.get("license"),
                         "source": document.get("source"),
-                        "rows": len(document["rows"]), "used": used})
+                        "rows": len(document["rows"]), "used": used,
+                        "skipped_nylon": nylon})
     if failures and not lenient:
         shown = "\n  ".join(failures[:40])
         more = f"\n  ... and {len(failures) - 40} more" if len(failures) > 40 else ""
@@ -283,7 +294,10 @@ def load_corpora(paths: list[Path], lenient: bool, check_fade: bool,
                          f"(--lenient drops them):\n  {shown}{more}")
     for failure in failures:
         print(f"dropped: {failure}", file=sys.stderr)
-    return corpora, rows, rejected
+    if skipped:
+        print(f"skipped {len(skipped)} nylon rows: Acustra plays steel strings only",
+              file=sys.stderr)
+    return corpora, rows, rejected, skipped
 
 
 def calibration_values(arguments: argparse.Namespace) -> list[float]:
@@ -313,8 +327,6 @@ def calibration_values(arguments: argparse.Namespace) -> list[float]:
 def render_options(arguments: argparse.Namespace) -> list[str]:
     # The renderer parses these in this order, as PhysicalFitRenderer does.
     options: list[str] = []
-    if arguments.bridge_model:
-        options += ["--bridge-model", arguments.bridge_model]
     if arguments.shape:
         options += ["--shape", arguments.shape]
     if arguments.guitar_model:
@@ -322,11 +334,11 @@ def render_options(arguments: argparse.Namespace) -> list[str]:
     return options
 
 
-def model_key(material: str, picking: str, midi: int, velocity: int) -> str:
-    return f"{material}-{picking}-m{midi}-v{velocity}"
+def model_key(picking: str, midi: int, velocity: int) -> str:
+    return f"{picking}-m{midi}-v{velocity}"
 
 
-def render_models(jobs: list[tuple[str, str, str, int, int]], renderer: Path,
+def render_models(jobs: list[tuple[str, str, int, int]], renderer: Path,
                   output: Path, options: list[str], values: list[float],
                   processes: int) -> tuple[dict[str, Any], list[str]]:
     job_directory = output / "jobs"
@@ -338,8 +350,8 @@ def render_models(jobs: list[tuple[str, str, str, int, int]], renderer: Path,
         if not chunk:
             continue
         job_file = job_directory / f"jobs-{index:02d}.txt"
-        job_file.write_text("".join(f"{key} {material} {picking} {midi} {velocity}\n"
-                                    for key, material, picking, midi, velocity in chunk),
+        job_file.write_text("".join(f"{key} {picking} {midi} {velocity}\n"
+                                    for key, picking, midi, velocity in chunk),
                             encoding="utf-8")
         command = [str(renderer), *options, str(job_file), str(output), *formatted]
         running.append((command, subprocess.Popen(
@@ -365,7 +377,7 @@ def render_models(jobs: list[tuple[str, str, str, int, int]], renderer: Path,
     return echoes[0], running[0][0]
 
 
-def check_models(jobs: list[tuple[str, str, str, int, int]],
+def check_models(jobs: list[tuple[str, str, int, int]],
                  output: Path) -> set[str]:
     silent = set()
     for key, *_ in jobs:
@@ -486,7 +498,8 @@ def smoke(renderer: Path) -> int:
         rate, seconds = 44_100, 1.6
         notes = [("steel", "finger", 52, 60, "smoke-steel-e3"),
                  ("steel", "finger", 52, 110, "smoke-steel-e3"),
-                 ("nylon", None, 57, 90, None),
+                 ("steel", None, 57, 90, None),
+                 ("nylon", "finger", 45, 90, None),
                  ("steel", "pick", 64, 90, None)]
         rows = []
         for index, (material, picking, midi, velocity, group) in enumerate(notes):
@@ -517,9 +530,12 @@ def smoke(renderer: Path) -> int:
         if [row["id"] for row in summary["rejected_rows"]] != [f"smoke-{len(notes) - 1}"]:
             problems.append(f"rejected {summary['rejected_rows']}, expected the "
                             "row that breaks the protocol")
+        if [row["id"] for row in summary["skipped_nylon_rows"]] != ["smoke-3"]:
+            problems.append(f"skipped {summary['skipped_nylon_rows']}, expected the "
+                            "nylon row")
         split = summary["splits"].get("smoke.test")
-        if split is None or split["example_count"] != len(notes) - 1:
-            problems.append(f"expected one split of {len(notes) - 1} rows: "
+        if split is None or split["example_count"] != len(notes) - 2:
+            problems.append(f"expected one split of {len(notes) - 2} rows: "
                             f"{list(summary['splits'])}")
         else:
             reported = [split["score"], *split["by_material"].values(),
@@ -548,7 +564,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, metavar="NEWDIR")
     parser.add_argument("--smoke", action="store_true",
                         help="run the pipeline on a tiny synthetic corpus and check it")
-    parser.add_argument("--bridge-model", choices=("original", "fylde"))
     parser.add_argument("--shape", choices=("parlor", "auditorium", "dreadnought", "jumbo"))
     parser.add_argument("--guitar-model", choices=("original", "bellido1978"))
     parser.add_argument("--picking-default", choices=PICKINGS, default="finger",
@@ -598,22 +613,22 @@ def main(argv: list[str] | None = None) -> int:
 
     wanted = ({name.strip() for name in arguments.splits.split(",") if name.strip()}
               if arguments.splits else None)
-    corpora, rows, rejected = load_corpora(arguments.rows, arguments.lenient,
-                                           not arguments.allow_unfaded, wanted)
+    corpora, rows, rejected, skipped = load_corpora(
+        arguments.rows, arguments.lenient, not arguments.allow_unfaded, wanted)
     if not rows:
         raise SystemExit("no rows to score")
     for row in rows:
         row["picking_played"] = (arguments.picking_override or row.get("picking")
                                  or arguments.picking_default)
-        row["model_key"] = model_key(row["material"], row["picking_played"],
-                                     row["midi"], row["velocity"])
-    jobs = sorted({(row["model_key"], row["material"], row["picking_played"],
-                    row["midi"], row["velocity"]) for row in rows})
+        row["model_key"] = model_key(row["picking_played"], row["midi"],
+                                     row["velocity"])
+    jobs = sorted({(row["model_key"], row["picking_played"], row["midi"],
+                    row["velocity"]) for row in rows})
 
     output.mkdir()
     try:
         return run(arguments, output, renderer, options, values, corpora, rows,
-                   rejected, jobs)
+                   rejected, skipped, jobs)
     finally:
         # The disk this runs on is nearly full: drop the renders unless asked,
         # also when a run stops part way.
@@ -625,7 +640,7 @@ def main(argv: list[str] | None = None) -> int:
 def run(arguments: argparse.Namespace, output: Path, renderer: Path,
         options: list[str], values: list[float], corpora: list[dict[str, Any]],
         rows: list[dict[str, Any]], rejected: list[dict[str, Any]],
-        jobs: list[tuple[str, str, str, int, int]]) -> int:
+        skipped: list[dict[str, Any]], jobs: list[tuple[str, str, int, int]]) -> int:
     started = time.monotonic()
     echo, command = render_models(jobs, renderer, output, options, values,
                                   min(arguments.jobs, len(jobs)))
@@ -671,8 +686,8 @@ def run(arguments: argparse.Namespace, output: Path, renderer: Path,
                 "rows_json_sha256": corpus["rows_json_sha256"],
                 "target_timing": "20 ms before the note onset to min(next onset - 20 ms, "
                                  "onset + 4.2 s), 60 ms terminal half-cosine fade",
-                "model_render": "fresh AcustraEngine per material/picking/MIDI/velocity; "
-                                "48000 Hz; 127-sample blocks; 4.2 s; selected bridge, "
+                "model_render": "fresh AcustraEngine per picking/MIDI/velocity; "
+                                "48000 Hz; 127-sample blocks; 4.2 s; model_controls, "
                                 "otherwise default controls",
                 "renderer": str(renderer),
                 "renderer_sha256": renderer_sha,
@@ -760,6 +775,7 @@ def run(arguments: argparse.Namespace, output: Path, renderer: Path,
                     "override": arguments.picking_override},
         "corpora": corpora,
         "rejected_rows": rejected,
+        "skipped_nylon_rows": skipped,
         "unplayable_rows": unplayable,
         "unique_model_renders": len(jobs),
         "render_seconds": round(render_seconds, 2),

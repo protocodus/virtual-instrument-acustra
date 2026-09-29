@@ -32,21 +32,23 @@ def main():
         shapes = [render("--body-shape", shape)
                   for shape in ("parlor", "auditorium", "dreadnought", "jumbo")]
         assert len(set(shapes)) == 4, "body-shape option did not reach the engine"
-        assert default != render("--body-material", "cedar")
+        woods = [render("--body-material", wood) for wood in ("spruce", "mahogany", "maple")]
+        assert woods[0] == default and len(set(woods)) == 3, \
+            "body-material option did not reach the engine"
         calibration = root / "calibration.txt"
         render("--calibration", str(root), valid=False)
         calibration.write_text("")
         assert default == render("--calibration", str(calibration))
-        nylon = render("--string-material", "nylon")
-        calibration.write_text("nylon.apertureScale 2.4\n")
-        assert default == render("--calibration", str(calibration))
-        assert nylon != render("--string-material", "nylon", "--calibration", str(calibration))
-        for content in ("unknown 1\n", "bodyQScale nan\n", "bodyQScale 999\n", "nylon.apertureScale -1\n",
+        calibration.write_text("steel.apertureScale 2.4\n")
+        assert default != render("--calibration", str(calibration))
+        for content in ("unknown 1\n", "bodyQScale nan\n", "bodyQScale 999\n", "steel.apertureScale -1\n",
+                        "nylon.apertureScale 2.4\n",
                         "bodyQScale 1\nbodyQScale 1.2\n",
                         "bodyQScale\n", "bodyQScale 1 trailing\n"):
             calibration.write_text(content)
             render("--calibration", str(calibration), valid=False)
         for options in (("--body-shape", "unknown"), ("--body-material", "unknown"),
+                        ("--body-material", "cedar"), ("--string-material", "nylon"),
                         ("--body-shape",), ("--body-shape", "parlor", "--body-shape", "jumbo")):
             render(*options, valid=False)
     print("Calibration renderer: defaults preserved, model controls effective, malformed input rejected")

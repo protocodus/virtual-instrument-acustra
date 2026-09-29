@@ -7,12 +7,15 @@ Walden G551E and nylon-string Yamaha CM-40. The capture chain, note velocities,
 string/fret assignments and pluck positions are unknown. The author explicitly
 warns that technique labels are inconsistent: 'f' merges finger AND thumb.
 This corpus is independent exploratory descriptor evidence, not a controlled
-technique/material experiment, a tuning set, or a perceptual realism ranking.
+technique experiment, a tuning set, or a perceptual realism ranking.
 
 Frozen selection, declared BEFORE inspecting selected audio: all 43 pitches
-D2 through G#5, labels spn/sfn/npn/nfn (normally sounded pick/finger-or-thumb),
-and the first TWO NUMERIC ordinals of each pitch/label: 344 recordings. Never
-replace a target after scoring. Verify the v3 archive SHA256 and filenames.
+D2 through G#5, the steel-string labels spn/sfn (normally sounded
+pick/finger-or-thumb), and the first TWO NUMERIC ordinals of each pitch/label:
+172 recordings. It is the steel half of the 344-recording selection this tool
+first froze; the nylon labels npn/nfn are left out since Acustra became
+steel-strung only (2026-09-29). Never replace a target after scoring. Verify
+the v3 archive SHA256 and filenames.
 All source WAVs must contain exactly two seconds of 44.1 kHz PCM16 mono audio.
 
 Render a two-second held note from frame zero at velocity 91, without inferring
@@ -20,9 +23,8 @@ velocity from recording level. Use the lowest-fret feasible string in standard
 tuning, except D2/D#2 use the low string in Drop D. This is a reproducible
 assumption, not the unknown recorded fingering. Map 'p' to Pick and the merged
 'f' label to Finger; this does not independently benchmark Thumb. Use Stereo
-mics, a declared Original/Fylde bridge and otherwise unchanged engine defaults.
-The Fylde option affects steel only; nylon retains its original bridge.
-An identical note/material/picking/control render is shared by both ordinals.
+mics and otherwise unchanged engine defaults. An identical
+note/picking/control render is shared by both ordinals.
 
 Reuse FitPhysicalModel.extract_features at 48 kHz with its own onset detector
 and analysis windows: normalized attack bands, six-scale spectral bands,
@@ -32,7 +34,7 @@ level/velocity score or new weighted composite is computed. Report each
 descriptor's physical-unit MAE on finite target/model pairs, alongside target
 availability and missing-model counts. A missing harmonic is NOT counted as a
 zero error; MAEs with different coverage must not be treated as improvements.
-Group means pool comparable descriptor elements, by pitch/material/label.
+Group means pool comparable descriptor elements, by pitch/label.
 No EQ, denoising, parameter fitting, manual alignment or loudness-normalized
 audio is written. Feature normalization is exactly the existing dry scorer's.
 
@@ -71,7 +73,7 @@ ARCHIVE_BYTES = 178227614
 RATE, SECONDS, VELOCITY = 48000, 2, 91
 PITCH_NAMES = ("C", "Csharp", "D", "Dsharp", "E", "F", "Fsharp", "G", "Gsharp", "A", "Asharp", "B")
 PITCHES = {PITCH_NAMES[midi % 12] + str(midi // 12 - 1): midi for midi in range(38, 81)}
-LABELS = ("spn", "sfn", "npn", "nfn")
+LABELS = ("spn", "sfn")
 FILE_PATTERN = re.compile(r"Guitar Dataset/([A-G](?:sharp)?[2-5])/\1-([1-9][0-9]*)-([a-z]{2,3})\.wav")
 DESCRIPTORS = {
     "attack": "dB", "multiscale": "dB", "harmonics": "dB",
@@ -94,7 +96,6 @@ def select_targets(names: list[str]) -> list[dict]:
             groups[pitch, label].append({
                 "source_member": filename, "pitch": pitch, "midi": PITCHES[pitch],
                 "ordinal": int(ordinal), "label": label,
-                "material": "steel" if label[0] == "s" else "nylon",
                 "picking": "pick" if label[1] == "p" else "finger",
             })
     selected = []
@@ -160,9 +161,7 @@ def read_reference(raw: bytes, name: str) -> np.ndarray:
     return physical._resample(audio, rate, RATE)
 
 
-def benchmark(archive_path: Path, renderer: Path, output: Path, bridge: str = "original") -> dict:
-    if bridge not in ("original", "fylde"):
-        raise ValueError("unknown bridge model")
+def benchmark(archive_path: Path, renderer: Path, output: Path) -> dict:
     if archive_path.stat().st_size != ARCHIVE_BYTES or digest(archive_path) != ARCHIVE_SHA256:
         raise ValueError("archive does not match the frozen Acoustic Guitar Notes v3 download")
     renderer = renderer.resolve(strict=True)
@@ -175,19 +174,17 @@ def benchmark(archive_path: Path, renderer: Path, output: Path, bridge: str = "o
         (output / "selection.json").write_text(json.dumps(selected, indent=2) + "\n")
         models, rows = {}, []
         for target in selected:
-            midi, material, picking = target["midi"], target["material"], target["picking"]
-            model_id = f"{midi:03d}-{material}-{picking}"
+            midi, picking = target["midi"], target["picking"]
+            model_id = f"{midi:03d}-{picking}"
             if model_id not in models:
                 controls = {"midi": midi, "velocity": VELOCITY, "bend_semitones": 0,
-                            "string_material": material, "picking": picking,
-                            "capture": "stereo_mic", "bridge_model": bridge,
-                            "effective_bridge_model": bridge if material == "steel" else "original",
+                            "picking": picking, "capture": "stereo_mic",
                             **fingering(midi)}
                 event_path = output / "models" / (model_id + ".events")
                 model_path = output / "models" / (model_id + ".f32")
                 write_events(event_path, [(0, controls["channel"], midi, VELOCITY, 0.0)], RATE * SECONDS)
-                subprocess.run([str(renderer), str(event_path), str(model_path), "stereo_mic", picking, bridge,
-                                "--string-material", material, "--tuning", controls["tuning"]], check=True)
+                subprocess.run([str(renderer), str(event_path), str(model_path), "stereo_mic", picking,
+                                "--tuning", controls["tuning"]], check=True)
                 audio = np.fromfile(model_path, dtype="<f4")
                 if audio.size != 2 * RATE * SECONDS or not np.isfinite(audio).all() or not np.any(audio):
                     raise ValueError(f"{model_id}: invalid or silent model render")
@@ -220,23 +217,21 @@ def benchmark(archive_path: Path, renderer: Path, output: Path, bridge: str = "o
         "event_writer_sha256": digest(Path(__file__).with_name("BenchmarkPerformances.py")),
         "numpy_version": np.__version__, "scipy_version": scipy.__version__,
         "analysis_rate": RATE, "duration_seconds": SECONDS,
-        "selection": "all D2-G#5; spn/sfn/npn/nfn; first two numeric ordinals per pitch/label, chosen before audio inspection",
-        "reference_instruments": {"steel": "Walden G551E", "nylon": "Yamaha CM-40"},
+        "selection": "all D2-G#5; spn/sfn; first two numeric ordinals per pitch/label, chosen before audio inspection",
+        "reference_instrument": "Walden G551E",
         "reference_capture": "unknown; author supplied mono recordings",
         "render_protocol": "held note at frame0; velocity91; zero bend; lowest-fret feasible string; standard except D2/D#2 DropD; 127-frame blocks; declared controls and otherwise engine defaults",
         "descriptor_protocol": "FitPhysicalModel onset/windows/feature normalizations; physical-unit MAE on finite pairs; pooled element means; availability/missing-model counts; no level, latency or composite score",
         "limitations": ["exploratory independent corpus; no parameter fitting or selection by scores",
                         "author warns technique variation is inconsistent",
                         "finger label includes thumb; no independent Thumb evaluation",
-                        "instrument, material, capture and performance differences are confounded",
+                        "instrument, capture and performance differences are confounded",
                         "source velocities, string/fret assignment, pluck location and source trim unknown",
                         "model missing descriptors remain explicit; different coverage cannot establish improvement",
                         "two-second clips limit decay observation; source onsets are estimates",
                         "does not establish controlled technique fidelity, perceptual equivalence or market rank"],
         "summary": summarise(rows),
         "by_label": {label: summarise([row for row in rows if row["label"] == label]) for label in LABELS},
-        "by_material": {material: summarise([row for row in rows if row["material"] == material])
-                        for material in ("steel", "nylon")},
         "by_pitch": {pitch: summarise([row for row in rows if row["pitch"] == pitch]) for pitch in PITCHES},
         "models": {name: model["report"] for name, model in models.items()},
         "recordings": rows,
@@ -249,7 +244,10 @@ def self_test() -> None:
     names = [f"Guitar Dataset/{pitch}/{pitch}-{ordinal}-{label}.wav"
              for pitch in PITCHES for label in LABELS for ordinal in (10, 2, 7)]
     selected = select_targets(names)
-    assert len(selected) == 344 and {row["ordinal"] for row in selected} == {2, 7}
+    assert len(selected) == 172 and {row["ordinal"] for row in selected} == {2, 7}
+    # The corpus's nylon labels are present in the archive and never selected.
+    nylon = [name.replace("-spn.", "-npn.") for name in names if name.endswith("-spn.wav")]
+    assert select_targets(names + nylon) == selected
     assert selected == select_targets(list(reversed(names)))
     for invalid in (names + [names[0]], names + ["Guitar Dataset/C3/D3-1-spn.wav"],
                     [name for name in names if not name.endswith("-spn.wav")]):
@@ -282,7 +280,6 @@ def main() -> None:
     parser.add_argument("--archive", type=Path)
     parser.add_argument("--renderer", type=Path)
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--bridge-model", choices=("original", "fylde"), default="original")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -290,9 +287,9 @@ def main() -> None:
         return
     if args.archive is None or args.renderer is None or args.output is None:
         parser.error("--archive, --renderer and --output are required")
-    report = benchmark(args.archive, args.renderer, args.output, args.bridge_model)
+    report = benchmark(args.archive, args.renderer, args.output)
     print(json.dumps({"recordings": len(report["recordings"]), "renders": len(report["models"]),
-                      "summary": report["summary"], "by_material": report["by_material"]}, indent=2))
+                      "summary": report["summary"], "by_label": report["by_label"]}, indent=2))
 
 
 if __name__ == "__main__":

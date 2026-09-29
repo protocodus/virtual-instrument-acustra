@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
-"""How loud nylon plays against steel, measured the way the reference was set.
+"""How loud the Guitar presets play, and the loudness meter the calibrations share.
 
-Renders the plug-in's six factory constructions (the Guitar presets in
-Source/PluginEditor.cpp), each strung with steel and with nylon, playing
-typical material: single notes up the neck at three velocities, alternating
-strums, a Travis-style arpeggio and two ringing chords, each with Finger and
-with Pick, at the default Output and the stereo microphones. Every render goes
-through AcustraPerformanceRenderer (the shipping engine) and is measured as
-ITU-R BS.1770-4 integrated loudness (K-weighted, 400 ms blocks, absolute and
-relative gates) and as plain RMS.
+Renders the plug-in's factory constructions (the Guitar presets in
+Source/PluginEditor.cpp) playing typical material: single notes up the neck at
+three velocities, alternating strums, a Travis-style arpeggio and two ringing
+chords, each with Finger and with Pick, at the default Output and the stereo
+microphones. Every render goes through AcustraPerformanceRenderer (the
+shipping engine) and is measured as ITU-R BS.1770-4 integrated loudness
+(K-weighted, 400 ms blocks, absolute and relative gates) and as plain RMS.
+The report gives each preset's median and the grid's.
 
-The report gives each material's median over the whole grid - the figure
-nylon's output reference was set by (Docs/decisions.md, 2026-09-28) - and,
-for comparison, the median over the presets as they ship (steel presets
-against nylon presets) and the median of paired differences on one
-construction and one performance.
+The meter, the performances and the event writer here are also what
+Tools/CalibrateConstructionLoudness.py and Tools/CalibratePiezo.py measure
+with. (The name is historical: the tool first compared nylon strings with
+steel, and the instrument is steel-strung only since 2026-09-29.)
 
   python3 Tools/MeasureMaterialLoudness.py \\
       --renderer ./build-dsp/AcustraPerformanceRenderer [--json OUT.json]
@@ -140,15 +139,22 @@ PERFORMANCES = {
     "arpeggio": arpeggio(), "ringing-chords": ringing_chords(),
 }
 
-# The plug-in's Guitar presets: shape, wood, their own strings, bridge, model.
+# The plug-in's Guitar presets (constructionPresets): shape, wood, model.
 PRESETS = {
-    "Dreadnought": ("dreadnought", "spruce", "steel", "original", "original"),
-    "Auditorium": ("auditorium", "spruce", "steel", "original", "original"),
-    "Parlor": ("parlor", "spruce", "steel", "original", "original"),
-    "Classical": ("auditorium", "cedar", "nylon", "original", "original"),
-    "Fylde": ("dreadnought", "spruce", "steel", "fylde", "original"),
-    "Bellido 1978": ("auditorium", "cedar", "nylon", "original", "bellido1978"),
+    "Dreadnought": ("dreadnought", "spruce", "original"),
+    "Auditorium": ("auditorium", "spruce", "original"),
+    "Parlor": ("parlor", "spruce", "original"),
+    "Bellido 1978": ("auditorium", "mahogany", "bellido1978"),
 }
+
+
+def render_command(renderer: str, events: Path, output: Path, capture: str,
+                   picking: str, preset: str, *extra: str) -> list[str]:
+    """An AcustraPerformanceRenderer command line for one preset."""
+    shape, wood, model = PRESETS[preset]
+    return [renderer, str(events), str(output), capture, picking,
+            "--body-shape", shape, "--body-material", wood,
+            "--guitar-model", model, *extra]
 
 
 def write_performance(rows, seconds: float, path: Path) -> None:
@@ -173,51 +179,32 @@ def measure(renderer: str, jobs: int) -> list[dict]:
             write_performance(rows, seconds, work / f"{name}.txt")
 
         def render(job):
-            preset, material, picking, performance = job
-            shape, wood, strings, bridge, model = PRESETS[preset]
-            output = work / f"{preset}-{material}-{picking}-{performance}.f32"
-            subprocess.run(
-                [renderer, str(work / f"{performance}.txt"), str(output),
-                 "stereo_mic", picking, bridge,
-                 "--string-material", material, "--body-shape", shape,
-                 "--body-material", wood, "--guitar-model", model],
-                check=True)
+            preset, picking, performance = job
+            output = work / f"{preset}-{picking}-{performance}.f32".replace(" ", "_")
+            subprocess.run(render_command(renderer, work / f"{performance}.txt", output,
+                                          "stereo_mic", picking, preset),
+                           check=True)
             audio = np.fromfile(output, dtype="<f4").reshape(-1, 2)
             output.unlink()
             return {
-                "preset": preset, "material": material,
-                "preset_strings": material == strings, "picking": picking,
-                "performance": performance,
+                "preset": preset, "picking": picking, "performance": performance,
                 "lufs": integrated_loudness(audio), "rms_db": rms_db(audio),
                 "peak_dbfs": float(20.0 * np.log10(np.max(np.abs(audio)))),
             }
 
-        grid = [(preset, material, picking, performance)
-                for preset in PRESETS for material in ("steel", "nylon")
+        grid = [(preset, picking, performance) for preset in PRESETS
                 for picking in ("finger", "pick") for performance in PERFORMANCES]
         with ThreadPoolExecutor(max_workers=jobs) as pool:
             return list(pool.map(render, grid))
 
 
 def summarise(rows: list[dict]) -> dict:
-    def median(key, material, only_preset_strings=False):
-        return float(np.median([
-            row[key] for row in rows if row["material"] == material
-            and (row["preset_strings"] or not only_preset_strings)]))
-
-    keyed = {(row["preset"], row["material"], row["picking"],
-              row["performance"]): row for row in rows}
-    paired = [keyed[(p, "steel", k, q)]["lufs"] - keyed[(p, "nylon", k, q)]["lufs"]
-              for (p, m, k, q) in keyed if m == "steel"]
     summary = {}
     for key in ("lufs", "rms_db"):
-        summary[key] = {
-            "grid_steel": median(key, "steel"),
-            "grid_nylon": median(key, "nylon"),
-            "presets_steel": median(key, "steel", True),
-            "presets_nylon": median(key, "nylon", True),
-        }
-    summary["paired_steel_minus_nylon_lufs"] = float(np.median(paired))
+        summary[key] = {"grid": float(np.median([row[key] for row in rows]))}
+        for preset in PRESETS:
+            summary[key][preset] = float(np.median(
+                [row[key] for row in rows if row["preset"] == preset]))
     summary["loudest_peak_dbfs"] = max(row["peak_dbfs"] for row in rows)
     return summary
 
@@ -232,6 +219,14 @@ def self_test() -> None:
     for name, (rows, seconds) in PERFORMANCES.items():
         with tempfile.TemporaryDirectory() as scratch:
             write_performance(rows, seconds, Path(scratch) / "p.txt")
+    fake = [{"preset": preset, "lufs": level, "rms_db": level - 3.0, "peak_dbfs": -1.0}
+            for preset in PRESETS for level in (-20.0, -18.0, -10.0)]
+    summary = summarise(fake)
+    assert summary["lufs"]["grid"] == -18.0 and summary["rms_db"]["Parlor"] == -21.0
+    command = render_command("r", Path("e.txt"), Path("o.f32"), "stereo_mic", "pick",
+                             "Bellido 1978")
+    assert command[3:] == ["stereo_mic", "pick", "--body-shape", "auditorium",
+                           "--body-material", "mahogany", "--guitar-model", "bellido1978"]
     print("MeasureMaterialLoudness self-test passed")
 
 
@@ -254,13 +249,9 @@ def main() -> int:
             {"summary": summary, "rows": rows}, indent=1) + "\n")
     lufs, rms = summary["lufs"], summary["rms_db"]
     print(f"{len(rows)} renders, loudest peak {summary['loudest_peak_dbfs']:.2f} dBFS")
-    print("                         steel     nylon   steel-nylon")
-    for scope in ("grid", "presets"):
-        for unit, table in (("LUFS", lufs), ("RMS dB", rms)):
-            steel, nylon = table[f"{scope}_steel"], table[f"{scope}_nylon"]
-            print(f"{scope + ', ' + unit:<22} {steel:8.2f}  {nylon:8.2f}"
-                  f"  {steel - nylon:8.2f}")
-    print(f"paired median, LUFS {summary['paired_steel_minus_nylon_lufs']:31.2f}")
+    print(f"{'median':<16} {'LUFS':>8}  {'RMS dB':>8}")
+    for scope in ("grid", *PRESETS):
+        print(f"{scope:<16} {lufs[scope]:8.2f}  {rms[scope]:8.2f}")
     return 0
 
 

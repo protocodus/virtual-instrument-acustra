@@ -15,9 +15,8 @@
 // Each mode's residue matrix [[heave, cross], [cross, rock]] is positive
 // semidefinite, so the model's Y(u) is positive real. This constraint does
 // not establish passivity or collocation of the measured response matrix.
-// The original material settings select two measured nylon-string guitars:
-// g21 flamenco is adapted for steel, g34 classical for nylon. The separate
-// MeasuredSteelBridgeData.h contains actual steel-string bridge measurements.
+// The Original model plays g21, a measured flamenco guitar adapted for steel
+// strings.
 // Adapted from Robert Mores, "Archive for the acoustical documentation of
 // classical Spanish guitars, flamenco guitars and romantic guitars from
 // private and public collections -- bridge mobility" (2021),
@@ -107,8 +106,8 @@ inline constexpr std::array<MeasuredBridgeMode, 47> measuredSteelBridgeModes {{
 // (GenerateBodyForcePair.py, median of the anechoic flamencas over g21's
 // own, never raising, 1 outside its band). steelTopMobilityRatio brings the
 // flamenca's mobility to a steel-string guitar's: the geometric mean over
-// 80 Hz-4 kHz of |Y| of the Fylde Falstaff (MeasuredSteelBridgeData.h;
-// Carcagno, Bucknall, Woodhouse, Fritz and Plack, JASA 144 (2018) 3533,
+// 80 Hz-4 kHz of |Y| of the Fylde Falstaff
+// (Carcagno, Bucknall, Woodhouse, Fritz and Plack, JASA 144 (2018) 3533,
 // https://doi.org/10.1121/1.5084735, data https://osf.io/f4pqa/, CC BY 4.0)
 // over g21's at u = -1, 0.27406, to three figures; over other bands and
 // conductance it spans 0.232-0.301.
@@ -166,63 +165,5 @@ inline constexpr std::array<float, 47> steelBridgeUnpairedQRatio {{
     0.905237675f,
     0.895353615f,
     0.88925904f,
-}};
-
-// g34, a 1971 Manuel Contreras classical Spanish, cedar/Rio palisander,
-// measured anechoic in the class-1 free-field laboratory of the Hamburg
-// University of Applied Sciences. A positive-semidefinite least-squares
-// projection retained 46 of 65 measured modal candidates after a 2-sample
-// instrumentation alignment; 40 of them carry a rocking residue, the rest
-// sitting above the 5657 Hz heuristic corner from the two cross-side
-// records' disagreement. Over the six model string positions and 60--10000
-// Hz, relative complex error 0.235357 and worst median magnitude error
-// 1.336137 dB.
-inline constexpr std::array<MeasuredBridgeMode, 46> measuredNylonBridgeModes {{
-    { 78.3691406f, 14.6324568f, 0.422264665f, 0.00373145775f, 3.29740506e-05f },
-    { 97.4121094f, 19.1501675f, 2.73422337f, -0.0787101015f, 0.0022658282f },
-    { 197.753906f, 11.019393f, 13.5605917f, -1.46163213f, 0.157542437f },
-    { 261.474609f, 20.8761635f, 2.3592813f, 3.30803013f, 4.64403629f },
-    { 297.363281f, 4.55918694f, 0.941687882f, -0.176372886f, 0.0330336541f },
-    { 408.691406f, 28.4756699f, 1.10479641f, 0.0724161118f, 0.00474666059f },
-    { 511.230469f, 3.33333325f, 0.25598675f, 0.12497934f, 0.0610181428f },
-    { 545.654297f, 6.20237875f, 0.602002501f, -0.325094432f, 0.17555806f },
-    { 568.359375f, 27.1715717f, 3.29482865f, -0.550568938f, 0.237444848f },
-    { 626.220703f, 4.75646114f, 0.269467026f, 0.240912423f, 0.215383664f },
-    { 660.644531f, 5.9575038f, 1.12969863f, 0.930300832f, 0.766097784f },
-    { 719.970703f, 49.3817215f, 0.483597279f, 0.440357566f, 0.400983989f },
-    { 760.986328f, 39.7774544f, 0.303144127f, -0.0499519669f, 0.546990395f },
-    { 810.791016f, 8.16574955f, 1.31084156f, -0.419444174f, 0.432695061f },
-    { 868.652344f, 5.59780788f, 0.0656871647f, 0.227352515f, 0.78689903f },
-    { 908.935547f, 3.33333325f, 2.46742082f, -1.13498938f, 0.522084057f },
-    { 979.980469f, 36.5194626f, 1.21973515f, 0.587379456f, 0.530625045f },
-    { 1113.28125f, 18.0188732f, 0.637099087f, 0.251000762f, 0.0988878906f },
-    { 1143.31055f, 54.3522644f, 0.177617744f, 0.140442848f, 0.111048542f },
-    { 1205.56641f, 3.88807225f, 4.55807495f, -0.370662123f, 0.0301421974f },
-    { 1346.19141f, 13.9699879f, 3.4755764f, 0.351665407f, 0.0702310279f },
-    { 1565.18555f, 18.7704868f, 0.122033261f, -0.591404796f, 2.86610079f },
-    { 1605.46875f, 17.9880714f, 0.00322177145f, 0.0934881195f, 2.71280217f },
-    { 1760.00977f, 6.92419577f, 1.43865728f, 0.173812419f, 0.160395592f },
-    { 1926.26953f, 42.5261574f, 0.185147136f, 0.0571039356f, 0.560422599f },
-    { 2036.86523f, 26.5022926f, 0.332647026f, 0.90229094f, 2.44742608f },
-    { 2148.92578f, 11.4607792f, 2.24822259f, 0.532371938f, 0.503216505f },
-    { 2389.16016f, 19.9102974f, 0.999668241f, 0.671521962f, 2.09526539f },
-    { 2461.66992f, 4.41944027f, 0.393061578f, 2.04725838f, 10.6631298f },
-    { 2717.28516f, 5.56423283f, 2.20948458f, -2.49789095f, 2.8239429f },
-    { 3038.08594f, 10.401804f, 1.72344124f, 1.95364654f, 2.21460104f },
-    { 3131.83594f, 11.0684052f, 0.0575030334f, 0.0684086159f, 0.0813824683f },
-    { 3387.45117f, 3.97902679f, 0.180359155f, 0.716737986f, 2.84827995f },
-    { 3567.62695f, 5.02256203f, 1.91282058f, 0.321368486f, 1.31474364f },
-    { 3810.05859f, 3.33333325f, 3.12467432f, 3.33930945f, 3.56868792f },
-    { 4248.7793f, 7.88957548f, 0.00715362979f, 0.0191210471f, 0.0511089414f },
-    { 4354.98047f, 9.08274364f, 1.799649f, -2.55506802f, 3.62758112f },
-    { 4820.80078f, 4.32851744f, 1.23219371f, -1.6807301f, 2.29254031f },
-    { 5394.28711f, 5.70975256f, 0.0271746386f, 0.0222598687f, 0.0182339773f },
-    { 5450.68359f, 23.6737919f, 0.521013558f, 0.470642358f, 0.425141007f },
-    { 5949.46289f, 7.08899403f, 3.86043978f, 0.0f, 0.0f },
-    { 6178.71094f, 17.0966816f, 2.8176856f, 0.0f, 0.0f },
-    { 7181.39648f, 19.7197361f, 0.758329093f, 0.0f, 0.0f },
-    { 8329.10156f, 5.45545483f, 19.0449409f, 0.0f, 0.0f },
-    { 8988.28125f, 3.91766858f, 6.8943696f, 0.0f, 0.0f },
-    { 9682.61719f, 4.05865097f, 42.1015549f, 0.0f, 0.0f },
 }};
 } // namespace acustra::detail

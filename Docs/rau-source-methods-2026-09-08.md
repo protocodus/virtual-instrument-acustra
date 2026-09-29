@@ -107,7 +107,8 @@ reported separately rather than fitted away. Residue positivity, frequency
 approximation, and center interpolation are different checks. A separate
 50-pole g35 refinement passes the same gates and fits the current bridge
 capacity: native complex error 0.18967 and worst median 0.86205 dB. The
-[g35 candidate header](../Source/DSP/NylonG35CandidateData.h) combines that
+[g35 candidate header](../Source/DSP/BellidoData.h) (then
+`NylonG35CandidateData.h`, renamed `BellidoData.h` on 2026-09-29) combines that
 50-mode bridge with the 134-mode pressure bank; the 92-mode result is retained
 in the report. The compact bridge's native/analytic difference is 0.00337,
 with positive real mobility throughout the checked 60–10,000 Hz band. Full

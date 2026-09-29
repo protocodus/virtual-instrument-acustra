@@ -70,17 +70,17 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> captureAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> guitarModelAttachment;
 
-    std::array<juce::Label, 4> choiceLabels;
-    std::array<std::unique_ptr<ChoiceButtonGroup>, 4> choiceControls;
-    std::array<juce::Label, 6> sliderLabels;
-    std::array<juce::Slider, 6> sliderControls;
+    std::array<juce::Label, 3> choiceLabels;
+    std::array<std::unique_ptr<ChoiceButtonGroup>, 3> choiceControls;
+    std::array<juce::Label, 7> sliderLabels;
+    std::array<juce::Slider, 7> sliderControls;
 
     juce::MidiKeyboardComponent keyboard {
         audioProcessor.keyboardState,
         juce::MidiKeyboardComponent::horizontalKeyboard
     };
 
-    std::array<std::unique_ptr<SliderAttachment>, 6> sliderAttachments;
+    std::array<std::unique_ptr<SliderAttachment>, 7> sliderAttachments;
 
     juce::Rectangle<int> setupPanelBounds;
     juce::Rectangle<int> choicePanelBounds;

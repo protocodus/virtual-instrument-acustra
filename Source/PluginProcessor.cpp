@@ -14,7 +14,6 @@ enum ParameterSlot
 {
     slotShape = 0,
     slotBodyMaterial,
-    slotStringMaterial,
     slotTuning,
     slotStringAge,
     slotPluckPosition,
@@ -24,12 +23,12 @@ enum ParameterSlot
     slotOutput,
     slotCapture,
     slotPicking,
-    slotBridgeModel,
     slotUpperMic,
     slotPiezoLoading,
     slotCaptureMode,
     slotGuitarModel,
     slotGatherChords,
+    slotPiezoMix,
     slotCount
 };
 
@@ -38,7 +37,6 @@ static_assert (static_cast<int> (slotCount) == ids::parameterCount);
 constexpr std::array<const char*, slotCount> parameterIds {
     ids::shape,
     ids::bodyMaterial,
-    ids::stringMaterial,
     ids::tuning,
     ids::stringAge,
     ids::pluckPosition,
@@ -48,19 +46,20 @@ constexpr std::array<const char*, slotCount> parameterIds {
     ids::output,
     ids::capture,
     ids::picking,
-    ids::bridgeModel,
     ids::upperMic,
     ids::piezoLoading,
     ids::captureMode,
     ids::guitarModel,
-    ids::gatherChords
+    ids::gatherChords,
+    ids::piezoMix
 };
 
 std::unique_ptr<juce::RangedAudioParameter> makePercentParameter (
-    const juce::String& id, const juce::String& name, float defaultValue)
+    const juce::String& id, const juce::String& name, float defaultValue,
+    int versionHint = 1)
 {
     return std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { id, 1 }, name,
+        juce::ParameterID { id, versionHint }, name,
         juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, defaultValue,
         juce::AudioParameterFloatAttributes()
             .withLabel ("%")
@@ -107,14 +106,45 @@ void addMissingParameterDefaults (
 
         juce::ValueTree parameterState { parameterType };
         parameterState.setProperty (idProperty, ranged->paramID, nullptr);
-        // A session saved before the bridge parameter existed was made on the
-        // Original bridge, so it keeps that bridge, which is also the one a
-        // new session starts on.
-        const float value = ranged->paramID == ids::bridgeModel
-            ? 0.0f
-            : ranged->convertFrom0to1 (ranged->getDefaultValue());
+        const float value = ranged->convertFrom0to1 (ranged->getDefaultValue());
         parameterState.setProperty (valueProperty, value, nullptr);
         state.appendChild (parameterState, nullptr);
+    }
+}
+
+// Saved states carry this in their root; one without it predates the
+// 2026-09-29 simplification (four Body Materials, the String Material and
+// Bridge Model parameters).
+const juce::Identifier stateVersionProperty { "stateVersion" };
+constexpr int currentStateVersion = 2;
+
+// A state saved before the simplification: the String Material and Bridge
+// Model it may hold are dropped (every session now plays steel strings on
+// the Original bridge), and its Body Material, from Spruce, Cedar, Mahogany,
+// Maple, moves to Spruce, Mahogany, Maple, Cedar to Mahogany, the nearest of
+// the three kept directions.
+void migrateVersionOneState (juce::ValueTree& state)
+{
+    static const juce::Identifier parameterType { "PARAM" };
+    static const juce::Identifier idProperty { "id" };
+    static const juce::Identifier valueProperty { "value" };
+    for (int index = state.getNumChildren(); --index >= 0;)
+    {
+        auto child = state.getChild (index);
+        if (! child.hasType (parameterType))
+            continue;
+        const auto id = child.getProperty (idProperty).toString();
+        if (id == "stringMaterial" || id == "bridgeModel")
+            state.removeChild (index, nullptr);
+        else if (id == ids::bodyMaterial)
+        {
+            const auto value = static_cast<float> (child.getProperty (valueProperty));
+            const int old = std::isfinite (value)
+                ? std::clamp (static_cast<int> (std::lround (value)), 0, 3) : 0;
+            constexpr std::array<float, 4> migrated { 0.0f, 1.0f, 1.0f, 2.0f };
+            child.setProperty (valueProperty,
+                               migrated[static_cast<std::size_t> (old)], nullptr);
+        }
     }
 }
 
@@ -171,10 +201,7 @@ AcustraAudioProcessor::createParameterLayout()
         2));
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::bodyMaterial, 1 }, "Body Material",
-        juce::StringArray { "Spruce", "Cedar", "Mahogany", "Maple" }, 0));
-    result.push_back (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { ids::stringMaterial, 1 }, "String Material",
-        juce::StringArray { "Nylon", "Steel" }, 1));
+        juce::StringArray { "Spruce", "Mahogany", "Maple" }, 0));
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::tuning, 1 }, "Tuning",
         juce::StringArray {
@@ -203,8 +230,7 @@ AcustraAudioProcessor::createParameterLayout()
                 return text.retainCharacters ("0123456789.-").getFloatValue();
             })));
 
-    // Append new controls, including a later AU version hint, so existing host
-    // automation retains the original ten parameter indices.
+    // Later controls are appended, with a later AU version hint.
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::capture, 2 }, "Legacy capture",
         juce::StringArray { "Stereo mics", "Treble mic", "Bass mic",
@@ -213,17 +239,6 @@ AcustraAudioProcessor::createParameterLayout()
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::picking, 2 }, "Picking",
         juce::StringArray { "Finger", "Pick", "Thumb" }, 0));
-    // New sessions start on the Original bridge, which the steel construction
-    // presets select: steel's own (g21) bridge on its radiation's poles. A
-    // session saved on the measured Fylde steel-string bridge keeps it; one
-    // saved before this parameter existed keeps the Original bridge it was
-    // made with (see addMissingParameterDefaults). The choice selects a bank
-    // only for steel strings on the Original model (nylon and the Bellido
-    // play their own guitar's bridge), which the name says to a host that
-    // shows it; the ID, version and choices are unchanged.
-    result.push_back (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { ids::bridgeModel, 3 }, "Bridge Model (steel, Original body)",
-        juce::StringArray { "Original", "Measured Fylde (steel)" }, 0));
     // Retain old parameter IDs, indices and ranges for saved-state migration.
     // Only the appended three-choice Capture parameter drives new sessions.
     result.push_back (std::make_unique<juce::AudioParameterBool> (
@@ -251,6 +266,9 @@ AcustraAudioProcessor::createParameterLayout()
     result.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { ids::gatherChords, 8 }, "Gather Chords", false,
         juce::AudioParameterBoolAttributes().withAutomatable (false)));
+    // Off by default: a session saved before it existed gets the default
+    // (addMissingParameterDefaults) and so sounds as it did.
+    result.push_back (makePercentParameter (ids::piezoMix, "Piezo Mix", 0.0f, 9));
 
     return { result.begin(), result.end() };
 }
@@ -267,9 +285,7 @@ AcustraAudioProcessor::snapshotEngineParameters() const noexcept
     acustra::EngineParameters result;
     result.shape = choiceValue<acustra::BodyShape> (value (slotShape), 3);
     result.bodyMaterial = choiceValue<acustra::BodyMaterial> (
-        value (slotBodyMaterial), 3);
-    result.stringMaterial = choiceValue<acustra::StringMaterial> (
-        value (slotStringMaterial), 1);
+        value (slotBodyMaterial), 2);
     result.tuning = choiceValue<acustra::Tuning> (value (slotTuning), 4);
     result.stringAge = 0.01f * value (slotStringAge);
     result.pluckPosition = 0.01f * value (slotPluckPosition);
@@ -277,12 +293,12 @@ AcustraAudioProcessor::snapshotEngineParameters() const noexcept
     result.bodyAmount = 0.01f * value (slotBodyAmount);
     result.stereoWidth = 0.01f * value (slotStereoWidth);
     result.outputGain = juce::Decibels::decibelsToGain (value (slotOutput));
+    result.piezoMix = 0.01f * value (slotPiezoMix);
     constexpr std::array captures { acustra::CaptureType::StereoMic,
         acustra::CaptureType::MonoMic, acustra::CaptureType::Piezo };
     result.capture = captures[static_cast<std::size_t> (
         std::clamp (static_cast<int> (std::lround (value (slotCaptureMode))), 0, 2))];
     result.picking = choiceValue<acustra::PickingTechnique> (value (slotPicking), 2);
-    result.bridgeModel = choiceValue<acustra::BridgeModel> (value (slotBridgeModel), 1);
     result.guitarModel = choiceValue<acustra::GuitarModel> (value (slotGuitarModel), 1);
     return result;
 }
@@ -383,7 +399,9 @@ void AcustraAudioProcessor::requestPanic() noexcept
 void AcustraAudioProcessor::getStateInformation (
     juce::MemoryBlock& destinationData)
 {
-    if (const auto xml = parameters.copyState().createXml())
+    auto state = parameters.copyState();
+    state.setProperty (stateVersionProperty, currentStateVersion, nullptr);
+    if (const auto xml = state.createXml())
         copyXmlToBinary (*xml, destinationData);
 }
 
@@ -394,6 +412,10 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
     if (xml != nullptr && xml->hasTagName (parameters.state.getType()))
     {
         auto restoredState = juce::ValueTree::fromXml (*xml);
+        if (static_cast<int> (restoredState.getProperty (stateVersionProperty, 1))
+            < currentStateVersion)
+            migrateVersionOneState (restoredState);
+        restoredState.setProperty (stateVersionProperty, currentStateVersion, nullptr);
         // The old five-choice capture and two overrides had different ranges.
         // Migrate once, before defaults are added; an explicit modern value wins.
         if (! containsParameterState (restoredState, ids::captureMode))
@@ -418,8 +440,8 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
             captureState.setProperty ("value", migrated, nullptr);
             restoredState.appendChild (captureState, nullptr);
         }
-        // A retired Guitar Model (2-4) would clamp to Bellido, a nylon
-        // classical; the steel guitars those slots held play Original.
+        // A retired Guitar Model (2-4) would clamp to Bellido, a classical;
+        // the steel guitars those slots held play Original.
         for (auto child : restoredState)
             if (child.hasType ("PARAM")
                 && child.getProperty ("id").toString() == ids::guitarModel

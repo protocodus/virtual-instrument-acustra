@@ -152,62 +152,51 @@ void renderComparisons(const std::filesystem::path& directory)
 {
     std::filesystem::create_directories(directory);
     constexpr double rate = 48000.0;
-    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
-    {
-        acustra::EngineParameters parameters;
-        parameters.stringMaterial = material;
-        const std::string name = material == acustra::StringMaterial::Steel ? "steel" : "nylon";
-        const auto normal = render(parameters, rate, 43, 127, 64);
-        const auto fast = render(parameters, rate, 43, 127, 127);
-        writeWave(directory / (name + "-ordinary-release.wav"), normal, 48000);
-        writeWave(directory / (name + "-fast-release.wav"), fast, 48000);
-        std::cout << name << " fast/ordinary first-50ms peak="
-                  << peak(fast, rate, 1.0, 1.05) / peak(normal, rate, 1.0, 1.05)
-                  << " tail-energy-ratio=" << energy(fast, rate, 1.3, 1.8)
-                     / energy(normal, rate, 1.3, 1.8)
-                  << " bit-identical=" << same(normal, fast) << '\n';
-    }
+    const acustra::EngineParameters parameters;
+    const auto normal = render(parameters, rate, 43, 127, 64);
+    const auto fast = render(parameters, rate, 43, 127, 127);
+    writeWave(directory / "ordinary-release.wav", normal, 48000);
+    writeWave(directory / "fast-release.wav", fast, 48000);
+    std::cout << "fast/ordinary first-50ms peak="
+              << peak(fast, rate, 1.0, 1.05) / peak(normal, rate, 1.0, 1.05)
+              << " tail-energy-ratio=" << energy(fast, rate, 1.3, 1.8)
+                 / energy(normal, rate, 1.3, 1.8)
+              << " bit-identical=" << same(normal, fast) << '\n';
 }
 
 void testOrdinaryReleaseIsIndependentOfLiftSpeed()
 {
     int cases = 0;
-    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
-        for (const auto shape : { acustra::BodyShape::Parlor, acustra::BodyShape::Auditorium,
-                                 acustra::BodyShape::Dreadnought, acustra::BodyShape::Jumbo })
-            for (const double rate : { 44100.0, 48000.0, 96000.0 })
-                for (const int velocity : { 121, 127 })
-                    for (const int note : { 43, 60, 76 })
-                    {
-                        acustra::EngineParameters parameters;
-                        parameters.stringMaterial = material;
-                        parameters.shape = shape;
-                        const auto ordinary = render(parameters, rate, note, velocity, 64);
-                        const auto fast = render(parameters, rate, note, velocity, 127);
-                        const std::string label = "case " + std::to_string(++cases)
-                            + " note " + std::to_string(note) + " at " + std::to_string(rate);
-                        expect(same(ordinary, fast), label + ": fast key-up changed the stereo wave");
-                        expect(fast.activeAtEnd == 0, label + ": a fretted key-up retained note ownership");
-                    }
+    for (const auto shape : { acustra::BodyShape::Parlor, acustra::BodyShape::Auditorium,
+                             acustra::BodyShape::Dreadnought, acustra::BodyShape::Jumbo })
+        for (const double rate : { 44100.0, 48000.0, 96000.0 })
+            for (const int velocity : { 121, 127 })
+                for (const int note : { 43, 60, 76 })
+                {
+                    acustra::EngineParameters parameters;
+                    parameters.shape = shape;
+                    const auto ordinary = render(parameters, rate, note, velocity, 64);
+                    const auto fast = render(parameters, rate, note, velocity, 127);
+                    const std::string label = "case " + std::to_string(++cases)
+                        + " note " + std::to_string(note) + " at " + std::to_string(rate);
+                    expect(same(ordinary, fast), label + ": fast key-up changed the stereo wave");
+                    expect(fast.activeAtEnd == 0, label + ": a fretted key-up retained note ownership");
+                }
     std::cout << "Acustra ordinary release invariance: " << cases << " cases\n";
 }
 
 void testPedalCannotTurnOrdinaryReleaseIntoAnExcitation()
 {
-    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
+    const acustra::EngineParameters parameters;
+    const auto plain = render(parameters, 48000.0, 43, 127, 64, Gesture::Pedal);
+    for (const auto gesture : { Gesture::Pedal, Gesture::Cc68UpUnderPedal,
+                               Gesture::Cc68DownUnderPedal, Gesture::ToggleCc68UnderPedal })
     {
-        acustra::EngineParameters parameters;
-        parameters.stringMaterial = material;
-        const auto plain = render(parameters, 48000.0, 43, 127, 64, Gesture::Pedal);
-        for (const auto gesture : { Gesture::Pedal, Gesture::Cc68UpUnderPedal,
-                                   Gesture::Cc68DownUnderPedal, Gesture::ToggleCc68UnderPedal })
-        {
-            const auto ordinary = render(parameters, 48000.0, 43, 127, 64, gesture);
-            const auto fast = render(parameters, 48000.0, 43, 127, 127, gesture);
-            expect(same(ordinary, fast), "pedal-up generated an unrequested pull-off");
-            expect(same(plain, fast), "CC68 under the pedal changed the wave");
-            expect(fast.activeAtEnd == 0, "pedal-up did not retire its fretted note");
-        }
+        const auto ordinary = render(parameters, 48000.0, 43, 127, 64, gesture);
+        const auto fast = render(parameters, 48000.0, 43, 127, 127, gesture);
+        expect(same(ordinary, fast), "pedal-up generated an unrequested pull-off");
+        expect(same(plain, fast), "CC68 under the pedal changed the wave");
+        expect(fast.activeAtEnd == 0, "pedal-up did not retire its fretted note");
     }
 }
 
@@ -216,37 +205,33 @@ void testPedalCannotTurnOrdinaryReleaseIntoAnExcitation()
 // exact no-op, held through a note and its release at any release speed.
 void testCc68ChangesNothing()
 {
-    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
-        for (const int note : { 43, 60 })
-        {
-            acustra::EngineParameters parameters;
-            parameters.stringMaterial = material;
-            const auto plain = render(parameters, 48000.0, note, 100, 64);
-            for (const int release : { 0, 64, 127 })
-                expect(same(plain, render(parameters, 48000.0, note, 100, release,
-                                          Gesture::Cc68)),
-                       "CC68 changed a note at release velocity "
-                           + std::to_string(release));
-        }
+    for (const int note : { 43, 60 })
+    {
+        const acustra::EngineParameters parameters;
+        const auto plain = render(parameters, 48000.0, note, 100, 64);
+        for (const int release : { 0, 64, 127 })
+            expect(same(plain, render(parameters, 48000.0, note, 100, release,
+                                      Gesture::Cc68)),
+                   "CC68 changed a note at release velocity "
+                       + std::to_string(release));
+    }
 }
 
 void testHardPluckReleaseDoesNotCreateAnAttack()
 {
     double worst = 0.0;
-    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
-        for (const double rate : { 44100.0, 48000.0, 96000.0 })
-            for (const int note : { 43, 60, 76 })
-            {
-                acustra::EngineParameters parameters;
-                parameters.stringMaterial = material;
-                const auto held = render(parameters, rate, note, 127, 64, Gesture::Held);
-                const auto released = render(parameters, rate, note, 127, 127);
-                const double reference = peak(held, rate, 0.95, 1.005);
-                const double ratio = peak(released, rate, 1.0, 1.005) / reference;
-                worst = std::max(worst, ratio);
-                expect(std::isfinite(ratio) && ratio <= 1.05,
-                       "maximum-velocity release creates a new onset: ratio " + std::to_string(ratio));
-            }
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const int note : { 43, 60, 76 })
+        {
+            const acustra::EngineParameters parameters;
+            const auto held = render(parameters, rate, note, 127, 64, Gesture::Held);
+            const auto released = render(parameters, rate, note, 127, 127);
+            const double reference = peak(held, rate, 0.95, 1.005);
+            const double ratio = peak(released, rate, 1.0, 1.005) / reference;
+            worst = std::max(worst, ratio);
+            expect(std::isfinite(ratio) && ratio <= 1.05,
+                   "maximum-velocity release creates a new onset: ratio " + std::to_string(ratio));
+        }
     std::cout << "Acustra maximum-velocity release/held 5-ms peak: " << worst << '\n';
 }
 
@@ -297,11 +282,6 @@ double releaseDrop(const acustra::EngineParameters& parameters,
                     / energy(releasedAudio, 48000.0, from, to));
 }
 
-const char* materialName(acustra::StringMaterial material)
-{
-    return material == acustra::StringMaterial::Steel ? "steel" : "nylon";
-}
-
 // A released natural harmonic is damped by the hand as its open string is:
 // the loop runs at the open string's period, so the hand's loss per trip
 // round it must be the open string's, not the sounding harmonic's n times
@@ -309,31 +289,25 @@ const char* materialName(acustra::StringMaterial material)
 // if it were held (2 to 5 dB below it, against the open string's 18).
 void testReleasedHarmonicsAreDampedLikeTheirOpenString()
 {
-    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
+    const acustra::EngineParameters parameters;
+    const auto drop = [&] (int note)
     {
-        acustra::EngineParameters parameters;
-        parameters.stringMaterial = material;
-        const auto drop = [&] (int note)
-        {
-            const Timed on { 0.1, { 0x90, static_cast<std::uint8_t>(note), 115 } };
-            const Timed off { 0.5, { 0x80, static_cast<std::uint8_t>(note), 64 } };
-            return releaseDrop(parameters, { on }, { on, off }, 0.8, 1.0);
-        };
-        const double open = drop(64);
-        std::cout << "Acustra " << materialName(material)
-                  << " released/held 0.3-0.5 s after key-up: open E4 -" << open << " dB";
-        for (const int note : { 88, 91, 95 })
-        {
-            const double harmonic = drop(note);
-            std::cout << ", harmonic " << note << " -" << harmonic << " dB";
-            expect(harmonic > open - 4.0,
-                   std::string(materialName(material)) + " released harmonic "
-                       + std::to_string(note) + " was only " + std::to_string(harmonic)
-                       + " dB below held, against the open string's "
-                       + std::to_string(open));
-        }
-        std::cout << '\n';
+        const Timed on { 0.1, { 0x90, static_cast<std::uint8_t>(note), 115 } };
+        const Timed off { 0.5, { 0x80, static_cast<std::uint8_t>(note), 64 } };
+        return releaseDrop(parameters, { on }, { on, off }, 0.8, 1.0);
+    };
+    const double open = drop(64);
+    std::cout << "Acustra released/held 0.3-0.5 s after key-up: open E4 -" << open << " dB";
+    for (const int note : { 88, 91, 95 })
+    {
+        const double harmonic = drop(note);
+        std::cout << ", harmonic " << note << " -" << harmonic << " dB";
+        expect(harmonic > open - 4.0,
+               "released harmonic " + std::to_string(note) + " was only "
+                   + std::to_string(harmonic) + " dB below held, against the open string's "
+                   + std::to_string(open));
     }
+    std::cout << '\n';
 }
 
 // A slid note is damped at the pitch it has slid to: the loop runs there,
@@ -352,10 +326,8 @@ void testSlidNotesAreDampedAtTheirSlidPitch()
         all.insert(all.end(), events.begin(), events.end());
         return all;
     };
-    for (const auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
     {
-        acustra::EngineParameters parameters;
-        parameters.stringMaterial = material;
+        const acustra::EngineParameters parameters;
         const Timed on { 0.1, { 0x90, 69, 100 } };
         const Timed off { 0.5, { 0x80, 69, 64 } };
         const Timed down { 0.3, { 0xe0, 0, 0 } };
@@ -365,20 +337,18 @@ void testSlidNotesAreDampedAtTheirSlidPitch()
                                         with({ on, down, off }), 0.55, 0.6);
         const double slidAfter = releaseDrop(parameters, with({ on, downAfter }),
                                              with({ on, off, downAfter }), 0.55, 0.6);
-        std::cout << "Acustra " << materialName(material)
-                  << " A4 released/held 50-100 ms after key-up: unslid -" << plain
+        std::cout << "Acustra A4 released/held 50-100 ms after key-up: unslid -" << plain
                   << " dB, slid two octaves down -" << slid << " dB, slid down after key-up -"
                   << slidAfter << " dB\n";
         // Damped per trip as if unslid, the slide drops a quarter to a half
-        // as far as the unslid note in this window (steel 6.8 and 12.0 dB
-        // against 20.0, nylon 6.9 and 11.8 against 25.4); damped at its slid
+        // as far as the unslid note in this window (6.8 and 12.0 dB against
+        // 20.0); damped at its slid
         // pitch, 0.7-1.1 of it. The rest is the body: at A2 the default
         // construction's low modes ring on under the damped string, and how
         // long depends on where Shape and Wood put them, so the gate is a
         // fraction of the unslid drop rather than a fixed number of dB.
         expect(slid > 0.65 * plain && slidAfter > 0.65 * plain,
-               std::string(materialName(material))
-                   + ": a slid note was not damped at its slid pitch");
+               "a slid note was not damped at its slid pitch");
     }
 }
 } // namespace

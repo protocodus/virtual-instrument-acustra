@@ -3,8 +3,8 @@
 // frame channel midi velocity bend_semitones. Velocity zero means note-off.
 // Channels 1-6 fix the played string (lowest to highest); simultaneous note-offs
 // precede note-ons. Output is headerless little-endian float32 stereo.
-// Optional material/tuning flags follow the existing capture/picking/bridge
-// positionals; omitting them preserves the original steel/Standard rendering.
+// Optional flags follow the capture/picking positionals; omitting them
+// renders the defaults (Standard tuning, Dreadnought, Spruce, Original).
 // --observe writes, instead of the output, what the under-saddle piezo's
 // chain sees at a stage (getLastPiezoProbe), in volts: piezo_voltage, on both
 // channels, the jack where the preamp takes it; piezo_levels the element's
@@ -45,10 +45,10 @@ int main(int argc, char** argv)
     {
         std::cerr << "usage: AcustraPerformanceRenderer EVENTS OUTPUT.f32 "
                      "[stereo_mic|mono_mic|piezo "
-                     "finger|pick|thumb [original|fylde]] "
-                     "[--string-material steel|nylon] [--tuning standard|drop_d|dadgad|open_g|half_step_down] "
+                     "finger|pick|thumb] "
+                     "[--tuning standard|drop_d|dadgad|open_g|half_step_down] "
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
-                     "[--body-material spruce|cedar|mahogany|maple] "
+                     "[--body-material spruce|mahogany|maple] "
                      "[--guitar-model original|bellido1978] "
                      "[--touch 0..1] [--pluck-position 0..1] [--calibration FILE] "
                      "[--observe piezo_voltage|piezo_levels|piezo_stages]\n";
@@ -62,8 +62,8 @@ int main(int argc, char** argv)
         while (optionStart < argc && !std::string(argv[optionStart]).starts_with("--"))
             ++optionStart;
         const int positionalCount = optionStart - 3;
-        if (positionalCount != 0 && positionalCount != 2 && positionalCount != 3)
-            throw std::runtime_error("expected capture and picking, with optional bridge model");
+        if (positionalCount != 0 && positionalCount != 2)
+            throw std::runtime_error("expected capture and picking");
         if (positionalCount >= 2)
         {
             // Old command lines remain accepted, with the same remap used by
@@ -83,14 +83,7 @@ int main(int argc, char** argv)
             parameters.capture = modes[static_cast<std::size_t>(capture - captures.begin())];
             parameters.picking = static_cast<acustra::PickingTechnique>(technique - techniques.begin());
         }
-        if (positionalCount == 3)
-        {
-            if (std::string(argv[5]) != "original" && std::string(argv[5]) != "fylde")
-                throw std::runtime_error("unknown bridge model");
-            parameters.bridgeModel = std::string(argv[5]) == "fylde"
-                ? acustra::BridgeModel::FyldeSteel : acustra::BridgeModel::Original;
-        }
-        bool materialSeen = false, tuningSeen = false;
+        bool tuningSeen = false;
         bool shapeSeen = false, woodSeen = false, calibrationSeen = false, guitarSeen = false;
         bool observeSeen = false, touchSeen = false, pluckSeen = false;
         // 0: the output; 1: piezo_voltage; 2: piezo_levels; 3: piezo_stages.
@@ -100,15 +93,7 @@ int main(int argc, char** argv)
             if (index + 1 >= argc)
                 throw std::runtime_error("missing render option value");
             const std::string option(argv[index]), value(argv[index + 1]);
-            if (option == "--string-material" && !materialSeen)
-            {
-                if (value != "steel" && value != "nylon")
-                    throw std::runtime_error("unknown string material");
-                parameters.stringMaterial = value == "steel"
-                    ? acustra::StringMaterial::Steel : acustra::StringMaterial::Nylon;
-                materialSeen = true;
-            }
-            else if (option == "--tuning" && !tuningSeen)
+            if (option == "--tuning" && !tuningSeen)
             {
                 // The plug-in's Tuning choices, in their order.
                 const std::array choices { "standard", "drop_d", "dadgad",
@@ -130,7 +115,7 @@ int main(int argc, char** argv)
             }
             else if (option == "--body-material" && !woodSeen)
             {
-                const std::array choices { "spruce", "cedar", "mahogany", "maple" };
+                const std::array choices { "spruce", "mahogany", "maple" };
                 const auto found = std::find(choices.begin(), choices.end(), value);
                 if (found == choices.end())
                     throw std::runtime_error("unknown body material");

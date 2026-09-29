@@ -380,11 +380,6 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.ConstructionLoudness AcustraConstructionLoudnessTests)
     set_tests_properties(Acustra.ConstructionLoudness PROPERTIES TIMEOUT 600)
 
-    add_executable(AcustraMeasuredSteelBridgeTests Tests/MeasuredSteelBridgeTests.cpp)
-    target_link_libraries(AcustraMeasuredSteelBridgeTests PRIVATE AcustraDSP)
-    acustra_add_suite(Acustra.MeasuredSteelBridge AcustraMeasuredSteelBridgeTests)
-    set_tests_properties(Acustra.MeasuredSteelBridge PROPERTIES TIMEOUT 90)
-
     if(ACUSTRA_BUILD_TOOLS)
         add_test(NAME Acustra.RenderDemos
                  COMMAND AcustraRenderDemos --smoke
@@ -401,16 +396,16 @@ if(BUILD_TESTING)
                  COMMAND AcustraPhysicalFitRenderer --smoke
                          "${CMAKE_CURRENT_BINARY_DIR}/physical-fit-smoke"
                          1 1 1 0 .03
-                         1 1 1 1 1 0
                          1 1 1 1 1 1 0
                          1 1 .0061 -.030 1.3 .001 1000 .02 0 80 .0008
-                         0 2 0)
+                         0 2 0 .0001162109375 .035 .002334375
+                         0 0 1 4000 8000 .0207 0 0)
         set_tests_properties(Acustra.PhysicalFitRenderer PROPERTIES TIMEOUT 120)
 
         add_test(NAME Acustra.BridgeProbe
                  COMMAND AcustraBridgeProbe
                          "${CMAKE_CURRENT_BINARY_DIR}/bridge-probe-smoke.f32"
-                         nylon on 0.5 auditorium 40)
+                         on 0.5 auditorium 40)
         set_tests_properties(Acustra.BridgeProbe PROPERTIES TIMEOUT 30)
 
         # ExtractExcitation.py's self-test fails only on a synthesised note
@@ -510,11 +505,11 @@ if(BUILD_TESTING)
                                  --self-test)
                 set_tests_properties(Acustra.GenerateJointBody PROPERTIES TIMEOUT 300
                                      ENVIRONMENT "OPENBLAS_NUM_THREADS=1")
-                add_test(NAME Acustra.MeasuredSteelFit
+                add_test(NAME Acustra.FyldeBridgeReference
                          COMMAND "${Python3_EXECUTABLE}"
-                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateMeasuredSteelBridge.py"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FyldeBridgeReference.py"
                                  --self-test)
-                set_tests_properties(Acustra.MeasuredSteelFit PROPERTIES TIMEOUT 180)
+                set_tests_properties(Acustra.FyldeBridgeReference PROPERTIES TIMEOUT 180)
                 add_test(NAME Acustra.ExtractExcitation
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/ExtractExcitation.py"
@@ -539,11 +534,6 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditBridgeSpatialMap.py"
                                  --self-test)
                 set_tests_properties(Acustra.AuditBridgeSpatialMap PROPERTIES TIMEOUT 60)
-                add_test(NAME Acustra.PrepareIowaGuitarCorpus
-                         COMMAND "${Python3_EXECUTABLE}"
-                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/PrepareIowaGuitarCorpus.py"
-                                 --self-test)
-                set_tests_properties(Acustra.PrepareIowaGuitarCorpus PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.PrototypePlectrumContact
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/PrototypePlectrumContact.py"

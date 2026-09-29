@@ -3,7 +3,6 @@
 #include "DSP/MeasuredBodyData.h"
 #include "DSP/MeasuredBridgeData.h"
 #include "DSP/MeasuredJointBodyData.h"
-#include "DSP/MeasuredSteelBridgeData.h"
 #include "DSP/SteelBodyBlend.h"
 
 #include <algorithm>
@@ -155,62 +154,60 @@ double expectedPhase(const Engine& e, double frequency, int string, double rate)
 void testPhaseAndPassivity()
 {
     double worstCents = 0, minimumReal = 0;
-    std::array<int,7> worstCase {};
+    std::array<int,6> worstCase {};
     for (int model = 0; model < 2; ++model)
-        for (int material = 0; material < 2; ++material)
-            for (int rate : { 8000, 24000, 48000, 96000 })
+        for (int rate : { 8000, 24000, 48000, 96000 })
+        {
+            acustra::EngineParameters p;
+            p.guitarModel = static_cast<acustra::GuitarModel>(model);
+            p.shape = nativeShape(p.guitarModel);
+            auto e = std::make_unique<Engine>();
+            e->setParameters(p); e->prepare(rate, 64);
+            const auto reference = Access::bridge(*e);
+            for (int shape = 0; shape < 4; ++shape)
             {
-                acustra::EngineParameters p;
-                p.guitarModel = static_cast<acustra::GuitarModel>(model);
-                p.stringMaterial = static_cast<acustra::StringMaterial>(material);
-                p.shape = nativeShape(p.guitarModel);
-                auto e = std::make_unique<Engine>();
-                e->setParameters(p); e->prepare(rate, 64);
-                const auto reference = Access::bridge(*e);
-                for (int shape = 0; shape < 4; ++shape)
-                {
-                    p.shape = static_cast<acustra::BodyShape>(shape);
-                    e->setParameters(p);
-                    const auto actual = Access::bridge(*e);
-                    // The authored high-band floor has no measured geometry
-                    // map, so even non-native shapes must preserve it exactly.
-                    const auto last = actual.heaveModes.size()-1;
-                    expect(actual.heaveModes[last].denominator1
-                               == reference.heaveModes[last].denominator1
-                        && actual.heaveModes[last].denominator2
-                               == reference.heaveModes[last].denominator2
-                        && actual.residueHeave[last] == reference.residueHeave[last],
-                        "shape changed the unmapped conductance floor");
-                    for (int string = 0; string < 6; ++string)
-                        for (int fret : { 0, 7, 19 })
-                        {
-                            const double f = 440*std::exp2(
-                                (Access::voices(*e)[string].openMidi+fret-69)/12.0);
-                            const double error = std::abs(expectedPhase(*e,f,string,rate)
-                                -Access::phase(*e,static_cast<float>(f),string));
-                            const double cents = 1200/std::log(2.0)*error*f/rate;
-                            if (cents > worstCents)
-                            {
-                                worstCents = cents;
-                                worstCase = {model,material,rate,shape,string,fret,
-                                             static_cast<int>(std::round(f))};
-                            }
-                        }
-                    for (int bin = 0; bin < 60; ++bin)
+                p.shape = static_cast<acustra::BodyShape>(shape);
+                e->setParameters(p);
+                const auto actual = Access::bridge(*e);
+                // The authored high-band floor has no measured geometry
+                // map, so even non-native shapes must preserve it exactly.
+                const auto last = actual.heaveModes.size()-1;
+                expect(actual.heaveModes[last].denominator1
+                           == reference.heaveModes[last].denominator1
+                    && actual.heaveModes[last].denominator2
+                           == reference.heaveModes[last].denominator2
+                    && actual.residueHeave[last] == reference.residueHeave[last],
+                    "shape changed the unmapped conductance floor");
+                for (int string = 0; string < 6; ++string)
+                    for (int fret : { 0, 7, 19 })
                     {
-                        const auto y = mobility(actual,
-                            60*std::pow(std::min(10000.0,.40*rate)/60,bin/59.0),rate);
-                        for (int string = 0; string < 6; ++string)
+                        const double f = 440*std::exp2(
+                            (Access::voices(*e)[string].openMidi+fret-69)/12.0);
+                        const double error = std::abs(expectedPhase(*e,f,string,rate)
+                            -Access::phase(*e,static_cast<float>(f),string));
+                        const double cents = 1200/std::log(2.0)*error*f/rate;
+                        if (cents > worstCents)
                         {
-                            const double u = (string-2.5)/2;
-                            const double real = (y[0]+2*u*y[1]+u*u*y[2]).real();
-                            minimumReal = std::min(minimumReal,real);
-                            expect(real >= -2e-6,
-                                   "shaped digital bridge acquired active mobility");
+                            worstCents = cents;
+                            worstCase = {model,rate,shape,string,fret,
+                                         static_cast<int>(std::round(f))};
                         }
+                    }
+                for (int bin = 0; bin < 60; ++bin)
+                {
+                    const auto y = mobility(actual,
+                        60*std::pow(std::min(10000.0,.40*rate)/60,bin/59.0),rate);
+                    for (int string = 0; string < 6; ++string)
+                    {
+                        const double u = (string-2.5)/2;
+                        const double real = (y[0]+2*u*y[1]+u*u*y[2]).real();
+                        minimumReal = std::min(minimumReal,real);
+                        expect(real >= -2e-6,
+                               "shaped digital bridge acquired active mobility");
                     }
                 }
             }
+        }
     std::cout << "shape actual-biquad phase error cents=" << worstCents
               << " minimum mobility real=" << minimumReal << " case=";
     for (int field : worstCase) std::cout << field << ',';
@@ -242,8 +239,7 @@ std::array<double, 2> denominators(float frequency, float q, double rate)
 // mode's engine pole, frequency and Q to the float, under every Shape and
 // Wood, so a partial on a radiation peak meets the same conductance peak.
 // The anchor no longer leaves this bridge as fitted: the wide steel anchor
-// and the plate-Q rule move it with the radiation. The Fylde, another
-// guitar's bridge, is left as measured and does not follow Wood.
+// and the plate-Q rule move it with the radiation.
 void testSteelOwnBridgeSharesTheRadiationPoles()
 {
     const auto& twins = acustra::detail::steelBridgeRadiationTwins;
@@ -251,13 +247,10 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
     for (const auto twin : twins) paired += twin >= 0;
     expect(paired == 18, "steel's own bridge does not twin its 18 resolved modes");
     double worst = 0;
-    std::array<double, 2> fyldeReference {};
     for (int shape = 0; shape < 4; ++shape)
-        for (int wood = 0; wood < 4; ++wood)
+        for (int wood = 0; wood < 3; ++wood)
         {
             acustra::EngineParameters p;
-            p.stringMaterial = acustra::StringMaterial::Steel;
-            p.bridgeModel = acustra::BridgeModel::Original;
             p.shape = static_cast<acustra::BodyShape>(shape);
             p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
             auto e = std::make_unique<Engine>();
@@ -284,132 +277,84 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
                 same = same && liveBridge.heaveModes[i].denominator1 == bridge.heaveModes[i].denominator1
                             && liveBridge.heaveModes[i].denominator2 == bridge.heaveModes[i].denominator2;
             expect(same, "a live Wood change did not move steel's own bridge");
-
-            p.bridgeModel = acustra::BridgeModel::FyldeSteel;
-            auto fylde = std::make_unique<Engine>();
-            fylde->setParameters(p); fylde->prepare(48000, 64);
-            const auto fyldeMode = Access::bridge(*fylde).heaveModes[5];
-            if (wood == 0) fyldeReference = { fyldeMode.denominator1, fyldeMode.denominator2 };
-            expect(fyldeMode.denominator1 == fyldeReference[0]
-                       && fyldeMode.denominator2 == fyldeReference[1],
-                   "Wood moved the Fylde bridge, another guitar's measurement");
         }
     std::cout << "steel own bridge twin pole relative error=" << worst << '\n';
     // A one-ulp change of a float frequency or Q moves these by ~1e-7.
     expect(worst < 1e-12, "a twinned bridge mode is not its radiation mode's pole");
 }
 
-// Every bridge that belongs to its radiation's guitar keeps each mode that is
-// the same resonance as a radiation mode on it, under every Shape and Wood:
-// steel's own bridge takes its twin's pole (above); nylon's g34 and the
-// Bellido, with either string, keep the offset from it they have at their
-// anchor (the Bellido's is the identity, so its measured offset). Before,
-// their bridges ignored Wood: a Maple Bellido's drains sat 60-85 cents under
-// their radiation peaks, and nylon's moved 30-50 cents against theirs from
-// wood to wood (audit F10). The twins are the generator's test
-// (GenerateMeasuredBridge.py), recomputed here from the banks.
-void testEveryBodysBridgeKeepsItsDrainsOnItsRadiation()
+// The Bellido's bridge belongs to its radiation's guitar too: it keeps each
+// mode that is the same resonance as a radiation mode at its measured offset
+// from it, under every Shape and Wood (steel's own bridge takes its twin's
+// pole, above). Before, its bridge ignored Wood: a Maple Bellido's drains sat
+// 60-85 cents under their radiation peaks (audit F10). The twins are the
+// generator's test (GenerateMeasuredBridge.py), recomputed here from the banks.
+void testBellidoBridgeKeepsItsDrainsOnItsRadiation()
 {
-    struct Bank { acustra::StringMaterial material; acustra::GuitarModel model; const char* name; };
-    const Bank banks[] {
-        { acustra::StringMaterial::Nylon, acustra::GuitarModel::Original, "nylon" },
-        { acustra::StringMaterial::Nylon, acustra::GuitarModel::Bellido1978, "Bellido nylon" },
-        { acustra::StringMaterial::Steel, acustra::GuitarModel::Bellido1978, "Bellido steel" },
-    };
-    double worst = 0;
-    for (const auto& b : banks)
+    using namespace acustra::detail;
+    const std::vector<MeasuredBridgeMode> bridgeModes(bellidoBridgeModes.begin(), bellidoBridgeModes.end());
+    const std::vector<MeasuredBodyMode> radiation(bellidoBodyModes.begin(), bellidoBodyModes.end());
+    std::vector<int> twins;
+    for (const auto& mode : bridgeModes)
     {
-        using namespace acustra::detail;
-        const bool bellido = b.model == acustra::GuitarModel::Bellido1978;
-        std::vector<MeasuredBridgeMode> bridgeModes;
-        std::vector<MeasuredBodyMode> radiation;
-        if (bellido)
-        {
-            bridgeModes.assign(bellidoBridgeModes.begin(), bellidoBridgeModes.end());
-            radiation.assign(bellidoBodyModes.begin(), bellidoBodyModes.end());
-        }
-        else
-        {
-            bridgeModes.assign(measuredNylonBridgeModes.begin(), measuredNylonBridgeModes.end());
-            radiation.assign(measuredNylonBodyModes.begin(), measuredNylonBodyModes.end());
-        }
-        std::vector<int> twins;
-        for (const auto& mode : bridgeModes)
-        {
-            std::size_t k = 0;
-            for (std::size_t j = 1; j < radiation.size(); ++j)
-                if (std::abs(double(radiation[j].frequency)-mode.frequency)
-                    < std::abs(double(radiation[k].frequency)-mode.frequency)) k = j;
-            const double below = k > 0 ? double(radiation[k].frequency)-radiation[k-1].frequency : 1e30;
-            const double above = k+1 < radiation.size() ? double(radiation[k+1].frequency)-radiation[k].frequency : 1e30;
-            const double spacing = k > 0 && k+1 < radiation.size() ? .5*(below+above) : std::min(below, above);
-            const bool inside = std::abs(double(mode.frequency)-radiation[k].frequency)
-                < radiation[k].frequency/(2.0*radiation[k].q);
-            twins.push_back(inside && double(mode.frequency)/mode.q < spacing ? int(k) : -1);
-        }
-        int paired = 0;
-        for (int twin : twins) paired += twin >= 0;
-        expect(paired >= 9, "a body's bridge twins too few of its modes");
-        // The offsets at the anchor: the classical box, at the body's wood.
-        std::vector<double> anchorOffset(twins.size(), 0.0);
+        std::size_t k = 0;
+        for (std::size_t j = 1; j < radiation.size(); ++j)
+            if (std::abs(double(radiation[j].frequency)-mode.frequency)
+                < std::abs(double(radiation[k].frequency)-mode.frequency)) k = j;
+        const double below = k > 0 ? double(radiation[k].frequency)-radiation[k-1].frequency : 1e30;
+        const double above = k+1 < radiation.size() ? double(radiation[k+1].frequency)-radiation[k].frequency : 1e30;
+        const double spacing = k > 0 && k+1 < radiation.size() ? .5*(below+above) : std::min(below, above);
+        const bool inside = std::abs(double(mode.frequency)-radiation[k].frequency)
+            < radiation[k].frequency/(2.0*radiation[k].q);
+        twins.push_back(inside && double(mode.frequency)/mode.q < spacing ? int(k) : -1);
+    }
+    int paired = 0;
+    for (int twin : twins) paired += twin >= 0;
+    expect(paired >= 9, "the Bellido's bridge twins too few of its modes");
+    // The measured offsets, which every Shape and Wood keeps.
+    std::vector<double> measuredOffset(twins.size(), 0.0);
+    for (std::size_t i = 0; i < twins.size(); ++i)
+        if (twins[i] >= 0)
+            measuredOffset[i] = 1200*std::log2(double(bridgeModes[i].frequency)
+                                               / radiation[std::size_t(twins[i])].frequency);
+    double worst = 0;
+    for (int shape = 0; shape < 4; ++shape)
+        for (int wood = 0; wood < 3; ++wood)
         {
             acustra::EngineParameters p;
-            p.stringMaterial = b.material; p.guitarModel = b.model;
-            p.shape = acustra::BodyShape::Auditorium;
-            p.bodyMaterial = acustra::AcustraEngine::measuredBankWood(b.material, b.model);
+            p.guitarModel = acustra::GuitarModel::Bellido1978;
+            p.shape = static_cast<acustra::BodyShape>(shape);
+            p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
             auto e = std::make_unique<Engine>();
             e->setParameters(p); e->prepare(48000, 64);
             const auto bridge = Access::bridge(*e);
+            double sum = 0;
             for (std::size_t i = 0; i < twins.size(); ++i)
-                if (twins[i] >= 0)
-                {
-                    anchorOffset[i] = 1200*std::log2(sectionFrequency(bridge.heaveModes[i], 48000)
-                        / Access::radiationPole(p, Access::calibration(*e), twins[i])[0]);
-                    if (bellido)
-                        expect(std::abs(anchorOffset[i] - 1200*std::log2(double(bridgeModes[i].frequency)
-                                   / radiation[std::size_t(twins[i])].frequency)) < 0.01,
-                               "the Bellido's bridge is not its measurement at its anchor");
-                }
-        }
-        for (int shape = 0; shape < 4; ++shape)
-            for (int wood = 0; wood < 4; ++wood)
             {
-                acustra::EngineParameters p;
-                p.stringMaterial = b.material; p.guitarModel = b.model;
-                p.shape = static_cast<acustra::BodyShape>(shape);
-                p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
-                auto e = std::make_unique<Engine>();
-                e->setParameters(p); e->prepare(48000, 64);
-                const auto bridge = Access::bridge(*e);
-                double sum = 0;
-                for (std::size_t i = 0; i < twins.size(); ++i)
-                {
-                    if (twins[i] < 0) continue;
-                    const double measured = anchorOffset[i];
-                    const double engine = 1200*std::log2(sectionFrequency(bridge.heaveModes[i], 48000)
-                        / Access::radiationPole(p, Access::calibration(*e), twins[i])[0]);
-                    worst = std::max(worst, std::abs(engine-measured));
-                    sum += std::abs(engine);
-                }
-                if (shape == 1 && (wood == 1 || wood == 3))
-                    std::cout << b.name << (wood == 1 ? " Auditorium/Cedar" : " Auditorium/Maple")
-                              << ": mean |bridge - radiation twin| " << sum/paired << " cents over "
-                              << paired << " pairs\n";
-                // Changing Wood live reaches the bridge as a fresh engine does.
-                auto live = std::make_unique<Engine>();
-                auto first = p; first.bodyMaterial = acustra::BodyMaterial::Spruce;
-                live->setParameters(first); live->prepare(48000, 64);
-                live->setParameters(p); process(*live, 64);
-                const auto liveBridge = Access::bridge(*live);
-                bool same = true;
-                for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
-                    same = same && liveBridge.heaveModes[i].denominator1 == bridge.heaveModes[i].denominator1
-                                && liveBridge.heaveModes[i].denominator2 == bridge.heaveModes[i].denominator2;
-                expect(same, "a live Wood change did not move a body's bridge");
+                if (twins[i] < 0) continue;
+                const double engine = 1200*std::log2(sectionFrequency(bridge.heaveModes[i], 48000)
+                    / Access::radiationPole(p, Access::calibration(*e), twins[i])[0]);
+                worst = std::max(worst, std::abs(engine-measuredOffset[i]));
+                sum += std::abs(engine);
             }
-    }
-    std::cout << "body bridges' twin offsets vs their anchor's, worst cents=" << worst << '\n';
-    expect(worst < 0.01, "a bridge drain left its radiation twin under Shape, Wood or the anchor");
+            if (shape == 1 && (wood == 1 || wood == 2))
+                std::cout << "Bellido" << (wood == 1 ? " Auditorium/Mahogany" : " Auditorium/Maple")
+                          << ": mean |bridge - radiation twin| " << sum/paired << " cents over "
+                          << paired << " pairs\n";
+            // Changing Wood live reaches the bridge as a fresh engine does.
+            auto live = std::make_unique<Engine>();
+            auto first = p; first.bodyMaterial = acustra::BodyMaterial::Spruce;
+            live->setParameters(first); live->prepare(48000, 64);
+            live->setParameters(p); process(*live, 64);
+            const auto liveBridge = Access::bridge(*live);
+            bool same = true;
+            for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
+                same = same && liveBridge.heaveModes[i].denominator1 == bridge.heaveModes[i].denominator1
+                            && liveBridge.heaveModes[i].denominator2 == bridge.heaveModes[i].denominator2;
+            expect(same, "a live Wood change did not move the Bellido's bridge");
+        }
+    std::cout << "Bellido bridge's twin offsets vs its measurement, worst cents=" << worst << '\n';
+    expect(worst < 0.01, "a bridge drain left its radiation twin under Shape or Wood");
 }
 
 // The analog frequency a configured bridge section was designed at, from its
@@ -430,24 +375,16 @@ double sectionFrequency(const auto& mode, double rate)
 // Jumbo (audit F9).
 void testBridgeModesMoveWithTheirRadiationNeighbours()
 {
-    struct Bank { acustra::StringMaterial material; acustra::GuitarModel model;
-                  acustra::BridgeModel bridge; const char* name; };
+    struct Bank { acustra::GuitarModel model; const char* name; };
     const Bank banks[] {
-        { acustra::StringMaterial::Steel, acustra::GuitarModel::Original, acustra::BridgeModel::Original, "steel own" },
-        { acustra::StringMaterial::Steel, acustra::GuitarModel::Original, acustra::BridgeModel::FyldeSteel, "Fylde" },
-        { acustra::StringMaterial::Nylon, acustra::GuitarModel::Original, acustra::BridgeModel::Original, "nylon" },
-        { acustra::StringMaterial::Nylon, acustra::GuitarModel::Bellido1978, acustra::BridgeModel::Original, "Bellido nylon" },
-        { acustra::StringMaterial::Steel, acustra::GuitarModel::Bellido1978, acustra::BridgeModel::Original, "Bellido steel" },
+        { acustra::GuitarModel::Original, "steel own" },
+        { acustra::GuitarModel::Bellido1978, "Bellido" },
     };
     const auto bridgeBank = [] (const Bank& b)
     {
         using namespace acustra::detail;
         if (b.model == acustra::GuitarModel::Bellido1978)
             return std::vector<MeasuredBridgeMode>(bellidoBridgeModes.begin(), bellidoBridgeModes.end());
-        if (b.material == acustra::StringMaterial::Nylon)
-            return std::vector<MeasuredBridgeMode>(measuredNylonBridgeModes.begin(), measuredNylonBridgeModes.end());
-        if (b.bridge == acustra::BridgeModel::FyldeSteel)
-            return std::vector<MeasuredBridgeMode>(measuredFyldeBridgeModes.begin(), measuredFyldeBridgeModes.end());
         return std::vector<MeasuredBridgeMode>(measuredSteelBridgeModes.begin(), measuredSteelBridgeModes.end());
     };
     const auto radiationBank = [] (const Bank& b)
@@ -456,8 +393,6 @@ void testBridgeModesMoveWithTheirRadiationNeighbours()
         std::vector<float> f;
         if (b.model == acustra::GuitarModel::Bellido1978)
             for (const auto& m : bellidoBodyModes) f.push_back(m.frequency);
-        else if (b.material == acustra::StringMaterial::Nylon)
-            for (const auto& m : measuredNylonBodyModes) f.push_back(m.frequency);
         else
             for (const auto& m : measuredSteelBodyModes) f.push_back(m.frequency);
         return f;
@@ -471,10 +406,8 @@ void testBridgeModesMoveWithTheirRadiationNeighbours()
         const auto bridgeModes = bridgeBank(b);
         const auto radiation = radiationBank(b);
         acustra::EngineParameters p;
-        p.stringMaterial = b.material; p.guitarModel = b.model; p.bridgeModel = b.bridge;
-        p.shape = b.material == acustra::StringMaterial::Steel
-                && b.model == acustra::GuitarModel::Original
-            ? acustra::BodyShape::Dreadnought : acustra::BodyShape::Auditorium;
+        p.guitarModel = b.model;
+        p.shape = nativeShape(b.model);
         const auto anchorShape = p.shape;
         auto anchor = std::make_unique<Engine>();
         anchor->setParameters(p); anchor->prepare(48000, 64);
@@ -513,8 +446,8 @@ void testBridgeModesMoveWithTheirRadiationNeighbours()
 }
 
 // The steel blend (SteelBodyBlend.h): on steel's own bridge the bridge is
-// B's aligned modes, the Fylde's and the joint-pole body's modes below its
-// band, each at its share, and on the Original guitar the radiation is g21's
+// B's aligned modes and the joint-pole body's modes below its band, each at
+// its share, and on the Original guitar the radiation is g21's
 // bank and the joint body's radiation below the band. Every section keeps a
 // positive semidefinite residue matrix, so each string's sum stays positive
 // real (testPhaseAndPassivity reads the digital bridge, and below for every
@@ -524,7 +457,6 @@ void testSteelBlend()
 {
     namespace d = acustra::detail;
     const double w = d::steelBlendJointBodyWeight;
-    const bool fylde = d::steelBlendOwnBridgeWeight < 1.0f;
     const bool joint = w > 0.0;
     std::size_t jointModes = 0, jointBridge = 0;
     for (const auto& mode : d::measuredSteelJointBodyModes)
@@ -534,24 +466,20 @@ void testSteelBlend()
             jointBridge += mode.heave > 0.0f || mode.rock > 0.0f;
         }
     const std::size_t own = d::measuredSteelBridgeModes.size();
-    const std::size_t fyldeCount = fylde ? d::measuredFyldeBridgeModes.size() : 0;
     const int body = int(d::measuredSteelBodyModes.size() + jointModes);
     // B's share of its own mode at measured frequency hz: (1 - E) below E's
     // band, whole above it.
     const auto ownShare = [&] (float hz)
     {
-        return float((hz < d::steelBlendJointBandHz ? 1.0 - w : 1.0)
-                     * d::steelBlendOwnBridgeWeight);
+        return float(hz < d::steelBlendJointBandHz ? 1.0 - w : 1.0);
     };
 
     acustra::EngineParameters p;
-    p.stringMaterial = acustra::StringMaterial::Steel;
-    p.bridgeModel = acustra::BridgeModel::Original;
     auto e = std::make_unique<Engine>();
     e->setParameters(p); e->prepare(48000, 64);
     const auto bridge = Access::bridge(*e);
     const double scale = Access::calibration(*e).bridgeMobilityScale;
-    expect(bridge.activeModeCount == int(own + fyldeCount + jointBridge) + 1,
+    expect(bridge.activeModeCount == int(own + jointBridge) + 1,
            "the blended bridge does not play each part's modes and the plate floor once");
     expect(Access::bodyCounts(*e)[0] == body
                && Access::bodyCounts(*e)[1] == int(d::measuredSteelBodyModes.size()),
@@ -566,10 +494,7 @@ void testSteelBlend()
     for (std::size_t i = 0; i < own; ++i)
         level(i, d::measuredSteelBridgeModes[i],
               ownShare(d::measuredSteelBridgeModes[i].frequency) * d::steelTopMobilityRatio);
-    for (std::size_t i = 0; i < fyldeCount; ++i)
-        level(own + i, d::measuredFyldeBridgeModes[i],
-              (1.0 - w) * (1.0 - d::steelBlendOwnBridgeWeight));
-    for (std::size_t i = 0, slot = own + fyldeCount; i < d::measuredSteelJointBodyModes.size() && joint; ++i)
+    for (std::size_t i = 0, slot = own; i < d::measuredSteelJointBodyModes.size() && joint; ++i)
     {
         const auto& mode = d::measuredSteelJointBodyModes[i];
         if (!(mode.frequency < d::steelBlendJointBandHz) || !(mode.heave > 0.0f || mode.rock > 0.0f))
@@ -599,9 +524,9 @@ void testSteelBlend()
     // string drains into the port, (Y^-1 + K/s)^-1 with the anchors' K, whose
     // peaks sit at the summed Y's zeros, so a part ringing at other
     // frequencies moves them. At each of B's aligned poles the port must keep
-    // at least that mode's share of the conductance B's modes alone give it;
-    // the Fylde's unaligned modes at 0.3 left 0.26-0.49 of it at 100 and
-    // 178-190 Hz and a new drain peak at 209 Hz (Docs/decisions.md).
+    // at least that mode's share of the conductance B's modes alone give it
+    // (another guitar's measured bridge, unaligned, blended in at 0.3 left
+    // 0.26-0.49 of it at 100 and 178-190 Hz; Docs/decisions.md).
     {
         std::vector<float> shares;
         for (const auto& mode : d::measuredSteelBridgeModes)
@@ -635,11 +560,9 @@ void testSteelBlend()
     {
         double least = 0.0, largestBody = 0.0, largestBridge = 0.0, worstRing = 0.0;
         for (int shape = 0; shape < 4; ++shape)
-            for (int wood = 0; wood < 4; ++wood)
+            for (int wood = 0; wood < 3; ++wood)
             {
                 acustra::EngineParameters q;
-                q.stringMaterial = acustra::StringMaterial::Steel;
-                q.bridgeModel = acustra::BridgeModel::Original;
                 q.shape = static_cast<acustra::BodyShape>(shape);
                 q.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
                 q.outputGain = 0.04f;
@@ -679,26 +602,11 @@ void testSteelBlend()
         expect(worstRing < 0.1, "a Shape or Wood's blended ring did not decay");
     }
 
-    // The Fylde choice is the Fylde alone; nylon plays its own banks.
-    p.bridgeModel = acustra::BridgeModel::FyldeSteel;
-    auto other = std::make_unique<Engine>();
-    other->setParameters(p); other->prepare(48000, 64);
-    expect(Access::bridge(*other).activeModeCount
-               == int(d::measuredFyldeBridgeModes.size()) + 1,
-           "the Fylde bridge choice took the blend's other parts");
-    p.stringMaterial = acustra::StringMaterial::Nylon;
-    auto nylon = std::make_unique<Engine>();
-    nylon->setParameters(p); nylon->prepare(48000, 64);
-    expect(Access::bodyCounts(*nylon)[0] == Access::bodyCounts(*nylon)[1],
-           "nylon's radiation took a parallel part");
-
     // A full chord left to ring for 20 s and a strum every 250 ms for 20 s:
     // no one-second window louder than every earlier one after the first
     // three, and the sustained level not creeping up.
     for (int sustained = 0; sustained < 2; ++sustained)
     {
-        p.stringMaterial = acustra::StringMaterial::Steel;
-        p.bridgeModel = acustra::BridgeModel::Original;
         p.outputGain = 0.04f;
         auto ring = std::make_unique<Engine>();
         ring->setParameters(p); ring->prepare(48000, 64);
@@ -757,14 +665,12 @@ void testSteelBlendJointBridgeRingsOnItsRadiation()
     if (!(d::steelBlendJointBodyWeight > 0.0f))
         return;
     const std::size_t own = d::measuredSteelBridgeModes.size();
-    const std::size_t fylde = d::steelBlendOwnBridgeWeight < 1.0f
-        ? d::measuredFyldeBridgeModes.size() : 0;
     // (body slot, bridge slot) for each retained joint mode with a bridge
     // residue: the body's kept modes follow g21's bank, the bridge's follow
-    // B's and the Fylde's.
+    // B's.
     std::vector<std::array<int, 2>> pairs;
     {
-        int body = int(d::measuredSteelBodyModes.size()), bridge = int(own + fylde);
+        int body = int(d::measuredSteelBodyModes.size()), bridge = int(own);
         for (const auto& mode : d::measuredSteelJointBodyModes)
         {
             if (!(mode.frequency < d::steelBlendJointBandHz)) continue;
@@ -777,11 +683,9 @@ void testSteelBlendJointBridgeRingsOnItsRadiation()
     int liveMismatches = 0;
     for (int rate : { 44100, 48000, 96000 })
         for (int shape = 0; shape < 4; ++shape)
-            for (int wood = 0; wood < 4; ++wood)
+            for (int wood = 0; wood < 3; ++wood)
             {
                 acustra::EngineParameters p;
-                p.stringMaterial = acustra::StringMaterial::Steel;
-                p.bridgeModel = acustra::BridgeModel::Original;
                 p.shape = static_cast<acustra::BodyShape>(shape);
                 p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
                 auto e = std::make_unique<Engine>();
@@ -857,10 +761,8 @@ void process(Engine& e, int frames, double* energy, float* peak)
 void testRetuneAndTailOwnership()
 {
     double largestRetune = 0;
-    for (int material = 0; material < 2; ++material)
     {
         acustra::EngineParameters p;
-        p.stringMaterial = static_cast<acustra::StringMaterial>(material);
         auto e = std::make_unique<Engine>();
         e->setParameters(p); e->prepare(48000,64); e->setStringPerChannelMode(true);
         e->noteOn(43,.8f,1); e->noteOn(60,.8f,4);
@@ -939,11 +841,8 @@ void testRetuneAndTailOwnership()
 // A construction switched under a ringing chord must not tick: above 5 kHz,
 // the largest 2 ms RMS in the 100 ms after the switch stays within 6 dB of
 // the louder of the two steady settings, or under -95 dBFS where both are
-// quieter than that (nylon's). Rebuilding the bridge used to zero every
-// mode and to report no bridge motion for a sample, 20-48 dB over both
-// (audit F14). An exchanged string set changes every string's loop filters
-// at once and still ticks; it is held to what it now does with its waves
-// kept at their power (13-20 dB, from 24-28 before F6's rescale).
+// quieter than that. Rebuilding the bridge used to zero every mode and to
+// report no bridge motion for a sample, 20-48 dB over both (audit F14).
 struct SwitchCase
 {
     const char* name;
@@ -1018,36 +917,24 @@ double highBandPeakDb(const std::vector<float>& x, int rate, double from, double
 void testConstructionSwitchesDoNotTick()
 {
     using acustra::EngineParameters;
-    using acustra::StringMaterial;
     using acustra::GuitarModel;
     using acustra::BodyShape;
-    const auto make = [] (StringMaterial m, GuitarModel g, acustra::BridgeModel b, BodyShape s)
+    const auto make = [] (GuitarModel g, BodyShape s)
     {
-        EngineParameters p; p.stringMaterial = m; p.guitarModel = g; p.bridgeModel = b; p.shape = s;
+        EngineParameters p; p.guitarModel = g; p.shape = s;
         p.outputGain = 0.2f;
         return p;
     };
-    const auto steel = make(StringMaterial::Steel, GuitarModel::Original,
-                            acustra::BridgeModel::Original, BodyShape::Dreadnought);
-    const auto fylde = make(StringMaterial::Steel, GuitarModel::Original,
-                            acustra::BridgeModel::FyldeSteel, BodyShape::Dreadnought);
-    const auto nylon = make(StringMaterial::Nylon, GuitarModel::Original,
-                            acustra::BridgeModel::Original, BodyShape::Dreadnought);
-    const auto bellido = make(StringMaterial::Steel, GuitarModel::Bellido1978,
-                              acustra::BridgeModel::Original, BodyShape::Auditorium);
+    const auto steel = make(GuitarModel::Original, BodyShape::Dreadnought);
+    const auto bellido = make(GuitarModel::Bellido1978, BodyShape::Auditorium);
     const auto with = [] (EngineParameters p, auto change) { change(p); return p; };
     const std::vector<SwitchCase> cases {
         { "steel Shape", steel, with(steel, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
         { "steel Wood", steel, with(steel, [] (auto& p) { p.bodyMaterial = acustra::BodyMaterial::Maple; }), 6.0 },
-        { "steel Bridge", steel, with(steel, [] (auto& p) { p.bridgeModel = acustra::BridgeModel::FyldeSteel; }), 6.0 },
-        { "Fylde Shape", fylde, with(fylde, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
         { "steel Model", steel, with(steel, [] (auto& p) { p.guitarModel = GuitarModel::Bellido1978; }), 6.0 },
         { "Bellido Model", bellido, with(bellido, [] (auto& p) { p.guitarModel = GuitarModel::Original; }), 6.0 },
         { "Bellido Shape", bellido, with(bellido, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
-        { "nylon Shape", nylon, with(nylon, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
-        { "nylon Wood", nylon, with(nylon, [] (auto& p) { p.bodyMaterial = acustra::BodyMaterial::Maple; }), 6.0 },
         { "steel Tuning", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 6.0 },
-        { "nylon to steel", nylon, with(nylon, [] (auto& p) { p.stringMaterial = StringMaterial::Steel; }), 22.0 },
     };
     double worst = -1e9;
     const char* worstName = "";
@@ -1121,26 +1008,15 @@ double sustainedPitchHz(const acustra::EngineParameters& p, int note, bool coupl
 
 void testCoupledPitchPullIsBounded()
 {
-    using acustra::StringMaterial;
-    struct Case { const char* name; StringMaterial strings; acustra::BridgeModel bridge;
-                  acustra::BodyShape shape; acustra::BodyMaterial wood; int note; };
+    struct Case { const char* name; acustra::BodyShape shape; acustra::BodyMaterial wood; int note; };
     const Case cases[] {
-        { "Fylde Dreadnought G3", StringMaterial::Steel, acustra::BridgeModel::FyldeSteel,
-          acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce, 55 },
-        { "Fylde Dreadnought A3", StringMaterial::Steel, acustra::BridgeModel::FyldeSteel,
-          acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce, 57 },
-        { "steel Jumbo G3", StringMaterial::Steel, acustra::BridgeModel::Original,
-          acustra::BodyShape::Jumbo, acustra::BodyMaterial::Spruce, 55 },
-        { "nylon Dreadnought C4", StringMaterial::Nylon, acustra::BridgeModel::Original,
-          acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Cedar, 60 },
-        { "Classical C4", StringMaterial::Nylon, acustra::BridgeModel::Original,
-          acustra::BodyShape::Auditorium, acustra::BodyMaterial::Cedar, 60 },
+        { "steel Jumbo G3", acustra::BodyShape::Jumbo, acustra::BodyMaterial::Spruce, 55 },
     };
     double worst = 0;
     for (const auto& c : cases)
     {
         acustra::EngineParameters p;
-        p.stringMaterial = c.strings; p.bridgeModel = c.bridge; p.shape = c.shape;
+        p.shape = c.shape;
         p.bodyMaterial = c.wood;
         const double cents = 1200*std::log2(sustainedPitchHz(p, c.note, true)
                                             / sustainedPitchHz(p, c.note, false));
@@ -1161,20 +1037,14 @@ void testCoupledPitchPullIsBounded()
 // it from getting worse unnoticed.
 void testNoteToNoteLevelSpreadIsBounded()
 {
-    struct Case { const char* name; acustra::StringMaterial strings; acustra::BridgeModel bridge;
-                  acustra::BodyShape shape; acustra::BodyMaterial wood; float velocity; };
+    struct Case { const char* name; acustra::BodyShape shape; acustra::BodyMaterial wood; float velocity; };
     const Case cases[] {
-        { "steel Dreadnought", acustra::StringMaterial::Steel, acustra::BridgeModel::Original,
-          acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce, 91.0f/127.0f },
-        { "Fylde Dreadnought", acustra::StringMaterial::Steel, acustra::BridgeModel::FyldeSteel,
-          acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce, 91.0f/127.0f },
-        { "Classical nylon", acustra::StringMaterial::Nylon, acustra::BridgeModel::Original,
-          acustra::BodyShape::Auditorium, acustra::BodyMaterial::Cedar, 80.0f/127.0f },
+        { "steel Dreadnought", acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce, 91.0f/127.0f },
     };
     for (const auto& c : cases)
     {
         acustra::EngineParameters p;
-        p.stringMaterial = c.strings; p.bridgeModel = c.bridge; p.shape = c.shape; p.bodyMaterial = c.wood;
+        p.shape = c.shape; p.bodyMaterial = c.wood;
         std::array<double, 45> level {};
         for (int note = 40; note <= 84; ++note)
         {
@@ -1208,41 +1078,39 @@ void testStaticWorkAndRapidChanges()
 {
     double minimumWork = 0;
     float maximumPeak = 0;
-    for (int material = 0; material < 2; ++material)
-        for (int rate : { 8000, 48000, 96000 })
-            for (int capture = 0; capture < 2; ++capture)
+    for (int rate : { 8000, 48000, 96000 })
+        for (int capture = 0; capture < 2; ++capture)
+        {
+            acustra::EngineParameters p;
+            p.capture = capture == 0 ? acustra::CaptureType::StereoMic
+                                    : acustra::CaptureType::Piezo;
+            for (int shape = 0; shape < 4; ++shape)
             {
-                acustra::EngineParameters p;
-                p.stringMaterial = static_cast<acustra::StringMaterial>(material);
-                p.capture = capture == 0 ? acustra::CaptureType::StereoMic
-                                        : acustra::CaptureType::Piezo;
-                for (int shape = 0; shape < 4; ++shape)
+                p.shape = static_cast<acustra::BodyShape>(shape);
+                auto e = std::make_unique<Engine>(); e->setParameters(p); e->prepare(rate,64);
+                for (int note : {40,47,52,55,59,64}) e->noteOn(note,.82f);
+                double work = 0;
+                for (int n = 0; n < rate/8; ++n)
                 {
-                    p.shape = static_cast<acustra::BodyShape>(shape);
-                    auto e = std::make_unique<Engine>(); e->setParameters(p); e->prepare(rate,64);
-                    for (int note : {40,47,52,55,59,64}) e->noteOn(note,.82f);
-                    double work = 0;
-                    for (int n = 0; n < rate/8; ++n)
-                    {
-                        float left,right; e->process(&left,&right,1);
-                        work += e->getLastBridgeBodyPower()/rate;
-                        minimumWork = std::min(minimumWork,work);
-                        expect(std::isfinite(left) && std::isfinite(right),"shaped chord was nonfinite");
-                        maximumPeak = std::max(maximumPeak,std::max(std::abs(left),std::abs(right)));
-                    }
-                    expect(work>=-1e-12,"static shape body generated net energy");
-                    for (int next : { 3,0,2,1,3,0 })
-                    {
-                        p.shape = static_cast<acustra::BodyShape>(next);
-                        e->setParameters(p); process(*e,64,nullptr,&maximumPeak);
-                    }
-                    process(*e,rate/8,nullptr,&maximumPeak);
-                    expect(Access::bodySettled(*e,acustra::BodyShape::Parlor),
-                           "rapid shape changes lost the final body selection");
-                    e->allSoundOff(); double remaining = 0; process(*e,512,&remaining);
-                    expect(remaining == 0,"shape changes left sound after panic");
+                    float left,right; e->process(&left,&right,1);
+                    work += e->getLastBridgeBodyPower()/rate;
+                    minimumWork = std::min(minimumWork,work);
+                    expect(std::isfinite(left) && std::isfinite(right),"shaped chord was nonfinite");
+                    maximumPeak = std::max(maximumPeak,std::max(std::abs(left),std::abs(right)));
                 }
+                expect(work>=-1e-12,"static shape body generated net energy");
+                for (int next : { 3,0,2,1,3,0 })
+                {
+                    p.shape = static_cast<acustra::BodyShape>(next);
+                    e->setParameters(p); process(*e,64,nullptr,&maximumPeak);
+                }
+                process(*e,rate/8,nullptr,&maximumPeak);
+                expect(Access::bodySettled(*e,acustra::BodyShape::Parlor),
+                       "rapid shape changes lost the final body selection");
+                e->allSoundOff(); double remaining = 0; process(*e,512,&remaining);
+                expect(remaining == 0,"shape changes left sound after panic");
             }
+        }
     std::cout << "shape static minimum body work=" << minimumWork
               << " transition/capture peak=" << maximumPeak << '\n';
     expect(minimumWork>=-1e-12,"static shape body work went negative");
@@ -1254,7 +1122,7 @@ int main()
 {
     testSteelOwnBridgeSharesTheRadiationPoles();
     testBridgeModesMoveWithTheirRadiationNeighbours();
-    testEveryBodysBridgeKeepsItsDrainsOnItsRadiation();
+    testBellidoBridgeKeepsItsDrainsOnItsRadiation();
     testSteelBlend();
     testSteelBlendJointBridgeRingsOnItsRadiation();
     testPhaseAndPassivity();

@@ -3,8 +3,8 @@
 
 The C++ renderer owns synthesis and the Python scorer owns descriptors.  This
 driver exports targets once, asks the renderer to replace model files for each
-candidate, and runs a bounded pattern search for the shared body, nylon
-strings, steel strings, then the shared body once more.
+candidate, and runs a bounded pattern search for the body, the steel
+strings, then the body once more.
 
 The search is derivative-free because the objective is not differentiable.
 Each partial is read as the largest peak inside a fixed +/-65-cent window, so
@@ -45,12 +45,6 @@ NAMES = (
     "bridgeMobilityScale",
     "residueTiltDbPerOctave",
     "directGain",
-    "nylon.fundamentalT60Scale",
-    "nylon.frequencyLossScale",
-    "nylon.apertureScale",
-    "nylon.transientScale",
-    "nylon.pluckDistanceScale",
-    "nylon.velocityBrightnessDepth",
     "steel.stiffnessScale",
     "steel.fundamentalT60Scale",
     "steel.frequencyLossScale",
@@ -75,49 +69,41 @@ NAMES = (
     "pickEdgeRadiusMetres",
     "steelWoundBendingLoss",
     "steelPlainBendingLoss",
-    "nylonWoundBendingLoss",
-    "nylonPlainBendingLoss",
     "contactNoiseFinger",
-    "contactNoiseNylon",
     "contactNoisePick",
     "contactNoiseVelocityExponent",
     "contactNoiseCornerHz",
-    "nylonContactNoiseCornerHz",
     "pickContactNoiseCornerHz",
     "contactNoiseDecaySeconds",
     "contactClickFinger",
-    "contactClickNylon",
     "contactClickPick",
 )
 LOWER = np.asarray((
     0.96, 0.05, 0.25, -6.0, 0.0,
-    0.4, 0.35, 0.35, 0.0, 0.7, 0.0,
     0.25, 0.4, 0.35, 0.35, 0.0, 0.7, 0.0,
     -1.0, 0.25, 0.0, -0.06, 0.5, 0.0, 100.0, 0.00325, 0.0, 10.0, 0.0,
     0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 100.0, 0.0005,
     0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 100.0, 100.0, 0.0005,
+    0.0, 0.0,
 ))
 UPPER = np.asarray((
     1.04, 1.8, 4.0, 6.0, 0.12,
-    2.0, 3.0, 2.5, 3.0, 3.0, 1.2,
     4.0, 2.0, 3.0, 2.5, 3.0, 3.0, 1.2,
     1.0, 32.0, 0.04, 0.05, 4.0, 0.02, 8000.0, 0.060, 0.5, 400.0, 0.82e-3,
     2.0, 4.0, 8.0,
-    0.5e-3, 0.25, 0.05, 0.25, 0.05,
-    4.0, 4.0, 4.0, 4.0, 20000.0, 20000.0, 20000.0, 0.05,
-    64.0, 64.0, 64.0,
+    0.5e-3, 0.25, 0.05,
+    4.0, 4.0, 4.0, 20000.0, 20000.0, 0.05,
+    64.0, 64.0,
 ))
 INITIAL = np.asarray((
     1.0, 1.0, 1.0, 0.0, 0.0,
-    1.0, 1.0, 1.0, 1.0, 1.0, 0.0,
     1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0,
     1.0, 1.0, 0.0061, -0.030, 1.30, 0.0, 1000.0, 0.020, 0.0, 80.0, 0.0008,
     0.0, 2.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 1.0, 4000.0, 4000.0, 8000.0, 0.0207,
     0.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 4000.0, 8000.0, 0.0207,
+    0.0, 0.0,
 ))
 # The shipping vector, mirroring fittedPhysicalCalibration in
 # Source/DSP/FittedPhysicalData.h, for --start shipping: a stage that fits a
@@ -125,14 +111,13 @@ INITIAL = np.asarray((
 # neutral baseline.
 SHIPPING = np.asarray((
     1.0, 1.0, 0.754677154, 0.0, 0.0,
-    1.4, 1.65213516, 2.39142268, 0.0, 2.14375, 0.15,
     0.749355465, 1.53, 0.52, 0.4883279315, 2.2130696796, 1.8, 1.10625,
     -0.0706290118, 4.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011,
     2187.76023, 0.00325, 0.0, 35.0, 0.0,
     0.58203125, 0.85859375, 0.0,
-    0.1162109375e-3, 0.035, 0.002334375, 0.029296875, 0.0,
-    0.0, 0.0, 0.0, 1.0, 4000.0, 4000.0, 8000.0, 0.0207,
-    0.0, 0.0, 0.0,
+    0.1162109375e-3, 0.035, 0.002334375,
+    0.0, 0.0, 1.0, 4000.0, 8000.0, 0.0207,
+    0.0, 0.0,
 ))
 # The bridge-local direct path is deliberately fixed off. Its score direction
 # was flat (and slightly worse on validation), so fitting it only lets a
@@ -156,18 +141,14 @@ BY_EAR = (
     # Zeroed by ear on 2026-09-24 (a blind listener preferred high notes that
     # keep their pitch) over the published 0.8 mm the corpus mildly prefers.
     "polarisationEndCorrectionMetres",
-    # Raised to 1.4 by ear on 2026-09-24 over the fitted 1.038: the classical
-    # rows' trimmed samples pull the fit toward a shorter ring than their
-    # own open strings have.
-    "nylon.fundamentalT60Scale",
     # 1.8 (149 mm) by ear on 2026-09-25 over the fitted 0.888 (74 mm): the
     # archtop rows it was fitted on were picked near the bridge, and the
     # finger-played flat-top rows agree with the listener.
     "steel.pluckDistanceScale",
     # Chosen by ear on 2026-09-28 (Docs/decisions.md, Set 14): steel at 70% of
     # the way from the joint refit's optimum (C) toward the half-loss snap with
-    # its refitted pluck (B), nylon at the two sets' shared values. A
-    # direction a listener chose between two fits, so no stage may refit it.
+    # its refitted pluck (B). A direction a listener chose between two fits,
+    # so no stage may refit it.
     "steel.apertureScale",
     "steel.transientScale",
     "steel.velocityBrightnessDepth",
@@ -176,19 +157,14 @@ BY_EAR = (
     "pickEdgeRadiusMetres",
     "steelWoundBendingLoss",
     "steelPlainBendingLoss",
-    "nylon.velocityBrightnessDepth",
-    "nylonWoundBendingLoss",
-    "nylonPlainBendingLoss",
     # Rejected by ear on 2026-09-28 (Docs/decisions.md, Set 16: "the pick is
     # TOO LOUD"): every contact noise and click level ships at zero, and no
     # stage may bring one back. The mechanism stays in the code for a later
     # candidate, which pins a level with --set NAME=VALUE (--set moves a
     # frozen value; freezing only keeps the search off it).
     "contactNoiseFinger",
-    "contactNoiseNylon",
     "contactNoisePick",
     "contactClickFinger",
-    "contactClickNylon",
     "contactClickPick",
 )
 # With longitudinalGain frozen at zero the axial resonators are not summed at
@@ -199,7 +175,6 @@ INERT = (
     "longitudinalQ",
     "contactNoiseVelocityExponent",
     "contactNoiseCornerHz",
-    "nylonContactNoiseCornerHz",
     "pickContactNoiseCornerHz",
 )
 # Values that are a published measurement rather than a fit. The one it held,
@@ -215,26 +190,38 @@ MEASURED: tuple[str, ...] = (
 FROZEN = frozenset(NAMES.index(name) for name in BY_EAR + MEASURED + INERT)
 
 
-def _free(indices: np.ndarray) -> np.ndarray:
-    return np.asarray([index for index in indices if index not in FROZEN],
-                      dtype=int)
+def _free(*names: str) -> np.ndarray:
+    return np.asarray([NAMES.index(name) for name in names
+                       if NAMES.index(name) not in FROZEN], dtype=int)
 
 
-GLOBAL = _free(np.asarray((0, 1, 2, 3, 18, 19, 22, 23, 24, 25, 26, 27, 28)))
-NYLON = _free(np.arange(5, 11))
-STEEL = _free(np.append(np.arange(11, 18), (20, 21)))
+GLOBAL = _free("bodyFrequencyScale", "bodyQScale", "bridgeMobilityScale",
+               "residueTiltDbPerOctave", "apertureRegisterExponent",
+               "lowBodyModeGain", "highLossCutoffScale", "bridgeConductanceFloor",
+               "bridgeConductanceCornerHz", "bridgeTailLengthMetres",
+               "longitudinalGain", "longitudinalQ",
+               "polarisationEndCorrectionMetres")
+STEEL = _free(*(name for name in NAMES if name.startswith("steel.")),
+              "steelDisplacementScaleMetres", "steelFretT60Slope")
 # The plectrum's three values are read by the Pick technique only, so they
 # are fitted on the picked archtop rows rendered with it (--archtop-picking
-# pick) and by nothing else; the finger-plucked flat-top and classical rows
-# render with Finger whatever this stage does. Those a listener chose
-# (BY_EAR, 2026-09-28) stay where they are.
-PICK = _free(np.asarray((29, 30, 31, 32)))
+# pick) and by nothing else; the finger-plucked flat-top rows render with
+# Finger whatever this stage does. Those a listener chose (BY_EAR,
+# 2026-09-28) stay where they are.
+PICK = _free("pickReleaseVelocityShare", "pickReleaseVelocityExponent",
+             "pickTransientGain", "pickEdgeRadiusMetres")
 # Every value only the Pick technique reads: the plectrum's and its noise's.
-PICK_READ = np.asarray((29, 30, 31, 32, 39, 43, 47))
+PICK_READ = np.asarray([NAMES.index(name) for name in (
+    "pickReleaseVelocityShare", "pickReleaseVelocityExponent",
+    "pickTransientGain", "pickEdgeRadiusMetres", "contactNoisePick",
+    "pickContactNoiseCornerHz", "contactClickPick")])
 # The steel excitation and the plectrum together, on the same picked rows:
 # the four steel values that shape the pluck's contact, level law and
 # brightness were fitted with Finger on recordings that were picked.
-PICK_EXCITATION = _free(np.asarray((14, 15, 16, 17, 29, 30, 31)))
+PICK_EXCITATION = _free("steel.apertureScale", "steel.transientScale",
+                        "steel.pluckDistanceScale", "steel.velocityBrightnessDepth",
+                        "pickReleaseVelocityShare", "pickReleaseVelocityExponent",
+                        "pickTransientGain")
 # A string's bending loss and the excitation that has to supply the attack it
 # takes away, together (Docs/decisions.md, 2026-09-28). Taking the upper
 # partials' sustain to the recordings' decay removes the energy that stood
@@ -242,15 +229,19 @@ PICK_EXCITATION = _free(np.asarray((14, 15, 16, 17, 29, 30, 31)))
 # much upper-partial energy a pluck starts with: steel's contact width, burst
 # and velocity brightness under Finger and the plectrum's edge, release
 # velocity and burst under Pick (run with --joint-picking finger,pick, so one
-# steel loss serves both), and nylon's contact, burst and velocity
-# brightness. Each is scored on its own material's training rows.
-STEEL_SNAP = _free(np.asarray((14, 15, 17, 29, 30, 31, 32, 33, 34)))
-NYLON_SNAP = _free(np.asarray((7, 8, 10, 35, 36)))
+# steel loss serves both).
+STEEL_SNAP = _free("steel.apertureScale", "steel.transientScale",
+                   "steel.velocityBrightnessDepth", "pickReleaseVelocityShare",
+                   "pickReleaseVelocityExponent", "pickTransientGain",
+                   "pickEdgeRadiusMetres", "steelWoundBendingLoss",
+                   "steelPlainBendingLoss")
 # The same excitation with the loss held where --set puts it: a compass
 # search moves one coordinate at a time, so a loss that only pays once the
 # attack has been rebuilt around it is found by profiling the loss instead.
-STEEL_SNAP_PLUCK = _free(np.asarray((14, 15, 17, 29, 30, 31, 32)))
-NYLON_SNAP_PLUCK = _free(np.asarray((7, 8, 10)))
+STEEL_SNAP_PLUCK = _free("steel.apertureScale", "steel.transientScale",
+                         "steel.velocityBrightnessDepth", "pickReleaseVelocityShare",
+                         "pickReleaseVelocityExponent", "pickTransientGain",
+                         "pickEdgeRadiusMetres")
 # The contact-noise stages that generated Set 16's candidates (transient-*
 # and noise-*, Docs/decisions.md, 2026-09-28) went with its verdict: with
 # every noise and click level frozen at zero, the noise stages had nothing
@@ -258,20 +249,18 @@ NYLON_SNAP_PLUCK = _free(np.asarray((7, 8, 10)))
 # name. A new noise candidate takes the levels and shapes out of BY_EAR and
 # INERT and restores those stages from Git history.
 
+# Every stage is scored on the whole training split, which holds only steel
+# rows: its name and the values it searches.
 STAGES = {
-    "shared-body": (None, GLOBAL),
-    "nylon-string": ("nylon", NYLON),
-    "steel-string": ("steel", STEEL),
-    "shared-body-refine": (None, GLOBAL),
-    "pick-release": ("steel", PICK),
-    "pick-excitation": ("steel", PICK_EXCITATION),
-    "snap-steel": ("steel", STEEL_SNAP),
-    "snap-nylon": ("nylon", NYLON_SNAP),
-    "snap-steel-pluck": ("steel", STEEL_SNAP_PLUCK),
-    "snap-nylon-pluck": ("nylon", NYLON_SNAP_PLUCK),
+    "shared-body": GLOBAL,
+    "steel-string": STEEL,
+    "shared-body-refine": GLOBAL,
+    "pick-release": PICK,
+    "pick-excitation": PICK_EXCITATION,
+    "snap-steel": STEEL_SNAP,
+    "snap-steel-pluck": STEEL_SNAP_PLUCK,
 }
-DEFAULT_STAGES = ("shared-body", "nylon-string", "steel-string",
-                  "shared-body-refine")
+DEFAULT_STAGES = ("shared-body", "steel-string", "shared-body-refine")
 
 # Renderer options every evaluation carries, e.g. --archtop-picking pick.
 RENDER_OPTIONS: list[str] = []
@@ -289,14 +278,6 @@ def _command(renderer: Path, directory: Path, values: np.ndarray,
     command.append(str(directory))
     command.extend(format(float(value), ".9g") for value in values)
     return command
-
-
-def _scope(material: str | None) -> str:
-    # A candidate is scored on one material's training rows, or on both; the
-    # renderer replaces only the models that score reads (the final render
-    # after the search replaces every one).
-    return {"steel": "train-steel", "nylon": "train-nylon"}.get(
-        material or "", "train")
 
 
 def _run_renderer(renderer: Path, directory: Path, values: np.ndarray,
@@ -358,14 +339,15 @@ def _worker_setup(renderer: Path, directories: Any,
     RENDER_OPTIONS[:] = protocols[0]
 
 
-def _worker_evaluate(job: tuple[list[float], str | None]) -> dict[str, Any]:
-    values, material = job
+def _worker_evaluate(values: list[float]) -> dict[str, Any]:
     reports = []
     for options, directory, train in _WORKER["corpora"]:
+        # A candidate is scored on the training rows, so the renderer
+        # replaces only their models (the final render after the search
+        # replaces every one).
         _run_renderer(_WORKER["renderer"], directory,
-                      np.asarray(values, dtype=float), True,
-                      _scope(material), options)
-        reports.append(_small_report(train.score(material=material)))
+                      np.asarray(values, dtype=float), True, "train", options)
+        reports.append(_small_report(train.score()))
     if len(reports) == 1:
         return reports[0]
     # Several protocols score one calibration: the objective is their mean,
@@ -403,14 +385,14 @@ def _worker_directories(output: Path, jobs: int) -> list[Path]:
 
 class Objective:
     def __init__(self, executor: Any, base: np.ndarray,
-                 active: np.ndarray, material: str | None,
+                 active: np.ndarray, stage: str,
                  evaluations: list[dict[str, Any]],
                  checkpoint: Path | None = None,
                  provenance: dict[str, Any] | None = None):
         self.executor = executor
         self.base = base.copy()
         self.active = active
-        self.material = material
+        self.stage = stage
         self.evaluations = evaluations
         self.checkpoint = checkpoint
         self.provenance = provenance or {}
@@ -432,7 +414,7 @@ class Objective:
             json.dumps({"parameter_order": NAMES,
                         "values": self.best_values.tolist(),
                         "score": self.best_score,
-                        "stage_material": self.material,
+                        "stage": self.stage,
                         "evaluations": len(self.evaluations),
                         **self.provenance}, indent=2) + "\n",
             encoding="utf-8",
@@ -459,7 +441,7 @@ class Objective:
         if pending:
             reports = self.executor.map(
                 _worker_evaluate,
-                [(values.tolist(), self.material) for values in pending.values()],
+                [values.tolist() for values in pending.values()],
             )
             for (key, values), report in zip(pending.items(), reports):
                 score = float(report["score"])
@@ -470,7 +452,7 @@ class Objective:
                     self.best_score = score
                     self.best_values = values.copy()
                 self.evaluations.append({
-                    "stage_material": self.material,
+                    "stage": self.stage,
                     "values": values.tolist(),
                     **report,
                 })
@@ -478,7 +460,7 @@ class Objective:
                     self._save_best()
                 print(
                     f"eval {len(self.evaluations):04d} "
-                    f"{self.material or 'both':>5} score={score:.6f}",
+                    f"{self.stage} score={score:.6f}",
                     flush=True,
                 )
         return np.asarray([self.cache[key] for key in keys])
@@ -519,14 +501,14 @@ def _pattern_search(objective: Objective, unit: np.ndarray, budget: int,
     return unit
 
 
-def _fit_stage(name: str, material: str | None, active: np.ndarray,
+def _fit_stage(name: str, active: np.ndarray,
                values: np.ndarray, executor: Any,
                budget: int, evaluations: list[dict[str, Any]],
                checkpoint: Path | None = None,
                provenance: dict[str, Any] | None = None,
                ) -> tuple[np.ndarray, dict[str, Any]]:
     unit = (values[active] - LOWER[active]) / (UPPER[active] - LOWER[active])
-    objective = Objective(executor, values, active, material, evaluations,
+    objective = Objective(executor, values, active, name, evaluations,
                           checkpoint, provenance)
     _pattern_search(objective, np.clip(unit, 0.0, 1.0), budget)
     fitted = objective.best_values
@@ -537,7 +519,6 @@ def _fit_stage(name: str, material: str | None, active: np.ndarray,
     )
     return fitted, {
         "name": name,
-        "material": material,
         "active": [NAMES[index] for index in active],
         "best_score": objective.best_score,
         "evaluations": int(objective.count),
@@ -595,11 +576,6 @@ def main() -> int:
              "of their training scores, so values the tools share (a "
              "string's loss) are fitted once for all of them",
     )
-    parser.add_argument(
-        "--bridge-model", choices=("original", "fylde"),
-        help="the steel bridge every render uses (the renderer's own "
-             "default, Original, otherwise); the steel presets play fylde",
-    )
     arguments = parser.parse_args()
     if arguments.evaluations < 1:
         parser.error("--evaluations must be positive")
@@ -612,7 +588,7 @@ def main() -> int:
     # The plectrum's values are read by Pick only, so a stage over them
     # rendered with any other tool would search inert coordinates.
     needs_pick = [name for name in stage_names
-                  if np.intersect1d(STAGES[name][1], PICK_READ).size > 0]
+                  if np.intersect1d(STAGES[name], PICK_READ).size > 0]
     renderer = arguments.renderer.resolve()
     output = arguments.output.resolve()
     if not renderer.is_file():
@@ -645,10 +621,8 @@ def main() -> int:
             or len(set(joint)) != len(joint):
         parser.error("--joint-picking takes distinct tools from finger, "
                      "pick, thumb")
-    bridge_options = (["--bridge-model", arguments.bridge_model]
-                      if arguments.bridge_model else [])
     # Each protocol is one corpus: OUTPUT itself, or OUTPUT/TOOL per tool.
-    corpora = ([(bridge_options + ["--archtop-picking", name], output / name)
+    corpora = ([(["--archtop-picking", name], output / name)
                 for name in joint] if joint else None)
     if arguments.resume:
         manifest_path = (corpora[0][1] if joint else output) / "train.json"
@@ -699,29 +673,24 @@ def main() -> int:
         order = result_data.get("parameter_order")
         if not isinstance(order, list) or len(order) != candidate.size:
             order = manifest_data.get("calibration_order")
-        if isinstance(order, list) and len(order) == candidate.size:
-            migrated = INITIAL.copy()
-            destination = {name: index for index, name in enumerate(NAMES)}
-            aliases = {
-                "steel.displacementScaleMetres":
-                    "steelDisplacementScaleMetres",
-            }
-            for value, name in zip(candidate, order):
-                target = destination.get(aliases.get(name, name))
-                if target is not None:
-                    migrated[target] = value
-            candidate = migrated
-        elif candidate.size == 24:
-            # The temporary all-material KC layout stored nylon at 21,
-            # steel at 22 and the fret slope at 23.
-            candidate = np.append(np.delete(candidate, 21), INITIAL[-1])
-        elif 19 <= candidate.size < INITIAL.size:
-            candidate = np.append(candidate, INITIAL[candidate.size:])
-        if candidate.shape != INITIAL.shape or not np.all(np.isfinite(candidate)):
-            parser.error(
-                f"{result_path.name} has no valid 19- through "
-                f"{INITIAL.size}-value calibration"
-            )
+        # Values are carried over by name, so a calibration from an older
+        # vector (the nylon strings' values among them, before 2026-09-29)
+        # resumes with what still exists; a vector without names does not.
+        if not isinstance(order, list) or len(order) != candidate.size:
+            parser.error(f"{result_path.name} has no named calibration")
+        migrated = INITIAL.copy()
+        destination = {name: index for index, name in enumerate(NAMES)}
+        aliases = {
+            "steel.displacementScaleMetres":
+                "steelDisplacementScaleMetres",
+        }
+        for value, name in zip(candidate, order):
+            target = destination.get(aliases.get(name, name))
+            if target is not None:
+                migrated[target] = value
+        candidate = migrated
+        if not np.all(np.isfinite(candidate)):
+            parser.error(f"{result_path.name} has a non-finite calibration")
         values = np.clip(candidate, LOWER, UPPER)
         values[4] = 0.0
     elif output.exists():
@@ -731,9 +700,8 @@ def main() -> int:
                      "values needs --archtop-picking pick (or pick among "
                      "--joint-picking)")
     if not joint:
-        RENDER_OPTIONS[:] = bridge_options + (
-            ["--archtop-picking", archtop_picking]
-            if archtop_picking is not None else [])
+        RENDER_OPTIONS[:] = (["--archtop-picking", archtop_picking]
+                             if archtop_picking is not None else [])
         corpora = [(list(RENDER_OPTIONS), output)]
     else:
         RENDER_OPTIONS[:] = corpora[0][0]
@@ -762,9 +730,8 @@ def main() -> int:
         initargs=(renderer, queue, [options for options, _ in corpora]),
     ) as executor:
         for name in stage_names:
-            material, active = STAGES[name]
             values, stage = _fit_stage(
-                name, material, active, values, executor,
+                name, STAGES[name], values, executor,
                 arguments.evaluations, evaluations,
                 output / "fit-best.json",
                 {"start": start, "render_options": list(RENDER_OPTIONS),
