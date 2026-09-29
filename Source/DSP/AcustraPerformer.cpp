@@ -605,6 +605,22 @@ void Performer::setLowerZoneMemberCount(int memberCount) noexcept
         refreshPitchBend(channel);
 }
 
+bool Performer::isLowerZoneMember(int midiChannel) const noexcept
+{
+    return lowerZoneMemberCount_ > 0 && midiChannel >= 2
+        && midiChannel <= lowerZoneMemberCount_ + 1;
+}
+
+// The bend a channel's own wheel asks for, plus the master tune. A lower
+// zone member's note already sounds the manager's bend on top of its own
+// (AcustraEngine::configureVoice), so the tune rides on the manager and
+// every channel outside the zone, and never twice.
+float Performer::tunedBend(int midiChannel, float bend) const noexcept
+{
+    return isLowerZoneMember(midiChannel) || masterTuneSemitones_ == 0.0f
+        ? bend : bend + masterTuneSemitones_;
+}
+
 void Performer::refreshPitchBend(int midiChannel) noexcept
 {
     if (midiChannel < 1 || midiChannel > 16)
@@ -613,14 +629,11 @@ void Performer::refreshPitchBend(int midiChannel) noexcept
         midiChannel - 1)];
     if (lowerZoneMemberCount_ > 0 && midiChannel == 1)
         range = lowerMasterPitchBendRange_;
-    else if (lowerZoneMemberCount_ > 0 && midiChannel >= 2
-             && midiChannel <= lowerZoneMemberCount_ + 1)
+    else if (isLowerZoneMember(midiChannel))
         range = lowerMemberPitchBendRange_;
     const float bend
         = rawPitchWheels_[static_cast<std::size_t>(midiChannel - 1)] * range;
-    engine_.setPitchBend(masterTuneSemitones_ == 0.0f
-                             ? bend : bend + masterTuneSemitones_,
-                         midiChannel);
+    engine_.setPitchBend(tunedBend(midiChannel, bend), midiChannel);
 }
 
 bool Performer::channelIsInControllerScope(int controllerChannel,
@@ -639,7 +652,7 @@ void Performer::resetControllerScope(int midiChannel) noexcept
             continue;
         rawPitchWheels_[static_cast<std::size_t>(channel - 1)] = 0.0f;
         rpnStates_[static_cast<std::size_t>(channel - 1)] = RpnState {};
-        engine_.setPitchBend(masterTuneSemitones_, channel);
+        engine_.setPitchBend(tunedBend(channel, 0.0f), channel);
         engine_.setSustainPedal(false, channel);
     }
 }

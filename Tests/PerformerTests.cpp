@@ -451,6 +451,28 @@ void testMasterTune()
            "100 cents of master tune did not sound as a semitone of bend");
     expect(play(100.0f, resetThenNote) == tunedAfterPause,
            "Reset All Controllers dropped the master tune");
+
+    // An MPE member note already hears the manager's bend, so the tune
+    // rides on the manager alone: 100 cents is a member note under a
+    // semitone of manager bend, not two (audit F20). Reset All Controllers
+    // on the member keeps that.
+    const std::vector<Event> zone { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 6),
+                                    message(0.0, 0xb0, 6, 15) };
+    auto memberNote = zone;
+    memberNote.push_back(message(0.0002, 0x91, 45, 100));
+    auto memberUnderManagerSemitone = zone;
+    for (const auto& event : { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 0),
+                               message(0.0, 0xb0, 6, 1), message(0.0, 0xe0, 0x7f, 0x7f),
+                               message(0.0002, 0x91, 45, 100) })
+        memberUnderManagerSemitone.push_back(event);
+    auto memberResetThenNote = zone;
+    memberResetThenNote.push_back(message(0.0, 0xb1, 121, 0));
+    memberResetThenNote.push_back(message(0.0002, 0x91, 45, 100));
+    const auto tunedMember = play(100.0f, memberNote);
+    expect(tunedMember == play(0.0f, memberUnderManagerSemitone),
+           "master tune reached an MPE member note twice");
+    expect(play(100.0f, memberResetThenNote) == tunedMember,
+           "Reset All Controllers on a member put the master tune on it");
 }
 
 void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)

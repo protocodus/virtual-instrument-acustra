@@ -92,8 +92,10 @@ public:
     }
 
     // A pitch offset every channel's bend carries on top of its wheel, for a
-    // host's global tuning (Reason's master tune). Zero, the default, is an
-    // exact no-op. Applied at once, from the next rendered sample.
+    // host's global tuning (Reason's master tune); in an MPE lower zone the
+    // manager's carries it for its members, whose notes sound the manager's
+    // bend too. Zero, the default, is an exact no-op. Applied at once, from
+    // the next rendered sample.
     void setMasterTuneCents(float cents) noexcept;
 
     // Panic: silences the engine and forgets held events, bend wheels and
@@ -207,6 +209,8 @@ private:
     bool processRpnController(int midiChannel, int controller, int value) noexcept;
     void setLowerZoneMemberCount(int memberCount) noexcept;
     void refreshPitchBend(int midiChannel) noexcept;
+    [[nodiscard]] bool isLowerZoneMember(int midiChannel) const noexcept;
+    [[nodiscard]] float tunedBend(int midiChannel, float bend) const noexcept;
     void resetControllerScope(int midiChannel) noexcept;
     [[nodiscard]] bool channelIsInControllerScope(int controllerChannel,
                                                   int targetChannel) const noexcept;
