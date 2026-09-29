@@ -791,24 +791,17 @@ float bentStringTension(float tension, float axialRigidity,
     return std::max(tension + added, 0.05f * tension);
 }
 
-// The Bridge choice selects a bank only for steel strings on the Original
-// model: the Bellido is one measured guitar with its own bridge, and nylon
-// keeps g34's. Anywhere else the choice is kept (so it returns with steel on
-// Original) but has no effect, so it is not compared as a change either.
-constexpr bool bridgeSelectable(StringMaterial material,
-                                GuitarModel guitar) noexcept
-{
-    return material == StringMaterial::Steel
-        && guitar == GuitarModel::Original;
-}
-
 // The bridge a construction actually plays: its Bridge choice where that
-// selects one, Original everywhere else.
+// selects one (AcustraEngine::bridgeSelectable: steel on Original), Original
+// everywhere else - the Bellido is one measured guitar with its own bridge,
+// and nylon keeps g34's. The choice is kept, so it returns with steel on
+// Original, but where it has no effect it is not compared as a change.
 constexpr BridgeModel effectiveBridge(StringMaterial material,
                                       BridgeModel model,
                                       GuitarModel guitar) noexcept
 {
-    return bridgeSelectable(material, guitar) ? model : BridgeModel::Original;
+    return AcustraEngine::bridgeSelectable(material, guitar)
+        ? model : BridgeModel::Original;
 }
 
 BridgeModel effectiveBridge(const EngineParameters& parameters) noexcept

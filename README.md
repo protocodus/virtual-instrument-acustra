@@ -842,12 +842,15 @@ fits only the measured response, and records the inferred phase alignment.
 There is no measured rocking or microphone response in this dataset: all six
 strings share its scalar bridge, and microphone radiation still comes from the
 existing body bank. This is a measured bridge, not a complete Fylde replica:
-another guitar's bridge under the flamenca's radiation, with no anchor, Shape
-or Wood map applied, so its modes do not line up with the radiation's
+another guitar's bridge under the flamenca's radiation, with no anchor or
+Wood map applied (Shape moves it as it moves every bridge bank), so its modes
+do not line up with the radiation's
 (prominence correlation r +0.12/+0.14/+0.05 on strings 1/3/5), and with no
 rocking path the parallel polarisation meets a rigid saddle yet still radiates
 through g21's moment paths. It remains selectable as the **Fylde bridge /
-steel** preset; nylon does not read the choice. The host's appended
+steel** preset. The choice applies to steel strings on the Original model
+only: nylon and the Bellido play their own guitar's bridge whatever it says,
+and keep it for when the guitar returns to steel on Original. The host's appended
 `bridgeModel` parameter preserves the choice in sessions, and a session saved
 before it existed keeps the Original bridge it was made with.
 
@@ -1121,6 +1124,7 @@ uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
 | Control | Audible behavior |
 | --- | --- |
 | **Model** | Original or Bellido 1978; the named model selects its own measured bridge and radiation. |
+| **Bridge Model** | Original (the radiation's own guitar, g21) or the measured Fylde steel-string bridge, for steel strings on the Original model only (the Fylde bridge / steel preset); nylon and the Bellido always play their own guitar's bridge and ignore it. |
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
 | **Body Material** | Spruce, Cedar, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. Each measured body is heard as measured at the wood it was built of and moved relative to it elsewhere: Spruce for steel's g21, Cedar for nylon's g34 and for the Bellido. |
 | **String Material** | Selects the dedicated nylon or steel geometry, impedance, stiffness, loss and fitted calibration. |

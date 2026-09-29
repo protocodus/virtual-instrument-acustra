@@ -1486,6 +1486,20 @@ void testEditorRendering()
                 expect (menu->getSelectedId() == static_cast<int> (index) + 7,
                         "a measured construction preset lost its caption");
             }
+            // The Bridge choice selects nothing on the Bellido or on nylon
+            // (audit F17): the menu says so, a Fylde choice left over there
+            // keeps the preset's caption, and the host's name for the
+            // parameter says where it applies.
+            expect (menu->getTooltip().contains ("steel strings on the original body only"),
+                    "the guitar menu does not say where the bridge choice applies");
+            setValue (processor, ids::bridgeModel, 1.0f);
+            refreshDisplayTimer();
+            expect (menu->getSelectedId() == 7,
+                    "an inert Fylde choice cost the Bellido preset its caption");
+            setValue (processor, ids::bridgeModel, 0.0f);
+            if (auto* bridge = processor.parameters.getParameter (ids::bridgeModel))
+                expect (bridge->getName (64).contains ("steel"),
+                        "the Bridge Model parameter does not say where it applies");
             menu->setSelectedId (2, juce::sendNotificationSync);
             expect (processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Original,
                     "an original construction preset retained a measured body override");

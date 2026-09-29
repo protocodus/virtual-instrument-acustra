@@ -30,9 +30,11 @@ struct ConstructionPreset
 // radiation steel plays, on its radiation's poles and at a steel-string
 // guitar's measured mobility, so one body loads the string and radiates it
 // (README, How it works). The measured Fylde steel-string bridge, another
-// guitar's with no Shape, Wood or anchor map applied, stays reachable as its
-// own preset. The appended presets select a measured body plus suitable
-// string construction.
+// guitar's, stays reachable as its own preset: Shape moves its modes as it
+// moves every bridge bank's, but no Wood or anchor map is applied to it. The
+// Bridge choice selects a bank only for steel strings on the Original model;
+// nylon and the Bellido play their own guitar's bridge whatever it says. The
+// appended presets select a measured body plus suitable string construction.
 constexpr std::array<ConstructionPreset, 6> constructionPresets {{
     { "Dreadnought / Martin style", acustra::BodyShape::Dreadnought,
       acustra::BodyMaterial::Spruce, acustra::StringMaterial::Steel,
@@ -383,7 +385,9 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     configureSetupMenu (
         0, "GUITAR", "Set the body model, shape, wood and strings together. "
         "Style presets use the original body; named years select measured bodies. "
-        "Fylde selects steel-string bridge mobility with the original microphones. "
+        "Fylde selects steel-string bridge mobility with the original microphones; "
+        "the bridge choice applies to steel strings on the original body only, "
+        "since nylon and the Bellido always play their own guitar's bridge. "
         "Adjust any construction control below to make your own guitar.");
     auto& guitarMenu = setupControls[0];
     guitarMenu.addItem ("Custom construction", 1);
@@ -543,7 +547,10 @@ void AcustraAudioProcessorEditor::updateConstructionControls()
         if (state.guitarModel == preset.model
             && state.shape == preset.shape && state.bodyMaterial == preset.wood
             && state.stringMaterial == preset.strings
-            && (state.stringMaterial == acustra::StringMaterial::Nylon
+            // Where the Bridge choice selects nothing (nylon, the Bellido),
+            // the engine ignores it, and so does the match.
+            && (! acustra::AcustraEngine::bridgeSelectable (state.stringMaterial,
+                                                            state.guitarModel)
                 || state.bridgeModel == preset.bridge))
         {
             presetId = static_cast<int> (index) + 2;

@@ -144,6 +144,17 @@ public:
     // calibration resets the engine; do not call it from the audio thread.
     void setPhysicalCalibration(const PhysicalCalibration&) noexcept;
 
+    // Whether the Bridge choice selects a bank for this construction: only
+    // for steel strings on the Original model. The Bellido plays its own
+    // measured bridge and nylon g34's, whatever the choice, which is kept
+    // for when the guitar returns to steel on Original.
+    [[nodiscard]] static constexpr bool bridgeSelectable(
+        StringMaterial strings, GuitarModel guitar) noexcept
+    {
+        return strings == StringMaterial::Steel
+            && guitar == GuitarModel::Original;
+    }
+
     // The wood the measured body these select was built of: Body Material
     // leaves that body as measured there and moves it relative to it
     // elsewhere. Spruce for steel on the Original model (g21), cedar for

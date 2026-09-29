@@ -217,9 +217,12 @@ AcustraAudioProcessor::createParameterLayout()
     // presets select: steel's own (g21) bridge on its radiation's poles. A
     // session saved on the measured Fylde steel-string bridge keeps it; one
     // saved before this parameter existed keeps the Original bridge it was
-    // made with (see addMissingParameterDefaults).
+    // made with (see addMissingParameterDefaults). The choice selects a bank
+    // only for steel strings on the Original model (nylon and the Bellido
+    // play their own guitar's bridge), which the name says to a host that
+    // shows it; the ID, version and choices are unchanged.
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { ids::bridgeModel, 3 }, "Bridge Model",
+        juce::ParameterID { ids::bridgeModel, 3 }, "Bridge Model (steel, Original body)",
         juce::StringArray { "Original", "Measured Fylde (steel)" }, 0));
     // Retain old parameter IDs, indices and ranges for saved-state migration.
     // Only the appended three-choice Capture parameter drives new sessions.
