@@ -3767,6 +3767,12 @@ void testABendDoesNotStepTheJunctionPort()
 
 // A hostile wheel: the tension the model follows saturates where Grimes' law
 // stops describing a string, which is inside the bend range MIDI can ask for.
+// A finger pushes a string only so far: plain steel parts at roughly 1.7
+// to 2 times its tuning tension, and real bends stay within 3 to 4
+// semitones. So the tension a member bend asks for stops at twice the open
+// string's r^2, six semitones up - or sooner, half way to Grimes'
+// singularity, on a string too stretchy to get there - and the rest of a
+// wider glide is a slide, carried by the delay alone (audit F8).
 void testAnExtremeBendSaturatesInsideTheBendRange()
 {
     constexpr double bendingDiameter[] { 0.477159e-3, 0.437895e-3,
@@ -3779,34 +3785,91 @@ void testAnExtremeBendSaturatesInsideTheBendRange()
         const auto index = static_cast<std::size_t>(unbent.stringIndex);
         const double rigidity = 2.0e11 * 0.25 * std::numbers::pi
             * bendingDiameter[index] * bendingDiameter[index];
-        // Half way to the singularity at r^2 = EA/T0.
-        const double saturation = 1200.0 * std::log2(std::sqrt(
-            0.5 * rigidity / unbent.tension));
-        expect(saturation < 9600.0 && saturation > 3000.0,
-               "the tension saturated at " + std::to_string(saturation)
-                   + " cents, outside the +-96 semitones a bend can ask for");
-        const auto extreme = acustra::AcustraEngineTestAccess::bentString(
-            acustra::StringMaterial::Steel, midiNote, 0.0f, 96.0f);
-        expect(std::isfinite(extreme.tension)
-                   && std::abs(extreme.tension
-                               - (rigidity - unbent.tension))
-                          < 1.0e-3 * rigidity,
-               "a 96-semitone bend did not saturate at the string's axial "
-               "rigidity");
-        expect(extreme.loop.delay >= 3.0 && std::isfinite(extreme.loop.delay)
-                   && extreme.impedanceScale > 1.0
-                   && std::isfinite(extreme.impedanceScale),
-               "a 96-semitone bend left the loop unbounded");
+        // Grimes' dT = T0 (r^2 - 1) / (1 - r^2 T0/EA) at r^2 = 2.
+        const double limit = unbent.tension
+            + unbent.tension / (1.0 - 2.0 * unbent.tension / rigidity);
+        for (const float semitones : { 6.0f, 12.0f, 48.0f, 96.0f })
+        {
+            const auto bent = acustra::AcustraEngineTestAccess::bentString(
+                acustra::StringMaterial::Steel, midiNote, 0.0f, semitones);
+            expect(std::isfinite(bent.tension)
+                       && std::abs(bent.tension - limit) < 2.0e-3 * limit,
+                   "a " + std::to_string(semitones) + "-semitone bend did not "
+                   "stop the tension at twice the open string's r^2 ("
+                       + std::to_string(bent.tension) + " N against "
+                       + std::to_string(limit) + ")");
+            expect(bent.loop.delay >= 3.0 && std::isfinite(bent.loop.delay)
+                       && bent.impedanceScale > 1.0
+                       && bent.impedanceScale < 1.42
+                       && std::isfinite(bent.impedanceScale),
+                   "a " + std::to_string(semitones)
+                       + "-semitone bend left the loop or its port unbounded");
+        }
         const auto slack = acustra::AcustraEngineTestAccess::bentString(
             acustra::StringMaterial::Steel, midiNote, 0.0f, -96.0f);
         expect(slack.tension > 0.0 && slack.tension < unbent.tension
                    && std::isfinite(slack.loop.delay),
                "a 96-semitone downward bend left the string's tension "
                "unphysical");
-        std::cout << "Acustra bend saturation MIDI " << midiNote << ": "
-                  << saturation << " cents, tension at 96 semitones "
-                  << extreme.tension << " N\n";
+        std::cout << "Acustra bend tension limit MIDI " << midiNote << ": "
+                  << limit << " N, " << limit / unbent.tension
+                  << " times the open string's\n";
     }
+}
+
+// A wide member glide is a bend up to the tension limit and a slide past
+// it, so it is about as loud as the same glide on a conventional channel,
+// which is a slide throughout, and it stays below the output limiter. At
+// 170 times the tuning tension it was 25 dB louder and pinned the limiter.
+void testAWideMemberGlideStaysAsLoudAsASlide()
+{
+    for (const auto material : { acustra::StringMaterial::Steel,
+                                 acustra::StringMaterial::Nylon })
+        for (const float semitones : { 12.0f, 24.0f, 48.0f })
+        {
+            const auto glide = [&] (bool member)
+            {
+                auto engine = std::make_unique<acustra::AcustraEngine>();
+                acustra::EngineParameters parameters;
+                parameters.stringMaterial = material;
+                engine->setParameters(parameters);
+                engine->prepare(48000.0, 64);
+                const int channel = member ? 2 : 1;
+                if (member)
+                    engine->setLowerZoneMemberCount(15);
+                engine->noteOn(57, 0.8f, channel);
+                std::vector<float> left(64), right(64);
+                double energy = 0.0, peak = 0.0;
+                for (int block = 0; block < 1500; ++block)
+                {
+                    if (block >= 225 && block < 300)
+                        engine->setPitchBend(semitones
+                            * static_cast<float>(block - 224) / 75.0f, channel);
+                    engine->process(left.data(), right.data(), 64);
+                    if (block >= 300 && block < 750)
+                        for (int n = 0; n < 64; ++n)
+                        {
+                            energy += left[static_cast<std::size_t>(n)] * left[static_cast<std::size_t>(n)]
+                                + right[static_cast<std::size_t>(n)] * right[static_cast<std::size_t>(n)];
+                            peak = std::max({ peak,
+                                static_cast<double>(std::abs(left[static_cast<std::size_t>(n)])),
+                                static_cast<double>(std::abs(right[static_cast<std::size_t>(n)])) });
+                        }
+                }
+                return std::pair { energy, peak };
+            };
+            const auto [memberEnergy, memberPeak] = glide(true);
+            const auto [slideEnergy, slidePeak] = glide(false);
+            const double louder = 10.0 * std::log10(memberEnergy / slideEnergy);
+            std::cout << "Acustra "
+                      << (material == acustra::StringMaterial::Steel ? "steel" : "nylon")
+                      << " A3 member glide +" << semitones << ": " << louder
+                      << " dB against a slide, peak " << memberPeak << '\n';
+            expect(louder < 5.0 && memberPeak < 0.89125094,
+                   "a +" + std::to_string(semitones) + " member glide was "
+                       + std::to_string(louder) + " dB louder than a slide, peak "
+                       + std::to_string(memberPeak));
+        }
 }
 
 // CC1 is the left hand's vibrato. Zero is the wheel not touched.
@@ -7646,6 +7709,7 @@ int main()
     testABendMovesTheTwelfthPartialStretch();
     testABendDoesNotStepTheJunctionPort();
     testAnExtremeBendSaturatesInsideTheBendRange();
+    testAWideMemberGlideStaysAsLoudAsASlide();
     testTheVibratoWheelAtZeroIsExact();
     testMpeTimbreSetsPerNotePluckPointOnMemberChannelOnly();
     testMpePressureBiasesVibratoDepthWithinTheWheelsOwnBound();

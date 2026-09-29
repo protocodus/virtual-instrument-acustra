@@ -743,17 +743,27 @@ float stringAxialRigidity(bool steel, int stringIndex) noexcept
 // inverts to dT = T0 (r^2 - 1) / (1 - r^2 T0/EA). Validated in that paper on
 // measured Ernie Ball sets, with plain steel at 177.6-188.4 GPa against the
 // 200 GPa this engine's table uses.
+// A finger pushes a string only so far: plain steel parts at roughly 1.7 to
+// 2 times its tuning tension, and real bends stay within 3 to 4 semitones.
+// So the tension a bend asks for stops at twice the open string's r^2 - six
+// semitones up, about twice the tuning tension - and a member glide wider
+// than that carries on as a slide, in the delay alone, instead of driving
+// the junction port with a tension no string survives (at the old limit,
+// half way to Grimes' singularity below, a +48 glide reached 170 times the
+// tuning tension and 25 dB).
+constexpr float maximumBendRatioSquared = 2.0f;
+
 float bentStringTension(float tension, float axialRigidity,
                         float frequencyRatio) noexcept
 {
     // The denominator vanishes where the string's own extension would eat the
-    // whole of the added tension - a string past breaking, not a bend - so
-    // the tension the model follows stops half way to it, which is 36.8
-    // semitones up on the plain high E and 44.0 on the wound low E, well
-    // inside the +-96 semitones a bend input can ask for. Past that the pitch
-    // still follows the wheel through the delay, as a slide does.
-    const float ratioSquared = std::min(frequencyRatio * frequencyRatio,
-                                        0.5f * axialRigidity / tension);
+    // whole of the added tension - a string past breaking, not a bend. A
+    // string too stretchy to reach the limit above first (none of this data
+    // is) stops half way to that. Past either the pitch still follows the
+    // wheel through the delay, as a slide does.
+    const float ratioSquared = std::min({ frequencyRatio * frequencyRatio,
+                                          0.5f * axialRigidity / tension,
+                                          maximumBendRatioSquared });
     const float added = tension * (ratioSquared - 1.0f)
                       / (1.0f - ratioSquared * tension / axialRigidity);
     // Grimes' law describes a string in tension; a slackened one leaves it.
