@@ -4,6 +4,75 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-29 — at the user's request: engine audit, how the constructions combine
+
+Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
+"now, wrap up - walk through the engine and fix any gaps, obvious issues,
+and ensure compatibility between different woods, models, et". This entry
+covers the audit's findings about how Strings, Model, Bridge, Shape, Wood
+and Tuning combine (F6, F7, F9, F10, F14, F15, F17, F18, F19, F30, F40),
+one commit each, each with a test that failed before it where the finding
+was a defect.
+
+Defects fixed:
+- A Bridge choice the construction does not play (nylon, the Bellido) no
+  longer rebuilds the bridge under a ringing chord (F7, a burst 2.6 times
+  the chord); the plug-in says where the choice applies (F17).
+- Shape moves each bridge mode by the class of the radiation mode beside
+  it (F9): the Bellido's bridge T1 took the plate factor and left its
+  radiation T1 by a semitone on three shapes.
+- A live construction change crossfades the bridge's mobility over 20 ms,
+  keeps the same bank's bridge and body modes ringing, and carries the
+  bridge's motion across the switch sample (F14): Shape, Wood, Bridge and
+  Model ticks above 5 kHz went from 12-48 dB over the steady sound to
+  within about 2; a retune from 10-30 to 2-9 on steel.
+- Strings exchanged onto stiffer strings keep their waves' power (F6): nylon
+  to steel swelled to 2-3 times the louder steady chord, now 1.2.
+- An instrument left to ring out reaches exact silence (F30).
+- Renders with none of these in them are bit-identical: every static steel
+  construction (both bridges), every Bellido construction at its own box
+  and wood, every capture, three rates and the performance battery.
+
+Changes of sound, recorded as awaiting the user's ear:
+- F19: Body Material now takes nylon's measured body, g34, at the cedar it
+  was built of, as the Bellido's already did (it took spruce). The
+  Classical preset (Cedar) is now that body as measured and fitted - the
+  benchmark's own construction, whose scores are unchanged - rather than
+  a cedar warp of it (+31 cents, Q x1/0.88, brighter, radiation x1/1.04
+  against before); nylon at the other woods moves by the same factors.
+- F10: nylon's bridge and the Bellido's now follow Wood (and Shape, by the
+  radiation's own factors) with their radiation, keeping the relation
+  they have at their anchor; the Bellido at its own box and wood and
+  nylon at the Classical preset are bit-identical. Moving nylon's bridge
+  with its fitted anchor transform too, which would align its drains at
+  the Classical preset, was built and not shipped: held-out nylon rows
+  +2.6%, the Iowa classical +2.1%. That one is for the ear.
+- F9 changes the Bellido away from its Auditorium box: Parlor B3's
+  fundamental rises from 6 dB under its neighbours to level, G3-A3 on
+  Dreadnought and Jumbo drop 2.5-3.8 dB.
+- F19 and F10 left nylon's median 0.75 LU under steel's over the grid the
+  user's "nylon is a bit quite, normalize it with the steel" was set on,
+  so nylon's output reference rises by that again (1.8774 -> 2.0462); the
+  medians are equal again.
+
+Measured and left as they are, with numbers in README Known gaps and a
+test that keeps them from getting worse:
+- F15: notes near strong lossy body modes sound up to about 4 cents from
+  their request (5 with the other strings silenced). A first-order pole
+  correction recovers at most 2 of those cents and none on the Classical
+  C4, so it is not applied.
+- F40: finger-played single notes are 1.3-2 times as rough in level from
+  note to note as the open recordings, with holes inside their range but
+  the Fylde's; it is the measured close-microphone responses, and a refit
+  of that data would need the archive and a listening test.
+- F18: steel strings on the Bellido keep its classical top's full measured
+  mobility (the 0.274 correction belongs to the Original's flamenca proxy);
+  its level is the per-construction level question.
+- Model switches under a ringing chord still swell to 1.5-1.9 times the
+  louder steady chord for about 50 ms (the chord's stored energy through
+  another body whose modes start from rest), and an exchanged string set
+  still ticks 13-20 dB over the steady sound above 5 kHz.
+
 ## 2026-09-29 — at the user's request: engine audit, release and playing fixes
 
 Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
