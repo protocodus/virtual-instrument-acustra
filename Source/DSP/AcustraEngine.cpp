@@ -770,6 +770,32 @@ float bentStringTension(float tension, float axialRigidity,
     return std::max(tension + added, 0.05f * tension);
 }
 
+// The Bridge choice selects a bank only for steel strings on the Original
+// model: the Bellido is one measured guitar with its own bridge, and nylon
+// keeps g34's. Anywhere else the choice is kept (so it returns with steel on
+// Original) but has no effect, so it is not compared as a change either.
+constexpr bool bridgeSelectable(StringMaterial material,
+                                GuitarModel guitar) noexcept
+{
+    return material == StringMaterial::Steel
+        && guitar == GuitarModel::Original;
+}
+
+// The bridge a construction actually plays: its Bridge choice where that
+// selects one, Original everywhere else.
+constexpr BridgeModel effectiveBridge(StringMaterial material,
+                                      BridgeModel model,
+                                      GuitarModel guitar) noexcept
+{
+    return bridgeSelectable(material, guitar) ? model : BridgeModel::Original;
+}
+
+BridgeModel effectiveBridge(const EngineParameters& parameters) noexcept
+{
+    return effectiveBridge(parameters.stringMaterial, parameters.bridgeModel,
+                           parameters.guitarModel);
+}
+
 // The original steel voice adapts Mores g21, a nylon-strung flamenco guitar.
 // The optional Fylde bank supplies measured steel-string bridge mobility;
 // radiation still uses the existing bank. Nylon retains its own g34 bank.
@@ -781,7 +807,7 @@ ConstSpan<detail::MeasuredBridgeMode> measuredBridgeBank(
         return detail::bellidoBridgeModes;
     if (material == StringMaterial::Steel)
     {
-        if (model == BridgeModel::FyldeSteel)
+        if (effectiveBridge(material, model, guitar) == BridgeModel::FyldeSteel)
             return detail::measuredFyldeBridgeModes;
         return detail::measuredSteelBridgeModes;
     }
@@ -934,8 +960,7 @@ bool sameStringConstruction(const EngineParameters& a,
 {
     return a.guitarModel == b.guitarModel
         && a.stringMaterial == b.stringMaterial
-        && (a.stringMaterial != StringMaterial::Steel
-            || a.bridgeModel == b.bridgeModel)
+        && effectiveBridge(a) == effectiveBridge(b)
         && a.tuning == b.tuning;
 }
 
@@ -2407,13 +2432,16 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
         || exact::abs(next.stringAge - parameters_.stringAge) > 1.0e-5f;
     const bool stringChanged = force
         || next.stringMaterial != parameters_.stringMaterial;
+    // A Bridge choice the construction does not play (nylon, the Bellido)
+    // changes nothing, so it rebuilds nothing under a ringing chord.
+    const bool bridgeModelChanged
+        = effectiveBridge(next) != effectiveBridge(parameters_);
     const bool bridgeChanged = modelChanged || stringChanged || shapeChanged
-        || (next.stringMaterial == StringMaterial::Steel
-            && next.bridgeModel != parameters_.bridgeModel);
+        || bridgeModelChanged;
     const bool tuningChanged = force || next.tuning != parameters_.tuning;
     if (force || next.stringMaterial != parameters_.stringMaterial
         || next.tuning != parameters_.tuning
-        || next.bridgeModel != parameters_.bridgeModel
+        || bridgeModelChanged
         || next.guitarModel != parameters_.guitarModel
         || shapeChanged
         || exact::bits(next.stringAge) != exact::bits(parameters_.stringAge))

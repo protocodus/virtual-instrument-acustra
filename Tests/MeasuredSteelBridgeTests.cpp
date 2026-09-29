@@ -240,6 +240,60 @@ void testNylonIsUnchanged()
     }
 }
 
+// The Bellido is one measured guitar with its own bridge, so on it the
+// Bridge choice selects nothing. Toggling it under a ringing chord must then
+// do nothing either: it used to rebuild the (identical) bridge, zero its
+// modes and drop the tails, a burst 2.6 times the chord (audit F7).
+void testInertBridgeChoiceDoesNothing()
+{
+    for (auto capture : { acustra::CaptureType::StereoMic,
+                          acustra::CaptureType::Piezo })
+        for (auto material : { StringMaterial::Steel, StringMaterial::Nylon })
+        {
+            EngineParameters parameters;
+            parameters.guitarModel = acustra::GuitarModel::Bellido1978;
+            parameters.stringMaterial = material;
+            parameters.capture = capture;
+            auto reference = std::make_unique<AcustraEngine>();
+            auto switching = std::make_unique<AcustraEngine>();
+            for (auto* engine : { reference.get(), switching.get() })
+            {
+                engine->setParameters(parameters);
+                engine->prepare(48000, 256);
+                engine->beginStrum();
+                for (std::size_t string = 0; string < chord.size(); ++string)
+                    engine->noteOn(chord[string], 0.8f, 1,
+                                   static_cast<int>(string) * 300, true);
+            }
+            std::array<float, 256> left {}, right {}, piezo {},
+                referenceLeft {}, referenceRight {}, referencePiezo {};
+            bool same = true;
+            for (int block = 0; block < 400; ++block)
+            {
+                if (block >= 180 && block % 40 == 0)
+                {
+                    parameters.bridgeModel
+                        = parameters.bridgeModel == BridgeModel::Original
+                        ? BridgeModel::FyldeSteel : BridgeModel::Original;
+                    switching->setParameters(parameters);
+                }
+                if (block == 250)
+                    for (auto* engine : { reference.get(), switching.get() })
+                        engine->noteOn(69, 0.6f, 2);
+                switching->process(left.data(), right.data(),
+                                   AcustraEngine::OutputBuses { piezo.data() }, 256);
+                reference->process(referenceLeft.data(), referenceRight.data(),
+                                   AcustraEngine::OutputBuses { referencePiezo.data() },
+                                   256);
+                same = same && left == referenceLeft && right == referenceRight
+                    && piezo == referencePiezo;
+            }
+            expect(same, std::string("toggling the Bridge choice on the Bellido with ")
+                       + (material == StringMaterial::Steel ? "steel" : "nylon")
+                       + " strings changed a ringing chord");
+        }
+}
+
 void testSwitchingUnderAChord()
 {
     double maximumRatio = 0.0;
@@ -297,6 +351,7 @@ int main()
     testBankAndOutput();
     testNylonIsUnchanged();
     testSwitchingUnderAChord();
+    testInertBridgeChoiceDoesNothing();
     if (failures != 0)
         return 1;
     std::cout << "All measured steel bridge tests passed\n";
