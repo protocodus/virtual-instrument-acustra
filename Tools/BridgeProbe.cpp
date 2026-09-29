@@ -155,8 +155,10 @@ int main(int argc, char** argv)
             = engine.getLastBridgeTailForce();
         telemetry[static_cast<std::size_t>(5 * sample + 3)]
             = engine.getLastBridgeVelocity();
-        telemetry[static_cast<std::size_t>(5 * sample + 4)]
-            = engine.getLastSympatheticRadiationForce();
+        // Column 5 held the engine's separate sympathetic force, which was
+        // always zero and is gone; the column stays so the five-column layout
+        // ExtractExcitation.py reads is unchanged.
+        telemetry[static_cast<std::size_t>(5 * sample + 4)] = 0.0f;
         const double power = engine.getLastBridgePower();
         cumulativeWork += power / rate;
         minimumWork = std::min(minimumWork, cumulativeWork);

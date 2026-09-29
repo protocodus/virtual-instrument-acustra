@@ -3173,8 +3173,9 @@ python3 Tools/AuditAttackBands.py --self-test
 
 For a generated-note bridge audit, the probe writes headerless 48 kHz
 little-endian float32 stereo audio plus a companion with five interleaved
-channels: main reaction force, body force, tail force, bridge velocity and
-sympathetic radiation force. The analyser reports matched-window magnitudes
+channels: main reaction force, body force, tail force, bridge velocity and a
+fifth that is always zero (the engine's separate sympathetic force, removed;
+idle strings reach the body through the junction). The analyser reports matched-window magnitudes
 and each signal's intra-signal harmonic phase relative to its H1; those phases
 are not cross-stage transfer phase:
 

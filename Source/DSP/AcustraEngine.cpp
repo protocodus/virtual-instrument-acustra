@@ -2839,10 +2839,6 @@ void AcustraEngine::reset() noexcept
     // runs before the pending parameters are adopted.
     configureBridge();
     configureBody();
-    for (auto& mode : bodyModes_)
-        mode.reset();
-    for (auto& mode : fadingBodyModes_)
-        mode.reset();
     bodyBank_.reset();
     fadingBodyBank_.reset();
     const auto notes = openNotes(parameters_.tuning);
@@ -2873,8 +2869,6 @@ void AcustraEngine::resetSoundState() noexcept
     idleQuietSamples_ = 0;
     idleFlushed_ = true;
     idleBlockPeak_ = 0.0f;
-    bodyRadiationDelay_.reset();
-    fadingBodyRadiationDelay_.reset();
     resetPiezo();
     piezoForceDerivative_.reset();
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
@@ -2894,7 +2888,6 @@ void AcustraEngine::resetSoundState() noexcept
     lastBridgeReactionForce_ = 0.0f;
     lastBridgeBodyForce_ = 0.0f;
     lastBridgeTailForce_ = 0.0f;
-    lastSympatheticRadiationForce_ = 0.0f;
     lastLongitudinalForce_ = 0.0f;
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
@@ -2906,10 +2899,6 @@ void AcustraEngine::resetSoundState() noexcept
     lastImpedanceSum_ = 0.0f;
     lastImpedanceMoment_ = 0.0f;
     lastImpedanceInertia_ = 0.0f;
-    for (auto& mode : bodyModes_)
-        mode.reset();
-    for (auto& mode : fadingBodyModes_)
-        mode.reset();
     bodyBank_.reset();
     fadingBodyBank_.reset();
 }
@@ -3221,9 +3210,7 @@ void AcustraEngine::configureBody() noexcept
     {
         if (bodyModelFade_ >= 1.0f)
         {
-            fadingBodyModes_ = bodyModes_;
             fadingBodyBank_ = bodyBank_;
-            fadingBodyRadiationDelay_ = bodyRadiationDelay_;
         }
         bodyModelFade_ = 0.0f;
     }
@@ -3254,9 +3241,7 @@ void AcustraEngine::configureBody() noexcept
     const bool steelBank = !named
         && parameters_.stringMaterial == StringMaterial::Steel;
     // Every bank that ships keeps its measured phase with no observation
-    // delay; the delay line stays for a bank that needs one.
-    bodyRadiationDelay_.reset();
-    bodyRadiationDelay_.configure(0.0f);
+    // delay, so renderBody plays the banks as they are.
 
     // One radiation mode into the next slot: `index` is its place in the bank
     // it was fitted in and `layerMorph` that bank's Shape morph; `share` is
@@ -3337,28 +3322,18 @@ void AcustraEngine::configureBody() noexcept
             measured.leftReal, measured.leftImaginary);
         const auto right = scaledResidue(
             measured.upperReal, measured.upperImaginary);
-        const auto upperMic = scaledResidue(
-            measured.upperReal, measured.upperImaginary);
         mode.leftReal = left.real();
         mode.leftImaginary = left.imag();
         mode.rightReal = right.real();
         mode.rightImaginary = right.imag();
-        mode.upperReal = upperMic.real();
-        mode.upperImaginary = upperMic.imag();
         const auto leftMoment = airGain * scaledResidue(
             measured.leftMomentReal, measured.leftMomentImaginary);
         const auto rightMoment = scaledResidue(
-            measured.upperMomentReal, measured.upperMomentImaginary);
-        const auto upperMoment = scaledResidue(
             measured.upperMomentReal, measured.upperMomentImaginary);
         mode.leftMomentReal = leftMoment.real();
         mode.leftMomentImaginary = leftMoment.imag();
         mode.rightMomentReal = rightMoment.real();
         mode.rightMomentImaginary = rightMoment.imag();
-        mode.upperMomentReal = upperMoment.real();
-        mode.upperMomentImaginary = upperMoment.imag();
-        if (bodyConfigured_)
-            mode.reset();
     };
     // Steel on its Original guitar plays the blend (SteelBodyBlend.h): g21's
     // bank, then the joint-pole body's kept modes on its own morph.
@@ -6622,7 +6597,6 @@ void AcustraEngine::setBridgeCouplingEnabled(bool enabled) noexcept
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
     lastBridgeBodyForce_ = 0.0f;
     lastBridgeTailForce_ = 0.0f;
-    lastSympatheticRadiationForce_ = 0.0f;
     lastLongitudinalForce_ = 0.0f;
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
@@ -7034,7 +7008,6 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                                 float horizontalBridgeDisplacement,
                                 float& directLeft,
                                 float& directRight,
-                                float& /*sympatheticForce: legacy observer, now always zero*/,
                                 float& longitudinalForce) noexcept
 {
     // A rigid bridge and nut each invert a displacement wave, so the collapsed
@@ -7186,45 +7159,6 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
 
 }
 
-void AcustraEngine::RadiationDelay::configure(float delaySamples) noexcept
-{
-    samples = delaySamples;
-    const int whole = static_cast<int>(samples);
-    firstTap = whole - 2;
-    const double position = 2.0 + double(samples) - whole;
-    // Centered fifth-order Lagrange interpolation avoids the treble loss of
-    // a two-tap delay at 44.1/88.2 kHz. All fitted delays are >=6.66 samples
-    // even at 8 kHz, so every tap is causal. Coefficients update off the
-    // per-sample path, and integer delays have exactly one unit coefficient.
-    for (int tap = 0; tap < 6; ++tap)
-    {
-        double weight = 1;
-        for (int other = 0; other < 6; ++other)
-            if (other != tap)
-                weight *= (position - other) / (tap - other);
-        weights[static_cast<std::size_t>(tap)] = static_cast<float>(weight);
-    }
-}
-
-AcustraEngine::BodyOutput AcustraEngine::RadiationDelay::process(BodyOutput input) noexcept
-{
-    if (!(samples > 0.0f))
-        return input;
-    history[static_cast<std::size_t>(writeIndex)] = input;
-    constexpr int capacity = static_cast<int>(std::tuple_size_v<decltype(history)>);
-    BodyOutput result;
-    for (int tap = 0; tap < 6; ++tap)
-    {
-        const auto& value = history[static_cast<std::size_t>((writeIndex - firstTap - tap + capacity) % capacity)];
-        const float weight = weights[static_cast<std::size_t>(tap)];
-        result.left += weight * value.left;
-        result.right += weight * value.right;
-        result.upper += weight * value.upper;
-    }
-    writeIndex = (writeIndex + 1) % capacity;
-    return result;
-}
-
 void AcustraEngine::BodyBank::load(const std::array<BodyMode, bodyModeCount>& modes,
                                    int modeCount, int orderedCount,
                                    bool resetStates) noexcept
@@ -7250,7 +7184,7 @@ void AcustraEngine::BodyBank::load(const std::array<BodyMode, bodyModeCount>& mo
     }
 }
 
-// BodyMode::processStereo and renderBody's flush, for four modes at a time.
+// Each mode's two-pole step and the flush of tiny states, four modes at a time.
 // Each lane is the scalar expression's own sequence of IEEE operations (the
 // same products, sums and order), so each mode's states and contributions
 // are the scalar ones bit for bit; the two sums then take the ordered modes'
@@ -7374,7 +7308,8 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
             ? 0.0f : nextMomentImaginary;
     }
 #endif
-    // The mono microphone's sum is the right channel's (processStereo).
+    // The mono microphone's sum is the right channel's: configureBody gives
+    // them the same residues.
     output.upper = output.right;
     return output;
 }
@@ -7382,12 +7317,10 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
 AcustraEngine::BodyOutput AcustraEngine::renderBody(float bridgeInput,
                                                    float bodyMoment) noexcept
 {
-    BodyOutput result = bodyRadiationDelay_.process(
-        bodyBank_.render(bridgeInput, bodyMoment));
+    BodyOutput result = bodyBank_.render(bridgeInput, bodyMoment);
     if (bodyModelFade_ < 1.0f)
     {
-        const BodyOutput previous = fadingBodyRadiationDelay_.process(
-            fadingBodyBank_.render(bridgeInput, bodyMoment));
+        const BodyOutput previous = fadingBodyBank_.render(bridgeInput, bodyMoment);
         const float mix = bodyModelFade_;
         result.left = previous.left + mix * (result.left - previous.left);
         result.right = previous.right + mix * (result.right - previous.right);
@@ -8110,7 +8043,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
 
         float directLeft = 0.0f;
         float directRight = 0.0f;
-        float sympatheticForce = 0.0f;
         float longitudinalForce = 0.0f;
         for (int string = 0; string < stringCount; ++string)
         {
@@ -8124,22 +8056,23 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 bridgeDisplacement + arm * bridgeRotation,
                 lastBridgeVelocity_ + arm * bridgeRotationRate,
                 -saddleHeight * bridgeRotation,
-                directLeft, directRight, sympatheticForce,
-                longitudinalForce);
+                directLeft, directRight, longitudinalForce);
         }
 
         // The load entering the body compliance drives measured radiation.
         // Idle-string reactions already enter that load through the shared
-        // junction; the legacy separate sympathetic sum remains zero.
-        // Axial radiation is still an additional one-way force surrogate.
-        // The microphone bank itself does not feed back into the junction.
-        lastSympatheticRadiationForce_ = sympatheticForce;
+        // junction. Axial radiation is still an additional one-way force
+        // surrogate. The microphone bank itself does not feed back into the
+        // junction.
         lastLongitudinalForce_ = longitudinalForce;
         // Same rigid-saddle basis as the paired measurement: F=Fb+Ft and
         // normalized moment T=M/a=Ft-Fb. Both inputs retain their measured
         // complex microphone phase. No extra stereo delay or gain is added.
+        // The + 0.0f is where a separate sympathetic force, always zero, was
+        // summed: it turns a -0.0 bridge force into +0.0 before the axial
+        // force is added, so the body hears the same bits as it did.
         const BodyOutput body = renderBody(lastBridgeBodyForce_
-            + lastSympatheticRadiationForce_ + lastLongitudinalForce_, bodyMomentRate);
+            + 0.0f + lastLongitudinalForce_, bodyMomentRate);
 
         // Strings themselves radiate poorly. Keep the small bridge-local path
         // separate from the measurement-derived, author-transformed soundboard
@@ -8305,11 +8238,6 @@ float AcustraEngine::getLastBridgeBodyForce() const noexcept
 float AcustraEngine::getLastBridgeTailForce() const noexcept
 {
     return lastBridgeTailForce_;
-}
-
-float AcustraEngine::getLastSympatheticRadiationForce() const noexcept
-{
-    return lastSympatheticRadiationForce_;
 }
 
 float AcustraEngine::getLastLongitudinalForce() const noexcept

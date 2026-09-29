@@ -2253,7 +2253,6 @@ void testSympatheticStringsAreAudibleButBounded()
     std::vector<float> probeOffRight(blockSize);
     double maximumActiveForce = 0.0;
     double maximumActiveForceDifference = 0.0;
-    double maximumMutedSympatheticForce = 0.0;
     for (int block = 0; block < 128; ++block)
     {
         activeOn.process(probeOnLeft.data(), probeOnRight.data(), blockSize);
@@ -2264,10 +2263,6 @@ void testSympatheticStringsAreAudibleButBounded()
                                       std::abs(onForce));
         maximumActiveForceDifference = std::max(
             maximumActiveForceDifference, std::abs(onForce - offForce));
-        maximumMutedSympatheticForce = std::max(
-            maximumMutedSympatheticForce,
-            static_cast<double>(std::abs(
-                activeOff.getLastSympatheticRadiationForce())));
     }
     // The idle strings are members of the junction, so taking them out
     // changes the load the played string sees: the bypass must move the
@@ -2276,8 +2271,6 @@ void testSympatheticStringsAreAudibleButBounded()
            "sympathetic bypass did not unload the bridge");
     expect(maximumActiveForceDifference < maximumActiveForce,
            "sympathetic bypass changed the bridge force by more than the note");
-    expect(maximumMutedSympatheticForce == 0.0,
-           "sympathetic bypass leaked idle-string radiation");
 
     constexpr double seconds = 4.0;
     const int begin = static_cast<int>(0.30 * sampleRate);
@@ -2340,7 +2333,6 @@ void testPassiveBridgeBranchesBalance()
         double maximumTailWork = 0.0;
         double maximumForce = 0.0;
         double maximumBalanceError = 0.0;
-        double maximumSympatheticForce = 0.0;
         for (int sample = 0; sample < static_cast<int>(4.0 * sampleRate);
              ++sample)
         {
@@ -2360,9 +2352,6 @@ void testPassiveBridgeBranchesBalance()
             maximumForce = std::max(maximumForce, std::abs(totalForce));
             maximumBalanceError = std::max(maximumBalanceError,
                 std::abs(totalForce - branchForce));
-            maximumSympatheticForce = std::max(maximumSympatheticForce,
-                static_cast<double>(std::abs(
-                    engine.getLastSympatheticRadiationForce())));
         }
 
         const std::string name = material == acustra::StringMaterial::Steel
@@ -2375,8 +2364,6 @@ void testPassiveBridgeBranchesBalance()
                name + " xi_b tail acquired negative stored energy");
         expect(maximumBalanceError < 1.0e-4 * maximumForce + 1.0e-10,
                name + " bridge/body/tail force balance did not close");
-        expect(maximumSympatheticForce == 0.0,
-               name + " an idle string radiated outside the junction");
     }
 }
 
@@ -6241,35 +6228,23 @@ void testLongitudinalModesGrowWithVelocity()
     std::cout << "Acustra longitudinal band growth: quiet=" << quietGrowth
               << " dB, loud=" << loudGrowth << " dB\n";
 
-    // Zero is an exact no-op, and the idle-string path stays separate from it.
+    // Zero is an exact no-op.
     auto engineOwner = std::make_unique<acustra::AcustraEngine>();
     auto& engine = *engineOwner;
     engine.setPhysicalCalibration(silent);
     engine.prepare(sampleRate, blockSize);
-    auto playingOwner = std::make_unique<acustra::AcustraEngine>();
-    auto& playing = *playingOwner;
-    playing.setPhysicalCalibration(acustra::fittedPhysicalCalibration);
-    playing.prepare(sampleRate, blockSize);
-    playing.setSympatheticStringsEnabled(false);
     engine.noteOn(52, 0.9f);
-    playing.noteOn(52, 0.9f);
     std::vector<float> left(static_cast<std::size_t>(blockSize));
     std::vector<float> right(static_cast<std::size_t>(blockSize));
     double silentForce = 0.0;
-    double leakedSympathy = 0.0;
     for (int block = 0; block < 96; ++block)
     {
         engine.process(left.data(), right.data(), blockSize);
-        playing.process(left.data(), right.data(), blockSize);
         silentForce = std::max(silentForce, static_cast<double>(
             std::abs(engine.getLastLongitudinalForce())));
-        leakedSympathy = std::max(leakedSympathy, static_cast<double>(
-            std::abs(playing.getLastSympatheticRadiationForce())));
     }
     expect(silentForce == 0.0,
            "a zero longitudinal gain still produced a force");
-    expect(leakedSympathy == 0.0,
-           "the longitudinal force leaked into the idle-string path");
 }
 
 void testTodaysMechanismsSurviveEachOther()

@@ -298,9 +298,6 @@ public:
     [[nodiscard]] float getLastBridgeReactionForce() const noexcept;
     [[nodiscard]] float getLastBridgeBodyForce() const noexcept;
     [[nodiscard]] float getLastBridgeTailForce() const noexcept;
-    // Legacy separate-sympathy observer, now zero: idle-string reactions enter
-    // the shared junction and are already included in the body force above.
-    [[nodiscard]] float getLastSympatheticRadiationForce() const noexcept;
     // The played strings' axial wave, observed separately from the two-way
     // junction because its current radiation surrogate remains one-way.
     [[nodiscard]] float getLastLongitudinalForce() const noexcept;
@@ -679,59 +676,16 @@ private:
         void advanceModes(float bodyForce, float bodyMoment) noexcept;
     };
 
+    // One radiation mode's coefficients, as configureBody places them:
+    // BodyBank holds the states and renders every mode (BodyBank::render).
+    // The mono microphone's residues are the right channel's, so the upper
+    // bout needs none of its own.
     struct BodyMode
     {
-        float real {}, imaginary {}, momentReal {}, momentImaginary {};
         float poleReal {}, poleImaginary {};
         float leftReal {}, leftImaginary {}, rightReal {}, rightImaginary {};
-        float upperReal {}, upperImaginary {};
         float leftMomentReal {}, leftMomentImaginary {};
         float rightMomentReal {}, rightMomentImaginary {};
-        float upperMomentReal {}, upperMomentImaginary {};
-
-        void process(float force, float moment, float& left,
-                     float& right, float& upper) noexcept
-        {
-            const float nextReal = force + poleReal * real - poleImaginary * imaginary;
-            const float nextImaginary = poleImaginary * real + poleReal * imaginary;
-            const float nextMomentReal = moment + poleReal * momentReal
-                                       - poleImaginary * momentImaginary;
-            const float nextMomentImaginary = poleImaginary * momentReal
-                                            + poleReal * momentImaginary;
-            real = nextReal;
-            imaginary = nextImaginary;
-            momentReal = nextMomentReal;
-            momentImaginary = nextMomentImaginary;
-            left += 2.0f * (leftReal * real - leftImaginary * imaginary
-                + leftMomentReal * momentReal - leftMomentImaginary * momentImaginary);
-            right += 2.0f * (rightReal * real - rightImaginary * imaginary
-                + rightMomentReal * momentReal - rightMomentImaginary * momentImaginary);
-            upper += 2.0f * (upperReal * real - upperImaginary * imaginary
-                + upperMomentReal * momentReal - upperMomentImaginary * momentImaginary);
-        }
-        // process() without the upper-bout sum: configureBody gives the
-        // right channel and the mono microphone the same residues, so their
-        // sums are the same numbers and renderBody forms that sum once. The
-        // expressions are process()'s own, so every bit is what it returns.
-        void processStereo(float force, float moment, float& left,
-                           float& right) noexcept
-        {
-            const float nextReal = force + poleReal * real - poleImaginary * imaginary;
-            const float nextImaginary = poleImaginary * real + poleReal * imaginary;
-            const float nextMomentReal = moment + poleReal * momentReal
-                                       - poleImaginary * momentImaginary;
-            const float nextMomentImaginary = poleImaginary * momentReal
-                                            + poleReal * momentImaginary;
-            real = nextReal;
-            imaginary = nextImaginary;
-            momentReal = nextMomentReal;
-            momentImaginary = nextMomentImaginary;
-            left += 2.0f * (leftReal * real - leftImaginary * imaginary
-                + leftMomentReal * momentReal - leftMomentImaginary * momentImaginary);
-            right += 2.0f * (rightReal * real - rightImaginary * imaginary
-                + rightMomentReal * momentReal - rightMomentImaginary * momentImaginary);
-        }
-        void reset() noexcept { real = imaginary = momentReal = momentImaginary = 0.0f; }
     };
 
     // Local-contact transport. Each tap is a fixed lossless
@@ -1001,8 +955,7 @@ private:
         int ordered { 0 };
 
         // The first modeCount modes' coefficients; with resetStates their
-        // states restart from rest, as configureBody's mode.reset() did.
-        // Slots past the bank are zero, as configureBody's mode = {} was.
+        // states restart from rest. Slots past the bank are zero.
         void load(const std::array<BodyMode, bodyModeCount>& modes,
                   int modeCount, int orderedCount, bool resetStates) noexcept;
         void reset() noexcept
@@ -1012,23 +965,12 @@ private:
             momentReal.fill(0.0f);
             momentImaginary.fill(0.0f);
         }
-        // BodyMode::processStereo for every mode, then the same flush of tiny
+        // Every mode's two-pole state advanced by the force and moment and
+        // summed into the left and right residues, then a flush of tiny
         // states. The ordered modes' sums accumulate in index order, as ever;
         // with vector extensions the modes after them gather four lanes
         // across their parts and are added to those sums once per sample.
         BodyOutput render(float force, float moment) noexcept;
-    };
-
-    struct RadiationDelay
-    {
-        // Largest supplied delay is 1 ms; capacity covers 384 kHz plus interpolation.
-        std::array<BodyOutput, 512> history {};
-        float samples {};
-        std::array<float, 6> weights { 0, 0, 1, 0, 0, 0 };
-        int firstTap {}, writeIndex {};
-        void configure(float delaySamples) noexcept;
-        BodyOutput process(BodyOutput input) noexcept;
-        void reset() noexcept { history.fill({}); writeIndex = 0; }
     };
 
     static EngineParameters sanitise(const EngineParameters&) noexcept;
@@ -1265,8 +1207,7 @@ private:
                      float bridgeDisplacement,
                      float bridgeVelocity, float horizontalBridgeDisplacement,
                      float& directLeft,
-                     float& directRight, float& sympatheticForce,
-                     float& longitudinalForce) noexcept;
+                     float& directRight, float& longitudinalForce) noexcept;
     BodyOutput renderBody(float bridgeInput, float bodyMoment) noexcept;
     float renderPiezo(float force) noexcept;
     void resetPiezo() noexcept;
@@ -1277,13 +1218,11 @@ private:
     PhysicalCalibration physicalCalibration_ { fittedPhysicalCalibration };
     std::array<Voice, stringCount> voices_ {};
     std::array<BodyMode, bodyModeCount> bodyModes_ {};
-    std::array<BodyMode, bodyModeCount> fadingBodyModes_ {};
     // What renderBody runs: the two banks above as BodyBank lanes, with
     // their states. Slots past a bank's own modes are all-zero padding
     // (configureBody); their contribution to every sum is exactly zero, so
     // BodyBank::count stops before them.
     BodyBank bodyBank_ {}, fadingBodyBank_ {};
-    RadiationDelay bodyRadiationDelay_ {}, fadingBodyRadiationDelay_ {};
     GuitarModel configuredGuitarModel_ { GuitarModel::Original };
     BodyShape configuredBodyShape_ { BodyShape::Dreadnought };
     BodyMaterial configuredBodyMaterial_ { BodyMaterial::Spruce };
@@ -1400,7 +1339,6 @@ private:
     float lastBridgeReactionForce_ { 0.0f };
     float lastBridgeBodyForce_ { 0.0f };
     float lastBridgeTailForce_ { 0.0f };
-    float lastSympatheticRadiationForce_ { 0.0f };
     float lastLongitudinalForce_ { 0.0f };
     float lastBridgePower_ { 0.0f };
     float lastBridgeBodyPower_ { 0.0f };
