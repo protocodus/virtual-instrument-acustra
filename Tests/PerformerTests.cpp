@@ -650,6 +650,43 @@ void testSustainMeetsSameSampleKeyUpsInOrder()
     expect(render(custom("gathered", 1.5, { on, off, pedal(0.5, true) }), 48000.0, 64, true)
                == render(custom("gathered", 1.5, { on, off }), 48000.0, 64, true),
            "a gathered pedal pressed after a key-up caught the note");
+
+    // An MPE member's key-up is held by its own pedal or the manager's, so
+    // one pedal lifted after it on its sample lets it go only if the other
+    // is up too. Lifting the member's pedal used to let it go under the
+    // manager's, and the manager's under the member's.
+    const std::vector<Event> zone { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 6),
+                                    message(0.0, 0xb0, 6, 15) };
+    const auto mpe = [&](std::vector<Event> events)
+    {
+        auto all = zone;
+        all.insert(all.end(), events.begin(), events.end());
+        return play(std::move(all));
+    };
+    const auto memberOn = message(0.0, 0x91, 60, 100);
+    const auto memberOff = message(0.5, 0x81, 60, 64);
+    const auto managerPedal = [](double seconds, bool down)
+    {
+        return message(seconds, 0xb0, 64, down ? 127 : 0);
+    };
+    const auto memberPedal = [](double seconds, bool down)
+    {
+        return message(seconds, 0xb1, 64, down ? 127 : 0);
+    };
+    const auto memberReleased = mpe({ memberOn, memberOff });
+    const auto underManager = mpe({ memberOn, managerPedal(0.2, true), memberOff });
+    expect(underManager != memberReleased, "the manager's pedal did not hold a member");
+    expect(mpe({ memberOn, managerPedal(0.2, true), memberPedal(0.2, true), memberOff,
+                 memberPedal(0.5, false) }) == underManager,
+           "a member's pedal lifted after its key-up let it go under the manager's");
+    expect(mpe({ memberOn, managerPedal(0.2, true), memberPedal(0.2, true), memberOff,
+                 managerPedal(0.5, false) })
+               == mpe({ memberOn, memberPedal(0.2, true), memberOff }),
+           "the manager's pedal lifted after a member's key-up let it go under "
+           "the member's own");
+    expect(mpe({ memberOn, managerPedal(0.2, true), memberOff, managerPedal(0.5, false) })
+               == memberReleased,
+           "the manager's pedal lifted after a member's key-up did not let it go");
 }
 
 void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)

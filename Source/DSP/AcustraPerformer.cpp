@@ -346,21 +346,21 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
         // A key-up waits for its sample's Note Ons, but the pedal meets it
         // in the order the host sent them: one pressed after it does not
         // catch it, and one lifted after it lets it go, whatever the pedal
-        // does next on this sample.
+        // does next on this sample - unless another pedal still holds it (an
+        // MPE member's key-up is held by its own pedal or the manager's).
+        dispatchMidiData(data, size);
         if (status == 0xb0u && size >= 3 && (data[1] & 0x7fu) == 64u)
         {
-            const bool down = (data[2] & 0x7fu) >= 64u;
             for (int index = 0; index < pendingNoteOffCount_; ++index)
             {
                 auto& off = pendingNoteOffs_[static_cast<std::size_t>(index)];
                 if (!channelIsInControllerScope(midiChannel, off.channel))
                     continue;
                 off.pedalMoved = true;
-                if (!down)
-                    off.sustained = false;
+                off.sustained = off.sustained
+                    && engine_.sustainHolds(off.channel);
             }
         }
-        dispatchMidiData(data, size);
     }
     return false;
 }
