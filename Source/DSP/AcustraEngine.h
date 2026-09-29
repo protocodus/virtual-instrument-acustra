@@ -682,6 +682,10 @@ private:
         }
     };
 
+    // What a string's bridge anchor holds before configureVoice first sets
+    // it; prepare() restores it (see restartRandomDraws).
+    static constexpr float initialBridgeTailStiffness = 10000.0f;
+
     struct Voice
     {
         std::array<StringLoop, 2> loops {};
@@ -787,7 +791,7 @@ private:
         // The string's tension now, in newtons, bend included. Kept so the
         // bend can be checked against Grimes' law rather than inferred.
         float tensionNewtons { 0.0f };
-        float bridgeTailStiffness { 10000.0f };
+        float bridgeTailStiffness { initialBridgeTailStiffness };
         float attackPitchCents { 0.0f };
         float attackPitchDecay { 1.0f };
         float frozenMemberPitchBendSemitones { 0.0f };
@@ -1026,6 +1030,7 @@ private:
     static void applyPlectrumSlip(StringLoop& loop, int length,
                                   double slipPole) noexcept;
     void resetSoundState() noexcept;
+    void restartRandomDraws() noexcept;
     void freezeMemberPitchBend(Voice& voice) noexcept;
     [[nodiscard]] bool isLowerZoneMaster(int midiChannel) const noexcept;
     [[nodiscard]] bool isLowerZoneMember(int midiChannel) const noexcept;

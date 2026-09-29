@@ -1568,10 +1568,29 @@ AcustraEngine::AcustraEngine() noexcept
         auto& voice = voices_[static_cast<std::size_t>(string)];
         voice.openMidi = notes[static_cast<std::size_t>(string)];
         voice.midiNote = voice.openMidi;
+    }
+    restartRandomDraws();
+}
+
+// Every random draw starts again from the constructor's seeds, and every
+// bridge anchor from its constructed value, so a prepared engine plays as a
+// new one does, whatever it played before or at whichever rate. The anchors
+// belong here because reset() settles the open strings' delays from every
+// string's anchor at that moment (see bridgePortMobility). reset() alone
+// does not restart the draws: a panic is not a new performance, and the
+// strums after it keep varying as repeated real strums do.
+void AcustraEngine::restartRandomDraws() noexcept
+{
+    strumRandomState_ = 0x9e3779b9u;
+    strumSpeedScale_ = 1.0f;
+    for (int string = 0; string < stringCount; ++string)
+    {
+        auto& voice = voices_[static_cast<std::size_t>(string)];
         voice.randomState = 0x9e3779b9u
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 1));
         voice.contactNoiseState = 0x2545f491u
             ^ (0x9e3779b9u * static_cast<std::uint32_t>(string + 1));
+        voice.bridgeTailStiffness = initialBridgeTailStiffness;
     }
 }
 
@@ -2230,6 +2249,7 @@ void AcustraEngine::prepare(double sampleRate, int)
     bodyModelFadeStep_ = 1.0f
         / (0.040f * static_cast<float>(sampleRate_));
     prepared_ = true;
+    restartRandomDraws();
     reset();
 }
 

@@ -1770,6 +1770,73 @@ void testUnsupportedSampleRatesClampToTheModelledRange()
            "sampleRate() did not report the rate the engine models");
 }
 
+// prepare() starts a performance over: an engine that has played, and been
+// prepared at other rates in between, then plays exactly as a new one does,
+// strum timing and contact noise included, so a host's re-prepare before an
+// offline bounce cannot change it (audit F26). reset() alone keeps drawing,
+// so repeated strums after a panic still vary.
+void testPrepareRestartsThePerformanceExactly()
+{
+    struct Config { const char* name; acustra::EngineParameters parameters; };
+    std::vector<Config> configs;
+    configs.push_back({ "steel", {} });
+    {
+        acustra::EngineParameters nylon;
+        nylon.stringMaterial = acustra::StringMaterial::Nylon;
+        nylon.guitarModel = acustra::GuitarModel::Bellido1978;
+        configs.push_back({ "nylon Bellido 1978", nylon });
+        acustra::EngineParameters fylde;
+        fylde.bridgeModel = acustra::BridgeModel::FyldeSteel;
+        fylde.shape = acustra::BodyShape::Jumbo;
+        fylde.bodyMaterial = acustra::BodyMaterial::Maple;
+        fylde.picking = acustra::PickingTechnique::Pick;
+        configs.push_back({ "Fylde jumbo maple pick", fylde });
+    }
+    const auto strum = [] (acustra::AcustraEngine& engine, float seconds)
+    {
+        engine.beginStrum();
+        const int notes[] { 45, 52, 57, 61, 64 };
+        for (int rank = 0; rank < 5; ++rank)
+            engine.noteOn(notes[rank], 0.8f, 1,
+                          engine.strumDelaySamples(rank, 0.8f), true);
+        std::vector<float> left(64), right(64), all;
+        const int blocks = static_cast<int>(seconds * engine.sampleRate() / 64.0);
+        for (int block = 0; block < blocks; ++block)
+        {
+            if (block == blocks / 2)
+                engine.noteOn(57, 0.6f);
+            engine.process(left.data(), right.data(), 64);
+            all.insert(all.end(), left.begin(), left.end());
+            all.insert(all.end(), right.begin(), right.end());
+        }
+        return all;
+    };
+    for (const auto& config : configs)
+    {
+        auto fresh = std::make_unique<acustra::AcustraEngine>();
+        fresh->setParameters(config.parameters);
+        fresh->prepare(48000.0, 64);
+        const auto reference = strum(*fresh, 0.5f);
+
+        auto replayed = std::make_unique<acustra::AcustraEngine>();
+        replayed->setParameters(config.parameters);
+        replayed->prepare(48000.0, 64);
+        static_cast<void>(strum(*replayed, 0.3f));
+        replayed->prepare(96000.0, 64);
+        static_cast<void>(strum(*replayed, 0.1f));
+        replayed->prepare(44100.0, 64);
+        replayed->prepare(48000.0, 64);
+        expect(strum(*replayed, 0.5f) == reference,
+               std::string(config.name) + ": a re-prepared engine did not "
+               "play exactly as a new one");
+
+        // A panic is not a new performance: the next strum draws on.
+        fresh->reset();
+        expect(strum(*fresh, 0.5f) != reference,
+               std::string(config.name) + ": reset() repeated the last strum");
+    }
+}
+
 void testPlayableRangeFollowsTuning()
 {
     acustra::AcustraEngine standard;
@@ -7548,6 +7615,7 @@ int main()
     testLossFiltersPreserveTheReferenceTransfer();
     testSilenceAndFiniteOutput();
     testUnsupportedSampleRatesClampToTheModelledRange();
+    testPrepareRestartsThePerformanceExactly();
     testPlayableRangeFollowsTuning();
     testSteelRetuningPreservesStringMass();
     testAudiblePhysicalDecay();
