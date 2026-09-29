@@ -355,7 +355,9 @@ std::complex<double> analogSaddle(double frequency, double rate)
 
 // One hard strum as the piezo's pre-preamp voltage (getLastPiezoVoltage) and
 // its driving force, sample by sample: an open E major downstroke, low E
-// first, 9 ms apart, as Tools/CalibratePiezo.py plays it.
+// first, 9 ms apart, as Tools/CalibratePiezo.py plays it. `strokes` > 0
+// instead plays that many of the player's own strums, one every 1.2 s, each
+// string at its own drawn level (strumMember) - the hottest a stroke gets.
 struct Strum
 {
     std::vector<float> volts, force;
@@ -363,21 +365,32 @@ struct Strum
 
 Strum hardStrum(double rate, float velocity, float touch,
                 acustra::StringMaterial material = acustra::StringMaterial::Steel,
-                double seconds = 2.5)
+                acustra::PickingTechnique picking = acustra::PickingTechnique::Finger,
+                double seconds = 2.5, int strokes = 0)
 {
     acustra::EngineParameters parameters;
     parameters.touch = touch;
     parameters.stringMaterial = material;
+    parameters.picking = picking;
     auto engine = std::make_unique<acustra::AcustraEngine>();
     engine->setParameters(parameters);
     engine->prepare(rate, 64);
     engine->setStringPerChannelMode(true);
     constexpr std::array notes { 40, 47, 52, 56, 59, 64 };
     Strum strum;
-    const auto length = static_cast<long>(rate * seconds);
+    const auto period = std::lround(rate * 1.2);
+    const auto length = strokes > 0 ? period * strokes : static_cast<long>(rate * seconds);
     for (long sample = 0; sample < length; ++sample)
     {
-        for (int string = 0; string < 6; ++string)
+        if (strokes > 0 && sample % period == std::lround(rate * 0.05))
+        {
+            engine->beginStrum();
+            for (int string = 0; string < 6; ++string)
+                engine->noteOn(notes[static_cast<std::size_t>(string)], velocity,
+                               string + 1, static_cast<int>(std::lround(rate * 0.009 * string)),
+                               true);
+        }
+        for (int string = 0; strokes == 0 && string < 6; ++string)
             if (sample == std::lround(rate * (0.1 + 0.009 * string)))
                 engine->noteOn(notes[static_cast<std::size_t>(string)], velocity,
                                string + 1);
@@ -662,15 +675,18 @@ void testPiezoCoupling()
 }
 
 // 5b. Aliasing: the preamp runs at the host rate without oversampling. Its
-// output for the hardest strum is compared with the same curve run 8x
-// oversampled (band-limited interpolation in double) and brought back to
-// the host rate; both then pass the host-rate output coupling. What differs
-// below 0.45 fs is what the curve folded back.
+// output for the hardest strums - velocity 127 at full Touch, Finger and
+// the hotter Pick, on both string materials - is compared with the same
+// curve run 8x oversampled (band-limited interpolation in double) and
+// brought back to the host rate; both then pass the host-rate output
+// coupling. What differs below 0.45 fs is what the curve folded back.
 void testPiezoAliasing()
 {
     for (int rate : { 44100, 48000 })
+    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
+    for (auto picking : { acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick })
     {
-        auto strum = hardStrum(rate, 1.0f, 1.0f);
+        auto strum = hardStrum(rate, 1.0f, 1.0f, material, picking);
         auto& volts = strum.volts;
         const std::size_t fade = static_cast<std::size_t>(rate / 10);
         for (std::size_t i = 0; i < fade; ++i)
@@ -712,10 +728,13 @@ void testPiezoAliasing()
             signal += std::norm(reference);
         }
         const double aliasDb = 10.0 * std::log10(error / signal);
-        expect(aliasDb < -70.0, "piezo preamp aliasing is above -70 dB at "
-                                    + std::to_string(rate));
-        std::cout << "Piezo preamp aliasing on the hardest strum at " << rate
-                  << " Hz: " << aliasDb << " dB\n";
+        const std::string name = std::string(
+            material == acustra::StringMaterial::Steel ? "steel " : "nylon ")
+            + (picking == acustra::PickingTechnique::Pick ? "Pick" : "Finger");
+        expect(aliasDb < -70.0, "piezo preamp aliasing is above -70 dB on the "
+                                    + name + " strum at " + std::to_string(rate));
+        std::cout << "Piezo preamp aliasing on the hardest " << name << " strum at "
+                  << rate << " Hz: " << aliasDb << " dB\n";
     }
 }
 
@@ -745,7 +764,8 @@ void testPiezoSilence()
     }
     for (int rate : { 44100, 48000, 96000, 192000 })
     {
-        const auto strum = hardStrum(rate, 1.0f, 1.0f, acustra::StringMaterial::Steel, 0.3);
+        const auto strum = hardStrum(rate, 1.0f, 1.0f, acustra::StringMaterial::Steel,
+                                     acustra::PickingTechnique::Pick, 0.3);
         // Cut where the chain is driven hardest, and leave it to ring down.
         std::size_t cut = 0;
         for (std::size_t i = 0; i < strum.volts.size(); ++i)
@@ -982,40 +1002,117 @@ void testPiezoDoesNotReachTheMicrophones()
     }
 }
 
-// 9. Where the preamp's knee sits: the velocity-100 reference strum stays
-// on its exactly linear part, and the hardest strum at full Touch loses no
-// more than 1.5 dB of its peak to it.
+// 9. Where the preamp's knee sits: velocity-100 reference strums stay on its
+// exactly linear part with Finger and Pick, both string materials and any
+// Touch; the hardest ones - velocity 127, and the player's strums with each
+// string at its own drawn level - lose no more than 1.5 dB of their peak to
+// it; and the hottest Pick strum is the sensitivity's 1 V anchor.
 void testPiezoClipPlacement()
 {
     const auto clipLossDb = [] (const std::vector<float>& volts)
     {
         float peak = 0.0f;
+        double worst = 0.0;
         for (float value : volts)
+        {
             if (std::abs(value) > std::abs(peak))
                 peak = value;
-        const double rail = peak >= 0.0f ? Design::positiveRail : Design::negativeRail;
-        const double knee = Design::kneeShare * rail;
-        const double magnitude = std::abs(static_cast<double>(peak));
-        if (magnitude <= knee)
-            return std::pair<double, double> { magnitude, 0.0 };
-        const double excess = magnitude - knee;
-        return std::pair<double, double> { magnitude,
-            decibels((knee + excess / (1.0 + excess / (rail - knee))) / magnitude) };
+            const double rail = value >= 0.0f ? Design::positiveRail : Design::negativeRail;
+            const double knee = Design::kneeShare * rail;
+            const double magnitude = std::abs(static_cast<double>(value));
+            if (magnitude > knee)
+            {
+                const double excess = magnitude - knee;
+                worst = std::min(worst, decibels(
+                    (knee + excess / (1.0 + excess / (rail - knee))) / magnitude));
+            }
+        }
+        return std::pair<double, double> { std::abs(static_cast<double>(peak)), worst };
     };
-    bool linear = true;
-    for (float velocity : { 100.0f / 127.0f })
+    const auto name = [] (acustra::StringMaterial material,
+                          acustra::PickingTechnique picking)
     {
-        const auto strum = hardStrum(48000, velocity, 0.58f);
-        for (float value : strum.volts)
-            linear = linear && std::abs(value) <= Design::kneeShare
-                * (value >= 0.0f ? Design::positiveRail : Design::negativeRail);
-        std::cout << "Piezo velocity-100 strum peak " << clipLossDb(strum.volts).first << " V\n";
+        return std::string(material == acustra::StringMaterial::Steel ? "steel " : "nylon ")
+            + (picking == acustra::PickingTechnique::Pick ? "Pick" : "Finger");
+    };
+    double hottest = 0.0;
+    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
+    for (auto picking : { acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick })
+    {
+        for (float touch : { 0.0f, 0.58f, 1.0f })
+        {
+            const auto soft = hardStrum(48000, 100.0f / 127.0f, touch, material, picking);
+            bool linear = true;
+            for (float value : soft.volts)
+                linear = linear && std::abs(value) <= Design::kneeShare
+                    * (value >= 0.0f ? Design::positiveRail : Design::negativeRail);
+            expect(linear, "a velocity-100 " + name(material, picking)
+                               + " strum reached the piezo preamp's knee");
+            const auto hard = clipLossDb(hardStrum(48000, 1.0f, touch, material, picking).volts);
+            expect(hard.second >= -1.5, "the preamp's knee took more than 1.5 dB off the "
+                                            + name(material, picking) + " strum");
+            hottest = std::max(hottest, hard.first);
+            if (touch == 1.0f)
+                std::cout << "Piezo " << name(material, picking) << " strum peak, velocity 100: "
+                          << clipLossDb(soft.volts).first << " V; velocity 127: "
+                          << hard.first << " V, knee loss " << hard.second << " dB\n";
+        }
+        if (picking == acustra::PickingTechnique::Pick)
+        {
+            const auto strummed = clipLossDb(hardStrum(48000, 1.0f, 0.58f, material, picking,
+                                                       0.0, 12).volts);
+            expect(strummed.second >= -1.5, "the preamp's knee took more than 1.5 dB off "
+                                                "the player's " + name(material, picking) + " strums");
+            std::cout << "Piezo player's " << name(material, picking) << " strums, velocity 127: peak "
+                      << strummed.first << " V, knee loss " << strummed.second << " dB\n";
+        }
     }
-    expect(linear, "a velocity-100 strum reached the piezo preamp's knee");
-    const auto hardest = clipLossDb(hardStrum(48000, 1.0f, 1.0f).volts);
-    expect(hardest.second >= -1.5, "the preamp's knee took more than 1.5 dB off the hardest strum");
-    std::cout << "Piezo hardest strum peak " << hardest.first << " V, knee loss "
-              << hardest.second << " dB\n";
+    // The anchor is the hottest of every preset (Tools/CalibratePiezo.py);
+    // the default construction's own hottest Pick strum sits just under it.
+    expect(hottest <= 1.0 && hottest > 0.9, "the hottest Pick strum is not near the 1 V anchor: "
+                                                + std::to_string(hottest));
+}
+
+// 6b. An idle instrument after playing: a chord released, then left alone,
+// reaches exact zero on Main (Capture = Piezo) and on the Piezo output and
+// stays there, although the saddle force's rounding never quite does.
+void testPiezoSilentAfterPlaying()
+{
+    for (int rate : { 44100, 48000 })
+    for (auto material : { acustra::StringMaterial::Steel, acustra::StringMaterial::Nylon })
+    {
+        acustra::EngineParameters parameters;
+        parameters.capture = acustra::CaptureType::Piezo;
+        parameters.stringMaterial = material;
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->setParameters(parameters);
+        engine->prepare(rate, 64);
+        engine->setStringPerChannelMode(true);
+        constexpr std::array notes { 40, 47, 52, 56, 59, 64 };
+        for (int string = 0; string < 6; ++string)
+            engine->noteOn(notes[static_cast<std::size_t>(string)], 1.0f, string + 1);
+        std::array<float, 64> left {}, right {}, piezo {};
+        const long blocks = 30L * rate / 64;
+        long lastNonzero = -1;
+        for (long block = 0; block < blocks; ++block)
+        {
+            if (block == rate / 2 / 64)
+                for (int string = 0; string < 6; ++string)
+                    engine->noteOff(notes[static_cast<std::size_t>(string)], string + 1);
+            engine->process(left.data(), right.data(),
+                            acustra::AcustraEngine::OutputBuses { piezo.data() }, 64);
+            for (std::size_t i = 0; i < 64; ++i)
+                if (left[i] != 0.0f || right[i] != 0.0f || piezo[i] != 0.0f)
+                    lastNonzero = block;
+        }
+        const double seconds = static_cast<double>((lastNonzero + 1) * 64) / rate;
+        expect(seconds < 25.0, "the piezo was not exact silence after playing at "
+                                   + std::to_string(rate)
+                                   + (material == acustra::StringMaterial::Steel
+                                          ? " (steel)" : " (nylon)"));
+        std::cout << "Piezo exact silence " << seconds << " s after a chord at " << rate << " Hz ("
+                  << (material == acustra::StringMaterial::Steel ? "steel" : "nylon") << ")\n";
+    }
 }
 
 // 10. The chain's small-signal response - saddle resonance and electrical
@@ -1055,6 +1152,7 @@ int main()
     testPiezoCoupling();
     testPiezoAliasing();
     testPiezoSilence();
+    testPiezoSilentAfterPlaying();
     testLoadedPiezoStaysWarmWhileUnheard();
     testPiezoSwitchingIsClickFree();
     testPiezoDoesNotReachTheMicrophones();

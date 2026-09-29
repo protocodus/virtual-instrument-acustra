@@ -9,7 +9,9 @@ release or capture tests alone does not establish that broader end state.
 ## Verified behavior changes
 
 - Normal note release is dissipative at every MIDI release velocity. Active
-  pull-offs require CC68. See [release measurements](release-fix-2026-09-08.md).
+  pull-offs required CC68 until legato was removed on 2026-09-28, at the
+  user's request (Docs/decisions.md); every key-up now damps. See
+  [release measurements](release-fix-2026-09-08.md).
 - The editor exposes only Stereo mic, Mono mic and Piezo. Mono uses the
   measured upper microphone response identically on L/R; piezo includes its
   electrical load. Retired signal paths are removed and saved states migrate.

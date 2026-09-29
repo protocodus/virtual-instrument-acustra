@@ -17,8 +17,9 @@ What this repository now does:
 - `AcustraEngine::OutputBuses` is `{ float* piezo }`: `process(left, right,
   buses, numSamples)` renders Main (still Capture-selected) and, when
   `buses.piezo` is not null, the mono Piezo line in the same pass; a null
-  pointer is never written and costs nothing (the piezo chain runs for
-  Capture anyway). `Performer::beginBlock` and `Performer::process` take the
+  pointer is never written and costs nothing extra: the piezo chain runs
+  every sample whatever Capture selects, so a switch lands on warm state.
+  `Performer::beginBlock` and `Performer::process` take the
   same struct and split it at events like Main. The two-pointer forms are
   unchanged.
 - The plug-in has two output buses: "Output" (stereo, always on) and the
@@ -62,24 +63,32 @@ sample:
    F_i = inc_i - Z_i (x + u_i r), weighted -0.8, +0.4, +0.9, -0.3, +0.6 and
    -1.0 dB low E to high E, scaled to sum to six (chosen, inside the +-1-2 dB
    of a good install), plus the axial force at unit weight (zero while
-   longitudinalGain ships at 0). Three sums per string alongside the
+   longitudinalGain ships at 0; the weight is unvalidated: the surrogate's
+   scale is far from physical, a Pick strum reaching +-4.4 V at the element
+   with longitudinalGain 0.05 and +-18 V at 0.2, and the string's break
+   angle over the saddle would argue for 0.3-0.6, so it waits on a re-fit
+   of longitudinalGain). Three sums per string alongside the
    junction's own and a second derivative; unit weights reproduce the
    reaction force bit for bit.
 2. Saddle mass on the element: a resonant low-pass, unit DC gain, f0 = 5 kHz,
    Q = 3 (placed from Zollner's bridge-piece stiffness; f0 and Q chosen).
-3. Charge to voltage: sensitivity S = 108.328 V per engine force unit, set by
-   `Tools/CalibratePiezo.py` so the reference hard strum (default
-   construction, steel, Finger, velocity 127, open E major downstroke at
-   48 kHz) peaks at Zollner's 1 V. The physical cross-check (tension times
-   slope at 0.2 V/N, with the fitted 6.1 mm displacement unit) gives
-   58.56 V/unit, a ratio of 1.85, inside the factor of two the design
-   allows. Then the existing 450 pF / 2 MOhm electrical load, unchanged.
+3. Charge to voltage: sensitivity S = 35.1104 V per engine force unit, set by
+   `Tools/CalibratePiezo.py` so the hottest reference strum peaks at
+   Zollner's 1 V: an open E major downstroke at velocity 127 with the Pick,
+   at 48 kHz, over the six Guitar presets strung with each material and
+   Touch 0, 0.58 and 1 (the hottest is Bellido 1978, nylon, Touch 1). A
+   Finger strum at velocity 127 peaks at 0.32 V. The physical cross-check
+   (tension times slope at 0.2 V/N, with the fitted 6.1 mm displacement
+   unit) gives 58.56 V/unit, a ratio of 0.60, inside the factor of two the
+   design allows. Then the existing 450 pF / 2 MOhm electrical load,
+   unchanged. (First anchored on the Finger strum, at 108.328; see the
+   review note below.)
 4. Preamp buffer: exactly linear to 0.8 of its rails, then safetyLimit's C1
    curve toward them, plus a*c^2 with a = 0.01 (0.5% second harmonic at 1 V).
    Rails 1.01 V positive and 1.23 V negative (chosen asymmetry).
 5. Output coupling: a 5 Hz DC blocker. No EQ.
-6. Level: per-material trim on top of the material reference, steel 2.61767
-   (+8.36 dB) and nylon 3.01828 (+9.60 dB): the median BS.1770 loudness of
+6. Level: per-material trim on top of the material reference, steel 2.59727
+   (+8.29 dB) and nylon 2.98809 (+9.51 dB): the median BS.1770 loudness of
    Capture = Piezo equals the stereo microphones' over the loudness grid
    (six constructions x both strings x Finger and Pick x six performances,
    72 pairs per material; residual median 0.00 LU). The piezo was 8.4 LU
@@ -95,11 +104,9 @@ reason:
   response to 15 kHz at 44.1 kHz, with the same DC gain, gain Q at f0 and
   peak (9.665 dB).
 - The rails are swapped from the spec's 1.23 V positive / 1.01 V negative.
-  The reference strum peaks at -1.00 / +0.78 V, so with the lower rail on
-  the negative side a velocity-100 strum reached the knee (0.811 V against
-  0.808 V), which the spec's test forbids. Which sign the element's wiring
-  gives a downward force is arbitrary. Now the hardest strum loses 0.01 dB
-  to the knee and the velocity-100 strum stays linear.
+  The saddle force's larger excursions are negative (the anchor strum peaks
+  at -1.00 / +0.55 V), so the higher rail takes them. Which sign the
+  element's wiring gives a downward force is arbitrary.
 - The saddle filter's two states are flushed together: flushed one at a time
   they held each other near the 1e-30 floor indefinitely at 44.1 kHz.
 - Tests changed where the spec's target was not the analytic one: the
@@ -108,9 +115,10 @@ reason:
   slope (-13.8 dB/oct from 2 f0 to 4 f0, not -11 to -13); the second harmonic
   at 0.5 V (a 1 V sine reaches the lower knee at 0.808 V and reads -32 dB,
   from the knee's asymmetry, not the -46 dB of the even-order term).
-- Aliasing is gated on the hardest strum only, against an 8x-oversampled run
-  with the host-rate coupling applied to both (-97 dB at 48 kHz, -101 dB at
-  44.1 kHz). Run through the coupling at each rate, the coupling's own
+- Aliasing is gated on the hardest strums, Finger and Pick on both strings
+  at velocity 127 and full Touch, against an 8x-oversampled run with the
+  host-rate coupling applied to both (-106 to -133 dB at 44.1 and 48 kHz).
+  Run through the coupling at each rate, the coupling's own
   0.003 dB high-frequency difference read as -70 dB "aliasing". The spec's
   1.2 V sine sweep is not adopted: straight into the curve it folds back at
   -25 dB from 8 kHz up (at -18 dB through the saddle peak at 5 kHz), which
@@ -126,9 +134,16 @@ reason:
   and piezo differ for that note; the switched render equals the crossfade of
   the two unswitched renders to 3.7e-9.
 - Silence: the engine's saddle force does not reach exact zero after a note
-  (still nonzero 120 s after release, with the previous piezo too), so the
-  chain's own ring-down is tested: exact zero 1.09-1.23 s after its hardest
-  moment, at 44.1-192 kHz. After a steel chord's release the Piezo output
+  (still nonzero 120 s after release, with the previous piezo too): last-bit
+  rounding in the saddle sums holds it near 1e-21 to 1e-15. The chain reads
+  a force below a picovolt at the element (-240 dBV) as none, so after a
+  released chord Main on Capture = Piezo and the Piezo output reach exact
+  zero in 14.5-20.2 s (steel and nylon, 44.1-96 kHz) and stay there; the
+  chain's own ring-down is exact zero 1.13-1.15 s after its hardest moment,
+  at 44.1-192 kHz. The microphones' own residue is unchanged: after a steel
+  chord at 48 kHz, or a nylon one at 96 kHz, Stereo mic still carries about
+  1e-12 indefinitely, as it did before this change. After a steel chord's
+  release the Piezo output
   now stays above the Rack Extension's 1e-6 idle threshold for 4.18 s
   (3.45 s before), the level match's 8.4 dB.
 - The per-phrase level spread is reported, not gated: microphones minus
@@ -159,8 +174,37 @@ changes, bends and tail at 44.1 and 48 kHz (3 runs each; tail at 48 kHz read
 40-75 us; idle stays at 0.2 us.
 
 Existing sessions on Capture = Piezo (and the retired Saddle piezo and
-Magnetic, which load as it) sound different and play 8-10 dB louder. The
+Magnetic, which load as it) sound different and play louder: about 8 dB on
+steel, and about 15 dB on nylon, where the level match stacks with nylon's
+own 5.47 dB rise (2026-09-28). The
 Rack Extension's goldens for Piezo patches change with the submodule bump.
+
+Revised after review, the same day: the first calibration anchored S on the
+Finger strum, and a Pick strum drives the saddle about 2.5-3x harder. With
+it, velocity 100 with the Pick reached the knee and velocity 127 lost 5-7 dB
+of its peak (7.4 dB on nylon) with aliasing at -57 to -59 dB, failing the
+spec's own knee and aliasing gates, which had been run on Finger alone. S is
+now anchored on the hottest Pick strum (item 3), a third of what it was, and
+the gates run on Finger and Pick on both strings: velocity-100 strums peak at
+0.23-0.70 V against the 0.98 V knee at any Touch; velocity-127 strums lose at
+most 0.06 dB (the hottest preset at 44.1 kHz); the player's own strums, each
+string at its own drawn level, lose up to 1.0 dB (steel) and 1.4 dB (nylon)
+on their hottest instant over twelve strokes, across the six presets at 44.1
+and 48 kHz, with aliasing at -69 to -83 dB (the default guitar: 0.85 and
+1.15 dB, as the test prints).
+Only the edge of the range overdrives it: the Pick at velocity 127 at Pluck
+Position 0, right at the saddle, peaks at up to 1.95 V on nylon and 1.40 V
+on steel (any preset and Touch), losing up to 4.3 and 1.9 dB of one
+downstroke's peak (4.9 and 3.6 dB over twelve of the player's strums) with
+-61 to -69 dB folded back. It is kept as the overload a real onboard preamp
+gives there: the physical estimate (58.56 V/unit) puts that attack near
+3 V at the element. Anchoring S on it instead would halve S again, to 0.31
+of the physical estimate, and leave the knee all but unreachable;
+oversampling the curve (2x, or ADAA, which the spec rejected for its
+half-sample loss) is the remedy if the fold-back is ever heard. The trims
+moved by 0.07 and 0.09 LU. Median microphones minus
+piezo splits by playing as before: about +2.0 LU with Finger and -1.8 LU
+with the Pick on either string.
 
 ## 2026-09-28 — at the user's request: separate Mic and Piezo outputs
 

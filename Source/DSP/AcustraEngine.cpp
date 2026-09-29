@@ -6477,13 +6477,19 @@ float AcustraEngine::renderPiezoCoupling(float buffered) noexcept
 // voltage a DI takes from its onboard preamp (PiezoDesign has each block's
 // values and sources). The chain runs every sample whatever Capture
 // selects, so a switch or a newly cabled output lands on warm state. Every
-// block maps 0 to 0 and every recursive state is flushed at a floor, so an
-// idle instrument reaches exact zero. The result is in the old force-domain
-// units: dividing by the sensitivity leaves the small-signal gain at the
-// trim alone.
+// block maps 0 to 0, and its input and every recursive state are flushed
+// at a floor, so an idle instrument's piezo reaches exact zero. The result
+// is in the old force-domain units: dividing by the sensitivity leaves the
+// small-signal gain at the trim alone.
 float AcustraEngine::renderPiezo(float force) noexcept
 {
-    const float saddle = renderPiezoSaddle(force);
+    // Below a picovolt at the element - some 130 dB under the thermal noise
+    // of its own 450 pF - the force is last-bit rounding in the saddle sums,
+    // which after a release keep it near 1e-15 forever and would hold the
+    // chain off exact zero. It is read as none.
+    constexpr float forceFloor = 1.0e-12f / PiezoDesign::sensitivity;
+    const float saddle = renderPiezoSaddle(
+        exact::abs(force) < forceFloor ? 0.0f : force);
     // 3. Charge to voltage, across the preamp's input resistance.
     const float volts = renderLoadedPiezo(PiezoDesign::sensitivity * saddle);
     lastPiezoVoltage_ = volts;

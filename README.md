@@ -82,7 +82,7 @@ reverb, room effect or recorded-note layer.
 | `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a nylon tremolo over a thumb arpeggio | 31.6 s | −18.3 dBFS | +15.3 dB |
 | `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung nylon melody over held bass | 26.0 s | −18.8 dBFS | +15.8 dB |
 | `11-picking-techniques.wav` | Finger, pick and thumb on steel, then on nylon; same notes and velocity | 10.6 s | −16.7 dBFS | +13.7 dB |
-| `12-capture-types.wav` | Stereo mic, mono mic, piezo | 7.3 s | −22.3 dBFS | +19.3 dB |
+| `12-capture-types.wav` | Stereo mic, mono mic, piezo | 7.3 s | −22.4 dBFS | +19.4 dB |
 <!-- peaks-table-end -->
 
 ## Real dry-note benchmark
@@ -1144,10 +1144,12 @@ project's and await a blind pair):
    zeros match the analog magnitude at DC and at f0 (Vicanek, *Matched Second
    Order Digital Filters*, 2016), so it stays within 0.3 dB of the analog
    response to 15 kHz at 44.1 kHz; a bilinear design is 9 dB low there.
-3. **Charge to voltage.** A sensitivity that puts a hard open-E strum at the
-   1 V peak Zollner gives for a piezo played loudly (`Tools/CalibratePiezo.py`;
-   a physical estimate from tension times string slope at 0.2 V/N agrees
-   within a factor of 1.85), and the electrical high-pass of the measured
+3. **Charge to voltage.** A sensitivity that puts the hottest open-E strum -
+   velocity 127 with the Pick, over the presets, both strings and any Touch -
+   at the 1 V peak Zollner gives for a piezo played loudly
+   (`Tools/CalibratePiezo.py`; a Finger strum at velocity 127 peaks at 0.32 V,
+   and the sensitivity is 0.60 of a physical estimate from tension times
+   string slope at 0.2 V/N), and the electrical high-pass of the measured
    450 pF Adamas SMT element into its 2 MΩ preamp input,
    [*Physics of the Electric Guitar*, chapter 6, p. 6-13](https://www.gitec-forum-eng.de/wp-content/uploads/2019/03/poteg-6-piezo-pickups.pdf):
    `sRC / (1 + sRC)`, a 176.84 Hz corner, discretised passively (bilinear),
@@ -1155,10 +1157,17 @@ project's and await a blind pair):
 4. **The preamp's buffer.** Exactly linear to 0.8 of its rails (1.01 V and
    1.23 V, straddling an onboard preamp's -2 dBV overload by +-10%), then a
    C1 soft knee toward them, plus a 0.5%-at-1 V second harmonic (chosen).
-   Ordinary playing never reaches the knee: a velocity-100 strum peaks at
-   0.81 V against a 0.98 V knee, and the hardest strum loses 0.01 dB to it.
-   It runs at the host rate; on the hardest strum what it folds back is
-   -97 dB (48 kHz) and -101 dB (44.1 kHz) against an 8x-oversampled run.
+   Ordinary playing stays below the knee: velocity-100 strums peak at up to
+   0.70 V (Pick) against a 0.98 V knee, and velocity-127 strums at up to
+   1.03 V lose at most 0.06 dB. The player's own strums, each string at its
+   own drawn level, lost at most 1.4 dB on their hottest instant over twelve
+   strokes. It runs at the host rate; what it folds back, against an
+   8x-oversampled run, is -106 dB or less on the default guitar's hardest
+   Finger and Pick strums of either string, -79 dB on the hottest preset's,
+   and -69 dB on the player's hottest strums (Bellido 1978 at 44.1 kHz). A
+   Pick at velocity 127 right at the saddle (Pluck Position 0) overdrives
+   it, by up to 4.3 dB on nylon and 1.9 dB on steel with -61 to -69 dB
+   folded back, as a hard attack there would a real onboard preamp.
 5. **Output coupling**, a 5 Hz DC blocker for what the second harmonic and
    the asymmetric rails leave. No EQ follows: a DI takes the buffer flat.
 
@@ -1169,7 +1178,10 @@ below the microphones on steel and 9.6 on nylon before). The whole chain runs
 every sample whatever Capture selects, so a Capture change or a newly cabled
 Piezo output lands on warm state; a switch is exactly the 20 ms Capture
 crossfade between the two sensors. Every block maps silence to silence, and
-the chain rings down to exact zero within 1.25 s of its hardest moment. It
+the chain rings down to exact zero within 1.25 s of its hardest moment; after
+a chord's release the Piezo output reaches exact zero in 15-20 s, though the
+strings' saddle force never quite does (it is read as none below a
+picovolt at the element). It
 costs under 2% of a block. The mechanical response beyond one saddle
 resonance, the string weights' real pattern and any preamp EQ are not
 identified; no matched piezo recording benchmark is available yet.
@@ -1435,12 +1447,16 @@ The JUCE-free suites cover:
   load's complex response; the preamp curve (f(0) = 0, monotonic, bounded by
   its rails, C1 at its knees, exactly c + ac^2 below them, a 0.25% second
   harmonic at 0.5 V); the output coupling against its analog 5 Hz high-pass;
-  aliasing on the hardest strum against an 8x-oversampled run; exact silence
-  from a never-played engine and within 1.5 s of the chain's hardest moment;
+  aliasing on the hardest Finger and Pick strums of both strings against an
+  8x-oversampled run; exact silence from a never-played engine, within 1.5 s
+  of the chain's hardest moment, and on Main and the Piezo output within 25 s
+  of a released chord;
   a Capture switch equal to its crossfade and a Piezo output cabled mid-note
   equal to one cabled from the start; microphones untouched by the piezo;
-  where the knee sits; and the chain's response agreeing between 44.1 and
-  96 kHz;
+  where the knee sits (velocity-100 strums linear with Finger and Pick, both
+  strings and any Touch; at most 1.5 dB off velocity-127 strums and the
+  player's own strums; the hottest Pick strum at the 1 V anchor); and the
+  chain's response agreeing between 44.1 and 96 kHz;
 - the fretting hand (Tests/HandAllocatorTests.cpp): rolled triads within one
   hand, E major, A minor, G and C one key at a time in their open shapes, a
   scale that stays in position and then shifts, a melody that leaves a held
@@ -2284,11 +2300,13 @@ git history rather than here.
 - **The piezo is an under-saddle pickup with an onboard preamp, at the
   user's request.** Piezo, on Capture and on its own output, now weights each
   string's saddle force, rings the saddle's mass on the element at 5 kHz,
-  drives the measured electrical load at a calibrated 1 V for a hard strum,
+  drives the measured electrical load at a calibrated 1 V for the hardest
+  Pick strum (a Finger strum at a third of that),
   and passes an onboard preamp's buffer, soft knee and output coupling. Its
   level now matches the microphones', so sessions on Capture = Piezo play
-  8-10 dB louder and sound different, with the saddle's resonance 9.7 dB up
-  at 5 kHz.
+  louder and sound different, with the saddle's resonance 9.7 dB up at 5 kHz:
+  about 8 dB louder on steel, and about 15 dB on nylon, where this stacks
+  with nylon's own 5.5 dB rise below.
   The microphones are unchanged down to the bit. The values chosen by ear
   await a blind comparison with the previous piezo.
 

@@ -8,6 +8,7 @@
 // --observe piezo_voltage writes, on both channels, the under-saddle piezo's
 // voltage where it enters the preamp (getLastPiezoVoltage) instead of the
 // output; Tools/CalibratePiezo.py sets the element's sensitivity from it.
+// --touch sets the Touch control (default 0.58).
 #include "DSP/AcustraEngine.h"
 #include "CalibrationFile.h"
 
@@ -45,7 +46,7 @@ int main(int argc, char** argv)
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
                      "[--body-material spruce|cedar|mahogany|maple] "
                      "[--guitar-model original|bellido1978] "
-                     "[--calibration FILE] [--observe piezo_voltage]\n";
+                     "[--touch 0..1] [--calibration FILE] [--observe piezo_voltage]\n";
         return 2;
     }
     try
@@ -86,7 +87,7 @@ int main(int argc, char** argv)
         }
         bool materialSeen = false, tuningSeen = false;
         bool shapeSeen = false, woodSeen = false, calibrationSeen = false, guitarSeen = false;
-        bool observeSeen = false, observePiezoVoltage = false;
+        bool observeSeen = false, observePiezoVoltage = false, touchSeen = false;
         for (int index = optionStart; index < argc; index += 2)
         {
             if (index + 1 >= argc)
@@ -140,6 +141,15 @@ int main(int argc, char** argv)
                     throw std::runtime_error("unknown observation");
                 observePiezoVoltage = true;
                 observeSeen = true;
+            }
+            else if (option == "--touch" && !touchSeen)
+            {
+                std::size_t used = 0;
+                const float touch = std::stof(value, &used);
+                if (used != value.size() || !(touch >= 0.0f && touch <= 1.0f))
+                    throw std::runtime_error("touch must be between 0 and 1");
+                parameters.touch = touch;
+                touchSeen = true;
             }
             else if (option == "--calibration" && !calibrationSeen)
             {

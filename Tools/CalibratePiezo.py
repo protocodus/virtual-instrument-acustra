@@ -6,13 +6,16 @@ Two numbers in AcustraEngine::PiezoDesign come from here (Docs/decisions.md,
 
 1. sensitivity, S, in volts per engine force unit. The engine's displacement
    waves have no physical unit, so S is anchored to a physical level instead:
-   the reference hard strum - the default construction, steel, default Touch,
-   Finger, velocity 127, an open E major downstroke across all six strings at
-   48 kHz - must peak at 1.0 V where it enters the preamp, the level Zollner
-   gives for a piezo played loudly (M. Zollner, Physics of the Electric
-   Guitar, 2005, ch.6 section 6.7). The renderer's `--observe piezo_voltage`
-   gives that voltage with the S the engine was built with, and the voltage
-   is linear in S, so one render sets it.
+   the hottest reference strum - an open E major downstroke across all six
+   strings at velocity 127 with the Pick, the playing that drives the saddle
+   hardest, at 48 kHz, over the six Guitar presets strung with each material
+   and Touch at 0, 0.58 and 1 - must peak at 1.0 V where it enters the
+   preamp, the level Zollner gives for a piezo played loudly (M. Zollner,
+   Physics of the Electric Guitar, 2005, ch.6 section 6.7). Anchored on the
+   Finger strum instead, a Pick strum drove the preamp 8 dB past its knee.
+   The renderer's `--observe piezo_voltage` gives that voltage with the S the
+   engine was built with, and the voltage is linear in S, so one pass sets
+   it.
 
    The tool also predicts the same peak from physics - a saddle force of
    tension times string slope, at Zollner's 0.2 V/N for a bridge piezo - and
@@ -103,18 +106,52 @@ def reference_strum():
     return rows, 3.0
 
 
-def voltage_peaks(renderer: str, work: Path) -> dict:
+ANCHOR_TOUCHES = (0.0, 0.58, 1.0)
+
+
+def anchor_grid():
+    """Every construction, string material and Touch the anchor strum is
+    played with, all with the Pick at velocity 127."""
+    return [(preset, material, touch) for preset in loudness.PRESETS
+            for material in ("steel", "nylon") for touch in ANCHOR_TOUCHES]
+
+
+def strum_volts(renderer: str, work: Path, picking: str, preset: str,
+                material: str, touch: float) -> np.ndarray:
+    shape, wood, _strings, bridge, model = loudness.PRESETS[preset]
     rows, seconds = reference_strum()
-    events = work / "reference-strum.txt"
-    output = work / "reference-strum.f32"
+    tag = f"{preset}-{material}-{picking}-{touch}".replace(" ", "_")
+    events = work / f"{tag}.txt"
+    output = work / f"{tag}.f32"
     loudness.write_performance(rows, seconds, events)
-    subprocess.run([renderer, str(events), str(output), "stereo_mic", "finger",
-                    "--string-material", "steel", "--observe", "piezo_voltage"],
+    subprocess.run([renderer, str(events), str(output), "stereo_mic", picking,
+                    bridge, "--string-material", material, "--body-shape", shape,
+                    "--body-material", wood, "--guitar-model", model,
+                    "--touch", f"{touch}", "--observe", "piezo_voltage"],
                    check=True)
     volts = np.fromfile(output, dtype="<f4").reshape(-1, 2)[:, 0].astype(np.float64)
     output.unlink()
-    return {"positive": float(volts.max()), "negative": float(volts.min()),
-            "peak": float(np.max(np.abs(volts)))}
+    events.unlink()
+    return volts
+
+
+def voltage_peaks(renderer: str, work: Path, jobs: int) -> dict:
+    """The anchor grid's peaks, the hottest of them, and the Finger strum
+    the sensitivity was first anchored on, for comparison."""
+    def peak(job):
+        preset, material, touch = job
+        volts = strum_volts(renderer, work, "pick", preset, material, touch)
+        return {"preset": preset, "material": material, "touch": touch,
+                "positive": float(volts.max()), "negative": float(volts.min()),
+                "peak": float(np.max(np.abs(volts)))}
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        grid = list(pool.map(peak, anchor_grid()))
+    hottest = max(grid, key=lambda row: row["peak"])
+    finger = strum_volts(renderer, work, "finger", "Dreadnought", "steel", 0.58)
+    return {"hottest": hottest, "grid": grid,
+            "finger_reference": {"positive": float(finger.max()),
+                                 "negative": float(finger.min()),
+                                 "peak": float(np.max(np.abs(finger)))}}
 
 
 def physical_peak_volts() -> float:
@@ -189,6 +226,9 @@ def summarise_levels(rows: list[dict], design: dict) -> dict:
 def self_test() -> None:
     rows, seconds = reference_strum()
     assert len(rows) == 6 and all(row[4] == 127 for row in rows)
+    grid = anchor_grid()
+    assert len(grid) == len(loudness.PRESETS) * 2 * len(ANCHOR_TOUCHES)
+    assert {material for _, material, _ in grid} == {"steel", "nylon"}
     assert [row[1] for row in rows] == [40, 47, 52, 56, 59, 64]
     with tempfile.TemporaryDirectory() as scratch:
         loudness.write_performance(rows, seconds, Path(scratch) / "p.txt")
@@ -221,8 +261,10 @@ def main() -> int:
         parser.error("--renderer is required")
     design = built_design()
     with tempfile.TemporaryDirectory(prefix="acustra-piezo-") as scratch:
-        peaks = voltage_peaks(arguments.renderer, Path(scratch))
-    anchored = design["sensitivity"] * TARGET_PEAK_VOLTS / peaks["peak"]
+        peaks = voltage_peaks(arguments.renderer, Path(scratch),
+                              max(1, arguments.jobs))
+    hottest = peaks["hottest"]
+    anchored = design["sensitivity"] * TARGET_PEAK_VOLTS / hottest["peak"]
     predicted = physical_peak_volts()
     # The same strum through a physically scaled element: an engine force
     # unit is Z (N s/m) times one displacement unit per 48 kHz sample.
@@ -233,8 +275,12 @@ def main() -> int:
               "sensitivity_for_1V": anchored,
               "physical_sensitivity": physical, "anchor_over_physical": ratio,
               "physical_peak_volts": predicted}
-    print(f"built sensitivity {design['sensitivity']:.6g} V/unit: reference strum "
-          f"peaks {peaks['positive']:+.4f} / {peaks['negative']:+.4f} V")
+    finger = peaks["finger_reference"]
+    print(f"built sensitivity {design['sensitivity']:.6g} V/unit: the hottest Pick "
+          f"strum ({hottest['preset']}, {hottest['material']}, Touch "
+          f"{hottest['touch']}) peaks {hottest['positive']:+.4f} / "
+          f"{hottest['negative']:+.4f} V; the Finger strum (Dreadnought, steel) "
+          f"{finger['positive']:+.4f} / {finger['negative']:+.4f} V")
     print(f"sensitivity for a 1 V peak: {anchored:.6g} V/unit")
     print(f"physical check: {physical:.6g} V/unit at {PIEZO_VOLTS_PER_NEWTON} V/N "
           f"and {displacement_metres_per_unit() * 1e3:.2f} mm per displacement unit "

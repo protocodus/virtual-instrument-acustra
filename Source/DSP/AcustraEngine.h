@@ -310,11 +310,13 @@ private:
         static constexpr double saddleHz = 5000.0;
         static constexpr double saddleQ = 3.0;
         // 3. Charge to voltage: the element's sensitivity S in volts per
-        // engine force unit, set by Tools/CalibratePiezo.py so the
-        // reference hard strum peaks at the 1 V Zollner gives for a piezo
-        // played loudly (ch.6 section 6.7). The electrical load is the
+        // engine force unit, set by Tools/CalibratePiezo.py so the hottest
+        // reference strum - velocity 127 with the Pick, over the presets,
+        // both string materials and Touch 0 to 1 - peaks at the 1 V Zollner
+        // gives for a piezo played loudly (ch.6 section 6.7); a Finger strum
+        // at velocity 127 then peaks at 0.32 V. The electrical load is the
         // measured Adamas SMT's, 450 pF into 2 MOhm (ch.6 p.6-13).
-        static constexpr float sensitivity = 108.328f;
+        static constexpr float sensitivity = 35.1104f;
         static constexpr double capacitance = 450.0e-12;
         static constexpr double loadResistance = 2.0e6;
         // 4. The onboard preamp's buffer: exactly linear to a knee at 0.8 of
@@ -322,11 +324,12 @@ private:
         // small even-order term. The rails straddle the -2 dBV overload of a
         // Fishman Prefix-type onboard preamp (1.12 V peak) by +-10%; the
         // asymmetry and the 0.5% second harmonic at 1 V are chosen. The
-        // saddle force's larger excursions are negative (the reference strum
-        // peaks at -1.00 and +0.78 V), and with the lower rail on that side a
-        // velocity-100 strum already reached the knee (0.811 V against
-        // 0.808), so the higher rail takes them; which sign an element's
-        // wiring gives a downward force is arbitrary.
+        // saddle force's larger excursions are negative (the anchor strum
+        // peaks at -1.00 and +0.55 V), so the higher rail takes them; which
+        // sign an element's wiring gives a downward force is arbitrary.
+        // Ordinary playing stays below the knee; the Pick at velocity 127
+        // near the bridge (Pluck Position 0) overdrives it, as it would a
+        // real onboard preamp.
         static constexpr float positiveRail = 1.01f;
         static constexpr float negativeRail = 1.23f;
         static constexpr float kneeShare = 0.8f;
@@ -339,8 +342,8 @@ private:
         // (Tools/CalibratePiezo.py): the median BS.1770 loudness difference.
         // It sits on the material reference, so a later change to either
         // material's loudness moves both sensors together.
-        static constexpr float steelTrim = 2.61767f;
-        static constexpr float nylonTrim = 3.01828f;
+        static constexpr float steelTrim = 2.59727f;
+        static constexpr float nylonTrim = 2.98809f;
         static constexpr float trimFor(StringMaterial material) noexcept
         {
             return material == StringMaterial::Steel ? steelTrim : nylonTrim;
