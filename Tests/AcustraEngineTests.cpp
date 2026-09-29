@@ -5490,6 +5490,88 @@ void testNaturalHarmonicsReachAboveTheFretboard()
            "the fourth harmonic of the open high E was not near E6");
 }
 
+// A natural harmonic is its open string touched at a node: the finger damps
+// every mode the node does not share, the pluck's own release noise with them,
+// so the harmonic - or its octave, which shares the node - is what sounds. The
+// release burst used to reach the bridge unfiltered, and on D#6, E6 and E7 an
+// unrelated partial of the open string was the loudest in the output.
+void testANaturalHarmonicSoundsItsOwnPitch()
+{
+    const auto spectrumPeak = [] (const Audio& audio, double begin, double end)
+    {
+        const auto first = static_cast<std::size_t>(begin * sampleRate);
+        const auto count = static_cast<std::size_t>((end - begin) * sampleRate);
+        std::size_t size = 1;
+        while (size < count)
+            size <<= 1;
+        std::vector<std::complex<double>> bins(size);
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            const double window = 0.5 - 0.5 * std::cos(
+                2.0 * std::numbers::pi * static_cast<double>(i)
+                / static_cast<double>(count - 1));
+            bins[i] = window * 0.5 * (audio.left[first + i] + audio.right[first + i]);
+        }
+        // Iterative radix-2 FFT.
+        for (std::size_t i = 1, j = 0; i < size; ++i)
+        {
+            std::size_t bit = size >> 1;
+            for (; j & bit; bit >>= 1)
+                j ^= bit;
+            j ^= bit;
+            if (i < j)
+                std::swap(bins[i], bins[j]);
+        }
+        for (std::size_t length = 2; length <= size; length <<= 1)
+        {
+            const double angle = -2.0 * std::numbers::pi / static_cast<double>(length);
+            const std::complex<double> step(std::cos(angle), std::sin(angle));
+            for (std::size_t start = 0; start < size; start += length)
+            {
+                std::complex<double> twiddle(1.0, 0.0);
+                for (std::size_t k = 0; k < length / 2; ++k)
+                {
+                    const auto even = bins[start + k];
+                    const auto odd = bins[start + k + length / 2] * twiddle;
+                    bins[start + k] = even + odd;
+                    bins[start + k + length / 2] = even - odd;
+                    twiddle *= step;
+                }
+            }
+        }
+        const double binHz = sampleRate / static_cast<double>(size);
+        std::size_t best = 0;
+        for (auto bin = static_cast<std::size_t>(80.0 / binHz);
+             bin < static_cast<std::size_t>(16000.0 / binHz); ++bin)
+            if (std::abs(bins[bin]) > std::abs(bins[best]))
+                best = bin;
+        return static_cast<double>(best) * binHz;
+    };
+    for (const int midiNote : { 87, 88, 91, 95, 100 })
+    {
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
+        acustra::EngineParameters parameters;
+        engine.setParameters(parameters);
+        engine.prepare(sampleRate, blockSize);
+        engine.noteOn(midiNote, 0.7f);
+        const int samples = static_cast<int>(0.7 * sampleRate);
+        Audio out { std::vector<float>(static_cast<std::size_t>(samples)),
+                    std::vector<float>(static_cast<std::size_t>(samples)) };
+        for (int offset = 0; offset < samples; offset += blockSize)
+            engine.process(out.left.data() + offset, out.right.data() + offset,
+                           std::min(blockSize, samples - offset));
+        const double peak = spectrumPeak(out, 0.05, 0.65);
+        const double wanted = 440.0 * std::exp2((midiNote - 69.0) / 12.0);
+        const double cents = 1200.0 * std::log2(peak / wanted);
+        const double octaveCents = cents - 1200.0;
+        expect(std::abs(cents) < 40.0 || std::abs(octaveCents) < 40.0,
+               "natural harmonic MIDI " + std::to_string(midiNote)
+                   + "'s loudest partial was at " + std::to_string(peak)
+                   + " Hz, not its pitch or octave");
+    }
+}
+
 void testHeldStringsDoNotLengthenANoteDecay()
 {
     // Every string is anchored behind the saddle at all times, so the spring
@@ -7757,6 +7839,7 @@ int main()
     testStolenStringKeepsRingingUnderHandDamping();
     testBridgeHandPressureShortensAndDarkens();
     testNaturalHarmonicsReachAboveTheFretboard();
+    testANaturalHarmonicSoundsItsOwnPitch();
     testHeldStringsDoNotLengthenANoteDecay();
     testANoteOverASoundingInstrumentDoesNotClick();
     testBodyChangesPreserveTheSoundingStrings();

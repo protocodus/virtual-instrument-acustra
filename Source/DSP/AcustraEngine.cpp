@@ -4655,6 +4655,15 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     else
         voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
             * physical.transientScale;
+    // A natural harmonic's finger is still on the node when the pluck lets
+    // go, so the release's broadband burst is filtered by it as every other
+    // mode the node does not share is. The burst is written at the bridge,
+    // where no node projection reaches it, and left in it put more energy
+    // into the open string's other partials than into the harmonic: D#6's
+    // loudest partial was the open B's sixth (F#6), E6's and E7's the open
+    // E's twenty-fifth.
+    if (voice.harmonic > 1)
+        voice.excitationEnvelope = 0.0f;
     const float burstSeconds = 0.0046f - 0.0025f * touch;
     voice.excitationDecay = std::exp(-1.0f
         / (std::max(burstSeconds, 0.0004f) * static_cast<float>(sampleRate_)));
@@ -6420,10 +6429,16 @@ void AcustraEngine::initialiseContactNoise(Voice& voice, float v,
 {
     const auto technique = parameters_.picking;
     const bool pick = technique == PickingTechnique::Pick;
-    const float level = pick ? physicalCalibration_.contactNoisePick
-                             : physicalCalibration_.contactNoiseFinger;
-    const float click = pick ? physicalCalibration_.contactClickPick
-                             : physicalCalibration_.contactClickFinger;
+    // A natural harmonic's touching finger damps every mode its node does not
+    // share, the contact's own noise with the rest (see the burst in
+    // initialisePluck), so a harmonic launches none.
+    const bool touched = voice.harmonic > 1;
+    const float level = touched ? 0.0f
+        : pick ? physicalCalibration_.contactNoisePick
+               : physicalCalibration_.contactNoiseFinger;
+    const float click = touched ? 0.0f
+        : pick ? physicalCalibration_.contactClickPick
+               : physicalCalibration_.contactClickFinger;
     voice.contactNoiseSamples = 0;
     voice.contactNoiseAmplitude = 0.0f;
     voice.contactNoiseDecay = 0.0f;
