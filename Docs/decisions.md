@@ -4,6 +4,139 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-29 — at the user's request: every construction as loud as the default
+
+Not a listening verdict: the user asked for it. On 2026-09-28 they wrote
+"nylon is a bit quite, normalize it with the steel", and then "now, wrap up -
+walk through the engine and fix any gaps, obvious issues, and ensure
+compatibility between different woods, models, et". The audit found that one
+output reference per string material left the rest of the construction
+unlevelled (F3, F4): the same playing spread over about 15 LU across Model,
+Bridge, Shape, Wood and Picking; steel on the Bellido played a median 4-6
+LU under steel on the Original with the fingers or thumb, the Fylde Jumbo
+with the Pick 5.3 LU over the default, and nylon with the Pick 3-5 LU over
+nylon played with the fingers.
+
+What changed: every construction (Strings x Model x Bridge x Shape x Wood)
+and every Picking now plays at the default construction's integrated
+loudness - steel, the Original guitar on its own bridge, Dreadnought,
+Spruce, Finger, on the stereo microphones at the default Output, -23.28
+LUFS on the calibration's phrases. `Source/DSP/ConstructionLoudnessData.h`
+holds one gain per cell (2 x 2 x 2 x 4 x 4 x 3 = 384; where the Bridge
+selects nothing, as for nylon and the Bellido, both Bridge cells hold the
+bridge that is played), and the engine multiplies it into the output
+reference where the string material's is applied, through the same 20 ms
+smoothing, so a Shape, Wood, Bridge, Model, Strings or Picking change
+glides the level and never steps it. The mono microphone and the piezo each
+have their own factor per cell, so both stay level-matched to the stereo
+microphones on every construction, and each capture's level glides as one
+value. Only the level changes: on 246 renders across the constructions,
+Pickings and captures, every sample, the Piezo output's included, is the
+old one times its cell's gain to within 3.4e-7. The table runs from -5.34 dB (steel,
+Fylde, Jumbo, Spruce, Pick) to +9.88 dB (steel on the Bellido, Parlor,
+Mahogany, Thumb).
+
+Measured with `Tools/CalibrateConstructionLoudness.py`, which writes the
+header: a fixed, seeded phrase set (32 strums over a progression, down and
+up; 24 single notes low and high on the neck; soft, hard and medium held
+chords; velocities 24-127) rendered through the shipping renderer on all 80
+constructions that play differently, with each Picking and each capture,
+measured as BS.1770-4 integrated loudness. LU from the target, 240 cells
+per capture:
+
+| capture | before | within +-1 LU | after | within +-1 LU |
+| --- | ---: | ---: | ---: | ---: |
+| stereo mic | -9.88 .. +5.34 | 49 | -0.91 .. +0.02 | 240 |
+| mono mic | -8.69 .. +6.27 | 48 | -0.91 .. +0.01 | 240 |
+| piezo | -6.78 .. +1.64 | 16 | -0.90 .. +0.00 | 240 |
+
+| stereo mic, median LU | Finger before | after | Pick before | after | Thumb before | after |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| steel, Original | -1.53 | +0.00 | +0.16 | -0.00 | -2.18 | -0.00 |
+| steel, Bellido | -5.78 | -0.00 | -0.99 | -0.90 | -8.19 | -0.01 |
+| nylon, Original | -2.74 | -0.00 | +0.52 | -0.90 | -4.19 | -0.02 |
+| nylon, Bellido | -3.17 | -0.01 | +1.51 | -0.89 | -5.08 | -0.00 |
+
+`Tests/ConstructionLoudnessTests.cpp` plays a different, shorter phrase on
+all 48 distinct constructions with every Picking (and the mono microphone
+and piezo on a spread of them): before, it spread over -9.5 .. +6.3 LU and
+158 of its 336 renders sat more than 3 LU from the default; now -2.7 ..
++2.6, and it requires +-3.
+
+Headroom: not met, and the reason. The request also asked for the hardest
+playing - velocity 127, the Pick, Touch 1, Pluck Position 0 (an open E
+downstroke with two strings repicked into it, all six on one sample, a fast
+down-up pair) - to stay at least 1 dB under the safety limiter's knee
+(-1 dBFS) on every construction. With the loudness fixed, a construction's
+peak is fixed by its own crest factor, and nylon's picked at the saddle is
+up to about 7 dB higher than the default's. The default construction's
+Pick peaks at -3.48 dBFS (2.5 dB under the knee); to keep 1 dB of headroom
+at the same loudness, nylon on the Bellido would need its Pick 5.7 LU under
+the default, far outside +-1 LU. Parity comes first, as the user
+asked: where a Pick cell's hardest case falls short, that cell sits up to
+0.9 LU under the target (inside the tolerance), and no further. Pre-limiter
+peaks of that playing, Pick, stereo microphones (80 constructions):
+
+| | before | after |
+| --- | ---: | ---: |
+| loudest | +6.05 dBFS (nylon Bellido Jumbo Spruce) | +2.76 dBFS (nylon Bellido Parlor Maple) |
+| median | -0.15 dBFS | -1.28 dBFS |
+| over the knee | 53 | 36 |
+| at least 1 dB under it | 21 | 33 |
+| steel, Original bridge, at least 1 dB under | 12 of 16 | 12 of 16 (worst -1.52) |
+| steel, Fylde / Bellido | 4 / 5 of 16 | 12 / 6 of 16 |
+| nylon, Original / Bellido | 0 / 0 of 16 | 3 / 0 of 16 |
+
+The mono microphone goes from 43 cells over the knee to 21 (loudest +5.77
+to +1.98 dBFS). The piezo's hardest case was over the knee on every
+construction before (median +3.34 dBFS) and is after (median +1.76). With
+Finger at Touch 1 and Pluck Position 0 the stereo microphones now peak up
+to +3.06 dBFS (from +1.04): the fingers' cells were raised to the target.
+Those strokes meet the soft limiter, as picked nylon did before; the other
+choice, lowering every construction including the default by 4.8 dB,
+changes the default patch's loudness and is the user's to make.
+
+What did not change:
+- The default construction renders byte-identically on the stereo and mono
+  microphones at 44.1, 48 and 96 kHz, and every steel performance of the
+  battery but the one that switches controls live (hash harness: 88 of 648
+  renders unchanged, all the default's; every other one is the gain).
+- The benchmark. `Tools/FitPhysicalModel.py` is gain-invariant, and its
+  renders move only by the gain: 270 of 309 fit renders are byte-identical,
+  the 39 nylon rows are the old ones times +3.09 dB (the Classical
+  construction's cell) to within 2e-7, and the scores move by float
+  rounding: training 6.42616227221714 -> 6.426162492734067, validation
+  6.021137726407051 -> 6.0211373472422896, flat-top 7.259164080375022
+  unchanged.
+- The steel and nylon material references, and the piezo's per-material
+  match (`PiezoDesign::trimFor`), which the table now refines per
+  construction and Picking.
+
+Awaiting the user's ear, since it changes what sessions play:
+- Every construction but the default changes level; saved sessions on them
+  play at the new level. Nylon with the other settings at their defaults
+  rises 2.11 dB, the Classical preset (Original, Auditorium, Cedar) 3.09 dB,
+  nylon on the Bellido's own box and wood 4.08 dB; steel on the Fylde
+  bridge 0.75 dB.
+- The default construction's Pick plays 1.25 dB and its Thumb 0.07 dB
+  quieter; its piezo plays 3.45 dB louder with the fingers (the piezo's
+  match used to be one per material, a median over Finger and Pick; with
+  the fingers it sat 3.45 LU under the microphones, with the Pick level
+  with them).
+- A Picking change under a ringing chord now moves its level with the
+  table, over the 20 ms glide.
+- A Model switch under a ringing chord hands the chord's stored energy to
+  the other guitar's bridge and body (entry above: 1.5-1.9 times the louder
+  steady chord). Steel from the Original to the Bellido is now 3.3 times,
+  since the Bellido no longer sits 5.8 dB under the Original; against the
+  Bellido's own chord at that moment it is 4.1 times, from 4.5.
+- The Rack Extension's factory patches set their Output to make up for the
+  constructions' old levels (audit F12). With the table they all play at
+  one loudness at the same Output, so those offsets are now wrong: the
+  Rack Extension should go back to the default Output on every patch when
+  it takes this engine. Its default patch plays the Fylde bridge, so it
+  rises 0.75 dB.
+
 ## 2026-09-29 — blind verdict: Set 22 keeps the piezo circuit; it and the lighter steel body join the audit fixes
 
 **Set 22 (blind): the piezo as its real circuit (B, `cand/piezo-circuit`
@@ -726,7 +859,11 @@ that one gain.
   only (training 7.031332769 to 7.031332692, validation 6.041761395 to
   6.041761148), and steel's and the flat-top rows' did not move at all.
 - The loudest nylon grid render now peaks at -4.29 dBFS, below the output
-  safety limiter.
+  safety limiter. (Corrected 2026-09-29: that holds for this grid only.
+  Velocity-127 strums with the Pick on the larger nylon bodies reached the
+  limiter: the audit measured up to +4.4 dBFS before it on the Bellido's
+  Dreadnought (F3), and with Touch 1 at the saddle they reached +6.05 dBFS
+  by 2026-09-29; see "every construction as loud as the default".)
 
 ## 2026-09-28 — at the user's request: legato removed everywhere
 

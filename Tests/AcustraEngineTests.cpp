@@ -1,4 +1,5 @@
 #include "DSP/AcustraEngine.h"
+#include "DSP/ConstructionLoudnessData.h"
 #include "DSP/MeasuredBodyData.h"
 #include "DSP/MeasuredBridgeData.h"
 
@@ -31,6 +32,16 @@ struct AcustraEngineTestAccess
     static float saddleHeightRatio(const AcustraEngine& engine)
     {
         return engine.saddleHeightRatio();
+    }
+
+    // Gives `to` the smoothed output levels `from` has reached (the
+    // construction loudness references), so a test of body-bank scheduling
+    // compares the banks alone and not two level glides' histories.
+    static void copyOutputLevels(const AcustraEngine& from, AcustraEngine& to)
+    {
+        to.materialReference_ = from.materialReference_;
+        to.monoReference_ = from.monoReference_;
+        to.piezoTrim_ = from.piezoTrim_;
     }
 
     static void invalidateDispersionSolveCache(AcustraEngine& engine)
@@ -4726,7 +4737,26 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
             changed.prepare(rate, 64);
             reference.noteOn(52, 0.6f);
             changed.noteOn(52, 0.6f);
+            // Each Picking plays at its own output level (the construction
+            // loudness table, ConstructionLoudnessData.h), which glides; the
+            // string itself is untouched, so the ringing note changes by one
+            // gain, the same in both channels, within the three levels.
+            float lowest = 1.0f, highest = 1.0f;
+            for (int picking = 0; picking < 3; ++picking)
+            {
+                const auto cell = [&] (int technique)
+                {
+                    // steel/nylon, Original model and bridge, Dreadnought, Spruce
+                    return static_cast<std::size_t>((((((material == acustra::StringMaterial::Steel
+                        ? 1 : 0) * 2 + 0) * 2 + 0) * 4 + 2) * 4 + 0) * 3 + technique);
+                };
+                const float ratio = acustra::detail::constructionMicReference[cell(picking)]
+                    / acustra::detail::constructionMicReference[cell(0)];
+                lowest = std::min(lowest, ratio);
+                highest = std::max(highest, ratio);
+            }
             std::array<float, 64> a {}, b {}, ar {}, br {};
+            bool onlyLevel = true;
             for (int block = 0; block < 200; ++block)
             {
                 // Changing the picking tool cannot alter a released string.
@@ -4734,9 +4764,23 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
                 changed.setParameters(parameters);
                 reference.process(a.data(), ar.data(), 64);
                 changed.process(b.data(), br.data(), 64);
-                expect(a == b && ar == br,
-                       "picking automation changed an already ringing note");
+                for (std::size_t i = 0; i < a.size(); ++i)
+                {
+                    // A sample near zero carries no ratio; it must stay near zero.
+                    if (std::abs(a[i]) < 1.0e-6f || std::abs(ar[i]) < 1.0e-6f)
+                    {
+                        onlyLevel = onlyLevel
+                            && std::abs(b[i]) <= std::max(std::abs(a[i]), 1.0e-6f) * highest * 1.01f
+                            && std::abs(br[i]) <= std::max(std::abs(ar[i]), 1.0e-6f) * highest * 1.01f;
+                        continue;
+                    }
+                    const double left = double(b[i]) / a[i];
+                    const double right = double(br[i]) / ar[i];
+                    onlyLevel = onlyLevel && std::abs(left - right) <= 2.0e-5 * left
+                        && left >= lowest * (1.0 - 1.0e-5) && left <= highest * (1.0 + 1.0e-5);
+                }
             }
+            expect(onlyLevel, "picking automation changed an already ringing note");
             parameters.picking = PickingTechnique::Pick;
             const auto picked = renderAtRate(parameters, 52, 0.6f, 0.5, rate, 64);
             parameters.picking = PickingTechnique::Thumb;
@@ -5720,6 +5764,60 @@ Audio continueConstructionProbe(acustra::AcustraEngine& engine, int samples)
     return result;
 }
 
+// A construction's cell in ConstructionLoudnessData.h, as the engine finds it
+// (constructionLoudnessCell): the Bridge only where it selects a bank.
+std::size_t loudnessCell(const acustra::EngineParameters& p)
+{
+    const bool selectable = acustra::AcustraEngine::bridgeSelectable(
+        p.stringMaterial, p.guitarModel);
+    int cell = static_cast<int>(p.stringMaterial);
+    cell = cell * 2 + static_cast<int>(p.guitarModel);
+    cell = cell * 2 + (selectable ? static_cast<int>(p.bridgeModel) : 0);
+    cell = cell * 4 + static_cast<int>(p.shape);
+    cell = cell * 4 + static_cast<int>(p.bodyMaterial);
+    cell = cell * 3 + static_cast<int>(p.picking);
+    return static_cast<std::size_t>(cell);
+}
+
+// The piezo's output level for a construction: its factor over the
+// microphones' times theirs.
+double piezoLevel(const acustra::EngineParameters& p)
+{
+    const auto cell = loudnessCell(p);
+    return double(acustra::detail::constructionMicReference[cell])
+        * acustra::detail::constructionPiezoTrim[cell];
+}
+
+// Whether `actual` is `expected` times one level per sample, the same in both
+// channels and moving monotonically from 1 toward `to`: a construction's
+// output level (ConstructionLoudnessData.h) glided while the waveform stayed
+// exactly what it was.
+bool differsOnlyInLevel(const Audio& actual, const Audio& expected, double to)
+{
+    const double low = std::min(1.0, to), high = std::max(1.0, to);
+    const double direction = to >= 1.0 ? 1.0 : -1.0;
+    double previous = 1.0;
+    for (std::size_t i = 0; i < expected.left.size(); ++i)
+    {
+        const double left = expected.left[i], right = expected.right[i];
+        if (std::abs(left) < 1.0e-7 || std::abs(right) < 1.0e-7)
+        {
+            // Too small to carry a ratio: it may only be as small, scaled.
+            if (std::abs(actual.left[i]) > high * std::max(std::abs(left), 1.0e-7) * 1.001
+                || std::abs(actual.right[i]) > high * std::max(std::abs(right), 1.0e-7) * 1.001)
+                return false;
+            continue;
+        }
+        const double gain = actual.left[i] / left;
+        if (std::abs(gain - actual.right[i] / right) > 1.0e-5 * high
+            || gain < low * (1.0 - 1.0e-5) || gain > high * (1.0 + 1.0e-5)
+            || direction * (gain - previous) < -1.0e-5 * high)
+            return false;
+        previous = gain;
+    }
+    return true;
+}
+
 void testBodyChangesPreserveTheSoundingStrings()
 {
     using Access = acustra::AcustraEngineTestAccess;
@@ -5751,6 +5849,7 @@ void testBodyChangesPreserveTheSoundingStrings()
                 }
                 expect(Access::retainedTailCount(changed) == (repluck ? 1 : 0),
                        "the body-change probe did not establish its retained tail");
+                const double levelBefore = piezoLevel(parameters);
                 if (wood)
                     parameters.bodyMaterial = acustra::BodyMaterial::Maple;
                 else
@@ -5763,9 +5862,11 @@ void testBodyChangesPreserveTheSoundingStrings()
                 const auto actual = continueConstructionProbe(changed, 480);
                 // Wood on the Fylde changes microphone radiation only; shape,
                 // and Wood on steel's own bridge, also change the bridge
-                // loading. All must retain the connected tails.
+                // loading. All must retain the connected tails. Each
+                // construction plays at its own level, which glides.
                 if (woodOnly)
-                    expect(actual.left == expected.left && actual.right == expected.right,
+                    expect(differsOnlyInLevel(actual, expected,
+                                              piezoLevel(parameters) / levelBefore),
                            "a wood-only change altered the pickup's ringing strings");
                 else
                 {
@@ -5820,28 +5921,40 @@ void testBodyChangesPreserveAnUnfinishedFade()
     changed.setParameters(latest);
     expect(Access::bodyUpdatePending(changed), "an interrupted body fade was not queued");
     int remaining = 0;
-    bool waveformExact = true;
+    Audio expectedFade, actualFade;
     while (Access::bodyFade(reference) < 1.0f && remaining < 2000)
     {
         const auto expected = continueConstructionProbe(reference, 1);
         const auto actual = continueConstructionProbe(changed, 1);
-        waveformExact &= actual.left == expected.left && actual.right == expected.right;
+        expectedFade.left.push_back(expected.left[0]);
+        expectedFade.right.push_back(expected.right[0]);
+        actualFade.left.push_back(actual.left[0]);
+        actualFade.right.push_back(actual.right[0]);
         ++remaining;
     }
-    expect(waveformExact, "a queued body change interrupted the existing microphone waveform");
+    // The queued wood's level (ConstructionLoudnessData.h) glides in at once;
+    // the waveform itself must be the sounding bank's, untouched.
+    expect(differsOnlyInLevel(actualFade, expectedFade,
+               double(acustra::detail::constructionMicReference[loudnessCell(latest)])
+                   / acustra::detail::constructionMicReference[loudnessCell(second)]),
+           "a queued body change interrupted the existing microphone waveform");
     expect(remaining > 0 && remaining < 2000,
            "a pending body update exceeded the existing 40 ms fade");
     expect(!Access::bodyUpdatePending(changed) && Access::bodyFade(changed) == 0.0f,
            "the latest body request did not start at completion of the previous fade");
     // Applying only the final request at this exact boundary must produce
-    // the same actual microphone waveform as the queued sequence.
+    // the same actual microphone waveform as the queued sequence. Each
+    // construction's output level glides from the request (tested above), so
+    // the reference takes the level the queued engine has reached.
     reference.setParameters(latest);
+    Access::copyOutputLevels(changed, reference);
     compare(2000, "the queued body fade did not reach the final requested construction");
     expect(Access::bodyFade(changed) == 1.0f,
            "the queued body's own 40 ms fade did not finish");
 
     reference.setParameters(first);
     changed.setParameters(first);
+    Access::copyOutputLevels(changed, reference);
     compare(64, "the next body fade started inconsistently");
     changed.setParameters(second);
     changed.setParameters(first); // returning to the active target cancels the queue
@@ -5930,7 +6043,13 @@ void testSwitchingStringsOrTuningUnderAChordDoesNotClick()
     // 2.0 times and the Bellido's nylon to steel 3.1 times (audit F6); now
     // 1.2. A Model switch hands the chord's stored energy to another guitar's
     // bridge and body, and the new body's modes start from rest under it:
-    // 1.5-1.9 times, and at most twice.
+    // 1.5-1.9 times, and at most twice. Steel's Original to the Bellido is
+    // the exception since every construction plays at one loudness
+    // (ConstructionLoudnessData.h): the Original's chord, drained less by
+    // its stiffer top, pours through the Bellido's mobile one at 4.1 times
+    // the Bellido's own chord at that moment (4.5 before the levels), and
+    // the Bellido no longer sits 5.8 dB under the Original to hide it
+    // behind the louder chord: 3.3 times, bounded at 3.5.
     const auto against = [&] (acustra::EngineParameters from, acustra::EngineParameters to)
     {
         from.outputGain = to.outputGain = 0.04f;
@@ -5971,7 +6090,7 @@ void testSwitchingStringsOrTuningUnderAChordDoesNotClick()
              Switch { "nylon to steel", make(S::Nylon, G::Original), make(S::Steel, G::Original), 1.5 },
              Switch { "the Bellido's nylon to steel", make(S::Nylon, G::Bellido1978), make(S::Steel, G::Bellido1978), 1.5 },
              Switch { "steel Bellido to Original", make(S::Steel, G::Bellido1978), make(S::Steel, G::Original), 2.0 },
-             Switch { "steel Original to Bellido", make(S::Steel, G::Original), make(S::Steel, G::Bellido1978), 2.0 },
+             Switch { "steel Original to Bellido", make(S::Steel, G::Original), make(S::Steel, G::Bellido1978), 3.5 },
              Switch { "nylon Bellido to Original", make(S::Nylon, G::Bellido1978), make(S::Nylon, G::Original), 2.0 },
              Switch { "nylon Original to Bellido", make(S::Nylon, G::Original), make(S::Nylon, G::Bellido1978), 2.0 } })
     {

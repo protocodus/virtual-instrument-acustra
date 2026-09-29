@@ -29,6 +29,10 @@ here sets it. This tool
    makes the median of (microphones - piezo) zero. Loudness rather than RMS:
    the two sensors' spectra differ by up to 15 dB per third octave (Zollner
    Figs 6.24/6.25), and plain RMS would weigh the microphones' bass.
+   These trims are the base: Tools/CalibrateConstructionLoudness.py then
+   sets the piezo's level per construction and Picking on top of them
+   (Source/DSP/ConstructionLoudnessData.h), so after a trim changes, run it
+   again to re-level the table.
 
   python3 Tools/CalibratePiezo.py --renderer ./build-dsp/AcustraPerformanceRenderer
   python3 Tools/CalibratePiezo.py --renderer ... --headroom-only

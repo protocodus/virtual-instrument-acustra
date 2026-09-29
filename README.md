@@ -1175,6 +1175,24 @@ set exchanged onto stiffer strings keeps its waves' power rather than their
 amplitude, so nylon to steel no longer swells to two to three times the
 louder steady chord (now about 1.2).
 
+Every construction and every Picking plays at one loudness, the default
+construction's (steel, Original, its own bridge, Dreadnought, Spruce,
+Finger), at the user's request: `Source/DSP/ConstructionLoudnessData.h`
+holds a gain for each Strings x Model x Bridge x Shape x Wood x Picking
+cell, measured by [`CalibrateConstructionLoudness.py`](Tools/CalibrateConstructionLoudness.py)
+as BS.1770 integrated loudness over a fixed phrase set of strums, single
+notes and held chords from soft to hard, and multiplied into the output
+reference through the same 20 ms smoothing, so a change glides the level
+rather than stepping it. The mono microphone and the piezo have their own
+factor per cell and stay level with the stereo microphones. Every cell and
+capture is within 1 LU of the default, where the same playing spread over
+about 15 LU before (steel on the Bellido a median 4-6 LU under steel on the
+Original with the fingers or thumb, the Fylde Jumbo with the Pick 5.3 LU
+over the default, picked nylon 3-5 LU over finger-played). Only the level
+moves: each construction's samples are its old ones times its gain, and the
+default construction's microphones are unchanged to the bit. A Pick cell whose hardest playing would come within 1 dB of
+the safety limiter sits up to 0.9 LU under the default (Known gaps).
+
 | Control | Audible behavior |
 | --- | --- |
 | **Model** | Original or Bellido 1978; the named model selects its own measured bridge and radiation. With steel strings the Bellido is steel on its own classical top at that top's measured mobility, about 1.8 times the steel-string level steel's own bridge is brought to, so it drains the strings a little faster (E4 11.7 dB/s against 10.0); its microphone trim was matched on nylon. |
@@ -1256,9 +1274,11 @@ the element and leaves 1.4 dB to U1B's swing; a steel Pick strum leaves
 5.1 dB. Nylon picked at velocity 127 right at the saddle (Pluck Position 0)
 drives U1B 2.2 dB past its swing, the one playing that does.
 
-Its level is matched to the stereo microphones per string material: the
+Its level is matched to the stereo microphones per string material (the
 median BS.1770 loudness difference over the factory constructions, both
-strings, Finger and Pick and typical playing is zero. The whole chain runs
+strings, Finger and Pick and typical playing), and then per construction
+and Picking by the construction loudness table, which brings it to the
+same loudness as the microphones on every cell. The whole chain runs
 every sample whatever Capture selects, so a Capture change or a newly cabled
 Piezo output lands on warm state; a switch is exactly the 20 ms Capture
 crossfade between the two sensors. It rings down to exact zero within 3.5 s
@@ -1290,7 +1310,7 @@ retired sensors rather than keeping hidden magnetic or unloaded-piezo paths.
 The piezo observes the same vibrating instrument in the same pass, so it can be
 recorded, processed or blended separately while Main keeps following Capture.
 It plays at the level Main has when Capture selects Piezo (the same Output and
-string-material reference) and has its own copy of the headroom-only safety
+construction reference) and has its own copy of the headroom-only safety
 limiter, so with Capture on Piezo it is either side of Main sample for sample.
 Enabling it never changes Main by a bit, and an idle instrument is exact
 silence on both.
@@ -1503,8 +1523,13 @@ The JUCE-free suites cover:
 - exactly three supported capture observations, mono channel identity and width
   independence, deterministic legacy remapping, capture switching without
   changing the mechanical state, and silence at 44.1, 48 and 96 kHz;
-- pick/thumb excitation and exact preservation of ringing notes when the
-  picking tool changes;
+- pick/thumb excitation and preservation of ringing notes when the picking
+  tool changes: they change only by the Picking's level, gliding;
+- every construction and Picking at one loudness
+  (Tests/ConstructionLoudnessTests.cpp: its own phrase on all 48 distinct
+  constructions with every Picking, BS.1770, within 3 LU of the default;
+  the default's microphone levels exactly 1; a Bridge that selects nothing
+  moves nothing);
 - six-string bounds, deterministic allocation and block partitioning;
 - the player (Tests/PerformerTests.cpp) on a battery of performances
   (Tests/PerformanceBattery.h: single notes, two- to seven-note same-sample
@@ -1681,6 +1706,19 @@ player alone. VST3, Audio Unit and Standalone targets are built from the same
 engine.
 
 ## Known gaps
+
+- The hardest playing - velocity 127 with the Pick at Touch 1 and Pluck
+  Position 0 - reaches the output's soft safety limiter on 36 of 80
+  constructions on the stereo microphones, up to +2.8 dBFS before it (nylon
+  on the Bellido), and on every construction on the piezo. Every
+  construction plays at the default's loudness, and nylon's crest picked
+  at the saddle is up to about 7 dB higher than the default's; 1 dB of
+  headroom there would need nylon's Pick 5.7 LU under the default, or every
+  construction, the default included, 4.8 dB quieter. The default itself
+  keeps 2.5 dB. A Model switch under a ringing chord also still swells:
+  steel from the Original to the Bellido reaches 3.3 times the louder
+  steady chord for about 0.3 s, the Original's less-drained strings pouring
+  through the Bellido's mobile top.
 
 - Single notes' radiated level is rougher from note to note than the open
   recordings'. Over E2-C6, 1 s RMS at the Stereo mic, the RMS deviation from
@@ -2416,6 +2454,17 @@ git history rather than here.
 
 ### 2026-09-29
 
+- **Every construction and Picking plays as loud as the default, at the
+  user's request.** A gain per Strings x Model x Bridge x Shape x Wood x
+  Picking cell, measured as BS.1770 loudness, brings each within 1 LU of
+  the default construction (before: about 15 LU apart), with the mono
+  microphone and the piezo level with the stereo microphones on every one.
+  The default construction's microphones are unchanged to the bit; every
+  other construction changes only in level, so saved sessions on them play louder or quieter: nylon at
+  the default body +2.1 dB, the Classical preset +3.1 dB, steel on the
+  Bellido up to +9.9 dB, the Fylde Jumbo with the Pick -5.3 dB. The
+  default's Pick plays 1.25 dB quieter, its piezo 3.45 dB louder with the
+  fingers. A change of any of them glides over 20 ms.
 - **Steel plays a lighter body that stands in for the one Set 21
   preferred.** The user asked for the cheaper CPU option, as close to their
   preference as possible. B's bridge stays whole, D is at 0.85, and only

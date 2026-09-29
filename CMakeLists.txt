@@ -335,6 +335,16 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.BodyShape COMMAND AcustraBodyShapeTests)
     set_tests_properties(Acustra.BodyShape PROPERTIES TIMEOUT 90)
 
+    find_package(Threads REQUIRED)
+    add_executable(AcustraConstructionLoudnessTests Tests/ConstructionLoudnessTests.cpp)
+    target_link_libraries(AcustraConstructionLoudnessTests PRIVATE AcustraDSP Threads::Threads)
+    if(NOT MSVC)
+        target_compile_options(AcustraConstructionLoudnessTests PRIVATE
+            -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME Acustra.ConstructionLoudness COMMAND AcustraConstructionLoudnessTests)
+    set_tests_properties(Acustra.ConstructionLoudness PROPERTIES TIMEOUT 600)
+
     add_executable(AcustraMeasuredSteelBridgeTests Tests/MeasuredSteelBridgeTests.cpp)
     target_link_libraries(AcustraMeasuredSteelBridgeTests PRIVATE AcustraDSP)
     add_test(NAME Acustra.MeasuredSteelBridge COMMAND AcustraMeasuredSteelBridgeTests)
@@ -406,6 +416,12 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/CalibratePiezo.py"
                                  --self-test)
                 set_tests_properties(Acustra.PiezoCalibration PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.ConstructionLoudnessCalibration
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/CalibrateConstructionLoudness.py"
+                                 --self-test)
+                set_tests_properties(Acustra.ConstructionLoudnessCalibration
+                                     PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.PerformanceBenchmark
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/BenchmarkPerformances.py"

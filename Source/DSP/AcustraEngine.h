@@ -422,8 +422,10 @@ private:
         static constexpr double diodeThermalVoltage = 1.752 * 0.025692579;
         // 6. The level match to the stereo microphones per material
         // (Tools/CalibratePiezo.py): the median BS.1770 loudness difference.
-        // It sits on the material reference, so a later change to either
-        // material's loudness moves both sensors together.
+        // It sits on the output reference, so a later change to either
+        // material's loudness moves both sensors together, and the
+        // construction loudness table (ConstructionLoudnessData.h) refines
+        // it per construction and Picking.
         static constexpr float steelTrim = 2.4417f;
         static constexpr float nylonTrim = 2.49109f;
         static constexpr float trimFor(StringMaterial material) noexcept
@@ -1371,8 +1373,10 @@ private:
     float lastPiezoVoltage_ { 0.0f };
     float lastPiezoInput_ { 0.0f };
     float lastPiezoDrive_ { 0.0f };
-    // The level match to the microphones (piezoTrimFor), smoothed like the
-    // material reference it sits on.
+    // The piezo's whole level over radiationReferenceGain: its match to the
+    // microphones (PiezoDesign::trimFor) times its reference for the
+    // construction and Picking (piezoReferenceFor), smoothed like the
+    // microphones' reference.
     float piezoTrim_ { 1.0f };
     FixedDerivative bridgeRotationDerivative_ {};
     // The junction's power is the sum over both coordinates, so the moments
@@ -1404,9 +1408,11 @@ private:
     float bodyAmount_ { 0.82f };
     float width_ { 0.62f };
     float outputGain_ { 0.42f };
-    // The output reference's per-material factor (materialReferenceFor in
-    // AcustraEngine.cpp), smoothed like the output control.
+    // The output reference's per-material and per-construction factor
+    // (outputReferenceFor in AcustraEngine.cpp), smoothed like the output
+    // control, and the mono microphone's own (monoReferenceFor).
     float materialReference_ { 1.0f };
+    float monoReference_ { 1.0f };
     float palmMute_ { 0.0f };
     float targetPalmMute_ { 0.0f };
     float palmMuteSmoothing_ { 0.5f };

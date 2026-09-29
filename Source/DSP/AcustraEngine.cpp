@@ -10,6 +10,7 @@
 #include "MeasuredJointBodyData.h"
 #include "SteelBodyBlend.h"
 #include "GuitarModelData.h"
+#include "ConstructionLoudnessData.h"
 #include "PiezoBlampTable.h"
 
 #include <algorithm>
@@ -220,7 +221,8 @@ constexpr float steelParallelPluckReference = 1.8637f;
 // Wood reference moved to g34's cedar and its bridge began to follow Wood
 // (audit F19, F10), which left the same grid's nylon median 0.75 LU under
 // steel's; the reference rises by that too (1.8774 -> 2.0462), so the two
-// stay as loud as the user asked.
+// stay as loud as the user asked. Each construction and Picking is levelled
+// on top of these (outputReferenceFor, ConstructionLoudnessData.h).
 constexpr float nylonReference = 2.0462f;
 constexpr float materialReferenceFor(StringMaterial material) noexcept
 {
@@ -822,6 +824,53 @@ BridgeModel effectiveBridge(const EngineParameters& parameters) noexcept
 {
     return effectiveBridge(parameters.stringMaterial, parameters.bridgeModel,
                            parameters.guitarModel);
+}
+
+// Every construction and Picking plays at the default construction's
+// loudness (Docs/decisions.md, 2026-09-29, "Every construction as loud as
+// the default"): a construction's cell in ConstructionLoudnessData.h, which
+// Tools/CalibrateConstructionLoudness.py measures and writes. The Bridge is
+// the one the construction plays, so a choice that selects nothing moves
+// nothing.
+std::size_t constructionLoudnessCell(const EngineParameters& parameters) noexcept
+{
+    const auto place = [] (auto value, int count) noexcept
+    {
+        return std::clamp(static_cast<int>(value), 0, count - 1);
+    };
+    int cell = place(parameters.stringMaterial, 2);
+    cell = cell * 2 + place(parameters.guitarModel, 2);
+    cell = cell * 2 + place(effectiveBridge(parameters), 2);
+    cell = cell * 4 + place(parameters.shape, 4);
+    cell = cell * 4 + place(parameters.bodyMaterial, 4);
+    cell = cell * 3 + place(parameters.picking, 3);
+    return static_cast<std::size_t>(cell);
+}
+static_assert(detail::constructionMicReference.size() == 2 * 2 * 2 * 4 * 4 * 3);
+
+// The output reference: the string material's, times its construction's
+// level (exactly 1 for the default construction, which renders unchanged).
+float outputReferenceFor(const EngineParameters& parameters) noexcept
+{
+    return materialReferenceFor(parameters.stringMaterial)
+        * detail::constructionMicReference[constructionLoudnessCell(parameters)];
+}
+
+// The mono microphone's own reference: the stereo microphones' times its
+// factor over them, so it meets the same target on every construction. It
+// is smoothed as a whole, so a change glides along one curve.
+float monoReferenceFor(const EngineParameters& parameters) noexcept
+{
+    return outputReferenceFor(parameters)
+        * detail::constructionMonoTrim[constructionLoudnessCell(parameters)];
+}
+
+// The piezo's reference before its material trim (PiezoDesign::trimFor):
+// the stereo microphones' times its factor over them.
+float piezoReferenceFor(const EngineParameters& parameters) noexcept
+{
+    return outputReferenceFor(parameters)
+        * detail::constructionPiezoTrim[constructionLoudnessCell(parameters)];
 }
 
 // The original steel voice adapts Mores g21, a nylon-strung flamenco guitar.
@@ -2779,8 +2828,10 @@ void AcustraEngine::reset() noexcept
     bodyAmount_ = parameters_.bodyAmount;
     width_ = parameters_.stereoWidth;
     outputGain_ = parameters_.outputGain;
-    materialReference_ = materialReferenceFor(parameters_.stringMaterial);
-    piezoTrim_ = PiezoDesign::trimFor(parameters_.stringMaterial);
+    materialReference_ = outputReferenceFor(parameters_);
+    monoReference_ = monoReferenceFor(parameters_);
+    piezoTrim_ = PiezoDesign::trimFor(parameters_.stringMaterial)
+        * piezoReferenceFor(parameters_);
     captureMix_.fill(0.0f);
     captureMix_[static_cast<std::size_t>(parameters_.capture)] = 1.0f;
     bodyConfigured_ = false;
@@ -7686,9 +7737,15 @@ float AcustraEngine::renderPiezo(float force) noexcept
         if (quiet)
             resetPiezo();
     }
-    // 7. The level match, smoothed like the material reference under it.
+    // 7. The level: the match to the microphones for the string material,
+    // on the output reference for the construction and Picking
+    // (ConstructionLoudnessData.h). It is smoothed as one value, like the
+    // microphones' reference, so a change glides along one curve and never
+    // overshoots where the two factors move apart.
     piezoTrim_ += parameterSmoothing_
-        * (PiezoDesign::trimFor(parameters_.stringMaterial) - piezoTrim_);
+        * (PiezoDesign::trimFor(parameters_.stringMaterial)
+               * piezoReferenceFor(parameters_)
+           - piezoTrim_);
     const auto result = static_cast<float>(
         static_cast<double>(piezoTrim_) * piezoOutputScale_ * piezoOutputVolts_);
     if (!exact::isfinite(result))
@@ -8099,12 +8156,15 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         const float monoBody = 0.5f * (body.left + body.right);
         const float spreadLeft = monoBody + width_ * (body.left - monoBody);
         const float spreadRight = monoBody + width_ * (body.right - monoBody);
-        // A material change reaches the reference over the same smoothing
-        // as the output control, so it never steps a ringing instrument.
-        const float materialReference
-            = materialReferenceFor(parameters_.stringMaterial);
+        // A material, construction or Picking change reaches the reference
+        // over the same smoothing as the output control, so it never steps a
+        // ringing instrument; the mono microphone's own reference glides
+        // beside it.
+        const float materialReference = outputReferenceFor(parameters_);
         materialReference_ += parameterSmoothing_
             * (materialReference - materialReference_);
+        monoReference_ += parameterSmoothing_
+            * (monoReferenceFor(parameters_) - monoReference_);
         const float reference = radiationReferenceGain * materialReference_;
         float outputLeft = reference * outputGain_
             * (bodyScale * spreadLeft + directScale * spreadDirectLeft);
@@ -8132,7 +8192,8 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             // untouched by wanting it. Written as the mono route's product:
             // with only the piezo selected that route adds exact zeros to
             // this, so the two agree.
-            const float piezoOut = safetyLimit(reference * outputGain_ * loadedPiezo);
+            const float piezoOut = safetyLimit(
+                radiationReferenceGain * outputGain_ * loadedPiezo);
             piezo[sample] = exact::isfinite(piezoOut) ? piezoOut : 0.0f;
         }
         if (parameters_.capture != CaptureType::StereoMic
@@ -8150,10 +8211,13 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             // One physical microphone, with its own measured complex response,
             // avoids phase cancellation from summing two spaced microphones.
             // Its identical L/R copies and the loaded saddle piezo ignore width.
-            const float mono = reference * outputGain_
+            // The piezo carries its whole level (renderPiezo), the mono
+            // microphone its own reference.
+            const float mono = radiationReferenceGain * monoReference_ * outputGain_
                 * (captureMix_[7]
-                       * (bodyScale * body.upper + directScale * directMono)
-                   + captureMix_[6] * loadedPiezo);
+                       * (bodyScale * body.upper + directScale * directMono))
+                + radiationReferenceGain * outputGain_
+                * (captureMix_[6] * loadedPiezo);
             outputLeft = captureMix_[0] * outputLeft + mono;
             outputRight = captureMix_[0] * outputRight + mono;
         }
