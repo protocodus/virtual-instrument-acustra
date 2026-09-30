@@ -92,6 +92,88 @@ cell and capture is within 1 LU (--check passes) and that test's spread is
 back inside its bound. The default construction's microphone levels stay
 exactly 1.
 
+## 2026-09-30 — blind verdicts: the radiation continued above its band, the Bellido's plate floor, Piezo Mix on one time base
+
+Three changes from the 2026-09-30 body and capture polish were sent as A/B
+pairs; the user's verdict on all of them: "yes pls go with all proposed".
+
+- **Radiation above the fitted band.** Each measured bank stops where its
+  fit stopped (10 kHz before the anchor's and Shape's moves: 8.1 kHz on the
+  steel Jumbo, 11.7 on the Parlor), and above its last mode the radiation
+  fell 12-25 dB within a third of an octave, its 16 kHz band 23-39 dB under
+  its 2-4 kHz level. configureBody now continues it statistically: modes on
+  a 1/16-octave grid at unit modal overlap (Q 22.6) from the bank's top to
+  min(18 kHz, 0.45 fs), each part's residues (both microphones, force and
+  moment) carrying the power density of the bank's own top octave, with
+  deterministic pseudo-random phases, falling 6 dB per octave. Now the
+  worst third-octave fall from 1 to 16 kHz is 4.8 dB and the 16 kHz band
+  sits 5-12 dB under 2-4 kHz. Integrating it found three things the
+  auditioned patch lacked, fixed without changing what was heard at 48 kHz
+  on the Original: the continuation is built as 48 kHz modes and converted
+  to the host rate as the measured modes are (it had moved the engine's
+  3-9 kHz rate check to 0.17 dB; 8-16 kHz now agrees across 44.1/48/96 kHz
+  within 0.1-0.16 dB, where the band edge's measured modes alone moved
+  0.3-1.1 dB before, a Known gap now closed); every construction holds 19
+  continuation slots, silent past the top, so a same-tick Shape/Wood change
+  keeps each mode's state; and a bank not ending on a group of four (the
+  Bellido's 134 modes) is padded to one, since BodyBank::render sums the
+  lanes after the ordered bank from a whole group and the Bellido's first
+  two continuation modes (10.4 and 10.9 kHz on its Auditorium) had been
+  advanced but never heard. ACUSTRA_BODY_MODE_COUNT 141 -> 160.
+- **The plate conductance floor on the Bellido.** Its modal fit loses the
+  same high-band conductance between overlapping modes as g21's, so it takes
+  the same floor (heave alone, unscaled). Without it its strings kept 4-10
+  kHz partials a third of the Original's drain would leave, and it played
+  11-15 dB over the recordings at 5-10 kHz against the Original's 1-5. Over
+  5-10 kHz the floor triples the Bellido's port conductance.
+- **Piezo Mix on one time base.** The piezo chain's output is seven samples
+  behind its input at every rate, and the microphones were not, so the blend
+  summed the sensors 146 us apart at 48 kHz and 73 us at 96 kHz: a comb
+  whose notches moved with the rate. The microphones now wait the same seven
+  samples. With Piezo Mix 0, Main is the old output seven samples later.
+  AcustraEngine::outputLatencySamples() is that fixed latency;
+  Performer::latencySamples() adds the Gather Chords window when on, and the
+  plug-in reports that sum (7 samples; 1447 at 48 kHz while gathering). The
+  mic x piezo cross-spectra at 48 and 96 kHz now line up within 3-5 us
+  (74 us before), and the blend's excess over the power sum agrees across
+  the rates within 0.13-0.41 dB on average (0.62-0.94 before).
+
+Benchmark (shipping vector, against main beb4cd9): training 6.5585 ->
+6.5421, development validation 6.5809 -> 6.5210, flat-top 7.1915 -> 7.1363
+(attack 7.98 -> 7.82, 10.16 -> 9.54, 7.32 -> 7.16; decay 3.53 -> 3.59,
+2.42 -> 2.62, 4.28 -> 4.44; flat-top harmonics 8.11 -> 7.87).
+
+Tests that pinned the old behaviour now assert the new: the natural-harmonic
+test reads its loudest partial at the saddle, since at the microphones the
+Dreadnought's 8.3 kHz body peak lifts the open E's 25th partial (14 dB under
+E6 at the saddle, 1.2 dB under its octave at the mics before) 0.2 dB over
+the octave; the extreme-plectrum test bounds growth on the ring after 50 ms
+(1.3x), because its 8x broadband contact burst now radiates up to 18 kHz
+and peaks 3.4-5.1x the plain pluck at onset (1.8-2.6x before).
+
+Loudness. Measured on this build before re-levelling (target the default
+cell, -23.31 LUFS), the Original's cells were where they were (stereo mic
+Finger/Thumb within -0.14..+0.10 LU, Pick's headroom cut as before), and
+the Bellido had moved: stereo mic Finger -0.47..-0.80 LU (median -0.61),
+Thumb -0.06..-0.55, Pick -0.94..-1.74. Only the Bellido's 36 cells were
+rewritten (new `--models` option; the Original's gains kept, since the
+final pass is redone once this and the strings' branch are merged):
+
+    python3 Tools/CalibrateConstructionLoudness.py \
+        --renderer build/AcustraPerformanceRenderer --json m.json \
+        --write-header --models bellido1978
+
+The Bellido's microphone gains rose +0.06..+1.33 dB (median +0.60), its
+mono and piezo trims moved -0.83..+0.58 and -0.60..+0.57 dB. `--check`
+afterwards: stereo and mono microphones 72/72 cells within +-1 LU (main
+beb4cd9 read 62/72 and 69/72), the piezo 60/72 (main 48/72); the twelve left
+are the Original's Pick piezo cells, -1.16..-1.20 LU on main already, and
+the mono microphone's Original Dreadnought Maple Pick keeps 1.91 dB under
+the knee at +0.02 LU; both are the Original's, left for the final pass.
+`Tools/CalibratePiezo.py --headroom-only` passes: the hottest Pick strum
+leaves the element at 1.922 V open-circuit (inside 0.7-2.5 V), 1.510 V at
+the jack, with at least +4.19 dB left to U1B's swing.
+
 ## 2026-09-30 — at the user's request, then by ear: a gentle release sound
 
 The user asked for "a very gentle release sound". Key-up now adds the damping

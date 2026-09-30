@@ -22,7 +22,11 @@ execute_process(COMMAND "${CMAKE_COMMAND}" ${arguments} -B "${WORK}/quiet"
 if(NOT result EQUAL 0)
     message(FATAL_ERROR "the default configure failed without numpy:\n${errors}")
 endif()
-if(NOT errors MATCHES "cannot import numpy and scipy")
+# CMake wraps a warning's text at its own width, which moves with the length
+# of the build path in it, so the message is matched with its whitespace
+# collapsed.
+string(REGEX REPLACE "[ \t\r\n]+" " " flattened "${errors}")
+if(NOT flattened MATCHES "cannot import numpy and scipy")
     message(FATAL_ERROR "a configure without numpy dropped the Python self-tests silently")
 endif()
 

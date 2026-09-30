@@ -11,6 +11,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <complex>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -504,6 +505,176 @@ void testPiezoMix()
            "Piezo Mix stepped into Main instead of gliding");
 }
 
+// Piezo Mix sums the two sensors on the instrument's one time base. The
+// piezo chain's output is seven samples behind its input at every rate
+// (renderPiezo), so the microphones wait the same seven samples; before
+// they did, the blend summed them 146 us apart at 48 kHz and 73 us apart at
+// 96 kHz, a comb that moved with the rate. A strum at 48 and 96 kHz:
+// the mic x piezo cross-spectra's phases, in third octaves from 300 Hz to
+// 10 kHz, line up with no lag between the rates (74 us before), and the
+// blend's third-octave levels over the sensors' power sum agree within
+// 0.5 dB on average from 150 Hz to 12.5 kHz (0.6-0.9 dB before).
+struct BlendBands
+{
+    std::vector<double> centre, mic, piezo, blend;
+    std::vector<std::complex<double>> cross;
+};
+
+void forwardFft(std::vector<std::complex<double>>& data)
+{
+    const std::size_t size = data.size();
+    for (std::size_t i = 1, j = 0; i < size; ++i)
+    {
+        std::size_t bit = size >> 1;
+        for (; j & bit; bit >>= 1)
+            j ^= bit;
+        j ^= bit;
+        if (i < j)
+            std::swap(data[i], data[j]);
+    }
+    for (std::size_t length = 2; length <= size; length <<= 1)
+    {
+        const auto root = std::polar(1.0, -2.0 * 3.14159265358979323846 / double(length));
+        for (std::size_t start = 0; start < size; start += length)
+        {
+            std::complex<double> twiddle { 1.0, 0.0 };
+            for (std::size_t k = 0; k < length / 2; ++k)
+            {
+                const auto even = data[start + k];
+                const auto odd = data[start + k + length / 2] * twiddle;
+                data[start + k] = even + odd;
+                data[start + k + length / 2] = even - odd;
+                twiddle *= root;
+            }
+        }
+    }
+}
+
+BlendBands blendBands(double rate, acustra::GuitarModel model, float mix)
+{
+    std::vector<float> mic, piezo, blend;
+    for (const bool mixed : { false, true })
+    {
+        auto engine = std::make_unique<AcustraEngine>();
+        EngineParameters parameters;
+        parameters.guitarModel = model;
+        parameters.outputGain = 0.3f;
+        parameters.piezoMix = mixed ? mix : 0.0f;
+        engine->setParameters(parameters);
+        engine->prepare(rate, 64);
+        engine->beginStrum();
+        const std::array<int, 6> notes { 40, 45, 50, 55, 59, 64 };
+        for (std::size_t k = 0; k < notes.size(); ++k)
+            engine->noteOn(notes[k], 0.7f, 1, static_cast<int>(k) * static_cast<int>(0.012 * rate), true);
+        const int length = static_cast<int>(1.5 * rate);
+        std::vector<float> left(static_cast<std::size_t>(length)), right(left.size()), line(left.size());
+        for (int offset = 0; offset < length; offset += 64)
+        {
+            AcustraEngine::OutputBuses buses;
+            buses.piezo = line.data() + offset;
+            engine->process(left.data() + offset, right.data() + offset, buses,
+                            std::min(64, length - offset));
+        }
+        for (std::size_t i = 0; i < left.size(); ++i)
+        {
+            const float main = 0.5f * (left[i] + right[i]);
+            if (mixed)
+                blend.push_back(main);
+            else
+            {
+                mic.push_back(main);
+                piezo.push_back(line[i]);
+            }
+        }
+    }
+    // The same 5.9 Hz resolution at both rates.
+    const std::size_t size = rate > 50000.0 ? 16384 : 8192;
+    BlendBands bands;
+    std::vector<double> edges;
+    for (double f = 150.0; f < 12500.0; f *= std::exp2(1.0 / 3.0))
+        edges.push_back(f);
+    const std::size_t count = edges.size() - 1;
+    for (std::size_t k = 0; k < count; ++k)
+        bands.centre.push_back(std::sqrt(edges[k] * edges[k + 1]));
+    bands.mic.assign(count, 0.0);
+    bands.piezo.assign(count, 0.0);
+    bands.blend.assign(count, 0.0);
+    bands.cross.assign(count, {});
+    for (std::size_t start = 0; start + size <= mic.size(); start += size / 2)
+    {
+        std::vector<std::complex<double>> m(size), p(size), b(size);
+        for (std::size_t i = 0; i < size; ++i)
+        {
+            const double window = 0.5 - 0.5 * std::cos(2.0 * 3.14159265358979323846 * double(i) / double(size));
+            m[i] = window * mic[start + i];
+            p[i] = window * piezo[start + i];
+            b[i] = window * blend[start + i];
+        }
+        forwardFft(m);
+        forwardFft(p);
+        forwardFft(b);
+        for (std::size_t bin = 1; bin < size / 2; ++bin)
+        {
+            const double f = double(bin) * rate / double(size);
+            for (std::size_t k = 0; k < count; ++k)
+                if (f >= edges[k] && f < edges[k + 1])
+                {
+                    bands.mic[k] += std::norm(m[bin]);
+                    bands.piezo[k] += std::norm(p[bin]);
+                    bands.blend[k] += std::norm(b[bin]);
+                    bands.cross[k] += m[bin] * std::conj(p[bin]);
+                }
+        }
+    }
+    return bands;
+}
+
+void testPiezoMixBlendsOnOneTimeBase()
+{
+    expect(AcustraEngine::outputLatencySamples() == 7,
+           "the engine's output latency is not the piezo chain's seven samples");
+    for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
+        for (const float mix : { 0.5f, 1.0f })
+        {
+            const auto low = blendBands(48000.0, model, mix);
+            const auto high = blendBands(96000.0, model, mix);
+            double deviation = 0.0;
+            for (std::size_t k = 0; k < low.centre.size(); ++k)
+            {
+                const auto excess = [mix] (const BlendBands& bands, std::size_t band)
+                {
+                    return 10.0 * std::log10(bands.blend[band]
+                        / (bands.mic[band] + double(mix) * mix * bands.piezo[band]));
+                };
+                deviation += std::abs(excess(low, k) - excess(high, k)) / double(low.centre.size());
+            }
+            // The lag between the rates that best lines up their cross-spectra.
+            double lag = 0.0, best = -1e300;
+            for (double tau = -200e-6; tau <= 200e-6; tau += 1e-6)
+            {
+                double score = 0.0;
+                for (std::size_t k = 0; k < low.centre.size(); ++k)
+                    if (low.centre[k] > 300.0 && low.centre[k] < 10000.0)
+                    {
+                        const auto ratio = low.cross[k] * std::conj(high.cross[k]);
+                        score += std::real(ratio / std::abs(ratio)
+                            * std::polar(1.0, -2.0 * 3.14159265358979323846 * low.centre[k] * tau));
+                    }
+                if (score > best)
+                {
+                    best = score;
+                    lag = tau;
+                }
+            }
+            std::cout << "Piezo Mix " << mix << ", model " << static_cast<int>(model)
+                      << ": 48 vs 96 kHz blend over power sum differs " << deviation
+                      << " dB on average; mic/piezo timing differs " << lag * 1e6 << " us\n";
+            expect(deviation < 0.5, "Piezo Mix's blend moves with the sample rate (a comb)");
+            expect(std::abs(lag) < 20e-6,
+                   "the microphones and the piezo are summed on different time bases");
+        }
+}
+
 // A Capture or Piezo Mix glide reaches its target exactly at every rate. At
 // 192 kHz a smoothing step near 1 used to fall below half an ulp before the
 // glide was within its snapping distance, so it stopped short for good: Main
@@ -648,6 +819,7 @@ int main()
     testIdleOutputsAreExactSilence();
     testRungOutInstrumentReachesExactSilence();
     testPiezoMix();
+    testPiezoMixBlendsOnOneTimeBase();
     testGlidesSettleAtHighRates();
     testCost();
 

@@ -39,6 +39,12 @@ the peaks.
   python3 Tools/CalibrateConstructionLoudness.py \\
       --renderer ./build-dsp/AcustraPerformanceRenderer --write-header
   python3 Tools/CalibrateConstructionLoudness.py --renderer ... --check
+
+A change that moves one model's level rewrites only that model's cells,
+keeping every other cell's built gain (the target stays the default cell):
+
+  python3 Tools/CalibrateConstructionLoudness.py --renderer ... \\
+      --json m.json --write-header --models bellido1978
   python3 Tools/CalibrateConstructionLoudness.py --self-test
 
 The gains already built in (read from the header) are divided out of each
@@ -507,6 +513,11 @@ def main() -> int:
                              " the tolerance; a large value puts headroom first)")
     parser.add_argument("--all-pickings", action="store_true",
                         help="also play the hardest case with Finger and Thumb")
+    parser.add_argument("--models", nargs="+", choices=MODELS, default=MODELS,
+                        help="with --write-header, rewrite only these models' cells"
+                             " and keep the other cells' built gains (a change that"
+                             " moved one model's level; the target is the default"
+                             " cell's either way)")
     parser.add_argument("--self-test", action="store_true")
     arguments = parser.parse_args()
     if arguments.self_test:
@@ -532,6 +543,11 @@ def main() -> int:
     print_report(report(raw, target), "without the construction gains")
     if arguments.write_header:
         tables = gains(raw, arguments.max_headroom_cut)
+        built = built_gains()
+        for model in set(MODELS) - set(arguments.models):
+            for cell in itertools.product([model], SHAPES, WOODS, PICKINGS):
+                for name in tables:
+                    tables[name][index(*cell)] = built[name][index(*cell)]
         HEADER.write_text(header_text(tables))
         print(f"wrote {HEADER}")
     if arguments.check:

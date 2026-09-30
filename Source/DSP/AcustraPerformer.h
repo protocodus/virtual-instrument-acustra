@@ -82,13 +82,21 @@ public:
     void setParameters(const EngineParameters& parameters) noexcept;
 
     // Gather Chords (off by default). While on, every event is held back by
-    // latencySamples(), so the host must be told that latency. Switching it
+    // the window (gatherWindowSamples at the engine's rate). Switching it
     // off releases what is held at the start of the next block, in order.
     void setGatherChords(bool gather) noexcept { gatherChords_ = gather; }
     [[nodiscard]] bool isGatheringChords() const noexcept { return gatherChords_; }
+    // Everything the host must be told: the engine's own fixed output
+    // latency (AcustraEngine::outputLatencySamples) plus, while gathering,
+    // the window.
     [[nodiscard]] int latencySamples() const noexcept
     {
-        return gatherChords_ ? gatherWindow_ : 0;
+        return latencySamples(gatherChords_, gatherWindow_);
+    }
+    [[nodiscard]] static constexpr int latencySamples(bool gather,
+                                                      int gatherWindow) noexcept
+    {
+        return AcustraEngine::outputLatencySamples() + (gather ? gatherWindow : 0);
     }
 
     // A pitch offset every channel's bend carries on top of its wheel, for a
