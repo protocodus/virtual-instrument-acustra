@@ -4,6 +4,39 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-30 — defect: a forming chord's refret kept an impossible new note
+
+Hand-timed strums (notes 5-20 ms apart, not on one sample) came out beyond
+one hand: after an open G, an upstroke's B2-G3-C4-E4-B4 as A2 D5 G5 B5 e7 and
+a downstroke's A2-C3-G3-D4-G4 as A0 E8 G0 D12 e3. reshapeFormingChord found
+a playable shape but discarded it whenever that shape moved none of the held
+notes, returning the new note's first, impossible string. It now takes the
+shape's string for the new note in that case (E7 and B8 above). Measured: 16
+of 88 strums in HandAllocatorTests' new check (11 chords, both directions,
+5/10/15/20 ms) were outside the four-fret span before, none after; 400
+random 3-5-note strums, none before or after with a same-sample plan.
+
+## 2026-09-30 — defect: the retained tail's port faded out, not cut
+
+Demo renders showed a faint 5-sample tick 240 ms after fretted key-ups
+(Lágrima 31.87 s; Planxty Irwin 12.73/41.93/56.37 s) and 1.33 s after open
+ones (Recuerdos 64.58 s): the hand-back to the open string
+(returnToOpenString) and the quiet-tail retirement both dropped the retained
+tail's port from the bridge junction in one sample, stepping the impedance
+sum and the bridge motion under every other string. The port now slews out
+on the delay's 6 ms time constant (Voice::tailRetiring) and the branch is
+dropped at 1e-4 of the string's port. Measured, not chosen by ear: the
+7 kHz high-passed output's peak derivative after a hand-back fell from up to
+47 dB over its local median to the 13-15 dB of the floor's own peaks on all
+nine demos; ReleaseTests' hand-back check (fifth difference of the output
+band-limited to 20 kHz) 30-40 dB before, 11-13 dB after. Resets, construction
+and tuning changes still clear at once. Merged with the soft finger burst and
+the radiation continuation, the fretted-to-open reconfiguration at the
+hand-back itself (configureVoice, not the tail) reads 15 dB at 48 kHz and
+21 dB at 96 kHz (26 dB before the band limit, the rest ultrasonic); the
+check's bound is 25 dB, between the two, and that transient is left for its
+own investigation.
+
 ## 2026-09-30 — blind verdicts: the strings' excitation - finger release, soft burst, wound ageing, contact ramps, pluck point
 
 A strings/excitation polish pass sent level-matched A/B pairs of five changes

@@ -493,6 +493,58 @@ void testChordsOnOneSampleAreOneShape()
                      + describe(second));
 }
 
+// A strum played by hand reaches the engine one string at a time, 5-20 ms
+// apart, not on one sample, so no plan places it: each note is chosen as it
+// comes and the forming chord is refretted around it. A shape the refret
+// found that moved none of the held notes - only the new one, to another
+// string - was thrown away and the new note left on the string first
+// chosen: an upstroke's B2 on the A string's second fret under G3-C4-E4-B4
+// held at frets 5-7, a five-fret stretch, and a downstroke's A2-C3-G3-D4-G4
+// ended with G4 on the open-position high E under a C3 at the low E's eighth
+// fret and a D4 at the D string's twelfth. Every chord here, strummed either
+// way at every spacing after an open G has been let go, must come out one
+// note to a string within the span the same-sample chords keep.
+void testHandTimedStrumsStayInOneHand()
+{
+    const std::vector<std::vector<int>> chords {
+        { 40, 47, 52, 56, 59, 64 }, { 45, 52, 57, 60, 64 },
+        { 43, 47, 50, 55, 59, 67 }, { 48, 52, 55, 60, 64 },
+        { 50, 57, 62, 66 }, { 40, 47, 52, 55, 59, 64 },
+        { 45, 52, 57, 61, 64 }, { 47, 55, 60, 64, 71 },
+        { 45, 48, 55, 62, 67 }, { 47, 55, 59, 67, 71 },
+        { 47, 55, 60, 67, 72 } };
+    const std::vector<int> openG { 43, 47, 50, 55, 59, 67 };
+    int strums = 0, impossible = 0;
+    for (const auto& chord : chords)
+        for (const double gap : { 0.005, 0.010, 0.015, 0.020 })
+            for (const bool upstroke : { false, true })
+            {
+                auto engine = freshEngine();
+                for (const int note : openG)
+                    engine->noteOn(note, 0.8f);
+                run(*engine, 0.4);
+                release(*engine, openG);
+                run(*engine, 0.1);
+                auto order = chord;
+                if (upstroke)
+                    std::reverse(order.begin(), order.end());
+                playOneKeyAtATime(*engine, order, gap);
+                const auto shape = shapeOf(*engine, chord);
+                ++strums;
+                if (!oneHand(shape, 4))
+                {
+                    ++impossible;
+                    std::cout << "Acustra hand-timed " << (upstroke ? "up" : "down")
+                              << "stroke " << gap * 1000.0 << " ms apart: "
+                              << describe(shape) << '\n';
+                }
+            }
+    std::cout << "Acustra hand-timed strums outside one hand: " << impossible
+              << " of " << strums << '\n';
+    expect(impossible == 0, "hand-timed strums fretted beyond one hand: "
+               + std::to_string(impossible) + " of " + std::to_string(strums));
+}
+
 void testForgottenHandIsTheHandlessAllocator()
 {
     // With no hand on the neck a lone note is placed exactly as before the
@@ -625,6 +677,7 @@ int main()
     testRepeatedNotesReplickTheirString();
     testControllerStringsAreUnchanged();
     testChordsOnOneSampleAreOneShape();
+    testHandTimedStrumsStayInOneHand();
     testForgottenHandIsTheHandlessAllocator();
     testAllocatorCost();
     if (failures == 0)

@@ -424,7 +424,9 @@ a wound string does not sound like the same note on a plain one. The hand now
 refrets a chord still forming: when a note arrives within 30 ms of the one
 before it on its channel and would otherwise take a held string or leave the
 hand an impossible stretch, the chord so far is refretted with it as one
-shape, moving as few of its notes as the shape allows. A moved note is
+shape, moving as few of its notes as the shape allows (none, when the new
+note alone fits on another string: a strum strung out over 5-20 ms by hand
+used to keep it where it was first put, five or more frets out). A moved note is
 replucked on its new string, inside the chord's own onset spread, and the
 string it leaves is taken by another note of the shape or damped by the
 leaving finger. The same C4-E4-G4 rolled over 20 ms becomes G fret 5, B fret
@@ -467,7 +469,12 @@ loop's stored-state energy falls below 1% in the existing 60 ms regression,
 but the moving bridge keeps driving it: its active lifetime can last seconds.
 Each independently returned wave therefore contributes its own impedance to
 the junction - the parallel one at (h/a)^2 of it on the rocking - with the
-old wave retaining the impedance it had at capture.
+old wave retaining the impedance it had at capture. When that wave is
+let go - quiet for 80 ms, or its string handed back to the open string after a
+key-up - its port leaves the junction on the delay's 6 ms time constant rather
+than in one sample: cut at once, the impedance step moved the bridge under
+everything else sounding, a faint tick 240 ms after a fretted key-up (1.33 s
+after an open one) about 30 dB over the local high-frequency floor.
 The six physical saddle-to-anchor springs are still counted once each.
 Measured on a chord change 0.6 seconds after the first chord, the strings
 still hold 25% of their initial energy and an earlier build discarded all of

@@ -3421,6 +3421,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             if (!voice.tailActive)
                 continue;
             voice.tailActive = false;
+            voice.tailRetiring = false;
             voice.tailCharacteristicImpedance = 0.0f;
             voice.tailLevel = 0.0f;
             voice.tailQuietSamples = 0;
@@ -5797,13 +5798,25 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.repluckPending = false;
     voice.releaseAfterPluck = false;
     voice.pedalHeldAtKeyUp = false;
-    voice.tailActive = false;
-    voice.tailContactTravel.active = false;
-    voice.tailCharacteristicImpedance = 0.0f;
-    voice.tailLevel = 0.0f;
-    voice.tailQuietSamples = 0;
-    voice.tailLoop.reset();
-    voice.tailParallelLoop.reset();
+    // The string's retained tail is a port on the bridge. The hand-back
+    // after a key-up lets it go the way a quiet tail goes (finishVoice),
+    // fading its port out of the junction: dropped here in one sample, the
+    // impedance every string's bridge reads stepped under whatever else was
+    // sounding, a faint tick 240 ms after a fretted key-up and 1.33 s after
+    // an open one. A reset still clears it at once.
+    if (clearDelay || !voice.tailActive)
+    {
+        voice.tailActive = false;
+        voice.tailRetiring = false;
+        voice.tailContactTravel.active = false;
+        voice.tailCharacteristicImpedance = 0.0f;
+        voice.tailLevel = 0.0f;
+        voice.tailQuietSamples = 0;
+        voice.tailLoop.reset();
+        voice.tailParallelLoop.reset();
+    }
+    else
+        voice.tailRetiring = true;
     configureVoice(voice, stringIndex, voice.openMidi, clearDelay);
 }
 
@@ -5823,6 +5836,7 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
         && !voice.contactNoiseTravel.active)
     {
         voice.tailActive = false;
+        voice.tailRetiring = false;
         voice.tailContactTravel.active = false;
         voice.tailContactNoiseTravel.active = false;
         voice.tailCharacteristicImpedance = 0.0f;
@@ -5857,6 +5871,7 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     voice.tailLevel = voice.level;
     voice.tailQuietSamples = 0;
     voice.tailActive = true;
+    voice.tailRetiring = false;
 }
 
 void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
@@ -7087,9 +7102,18 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
     incoming.midiNote = midiNote;
     search.notes[static_cast<std::size_t>(search.count++)] = incoming;
     searchShape(search, 0, 0u);
-    if (!search.found || search.best.moves == 0 || search.best.impossible != 0
-        || search.best.steals != 0)
+    if (!search.found || search.best.impossible != 0 || search.best.steals != 0)
         return chosenString;
+    const int incomingString = search.bestStrings[
+        static_cast<std::size_t>(search.count - 1)];
+    // The best shape may keep every note where it is and put only the new
+    // one elsewhere: an upstroke's B2, chosen on the A string's second fret
+    // under G3-C4-E4-B4 already held at frets 5-7, fits them on the low E's
+    // seventh. Returning the string first chosen there left a five-fret
+    // stretch no hand holds whenever a strum's notes arrived a few
+    // milliseconds apart rather than on one sample.
+    if (search.best.moves == 0)
+        return incomingString;
 
     // Lift every moved note first, so a chain of moves finds its strings free.
     struct Moved
@@ -7124,8 +7148,6 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         hand_[static_cast<std::size_t>(from)].valid = false;
         vacated |= 1u << from;
     }
-    const int incomingString = search.bestStrings[
-        static_cast<std::size_t>(search.count - 1)];
     unsigned taken = 1u << incomingString;
     for (int index = 0; index < movedCount; ++index)
     {
@@ -8260,8 +8282,24 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
         if (voice.tailQuietSamples > static_cast<int>(0.08 * sampleRate_)
             && !voice.tailContactTravel.active
             && !voice.tailContactNoiseTravel.active)
+            voice.tailRetiring = true;
+        // A retiring tail's port leaves the junction on the delay's own
+        // 6 ms time constant, as a bend's impedance moves (the junction sums
+        // the ports every sample). Quiet as its own wave is, the tail is a
+        // lossy port on the bridge: removed in one sample, the impedance
+        // sum stepped and so did the bridge motion every string reads, a
+        // tick under anything else sounding. At 1e-4 of the string's port,
+        // about 55 ms on, it is dropped.
+        if (voice.tailRetiring)
+            voice.tailCharacteristicImpedance
+                -= delaySmoothing_ * voice.tailCharacteristicImpedance;
+        if (voice.tailRetiring && !voice.tailContactTravel.active
+            && !voice.tailContactNoiseTravel.active
+            && !(voice.tailCharacteristicImpedance
+                 > 1.0e-4f * voice.characteristicImpedance))
         {
             voice.tailActive = false;
+            voice.tailRetiring = false;
             voice.tailContactTravel.active = false;
             voice.tailContactNoiseTravel.active = false;
             voice.tailCharacteristicImpedance = 0.0f;

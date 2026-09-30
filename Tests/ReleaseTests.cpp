@@ -402,6 +402,121 @@ void testReleaseNoise()
               << " to " << quietest << " dB\n";
 }
 
+// A released string is handed back to the open string once its hand has
+// damped it (returnToOpenString, 0.16 s + 80 ms after a fretted key-up,
+// 1.25 s + 80 ms after an open one). A string re-struck while it rang keeps
+// its old wave as a tail, which is a port on the bridge; the hand-back cut
+// that port out in one sample, and the impedance step moved the bridge under
+// every other string sounding: a faint tick, a few samples wide and 30 dB
+// over the local high-frequency floor. Here the low E is re-struck at its
+// fifth fret, released, and handed back under a held open B and G. The
+// output is first band-limited to 20 kHz (a fourth-order Butterworth), so
+// at 96 kHz an ultrasonic transient cannot pass for a tick; then the fifth
+// difference is a high pass steep enough to leave the strings' own partials
+// under a step's. Its peak across the hand-back is measured against its
+// median over the 70 ms before, where a peak of noise alone sits 11 to 16 dB
+// up and the cut port reached 30 dB at 44.1 and 48 kHz and 40 dB at 96 kHz.
+// The fretted-to-open reconfiguration itself still leaves up to 21 dB at
+// 96 kHz (15 dB at 48 kHz), which the bound sits above.
+void lowpass20k(std::vector<float>& x, double rate)
+{
+    for (const double q : { 0.5411961001461970, 1.3065629648763764 })
+    {
+        const double w = 2.0 * 3.14159265358979323846 * 20000.0 / rate;
+        const double c = std::cos(w), a = std::sin(w) / (2.0 * q);
+        const double b0 = 0.5 * (1.0 - c) / (1.0 + a), b1 = 2.0 * b0;
+        const double a1 = -2.0 * c / (1.0 + a), a2 = (1.0 - a) / (1.0 + a);
+        double x1 = 0.0, x2 = 0.0, y1 = 0.0, y2 = 0.0;
+        for (auto& sample : x)
+        {
+            const double y = b0 * sample + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2;
+            x2 = x1; x1 = sample; y2 = y1; y1 = y;
+            sample = static_cast<float>(y);
+        }
+    }
+}
+
+void testHandBackIsSilent()
+{
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+    {
+        auto performer = std::make_unique<acustra::Performer>();
+        acustra::EngineParameters parameters;
+        parameters.releaseNoise = 0.0f;
+        performer->setParameters(parameters);
+        performer->prepare(rate, blockSize);
+        performer->setParameters(parameters);
+        const auto frames = static_cast<std::size_t>(1.4 * rate);
+        std::vector<float> left(frames), right(frames);
+        struct Event { double at; int kind, channel, note, value; };
+        // String per channel: channel 1 is the low E, 4 the G, 5 the B.
+        const std::vector<Event> events {
+            { 0.0, 0xb0, 1, 126, 6 },
+            { 0.1, 0x90, 5, 59, 127 }, { 0.1, 0x90, 4, 55, 127 },
+            { 0.2, 0x90, 1, 45, 127 }, { 0.45, 0x80, 1, 45, 64 },
+            { 0.5, 0x90, 1, 45, 127 }, { 0.8, 0x80, 1, 45, 64 } };
+        std::size_t next = 0;
+        int position = 0;
+        while (position < static_cast<int>(frames))
+        {
+            const int count = std::min(blockSize,
+                                       static_cast<int>(frames) - position);
+            performer->beginBlock(left.data() + position,
+                                  right.data() + position, count);
+            while (next < events.size()
+                   && static_cast<int>(events[next].at * rate) < position + count)
+            {
+                const auto& event = events[next++];
+                const int offset = std::max(0,
+                    static_cast<int>(event.at * rate) - position);
+                if (event.kind == 0x90)
+                    performer->noteOn(offset, event.channel, event.note, event.value);
+                else if (event.kind == 0x80)
+                    performer->noteOff(offset, event.channel, event.note, event.value);
+                else
+                    performer->controlChange(offset, event.channel, event.note,
+                                             event.value);
+            }
+            performer->endBlock();
+            position += count;
+        }
+        lowpass20k(left, rate);
+        lowpass20k(right, rate);
+        double worst = -1000.0;
+        for (const auto* channel : { &left, &right })
+        {
+            const auto& x = *channel;
+            const auto fifth = [&] (std::size_t i)
+            {
+                return std::abs(static_cast<double>(x[i + 5]) - 5.0 * x[i + 4]
+                                + 10.0 * x[i + 3] - 10.0 * x[i + 2]
+                                + 5.0 * x[i + 1] - x[i]);
+            };
+            const auto at = [rate] (double seconds)
+            {
+                return static_cast<std::size_t>(seconds * rate);
+            };
+            // The floor is the median of the 70 ms before the hand-back.
+            std::vector<double> floor;
+            for (std::size_t i = at(0.95); i < at(1.02); ++i)
+                floor.push_back(fifth(i));
+            std::nth_element(floor.begin(), floor.begin()
+                + static_cast<std::ptrdiff_t>(floor.size() / 2), floor.end());
+            const double median = floor[floor.size() / 2];
+            double across = 0.0;
+            for (std::size_t i = at(1.02); i < at(1.10); ++i)
+                across = std::max(across, fifth(i));
+            worst = std::max(worst, 20.0 * std::log10(
+                across / std::max(median, 1.0e-30)));
+        }
+        std::cout << "Acustra hand-back step at " << rate << " Hz: " << worst
+                  << " dB over the median of the preceding 70 ms\n";
+        expect(worst < 25.0, "the hand-back to the open string stepped "
+                   + std::to_string(worst) + " dB over the floor at "
+                   + std::to_string(static_cast<int>(rate)) + " Hz");
+    }
+}
+
 int main(int argc, char** argv)
 {
     if (argc == 3 && std::string(argv[1]) == "--render")
@@ -415,6 +530,7 @@ int main(int argc, char** argv)
         testReleasedHarmonicsAreDampedLikeTheirOpenString();
         testSlidNotesAreDampedAtTheirSlidPitch();
         testReleaseNoise();
+        testHandBackIsSilent();
     }
     return failures == 0 ? 0 : 1;
 }
