@@ -140,8 +140,9 @@ public:
     // --- MIDI spelt for front ends without MIDI ------------------------------
     // Channels are 1-16, data values 0-127; out-of-range values are clamped.
     void noteOn(int sampleOffset, int channel, int note, int velocity) noexcept;
-    // Release velocity is spelt into the Note Off and read by nothing: a
-    // key-up damps its note however fast it is lifted.
+    // Release velocity is spelt into the Note Off: a key-up damps its note
+    // however fast it is lifted, and the velocity sets only how firmly the
+    // hand lands (EngineParameters::releaseNoise).
     void noteOff(int sampleOffset, int channel, int note,
                  int releaseVelocity = 64) noexcept;
     void controlChange(int sampleOffset, int channel, int controller,
@@ -183,6 +184,9 @@ private:
         // pedal change on its sample came after it (see handleEvent).
         bool sustained { false };
         bool pedalMoved { false };
+        // MIDI's release velocity, 0-1, or -1 when the key-up carried none
+        // (a Note On at velocity 0, or a Note Off at 0).
+        float releaseVelocity { -1.0f };
     };
 
     // A due time counts samples since prepare.

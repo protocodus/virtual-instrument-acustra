@@ -305,9 +305,11 @@ void Performer::flushNoteGroup() noexcept
     {
         const auto& note = pendingNoteOffs_[static_cast<std::size_t>(index)];
         if (note.pedalMoved)
-            engine_.noteOff(note.note, note.channel, note.sustained);
+            engine_.noteOffWithVelocity(note.note, note.channel,
+                                        note.sustained, note.releaseVelocity);
         else
-            engine_.noteOff(note.note, note.channel);
+            engine_.noteOffWithVelocity(note.note, note.channel,
+                                        note.releaseVelocity);
     }
     pendingNoteOffCount_ = 0;
 }
@@ -343,10 +345,15 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
     }
     else if (noteOff && pendingNoteOffCount_ < sampleGroupCapacity)
     {
-        // Release velocity is read by nothing: a key-up damps its note.
+        // A key-up damps its note; its release velocity, when the Note Off
+        // carries one, sets only how firmly the hand lands.
+        const bool hasReleaseVelocity = status == 0x80u && size >= 3
+            && (data[2] & 0x7fu) != 0u;
         pendingNoteOffs_[static_cast<std::size_t>(pendingNoteOffCount_++)] = {
             static_cast<int>(data[1] & 0x7fu), midiChannel,
-            engine_.sustainHolds(midiChannel), false
+            engine_.sustainHolds(midiChannel), false,
+            hasReleaseVelocity
+                ? static_cast<float>(data[2] & 0x7fu) / 127.0f : -1.0f
         };
     }
     else
@@ -444,7 +451,10 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
     }
     else if (kind == 0x80u && size >= 2)
     {
-        engine_.noteOff(static_cast<int>(data[1] & 0x7fu), midiChannel);
+        const bool hasReleaseVelocity = size >= 3 && (data[2] & 0x7fu) != 0u;
+        engine_.noteOffWithVelocity(static_cast<int>(data[1] & 0x7fu),
+            midiChannel, hasReleaseVelocity
+                ? static_cast<float>(data[2] & 0x7fu) / 127.0f : -1.0f);
     }
     else if (kind == 0xe0u && size >= 3)
     {

@@ -117,6 +117,12 @@ struct EngineParameters
     // microphones. With Capture on Piezo the piezo is already all of Main,
     // so it adds nothing there.
     float piezoMix { 0.0f };
+    // The key-up's own sound, 0 none to 1 twice the nominal level: the
+    // damping finger or palm landing on the still-vibrating string, launched
+    // into it from where it touches, and a faint brush of skin on a wound
+    // string's winding (startReleaseNoise in AcustraEngine.cpp). 0.5 is the
+    // nominal level. Read once at each key-up; zero is an exact no-op.
+    float releaseNoise { 0.0f };
 };
 
 struct AcustraEngineTestAccess;
@@ -191,6 +197,14 @@ public:
     // made, for a caller that orders the key-ups of one sample after their
     // Note Ons but a pedal change on that sample after them (the Performer).
     void noteOff(int midiNote, int midiChannel, bool sustained) noexcept;
+    // The same two key-ups with MIDI's release velocity (0-1). It damps the
+    // note exactly as noteOff does and sets only how firmly the hand lands,
+    // which the release noise follows (EngineParameters::releaseNoise); a
+    // negative value is "not sent" and plays as the nominal key-up.
+    void noteOffWithVelocity(int midiNote, int midiChannel,
+                             float releaseVelocity) noexcept;
+    void noteOffWithVelocity(int midiNote, int midiChannel, bool sustained,
+                             float releaseVelocity) noexcept;
     // Whether a key-up on this channel now would be held by the sustain
     // pedal: its own, or, on an MPE lower-zone member, the manager's too.
     [[nodiscard]] bool sustainHolds(int midiChannel) const noexcept;
@@ -935,6 +949,42 @@ private:
         std::array<float, 512> contactNoiseAirLine {};
         ContactTravel contactNoiseTravel {};
         ContactTravel tailContactNoiseTravel {};
+        // The key-up's sound (startReleaseNoise): the release velocity the
+        // key came up with (negative when not sent), the largest bridge force
+        // since the pluck, and the release noise's generator state - the
+        // touch's white amplitude and its rise and fall, the brush's, two
+        // one-pole stages at the contact's corner, the brush's band-pass,
+        // the leaky integrator that launches the displacement, the samples
+        // left, the stroke's normal and parallel shares, its own draws and
+        // its travel from the damping point.
+        float releaseVelocity { -1.0f };
+        float peakLevel { 0.0f };
+        float releaseNoiseTouch { 0.0f };
+        float releaseNoiseFall { 0.0f };
+        float releaseNoiseRise { 0.0f };
+        float releaseNoiseFallDecay { 0.0f };
+        float releaseNoiseRiseDecay { 0.0f };
+        float releaseNoiseBrush { 0.0f };
+        float releaseNoiseBrushFall { 0.0f };
+        float releaseNoiseBrushRise { 0.0f };
+        float releaseNoiseBrushFallDecay { 0.0f };
+        float releaseNoiseBrushRiseDecay { 0.0f };
+        float releaseNoiseCoefficient { 0.0f };
+        float releaseNoiseStage1 { 0.0f };
+        float releaseNoiseStage2 { 0.0f };
+        float releaseNoiseBandA1 { 0.0f };
+        float releaseNoiseBandA2 { 0.0f };
+        float releaseNoiseBandA3 { 0.0f };
+        float releaseNoiseBandK { 0.0f };
+        float releaseNoiseBand1 { 0.0f };
+        float releaseNoiseBand2 { 0.0f };
+        float releaseNoiseLeak { 0.0f };
+        float releaseNoiseLaunched { 0.0f };
+        float releaseNoiseNormal { 0.0f };
+        float releaseNoiseParallel { 0.0f };
+        int releaseNoiseSamples { 0 };
+        std::uint32_t releaseNoiseState { 1 };
+        ContactTravel releaseNoiseTravel {};
     };
 
     struct BodyOutput
@@ -1100,7 +1150,7 @@ private:
     void beginRelease(Voice& voice, int stringIndex) noexcept;
     void completeKeyUp(Voice& voice, int stringIndex, bool pedalHeld) noexcept;
     void releaseKey(int midiNote, int midiChannel, bool sustainGiven,
-                    bool sustained) noexcept;
+                    bool sustained, float releaseVelocity = -1.0f) noexcept;
     void captureTail(Voice& voice) noexcept;
     // The Pick technique's released state (FittedPhysicalData.h): a rest
     // triangle of this height with its apex at position, a fraction of the
@@ -1215,6 +1265,14 @@ private:
                          float& horizontalIncident) noexcept;
     void addTailContactNoise(Voice& voice, float& tailIncident,
                              float& tailParallelIncident) noexcept;
+    // The key-up's sound (EngineParameters::releaseNoise): started by
+    // beginRelease and muteVacatedString, rendered and launched from the
+    // damping contact like the contact noise.
+    void startReleaseNoise(Voice& voice, int stringIndex,
+                           bool fretSide) noexcept;
+    float renderReleaseNoise(Voice& voice) noexcept;
+    void addReleaseNoise(Voice& voice, float& verticalIncident,
+                         float& horizontalIncident) noexcept;
     void finishVoice(Voice& voice, int stringIndex, float verticalIncident,
                      float horizontalIncident, float excitation,
                      float tailIncident, float tailParallelIncident,

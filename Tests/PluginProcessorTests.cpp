@@ -114,14 +114,16 @@ void testParameterContract()
         ids::stringAge, ids::pluckPosition, ids::touch, ids::bodyAmount,
         ids::stereoWidth, ids::output, ids::capture, ids::picking,
         ids::upperMic, ids::piezoLoading, ids::captureMode, ids::guitarModel,
-        ids::gatherChords, ids::piezoMix
+        ids::gatherChords, ids::piezoMix, ids::releaseNoise
     };
-    static_assert (ids::parameterCount == 17,
-                   "String Material and Bridge Model are gone; Piezo Mix is appended");
-    // Piezo Mix defaults to 0, so Main is the microphones alone.
+    static_assert (ids::parameterCount == 18,
+                   "String Material and Bridge Model are gone; Piezo Mix and "
+                   "Release Noise are appended");
+    // Piezo Mix defaults to 0, so Main is the microphones alone; Release
+    // Noise to 70%, the level a listener chose.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, -7.5f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 70.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -214,6 +216,15 @@ void testParameterContract()
             "Piezo Mix must append a 0-100% parameter with AU version hint 9");
     expect (processor.snapshotEngineParameters().piezoMix == 0.0f,
             "a new session mixes the piezo into Main");
+    const auto* releaseNoise = dynamic_cast<const juce::AudioParameterFloat*> (
+        processor.parameters.getParameter (ids::releaseNoise));
+    expect (releaseNoise != nullptr && releaseNoise->getVersionHint() == 10
+                && releaseNoise->getParameterIndex() == 17 && releaseNoise->isAutomatable()
+                && releaseNoise->getName (32) == "Release Noise"
+                && releaseNoise->range.start == 0.0f && releaseNoise->range.end == 100.0f,
+            "Release Noise must append a 0-100% parameter with AU version hint 10");
+    expect (std::abs (processor.snapshotEngineParameters().releaseNoise - 0.7f) < 0.002f,
+            "a new session's key-ups are not at the chosen 70%");
 
     setValue (processor, ids::shape, 3.0f);
     setValue (processor, ids::bodyMaterial, 2.0f);
@@ -666,12 +677,20 @@ void testReleaseVelocityAndCc68ChangeNothing()
 {
     // A key-up damps its note however fast it is lifted, and CC68, MIDI's
     // Legato Footswitch, is not read: legato was removed everywhere at the
-    // user's request (Docs/decisions.md, 2026-09-28). Every release
-    // encoding, with or without the footswitch down, renders the same wave.
-    const auto phrase = [] (const juce::MidiMessage& off, bool footswitch = false)
+    // user's request (Docs/decisions.md, 2026-09-28). With Release Noise off
+    // every release encoding, with or without the footswitch down, renders
+    // the same wave. At its default the key's release velocity reaches the
+    // damping hand's touch alone (Docs/decisions.md, 2026-09-30): a Note Off
+    // without a velocity, at 64 or as a zero-velocity Note On all read as the
+    // nominal 64, a fast one only adds a little to that touch, and CC68 still
+    // changes nothing.
+    namespace ids = acustra::parameters;
+    const auto phrase = [] (const juce::MidiMessage& off, bool footswitch = false,
+                            float releaseNoise = 0.0f)
     {
         auto processorOwner = std::make_unique<AcustraAudioProcessor>();
         auto& processor = *processorOwner;
+        setValue (processor, ids::releaseNoise, releaseNoise);
         processor.prepareToPlay (sampleRate, blockSize);
         juce::AudioBuffer<float> audio { 2, blockSize };
         std::vector<float> mono;
@@ -716,6 +735,33 @@ void testReleaseVelocityAndCc68ChangeNothing()
     expect (plain == sixtyFour && plain == zeroOn && plain == fast,
             "release velocity re-excited or changed the damped note");
     expect (plain == footswitch, "CC68 changed the performance");
+
+    // At the default: the encodings without a velocity are the nominal one,
+    // a fast key-up differs only by the release touch - far under the note -
+    // and the footswitch still changes nothing.
+    const float standard = 70.0f;
+    const auto touched = phrase (juce::MidiMessage::noteOff (1, 43), false, standard);
+    const auto touchedSixtyFour = phrase (
+        juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (64)), false, standard);
+    const auto touchedZeroOn = phrase (
+        juce::MidiMessage::noteOn (1, 43, static_cast<juce::uint8> (0)), false, standard);
+    const auto touchedFast = phrase (
+        juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (127)), false, standard);
+    const auto touchedFootswitch = phrase (
+        juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (127)), true, standard);
+    expect (touched == touchedSixtyFour && touched == touchedZeroOn,
+            "a release without a velocity did not read as the nominal 64");
+    expect (touched != plain, "Release Noise at its default added nothing at key-up");
+    expect (touchedFast == touchedFootswitch, "CC68 changed the performance");
+    double peak = 0.0, difference = 0.0;
+    for (std::size_t index = 0; index < touched.size() && index < touchedFast.size(); ++index)
+    {
+        peak = std::max (peak, static_cast<double> (std::abs (touched[index])));
+        difference = std::max (difference,
+            static_cast<double> (std::abs (touchedFast[index] - touched[index])));
+    }
+    expect (touchedFast != touched && difference < 0.05 * peak,
+            "a fast key-up did not reach the release touch, or re-excited the note");
 }
 
 void testResetAllControllersReleasesSustain()
@@ -1221,6 +1267,7 @@ void testStateRoundTripAndMigration()
     setValue (source, ids::captureMode, 1.0f);
     setValue (source, ids::guitarModel, 1.0f);
     setValue (source, ids::piezoMix, 45.0f);
+    setValue (source, ids::releaseNoise, 33.0f);
 
     juce::MemoryBlock stored;
     source.getStateInformation (stored);
@@ -1247,7 +1294,8 @@ void testStateRoundTripAndMigration()
                                 ids::touch, ids::bodyAmount, ids::stereoWidth,
                                 ids::output, ids::capture, ids::picking,
                                 ids::upperMic, ids::piezoLoading, ids::captureMode,
-                                ids::guitarModel, ids::gatherChords, ids::piezoMix })
+                                ids::guitarModel, ids::gatherChords, ids::piezoMix,
+                                ids::releaseNoise })
         {
             const bool kept = std::abs (valueOf (to, id) - valueOf (from, id)) < 0.011f;
             expect (kept, std::string { "state round trip lost " } + id);
@@ -1346,6 +1394,7 @@ void testStateRoundTripAndMigration()
     setValue (restored, ids::capture, 3.0f);
     setValue (restored, ids::picking, 2.0f);
     setValue (restored, ids::piezoMix, 80.0f);
+    setValue (restored, ids::releaseNoise, 90.0f);
     setValue (restored, ids::upperMic, 1.0f);
     setValue (restored, ids::piezoLoading, 1.0f);
     setValue (restored, ids::guitarModel, 4.0f);
@@ -1373,6 +1422,11 @@ void testStateRoundTripAndMigration()
             "parameters absent from an old state did not receive defaults");
     expect (restored.snapshotEngineParameters().piezoMix == 0.0f,
             "a session saved before Piezo Mix existed mixes the piezo into Main");
+    // Release Noise is new for them too, but a session saved before it keeps
+    // its silent key-ups rather than taking the new default.
+    expect (valueOf (restored, ids::releaseNoise) == 0.0f
+                && restored.snapshotEngineParameters().releaseNoise == 0.0f,
+            "a session saved before Release Noise existed gained key-up sounds");
 
     // A state saved before the simplification (no stateVersion): its String
     // Material and Bridge Model are dropped, and its Body Material from
