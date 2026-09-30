@@ -505,6 +505,14 @@ const AnchorTransform& anchorTransformFor(GuitarModel model) noexcept
                                           : measuredAnchorTransform;
 }
 
+// The statistical continuation of the radiation above a measured bank's
+// fitted band (configureBody): a 1/16-octave grid at unit modal overlap
+// (Q = 1/(2^(1/16) - 1), 22.6), to 18 kHz, at -6 dB per octave.
+constexpr float radiationContinuationStepsPerOctave = 16.0f;
+constexpr float radiationContinuationTopHz = 18000.0f;
+constexpr float radiationContinuationDbPerOctave = -6.0f;
+// Its slots: AcustraEngine::radiationContinuationSlots.
+
 struct WoodSpec
 {
     float frequencyScale;
@@ -1071,6 +1079,14 @@ static_assert(steelBlendBodyModeCount <= ACUSTRA_BODY_MODE_COUNT,
               "the steel blend's radiation exceeds the body slots: with every "
               "joint mode (a band above 10 kHz) it needs "
               "-DACUSTRA_BODY_MODE_COUNT=263");
+static_assert(steelBlendBodyModeCount
+                  + AcustraEngine::radiationContinuationSlots
+                  <= ACUSTRA_BODY_MODE_COUNT
+              && (detail::bellidoBodyModes.size() + 3) / 4 * 4
+                  + AcustraEngine::radiationContinuationSlots
+                  <= ACUSTRA_BODY_MODE_COUNT,
+              "the radiation's continuation above the fitted band "
+              "(configureBody) no longer fits the body slots");
 static_assert(steelBlendBridgeModeCount <= ACUSTRA_BRIDGE_MODE_COUNT,
               "the steel blend's bridge exceeds the bridge slots: with every "
               "joint mode (a band above 10 kHz) it needs "
@@ -3691,6 +3707,156 @@ void AcustraEngine::configureBody() noexcept
             place(steelJointRadiationModes[index], static_cast<int>(index),
                   jointMorph, steelBlendJointShare);
     }
+    // The measured banks stop where their fit stopped (10 kHz before the
+    // anchor's x0.900 and the Shape's plate factor: 8.1 kHz on the Jumbo,
+    // 11.7 on the Parlor), and above their last mode the radiation fell
+    // 20-40 dB in a third of an octave. A plate's modal density is constant
+    // in frequency and its high modes overlap, so above the fitted band the
+    // radiation is continued statistically: modes on a 1/16-octave grid at
+    // unit modal overlap, each residue carrying the power density the bank's
+    // own top octave has (per microphone and per input, force and moment),
+    // with a deterministic pseudo-random phase, since the fitted high modes'
+    // phases are uncorrelated, falling at the bridge's mass law (-6 dB per
+    // octave) from the band's edge. Passive and linear like the rest of the
+    // bank. Every construction and rate keeps the band below its top as it
+    // was; above it (up to 18 kHz or 0.45 fs) about 10-19 modes are added.
+    {
+        const float rate = static_cast<float>(sampleRate_);
+        float top = 0.0f;
+        for (int index = 0; index < ownCount; ++index)
+        {
+            const auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+            if (mode.poleImaginary == 0.0f)
+                continue;
+            top = std::max(top, std::atan2(mode.poleImaginary, mode.poleReal)
+                * rate / twoPi);
+        }
+        // Power density of each residue set over the top octave, from the
+        // bank's own response there (the fitted modes overlap with partly
+        // cancelling residues, so their energies do not add).
+        std::array<double, 8> density {};
+        int referenceCount = 0;
+        for (int index = 0; index < ownCount && top > 0.0f; ++index)
+        {
+            const auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+            if (mode.poleImaginary != 0.0f
+                && std::atan2(mode.poleImaginary, mode.poleReal) * rate / twoPi
+                    >= 0.5f * top)
+                ++referenceCount;
+        }
+        constexpr int points = 96;
+        for (int point = 0; point < points && referenceCount >= 8; ++point)
+        {
+            const double frequency = 0.5 * top * (1.0 + (point + 0.5) / points);
+            const std::complex<double> inverseZ = std::polar(1.0,
+                -2.0 * 3.14159265358979323846 * frequency / rate);
+            std::array<std::complex<double>, 4> response {};
+            for (int index = 0; index < ownCount; ++index)
+            {
+                const auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+                if (mode.poleImaginary == 0.0f)
+                    continue;
+                const std::complex<double> pole(mode.poleReal, mode.poleImaginary);
+                const std::complex<double> direct = 1.0 / (1.0 - pole * inverseZ);
+                const std::complex<double> mirror = 1.0 / (1.0 - std::conj(pole) * inverseZ);
+                const float parts[8] { mode.leftReal, mode.leftImaginary,
+                    mode.rightReal, mode.rightImaginary, mode.leftMomentReal,
+                    mode.leftMomentImaginary, mode.rightMomentReal,
+                    mode.rightMomentImaginary };
+                for (int part = 0; part < 4; ++part)
+                {
+                    const std::complex<double> residue(parts[2 * part], parts[2 * part + 1]);
+                    response[static_cast<std::size_t>(part)]
+                        += residue * direct + std::conj(residue) * mirror;
+                }
+            }
+            for (int part = 0; part < 4; ++part)
+                density[static_cast<std::size_t>(part)]
+                    += std::norm(response[static_cast<std::size_t>(part)]) / points;
+        }
+        // Mean |H|^2 over the octave is energy x rate / bandwidth for
+        // uncorrelated modes: the density per hertz, in energy. The bank's
+        // response is the same at every rate, so the density is taken as its
+        // 48 kHz states would hold it, and every continuation mode is built
+        // at 48 kHz and converted to this rate as the measured modes are
+        // (place): a zero-order-held continuous mode, with the 48 kHz hold's
+        // level. Built at this rate instead, the continuation's phases stood
+        // still while the measured modes' turned with the rate, and their
+        // overlap near the band's edge moved 0.17 dB between 48 and 96 kHz.
+        constexpr float referenceRate = 48000.0f;
+        for (auto& value : density)
+            value *= 0.5 * top / referenceRate;
+        const double referenceWidth = 0.5 * top;
+        const float step = std::exp2(1.0f / radiationContinuationStepsPerOctave);
+        const float q = 1.0f / (step - 1.0f);
+        const float highest = std::min(radiationContinuationTopHz, 0.45f * rate);
+        const float tilt = radiationContinuationDbPerOctave;
+        std::uint32_t seed = 0x9e3779b9u;
+        const auto random = [&seed] ()
+        {
+            seed ^= seed << 13; seed ^= seed >> 17; seed ^= seed << 5;
+            return static_cast<float>(seed) * (1.0f / 4294967296.0f);
+        };
+        // A bank's own modes are summed in index order and the parts after
+        // them four lanes at a time from a whole group of four
+        // (BodyBank::render), so a bank that does not end on one (the
+        // Bellido's 134) is padded to it with silent slots; otherwise the
+        // lanes after its last group were advanced and never heard.
+        if (slot == ownCount)
+            while (slot % BodyBank::lanes != 0 && slot < bodyModeCount)
+                bodyModes_[static_cast<std::size_t>(slot++)] = {};
+        const int continuationEnd = std::min(slot + radiationContinuationSlots,
+                                             bodyModeCount);
+        for (float frequency = top * step;
+             referenceCount >= 8 && frequency < highest && slot < continuationEnd;
+             frequency *= step)
+        {
+            auto& mode = bodyModes_[static_cast<std::size_t>(slot++)];
+            const float radius = std::exp(-pi * frequency / (q * rate));
+            const std::complex<float> pole = std::polar(radius,
+                twoPi * frequency / rate);
+            mode.poleReal = pole.real();
+            mode.poleImaginary = pole.imag();
+            const float referenceRadius = std::exp(-pi * frequency
+                / (q * referenceRate));
+            const std::complex<float> referencePole = std::polar(
+                referenceRadius, twoPi * frequency / referenceRate);
+            const auto holdGain = [frequency] (double at)
+            {
+                const double x = static_cast<double>(pi)
+                    * static_cast<double>(frequency) / at;
+                return std::sin(x) / x;
+            };
+            const std::complex<float> rateScale = rate == referenceRate
+                ? std::complex<float>(1.0f, 0.0f)
+                : (pole - 1.0f) / (referencePole - 1.0f)
+                    * static_cast<float>(holdGain(referenceRate) / holdGain(rate));
+            // This mode's bandwidth share of the density, as energy.
+            const double spacing = frequency * (step - 1.0f / step) * 0.5;
+            const double level = std::pow(10.0, tilt / 20.0
+                * std::log2(frequency / top));
+            const double energyToResidue = 1.0
+                - static_cast<double>(referenceRadius) * referenceRadius;
+            float* parts[8] { &mode.leftReal, &mode.leftImaginary,
+                &mode.rightReal, &mode.rightImaginary, &mode.leftMomentReal,
+                &mode.leftMomentImaginary, &mode.rightMomentReal,
+                &mode.rightMomentImaginary };
+            for (int part = 0; part < 4; ++part)
+            {
+                const double magnitude = level * std::sqrt(
+                    density[static_cast<std::size_t>(part)] / referenceWidth
+                    * spacing * energyToResidue);
+                const float phase = twoPi * random();
+                const std::complex<float> residue = std::complex<float>(
+                    static_cast<float>(magnitude) * std::cos(phase),
+                    static_cast<float>(magnitude) * std::sin(phase)) * rateScale;
+                *parts[2 * part] = residue.real();
+                *parts[2 * part + 1] = residue.imag();
+            }
+        }
+        while (slot < continuationEnd)
+            bodyModes_[static_cast<std::size_t>(slot++)] = {};
+    }
     const int count = slot;
     for (; slot < bodyModeCount; ++slot)
         bodyModes_[static_cast<std::size_t>(slot)] = {};
@@ -3794,7 +3960,8 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     bridgeShapePlate_ = morph.plateFrequency;
     bridgeShapeT1UpperHz_ = morph.t1UpperHz;
     // Additional bodies already have a qualified absolute mobility. The old
-    // corpus compensation and high-band conductance floor belong to Original.
+    // corpus compensation belongs to Original; the high-band conductance
+    // floor is every modal fit's (below).
     // Keep the fitting control as a relative multiplier around the new body's
     // measured response, with unit gain at the shipped calibration.
     // Steel's own bridge is the flamenca's: its top is about 3.6 times as
@@ -3864,10 +4031,14 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     // The plate conductance floor is the dense overlap of a plate's own
     // driving-point response, which the archive never resolves into a
     // rocking pair, so it enters as heave alone.
+    // The Bellido's modal fit loses the same high-band conductance
+    // between its overlapping modes as g21's does, so it takes the same
+    // floor: without it the Bellido's strings kept 4-10 kHz partials a
+    // third of the Original's drain would leave, and it played 11-15 dB
+    // over the recordings at 5-10 kHz against the Original's 1-5.
     const auto plate = plateConductanceMode(physicalCalibration_);
     configure(static_cast<std::size_t>(bridgeModeCount), plate.frequency,
-              plate.q, parameters_.guitarModel == GuitarModel::Original ? plate.weight : 0.0f,
-              0.0f, 0.0f);
+              plate.q, plate.weight, 0.0f, 0.0f);
     if (!keepModalState)
     {
         bridgeLoad_.pastHeave = 0.0f;
@@ -3963,8 +4134,7 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         exact::bits(rate), exact::bits(bridgeShapeA0_), exact::bits(bridgeShapeT1_),
         exact::bits(bridgeShapePlate_), exact::bits(bridgeShapeT1UpperHz_),
         exact::bits(scale), exact::bits(plate.frequency), exact::bits(plate.q),
-        exact::bits(parameters_.guitarModel == GuitarModel::Original
-                    ? plate.weight : -1.0f),
+        exact::bits(plate.weight),
         exact::bits(wood.frequency), exact::bits(wood.q),
         // The joint-pole body's own Shape morph (visitSteelBlendBridge).
         static_cast<std::uint32_t>(parameters_.shape) };
@@ -4023,8 +4193,7 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         table.ordered = table.count;
     }
     table.scale = scale;
-    table.plate = parameters_.guitarModel == GuitarModel::Original
-        && plate.weight > 0.0f;
+    table.plate = plate.weight > 0.0f;
     if (table.plate)
     {
         // The floor's 48 kHz prototype, as configureBridge builds it.

@@ -5654,6 +5654,14 @@ void testNaturalHarmonicsReachAboveTheFretboard()
 // so the harmonic - or its octave, which shares the node - is what sounds. The
 // release burst used to reach the bridge unfiltered, and on D#6, E6 and E7 an
 // unrelated partial of the open string was the loudest in the output.
+// It is read at the saddle (Capture Piezo), where the string's own force
+// arrives flat across this band: through the microphones the body's
+// radiation weights the partials, and the Dreadnought's 8.3 kHz radiation
+// peak, measured +12 dB over the piezo's balance and 1.2 dB short of the
+// octave before the radiation was continued above its fitted band, lifts the
+// open string's 25th partial there (14 dB under the harmonic at the saddle)
+// 0.2 dB over E6's octave (Docs/decisions.md, 2026-09-30). That is the
+// body's colour, not a mode the finger failed to damp.
 void testANaturalHarmonicSoundsItsOwnPitch()
 {
     const auto spectrumPeak = [] (const Audio& audio, double begin, double end)
@@ -5711,6 +5719,7 @@ void testANaturalHarmonicSoundsItsOwnPitch()
         auto engineOwner = std::make_unique<acustra::AcustraEngine>();
         auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
+        parameters.capture = acustra::CaptureType::Piezo;
         engine.setParameters(parameters);
         engine.prepare(sampleRate, blockSize);
         engine.noteOn(midiNote, 0.7f);
@@ -7610,15 +7619,28 @@ void testAPlectrumReleasesWithVelocity()
         const auto after = renderAtRate(parameters, 52, 0.8f, 0.3, rate, 64, true, loud);
         expect(normalisedDifference(before, after) > 0.01,
                "the plectrum values did not reach a picked note");
-        double peakBefore = 0.0, peakAfter = 0.0;
+        // Headroom over the whole note; growth read on the ring after the
+        // attack (from 50 ms), where a runaway would keep rising. The
+        // attack's own peak is the 8x broadband contact burst, which the
+        // body radiates up to 18 kHz since its radiation was continued above
+        // the fitted band (Docs/decisions.md, 2026-09-30): 3.4-5.1x the
+        // plain pluck's there, against 1.8-2.6x when that band was 20-40 dB
+        // down, while the ring stays within 1.35x at every rate.
+        double peakBefore = 0.0, peakAfter = 0.0, ringBefore = 0.0, ringAfter = 0.0;
+        const auto attack = static_cast<std::size_t>(0.05 * rate);
         bool finite = true;
         for (std::size_t sample = 0; sample < after.left.size(); ++sample)
         {
             finite = finite && std::isfinite(after.left[sample]) && std::isfinite(after.right[sample]);
             peakBefore = std::max(peakBefore, static_cast<double>(std::abs(before.left[sample])));
             peakAfter = std::max(peakAfter, static_cast<double>(std::abs(after.left[sample])));
+            if (sample >= attack)
+            {
+                ringBefore = std::max(ringBefore, static_cast<double>(std::abs(before.left[sample])));
+                ringAfter = std::max(ringAfter, static_cast<double>(std::abs(after.left[sample])));
+            }
         }
-        expect(finite && peakAfter < 1.0 && peakAfter < 4.0 * peakBefore,
+        expect(finite && peakAfter < 1.0 && ringAfter < 2.0 * ringBefore,
                "an extreme plectrum setting left headroom or blew up");
     }
 
