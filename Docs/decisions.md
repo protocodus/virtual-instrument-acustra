@@ -4,6 +4,18 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-30 — defect: a forming chord's refret kept an impossible new note
+
+Hand-timed strums (notes 5-20 ms apart, not on one sample) came out beyond
+one hand: after an open G, an upstroke's B2-G3-C4-E4-B4 as A2 D5 G5 B5 e7 and
+a downstroke's A2-C3-G3-D4-G4 as A0 E8 G0 D12 e3. reshapeFormingChord found
+a playable shape but discarded it whenever that shape moved none of the held
+notes, returning the new note's first, impossible string. It now takes the
+shape's string for the new note in that case (E7 and B8 above). Measured: 16
+of 88 strums in HandAllocatorTests' new check (11 chords, both directions,
+5/10/15/20 ms) were outside the four-fret span before, none after; 400
+random 3-5-note strums, none before or after with a same-sample plan.
+
 ## 2026-09-30 — defect: the retained tail's port faded out, not cut
 
 Demo renders showed a faint 5-sample tick 240 ms after fretted key-ups

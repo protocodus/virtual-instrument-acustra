@@ -424,7 +424,9 @@ a wound string does not sound like the same note on a plain one. The hand now
 refrets a chord still forming: when a note arrives within 30 ms of the one
 before it on its channel and would otherwise take a held string or leave the
 hand an impossible stretch, the chord so far is refretted with it as one
-shape, moving as few of its notes as the shape allows. A moved note is
+shape, moving as few of its notes as the shape allows (none, when the new
+note alone fits on another string: a strum strung out over 5-20 ms by hand
+used to keep it where it was first put, five or more frets out). A moved note is
 replucked on its new string, inside the chord's own onset spread, and the
 string it leaves is taken by another note of the shape or damped by the
 leaving finger. The same C4-E4-G4 rolled over 20 ms becomes G fret 5, B fret

@@ -6790,9 +6790,18 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
     incoming.midiNote = midiNote;
     search.notes[static_cast<std::size_t>(search.count++)] = incoming;
     searchShape(search, 0, 0u);
-    if (!search.found || search.best.moves == 0 || search.best.impossible != 0
-        || search.best.steals != 0)
+    if (!search.found || search.best.impossible != 0 || search.best.steals != 0)
         return chosenString;
+    const int incomingString = search.bestStrings[
+        static_cast<std::size_t>(search.count - 1)];
+    // The best shape may keep every note where it is and put only the new
+    // one elsewhere: an upstroke's B2, chosen on the A string's second fret
+    // under G3-C4-E4-B4 already held at frets 5-7, fits them on the low E's
+    // seventh. Returning the string first chosen there left a five-fret
+    // stretch no hand holds whenever a strum's notes arrived a few
+    // milliseconds apart rather than on one sample.
+    if (search.best.moves == 0)
+        return incomingString;
 
     // Lift every moved note first, so a chain of moves finds its strings free.
     struct Moved
@@ -6827,8 +6836,6 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         hand_[static_cast<std::size_t>(from)].valid = false;
         vacated |= 1u << from;
     }
-    const int incomingString = search.bestStrings[
-        static_cast<std::size_t>(search.count - 1)];
     unsigned taken = 1u << incomingString;
     for (int index = 0; index < movedCount; ++index)
     {
