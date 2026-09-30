@@ -5126,8 +5126,20 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             maximumDelaySamples - 3);
         // The two planes are released a little apart (-0.006 and +0.009 of
         // the string, authored), so their spectra are not one comb twice.
-        const float localPosition = clamp(position
-            + (polarisation == 0 ? -0.006f : 0.009f), 0.05f, 0.48f);
+        // The shape is laid over the `length` samples written below, but the
+        // string's period is the loop's whole round trip, contactPeriodSamples,
+        // which the loss, dispersion and bending sections lengthen past the
+        // delay line: 3-13% longer. A kink placed at p of the written line
+        // then sat that much bridgeward of p on the string, and its partials
+        // 6-9 dB rms off the rest pluck's law. Scaled by the period over the
+        // written length it lands at p of the string, which a blind listener
+        // preferred on 2026-09-30 (Docs/decisions.md); the bound leaves room
+        // for that scale past the 0.48 the position itself stops at.
+        const float frameScale = voice.contactPeriodSamples > 0.0f
+            ? voice.contactPeriodSamples / static_cast<float>(length) : 1.0f;
+        const float localPosition = clamp((position
+            + (polarisation == 0 ? -0.006f : 0.009f)) * frameScale, 0.05f, 0.60f);
+        voice.releaseShapePosition[static_cast<std::size_t>(polarisation)] = localPosition;
         const float polarisationGain = polarisation == 0
             ? exact::sqrt(voice.polarisationMix)
             : exact::sqrt(1.0f - voice.polarisationMix);
@@ -5641,8 +5653,10 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                                      float releaseShare, double slipPole,
                                      float referenceDelay) noexcept
 {
-    const float p = clamp(position, 0.05f, 0.48f);
-    const double apex = static_cast<double>(p);
+    // As the shape's own bound (initialisePluck): p of the written line.
+    // The reference grid below moves it (setApex) and puts it back.
+    float p = clamp(position, 0.05f, 0.60f);
+    double apex = static_cast<double>(p);
     const auto bridgeFraction = [] (double phase)
     {
         phase -= exact::floor(phase);
@@ -5668,9 +5682,17 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     // kernel's reach are summed. The node projection for a natural harmonic
     // follows; all of it is linear, so both components are treated alike.
     const double sigma = std::max(static_cast<double>(aperture), 1.0e-9);
-    const double cornerA = 0.5 * apex;
-    const double cornerB = 1.0 - 0.5 * apex;
-    const double slopeChange = 1.0 / (apex * (1.0 - apex));
+    double cornerA = 0.5 * apex;
+    double cornerB = 1.0 - 0.5 * apex;
+    double slopeChange = 1.0 / (apex * (1.0 - apex));
+    const auto setApex = [&] (float share)
+    {
+        p = share;
+        apex = static_cast<double>(p);
+        cornerA = 0.5 * apex;
+        cornerB = 1.0 - 0.5 * apex;
+        slopeChange = 1.0 / (apex * (1.0 - apex));
+    };
     const auto unitCorner = [] (double z)
     {
         if (z >= 10.0)
@@ -5731,7 +5753,7 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     // step smoothed over less than a sample lands on one difference or two
     // depending on where the grid falls, and the share must describe what
     // is written.
-    const auto phaseOn = [p] (int grid, int sample)
+    const auto phaseOn = [&p] (int grid, int sample)
     {
         return static_cast<float>(sample - 1) / static_cast<float>(grid)
              - 0.5f * p;
@@ -5854,6 +5876,12 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                         static_cast<int>(pickReleaseDisplacement_.size())));
         const double referencePole = slipPole > 0.0
             ? std::pow(slipPole, sampleRate_ / 48000.0) : 0.0;
+        // The kink is a share of the line it is written on, which is the
+        // string's period over that line's rounded length (initialisePluck);
+        // the same point on the string is its own share of the 48 kHz line.
+        const float hostShare = p;
+        setApex(clamp(static_cast<float>(static_cast<double>(hostShare) * length
+            * (48000.0 / sampleRate_) / grid), 0.05f, 0.60f));
         const auto reference = energiesOn(grid, true);
         referenceSolved = true;
         if (reference.velocity > 0.0)
@@ -5888,6 +5916,9 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                                            reference.cross, reference.velocity);
         }
     }
+
+    if (referenceSolved)
+        setApex(clamp(position, 0.05f, 0.60f));
 
     // Kept for the write pass below, which reads the same phases.
     const bool kept = length >= 1

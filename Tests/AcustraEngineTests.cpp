@@ -74,6 +74,17 @@ struct AcustraEngineTestAccess
             / engine.voices_[static_cast<std::size_t>(string)].characteristicImpedance;
         return -20.0 * std::log10(std::abs((port - mobility) / (port + mobility))) * f0;
     }
+    // The normal plane's kink as a share of the string's period, and the
+    // pluck point it was asked for (with the plane's -0.006 offset).
+    static std::pair<double, double> kinkOnTheString(const AcustraEngine& engine, int string)
+    {
+        const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
+        const int length = std::clamp(static_cast<int>(std::round(voice.loops[0].targetDelay)),
+                                      8, AcustraEngine::maximumDelaySamples - 3);
+        return { static_cast<double>(voice.releaseShapePosition[0]) * length
+                     / voice.contactPeriodSamples,
+                 static_cast<double>(voice.pluckPoint) - 0.006 };
+    }
     static bool idleFlushed(const AcustraEngine& engine)
     {
         return engine.idleFlushed_;
@@ -219,8 +230,7 @@ struct AcustraEngineTestAccess
             / std::clamp(1.0f - voice.pluckPoint * soundingLength / scaleLength,
                          0.05f, 1.0f);
         ReleasedContactSnapshot result {
-            {}, std::clamp(voice.pluckPoint
-                + (options.polarisation == 0 ? -0.006f : 0.009f), 0.05f, 0.48f),
+            {}, voice.releaseShapePosition[static_cast<std::size_t>(options.polarisation)],
             registeredAperture(contactSamples,
                 physical.apertureScale,
                 loop.currentDelay * 48000.0f / static_cast<float>(rate),
@@ -6200,8 +6210,10 @@ void testSwitchingTuningOrModelUnderAChordDoesNotClick()
     // start, at the same moment - a switch to a louder construction may be
     // louder, but not more than that. A Model switch hands the chord's
     // stored energy to another guitar's bridge and body, and the new body's
-    // modes start from rest under it: the Bellido to the Original just under
-    // twice, and at most twice. The Original to the Bellido is more, since
+    // modes start from rest under it: the Bellido to the Original about twice
+    // (1.998 before the pluck shape was laid over the loop's period on
+    // 2026-09-30, 2.030 after; the swell is the chord's stored energy, so
+    // its spectrum moves it), bounded at 2.1. The Original to the Bellido is more, since
     // every construction plays at one loudness
     // (ConstructionLoudnessData.h): the Original's chord, drained less by
     // its stiffer top, pours through the Bellido's mobile one at 4.1 times
@@ -6243,7 +6255,7 @@ void testSwitchingTuningOrModelUnderAChordDoesNotClick()
     using G = acustra::GuitarModel;
     struct Switch { const char* name; acustra::EngineParameters from, to; double bound; };
     for (const auto& item : {
-             Switch { "Bellido to Original", make(G::Bellido1978), make(G::Original), 2.0 },
+             Switch { "Bellido to Original", make(G::Bellido1978), make(G::Original), 2.1 },
              Switch { "Original to Bellido", make(G::Original), make(G::Bellido1978), 3.5 } })
     {
         const double ratio = against(item.from, item.to);
@@ -8261,10 +8273,35 @@ void testThePlateFloorDampsAlikeAtEveryRate()
     expect(worstLow < 0.3, "a low host rate lost the bridge's plate conductance floor");
 }
 
+// The release shape's kink lands at the pluck point of the string, not of
+// the delay line it is written on: the loop's round trip is 3-13% longer
+// than that line, and a kink at p of the line sat that much bridgeward on
+// the string (Docs/decisions.md, 2026-09-30).
+void testThePluckKinkLandsAtThePluckPoint()
+{
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const int note : { 40, 52, 64, 76, 88 })
+        {
+            auto engine = std::make_unique<acustra::AcustraEngine>();
+            engine->prepare(rate, 64);
+            engine->noteOn(note, 0.6f);
+            const int string = engine->heldString(note);
+            if (string < 0)
+                continue;
+            const auto kink = acustra::AcustraEngineTestAccess::kinkOnTheString(*engine, string);
+            // The attack's pitch glide moves the period by ~0.1% after the pluck.
+            expect(std::abs(kink.first - kink.second) < 2.0e-3,
+                   "the pluck's kink sat at " + std::to_string(kink.first)
+                       + " of the string, not its pluck point " + std::to_string(kink.second)
+                       + ", MIDI " + std::to_string(note) + " at " + std::to_string(rate));
+        }
+}
+
 } // namespace
 
 int main()
 {
+    testThePluckKinkLandsAtThePluckPoint();
     testIdleFlushIsIndependentOfBlockSize();
     testThePlateFloorDampsAlikeAtEveryRate();
     testBodyRadiationKeepsItsLevelAcrossRates();

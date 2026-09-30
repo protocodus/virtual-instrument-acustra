@@ -1673,17 +1673,15 @@ engine.
 
 ## Known gaps
 
-- Open from the 2026-09-30 defect audit, each a change to the shipped sound
-  that waits on a listening decision rather than a fix:
+- Left by the 2026-09-30 defect audit, each a trade in the shipped sound
+  rather than a fix:
   - The parallel polarisation shares the normal loop's bridge compensation,
     so the H1 doublet reaches about 18 cents and sustained pitch sits up to
     9 cents off on the default Dreadnought (low E frets 14-17, A frets 9-11).
     Tuning each plane against its own port puts sustained pitch within
-    about 2 cents at every rate but removes most of the doublet's beat.
-  - The pluck's shape is laid over the rounded delay rather than the loop's
-    true period, which moves the effective pluck point 3-13% bridgeward and
-    its partials 6-9 dB rms off the rest-pluck law; Pluck Position's
-    distance scale was set by ear on top of it.
+    about 2 cents at every rate but removes most of the doublet's beat; a
+    blind listener heard that as detuned and kept this (Docs/decisions.md,
+    2026-09-30).
   - The piezo's force unit (above, "The strings' forces on the element").
   - Where the pluck shape nearly nulls a partial, the random release burst
     decides its level: MIDI 83's H8 differs by 27 dB between two burst

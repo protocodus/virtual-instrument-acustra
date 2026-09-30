@@ -4,6 +4,35 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-30 — blind verdicts: the pluck shape over the loop's period; the doublet stays
+
+Two level-matched A/B pairs from the 2026-09-30 defect audit, the same
+31-second phrase each (sustained notes on the low E at frets 14/16/17, A at
+9/11, D at 4, open G and B, then E and A major chords), A the shipping engine.
+
+- **Pluck shape: B chosen.** The release shape was laid over the
+  `round(targetDelay)` samples it is written on, while the string's period is
+  the loop's whole round trip, which its loss, dispersion and bending
+  sections lengthen 3-13% past that. Every kink therefore sat that much
+  bridgeward of Pluck Position on the string, and the partials missed the rest
+  pluck's law by 6-9 dB rms. B scales the kink by the period over the written
+  length (bound raised from 0.48 to 0.60 of the line for it); the Pick
+  release's 48 kHz reference solve places the same point on its own line.
+  Chosen by ear ("B is better"); Pluck Position's by-ear distance scale 1.8 is
+  kept on top of it. The model-switch swell under a chord moved from 1.998 to
+  2.030 times the louder steady chord with it; its bound is now 2.1. The
+  benchmark disagrees mildly (shipping calibration, against the engine just
+  before it): training 6.536 -> 6.559 (+0.35%), development validation
+  6.432 -> 6.581 (+2.3%, mostly harmonics 9.14 -> 9.57), the never-fitted
+  flat-top rows 7.229 -> 7.192 (-0.5%); the ear decides, as recorded.
+- **Pitch pull: A kept.** B tuned each polarisation against its own bridge
+  port, which puts sustained pitch within about 2 cents at every rate
+  (worst late 9.07 -> 2.18 cents on the Dreadnought) but removes most of the
+  H1 doublet's beat. The listener heard A as "more aligned" and B as
+  "detuned", so the parallel loop keeps sharing the normal loop's
+  compensation; the up to 9-cent sustained pull on the low E around frets
+  14-17 is the price, chosen by ear.
+
 ## 2026-09-29 — at the user's request: a Piezo Mix knob
 
 Not a listening verdict: the user asked for a piezo volume. The plug-in has a

@@ -823,6 +823,9 @@ private:
         std::uint32_t contactNoiseState { 1 };
         ContactTravel contactTravel {};
         float contactPeriodSamples { 0.0f };
+        // Where each plane's release shape put its kink, as a share of the
+        // line it was written on (initialisePluck).
+        std::array<float, 2> releaseShapePosition {};
         // Routing identity survives transport retirement: a drained contact
         // must not fall back to the former bridge-boundary source write.
         bool contactTravelEnabled { false };
