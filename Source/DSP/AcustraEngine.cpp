@@ -3051,8 +3051,19 @@ void AcustraEngine::configureBody() noexcept
         const std::complex<float> referencePole = std::polar(
             std::exp(-pi * frequency / (q * referenceRate)),
             twoPi * frequency / referenceRate);
+        // That hold droops by sinc(pi f / rate) at the mode, which the 48 kHz
+        // fit absorbed at 48 kHz; keep the 48 kHz level at other rates rather
+        // than the 48 kHz droop (+0.36 dB at 9 kHz at 96 kHz). One exactly
+        // at 48 kHz.
+        const auto holdGain = [frequency] (double rate)
+        {
+            const double x = static_cast<double>(pi) * static_cast<double>(frequency) / rate;
+            return x == 0.0 ? 1.0 : std::sin(x) / x;
+        };
+        const float holdDroop = sampleRate_ == 48000.0 ? 1.0f
+            : static_cast<float>(holdGain(48000.0) / holdGain(sampleRate_));
         const std::complex<float> residueRateScale
-            = (pole - 1.0f) / (referencePole - 1.0f);
+            = (pole - 1.0f) / (referencePole - 1.0f) * holdDroop;
         const auto scaledResidue = [playedDrive, residueRateScale]
             (float real, float imaginary)
         {

@@ -41,6 +41,29 @@ struct AcustraEngineTestAccess
     {
         return engine.bridgeLoad_.displacement;
     }
+    // The body's left microphone for a sinusoidal bridge force at `f`,
+    // through the engine's own force derivative, after half a second.
+    static double bodyResponse(const AcustraEngine& engine, double f)
+    {
+        auto bank = engine.bodyBank_;
+        bank.reset();
+        AcustraEngine::FixedDerivative derivative;
+        derivative.reset();
+        const double rate = engine.sampleRate_;
+        const auto ratio = static_cast<float>(rate / 48000.0);
+        const int settle = static_cast<int>(0.5 * rate);
+        const int length = static_cast<int>(0.2 * rate);
+        std::complex<double> sum {};
+        for (int i = 0; i < settle + length; ++i)
+        {
+            const double phase = 2.0 * std::numbers::pi * f * i / rate;
+            const auto out = bank.render(
+                derivative.process(static_cast<float>(std::sin(phase)), ratio), 0.0f);
+            if (i >= settle)
+                sum += static_cast<double>(out.left) * std::polar(1.0, -phase);
+        }
+        return std::abs(sum) * 2.0 / length;
+    }
     static bool idleFlushed(const AcustraEngine& engine)
     {
         return engine.idleFlushed_;
@@ -7988,11 +8011,48 @@ void testASecondConstructionChangeDoesNotStepTheBridge()
     }
 }
 
+// The body radiates at other rates what it radiates at 48 kHz, where its
+// residues were fitted. Converted as a held continuous mode it kept the
+// 48 kHz hold's droop at the mode instead: 0.36-0.39 dB too much at 9 kHz
+// at 96 kHz, 0.18 dB too little at 44.1 kHz.
+void testBodyRadiationKeepsItsLevelAcrossRates()
+{
+    for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
+    {
+        acustra::EngineParameters parameters;
+        parameters.guitarModel = model;
+        std::vector<std::unique_ptr<acustra::AcustraEngine>> engines;
+        const std::array<double, 3> rates { 48000.0, 44100.0, 96000.0 };
+        for (const double rate : rates)
+        {
+            engines.push_back(std::make_unique<acustra::AcustraEngine>());
+            engines.back()->setParameters(parameters);
+            engines.back()->prepare(rate, 64);
+        }
+        double worst = 0.0;
+        for (const double f : { 3000.0, 5000.0, 7000.0, 9000.0 })
+        {
+            // A third-octave comb, so no one mode decides it.
+            std::array<double, 3> power {};
+            for (std::size_t r = 0; r < rates.size(); ++r)
+                for (int k = -3; k <= 3; ++k)
+                    power[r] += std::pow(acustra::AcustraEngineTestAccess::bodyResponse(
+                        *engines[r], f * std::exp2(k / 36.0)), 2.0);
+            for (std::size_t r = 1; r < rates.size(); ++r)
+                worst = std::max(worst, std::abs(10.0 * std::log10(power[r] / power[0])));
+        }
+        std::cout << "Acustra body radiation 3-9 kHz across 44.1/96 kHz, model "
+                  << static_cast<int>(model) << ": worst " << worst << " dB from 48 kHz\n";
+        expect(worst < 0.12, "the body's radiation moved with the sample rate");
+    }
+}
+
 } // namespace
 
 int main()
 {
     testIdleFlushIsIndependentOfBlockSize();
+    testBodyRadiationKeepsItsLevelAcrossRates();
     testASecondConstructionChangeDoesNotStepTheBridge();
     testPluckDrawsIgnoreEarlierBursts();
     testBridgeHandTopLossIsItsT60Ratio();
