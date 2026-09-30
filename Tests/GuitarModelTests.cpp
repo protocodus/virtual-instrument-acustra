@@ -5,6 +5,7 @@
 #include <array>
 #include <cmath>
 #include <complex>
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -21,20 +22,27 @@ struct AcustraEngineTestAccess
     static bool hasModel(const AcustraEngine& e, GuitarModel model)
     { return e.configuredGuitarModel_ == model; }
     template <typename Bank>
-    static bool nominalBridgeMatches(const AcustraEngine& e, const Bank& bank)
+    static bool nominalBridgeMatches(const AcustraEngine& e, const Bank& bank,
+                                     const AcustraEngine& original)
     {
         // This inspects the actual configured load, including every unused
-        // slot and the old conductance-floor slot. The raw qualified residues
-        // must survive nominal model selection without a legacy gain or floor.
+        // slot and the conductance-floor slot. The raw qualified residues
+        // must survive nominal model selection without a legacy gain; the
+        // last slot is the plate conductance floor, as heave alone, at the
+        // Original's own weight (the same fitted calibration).
+        const auto floorSlot = static_cast<std::size_t>(AcustraEngine::bridgeModeCount);
         for (std::size_t i = 0; i < e.bridgeLoad_.residueHeave.size(); ++i)
         {
-            const auto expected = i < bank.size() ? bank[i] : detail::MeasuredBridgeMode {};
+            auto expected = i < bank.size() ? bank[i] : detail::MeasuredBridgeMode {};
+            if (i == floorSlot)
+                expected.heave = original.bridgeLoad_.residueHeave[floorSlot];
             if (e.bridgeLoad_.residueHeave[i] != expected.heave
                 || e.bridgeLoad_.residueCross[i] != expected.cross
                 || e.bridgeLoad_.residueRock[i] != expected.rock)
                 return false;
         }
-        return true;
+        return original.bridgeLoad_.residueHeave[floorSlot] > 0.0f
+            && e.bridgeLoad_.residueHeave.size() == floorSlot + 1;
     }
 };
 }
@@ -98,12 +106,102 @@ double holdDroop(double frequency, double rate)
     return rate == 48000. ? 1. : sinc(pi * frequency / 48000.) / sinc(pi * frequency / rate);
 }
 
+// The radiation above the bank's fitted band, as configureBody continues it
+// at this rate, rebuilt here from its definition: from the highest mode
+// sounding at the rate (below 0.46 fs), modes on a 1/16-octave grid at unit
+// modal overlap (Q = 1 / (2^(1/16) - 1)) up to 18 kHz or 0.45 fs, at most
+// 19 of them; each part's residues (left, upper, and their moments) carry
+// the power density the bank's own top octave has at the rate, as 48 kHz
+// states, falling 6 dB per octave, with xorshift32 phases from 0x9e3779b9.
+// Returned as 48 kHz modes, which the rate conversion below treats as it
+// does the measured ones.
+std::vector<acustra::detail::MeasuredBodyMode> continuationOf(
+    const std::vector<acustra::detail::MeasuredBodyMode>& bank, double rate)
+{
+    const double pi = std::acos(-1.);
+    double top = 0;
+    for (const auto& m : bank)
+        if (m.frequency < .46 * rate)
+            top = std::max(top, double(m.frequency));
+    int reference = 0;
+    for (const auto& m : bank)
+        if (m.frequency < .46 * rate && m.frequency >= .5 * top)
+            ++reference;
+    std::vector<acustra::detail::MeasuredBodyMode> result;
+    if (reference < 8)
+        return result;
+    std::array<double, 4> density {};
+    constexpr int points = 96;
+    for (int point = 0; point < points; ++point)
+    {
+        const double hz = .5 * top * (1. + (point + .5) / points);
+        const auto z = std::polar(1., -2 * pi * hz / rate);
+        std::array<std::complex<double>, 4> response {};
+        for (const auto& m : bank)
+        {
+            if (m.frequency >= .46 * rate) continue;
+            const auto pole = std::exp(std::complex<double>(-pi * m.frequency / m.q, 2*pi*m.frequency) / rate);
+            const auto referencePole = std::exp(std::complex<double>(-pi * m.frequency / m.q, 2*pi*m.frequency) / 48000.);
+            const auto scale = (pole - 1.) / (referencePole - 1.) * holdDroop(m.frequency, rate);
+            const std::array<std::complex<double>, 4> residues {
+                std::complex<double>(m.leftReal, m.leftImaginary),
+                std::complex<double>(m.upperReal, m.upperImaginary),
+                std::complex<double>(m.leftMomentReal, m.leftMomentImaginary),
+                std::complex<double>(m.upperMomentReal, m.upperMomentImaginary) };
+            for (std::size_t part = 0; part < 4; ++part)
+            {
+                const auto r = scale * residues[part];
+                response[part] += r / (1. - pole * z) + std::conj(r) / (1. - std::conj(pole) * z);
+            }
+        }
+        for (std::size_t part = 0; part < 4; ++part)
+            density[part] += std::norm(response[part]) / points * .5 * top / 48000.;
+    }
+    const double step = std::exp2(1. / 16.);
+    const double q = 1. / (step - 1.);
+    std::uint32_t seed = 0x9e3779b9u;
+    const auto phase = [&seed] ()
+    {
+        seed ^= seed << 13; seed ^= seed >> 17; seed ^= seed << 5;
+        return 2 * std::acos(-1.) * double(static_cast<float>(seed) * (1.f / 4294967296.f));
+    };
+    for (double hz = top * step; hz < std::min(18000., .45 * rate) && result.size() < 19; hz *= step)
+    {
+        const double radius = std::exp(-pi * hz / (q * 48000.));
+        const double level = std::pow(10., -6. / 20. * std::log2(hz / top));
+        const double spacing = hz * (step - 1. / step) * .5;
+        std::array<std::complex<double>, 4> residue {};
+        for (std::size_t part = 0; part < 4; ++part)
+            residue[part] = std::polar(level * std::sqrt(density[part] / (.5 * top)
+                * spacing * (1. - radius * radius)), phase());
+        acustra::detail::MeasuredBodyMode m {};
+        m.frequency = float(hz);
+        m.q = float(q);
+        m.leftReal = float(residue[0].real()); m.leftImaginary = float(residue[0].imag());
+        m.upperReal = float(residue[1].real()); m.upperImaginary = float(residue[1].imag());
+        m.leftMomentReal = float(residue[2].real()); m.leftMomentImaginary = float(residue[2].imag());
+        m.upperMomentReal = float(residue[3].real()); m.upperMomentImaginary = float(residue[3].imag());
+        result.push_back(m);
+    }
+    return result;
+}
+
+// The bank with its continuation at this rate: what the engine radiates.
+std::vector<acustra::detail::MeasuredBodyMode> radiatedAt(
+    std::vector<acustra::detail::MeasuredBodyMode> bank, double rate)
+{
+    const auto continuation = continuationOf(bank, rate);
+    bank.insert(bank.end(), continuation.begin(), continuation.end());
+    return bank;
+}
+
 template <typename Bank>
 void testRadiation(acustra::GuitarModel model, const Bank& measured, int delay48)
 {
-    const auto bank = heardBank(model, measured);
+    const auto heard = heardBank(model, measured);
     for (int rate : { 24000, 48000, 96000 })
     {
+        const auto bank = radiatedAt(heard, rate);
         auto engine = std::make_unique<acustra::AcustraEngine>();
         engine->setParameters(parametersFor(model));
         engine->prepare(rate, 64);
@@ -163,7 +261,7 @@ std::array<std::complex<double>, 3> dtft(
 template <typename Bank>
 void testFractionalRadiation(acustra::GuitarModel model, const Bank& measured, int delay48)
 {
-    const auto bank = heardBank(model, measured);
+    const auto heard = heardBank(model, measured);
     const double pi = std::acos(-1.);
     std::vector<double> frequencies;
     for (int i = 0; i < 96; ++i)
@@ -172,12 +270,13 @@ void testFractionalRadiation(acustra::GuitarModel model, const Bank& measured, i
     // concealing fractional-delay treble loss in one broadband norm.
     for (int i = 0; i <= 64; ++i)
         frequencies.push_back(5000. + 5000. * i / 64.);
-    for (const auto& mode : bank)
+    for (const auto& mode : heard)
         if (mode.frequency >= 60 && mode.frequency <= 10000)
             frequencies.push_back(mode.frequency);
     for (const int rate : { 44100, 88200, 192000 })
         for (const int axis : { 0, 1 })
         {
+            const auto bank = radiatedAt(heard, rate);
             if (axis == 1 && model != acustra::GuitarModel::Bellido1978)
                 continue;
             auto engine = std::make_unique<acustra::AcustraEngine>();
@@ -267,13 +366,18 @@ void testNominalBridge(acustra::GuitarModel model, const Bank& bank)
     auto engine = std::make_unique<acustra::AcustraEngine>();
     engine->setParameters(parametersFor(model));
     engine->prepare(48000, 64);
+    auto original = std::make_unique<acustra::AcustraEngine>();
+    original->setParameters(parametersFor(acustra::GuitarModel::Original));
+    original->prepare(48000, 64);
     // Its steel strings leave the measured guitar its own top's full
     // mobility: steel's own bridge's steelTopMobilityRatio corrects the
     // Original's flamenca proxy, not a measured classical strung with steel
-    // (audit F18). Wood moves the bridge's poles, not its residues.
-    expect(acustra::AcustraEngineTestAccess::nominalBridgeMatches(*engine, bank),
-           "a nominal measured bridge inherited legacy mobility gain, conductance floor "
-           "or a steel-string scale");
+    // (audit F18). Wood moves the bridge's poles, not its residues. The
+    // plate conductance floor, which every modal fit loses between its
+    // overlapping modes, is the Original's (Docs/decisions.md, 2026-09-30).
+    expect(acustra::AcustraEngineTestAccess::nominalBridgeMatches(*engine, bank, *original),
+           "a nominal measured bridge inherited legacy mobility gain or a "
+           "steel-string scale, or lost the plate conductance floor");
 }
 
 // Values 2-4 were the Washburn 1897, Santa Cruz OM 2022 and Martin D18V 2007,

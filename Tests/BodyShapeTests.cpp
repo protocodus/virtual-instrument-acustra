@@ -35,6 +35,10 @@ struct AcustraEngineTestAccess
     { return AcustraEngine::radiationModePole(p, c, index); }
     static std::array<int, 2> bodyCounts(const AcustraEngine& e)
     { return { e.bodyBank_.count, e.bodyBank_.ordered }; }
+    static constexpr int continuationSlots = AcustraEngine::radiationContinuationSlots;
+    // The radiation bank's microphones for one input sample.
+    static auto body(AcustraEngine& e, float force, float moment)
+    { return e.renderBody(force, moment); }
     // The body bank's digital pole in slot i, as {real, imaginary}.
     static std::array<double, 2> bodyPole(const AcustraEngine& e, int i)
     { return { e.bodyBank_.poleReal[std::size_t(i)], e.bodyBank_.poleImaginary[std::size_t(i)] }; }
@@ -486,9 +490,11 @@ void testSteelBlend()
     const double scale = Access::calibration(*e).bridgeMobilityScale;
     expect(bridge.activeModeCount == int(own + jointBridge) + 1,
            "the blended bridge does not play each part's modes and the plate floor once");
-    expect(Access::bodyCounts(*e)[0] == body
+    // Then the slots continuing the radiation above the fitted band.
+    expect(Access::bodyCounts(*e)[0] == body + Access::continuationSlots
                && Access::bodyCounts(*e)[1] == int(d::measuredSteelBodyModes.size()),
-           "the blended radiation does not play each part, g21's bank in order first");
+           "the blended radiation does not play each part, g21's bank in order "
+           "first, and its continuation");
     double worstLevel = 0.0, worstDefinite = 0.0;
     const auto level = [&] (std::size_t slot, const d::MeasuredBridgeMode& source, double share)
     {
@@ -1123,8 +1129,167 @@ void testStaticWorkAndRapidChanges()
 }
 }
 
+// In-place radix-2 FFT, forward.
+void fft(std::vector<Complex>& data)
+{
+    const std::size_t size = data.size();
+    for (std::size_t i = 1, j = 0; i < size; ++i)
+    {
+        std::size_t bit = size >> 1;
+        for (; j & bit; bit >>= 1)
+            j ^= bit;
+        j ^= bit;
+        if (i < j)
+            std::swap(data[i], data[j]);
+    }
+    for (std::size_t length = 2; length <= size; length <<= 1)
+    {
+        const auto root = std::polar(1.0, -2.0 * pi / double(length));
+        for (std::size_t start = 0; start < size; start += length)
+        {
+            Complex twiddle { 1.0, 0.0 };
+            for (std::size_t k = 0; k < length / 2; ++k)
+            {
+                const auto even = data[start + k];
+                const auto odd = data[start + k + length / 2] * twiddle;
+                data[start + k] = even + odd;
+                data[start + k + length / 2] = even - odd;
+                twiddle *= root;
+            }
+        }
+    }
+}
+
+// The measured banks stop where their fit stopped (8.1 kHz on the steel
+// Jumbo, 11.7 on the Parlor), and above their last mode the radiation used
+// to fall 12-25 dB in one third of an octave, its 16 kHz band 23-39 dB under
+// its 2-4 kHz level. configureBody continues it statistically at the bank's
+// own top-octave density, falling 6 dB per octave (Docs/decisions.md,
+// 2026-09-30). For every model, Shape, Wood and three rates, the body's
+// radiation to both microphones, in third octaves from 1 kHz to 16 kHz (or
+// the highest whole band under 0.45 fs), falls at most 8 dB from one band to
+// the next, and the top band stays within 18 dB of the 2-4 kHz bands (4.9
+// and 12.3 dB at worst as shipped). The continuation is built as 48 kHz
+// modes and converted to the rate as the measured ones are, so its 8-16 kHz
+// bands at 44.1 and 96 kHz stay within 0.3 dB of 48 kHz's (0.16 dB at
+// worst; the band edge's measured modes alone moved 0.3-1.1 dB before).
+void testRadiationContinuesAboveTheFittedBand()
+{
+    double worstStep = 0.0, worstTop = 0.0, worstRate = 0.0;
+    std::vector<std::vector<double>> at48;
+    for (const double rate : { 48000.0, 44100.0, 96000.0 })
+        for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
+            for (int shape = 0; shape < 4; ++shape)
+                for (int wood = 0; wood < 3; ++wood)
+                {
+                    acustra::EngineParameters p;
+                    p.guitarModel = model;
+                    p.shape = static_cast<acustra::BodyShape>(shape);
+                    p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+                    auto e = std::make_unique<Engine>();
+                    e->setParameters(p);
+                    e->prepare(rate, 64);
+                    const std::size_t size = rate > 50000.0 ? 32768 : 16384;
+                    std::vector<Complex> left(size), right(size);
+                    for (std::size_t n = 0; n < size; ++n)
+                    {
+                        const auto out = Access::body(*e, n == 0 ? 1.0f : 0.0f, 0.0f);
+                        left[n] = out.left;
+                        right[n] = out.right;
+                    }
+                    fft(left);
+                    fft(right);
+                    std::vector<double> levels;
+                    const double edge = std::exp2(1.0 / 6.0);
+                    for (int band = 0;; ++band)
+                    {
+                        const double centre = 1000.0 * std::exp2(band / 3.0);
+                        if (centre > 16500.0 || centre * edge > 0.45 * rate)
+                            break;
+                        double power = 0.0;
+                        int bins = 0;
+                        for (auto bin = static_cast<std::size_t>(std::ceil(centre / edge * size / rate));
+                             double(bin) * rate / size < centre * edge; ++bin, ++bins)
+                            power += std::norm(left[bin]) + std::norm(right[bin]);
+                        levels.push_back(10.0 * std::log10(power / std::max(bins, 1) + 1e-30));
+                    }
+                    for (std::size_t band = 1; band < levels.size(); ++band)
+                        worstStep = std::max(worstStep, levels[band - 1] - levels[band]);
+                    const std::size_t construction = std::size_t((int(model) * 4 + shape) * 3 + wood);
+                    if (rate == 48000.0)
+                        at48.push_back(levels);
+                    else
+                        // Bands 9-12 are 8-16 kHz.
+                        for (std::size_t band = 9; band < std::min(levels.size(), at48[construction].size()); ++band)
+                            worstRate = std::max(worstRate,
+                                std::abs(levels[band] - at48[construction][band]));
+                    // Bands 3-6 are 2-4 kHz.
+                    const double reference = (levels[3] + levels[4] + levels[5] + levels[6]) / 4.0;
+                    worstTop = std::max(worstTop, reference - levels.back());
+                }
+    std::cout << "radiation above the fitted band: worst third-octave fall " << worstStep
+              << " dB, top band under 2-4 kHz by at most " << worstTop
+              << " dB, 8-16 kHz at 44.1/96 kHz within " << worstRate << " dB of 48 kHz\n";
+    expect(worstRate < 0.3,
+           "the body's radiation above its fitted band moved with the sample rate");
+    expect(worstStep < 8.0,
+           "the body's radiation fell off a cliff above its fitted band");
+    expect(worstTop < 18.0,
+           "the body's radiation at 16 kHz is not continued from its fitted band");
+}
+
+// The plate conductance floor is the dense high-band overlap of a plate's
+// driving-point response, which a modal fit loses between its overlapping
+// modes; the Bellido's fit loses it as g21's does and takes the same floor
+// (Docs/decisions.md, 2026-09-30). Without it its strings kept their 5-10
+// kHz partials, and it played 11-15 dB over the recordings there. For every
+// Shape and Wood at 48 and 96 kHz, the floor adds to the Bellido's string
+// port conductance over 5-10 kHz at least 90% of what it adds to the
+// Original's, and at least doubles the Bellido's own.
+void testTheBellidoKeepsTheHighBandConductance()
+{
+    const auto meanConductance = [] (const acustra::EngineParameters& p, double rate, bool floor)
+    {
+        auto calibration = acustra::fittedPhysicalCalibration;
+        if (!floor)
+            calibration.bridgeConductanceFloor = 0.0f;
+        auto e = std::make_unique<Engine>();
+        e->setPhysicalCalibration(calibration);
+        e->setParameters(p);
+        e->prepare(rate, 64);
+        double sum = 0.0;
+        int count = 0;
+        for (double f = 5000.0; f < 10000.0; f *= std::exp2(1.0 / 48.0), ++count)
+            for (int string = 0; string < 6; ++string)
+                sum += Access::port(*e, float(f), string).real() / 6.0;
+        return sum / count;
+    };
+    double worstShare = 1e9, worstGain = 1e9;
+    for (const double rate : { 48000.0, 96000.0 })
+        for (int shape = 0; shape < 4; ++shape)
+            for (int wood = 0; wood < 3; ++wood)
+            {
+                acustra::EngineParameters p;
+                p.shape = static_cast<acustra::BodyShape>(shape);
+                p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+                const double originalAdded = meanConductance(p, rate, true)
+                    - meanConductance(p, rate, false);
+                p.guitarModel = acustra::GuitarModel::Bellido1978;
+                const double without = meanConductance(p, rate, false);
+                const double with = meanConductance(p, rate, true);
+                worstShare = std::min(worstShare, (with - without) / originalAdded);
+                worstGain = std::min(worstGain, with / without);
+            }
+    std::cout << "Bellido 5-10 kHz port conductance: floor adds at least " << worstShare
+              << " of the Original's, at least " << worstGain << "x its own\n";
+    expect(worstShare > 0.9 && worstGain > 2.0,
+           "the Bellido lost the plate's high-band conductance floor");
+}
+
 int main()
 {
+    testRadiationContinuesAboveTheFittedBand();
+    testTheBellidoKeepsTheHighBandConductance();
     testSteelOwnBridgeSharesTheRadiationPoles();
     testBridgeModesMoveWithTheirRadiationNeighbours();
     testBellidoBridgeKeepsItsDrainsOnItsRadiation();

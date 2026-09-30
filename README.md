@@ -424,7 +424,9 @@ a wound string does not sound like the same note on a plain one. The hand now
 refrets a chord still forming: when a note arrives within 30 ms of the one
 before it on its channel and would otherwise take a held string or leave the
 hand an impossible stretch, the chord so far is refretted with it as one
-shape, moving as few of its notes as the shape allows. A moved note is
+shape, moving as few of its notes as the shape allows (none, when the new
+note alone fits on another string: a strum strung out over 5-20 ms by hand
+used to keep it where it was first put, five or more frets out). A moved note is
 replucked on its new string, inside the chord's own onset spread, and the
 string it leaves is taken by another note of the shape or damped by the
 leaving finger. The same C4-E4-G4 rolled over 20 ms becomes G fret 5, B fret
@@ -440,8 +442,9 @@ louder melody note strikes 20 to 30 ms before the rest of its chord, mostly
 because a faster key travels sooner, which a keyboard's key-bottom contact
 shares, while asynchronies played on purpose usually exceed 30 ms
 ([Goebl, JASA 110(1), 2001](https://iwk.mdw.ac.at/goebl/papers/Goebl_JASA2001_melodyLead.pdf)).
-The cost is 30 ms of latency on every note, which the plug-in reports so a
-host compensates it on playback; a player hears it live. The switch is off by
+The cost is 30 ms of latency on every note, which the plug-in reports (on
+top of the engine's own seven samples, Outputs) so a host compensates it on
+playback; a player hears it live. The switch is off by
 default. A key repeated inside the window, or a controller that changes how
 notes are allocated (sound or notes off, reset, mono/poly, the RPNs that lay
 out an MPE zone), ends a chord. String-per-channel controllers already say how
@@ -466,7 +469,12 @@ loop's stored-state energy falls below 1% in the existing 60 ms regression,
 but the moving bridge keeps driving it: its active lifetime can last seconds.
 Each independently returned wave therefore contributes its own impedance to
 the junction - the parallel one at (h/a)^2 of it on the rocking - with the
-old wave retaining the impedance it had at capture.
+old wave retaining the impedance it had at capture. When that wave is
+let go - quiet for 80 ms, or its string handed back to the open string after a
+key-up - its port leaves the junction on the delay's 6 ms time constant rather
+than in one sample: cut at once, the impedance step moved the bridge under
+everything else sounding, a faint tick 240 ms after a fretted key-up (1.33 s
+after an open one) about 30 dB over the local high-frequency floor.
 The six physical saddle-to-anchor springs are still counted once each.
 Measured on a chord change 0.6 seconds after the first chord, the strings
 still hold 25% of their initial energy and an earlier build discarded all of
@@ -547,7 +555,25 @@ brightness (1.106) were chosen by ear with the strings' bending loss below
 optimum (0.38, 0.81, 1.073) toward the pluck refitted around half the loss
 the recordings measure (3.0 on its ceiling, 0.35 on its floor, 1.120). Pluck Position moves the
 displacement point; Touch and MIDI velocity alter its aperture, level and
-brightness. The hand lets the string go at the force it can hold, not at a
+brightness. The hand keeps its distance from the bridge, so on a short
+(high-fretted) string, or under the Thumb, that distance reaches toward the
+string's middle, where every even partial is nulled and no player plucks.
+Up to a quarter of the string the point is the hand's; past it the point
+bends smoothly toward 0.36 of the string and never reaches it
+(p' = 0.36 - 0.11^2/(p - 0.14)), so Pluck Position still moves the stroke at
+every fret for every technique. It replaced a hard stop at 0.46, which left
+the control dead for a Thumb from the 11th fret up and put high notes on a
+hollow near-midpoint pluck (Docs/decisions.md, 2026-09-30); MPE Timbre still
+names any point of its 0.05-0.46 band directly. The authored contact law
+widens the three lowest strings' contact and the upper register's; both
+terms are ramps (full on the low E and A, half on the D; from the 14th fret
+to full at the 19th), not the steps they were, which changed a note's
+contact by up to 70% between neighbouring strings or frets. The Finger's and
+Thumb's burst is its noise through the same corner twice with no white
+share (-12 dB per octave above the corner): a fingertip is not a plectrum,
+and the finger-plucked flat-tops carry 10-25 dB less 2-16 kHz in their first
+15 ms than the plectrum's one-pole-plus-white burst gave them. The Pick
+keeps that burst. The hand lets the string go at the force it can hold, not at a
 set displacement: a point force at distance a from the bridge deflects a
 string of tension T and speaking length L by F·a(L − a)/(T·L), so the same
 stroke displaces a stopped string less than the open one the velocity law is
@@ -630,6 +656,21 @@ test split 5.6678 -> 5.4272, the Eastman's picked rows 6.6596 -> 6.5254
 loss on 2026-09-28: 70% of the way from the joint refit's 0.122 mm toward the
 0.114 mm refitted around half the measured loss.
 
+A fingertip or the thumb's pad lets go the same way, over an effective
+0.2 mm edge (a chosen length, not a measured fingertip). The Finger and Thumb
+shapes the listener chose were written with no slip, so only the ratio to
+the slip at full velocity is applied, and the line is rescaled to the
+displacement it had so the fitted level law stays: a velocity-127 stroke at
+the default Touch is the shipped release sample for sample, and a softer
+one is released more slowly and darker. A Finger's sustained H5-H12 over
+H1-H4 now rises a median 9.2 dB from MIDI 16 to 112 (the finger-plucked
+recordings 9.0; 2.1 before), a Thumb's 8.2 (5.4). Touch is how fast the hand
+lets go, for every technique: it scales the release edge over two octaves,
+none at its default of 0.58, so a firm Touch releases faster and brighter
+(bounded to three times the full-velocity release speed for the fingers) and
+a soft one slower and darker, even at velocity 127, where the contact's own
+Touch law has saturated.
+
 Transverse motion stretches the string, and the tension that adds can also be
 represented as a longitudinal wave with the string's own axial
 resonances, at `c_long/2L` with `c_long = sqrt(EA/mu)`. For this steel set that
@@ -670,7 +711,14 @@ its points on the stiff wound strings high on the neck (E2's H3-H5 16-18
 cents flat at the 20th fret), so as B N^2 rises to 0.05 the second section,
 placed from the stiffness, is switched in smoothly and the first is refitted
 with the delay by least squares over the integer partials H1-H12. String Age
-lowers the high-frequency cutoff and increases loss. A shared fitted cutoff scale of 2.286 reduces excess
+lowers the high-frequency cutoff and increases loss, and it reaches the
+wound strings' bending loss (below): grime and corrosion between the windings
+are internal friction in their bending, so a wound string goes dead first.
+That loss is scaled by max(0.2, 1 + 8 (age - 0.15)), pivoted on the default
+age so the shipped sound is unchanged there; a low E's H5-H8 now decay
+15 dB/s faster at age 1 than at the default (2.1 before, when only the
+absolute-frequency cutoff, above a bass's 50th partial, aged it), and the
+plain strings' cutoff falls as exp(-0.9 age) instead of exp(-1.25 age). A shared fitted cutoff scale of 2.286 reduces excess
 upper-partial damping found across the reference corpus; a regression proves that it
 does not move the requested fundamental T60 or compensated pitch. Each string
 can also lose its upper partials through its own bending stiffness, the
@@ -918,7 +966,14 @@ sets how much faster a string's upper partials decay than its fundamental: with
 the bridge disconnected the junction supplies 30.3 dB/s of extra decay over
 400--600 Hz but only 1.1 dB/s over 3000--4500 Hz, and that collapse is why the
 model's upper partials formerly rang about 7 dB/s too long against the
-reference recordings.
+reference recordings. The Bellido's own modal fit loses the same conductance
+between its overlapping high modes, and since 2026-09-30 it takes the same
+floor (heave alone, unscaled, as on the Original): without it the Bellido's
+strings kept 4-10 kHz partials that a third of the Original's drain would
+leave, and it played 11-15 dB over the recordings at 5-10 kHz against the
+Original's 1-5. Over 5-10 kHz the floor triples the Bellido's port
+conductance (BodyShapeTests), and the Bellido plays about 0.55 LU quieter,
+which the construction loudness table takes back (Construction controls).
 
 Every string on the bridge is a member of that junction whether or not it is
 played: F_b = Σ Z_i (2a_i − x_b) and x_b = Y_b F_b, summed over all six. An
@@ -946,6 +1001,27 @@ difference of the measured responses. Each mode has separate force and moment
 states, shared by all three microphone outputs. Mapping this pair to arbitrary
 string positions assumes a rigid saddle; it does not identify horizontal
 forcing or the saddle's rotation axis.
+
+Each bank stops where its fit stopped: 10 kHz before the anchor and Shape
+move it, so 8.1 kHz on the steel Jumbo and 11.7 kHz on the Parlor. Above its
+last mode the radiation used to fall 12-25 dB within one third of an octave,
+its 16 kHz band 23-39 dB under its 2-4 kHz level. A plate's modal density is
+constant in frequency and its high modes overlap, so the radiation above the
+fitted band is continued statistically (configureBody, since 2026-09-30):
+modes on a 1/16-octave grid at unit modal overlap (Q 22.6) from the bank's
+top to 18 kHz or 0.45 fs, each part's residues (both microphones, force and
+moment) carrying the power density the bank's own top octave has, with
+deterministic pseudo-random phases, since the fitted high modes' phases are
+uncorrelated, falling at the bridge's mass law, 6 dB per octave. They are
+passive and linear like the rest of the bank and are built as 48 kHz modes
+converted to the host rate as the measured ones are, so the band above 8 kHz
+keeps its level within 0.2 dB at 44.1 and 96 kHz. Every construction holds
+19 slots for them (9-19 of them sound), which keeps each one's state in its
+slot across Shape and Wood changes. The band below the top keeps its tone to
+within about half a dB near the edge (the continuation's first modes overlap
+the bank's last). Nothing measured is behind the continuation's level beyond
+the bank's own top octave; a microphone response measured past 10 kHz would
+replace it.
 
 Stereo comes from the measured microphone responses, with no added channel
 delay or reverb. The archive's treble and bass microphones were 10 cm above
@@ -1141,17 +1217,17 @@ resonances meet it (Known gaps).
 
 | Control | Audible behavior |
 | --- | --- |
-| **Model** | Original or Bellido 1978; the named model selects its own measured bridge and radiation. The Bellido is steel on its own classical top at that top's measured mobility, about 1.8 times the steel-string level steel's own bridge is brought to, so it drains the strings a little faster (E4 11.7 dB/s against 10.0). The Original has one bridge, steel's own (g21's); there is no bridge choice. |
+| **Model** | Original or Bellido 1978; the named model selects its own measured bridge and radiation. The Bellido is steel on its own classical top at that top's measured mobility, about 1.8 times the steel-string level steel's own bridge is brought to, so it drains the strings a little faster (E4 11.7 dB/s against 10.0), and it takes the Original's plate conductance floor above 2 kHz. The Original has one bridge, steel's own (g21's); there is no bridge choice. |
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
 | **Body Material** | Spruce, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. Each measured body is moved relative to the wood it was built of: the Original's g21 is heard as measured at Spruce; the Bellido was built of cedar, which is not a choice, so every Wood moves it, Mahogany least. A session saved with Cedar loads as Mahogany. |
 | **Tuning** | Standard, Drop D, DADGAD, Open G or Half-step down: the six open strings and the notes each can reach. A retuned string keeps its gauge (its linear mass), so its tension, impedance and stiffness follow its new pitch, as on a real guitar. |
-| **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
+| **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Finger and Thumb let the string go by the same slip law as a ratio to their full-velocity release, so soft strokes are darker than loud ones as on the finger-plucked recordings, and their contact burst is a soft double corner with no white hiss. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
-| **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels. At 0% (the default) the output is exactly as without it; with Capture on Piezo it does nothing, since the piezo is already the whole output. |
+| **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% (the default) the output is exactly as without it; with Capture on Piezo it does nothing, since the piezo is already the whole output. |
 | **Release Noise** | The damping hand's touch at each key-up, 0-100% (50% nominal, 70% default, chosen by ear); scaled by release velocity and what the string still carries. 0% is exactly silent; a session saved before it existed loads at 0%. Host-automatable, not on the panel. |
-| **String Age** | Lowers the string cutoff and increases frequency-dependent loss. |
-| **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Explicit MPE position overrides that ratio. |
-| **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. |
+| **String Age** | Lowers the string cutoff and increases frequency-dependent loss; on the wound strings it also scales their bending loss (0.2 of the default's on fresh strings, 7.8 times it at 1), so an old set's basses lose their upper partials first. The default age sounds as before. |
+| **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Past a quarter of a (short, high-fretted) string the point bends smoothly toward 0.36 of it and never reaches it, so the control changes the stroke at every fret for every technique. Explicit MPE position overrides that ratio. |
+| **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. It also sets how fast every technique lets the string go: the release edge scales over two octaves across the control (none at its default), firmer faster and brighter, softer slower and darker, even at velocity 127. |
 | **Body Amount** | Scales microphone radiation; pickup observations have their own signal path. |
 | **Stereo Width** | Blends the measured stereo pair toward mono; Mono mic and Piezo ignore width and send identical samples to both channels. |
 | **Output** | Final gain; exactly linear through −1 dBFS, then bounded by a headroom-only safety limiter. |
@@ -1264,6 +1340,17 @@ retired sensors rather than keeping hidden magnetic or unloaded-piezo paths.
 
 The piezo observes the same vibrating instrument in the same pass, so it can be
 recorded, processed or blended separately while Main keeps following Capture.
+Both outputs are seven samples later than the strings, at every rate and for
+every Capture: the piezo chain's output is seven samples behind its input
+(its preamp stages), and since 2026-09-30 the microphones are held back by
+the same seven samples, so a Capture crossfade and Piezo Mix sum the two
+sensors as the instrument moved them. Before, the blend summed them 146 us
+apart at 48 kHz and 73 us apart at 96 kHz, a comb whose notches moved with
+the rate; now the blend's spectrum at 48 and 96 kHz agrees within 0.2-0.4 dB
+on average (OutputBusTests). `AcustraEngine::outputLatencySamples()` is that
+fixed latency; `Performer::latencySamples()` adds the Gather Chords window
+when it is on, and the plug-in reports the sum to the host (7 samples, or
+1447 at 48 kHz while gathering).
 It plays at the level Main has when Capture selects Piezo (the same Output and
 construction reference) and has its own copy of the headroom-only safety
 limiter, so with Capture on Piezo it is either side of Main sample for sample.
@@ -1485,6 +1572,14 @@ The JUCE-free suites cover:
   changing the mechanical state, and silence at 44.1, 48 and 96 kHz;
 - pick/thumb excitation and preservation of ringing notes when the picking
   tool changes: they change only by the Picking's level, gliding;
+- the strings' 2026-09-30 excitation (Tests/AcustraEngineTests.cpp): Pluck
+  Position moves the pluck point and changes the written stroke's partials
+  by more than 1 dB at every fret of the low and high E for every technique;
+  a Finger's loud-over-soft H5-H12/H1-H4 rise within 2 dB of the recordings'
+  9.0; the Finger's and Thumb's first 15 ms under -16.5 dB of 2-12 kHz with
+  the Pick 6 dB brighter; String Age speeding a low E's H5-H8 decay by more
+  than 8 dB/s from the default to 1; and the released contact's Fourier
+  coefficients as the Gaussian contact's times the slip ratio's response;
 - every construction and Picking at one loudness
   (Tests/ConstructionLoudnessTests.cpp: its own phrase on every
   construction with every Picking, BS.1770, within 3 LU of the default;
@@ -1531,7 +1626,9 @@ The JUCE-free suites cover:
   tails, releases and an uncoupled bridge, and the shipped weights give the
   weighted sum of the six strings' forces; the clip's aliasing on a strum
   driven 1.25-1.45 times the hardest playing (the Pick at velocity 127 at the
-  bridge, which does not clip it) against an 8x-oversampled clip; exact silence from a never-played engine, within 5 s
+  bridge, which does not clip it) against an 8x-oversampled clip, at the
+  default Touch against a bare clip and at Touch 1, whose release is brighter,
+  under -60 dB at every drive; exact silence from a never-played engine, within 5 s
   of the chain's hardest moment, and on Main and the Piezo output within 25 s
   of a released chord; a Capture switch equal to its crossfade and a Piezo
   output cabled mid-note equal to one cabled from the start; microphones
@@ -1569,7 +1666,18 @@ The JUCE-free suites cover:
 - the plate conductance floor, proven to shorten the 2--4 kHz tail by more than
   2 dB while leaving the 80--200 Hz tail within 1.5 dB, to be exactly inert at
   a zero plateau whatever its corner, and to leave the measured modal weights
-  scaling exactly with bridge mobility;
+  scaling exactly with bridge mobility; on the Bellido it at least doubles
+  the 5-10 kHz port conductance for every Shape and Wood;
+- the radiation above each bank's fitted band: for every model, Shape, Wood
+  and three rates, no third octave from 1 to 16 kHz falls more than 8 dB
+  under the one below it, the top band stays within 18 dB of 2-4 kHz, and
+  8-16 kHz agrees across rates within 0.3 dB; an independent recurrence
+  rebuilds the Bellido's continuation from its definition and matches the
+  engine's impulse response to 1e-5;
+- Piezo Mix on one time base: the mic x piezo cross-spectra at 48 and 96 kHz
+  line up with no lag (under 20 us; the old seven-sample offset read 74 us)
+  and the blend's third-octave excess over the sensors' power sum agrees
+  across the rates within 0.5 dB on average;
 - independently ablated body-mode broadening and calibrated 85--145 Hz modal
   balance, followed by a joint bounded refit;
 - every tuning playing each open note on its own string
@@ -1584,7 +1692,8 @@ The JUCE-free suites cover:
   three seconds, and a note after a two-, four- or eight-second silence peaks
   within a factor of two of the same note on a fresh engine;
 - natural harmonics: they sound above the fretted range, stay quieter than
-  the highest stopped note, land within 20 cents of the requested pitch, remain
+  the highest stopped note, land within 20 cents of the requested pitch (their
+  loudest partial at the saddle their pitch or its octave), remain
   finite and inside headroom, and leave silent every pitch no open string can
   produce, including everything below the lowest open string;
 - bridge-hand pressure: exactly no-op at zero, monotonically shortening the
@@ -1685,7 +1794,7 @@ same-time chord order, gathered live chords (a triad rolled low to high over
 remembers, sound bit-identical to the same chord on one sample, while notes more
 than the window apart and a key repeated inside it sound
 bit-identical to the same timeline played 30 ms later, and the 30 ms is
-reported as latency), conventional channel isolation, lower-zone MPE setup,
+reported as latency on top of the engine's seven samples), conventional channel isolation, lower-zone MPE setup,
 RPN 0/RPN 6 ranges and lifecycle, frozen member-tail bends,
 panic/controller-reset behavior, state migration and editor rendering, and
 that the processor plays the whole performance battery bit-identically to the
@@ -1706,11 +1815,19 @@ engine.
   - Where the pluck shape nearly nulls a partial, the random release burst
     decides its level: MIDI 83's H8 differs by 27 dB between two burst
     noise draws.
-  - Above 10 kHz the body's radiation still moves 0.3-1 dB with the host
-    rate; below it the rates agree within 0.1 dB.
   - The per-plane loss factors (configureVoice) leave a note's realised T60
     up to about half its requested one; they are authored, not fitted.
 
+- The radiation above each measured bank's fitted band (8-12 kHz up) is a
+  statistical continuation of its top octave, not a measurement: its level
+  follows the bank's own top-octave density and a 6 dB per octave mass law,
+  its phases are pseudo-random. It lifts the body's 16 kHz band by 10-27 dB
+  over the cliff it replaces, and with it a strong body peak at the
+  band's edge weighs more: on the default Dreadnought's 8.3 kHz peak the
+  open high E's 25th partial, 14 dB under E6's natural harmonic at the
+  saddle, reaches 0.2 dB over the harmonic's octave at the microphones (it
+  was 1.2 dB under), so the harmonic test reads the saddle. A microphone
+  response measured past 10 kHz would settle both.
 - The hardest playing - velocity 127 with the Pick at Touch 1 and Pluck
   Position 0 - reaches the output's soft safety limiter on some
   constructions on the stereo microphones and on every construction on the
@@ -1834,7 +1951,9 @@ engine.
   s, which one loss per partial cannot follow. The finger-plucked flat-top and
   the picked archtop also disagree about the attack itself: against the
   Eastman finger rows the engine's plain strings are 13-18 dB too bright at
-  5-12 kHz and its wound strings 7-14 dB too dark at 1-5 kHz, the opposite of
+  5-12 kHz (measured before the Finger's burst lost its white share on
+  2026-09-30, which took a mean 3.7 dB off its first 15 ms' 2-12 kHz share)
+  and its wound strings 7-14 dB too dark at 1-5 kHz, the opposite of
   the authored contact law's extra width on the three wound strings, while the
   archtop, rendered with Finger, wants every Finger contact narrower. A blind listener preferred both the half-loss snap
   and the joint optimum to the loss-free engine and asked for something
@@ -1900,13 +2019,19 @@ engine.
   every louder layer was already too dark and the slip darkens it slightly
   more (H1 at MIDI 80 +11.1 dB, at 112 +9.2); the remaining loud-end
   brightness belongs to the string's nonlinearity and the high-frequency
-  loss, not the release. Rendered with Finger, which the slip does not
+  loss, not the release. Rendered with Finger, which the slip did not then
   touch, the same rows sit within a decibel at the soft layer and 9.6 dB
   too dark at the loud one. These figures are at the fitted 0.15 mm edge
   with no release share; the edge is a fitted length (0.116 mm since
   2026-09-28, chosen by ear between two fits) because a single note's pick
-  speed is not measured here. Finger is untouched by the plectrum, so what follows still describes
-  the finger-plucked instrument. A fresh comparison uses all 54 already-opened Shinyguitar
+  speed is not measured here. Since 2026-09-30 the Finger and Thumb release
+  by the same slip law, as a ratio to their full-velocity release, which
+  closes the finger-plucked instrument's velocity-brightness gap described
+  next: on the strings' own probe (eight notes, MIDI 16 against 112, the
+  default controls) a Finger's H5-H12 over H1-H4 now rises a median 9.2 dB,
+  against the recordings' 9.0 and 2.1 before. The loud-end attack centroid
+  and the attack energy between partials are not closed by it. What follows
+  describes the finger-plucked instrument before that change. A fresh comparison uses all 54 already-opened Shinyguitar
   training recordings: nine roots, MIDI layers 16/112 and three takes each,
   against 18 deterministic model renders. On the shared finite same-root
   loud/soft pairs, the recordings' median 12 ms power-centroid rise is 2,054

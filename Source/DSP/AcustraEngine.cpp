@@ -505,6 +505,14 @@ const AnchorTransform& anchorTransformFor(GuitarModel model) noexcept
                                           : measuredAnchorTransform;
 }
 
+// The statistical continuation of the radiation above a measured bank's
+// fitted band (configureBody): a 1/16-octave grid at unit modal overlap
+// (Q = 1/(2^(1/16) - 1), 22.6), to 18 kHz, at -6 dB per octave.
+constexpr float radiationContinuationStepsPerOctave = 16.0f;
+constexpr float radiationContinuationTopHz = 18000.0f;
+constexpr float radiationContinuationDbPerOctave = -6.0f;
+// Its slots: AcustraEngine::radiationContinuationSlots.
+
 struct WoodSpec
 {
     float frequencyScale;
@@ -1071,6 +1079,14 @@ static_assert(steelBlendBodyModeCount <= ACUSTRA_BODY_MODE_COUNT,
               "the steel blend's radiation exceeds the body slots: with every "
               "joint mode (a band above 10 kHz) it needs "
               "-DACUSTRA_BODY_MODE_COUNT=263");
+static_assert(steelBlendBodyModeCount
+                  + AcustraEngine::radiationContinuationSlots
+                  <= ACUSTRA_BODY_MODE_COUNT
+              && (detail::bellidoBodyModes.size() + 3) / 4 * 4
+                  + AcustraEngine::radiationContinuationSlots
+                  <= ACUSTRA_BODY_MODE_COUNT,
+              "the radiation's continuation above the fitted band "
+              "(configureBody) no longer fits the body slots");
 static_assert(steelBlendBridgeModeCount <= ACUSTRA_BRIDGE_MODE_COUNT,
               "the steel blend's bridge exceeds the bridge slots: with every "
               "joint mode (a band above 10 kHz) it needs "
@@ -3241,6 +3257,10 @@ void AcustraEngine::resetSoundState() noexcept
     idleQuietSamples_ = 0;
     idleFlushed_ = true;
     resetPiezo();
+    micDelayLeft_.fill(0.0f);
+    micDelayRight_.fill(0.0f);
+    micDelayMono_.fill(0.0f);
+    micDelayIndex_ = 0;
     piezoForceDerivative_.reset();
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
     lastPiezoImpedanceSum_ = lastPiezoImpedanceMoment_ = 0.0f;
@@ -3401,6 +3421,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             if (!voice.tailActive)
                 continue;
             voice.tailActive = false;
+            voice.tailRetiring = false;
             voice.tailCharacteristicImpedance = 0.0f;
             voice.tailLevel = 0.0f;
             voice.tailQuietSamples = 0;
@@ -3691,6 +3712,156 @@ void AcustraEngine::configureBody() noexcept
             place(steelJointRadiationModes[index], static_cast<int>(index),
                   jointMorph, steelBlendJointShare);
     }
+    // The measured banks stop where their fit stopped (10 kHz before the
+    // anchor's x0.900 and the Shape's plate factor: 8.1 kHz on the Jumbo,
+    // 11.7 on the Parlor), and above their last mode the radiation fell
+    // 20-40 dB in a third of an octave. A plate's modal density is constant
+    // in frequency and its high modes overlap, so above the fitted band the
+    // radiation is continued statistically: modes on a 1/16-octave grid at
+    // unit modal overlap, each residue carrying the power density the bank's
+    // own top octave has (per microphone and per input, force and moment),
+    // with a deterministic pseudo-random phase, since the fitted high modes'
+    // phases are uncorrelated, falling at the bridge's mass law (-6 dB per
+    // octave) from the band's edge. Passive and linear like the rest of the
+    // bank. Every construction and rate keeps the band below its top as it
+    // was; above it (up to 18 kHz or 0.45 fs) about 10-19 modes are added.
+    {
+        const float rate = static_cast<float>(sampleRate_);
+        float top = 0.0f;
+        for (int index = 0; index < ownCount; ++index)
+        {
+            const auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+            if (mode.poleImaginary == 0.0f)
+                continue;
+            top = std::max(top, std::atan2(mode.poleImaginary, mode.poleReal)
+                * rate / twoPi);
+        }
+        // Power density of each residue set over the top octave, from the
+        // bank's own response there (the fitted modes overlap with partly
+        // cancelling residues, so their energies do not add).
+        std::array<double, 8> density {};
+        int referenceCount = 0;
+        for (int index = 0; index < ownCount && top > 0.0f; ++index)
+        {
+            const auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+            if (mode.poleImaginary != 0.0f
+                && std::atan2(mode.poleImaginary, mode.poleReal) * rate / twoPi
+                    >= 0.5f * top)
+                ++referenceCount;
+        }
+        constexpr int points = 96;
+        for (int point = 0; point < points && referenceCount >= 8; ++point)
+        {
+            const double frequency = 0.5 * top * (1.0 + (point + 0.5) / points);
+            const std::complex<double> inverseZ = std::polar(1.0,
+                -2.0 * 3.14159265358979323846 * frequency / rate);
+            std::array<std::complex<double>, 4> response {};
+            for (int index = 0; index < ownCount; ++index)
+            {
+                const auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+                if (mode.poleImaginary == 0.0f)
+                    continue;
+                const std::complex<double> pole(mode.poleReal, mode.poleImaginary);
+                const std::complex<double> direct = 1.0 / (1.0 - pole * inverseZ);
+                const std::complex<double> mirror = 1.0 / (1.0 - std::conj(pole) * inverseZ);
+                const float parts[8] { mode.leftReal, mode.leftImaginary,
+                    mode.rightReal, mode.rightImaginary, mode.leftMomentReal,
+                    mode.leftMomentImaginary, mode.rightMomentReal,
+                    mode.rightMomentImaginary };
+                for (int part = 0; part < 4; ++part)
+                {
+                    const std::complex<double> residue(parts[2 * part], parts[2 * part + 1]);
+                    response[static_cast<std::size_t>(part)]
+                        += residue * direct + std::conj(residue) * mirror;
+                }
+            }
+            for (int part = 0; part < 4; ++part)
+                density[static_cast<std::size_t>(part)]
+                    += std::norm(response[static_cast<std::size_t>(part)]) / points;
+        }
+        // Mean |H|^2 over the octave is energy x rate / bandwidth for
+        // uncorrelated modes: the density per hertz, in energy. The bank's
+        // response is the same at every rate, so the density is taken as its
+        // 48 kHz states would hold it, and every continuation mode is built
+        // at 48 kHz and converted to this rate as the measured modes are
+        // (place): a zero-order-held continuous mode, with the 48 kHz hold's
+        // level. Built at this rate instead, the continuation's phases stood
+        // still while the measured modes' turned with the rate, and their
+        // overlap near the band's edge moved 0.17 dB between 48 and 96 kHz.
+        constexpr float referenceRate = 48000.0f;
+        for (auto& value : density)
+            value *= 0.5 * top / referenceRate;
+        const double referenceWidth = 0.5 * top;
+        const float step = std::exp2(1.0f / radiationContinuationStepsPerOctave);
+        const float q = 1.0f / (step - 1.0f);
+        const float highest = std::min(radiationContinuationTopHz, 0.45f * rate);
+        const float tilt = radiationContinuationDbPerOctave;
+        std::uint32_t seed = 0x9e3779b9u;
+        const auto random = [&seed] ()
+        {
+            seed ^= seed << 13; seed ^= seed >> 17; seed ^= seed << 5;
+            return static_cast<float>(seed) * (1.0f / 4294967296.0f);
+        };
+        // A bank's own modes are summed in index order and the parts after
+        // them four lanes at a time from a whole group of four
+        // (BodyBank::render), so a bank that does not end on one (the
+        // Bellido's 134) is padded to it with silent slots; otherwise the
+        // lanes after its last group were advanced and never heard.
+        if (slot == ownCount)
+            while (slot % BodyBank::lanes != 0 && slot < bodyModeCount)
+                bodyModes_[static_cast<std::size_t>(slot++)] = {};
+        const int continuationEnd = std::min(slot + radiationContinuationSlots,
+                                             bodyModeCount);
+        for (float frequency = top * step;
+             referenceCount >= 8 && frequency < highest && slot < continuationEnd;
+             frequency *= step)
+        {
+            auto& mode = bodyModes_[static_cast<std::size_t>(slot++)];
+            const float radius = std::exp(-pi * frequency / (q * rate));
+            const std::complex<float> pole = std::polar(radius,
+                twoPi * frequency / rate);
+            mode.poleReal = pole.real();
+            mode.poleImaginary = pole.imag();
+            const float referenceRadius = std::exp(-pi * frequency
+                / (q * referenceRate));
+            const std::complex<float> referencePole = std::polar(
+                referenceRadius, twoPi * frequency / referenceRate);
+            const auto holdGain = [frequency] (double at)
+            {
+                const double x = static_cast<double>(pi)
+                    * static_cast<double>(frequency) / at;
+                return std::sin(x) / x;
+            };
+            const std::complex<float> rateScale = rate == referenceRate
+                ? std::complex<float>(1.0f, 0.0f)
+                : (pole - 1.0f) / (referencePole - 1.0f)
+                    * static_cast<float>(holdGain(referenceRate) / holdGain(rate));
+            // This mode's bandwidth share of the density, as energy.
+            const double spacing = frequency * (step - 1.0f / step) * 0.5;
+            const double level = std::pow(10.0, tilt / 20.0
+                * std::log2(frequency / top));
+            const double energyToResidue = 1.0
+                - static_cast<double>(referenceRadius) * referenceRadius;
+            float* parts[8] { &mode.leftReal, &mode.leftImaginary,
+                &mode.rightReal, &mode.rightImaginary, &mode.leftMomentReal,
+                &mode.leftMomentImaginary, &mode.rightMomentReal,
+                &mode.rightMomentImaginary };
+            for (int part = 0; part < 4; ++part)
+            {
+                const double magnitude = level * std::sqrt(
+                    density[static_cast<std::size_t>(part)] / referenceWidth
+                    * spacing * energyToResidue);
+                const float phase = twoPi * random();
+                const std::complex<float> residue = std::complex<float>(
+                    static_cast<float>(magnitude) * std::cos(phase),
+                    static_cast<float>(magnitude) * std::sin(phase)) * rateScale;
+                *parts[2 * part] = residue.real();
+                *parts[2 * part + 1] = residue.imag();
+            }
+        }
+        while (slot < continuationEnd)
+            bodyModes_[static_cast<std::size_t>(slot++)] = {};
+    }
     const int count = slot;
     for (; slot < bodyModeCount; ++slot)
         bodyModes_[static_cast<std::size_t>(slot)] = {};
@@ -3794,7 +3965,8 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     bridgeShapePlate_ = morph.plateFrequency;
     bridgeShapeT1UpperHz_ = morph.t1UpperHz;
     // Additional bodies already have a qualified absolute mobility. The old
-    // corpus compensation and high-band conductance floor belong to Original.
+    // corpus compensation belongs to Original; the high-band conductance
+    // floor is every modal fit's (below).
     // Keep the fitting control as a relative multiplier around the new body's
     // measured response, with unit gain at the shipped calibration.
     // Steel's own bridge is the flamenca's: its top is about 3.6 times as
@@ -3864,10 +4036,14 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     // The plate conductance floor is the dense overlap of a plate's own
     // driving-point response, which the archive never resolves into a
     // rocking pair, so it enters as heave alone.
+    // The Bellido's modal fit loses the same high-band conductance
+    // between its overlapping modes as g21's does, so it takes the same
+    // floor: without it the Bellido's strings kept 4-10 kHz partials a
+    // third of the Original's drain would leave, and it played 11-15 dB
+    // over the recordings at 5-10 kHz against the Original's 1-5.
     const auto plate = plateConductanceMode(physicalCalibration_);
     configure(static_cast<std::size_t>(bridgeModeCount), plate.frequency,
-              plate.q, parameters_.guitarModel == GuitarModel::Original ? plate.weight : 0.0f,
-              0.0f, 0.0f);
+              plate.q, plate.weight, 0.0f, 0.0f);
     if (!keepModalState)
     {
         bridgeLoad_.pastHeave = 0.0f;
@@ -3963,8 +4139,7 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         exact::bits(rate), exact::bits(bridgeShapeA0_), exact::bits(bridgeShapeT1_),
         exact::bits(bridgeShapePlate_), exact::bits(bridgeShapeT1UpperHz_),
         exact::bits(scale), exact::bits(plate.frequency), exact::bits(plate.q),
-        exact::bits(parameters_.guitarModel == GuitarModel::Original
-                    ? plate.weight : -1.0f),
+        exact::bits(plate.weight),
         exact::bits(wood.frequency), exact::bits(wood.q),
         // The joint-pole body's own Shape morph (visitSteelBlendBridge).
         static_cast<std::uint32_t>(parameters_.shape) };
@@ -4023,8 +4198,7 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         table.ordered = table.count;
     }
     table.scale = scale;
-    table.plate = parameters_.guitarModel == GuitarModel::Original
-        && plate.weight > 0.0f;
+    table.plate = plate.weight > 0.0f;
     if (table.plate)
     {
         // The floor's 48 kHz prototype, as configureBridge builds it.
@@ -4417,7 +4591,11 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // fundamental T60 target below. With the fitted 2.29 the scaled cutoff
     // is past the 0.44 x 48 kHz clamp up to a String Age of about 0.24, so
     // at the default age it does nothing.
-    const float cutoff = 12500.0f * std::exp(-1.25f * age)
+    // The plain strings' age cutoff falls as exp(-0.9 age) (it was -1.25):
+    // at age 1 the high E above the 12th fret lost its upper partials four
+    // times faster than the wound strings gained any loss at all. It sits
+    // past the clamp below at the default age either way.
+    const float cutoff = 12500.0f * std::exp(-0.9f * age)
         * physicalCalibration_.highLossCutoffScale;
     const float lowpassCoefficient = std::exp(
         -twoPi * clamp(cutoff, 1200.0f,
@@ -4495,8 +4673,16 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // way that design is. The four basses are the wound constructions
     // (steelBendingDiameter above says so).
     const bool wound = stringIndex <= 3;
+    // A wound string goes dead first: grime and corrosion between its
+    // windings are internal friction in its bending (the loss this section
+    // models), where a plain string only dulls. The one-pole cutoff below
+    // String Age acts in absolute frequency, so it reached a low E's
+    // partials only above its 50th and aged a bass by 0.2 dB. The wound loss
+    // now rises with age, pivoted on the default age so the shipped sound is
+    // unchanged there: 0.2 of it on fresh strings, 7.8 times it at age 1.
+    const float woundAgeing = std::max(0.2f, 1.0f + 8.0f * (age - 0.15f));
     const float bendingFactor = wound
-        ? physicalCalibration_.steelWoundBendingLoss
+        ? physicalCalibration_.steelWoundBendingLoss * woundAgeing
         : physicalCalibration_.steelPlainBendingLoss;
     // A dispersion design for these complete arguments, from the solves
     // already made when one matches exactly, otherwise solved and kept.
@@ -5031,16 +5217,37 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     const bool hasTimbre = voice.mpeMember && voice.midiChannel >= 1
         && voice.midiChannel <= midiChannelCount
         && mpeTimbre_[channelIndex] >= 0.0f;
-    const float basePosition = hasTimbre
+    float basePosition = hasTimbre
         ? 0.05f + 0.41f * mpeTimbre_[channelIndex]
         : distanceFromBridge / soundingLength;
-    // The band is 0.05-0.46 of the sounding length. Past it - a hand at its
-    // distance from the bridge high on the neck, or a Thumb - the base point
-    // stops at the band's edge and the take's draw is reflected back inside
-    // it, so a clamped pluck still varies from take to take. Clamping the
-    // drawn point instead put every such pluck on exactly 0.46.
+    // A hand held at its distance from the bridge meets a short (stopped
+    // high on the neck) string ever further toward its middle, and a Thumb
+    // meets even the open strings there. No player lets a note sound from
+    // its own midpoint, where every even partial is nulled: the flat-top
+    // recordings' plain-string H2 stands 7 dB under H1 where renders plucked
+    // at the old band edge 0.46 stood 20 under. So past a quarter of the
+    // string the point bends smoothly toward 0.36 and never reaches it,
+    // p' = h - w^2 / (p - k + w), w = h - k: the same point and slope at the
+    // knee k = 0.25 and still rising wherever the hand moves. The hard
+    // 0.46 clamp this replaces, and a fold about the midpoint with a
+    // quarter-string floor, each left Pluck Position without effect on
+    // whole frets (the clamp a Thumb from the 11th fret up, the fold a
+    // Thumb at the 20th); the knee beat both, and a hard bound at 0.36, on
+    // the benchmark (Docs/decisions.md, 2026-09-30). CC74 still names any
+    // point of its published 0.05-0.46 band directly.
     constexpr float lowestPoint = 0.05f;
-    constexpr float highestPoint = 0.46f;
+    constexpr float kneePoint = 0.25f;
+    constexpr float handLimit = 0.36f;
+    if (!hasTimbre && basePosition > kneePoint)
+    {
+        constexpr float width = handLimit - kneePoint;
+        basePosition = handLimit
+            - width * width / (basePosition - kneePoint + width);
+    }
+    // Past the band's edge the take's draw is reflected back inside it, so
+    // a pluck near the edge still varies from take to take. Clamping the
+    // drawn point instead put every such pluck on exactly the edge.
+    const float highestPoint = hasTimbre ? 0.46f : handLimit;
     float position = clamp(basePosition, lowestPoint, highestPoint) + takeOffset;
     if (position > highestPoint)
         position = 2.0f * highestPoint - position;
@@ -5109,10 +5316,57 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         ? physicalCalibration_.pickReleaseVelocityShare
             * std::pow(v, physicalCalibration_.pickReleaseVelocityExponent)
         : 0.0f;
-    const double slipPole = pick
-        ? plectrumSlipPole(voice, releasedAmplitude, heldDistance,
-                           soundingLength, scaleLength)
-        : 0.0;
+    // Touch is how fast the hand lets go: a firm touch releases the string
+    // over a smaller effective edge, a soft one over a larger, two octaves
+    // of radius across the control and none at its default.
+    const float releaseTouch = std::exp2(2.0f * (0.58f - parameters_.touch));
+    double slipPole = 0.0;
+    // A fingertip or the thumb's pad lets go the way the plectrum's edge does
+    // (plectrumSlipPole): the held force unloads in r/u, u the speed its own
+    // held displacement gives the string, so a soft stroke is released more
+    // slowly and darker. Without it a finger's sustained H5-H12 over H1-H4
+    // rose 1.3-2.9 dB from MIDI 16 to 112 where the recordings rise a median
+    // 9. The Finger and Thumb shapes the listener chose were written with no
+    // slip, so only the ratio to the slip at full velocity is applied: a
+    // full-velocity stroke at the default Touch is bit for bit the shipped
+    // release, and a softer stroke is darker (0.3 dB at MIDI 112, 6-8 dB at
+    // 16). A firmer Touch may brighten past the shipped release, bounded to
+    // a tripled release speed. The ratio moves energy out of (or into) the
+    // upper partials, so the written line is rescaled to the displacement it
+    // had: the velocity-to-level law stays the one fitted.
+    constexpr float fingerReleaseRadius = 0.2e-3f;
+    constexpr float releaseReferenceVelocity = 1.0f;
+    constexpr double releaseBoostLimit = 3.0;
+    double unslipPole = 0.0;
+    voice.releaseSlipPole = 0.0;
+    voice.releaseReferencePole = 0.0;
+    if (pick)
+        slipPole = plectrumSlipPole(voice, releasedAmplitude, heldDistance,
+            soundingLength, scaleLength,
+            physicalCalibration_.pickEdgeRadiusMetres * releaseTouch);
+    else
+    {
+        const double referencePole = plectrumSlipPole(voice, releasedAmplitude
+                * std::pow(releaseReferenceVelocity / v, velocityExponent),
+            heldDistance, soundingLength, scaleLength, fingerReleaseRadius);
+        const double pole = plectrumSlipPole(voice, releasedAmplitude,
+            heldDistance, soundingLength, scaleLength,
+            fingerReleaseRadius * releaseTouch);
+        if (referencePole > 0.0 && pole > 0.0)
+        {
+            const double referenceTau = -1.0 / std::log(referencePole);
+            const double tau = std::max(-1.0 / std::log(pole),
+                                        referenceTau / releaseBoostLimit);
+            const double bounded = std::exp(-1.0 / tau);
+            if (bounded != referencePole)
+            {
+                slipPole = bounded;
+                unslipPole = referencePole;
+            }
+        }
+        voice.releaseSlipPole = unslipPole > 0.0 ? slipPole : 0.0;
+        voice.releaseReferencePole = unslipPole;
+    }
 
     // The finger's contact width over the tool's, for the contact noise's
     // corner below (a thumb's broader pad slides off more slowly).
@@ -5158,11 +5412,18 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // Authored terms, fitted with the rest of the pluck
         // (Docs/decisions.md): Touch narrows the contact; the three lowest
         // strings take a sample more (a nylon-era grouping of the wound
-        // basses that the steel fit kept, so steel's wound G is not in it);
-        // above the 17th fret, where the sounding length is short, 1.5 more.
+        // basses that the steel fit kept), and the short upper-register
+        // string 1.5 more. Both were steps - the D to the G string, and the
+        // 16th to the 17th fret - that changed a note's contact by up to 70%
+        // between neighbours; they are ramps now, full at the same ends
+        // (the low E and A, and from the 19th fret), half-way at the D and
+        // the 16th fret.
+        const float woundContact = clamp(
+            (3.0f - static_cast<float>(stringIndex)) / 2.0f, 0.0f, 1.0f);
+        const float upperContact = 1.5f * clamp(
+            (static_cast<float>(voice.fret) - 13.0f) / 6.0f, 0.0f, 1.0f);
         const float apertureSamples = 0.70f + 3.60f * (1.0f - touch)
-            + (stringIndex < 3 ? 1.0f : 0.0f)
-            + (voice.fret >= 17 ? 1.5f : 0.0f);
+            + woundContact + upperContact;
 #endif
         const int modes = std::max(voice.harmonic, 1);
         // A thumb's soft pad retains a finite contact footprint even at hard
@@ -5344,7 +5605,50 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             initialise(nearestCorner);
         else
             initialise(periodicCorner);
-        applyPlectrumSlip(loop, length, slipPole);
+        if (unslipPole > 0.0)
+        {
+            const auto lineAt = [&loop] (int sample) -> float&
+            {
+                return loop.delay[static_cast<std::size_t>(
+                    maximumDelaySamples - sample - 1)];
+            };
+            const auto spread = [&] ()
+            {
+                double mean = 0.0;
+                for (int sample = 0; sample < length; ++sample)
+                    mean += lineAt(sample);
+                mean /= static_cast<double>(length);
+                double sum = 0.0;
+                for (int sample = 0; sample < length; ++sample)
+                    sum += (lineAt(sample) - mean) * (lineAt(sample) - mean);
+                return sum;
+            };
+            const double before = spread();
+            applyPlectrumSlip(loop, length, slipPole);
+            // The reference slip's periodic inverse, x = (y - b y[-1])/(1 - b),
+            // re-zeroed at the bridge sample as the slip itself is.
+            const double b = unslipPole;
+            double previous = lineAt(length - 1);
+            double first = 0.0;
+            for (int sample = 0; sample < length; ++sample)
+            {
+                const double current = lineAt(sample);
+                const double value = (current - b * previous) / (1.0 - b);
+                previous = current;
+                if (sample == 0)
+                    first = value;
+                lineAt(sample) = static_cast<float>(value - first);
+            }
+            const double after = spread();
+            if (before > 0.0 && after > 0.0)
+            {
+                const float scale = static_cast<float>(exact::sqrt(before / after));
+                for (int sample = 0; sample < length; ++sample)
+                    lineAt(sample) *= scale;
+            }
+        }
+        else
+            applyPlectrumSlip(loop, length, slipPole);
     }
 
     double slopeEnergy = 0.0;
@@ -5408,6 +5712,15 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         / (std::max(burstSeconds, 0.0004f) * static_cast<float>(sampleRate_)));
     voice.excitationColour = 0.10f + 0.62f * touch;
     voice.excitationLowpass = 0.0f;
+    voice.excitationLowpass2 = 0.0f;
+    // A fingertip or the thumb's pad is not a plectrum: over its first
+    // 15 ms the finger-plucked flat-tops (the bank's flat-top rows and the
+    // Eastman E1D's finger take) carry 10-25 dB less 2-16 kHz than the
+    // burst's one-pole-plus-white spectrum gave them. The soft contacts'
+    // burst is the same noise through the same corner twice, with no white
+    // share: -12 dB per octave above the corner instead of -6 and a flat
+    // floor. The plectrum keeps its law.
+    voice.excitationSoft = parameters_.picking != PickingTechnique::Pick;
     // The burst draws on from where this pluck's draws ended, as it always
     // has, but from its own copy: its length follows velocity, Touch and the
     // rate, so drawn from randomState it moved every later pluck's draws
@@ -5485,13 +5798,25 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.repluckPending = false;
     voice.releaseAfterPluck = false;
     voice.pedalHeldAtKeyUp = false;
-    voice.tailActive = false;
-    voice.tailContactTravel.active = false;
-    voice.tailCharacteristicImpedance = 0.0f;
-    voice.tailLevel = 0.0f;
-    voice.tailQuietSamples = 0;
-    voice.tailLoop.reset();
-    voice.tailParallelLoop.reset();
+    // The string's retained tail is a port on the bridge. The hand-back
+    // after a key-up lets it go the way a quiet tail goes (finishVoice),
+    // fading its port out of the junction: dropped here in one sample, the
+    // impedance every string's bridge reads stepped under whatever else was
+    // sounding, a faint tick 240 ms after a fretted key-up and 1.33 s after
+    // an open one. A reset still clears it at once.
+    if (clearDelay || !voice.tailActive)
+    {
+        voice.tailActive = false;
+        voice.tailRetiring = false;
+        voice.tailContactTravel.active = false;
+        voice.tailCharacteristicImpedance = 0.0f;
+        voice.tailLevel = 0.0f;
+        voice.tailQuietSamples = 0;
+        voice.tailLoop.reset();
+        voice.tailParallelLoop.reset();
+    }
+    else
+        voice.tailRetiring = true;
     configureVoice(voice, stringIndex, voice.openMidi, clearDelay);
 }
 
@@ -5511,6 +5836,7 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
         && !voice.contactNoiseTravel.active)
     {
         voice.tailActive = false;
+        voice.tailRetiring = false;
         voice.tailContactTravel.active = false;
         voice.tailContactNoiseTravel.active = false;
         voice.tailCharacteristicImpedance = 0.0f;
@@ -5545,6 +5871,7 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     voice.tailLevel = voice.level;
     voice.tailQuietSamples = 0;
     voice.tailActive = true;
+    voice.tailRetiring = false;
 }
 
 void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
@@ -5607,9 +5934,9 @@ double AcustraEngine::plectrumSlipPole(const Voice& voice,
                                        float releasedAmplitude,
                                        float heldDistance,
                                        float soundingLength,
-                                       float scaleLength) const noexcept
+                                       float scaleLength,
+                                       float edgeRadius) const noexcept
 {
-    const float edgeRadius = physicalCalibration_.pickEdgeRadiusMetres;
     if (!(edgeRadius > 0.0f))
         return 0.0;
     // c = 2 L0 f0 of the open string: fretting shortens the string, not the
@@ -6775,9 +7102,18 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
     incoming.midiNote = midiNote;
     search.notes[static_cast<std::size_t>(search.count++)] = incoming;
     searchShape(search, 0, 0u);
-    if (!search.found || search.best.moves == 0 || search.best.impossible != 0
-        || search.best.steals != 0)
+    if (!search.found || search.best.impossible != 0 || search.best.steals != 0)
         return chosenString;
+    const int incomingString = search.bestStrings[
+        static_cast<std::size_t>(search.count - 1)];
+    // The best shape may keep every note where it is and put only the new
+    // one elsewhere: an upstroke's B2, chosen on the A string's second fret
+    // under G3-C4-E4-B4 already held at frets 5-7, fits them on the low E's
+    // seventh. Returning the string first chosen there left a five-fret
+    // stretch no hand holds whenever a strum's notes arrived a few
+    // milliseconds apart rather than on one sample.
+    if (search.best.moves == 0)
+        return incomingString;
 
     // Lift every moved note first, so a chain of moves finds its strings free.
     struct Moved
@@ -6812,8 +7148,6 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         hand_[static_cast<std::size_t>(from)].valid = false;
         vacated |= 1u << from;
     }
-    const int incomingString = search.bestStrings[
-        static_cast<std::size_t>(search.count - 1)];
     unsigned taken = 1u << incomingString;
     for (int index = 0; index < movedCount; ++index)
     {
@@ -7819,10 +8153,17 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
             const float excitationCoefficient = voice.excitationCoefficient;
             voice.excitationLowpass += excitationCoefficient
                 * (noise - voice.excitationLowpass);
-            excitation = (voice.excitationLowpass
-                + 0.16f * voice.excitationColour
-                    * (noise - voice.excitationLowpass))
-                * voice.excitationEnvelope;
+            if (voice.excitationSoft)
+            {
+                voice.excitationLowpass2 += excitationCoefficient
+                    * (voice.excitationLowpass - voice.excitationLowpass2);
+                excitation = voice.excitationLowpass2 * voice.excitationEnvelope;
+            }
+            else
+                excitation = (voice.excitationLowpass
+                    + 0.16f * voice.excitationColour
+                        * (noise - voice.excitationLowpass))
+                    * voice.excitationEnvelope;
         }
         voice.excitationEnvelope *= voice.excitationDecay;
     }
@@ -7941,8 +8282,24 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
         if (voice.tailQuietSamples > static_cast<int>(0.08 * sampleRate_)
             && !voice.tailContactTravel.active
             && !voice.tailContactNoiseTravel.active)
+            voice.tailRetiring = true;
+        // A retiring tail's port leaves the junction on the delay's own
+        // 6 ms time constant, as a bend's impedance moves (the junction sums
+        // the ports every sample). Quiet as its own wave is, the tail is a
+        // lossy port on the bridge: removed in one sample, the impedance
+        // sum stepped and so did the bridge motion every string reads, a
+        // tick under anything else sounding. At 1e-4 of the string's port,
+        // about 55 ms on, it is dropped.
+        if (voice.tailRetiring)
+            voice.tailCharacteristicImpedance
+                -= delaySmoothing_ * voice.tailCharacteristicImpedance;
+        if (voice.tailRetiring && !voice.tailContactTravel.active
+            && !voice.tailContactNoiseTravel.active
+            && !(voice.tailCharacteristicImpedance
+                 > 1.0e-4f * voice.characteristicImpedance))
         {
             voice.tailActive = false;
+            voice.tailRetiring = false;
             voice.tailContactTravel.active = false;
             voice.tailContactNoiseTravel.active = false;
             voice.tailCharacteristicImpedance = 0.0f;
@@ -8991,30 +9348,44 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 radiationReferenceGain * outputGain_ * loadedPiezo);
             piezo[sample] = exact::isfinite(piezoOut) ? piezoOut : 0.0f;
         }
-        if (parameters_.capture != CaptureType::StereoMic
-            || captureMix_[0] != 1.0f)
+        // The microphones wait out the piezo's pipeline (renderPiezo), so a
+        // Capture crossfade and Piezo Mix sum the two sensors as the
+        // instrument moved them, at every sample rate. Main is seven samples
+        // later than the strings for every Capture.
+        const float monoMic = radiationReferenceGain * monoReference_ * outputGain_
+            * (bodyScale * body.upper + directScale * directMono);
         {
-            for (std::size_t index = 0; index < captureMix_.size(); ++index)
+            const auto index = static_cast<std::size_t>(micDelayIndex_);
+            const float heldLeft = micDelayLeft_[index];
+            const float heldRight = micDelayRight_[index];
+            const float heldMono = micDelayMono_[index];
+            micDelayLeft_[index] = outputLeft;
+            micDelayRight_[index] = outputRight;
+            micDelayMono_[index] = monoMic;
+            micDelayIndex_ = micDelayIndex_ + 1 == piezoPipelineSamples
+                ? 0 : micDelayIndex_ + 1;
+            outputLeft = heldLeft;
+            outputRight = heldRight;
+            if (parameters_.capture != CaptureType::StereoMic
+                || captureMix_[0] != 1.0f)
             {
-                const float target = index == static_cast<std::size_t>(
-                    parameters_.capture) ? 1.0f : 0.0f;
-                float& mix = captureMix_[index];
-                const float next = mix + parameterSmoothing_ * (target - mix);
-                mix = next == mix || exact::abs(target - next) < 1.0e-4f
-                    ? target : next;
+                for (std::size_t slot = 0; slot < captureMix_.size(); ++slot)
+                {
+                    const float target = slot == static_cast<std::size_t>(
+                        parameters_.capture) ? 1.0f : 0.0f;
+                    float& mix = captureMix_[slot];
+                    const float next = mix + parameterSmoothing_ * (target - mix);
+                    mix = next == mix || exact::abs(target - next) < 1.0e-4f
+                        ? target : next;
+                }
+                // One physical microphone avoids the spaced pair's phase
+                // cancellation; its copies and the piezo ignore width.
+                const float mono = captureMix_[7] * heldMono
+                    + radiationReferenceGain * outputGain_
+                    * (captureMix_[6] * loadedPiezo);
+                outputLeft = captureMix_[0] * outputLeft + mono;
+                outputRight = captureMix_[0] * outputRight + mono;
             }
-            // One physical microphone, with its own measured complex response,
-            // avoids phase cancellation from summing two spaced microphones.
-            // Its identical L/R copies and the loaded saddle piezo ignore width.
-            // The piezo carries its whole level (renderPiezo), the mono
-            // microphone its own reference.
-            const float mono = radiationReferenceGain * monoReference_ * outputGain_
-                * (captureMix_[7]
-                       * (bodyScale * body.upper + directScale * directMono))
-                + radiationReferenceGain * outputGain_
-                * (captureMix_[6] * loadedPiezo);
-            outputLeft = captureMix_[0] * outputLeft + mono;
-            outputRight = captureMix_[0] * outputRight + mono;
         }
         // Piezo Mix: the piezo, at the level Capture Piezo gives it, under
         // whichever microphones Capture selects, on both sides. It fades out

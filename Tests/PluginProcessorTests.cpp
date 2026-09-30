@@ -1982,7 +1982,9 @@ void testGatheredChordsVoiceLikeSequencedChords()
     int latency = 0;
     const auto gatheredRoll = renderTimeline (rolled, length, true, &latency);
     const auto gatheredChord = renderTimeline (together, length, true);
-    expect (latency == 1440,
+    // The engine's own seven samples (the microphones wait out the piezo's
+    // pipeline) plus the 30 ms window.
+    expect (latency == 1440 + acustra::AcustraEngine::outputLatencySamples(),
             "Gather Chords did not report its 30 ms window as latency");
     {
         // Below the modelled range the engine plays at 8 kHz, and the window
@@ -1992,7 +1994,8 @@ void testGatheredChordsVoiceLikeSequencedChords()
         setValue (*lowRateOwner, acustra::parameters::gatherChords, 1.0f);
         lowRateOwner->prepareToPlay (4000.0, blockSize);
         expect (lowRateOwner->getLatencySamples()
-                    == acustra::Performer::gatherWindowSamples (8000.0),
+                    == acustra::Performer::gatherWindowSamples (8000.0)
+                           + acustra::AcustraEngine::outputLatencySamples(),
                 "Gather Chords reported its latency at the host's rate, not the engine's");
     }
     expect (gatheredRoll == gatheredChord,
@@ -2124,7 +2127,8 @@ void testGatherSwitchAndPanicReleaseHeldNotes()
     // Switching off releases what is held at once, and the latency with it.
     processor.processBlock (audio, note);
     setValue (processor, acustra::parameters::gatherChords, 0.0f);
-    expect (processor.getLatencySamples() == 0,
+    expect (processor.getLatencySamples()
+                == acustra::AcustraEngine::outputLatencySamples(),
             "switching Gather Chords off kept its latency");
     expect (sound (2) > 0.001f,
             "switching Gather Chords off lost the note it was holding");
@@ -2135,7 +2139,8 @@ void testGatherSwitchAndPanicReleaseHeldNotes()
     expect (processor.getActiveVoiceCount() == 0,
             "a note released after Gather Chords went off stayed held");
     setValue (processor, acustra::parameters::gatherChords, 1.0f);
-    expect (processor.getLatencySamples() == 1440,
+    expect (processor.getLatencySamples()
+                == 1440 + acustra::AcustraEngine::outputLatencySamples(),
             "switching Gather Chords back on did not restore its latency");
 }
 

@@ -4,6 +4,209 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-30 — defect: a forming chord's refret kept an impossible new note
+
+Hand-timed strums (notes 5-20 ms apart, not on one sample) came out beyond
+one hand: after an open G, an upstroke's B2-G3-C4-E4-B4 as A2 D5 G5 B5 e7 and
+a downstroke's A2-C3-G3-D4-G4 as A0 E8 G0 D12 e3. reshapeFormingChord found
+a playable shape but discarded it whenever that shape moved none of the held
+notes, returning the new note's first, impossible string. It now takes the
+shape's string for the new note in that case (E7 and B8 above). Measured: 16
+of 88 strums in HandAllocatorTests' new check (11 chords, both directions,
+5/10/15/20 ms) were outside the four-fret span before, none after; 400
+random 3-5-note strums, none before or after with a same-sample plan.
+
+## 2026-09-30 — defect: the retained tail's port faded out, not cut
+
+Demo renders showed a faint 5-sample tick 240 ms after fretted key-ups
+(Lágrima 31.87 s; Planxty Irwin 12.73/41.93/56.37 s) and 1.33 s after open
+ones (Recuerdos 64.58 s): the hand-back to the open string
+(returnToOpenString) and the quiet-tail retirement both dropped the retained
+tail's port from the bridge junction in one sample, stepping the impedance
+sum and the bridge motion under every other string. The port now slews out
+on the delay's 6 ms time constant (Voice::tailRetiring) and the branch is
+dropped at 1e-4 of the string's port. Measured, not chosen by ear: the
+7 kHz high-passed output's peak derivative after a hand-back fell from up to
+47 dB over its local median to the 13-15 dB of the floor's own peaks on all
+nine demos; ReleaseTests' hand-back check (fifth difference of the output
+band-limited to 20 kHz) 30-40 dB before, 11-13 dB after. Resets, construction
+and tuning changes still clear at once. Merged with the soft finger burst and
+the radiation continuation, the fretted-to-open reconfiguration at the
+hand-back itself (configureVoice, not the tail) reads 15 dB at 48 kHz and
+21 dB at 96 kHz (26 dB before the band limit, the rest ultrasonic); the
+check's bound is 25 dB, between the two, and that transient is left for its
+own investigation.
+
+## 2026-09-30 — blind verdicts: the strings' excitation - finger release, soft burst, wound ageing, contact ramps, pluck point
+
+A strings/excitation polish pass sent level-matched A/B pairs of five changes
+(A the shipping engine); the user's verdict on all of them: "yes pls go with
+all proposed". What ships:
+
+- **Finger and Thumb release by the plectrum's slip law.** The held force
+  unloads in r/u (u the speed the stroke's own held displacement gives the
+  string) over an effective 0.2 mm edge, applied as a ratio to the slip at
+  full velocity and rescaled to the displacement the line had, so a
+  velocity-127 stroke at the default Touch is the shipped release sample for
+  sample and the fitted level law stays; softer strokes are darker. Touch now
+  scales the release edge over two octaves for every technique (none at its
+  default 0.58; the fingers' boost bounded to three times the full-velocity
+  release speed). Finger H5-H12 over H1-H4, MIDI 16 to 112, median over eight
+  notes: 2.1 -> 9.2 dB (the finger-plucked recordings 9.0); Thumb 5.4 -> 8.2;
+  Pick unchanged at the default Touch (4.5). A second pass proposed a 0.07 mm
+  finger edge with a v^-0.04 level compensation; this one was kept because
+  it matches the recordings' rise (its own measure 9.6 against 9.0).
+- **The Finger's and Thumb's burst: the same corner twice, no white share.**
+  2-12 kHz share of the first 15 ms at velocity 127, mean over six notes:
+  Finger -15.5 -> -19.2 dB, Thumb -15.5 -> -20.2; Pick unchanged (-10.0).
+- **String Age reaches the wound strings.** Their bending loss is scaled by
+  max(0.2, 1 + 8 (age - 0.15)), identical at the default age; the plain
+  strings' cutoff falls as exp(-0.9 age) (was -1.25). Low E H5-H8 decay over
+  0.1-1.2 s: 14.0 / 16.1 / 30.9 dB/s at age 0 / 0.15 / 1 (the engine before:
+  15.8 / 16.1 / 18.2).
+- **Contact-width ramps.** The wound-string and upper-register aperture
+  terms were steps (D to G string, 16th to 17th fret) that changed a note's
+  contact by up to 70% between neighbours; they are ramps, full at the same
+  ends, half-way at the D and the 16th fret.
+- **The pluck point bends toward 0.36 of the string.** Two proposals
+  overlapped: fold the point about the string's midpoint, no nearer the fret
+  than 0.25 (P3), and bound it at 0.36 (the realism pass: no player plucks a
+  note from its own midpoint). Each was run on top of the four changes above,
+  with their combination and a smooth knee that bounds the point without a
+  dead zone: identity to 0.25 of the
+  string, then p' = 0.36 - 0.11^2/(p - 0.14), rising toward 0.36 without
+  reaching it. Benchmark (shipping vector; FitPhysicalModel.py per split;
+  BenchmarkOpenCorpora.py on the prepared Eastman rows):
+
+  | candidate (on the four changes) | train | validation | flat-top | Eastman pick | Eastman finger |
+  |---|---|---|---|---|---|
+  | engine before (beb4cd9) | 6.5585 | 6.5809 | 7.1915 | 6.3697 | 6.9126 |
+  | clamp at 0.46 (no pluck change) | 7.0398 | 6.9256 | 6.9044 | 6.3728 | 6.7219 |
+  | P3: fold, floor 0.25, clamp 0.46 | 7.0216 | 6.8087 | 6.8902 | 6.3728 | 6.7037 |
+  | bound 0.36 | 7.0484 | 6.7607 | 6.7707 | 6.3728 | 6.6444 |
+  | fold (floor 0.25) and bound 0.36 | 7.0536 | 6.7607 | 6.7801 | 6.3728 | 6.6477 |
+  | **knee 0.25 toward 0.36 (ships)** | 7.0303 | 6.7641 | **6.7124** | 6.3838 | 6.6112 |
+  | knee 0.25 toward 0.34 | 7.0151 | 6.7339 | 6.7358 | 6.3838 | 6.6232 |
+  | knee 0.25 toward 0.38 | 7.0128 | 6.7667 | 6.7547 | 6.3864 | 6.6139 |
+  | knee 0.25 toward 0.40 | 7.0367 | 6.7639 | 6.8213 | 6.3910 | 6.6140 |
+  | knee 0.22 toward 0.36 | 6.9765 | 6.7496 | 6.7993 | 6.3887 | 6.5877 |
+  | knee 0.20 toward 0.36 | 6.8789 | 6.7934 | 6.8700 | 6.3984 | 6.6218 |
+  | knee 0.28 toward 0.36 | 7.0369 | 6.7774 | 6.8126 | 6.3763 | 6.6514 |
+  | knee 0.30 toward 0.40 | 6.9967 | 6.7620 | 6.9160 | 6.3728 | 6.6355 |
+
+  The criteria were flat-top, validation and Eastman finger together without
+  a large training loss, and no dead zones. Every hard limit has them: the
+  0.46 clamp leaves Pluck Position without effect for a Thumb from the 11th
+  fret up, the 0.36 bound for a Finger from the 19th, and the fold's
+  quarter-string floor for a Thumb at the 20th (every stroke past it on
+  exactly one point). The knee moves the point at every fret for every
+  technique (a Thumb high on the neck, whose hand is past the string's end,
+  by fractions of a millimetre per quarter turn, and its partials by more
+  than 6 dB across the control) and is the best on the flat-top rows, level
+  with the bound on validation, 0.03 better than it on the Eastman finger
+  rows, and 0.018 better on training; the Eastman picked rows move 0.011.
+  The 0.22 knee is 0.02 better on Eastman finger and training but 0.09 worse
+  on the flat-top rows. MPE Timbre keeps its 0.05-0.46 band.
+
+Against the engine before, all five together: training 6.5585 -> 7.0303
+(+7.2%), development validation 6.5809 -> 6.7641 (+2.8%), the never-fitted
+flat-top rows 7.1915 -> 6.7124 (-6.7%), Eastman picked 6.3697 -> 6.3838
+(+0.2%), Eastman finger 6.9126 -> 6.6112 (-4.4%). The training and
+validation losses come with the finger release and the soft burst (the
+archtop training rows are picked and were fitted with the Finger); the pluck
+knee takes back part of them. The listener's A/Bs decide, as recorded.
+The construction loudness table was re-measured with the new excitation
+(Tools/CalibrateConstructionLoudness.py --write-header): with the old gains
+the new strings put the stereo microphones at -1.30..+0.78 LU of the default
+(59 of 72 cells within +-1; the Bellido Thumb cells +0.4..+0.8), and
+Tests/ConstructionLoudnessTests.cpp's own phrase put the Bellido Auditorium
+Maple Thumb 3.3 LU over the default, past its +-3; with the new gains every
+cell and capture is within 1 LU (--check passes) and that test's spread is
+back inside its bound. The default construction's microphone levels stay
+exactly 1.
+
+## 2026-09-30 — blind verdicts: the radiation continued above its band, the Bellido's plate floor, Piezo Mix on one time base
+
+Three changes from the 2026-09-30 body and capture polish were sent as A/B
+pairs; the user's verdict on all of them: "yes pls go with all proposed".
+
+- **Radiation above the fitted band.** Each measured bank stops where its
+  fit stopped (10 kHz before the anchor's and Shape's moves: 8.1 kHz on the
+  steel Jumbo, 11.7 on the Parlor), and above its last mode the radiation
+  fell 12-25 dB within a third of an octave, its 16 kHz band 23-39 dB under
+  its 2-4 kHz level. configureBody now continues it statistically: modes on
+  a 1/16-octave grid at unit modal overlap (Q 22.6) from the bank's top to
+  min(18 kHz, 0.45 fs), each part's residues (both microphones, force and
+  moment) carrying the power density of the bank's own top octave, with
+  deterministic pseudo-random phases, falling 6 dB per octave. Now the
+  worst third-octave fall from 1 to 16 kHz is 4.8 dB and the 16 kHz band
+  sits 5-12 dB under 2-4 kHz. Integrating it found three things the
+  auditioned patch lacked, fixed without changing what was heard at 48 kHz
+  on the Original: the continuation is built as 48 kHz modes and converted
+  to the host rate as the measured modes are (it had moved the engine's
+  3-9 kHz rate check to 0.17 dB; 8-16 kHz now agrees across 44.1/48/96 kHz
+  within 0.1-0.16 dB, where the band edge's measured modes alone moved
+  0.3-1.1 dB before, a Known gap now closed); every construction holds 19
+  continuation slots, silent past the top, so a same-tick Shape/Wood change
+  keeps each mode's state; and a bank not ending on a group of four (the
+  Bellido's 134 modes) is padded to one, since BodyBank::render sums the
+  lanes after the ordered bank from a whole group and the Bellido's first
+  two continuation modes (10.4 and 10.9 kHz on its Auditorium) had been
+  advanced but never heard. ACUSTRA_BODY_MODE_COUNT 141 -> 160.
+- **The plate conductance floor on the Bellido.** Its modal fit loses the
+  same high-band conductance between overlapping modes as g21's, so it takes
+  the same floor (heave alone, unscaled). Without it its strings kept 4-10
+  kHz partials a third of the Original's drain would leave, and it played
+  11-15 dB over the recordings at 5-10 kHz against the Original's 1-5. Over
+  5-10 kHz the floor triples the Bellido's port conductance.
+- **Piezo Mix on one time base.** The piezo chain's output is seven samples
+  behind its input at every rate, and the microphones were not, so the blend
+  summed the sensors 146 us apart at 48 kHz and 73 us at 96 kHz: a comb
+  whose notches moved with the rate. The microphones now wait the same seven
+  samples. With Piezo Mix 0, Main is the old output seven samples later.
+  AcustraEngine::outputLatencySamples() is that fixed latency;
+  Performer::latencySamples() adds the Gather Chords window when on, and the
+  plug-in reports that sum (7 samples; 1447 at 48 kHz while gathering). The
+  mic x piezo cross-spectra at 48 and 96 kHz now line up within 3-5 us
+  (74 us before), and the blend's excess over the power sum agrees across
+  the rates within 0.13-0.41 dB on average (0.62-0.94 before).
+
+Benchmark (shipping vector, against main beb4cd9): training 6.5585 ->
+6.5421, development validation 6.5809 -> 6.5210, flat-top 7.1915 -> 7.1363
+(attack 7.98 -> 7.82, 10.16 -> 9.54, 7.32 -> 7.16; decay 3.53 -> 3.59,
+2.42 -> 2.62, 4.28 -> 4.44; flat-top harmonics 8.11 -> 7.87).
+
+Tests that pinned the old behaviour now assert the new: the natural-harmonic
+test reads its loudest partial at the saddle, since at the microphones the
+Dreadnought's 8.3 kHz body peak lifts the open E's 25th partial (14 dB under
+E6 at the saddle, 1.2 dB under its octave at the mics before) 0.2 dB over
+the octave; the extreme-plectrum test bounds growth on the ring after 50 ms
+(1.3x), because its 8x broadband contact burst now radiates up to 18 kHz
+and peaks 3.4-5.1x the plain pluck at onset (1.8-2.6x before).
+
+Loudness. Measured on this build before re-levelling (target the default
+cell, -23.31 LUFS), the Original's cells were where they were (stereo mic
+Finger/Thumb within -0.14..+0.10 LU, Pick's headroom cut as before), and
+the Bellido had moved: stereo mic Finger -0.47..-0.80 LU (median -0.61),
+Thumb -0.06..-0.55, Pick -0.94..-1.74. Only the Bellido's 36 cells were
+rewritten (new `--models` option; the Original's gains kept, since the
+final pass is redone once this and the strings' branch are merged):
+
+    python3 Tools/CalibrateConstructionLoudness.py \
+        --renderer build/AcustraPerformanceRenderer --json m.json \
+        --write-header --models bellido1978
+
+The Bellido's microphone gains rose +0.06..+1.33 dB (median +0.60), its
+mono and piezo trims moved -0.83..+0.58 and -0.60..+0.57 dB. `--check`
+afterwards: stereo and mono microphones 72/72 cells within +-1 LU (main
+beb4cd9 read 62/72 and 69/72), the piezo 60/72 (main 48/72); the twelve left
+are the Original's Pick piezo cells, -1.16..-1.20 LU on main already, and
+the mono microphone's Original Dreadnought Maple Pick keeps 1.91 dB under
+the knee at +0.02 LU; both are the Original's, left for the final pass.
+`Tools/CalibratePiezo.py --headroom-only` passes: the hottest Pick strum
+leaves the element at 1.922 V open-circuit (inside 0.7-2.5 V), 1.510 V at
+the jack, with at least +4.19 dB left to U1B's swing.
+
 ## 2026-09-30 — at the user's request, then by ear: a gentle release sound
 
 The user asked for "a very gentle release sound". Key-up now adds the damping

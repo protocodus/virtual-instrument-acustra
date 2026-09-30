@@ -14,16 +14,17 @@
 
 // Capacity of the measured banks: the largest bank a construction plays.
 // That is the steel blend (SteelBodyBlend.h), g21's 132 radiation modes and
-// the joint-pole body's 9 below its band; the bridge is B's 47 modes and the
-// joint body's 8. AcustraEngine.cpp static-asserts that every bank fits, so
+// the joint-pole body's 9 below its band, plus the 19 slots continuing the
+// radiation above the fitted band (configureBody); the bridge is B's 47 modes
+// and the joint body's 8. AcustraEngine.cpp static-asserts that every bank fits, so
 // a regenerated header that grows fails to build rather than to sound.
-// Slots past a bank cost no CPU, but every instance carries them as memory,
-// the Bellido guitar too.
+// Slots past a construction's bank and its continuation cost no CPU, but
+// every instance carries them as memory, the Bellido guitar too.
 #if !defined(ACUSTRA_BRIDGE_MODE_COUNT)
 #define ACUSTRA_BRIDGE_MODE_COUNT 56
 #endif
 #if !defined(ACUSTRA_BODY_MODE_COUNT)
-#define ACUSTRA_BODY_MODE_COUNT 141
+#define ACUSTRA_BODY_MODE_COUNT 160
 #endif
 
 // Asks the compiler to inline a function at every call it can see, whatever
@@ -141,6 +142,23 @@ public:
     void prepare(double sampleRate, int maximumBlockSize);
     // The rate prepare() settled on, which every time constant follows.
     [[nodiscard]] double sampleRate() const noexcept { return sampleRate_; }
+    // Main and the Piezo output are this many samples later than the
+    // strings, at every rate and for every Capture: the piezo chain's
+    // pipeline (renderPiezo), which the microphones wait out so the two
+    // sensors blend on one time base. A front end reports it to the host.
+    static constexpr int outputLatency = 7;
+    [[nodiscard]] static constexpr int outputLatencySamples() noexcept
+    {
+        return outputLatency;
+    }
+    // The slots after a bank (and the steel blend's parts) that continue its
+    // radiation above the fitted band (configureBody). Every construction of
+    // a model at a rate holds the same number, the grid's modes past 18 kHz
+    // or 0.45 fs silent, so a Shape or Wood change keeps each continuation
+    // mode's state in its slot (sameBodyBank) whatever band the construction
+    // in between had. At most 19 sound: the steel Jumbo in Spruce or
+    // Mahogany, whose 8.1 kHz top is 18.4 grid steps under 18 kHz.
+    static constexpr int radiationContinuationSlots = 19;
     void reset() noexcept;
     void setParameters(const EngineParameters& parameters) noexcept;
 
@@ -775,6 +793,9 @@ private:
         float tailLevel { 0.0f };
         int tailQuietSamples { 0 };
         bool tailActive { false };
+        // A tail being let go: its port fades out of the junction on the
+        // delay's time constant before the branch is dropped (finishVoice).
+        bool tailRetiring { false };
         int openMidi { 40 };
         int midiNote { 40 };
         // 1 is a stopped note. Above that the string sounds open in its nth
@@ -799,6 +820,8 @@ private:
         float excitationDecay { 0.0f };
         float excitationColour { 0.0f };
         float excitationLowpass { 0.0f };
+        float excitationLowpass2 { 0.0f };
+        bool excitationSoft { false };
         // renderExcitation's lowpass coefficient for this colour and host
         // rate, which a burst keeps throughout: a powf per sample otherwise.
         std::uint32_t excitationCoefficientColour { 0xffffffffu };
@@ -852,6 +875,11 @@ private:
         // Where each plane's release shape put its kink, as a share of the
         // line it was written on (initialisePluck).
         std::array<float, 2> releaseShapePosition {};
+        // A Finger or Thumb release's slip and the full-velocity slip it is
+        // taken as a ratio to (initialisePluck); zero when the release is
+        // the written shape itself.
+        double releaseSlipPole { 0.0 };
+        double releaseReferencePole { 0.0 };
         // Routing identity survives transport retirement: a drained contact
         // must not fall back to the former bridge-boundary source write.
         bool contactTravelEnabled { false };
@@ -1167,7 +1195,7 @@ private:
                           float referenceDelay) noexcept;
     double plectrumSlipPole(const Voice& voice, float releasedAmplitude,
                             float heldDistance, float soundingLength,
-                            float scaleLength) const noexcept;
+                            float scaleLength, float edgeRadius) const noexcept;
     static void applyPlectrumSlip(StringLoop& loop, int length,
                                   double slipPole) noexcept;
     void resetSoundState() noexcept;
@@ -1429,6 +1457,14 @@ private:
     float width_ { 0.62f };
     float outputGain_ { 0.42f };
     float piezoMix_ { 0.0f };
+    // The microphones, held back by the piezo chain's pipeline (renderPiezo's
+    // output is seven samples behind its input at every rate), so the two
+    // sensors meet on the instrument's one time base.
+    static constexpr int piezoPipelineSamples = outputLatency;
+    std::array<float, piezoPipelineSamples> micDelayLeft_ {};
+    std::array<float, piezoPipelineSamples> micDelayRight_ {};
+    std::array<float, piezoPipelineSamples> micDelayMono_ {};
+    int micDelayIndex_ { 0 };
     // The output reference's per-material and per-construction factor
     // (outputReferenceFor in AcustraEngine.cpp), smoothed like the output
     // control, and the mono microphone's own (monoReferenceFor).
