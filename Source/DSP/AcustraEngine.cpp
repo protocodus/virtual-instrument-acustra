@@ -232,6 +232,9 @@ static_assert(detail::bellidoBridgeModes.size() <= ACUSTRA_BRIDGE_MODE_COUNT);
 // measurement at its own box, so its anchor is the identity.
 struct AnchorTransform
 {
+    // A ratio written in Hz, not the air mode itself: the measured bank's
+    // modes between 85 and 145 Hz move by airHz / 107 (107 is the identity),
+    // so the wide anchor's 98 lowers them by 8%.
     float airHz;
     float modeScale;
     float bass;
@@ -636,7 +639,9 @@ constexpr std::array<int, AcustraEngine::stringCount> standardOpenMidi {{
 // string inharmonicities 1.08e-4, 6.6e-5 and 5.0e-5 reported by Jarvelainen
 // and Karjalainen (Acta Acustica 92, 2006); shortening the same construction
 // then predicts their seventh-fret values.  G remains an authored effective
-// diameter because that paper does not publish a matching value for it.
+// diameter because that paper does not publish a matching value for it. The
+// shipped fit then scales every B by stiffnessScale (0.749,
+// FittedPhysicalData.h), so the engine's open strings sit at 0.75 of them.
 constexpr std::array<float, AcustraEngine::stringCount> steelBendingDiameter {{
     0.477159e-3f, 0.437895e-3f, 0.412021e-3f,
     0.38e-3f, 0.406e-3f, 0.305e-3f
@@ -1248,7 +1253,9 @@ double mixedOnePolePhase(double coefficient, double mix,
 // Acustica united with Acustica 90 (2004) 928-944, Sec. 2). Those models'
 // other two terms, air damping and a friction that sets a constant Q, have
 // no separate counterpart here: the loop's fundamental T60 and its broad and
-// high shelves, calibrated as a whole, stand in for them, and this section
+// high shelves, calibrated as a whole, stand in for them (with two small
+// authored per-plane factors, configureVoice, that act as a constant Q on
+// top of the requested T60), and this section
 // is added to them rather than replacing them (replacing the shelves by
 // Woodhouse's published three-term law over-damped 3-6.8 kHz, see
 // Docs/decisions.md, 2026-09-04). Its
@@ -3588,8 +3595,10 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
     return result;
 }
 
-// Each polarisation's loop is tuned against its own port, but where the
-// saddle rocks the two are coupled through it (the transfer mobility) and
+// The normal loop is tuned against its own port and the parallel loop shares
+// its length (so the pair splits by the bridge's pull on the normal member,
+// README "Both polarisations are one string"), and where the saddle rocks
+// the two are also coupled through it (the transfer mobility) and
 // ring as one pair of modes. Near the fundamental each loop's round trip is
 // its gain and phase times the saddle's 2x2 reflection R = (Y0 - Y)(Y0 + Y)^-1,
 // so the pair's modes are the eigenvalues of diag(G_normal, G_parallel) R: a
@@ -3837,7 +3846,9 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float age = parameters_.stringAge;
     // Preserve the material/age law while allowing one shared fitted cutoff
     // scale to reduce excess upper-partial damping without changing the
-    // fundamental T60 target below.
+    // fundamental T60 target below. With the fitted 2.29 the scaled cutoff
+    // is past the 0.44 x 48 kHz clamp up to a String Age of about 0.24, so
+    // at the default age it does nothing.
     const float cutoff = 12500.0f * std::exp(-1.25f * age)
         * physicalCalibration_.highLossCutoffScale;
     const float lowpassCoefficient = std::exp(
@@ -4098,6 +4109,13 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             3.0f, static_cast<float>(maximumDelaySamples - 3));
         if (clearDelay)
             loop.currentDelay = loop.targetDelay;
+        // Authored per-plane factors on top of the requested fundamental
+        // T60: each round trip loses 0.05% (normal) or 0.12% (parallel) more
+        // at every frequency, and the parallel plane's shelves are 6% and 8%
+        // deeper, so the planes do not decay as one. A loss per round trip is
+        // the constant-Q friction term the string-loss note above sets
+        // aside; on the longest-ringing notes it leaves the realised T60 up
+        // to about half the requested one (audit, 2026-09-30).
         loop.loopGain = clamp(loopGain
             * (polarisation == 0 ? 0.9995f : 0.9988f), 0.70f, 0.999995f);
         loop.broadLossMix = clamp(broadLoss
@@ -4476,6 +4494,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const int length = std::clamp(
             static_cast<int>(std::round(loop.targetDelay)), 8,
             maximumDelaySamples - 3);
+        // The two planes are released a little apart (-0.006 and +0.009 of
+        // the string, authored), so their spectra are not one comb twice.
         const float localPosition = clamp(position
             + (polarisation == 0 ? -0.006f : 0.009f), 0.05f, 0.48f);
         const float polarisationGain = polarisation == 0
@@ -4487,6 +4507,11 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const float apertureSamples
             = ACUSTRA_ANALYSIS_APERTURE_MILLISECONDS * 48.0f;
 #else
+        // Authored terms, fitted with the rest of the pluck
+        // (Docs/decisions.md): Touch narrows the contact; the three lowest
+        // strings take a sample more (a nylon-era grouping of the wound
+        // basses that the steel fit kept, so steel's wound G is not in it);
+        // above the 17th fret, where the sounding length is short, 1.5 more.
         const float apertureSamples = 0.70f + 3.60f * (1.0f - touch)
             + (stringIndex < 3 ? 1.0f : 0.0f)
             + (voice.fret >= 17 ? 1.5f : 0.0f);
@@ -6080,8 +6105,7 @@ int AcustraEngine::strumDelaySamples(int stringRank,
 {
     // The pick crosses the strings at one speed, so the k-th string it
     // reaches sounds k spacings later. The spacing is the set-up dimension
-    // at the saddle: 2 1/8" across the six on a steel-string, 58 mm on a
-    // classical. The pick's speed is the one number MIDI does not carry;
+    // at the saddle: 2 1/8" across the six on a steel-string. The pick's speed is the one number MIDI does not carry;
     // GuitarSet's comping tracks (Tools/MeasureStrums.py on the hex-pickup
     // channels and JAMS note onsets, Zenodo 3371780 CC BY 4.0), clustered
     // into 641 same-stroke (>=3 strings within a window derived from each

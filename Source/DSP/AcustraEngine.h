@@ -105,8 +105,12 @@ struct EngineParameters
     float stringAge { 0.15f };       // 0 fresh, 1 worn/dead
     float pluckPosition { 0.28f };   // 0 bridgeward, 1 neckward
     float touch { 0.58f };           // 0 soft/dark, 1 hard/bright
-    float bodyAmount { 0.82f };      // measurement-derived body radiation
-    float stereoWidth { 0.62f };     // authored per-mode stereo gain spread
+    // The body's radiation against the direct sound at the contact (the
+    // tool's click; the fitted bridge-local share ships at 0), so mostly a
+    // level on the body.
+    float bodyAmount { 0.82f };
+    // Scales the stereo microphones' difference: 0 mono, 1 as measured.
+    float stereoWidth { 0.62f };
     float outputGain { 0.42f };      // linear
     // The piezo mixed into Main under a microphone Capture, 0 none to 1 the
     // piezo at its full level (as Capture Piezo plays it) beside the
@@ -251,11 +255,11 @@ public:
     //   piezo: the under-saddle piezo and its analog chain (renderPiezo in
     //     AcustraEngine.cpp), mono, whatever Capture selects.
     // It is at the level Main has when Capture selects Piezo (the same
-    // material reference and Output gain) and passes its own copy of Main's
-    // safety limiter; it shares no state with Main, so Main is bit-for-bit
-    // what it would be without it. Main with Capture on Piezo equals the
-    // Piezo output on both sides, once a Capture change's 20 ms crossfade has
-    // settled.
+    // construction loudness reference and Output gain) and passes its own
+    // copy of Main's safety limiter; it shares no state with Main, so Main is
+    // bit-for-bit what it would be without it. Main with Capture on Piezo
+    // equals the Piezo output on both sides, once a Capture change's
+    // crossfade (a 20 ms time constant) has settled.
     struct OutputBuses
     {
         float* piezo { nullptr };
@@ -337,13 +341,17 @@ private:
         // 2. The force in newtons: an engine force unit is a string's wave
         // impedance times one displacement unit per 48 kHz sample
         // (FixedDerivative differences over the 48 kHz period at every
-        // rate), and a displacement unit is fittedPhysicalCalibration's
-        // steelDisplacementScaleMetres, 6.1 mm: 0.0061 * 48000 N per unit.
+        // rate), and a displacement unit is 6.1 mm, PhysicalCalibration's
+        // default steelDisplacementScaleMetres: 0.0061 * 48000 N per unit.
+        // The chain was designed and its headroom checked at that unit. The
+        // shipped fit puts the strings' own unit at 7.74 mm, at which the
+        // player's hardest Pick strums would clip U1 by about 1 dB, so the
+        // piezo does not follow it (README, Known gaps).
         static constexpr double newtonsPerUnit = 0.0061 * 48000.0;
         // The saddle on its element, driven one way by the rigid-saddle
         // force: F_p / F_r = Zk Q / (1 + Zk Q), Zk = k/s + c_m,
-        // Q = 1/(s M + SZ) + G. M: a bone saddle 72 x 3 x 9.5 mm at
-        // 1.95 g/cc (chosen within 2.7-5.1 g). k: the element and its seat
+        // Q = 1/(s M + SZ) + G. M: 3.8 g, chosen within 2.7-5.1 g (a bone
+        // saddle 72 x 3 x 9.5 mm at 1.95 g/cc is 4.0 g). k: the element and its seat
         // put M at 6 kHz (chosen within the documented 5-7 kHz). c_m: the
         // element's loss factor 1/18, Zollner's rig Q of 18 taken as the
         // bound on material loss (M. Zollner, Physics of the Electric

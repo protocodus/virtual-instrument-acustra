@@ -703,7 +703,8 @@ loop is tuned so that, loaded by the bridge, it sounds the requested pitch,
 and the parallel loop shares that bare length (plus any end correction, zero
 as shipped), so the pair's split - the doublet each partial beats with - is
 the bridge's own pull on the normal member and varies note to note (0 to
-about 10 cents here, 5 to 9 in Woodhouse's measurements). Where the saddle rocks, the two loops are
+about 18 cents here at the fundamental, widest on the low E near frets 14-16,
+where the bridge pulls hardest; 5 to 9 in Woodhouse's measurements). Where the saddle rocks, the two loops are
 coupled through it and ring as one pair of modes; its sustained,
 energy-weighted centre is found from the eigenvalues of the loops' round trip
 times the saddle's 2x2 reflection, and both loops are lengthened by what it
@@ -915,7 +916,7 @@ allocator when its release damping has run its time, keeping whatever it
 still carries as an idle string's wave.
 
 The body's normal force and normalized moment excite measured radiation modes:
-127 shared poles on steel's g21 flamenca blanca, measured in a semi-reverberant
+132 shared poles on steel's g21 flamenca blanca, measured in a semi-reverberant
 music room (the Bellido's own bank is described in
 [Measured guitars](Docs/body-models-2026-09-08.md)). The archive
 contains normal hammer impacts at both sides of the bridge, observed by three
@@ -1153,8 +1154,12 @@ signal order:
    +0.4, +0.9, -0.3, +0.6 and -1.0 dB low E to high E (chosen, inside the
    +-1-2 dB a good install gives), plus the axial force through the strings'
    rear break angle (sin 25 degrees, chosen; zero while its gain ships at
-   0). In newtons: 292.8 N per engine force unit (the fitted 6.1 mm
-   displacement unit per 48 kHz sample, at every rate).
+   0). In newtons: 292.8 N per engine force unit (a 6.1 mm displacement
+   unit per 48 kHz sample, at every rate). That is the unit the chain was
+   designed and its headroom checked with; the shipped fit has since put
+   the strings' own unit at 7.74 mm, and at that the player's hardest Pick
+   strums would clip U1 by about 1 dB. Which the piezo should follow is an
+   open decision (Known gaps).
 2. **The saddle on its element.** A 3.8 g bone saddle (chosen within
    2.7-5.1 g) on the element's stiffness, placing it at 6 kHz (chosen within
    5-7 kHz), with the element's loss (Zollner's Q of 18 as a bound), the
@@ -1659,6 +1664,26 @@ engine.
 
 ## Known gaps
 
+- Open from the 2026-09-30 defect audit, each a change to the shipped sound
+  that waits on a listening decision rather than a fix:
+  - The parallel polarisation shares the normal loop's bridge compensation,
+    so the H1 doublet reaches about 18 cents and sustained pitch sits up to
+    9 cents off on the default Dreadnought (low E frets 14-17, A frets 9-11).
+    Tuning each plane against its own port puts sustained pitch within
+    about 2 cents at every rate but removes most of the doublet's beat.
+  - The pluck's shape is laid over the rounded delay rather than the loop's
+    true period, which moves the effective pluck point 3-13% bridgeward and
+    its partials 6-9 dB rms off the rest-pluck law; Pluck Position's
+    distance scale was set by ear on top of it.
+  - The piezo's force unit (above, "The strings' forces on the element").
+  - Where the pluck shape nearly nulls a partial, the random release burst
+    decides its level: MIDI 83's H8 differs by 27 dB between two burst
+    noise draws.
+  - Above 10 kHz the body's radiation still moves 0.3-1 dB with the host
+    rate; below it the rates agree within 0.1 dB.
+  - The per-plane loss factors (configureVoice) leave a note's realised T60
+    up to about half its requested one; they are authored, not fitted.
+
 - The hardest playing - velocity 127 with the Pick at Touch 1 and Pluck
   Position 0 - reaches the output's soft safety limiter on some
   constructions on the stereo microphones and on every construction on the
@@ -1889,12 +1914,12 @@ engine.
   to the whole first 350 ms note. Touch changes the burst's level, duration and
   colour. These are native causal differences,
   not new recording comparisons or identification of a real pick click.
-  The burst is inserted at the folded bridge write and reaches E2 radiation
-  after 11.52–11.54 ms. A source at the nominal pluck point would have a first
-  ideal travel time near 0.7 ms; the current burst has no measured local-force
-  interpretation. An off-tree attempt to insert the two local travelling waves
-  repairs integer-delay arrival timing, but its injection into the fractional
-  allpass states lacks a verified physical mapping. It is not shipped.
+  Since 2026-09-08 the burst leaves the picking point toward the bridge and
+  the nut as two travelling waves on fixed fractional delays, so its first
+  bridge arrival is the contact's own travel time rather than a string period
+  later ([Steel contact travels from the picking point](Docs/contact-travel-2026-09-08.md));
+  natural harmonics, whose burst the node filters out, keep no travel. The
+  burst itself still has no measured local-force interpretation.
   Sustained radiation above 5 kHz is 6 to 13 dB weak on steel. In the scalar body used before
   2026-09-05, the 2026-09-04 refit halved the Q scale to 0.053, placing 77 of
   steel's 96 original modes and 80 of nylon's 103 on the Q=4 floor; the previous
