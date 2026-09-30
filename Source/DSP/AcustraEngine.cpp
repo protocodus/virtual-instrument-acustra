@@ -2337,6 +2337,7 @@ AcustraEngine::AcustraEngine() noexcept
 
     parameters_ = sanitise(parameters_);
     targetParameters_ = parameters_;
+    configurePiezoUnit();
     const auto notes = openNotes(parameters_.tuning);
     for (int string = 0; string < stringCount; ++string)
     {
@@ -3145,8 +3146,8 @@ void AcustraEngine::prepare(double sampleRate, int)
         // DI, which the level match divides out with the element's
         // sensitivity: an engine force unit through the flat band leaves at
         // the trim alone, as the microphones' reference does.
-        piezoOutputScale_ = 1.0 / (D::voltsPerNewton * D::newtonsPerUnit
-            * piezoInputShare_ * (1.0 + D::r7 / D::r8) * load / (D::r9 + load));
+        piezoMidbandGain_ = piezoInputShare_ * (1.0 + D::r7 / D::r8) * load / (D::r9 + load);
+        configurePiezoUnit();
     }
     piezoStringWeights_ = PiezoDesign::stringWeights;
     delaySmoothing_ = 1.0f - std::exp(-1.0f
@@ -3284,6 +3285,8 @@ void AcustraEngine::setPhysicalCalibration(
     const PhysicalCalibration& calibration) noexcept
 {
     physicalCalibration_ = sanitise(calibration);
+    // The piezo's force unit follows the strings' displacement unit.
+    configurePiezoUnit();
     // Steel's own bridge follows the body's frequency and Q calibration,
     // which the mobility table's key does not hold.
     bridgeMobilityTable_.valid = false;
@@ -8000,13 +8003,30 @@ void AcustraEngine::resetPiezo() noexcept
 // Its output is seven samples behind its input (the BLAMP's look-ahead) at
 // every rate. The result is in force units: dividing by the element's
 // sensitivity and the preamp's mid-band gain leaves the trim alone there.
-float AcustraEngine::renderPiezo(float force) noexcept
+// PiezoDesign item 2 at run time: the engine's force unit in newtons is the
+// calibration's displacement unit (the strings' own) per 48 kHz sample, so
+// the piezo moves with the strings when a calibration is set. The level
+// match divides the unit out again with the element's sensitivity and the
+// preamp's mid-band gain, so it moves the voltages, not the linear level.
+void AcustraEngine::configurePiezoUnit() noexcept
 {
     using D = PiezoDesign;
+    piezoNewtonsPerUnit_ = static_cast<double>(std::max(
+        physicalCalibration_.steelDisplacementScaleMetres, 1.0e-4f)) * 48000.0;
     // Below 5 pN - a picovolt at the element, some 130 dB under the thermal
     // noise of its own capacitance - the force is last-bit rounding in the
     // saddle sums, which after a release keep it near 1e-15 forever.
-    constexpr float forceFloor = static_cast<float>(5.0e-12 / D::newtonsPerUnit);
+    piezoForceFloor_ = static_cast<float>(5.0e-12 / piezoNewtonsPerUnit_);
+    piezoSaddleFloor_ = static_cast<float>(5.0e-8 / piezoNewtonsPerUnit_);
+    if (piezoMidbandGain_ > 0.0)
+        piezoOutputScale_ = 1.0 / (D::voltsPerNewton * piezoNewtonsPerUnit_
+                                   * piezoMidbandGain_);
+}
+
+float AcustraEngine::renderPiezo(float force) noexcept
+{
+    using D = PiezoDesign;
+    const float forceFloor = piezoForceFloor_;
     // A non-finite force would stay in every state; captureMix_ times NaN
     // would then reach Main even with the piezo unheard.
     if (!exact::isfinite(force))
@@ -8029,7 +8049,7 @@ float AcustraEngine::renderPiezo(float force) noexcept
     y[1] = y[0];
     y[0] = pressed;
     // 2. The element's open-circuit voltage.
-    const double open = D::voltsPerNewton * D::newtonsPerUnit * static_cast<double>(pressed);
+    const double open = D::voltsPerNewton * piezoNewtonsPerUnit_ * static_cast<double>(pressed);
     // 3. The input section (trapezoidal; U1A's output stopping at its input
     // range enters a sample late, through C2's bootstrap, 0.13 s).
     const double drive = open + piezoLastOpen_;
@@ -8047,8 +8067,9 @@ float AcustraEngine::renderPiezo(float force) noexcept
     // x - z to what that current needs (backward Euler), tabulated in
     // prepare() (piezoDiodeDump_). C1 keeps the charge it gave up: the bias
     // shift a hard overload leaves, recovering over the input network's
-    // 1 Hz modes. None of this runs below 3.7 dB over U1B's clip, which no
-    // playing reaches.
+    // 1 Hz modes. For a sine none of this runs below 1.9 dB over U1B's
+    // positive swing or 0.35 dB over its negative one (U1B's gain of 1.62);
+    // no playing reaches it (the player's hardest Pick strums keep 1.2 dB).
     const double excess = (bufferInput > 0.0 ? bufferInput : -bufferInput) - D::commonModeLimit;
     if (excess > 0.0)
     {
@@ -8163,7 +8184,7 @@ float AcustraEngine::renderPiezo(float force) noexcept
     // while another still moves would itself be an input.
     if (input == 0.0f)
     {
-        constexpr float saddleFloor = static_cast<float>(5.0e-8 / D::newtonsPerUnit);
+        const float saddleFloor = piezoSaddleFloor_;
         constexpr double floor = 1.0e-8;
         bool quiet = exact::abs(y[0]) < saddleFloor && exact::abs(y[1]) < saddleFloor;
         for (float value : x)
@@ -8782,6 +8803,11 @@ float AcustraEngine::getLastLongitudinalForce() const noexcept
 float AcustraEngine::getLastPiezoVoltage() const noexcept
 {
     return lastPiezoVoltage_;
+}
+
+double AcustraEngine::getPiezoNewtonsPerUnit() const noexcept
+{
+    return piezoNewtonsPerUnit_;
 }
 
 AcustraEngine::PiezoProbe AcustraEngine::getLastPiezoProbe() const noexcept

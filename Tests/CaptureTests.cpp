@@ -25,6 +25,11 @@ struct AcustraEngineTestAccess
     {
         return engine.renderPiezo(force);
     }
+    // Newtons per engine force unit: the calibration's displacement unit.
+    static double newtonsPerUnit(const AcustraEngine& engine)
+    {
+        return engine.piezoNewtonsPerUnit_;
+    }
     // U1B's clipped output, seven samples behind the drive the probe shows.
     static double gainStage(const AcustraEngine& engine) { return engine.piezoLastStage_; }
     static void setWeights(AcustraEngine& engine,
@@ -744,7 +749,7 @@ void testPiezoRateConsistency()
         impulses[index].resize(static_cast<std::size_t>(rates[index]) * 6);
         // 10 N for one sample: well inside the preamp's range, far above its
         // 10 nV flush.
-        const auto impulse = static_cast<float>(10.0 / Design::newtonsPerUnit);
+        const auto impulse = static_cast<float>(10.0 / Access::newtonsPerUnit(*engine));
         for (std::size_t i = 0; i < impulses[index].size(); ++i)
             impulses[index][i] = Access::chain(*engine, i == 0 ? impulse : 0.0f);
     }
@@ -834,9 +839,10 @@ void testPiezoHeadroom()
 }
 
 // 5b. The clip's aliasing: the Pick at velocity 127 at the bridge (Pluck
-// Position 0), the hottest playing, keeps 2.2 dB of U1B's swing, so it is
-// driven 4.4 dB harder here (string weights 1.66 times) to pass the swing by
-// 2.2 dB. U1B's drive, band-limited and run through the same clip 8x
+// Position 0) keeps 1.4 dB of U1B's swing, so it is driven 3.5 dB harder
+// here (string weights 1.5 times) to pass the swing by 2.1 dB; U1A's input
+// range, 0.3 dB behind U1B's swing on this strum, stops it too (1.9 dB
+// past). U1B's drive, band-limited and run through the same clip 8x
 // oversampled, then brought back to the host rate, is the reference for the chain's clipped output;
 // what differs below 0.45 fs is what the host-rate clip folded back, less
 // what the BLAMP took out - and what the BLAMP's own kernel does to the band,
@@ -846,7 +852,7 @@ void testPiezoClipAliasing()
     for (int rate : { 44100, 48000 })
     {
         auto strum = hardStrum(rate, 1.0f, 1.0f, acustra::PickingTechnique::Pick,
-                               1.0, 0, 0.0f, 1.66f);
+                               1.0, 0, 0.0f, 1.5f);
         auto& drive = strum.drive;
         std::vector<double> stage(strum.stage.begin() + 7, strum.stage.end());
         drive.resize(stage.size());
@@ -905,13 +911,17 @@ void testPiezoClipAliasing()
         const double bareDb = 10.0 * std::log10(std::max(bare, 1.0e-300) / signal);
         const double lowDb = 10.0 * std::log10(std::max(lowError, 1.0e-300) / lowSignal);
         const std::string label = "at " + std::to_string(rate);
-        expect(clipped > 0, "the Pick at the bridge driven 4.4 dB harder does not clip the piezo preamp, "
+        expect(clipped > 0, "the Pick at the bridge driven 3.5 dB harder does not clip the piezo preamp, "
                                 + label);
-        // Steel measures -62.9 and -65.4 dB here, a bare clip -59.3 and
-        // -59.1. The margin under the bare clip rests on which few host
-        // samples pass the rail (7 and 9 here): the same strum driven 1.50-
-        // 1.85 times reads 0.5-10.5 dB under it at 44.1 kHz and 4.5-11.7 dB
-        // at 48 kHz, while the chain stays at -62.9 to -71.0 dB. The bound
+        // Steel measures -69.5 and -66.5 dB here, a bare clip -59.8 and
+        // -61.6. The margin under the bare clip rests on which few host
+        // samples pass the rail (4 and 5 here): the same strum driven 1.3-
+        // 1.66 times reads from 17 dB over it (1.4 times at 44.1 kHz, two
+        // samples past, a bare clip at -81 dB) to 9.7 dB under it, while the
+        // chain stays at -63.2 to -71.1 dB. (Before 2026-09-30, at the 6.1 mm
+        // force unit and U1B's gain of two, this strum kept 1.7 dB and was
+        // driven 1.66 times: -62.9 and -65.4 dB, a bare clip -59.3 and
+        // -59.1.) The bound
         // was 5 dB when the Pick release's hump sat up to 0.95 dB hotter at
         // 44.1 kHz than at 48 kHz, which drove 13 samples past the rail
         // there (-61.6 against a bare -55.7); with the hump the same at both
@@ -921,7 +931,7 @@ void testPiezoClipAliasing()
         expect(aliasDb < -60.0 && aliasDb < bareDb - 3.0,
                "piezo clip aliasing on an overdriven strum is above -60 dB or not 3 dB under a bare clip, "
                    + label);
-        std::cout << "Piezo clip aliasing, Pick at velocity 127 at the bridge +4.4 dB, " << label << ": "
+        std::cout << "Piezo clip aliasing, Pick at velocity 127 at the bridge +3.5 dB, " << label << ": "
                   << aliasDb << " dB, below 0.25 fs " << lowDb << " dB; a bare clip "
                   << bareDb << " dB (" << clipped / static_cast<long>(factor)
                   << " host samples past the swing)\n";

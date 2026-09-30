@@ -4,8 +4,11 @@
 The chain is the documented circuit in AcustraEngine::PiezoDesign
 (Docs/decisions.md, 2026-09-29, "Accurate piezo chain"): its sensitivity is
 physical - Zollner's 0.2 V/N for a bridge piezo on the engine's force in
-newtons (0.0061 m per displacement unit, FittedPhysicalData.h) - so nothing
-here sets it. This tool
+newtons, whose unit is the strings' own fitted displacement unit per 48 kHz
+sample (steelDisplacementScaleMetres in fittedPhysicalCalibration,
+FittedPhysicalData.h: 0.00773577847 m, 371.3 N per force unit; Docs/decisions.md
+2026-09-30) - so nothing here sets it. The unit is asked of the renderer
+(`--piezo-unit`), so it is the one the engine actually uses. This tool
 
 1. checks it: the hottest reference strum - an open E major downstroke
    across all six strings at velocity 127 with the Pick, the playing that
@@ -62,7 +65,7 @@ import MeasureMaterialLoudness as loudness  # noqa: E402
 
 RATE = loudness.RATE
 ENGINE_HEADER = Path(__file__).resolve().parent.parent / "Source/DSP/AcustraEngine.h"
-FITTED_HEADER = Path(__file__).resolve().parent.parent / "Source/DSP/FittedPhysicalData.h"
+RATE_48K = 48000.0                 # the force unit is per 48 kHz sample
 OPEN_CIRCUIT_RANGE = (0.7, 2.5)    # V; Zollner ch.6 section 6.7 gives 1-2 V
 PIEZO_VOLTS_PER_NEWTON = 0.2       # Zollner ch.6, a bridge piezo's sensitivity
 STEEL_HARD_AMPLITUDE = 0.24        # initialisePluck: steel's amplitude at v = 1
@@ -85,12 +88,21 @@ def built_design() -> dict:
     return values
 
 
-def displacement_metres_per_unit() -> float:
-    match = re.search(r"float steelDisplacementScaleMetres \{ ([0-9.eE+-]+)f \};",
-                      FITTED_HEADER.read_text())
+def parse_piezo_unit(text: str) -> float:
+    """The displacement unit in metres from `AcustraPerformanceRenderer
+    --piezo-unit`'s report."""
+    match = re.search(r"^displacement_metres_per_unit ([0-9.eE+-]+)$", text, re.MULTILINE)
     if not match:
-        raise SystemExit(f"steelDisplacementScaleMetres not found in {FITTED_HEADER}")
+        raise SystemExit("the renderer did not report displacement_metres_per_unit")
     return float(match.group(1))
+
+
+def displacement_metres_per_unit(renderer: str) -> float:
+    """The displacement unit the engine's piezo uses: the fitted calibration's
+    steelDisplacementScaleMetres, as the renderer reports it."""
+    result = subprocess.run([renderer, "--piezo-unit"], check=True,
+                            capture_output=True, text=True)
+    return parse_piezo_unit(result.stdout)
 
 
 def reference_strum():
@@ -156,14 +168,14 @@ def strum_peaks(renderer: str, work: Path, jobs: int, design: dict) -> dict:
             "grid": rows[:-1], "finger_reference": rows[-1]}
 
 
-def physical_peak_volts() -> float:
+def physical_peak_volts(metres_per_unit: float) -> float:
     """What one hard pluck's saddle force predicts at 0.2 V/N, in volts.
 
     Tension T times the string's slope at the saddle, A / d for a release
     amplitude A at distance d, is the force the string held on the saddle
     before it was let go, and the step the piezo sees at release.
     """
-    amplitude = STEEL_HARD_AMPLITUDE * displacement_metres_per_unit()
+    amplitude = STEEL_HARD_AMPLITUDE * metres_per_unit
     force = STEEL_D_TENSION * amplitude / STEEL_FINGER_DISTANCE
     return PIEZO_VOLTS_PER_NEWTON * force
 
@@ -225,11 +237,14 @@ def self_test() -> None:
     assert [row[1] for row in rows] == [40, 47, 52, 56, 59, 64]
     with tempfile.TemporaryDirectory() as scratch:
         loudness.write_performance(rows, seconds, Path(scratch) / "p.txt")
-    predicted = physical_peak_volts()
+    unit = parse_piezo_unit("piezo_newtons_per_unit 371.31737172603607\n"
+                            "displacement_metres_per_unit 0.0077357785776257515\n")
+    assert abs(unit - 0.00773577858) < 1e-11, unit
+    predicted = physical_peak_volts(unit)
     assert 0.05 < predicted < 2.0, predicted
     design = built_design()
     assert design["railHigh"] > 0.0 > design["railLow"] and design["commonModeLimit"] > 0.0
-    stages = np.array([[1.0, 1.63125], [-2.5, -3.9125]])
+    stages = np.array([[1.0, design["railHigh"] / 2.0], [-2.5, design["railLow"]]])
     room = headroom_db(stages, design)
     assert abs(room["u1a_db"]) < 1e-6 and abs(room["u1b_db"]) < 1e-3, room
     fake = [{"mic_minus_piezo": d, "piezo_peak_dbfs": -6.0} for d in (1.0, 2.0, 3.0)]
@@ -256,8 +271,11 @@ def main() -> int:
         peaks = strum_peaks(arguments.renderer, Path(scratch), max(1, arguments.jobs), design)
     hottest, least = peaks["hottest"], peaks["least_headroom"]
     finger = peaks["finger_reference"]
-    predicted = physical_peak_volts()
-    report = {"built": design, "reference_strums": peaks, "physical_peak_volts": predicted}
+    unit = displacement_metres_per_unit(arguments.renderer)
+    predicted = physical_peak_volts(unit)
+    report = {"built": design, "reference_strums": peaks, "physical_peak_volts": predicted,
+              "displacement_metres_per_unit": unit,
+              "newtons_per_force_unit": unit * RATE_48K}
     print(f"hottest Pick strum ({hottest['preset']}, Touch "
           f"{hottest['touch']}): {hottest['open_circuit']:.3f} V open-circuit, "
           f"{hottest['jack']:.3f} V at the jack; headroom {hottest['u1a_db']:+.2f} dB to "
@@ -265,6 +283,7 @@ def main() -> int:
     print(f"least headroom ({least['preset']}, Touch {least['touch']}): "
           f"U1A {least['u1a_db']:+.2f} dB, U1B {least['u1b_db']:+.2f} dB")
     print(f"the Finger strum (Dreadnought): {finger['open_circuit']:.3f} V open-circuit")
+    print(f"force unit: {unit * RATE_48K:.1f} N ({1000.0 * unit:.4f} mm per displacement unit)")
     print(f"physical check: one hard pluck's tension x slope at "
           f"{PIEZO_VOLTS_PER_NEWTON} V/N is a {predicted:.2f} V step")
     low, high = OPEN_CIRCUIT_RANGE
