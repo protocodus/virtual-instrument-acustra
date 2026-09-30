@@ -4680,6 +4680,21 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         / (std::max(burstSeconds, 0.0004f) * static_cast<float>(sampleRate_)));
     voice.excitationColour = 0.10f + 0.62f * touch;
     voice.excitationLowpass = 0.0f;
+    // The burst draws on from where this pluck's draws ended, as it always
+    // has, but from its own copy: its length follows velocity, Touch and the
+    // rate, so drawn from randomState it moved every later pluck's draws
+    // with them. The next pluck draws from a scrambled continuation instead
+    // (the murmur3 finaliser), so its draws are not this burst's samples.
+    voice.excitationNoiseState = voice.randomState;
+    {
+        std::uint32_t mixed = voice.randomState;
+        mixed ^= mixed >> 16;
+        mixed *= 0x85ebca6bu;
+        mixed ^= mixed >> 13;
+        mixed *= 0xc2b2ae35u;
+        mixed ^= mixed >> 16;
+        voice.randomState = mixed == 0u ? 0x6d2b79f5u : mixed;
+    }
     initialiseContactNoise(voice, v, position, heldDistance,
                            releasedAmplitude, contactWidthRatio);
     voice.level = std::max(voice.level, 0.02f * v);
@@ -6642,7 +6657,8 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
     if (voice.excitationEnvelope > 1.0e-8f)
     {
         const float rateRatio = static_cast<float>(sampleRate_) / 48000.0f;
-        const float noise = nextNoise(voice) * exact::sqrt(rateRatio);
+        const float noise = xorshiftNoise(voice.excitationNoiseState)
+            * exact::sqrt(rateRatio);
         if (voice.excitationWhite)
             excitation = noise * voice.excitationEnvelope;
         else

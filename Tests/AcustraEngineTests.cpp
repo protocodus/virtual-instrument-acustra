@@ -33,6 +33,10 @@ struct AcustraEngineTestAccess
     {
         return engine.voices_[static_cast<std::size_t>(string)].loops[0].highLossMix;
     }
+    static std::uint32_t pluckDrawState(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].randomState;
+    }
     static bool idleFlushed(const AcustraEngine& engine)
     {
         return engine.idleFlushed_;
@@ -7887,11 +7891,48 @@ void testBridgeHandTopLossIsItsT60Ratio()
     }
 }
 
+// A pluck's random draws (where the hand lands, a strummed string's level,
+// the release angle) follow only the plucks before it, not how hard or at
+// what rate they were played. The release burst drew its noise from the
+// same state for as many samples as its envelope lasted, which velocity,
+// Touch and the rate set.
+void testPluckDrawsIgnoreEarlierBursts()
+{
+    const auto stateAfter = [] (double rate, float firstVelocity, acustra::PickingTechnique picking)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        acustra::EngineParameters parameters;
+        parameters.picking = picking;
+        engine->setParameters(parameters);
+        engine->prepare(rate, 256);
+        std::vector<float> left(256), right(256);
+        engine->noteOn(52, firstVelocity);
+        for (int block = 0; block < static_cast<int>(0.3 * rate / 256.0); ++block)
+            engine->process(left.data(), right.data(), 256);
+        engine->noteOn(52, 0.7f);
+        engine->process(left.data(), right.data(), 256);
+        const int string = engine->heldString(52);
+        return string < 0 ? 0u : acustra::AcustraEngineTestAccess::pluckDrawState(*engine, string);
+    };
+    for (const auto picking : { acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick })
+    {
+        const auto reference = stateAfter(48000.0, 0.7f, picking);
+        expect(reference != 0u, "the re-struck note found no string");
+        expect(stateAfter(48000.0, 0.2f, picking) == reference
+                   && stateAfter(48000.0, 1.0f, picking) == reference,
+               "an earlier pluck's velocity moved the next pluck's draws");
+        expect(stateAfter(96000.0, 0.7f, picking) == reference
+                   && stateAfter(44100.0, 0.7f, picking) == reference,
+               "the sample rate moved the next pluck's draws");
+    }
+}
+
 } // namespace
 
 int main()
 {
     testIdleFlushIsIndependentOfBlockSize();
+    testPluckDrawsIgnoreEarlierBursts();
     testBridgeHandTopLossIsItsT60Ratio();
     testDecayEstimatorFollowsPitchGlides();
     testLossFiltersPreserveTheReferenceTransfer();

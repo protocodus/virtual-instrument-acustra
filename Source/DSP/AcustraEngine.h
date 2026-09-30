@@ -745,6 +745,9 @@ private:
         bool memberPitchBendFrozen { false };
         std::uint64_t startOrder { 0 };
         std::uint32_t randomState { 1 };
+        // The release burst's noise, handed over from randomState at each
+        // pluck (initialisePluck).
+        std::uint32_t excitationNoiseState { 1 };
         float velocity { 0.0f };
         float polarisationMix { 0.5f };
         float excitationEnvelope { 0.0f };
