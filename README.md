@@ -1721,7 +1721,10 @@ engine.
   the same note with the bridge decoupled, 1-2 s, default sympathetic
   strings, 48 kHz: G3 on the steel Jumbo -2.0 cents (up to 5 cents on the
   since-removed Fylde bridge and nylon strings); open strings and notes
-  away from those modes within 0.3 (the rates agree within 0.6). A
+  away from those modes within 0.3 (the rates agree within 0.6). The 2026-09-30
+  audit found larger pulls on the default Dreadnought, up to 9 cents on the
+  low E around frets 14-17, and traced them to the parallel loop sharing the
+  normal loop's compensation (the first open item above). A
   first-order correction of the loop's pole (one Newton step on the
   single-string loop, through the measured port's slope) accounted for at
   most 2 of those 5 cents, so it is not applied: the rest is the parallel polarisation and the other strings'
