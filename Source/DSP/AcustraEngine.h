@@ -500,8 +500,15 @@ private:
         float highLossMix { 0.1f };
         float broadLossCoefficient { 0.5f };
         float lowpassCoefficient { 0.5f };
+        // The dispersion's two allpass sections (calibrateDispersion in
+        // AcustraEngine.cpp), in cascade. The second runs only on the
+        // stiffer notes that need it; inactive, it is bypassed and leaves
+        // the loop exactly as it was.
         float dispersionA1 { 0.0f };
         float dispersionA2 { 0.0f };
+        bool secondDispersionActive { false };
+        float secondDispersionA1 { 0.0f };
+        float secondDispersionA2 { 0.0f };
         // The string's own bending loss (bendingLossSection in
         // AcustraEngine.cpp): g / (1 + a1 z^-1 + a2 z^-2), unit gain at DC,
         // designed at the host rate from the loss law rather than mapped
@@ -516,6 +523,7 @@ private:
         OnePole broadLossFilter {};
         OnePole lossFilter {};
         SecondOrderAllpass dispersion {};
+        SecondOrderAllpass secondDispersion {};
         // The fractional-delay allpass's state: its two previous outputs.
         float allpassY1 { 0.0f };
         float allpassY2 { 0.0f };
@@ -539,6 +547,9 @@ private:
 
         void reset() noexcept;
         [[nodiscard]] float readDelay(float samples) noexcept;
+        // Switches the second dispersion section in or out under a sounding
+        // wave (see its definition).
+        void switchSecondDispersion(bool active) noexcept;
         // Read-only point observation of both travelling waves; does not
         // advance the feedback allpass or alter the vibrating string.
         [[nodiscard]] float displacementAt(float fraction) const noexcept;
@@ -867,8 +878,10 @@ private:
         // pair of modes they form through a rocking saddle is heard at the
         // requested pitch (coupledPolarisationDetune); zero elsewhere.
         float polarisationDetune { 0.0f };
-        float dispersionDecayRatio { 10.0f };
-        float dispersionPoleRatio { 4.0f };
+        // The two dispersion sections' pole pairs relative to the
+        // fundamental; a zero decay ratio is an unused section.
+        std::array<float, 2> dispersionDecayRatios { 0.0f, 0.0f };
+        std::array<float, 2> dispersionPoleRatios { 0.0f, 0.0f };
         // Each loop's delay as configureVoice tuned it at 48 kHz, in 48 kHz
         // samples, for a Pick release at another rate (writePickRelease);
         // zero when not tuned for one.
@@ -1216,13 +1229,14 @@ private:
     // Completed dispersion solves by their exact arguments, shared by the
     // six strings: a chord change asks for a handful of designs a playing
     // hand keeps returning to, and each solve is an iterative 3x3 fit that
-    // made the note-on batch several times a normal one. The solve is a pure
+    // made the note-on batch several times a normal one (with a
+    // least-squares refit on the stiffer notes). The solve is a pure
     // function of its arguments, so a hit is the same result.
     struct DispersionSolve
     {
         std::array<double, 9> arguments {};
-        float decayRatio { 10.0f };
-        float poleRatio { 4.0f };
+        std::array<float, 2> decayRatios { 0.0f, 0.0f };
+        std::array<float, 2> poleRatios { 0.0f, 0.0f };
         bool valid { false };
     };
     std::array<DispersionSolve, 64> dispersionSolves_ {};
