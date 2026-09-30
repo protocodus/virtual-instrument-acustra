@@ -547,7 +547,25 @@ brightness (1.106) were chosen by ear with the strings' bending loss below
 optimum (0.38, 0.81, 1.073) toward the pluck refitted around half the loss
 the recordings measure (3.0 on its ceiling, 0.35 on its floor, 1.120). Pluck Position moves the
 displacement point; Touch and MIDI velocity alter its aperture, level and
-brightness. The hand lets the string go at the force it can hold, not at a
+brightness. The hand keeps its distance from the bridge, so on a short
+(high-fretted) string, or under the Thumb, that distance reaches toward the
+string's middle, where every even partial is nulled and no player plucks.
+Up to a quarter of the string the point is the hand's; past it the point
+bends smoothly toward 0.36 of the string and never reaches it
+(p' = 0.36 - 0.11^2/(p - 0.14)), so Pluck Position still moves the stroke at
+every fret for every technique. It replaced a hard stop at 0.46, which left
+the control dead for a Thumb from the 11th fret up and put high notes on a
+hollow near-midpoint pluck (Docs/decisions.md, 2026-09-30); MPE Timbre still
+names any point of its 0.05-0.46 band directly. The authored contact law
+widens the three lowest strings' contact and the upper register's; both
+terms are ramps (full on the low E and A, half on the D; from the 14th fret
+to full at the 19th), not the steps they were, which changed a note's
+contact by up to 70% between neighbouring strings or frets. The Finger's and
+Thumb's burst is its noise through the same corner twice with no white
+share (-12 dB per octave above the corner): a fingertip is not a plectrum,
+and the finger-plucked flat-tops carry 10-25 dB less 2-16 kHz in their first
+15 ms than the plectrum's one-pole-plus-white burst gave them. The Pick
+keeps that burst. The hand lets the string go at the force it can hold, not at a
 set displacement: a point force at distance a from the bridge deflects a
 string of tension T and speaking length L by F·a(L − a)/(T·L), so the same
 stroke displaces a stopped string less than the open one the velocity law is
@@ -630,6 +648,21 @@ test split 5.6678 -> 5.4272, the Eastman's picked rows 6.6596 -> 6.5254
 loss on 2026-09-28: 70% of the way from the joint refit's 0.122 mm toward the
 0.114 mm refitted around half the measured loss.
 
+A fingertip or the thumb's pad lets go the same way, over an effective
+0.2 mm edge (a chosen length, not a measured fingertip). The Finger and Thumb
+shapes the listener chose were written with no slip, so only the ratio to
+the slip at full velocity is applied, and the line is rescaled to the
+displacement it had so the fitted level law stays: a velocity-127 stroke at
+the default Touch is the shipped release sample for sample, and a softer
+one is released more slowly and darker. A Finger's sustained H5-H12 over
+H1-H4 now rises a median 9.2 dB from MIDI 16 to 112 (the finger-plucked
+recordings 9.0; 2.1 before), a Thumb's 8.2 (5.4). Touch is how fast the hand
+lets go, for every technique: it scales the release edge over two octaves,
+none at its default of 0.58, so a firm Touch releases faster and brighter
+(bounded to three times the full-velocity release speed for the fingers) and
+a soft one slower and darker, even at velocity 127, where the contact's own
+Touch law has saturated.
+
 Transverse motion stretches the string, and the tension that adds can also be
 represented as a longitudinal wave with the string's own axial
 resonances, at `c_long/2L` with `c_long = sqrt(EA/mu)`. For this steel set that
@@ -670,7 +703,14 @@ its points on the stiff wound strings high on the neck (E2's H3-H5 16-18
 cents flat at the 20th fret), so as B N^2 rises to 0.05 the second section,
 placed from the stiffness, is switched in smoothly and the first is refitted
 with the delay by least squares over the integer partials H1-H12. String Age
-lowers the high-frequency cutoff and increases loss. A shared fitted cutoff scale of 2.286 reduces excess
+lowers the high-frequency cutoff and increases loss, and it reaches the
+wound strings' bending loss (below): grime and corrosion between the windings
+are internal friction in their bending, so a wound string goes dead first.
+That loss is scaled by max(0.2, 1 + 8 (age - 0.15)), pivoted on the default
+age so the shipped sound is unchanged there; a low E's H5-H8 now decay
+15 dB/s faster at age 1 than at the default (2.1 before, when only the
+absolute-frequency cutoff, above a bass's 50th partial, aged it), and the
+plain strings' cutoff falls as exp(-0.9 age) instead of exp(-1.25 age). A shared fitted cutoff scale of 2.286 reduces excess
 upper-partial damping found across the reference corpus; a regression proves that it
 does not move the requested fundamental T60 or compensated pitch. Each string
 can also lose its upper partials through its own bending stiffness, the
@@ -1145,13 +1185,13 @@ resonances meet it (Known gaps).
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
 | **Body Material** | Spruce, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. Each measured body is moved relative to the wood it was built of: the Original's g21 is heard as measured at Spruce; the Bellido was built of cedar, which is not a choice, so every Wood moves it, Mahogany least. A session saved with Cedar loads as Mahogany. |
 | **Tuning** | Standard, Drop D, DADGAD, Open G or Half-step down: the six open strings and the notes each can reach. A retuned string keeps its gauge (its linear mass), so its tension, impedance and stiffness follow its new pitch, as on a real guitar. |
-| **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
+| **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Finger and Thumb let the string go by the same slip law as a ratio to their full-velocity release, so soft strokes are darker than loud ones as on the finger-plucked recordings, and their contact burst is a soft double corner with no white hiss. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
 | **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels. At 0% (the default) the output is exactly as without it; with Capture on Piezo it does nothing, since the piezo is already the whole output. |
 | **Release Noise** | The damping hand's touch at each key-up, 0-100% (50% nominal, 70% default, chosen by ear); scaled by release velocity and what the string still carries. 0% is exactly silent; a session saved before it existed loads at 0%. Host-automatable, not on the panel. |
-| **String Age** | Lowers the string cutoff and increases frequency-dependent loss. |
-| **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Explicit MPE position overrides that ratio. |
-| **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. |
+| **String Age** | Lowers the string cutoff and increases frequency-dependent loss; on the wound strings it also scales their bending loss (0.2 of the default's on fresh strings, 7.8 times it at 1), so an old set's basses lose their upper partials first. The default age sounds as before. |
+| **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Past a quarter of a (short, high-fretted) string the point bends smoothly toward 0.36 of it and never reaches it, so the control changes the stroke at every fret for every technique. Explicit MPE position overrides that ratio. |
+| **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. It also sets how fast every technique lets the string go: the release edge scales over two octaves across the control (none at its default), firmer faster and brighter, softer slower and darker, even at velocity 127. |
 | **Body Amount** | Scales microphone radiation; pickup observations have their own signal path. |
 | **Stereo Width** | Blends the measured stereo pair toward mono; Mono mic and Piezo ignore width and send identical samples to both channels. |
 | **Output** | Final gain; exactly linear through −1 dBFS, then bounded by a headroom-only safety limiter. |
@@ -1485,6 +1525,14 @@ The JUCE-free suites cover:
   changing the mechanical state, and silence at 44.1, 48 and 96 kHz;
 - pick/thumb excitation and preservation of ringing notes when the picking
   tool changes: they change only by the Picking's level, gliding;
+- the strings' 2026-09-30 excitation (Tests/AcustraEngineTests.cpp): Pluck
+  Position moves the pluck point and changes the written stroke's partials
+  by more than 1 dB at every fret of the low and high E for every technique;
+  a Finger's loud-over-soft H5-H12/H1-H4 rise within 2 dB of the recordings'
+  9.0; the Finger's and Thumb's first 15 ms under -16.5 dB of 2-12 kHz with
+  the Pick 6 dB brighter; String Age speeding a low E's H5-H8 decay by more
+  than 8 dB/s from the default to 1; and the released contact's Fourier
+  coefficients as the Gaussian contact's times the slip ratio's response;
 - every construction and Picking at one loudness
   (Tests/ConstructionLoudnessTests.cpp: its own phrase on every
   construction with every Picking, BS.1770, within 3 LU of the default;
@@ -1531,7 +1579,9 @@ The JUCE-free suites cover:
   tails, releases and an uncoupled bridge, and the shipped weights give the
   weighted sum of the six strings' forces; the clip's aliasing on a strum
   driven 1.25-1.45 times the hardest playing (the Pick at velocity 127 at the
-  bridge, which does not clip it) against an 8x-oversampled clip; exact silence from a never-played engine, within 5 s
+  bridge, which does not clip it) against an 8x-oversampled clip, at the
+  default Touch against a bare clip and at Touch 1, whose release is brighter,
+  under -60 dB at every drive; exact silence from a never-played engine, within 5 s
   of the chain's hardest moment, and on Main and the Piezo output within 25 s
   of a released chord; a Capture switch equal to its crossfade and a Piezo
   output cabled mid-note equal to one cabled from the start; microphones
@@ -1834,7 +1884,9 @@ engine.
   s, which one loss per partial cannot follow. The finger-plucked flat-top and
   the picked archtop also disagree about the attack itself: against the
   Eastman finger rows the engine's plain strings are 13-18 dB too bright at
-  5-12 kHz and its wound strings 7-14 dB too dark at 1-5 kHz, the opposite of
+  5-12 kHz (measured before the Finger's burst lost its white share on
+  2026-09-30, which took a mean 3.7 dB off its first 15 ms' 2-12 kHz share)
+  and its wound strings 7-14 dB too dark at 1-5 kHz, the opposite of
   the authored contact law's extra width on the three wound strings, while the
   archtop, rendered with Finger, wants every Finger contact narrower. A blind listener preferred both the half-loss snap
   and the joint optimum to the loss-free engine and asked for something
@@ -1900,13 +1952,19 @@ engine.
   every louder layer was already too dark and the slip darkens it slightly
   more (H1 at MIDI 80 +11.1 dB, at 112 +9.2); the remaining loud-end
   brightness belongs to the string's nonlinearity and the high-frequency
-  loss, not the release. Rendered with Finger, which the slip does not
+  loss, not the release. Rendered with Finger, which the slip did not then
   touch, the same rows sit within a decibel at the soft layer and 9.6 dB
   too dark at the loud one. These figures are at the fitted 0.15 mm edge
   with no release share; the edge is a fitted length (0.116 mm since
   2026-09-28, chosen by ear between two fits) because a single note's pick
-  speed is not measured here. Finger is untouched by the plectrum, so what follows still describes
-  the finger-plucked instrument. A fresh comparison uses all 54 already-opened Shinyguitar
+  speed is not measured here. Since 2026-09-30 the Finger and Thumb release
+  by the same slip law, as a ratio to their full-velocity release, which
+  closes the finger-plucked instrument's velocity-brightness gap described
+  next: on the strings' own probe (eight notes, MIDI 16 against 112, the
+  default controls) a Finger's H5-H12 over H1-H4 now rises a median 9.2 dB,
+  against the recordings' 9.0 and 2.1 before. The loud-end attack centroid
+  and the attack energy between partials are not closed by it. What follows
+  describes the finger-plucked instrument before that change. A fresh comparison uses all 54 already-opened Shinyguitar
   training recordings: nine roots, MIDI layers 16/112 and three takes each,
   against 18 deterministic model renders. On the shared finite same-root
   loud/soft pairs, the recordings' median 12 ms power-centroid rise is 2,054
