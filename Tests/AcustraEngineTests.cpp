@@ -97,11 +97,18 @@ struct AcustraEngineTestAccess
     // Gives `to` the smoothed output levels `from` has reached (the
     // construction loudness references), so a test of body-bank scheduling
     // compares the banks alone and not two level glides' histories.
+    // The output levels one engine has reached, with the microphone
+    // samples already scaled by them and held for the piezo's pipeline
+    // (outputLatencySamples): both are the output stage's, not the body's.
     static void copyOutputLevels(const AcustraEngine& from, AcustraEngine& to)
     {
         to.outputReference_ = from.outputReference_;
         to.monoReference_ = from.monoReference_;
         to.piezoTrim_ = from.piezoTrim_;
+        to.micDelayLeft_ = from.micDelayLeft_;
+        to.micDelayRight_ = from.micDelayRight_;
+        to.micDelayMono_ = from.micDelayMono_;
+        to.micDelayIndex_ = from.micDelayIndex_;
     }
 
     static void invalidateDispersionSolveCache(AcustraEngine& engine)

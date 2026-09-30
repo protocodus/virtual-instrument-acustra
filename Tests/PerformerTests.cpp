@@ -406,12 +406,19 @@ void testGatheredRollSoundsAsOneSampleChord()
     for (const double sampleRate : { 44100.0, 48000.0, 96000.0 })
     {
         const auto gathered = render(rolled, sampleRate, 64, true);
-        expect(gathered.latency == Performer::gatherWindowSamples(sampleRate)
+        // The host is told the engine's own fixed output latency (the
+        // microphones wait out the piezo's pipeline) plus, while gathering,
+        // the 30 ms window.
+        constexpr int engineLatency = acustra::AcustraEngine::outputLatencySamples();
+        expect(gathered.latency
+                       == Performer::gatherWindowSamples(sampleRate) + engineLatency
                    && gathered.latency
-                          == static_cast<int>(std::lround(0.030 * sampleRate)),
+                          == static_cast<int>(std::lround(0.030 * sampleRate))
+                                 + engineLatency,
                "Gather Chords did not report its 30 ms window as latency");
-        expect(render(rolled, sampleRate, 64, false).latency == 0,
-               "the player reported latency without gathering");
+        expect(render(rolled, sampleRate, 64, false).latency == engineLatency,
+               "the player reported more than the engine's latency without "
+               "gathering");
         expect(gathered == render(together, sampleRate, 64, true),
                "a chord rolled inside the window did not sound as the same "
                "chord on one sample");
@@ -835,7 +842,8 @@ void testPlayerKeepsTheEnginesSampleRate()
         performer->prepare(host, 256);
         expect(performer->engine().sampleRate() == modelled
                    && performer->latencySamples()
-                          == Performer::gatherWindowSamples(modelled),
+                          == Performer::gatherWindowSamples(modelled)
+                                 + acustra::AcustraEngine::outputLatencySamples(),
                "the gathering window did not follow the engine's rate at "
                    + std::to_string(host) + " Hz");
     }

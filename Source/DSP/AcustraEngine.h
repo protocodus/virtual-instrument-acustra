@@ -142,6 +142,15 @@ public:
     void prepare(double sampleRate, int maximumBlockSize);
     // The rate prepare() settled on, which every time constant follows.
     [[nodiscard]] double sampleRate() const noexcept { return sampleRate_; }
+    // Main and the Piezo output are this many samples later than the
+    // strings, at every rate and for every Capture: the piezo chain's
+    // pipeline (renderPiezo), which the microphones wait out so the two
+    // sensors blend on one time base. A front end reports it to the host.
+    static constexpr int outputLatency = 7;
+    [[nodiscard]] static constexpr int outputLatencySamples() noexcept
+    {
+        return outputLatency;
+    }
     // The slots after a bank (and the steel blend's parts) that continue its
     // radiation above the fitted band (configureBody). Every construction of
     // a model at a rate holds the same number, the grid's modes past 18 kHz
@@ -1438,6 +1447,14 @@ private:
     float width_ { 0.62f };
     float outputGain_ { 0.42f };
     float piezoMix_ { 0.0f };
+    // The microphones, held back by the piezo chain's pipeline (renderPiezo's
+    // output is seven samples behind its input at every rate), so the two
+    // sensors meet on the instrument's one time base.
+    static constexpr int piezoPipelineSamples = outputLatency;
+    std::array<float, piezoPipelineSamples> micDelayLeft_ {};
+    std::array<float, piezoPipelineSamples> micDelayRight_ {};
+    std::array<float, piezoPipelineSamples> micDelayMono_ {};
+    int micDelayIndex_ { 0 };
     // The output reference's per-material and per-construction factor
     // (outputReferenceFor in AcustraEngine.cpp), smoothed like the output
     // control, and the mono microphone's own (monoReferenceFor).

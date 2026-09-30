@@ -175,6 +175,8 @@ AcustraAudioProcessor::AcustraAudioProcessor()
         jassert (parameterPointers[slot] != nullptr);
     }
     parameters.addParameterListener (ids::gatherChords, this);
+    // The engine's own output latency holds before prepareToPlay too.
+    setLatencySamples (acustra::Performer::latencySamples (false, 0));
 }
 
 AcustraAudioProcessor::~AcustraAudioProcessor()
@@ -185,10 +187,12 @@ AcustraAudioProcessor::~AcustraAudioProcessor()
 void AcustraAudioProcessor::parameterChanged (const juce::String& parameterID,
                                               float newValue)
 {
-    // Holding MIDI back is latency; the host compensates what it is told.
+    // Holding MIDI back is latency, on top of the engine's own (the
+    // microphones wait out the piezo's pipeline); the host compensates what
+    // it is told.
     if (parameterID == ids::gatherChords)
-        setLatencySamples (newValue >= 0.5f
-            ? gatherWindowSamples.load (std::memory_order_relaxed) : 0);
+        setLatencySamples (acustra::Performer::latencySamples (
+            newValue >= 0.5f, gatherWindowSamples.load (std::memory_order_relaxed)));
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout

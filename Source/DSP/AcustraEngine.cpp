@@ -3257,6 +3257,10 @@ void AcustraEngine::resetSoundState() noexcept
     idleQuietSamples_ = 0;
     idleFlushed_ = true;
     resetPiezo();
+    micDelayLeft_.fill(0.0f);
+    micDelayRight_.fill(0.0f);
+    micDelayMono_.fill(0.0f);
+    micDelayIndex_ = 0;
     piezoForceDerivative_.reset();
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
     lastPiezoImpedanceSum_ = lastPiezoImpedanceMoment_ = 0.0f;
@@ -9160,30 +9164,44 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 radiationReferenceGain * outputGain_ * loadedPiezo);
             piezo[sample] = exact::isfinite(piezoOut) ? piezoOut : 0.0f;
         }
-        if (parameters_.capture != CaptureType::StereoMic
-            || captureMix_[0] != 1.0f)
+        // The microphones wait out the piezo's pipeline (renderPiezo), so a
+        // Capture crossfade and Piezo Mix sum the two sensors as the
+        // instrument moved them, at every sample rate. Main is seven samples
+        // later than the strings for every Capture.
+        const float monoMic = radiationReferenceGain * monoReference_ * outputGain_
+            * (bodyScale * body.upper + directScale * directMono);
         {
-            for (std::size_t index = 0; index < captureMix_.size(); ++index)
+            const auto index = static_cast<std::size_t>(micDelayIndex_);
+            const float heldLeft = micDelayLeft_[index];
+            const float heldRight = micDelayRight_[index];
+            const float heldMono = micDelayMono_[index];
+            micDelayLeft_[index] = outputLeft;
+            micDelayRight_[index] = outputRight;
+            micDelayMono_[index] = monoMic;
+            micDelayIndex_ = micDelayIndex_ + 1 == piezoPipelineSamples
+                ? 0 : micDelayIndex_ + 1;
+            outputLeft = heldLeft;
+            outputRight = heldRight;
+            if (parameters_.capture != CaptureType::StereoMic
+                || captureMix_[0] != 1.0f)
             {
-                const float target = index == static_cast<std::size_t>(
-                    parameters_.capture) ? 1.0f : 0.0f;
-                float& mix = captureMix_[index];
-                const float next = mix + parameterSmoothing_ * (target - mix);
-                mix = next == mix || exact::abs(target - next) < 1.0e-4f
-                    ? target : next;
+                for (std::size_t slot = 0; slot < captureMix_.size(); ++slot)
+                {
+                    const float target = slot == static_cast<std::size_t>(
+                        parameters_.capture) ? 1.0f : 0.0f;
+                    float& mix = captureMix_[slot];
+                    const float next = mix + parameterSmoothing_ * (target - mix);
+                    mix = next == mix || exact::abs(target - next) < 1.0e-4f
+                        ? target : next;
+                }
+                // One physical microphone avoids the spaced pair's phase
+                // cancellation; its copies and the piezo ignore width.
+                const float mono = captureMix_[7] * heldMono
+                    + radiationReferenceGain * outputGain_
+                    * (captureMix_[6] * loadedPiezo);
+                outputLeft = captureMix_[0] * outputLeft + mono;
+                outputRight = captureMix_[0] * outputRight + mono;
             }
-            // One physical microphone, with its own measured complex response,
-            // avoids phase cancellation from summing two spaced microphones.
-            // Its identical L/R copies and the loaded saddle piezo ignore width.
-            // The piezo carries its whole level (renderPiezo), the mono
-            // microphone its own reference.
-            const float mono = radiationReferenceGain * monoReference_ * outputGain_
-                * (captureMix_[7]
-                       * (bodyScale * body.upper + directScale * directMono))
-                + radiationReferenceGain * outputGain_
-                * (captureMix_[6] * loadedPiezo);
-            outputLeft = captureMix_[0] * outputLeft + mono;
-            outputRight = captureMix_[0] * outputRight + mono;
         }
         // Piezo Mix: the piezo, at the level Capture Piezo gives it, under
         // whichever microphones Capture selects, on both sides. It fades out
