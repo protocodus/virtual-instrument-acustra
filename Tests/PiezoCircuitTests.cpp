@@ -35,7 +35,7 @@ struct AcustraEngineTestAccess
     // the DI's voltage seven samples back.
     static double volts(AcustraEngine& engine, double newtons)
     {
-        engine.renderPiezo(static_cast<float>(newtons / Design::newtonsPerUnit));
+        engine.renderPiezo(static_cast<float>(newtons / engine.piezoNewtonsPerUnit_));
         return engine.piezoOutputVolts_;
     }
     static float chain(AcustraEngine& engine, float force) { return engine.renderPiezo(force); }
@@ -527,8 +527,11 @@ void testHarmonics()
 // ------------------------------------------------------------ 5. aliasing
 // A sine 3 and 6 dB over U1B's clip, a whole number of periods in the
 // block: everything off the harmonics' bins (above 20 Hz, where the slow
-// states' settling sits) is what the clip folded back. From 3.7 dB over it
-// U1A's input range stops it too, and from 5 dB the diodes conduct.
+// states' settling sits) is what the clip folded back. From 1.9 dB over
+// its positive swing (0.35 dB over the negative) U1A's input range stops it
+// too, and the diodes conduct past that: with U1B's gain of 1.62
+// (PiezoDesign, R7 6.2 kOhm) both engage at 3 dB over; with the figure's
+// gain of two they engaged from 3.7 and about 5 dB.
 void testAliasing()
 {
     const auto reference = readAc();
@@ -569,7 +572,8 @@ void testAliasing()
                 // 6 dB over. There the 12-tap BLAMP alone reaches -49 dB at
                 // 3 kHz (Tools/PiezoReference.py, blamp_harmonic_errors),
                 // and U1A's range and the diodes, which U1B's clip hides but
-                // C3 and C1 integrate, cost up to 2.5 dB more.
+                // C3 and C1 integrate, cost up to 3.8 dB more (-45.2 dB at
+                // 48 kHz; 2.5 dB at U1B's former gain of two).
                 const double gate = nominal == 1000 ? (over < 4.0 ? -65.0 : -60.0)
                                                     : (over < 4.0 ? -50.0 : -45.0);
                 expect(db <= gate, "piezo clip aliasing at " + std::to_string(hz) + " Hz, "

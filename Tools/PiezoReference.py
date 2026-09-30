@@ -25,8 +25,10 @@ The chain, in signal order:
    DC operating point.
 3. Cable: 3 m of Mogami 2524 (130 pF/m) from the jack to ground.
 4. The preamp: ESP Project 202 Fig. 1 (Rod Elliott, sound-au.com/project202),
-   a bootstrapped OPA2134 buffer and a gain-of-two OPA2134 stage on one 9 V
-   battery, into a Radial PZ-DI's 1 MOhm input with the volume pot at full.
+   a bootstrapped OPA2134 buffer and an OPA2134 stage of gain 1 + R7/R8 =
+   1.62 (R7 6.2 kOhm, lowered from the figure's 10 kOhm as the article says
+   to set the gain, so the hardest playing does not clip it; Docs/decisions.md
+   2026-09-30) on one 9 V battery, into a Radial PZ-DI's 1 MOhm input with the volume pot at full.
    Every resistor and capacitor of the figure is a component here; the LED
    branch and the supply decoupling only load the battery and are left out.
    Each op-amp is a macro-model from the TI datasheet (SBOS058B): 120 dB
@@ -124,7 +126,7 @@ NET = {
     "Cp": 1.45e-9, "Ccab": 390e-12, "Rleak": 1.0e12,
     # ESP Project 202 Fig. 1
     "C1": 4.7e-9, "R1": 1.0e6, "R2": 1.0e6, "R3": 1.0e6, "C2": 33e-6,
-    "R4": 3.9e3, "C3": 220e-9, "R5": 47e3, "R6": 47e3, "R7": 10e3,
+    "R4": 3.9e3, "C3": 220e-9, "R5": 47e3, "R6": 47e3, "R7": 6.2e3,
     "R8": 10e3, "C4": 33e-6, "R9": 100.0, "C5": 10e-6, "VR1": 10e3,
     # Radial PZ-DI input, and 5 m of instrument cable to it (chosen: about
     # 100 pF/m); it and R9 put a pole at 3 MHz
@@ -827,22 +829,22 @@ def self_test() -> None:
     assert np.max(np.abs(response["Voc"] / (VOLTS_PER_NEWTON * closed) - 1.0)) < 1.0e-9
     # Mid-band: the jack's capacitive divider - the element against the
     # cable and a stray picofarad, C1 in series with the op-amp's 6 pF and a
-    # stray picofarad at IN - a unity buffer, gain two, and the 100 Ohm into
-    # the pot and the DI: 1.5504, with ideal op-amps otherwise.
+    # stray picofarad at IN - a unity buffer, 1 + R7/R8 = 1.62, and the 100
+    # Ohm into the pot and the DI: 1.2558, with ideal op-amps otherwise.
     shunt = NET["Cp"] + NET["Ccab"] + NET["Cstray"]
     c_in = OPAMP["Ccm"] + NET["Cstray"]
     total = shunt + NET["C1"]
     divider = NET["C1"] * NET["Cp"] / (NET["C1"] * shunt + c_in * total)
     pot = 1.0 / (1.0 / NET["VR1"] + 1.0 / NET["Rdi"])
-    ideal = divider * 2.0 * pot / (NET["R9"] + pot)
+    ideal = divider * (1.0 + NET["R7"] / NET["R8"]) * pot / (NET["R9"] + pot)
     mid = abs(steel.small_signal([1000.0], x0)["Vout"][0] / steel.small_signal([1000.0], x0)["Voc"][0])
     assert abs(mid / ideal - 1.0) < 1.0e-3, (mid, ideal)
     # The only audible low corner is C3's, 1/(2 pi 23.5k 220n) = 30.8 Hz.
     corner = abs(steel.small_signal([30.78], x0)["Vout"][0] / steel.small_signal([30.78], x0)["Voc"][0])
     assert 0.5 < corner / mid < 1.2
-    # U1B's rails for its 6.7 kOhm load, about 4.5 V.
+    # U1B's rails for its 6.18 kOhm load, about 4.5 V.
     high, low = (r - steel.o2(x0)[0] for r in steel.u1b_rails)
-    assert abs(high - 3.2625) < 1.0e-3 and abs(low + 3.9125) < 1.0e-3, (high, low)
+    assert abs(high - 3.2537) < 1.0e-3 and abs(low + 3.8920) < 1.0e-3, (high, low)
     # A short overload: Radau and BDF agree, and the clip holds at the rail.
     clip = clip_amplitude(steel, 1000.0, x0)
     force, dforce = burst(2.0 * clip, 1000.0, 0.006, 0.002)

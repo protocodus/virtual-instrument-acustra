@@ -2337,6 +2337,7 @@ AcustraEngine::AcustraEngine() noexcept
 
     parameters_ = sanitise(parameters_);
     targetParameters_ = parameters_;
+    configurePiezoUnit();
     const auto notes = openNotes(parameters_.tuning);
     for (int string = 0; string < stringCount; ++string)
     {
@@ -3145,8 +3146,8 @@ void AcustraEngine::prepare(double sampleRate, int)
         // DI, which the level match divides out with the element's
         // sensitivity: an engine force unit through the flat band leaves at
         // the trim alone, as the microphones' reference does.
-        piezoOutputScale_ = 1.0 / (D::voltsPerNewton * D::newtonsPerUnit
-            * piezoInputShare_ * (1.0 + D::r7 / D::r8) * load / (D::r9 + load));
+        piezoMidbandGain_ = piezoInputShare_ * (1.0 + D::r7 / D::r8) * load / (D::r9 + load);
+        configurePiezoUnit();
     }
     piezoStringWeights_ = PiezoDesign::stringWeights;
     delaySmoothing_ = 1.0f - std::exp(-1.0f
@@ -3284,6 +3285,8 @@ void AcustraEngine::setPhysicalCalibration(
     const PhysicalCalibration& calibration) noexcept
 {
     physicalCalibration_ = sanitise(calibration);
+    // The piezo's force unit follows the strings' displacement unit.
+    configurePiezoUnit();
     // Steel's own bridge follows the body's frequency and Q calibration,
     // which the mobility table's key does not hold.
     bridgeMobilityTable_.valid = false;
@@ -5126,8 +5129,20 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             maximumDelaySamples - 3);
         // The two planes are released a little apart (-0.006 and +0.009 of
         // the string, authored), so their spectra are not one comb twice.
-        const float localPosition = clamp(position
-            + (polarisation == 0 ? -0.006f : 0.009f), 0.05f, 0.48f);
+        // The shape is laid over the `length` samples written below, but the
+        // string's period is the loop's whole round trip, contactPeriodSamples,
+        // which the loss, dispersion and bending sections lengthen past the
+        // delay line: 3-13% longer. A kink placed at p of the written line
+        // then sat that much bridgeward of p on the string, and its partials
+        // 6-9 dB rms off the rest pluck's law. Scaled by the period over the
+        // written length it lands at p of the string, which a blind listener
+        // preferred on 2026-09-30 (Docs/decisions.md); the bound leaves room
+        // for that scale past the 0.48 the position itself stops at.
+        const float frameScale = voice.contactPeriodSamples > 0.0f
+            ? voice.contactPeriodSamples / static_cast<float>(length) : 1.0f;
+        const float localPosition = clamp((position
+            + (polarisation == 0 ? -0.006f : 0.009f)) * frameScale, 0.05f, 0.60f);
+        voice.releaseShapePosition[static_cast<std::size_t>(polarisation)] = localPosition;
         const float polarisationGain = polarisation == 0
             ? exact::sqrt(voice.polarisationMix)
             : exact::sqrt(1.0f - voice.polarisationMix);
@@ -5641,8 +5656,10 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                                      float releaseShare, double slipPole,
                                      float referenceDelay) noexcept
 {
-    const float p = clamp(position, 0.05f, 0.48f);
-    const double apex = static_cast<double>(p);
+    // As the shape's own bound (initialisePluck): p of the written line.
+    // The reference grid below moves it (setApex) and puts it back.
+    float p = clamp(position, 0.05f, 0.60f);
+    double apex = static_cast<double>(p);
     const auto bridgeFraction = [] (double phase)
     {
         phase -= exact::floor(phase);
@@ -5668,9 +5685,17 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     // kernel's reach are summed. The node projection for a natural harmonic
     // follows; all of it is linear, so both components are treated alike.
     const double sigma = std::max(static_cast<double>(aperture), 1.0e-9);
-    const double cornerA = 0.5 * apex;
-    const double cornerB = 1.0 - 0.5 * apex;
-    const double slopeChange = 1.0 / (apex * (1.0 - apex));
+    double cornerA = 0.5 * apex;
+    double cornerB = 1.0 - 0.5 * apex;
+    double slopeChange = 1.0 / (apex * (1.0 - apex));
+    const auto setApex = [&] (float share)
+    {
+        p = share;
+        apex = static_cast<double>(p);
+        cornerA = 0.5 * apex;
+        cornerB = 1.0 - 0.5 * apex;
+        slopeChange = 1.0 / (apex * (1.0 - apex));
+    };
     const auto unitCorner = [] (double z)
     {
         if (z >= 10.0)
@@ -5731,7 +5756,7 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     // step smoothed over less than a sample lands on one difference or two
     // depending on where the grid falls, and the share must describe what
     // is written.
-    const auto phaseOn = [p] (int grid, int sample)
+    const auto phaseOn = [&p] (int grid, int sample)
     {
         return static_cast<float>(sample - 1) / static_cast<float>(grid)
              - 0.5f * p;
@@ -5854,6 +5879,12 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                         static_cast<int>(pickReleaseDisplacement_.size())));
         const double referencePole = slipPole > 0.0
             ? std::pow(slipPole, sampleRate_ / 48000.0) : 0.0;
+        // The kink is a share of the line it is written on, which is the
+        // string's period over that line's rounded length (initialisePluck);
+        // the same point on the string is its own share of the 48 kHz line.
+        const float hostShare = p;
+        setApex(clamp(static_cast<float>(static_cast<double>(hostShare) * length
+            * (48000.0 / sampleRate_) / grid), 0.05f, 0.60f));
         const auto reference = energiesOn(grid, true);
         referenceSolved = true;
         if (reference.velocity > 0.0)
@@ -5888,6 +5919,9 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                                            reference.cross, reference.velocity);
         }
     }
+
+    if (referenceSolved)
+        setApex(clamp(position, 0.05f, 0.60f));
 
     // Kept for the write pass below, which reads the same phases.
     const bool kept = length >= 1
@@ -8000,13 +8034,30 @@ void AcustraEngine::resetPiezo() noexcept
 // Its output is seven samples behind its input (the BLAMP's look-ahead) at
 // every rate. The result is in force units: dividing by the element's
 // sensitivity and the preamp's mid-band gain leaves the trim alone there.
-float AcustraEngine::renderPiezo(float force) noexcept
+// PiezoDesign item 2 at run time: the engine's force unit in newtons is the
+// calibration's displacement unit (the strings' own) per 48 kHz sample, so
+// the piezo moves with the strings when a calibration is set. The level
+// match divides the unit out again with the element's sensitivity and the
+// preamp's mid-band gain, so it moves the voltages, not the linear level.
+void AcustraEngine::configurePiezoUnit() noexcept
 {
     using D = PiezoDesign;
+    piezoNewtonsPerUnit_ = static_cast<double>(std::max(
+        physicalCalibration_.steelDisplacementScaleMetres, 1.0e-4f)) * 48000.0;
     // Below 5 pN - a picovolt at the element, some 130 dB under the thermal
     // noise of its own capacitance - the force is last-bit rounding in the
     // saddle sums, which after a release keep it near 1e-15 forever.
-    constexpr float forceFloor = static_cast<float>(5.0e-12 / D::newtonsPerUnit);
+    piezoForceFloor_ = static_cast<float>(5.0e-12 / piezoNewtonsPerUnit_);
+    piezoSaddleFloor_ = static_cast<float>(5.0e-8 / piezoNewtonsPerUnit_);
+    if (piezoMidbandGain_ > 0.0)
+        piezoOutputScale_ = 1.0 / (D::voltsPerNewton * piezoNewtonsPerUnit_
+                                   * piezoMidbandGain_);
+}
+
+float AcustraEngine::renderPiezo(float force) noexcept
+{
+    using D = PiezoDesign;
+    const float forceFloor = piezoForceFloor_;
     // A non-finite force would stay in every state; captureMix_ times NaN
     // would then reach Main even with the piezo unheard.
     if (!exact::isfinite(force))
@@ -8029,7 +8080,7 @@ float AcustraEngine::renderPiezo(float force) noexcept
     y[1] = y[0];
     y[0] = pressed;
     // 2. The element's open-circuit voltage.
-    const double open = D::voltsPerNewton * D::newtonsPerUnit * static_cast<double>(pressed);
+    const double open = D::voltsPerNewton * piezoNewtonsPerUnit_ * static_cast<double>(pressed);
     // 3. The input section (trapezoidal; U1A's output stopping at its input
     // range enters a sample late, through C2's bootstrap, 0.13 s).
     const double drive = open + piezoLastOpen_;
@@ -8047,8 +8098,9 @@ float AcustraEngine::renderPiezo(float force) noexcept
     // x - z to what that current needs (backward Euler), tabulated in
     // prepare() (piezoDiodeDump_). C1 keeps the charge it gave up: the bias
     // shift a hard overload leaves, recovering over the input network's
-    // 1 Hz modes. None of this runs below 3.7 dB over U1B's clip, which no
-    // playing reaches.
+    // 1 Hz modes. For a sine none of this runs below 1.9 dB over U1B's
+    // positive swing or 0.35 dB over its negative one (U1B's gain of 1.62);
+    // no playing reaches it (the player's hardest Pick strums keep 1.2 dB).
     const double excess = (bufferInput > 0.0 ? bufferInput : -bufferInput) - D::commonModeLimit;
     if (excess > 0.0)
     {
@@ -8163,7 +8215,7 @@ float AcustraEngine::renderPiezo(float force) noexcept
     // while another still moves would itself be an input.
     if (input == 0.0f)
     {
-        constexpr float saddleFloor = static_cast<float>(5.0e-8 / D::newtonsPerUnit);
+        const float saddleFloor = piezoSaddleFloor_;
         constexpr double floor = 1.0e-8;
         bool quiet = exact::abs(y[0]) < saddleFloor && exact::abs(y[1]) < saddleFloor;
         for (float value : x)
@@ -8782,6 +8834,11 @@ float AcustraEngine::getLastLongitudinalForce() const noexcept
 float AcustraEngine::getLastPiezoVoltage() const noexcept
 {
     return lastPiezoVoltage_;
+}
+
+double AcustraEngine::getPiezoNewtonsPerUnit() const noexcept
+{
+    return piezoNewtonsPerUnit_;
 }
 
 AcustraEngine::PiezoProbe AcustraEngine::getLastPiezoProbe() const noexcept

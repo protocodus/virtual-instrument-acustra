@@ -1161,12 +1161,13 @@ signal order:
    +0.4, +0.9, -0.3, +0.6 and -1.0 dB low E to high E (chosen, inside the
    +-1-2 dB a good install gives), plus the axial force through the strings'
    rear break angle (sin 25 degrees, chosen; zero while its gain ships at
-   0). In newtons: 292.8 N per engine force unit (a 6.1 mm displacement
-   unit per 48 kHz sample, at every rate). That is the unit the chain was
-   designed and its headroom checked with; the shipped fit has since put
-   the strings' own unit at 7.74 mm, and at that the player's hardest Pick
-   strums would clip U1 by about 1 dB. Which the piezo should follow is an
-   open decision (Known gaps).
+   0). In newtons: 0.00773577847 x 48000 = 371.3 N per engine force unit:
+   the strings' own fitted displacement unit (7.74 mm,
+   `steelDisplacementScaleMetres`) per 48 kHz sample, at every rate. The
+   engine reads it from the calibration at run time, so a calibration set
+   with `setPhysicalCalibration` moves the piezo with the strings
+   (Docs/decisions.md 2026-09-30; until then the chain used the struct
+   default's 6.1 mm, 292.8 N).
 2. **The saddle on its element.** A 3.8 g bone saddle (chosen within
    2.7-5.1 g) on the element's stiffness, placing it at 6 kHz (chosen within
    5-7 kHz), with the element's loss (Zollner's Q of 18 as a bound), the
@@ -1187,13 +1188,16 @@ signal order:
    battery with OPA2134 halves (TI SBOS058B). C1 (4.7 nF) into a follower
    whose 1 MOhm bias network is bootstrapped through C2 and R4 (129 MOhm
    seen), guarded by two 1N4148s solved as Shockley diodes; C3 into R5 || R6
-   (30.8 Hz, the chain's only audible low corner); a gain-of-two stage whose
-   gain falls to one below 0.48 Hz (C4); R9 and C5 into the volume pot at
-   full and a Radial PZ-DI's 1 MOhm. The op-amps stop where the datasheet
-   says: U1A's input at its typical common-mode range (2.5 V either side of
-   the 4.5 V bias), U1B's output at its swing for its 6.7 kOhm load
-   (+3.26 / -3.91 V about the bias). Mid-band gain from the element's
-   open-circuit voltage to the DI: 1.551 (+3.81 dB); -1.5 dB at 20 Hz.
+   (30.8 Hz, the chain's only audible low corner); a gain stage of
+   1 + R7/R8 = 1.62 (R7 6.2 kOhm, lowered from the figure's 10 kOhm the way
+   the article sets the gain, so the hardest strumming does not clip it at
+   the strings' fitted force unit) whose gain falls to one below 0.48 Hz
+   (C4); R9 and C5 into the volume pot at full and a Radial PZ-DI's 1 MOhm.
+   The op-amps stop where the datasheet says: U1A's input at its typical
+   common-mode range (2.5 V either side of the 4.5 V bias), U1B's output at
+   its swing for its 6.18 kOhm load (+3.25 / -3.89 V about the bias).
+   Mid-band gain from the element's open-circuit voltage to the DI: 1.256
+   (+1.98 dB); -1.5 dB at 20 Hz.
 
 The sections are solved in turn, each as deviations from the 4.5 V operating
 point (so silence maps to exact zero): the input network as a trapezoidal
@@ -1207,8 +1211,9 @@ simulates the same circuit as a stiff ODE system (op-amp macro-models, stray
 capacitance, Shockley diodes) and `Tests/PiezoCircuitTests.cpp` holds the
 engine to its results.
 
-Normal playing never clips it: a Pick strum at velocity 127 leaves 5.1 dB
-to U1B's swing. (The hottest reference strum measured before 2026-09-29,
+Normal playing never clips it: a Pick strum at velocity 127 leaves 4.9 dB
+to U1B's swing, and the player's own velocity-127 Pick strums 1.0 dB (U1A's
+input range 1.2 dB). (The hottest reference strum measured before 2026-09-29,
 2.12 V on the element with 1.4 dB left, and the one playing that clipped
 it, picked at the saddle, were both on the since-removed nylon strings.)
 
@@ -1512,7 +1517,7 @@ The JUCE-free suites cover:
   weights reproduce the junction's reaction force bit for bit through bends,
   tails, releases and an uncoupled bridge, and the shipped weights give the
   weighted sum of the six strings' forces; the clip's aliasing on a strum
-  driven 4.4 dB past the hardest playing (the Pick at velocity 127 at the
+  driven 1.25-1.45 times the hardest playing (the Pick at velocity 127 at the
   bridge, which does not clip it) against an 8x-oversampled clip; exact silence from a never-played engine, within 5 s
   of the chain's hardest moment, and on Main and the Piezo output within 25 s
   of a released chord; a Capture switch equal to its crossfade and a Piezo
@@ -1673,18 +1678,15 @@ engine.
 
 ## Known gaps
 
-- Open from the 2026-09-30 defect audit, each a change to the shipped sound
-  that waits on a listening decision rather than a fix:
+- Left by the 2026-09-30 defect audit, each a trade in the shipped sound
+  rather than a fix:
   - The parallel polarisation shares the normal loop's bridge compensation,
     so the H1 doublet reaches about 18 cents and sustained pitch sits up to
     9 cents off on the default Dreadnought (low E frets 14-17, A frets 9-11).
     Tuning each plane against its own port puts sustained pitch within
-    about 2 cents at every rate but removes most of the doublet's beat.
-  - The pluck's shape is laid over the rounded delay rather than the loop's
-    true period, which moves the effective pluck point 3-13% bridgeward and
-    its partials 6-9 dB rms off the rest-pluck law; Pluck Position's
-    distance scale was set by ear on top of it.
-  - The piezo's force unit (above, "The strings' forces on the element").
+    about 2 cents at every rate but removes most of the doublet's beat; a
+    blind listener heard that as detuned and kept this (Docs/decisions.md,
+    2026-09-30).
   - Where the pluck shape nearly nulls a partial, the random release burst
     decides its level: MIDI 83's H8 differs by 27 dB between two burst
     noise draws.
