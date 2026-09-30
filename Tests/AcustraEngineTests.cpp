@@ -29,6 +29,10 @@ struct AcustraEngineTestAccess
         for (auto& voice : engine.voices_)
             voice.loops[1].reset();
     }
+    static float highLossMix(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].loops[0].highLossMix;
+    }
     static bool idleFlushed(const AcustraEngine& engine)
     {
         return engine.idleFlushed_;
@@ -7845,11 +7849,50 @@ void testIdleFlushIsIndependentOfBlockSize()
                    + std::to_string(blockSize));
 }
 
+// The bridge hand shortens the top by the 0.62 high-to-fundamental T60
+// ratio its comment gives: its extra shelf loss per round trip is
+// 0.001^((1/0.62 - 1) R / f) for its 1/T60 rate R. The shelf used exp in
+// place of 0.001^ and added 1/6.9 of that.
+void testBridgeHandTopLossIsItsT60Ratio()
+{
+    const auto mix = [] (float pressure)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->prepare(sampleRate, blockSize);
+        engine->setStringPerChannelMode(true);
+        engine->setPalmMutePressure(pressure);
+        std::vector<float> left(static_cast<std::size_t>(blockSize)),
+            right(static_cast<std::size_t>(blockSize));
+        for (int block = 0; block < 40; ++block)
+            engine->process(left.data(), right.data(), blockSize);
+        engine->noteOn(40, 0.8f, 1);
+        for (int block = 0; block < 40; ++block)
+            engine->process(left.data(), right.data(), blockSize);
+        return static_cast<double>(acustra::AcustraEngineTestAccess::highLossMix(*engine, 0));
+    };
+    const double open = mix(0.0f);
+    for (const float pressure : { 0.25f, 0.5f, 1.0f })
+    {
+        // The hand's mapped T60, 4 s at no pressure to 80 ms at full, and its
+        // rate scaled by pressure (AcustraEngine::configureVoice).
+        const double handT60 = std::exp(std::log(4.0) + pressure * (std::log(0.080) - std::log(4.0)));
+        const double rate = pressure / handT60;
+        const double extra = -std::log((1.0 - mix(pressure)) / (1.0 - open)) / std::log(1000.0)
+            * 82.4069 / rate;
+        std::cout << "Acustra bridge hand " << pressure << ": top's extra rate "
+                  << extra << " of the fundamental's (0.62 ratio: " << 1.0 / 0.62 - 1.0 << ")\n";
+        expect(std::abs(extra / (1.0 / 0.62 - 1.0) - 1.0) < 0.02,
+               "the bridge hand's top loss was not its 0.62 T60 ratio at pressure "
+                   + std::to_string(pressure));
+    }
+}
+
 } // namespace
 
 int main()
 {
     testIdleFlushIsIndependentOfBlockSize();
+    testBridgeHandTopLossIsItsT60Ratio();
     testDecayEstimatorFollowsPitchGlides();
     testLossFiltersPreserveTheReferenceTransfer();
     testSilenceAndFiniteOutput();

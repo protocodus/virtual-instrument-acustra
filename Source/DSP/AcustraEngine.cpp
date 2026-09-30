@@ -3811,9 +3811,10 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // A soft contact damps the top faster than the fundamental. Adding exactly
     // the extra per-round-trip loss that a 0.62 high-to-fundamental T60 ratio
     // implies keeps the shelf's shape and leaves it untouched at zero pressure.
+    // handRate is a 1/T60 rate, so a round trip of 1/f decays by 0.001^(R/f).
     const float mutedHighLoss = handRate > 0.0f
-        ? clamp(1.0f - (1.0f - highLoss) * std::exp(
-              -(1.0f / 0.62f - 1.0f) * handRate
+        ? clamp(1.0f - (1.0f - highLoss) * std::pow(0.001f,
+              (1.0f / 0.62f - 1.0f) * handRate
               / std::max(unbentFrequency, 1.0f)), 0.0f, 0.95f)
         : highLoss;
 
