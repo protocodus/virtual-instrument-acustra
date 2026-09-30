@@ -1260,15 +1260,18 @@ struct AcustraEngineTestAccess
     // over its round trip: what the bridge will read over the first period.
     static std::vector<double> pluckedLine(PhysicalCalibration calibration,
                                            PickingTechnique picking,
-                                           int midiNote, float velocity)
+                                           int midiNote, float velocity,
+                                           double rate = 48000.0,
+                                           float touch = EngineParameters {}.touch)
     {
         auto engineOwner = std::make_unique<AcustraEngine>();
         auto& engine = *engineOwner;
         engine.setPhysicalCalibration(calibration);
         EngineParameters parameters;
         parameters.picking = picking;
+        parameters.touch = touch;
         engine.setParameters(parameters);
-        engine.prepare(48000.0, 64);
+        engine.prepare(rate, 64);
         engine.noteOn(midiNote, velocity);
         std::vector<double> line;
         for (const auto& voice : engine.voices_)
@@ -7579,6 +7582,70 @@ void testAPlectrumReleasesWithVelocity()
            "a picked note did not brighten with dynamics beyond its release from rest");
 }
 
+// The Pick release's share was chosen by ear at 48 kHz, and its hump is a
+// continuous wave the host grid only samples, so a picked note's partials
+// must not depend on the rate. Solved on the host grid, the summed squared
+// differences it reads scale differently with the grid for the rest and the
+// velocity, and the hump's 0-6 kHz partials against the rest's fell by up
+// to 4.8 dB at 96 kHz and 7.6 dB at 192 kHz, and rose by up to 0.95 dB at
+// 44.1 kHz; solving it on the note's 48 kHz period at 48 kHz's slip keeps
+// them within 0.1 dB (writePickRelease). Read on the written line, the
+// hump alone (the line less the same pluck with a vanishing share) against
+// the rest.
+void testAPickReleaseKeepsItsHumpAcrossRates()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    using acustra::PickingTechnique;
+    const auto shipping = acustra::fittedPhysicalCalibration;
+    auto trace = shipping;
+    trace.pickReleaseVelocityShare = 1.0e-10f;
+    const auto humpDb = [&] (double rate, int midi, float velocity, float touch)
+    {
+        const auto line = Access::pluckedLine(shipping, PickingTechnique::Pick,
+                                              midi, velocity, rate, touch);
+        const auto rest = Access::pluckedLine(trace, PickingTechnique::Pick,
+                                              midi, velocity, rate, touch);
+        expect(line.size() > 8 && line.size() == rest.size(),
+               "a picked line changed length with its release share");
+        const double f0 = 440.0 * std::exp2((midi - 69) / 12.0);
+        const int top = std::max(1, static_cast<int>(6000.0 / f0));
+        double humpEnergy = 0.0, restEnergy = 0.0;
+        for (int harmonic = 1; harmonic <= top; ++harmonic)
+        {
+            std::complex<double> hump {}, still {};
+            for (std::size_t sample = 0; sample < line.size(); ++sample)
+            {
+                const auto turn = std::polar(1.0, -2.0 * std::numbers::pi * harmonic
+                    * static_cast<double>(sample) / static_cast<double>(line.size()));
+                hump += (line[sample] - rest[sample]) * turn;
+                still += rest[sample] * turn;
+            }
+            humpEnergy += std::norm(hump);
+            restEnergy += std::norm(still);
+        }
+        return 10.0 * std::log10(std::max(humpEnergy, 1.0e-300)
+                                 / std::max(restEnergy, 1.0e-300));
+    };
+    double worst = 0.0;
+    for (const int midi : { 45, 59, 69, 76 })
+        for (const float velocity : { 0.3f, 1.0f })
+            for (const float touch : { 0.2f, 0.9f })
+            {
+                const double reference = humpDb(48000.0, midi, velocity, touch);
+                expect(reference > -40.0 && reference < 0.0,
+                       "the picked release carried no hump at 48 kHz");
+                for (const double rate : { 44100.0, 96000.0, 192000.0 })
+                {
+                    const double change = humpDb(rate, midi, velocity, touch) - reference;
+                    worst = std::max(worst, std::abs(change));
+                    expect(std::abs(change) < 0.2,
+                           "a picked note's release hump moved with the sample rate");
+                }
+            }
+    std::cout << "Acustra pick release hump across 44.1-192 kHz: worst "
+              << worst << " dB from 48 kHz\n";
+}
+
 // A Shape is the measured body's A0 and T1 re-coupled through Christensen and
 // Vistisen's two-oscillator model for a published box, with the plate modes
 // above T1 on the equal-thickness plate law. The anchor - the wide
@@ -8190,6 +8257,7 @@ int main()
     testTheSteelBanksFillTheirSlotsAndStayPassive();
     testBodyShapesFollowTheCoupledTopAndCavity();
     testAPlectrumReleasesWithVelocity();
+    testAPickReleaseKeepsItsHumpAcrossRates();
     testAPlectrumSlipsOffItsEdgeFasterWhenHarder();
     testTheNormalPolarisationIsTheHigherMemberByALength();
     testTheParallelPolarisationRadiatesThroughTheRockingSaddle();

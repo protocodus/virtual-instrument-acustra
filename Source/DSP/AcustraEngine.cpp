@@ -3922,16 +3922,38 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         || exact::abs(voice.dispersionDesignAge - age) > 1.0e-5f
         || exact::abs(voice.dispersionDesignFrequencyLossScale
                     - physical.frequencyLossScale) > 1.0e-5f;
+    // The string's own bending loss (bendingLossSection), for the unbent
+    // string the dispersion is designed for, and held through a bend the
+    // way that design is. The four basses are the wound constructions
+    // (steelBendingDiameter above says so).
+    const bool wound = stringIndex <= 3;
+    const float bendingFactor = wound
+        ? physicalCalibration_.steelWoundBendingLoss
+        : physicalCalibration_.steelPlainBendingLoss;
+    // A dispersion design for these complete arguments, from the solves
+    // already made when one matches exactly, otherwise solved and kept.
+    const auto solvedDispersion = [this] (const std::array<double, 9>& arguments)
+    {
+        const auto solved = std::find_if(dispersionSolves_.begin(),
+            dispersionSolves_.end(), [&arguments] (const DispersionSolve& solve)
+            {
+                return solve.valid && solve.arguments == arguments;
+            });
+        if (solved != dispersionSolves_.end())
+            return std::pair { solved->decayRatio, solved->poleRatio };
+        const auto calibration = calibrateDispersion(
+            arguments[0], arguments[1], arguments[2], arguments[3],
+            arguments[4], arguments[5], arguments[6], 10.0, 4.0,
+            arguments[7], arguments[8]);
+        auto& slot = dispersionSolves_[static_cast<std::size_t>(nextDispersionSolve_)];
+        slot = { arguments, static_cast<float>(calibration.decayRatio),
+                 static_cast<float>(calibration.poleRatio), true };
+        nextDispersionSolve_ = (nextDispersionSolve_ + 1)
+            % static_cast<int>(dispersionSolves_.size());
+        return std::pair { slot.decayRatio, slot.poleRatio };
+    };
     if (dispersionDesignChanged)
     {
-        // The string's own bending loss (bendingLossSection), for the unbent
-        // string the dispersion is designed for, and held through a bend the
-        // way that design is. The four basses are the wound constructions
-        // (steelBendingDiameter above says so).
-        const bool wound = stringIndex <= 3;
-        const float bendingFactor = wound
-            ? physicalCalibration_.steelWoundBendingLoss
-            : physicalCalibration_.steelPlainBendingLoss;
         const auto bending = bendingLossSection(
             static_cast<double>(bendingFactor),
             static_cast<double>(inharmonicity),
@@ -3949,31 +3971,9 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // reusing only a solve with exactly the same complete input tuple.
         if (voice.dispersionDesignArguments != arguments)
         {
-            const auto solved = std::find_if(dispersionSolves_.begin(),
-                dispersionSolves_.end(), [&arguments] (const DispersionSolve& solve)
-                {
-                    return solve.valid && solve.arguments == arguments;
-                });
-            if (solved != dispersionSolves_.end())
-            {
-                voice.dispersionDecayRatio = solved->decayRatio;
-                voice.dispersionPoleRatio = solved->poleRatio;
-            }
-            else
-            {
-                const auto calibration = calibrateDispersion(
-                    inharmonicity, unbentFrequency, sampleRate_,
-                    designBroadLossCoefficient, broadLoss,
-                    lowpassCoefficient, highLoss, 10.0, 4.0,
-                    voice.bendingLossA1, voice.bendingLossA2);
-                voice.dispersionDecayRatio = static_cast<float>(calibration.decayRatio);
-                voice.dispersionPoleRatio = static_cast<float>(calibration.poleRatio);
-                auto& slot = dispersionSolves_[static_cast<std::size_t>(nextDispersionSolve_)];
-                slot = { arguments, voice.dispersionDecayRatio,
-                         voice.dispersionPoleRatio, true };
-                nextDispersionSolve_ = (nextDispersionSolve_ + 1)
-                    % static_cast<int>(dispersionSolves_.size());
-            }
+            const auto [decayRatio, poleRatio] = solvedDispersion(arguments);
+            voice.dispersionDecayRatio = decayRatio;
+            voice.dispersionPoleRatio = poleRatio;
             voice.dispersionDesignArguments = arguments;
         }
         voice.dispersionDesignFrequency = unbentFrequency;
@@ -4001,6 +4001,46 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         frequency, sampleRate_, broadLossCoefficient, broadLoss,
         lowpassCoefficient, mutedHighLoss, dispersionA1, dispersionA2,
         voice.bendingLossA1, voice.bendingLossA2));
+    // The period this note is tuned to at 48 kHz, in 48 kHz samples, for
+    // the Pick release's share solve (writePickRelease), which reads its
+    // waves on that grid. The dispersion and bending sections are designed
+    // per rate and their lag at the fundamental moves the tuned length by up
+    // to half a 48 kHz sample (0.48 at MIDI 84 at 96 kHz), so the host
+    // length rescaled lands on the other integer often, and the grid's
+    // alignment with the release's sub-sample step then moves the solved
+    // hump by up to 1.7 dB. The same design is run here at 48 kHz; the loss
+    // shelves are already designed on the 48 kHz grid, and the bridge's lag
+    // and the polarisation split are the host's rescaled. The period so
+    // found is 48 kHz's own to 1.1e-3 samples (MIDI 40-100, both loops, at
+    // 44.1, 88.2, 96 and 192 kHz). Only at a pluck, only for the pick.
+    const bool referenceTuning = clearDelay && sampleRate_ != 48000.0
+        && parameters_.picking == PickingTechnique::Pick;
+    float referenceRawDelay = 0.0f;
+    if (referenceTuning)
+    {
+        constexpr double referenceRate = 48000.0;
+        const auto bending = bendingLossSection(
+            static_cast<double>(bendingFactor),
+            static_cast<double>(inharmonicity),
+            static_cast<double>(unbentFrequency), referenceRate);
+        const auto bendingA1 = static_cast<float>(bending.a1);
+        const auto bendingA2 = static_cast<float>(bending.a2);
+        const auto [decayRatio, poleRatio] = solvedDispersion({
+            inharmonicity, unbentFrequency, referenceRate,
+            designBroadLossCoefficient, broadLoss, lowpassCoefficient, highLoss,
+            bendingA1, bendingA2 });
+        const float referenceOmega = twoPi * frequency
+            * static_cast<float>(1.0 / referenceRate);
+        double referenceA1 = 0.0;
+        double referenceA2 = 0.0;
+        secondOrderAllpassCoefficients(
+            static_cast<double>(referenceOmega), decayRatio, poleRatio,
+            referenceA1, referenceA2);
+        referenceRawDelay = static_cast<float>(tunedLoopDelay(
+            frequency, referenceRate, broadLossCoefficient, broadLoss,
+            lowpassCoefficient, mutedHighLoss, referenceA1, referenceA2,
+            bendingA1, bendingA2));
+    }
     // The segment between saddle and anchor does not move when a string is
     // fretted and does not change tension, so its spring T/L is a constant of
     // the string rather than a fraction of the speaking length.
@@ -4109,6 +4149,19 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             3.0f, static_cast<float>(maximumDelaySamples - 3));
         if (clearDelay)
             loop.currentDelay = loop.targetDelay;
+        if (referenceTuning)
+        {
+            const float referenceBridgeDelay = measuredBridgeDelay
+                * static_cast<float>(48000.0 / sampleRate_);
+            const float referenceDelay = coupledDetune != 0.0f
+                ? (referenceRawDelay - referenceBridgeDelay) * (1.0f + coupledDetune)
+                : referenceRawDelay - referenceBridgeDelay;
+            voice.referencePickDelay[static_cast<std::size_t>(polarisation)] = clamp(
+                referenceDelay * (1.0f + endCorrection / soundingLength),
+                3.0f, static_cast<float>(maximumDelaySamples - 3));
+        }
+        else if (clearDelay)
+            voice.referencePickDelay[static_cast<std::size_t>(polarisation)] = 0.0f;
         // Authored per-plane factors on top of the requested fundamental
         // T60: each round trip loses 0.05% (normal) or 0.12% (parallel) more
         // at every frequency, and the parallel plane's shelves are 6% and 8%
@@ -4538,7 +4591,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         {
             writePickRelease(loop, length, releasedAmplitude * polarisationGain,
                              localPosition, aperture, modes, releaseShare,
-                             slipPole);
+                             slipPole, voice.referencePickDelay[
+                                 static_cast<std::size_t>(polarisation)]);
             continue;
         }
         const auto triangleAt = [localPosition] (double phase)
@@ -4966,17 +5020,14 @@ double AcustraEngine::plectrumSlipPole(const Voice& voice,
 // loop's loss and dispersion states start empty, which only agrees with a
 // line that starts at rest there (smoothing the corner across that point and
 // leaving it raised put a broadband click into every note).
-void AcustraEngine::applyPlectrumSlip(StringLoop& loop, int length,
-                                      double slipPole) noexcept
+// slipPeriod runs it over any one-period line, at(0) the bridge sample: the
+// loop here, and writePickRelease's 48 kHz reference line.
+namespace
 {
-    if (!(slipPole > 0.0))
-        return;
+template <typename At>
+void slipPeriod(const At& at, int length, double slipPole) noexcept
+{
     const double b = slipPole;
-    const auto at = [&loop] (int sample) -> float&
-    {
-        return loop.delay[static_cast<std::size_t>(
-            maximumDelaySamples - sample - 1)];
-    };
     double state = 0.0;
     double weight = 1.0;
     for (int k = 0; k < length; ++k)
@@ -4994,10 +5045,24 @@ void AcustraEngine::applyPlectrumSlip(StringLoop& loop, int length,
         at(sample) = static_cast<float>(state - first);
     }
 }
+} // namespace
+
+void AcustraEngine::applyPlectrumSlip(StringLoop& loop, int length,
+                                      double slipPole) noexcept
+{
+    if (!(slipPole > 0.0))
+        return;
+    slipPeriod([&loop] (int sample) -> float&
+    {
+        return loop.delay[static_cast<std::size_t>(
+            maximumDelaySamples - sample - 1)];
+    }, length, slipPole);
+}
 
 void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                                      float position, float aperture, int modes,
-                                     float releaseShare, double slipPole) noexcept
+                                     float releaseShare, double slipPole,
+                                     float referenceDelay) noexcept
 {
     const float p = clamp(position, 0.05f, 0.48f);
     const double apex = static_cast<double>(p);
@@ -5089,37 +5154,71 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     // step smoothed over less than a sample lands on one difference or two
     // depending on where the grid falls, and the share must describe what
     // is written.
-    const auto phaseOf = [length, p] (int sample)
+    const auto phaseOn = [p] (int grid, int sample)
     {
-        return static_cast<float>(sample - 1) / static_cast<float>(length)
+        return static_cast<float>(sample - 1) / static_cast<float>(grid)
              - 0.5f * p;
     };
-
-    double displacementEnergy = 0.0;
-    double velocityEnergy = 0.0;
-    double crossEnergy = 0.0;
-    // Kept for the write pass below, which reads the same phases.
-    const bool kept = length >= 1
-        && length <= static_cast<int>(pickReleaseDisplacement_.size());
-    float previousDisplacement = released(smoothedDisplacement, phaseOf(length));
-    float previousVelocity = released(smoothedVelocity, phaseOf(length));
-    for (int sample = 1; sample <= length; ++sample)
+    const auto phaseOf = [&] (int sample)
     {
-        const float displacement = released(smoothedDisplacement, phaseOf(sample));
-        const float velocity = released(smoothedVelocity, phaseOf(sample));
-        if (kept)
+        return phaseOn(length, sample);
+    };
+    struct GridEnergies
+    {
+        double displacement { 0.0 };
+        double velocity { 0.0 };
+        double cross { 0.0 };
+    };
+    // The two waves' summed squared differences and cross term over one
+    // period of `grid` samples, the waves kept for a later pass if asked.
+    const auto energiesOn = [&] (int grid, bool keep)
+    {
+        GridEnergies energies;
+        float previousDisplacement = released(smoothedDisplacement,
+                                              phaseOn(grid, grid));
+        float previousVelocity = released(smoothedVelocity, phaseOn(grid, grid));
+        for (int sample = 1; sample <= grid; ++sample)
         {
-            pickReleaseDisplacement_[static_cast<std::size_t>(sample - 1)] = displacement;
-            pickReleaseVelocity_[static_cast<std::size_t>(sample - 1)] = velocity;
+            const float displacement = released(smoothedDisplacement,
+                                                phaseOn(grid, sample));
+            const float velocity = released(smoothedVelocity, phaseOn(grid, sample));
+            if (keep)
+            {
+                pickReleaseDisplacement_[static_cast<std::size_t>(sample - 1)] = displacement;
+                pickReleaseVelocity_[static_cast<std::size_t>(sample - 1)] = velocity;
+            }
+            const double displacementStep = displacement - previousDisplacement;
+            const double velocityStep = velocity - previousVelocity;
+            energies.displacement += displacementStep * displacementStep;
+            energies.velocity += velocityStep * velocityStep;
+            energies.cross += displacementStep * velocityStep;
+            previousDisplacement = displacement;
+            previousVelocity = velocity;
         }
-        const double displacementStep = displacement - previousDisplacement;
-        const double velocityStep = velocity - previousVelocity;
-        displacementEnergy += displacementStep * displacementStep;
-        velocityEnergy += velocityStep * velocityStep;
-        crossEnergy += displacementStep * velocityStep;
-        previousDisplacement = displacement;
-        previousVelocity = velocity;
-    }
+        return energies;
+    };
+    // The slipped displacement's energy and its cross term with the
+    // velocity, on a grid whose slipped line (per unit height) and velocity
+    // are read at each sample.
+    const auto slippedOn = [] (int grid, const auto& lineAt,
+                               const auto& velocityAt)
+    {
+        GridEnergies energies;
+        double previousLine = lineAt(grid);
+        float previousVelocity = velocityAt(grid);
+        for (int sample = 1; sample <= grid; ++sample)
+        {
+            const double line = lineAt(sample);
+            const float velocity = velocityAt(sample);
+            const double lineStep = line - previousLine;
+            const double velocityStep = velocity - previousVelocity;
+            energies.displacement += lineStep * lineStep;
+            energies.cross += lineStep * velocityStep;
+            previousLine = line;
+            previousVelocity = velocity;
+        }
+        return energies;
+    };
     // The fitted level law describes the displacement the tip leaves behind;
     // the velocity it also leaves is energy on top of that. Redistributing
     // one fitted energy between the two instead was tried and read worse on
@@ -5132,18 +5231,99 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     // Of its two roots the one that vanishes with the share is taken, in
     // the form that stays stable when X dominates; its sign follows X's,
     // which the string does not hear (the components are in quadrature).
-    const float rest = height;
-    float hump = 0.0f;
-    if (velocityEnergy > 0.0)
+    const auto solvedHump = [] (double added, double cross, double velocity)
     {
-        const double added = static_cast<double>(releaseShare)
-                           * displacementEnergy;
         const double magnitude = added
-            / (exact::abs(crossEnergy)
-               + exact::sqrt(crossEnergy * crossEnergy + added * velocityEnergy));
-        hump = rest * static_cast<float>(crossEnergy < 0.0 ? -magnitude
-                                                            : magnitude);
+            / (exact::abs(cross) + exact::sqrt(cross * cross + added * velocity));
+        return cross < 0.0 ? -magnitude : magnitude;
+    };
+    // The share is solved on the 48 kHz grid at every host rate. The waves
+    // are continuous, so the hump's height over the rest's is a property of
+    // the shape, not of the grid it is written on; but the summed squared
+    // differences are the grid's. The rest's are its slope's, which fall as
+    // 1/length; the velocity's steps are smoothed over the contact, a
+    // fraction of a 48 kHz sample to a few, so on a finer grid they spread
+    // over more differences and V falls more slowly than D, or not at all
+    // where the step stays sharper than a sample. Solved on the host grid
+    // the same share set a lower hump the higher the rate: its 0-6 kHz
+    // partials over the rest's, on the written line at MIDI 40-84,
+    // velocity 0.2-1 and Touch 0.1-1, sat 0.1-4.8 dB below 48 kHz's at
+    // 96 kHz and 0.2-7.6 dB below at 192 kHz, and up to 0.95 dB above at
+    // 44.1 kHz. The share was chosen by ear at 48 kHz, so the solve reads
+    // the same waves at the samples of this note's 48 kHz period
+    // (configureVoice's referencePickDelay), and slips them at the edge's
+    // 48 kHz pole, the same release time in 48 kHz samples; the host grid
+    // then writes that height, and those partials agree with 48 kHz's to
+    // 0.1 dB at 44.1-192 kHz. The period has to be 48 kHz's own, not this
+    // one rescaled: the sub-sample landing of the step against the apex
+    // kink moves X, and a period one sample off moved the hump by up to
+    // 1.7 dB. At 48 kHz the solve is the one on the written grid, as it was.
+    const float rest = height;
+    const bool referenceGrid = sampleRate_ != 48000.0;
+    bool referenceSolved = false;
+    double referenceHump = 0.0;
+    if (referenceGrid)
+    {
+        // The kept arrays serve as the reference's scratch: the host pass
+        // below rewrites them before the write reads them. A pluck not
+        // tuned for a pick (the technique changed while it waited) takes
+        // this period rescaled.
+        const double periodAt48k = referenceDelay > 0.0f
+            ? static_cast<double>(referenceDelay)
+            : static_cast<double>(loop.targetDelay) * 48000.0 / sampleRate_;
+        const int grid = std::clamp(
+            static_cast<int>(std::round(periodAt48k)),
+            8, std::min(maximumDelaySamples - 3,
+                        static_cast<int>(pickReleaseDisplacement_.size())));
+        const double referencePole = slipPole > 0.0
+            ? std::pow(slipPole, sampleRate_ / 48000.0) : 0.0;
+        const auto reference = energiesOn(grid, true);
+        referenceSolved = true;
+        if (reference.velocity > 0.0)
+        {
+            const double share = static_cast<double>(releaseShare);
+            if (referencePole > 0.0)
+            {
+                // The rest line per unit height, from zero at the bridge,
+                // slipped as applyPlectrumSlip slips the loop.
+                const float first = pickReleaseDisplacement_[0];
+                for (int sample = 0; sample < grid; ++sample)
+                    pickReleaseDisplacement_[static_cast<std::size_t>(sample)] -= first;
+                slipPeriod([this] (int sample) -> float&
+                {
+                    return pickReleaseDisplacement_[static_cast<std::size_t>(sample)];
+                }, grid, referencePole);
+                const auto slipped = slippedOn(grid,
+                    [this] (int sample)
+                    {
+                        return static_cast<double>(pickReleaseDisplacement_[
+                            static_cast<std::size_t>(sample - 1)]);
+                    },
+                    [this] (int sample)
+                    {
+                        return pickReleaseVelocity_[static_cast<std::size_t>(sample - 1)];
+                    });
+                referenceHump = solvedHump(share * slipped.displacement,
+                                           slipped.cross, reference.velocity);
+            }
+            else
+                referenceHump = solvedHump(share * reference.displacement,
+                                           reference.cross, reference.velocity);
+        }
     }
+
+    // Kept for the write pass below, which reads the same phases.
+    const bool kept = length >= 1
+        && length <= static_cast<int>(pickReleaseDisplacement_.size());
+    const auto host = energiesOn(length, kept);
+    float hump = 0.0f;
+    if (referenceSolved)
+        hump = rest * static_cast<float>(referenceHump);
+    else if (host.velocity > 0.0)
+        hump = rest * static_cast<float>(solvedHump(
+            static_cast<double>(releaseShare) * host.displacement,
+            host.cross, host.velocity));
+
     // The plucked shape every calibration was fitted with is this rest state
     // advanced by half the apex phase and negated: initialisePluck's
     // tri_p(phase) equals -rest(phase - p/2) + 1/2 (partial magnitudes agree
@@ -5194,7 +5374,8 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     // The displacement the tip leaves behind is now the slipped one, so the
     // share is of its energy and the cross term is read against it: the
     // same exact solve on what is written.
-    if (velocityEnergy > 0.0 && rest != 0.0f)
+    // At another rate the reference solve above already read the slip.
+    if (!referenceSolved && host.velocity > 0.0 && rest != 0.0f)
     {
         const auto lineAt = [&] (int sample)
         {
@@ -5202,27 +5383,10 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                 wrapDelayIndex(loop.writeIndex - sample))])
                 / static_cast<double>(-rest);
         };
-        double slippedEnergy = 0.0;
-        double slippedCross = 0.0;
-        double previousLine = lineAt(length);
-        float previousSlipVelocity = velocityAt(length);
-        for (int sample = 1; sample <= length; ++sample)
-        {
-            const double line = lineAt(sample);
-            const float velocity = velocityAt(sample);
-            const double lineStep = line - previousLine;
-            const double velocityStep = velocity - previousSlipVelocity;
-            slippedEnergy += lineStep * lineStep;
-            slippedCross += lineStep * velocityStep;
-            previousLine = line;
-            previousSlipVelocity = velocity;
-        }
-        const double added = static_cast<double>(releaseShare) * slippedEnergy;
-        const double magnitude = added
-            / (exact::abs(slippedCross)
-               + exact::sqrt(slippedCross * slippedCross + added * velocityEnergy));
-        hump = rest * static_cast<float>(slippedCross < 0.0 ? -magnitude
-                                                             : magnitude);
+        const auto slipped = slippedOn(length, lineAt, velocityAt);
+        hump = rest * static_cast<float>(solvedHump(
+            static_cast<double>(releaseShare) * slipped.displacement,
+            slipped.cross, host.velocity));
     }
     const float humpEndpoint = humpFrame(1);
     for (int sample = 1; sample <= length; ++sample)

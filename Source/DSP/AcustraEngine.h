@@ -869,6 +869,10 @@ private:
         float polarisationDetune { 0.0f };
         float dispersionDecayRatio { 10.0f };
         float dispersionPoleRatio { 4.0f };
+        // Each loop's delay as configureVoice tuned it at 48 kHz, in 48 kHz
+        // samples, for a Pick release at another rate (writePickRelease);
+        // zero when not tuned for one.
+        std::array<float, 2> referencePickDelay {};
         float level { 0.0f };
         float releaseDamping { 1.0f };
         // The hand's T60 for the release under way (beginRelease), from
@@ -1077,9 +1081,12 @@ private:
     // localised over that same aperture and carrying releaseShare of the
     // triangle's stored energy. Both are projected onto the nth-harmonic
     // node like the plucked shape. Replaces the line's first length samples.
+    // The share is solved on the grid of referenceDelay, the loop's period
+    // in 48 kHz samples, at any other host rate.
     void writePickRelease(StringLoop& loop, int length, float height,
                           float position, float aperture, int modes,
-                          float releaseShare, double slipPole) noexcept;
+                          float releaseShare, double slipPole,
+                          float referenceDelay) noexcept;
     double plectrumSlipPole(const Voice& voice, float releasedAmplitude,
                             float heldDistance, float soundingLength,
                             float scaleLength) const noexcept;
