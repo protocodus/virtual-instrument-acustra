@@ -466,7 +466,12 @@ loop's stored-state energy falls below 1% in the existing 60 ms regression,
 but the moving bridge keeps driving it: its active lifetime can last seconds.
 Each independently returned wave therefore contributes its own impedance to
 the junction - the parallel one at (h/a)^2 of it on the rocking - with the
-old wave retaining the impedance it had at capture.
+old wave retaining the impedance it had at capture. When that wave is
+let go - quiet for 80 ms, or its string handed back to the open string after a
+key-up - its port leaves the junction on the delay's 6 ms time constant rather
+than in one sample: cut at once, the impedance step moved the bridge under
+everything else sounding, a faint tick 240 ms after a fretted key-up (1.33 s
+after an open one) about 30 dB over the local high-frequency floor.
 The six physical saddle-to-anchor springs are still counted once each.
 Measured on a chord change 0.6 seconds after the first chord, the strings
 still hold 25% of their initial energy and an earlier build discarded all of

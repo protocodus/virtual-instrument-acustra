@@ -775,6 +775,9 @@ private:
         float tailLevel { 0.0f };
         int tailQuietSamples { 0 };
         bool tailActive { false };
+        // A tail being let go: its port fades out of the junction on the
+        // delay's time constant before the branch is dropped (finishVoice).
+        bool tailRetiring { false };
         int openMidi { 40 };
         int midiNote { 40 };
         // 1 is a stopped note. Above that the string sounds open in its nth
