@@ -4,6 +4,94 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-30 — blind verdicts: the strings' excitation - finger release, soft burst, wound ageing, contact ramps, pluck point
+
+A strings/excitation polish pass sent level-matched A/B pairs of five changes
+(A the shipping engine); the user's verdict on all of them: "yes pls go with
+all proposed". What ships:
+
+- **Finger and Thumb release by the plectrum's slip law.** The held force
+  unloads in r/u (u the speed the stroke's own held displacement gives the
+  string) over an effective 0.2 mm edge, applied as a ratio to the slip at
+  full velocity and rescaled to the displacement the line had, so a
+  velocity-127 stroke at the default Touch is the shipped release sample for
+  sample and the fitted level law stays; softer strokes are darker. Touch now
+  scales the release edge over two octaves for every technique (none at its
+  default 0.58; the fingers' boost bounded to three times the full-velocity
+  release speed). Finger H5-H12 over H1-H4, MIDI 16 to 112, median over eight
+  notes: 2.1 -> 9.2 dB (the finger-plucked recordings 9.0); Thumb 5.4 -> 8.2;
+  Pick unchanged at the default Touch (4.5). A second pass proposed a 0.07 mm
+  finger edge with a v^-0.04 level compensation; this one was kept because
+  it matches the recordings' rise (its own measure 9.6 against 9.0).
+- **The Finger's and Thumb's burst: the same corner twice, no white share.**
+  2-12 kHz share of the first 15 ms at velocity 127, mean over six notes:
+  Finger -15.5 -> -19.2 dB, Thumb -15.5 -> -20.2; Pick unchanged (-10.0).
+- **String Age reaches the wound strings.** Their bending loss is scaled by
+  max(0.2, 1 + 8 (age - 0.15)), identical at the default age; the plain
+  strings' cutoff falls as exp(-0.9 age) (was -1.25). Low E H5-H8 decay over
+  0.1-1.2 s: 14.0 / 16.1 / 30.9 dB/s at age 0 / 0.15 / 1 (the engine before:
+  15.8 / 16.1 / 18.2).
+- **Contact-width ramps.** The wound-string and upper-register aperture
+  terms were steps (D to G string, 16th to 17th fret) that changed a note's
+  contact by up to 70% between neighbours; they are ramps, full at the same
+  ends, half-way at the D and the 16th fret.
+- **The pluck point bends toward 0.36 of the string.** Two proposals
+  overlapped: fold the point about the string's midpoint, no nearer the fret
+  than 0.25 (P3), and bound it at 0.36 (the realism pass: no player plucks a
+  note from its own midpoint). Each was run on top of the four changes above,
+  with their combination and a smooth knee that bounds the point without a
+  dead zone: identity to 0.25 of the
+  string, then p' = 0.36 - 0.11^2/(p - 0.14), rising toward 0.36 without
+  reaching it. Benchmark (shipping vector; FitPhysicalModel.py per split;
+  BenchmarkOpenCorpora.py on the prepared Eastman rows):
+
+  | candidate (on the four changes) | train | validation | flat-top | Eastman pick | Eastman finger |
+  |---|---|---|---|---|---|
+  | engine before (beb4cd9) | 6.5585 | 6.5809 | 7.1915 | 6.3697 | 6.9126 |
+  | clamp at 0.46 (no pluck change) | 7.0398 | 6.9256 | 6.9044 | 6.3728 | 6.7219 |
+  | P3: fold, floor 0.25, clamp 0.46 | 7.0216 | 6.8087 | 6.8902 | 6.3728 | 6.7037 |
+  | bound 0.36 | 7.0484 | 6.7607 | 6.7707 | 6.3728 | 6.6444 |
+  | fold (floor 0.25) and bound 0.36 | 7.0536 | 6.7607 | 6.7801 | 6.3728 | 6.6477 |
+  | **knee 0.25 toward 0.36 (ships)** | 7.0303 | 6.7641 | **6.7124** | 6.3838 | 6.6112 |
+  | knee 0.25 toward 0.34 | 7.0151 | 6.7339 | 6.7358 | 6.3838 | 6.6232 |
+  | knee 0.25 toward 0.38 | 7.0128 | 6.7667 | 6.7547 | 6.3864 | 6.6139 |
+  | knee 0.25 toward 0.40 | 7.0367 | 6.7639 | 6.8213 | 6.3910 | 6.6140 |
+  | knee 0.22 toward 0.36 | 6.9765 | 6.7496 | 6.7993 | 6.3887 | 6.5877 |
+  | knee 0.20 toward 0.36 | 6.8789 | 6.7934 | 6.8700 | 6.3984 | 6.6218 |
+  | knee 0.28 toward 0.36 | 7.0369 | 6.7774 | 6.8126 | 6.3763 | 6.6514 |
+  | knee 0.30 toward 0.40 | 6.9967 | 6.7620 | 6.9160 | 6.3728 | 6.6355 |
+
+  The criteria were flat-top, validation and Eastman finger together without
+  a large training loss, and no dead zones. Every hard limit has them: the
+  0.46 clamp leaves Pluck Position without effect for a Thumb from the 11th
+  fret up, the 0.36 bound for a Finger from the 19th, and the fold's
+  quarter-string floor for a Thumb at the 20th (every stroke past it on
+  exactly one point). The knee moves the point at every fret for every
+  technique (a Thumb high on the neck, whose hand is past the string's end,
+  by fractions of a millimetre per quarter turn, and its partials by more
+  than 6 dB across the control) and is the best on the flat-top rows, level
+  with the bound on validation, 0.03 better than it on the Eastman finger
+  rows, and 0.018 better on training; the Eastman picked rows move 0.011.
+  The 0.22 knee is 0.02 better on Eastman finger and training but 0.09 worse
+  on the flat-top rows. MPE Timbre keeps its 0.05-0.46 band.
+
+Against the engine before, all five together: training 6.5585 -> 7.0303
+(+7.2%), development validation 6.5809 -> 6.7641 (+2.8%), the never-fitted
+flat-top rows 7.1915 -> 6.7124 (-6.7%), Eastman picked 6.3697 -> 6.3838
+(+0.2%), Eastman finger 6.9126 -> 6.6112 (-4.4%). The training and
+validation losses come with the finger release and the soft burst (the
+archtop training rows are picked and were fitted with the Finger); the pluck
+knee takes back part of them. The listener's A/Bs decide, as recorded.
+The construction loudness table was re-measured with the new excitation
+(Tools/CalibrateConstructionLoudness.py --write-header): with the old gains
+the new strings put the stereo microphones at -1.30..+0.78 LU of the default
+(59 of 72 cells within +-1; the Bellido Thumb cells +0.4..+0.8), and
+Tests/ConstructionLoudnessTests.cpp's own phrase put the Bellido Auditorium
+Maple Thumb 3.3 LU over the default, past its +-3; with the new gains every
+cell and capture is within 1 LU (--check passes) and that test's spread is
+back inside its bound. The default construction's microphone levels stay
+exactly 1.
+
 ## 2026-09-30 — at the user's request, then by ear: a gentle release sound
 
 The user asked for "a very gentle release sound". Key-up now adds the damping
