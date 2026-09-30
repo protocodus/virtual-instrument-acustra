@@ -2366,6 +2366,8 @@ void AcustraEngine::restartRandomDraws() noexcept
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 1));
         voice.contactNoiseState = 0x2545f491u
             ^ (0x9e3779b9u * static_cast<std::uint32_t>(string + 1));
+        voice.releaseNoiseState = 0x68e31da4u
+            ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 7));
         voice.bridgeTailStiffness = initialBridgeTailStiffness;
     }
 }
@@ -2423,6 +2425,7 @@ EngineParameters AcustraEngine::sanitise(const EngineParameters& source) noexcep
     result.bodyAmount = clamp(source.bodyAmount, 0.0f, 1.0f);
     result.stereoWidth = clamp(source.stereoWidth, 0.0f, 1.0f);
     result.outputGain = clamp(source.outputGain, 0.0f, 4.0f);
+    result.releaseNoise = clamp(source.releaseNoise, 0.0f, 1.0f);
     result.piezoMix = clamp(source.piezoMix, 0.0f, 1.0f);
     return result;
 }
@@ -5426,6 +5429,11 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     voice.releaseDamping = 1.0f;
     voice.releaseSeconds = 0.0f;
     voice.returnSamples = 0;
+    // A new pluck ends a key-up's touch still sounding: its drive stops and
+    // what its stages and travel hold runs out on its own.
+    voice.releaseNoiseTouch = voice.releaseNoiseBrush = 0.0f;
+    voice.peakLevel = voice.level;
+    voice.releaseVelocity = -1.0f;
 }
 
 void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
@@ -5449,6 +5457,19 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.contactNoiseSamples = 0;
     voice.contactNoiseTravel.active = false;
     voice.tailContactNoiseTravel.active = false;
+    voice.releaseVelocity = -1.0f;
+    voice.peakLevel = 0.0f;
+    // A string handed back after its release keeps the key-up's sound running
+    // out (it ends before the hand's T60 and 80 ms do); a reset stops it.
+    if (clearDelay)
+    {
+        voice.releaseNoiseSamples = 0;
+        voice.releaseNoiseTouch = voice.releaseNoiseBrush = 0.0f;
+        voice.releaseNoiseStage1 = voice.releaseNoiseStage2 = 0.0f;
+        voice.releaseNoiseBand1 = voice.releaseNoiseBand2 = 0.0f;
+        voice.releaseNoiseLaunched = 0.0f;
+        voice.releaseNoiseTravel.active = false;
+    }
     voice.attackPitchCents = 0.0f;
     voice.attackPitchDecay = 1.0f;
     voice.frozenMemberPitchBendSemitones = 0.0f;
@@ -5540,6 +5561,10 @@ void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
     voice.releaseDamping = handDamping(releaseSeconds, loopFundamental(voice));
     voice.returnSamples = static_cast<int>(
         (releaseSeconds + 0.08f) * static_cast<float>(sampleRate_));
+    if (targetParameters_.releaseNoise > 0.0f)
+        startReleaseNoise(voice, stringIndex,
+                          voice.fret > 0 && voice.harmonic <= 1);
+    voice.releaseVelocity = -1.0f;
 }
 
 // A plectrum's release. The rest displacement is Smith's opposed half-height
@@ -6834,6 +6859,9 @@ void AcustraEngine::muteVacatedString(Voice& voice, int stringIndex) noexcept
     voice.releaseDamping = handDamping(releaseSeconds, loopFundamental(voice));
     voice.returnSamples = static_cast<int>(
         (releaseSeconds + 0.08f) * static_cast<float>(sampleRate_));
+    if (targetParameters_.releaseNoise > 0.0f)
+        startReleaseNoise(voice, stringIndex,
+                          voice.fret > 0 && voice.harmonic <= 1);
 }
 
 int AcustraEngine::heldString(int midiNote, int midiChannel) const noexcept
@@ -6913,6 +6941,19 @@ void AcustraEngine::noteOff(int midiNote, int midiChannel,
     releaseKey(midiNote, midiChannel, true, sustained);
 }
 
+void AcustraEngine::noteOffWithVelocity(int midiNote, int midiChannel,
+                                        float releaseVelocity) noexcept
+{
+    releaseKey(midiNote, midiChannel, false, false, releaseVelocity);
+}
+
+void AcustraEngine::noteOffWithVelocity(int midiNote, int midiChannel,
+                                        bool sustained,
+                                        float releaseVelocity) noexcept
+{
+    releaseKey(midiNote, midiChannel, true, sustained, releaseVelocity);
+}
+
 bool AcustraEngine::sustainHolds(int midiChannel) const noexcept
 {
     if (midiChannel < 1 || midiChannel > midiChannelCount)
@@ -6922,7 +6963,8 @@ bool AcustraEngine::sustainHolds(int midiChannel) const noexcept
 }
 
 void AcustraEngine::releaseKey(int midiNote, int midiChannel,
-                               bool sustainGiven, bool sustained) noexcept
+                               bool sustainGiven, bool sustained,
+                               float releaseVelocity) noexcept
 {
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return;
@@ -6943,6 +6985,8 @@ void AcustraEngine::releaseKey(int midiNote, int midiChannel,
         return;
     candidate.ownerCount = 0;
     freezeMemberPitchBend(candidate);
+    candidate.releaseVelocity = exact::isfinite(releaseVelocity)
+        ? std::min(releaseVelocity, 1.0f) : -1.0f;
     if (candidate.pluckDelay > 0 && candidate.strumming)
     {
         // A strum's key-up that comes before the pick reaches this string
@@ -6969,6 +7013,10 @@ void AcustraEngine::completeKeyUp(Voice& voice, int stringIndex,
     voice.pedalHeldAtKeyUp = false;
     voice.keyDown = false;
     voice.pedalHeld = pedalHeld;
+    // Under the pedal the hand damps the string at pedal-up, long after the
+    // key came up, so how fast the key came up does not reach it.
+    if (voice.pedalHeld)
+        voice.releaseVelocity = -1.0f;
     if (!voice.pedalHeld)
         beginRelease(voice, stringIndex);
 }
@@ -7506,6 +7554,246 @@ ACUSTRA_NOINLINE void AcustraEngine::addTailContactNoise(
         * voice.tailParallelLoop.appliedReleaseGain;
 }
 
+// The key-up's own sound (EngineParameters::releaseNoise). Lifting a key is
+// the hand damping the string, and a hand does not damp a vibrating string
+// silently: skin lands on a string still moving under it, and the friction
+// of that landing is a small random force at the contact (Akay, "Acoustics
+// of friction", JASA 111 (2002)), in proportion to how fast the string moves
+// there, so to how much of the note is left. It is launched into the string
+// from the damping point both ways, exactly as the contact noise is
+// (renderContactNoise), so it reaches the bridge and body as the string's
+// own arrivals do and is damped with them by the hand's loss; nothing of it
+// goes through the air. Where the hand lands is the one geometric choice:
+// a fretted note is damped by the fretting finger as it relaxes, its pad
+// lying against the fret side of the speaking length, so the touch sits a
+// finger's width from the fret and, that close to the loop's end, excites
+// the upper modes far more than the fundamental (a thin "tk", not a thud);
+// an open string or a natural harmonic is stopped by the picking hand, a
+// fingertip returning to where it plucked, or under Pick the palm's edge
+// just in front of the saddle, broader and softer. On the four wound
+// strings the lifting pad also brushes the winding: a faint band of noise
+// a few milliseconds later, whose level follows the note as it was played
+// rather than what is left of it (the brush happens whether or not the
+// string still rings). Release velocity sets how firmly the hand lands.
+// Every level, corner and time draws its own take, from the voice's own
+// generator, so no two key-ups are the same and every other draw stays as
+// it was. The two levels are set so that at 0.5 a key-up sounds 30-45 dB
+// under its note's attack (measured on rendered notes, chords and lines at
+// 44.1-96 kHz), neither fitted nor chosen by ear: no recording in the
+// corpus isolates a key-up.
+void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
+                                      bool fretSide) noexcept
+{
+    const float amount = targetParameters_.releaseNoise;
+    if (!(amount > 0.0f) || !voice.played)
+        return;
+    const float rate = static_cast<float>(sampleRate_);
+    const float fundamental = loopFundamental(voice);
+    const float period = rate / fundamental;
+    if (!(period > 1.0f))
+        return;
+    auto& state = voice.releaseNoiseState;
+    const auto draw = [&state] { return xorshiftNoise(state); };
+    const float rv = voice.releaseVelocity;
+    // MIDI's nominal release velocity, 64, lands as firmly as a key-up that
+    // sends none; a slower lift lands softer and a faster one firmer, the
+    // force going about as the lift's speed to the 3/4.
+    constexpr float nominalRelease = 64.0f / 127.0f;
+    const float firmness = rv >= 0.0f && rv != nominalRelease
+        ? clamp(std::pow(std::max(rv, 0.02f) / nominalRelease, 0.75f),
+                0.35f, 1.7f)
+        : 1.0f;
+    const bool pick = parameters_.picking == PickingTechnique::Pick;
+    const bool thumb = parameters_.picking == PickingTechnique::Thumb;
+    constexpr float scaleLength = 0.648f;
+    float position = 0.0f;
+    float corner = 0.0f;
+    float fallSeconds = 0.0f;
+    float touchLevel = 0.0f;
+    float brushLevel = 0.0f;
+    if (fretSide)
+    {
+        const float speaking = scaleLength
+            * std::exp2(-static_cast<float>(voice.fret) / 12.0f);
+        const float fromFret = 0.018f + 0.006f * draw();
+        position = 1.0f - fromFret / speaking;
+        corner = 1400.0f;
+        fallSeconds = 0.010f;
+        touchLevel = 1.0f;
+        brushLevel = 1.0f;
+    }
+    else if (pick)
+    {
+        position = (0.028f + 0.006f * draw()) / scaleLength;
+        corner = 600.0f;
+        fallSeconds = 0.018f;
+        touchLevel = 0.6f;
+        brushLevel = 0.3f;
+    }
+    else
+    {
+        position = voice.pluckPoint > 0.0f ? voice.pluckPoint : 0.2f;
+        corner = thumb ? 700.0f : 1000.0f;
+        fallSeconds = 0.014f;
+        touchLevel = 0.25f;
+        brushLevel = 0.4f;
+    }
+    position = clamp(position, 0.02f, 0.98f);
+    corner = clamp(corner * (1.0f + 0.15f * draw()) * std::sqrt(firmness),
+                   100.0f, 0.2f * rate);
+    fallSeconds *= 1.0f + 0.2f * draw();
+    touchLevel *= std::pow(10.0f, 1.5f * draw() / 20.0f);
+    brushLevel *= std::pow(10.0f, 2.0f * draw() / 20.0f);
+    // A force F at the contact leaves as displacement steps F / (2 Z) each
+    // way per 48 kHz reference sample; the bridge's own force is the level
+    // the note is measured by (finishVoice), so a share of it is a level
+    // relative to the note.
+    const float impedance = voice.characteristicImpedance
+        * voice.appliedBendImpedanceScale;
+    if (!(impedance > 0.0f))
+        return;
+    const float unit = 48000.0f / rate / (2.0f * impedance);
+    const float scale = amount / 0.5f * firmness * unit;
+    constexpr float touchShare = 0.07f;
+    constexpr float brushShare = 0.0005f;
+    const float touchRms = touchShare * touchLevel * scale * voice.level;
+    const bool wound = stringIndex <= 3;
+    const float brushRms = wound
+        ? brushShare * brushLevel * scale * voice.peakLevel : 0.0f;
+    if (!(touchRms > 0.0f || brushRms > 0.0f))
+        return;
+    // Each part's envelope is the difference of a rise and a fall, zero at
+    // the key-up and normalised to peak at one: the landing takes 1.5 ms,
+    // the brush follows the pad's lift at 5 ms.
+    const auto envelope = [rate] (float riseSeconds, float fallTime,
+                                  float& riseDecay, float& fallDecay)
+    {
+        riseDecay = std::exp(-1.0f / (riseSeconds * rate));
+        fallDecay = std::exp(-1.0f / (fallTime * rate));
+        const float peakTime = std::log(fallTime / riseSeconds)
+            * riseSeconds * fallTime / (fallTime - riseSeconds);
+        return 1.0f / (std::exp(-peakTime / fallTime)
+                       - std::exp(-peakTime / riseSeconds));
+    };
+    const float touchPeak = envelope(0.0015f, fallSeconds,
+        voice.releaseNoiseRiseDecay, voice.releaseNoiseFallDecay);
+    const float brushFall = 0.016f * (1.0f + 0.25f * draw());
+    const float brushPeak = envelope(0.005f, brushFall,
+        voice.releaseNoiseBrushRiseDecay, voice.releaseNoiseBrushFallDecay);
+    // The touch is white under two one-pole stages at the skin's corner,
+    // scaled to unit RMS for the uniform draw (variance 1/3): the pair's
+    // impulse response a^2 (n + 1) r^n has energy a^4 (1 + r^2)/(1 - r^2)^3.
+    const double a = 1.0 - std::exp(-2.0 * static_cast<double>(pi)
+        * static_cast<double>(corner) / static_cast<double>(rate));
+    const double r = 1.0 - a;
+    const double pairEnergy = a * a * a * a * (1.0 + r * r)
+        / ((1.0 - r * r) * (1.0 - r * r) * (1.0 - r * r));
+    const float touchGain = static_cast<float>(
+        1.0 / std::sqrt(pairEnergy / 3.0));
+    voice.releaseNoiseCoefficient = static_cast<float>(a);
+    // The brush is a band of the winding's pulse rate, higher on the finer
+    // windings: a state-variable band-pass at unit peak gain, scaled to unit
+    // RMS by its noise bandwidth (pi / 2) f / Q.
+    constexpr std::array<float, 4> brushCentres { 2000.0f, 2400.0f,
+                                                  2900.0f, 3500.0f };
+    const float centre = std::min(wound
+        ? brushCentres[static_cast<std::size_t>(stringIndex)]
+            * (1.0f + 0.15f * draw()) : 2500.0f, 0.3f * rate);
+    constexpr float q = 2.5f;
+    const float g = std::tan(pi * centre / rate);
+    const float k = 1.0f / q;
+    voice.releaseNoiseBandA1 = 1.0f / (1.0f + g * (g + k));
+    voice.releaseNoiseBandA2 = g * voice.releaseNoiseBandA1;
+    voice.releaseNoiseBandA3 = g * voice.releaseNoiseBandA2;
+    voice.releaseNoiseBandK = k;
+    const float bandGain = 1.0f / std::sqrt(
+        (0.5f * pi * centre / q) / (0.5f * rate) / 3.0f);
+    voice.releaseNoiseTouch = touchRms * touchGain * touchPeak;
+    voice.releaseNoiseBrush = brushRms * bandGain * brushPeak;
+    voice.releaseNoiseFall = voice.releaseNoiseRise = 1.0f;
+    voice.releaseNoiseBrushFall = voice.releaseNoiseBrushRise = 1.0f;
+    // What a period's worth of force does is the string's own motion; the
+    // launched displacement leaks at the fundamental (or half the corner),
+    // which keeps it bounded as the contact noise's third stage does.
+    const double low = 1.0 - std::exp(-2.0 * static_cast<double>(pi)
+        * static_cast<double>(std::min(fundamental, 0.5f * corner))
+        / static_cast<double>(rate));
+    voice.releaseNoiseLeak = static_cast<float>(1.0 - low);
+    // Twelve fall times (-104 dB) of the longer part and the stages'
+    // ring-down. A touch still running from an earlier key-up is replaced:
+    // its stages carry on from where they are, so nothing steps.
+    const float longest = std::max(fallSeconds, brushFall);
+    voice.releaseNoiseSamples = static_cast<int>(std::ceil(
+        12.0f * longest * rate + 24.0f / static_cast<float>(a)
+        + 12.0f / static_cast<float>(low)));
+    // A finger presses down on the string, so mostly normal to the top,
+    // with the pad's slip across it the parallel share.
+    voice.releaseNoiseNormal = 0.8660254f;
+    voice.releaseNoiseParallel = 0.5f;
+    if (!voice.releaseNoiseTravel.active)
+        voice.releaseNoiseTravel.reset(0.5f * position * period,
+                                       (1.0f - 0.5f * position) * period);
+}
+
+float AcustraEngine::renderReleaseNoise(Voice& voice) noexcept
+{
+    if (voice.releaseNoiseSamples <= 0)
+        return 0.0f;
+    if (--voice.releaseNoiseSamples == 0)
+    {
+        voice.releaseNoiseTouch = voice.releaseNoiseBrush = 0.0f;
+        voice.releaseNoiseStage1 = voice.releaseNoiseStage2 = 0.0f;
+        voice.releaseNoiseBand1 = voice.releaseNoiseBand2 = 0.0f;
+        voice.releaseNoiseLaunched = 0.0f;
+        return 0.0f;
+    }
+    const float touch = voice.releaseNoiseTouch
+        * (voice.releaseNoiseFall - voice.releaseNoiseRise);
+    voice.releaseNoiseFall *= voice.releaseNoiseFallDecay;
+    voice.releaseNoiseRise *= voice.releaseNoiseRiseDecay;
+    const float white = xorshiftNoise(voice.releaseNoiseState) * touch;
+    const float a = voice.releaseNoiseCoefficient;
+    voice.releaseNoiseStage1 += a * (white - voice.releaseNoiseStage1);
+    voice.releaseNoiseStage2 += a * (voice.releaseNoiseStage1
+                                     - voice.releaseNoiseStage2);
+    float force = voice.releaseNoiseStage2;
+    if (voice.releaseNoiseBrush != 0.0f)
+    {
+        const float brush = voice.releaseNoiseBrush
+            * (voice.releaseNoiseBrushFall - voice.releaseNoiseBrushRise);
+        voice.releaseNoiseBrushFall *= voice.releaseNoiseBrushFallDecay;
+        voice.releaseNoiseBrushRise *= voice.releaseNoiseBrushRiseDecay;
+        const float input = xorshiftNoise(voice.releaseNoiseState) * brush;
+        const float v3 = input - voice.releaseNoiseBand2;
+        const float v1 = voice.releaseNoiseBandA1 * voice.releaseNoiseBand1
+                       + voice.releaseNoiseBandA2 * v3;
+        const float v2 = voice.releaseNoiseBand2
+            + voice.releaseNoiseBandA2 * voice.releaseNoiseBand1
+            + voice.releaseNoiseBandA3 * v3;
+        voice.releaseNoiseBand1 = 2.0f * v1 - voice.releaseNoiseBand1;
+        voice.releaseNoiseBand2 = 2.0f * v2 - voice.releaseNoiseBand2;
+        force += voice.releaseNoiseBandK * v1;
+    }
+    voice.releaseNoiseLaunched = voice.releaseNoiseLeak
+        * voice.releaseNoiseLaunched + force;
+    return voice.releaseNoiseLaunched;
+}
+
+ACUSTRA_NOINLINE void AcustraEngine::addReleaseNoise(
+    Voice& voice, float& verticalIncident, float& horizontalIncident) noexcept
+{
+    const float noise = renderReleaseNoise(voice);
+    if (voice.releaseNoiseTravel.active || noise != 0.0f)
+    {
+        const auto paths = voice.releaseNoiseTravel.process(noise);
+        const float local = paths[0] - paths[1];
+        verticalIncident += voice.releaseNoiseNormal * local
+            * voice.loops[0].appliedReleaseGain;
+        horizontalIncident += voice.releaseNoiseParallel * local
+            * voice.loops[1].appliedReleaseGain;
+    }
+}
+
 float AcustraEngine::renderExcitation(Voice& voice) noexcept
 {
     float excitation = 0.0f;
@@ -7691,6 +7979,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
 
     const float magnitude = exact::abs(localReactionForce);
     voice.level += levelSmoothing_ * (magnitude - voice.level);
+    voice.peakLevel = std::max(voice.peakLevel, voice.level);
     // A released string is handed back once its release damping has had its
     // T60 and the hand's 80 ms; waiting for it to fall silent would wait for
     // ever, because the bridge keeps driving it while anything else sounds.
@@ -8361,6 +8650,10 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             // about a tenth of the engine's time.
             if (voice.contactNoiseSamples > 0 || voice.contactNoiseTravel.active)
                 addContactNoise(voice,
+                    verticalIncident[static_cast<std::size_t>(string)],
+                    horizontalIncident[static_cast<std::size_t>(string)]);
+            if (voice.releaseNoiseSamples > 0 || voice.releaseNoiseTravel.active)
+                addReleaseNoise(voice,
                     verticalIncident[static_cast<std::size_t>(string)],
                     horizontalIncident[static_cast<std::size_t>(string)]);
             if (voice.tailActive)

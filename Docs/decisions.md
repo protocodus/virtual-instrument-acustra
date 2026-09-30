@@ -4,6 +4,35 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-09-30 — at the user's request, then by ear: a gentle release sound
+
+The user asked for "a very gentle release sound". Key-up now adds the damping
+hand's touch (EngineParameters::releaseNoise, plug-in "Release Noise"): a
+short soft-contact force at where the hand lands on the string (fretting pad
+18 +- 6 mm behind the fret; the fingertip at the pluck point for an open string
+or a harmonic under Finger/Thumb; the palm 28 mm before the saddle under the
+Pick), low-passed at the skin's corner (0.6-1.4 kHz), rising over 1.5 ms and
+falling over 10-18 ms, launched both ways through its own contact-travel paths
+into the loops so the string, bridge and body carry it and the hand's loss damps
+it; on the wound strings a faint band-passed brush (2.0-3.5 kHz) as the finger
+leaves the winding. Its level is a share of what the string still carries
+(the brush of the note's peak), scaled by release velocity ((v/64)^0.75, 0.35-1.7;
+none reads as 64) and drawn afresh per key-up from its own random state, so no
+other draw moves. The levels are measured targets, not fits: the corpus holds no
+isolated release sounds (as the 2026-09-04 squeak entry found). At the 50%
+nominal the added sound sits 35-47 dB under the note's attack (median over
+staccato chords, bass lines and slow melodies), mostly 150-1500 Hz.
+
+An A/B (A without, B with at 50%: a slow fingerpicked melody, staccato picked
+chords, a thumb bass line) was sent; the verdict: "B is better! increase to
+70%". The plug-in's default is therefore 70% (about 3 dB over nominal). The
+engine's own default stays 0, so the benchmark, every golden render and a
+session saved before the parameter existed are unchanged; the player now
+passes Note Off velocity to the engine (noteOffWithVelocity). Off, it is
+bit-identical to before (the performance battery at 44.1/48/96 kHz and block
+sizes 1-4096); on, it is block-size invariant, never raises the battery's peaks
+by more than 0.2%, and costs about 2.4% while it sounds.
+
 ## 2026-09-30 — blind verdicts: the pluck shape over the loop's period; the doublet stays
 
 Two level-matched A/B pairs from the 2026-09-30 defect audit, the same

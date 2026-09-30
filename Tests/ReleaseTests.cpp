@@ -353,6 +353,55 @@ void testSlidNotesAreDampedAtTheirSlidPitch()
 }
 } // namespace
 
+// The key-up's own sound (EngineParameters::releaseNoise). At zero, the
+// default, every render above is bit-identical to an engine without it. On,
+// a key-up adds a soft touch the note's attack towers over, never a new
+// onset, and a faster key-up lands firmer; every key-up differs.
+void testReleaseNoise()
+{
+    double quietest = 0.0, loudest = -1000.0;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const int note : { 43, 60, 76 })
+        {
+            acustra::EngineParameters off;
+            acustra::EngineParameters on;
+            on.releaseNoise = 0.5f;
+            const auto plain = render(off, rate, note, 100, 64);
+            const auto noisy = render(on, rate, note, 100, 64);
+            const auto firm = render(on, rate, note, 100, 127);
+            Audio difference { {}, {}, 0 };
+            difference.left.resize(plain.left.size());
+            difference.right.resize(plain.left.size());
+            for (std::size_t i = 0; i < plain.left.size(); ++i)
+            {
+                difference.left[i] = noisy.left[i] - plain.left[i];
+                difference.right[i] = noisy.right[i] - plain.right[i];
+            }
+            const std::string label = "note " + std::to_string(note) + " at "
+                + std::to_string(static_cast<int>(rate));
+            expect(peak(difference, rate, 0.0, 1.0) == 0.0,
+                   label + ": release noise sounded before the key-up");
+            const double attack = energy(plain, rate, 0.2, 0.25) / 0.05;
+            const double touch = energy(difference, rate, 1.0, 1.03) / 0.03;
+            const double level = decibels(touch / attack);
+            quietest = std::min(quietest, level);
+            loudest = std::max(loudest, level);
+            expect(level < -28.0 && level > -60.0,
+                   label + ": release noise at " + std::to_string(level)
+                       + " dB re attack");
+            const double reference = peak(plain, rate, 0.95, 1.005);
+            expect(peak(firm, rate, 1.0, 1.005) / reference <= 1.05,
+                   label + ": a firm key-up with release noise made an onset");
+            expect(energy(firm, rate, 1.0, 1.1) > energy(noisy, rate, 1.0, 1.1)
+                       || !same(firm, noisy),
+                   label + ": release velocity did not reach the release noise");
+            expect(peak(noisy, rate, 1.0, 1.8) <= peak(plain, rate, 0.2, 1.0),
+                   label + ": release noise escaped the note's headroom");
+        }
+    std::cout << "Acustra release noise 30 ms re attack: " << loudest
+              << " to " << quietest << " dB\n";
+}
+
 int main(int argc, char** argv)
 {
     if (argc == 3 && std::string(argv[1]) == "--render")
@@ -365,6 +414,7 @@ int main(int argc, char** argv)
         testHardPluckReleaseDoesNotCreateAnAttack();
         testReleasedHarmonicsAreDampedLikeTheirOpenString();
         testSlidNotesAreDampedAtTheirSlidPitch();
+        testReleaseNoise();
     }
     return failures == 0 ? 0 : 1;
 }

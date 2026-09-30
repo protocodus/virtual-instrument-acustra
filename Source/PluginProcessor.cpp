@@ -29,6 +29,7 @@ enum ParameterSlot
     slotGuitarModel,
     slotGatherChords,
     slotPiezoMix,
+    slotReleaseNoise,
     slotCount
 };
 
@@ -51,7 +52,8 @@ constexpr std::array<const char*, slotCount> parameterIds {
     ids::captureMode,
     ids::guitarModel,
     ids::gatherChords,
-    ids::piezoMix
+    ids::piezoMix,
+    ids::releaseNoise
 };
 
 std::unique_ptr<juce::RangedAudioParameter> makePercentParameter (
@@ -269,6 +271,13 @@ AcustraAudioProcessor::createParameterLayout()
     // Off by default: a session saved before it existed gets the default
     // (addMissingParameterDefaults) and so sounds as it did.
     result.push_back (makePercentParameter (ids::piezoMix, "Piezo Mix", 0.0f, 9));
+    // The key-up's own sound: the damping hand landing on the string. 50%
+    // is its nominal level, 100% twice that, 0% silent and an exact no-op.
+    // On for a new instance at 70%, the level a listener chose on
+    // 2026-09-30 (Docs/decisions.md); a session saved before it existed
+    // loads it at zero (setStateInformation) and so sounds as it did.
+    result.push_back (makePercentParameter (ids::releaseNoise, "Release Noise",
+                                            70.0f, 10));
 
     return { result.begin(), result.end() };
 }
@@ -294,6 +303,7 @@ AcustraAudioProcessor::snapshotEngineParameters() const noexcept
     result.stereoWidth = 0.01f * value (slotStereoWidth);
     result.outputGain = juce::Decibels::decibelsToGain (value (slotOutput));
     result.piezoMix = 0.01f * value (slotPiezoMix);
+    result.releaseNoise = 0.01f * value (slotReleaseNoise);
     constexpr std::array captures { acustra::CaptureType::StereoMic,
         acustra::CaptureType::MonoMic, acustra::CaptureType::Piezo };
     result.capture = captures[static_cast<std::size_t> (
@@ -450,6 +460,15 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
                 && child.getProperty ("id").toString() == ids::guitarModel
                 && static_cast<float> (child.getProperty ("value")) >= 1.5f)
                 child.setProperty ("value", 0.0f, nullptr);
+        // A session saved before Release Noise existed keeps its silent
+        // key-ups; addMissingParameterDefaults would give it the new default.
+        if (! containsParameterState (restoredState, ids::releaseNoise))
+        {
+            juce::ValueTree releaseState { "PARAM" };
+            releaseState.setProperty ("id", ids::releaseNoise, nullptr);
+            releaseState.setProperty ("value", 0.0f, nullptr);
+            restoredState.appendChild (releaseState, nullptr);
+        }
         addMissingParameterDefaults (restoredState, parameters, getParameters());
         parameters.replaceState (restoredState);
         requestPanic();

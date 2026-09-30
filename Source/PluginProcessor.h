@@ -27,8 +27,9 @@ inline constexpr auto captureMode = "captureMode";
 inline constexpr auto guitarModel = "guitarModel";
 inline constexpr auto gatherChords = "gatherChords";
 inline constexpr auto piezoMix = "piezoMix";
+inline constexpr auto releaseNoise = "releaseNoise";
 
-inline constexpr int parameterCount = 17;
+inline constexpr int parameterCount = 18;
 } // namespace acustra::parameters
 
 class AcustraAudioProcessorEditor;

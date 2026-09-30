@@ -381,8 +381,19 @@ can also change the interference between modes. These peak checks are not
 a proof of physical energy conservation.
 
 Note-off damps the note at every release velocity, including 127, without
-retuning it or adding a new excitation, so a fast keyboard key-up never sounds
-like another stroke. Release velocity is read by nothing.
+retuning it or adding a new pluck, so a fast keyboard key-up never sounds
+like another stroke. What it does add is the damping hand's own touch
+(Release Noise): a short soft-contact force where the hand lands - the
+fretting pad a finger's width behind the fret, the fingertip back at the
+pluck point for an open string, or the palm by the saddle under a pick -
+launched both ways along the string by the same travel paths the pluck's
+contact uses, so it rings through the string, the bridge and the body and is
+damped by the hand like everything else on the string. Its level follows what
+the string still carries and the key's release velocity (64 is nominal; 1 about
+9 dB under, 127 about 5 dB over), wound strings add a faint brush as the finger
+leaves the winding, and every level, corner, time and position is drawn afresh
+per key-up. At the 50% nominal it sits about 35-47 dB under the note's attack;
+at 0 it is an exact no-op.
 
 A chord that arrives on one sample, which is what a sequencer sends and no
 hand can play, is swept as a strum: newly assigned strings are fretted at
@@ -1137,6 +1148,7 @@ resonances meet it (Known gaps).
 | **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
 | **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels. At 0% (the default) the output is exactly as without it; with Capture on Piezo it does nothing, since the piezo is already the whole output. |
+| **Release Noise** | The damping hand's touch at each key-up, 0-100% (50% nominal, 70% default, chosen by ear); scaled by release velocity and what the string still carries. 0% is exactly silent; a session saved before it existed loads at 0%. Host-automatable, not on the panel. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Explicit MPE position overrides that ratio. |
 | **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. |
@@ -1498,7 +1510,8 @@ The JUCE-free suites cover:
   repeatable, allocation-free, independent of block size, and identical when
   spelt through the helpers a front end without MIDI uses; plus canonical
   same-sample order, the gathered roll, master tune and overflow counts, and
-  that CC68 and release velocity change no sample of any of it;
+  that CC68 and release velocity change no sample of any of it (with Release
+  Noise at the engine's default of 0);
 - the separate Piezo output (Tests/OutputBusTests.cpp), over that battery:
   Main bit-identical whether or not Piezo is wanted, Piezo equal to Main with
   Capture on Piezo and independent of Capture, a null
@@ -1635,8 +1648,11 @@ The JUCE-free suites cover:
   5 ms against the preceding and simultaneous held peaks, with a separate
   allowance for later ringing. Restoring the abrupt release loss fails all
   nine cases; the peak gates are not physical-energy measurements;
-- release: the wrapper and the player map every release velocity, including
-  127, to the same damped wave, and CC68 changes nothing. A dedicated release
+- release: with Release Noise off the wrapper and the player map every
+  release velocity, including 127, to the same damped wave; at its default
+  release velocity reaches the release touch alone, and CC68 changes nothing.
+  The release suite also bounds the release touch: nothing before key-up,
+  28-60 dB under the attack, no new onset, headroom kept. A dedicated release
   suite, played through the player, checks high note-on velocities across
   all four body shapes, three registers and
   44.1/48/96 kHz, plus CC68 moved under the sustain pedal and the immediate
@@ -1662,8 +1678,8 @@ The C++ suites run under ctest at a shell's default 8 MB stack (ctest itself
 raises the limit on macOS), so each also runs directly or under a debugger;
 the tests keep their engines and processors on the heap.
 
-The wrapper suite additionally checks that release velocity and CC68 change
-nothing, sample-accurate MIDI, canonical
+The wrapper suite additionally checks that release velocity reaches only
+the release touch and CC68 changes nothing, sample-accurate MIDI, canonical
 same-time chord order, gathered live chords (a triad rolled low to high over
 20 ms, and a six-string E major rolled over 25 ms after a D major the hand
 remembers, sound bit-identical to the same chord on one sample, while notes more
