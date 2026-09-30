@@ -1340,6 +1340,12 @@ private:
     BridgeLoad fadingBridgeLoad_ {};
     float bridgeLoadFade_ { 1.0f };
     float bridgeLoadFadeStep_ { 1.0f / 960.0f };
+    // A rebuild asked for while that fade runs waits for it to end, as the
+    // body's does (bodyUpdatePending_): restarting the fade from a mix of two
+    // banks, or rebuilding under it, stepped the bridge.
+    bool bridgeUpdatePending_ { false };
+    GuitarModel configuredBridgeModel_ { GuitarModel::Original };
+    void applyPendingBridge(bool fade) noexcept;
     int controlCounter_ { 0 };
     int lowerZoneMemberCount_ { 0 };
     // -1 means no CC74 (mpeTimbre_) or channel pressure (mpePressure_) has

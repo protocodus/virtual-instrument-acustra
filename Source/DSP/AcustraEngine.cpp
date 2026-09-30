@@ -2634,6 +2634,8 @@ void AcustraEngine::reset() noexcept
     // Both banks follow the model, which is only known here: prepare runs
     // before the pending parameters are adopted.
     configureBridge();
+    configuredBridgeModel_ = parameters_.guitarModel;
+    bridgeUpdatePending_ = false;
     configureBody();
     bodyBank_.reset();
     fadingBodyBank_.reset();
@@ -2691,6 +2693,9 @@ void AcustraEngine::resetSoundState() noexcept
     bridgeDerivativesCrossRelease_ = false;
     bridgeDerivativesCrossConfigure_ = false;
     bridgeLoadFade_ = 1.0f;
+    // A cleared bridge has no fade left to wait for.
+    if (bridgeUpdatePending_)
+        applyPendingBridge(false);
     lastImpedanceSum_ = 0.0f;
     lastImpedanceMoment_ = 0.0f;
     lastImpedanceInertia_ = 0.0f;
@@ -2761,12 +2766,19 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
         configureBody();
     if (bridgeChanged)
     {
-        if (!force && bridgeLoadFade_ >= 1.0f)
+        if (!force && bridgeLoadFade_ < 1.0f)
+            bridgeUpdatePending_ = true;
+        else
         {
-            fadingBridgeLoad_ = bridgeLoad_;
-            bridgeLoadFade_ = 0.0f;
+            if (!force)
+            {
+                fadingBridgeLoad_ = bridgeLoad_;
+                bridgeLoadFade_ = 0.0f;
+            }
+            configureBridge(sameBridgeBank);
+            configuredBridgeModel_ = parameters_.guitarModel;
+            bridgeUpdatePending_ = false;
         }
-        configureBridge(sameBridgeBank);
     }
 
     const auto notes = openNotes(parameters_.tuning);
@@ -3279,6 +3291,22 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         bridgeLoad_.activeModes[static_cast<std::size_t>(
             bridgeLoad_.activeModeCount++)] = static_cast<std::uint8_t>(index);
     }
+}
+
+// The rebuild a construction change asked for while the bridge was still
+// fading, now that the fade has ended: it fades from the bank that settled,
+// or, when the bridge was cleared instead, is simply built.
+void AcustraEngine::applyPendingBridge(bool fade) noexcept
+{
+    bridgeUpdatePending_ = false;
+    if (fade)
+    {
+        fadingBridgeLoad_ = bridgeLoad_;
+        bridgeLoadFade_ = 0.0f;
+        bridgeDerivativesCrossConfigure_ = true;
+    }
+    configureBridge(configuredBridgeModel_ == parameters_.guitarModel);
+    configuredBridgeModel_ = parameters_.guitarModel;
 }
 
 float AcustraEngine::bridgePhaseDelay(float frequency,
@@ -6290,6 +6318,8 @@ void AcustraEngine::setBridgeCouplingEnabled(bool enabled) noexcept
     bridgeDerivativesCrossRelease_ = false;
     bridgeDerivativesCrossConfigure_ = false;
     bridgeLoadFade_ = 1.0f;
+    if (bridgeUpdatePending_)
+        applyPendingBridge(false);
     if (!prepared_)
         return;
     for (int string = 0; string < stringCount; ++string)
@@ -7630,6 +7660,8 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                                     fadingBridgeLoad_, bridgeLoadFade_);
                 bridgeLoadFade_ = std::min(1.0f,
                     bridgeLoadFade_ + bridgeLoadFadeStep_);
+                if (bridgeLoadFade_ >= 1.0f && bridgeUpdatePending_)
+                    applyPendingBridge(true);
             }
             else
                 bridgeLoad_.process(drive, inverseSampleRate_);

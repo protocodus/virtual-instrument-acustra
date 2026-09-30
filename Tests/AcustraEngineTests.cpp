@@ -37,6 +37,10 @@ struct AcustraEngineTestAccess
     {
         return engine.voices_[static_cast<std::size_t>(string)].randomState;
     }
+    static float bridgeDisplacement(const AcustraEngine& engine)
+    {
+        return engine.bridgeLoad_.displacement;
+    }
     static bool idleFlushed(const AcustraEngine& engine)
     {
         return engine.idleFlushed_;
@@ -7927,11 +7931,69 @@ void testPluckDrawsIgnoreEarlierBursts()
     }
 }
 
+// A second construction change inside the bridge's 20 ms crossfade waits for
+// it to end, as the body's does. Rebuilding the bridge under the running
+// fade stepped it: up to 83 times the largest sample-to-sample surprise in
+// its motion before the switch, 5-9 dB more top for a few milliseconds.
+void testASecondConstructionChangeDoesNotStepTheBridge()
+{
+    using acustra::EngineParameters;
+    EngineParameters steel;
+    steel.outputGain = 0.2f;
+    auto parlor = steel;
+    parlor.shape = acustra::BodyShape::Parlor;
+    auto bellido = steel;
+    bellido.guitarModel = acustra::GuitarModel::Bellido1978;
+    auto bellidoParlor = parlor;
+    bellidoParlor.guitarModel = acustra::GuitarModel::Bellido1978;
+    const int rate = 48000;
+    const int ms5 = rate / 200;
+    struct Case { const char* name; EngineParameters first; int after; EngineParameters second; };
+    for (const auto& change : { Case { "Model then back 15 ms later", bellido, 3 * ms5, steel },
+                                Case { "Model then back 5 ms later", bellido, ms5, steel },
+                                Case { "Shape then Model 5 ms later", parlor, ms5, bellidoParlor } })
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->setParameters(steel);
+        engine->prepare(rate, 256);
+        engine->beginStrum();
+        const std::array<int, 6> chord { 40, 47, 52, 56, 59, 64 };
+        for (std::size_t k = 0; k < chord.size(); ++k)
+            engine->noteOn(chord[k], 0.8f, 1, static_cast<int>(k) * 300, true);
+        const int start = 24000;
+        std::vector<double> x;
+        double before = 0.0, worst = 0.0;
+        for (int i = 0; i < start + 2 * change.after + 960; ++i)
+        {
+            if (i == start)
+                engine->setParameters(change.first);
+            if (i == start + change.after)
+                engine->setParameters(change.second);
+            float left = 0.0f, right = 0.0f;
+            engine->process(&left, &right, 1);
+            x.push_back(acustra::AcustraEngineTestAccess::bridgeDisplacement(*engine));
+            if (i < 2)
+                continue;
+            const auto n = x.size() - 1;
+            const double surprise = std::abs(x[n] - 2.0 * x[n - 1] + x[n - 2]);
+            if (i >= start - rate / 50 && i < start)
+                before = std::max(before, surprise);
+            else if (i >= start)
+                worst = std::max(worst, surprise);
+        }
+        std::cout << "Acustra bridge, " << change.name << ": worst motion surprise "
+                  << worst / before << "x the largest before\n";
+        expect(worst < 3.0 * before,
+               std::string("the bridge stepped on a second construction change: ") + change.name);
+    }
+}
+
 } // namespace
 
 int main()
 {
     testIdleFlushIsIndependentOfBlockSize();
+    testASecondConstructionChangeDoesNotStepTheBridge();
     testPluckDrawsIgnoreEarlierBursts();
     testBridgeHandTopLossIsItsT60Ratio();
     testDecayEstimatorFollowsPitchGlides();
