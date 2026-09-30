@@ -1328,8 +1328,7 @@ private:
     // instrument reaches exact zero (processIdleFlush).
     int idleQuietSamples_ { 0 };
     bool idleFlushed_ { true };
-    float idleBlockPeak_ { 0.0f };
-    void processIdleFlush(int numSamples) noexcept;
+    void processIdleFlush(float samplePeak) noexcept;
     float bodyModelFade_ { 1.0f };
     float bodyModelFadeStep_ { 1.0f / 1920.0f };
     // A live bridge rebuild crossfades the mobility from the modes that were

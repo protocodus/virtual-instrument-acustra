@@ -2664,7 +2664,6 @@ void AcustraEngine::resetSoundState() noexcept
 {
     idleQuietSamples_ = 0;
     idleFlushed_ = true;
-    idleBlockPeak_ = 0.0f;
     resetPiezo();
     piezoForceDerivative_.reset();
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
@@ -7791,7 +7790,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // (zero while longitudinalGain ships at 0).
         const float loadedPiezo = renderPiezo(
             lastPiezoForce_ + PiezoDesign::axialShare * lastLongitudinalForce_);
-        idleBlockPeak_ = std::max({ idleBlockPeak_, exact::abs(body.left),
+        const float idlePeak = std::max({ exact::abs(body.left),
             exact::abs(body.right), exact::abs(body.upper),
             exact::abs(directLeft), exact::abs(directRight),
             exact::abs(loadedPiezo) });
@@ -7849,12 +7848,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         outputRight = safetyLimit(outputRight);
         left[sample] = exact::isfinite(outputLeft) ? outputLeft : 0.0f;
         right[sample] = exact::isfinite(outputRight) ? outputRight : 0.0f;
+        processIdleFlush(idlePeak);
     }
     sampleClock_ += static_cast<std::uint64_t>(numSamples);
-    processIdleFlush(numSamples);
 }
 
-void AcustraEngine::processIdleFlush(int numSamples) noexcept
+void AcustraEngine::processIdleFlush(float samplePeak) noexcept
 {
     // The residue is a string-bridge equilibrium kept up by rounding: each
     // loop holds a quasi-DC value near 1e-13 and the bridge a matching
@@ -7866,9 +7865,17 @@ void AcustraEngine::processIdleFlush(int numSamples) noexcept
     // when nothing is playing, and again only after it has sounded.
     constexpr float idleFloor = 1.0e-11f;
     constexpr float idleFlushSeconds = 0.08f;
-    const float peak = idleBlockPeak_;
-    idleBlockPeak_ = 0.0f;
-    bool idle = peak < idleFloor;
+    // Counted sample by sample, so the flush lands on the same sample
+    // whatever blocks the host or the player split the audio into.
+    if (!(samplePeak < idleFloor))
+    {
+        idleQuietSamples_ = 0;
+        idleFlushed_ = false;
+        return;
+    }
+    if (idleFlushed_)
+        return;
+    bool idle = true;
     for (const auto& voice : voices_)
         idle = idle && !voice.played && !voice.keyDown && !voice.pedalHeld
             && !voice.tailActive && voice.pluckDelay == 0
@@ -7882,9 +7889,7 @@ void AcustraEngine::processIdleFlush(int numSamples) noexcept
         idleFlushed_ = false;
         return;
     }
-    if (idleFlushed_)
-        return;
-    idleQuietSamples_ += numSamples;
+    ++idleQuietSamples_;
     if (static_cast<float>(idleQuietSamples_)
         < idleFlushSeconds * static_cast<float>(sampleRate_))
         return;

@@ -29,6 +29,10 @@ struct AcustraEngineTestAccess
         for (auto& voice : engine.voices_)
             voice.loops[1].reset();
     }
+    static bool idleFlushed(const AcustraEngine& engine)
+    {
+        return engine.idleFlushed_;
+    }
     static float saddleHeightRatio(const AcustraEngine& engine)
     {
         return engine.saddleHeightRatio();
@@ -7789,10 +7793,63 @@ void testPerformance()
     expect(realtimeRatio < 0.25,
            "six-string engine exceeded the 0.25x realtime CPU gate");
 }
+// The idle flush lands on the same sample whatever blocks the audio is
+// rendered in. It used to be counted in whole process() calls, so with
+// large blocks it came later, and a note played in between started from a
+// different state than with small blocks.
+void testIdleFlushIsIndependentOfBlockSize()
+{
+    const auto render = [] (int blockSize, long secondAt, long length, long* flushedAt)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->prepare(sampleRate, 4096);
+        std::vector<float> left(static_cast<std::size_t>(length)),
+            right(static_cast<std::size_t>(length));
+        const long releaseAt = static_cast<long>(sampleRate) / 10;
+        long position = 0;
+        engine->noteOn(52, 0.8f);
+        while (position < length)
+        {
+            long end = std::min(position + blockSize, length);
+            for (const long event : { releaseAt, secondAt })
+                if (event > position && event < end)
+                    end = event;
+            if (position == releaseAt)
+                engine->noteOff(52);
+            if (position == secondAt)
+                engine->noteOn(57, 0.8f);
+            const auto at = static_cast<std::size_t>(position);
+            const bool wasFlushed = acustra::AcustraEngineTestAccess::idleFlushed(*engine);
+            engine->process(left.data() + at, right.data() + at,
+                           static_cast<int>(end - position));
+            if (flushedAt != nullptr && *flushedAt < 0 && !wasFlushed && position > releaseAt
+                && acustra::AcustraEngineTestAccess::idleFlushed(*engine))
+                *flushedAt = end;
+            position = end;
+        }
+        left.insert(left.end(), right.begin(), right.end());
+        return left;
+    };
+    const long length = 30L * static_cast<long>(sampleRate);
+    long flushedAt = -1;
+    render(1, length, length, &flushedAt);
+    expect(flushedAt > 0, "a released note never reached the idle flush");
+    if (flushedAt <= 0)
+        return;
+    const long secondAt = flushedAt + 100;
+    const long total = secondAt + static_cast<long>(sampleRate) / 2;
+    const auto reference = render(1, secondAt, total, nullptr);
+    for (const int blockSize : { 64, 4096 })
+        expect(render(blockSize, secondAt, total, nullptr) == reference,
+               "a note after the idle flush sounded differently in blocks of "
+                   + std::to_string(blockSize));
+}
+
 } // namespace
 
 int main()
 {
+    testIdleFlushIsIndependentOfBlockSize();
     testDecayEstimatorFollowsPitchGlides();
     testLossFiltersPreserveTheReferenceTransfer();
     testSilenceAndFiniteOutput();
