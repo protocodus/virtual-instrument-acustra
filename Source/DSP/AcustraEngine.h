@@ -799,6 +799,8 @@ private:
         float excitationDecay { 0.0f };
         float excitationColour { 0.0f };
         float excitationLowpass { 0.0f };
+        float excitationLowpass2 { 0.0f };
+        bool excitationSoft { false };
         // renderExcitation's lowpass coefficient for this colour and host
         // rate, which a burst keeps throughout: a powf per sample otherwise.
         std::uint32_t excitationCoefficientColour { 0xffffffffu };
@@ -852,6 +854,11 @@ private:
         // Where each plane's release shape put its kink, as a share of the
         // line it was written on (initialisePluck).
         std::array<float, 2> releaseShapePosition {};
+        // A Finger or Thumb release's slip and the full-velocity slip it is
+        // taken as a ratio to (initialisePluck); zero when the release is
+        // the written shape itself.
+        double releaseSlipPole { 0.0 };
+        double releaseReferencePole { 0.0 };
         // Routing identity survives transport retirement: a drained contact
         // must not fall back to the former bridge-boundary source write.
         bool contactTravelEnabled { false };
@@ -1167,7 +1174,7 @@ private:
                           float referenceDelay) noexcept;
     double plectrumSlipPole(const Voice& voice, float releasedAmplitude,
                             float heldDistance, float soundingLength,
-                            float scaleLength) const noexcept;
+                            float scaleLength, float edgeRadius) const noexcept;
     static void applyPlectrumSlip(StringLoop& loop, int length,
                                   double slipPole) noexcept;
     void resetSoundState() noexcept;

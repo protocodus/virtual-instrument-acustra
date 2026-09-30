@@ -4417,7 +4417,11 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // fundamental T60 target below. With the fitted 2.29 the scaled cutoff
     // is past the 0.44 x 48 kHz clamp up to a String Age of about 0.24, so
     // at the default age it does nothing.
-    const float cutoff = 12500.0f * std::exp(-1.25f * age)
+    // The plain strings' age cutoff falls as exp(-0.9 age) (it was -1.25):
+    // at age 1 the high E above the 12th fret lost its upper partials four
+    // times faster than the wound strings gained any loss at all. It sits
+    // past the clamp below at the default age either way.
+    const float cutoff = 12500.0f * std::exp(-0.9f * age)
         * physicalCalibration_.highLossCutoffScale;
     const float lowpassCoefficient = std::exp(
         -twoPi * clamp(cutoff, 1200.0f,
@@ -4495,8 +4499,16 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // way that design is. The four basses are the wound constructions
     // (steelBendingDiameter above says so).
     const bool wound = stringIndex <= 3;
+    // A wound string goes dead first: grime and corrosion between its
+    // windings are internal friction in its bending (the loss this section
+    // models), where a plain string only dulls. The one-pole cutoff below
+    // String Age acts in absolute frequency, so it reached a low E's
+    // partials only above its 50th and aged a bass by 0.2 dB. The wound loss
+    // now rises with age, pivoted on the default age so the shipped sound is
+    // unchanged there: 0.2 of it on fresh strings, 7.8 times it at age 1.
+    const float woundAgeing = std::max(0.2f, 1.0f + 8.0f * (age - 0.15f));
     const float bendingFactor = wound
-        ? physicalCalibration_.steelWoundBendingLoss
+        ? physicalCalibration_.steelWoundBendingLoss * woundAgeing
         : physicalCalibration_.steelPlainBendingLoss;
     // A dispersion design for these complete arguments, from the solves
     // already made when one matches exactly, otherwise solved and kept.
@@ -5031,16 +5043,37 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     const bool hasTimbre = voice.mpeMember && voice.midiChannel >= 1
         && voice.midiChannel <= midiChannelCount
         && mpeTimbre_[channelIndex] >= 0.0f;
-    const float basePosition = hasTimbre
+    float basePosition = hasTimbre
         ? 0.05f + 0.41f * mpeTimbre_[channelIndex]
         : distanceFromBridge / soundingLength;
-    // The band is 0.05-0.46 of the sounding length. Past it - a hand at its
-    // distance from the bridge high on the neck, or a Thumb - the base point
-    // stops at the band's edge and the take's draw is reflected back inside
-    // it, so a clamped pluck still varies from take to take. Clamping the
-    // drawn point instead put every such pluck on exactly 0.46.
+    // A hand held at its distance from the bridge meets a short (stopped
+    // high on the neck) string ever further toward its middle, and a Thumb
+    // meets even the open strings there. No player lets a note sound from
+    // its own midpoint, where every even partial is nulled: the flat-top
+    // recordings' plain-string H2 stands 7 dB under H1 where renders plucked
+    // at the old band edge 0.46 stood 20 under. So past a quarter of the
+    // string the point bends smoothly toward 0.36 and never reaches it,
+    // p' = h - w^2 / (p - k + w), w = h - k: the same point and slope at the
+    // knee k = 0.25 and still rising wherever the hand moves. The hard
+    // 0.46 clamp this replaces, and a fold about the midpoint with a
+    // quarter-string floor, each left Pluck Position without effect on
+    // whole frets (the clamp a Thumb from the 11th fret up, the fold a
+    // Thumb at the 20th); the knee beat both, and a hard bound at 0.36, on
+    // the benchmark (Docs/decisions.md, 2026-09-30). CC74 still names any
+    // point of its published 0.05-0.46 band directly.
     constexpr float lowestPoint = 0.05f;
-    constexpr float highestPoint = 0.46f;
+    constexpr float kneePoint = 0.25f;
+    constexpr float handLimit = 0.36f;
+    if (!hasTimbre && basePosition > kneePoint)
+    {
+        constexpr float width = handLimit - kneePoint;
+        basePosition = handLimit
+            - width * width / (basePosition - kneePoint + width);
+    }
+    // Past the band's edge the take's draw is reflected back inside it, so
+    // a pluck near the edge still varies from take to take. Clamping the
+    // drawn point instead put every such pluck on exactly the edge.
+    const float highestPoint = hasTimbre ? 0.46f : handLimit;
     float position = clamp(basePosition, lowestPoint, highestPoint) + takeOffset;
     if (position > highestPoint)
         position = 2.0f * highestPoint - position;
@@ -5109,10 +5142,57 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         ? physicalCalibration_.pickReleaseVelocityShare
             * std::pow(v, physicalCalibration_.pickReleaseVelocityExponent)
         : 0.0f;
-    const double slipPole = pick
-        ? plectrumSlipPole(voice, releasedAmplitude, heldDistance,
-                           soundingLength, scaleLength)
-        : 0.0;
+    // Touch is how fast the hand lets go: a firm touch releases the string
+    // over a smaller effective edge, a soft one over a larger, two octaves
+    // of radius across the control and none at its default.
+    const float releaseTouch = std::exp2(2.0f * (0.58f - parameters_.touch));
+    double slipPole = 0.0;
+    // A fingertip or the thumb's pad lets go the way the plectrum's edge does
+    // (plectrumSlipPole): the held force unloads in r/u, u the speed its own
+    // held displacement gives the string, so a soft stroke is released more
+    // slowly and darker. Without it a finger's sustained H5-H12 over H1-H4
+    // rose 1.3-2.9 dB from MIDI 16 to 112 where the recordings rise a median
+    // 9. The Finger and Thumb shapes the listener chose were written with no
+    // slip, so only the ratio to the slip at full velocity is applied: a
+    // full-velocity stroke at the default Touch is bit for bit the shipped
+    // release, and a softer stroke is darker (0.3 dB at MIDI 112, 6-8 dB at
+    // 16). A firmer Touch may brighten past the shipped release, bounded to
+    // a tripled release speed. The ratio moves energy out of (or into) the
+    // upper partials, so the written line is rescaled to the displacement it
+    // had: the velocity-to-level law stays the one fitted.
+    constexpr float fingerReleaseRadius = 0.2e-3f;
+    constexpr float releaseReferenceVelocity = 1.0f;
+    constexpr double releaseBoostLimit = 3.0;
+    double unslipPole = 0.0;
+    voice.releaseSlipPole = 0.0;
+    voice.releaseReferencePole = 0.0;
+    if (pick)
+        slipPole = plectrumSlipPole(voice, releasedAmplitude, heldDistance,
+            soundingLength, scaleLength,
+            physicalCalibration_.pickEdgeRadiusMetres * releaseTouch);
+    else
+    {
+        const double referencePole = plectrumSlipPole(voice, releasedAmplitude
+                * std::pow(releaseReferenceVelocity / v, velocityExponent),
+            heldDistance, soundingLength, scaleLength, fingerReleaseRadius);
+        const double pole = plectrumSlipPole(voice, releasedAmplitude,
+            heldDistance, soundingLength, scaleLength,
+            fingerReleaseRadius * releaseTouch);
+        if (referencePole > 0.0 && pole > 0.0)
+        {
+            const double referenceTau = -1.0 / std::log(referencePole);
+            const double tau = std::max(-1.0 / std::log(pole),
+                                        referenceTau / releaseBoostLimit);
+            const double bounded = std::exp(-1.0 / tau);
+            if (bounded != referencePole)
+            {
+                slipPole = bounded;
+                unslipPole = referencePole;
+            }
+        }
+        voice.releaseSlipPole = unslipPole > 0.0 ? slipPole : 0.0;
+        voice.releaseReferencePole = unslipPole;
+    }
 
     // The finger's contact width over the tool's, for the contact noise's
     // corner below (a thumb's broader pad slides off more slowly).
@@ -5158,11 +5238,18 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // Authored terms, fitted with the rest of the pluck
         // (Docs/decisions.md): Touch narrows the contact; the three lowest
         // strings take a sample more (a nylon-era grouping of the wound
-        // basses that the steel fit kept, so steel's wound G is not in it);
-        // above the 17th fret, where the sounding length is short, 1.5 more.
+        // basses that the steel fit kept), and the short upper-register
+        // string 1.5 more. Both were steps - the D to the G string, and the
+        // 16th to the 17th fret - that changed a note's contact by up to 70%
+        // between neighbours; they are ramps now, full at the same ends
+        // (the low E and A, and from the 19th fret), half-way at the D and
+        // the 16th fret.
+        const float woundContact = clamp(
+            (3.0f - static_cast<float>(stringIndex)) / 2.0f, 0.0f, 1.0f);
+        const float upperContact = 1.5f * clamp(
+            (static_cast<float>(voice.fret) - 13.0f) / 6.0f, 0.0f, 1.0f);
         const float apertureSamples = 0.70f + 3.60f * (1.0f - touch)
-            + (stringIndex < 3 ? 1.0f : 0.0f)
-            + (voice.fret >= 17 ? 1.5f : 0.0f);
+            + woundContact + upperContact;
 #endif
         const int modes = std::max(voice.harmonic, 1);
         // A thumb's soft pad retains a finite contact footprint even at hard
@@ -5344,7 +5431,50 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             initialise(nearestCorner);
         else
             initialise(periodicCorner);
-        applyPlectrumSlip(loop, length, slipPole);
+        if (unslipPole > 0.0)
+        {
+            const auto lineAt = [&loop] (int sample) -> float&
+            {
+                return loop.delay[static_cast<std::size_t>(
+                    maximumDelaySamples - sample - 1)];
+            };
+            const auto spread = [&] ()
+            {
+                double mean = 0.0;
+                for (int sample = 0; sample < length; ++sample)
+                    mean += lineAt(sample);
+                mean /= static_cast<double>(length);
+                double sum = 0.0;
+                for (int sample = 0; sample < length; ++sample)
+                    sum += (lineAt(sample) - mean) * (lineAt(sample) - mean);
+                return sum;
+            };
+            const double before = spread();
+            applyPlectrumSlip(loop, length, slipPole);
+            // The reference slip's periodic inverse, x = (y - b y[-1])/(1 - b),
+            // re-zeroed at the bridge sample as the slip itself is.
+            const double b = unslipPole;
+            double previous = lineAt(length - 1);
+            double first = 0.0;
+            for (int sample = 0; sample < length; ++sample)
+            {
+                const double current = lineAt(sample);
+                const double value = (current - b * previous) / (1.0 - b);
+                previous = current;
+                if (sample == 0)
+                    first = value;
+                lineAt(sample) = static_cast<float>(value - first);
+            }
+            const double after = spread();
+            if (before > 0.0 && after > 0.0)
+            {
+                const float scale = static_cast<float>(exact::sqrt(before / after));
+                for (int sample = 0; sample < length; ++sample)
+                    lineAt(sample) *= scale;
+            }
+        }
+        else
+            applyPlectrumSlip(loop, length, slipPole);
     }
 
     double slopeEnergy = 0.0;
@@ -5408,6 +5538,15 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         / (std::max(burstSeconds, 0.0004f) * static_cast<float>(sampleRate_)));
     voice.excitationColour = 0.10f + 0.62f * touch;
     voice.excitationLowpass = 0.0f;
+    voice.excitationLowpass2 = 0.0f;
+    // A fingertip or the thumb's pad is not a plectrum: over its first
+    // 15 ms the finger-plucked flat-tops (the bank's flat-top rows and the
+    // Eastman E1D's finger take) carry 10-25 dB less 2-16 kHz than the
+    // burst's one-pole-plus-white spectrum gave them. The soft contacts'
+    // burst is the same noise through the same corner twice, with no white
+    // share: -12 dB per octave above the corner instead of -6 and a flat
+    // floor. The plectrum keeps its law.
+    voice.excitationSoft = parameters_.picking != PickingTechnique::Pick;
     // The burst draws on from where this pluck's draws ended, as it always
     // has, but from its own copy: its length follows velocity, Touch and the
     // rate, so drawn from randomState it moved every later pluck's draws
@@ -5607,9 +5746,9 @@ double AcustraEngine::plectrumSlipPole(const Voice& voice,
                                        float releasedAmplitude,
                                        float heldDistance,
                                        float soundingLength,
-                                       float scaleLength) const noexcept
+                                       float scaleLength,
+                                       float edgeRadius) const noexcept
 {
-    const float edgeRadius = physicalCalibration_.pickEdgeRadiusMetres;
     if (!(edgeRadius > 0.0f))
         return 0.0;
     // c = 2 L0 f0 of the open string: fretting shortens the string, not the
@@ -7819,10 +7958,17 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
             const float excitationCoefficient = voice.excitationCoefficient;
             voice.excitationLowpass += excitationCoefficient
                 * (noise - voice.excitationLowpass);
-            excitation = (voice.excitationLowpass
-                + 0.16f * voice.excitationColour
-                    * (noise - voice.excitationLowpass))
-                * voice.excitationEnvelope;
+            if (voice.excitationSoft)
+            {
+                voice.excitationLowpass2 += excitationCoefficient
+                    * (voice.excitationLowpass - voice.excitationLowpass2);
+                excitation = voice.excitationLowpass2 * voice.excitationEnvelope;
+            }
+            else
+                excitation = (voice.excitationLowpass
+                    + 0.16f * voice.excitationColour
+                        * (noise - voice.excitationLowpass))
+                    * voice.excitationEnvelope;
         }
         voice.excitationEnvelope *= voice.excitationDecay;
     }
