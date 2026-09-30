@@ -6436,8 +6436,10 @@ void testSwitchingTuningOrModelUnderAChordDoesNotClick()
     // stored energy to another guitar's bridge and body, and the new body's
     // modes start from rest under it: the Bellido to the Original about twice
     // (1.998 before the pluck shape was laid over the loop's period on
-    // 2026-09-30, 2.030 after; the swell is the chord's stored energy, so
-    // its spectrum moves it), bounded at 2.1. The Original to the Bellido is more, since
+    // 2026-09-30, 2.030 after; 2.12 once the finger's release slip and the
+    // radiation above the measured band joined it the same day, as the
+    // Original to the Bellido fell from 3.24 to 3.05; the swell is the
+    // chord's stored energy, so its spectrum moves it), bounded at 2.2. The Original to the Bellido is more, since
     // every construction plays at one loudness
     // (ConstructionLoudnessData.h): the Original's chord, drained less by
     // its stiffer top, pours through the Bellido's mobile one at 4.1 times
@@ -6479,7 +6481,7 @@ void testSwitchingTuningOrModelUnderAChordDoesNotClick()
     using G = acustra::GuitarModel;
     struct Switch { const char* name; acustra::EngineParameters from, to; double bound; };
     for (const auto& item : {
-             Switch { "Bellido to Original", make(G::Bellido1978), make(G::Original), 2.1 },
+             Switch { "Bellido to Original", make(G::Bellido1978), make(G::Original), 2.2 },
              Switch { "Original to Bellido", make(G::Original), make(G::Bellido1978), 3.5 } })
     {
         const double ratio = against(item.from, item.to);
