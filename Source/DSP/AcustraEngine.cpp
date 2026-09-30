@@ -1161,7 +1161,11 @@ bool includeMeasuredBridgeMode(const detail::MeasuredBridgeMode& mode) noexcept
 // conductance is flat between them; centre sqrt(f_low*f_high) with
 // q = sqrt(f_low/f_high) places those poles at f_low and f_high, and
 // weight = G*2*pi*f_high makes the plateau conductance equal G. The upper
-// limit is fixed above the 10 kHz measurement band it extrapolates.
+// limit is fixed above the 10 kHz measurement band it extrapolates. As built
+// (configureBridge) the centre is prewarped at 48 kHz, which raises both
+// analog poles about 5%, and 48 kHz's bilinear map then draws the upper one
+// toward Nyquist; the plateau was fitted as that 48 kHz design renders, so
+// every host rate keeps the same analog prototype.
 constexpr float plateConductanceUpperHz = 16000.0f;
 
 struct PlateConductanceMode
@@ -3147,8 +3151,12 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         bridgeLoad_.residueCross[index] = 0.0f;
         bridgeLoad_.residueRock[index] = 0.0f;
         bridgeLoad_.rocking[index] = false;
+        // The plate conductance floor is broadband: it is kept at every
+        // rate, from its 48 kHz design (below), rather than dropped with the
+        // modes above 0.45 fs, which took it away below a 13 kHz host.
+        const bool plateFloor = index == static_cast<std::size_t>(bridgeModeCount);
         const bool active = (heave > 0.0f || rock > 0.0f)
-                          && frequency < 0.45f * rate;
+                          && (plateFloor || frequency < 0.45f * rate);
         if (!active)
         {
             for (auto* mode : { &heaveMode, &rockMode })
@@ -3161,8 +3169,14 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         }
         const double rateD = sampleRate_;
         const double bilinearD = 2.0 * rateD;
-        const double omega = bilinearD * std::tan(
-            static_cast<double>(pi) * frequency / rateD);
+        // Each mode is prewarped at the host rate to keep its centre. The
+        // over-damped floor has no centre to keep: its plateau was fitted as
+        // 48 kHz renders it, so it keeps its 48 kHz analog prototype at every
+        // rate (prewarped at the host rate its plateau moved +0.2-0.5 dB at
+        // 96 kHz, 5-7% faster decay above 1 kHz).
+        const double prewarpRate = plateFloor ? 48000.0 : rateD;
+        const double omega = 2.0 * prewarpRate * std::tan(
+            static_cast<double>(pi) * frequency / prewarpRate);
         const double damping = omega / (2.0 * q);
         const double denominator0 = bilinearD * bilinearD
             + 2.0 * damping * bilinearD + omega * omega;
@@ -3435,10 +3449,11 @@ AcustraEngine::bridgeMobilityTable() const noexcept
     }
     table.scale = scale;
     table.plate = parameters_.guitarModel == GuitarModel::Original
-        && plate.weight > 0.0f && plate.frequency < 0.45f * rate;
+        && plate.weight > 0.0f;
     if (table.plate)
     {
-        table.plateOmega = bilinear * std::tan(pi * plate.frequency / rate);
+        // The floor's 48 kHz prototype, as configureBridge builds it.
+        table.plateOmega = 96000.0f * std::tan(pi * plate.frequency / 48000.0f);
         table.plateDamping = table.plateOmega / (2.0f * plate.q);
         table.plateWeight = plate.weight;
     }

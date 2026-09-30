@@ -64,6 +64,16 @@ struct AcustraEngineTestAccess
         }
         return std::abs(sum) * 2.0 / length;
     }
+    // The bridge's own decay of a string's partial at f, in dB per second:
+    // -20 log10 |R(f)| per period of the string's fundamental f0.
+    static double bridgeDecay(const AcustraEngine& engine, double f, double f0, int string)
+    {
+        const auto y = engine.bridgePortMobility(static_cast<float>(f), string).normal;
+        const std::complex<double> mobility(y.real(), y.imag());
+        const double port = 1.0
+            / engine.voices_[static_cast<std::size_t>(string)].characteristicImpedance;
+        return -20.0 * std::log10(std::abs((port - mobility) / (port + mobility))) * f0;
+    }
     static bool idleFlushed(const AcustraEngine& engine)
     {
         return engine.idleFlushed_;
@@ -8047,11 +8057,52 @@ void testBodyRadiationKeepsItsLevelAcrossRates()
     }
 }
 
+// The bridge's plate conductance floor damps a string's upper partials alike
+// at every host rate. Prewarped at the host rate its over-damped section
+// moved its fitted plateau (5-7% faster bridge decay above 1 kHz at 96 kHz),
+// and below a 13 kHz host it was dropped with the modes above 0.45 fs.
+void testThePlateFloorDampsAlikeAtEveryRate()
+{
+    const std::array<double, 6> rates { 48000.0, 44100.0, 96000.0, 192000.0, 12000.0, 11025.0 };
+    std::vector<std::unique_ptr<acustra::AcustraEngine>> engines;
+    for (const double rate : rates)
+    {
+        engines.push_back(std::make_unique<acustra::AcustraEngine>());
+        engines.back()->prepare(rate, 64);
+    }
+    const auto open = acustra::AcustraEngine::openNotes(acustra::Tuning::Standard);
+    double worstHigh = 0.0, worstLow = 0.0;
+    for (const int string : { 0, 2, 5 })
+    {
+        const double f0 = 440.0 * std::exp2((open[static_cast<std::size_t>(string)] - 69) / 12.0);
+        for (const int harmonic : { 3, 5, 8, 12, 20 })
+        {
+            const double f = harmonic * f0;
+            const double reference = acustra::AcustraEngineTestAccess::bridgeDecay(
+                *engines[0], f, f0, string);
+            for (std::size_t r = 1; r < rates.size(); ++r)
+            {
+                if (f > 0.4 * rates[r])
+                    continue;
+                const double relative = std::abs(acustra::AcustraEngineTestAccess::bridgeDecay(
+                    *engines[r], f, f0, string) / reference - 1.0);
+                (rates[r] >= 44100.0 ? worstHigh : worstLow)
+                    = std::max(rates[r] >= 44100.0 ? worstHigh : worstLow, relative);
+            }
+        }
+    }
+    std::cout << "Acustra bridge decay against 48 kHz: worst " << 100.0 * worstHigh
+              << "% at 44.1-192 kHz, " << 100.0 * worstLow << "% at 11-12 kHz\n";
+    expect(worstHigh < 0.025, "the bridge's decay of upper partials moved with the rate");
+    expect(worstLow < 0.3, "a low host rate lost the bridge's plate conductance floor");
+}
+
 } // namespace
 
 int main()
 {
     testIdleFlushIsIndependentOfBlockSize();
+    testThePlateFloorDampsAlikeAtEveryRate();
     testBodyRadiationKeepsItsLevelAcrossRates();
     testASecondConstructionChangeDoesNotStepTheBridge();
     testPluckDrawsIgnoreEarlierBursts();
