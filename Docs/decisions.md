@@ -33,6 +33,90 @@ Two level-matched A/B pairs from the 2026-09-30 defect audit, the same
   compensation; the up to 9-cent sustained pull on the low E around frets
   14-17 is the price, chosen by ear.
 
+## 2026-09-30 — the user's choice: the piezo's force unit follows the strings' fit
+
+Not a listening verdict: asked whether the under-saddle piezo should keep the
+6.1 mm displacement unit its chain was designed at or follow the strings'
+fitted 7.74 mm (README, Known gaps), the user answered "piezo pickup: yes,
+fit it".
+
+**The unit.** The piezo's newtons per engine force unit are now the
+calibration's `steelDisplacementScaleMetres` per 48 kHz sample, read at run
+time (`piezoNewtonsPerUnit_`, set in the constructor, `prepare()` and
+`setPhysicalCalibration`): 0.00773577847 x 48000 = 371.3 N with the shipped
+fit, was 292.8 N (`PiezoDesign::newtonsPerUnit`, 6.1 mm, the struct
+default). The output scale and the 5 pN / 50 nN floors are derived from it.
+The level match divides the unit out again, so on its own the change is
+bit-identical at the output wherever the chain does not clip (checked on
+the loudness grid's performances); the voltages in the chain are 1.27 times
+(2.09 dB) higher.
+
+**What that clipped, and the retune.** At the fitted unit the player's
+velocity-127 Pick strums (CaptureTests' headroom test) put 2.79 V on the
+element (was 2.20 V) and drove U1B 0.81 dB past its negative output swing
+(U1B's positive swing kept 0.60 dB, U1A's input range 1.16 dB): the gain
+stage's swing, not the input section, ran out. ESP Project 202 sets that
+stage's gain with R7 and R8 ("simply reduce the value of R8 and/or increase
+the value of R7" for more; the input stage must stay at unity for its
+bootstrap), so R7 goes from 10 kOhm to 6.2 kOhm (E24): gain 1 + R7/R8 = 1.62,
+1.83 dB less, the smallest standard step that brings the strums back to
+about the margin they had. Its load (R7 + R8 || R9 + pot || DI) becomes
+6.18 kOhm, so the datasheet swing moves to +3.2537 / -3.8920 V about the
+bias (was +3.2625 / -3.9125). Mid-band gain from the element to the DI:
+1.256 (+1.98 dB), was 1.551. Below C4's corner the stage still falls to
+one; the response from 5 Hz up is unchanged within 0.005 dB after the level
+match (at 20 Hz 0.0003 dB and 0.16 degrees; the C4 loop's time constant
+(R7 + R8) C4 is now 0.53 s). `Tools/PiezoReference.py` carries the same
+R7 and its fixtures are rewritten from it.
+
+| Velocity 127 | Before (6.1 mm, R7 10k) | Fitted, R7 10k | Fitted, R7 6.2k |
+|---|---|---|---|
+| Player's Pick strums: open circuit | 2.20 V | 2.79 V | 2.79 V |
+| their headroom | +1.25 dB | -0.81 dB (U1B) | +0.97 dB (U1B -); U1A +1.16; +0.26 dB with the new pluck shape |
+| Pick at the bridge (Pluck Position 0) | +1.66 dB | -0.40 dB | +1.38 dB; U1A +1.65 |
+| Reference Pick strum, Touch 1 | +5.13 dB | +3.07 dB | +4.85 dB |
+| Hottest reference strum (0.7-2.5 V) | 1.51 V | 1.92 V | 1.92 V |
+| CalibratePiezo hottest (Auditorium, Touch 0) | 1.556 V; U1A +6.22, U1B +4.25 dB | | 1.973 V; U1A +4.16, U1B +3.97 dB |
+
+What changes in the chain's character: U1A's input range now sits closer
+behind U1B's swing, 1.9 dB for a sine on the positive side and 0.35 dB on
+the negative (was 3.7 dB), and on real strums 0.2-0.3 dB behind it, since
+the unit, not R7, sets how hard the input section is driven. No playing
+reaches either. With the pluck shape laid over the loop's period (the entry
+above) the same strums put 2.96 V on the element and keep +0.26 dB. CaptureTests'
+clip-aliasing strum (the Pick at the bridge driven past U1B's swing) is
+driven 1.25-1.45 times, 1.7-2.9 dB past it, where one drive of 1.66 was
+before: the chain stays under -60 dB at every drive (-60.6 to -69.6 dB), and
+its margin under a bare clip, which swings with which few samples pass the
+rail (at 48 kHz from 6.4 dB under to 0.1 under), is taken over the drives
+together: 6.0 dB at 44.1 kHz, 2.7 at 48 kHz, bounded at 1.5 (was 3 dB at
+one drive).
+Against the rewritten fixtures `Acustra.PiezoCircuit` passes with every
+gate unchanged: DC and rails to 0.1 mV, the small-signal response as before
+(it is the level match's, and R7 only moves C4's sub-hertz loop), harmonics
+within 0.39 dB above the clip and under -149 dB below it. Past the clip the
+earlier U1A shows: aliasing 3 / 6 dB over at 1 kHz -70.3 / -61.4 dB at
+44.1 kHz and -76.9 / -66.1 dB at 48 kHz (gates -65 / -60), at 3 kHz -52.7 /
+-45.6 and -52.8 / -45.2 dB (gates -50 / -45; the last within 0.2 dB of its
+gate), against -70 / -66, -77 / -73, -57 / -47 and -53 / -46 dB at the gain
+of two; overload bursts' waveforms -51.9, -54.3 and -46.5 dB from the
+circuit's (gate -30), C3 and U1A's input after the +3 dB burst within 8.9%
+of the circuit's trajectory (gate 10%; U1A's range and the diodes now act
+in that burst, which at the gain of two they did not).
+
+**The tools.** `Tools/CalibratePiezo.py` reads the unit from the renderer
+(`AcustraPerformanceRenderer --piezo-unit`, which prints the engine's
+`getPiezoNewtonsPerUnit()`), not from the struct default; its physical
+check is now a 0.51 V step (was 0.41 V). `PiezoDesign::trim` stays 2.4417: the
+full run (48 pairs) reads the microphones 0.05 LU over the piezo and
+proposes 2.45638, where the same run before the change read +0.05 LU and
+2.45625: the residual predates the change (the construction loudness table
+refines the level per cell on top of it), so neither the trim nor that
+table is re-levelled. Main (both microphones,
+Piezo Mix at 0) is bit-identical to before on the loudness grid's
+performances; Capture Piezo differs only by the C4 loop's sub-audio change
+(-71 to -81 dB of its peak).
+
 ## 2026-09-29 — at the user's request: a Piezo Mix knob
 
 Not a listening verdict: the user asked for a piezo volume. The plug-in has a

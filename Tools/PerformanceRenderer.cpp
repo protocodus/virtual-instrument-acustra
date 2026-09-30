@@ -13,6 +13,11 @@
 // preamp's 4.5 V bias. Tools/CalibratePiezo.py checks the chain's headroom
 // from them. --touch sets the Touch control (default 0.58), and
 // --pluck-position the Pluck Position (default 0.28; 0 is at the bridge).
+// AcustraPerformanceRenderer --piezo-unit [--calibration FILE] renders
+// nothing and prints the piezo's force unit the engine uses with that
+// calibration (the fitted one by default): newtons per engine force unit and
+// the displacement unit in metres it comes from (PiezoDesign item 2), for
+// Tools/CalibratePiezo.py.
 #include "DSP/AcustraEngine.h"
 #include "CalibrationFile.h"
 
@@ -41,6 +46,30 @@ struct Event
 
 int main(int argc, char** argv)
 {
+    if (argc >= 2 && std::string(argv[1]) == "--piezo-unit")
+    {
+        try
+        {
+            auto calibration = acustra::fittedPhysicalCalibration;
+            if (argc == 4 && std::string(argv[2]) == "--calibration")
+                calibration = acustra::offline::readCalibration(argv[3]);
+            else if (argc != 2)
+                throw std::runtime_error("usage: --piezo-unit [--calibration FILE]");
+            acustra::AcustraEngine engine;
+            engine.setPhysicalCalibration(calibration);
+            const double newtons = engine.getPiezoNewtonsPerUnit();
+            std::cout.imbue(std::locale::classic());
+            std::cout.precision(17);
+            std::cout << "piezo_newtons_per_unit " << newtons << "\n"
+                      << "displacement_metres_per_unit " << newtons / 48000.0 << "\n";
+            return 0;
+        }
+        catch (const std::exception& error)
+        {
+            std::cerr << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc < 3)
     {
         std::cerr << "usage: AcustraPerformanceRenderer EVENTS OUTPUT.f32 "

@@ -299,6 +299,11 @@ public:
         float gainStageDrive { 0.0f };
     };
     [[nodiscard]] PiezoProbe getLastPiezoProbe() const noexcept;
+    // Newtons per engine force unit on the piezo: the calibration's
+    // displacement unit (the strings' own) per 48 kHz sample
+    // (PiezoDesign item 2). Read by Tools/CalibratePiezo.py through
+    // AcustraPerformanceRenderer --piezo-unit.
+    [[nodiscard]] double getPiezoNewtonsPerUnit() const noexcept;
     // Zero-state port-power observers retain the work that enters at note-on.
     // Acoustic derivatives re-reference a newly established pluck shape;
     // they cannot account for that initial state in a passivity ledger.
@@ -341,13 +346,12 @@ private:
         // 2. The force in newtons: an engine force unit is a string's wave
         // impedance times one displacement unit per 48 kHz sample
         // (FixedDerivative differences over the 48 kHz period at every
-        // rate), and a displacement unit is 6.1 mm, PhysicalCalibration's
-        // default steelDisplacementScaleMetres: 0.0061 * 48000 N per unit.
-        // The chain was designed and its headroom checked at that unit. The
-        // shipped fit puts the strings' own unit at 7.74 mm, at which the
-        // player's hardest Pick strums would clip U1 by about 1 dB, so the
-        // piezo does not follow it (README, Known gaps).
-        static constexpr double newtonsPerUnit = 0.0061 * 48000.0;
+        // rate), and a displacement unit is the strings' own,
+        // PhysicalCalibration::steelDisplacementScaleMetres - the shipped
+        // fit's 7.74 mm, 0.00773577847 * 48000 = 371.3 N per unit. It is
+        // read at run time (piezoNewtonsPerUnit_), so a calibration set by
+        // setPhysicalCalibration moves the piezo with the strings
+        // (Docs/decisions.md 2026-09-30).
         // The saddle on its element, driven one way by the rigid-saddle
         // force: F_p / F_r = Zk Q / (1 + Zk Q), Zk = k/s + c_m,
         // Q = 1/(s M + SZ) + G. M: 3.8 g, chosen within 2.7-5.1 g (a bone
@@ -378,24 +382,32 @@ private:
         // bootstrapped through C2 and R4; D1/D2 (1N4148) guard its input;
         // C3 into R5 || R6 couples U1B, a gain of 1 + R7/R8 falling to one
         // below C4's corner; R9 and C5 feed the volume pot, at full, into a
-        // Radial PZ-DI's 1 MOhm input.
+        // Radial PZ-DI's 1 MOhm input. R7 is 6.2 kOhm, not the figure's
+        // 10 kOhm: the article sets the gain with R7 and R8 ("simply reduce
+        // the value of R8 and/or increase the value of R7" for more), and at
+        // the strings' fitted unit (item 2) the figure's gain of two put the
+        // player's velocity-127 Pick strums 0.8 dB past U1B's negative swing.
+        // 1.62 (E24, 1.83 dB less) leaves them 1.0 dB, about the 1.25 dB
+        // they had at the 6.1 mm unit; U1A's input range, which R7 does not
+        // move, keeps 1.2 dB there (Docs/decisions.md 2026-09-30).
         static constexpr double c1 = 4.7e-9;
         static constexpr double r1 = 1.0e6, r2 = 1.0e6, r3 = 1.0e6;
         static constexpr double c2 = 33.0e-6, r4 = 3.9e3;
         static constexpr double c3 = 220.0e-9, r5 = 47.0e3, r6 = 47.0e3;
-        static constexpr double r7 = 10.0e3, r8 = 10.0e3, c4 = 33.0e-6;
+        static constexpr double r7 = 6.2e3, r8 = 10.0e3, c4 = 33.0e-6;
         static constexpr double r9 = 100.0, c5 = 10.0e-6;
         static constexpr double volume = 10.0e3, diInput = 1.0e6;
         // The OPA2134's common-mode input capacitance (6 pF), and its
         // limits about the 4.5 V bias: the typical input common-mode range,
         // 2 V inside each rail (+-13 V at +-15 V), and the output swing for
-        // U1B's 6.67 kOhm load, the datasheet's guaranteed 10 kOhm and 2 kOhm
-        // rows interpolated in conductance: V+ - 1.2375 V, V- + 0.5875 V.
+        // U1B's 6.18 kOhm load ((R7 + R8) || (R9 + pot || DI)), the
+        // datasheet's guaranteed 10 kOhm and 2 kOhm rows interpolated in
+        // conductance: V+ - 1.2463 V, V- + 0.6080 V.
         // The OPA2134 has no output phase reversal.
         static constexpr double inputCapacitance = 6.0e-12;
         static constexpr double commonModeLimit = 2.5;
-        static constexpr double railHigh = 3.2625075;
-        static constexpr double railLow = -3.9125173;
+        static constexpr double railHigh = 3.2537111;
+        static constexpr double railLow = -3.8919926;
         // D1/D2, 1N4148s: IS 2.52 nA, N 1.752 (the widely reposted SPICE
         // model), at 25 C: N kT/q = 45.0 mV.
         static constexpr double diodeSaturation = 2.52e-9;
@@ -1213,6 +1225,7 @@ private:
     BodyOutput renderBody(float bridgeInput, float bodyMoment) noexcept;
     float renderPiezo(float force) noexcept;
     void resetPiezo() noexcept;
+    void configurePiezoUnit() noexcept;
     float nextNoise(Voice& voice) noexcept;
 
     EngineParameters targetParameters_ {};
@@ -1308,6 +1321,16 @@ private:
     std::array<double, 12> piezoStage_ {};
     double piezoOutputVolts_ { 0.0 };
     double piezoOutputScale_ { 0.0 };
+    // PiezoDesign item 2 at run time: newtons per engine force unit, the
+    // calibration's displacement unit per 48 kHz sample; the mid-band gain
+    // from the element's open-circuit voltage to the DI that the level match
+    // divides out with it; and the force floors below which renderPiezo
+    // reads none (5 pN) and zeroes the saddle's histories (50 nN), in force
+    // units (configurePiezoUnit).
+    double piezoNewtonsPerUnit_ { 0.0 };
+    double piezoMidbandGain_ { 0.0 };
+    float piezoForceFloor_ { 0.0f };
+    float piezoSaddleFloor_ { 0.0f };
     // Observers (getLastPiezoProbe).
     float lastPiezoOpen_ { 0.0f };
     float lastPiezoVoltage_ { 0.0f };
