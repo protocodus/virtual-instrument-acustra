@@ -856,6 +856,170 @@ void testResetSilences()
     expect(performer->engine().getActiveVoiceCount() == 0,
            "reset left a string playing");
 }
+// All Notes Off (CC123) lets go of keys that are down; a string whose key was
+// already up and is damping is not the pedal's to catch again. It used to be:
+// a note released before the pedal went down rang on under it, ~24 dB up a
+// second later.
+void testAllNotesOffLeavesReleasedStringsAlone()
+{
+    const auto play = [](std::vector<Event> events)
+    {
+        return render(custom("all notes off", 1.5, std::move(events)), 48000.0, 64, false);
+    };
+    for (const int note : { 45, 52 })
+    {
+        const std::vector<Event> released { message(0.01, 0x90, note, 100),
+                                            message(0.30, 0x80, note, 64),
+                                            message(0.40, 0xb0, 64, 127) };
+        auto allOff = released;
+        allOff.push_back(message(0.45, 0xb0, 123, 0));
+        expect(play(allOff) == play(released),
+               "All Notes Off under the pedal caught released note " + std::to_string(note));
+    }
+}
+
+// Reset All Controllers lifts the pedal as CC64 0 does, so after a key-up on
+// its sample a pedal pressed again does not catch the note.
+void testResetAllControllersLiftsThePedalInOrder()
+{
+    const auto on = message(0.0, 0x90, 60, 100);
+    const auto off = message(0.5, 0x80, 60, 64);
+    const auto play = [](std::vector<Event> events)
+    {
+        return render(custom("reset pedal", 1.5, std::move(events)), 48000.0, 64, false);
+    };
+    const auto held = message(0.2, 0xb0, 64, 127);
+    const auto down = message(0.5, 0xb0, 64, 127);
+    expect(play({ on, held, off, message(0.5, 0xb0, 121, 0), down })
+               == play({ on, held, off, message(0.5, 0xb0, 64, 0), down }),
+           "Reset All Controllers after a key-up did not let it go as a lifted pedal does");
+}
+
+// Only notes a string can sound make a stroke: two unreachable notes under
+// one that sounds leave it a single note, not a strum's random stroke.
+void testUnsoundableNotesMakeNoStrum()
+{
+    const auto play = [](std::vector<int> notes)
+    {
+        std::vector<Event> events;
+        for (const int note : notes)
+            events.push_back(message(0.01, 0x90, note, 100));
+        return render(custom("strum count", 0.6, events), 48000.0, 64, false);
+    };
+    expect(play({ 30, 33, 52 }) == play({ 52 }),
+           "two unreachable notes turned a single note into a strum");
+    expect(play({ 36, 48, 52 }) == play({ 48, 52 }),
+           "an unreachable note turned two notes into a strum");
+}
+
+// The master tune rides on every channel's bend, which prepare and reset
+// zero in the engine: it must be put back, as the same tune sent again is
+// ignored.
+void testMasterTuneSurvivesPrepareAndReset()
+{
+    enum class Then { Nothing, Prepare, Reset };
+    const auto play = [](float cents, Then then)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 64);
+        performer->setMasterTuneCents(cents);
+        if (then == Then::Prepare)
+            performer->prepare(48000.0, 64);
+        if (then == Then::Reset)
+            performer->reset();
+        std::vector<float> left(64 * 100), right(64 * 100);
+        for (std::size_t start = 0; start < left.size(); start += 64)
+        {
+            performer->beginBlock(left.data() + start, right.data() + start, 64);
+            if (start == 0)
+                performer->noteOn(0, 1, 45, 100);
+            performer->endBlock();
+        }
+        return left;
+    };
+    const auto tuned = play(100.0f, Then::Nothing);
+    expect(tuned != play(0.0f, Then::Nothing), "master tune did not reach the strings");
+    expect(play(100.0f, Then::Prepare) == tuned, "prepare dropped the master tune");
+    // A reset instrument is not bit for bit a fresh one (its smoothed levels
+    // glide back), so the tune is heard against an untuned reset.
+    expect(play(100.0f, Then::Reset) != play(0.0f, Then::Reset),
+           "reset dropped the master tune");
+}
+// A chord still forming is one channel's: another channel's notes every
+// 20 ms must not keep channel 1's window open, so a note it has held for a
+// second is not refretted and plucked again when channel 1 plays the next.
+void testChordWindowIsPerChannel()
+{
+    const auto heldAfter = [](int busyChannel)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 64);
+        std::vector<float> left(64), right(64);
+        int before = -1;
+        for (int start = 0; start < 48000 + 1920; start += 64)
+        {
+            performer->beginBlock(left.data(), right.data(), 64);
+            for (int offset = 0; offset < 64; ++offset)
+            {
+                const int at = start + offset;
+                if (at == 480)
+                    performer->noteOn(offset, 1, 52, 90);
+                if (busyChannel > 0 && at > 960 && at < 48000 && (at - 961) % 960 == 0)
+                {
+                    const int note = (at - 961) / 960 % 2 != 0 ? 45 : 40;
+                    performer->noteOn(offset, busyChannel, note, 60);
+                    performer->noteOff(offset, busyChannel, note);
+                }
+                if (at == 48480)
+                    performer->noteOn(offset, 1, 72, 90);
+            }
+            performer->endBlock();
+            if (start == 48000 - 64)
+                before = performer->engine().heldString(52, 1);
+        }
+        return std::pair { before, performer->engine().heldString(52, 1) };
+    };
+    const auto quiet = heldAfter(0);
+    const auto busy = heldAfter(2);
+    expect(quiet.first >= 0 && quiet.second == quiet.first,
+           "a note held a second was refretted by the next note on its channel");
+    expect(busy.first == quiet.first && busy.second == quiet.second,
+           "another channel's notes kept a chord forming and refretted a held note");
+}
+// A same-sample chord with a note only a natural harmonic reaches leaves
+// that harmonic its string, as the same chord rolled does: the shape used
+// to take it, and the harmonic then found no string and never sounded.
+void testChordLeavesAHarmonicItsString()
+{
+    const auto strings = [](const std::vector<int>& notes, int spacing)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 64);
+        std::vector<float> left(64), right(64);
+        performer->beginBlock(left.data(), right.data(), 64);
+        for (std::size_t index = 0; index < notes.size(); ++index)
+            performer->noteOn(static_cast<int>(index) * spacing, 1, notes[index], 100);
+        performer->endBlock();
+        for (int block = 0; block < 20; ++block)
+        {
+            performer->beginBlock(left.data(), right.data(), 64);
+            performer->endBlock();
+        }
+        std::vector<int> held;
+        for (const int note : notes)
+            held.push_back(performer->engine().heldString(note, 1));
+        return held;
+    };
+    for (const auto& chord : { std::vector<int> { 88, 67, 64, 60 },
+                               std::vector<int> { 91, 64, 59, 55 } })
+    {
+        const auto together = strings(chord, 0);
+        expect(std::all_of(together.begin(), together.end(), [](int s) { return s >= 0; }),
+               "a same-sample chord dropped its harmonic " + std::to_string(chord[0]));
+        expect(together == strings(chord, 5),
+               "a same-sample chord was placed unlike the same chord rolled");
+    }
+}
 } // namespace
 
 int main()
@@ -876,6 +1040,12 @@ int main()
     testShortStrumsSoundEveryString();
     testPlayerKeepsTheEnginesSampleRate();
     testResetSilences();
+    testAllNotesOffLeavesReleasedStringsAlone();
+    testResetAllControllersLiftsThePedalInOrder();
+    testUnsoundableNotesMakeNoStrum();
+    testMasterTuneSurvivesPrepareAndReset();
+    testChordWindowIsPerChannel();
+    testChordLeavesAHarmonicItsString();
 
     if (failures != 0)
     {

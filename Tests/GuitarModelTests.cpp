@@ -88,6 +88,16 @@ std::vector<acustra::detail::MeasuredBodyMode> heardBank(acustra::GuitarModel mo
     return heard;
 }
 
+// A radiation mode fitted at 48 kHz is held as a continuous mode at the host
+// rate, less the hold's own droop at the mode, which the 48 kHz fit absorbed
+// at 48 kHz: sinc(pi f / 48000) / sinc(pi f / rate), exactly 1 at 48 kHz.
+double holdDroop(double frequency, double rate)
+{
+    const double pi = std::acos(-1.);
+    const auto sinc = [] (double x) { return x == 0. ? 1. : std::sin(x) / x; };
+    return rate == 48000. ? 1. : sinc(pi * frequency / 48000.) / sinc(pi * frequency / rate);
+}
+
 template <typename Bank>
 void testRadiation(acustra::GuitarModel model, const Bank& measured, int delay48)
 {
@@ -110,7 +120,8 @@ void testRadiation(acustra::GuitarModel model, const Bank& measured, int delay48
                     if (m.frequency >= .46 * rate) continue;
                     const auto pole = std::exp(std::complex<double>(-pi * m.frequency / m.q, 2*pi*m.frequency) / double(rate));
                     const auto ref = std::exp(std::complex<double>(-pi * m.frequency / m.q, 2*pi*m.frequency) / 48000.);
-                    const auto residue = std::complex<double>(m.leftReal, m.leftImaginary) * (pole - 1.) / (ref - 1.);
+                    const auto residue = std::complex<double>(m.leftReal, m.leftImaginary) * (pole - 1.) / (ref - 1.)
+                        * holdDroop(m.frequency, rate);
                     expected += residue * std::pow(pole, age);
                 }
             const double target = 2 * expected.real()
@@ -196,7 +207,8 @@ void testFractionalRadiation(acustra::GuitarModel model, const Bank& measured, i
                     if (m.frequency >= .46 * rate) continue;
                     const auto pole = std::exp(std::complex<double>(-pi * m.frequency / m.q, 2*pi*m.frequency) / double(rate));
                     const auto referencePole = std::exp(std::complex<double>(-pi * m.frequency / m.q, 2*pi*m.frequency) / 48000.);
-                    const auto scale = (pole - 1.) / (referencePole - 1.);
+                    const auto scale = (pole - 1.) / (referencePole - 1.)
+                        * holdDroop(m.frequency, rate);
                     // The Stereo pair's right channel is the upper-bout
                     // microphone, the same path the Mono mic hears.
                     const std::array<std::complex<double>, 3> residues = axis == 0

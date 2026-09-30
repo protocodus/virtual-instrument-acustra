@@ -29,6 +29,55 @@ struct AcustraEngineTestAccess
         for (auto& voice : engine.voices_)
             voice.loops[1].reset();
     }
+    static float highLossMix(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].loops[0].highLossMix;
+    }
+    static std::uint32_t pluckDrawState(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].randomState;
+    }
+    static float bridgeDisplacement(const AcustraEngine& engine)
+    {
+        return engine.bridgeLoad_.displacement;
+    }
+    // The body's left microphone for a sinusoidal bridge force at `f`,
+    // through the engine's own force derivative, after half a second.
+    static double bodyResponse(const AcustraEngine& engine, double f)
+    {
+        auto bank = engine.bodyBank_;
+        bank.reset();
+        AcustraEngine::FixedDerivative derivative;
+        derivative.reset();
+        const double rate = engine.sampleRate_;
+        const auto ratio = static_cast<float>(rate / 48000.0);
+        const int settle = static_cast<int>(0.5 * rate);
+        const int length = static_cast<int>(0.2 * rate);
+        std::complex<double> sum {};
+        for (int i = 0; i < settle + length; ++i)
+        {
+            const double phase = 2.0 * std::numbers::pi * f * i / rate;
+            const auto out = bank.render(
+                derivative.process(static_cast<float>(std::sin(phase)), ratio), 0.0f);
+            if (i >= settle)
+                sum += static_cast<double>(out.left) * std::polar(1.0, -phase);
+        }
+        return std::abs(sum) * 2.0 / length;
+    }
+    // The bridge's own decay of a string's partial at f, in dB per second:
+    // -20 log10 |R(f)| per period of the string's fundamental f0.
+    static double bridgeDecay(const AcustraEngine& engine, double f, double f0, int string)
+    {
+        const auto y = engine.bridgePortMobility(static_cast<float>(f), string).normal;
+        const std::complex<double> mobility(y.real(), y.imag());
+        const double port = 1.0
+            / engine.voices_[static_cast<std::size_t>(string)].characteristicImpedance;
+        return -20.0 * std::log10(std::abs((port - mobility) / (port + mobility))) * f0;
+    }
+    static bool idleFlushed(const AcustraEngine& engine)
+    {
+        return engine.idleFlushed_;
+    }
     static float saddleHeightRatio(const AcustraEngine& engine)
     {
         return engine.saddleHeightRatio();
@@ -75,11 +124,21 @@ struct AcustraEngineTestAccess
         double bendingGain { 1.0 };
         double bendingA1 { 0.0 };
         double bendingA2 { 0.0 };
+        // The dispersion's second allpass section, where the loop runs one.
+        bool secondDispersionActive { false };
+        double secondDispersionA1 { 0.0 };
+        double secondDispersionA2 { 0.0 };
     };
 
+    // Completes a snapshot with the loop's sections that the positional
+    // fields above leave out: its bending loss and its second dispersion
+    // section.
     static StringLoopSnapshot withBendingLoss(StringLoopSnapshot snapshot,
                                               const AcustraEngine::StringLoop& loop)
     {
+        snapshot.secondDispersionActive = loop.secondDispersionActive;
+        snapshot.secondDispersionA1 = loop.secondDispersionA1;
+        snapshot.secondDispersionA2 = loop.secondDispersionA2;
         if (loop.bendingLossActive)
         {
             snapshot.bendingGain = loop.bendingLossGain;
@@ -270,6 +329,34 @@ struct AcustraEngineTestAccess
                  loop.broadLossMix, loop.lowpassCoefficient,
                  loop.highLossMix, loop.dispersionA1, loop.dispersionA2,
                  voice.dispersionDesignInharmonicity, rate }, loop);
+    }
+
+    // Every string at every fret from open to the 20th at one rate, in the
+    // standard tuning, configured the way configuredLoop configures a note.
+    static std::vector<StringLoopSnapshot> fretboardLoops(double rate)
+    {
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
+        engine.prepare(rate, 64);
+        engine.setBridgeCouplingEnabled(false);
+        EngineParameters parameters;
+        engine.setParameters(parameters);
+        std::vector<StringLoopSnapshot> loops;
+        for (int stringIndex = 0; stringIndex < 6; ++stringIndex)
+        for (int fret = 0; fret <= 20; ++fret)
+        {
+            auto& voice = engine.voices_[static_cast<std::size_t>(stringIndex)];
+            voice.attackPitchCents = 0.0f;
+            engine.configureVoice(voice, stringIndex, voice.openMidi + fret,
+                                  true);
+            const auto& loop = voice.loops[0];
+            loops.push_back(withBendingLoss({ loop.targetDelay,
+                    loop.loopGain, loop.broadLossCoefficient,
+                    loop.broadLossMix, loop.lowpassCoefficient,
+                    loop.highLossMix, loop.dispersionA1, loop.dispersionA2,
+                    voice.dispersionDesignInharmonicity, rate }, loop));
+        }
+        return loops;
     }
 
     static std::array<double, 3> lossFilterCoefficients(float pole, double rate)
@@ -1211,15 +1298,18 @@ struct AcustraEngineTestAccess
     // over its round trip: what the bridge will read over the first period.
     static std::vector<double> pluckedLine(PhysicalCalibration calibration,
                                            PickingTechnique picking,
-                                           int midiNote, float velocity)
+                                           int midiNote, float velocity,
+                                           double rate = 48000.0,
+                                           float touch = EngineParameters {}.touch)
     {
         auto engineOwner = std::make_unique<AcustraEngine>();
         auto& engine = *engineOwner;
         engine.setPhysicalCalibration(calibration);
         EngineParameters parameters;
         parameters.picking = picking;
+        parameters.touch = touch;
         engine.setParameters(parameters);
-        engine.prepare(48000.0, 64);
+        engine.prepare(rate, 64);
         engine.noteOn(midiNote, velocity);
         std::vector<double> line;
         for (const auto& voice : engine.voices_)
@@ -2780,17 +2870,26 @@ double loopPhase(const acustra::AcustraEngineTestAccess::StringLoopSnapshot& loo
     const double sine = std::sin(omega);
     const double cosine2 = std::cos(2.0 * omega);
     const double sine2 = std::sin(2.0 * omega);
-    const double numeratorPhase = std::atan2(
-        -loop.dispersionA1 * sine - sine2,
-        loop.dispersionA2 + loop.dispersionA1 * cosine + cosine2);
-    const double denominatorPhase = std::atan2(
-        -loop.dispersionA1 * sine - loop.dispersionA2 * sine2,
-        1.0 + loop.dispersionA1 * cosine + loop.dispersionA2 * cosine2);
-    double allpassPhase = denominatorPhase - numeratorPhase;
-    while (allpassPhase < 0.0)
-        allpassPhase += 2.0 * std::numbers::pi;
-    while (allpassPhase >= 2.0 * std::numbers::pi)
-        allpassPhase -= 2.0 * std::numbers::pi;
+    // The dispersion's allpass sections in cascade: the second only where
+    // the loop runs it.
+    const auto sectionPhase = [&] (double a1, double a2)
+    {
+        const double numeratorPhase = std::atan2(
+            -a1 * sine - sine2, a2 + a1 * cosine + cosine2);
+        const double denominatorPhase = std::atan2(
+            -a1 * sine - a2 * sine2, 1.0 + a1 * cosine + a2 * cosine2);
+        double phase = denominatorPhase - numeratorPhase;
+        while (phase < 0.0)
+            phase += 2.0 * std::numbers::pi;
+        while (phase >= 2.0 * std::numbers::pi)
+            phase -= 2.0 * std::numbers::pi;
+        return phase;
+    };
+    const double allpassPhase
+        = sectionPhase(loop.dispersionA1, loop.dispersionA2)
+        + (loop.secondDispersionActive
+               ? sectionPhase(loop.secondDispersionA1, loop.secondDispersionA2)
+               : 0.0);
 
     // The bending-loss section is designed at the host rate, so its lag is
     // read at the host frequency.
@@ -3286,17 +3385,67 @@ void testDispersionAcrossRatesAndNotes()
                 / (1.0 + inharmonicity));
             const double actual = loopResonance(loop, partial, expected);
             const double cents = 1200.0 * std::log2(actual / expected);
-            // The H1/H7/H11.5 collocation's own approximation error at a
-            // top-fret treble note, and the Thiran read's own phase-delay
-            // curvature between those three points, bound what is left;
-            // 3 cents is still under a third of the H16+ gap already
-            // documented.
+            // The least-squares fit's own residual (under a cent here, see
+            // calibrateDispersion) and the loop's single-precision
+            // coefficients bound what is left; 3 cents is still under a
+            // third of the H16+ gap already documented.
             expect(std::abs(cents) < 3.0,
                    "steel/"
                        + std::to_string(static_cast<int>(rate)) + " MIDI "
                        + std::to_string(midiNote) + " partial "
                        + std::to_string(partial) + " missed by "
                        + std::to_string(cents) + " cents");
+        }
+    }
+}
+
+// The same law across the whole fretboard. Fretting shortens the string, and
+// B grows as the inverse square of the sounding length, so the wound strings
+// high on the neck are the most dispersive notes the model plays: E2 at the
+// 20th fret has B n^2 near 0.12 at H12. One allpass section fitted at three
+// partials missed H3-H5 there by 16-18 cents between its collocation points,
+// and this test failed E2 from the 15th fret up, A2 at the 19th and 20th and
+// B3 at the 20th;
+// with the second section switched in on the stiff notes (calibrateDispersion)
+// every string and fret is held to the same 3 cents as above, H2 up to H12,
+// at the three common host rates.
+void testDispersionAcrossTheFretboard()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    // The standard tuning's open strings, bass first.
+    constexpr int openMidi[] { 40, 45, 50, 55, 59, 64 };
+    constexpr int frets = 21;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+    {
+        const auto loops = Access::fretboardLoops(rate);
+        for (int stringIndex = 0; stringIndex < 6; ++stringIndex)
+        for (int fret = 0; fret < frets; ++fret)
+        {
+            const auto& loop = loops[static_cast<std::size_t>(
+                stringIndex * frets + fret)];
+            const double inharmonicity = loop.inharmonicity;
+            const double nominalOmega = 2.0 * std::numbers::pi * 440.0
+                * std::exp2(static_cast<double>(openMidi[stringIndex] + fret
+                                                - 69) / 12.0) / rate;
+            const double fundamental = loopResonance(loop, 1, nominalOmega);
+            for (int partial = 2; partial <= 12; ++partial)
+            {
+                const double number = static_cast<double>(partial);
+                const double expected = fundamental * number * std::sqrt(
+                    (1.0 + inharmonicity * number * number)
+                    / (1.0 + inharmonicity));
+                // Wide enough to measure a miss several times the bound.
+                const double actual = loopResonance(loop, partial, expected,
+                                                    40.0);
+                const double cents = 1200.0 * std::log2(actual / expected);
+                expect(std::abs(cents) < 3.0,
+                       "steel/" + std::to_string(static_cast<int>(rate))
+                           + " string " + std::to_string(stringIndex + 1)
+                           + " (from the bass) fret " + std::to_string(fret)
+                           + " partial " + std::to_string(partial)
+                           + " missed by " + std::to_string(cents)
+                           + " cents");
+            }
         }
     }
 }
@@ -5490,6 +5639,88 @@ void testNaturalHarmonicsReachAboveTheFretboard()
            "the fourth harmonic of the open high E was not near E6");
 }
 
+// A natural harmonic is its open string touched at a node: the finger damps
+// every mode the node does not share, the pluck's own release noise with them,
+// so the harmonic - or its octave, which shares the node - is what sounds. The
+// release burst used to reach the bridge unfiltered, and on D#6, E6 and E7 an
+// unrelated partial of the open string was the loudest in the output.
+void testANaturalHarmonicSoundsItsOwnPitch()
+{
+    const auto spectrumPeak = [] (const Audio& audio, double begin, double end)
+    {
+        const auto first = static_cast<std::size_t>(begin * sampleRate);
+        const auto count = static_cast<std::size_t>((end - begin) * sampleRate);
+        std::size_t size = 1;
+        while (size < count)
+            size <<= 1;
+        std::vector<std::complex<double>> bins(size);
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            const double window = 0.5 - 0.5 * std::cos(
+                2.0 * std::numbers::pi * static_cast<double>(i)
+                / static_cast<double>(count - 1));
+            bins[i] = window * 0.5 * (audio.left[first + i] + audio.right[first + i]);
+        }
+        // Iterative radix-2 FFT.
+        for (std::size_t i = 1, j = 0; i < size; ++i)
+        {
+            std::size_t bit = size >> 1;
+            for (; j & bit; bit >>= 1)
+                j ^= bit;
+            j ^= bit;
+            if (i < j)
+                std::swap(bins[i], bins[j]);
+        }
+        for (std::size_t length = 2; length <= size; length <<= 1)
+        {
+            const double angle = -2.0 * std::numbers::pi / static_cast<double>(length);
+            const std::complex<double> step(std::cos(angle), std::sin(angle));
+            for (std::size_t start = 0; start < size; start += length)
+            {
+                std::complex<double> twiddle(1.0, 0.0);
+                for (std::size_t k = 0; k < length / 2; ++k)
+                {
+                    const auto even = bins[start + k];
+                    const auto odd = bins[start + k + length / 2] * twiddle;
+                    bins[start + k] = even + odd;
+                    bins[start + k + length / 2] = even - odd;
+                    twiddle *= step;
+                }
+            }
+        }
+        const double binHz = sampleRate / static_cast<double>(size);
+        std::size_t best = 0;
+        for (auto bin = static_cast<std::size_t>(80.0 / binHz);
+             bin < static_cast<std::size_t>(16000.0 / binHz); ++bin)
+            if (std::abs(bins[bin]) > std::abs(bins[best]))
+                best = bin;
+        return static_cast<double>(best) * binHz;
+    };
+    for (const int midiNote : { 87, 88, 91, 95, 100 })
+    {
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
+        acustra::EngineParameters parameters;
+        engine.setParameters(parameters);
+        engine.prepare(sampleRate, blockSize);
+        engine.noteOn(midiNote, 0.7f);
+        const int samples = static_cast<int>(0.7 * sampleRate);
+        Audio out { std::vector<float>(static_cast<std::size_t>(samples)),
+                    std::vector<float>(static_cast<std::size_t>(samples)) };
+        for (int offset = 0; offset < samples; offset += blockSize)
+            engine.process(out.left.data() + offset, out.right.data() + offset,
+                           std::min(blockSize, samples - offset));
+        const double peak = spectrumPeak(out, 0.05, 0.65);
+        const double wanted = 440.0 * std::exp2((midiNote - 69.0) / 12.0);
+        const double cents = 1200.0 * std::log2(peak / wanted);
+        const double octaveCents = cents - 1200.0;
+        expect(std::abs(cents) < 40.0 || std::abs(octaveCents) < 40.0,
+               "natural harmonic MIDI " + std::to_string(midiNote)
+                   + "'s loudest partial was at " + std::to_string(peak)
+                   + " Hz, not its pitch or octave");
+    }
+}
+
 void testHeldStringsDoNotLengthenANoteDecay()
 {
     // Every string is anchored behind the saddle at all times, so the spring
@@ -5842,6 +6073,73 @@ void testBodyChangesPreserveAnUnfinishedFade()
     for (int mode = 0; mode < Access::bodyModeCapacity; ++mode)
         expect(Access::bodyResidueOf(changed, mode) == Access::bodyResidueOf(reference, mode),
                "reset did not configure the latest requested body bank");
+}
+
+// String Age is a continuous, automatable control: each change redesigns
+// every string's loss, and a host sends a new value every block. The tail a
+// re-pluck left on its string rings out under the hand as it did before the
+// change; deleting it made every age step over a re-struck note or chord a
+// click (a 0.001 nudge moved the output by up to 2.4 times the note's own
+// peak, and strums under an age ramp stood 12-20 dB over the same strums
+// without it above 4 kHz).
+void testStringAgeKeepsARepluckedTail()
+{
+    const int block = 16;
+    for (const int delay : { 1, 16, 64, 256 })
+    {
+        const auto render = [&] (bool nudge, int& tailsAfter)
+        {
+            auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+            auto& engine = *engineOwner;
+            acustra::EngineParameters parameters;
+            engine.setParameters(parameters);
+            engine.prepare(sampleRate, block);
+            std::vector<float> left(static_cast<std::size_t>(block));
+            std::vector<float> right(static_cast<std::size_t>(block));
+            const auto run = [&] (int samples, std::vector<float>* out)
+            {
+                for (int done = 0; done < samples; done += block)
+                {
+                    engine.process(left.data(), right.data(), block);
+                    if (out != nullptr)
+                        out->insert(out->end(), left.begin(), left.end());
+                }
+            };
+            engine.noteOn(52, 0.8f);
+            run(static_cast<int>(0.25 * sampleRate), nullptr);
+            engine.noteOn(52, 0.8f);
+            std::vector<float> output;
+            run(delay, &output);
+            expect(acustra::AcustraEngineTestAccess::retainedTailCount(engine) > 0,
+                   "a re-pluck of a sounding string left no tail to test");
+            if (nudge)
+            {
+                parameters.stringAge += 0.001f;
+                engine.setParameters(parameters);
+            }
+            run(static_cast<int>(0.1 * sampleRate), &output);
+            tailsAfter = acustra::AcustraEngineTestAccess::retainedTailCount(engine);
+            return output;
+        };
+        int steadyTails = 0, nudgedTails = 0;
+        const auto steady = render(false, steadyTails);
+        const auto nudged = render(true, nudgedTails);
+        double peak = 0.0, difference = 0.0;
+        for (std::size_t index = 0; index < steady.size(); ++index)
+        {
+            peak = std::max(peak, std::abs(static_cast<double>(steady[index])));
+            difference = std::max(difference, std::abs(
+                static_cast<double>(nudged[index]) - steady[index]));
+        }
+        expect(nudgedTails == steadyTails,
+               "a String Age step " + std::to_string(delay)
+                   + " samples after a re-pluck removed its tail");
+        expect(difference <= 1.0e-4 * peak,
+               "a 0.001 String Age step " + std::to_string(delay)
+                   + " samples after a re-pluck moved the output by "
+                   + std::to_string(difference / std::max(peak, 1.0e-12))
+                   + " of its peak");
+    }
 }
 
 void testSwitchingTuningOrModelUnderAChordDoesNotClick()
@@ -6901,28 +7199,41 @@ void testRepeatedStrumsVaryLikeRepeatedRealStrums()
 void testNoTwoPlucksLandInTheSamePlace()
 {
     // Each pluck draws its own point within the take-to-take spread the
-    // recordings show, and stays inside it.
-    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
-    auto& engine = *engineOwner;
-    engine.prepare(sampleRate, blockSize);
-    std::vector<float> left(static_cast<std::size_t>(blockSize));
-    std::vector<float> right(static_cast<std::size_t>(blockSize));
-    std::vector<double> points;
-    for (int take = 0; take < 6; ++take)
+    // recordings show, and stays inside it - also where the hand's distance
+    // from the bridge reaches the band's mid-string limit (a Finger high on
+    // the neck, a Thumb from the low frets up), where the draw used to be
+    // clamped away and every pluck landed on exactly the same point.
+    struct Case { int note; acustra::PickingTechnique picking; };
+    for (const Case pluck : { Case { 52, acustra::PickingTechnique::Finger },
+                              Case { 79, acustra::PickingTechnique::Finger },
+                              Case { 76, acustra::PickingTechnique::Thumb } })
     {
-        engine.noteOn(52, 0.8f);
-        points.push_back(acustra::AcustraEngineTestAccess::lastPluckPoint(engine));
-        for (int block = 0; block < 40; ++block)
-            engine.process(left.data(), right.data(), blockSize);
-        engine.noteOff(52);
-        for (int block = 0; block < 400; ++block)
-            engine.process(left.data(), right.data(), blockSize);
+        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
+        auto& engine = *engineOwner;
+        acustra::EngineParameters parameters;
+        parameters.picking = pluck.picking;
+        engine.setParameters(parameters);
+        engine.prepare(sampleRate, blockSize);
+        std::vector<float> left(static_cast<std::size_t>(blockSize));
+        std::vector<float> right(static_cast<std::size_t>(blockSize));
+        std::vector<double> points;
+        for (int take = 0; take < 6; ++take)
+        {
+            engine.noteOn(pluck.note, 0.8f);
+            points.push_back(acustra::AcustraEngineTestAccess::lastPluckPoint(engine));
+            for (int block = 0; block < 40; ++block)
+                engine.process(left.data(), right.data(), blockSize);
+            engine.noteOff(pluck.note);
+            for (int block = 0; block < 400; ++block)
+                engine.process(left.data(), right.data(), blockSize);
+        }
+        const auto [lowest, highest] = std::minmax_element(points.begin(), points.end());
+        const std::string name = "MIDI " + std::to_string(pluck.note);
+        expect(*highest - *lowest <= 0.0401 && *lowest > 0.0 && *highest <= 0.46,
+               "a pluck of " + name + " landed outside the measured take-to-take spread");
+        expect(*highest - *lowest > 1.0e-4,
+               "six plucks of " + name + " all landed in the same place");
     }
-    const auto [lowest, highest] = std::minmax_element(points.begin(), points.end());
-    expect(*highest - *lowest <= 0.0401 && *lowest > 0.0,
-           "a pluck landed outside the measured take-to-take spread");
-    expect(*highest - *lowest > 1.0e-4,
-           "six plucks of one note all landed in the same place");
 }
 
 void testNoteOffDoesNotCreateANewAttack()
@@ -7368,6 +7679,70 @@ void testAPlectrumReleasesWithVelocity()
            "a picked note did not brighten with dynamics beyond its release from rest");
 }
 
+// The Pick release's share was chosen by ear at 48 kHz, and its hump is a
+// continuous wave the host grid only samples, so a picked note's partials
+// must not depend on the rate. Solved on the host grid, the summed squared
+// differences it reads scale differently with the grid for the rest and the
+// velocity, and the hump's 0-6 kHz partials against the rest's fell by up
+// to 4.8 dB at 96 kHz and 7.6 dB at 192 kHz, and rose by up to 0.95 dB at
+// 44.1 kHz; solving it on the note's 48 kHz period at 48 kHz's slip keeps
+// them within 0.1 dB (writePickRelease). Read on the written line, the
+// hump alone (the line less the same pluck with a vanishing share) against
+// the rest.
+void testAPickReleaseKeepsItsHumpAcrossRates()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    using acustra::PickingTechnique;
+    const auto shipping = acustra::fittedPhysicalCalibration;
+    auto trace = shipping;
+    trace.pickReleaseVelocityShare = 1.0e-10f;
+    const auto humpDb = [&] (double rate, int midi, float velocity, float touch)
+    {
+        const auto line = Access::pluckedLine(shipping, PickingTechnique::Pick,
+                                              midi, velocity, rate, touch);
+        const auto rest = Access::pluckedLine(trace, PickingTechnique::Pick,
+                                              midi, velocity, rate, touch);
+        expect(line.size() > 8 && line.size() == rest.size(),
+               "a picked line changed length with its release share");
+        const double f0 = 440.0 * std::exp2((midi - 69) / 12.0);
+        const int top = std::max(1, static_cast<int>(6000.0 / f0));
+        double humpEnergy = 0.0, restEnergy = 0.0;
+        for (int harmonic = 1; harmonic <= top; ++harmonic)
+        {
+            std::complex<double> hump {}, still {};
+            for (std::size_t sample = 0; sample < line.size(); ++sample)
+            {
+                const auto turn = std::polar(1.0, -2.0 * std::numbers::pi * harmonic
+                    * static_cast<double>(sample) / static_cast<double>(line.size()));
+                hump += (line[sample] - rest[sample]) * turn;
+                still += rest[sample] * turn;
+            }
+            humpEnergy += std::norm(hump);
+            restEnergy += std::norm(still);
+        }
+        return 10.0 * std::log10(std::max(humpEnergy, 1.0e-300)
+                                 / std::max(restEnergy, 1.0e-300));
+    };
+    double worst = 0.0;
+    for (const int midi : { 45, 59, 69, 76 })
+        for (const float velocity : { 0.3f, 1.0f })
+            for (const float touch : { 0.2f, 0.9f })
+            {
+                const double reference = humpDb(48000.0, midi, velocity, touch);
+                expect(reference > -40.0 && reference < 0.0,
+                       "the picked release carried no hump at 48 kHz");
+                for (const double rate : { 44100.0, 96000.0, 192000.0 })
+                {
+                    const double change = humpDb(rate, midi, velocity, touch) - reference;
+                    worst = std::max(worst, std::abs(change));
+                    expect(std::abs(change) < 0.2,
+                           "a picked note's release hump moved with the sample rate");
+                }
+            }
+    std::cout << "Acustra pick release hump across 44.1-192 kHz: worst "
+              << worst << " dB from 48 kHz\n";
+}
+
 // A Shape is the measured body's A0 and T1 re-coupled through Christensen and
 // Vistisen's two-oscillator model for a published box, with the plate modes
 // above T1 on the equal-thickness plate law. The anchor - the wide
@@ -7627,10 +8002,275 @@ void testPerformance()
     expect(realtimeRatio < 0.25,
            "six-string engine exceeded the 0.25x realtime CPU gate");
 }
+// The idle flush lands on the same sample whatever blocks the audio is
+// rendered in. It used to be counted in whole process() calls, so with
+// large blocks it came later, and a note played in between started from a
+// different state than with small blocks.
+void testIdleFlushIsIndependentOfBlockSize()
+{
+    const auto render = [] (int blockSize, long secondAt, long length, long* flushedAt)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->prepare(sampleRate, 4096);
+        std::vector<float> left(static_cast<std::size_t>(length)),
+            right(static_cast<std::size_t>(length));
+        const long releaseAt = static_cast<long>(sampleRate) / 10;
+        long position = 0;
+        engine->noteOn(52, 0.8f);
+        while (position < length)
+        {
+            long end = std::min(position + blockSize, length);
+            for (const long event : { releaseAt, secondAt })
+                if (event > position && event < end)
+                    end = event;
+            if (position == releaseAt)
+                engine->noteOff(52);
+            if (position == secondAt)
+                engine->noteOn(57, 0.8f);
+            const auto at = static_cast<std::size_t>(position);
+            const bool wasFlushed = acustra::AcustraEngineTestAccess::idleFlushed(*engine);
+            engine->process(left.data() + at, right.data() + at,
+                           static_cast<int>(end - position));
+            if (flushedAt != nullptr && *flushedAt < 0 && !wasFlushed && position > releaseAt
+                && acustra::AcustraEngineTestAccess::idleFlushed(*engine))
+                *flushedAt = end;
+            position = end;
+        }
+        left.insert(left.end(), right.begin(), right.end());
+        return left;
+    };
+    const long length = 30L * static_cast<long>(sampleRate);
+    long flushedAt = -1;
+    render(1, length, length, &flushedAt);
+    expect(flushedAt > 0, "a released note never reached the idle flush");
+    if (flushedAt <= 0)
+        return;
+    const long secondAt = flushedAt + 100;
+    const long total = secondAt + static_cast<long>(sampleRate) / 2;
+    const auto reference = render(1, secondAt, total, nullptr);
+    for (const int blockSize : { 64, 4096 })
+        expect(render(blockSize, secondAt, total, nullptr) == reference,
+               "a note after the idle flush sounded differently in blocks of "
+                   + std::to_string(blockSize));
+}
+
+// The bridge hand shortens the top by the 0.62 high-to-fundamental T60
+// ratio its comment gives: its extra shelf loss per round trip is
+// 0.001^((1/0.62 - 1) R / f) for its 1/T60 rate R. The shelf used exp in
+// place of 0.001^ and added 1/6.9 of that.
+void testBridgeHandTopLossIsItsT60Ratio()
+{
+    const auto mix = [] (float pressure)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->prepare(sampleRate, blockSize);
+        engine->setStringPerChannelMode(true);
+        engine->setPalmMutePressure(pressure);
+        std::vector<float> left(static_cast<std::size_t>(blockSize)),
+            right(static_cast<std::size_t>(blockSize));
+        for (int block = 0; block < 40; ++block)
+            engine->process(left.data(), right.data(), blockSize);
+        engine->noteOn(40, 0.8f, 1);
+        for (int block = 0; block < 40; ++block)
+            engine->process(left.data(), right.data(), blockSize);
+        return static_cast<double>(acustra::AcustraEngineTestAccess::highLossMix(*engine, 0));
+    };
+    const double open = mix(0.0f);
+    for (const float pressure : { 0.25f, 0.5f, 1.0f })
+    {
+        // The hand's mapped T60, 4 s at no pressure to 80 ms at full, and its
+        // rate scaled by pressure (AcustraEngine::configureVoice).
+        const double handT60 = std::exp(std::log(4.0) + pressure * (std::log(0.080) - std::log(4.0)));
+        const double rate = pressure / handT60;
+        const double extra = -std::log((1.0 - mix(pressure)) / (1.0 - open)) / std::log(1000.0)
+            * 82.4069 / rate;
+        std::cout << "Acustra bridge hand " << pressure << ": top's extra rate "
+                  << extra << " of the fundamental's (0.62 ratio: " << 1.0 / 0.62 - 1.0 << ")\n";
+        expect(std::abs(extra / (1.0 / 0.62 - 1.0) - 1.0) < 0.02,
+               "the bridge hand's top loss was not its 0.62 T60 ratio at pressure "
+                   + std::to_string(pressure));
+    }
+}
+
+// A pluck's random draws (where the hand lands, a strummed string's level,
+// the release angle) follow only the plucks before it, not how hard or at
+// what rate they were played. The release burst drew its noise from the
+// same state for as many samples as its envelope lasted, which velocity,
+// Touch and the rate set.
+void testPluckDrawsIgnoreEarlierBursts()
+{
+    const auto stateAfter = [] (double rate, float firstVelocity, acustra::PickingTechnique picking)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        acustra::EngineParameters parameters;
+        parameters.picking = picking;
+        engine->setParameters(parameters);
+        engine->prepare(rate, 256);
+        std::vector<float> left(256), right(256);
+        engine->noteOn(52, firstVelocity);
+        for (int block = 0; block < static_cast<int>(0.3 * rate / 256.0); ++block)
+            engine->process(left.data(), right.data(), 256);
+        engine->noteOn(52, 0.7f);
+        engine->process(left.data(), right.data(), 256);
+        const int string = engine->heldString(52);
+        return string < 0 ? 0u : acustra::AcustraEngineTestAccess::pluckDrawState(*engine, string);
+    };
+    for (const auto picking : { acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick })
+    {
+        const auto reference = stateAfter(48000.0, 0.7f, picking);
+        expect(reference != 0u, "the re-struck note found no string");
+        expect(stateAfter(48000.0, 0.2f, picking) == reference
+                   && stateAfter(48000.0, 1.0f, picking) == reference,
+               "an earlier pluck's velocity moved the next pluck's draws");
+        expect(stateAfter(96000.0, 0.7f, picking) == reference
+                   && stateAfter(44100.0, 0.7f, picking) == reference,
+               "the sample rate moved the next pluck's draws");
+    }
+}
+
+// A second construction change inside the bridge's 20 ms crossfade waits for
+// it to end, as the body's does. Rebuilding the bridge under the running
+// fade stepped it: up to 83 times the largest sample-to-sample surprise in
+// its motion before the switch, 5-9 dB more top for a few milliseconds.
+void testASecondConstructionChangeDoesNotStepTheBridge()
+{
+    using acustra::EngineParameters;
+    EngineParameters steel;
+    steel.outputGain = 0.2f;
+    auto parlor = steel;
+    parlor.shape = acustra::BodyShape::Parlor;
+    auto bellido = steel;
+    bellido.guitarModel = acustra::GuitarModel::Bellido1978;
+    auto bellidoParlor = parlor;
+    bellidoParlor.guitarModel = acustra::GuitarModel::Bellido1978;
+    const int rate = 48000;
+    const int ms5 = rate / 200;
+    struct Case { const char* name; EngineParameters first; int after; EngineParameters second; };
+    for (const auto& change : { Case { "Model then back 15 ms later", bellido, 3 * ms5, steel },
+                                Case { "Model then back 5 ms later", bellido, ms5, steel },
+                                Case { "Shape then Model 5 ms later", parlor, ms5, bellidoParlor } })
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->setParameters(steel);
+        engine->prepare(rate, 256);
+        engine->beginStrum();
+        const std::array<int, 6> chord { 40, 47, 52, 56, 59, 64 };
+        for (std::size_t k = 0; k < chord.size(); ++k)
+            engine->noteOn(chord[k], 0.8f, 1, static_cast<int>(k) * 300, true);
+        const int start = 24000;
+        std::vector<double> x;
+        double before = 0.0, worst = 0.0;
+        for (int i = 0; i < start + 2 * change.after + 960; ++i)
+        {
+            if (i == start)
+                engine->setParameters(change.first);
+            if (i == start + change.after)
+                engine->setParameters(change.second);
+            float left = 0.0f, right = 0.0f;
+            engine->process(&left, &right, 1);
+            x.push_back(acustra::AcustraEngineTestAccess::bridgeDisplacement(*engine));
+            if (i < 2)
+                continue;
+            const auto n = x.size() - 1;
+            const double surprise = std::abs(x[n] - 2.0 * x[n - 1] + x[n - 2]);
+            if (i >= start - rate / 50 && i < start)
+                before = std::max(before, surprise);
+            else if (i >= start)
+                worst = std::max(worst, surprise);
+        }
+        std::cout << "Acustra bridge, " << change.name << ": worst motion surprise "
+                  << worst / before << "x the largest before\n";
+        expect(worst < 3.0 * before,
+               std::string("the bridge stepped on a second construction change: ") + change.name);
+    }
+}
+
+// The body radiates at other rates what it radiates at 48 kHz, where its
+// residues were fitted. Converted as a held continuous mode it kept the
+// 48 kHz hold's droop at the mode instead: 0.36-0.39 dB too much at 9 kHz
+// at 96 kHz, 0.18 dB too little at 44.1 kHz.
+void testBodyRadiationKeepsItsLevelAcrossRates()
+{
+    for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
+    {
+        acustra::EngineParameters parameters;
+        parameters.guitarModel = model;
+        std::vector<std::unique_ptr<acustra::AcustraEngine>> engines;
+        const std::array<double, 3> rates { 48000.0, 44100.0, 96000.0 };
+        for (const double rate : rates)
+        {
+            engines.push_back(std::make_unique<acustra::AcustraEngine>());
+            engines.back()->setParameters(parameters);
+            engines.back()->prepare(rate, 64);
+        }
+        double worst = 0.0;
+        for (const double f : { 3000.0, 5000.0, 7000.0, 9000.0 })
+        {
+            // A third-octave comb, so no one mode decides it.
+            std::array<double, 3> power {};
+            for (std::size_t r = 0; r < rates.size(); ++r)
+                for (int k = -3; k <= 3; ++k)
+                    power[r] += std::pow(acustra::AcustraEngineTestAccess::bodyResponse(
+                        *engines[r], f * std::exp2(k / 36.0)), 2.0);
+            for (std::size_t r = 1; r < rates.size(); ++r)
+                worst = std::max(worst, std::abs(10.0 * std::log10(power[r] / power[0])));
+        }
+        std::cout << "Acustra body radiation 3-9 kHz across 44.1/96 kHz, model "
+                  << static_cast<int>(model) << ": worst " << worst << " dB from 48 kHz\n";
+        expect(worst < 0.12, "the body's radiation moved with the sample rate");
+    }
+}
+
+// The bridge's plate conductance floor damps a string's upper partials alike
+// at every host rate. Prewarped at the host rate its over-damped section
+// moved its fitted plateau (5-7% faster bridge decay above 1 kHz at 96 kHz),
+// and below a 13 kHz host it was dropped with the modes above 0.45 fs.
+void testThePlateFloorDampsAlikeAtEveryRate()
+{
+    const std::array<double, 6> rates { 48000.0, 44100.0, 96000.0, 192000.0, 12000.0, 11025.0 };
+    std::vector<std::unique_ptr<acustra::AcustraEngine>> engines;
+    for (const double rate : rates)
+    {
+        engines.push_back(std::make_unique<acustra::AcustraEngine>());
+        engines.back()->prepare(rate, 64);
+    }
+    const auto open = acustra::AcustraEngine::openNotes(acustra::Tuning::Standard);
+    double worstHigh = 0.0, worstLow = 0.0;
+    for (const int string : { 0, 2, 5 })
+    {
+        const double f0 = 440.0 * std::exp2((open[static_cast<std::size_t>(string)] - 69) / 12.0);
+        for (const int harmonic : { 3, 5, 8, 12, 20 })
+        {
+            const double f = harmonic * f0;
+            const double reference = acustra::AcustraEngineTestAccess::bridgeDecay(
+                *engines[0], f, f0, string);
+            for (std::size_t r = 1; r < rates.size(); ++r)
+            {
+                if (f > 0.4 * rates[r])
+                    continue;
+                const double relative = std::abs(acustra::AcustraEngineTestAccess::bridgeDecay(
+                    *engines[r], f, f0, string) / reference - 1.0);
+                (rates[r] >= 44100.0 ? worstHigh : worstLow)
+                    = std::max(rates[r] >= 44100.0 ? worstHigh : worstLow, relative);
+            }
+        }
+    }
+    std::cout << "Acustra bridge decay against 48 kHz: worst " << 100.0 * worstHigh
+              << "% at 44.1-192 kHz, " << 100.0 * worstLow << "% at 11-12 kHz\n";
+    expect(worstHigh < 0.025, "the bridge's decay of upper partials moved with the rate");
+    expect(worstLow < 0.3, "a low host rate lost the bridge's plate conductance floor");
+}
+
 } // namespace
 
 int main()
 {
+    testIdleFlushIsIndependentOfBlockSize();
+    testThePlateFloorDampsAlikeAtEveryRate();
+    testBodyRadiationKeepsItsLevelAcrossRates();
+    testASecondConstructionChangeDoesNotStepTheBridge();
+    testPluckDrawsIgnoreEarlierBursts();
+    testBridgeHandTopLossIsItsT60Ratio();
     testDecayEstimatorFollowsPitchGlides();
     testLossFiltersPreserveTheReferenceTransfer();
     testSilenceAndFiniteOutput();
@@ -7660,6 +8300,7 @@ int main()
     testDispersionSolveCacheMatchesForcedRecomputation();
     testConfigurationKeysAndObserversLeaveTheOutputUnchanged();
     testDispersionAcrossRatesAndNotes();
+    testDispersionAcrossTheFretboard();
     testTheFractionalDelayReadIsLossless();
     testASlewingDelayDoesNotClickAboveFourteenKilohertz();
     testAMemberBendIsATensionBendByGrimes();
@@ -7690,11 +8331,13 @@ int main()
     testStolenStringKeepsRingingUnderHandDamping();
     testBridgeHandPressureShortensAndDarkens();
     testNaturalHarmonicsReachAboveTheFretboard();
+    testANaturalHarmonicSoundsItsOwnPitch();
     testHeldStringsDoNotLengthenANoteDecay();
     testANoteOverASoundingInstrumentDoesNotClick();
     testBodyChangesPreserveTheSoundingStrings();
     testBodyChangesPreserveAnUnfinishedFade();
     testSwitchingTuningOrModelUnderAChordDoesNotClick();
+    testStringAgeKeepsARepluckedTail();
     testLongitudinalModesGrowWithVelocity();
     testTodaysMechanismsSurviveEachOther();
     testNoteAfterSilenceDoesNotClick();
@@ -7712,6 +8355,7 @@ int main()
     testTheSteelBanksFillTheirSlotsAndStayPassive();
     testBodyShapesFollowTheCoupledTopAndCavity();
     testAPlectrumReleasesWithVelocity();
+    testAPickReleaseKeepsItsHumpAcrossRates();
     testAPlectrumSlipsOffItsEdgeFasterWhenHarder();
     testTheNormalPolarisationIsTheHigherMemberByALength();
     testTheParallelPolarisationRadiatesThroughTheRockingSaddle();

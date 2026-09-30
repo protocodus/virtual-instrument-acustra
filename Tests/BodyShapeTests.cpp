@@ -168,6 +168,11 @@ void testPhaseAndPassivity()
             {
                 p.shape = static_cast<acustra::BodyShape>(shape);
                 e->setParameters(p);
+                // A change inside the previous one's 20 ms bridge fade waits
+                // for it to end, so let each settle before reading it.
+                std::vector<float> left(64), right(64);
+                for (int done = 0; done < rate / 20; done += 64)
+                    e->process(left.data(), right.data(), 64);
                 const auto actual = Access::bridge(*e);
                 // The authored high-band floor has no measured geometry
                 // map, so even non-native shapes must preserve it exactly.

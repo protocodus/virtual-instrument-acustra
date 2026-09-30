@@ -1930,6 +1930,17 @@ void testGatheredChordsVoiceLikeSequencedChords()
     const auto gatheredChord = renderTimeline (together, length, true);
     expect (latency == 1440,
             "Gather Chords did not report its 30 ms window as latency");
+    {
+        // Below the modelled range the engine plays at 8 kHz, and the window
+        // the player holds MIDI back for is counted there: the latency
+        // reported is that window, not 30 ms of the host's rate.
+        auto lowRateOwner = std::make_unique<AcustraAudioProcessor>();
+        setValue (*lowRateOwner, acustra::parameters::gatherChords, 1.0f);
+        lowRateOwner->prepareToPlay (4000.0, blockSize);
+        expect (lowRateOwner->getLatencySamples()
+                    == acustra::Performer::gatherWindowSamples (8000.0),
+                "Gather Chords reported its latency at the host's rate, not the engine's");
+    }
     expect (gatheredRoll == gatheredChord,
             "a chord rolled inside the window did not sound as the same chord "
             "on one sample");

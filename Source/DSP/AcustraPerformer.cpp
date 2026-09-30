@@ -45,6 +45,9 @@ void Performer::prepare(double sampleRate, int maximumBlockSize)
     droppedEvents_ = 0;
     gatherWindow_ = gatherWindowSamples(sampleRate_);
     engine_.setLowerZoneMemberCount(lowerZoneMemberCount_);
+    // The engine starts every bend at zero; the master tune rides on them.
+    for (int channel = 1; channel <= 16; ++channel)
+        refreshPitchBend(channel);
 }
 
 void Performer::setParameters(const EngineParameters& parameters) noexcept
@@ -68,6 +71,8 @@ void Performer::reset() noexcept
     rpnStates_.fill(RpnState {});
     vibratoChannel_ = 0;
     engine_.reset();
+    for (int channel = 1; channel <= 16; ++channel)
+        refreshPitchBend(channel);
     heldCount_ = 0;
     // A reset inside a block also drops that sample's pending notes.
     pendingNoteOnCount_ = 0;
@@ -209,7 +214,15 @@ void Performer::flushNoteGroup() noexcept
         pendingNoteOns_.begin(), pendingNoteOns_.begin() + pendingNoteOnCount_,
         [&](const PendingNoteOn& note)
         { return note.channel == pendingNoteOns_[0].channel; });
-    const bool strum = pendingNoteOnCount_ >= 3 && oneChannel;
+    // Only notes the tuning can sound make a stroke: a note no string
+    // reaches neither times it (below) nor turns one or two notes into one.
+    int soundingNotes = 0;
+    if (pendingNoteOnCount_ >= 3 && oneChannel)
+        for (int index = 0; index < pendingNoteOnCount_; ++index)
+            soundingNotes += engine_.canSound(
+                pendingNoteOns_[static_cast<std::size_t>(index)].note,
+                pendingNoteOns_[static_cast<std::size_t>(index)].channel) ? 1 : 0;
+    const bool strum = soundingNotes >= 3;
     if (strum)
     {
         // The rest is measured between the strums' own samples, so no block
@@ -349,7 +362,8 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
         // does next on this sample - unless another pedal still holds it (an
         // MPE member's key-up is held by its own pedal or the manager's).
         dispatchMidiData(data, size);
-        if (status == 0xb0u && size >= 3 && (data[1] & 0x7fu) == 64u)
+        if (status == 0xb0u && size >= 3
+            && ((data[1] & 0x7fu) == 64u || (data[1] & 0x7fu) == 121u))
         {
             for (int index = 0; index < pendingNoteOffCount_; ++index)
             {

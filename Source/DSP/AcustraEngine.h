@@ -105,8 +105,12 @@ struct EngineParameters
     float stringAge { 0.15f };       // 0 fresh, 1 worn/dead
     float pluckPosition { 0.28f };   // 0 bridgeward, 1 neckward
     float touch { 0.58f };           // 0 soft/dark, 1 hard/bright
-    float bodyAmount { 0.82f };      // measurement-derived body radiation
-    float stereoWidth { 0.62f };     // authored per-mode stereo gain spread
+    // The body's radiation against the direct sound at the contact (the
+    // tool's click; the fitted bridge-local share ships at 0), so mostly a
+    // level on the body.
+    float bodyAmount { 0.82f };
+    // Scales the stereo microphones' difference: 0 mono, 1 as measured.
+    float stereoWidth { 0.62f };
     float outputGain { 0.42f };      // linear
     // The piezo mixed into Main under a microphone Capture, 0 none to 1 the
     // piezo at its full level (as Capture Piezo plays it) beside the
@@ -251,11 +255,11 @@ public:
     //   piezo: the under-saddle piezo and its analog chain (renderPiezo in
     //     AcustraEngine.cpp), mono, whatever Capture selects.
     // It is at the level Main has when Capture selects Piezo (the same
-    // material reference and Output gain) and passes its own copy of Main's
-    // safety limiter; it shares no state with Main, so Main is bit-for-bit
-    // what it would be without it. Main with Capture on Piezo equals the
-    // Piezo output on both sides, once a Capture change's 20 ms crossfade has
-    // settled.
+    // construction loudness reference and Output gain) and passes its own
+    // copy of Main's safety limiter; it shares no state with Main, so Main is
+    // bit-for-bit what it would be without it. Main with Capture on Piezo
+    // equals the Piezo output on both sides, once a Capture change's
+    // crossfade (a 20 ms time constant) has settled.
     struct OutputBuses
     {
         float* piezo { nullptr };
@@ -337,13 +341,17 @@ private:
         // 2. The force in newtons: an engine force unit is a string's wave
         // impedance times one displacement unit per 48 kHz sample
         // (FixedDerivative differences over the 48 kHz period at every
-        // rate), and a displacement unit is fittedPhysicalCalibration's
-        // steelDisplacementScaleMetres, 6.1 mm: 0.0061 * 48000 N per unit.
+        // rate), and a displacement unit is 6.1 mm, PhysicalCalibration's
+        // default steelDisplacementScaleMetres: 0.0061 * 48000 N per unit.
+        // The chain was designed and its headroom checked at that unit. The
+        // shipped fit puts the strings' own unit at 7.74 mm, at which the
+        // player's hardest Pick strums would clip U1 by about 1 dB, so the
+        // piezo does not follow it (README, Known gaps).
         static constexpr double newtonsPerUnit = 0.0061 * 48000.0;
         // The saddle on its element, driven one way by the rigid-saddle
         // force: F_p / F_r = Zk Q / (1 + Zk Q), Zk = k/s + c_m,
-        // Q = 1/(s M + SZ) + G. M: a bone saddle 72 x 3 x 9.5 mm at
-        // 1.95 g/cc (chosen within 2.7-5.1 g). k: the element and its seat
+        // Q = 1/(s M + SZ) + G. M: 3.8 g, chosen within 2.7-5.1 g (a bone
+        // saddle 72 x 3 x 9.5 mm at 1.95 g/cc is 4.0 g). k: the element and its seat
         // put M at 6 kHz (chosen within the documented 5-7 kHz). c_m: the
         // element's loss factor 1/18, Zollner's rig Q of 18 taken as the
         // bound on material loss (M. Zollner, Physics of the Electric
@@ -492,8 +500,15 @@ private:
         float highLossMix { 0.1f };
         float broadLossCoefficient { 0.5f };
         float lowpassCoefficient { 0.5f };
+        // The dispersion's two allpass sections (calibrateDispersion in
+        // AcustraEngine.cpp), in cascade. The second runs only on the
+        // stiffer notes that need it; inactive, it is bypassed and leaves
+        // the loop exactly as it was.
         float dispersionA1 { 0.0f };
         float dispersionA2 { 0.0f };
+        bool secondDispersionActive { false };
+        float secondDispersionA1 { 0.0f };
+        float secondDispersionA2 { 0.0f };
         // The string's own bending loss (bendingLossSection in
         // AcustraEngine.cpp): g / (1 + a1 z^-1 + a2 z^-2), unit gain at DC,
         // designed at the host rate from the loss law rather than mapped
@@ -508,6 +523,7 @@ private:
         OnePole broadLossFilter {};
         OnePole lossFilter {};
         SecondOrderAllpass dispersion {};
+        SecondOrderAllpass secondDispersion {};
         // The fractional-delay allpass's state: its two previous outputs.
         float allpassY1 { 0.0f };
         float allpassY2 { 0.0f };
@@ -531,6 +547,9 @@ private:
 
         void reset() noexcept;
         [[nodiscard]] float readDelay(float samples) noexcept;
+        // Switches the second dispersion section in or out under a sounding
+        // wave (see its definition).
+        void switchSecondDispersion(bool active) noexcept;
         // Read-only point observation of both travelling waves; does not
         // advance the feedback allpass or alter the vibrating string.
         [[nodiscard]] float displacementAt(float fraction) const noexcept;
@@ -745,6 +764,9 @@ private:
         bool memberPitchBendFrozen { false };
         std::uint64_t startOrder { 0 };
         std::uint32_t randomState { 1 };
+        // The release burst's noise, handed over from randomState at each
+        // pluck (initialisePluck).
+        std::uint32_t excitationNoiseState { 1 };
         float velocity { 0.0f };
         float polarisationMix { 0.5f };
         float excitationEnvelope { 0.0f };
@@ -856,8 +878,14 @@ private:
         // pair of modes they form through a rocking saddle is heard at the
         // requested pitch (coupledPolarisationDetune); zero elsewhere.
         float polarisationDetune { 0.0f };
-        float dispersionDecayRatio { 10.0f };
-        float dispersionPoleRatio { 4.0f };
+        // The two dispersion sections' pole pairs relative to the
+        // fundamental; a zero decay ratio is an unused section.
+        std::array<float, 2> dispersionDecayRatios { 0.0f, 0.0f };
+        std::array<float, 2> dispersionPoleRatios { 0.0f, 0.0f };
+        // Each loop's delay as configureVoice tuned it at 48 kHz, in 48 kHz
+        // samples, for a Pick release at another rate (writePickRelease);
+        // zero when not tuned for one.
+        std::array<float, 2> referencePickDelay {};
         float level { 0.0f };
         float releaseDamping { 1.0f };
         // The hand's T60 for the release under way (beginRelease), from
@@ -1066,9 +1094,12 @@ private:
     // localised over that same aperture and carrying releaseShare of the
     // triangle's stored energy. Both are projected onto the nth-harmonic
     // node like the plucked shape. Replaces the line's first length samples.
+    // The share is solved on the grid of referenceDelay, the loop's period
+    // in 48 kHz samples, at any other host rate.
     void writePickRelease(StringLoop& loop, int length, float height,
                           float position, float aperture, int modes,
-                          float releaseShare, double slipPole) noexcept;
+                          float releaseShare, double slipPole,
+                          float referenceDelay) noexcept;
     double plectrumSlipPole(const Voice& voice, float releasedAmplitude,
                             float heldDistance, float soundingLength,
                             float scaleLength) const noexcept;
@@ -1198,13 +1229,14 @@ private:
     // Completed dispersion solves by their exact arguments, shared by the
     // six strings: a chord change asks for a handful of designs a playing
     // hand keeps returning to, and each solve is an iterative 3x3 fit that
-    // made the note-on batch several times a normal one. The solve is a pure
+    // made the note-on batch several times a normal one (with a
+    // least-squares refit on the stiffer notes). The solve is a pure
     // function of its arguments, so a hit is the same result.
     struct DispersionSolve
     {
         std::array<double, 9> arguments {};
-        float decayRatio { 10.0f };
-        float poleRatio { 4.0f };
+        std::array<float, 2> decayRatios { 0.0f, 0.0f };
+        std::array<float, 2> poleRatios { 0.0f, 0.0f };
         bool valid { false };
     };
     std::array<DispersionSolve, 64> dispersionSolves_ {};
@@ -1328,8 +1360,7 @@ private:
     // instrument reaches exact zero (processIdleFlush).
     int idleQuietSamples_ { 0 };
     bool idleFlushed_ { true };
-    float idleBlockPeak_ { 0.0f };
-    void processIdleFlush(int numSamples) noexcept;
+    void processIdleFlush(float samplePeak) noexcept;
     float bodyModelFade_ { 1.0f };
     float bodyModelFadeStep_ { 1.0f / 1920.0f };
     // A live bridge rebuild crossfades the mobility from the modes that were
@@ -1338,6 +1369,12 @@ private:
     BridgeLoad fadingBridgeLoad_ {};
     float bridgeLoadFade_ { 1.0f };
     float bridgeLoadFadeStep_ { 1.0f / 960.0f };
+    // A rebuild asked for while that fade runs waits for it to end, as the
+    // body's does (bodyUpdatePending_): restarting the fade from a mix of two
+    // banks, or rebuilding under it, stepped the bridge.
+    bool bridgeUpdatePending_ { false };
+    GuitarModel configuredBridgeModel_ { GuitarModel::Original };
+    void applyPendingBridge(bool fade) noexcept;
     int controlCounter_ { 0 };
     int lowerZoneMemberCount_ { 0 };
     // -1 means no CC74 (mpeTimbre_) or channel pressure (mpePressure_) has
@@ -1370,9 +1407,9 @@ private:
     // are timed on it.
     std::uint64_t sampleClock_ { 0 };
     std::array<HandFinger, stringCount> hand_ {};
-    std::uint64_t lastNoteOnSample_ { 0 };
-    std::uint64_t chordStartSample_ { 0 };
-    bool noteOnSeen_ { false };
+    std::array<std::uint64_t, midiChannelCount> lastNoteOnSample_ {};
+    std::array<std::uint64_t, midiChannelCount> chordStartSample_ {};
+    std::array<bool, midiChannelCount> noteOnSeen_ {};
     // planChord's shape for the notes of one sample.
     std::array<int, stringCount> plannedNotes_ {};
     std::array<int, stringCount> plannedStrings_ {};

@@ -504,6 +504,58 @@ void testPiezoMix()
            "Piezo Mix stepped into Main instead of gliding");
 }
 
+// A Capture or Piezo Mix glide reaches its target exactly at every rate. At
+// 192 kHz a smoothing step near 1 used to fall below half an ulp before the
+// glide was within its snapping distance, so it stopped short for good: Main
+// under a Capture moved away and back never became the plain stereo render
+// again, and a mix raised to 1 stayed a little under it.
+void testGlidesSettleAtHighRates()
+{
+    static constexpr int rate = 192000;
+    static constexpr int blockSize = 64;
+    static constexpr int length = rate * 2;
+    const auto run = [] (EngineParameters initial, std::vector<std::pair<int, EngineParameters>> moves)
+    {
+        auto engine = std::make_unique<AcustraEngine>();
+        engine->setParameters(initial);
+        engine->prepare(rate, blockSize);
+        for (const int note : { 40, 52, 59 })
+            engine->noteOn(note, 0.3f);
+        Buses out;
+        out.left.assign(length, 0.0f);
+        out.right.assign(length, 0.0f);
+        std::size_t next = 0;
+        for (int start = 0; start < length; start += blockSize)
+        {
+            if (next < moves.size() && start >= moves[next].first)
+                engine->setParameters(moves[next++].second);
+            const auto at = static_cast<std::size_t>(start);
+            engine->process(out.left.data() + at, out.right.data() + at,
+                            AcustraEngine::OutputBuses {}, std::min(blockSize, length - start));
+        }
+        return out;
+    };
+    const auto tail = [] (const std::vector<float>& channel)
+    {
+        return std::vector<float>(channel.begin() + length * 3 / 4, channel.end());
+    };
+    EngineParameters stereo;
+    EngineParameters mono = stereo;
+    mono.capture = CaptureType::MonoMic;
+    const auto plain = run(stereo, {});
+    const auto returned = run(stereo, { { rate / 8, mono }, { rate / 2, stereo } });
+    expect(bitwiseEqual(tail(returned.left), tail(plain.left))
+               && bitwiseEqual(tail(returned.right), tail(plain.right)),
+           "a Capture moved away and back at 192 kHz did not settle onto Stereo");
+    EngineParameters full = stereo;
+    full.piezoMix = 1.0f;
+    const auto set = run(full, {});
+    const auto raised = run(stereo, { { rate / 8, full } });
+    expect(bitwiseEqual(tail(raised.left), tail(set.left))
+               && bitwiseEqual(tail(raised.right), tail(set.right)),
+           "a Piezo Mix raised to 1 at 192 kHz did not settle onto 1");
+}
+
 void testIdleOutputsAreExactSilence()
 {
     auto performer = std::make_unique<Performer>();
@@ -596,6 +648,7 @@ int main()
     testIdleOutputsAreExactSilence();
     testRungOutInstrumentReachesExactSilence();
     testPiezoMix();
+    testGlidesSettleAtHighRates();
     testCost();
 
     if (failures != 0)

@@ -309,7 +309,10 @@ void AcustraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     keyboardState.reset();
     performer.setParameters (snapshotEngineParameters());
     performer.prepare (sampleRate, samplesPerBlock);
-    gatherWindowSamples.store (acustra::Performer::gatherWindowSamples (sampleRate),
+    // The player gathers at the engine's own rate, which it clamps to the
+    // modelled range, so the latency it reports must be counted there too.
+    gatherWindowSamples.store (acustra::Performer::gatherWindowSamples (
+                                   performer.engine().sampleRate()),
                                std::memory_order_relaxed);
     parameterChanged (ids::gatherChords, parameterPointers[slotGatherChords]->load (
         std::memory_order_relaxed));
