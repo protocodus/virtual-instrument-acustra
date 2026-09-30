@@ -124,11 +124,21 @@ struct AcustraEngineTestAccess
         double bendingGain { 1.0 };
         double bendingA1 { 0.0 };
         double bendingA2 { 0.0 };
+        // The dispersion's second allpass section, where the loop runs one.
+        bool secondDispersionActive { false };
+        double secondDispersionA1 { 0.0 };
+        double secondDispersionA2 { 0.0 };
     };
 
+    // Completes a snapshot with the loop's sections that the positional
+    // fields above leave out: its bending loss and its second dispersion
+    // section.
     static StringLoopSnapshot withBendingLoss(StringLoopSnapshot snapshot,
                                               const AcustraEngine::StringLoop& loop)
     {
+        snapshot.secondDispersionActive = loop.secondDispersionActive;
+        snapshot.secondDispersionA1 = loop.secondDispersionA1;
+        snapshot.secondDispersionA2 = loop.secondDispersionA2;
         if (loop.bendingLossActive)
         {
             snapshot.bendingGain = loop.bendingLossGain;
@@ -319,6 +329,34 @@ struct AcustraEngineTestAccess
                  loop.broadLossMix, loop.lowpassCoefficient,
                  loop.highLossMix, loop.dispersionA1, loop.dispersionA2,
                  voice.dispersionDesignInharmonicity, rate }, loop);
+    }
+
+    // Every string at every fret from open to the 20th at one rate, in the
+    // standard tuning, configured the way configuredLoop configures a note.
+    static std::vector<StringLoopSnapshot> fretboardLoops(double rate)
+    {
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
+        engine.prepare(rate, 64);
+        engine.setBridgeCouplingEnabled(false);
+        EngineParameters parameters;
+        engine.setParameters(parameters);
+        std::vector<StringLoopSnapshot> loops;
+        for (int stringIndex = 0; stringIndex < 6; ++stringIndex)
+        for (int fret = 0; fret <= 20; ++fret)
+        {
+            auto& voice = engine.voices_[static_cast<std::size_t>(stringIndex)];
+            voice.attackPitchCents = 0.0f;
+            engine.configureVoice(voice, stringIndex, voice.openMidi + fret,
+                                  true);
+            const auto& loop = voice.loops[0];
+            loops.push_back(withBendingLoss({ loop.targetDelay,
+                    loop.loopGain, loop.broadLossCoefficient,
+                    loop.broadLossMix, loop.lowpassCoefficient,
+                    loop.highLossMix, loop.dispersionA1, loop.dispersionA2,
+                    voice.dispersionDesignInharmonicity, rate }, loop));
+        }
+        return loops;
     }
 
     static std::array<double, 3> lossFilterCoefficients(float pole, double rate)
@@ -2829,17 +2867,26 @@ double loopPhase(const acustra::AcustraEngineTestAccess::StringLoopSnapshot& loo
     const double sine = std::sin(omega);
     const double cosine2 = std::cos(2.0 * omega);
     const double sine2 = std::sin(2.0 * omega);
-    const double numeratorPhase = std::atan2(
-        -loop.dispersionA1 * sine - sine2,
-        loop.dispersionA2 + loop.dispersionA1 * cosine + cosine2);
-    const double denominatorPhase = std::atan2(
-        -loop.dispersionA1 * sine - loop.dispersionA2 * sine2,
-        1.0 + loop.dispersionA1 * cosine + loop.dispersionA2 * cosine2);
-    double allpassPhase = denominatorPhase - numeratorPhase;
-    while (allpassPhase < 0.0)
-        allpassPhase += 2.0 * std::numbers::pi;
-    while (allpassPhase >= 2.0 * std::numbers::pi)
-        allpassPhase -= 2.0 * std::numbers::pi;
+    // The dispersion's allpass sections in cascade: the second only where
+    // the loop runs it.
+    const auto sectionPhase = [&] (double a1, double a2)
+    {
+        const double numeratorPhase = std::atan2(
+            -a1 * sine - sine2, a2 + a1 * cosine + cosine2);
+        const double denominatorPhase = std::atan2(
+            -a1 * sine - a2 * sine2, 1.0 + a1 * cosine + a2 * cosine2);
+        double phase = denominatorPhase - numeratorPhase;
+        while (phase < 0.0)
+            phase += 2.0 * std::numbers::pi;
+        while (phase >= 2.0 * std::numbers::pi)
+            phase -= 2.0 * std::numbers::pi;
+        return phase;
+    };
+    const double allpassPhase
+        = sectionPhase(loop.dispersionA1, loop.dispersionA2)
+        + (loop.secondDispersionActive
+               ? sectionPhase(loop.secondDispersionA1, loop.secondDispersionA2)
+               : 0.0);
 
     // The bending-loss section is designed at the host rate, so its lag is
     // read at the host frequency.
@@ -3335,17 +3382,67 @@ void testDispersionAcrossRatesAndNotes()
                 / (1.0 + inharmonicity));
             const double actual = loopResonance(loop, partial, expected);
             const double cents = 1200.0 * std::log2(actual / expected);
-            // The H1/H7/H11.5 collocation's own approximation error at a
-            // top-fret treble note, and the Thiran read's own phase-delay
-            // curvature between those three points, bound what is left;
-            // 3 cents is still under a third of the H16+ gap already
-            // documented.
+            // The least-squares fit's own residual (under a cent here, see
+            // calibrateDispersion) and the loop's single-precision
+            // coefficients bound what is left; 3 cents is still under a
+            // third of the H16+ gap already documented.
             expect(std::abs(cents) < 3.0,
                    "steel/"
                        + std::to_string(static_cast<int>(rate)) + " MIDI "
                        + std::to_string(midiNote) + " partial "
                        + std::to_string(partial) + " missed by "
                        + std::to_string(cents) + " cents");
+        }
+    }
+}
+
+// The same law across the whole fretboard. Fretting shortens the string, and
+// B grows as the inverse square of the sounding length, so the wound strings
+// high on the neck are the most dispersive notes the model plays: E2 at the
+// 20th fret has B n^2 near 0.12 at H12. One allpass section fitted at three
+// partials missed H3-H5 there by 16-18 cents between its collocation points,
+// and this test failed E2 from the 15th fret up, A2 at the 19th and 20th and
+// B3 at the 20th;
+// with the second section switched in on the stiff notes (calibrateDispersion)
+// every string and fret is held to the same 3 cents as above, H2 up to H12,
+// at the three common host rates.
+void testDispersionAcrossTheFretboard()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    // The standard tuning's open strings, bass first.
+    constexpr int openMidi[] { 40, 45, 50, 55, 59, 64 };
+    constexpr int frets = 21;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+    {
+        const auto loops = Access::fretboardLoops(rate);
+        for (int stringIndex = 0; stringIndex < 6; ++stringIndex)
+        for (int fret = 0; fret < frets; ++fret)
+        {
+            const auto& loop = loops[static_cast<std::size_t>(
+                stringIndex * frets + fret)];
+            const double inharmonicity = loop.inharmonicity;
+            const double nominalOmega = 2.0 * std::numbers::pi * 440.0
+                * std::exp2(static_cast<double>(openMidi[stringIndex] + fret
+                                                - 69) / 12.0) / rate;
+            const double fundamental = loopResonance(loop, 1, nominalOmega);
+            for (int partial = 2; partial <= 12; ++partial)
+            {
+                const double number = static_cast<double>(partial);
+                const double expected = fundamental * number * std::sqrt(
+                    (1.0 + inharmonicity * number * number)
+                    / (1.0 + inharmonicity));
+                // Wide enough to measure a miss several times the bound.
+                const double actual = loopResonance(loop, partial, expected,
+                                                    40.0);
+                const double cents = 1200.0 * std::log2(actual / expected);
+                expect(std::abs(cents) < 3.0,
+                       "steel/" + std::to_string(static_cast<int>(rate))
+                           + " string " + std::to_string(stringIndex + 1)
+                           + " (from the bass) fret " + std::to_string(fret)
+                           + " partial " + std::to_string(partial)
+                           + " missed by " + std::to_string(cents)
+                           + " cents");
+            }
         }
     }
 }
@@ -8136,6 +8233,7 @@ int main()
     testDispersionSolveCacheMatchesForcedRecomputation();
     testConfigurationKeysAndObserversLeaveTheOutputUnchanged();
     testDispersionAcrossRatesAndNotes();
+    testDispersionAcrossTheFretboard();
     testTheFractionalDelayReadIsLossless();
     testASlewingDelayDoesNotClickAboveFourteenKilohertz();
     testAMemberBendIsATensionBendByGrimes();

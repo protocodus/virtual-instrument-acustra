@@ -648,11 +648,18 @@ rate set by the accidental fraction of its loop length (a 47:1 range in loss
 per round trip across nine notes); it is now a smooth 1.8:1 rise with the
 partial's own frequency, and no note's H8 partial varies by more than 13%
 across 44.1, 48 and 96 kHz. Frequency-dependent losses make upper partials
-decay faster, and a second-order allpass follows the stiff-string
-inharmonicity law, collocated at H1, H7 and H11.5 and re-solved at the tap the
-delay currently occupies so a bend or vibrato's slewing fractional part does
-not stall the solve. String Age lowers the high-frequency cutoff and
-increases loss. A shared fitted cutoff scale of 2.286 reduces excess
+decay faster, and two second-order allpass sections in cascade follow the
+stiff-string inharmonicity law, re-solved at the tap the delay currently
+occupies so a bend or vibrato's slewing fractional part does not stall the
+solve. On a flexible string (B N^2 up to 0.015 over its N fitted partials:
+every open string, and in the standard tuning the low E below its 3rd fret
+and the others below their 7th to 18th) the first is collocated at H1, H7
+and H11.5 and the second is bypassed. One collocated section dipped between
+its points on the stiff wound strings high on the neck (E2's H3-H5 16-18
+cents flat at the 20th fret), so as B N^2 rises to 0.05 the second section,
+placed from the stiffness, is switched in smoothly and the first is refitted
+with the delay by least squares over the integer partials H1-H12. String Age
+lowers the high-frequency cutoff and increases loss. A shared fitted cutoff scale of 2.286 reduces excess
 upper-partial damping found across the reference corpus; a regression proves that it
 does not move the requested fundamental T60 or compensated pitch. Each string
 can also lose its upper partials through its own bending stiffness, the
@@ -662,7 +669,7 @@ Acustica 90 (2004) 928-944): a stiffness EI(1 + i eta) loses
 1/Q_n = eta B n^2 / (1 + B n^2), with B the inharmonicity the dispersion
 uses, so the added decay grows as the cube of frequency. Both polarisations
 carry it as a unit-DC two-pole section designed at the host rate, with its
-phase in the tuning and dispersion collocation and its H1 magnitude in the
+phase in the tuning and dispersion fit and its H1 magnitude in the
 loop gain. A factor of zero is an exact no-op. The recordings' 20-300 ms
 upper-partial decay measures steel wound 0.10 and plain 0.006; the benchmark
 refuses that even with the pluck refitted around it, and its joint optimum
@@ -1521,11 +1528,13 @@ The JUCE-free suites cover:
   dispersion across notes and sample rates;
 - exact complex sample-rate conversion of the 48 kHz body residues, tested
   body-only from 44.1 to 384 kHz so a direct path cannot mask drift;
-- stiff-string dispersion below 3.0 cents over H2--H12 across the tested
-  note and sample-rate matrix, using H1/H7/H11.5 phase collocation
-  (above the last anchor the single allpass delivers 60 to 75% of the
-  stiff-string stretch: steel E2 −4.6, −14.5 and −29.6 cents at H16, H20 and
-  H24 against +35, +54 and +76, a Known gap);
+- stiff-string dispersion below 3.0 cents over H2--H12 on every string at
+  every fret from open to the 20th at 44.1, 48 and 96 kHz, and at MIDI 40 and
+  84 up to 384 kHz, using the H1/H7/H11.5 collocation on flexible strings and
+  a two-section allpass refitted by least squares on stiff ones (measured
+  worst 1.1 cents in the standard tuning at 44.1 to 96 kHz and 2.0 in any
+  tuning from 32 kHz up; above H12 the stretch still falls short, a Known
+  gap);
 - fitted register-dependent pluck aperture with an exact legacy identity point,
   a tested negative-exponent continuation and held-out spectral improvement;
 - a bounded, monotone steel Kirchhoff--Carrier pitch surrogate across velocity
@@ -2040,13 +2049,17 @@ engine.
   identify a real microphone's acoustic equilibrium before release. This is a
   limit on a new preload model; it does not establish an audible DC fault in
   the current differentiated-wave drive.
-- Above H12 the loop's single second-order allpass is not collocated at all,
-  and drift there reaches 29.6 cents by H24 on an open steel low E. A
-  multi-biquad cascade sized by the published group-delay-area method (Abel
-  and Smith, DAFx-06) was built and re-solved on the loop's own collocation;
-  it reaches 1.7-1.8 cents worst case, still short of the 1.2-cent target and
-  costing about two orders of magnitude more design time per note on the
-  audio thread, so it is not shipped.
+- Above H12 the loop's dispersion is not fitted at all, and drift there
+  reaches 29.6 cents by H24 on an open steel low E. High on the neck the
+  two-section fit roughly halves the drift the single collocated section
+  left there, but not all of it: E2 at the 20th fret, measured on the loop
+  alone at 48 kHz, sits 23 and 69 cents flat at H16 and H20 (43 and 104
+  before). A multi-biquad cascade sized by the published group-delay-area
+  method (Abel and Smith, DAFx-06) was built and re-solved on the loop's own
+  collocation; it reaches 1.7-1.8 cents worst case, still short of the
+  1.2-cent target and costing about two orders of magnitude more design time
+  per note on the audio thread, so it is not shipped; the two-section design
+  that is costs less than the collocation alone did.
 - The parallel polarisation radiates through the measured rocking, not
   through a measured tangential admittance. Woodhouse, who measured the full
   2x2 bridge admittance matrix on a guitar and synthesised with and without
