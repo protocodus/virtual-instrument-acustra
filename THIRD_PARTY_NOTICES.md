@@ -25,6 +25,32 @@ indication or editorial marking is read or reproduced, and none appears in
 velocities in that header are an authored performance written by this project,
 not data from either file.
 
+## Scores for the expressive repertoire demonstrations
+
+`Tools/PerformRepertoire.py` reads the Mutopia Project MIDI files it lists
+(each pinned by md5) and takes from them the notes alone: which pitch sounds
+when, and for how long. Every composer's work is in the public domain; the
+composers died between 1561 and 1909. No engraving, fingering or editorial
+marking is read, and every dynamic, tempo, timing and articulation in the
+performances is authored by this project. The files' own licences cover
+their typesetting:
+
+- Public domain: Tárrega, *Lágrima* (guitar-duo edition); Milán,
+  *Pavana II*; Galilei, *Saltarello*; Sanz, *Preludio*; Bach, BWV 999 and the
+  BWV 997 Sarabande; Bach, Air from BWV 1068 (flute and guitar); Dowland,
+  *Come again*; Arbeau, *Belle qui tiens ma vie*.
+- CC BY-SA 2.5, 3.0 or 4.0 (the edition): Tárrega, *Adelita* (2.5),
+  *Recuerdos de la Alhambra* (3.0), *Capricho árabe* (4.0); Bach, Gavotte en
+  rondeau from BWV 1006a (3.0).
+- CC BY 4.0 (the edition): Pachelbel, *Canon per 3 violini e basso*.
+- CC BY-SA 4.0, an arrangement: the Aria from Bach's Goldberg Variations,
+  BWV 988, for three guitars, from *Goldberg Variations for Guitar Ensemble*,
+  arranged by Steve Shorter and J. D. Erickson
+  (<https://www.mutopiaproject.org/ftp/BachJS/BWV988/bwv-988-guitar/>).
+  Its distribution of Bach's voices among the guitars is theirs, so a
+  rendering of `14-bach-goldberg-aria-guitar-trio.wav` is an adaptation of
+  their arrangement and is shared under CC BY-SA 4.0 with this attribution.
+
 ## Shinyguitar microphone recordings (steel bank)
 
 Work: *Shinyguitar* archtop-guitar sample library

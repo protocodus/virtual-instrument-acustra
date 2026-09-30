@@ -220,8 +220,16 @@ if(ACUSTRA_BUILD_TOOLS)
     add_executable(AcustraPerformanceRenderer Tools/PerformanceRenderer.cpp)
     target_link_libraries(AcustraPerformanceRenderer PRIVATE AcustraDSP)
 
+    # Expressive repertoire, solo and ensemble: one engine per guitar, the
+    # performances written by Tools/PerformRepertoire.py.
+    find_package(Threads REQUIRED)
+    add_executable(AcustraRenderRepertoire Tools/RenderRepertoire.cpp)
+    target_link_libraries(AcustraRenderRepertoire PRIVATE AcustraDSP Threads::Threads)
+    target_compile_features(AcustraRenderRepertoire PRIVATE cxx_std_20)
+
     if(MSVC)
         target_compile_options(AcustraRenderDemos PRIVATE /W4 /permissive-)
+        target_compile_options(AcustraRenderRepertoire PRIVATE /W4 /permissive-)
         target_compile_options(AcustraPhysicalFitRenderer
             PRIVATE /W4 /permissive-)
         target_compile_options(AcustraExternalCorpusRenderer
@@ -229,6 +237,8 @@ if(ACUSTRA_BUILD_TOOLS)
         target_compile_options(AcustraBridgeProbe PRIVATE /W4 /permissive-)
     else()
         target_compile_options(AcustraRenderDemos PRIVATE
+            -Wall -Wextra -Wpedantic)
+        target_compile_options(AcustraRenderRepertoire PRIVATE
             -Wall -Wextra -Wpedantic)
         target_compile_options(AcustraPhysicalFitRenderer PRIVATE
             -Wall -Wextra -Wpedantic)
@@ -385,6 +395,9 @@ if(BUILD_TESTING)
                  COMMAND AcustraRenderDemos --smoke
                          "${CMAKE_CURRENT_BINARY_DIR}/demo-smoke")
         set_tests_properties(Acustra.RenderDemos PROPERTIES TIMEOUT 60)
+        add_test(NAME Acustra.RenderRepertoire
+                 COMMAND AcustraRenderRepertoire --smoke)
+        set_tests_properties(Acustra.RenderRepertoire PROPERTIES TIMEOUT 60)
         add_test(NAME Acustra.DemoCount
                  COMMAND "${CMAKE_COMMAND}"
                          "-DRENDERER=$<TARGET_FILE:AcustraRenderDemos>"

@@ -84,6 +84,75 @@ reverb, room effect or recorded-note layer.
 | `12-capture-types.wav` | Stereo mic, mono mic, piezo | 7.3 s | −15.1 dBFS | +12.1 dB |
 <!-- peaks-table-end -->
 
+## Expressive repertoire demos
+
+Fifteen longer pieces, solo and for ensembles of differently built guitars,
+played as a performer would shape them rather than as the score is quantised.
+They are 96 kHz, 24-bit stereo WAVs (32-bit float with `--float`), generated
+locally like the demos above and ignored by Git:
+
+```sh
+python3 Tools/PerformRepertoire.py --midi-dir build-dsp/repertoire-midi \
+    --download --out build-dsp/repertoire
+./build-dsp/AcustraRenderRepertoire --out Docs/audio/repertoire \
+    build-dsp/repertoire/*.txt
+```
+
+[`Tools/PerformRepertoire.py`](Tools/PerformRepertoire.py) reads the notes
+from Mutopia Project MIDI files (pinned by md5, fetched by `--download`) and
+writes each performance as a text file of timed events;
+[`Tools/RenderRepertoire.cpp`](Tools/RenderRepertoire.cpp) plays every guitar
+through its own `AcustraEngine`, sets it in the stereo field, sums them and
+applies one whole-file peak normalisation to −1 dBFS. There is no reverb,
+room, EQ or compression. What is authored, and nowhere enters the model:
+
+- **The form** a player takes: repeats, which ending, the Da capo, echo
+  dynamics and a different tone colour on a repeat.
+- **Tempo.** Every phrase presses forward into its middle and relaxes out
+  of it (Todd's phrase arch), slows into its cadence (more at a period end,
+  more again at a section end), and a section can move on or hold back
+  (accelerando, più/meno mosso); the last bars take Friberg and Sundberg's
+  final ritardando and the last chord is left to ring. Tempo stays within
+  0.45–1.55 times the base.
+- **Dynamics** over about 80% of the engine's velocity scale (pp 0.20 to
+  ff 0.80, the extremes 0.12 and 0.96), with a phrase arch coupled to the
+  tempo arch, the melody above the accompaniment, metrical weight, a rising
+  line growing, and per-note scatter.
+- **The hands.** A correlated timing drift of about 10 ms per player and a
+  few ms of jitter; chords rolled from the bass (more when soft or at a
+  cadence, almost together in fast passages), a thumb just ahead of a
+  pinched melody note; a tremolo whose three fingers differ in weight and
+  spacing; a mazurka's or a sarabande's lean on its second beat; left-hand
+  vibrato on long sung notes; arpeggios and held shapes left ringing until
+  the harmony moves. In an ensemble every guitarist drifts independently, so
+  the parts meet as players do: 8–20 ms apart at the median.
+- **Balance.** The constructions, with their parts' registers, differ by up
+  to about 10 dB in loudness, so each ensemble part is set to a level while
+  it plays (melody on top, inner voices about 3 dB under, the bass 1–1.5 dB
+  under; canon voices equal).
+
+| File | What it is | Guitars |
+| --- | --- | --- |
+| `01-tarrega-lagrima.wav` | Tárrega, *Lágrima*, A A B B A | Bellido 1978 |
+| `02-tarrega-adelita.wav` | Tárrega, *Adelita* (mazurka), A A B B A | Bellido 1978 |
+| `03-tarrega-recuerdos-de-la-alhambra.wav` | Tárrega, *Recuerdos de la Alhambra*, complete, second ending | Bellido 1978 |
+| `04-tarrega-capricho-arabe.wav` | Tárrega, *Capricho árabe*, complete, Drop D | Bellido 1978 |
+| `05-milan-pavana-ii.wav` | Luis Milán, *Pavana II* (1536), twice through | Parlor, mahogany |
+| `06-galilei-saltarello.wav` | Vincenzo Galilei, *Saltarello*, Drop D | Parlor, maple |
+| `07-sanz-preludio.wav` | Gaspar Sanz, *Preludio* (1674) | Parlor, spruce |
+| `08-bach-prelude-bwv999.wav` | Bach, Prelude in D minor, BWV 999 | Bellido 1978 |
+| `09-bach-sarabande-bwv997.wav` | Bach, Sarabande from BWV 997 | Auditorium, mahogany |
+| `10-bach-gavotte-en-rondeau-bwv1006a.wav` | Bach, Gavotte en rondeau from BWV 1006a | Dreadnought, spruce |
+| `11-dowland-come-again-guitar-quartet.wav` | Dowland, *Come again*, two verses | Bellido; Parlor maple; Auditorium mahogany; Jumbo spruce |
+| `12-arbeau-belle-qui-tiens-ma-vie-guitar-quartet.wav` | Arbeau, *Belle qui tiens ma vie*, three times: two voices, then four | Auditorium maple; Bellido; Parlor mahogany; Dreadnought spruce in Drop D |
+| `13-pachelbel-canon-guitar-quartet.wav` | Pachelbel, Canon in D | Bellido; Auditorium maple; Parlor spruce; Jumbo mahogany in Drop D |
+| `14-bach-goldberg-aria-guitar-trio.wav` | Bach, Aria from the Goldberg Variations (arr. Steve Shorter and J. D. Erickson, CC BY-SA 4.0) | Bellido; Auditorium spruce; Dreadnought mahogany in Drop D |
+| `15-bach-air-bwv1068-guitar-duo.wav` | Bach, Air from BWV 1068, with repeats | Bellido; Jumbo spruce |
+
+The strings are steel throughout, the instrument's only strings. These are
+authored interpretations, not a claim about how the pieces must go, and like
+every demo here they still need listening against real players.
+
 ## Real dry-note benchmark
 
 The physical fit is compared with 76 real, dry steel-guitar note recordings:
@@ -2508,6 +2577,20 @@ A concise ledger of the changes that move what Acustra sounds like or how it is
 controlled. Pure refactors, deduplications and test-coverage additions are in
 git history rather than here.
 
+### 2026-09-30
+
+- **Expressive repertoire demos, at the user's request** ("create a few demos
+  in WAV (max quality) - various pieces by tarrega, renaissance authors,
+  baroque, bach, then also some pieces using multiple different guitars
+  playing various parts"; then "ensure the play is: felt (difference between
+  quiet and loud parts, tempo change, slowdown on phrase end)", "humanize
+  timings, make the performance human-like, not machine" and "use 80% of
+  velocity range when playing and change tempo 50% up or down"). Fifteen
+  pieces at 96 kHz / 24-bit, four of them for two to four differently built
+  guitars; see [Expressive repertoire demos](#expressive-repertoire-demos).
+  New tools only (`Tools/PerformRepertoire.py`, `AcustraRenderRepertoire`);
+  the engine is unchanged.
+
 ### 2026-09-29
 
 - **Steel strings only, three woods and one bridge, at the user's request**
@@ -3119,6 +3202,11 @@ cmake --build build-dsp --parallel
 ctest --test-dir build-dsp --output-on-failure
 ./build-dsp/AcustraRenderDemos Docs/audio
 ```
+
+The [expressive repertoire](#expressive-repertoire-demos) is written and
+rendered separately (`Tools/PerformRepertoire.py`, then
+`./build-dsp/AcustraRenderRepertoire`); its generator needs Python 3 alone and
+fetches its scores from mutopiaproject.org with `--download`.
 
 The Python self-tests (the scorer, calibration, loudness, piezo, benchmark and
 fit-tool checks) are registered only when CMake's Python 3 can import NumPy and
