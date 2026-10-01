@@ -24,7 +24,8 @@ pitch (fractional semitones retained as per-channel bend). Intersect each
 offset with the next onset on that string. Render with string-per-channel
 mode, fixed MIDI velocity 91 and sensed release velocity zero. Confidence is
 not velocity. No gesture labels exist to choose a thumb, pick, slide, mute or
-hammer-on; explicit capture/picking choices are reported. Previously measured
+hammer-on; explicit capture/picking choices are reported, and so is the Room
+(--room; the engine's default, off, unless given). Previously measured
 GuitarSet strum statistics informed the engine, so this is a different-instrument
 performance evaluation, not a completely untouched holdout. The renderer
 replays annotated timing, so this does not evaluate automatic MIDI strumming.
@@ -202,7 +203,7 @@ def archive_entry(archive: zipfile.ZipFile, filename: str) -> bytes:
 
 
 def benchmark(dataset: Path, renderer: Path, output: Path, capture: str, picking: str,
-              reference_capture: str = "microphone") -> dict:
+              reference_capture: str = "microphone", room: float | None = None) -> dict:
     if reference_capture not in ("microphone", "magnetic_pickup"):
         raise ValueError("unknown reference capture")
     archive_name = "audio_mono-mic.zip" if reference_capture == "microphone" else "audio_mono-pickup_mix.zip"
@@ -221,7 +222,9 @@ def benchmark(dataset: Path, renderer: Path, output: Path, capture: str, picking
             event_path = output / (track + ".events")
             write_events(event_path, events)
             model_path = output / (track + ".f32")
-            subprocess.run([str(renderer), str(event_path), str(model_path), capture, picking], check=True)
+            subprocess.run([str(renderer), str(event_path), str(model_path), capture, picking,
+                            *(["--room", repr(float(room))] if room is not None else [])],
+                           check=True)
             source_rate, target = wavfile.read(io.BytesIO(recording_bytes))
             if target.ndim != 1 or len(target) < source_rate * SECONDS:
                 raise ValueError(f"{track}: expected at least 12 seconds of {reference_capture} mono audio")
@@ -252,6 +255,7 @@ def benchmark(dataset: Path, renderer: Path, output: Path, capture: str, picking
         "numpy_version": np.__version__, "scipy_version": scipy.__version__,
         "analysis_rate": RATE, "start_seconds": 0, "duration_seconds": SECONDS,
         "velocity": VELOCITY, "capture": capture, "picking": picking,
+        "room": 0.0 if room is None else float(room),
         "reference_capture": reference_capture,
         "reference_transducer": ("Neumann U87 condenser, about 30 cm from the 18th fret"
                                  if reference_capture == "microphone" else
@@ -398,6 +402,8 @@ def main() -> None:
     parser.add_argument("--capture", default="stereo_mic", choices=("stereo_mic", "mono_mic", "piezo"))
     parser.add_argument("--reference-capture", default="microphone", choices=("microphone", "magnetic_pickup"))
     parser.add_argument("--picking", default="finger", choices=("finger", "pick", "thumb"))
+    parser.add_argument("--room", type=float, metavar="0..1",
+                        help="render with this Room (default 0, the dry engine)")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -406,7 +412,7 @@ def main() -> None:
         if args.dataset is None or args.renderer is None or args.output is None:
             parser.error("--dataset, --renderer and --output are required")
         report = benchmark(args.dataset, args.renderer.resolve(), args.output,
-                           args.capture, args.picking, args.reference_capture)
+                           args.capture, args.picking, args.reference_capture, args.room)
         (args.output / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8")
 
 

@@ -124,6 +124,15 @@ struct EngineParameters
     // string's winding (startReleaseNoise in AcustraEngine.cpp). 0.5 is the
     // nominal level. Read once at each key-up; zero is an exact no-op.
     float releaseNoise { 0.0f };
+    // The room around the microphones, 0 none to 1 a microphone well out in
+    // it: a small studio's early reflections and its 0.45 s reverberation
+    // (RoomAmbience in AcustraEngine.cpp), on the microphone captures only.
+    // At 0.5 the room's sound sits about 12.5 dB under a held chord's and
+    // 10 dB under a released phrase's (whose own sound stops before its
+    // room's), at the default controls, and 10 dB lower at each halving (its
+    // send is 0.794 room^1.66). Zero is an exact no-op; a change lets the
+    // sounding room ring out.
+    float room { 0.0f };
 };
 
 struct AcustraEngineTestAccess;
@@ -1093,6 +1102,10 @@ private:
     // built of (tests).
     static std::array<float, 4> bodyWoodFactors(
         const EngineParameters& parameters) noexcept;
+    // The Original's capture voicing (CaptureVoicingData.h) as an amplitude
+    // gain at a frequency, its level included; configureBody multiplies
+    // each of the Original's radiation modes by it (tests).
+    static float captureVoicingGain(float frequency) noexcept;
     float bridgePhaseDelay(float frequency, int stringIndex) const noexcept;
     // The saddle's mobility at one string's two ports, bridge and anchors in
     // parallel, at a frequency: the normal port at its lever arm, the
@@ -1457,6 +1470,69 @@ private:
     float width_ { 0.62f };
     float outputGain_ { 0.42f };
     float piezoMix_ { 0.0f };
+    // A small room's sound at the microphones (EngineParameters::room): its
+    // early reflections from a tapped line and its late field from an
+    // eight-line feedback delay network, run at the host rate divided by the
+    // whole factor that brings it to 64 kHz or under, so its memory does not
+    // grow with the rate. The input is the microphones' mid signal; the
+    // output a stereo pair, energy-normalised at prepare so its
+    // direct-to-reverberant ratio is the same at every rate.
+    struct RoomAmbience
+    {
+        static constexpr int lineCount = 8;
+        static constexpr int lineCapacity = 4096;
+        static constexpr int earlyCapacity = 2048;
+        static constexpr int tapCount = 10;
+        std::array<std::array<float, lineCapacity>, lineCount> lines {};
+        std::array<int, lineCount> lengths {};
+        std::array<int, lineCount> heads {};
+        std::array<float, lineCount> absorptionState {};
+        std::array<float, lineCount> absorptionGain {};
+        std::array<float, lineCount> absorptionPole {};
+        std::array<float, earlyCapacity> early {};
+        int earlyHead { 0 };
+        // Four Schroeder allpasses diffusing what enters the late field.
+        static constexpr int diffuserCapacity = 512;
+        std::array<std::array<float, diffuserCapacity>, 4> diffusers {};
+        std::array<int, 4> diffuserLengths {};
+        std::array<int, 4> diffuserHeads {};
+        std::array<int, tapCount> tapDelays {};
+        std::array<float, tapCount> tapLeft {};
+        std::array<float, tapCount> tapRight {};
+        int lateDelay { 1 };
+        // The late field's input gain, set at prepare to its share.
+        float lateInput { 1.0f };
+        int longest { 1 };
+        float inputCoefficient { 1.0f };
+        float inputState { 0.0f };
+        float earlyCoefficient { 1.0f };
+        float earlyLeft { 0.0f };
+        float earlyRight { 0.0f };
+        float outputScale { 1.0f };
+        int decimation { 1 };
+        float inverseDecimation { 1.0f };
+        int phase { 0 };
+        float accumulator { 0.0f };
+        float previousLeft { 0.0f };
+        float previousRight { 0.0f };
+        float currentLeft { 0.0f };
+        float currentRight { 0.0f };
+        // Internal samples since anything but an exact zero went in or came
+        // out; past the longest path every state is zero again.
+        int quietSamples { 0 };
+        bool active { false };
+
+        void prepare(double hostRate) noexcept;
+        void reset() noexcept;
+        // One host sample of the mid signal in (already scaled by the send),
+        // the room's left and right out.
+        void process(float input, float& left, float& right) noexcept;
+        void step(float input) noexcept;
+    };
+    RoomAmbience room_ {};
+    float roomAmount_ { 0.0f };
+    float roomSendFor_ { 0.0f };
+    float roomSend_ { 0.0f };
     // The microphones, held back by the piezo chain's pipeline (renderPiezo's
     // output is seven samples behind its input at every rate), so the two
     // sensors meet on the instrument's one time base.

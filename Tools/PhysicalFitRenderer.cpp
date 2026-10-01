@@ -70,6 +70,9 @@ acustra::PickingTechnique archtopPicking { acustra::EngineParameters {}.picking 
 // bridge and radiation instead of Original's, to ask which measured body the
 // recordings sit closest to; it is an evaluation option, not a fit input.
 acustra::GuitarModel renderGuitarModel { acustra::GuitarModel::Original };
+// --room: the Room every model renders with (0, the engine's default, is
+// the dry instrument the calibration was fitted on).
+float renderRoom { 0.0f };
 constexpr std::array guitarModelNames { "original", "bellido1978" };
 constexpr std::array pickingNames { "finger", "pick", "thumb" };
 
@@ -437,6 +440,7 @@ std::vector<float> renderModel(Material material, int midi, int velocity,
     EngineParameters parameters;
     parameters.guitarModel = renderGuitarModel;
     parameters.shape = renderShape();
+    parameters.room = renderRoom;
     if (material == Material::Steel)
         parameters.picking = archtopPicking;
     engine.setParameters(parameters);
@@ -591,6 +595,7 @@ std::string modelControlsJson()
          << ", \"touch\": " << parameters.touch
          << ", \"body_amount\": " << parameters.bodyAmount
          << ", \"stereo_width\": " << parameters.stereoWidth
+         << ", \"room\": " << renderRoom
          << ", \"output_gain\": " << parameters.outputGain << "}";
     return text.str();
 }
@@ -1215,7 +1220,7 @@ void printUsage()
         "[--smoke|--models-only [--scope all|train]|--test] "
         "[--shape parlor|auditorium|dreadnought|jumbo] "
         "[--archtop-picking finger|pick|thumb] "
-        "[--guitar-model original|bellido1978] "
+        "[--guitar-model original|bellido1978] [--room 0..1] "
         "OUTPUT "
         "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT DIRECT_GAIN "
         "STEEL_STIFFNESS STEEL_T60 STEEL_FREQUENCY_LOSS STEEL_APERTURE "
@@ -1316,6 +1321,18 @@ int main(int argc, char** argv)
         }
         renderGuitarModel = static_cast<acustra::GuitarModel>(
             std::distance(guitarModelNames.begin(), name));
+        first += 2;
+    }
+    if (argc > first && std::string(argv[first]) == "--room")
+    {
+        float room = 0.0f;
+        if (argc <= first + 1 || !parseFloat(argv[first + 1], room)
+            || !(room >= 0.0f && room <= 1.0f))
+        {
+            printUsage();
+            return 2;
+        }
+        renderRoom = room;
         first += 2;
     }
     const int given = argc - first - 1;

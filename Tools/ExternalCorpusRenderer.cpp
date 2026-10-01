@@ -60,6 +60,9 @@ using acustra::fittedPhysicalCalibration;
 std::optional<acustra::BodyShape> renderShapeOverride;
 constexpr std::array shapeNames { "parlor", "auditorium", "dreadnought", "jumbo" };
 acustra::GuitarModel renderGuitarModel { acustra::GuitarModel::Original };
+// --room: the Room every model renders with (0, the engine's default, is
+// the dry instrument the calibration was fitted on).
+float renderRoom { 0.0f };
 constexpr std::array guitarModelNames { "original", "bellido1978" };
 constexpr std::array pickingNames { "finger", "pick", "thumb" };
 
@@ -207,6 +210,7 @@ std::vector<float> renderModel(acustra::PickingTechnique picking,
     EngineParameters parameters;
     parameters.guitarModel = renderGuitarModel;
     parameters.shape = renderShape();
+    parameters.room = renderRoom;
     parameters.picking = picking;
     engine.setParameters(parameters);
     engine.setPhysicalCalibration(calibration);
@@ -268,6 +272,7 @@ std::string modelControlsJson()
          << ", \"touch\": " << parameters.touch
          << ", \"body_amount\": " << parameters.bodyAmount
          << ", \"stereo_width\": " << parameters.stereoWidth
+         << ", \"room\": " << renderRoom
          << ", \"output_gain\": " << parameters.outputGain << "}";
     return text.str();
 }
@@ -413,7 +418,7 @@ void printUsage()
     std::printf(
         "usage: AcustraExternalCorpusRenderer "
         "[--shape parlor|auditorium|dreadnought|jumbo] "
-        "[--guitar-model original|bellido1978] "
+        "[--guitar-model original|bellido1978] [--room 0..1] "
         "JOBFILE|- OUTDIR "
         "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT DIRECT_GAIN "
         "STEEL_STIFFNESS STEEL_T60 STEEL_FREQUENCY_LOSS STEEL_APERTURE "
@@ -474,6 +479,18 @@ int main(int argc, char** argv)
         }
         renderGuitarModel = static_cast<acustra::GuitarModel>(
             std::distance(guitarModelNames.begin(), name));
+        first += 2;
+    }
+    if (argc > first && std::string(argv[first]) == "--room")
+    {
+        float room = 0.0f;
+        if (argc <= first + 1 || !parseFloat(argv[first + 1], room)
+            || !(room >= 0.0f && room <= 1.0f))
+        {
+            printUsage();
+            return 2;
+        }
+        renderRoom = room;
         first += 2;
     }
     const int given = argc - first - 2;

@@ -42,7 +42,9 @@ AcustraExternalCorpusRenderer), which is PhysicalFitRenderer's renderModel and
 calibration mapping with the schedule read from a job file: a fresh
 AcustraEngine per unique (picking, midi, velocity), 48 kHz, 127-sample blocks,
 4.2 s of stereo from a note-on at frame zero, default public controls, the
-named guitar model, and the default Dreadnought unless --shape is given. Round robins and dynamic groups
+named guitar model, and the default Dreadnought unless --shape is given; the
+Room is the engine's default, off, unless --room is given (the plug-in starts
+at 0.5). Round robins and dynamic groups
 share one render, as in the bank benchmark. The calibration is the shipping
 vector (OptimizePhysicalModel.SHIPPING, which mirrors fittedPhysicalCalibration)
 unless --values or --set say otherwise. A row whose picking is null is played
@@ -331,6 +333,8 @@ def render_options(arguments: argparse.Namespace) -> list[str]:
         options += ["--shape", arguments.shape]
     if arguments.guitar_model:
         options += ["--guitar-model", arguments.guitar_model]
+    if arguments.room is not None:
+        options += ["--room", repr(float(arguments.room))]
     return options
 
 
@@ -566,6 +570,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="run the pipeline on a tiny synthetic corpus and check it")
     parser.add_argument("--shape", choices=("parlor", "auditorium", "dreadnought", "jumbo"))
     parser.add_argument("--guitar-model", choices=("original", "bellido1978"))
+    parser.add_argument("--room", type=float, metavar="0..1",
+                        help="render with this Room (default 0, the dry engine)")
     parser.add_argument("--picking-default", choices=PICKINGS, default="finger",
                         help="picking for rows whose picking is null (default finger)")
     parser.add_argument("--picking-override", choices=PICKINGS,

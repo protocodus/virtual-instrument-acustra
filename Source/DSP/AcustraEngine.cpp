@@ -10,6 +10,7 @@
 #include "SteelBodyBlend.h"
 #include "GuitarModelData.h"
 #include "ConstructionLoudnessData.h"
+#include "CaptureVoicingData.h"
 #include "PiezoBlampTable.h"
 
 #include <algorithm>
@@ -2443,6 +2444,7 @@ EngineParameters AcustraEngine::sanitise(const EngineParameters& source) noexcep
     result.outputGain = clamp(source.outputGain, 0.0f, 4.0f);
     result.releaseNoise = clamp(source.releaseNoise, 0.0f, 1.0f);
     result.piezoMix = clamp(source.piezoMix, 0.0f, 1.0f);
+    result.room = clamp(source.room, 0.0f, 1.0f);
     return result;
 }
 
@@ -3184,6 +3186,7 @@ void AcustraEngine::prepare(double sampleRate, int)
         / (0.040f * static_cast<float>(sampleRate_));
     bridgeLoadFadeStep_ = 1.0f
         / (0.020f * static_cast<float>(sampleRate_));
+    room_.prepare(sampleRate_);
     prepared_ = true;
     restartRandomDraws();
     reset();
@@ -3214,6 +3217,8 @@ void AcustraEngine::reset() noexcept
     width_ = parameters_.stereoWidth;
     outputGain_ = parameters_.outputGain;
     piezoMix_ = parameters_.piezoMix;
+    roomAmount_ = parameters_.room;
+    roomSendFor_ = -1.0f;
     outputReference_ = outputReferenceFor(parameters_);
     monoReference_ = monoReferenceFor(parameters_);
     piezoTrim_ = PiezoDesign::trim * piezoReferenceFor(parameters_);
@@ -3261,6 +3266,7 @@ void AcustraEngine::resetSoundState() noexcept
     micDelayRight_.fill(0.0f);
     micDelayMono_.fill(0.0f);
     micDelayIndex_ = 0;
+    room_.reset();
     piezoForceDerivative_.reset();
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
     lastPiezoImpedanceSum_ = lastPiezoImpedanceMoment_ = 0.0f;
@@ -3537,6 +3543,44 @@ std::array<float, 4> AcustraEngine::bodyWoodFactors(
     return { wood.frequency, wood.q, wood.brightness, wood.radiation };
 }
 
+// The Original's close microphones as a recording hears them
+// (CaptureVoicingData.h): the amplitude gain at one frequency, the product
+// of each section's analog RBJ prototype read at that frequency, with the
+// level that keeps the default construction's loudness.
+float AcustraEngine::captureVoicingGain(float frequency) noexcept
+{
+    double power = 1.0;
+    for (const auto& section : detail::captureVoicingSections)
+    {
+        const double a = std::pow(10.0, static_cast<double>(section.gainDb) / 40.0);
+        const double w = static_cast<double>(frequency)
+            / static_cast<double>(section.frequencyHz);
+        const double q = static_cast<double>(section.q);
+        const double w2 = w * w;
+        double numerator = 1.0, denominator = 1.0;
+        if (section.kind == detail::CaptureVoicingKind::Peak)
+        {
+            const double edge = (1.0 - w2) * (1.0 - w2);
+            numerator = edge + (w * a / q) * (w * a / q);
+            denominator = edge + (w / (a * q)) * (w / (a * q));
+        }
+        else
+        {
+            // Low shelf A (s^2 + sqrt(A)/Q s + A) / (A s^2 + sqrt(A)/Q s + 1);
+            // the high shelf swaps the two quadratics' outer terms.
+            const double slope = std::sqrt(a) * w / q;
+            const double lowEdge = (a - w2) * (a - w2);
+            const double highEdge = (1.0 - a * w2) * (1.0 - a * w2);
+            const bool low = section.kind == detail::CaptureVoicingKind::LowShelf;
+            numerator = a * a * ((low ? lowEdge : highEdge) + slope * slope);
+            denominator = (low ? highEdge : lowEdge) + slope * slope;
+        }
+        power *= numerator / denominator;
+    }
+    return static_cast<float>(std::sqrt(power)
+        * std::pow(10.0, static_cast<double>(detail::captureVoicingLevelDb) / 20.0));
+}
+
 void AcustraEngine::configureBody() noexcept
 {
     if (bodyConfigured_
@@ -3635,12 +3679,15 @@ void AcustraEngine::configureBody() noexcept
         const float residueTilt = std::exp2(
             physicalCalibration_.residueTiltDbPerOctave
             * std::log2(frequency / 1000.0f) / 6.02059991f);
+        // The Original's close pair heard from where a recording hears it
+        // (CaptureVoicingData.h); the Bellido keeps its own microphones.
+        const float voicing = steelBank ? captureVoicingGain(frequency) : 1.0f;
         const float drive = audibleAtThisRate
             ? detail::guitarMicrophoneTrims[static_cast<std::size_t>(parameters_.guitarModel)]
                 * anchor.volume * shapeLevel
                 * woodFactors.radiation
                 * bassTilt * brilliance
-                * residueTilt
+                * residueTilt * voicing
             : 0.0f;
         const float playedDrive = drive * share;
         // The stored residues drive unit-input discrete states fitted at
@@ -9352,8 +9399,41 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // Capture crossfade and Piezo Mix sum the two sensors as the
         // instrument moved them, at every sample rate. Main is seven samples
         // later than the strings for every Capture.
-        const float monoMic = radiationReferenceGain * monoReference_ * outputGain_
+        float monoMic = radiationReferenceGain * monoReference_ * outputGain_
             * (bodyScale * body.upper + directScale * directMono);
+        // The room around the microphones (RoomAmbience): fed the pair's mid
+        // signal through the send, its field spread by Width as the pair is,
+        // and heard by the mono microphone at that one's own reference. It
+        // never reaches the piezo. Zero sends nothing and, once the room has
+        // rung out, costs nothing and changes no bit.
+        float roomPeak = 0.0f;
+        {
+            const float target = clamp(targetParameters_.room, 0.0f, 1.0f);
+            const float next = roomAmount_ + parameterSmoothing_ * (target - roomAmount_);
+            roomAmount_ = next == roomAmount_ || exact::abs(target - next) < 1.0e-4f
+                ? target : next;
+            if (roomAmount_ != 0.0f || room_.active)
+            {
+                if (roomAmount_ != roomSendFor_)
+                {
+                    // The send: 10 dB lower at each halving of Room.
+                    roomSendFor_ = roomAmount_;
+                    roomSend_ = roomAmount_ > 0.0f
+                        ? 0.79432823f * std::pow(roomAmount_, 1.66f) : 0.0f;
+                }
+                float wetLeft = 0.0f;
+                float wetRight = 0.0f;
+                room_.process(roomSend_ * 0.5f * (outputLeft + outputRight),
+                              wetLeft, wetRight);
+                const float wetMid = 0.5f * (wetLeft + wetRight);
+                const float wetSide = 0.5f * width_ * (wetLeft - wetRight);
+                outputLeft += wetMid + wetSide;
+                outputRight += wetMid - wetSide;
+                monoMic += 1.41421356f * wetMid * monoReference_
+                    / std::max(outputReference_, 1.0e-6f);
+                roomPeak = std::max(exact::abs(wetLeft), exact::abs(wetRight));
+            }
+        }
         {
             const auto index = static_cast<std::size_t>(micDelayIndex_);
             const float heldLeft = micDelayLeft_[index];
@@ -9404,9 +9484,316 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         outputRight = safetyLimit(outputRight);
         left[sample] = exact::isfinite(outputLeft) ? outputLeft : 0.0f;
         right[sample] = exact::isfinite(outputRight) ? outputRight : 0.0f;
-        processIdleFlush(idlePeak);
+        processIdleFlush(std::max(idlePeak, roomPeak));
     }
     sampleClock_ += static_cast<std::uint64_t>(numSamples);
+}
+
+// The room (EngineParameters::room): a small studio, 5.2 x 4.1 x 2.7 m, the
+// guitar 0.95 m over the floor with the microphones 0.32 m in front of it.
+// The early reflections are its image sources within two bounces, the ten
+// strongest, at their delays after the direct sound and their spherical
+// spreading times the surfaces' pressure reflection (wood floor 0.88, treated
+// ceiling 0.62, walls 0.75-0.80), panned by the arrival's side across the
+// pair (softened to 0.7: neither microphone is a point). The late field is
+// an eight-line feedback delay network (Jot and Chaigne, AES 90 (1991)
+// preprint 3030) with a Hadamard mix, its lines 17-41 ms, each damped by a
+// one-pole so the field decays in 0.45 s up to 1 kHz, 0.36 s at 4 kHz and
+// 0.26 s at 8 kHz, as a treated room's does; it starts 8 ms after the direct
+// sound, through four allpasses that make its echoes dense within 20 ms, as
+// a small room's mixing time does. What goes in is filtered by a 9 kHz
+// one-pole and the reflections by a 6.5 kHz one; the room carries no detail
+// above them.
+namespace
+{
+struct RoomTap
+{
+    float milliseconds;
+    float left;
+    float right;
+};
+constexpr std::size_t roomTapTotal = 10;
+constexpr std::size_t roomLineTotal = 8;
+constexpr std::array<RoomTap, roomTapTotal> roomTaps { {
+    { 4.97f, 0.0973f, 0.0973f },  // floor
+    { 8.70f, 0.0542f, 0.0542f },  // wall behind the player
+    { 9.03f, 0.0406f, 0.0406f },  // ceiling
+    { 10.33f, 0.0408f, 0.0408f }, // floor, then the wall behind
+    { 12.52f, 0.0510f, 0.0207f }, // left wall
+    { 13.37f, 0.0342f, 0.0342f }, // wall behind the microphones
+    { 13.73f, 0.0395f, 0.0198f }, // floor, then the left wall
+    { 14.51f, 0.0279f, 0.0279f }, // floor, then the wall behind them
+    { 16.01f, 0.0165f, 0.0405f }, // right wall
+    { 16.99f, 0.0154f, 0.0335f }, // floor, then the right wall
+} };
+constexpr std::array<float, roomLineTotal> roomLineMilliseconds {
+    17.3f, 19.7f, 23.1f, 26.3f, 29.9f, 33.7f, 37.1f, 41.3f
+};
+// The late field's input passes four allpasses (Schroeder, JAES 10 (1962)
+// 219-223) at 0.65, so its echoes are dense from their start.
+constexpr std::array<float, 4> roomDiffuserMilliseconds { 5.3f, 3.7f, 2.3f, 1.3f };
+constexpr float roomDiffusion = 0.65f;
+constexpr float roomLowSeconds = 0.45f;
+constexpr float roomNyquistSeconds = 0.15f;
+constexpr float roomLateMilliseconds = 8.0f;
+// The late field's energy over the reflections' at the microphones.
+constexpr float roomLateShare = 1.5f;
+constexpr double roomMaximumRate = 64000.0;
+
+bool roomPrime(int value) noexcept
+{
+    if (value < 2)
+        return false;
+    for (int divisor = 2; divisor * divisor <= value; ++divisor)
+        if (value % divisor == 0)
+            return false;
+    return true;
+}
+
+// The eight lines' Hadamard mix, in place, normalised to stay lossless.
+void roomHadamard(std::array<float, roomLineTotal>& values) noexcept
+{
+    for (std::size_t span = 1; span < values.size(); span *= 2)
+        for (std::size_t start = 0; start < values.size(); start += 2 * span)
+            for (std::size_t index = start; index < start + span; ++index)
+            {
+                const float a = values[index];
+                const float b = values[index + span];
+                values[index] = a + b;
+                values[index + span] = a - b;
+            }
+    for (auto& value : values)
+        value *= 0.35355339f;
+}
+} // namespace
+
+void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
+{
+    static_assert(roomTapTotal == static_cast<std::size_t>(tapCount)
+                  && roomLineTotal == static_cast<std::size_t>(lineCount));
+    decimation = std::max(1, static_cast<int>(std::ceil(hostRate / roomMaximumRate)));
+    inverseDecimation = 1.0f / static_cast<float>(decimation);
+    const double rate = hostRate / decimation;
+    const auto samples = [rate] (float milliseconds)
+    {
+        return static_cast<int>(std::lround(static_cast<double>(milliseconds)
+                                            * 1.0e-3 * rate));
+    };
+    for (std::size_t tap = 0; tap < roomTaps.size(); ++tap)
+    {
+        tapDelays[tap] = std::clamp(samples(roomTaps[tap].milliseconds), 1,
+                                    earlyCapacity - 1);
+        tapLeft[tap] = roomTaps[tap].left;
+        tapRight[tap] = roomTaps[tap].right;
+    }
+    lateDelay = std::clamp(samples(roomLateMilliseconds), 1, earlyCapacity - 1);
+    longest = lateDelay;
+    for (std::size_t diffuser = 0; diffuser < diffuserLengths.size(); ++diffuser)
+    {
+        int length = std::clamp(samples(roomDiffuserMilliseconds[diffuser]), 2,
+                                diffuserCapacity - 1);
+        while (!roomPrime(length) && length < diffuserCapacity - 1)
+            ++length;
+        diffuserLengths[diffuser] = length;
+        longest += length;
+    }
+    for (std::size_t line = 0; line < lengths.size(); ++line)
+    {
+        // Each line a prime number of samples, so no two share a period.
+        int length = std::clamp(samples(roomLineMilliseconds[line]), 2,
+                                lineCapacity - 1);
+        while (!roomPrime(length) && length < lineCapacity - 1)
+            ++length;
+        lengths[line] = length;
+        longest = std::max(longest, length + lateDelay + diffuserLengths[0]
+                           + diffuserLengths[1] + diffuserLengths[2] + diffuserLengths[3]);
+        const double perLow = std::pow(10.0, -3.0 * length / (roomLowSeconds * rate));
+        const double perHigh = std::pow(10.0, -3.0 * length / (roomNyquistSeconds * rate));
+        const double pole = (perLow - perHigh) / (perLow + perHigh);
+        absorptionPole[line] = static_cast<float>(pole);
+        absorptionGain[line] = static_cast<float>(perLow * (1.0 - pole));
+    }
+    inputCoefficient = static_cast<float>(-std::expm1(-2.0 * piDouble * 9000.0 / hostRate));
+    earlyCoefficient = static_cast<float>(-std::expm1(-2.0 * piDouble
+                                                      * std::min(6500.0, 0.4 * rate) / rate));
+    // Normalise: the reflections and the late field at their share, then
+    // the whole room to unit energy gain for a signal weighted as a guitar's
+    // is, its power falling above 1 kHz (a one-pole's): the room keeps its
+    // longest decay where that power is, so a white signal's gain would read
+    // the room 6 dB quieter than a guitar hears it. The gain is a ratio of
+    // energies at the room's own rate, which a host-rate signal keeps too.
+    outputScale = 1.0f;
+    const int length = static_cast<int>(1.4 * rate);
+    const double weighting = -std::expm1(-2.0 * piDouble * 1000.0 / rate);
+    double weightedEnergy = 0.0;
+    {
+        double value = weighting;
+        for (int index = 0; index < length; ++index)
+        {
+            weightedEnergy += value * value;
+            value *= 1.0 - weighting;
+        }
+    }
+    double earlyEnergy = 0.0, lateEnergy = 0.0;
+    for (int pass = 0; pass < 2; ++pass)
+    {
+        reset();
+        double energy = 0.0;
+        double drive = weighting;
+        // Pass 0 measures the reflections alone (no late input), pass 1 the
+        // late field alone.
+        const auto savedLeft = tapLeft;
+        const auto savedRight = tapRight;
+        if (pass == 1)
+        {
+            tapLeft.fill(0.0f);
+            tapRight.fill(0.0f);
+        }
+        lateInput = pass == 1 ? 1.0f : 0.0f;
+        for (int index = 0; index < length; ++index)
+        {
+            step(static_cast<float>(drive));
+            drive *= 1.0 - weighting;
+            if (drive < 1.0e-12)
+                drive = 0.0;
+            energy += 0.5 * (static_cast<double>(currentLeft) * currentLeft
+                             + static_cast<double>(currentRight) * currentRight);
+        }
+        tapLeft = savedLeft;
+        tapRight = savedRight;
+        (pass == 0 ? earlyEnergy : lateEnergy) = energy;
+    }
+    lateInput = static_cast<float>(std::sqrt(roomLateShare * earlyEnergy
+                                             / std::max(lateEnergy, 1.0e-30)));
+    outputScale = static_cast<float>(std::sqrt(weightedEnergy / std::max(
+        earlyEnergy * (1.0 + roomLateShare), 1.0e-30)));
+    reset();
+}
+
+void AcustraEngine::RoomAmbience::reset() noexcept
+{
+    for (auto& line : lines)
+        line.fill(0.0f);
+    heads.fill(0);
+    absorptionState.fill(0.0f);
+    early.fill(0.0f);
+    earlyHead = 0;
+    for (auto& diffuser : diffusers)
+        diffuser.fill(0.0f);
+    diffuserHeads.fill(0);
+    inputState = 0.0f;
+    earlyLeft = earlyRight = 0.0f;
+    phase = 0;
+    accumulator = 0.0f;
+    previousLeft = previousRight = 0.0f;
+    currentLeft = currentRight = 0.0f;
+    quietSamples = 0;
+    active = false;
+}
+
+void AcustraEngine::RoomAmbience::step(float input) noexcept
+{
+    early[static_cast<std::size_t>(earlyHead)] = input;
+    const auto delayed = [this] (int delay)
+    {
+        int index = earlyHead - delay;
+        if (index < 0)
+            index += earlyCapacity;
+        return early[static_cast<std::size_t>(index)];
+    };
+    float reflectedLeft = 0.0f;
+    float reflectedRight = 0.0f;
+    for (std::size_t tap = 0; tap < tapDelays.size(); ++tap)
+    {
+        const float value = delayed(tapDelays[tap]);
+        reflectedLeft += tapLeft[tap] * value;
+        reflectedRight += tapRight[tap] * value;
+    }
+    float late = lateInput * delayed(lateDelay);
+    earlyHead = earlyHead + 1 == earlyCapacity ? 0 : earlyHead + 1;
+    earlyLeft += earlyCoefficient * (reflectedLeft - earlyLeft);
+    earlyRight += earlyCoefficient * (reflectedRight - earlyRight);
+
+    for (std::size_t diffuser = 0; diffuser < diffusers.size(); ++diffuser)
+    {
+        auto& line = diffusers[diffuser];
+        int& head = diffuserHeads[diffuser];
+        const float stored = line[static_cast<std::size_t>(head)];
+        float written = late + roomDiffusion * stored;
+        if (exact::abs(written) < 1.0e-20f)
+            written = 0.0f;
+        line[static_cast<std::size_t>(head)] = written;
+        head = head + 1 == diffuserLengths[diffuser] ? 0 : head + 1;
+        late = stored - roomDiffusion * written;
+    }
+    std::array<float, roomLineTotal> outputs {};
+    float lateLeft = 0.0f;
+    float lateRight = 0.0f;
+    bool silent = input == 0.0f && late == 0.0f;
+    for (std::size_t line = 0; line < outputs.size(); ++line)
+    {
+        const float stored = lines[line][static_cast<std::size_t>(heads[line])];
+        silent = silent && stored == 0.0f;
+        float& state = absorptionState[line];
+        state = absorptionGain[line] * stored + absorptionPole[line] * state;
+        if (exact::abs(state) < 1.0e-20f)
+            state = 0.0f;
+        outputs[line] = state;
+        // Two orthogonal sign patterns, so left and right decorrelate.
+        lateLeft += line < 4 ? state : -state;
+        lateRight += (line & 1u) == 0u ? state : -state;
+    }
+    roomHadamard(outputs);
+    for (std::size_t line = 0; line < outputs.size(); ++line)
+    {
+        // The input enters every line with its own sign (a third pattern).
+        const float sign = ((line >> 1u) & 1u) == 0u ? 1.0f : -1.0f;
+        float written = outputs[line] + sign * 0.35355339f * late;
+        if (exact::abs(written) < 1.0e-20f)
+            written = 0.0f;
+        lines[line][static_cast<std::size_t>(heads[line])] = written;
+        heads[line] = heads[line] + 1 == lengths[line] ? 0 : heads[line] + 1;
+    }
+    if (exact::abs(earlyLeft) < 1.0e-20f)
+        earlyLeft = 0.0f;
+    if (exact::abs(earlyRight) < 1.0e-20f)
+        earlyRight = 0.0f;
+    currentLeft = outputScale * (earlyLeft + 0.35355339f * lateLeft);
+    currentRight = outputScale * (earlyRight + 0.35355339f * lateRight);
+    silent = silent && earlyLeft == 0.0f && earlyRight == 0.0f;
+    quietSamples = silent ? quietSamples + 1 : 0;
+    // Past the longest path with nothing in or out, every state is zero.
+    if (quietSamples > longest + earlyCapacity)
+        active = false;
+}
+
+void AcustraEngine::RoomAmbience::process(float input, float& left,
+                                          float& right) noexcept
+{
+    // A room that has rung out holds exact zeros everywhere, so silence in
+    // is silence out without running it.
+    if (!active && input == 0.0f)
+    {
+        left = right = 0.0f;
+        return;
+    }
+    active = true;
+    inputState += inputCoefficient * (input - inputState);
+    if (exact::abs(inputState) < 1.0e-20f)
+        inputState = 0.0f;
+    accumulator += inputState;
+    if (++phase >= decimation)
+    {
+        phase = 0;
+        previousLeft = currentLeft;
+        previousRight = currentRight;
+        step(accumulator * inverseDecimation);
+        accumulator = 0.0f;
+    }
+    // Across a decimated step the output moves linearly to the new sample.
+    const float share = static_cast<float>(phase + 1) * inverseDecimation;
+    left = previousLeft + share * (currentLeft - previousLeft);
+    right = previousRight + share * (currentRight - previousRight);
 }
 
 void AcustraEngine::processIdleFlush(float samplePeak) noexcept

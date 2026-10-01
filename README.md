@@ -15,6 +15,10 @@ The strings are steel. Shape and Material directions, String Age, Tuning,
 Pluck Position, Touch, Body Amount, Stereo Width, Piezo Mix and Output remain
 directly accessible. Bridge-hand damping is a playing gesture
 rather than a setting, so it arrives on CC2 and costs the panel nothing.
+Since 2026-10-01 the Original's microphones are heard as a recording hears
+them, voiced against five sets of real flat-top recordings, and a Room
+parameter (50% for a new instance) puts a small studio around them; see
+[The microphones and the room](#the-microphones-and-the-room).
 "Top of market"
 remains the goal, not a validated claim; controlled listening against real
 guitars and leading instruments is still required.
@@ -37,7 +41,8 @@ These PCM16 stereo WAVs are rendered deterministically by
 [`Tools/RenderDemos.cpp`](Tools/RenderDemos.cpp) through the same JUCE-free
 `AcustraEngine` used by the plug-in. Each file receives one whole-file peak
 normalisation after rendering. There is no external post-EQ, compression,
-reverb, room effect or recorded-note layer.
+reverb, room effect or recorded-note layer, and the engine's own Room is at
+its engine default, off (the plug-in starts at 50%).
 
 - **Steel sustain range** — isolated held
   notes from open E2 through B5.
@@ -239,6 +244,23 @@ which the corpus tool's onset rule catches and the bank's export did not.
 runs the whole pipeline on a synthetic corpus it writes itself, downloading
 nothing; ctest runs it (Acustra.OpenCorporaBenchmark) beside every other
 Python tool's self-test.
+
+On 2026-10-01 the capture voicing and the Room were measured against all of
+them at once - the bank's three splits, the Eastman's two takes, the Martin
+and GuitarSet's six performances - at the shipping calibration and default
+controls (Docs/decisions.md has the method and the held-out readings):
+
+| | train | validation | bank flat-top | Eastman pick | Eastman finger | Martin HD28 | GuitarSet log / SC / chroma |
+|---|---|---|---|---|---|---|---|
+| main 4f19875 | 6.9259 | 6.6772 | 6.5531 | 6.1818 | 6.4737 | 7.0697 | 14.419 / 0.828 / 0.224 |
+| voicing, Room 0 | 6.6952 | 6.5136 | 6.7439 | 5.8671 | 6.4892 | 6.5626 | 14.166 / 0.796 / 0.209 |
+| voicing, Room 0.5 | 6.2551 | 6.1195 | 6.5735 | 5.6299 | 6.2282 | 6.4047 | 13.999 / 0.804 / 0.210 |
+
+The renderers and both benchmark drivers take `--room` (default 0, the dry
+engine the calibration was fitted on); the plug-in plays at 0.5. The archtop
+rows were in no fit. The voicing alone loses on the two finger-plucked sets
+when each is held out of its own fit (Eastman finger +1.0%, the bank's
+flat-top +4.1%), and with the room the bank's flat-top is within 0.3%.
 
 Run `python3 Tools/SummarizePhysicalBenchmark.py` to print the compact split
 table, historical sample-player control and five retained realism paths from
@@ -1400,6 +1422,51 @@ longer advertise automation or drive sound; old capture automation lanes must
 be moved to the new Capture parameter. This deliberate migration removes the
 retired sensors rather than keeping hidden magnetic or unloaded-piezo paths.
 
+### The microphones and the room
+
+**Capture voicing.** The Original's radiation is g21's two microphones close
+over a flamenca's bridge and upper bout, morphed to the steel Shapes, and no
+steel-string guitar is recorded from there. Against five sets of real
+flat-top recordings - the Eastman E1D's picked and finger-plucked takes, the
+Martin HD28, the bank's flat-top notes and GuitarSet's six performances -
+that pair heard about 5 dB too little at 125 Hz, 4-6 dB too much at
+250-630 Hz and 2-7.5 dB too little at 0.8-1.6 kHz, every source agreeing,
+and the 1.26 kHz hole did not move with the pluck point, so it was the
+microphones' and not the strings'. [`Source/DSP/CaptureVoicingData.h`](Source/DSP/CaptureVoicingData.h)
+holds the difference as one smooth gain - a low shelf and five broad peaks,
+none past 6 dB: +3.3 to +3.8 dB at 80-125 Hz, -6 dB at 250-500 Hz, +5 to
++7 dB at 1-1.6 kHz, nothing above 4 kHz where the recordings disagree - and
+`configureBody` multiplies each of the Original's radiation modes by it at
+the mode's own frequency, as it does the anchor's bass tilt and Wood's
+brilliance. It costs nothing per sample, moves with Shape and Wood, never
+reaches the piezo, and leaves the Bellido's own measured microphones alone.
+Its level keeps the default construction at its loudness, and the Original's
+other constructions were re-levelled within +-1 LU.
+[`Tools/FitCaptureVoicing.py`](Tools/FitCaptureVoicing.py) refits it from
+renders of the five sources (twice, the engine in the loop, after any change
+to the Original's radiation).
+
+**Room.** `EngineParameters::room`, the plug-in's Room, puts a small studio
+(5.2 x 4.1 x 2.7 m, the microphones 0.32 m from the guitar) around the
+microphones: its ten strongest early reflections from an image-source model
+within two bounces, panned by side, then an eight-line feedback delay network
+whose field decays in 0.45 s to 1 kHz, 0.36 s at 4 kHz and 0.26 s at 8 kHz,
+dense within 20 ms. Every open recording is made in a room and the model is
+anechoic: between partials the recordings carried 15-25 dB more over a
+note's first 0.3 s, and the scorer's spectral body term, the largest on
+every split, was mostly that. At 50%, the plug-in's default for a new
+instance, the room sits about 12.5 dB under a held chord and 10 dB under a
+released phrase, and each halving of Room lowers it 10 dB; a session saved
+before Room existed loads it at 0. It feeds on the microphones' mid signal,
+is spread by Stereo Width like the pair (0 is mono), never reaches the
+piezo or the Piezo output, and is energy-normalised at prepare and run at
+the host rate divided to 64 kHz or under, so its level and decay are the
+same from 44.1 to 192 kHz (within 0.3 dB). It renders the same at any block
+size, costs about 4% of the engine's time while it sounds and 148 KB per
+instance, and at 0 is an exact no-op once it has rung out. The engine's own
+default is 0, so the benchmark, the demos and every test that does not ask
+for it are the dry instrument.
+
 ### Outputs
 
 | Output | Channels | What it carries |
@@ -1914,19 +1981,39 @@ engine.
   Bellido's Jumbo Maple in DADGAD (mono mic), the high one steel on the Jumbo
   in Half-step down, whose low E-flat lands on the Jumbo's air mode.
 
-- Single notes' radiated level is rougher from note to note than the open
-  recordings'. Over E2-C6, 1 s RMS at the Stereo mic, the RMS deviation from
-  a seven-note neighbourhood is 3.2 dB finger-played on the steel
-  Dreadnought, against 1.8 on the Eastman E1D played with fingers and 2.2
-  with a pick; the deepest one-note hole is 8.9 dB (C#5 on the
-  Dreadnought), against 4.4-9.3 in the recordings. Picked, the steel
-  Dreadnought is within them (2.3 dB, 4.3 dB). The holes are the measured
-  bodies' own: a close microphone over the bridge hears same-sign modal
-  pairs, such as g21's 515 and 589 Hz, as an antiresonance, and they move
-  with Shape. Smoothing them would change every microphone construction the
-  listener chose; a fit of the bridge microphone as a blend of the archive's
-  measured positions, heard before it ships, would be the way to close it.
-  BodyShapeTests keeps it from getting rougher.
+- Single notes' radiated level is still rougher from note to note than the
+  open recordings', though less than it was. Over E2-C6, 1 s RMS at the
+  Stereo mic, the RMS deviation from a seven-note neighbourhood is 2.7 dB
+  finger-played on the steel Dreadnought (3.3 before the capture voicing of
+  2026-10-01), against 1.8 on the Eastman E1D played with fingers and 2.2
+  with a pick; the deepest one-note hole is 5.4 dB (9.1 before, C#5),
+  against 4.4-9.3 in the recordings. The rest are the measured bodies' own:
+  a close microphone over the bridge hears same-sign modal pairs, such as
+  g21's 515 and 589 Hz, as an antiresonance, and they move with Shape; the
+  voicing is a smooth gain and does not reach them. A fit of the bridge
+  microphone as a blend of the archive's measured positions, heard before it
+  ships, would be the way to close them. Against the Eastman rows the low
+  E2 still sits 6-8 dB under its neighbours, and the voicing lifts G2-G#2,
+  near the air mode, 2-5 dB over theirs. BodyShapeTests keeps it from
+  getting rougher than the voicing left it.
+- The capture voicing (The microphones and the room) is a fitted
+  correction, not a measured far-field response: the consensus of five sets
+  of recordings made on other guitars, by other microphones, in rooms. Held
+  out of its own fit, each source but two improves; the two that do not are
+  the finger-plucked ones (Eastman finger +1.0%, the bank's flat-top
+  +4.1%), and with the room they read -3.8% and +0.3%. A steel-string
+  guitar's own response measured where a recording is made would replace it.
+- The Finger's attack is brighter than the finger-plucked flat-top
+  recordings'. Over the first 15 ms the Eastman finger take puts -27.8 dB of
+  its energy at 2-12 kHz; the engine put -19.4 dB there before the voicing
+  and -14.9 dB after it (its 1-1.6 kHz lift reaches the attack too). A
+  weaker finger burst brings it toward the recording and every benchmark
+  split rejects it, and the Finger's contact and release were chosen by ear
+  (2026-09-28, 2026-09-30), so it is left for the listener.
+- The room is a model of a room, not a measured one: an image-source
+  shoebox for its first reflections and a feedback delay network for its
+  field, at a level and decay a small treated studio has. The recordings it
+  was checked against were made in rooms nobody measured.
 - A note near a strong, lossy low bridge or body mode sounds a few cents
   from its request: the loop is tuned to cancel the bridge's reflection
   phase at the note (bridgePhaseDelay), but the damped string-body pole sits
@@ -2576,6 +2663,25 @@ engine.
 A concise ledger of the changes that move what Acustra sounds like or how it is
 controlled. Pure refactors, deduplications and test-coverage additions are in
 git history rather than here.
+
+### 2026-10-01
+
+- **The microphones as a recording hears them, and a room around them, at
+  the user's request** ("further improve realism of the instrument audibly
+  by multiple techniques, make the sound more pleasant, natural, balanced,
+  benchmarking with real audio"). The Original's capture voicing - +3 to +4
+  dB at 80-125 Hz, -6 dB at 250-500 Hz, +5 to +7 dB at 1-1.6 kHz, fitted to
+  the Eastman E1D, Martin HD28, bank flat-top and GuitarSet recordings - and
+  Room, a small studio's reflections and 0.45 s field around the
+  microphones, 50% for a new plug-in instance and 0 for an older session.
+  Against main, with Room at 50%: training -9.7%, development validation
+  -8.4%, Eastman picked -8.9%, Eastman finger -3.8%, Martin -9.4%, the
+  bank's flat-top +0.3%, GuitarSet's log-spectral error 14.42 -> 14.00 dB,
+  convergence 0.828 -> 0.804 and chroma 0.224 -> 0.210; note to note 3.3 ->
+  2.7 dB rough. Every Original construction's sound changes (each was
+  re-levelled to its loudness); the Bellido's microphones are unchanged. See
+  [The microphones and the room](#the-microphones-and-the-room) and
+  Docs/decisions.md.
 
 ### 2026-09-30
 
@@ -3266,7 +3372,10 @@ python3 Tools/BenchmarkPerformances.py \
 ```
 
 The output directory must be new. `--capture` and `--picking` can evaluate
-explicit alternatives. To compare with the simultaneous
+explicit alternatives, and `--room 0..1` renders with the Room (default 0;
+`Tools/BenchmarkOpenCorpora.py`, `AcustraPhysicalFitRenderer`,
+`AcustraExternalCorpusRenderer` and `AcustraPerformanceRenderer` take it
+too, and `AcustraRenderRepertoire` reads `room=` on a part's line). To compare with the simultaneous
 magnetic recording, download `audio_mono-pickup_mix.zip` instead of the microphone
 archive and add `--reference-capture magnetic_pickup --capture piezo`. This is a
 cross-sensor comparison; the retired magnetic model is no longer available.
@@ -3360,6 +3469,27 @@ are not cross-stage transfer phase:
 python3 Tools/AnalyzeBridgeProbe.py --midi 64 \
   /tmp/e4.f32 /tmp/e4.f32.telemetry.f32
 ```
+
+To refit the Original's capture voicing after a change that moves its
+radiation, render the three sources with the new build and fit twice
+(rebuilding between), then re-level the Original's constructions:
+
+```sh
+./build-dsp/AcustraPhysicalFitRenderer /tmp/bank <37 shipping values>
+python3 Tools/BenchmarkOpenCorpora.py --renderer ./build-dsp/AcustraExternalCorpusRenderer \
+  --output /tmp/open --keep eastman/rows.json martin-hd28/rows.json
+python3 Tools/BenchmarkPerformances.py --dataset /path/to/guitarset \
+  --renderer ./build-dsp/AcustraPerformanceRenderer --output /tmp/guitarset
+python3 Tools/FitCaptureVoicing.py --bank /tmp/bank --open /tmp/open \
+  --guitarset /tmp/guitarset --write-header [--level-db DB]
+python3 Tools/CalibrateConstructionLoudness.py \
+  --renderer ./build-dsp/AcustraPerformanceRenderer --write-header --models original
+```
+
+`--level-db` is the level that keeps the default construction's loudness
+(`CalibrateConstructionLoudness.py --json` reports it before and after);
+`python3 Tools/FitCaptureVoicing.py --self-test` recovers a known voicing
+from a synthetic corpus and downloads nothing.
 
 To regenerate the offline reference bank from separately downloaded source
 archives:

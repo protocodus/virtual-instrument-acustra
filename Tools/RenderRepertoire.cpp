@@ -132,7 +132,7 @@ float number(const std::string& text)
 }
 
 // part <id> model= shape= material= tuning= picking= capture= age= pluck=
-//      touch= body= width= output= release= piezo= pan= gain= level=
+//      touch= body= width= output= release= piezo= room= pan= gain= level=
 Part readPart(std::istringstream& line)
 {
     using namespace acustra;
@@ -182,6 +182,7 @@ Part readPart(std::istringstream& line)
         else if (key == "output") parameters.outputGain = number(value);
         else if (key == "release") parameters.releaseNoise = number(value);
         else if (key == "piezo") parameters.piezoMix = number(value);
+        else if (key == "room") parameters.room = number(value);
         else if (key == "pan") part.pan = std::clamp(static_cast<double>(number(value)), -1.0, 1.0);
         else if (key == "gain") part.gain = number(value);
         else if (key == "level")

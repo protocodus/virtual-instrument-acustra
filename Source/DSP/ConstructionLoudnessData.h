@@ -15,13 +15,13 @@ namespace acustra::detail
 // The factor on the output reference (outputReferenceFor).
 inline constexpr std::array<float, 72> constructionMicReference {{
     // original parlor: spruce, mahogany, maple x finger, pick, thumb
-    1.2097348f, 1.14131534f, 1.21941197f, 1.32905376f, 1.25076175f, 1.33901119f, 1.25761497f, 1.09277272f, 1.2847476f,
+    0.690245807f, 0.708382666f, 0.689706206f, 0.789663196f, 0.806701481f, 0.790869415f, 0.736060917f, 0.706210315f, 0.735480547f,
     // original auditorium: spruce, mahogany, maple x finger, pick, thumb
-    1.40079939f, 1.03257465f, 1.47103846f, 1.47659469f, 1.1234206f, 1.54317331f, 1.49411106f, 1.10223007f, 1.57129788f,
+    1.32009733f, 0.849494338f, 1.37136793f, 1.40755343f, 0.967429161f, 1.4408555f, 1.35569918f, 0.886017978f, 1.40621889f,
     // original dreadnought: spruce, mahogany, maple x finger, pick, thumb
-    1.0f, 0.873527586f, 0.994848132f, 1.09800088f, 0.971913218f, 1.09930122f, 1.08095527f, 0.928274333f, 1.08121014f,
+    1.0f, 0.731252789f, 1.02298129f, 1.08619583f, 0.833759129f, 1.10375881f, 1.10125792f, 0.70074755f, 1.1372925f,
     // original jumbo: spruce, mahogany, maple x finger, pick, thumb
-    0.918383718f, 0.746266007f, 0.943378448f, 0.985351205f, 0.801904023f, 1.02372015f, 0.878137589f, 0.737959743f, 0.88831681f,
+    0.892059982f, 0.631276608f, 0.914137125f, 0.96774435f, 0.712296963f, 0.993291974f, 0.860439897f, 0.623908699f, 0.871994436f,
     // bellido1978 parlor: spruce, mahogany, maple x finger, pick, thumb
     2.36652875f, 1.23801959f, 2.78730774f, 2.59075713f, 1.40143085f, 3.01983714f, 2.6006608f, 1.26321685f, 3.01673222f,
     // bellido1978 auditorium: spruce, mahogany, maple x finger, pick, thumb
@@ -34,13 +34,13 @@ inline constexpr std::array<float, 72> constructionMicReference {{
 // The mono microphone's factor over constructionMicReference.
 inline constexpr std::array<float, 72> constructionMonoTrim {{
     // original parlor: spruce, mahogany, maple x finger, pick, thumb
-    0.992117703f, 0.983805895f, 0.992500067f, 0.999380052f, 0.992260098f, 0.994536579f, 0.97882247f, 0.956545949f, 0.980612755f,
+    0.996722639f, 0.957765937f, 0.99153161f, 0.996303082f, 0.957030416f, 0.994926512f, 0.986087322f, 0.930858314f, 0.988600373f,
     // original auditorium: spruce, mahogany, maple x finger, pick, thumb
-    1.01925004f, 1.06956482f, 1.03003037f, 1.02068448f, 1.08349383f, 1.02352905f, 1.01392829f, 1.06278872f, 1.01657844f,
+    0.975836158f, 0.886457503f, 0.987409174f, 0.973585129f, 0.905465126f, 0.990953326f, 0.982307017f, 0.912684381f, 0.99123776f,
     // original dreadnought: spruce, mahogany, maple x finger, pick, thumb
-    1.0f, 0.973712623f, 1.02762914f, 1.03464794f, 0.993837059f, 1.04020727f, 1.02575231f, 0.950345337f, 1.03257358f,
+    1.0f, 0.837508261f, 1.01530659f, 0.99974817f, 0.871723831f, 1.01318002f, 0.961750329f, 0.786971331f, 0.994341671f,
     // original jumbo: spruce, mahogany, maple x finger, pick, thumb
-    1.00161004f, 0.978765666f, 1.01170659f, 0.997135341f, 0.987119496f, 1.00992441f, 1.02585971f, 0.989910245f, 1.02696979f,
+    0.985596418f, 0.836733401f, 0.997825563f, 0.991640866f, 0.849499524f, 1.00490916f, 0.996622324f, 0.845975578f, 1.01279426f,
     // bellido1978 parlor: spruce, mahogany, maple x finger, pick, thumb
     0.924620569f, 0.934912801f, 0.884033859f, 0.915860236f, 0.943818569f, 0.880946517f, 0.937091231f, 0.928453088f, 0.917313516f,
     // bellido1978 auditorium: spruce, mahogany, maple x finger, pick, thumb
@@ -54,13 +54,13 @@ inline constexpr std::array<float, 72> constructionMonoTrim {{
 // (PiezoDesign::trim).
 inline constexpr std::array<float, 72> constructionPiezoTrim {{
     // original parlor: spruce, mahogany, maple x finger, pick, thumb
-    1.33485675f, 0.708083808f, 1.47473824f, 1.220433f, 0.647295475f, 1.34892178f, 1.2752496f, 0.740974545f, 1.39389968f,
+    2.33929753f, 1.1407392f, 2.60714746f, 2.05389881f, 1.00352597f, 2.28365755f, 2.1786809f, 1.14647269f, 2.4346807f,
     // original auditorium: spruce, mahogany, maple x finger, pick, thumb
-    1.14454007f, 0.785708725f, 1.21498561f, 1.08485079f, 0.722795188f, 1.15852737f, 1.07055438f, 0.728536308f, 1.12956274f,
+    1.2144146f, 0.954964757f, 1.30318892f, 1.1379751f, 0.839273632f, 1.24070001f, 1.17975843f, 0.90624404f, 1.26206303f,
     // original dreadnought: spruce, mahogany, maple x finger, pick, thumb
-    1.61705124f, 0.939041197f, 1.80608463f, 1.47448468f, 0.841173112f, 1.63708544f, 1.47886753f, 0.867637753f, 1.64576864f,
+    1.61692715f, 1.1216532f, 1.75628006f, 1.49039495f, 0.980477273f, 1.6303488f, 1.45148873f, 1.14925849f, 1.56448913f,
     // original jumbo: spruce, mahogany, maple x finger, pick, thumb
-    1.76981151f, 1.09320056f, 1.92129242f, 1.66952789f, 1.02370226f, 1.792382f, 1.84512246f, 1.10530365f, 2.02493024f,
+    1.82188809f, 1.29222667f, 1.98258805f, 1.69976532f, 1.15239108f, 1.84713888f, 1.88291931f, 1.30724776f, 2.06266689f,
     // bellido1978 parlor: spruce, mahogany, maple x finger, pick, thumb
     0.731063306f, 0.732798517f, 0.669701338f, 0.672773182f, 0.6479972f, 0.620457411f, 0.662479043f, 0.710641682f, 0.615038574f,
     // bellido1978 auditorium: spruce, mahogany, maple x finger, pick, thumb
