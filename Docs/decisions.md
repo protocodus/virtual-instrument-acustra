@@ -4,6 +4,86 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-10-01 — at the user's request, continued: what the open items need
+
+After the spring-back was heard and merged the user asked to "solve all of
+these - start with those that are clear (not need listening tests)": the
+open items the entry below left, natural harmonics quiet under the knock,
+the hardest playing at the limiter, the air mode low and short, the Finger's
+attack bright. Measured first, the first two turn out to need no change to
+the engine, and the last two are choices a listener made, so they go to a
+listening set.
+
+Natural harmonics. Read in the string - the delay line one period long right
+after the pluck, each mode's slope energy - E6, the open high E's fourth
+harmonic, keeps the modes its pluck put on the multiples of 4 to within 1.2
+dB with every Picking, and what leaks into the others is 17-98 dB down: the
+node projection (2026-08-31) is exact. The harmonic is quiet because of
+where the hand plucks. With the Finger it meets the open high E at 0.237 of
+the string, beside the fourth harmonic's node at 1/4, so the multiples of 4
+hold 27.8 dB under the pluck's energy; with the Thumb at 0.328 13.9 dB, with
+the Pick at 0.099 7.4 dB. F#6, the B string's sixth, sounds 10 dB over E6
+with the Finger because 0.237 is no node of it. The entry below compared the
+radiated harmonic with an ideal pluck nearer the bridge; it was wrong, and
+so was the README's note built on it. Nothing in the engine changes. A
+player moves the hand off a node for a harmonic; the engine keeps it where
+Pluck Position puts it, and moving it would be a choice by ear.
+
+The hardest playing. Split by segment on all 24 steel constructions with the
+Pick at Touch 1 and Pluck Position 0, the peak is the six strings released
+on one sample: +1.59 dBFS on the stereo microphones (20 over the knee),
+-0.13 on the mono (5). The two strums, 9 and 4 ms a string, stay under the
+knee on 22 on the stereo microphones and at least 1 dB under on 20; the
+Bellido Parlor in mahogany and spruce reach -0.04 and -0.06 dBFS. On the
+mono they stay at least 1 dB under on 23. The Performer strums any chord of
+three notes or more on one channel, so six strings on one sample reach the
+engine only from a chord spread over channels (MPE, string-per-channel). To
+hold that case under the knee on every construction at the same parity every
+construction, the default with it, would be 2.6 dB quieter (3.6 for the
+calibration's margin); on 2026-09-29 parity came first as the user asked,
+and the level is the user's to change, so it stays.
+
+The air mode. The Dreadnought's air mode sits at 84.7 Hz because the wide
+anchor a blind listener chose on 2026-09-24 moves the measured bank's 85-145
+Hz modes by 98/107; both recorded dreadnoughts ring at 93-95 Hz. The
+candidate moves only that ratio, 98 to 109: the air mode to 94.2 Hz and its
+group with it (81.7 to 90.9 Hz), the anchor's plate scale, bass, volume and
+asymmetry kept, Q 19.3 kept. Against main, Room 0.5: training +0.2%,
+development validation -0.2%, the bank's flat-top +1.1%, Eastman picked
++1.4%, Eastman finger +1.1%, Martin +0.1%; GuitarSet's log-spectral error
+13.929 -> 13.911 dB, spectral convergence 0.804 -> 0.802, chroma 0.211 ->
+0.210, its 80-160 Hz octave -3.0 -> -1.8 dB against the recordings. Dry:
+-1.3%, -1.6%, +1.6%, +1.6%, +1.3%, +0.5%; GuitarSet 14.105 -> 14.091, 0.793
+-> 0.799, 0.208 -> 0.208, 80-160 Hz -1.4 -> -0.2. The single-note flat-top
+sets prefer the old place by about 1%, GuitarSet the new. That the air mode
+"rings too briefly" (the entry below) is not borne out at its own band:
+85-105 Hz decays with a median T60 of 0.46 s against the two dreadnoughts'
+0.47 (0.52 at 94 Hz). What is short after 100 ms is the 60-180 Hz band as a
+whole, 7-16 dB under the recordings at either place. It goes to the listener
+as set air-* (A the engine, B 94 Hz).
+
+The Finger's attack. Over the first 15 ms (MIDI 40-66, velocity 91, dry, the
+default construction) the Finger puts -17.3 dB of its energy at 2-12 kHz
+where the Eastman finger take puts -29.1. The soft burst carries 3.2 dB of
+that (-20.5 without it), a fingertip contact three times as wide 1.0 dB
+(-18.3). Releasing the Finger and Thumb through the slip in full rather than
+as a ratio to the full-velocity slip, with the soft burst halved, reaches
+-21.8 (in the attack-share test at velocity 127, -15.5 -> -20.8), but takes
+the soft-to-loud H5-H12 over H1-H4 rise from 9.06 to 5.94 dB against the
+recordings' 9.0 - the velocity test fails - and an edge that grows as
+velocity falls (v^-0.5, v^-1) took it further down (3.0, 1.2 dB): a darker
+loud stroke costs the soft strokes their contrast. Against main, Room 0.5:
+Eastman finger -6.8%, the bank's flat-top -4.7%, Eastman picked 0.0%
+(rendered with the Pick), Martin +6.9%, training +4.1%, development
+validation +5.2%; GuitarSet 13.929 -> 14.090 dB, its top three octaves 3-6
+dB darker against recordings already brighter than the engine. Dry: -6.1%,
+-4.3%, 0.0%, +6.8%, +3.8%, +4.5%; GuitarSet 14.105 -> 14.249. The
+finger-plucked flat-top sets want it, the picked sets rendered with the
+Finger and GuitarSet do not, and the recordings' velocity contrast is lost;
+the remaining brightness, about -21 dB with no burst and a wide contact, is
+not the Finger's. It goes to the listener as set finger-* (A the engine, B
+darker), the recommendation being A unless B is heard as clearly better.
+
 ## 2026-10-01 — at the user's request, continued: the top springs back from the held string
 
 After the entry below was heard and merged, the user asked to "continue
@@ -213,12 +293,12 @@ holds unchanged. The harmonic is audible: on E6 and F#6 the 60-180 Hz band
 over the first 300 ms now reads -0.2 to -4.9 dB against the note's first
 second, where it read -30 to -53, because the engine's harmonics are quiet:
 before the step E6 sat 25 dB under an E4 at the same velocity with the
-Finger, 20 with the Thumb and 14 with the Pick, where the modes a
-quarter-string node keeps hold 8-11 dB under a plucked string's energy
-(plucked 0.10-0.17 of the string from the bridge). The knock is the open
-string's; the Finger's harmonic is what is short (README, Known gaps). A
-harmonics clip, A this entry's 0.8 build and B with the corrections, at one
-gain, went with the second listening set.
+Finger, 20 with the Thumb and 14 with the Pick. (That this was short of
+the 8-11 dB a quarter-string node keeps of an ideal pluck 0.10-0.17 of the
+string from the bridge was wrong: the next entry reads it in the string.)
+The knock is the open string's. A harmonics clip, A this entry's 0.8 build
+and B with the corrections, at one gain, went with the second listening
+set.
 
 Heard against main and the full release, the listener kept it: "80% is
 better, keep it and merge to main". The harmonics clip drew no comment.
