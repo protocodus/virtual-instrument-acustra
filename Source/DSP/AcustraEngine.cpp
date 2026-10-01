@@ -5478,7 +5478,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // full release (Docs/decisions.md, 2026-10-01), chosen by ear. A
         // re-pluck adds its step to what an earlier one has still to give
         // back rather than cutting it off: cut, the earlier step's net
-        // impulse is no longer zero and the bridge keeps a low kick.
+        // impulse is no longer zero and the bridge keeps a low kick. Two
+        // plucks on one sample - a doubled note-on before any audio - are
+        // one release: the first wave goes under the hand (captureTail)
+        // before it has sounded, and a hand that let go and held the string
+        // again in no time put back the force it had let go, so the rise
+        // still waiting is replaced, not added to. Added, a doubled note
+        // thumped 6 dB harder than the one pluck it sounds as.
         constexpr float releaseStepShare = 0.8f;
         if (polarisation == 0 && releaseStepEnabled_)
         {

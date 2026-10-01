@@ -8995,9 +8995,11 @@ void testStringAgeReachesTheWoundStrings()
 // so. A re-pluck of the same string adds its step to the earlier one, which
 // still runs out: cut off at the re-pluck, the earlier step's first lobe
 // stayed on the bridge as a low kick, at 10 ms nearly the whole of its
-// peak. A bend after the release moves the string, not the force already
-// taken off the saddle. A natural harmonic is held aside by the picking
-// hand as its open string is, so its saddle sheds that string's force.
+// peak. A doubled note-on on one sample is one release, not two (two
+// added thumped 6 dB harder than the one pluck it sounds as). A bend after
+// the release moves the string, not the force already taken off the
+// saddle. A natural harmonic is held aside by the picking hand as its open
+// string is, so its saddle sheds that string's force.
 void testEachReleaseGivesBackTheForceItHeld()
 {
     using Access = acustra::AcustraEngineTestAccess;
@@ -9036,6 +9038,18 @@ void testEachReleaseGivesBackTheForceItHeld()
 
     const auto plain = Access::releaseStepTrace(string, 64, channel, -1, -1,
                                                 samples);
+    // The second note-on comes before the first sample is rendered; its
+    // pluck draws its own point, so its force is the single pluck's within
+    // that spread.
+    const auto doubled = Access::releaseStepTrace(string, 64, channel, 0, -1,
+                                                  samples);
+    const double single = netAndPeak(plain).second;
+    const double twice = netAndPeak(doubled).second;
+    std::cout << "Acustra released force, doubled note-on over one pluck: "
+              << twice / std::max(single, 1.0e-30) << "\n";
+    expect(doubled.plucks.size() == 1 && twice > 0.8 * single
+               && twice < 1.25 * single,
+           "a doubled note-on on one sample released the held force twice");
     const auto bent = Access::releaseStepTrace(string, 64, channel, -1, 240,
                                                samples);
     expect(std::abs(bent.portAtEnd / bent.portAtPluck - 1.0f) > 0.01f,
@@ -9046,13 +9060,12 @@ void testEachReleaseGivesBackTheForceItHeld()
     // E6 is the open high E's fourth harmonic.
     const auto harmonic = Access::releaseStepTrace(string, 88, 0, -1, -1,
                                                    samples);
-    const double open = netAndPeak(plain).second;
     const double touched = netAndPeak(harmonic).second;
     std::cout << "Acustra released force, E6 harmonic over the open high E: "
-              << touched / std::max(open, 1.0e-30) << "\n";
+              << touched / std::max(single, 1.0e-30) << "\n";
     expect(harmonic.harmonic == 4,
            "E6 was not the open high E's fourth harmonic");
-    expect(touched > 0.8 * open && touched < 1.25 * open,
+    expect(touched > 0.8 * single && touched < 1.25 * single,
            "a natural harmonic did not shed its open string's held force");
 }
 

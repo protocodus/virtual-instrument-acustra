@@ -223,6 +223,14 @@ gain, went with the second listening set.
 Heard against main and the full release, the listener kept it: "80% is
 better, keep it and merge to main". The harmonics clip drew no comment.
 
+A second review asked that two plucks on one sample, a doubled note-on
+before any audio, each give back their force. They stay one release: the
+first wave goes under the hand before it has sounded, and a hand that let go
+and held the string again in no time put back the force it had let go.
+Added, a doubled note's step was 1.95 times a single pluck's, 5.8 dB harder
+than the one pluck it sounds as; the engine test now pins it at the single
+pluck's (0.95, the second pluck's own point).
+
 ## 2026-10-01 — at the user's request: the microphones as a recording hears them, and the room around them
 
 The user asked to "further improve realism of the instrument audibly by
