@@ -48,14 +48,14 @@ struct CaptureVoicingSection
 };
 
 inline constexpr CaptureVoicingSection captureVoicingSections[] {
-    { CaptureVoicingKind::LowShelf, 120.0f, 2.52f, 0.7f },
-    { CaptureVoicingKind::Peak, 125.0f, 4.05f, 1.2f },
+    { CaptureVoicingKind::LowShelf, 120.0f, 0.58f, 0.7f },
+    { CaptureVoicingKind::Peak, 125.0f, 2.75f, 1.2f },
     { CaptureVoicingKind::Peak, 250.0f, -6.00f, 1.2f },
     { CaptureVoicingKind::Peak, 500.0f, -6.00f, 1.2f },
-    { CaptureVoicingKind::Peak, 1000.0f, 3.30f, 1.2f },
+    { CaptureVoicingKind::Peak, 1000.0f, 3.28f, 1.2f },
     { CaptureVoicingKind::Peak, 1400.0f, 6.00f, 1.2f },
 };
 
-inline constexpr float captureVoicingLevelDb = 3.10f;
+inline constexpr float captureVoicingLevelDb = 3.82f;
 
 } // namespace acustra::detail

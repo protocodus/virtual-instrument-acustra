@@ -970,6 +970,13 @@ private:
         bool pedalHeldAtKeyUp { false };
         // Where this pluck landed, as a fraction of the sounding length.
         float pluckPoint { 0.0f };
+        // The static force the hand held the string aside with, let go at
+        // the pluck (initialisePluck): the normal plane's steep-flank rise
+        // per sample, its high-pass's decay so far, and the samples since
+        // the release (-1: none sounding).
+        float releaseStepRise { 0.0f };
+        float releaseStepDecay { 0.0f };
+        int releaseStepAge { -1 };
         // Set by noteOn's strumMember argument and read once by
         // initialisePluck for its own level jitter; noteOn itself reads it
         // to scale this string's delay by the stroke's shared
@@ -1451,6 +1458,10 @@ private:
     FixedDerivative bridgeTailForceDerivative_ {};
     double sampleRate_ { 48000.0 };
     float inverseSampleRate_ { 1.0f / 48000.0f };
+    // The released static force's high-pass, a double pole at 10 ms, and
+    // how long it runs (initialisePluck).
+    float releaseStepPole_ { 0.0f };
+    int releaseStepSamples_ { 1 };
     float delaySmoothing_ { 0.001f };
     float parameterSmoothing_ { 0.002f };
     float levelSmoothing_ { 0.0025f };
@@ -1585,6 +1596,10 @@ private:
     bool bridgeCouplingEnabled_ { true };
     bool sympatheticStringsEnabled_ { true };
     bool portObserversEnabled_ { true };
+    // Off only where a test audits the strings' own waves at the junction:
+    // the released static force (initialisePluck) is an external force,
+    // outside their wave-norm identity and the piezo's weighting.
+    bool releaseStepEnabled_ { true };
     // The strings do not leave the bridge when a note ends, so the junction
     // keeps the port they present rather than switching it out from under a
     // body that is still ringing.

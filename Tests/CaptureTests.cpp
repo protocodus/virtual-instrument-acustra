@@ -38,6 +38,11 @@ struct AcustraEngineTestAccess
     {
         engine.piezoStringWeights_ = weights;
     }
+    // The released static force (initialisePluck) on or off.
+    static void setReleaseStep(AcustraEngine& engine, bool enabled)
+    {
+        engine.releaseStepEnabled_ = enabled;
+    }
     static float piezoWave(const AcustraEngine& engine) { return engine.lastPiezoWave_; }
     static std::array<float, 8> captureMix(const AcustraEngine& engine)
     {
@@ -421,6 +426,10 @@ void testPiezoStringWeights()
         engines[0]->prepare(48000, 64);
         engines[0]->setBridgeCouplingEnabled(coupled);
         Access::setWeights(*engines[0], { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f });
+        // The released static force acts on the saddle beside the strings'
+        // waves and the piezo does not weigh it (its preamp's headroom was
+        // set without it), so the identity is the strings' own.
+        Access::setReleaseStep(*engines[0], false);
         long mismatches = 0;
         play(engines, [&] (int)
         {
