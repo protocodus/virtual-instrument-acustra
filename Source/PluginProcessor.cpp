@@ -30,6 +30,7 @@ enum ParameterSlot
     slotGatherChords,
     slotPiezoMix,
     slotReleaseNoise,
+    slotRoom,
     slotCount
 };
 
@@ -53,7 +54,8 @@ constexpr std::array<const char*, slotCount> parameterIds {
     ids::guitarModel,
     ids::gatherChords,
     ids::piezoMix,
-    ids::releaseNoise
+    ids::releaseNoise,
+    ids::room
 };
 
 std::unique_ptr<juce::RangedAudioParameter> makePercentParameter (
@@ -282,6 +284,14 @@ AcustraAudioProcessor::createParameterLayout()
     // loads it at zero (setStateInformation) and so sounds as it did.
     result.push_back (makePercentParameter (ids::releaseNoise, "Release Noise",
                                             70.0f, 10));
+    // The room around the microphones (acustra::EngineParameters::room): 0%
+    // the dry, close-miked instrument, 100% a microphone well out in a small
+    // studio. On for a new instance at 50%, where the room sits 10-12.5 dB
+    // under the guitar, the amount the open recordings measured best against
+    // (Docs/decisions.md, 2026-10-01); a session saved before it existed
+    // loads it at zero (setStateInformation) and so sounds as it did. The
+    // piezo never hears it.
+    result.push_back (makePercentParameter (ids::room, "Room", 50.0f, 11));
 
     return { result.begin(), result.end() };
 }
@@ -308,6 +318,7 @@ AcustraAudioProcessor::snapshotEngineParameters() const noexcept
     result.outputGain = juce::Decibels::decibelsToGain (value (slotOutput));
     result.piezoMix = 0.01f * value (slotPiezoMix);
     result.releaseNoise = 0.01f * value (slotReleaseNoise);
+    result.room = 0.01f * value (slotRoom);
     constexpr std::array captures { acustra::CaptureType::StereoMic,
         acustra::CaptureType::MonoMic, acustra::CaptureType::Piezo };
     result.capture = captures[static_cast<std::size_t> (
@@ -472,6 +483,14 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
             releaseState.setProperty ("id", ids::releaseNoise, nullptr);
             releaseState.setProperty ("value", 0.0f, nullptr);
             restoredState.appendChild (releaseState, nullptr);
+        }
+        // Likewise a session saved before Room existed stays dry.
+        if (! containsParameterState (restoredState, ids::room))
+        {
+            juce::ValueTree roomState { "PARAM" };
+            roomState.setProperty ("id", ids::room, nullptr);
+            roomState.setProperty ("value", 0.0f, nullptr);
+            restoredState.appendChild (roomState, nullptr);
         }
         addMissingParameterDefaults (restoredState, parameters, getParameters());
         parameters.replaceState (restoredState);

@@ -1045,7 +1045,10 @@ void testCoupledPitchPullIsBounded()
 // single-point near-field microphone responses (same-sign modal pairs such
 // as g21's 515 and 589 Hz leave an antiresonance under C#5 at the bridge
 // microphone), not an engine fault, and it is left as measured; this keeps
-// it from getting worse unnoticed.
+// it from getting worse unnoticed. The capture voicing (2026-10-01,
+// CaptureVoicingData.h) brought the steel Dreadnought from 3.28 to 2.71 dB
+// and its deepest hole from 9.13 to 5.45 dB, and the bounds follow it, so
+// a change that undoes that gain fails here.
 void testNoteToNoteLevelSpreadIsBounded()
 {
     struct Case { const char* name; acustra::BodyShape shape; acustra::BodyMaterial wood; float velocity; };
@@ -1080,8 +1083,8 @@ void testNoteToNoteLevelSpreadIsBounded()
         const double rough = std::sqrt(squares/count);
         std::cout << "note-to-note level, " << c.name << ": rough " << rough
                   << " dB, deepest hole " << hole << " dB\n";
-        expect(rough < 4.0, "note-to-note level grew rougher than 4 dB");
-        expect(hole < 12.0, "a single note fell 12 dB or more under its neighbours");
+        expect(rough < 3.2, "note-to-note level grew rougher than 3.2 dB");
+        expect(hole < 8.0, "a single note fell 8 dB or more under its neighbours");
     }
 }
 

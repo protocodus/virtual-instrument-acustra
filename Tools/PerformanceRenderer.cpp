@@ -12,7 +12,8 @@
 // (left) and U1B's drive before its output swing (right), both about the
 // preamp's 4.5 V bias. Tools/CalibratePiezo.py checks the chain's headroom
 // from them. --touch sets the Touch control (default 0.58), and
-// --pluck-position the Pluck Position (default 0.28; 0 is at the bridge).
+// --pluck-position the Pluck Position (default 0.28; 0 is at the bridge),
+// and --room the Room (default 0, the engine's; the plug-in's is 0.5).
 // AcustraPerformanceRenderer --piezo-unit [--calibration FILE] renders
 // nothing and prints the piezo's force unit the engine uses with that
 // calibration (the fitted one by default): newtons per engine force unit and
@@ -79,7 +80,8 @@ int main(int argc, char** argv)
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
                      "[--body-material spruce|mahogany|maple] "
                      "[--guitar-model original|bellido1978] "
-                     "[--touch 0..1] [--pluck-position 0..1] [--calibration FILE] "
+                     "[--touch 0..1] [--pluck-position 0..1] [--room 0..1] "
+                     "[--calibration FILE] "
                      "[--observe piezo_voltage|piezo_levels|piezo_stages]\n";
         return 2;
     }
@@ -114,7 +116,7 @@ int main(int argc, char** argv)
         }
         bool tuningSeen = false;
         bool shapeSeen = false, woodSeen = false, calibrationSeen = false, guitarSeen = false;
-        bool observeSeen = false, touchSeen = false, pluckSeen = false;
+        bool observeSeen = false, touchSeen = false, pluckSeen = false, roomSeen = false;
         // 0: the output; 1: piezo_voltage; 2: piezo_levels; 3: piezo_stages.
         int observation = 0;
         for (int index = optionStart; index < argc; index += 2)
@@ -186,6 +188,15 @@ int main(int argc, char** argv)
                     throw std::runtime_error("pluck position must be between 0 and 1");
                 parameters.pluckPosition = position;
                 pluckSeen = true;
+            }
+            else if (option == "--room" && !roomSeen)
+            {
+                std::size_t used = 0;
+                const float room = std::stof(value, &used);
+                if (used != value.size() || !(room >= 0.0f && room <= 1.0f))
+                    throw std::runtime_error("room must be between 0 and 1");
+                parameters.room = room;
+                roomSeen = true;
             }
             else if (option == "--calibration" && !calibrationSeen)
             {

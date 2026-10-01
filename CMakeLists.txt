@@ -46,6 +46,7 @@ file(GLOB ACUSTRA_BANK_PARTS CONFIGURE_DEPENDS
 add_library(AcustraDSP STATIC
     Source/DSP/AcustraEngine.cpp
     Source/DSP/AcustraEngine.h
+    Source/DSP/CaptureVoicingData.h
     Source/DSP/PiezoBlampTable.h
     Source/DSP/AcustraPerformer.cpp
     Source/DSP/AcustraPerformer.h)
@@ -552,6 +553,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/PrototypePlectrumContact.py"
                                  --self-test)
                 set_tests_properties(Acustra.PrototypePlectrumContact PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.FitCaptureVoicing
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FitCaptureVoicing.py"
+                                 --self-test)
+                set_tests_properties(Acustra.FitCaptureVoicing PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.ValidateCapture
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/ValidateCapture.py"

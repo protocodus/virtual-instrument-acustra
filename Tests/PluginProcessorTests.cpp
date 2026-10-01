@@ -114,16 +114,16 @@ void testParameterContract()
         ids::stringAge, ids::pluckPosition, ids::touch, ids::bodyAmount,
         ids::stereoWidth, ids::output, ids::capture, ids::picking,
         ids::upperMic, ids::piezoLoading, ids::captureMode, ids::guitarModel,
-        ids::gatherChords, ids::piezoMix, ids::releaseNoise
+        ids::gatherChords, ids::piezoMix, ids::releaseNoise, ids::room
     };
-    static_assert (ids::parameterCount == 18,
-                   "String Material and Bridge Model are gone; Piezo Mix and "
-                   "Release Noise are appended");
+    static_assert (ids::parameterCount == 19,
+                   "String Material and Bridge Model are gone; Piezo Mix, "
+                   "Release Noise and Room are appended");
     // Piezo Mix defaults to 0, so Main is the microphones alone; Release
-    // Noise to 70%, the level a listener chose.
+    // Noise to 70%, the level a listener chose; Room to 50%.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, -7.5f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 70.0f
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 70.0f, 50.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -225,6 +225,15 @@ void testParameterContract()
             "Release Noise must append a 0-100% parameter with AU version hint 10");
     expect (std::abs (processor.snapshotEngineParameters().releaseNoise - 0.7f) < 0.002f,
             "a new session's key-ups are not at the chosen 70%");
+    const auto* room = dynamic_cast<const juce::AudioParameterFloat*> (
+        processor.parameters.getParameter (ids::room));
+    expect (room != nullptr && room->getVersionHint() == 11
+                && room->getParameterIndex() == 18 && room->isAutomatable()
+                && room->getName (32) == "Room"
+                && room->range.start == 0.0f && room->range.end == 100.0f,
+            "Room must append a 0-100% parameter with AU version hint 11");
+    expect (std::abs (processor.snapshotEngineParameters().room - 0.5f) < 0.002f,
+            "a new session's room is not at its 50% default");
 
     setValue (processor, ids::shape, 3.0f);
     setValue (processor, ids::bodyMaterial, 2.0f);
@@ -239,6 +248,7 @@ void testParameterContract()
     setValue (processor, ids::picking, 2.0f);
     setValue (processor, ids::guitarModel, 1.0f);
     setValue (processor, ids::piezoMix, 37.0f);
+    setValue (processor, ids::room, 23.0f);
     const auto engine = processor.snapshotEngineParameters();
     expect (engine.shape == acustra::BodyShape::Jumbo
                 && engine.bodyMaterial == acustra::BodyMaterial::Maple
@@ -252,7 +262,8 @@ void testParameterContract()
                 && std::abs (engine.touch - 0.19f) < 0.002f
                 && std::abs (engine.bodyAmount - 0.66f) < 0.002f
                 && std::abs (engine.stereoWidth - 0.35f) < 0.002f
-                && std::abs (engine.piezoMix - 0.37f) < 0.002f,
+                && std::abs (engine.piezoMix - 0.37f) < 0.002f
+                && std::abs (engine.room - 0.23f) < 0.002f,
             "continuous parameters did not reach the engine snapshot");
     expect (std::abs (engine.outputGain
                       - juce::Decibels::decibelsToGain (-3.0f)) < 0.001f,
@@ -1268,6 +1279,7 @@ void testStateRoundTripAndMigration()
     setValue (source, ids::guitarModel, 1.0f);
     setValue (source, ids::piezoMix, 45.0f);
     setValue (source, ids::releaseNoise, 33.0f);
+    setValue (source, ids::room, 64.0f);
 
     juce::MemoryBlock stored;
     source.getStateInformation (stored);
@@ -1295,7 +1307,7 @@ void testStateRoundTripAndMigration()
                                 ids::output, ids::capture, ids::picking,
                                 ids::upperMic, ids::piezoLoading, ids::captureMode,
                                 ids::guitarModel, ids::gatherChords, ids::piezoMix,
-                                ids::releaseNoise })
+                                ids::releaseNoise, ids::room })
         {
             const bool kept = std::abs (valueOf (to, id) - valueOf (from, id)) < 0.011f;
             expect (kept, std::string { "state round trip lost " } + id);
@@ -1395,6 +1407,7 @@ void testStateRoundTripAndMigration()
     setValue (restored, ids::picking, 2.0f);
     setValue (restored, ids::piezoMix, 80.0f);
     setValue (restored, ids::releaseNoise, 90.0f);
+    setValue (restored, ids::room, 77.0f);
     setValue (restored, ids::upperMic, 1.0f);
     setValue (restored, ids::piezoLoading, 1.0f);
     setValue (restored, ids::guitarModel, 4.0f);
@@ -1427,6 +1440,10 @@ void testStateRoundTripAndMigration()
     expect (valueOf (restored, ids::releaseNoise) == 0.0f
                 && restored.snapshotEngineParameters().releaseNoise == 0.0f,
             "a session saved before Release Noise existed gained key-up sounds");
+    // Room likewise: an older session stays as dry as it was saved.
+    expect (valueOf (restored, ids::room) == 0.0f
+                && restored.snapshotEngineParameters().room == 0.0f,
+            "a session saved before Room existed gained a room");
 
     // A state saved before the simplification (no stateVersion): its String
     // Material and Bridge Model are dropped, and its Body Material from

@@ -28,8 +28,9 @@ inline constexpr auto guitarModel = "guitarModel";
 inline constexpr auto gatherChords = "gatherChords";
 inline constexpr auto piezoMix = "piezoMix";
 inline constexpr auto releaseNoise = "releaseNoise";
+inline constexpr auto room = "room";
 
-inline constexpr int parameterCount = 18;
+inline constexpr int parameterCount = 19;
 } // namespace acustra::parameters
 
 class AcustraAudioProcessorEditor;

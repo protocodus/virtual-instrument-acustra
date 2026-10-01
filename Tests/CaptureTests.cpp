@@ -1,7 +1,8 @@
 // Capture is a read-only observation of the instrument. Verify the microphone
 // channel identity, the piezo chain in the running instrument - its string
 // weights, headroom on real strums, the clip's aliasing on the hottest ones,
-// switching and silence (Docs/decisions.md, 2026-09-29). The chain against
+// switching and silence (Docs/decisions.md, 2026-09-29) - and the room at the
+// microphones and their capture voicing (2026-10-01). The chain against
 // its circuit simulation is Tests/PiezoCircuitTests.cpp; the level match to
 // the microphones is Tools/CalibratePiezo.py.
 #include "DSP/AcustraEngine.h"
@@ -66,6 +67,27 @@ struct AcustraEngineTestAccess
                      engine.piezoForceDerivative_.history.end());
         state.push_back(static_cast<double>(engine.piezoForceDerivative_.index));
         return state;
+    }
+    // The room's own impulse response at the engine's rate, left and right
+    // interleaved, from a cleared room that is cleared again afterwards.
+    static std::vector<float> roomImpulse(AcustraEngine& engine, int samples)
+    {
+        auto& room = engine.room_;
+        room.reset();
+        std::vector<float> out(2 * static_cast<std::size_t>(samples));
+        for (int index = 0; index < samples; ++index)
+        {
+            float left = 0.0f, right = 0.0f;
+            room.process(index == 0 ? 1.0f : 0.0f, left, right);
+            out[2 * static_cast<std::size_t>(index)] = left;
+            out[2 * static_cast<std::size_t>(index) + 1] = right;
+        }
+        room.reset();
+        return out;
+    }
+    static float voicing(float frequency)
+    {
+        return AcustraEngine::captureVoicingGain(frequency);
     }
 };
 } // namespace acustra
@@ -955,6 +977,249 @@ void testPiezoClipAliasing()
     }
 }
 
+
+// 11. The room (EngineParameters::room) is an observation at the
+// microphones too: it adds to them, and never reaches the piezo, whether
+// Main plays the piezo or the separate output takes it.
+void testRoomReachesOnlyTheMicrophones()
+{
+    const auto play = [] (acustra::CaptureType capture, float room,
+                          std::vector<float>& main, std::vector<float>& piezo)
+    {
+        acustra::EngineParameters parameters;
+        parameters.capture = capture;
+        parameters.room = room;
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->setParameters(parameters);
+        engine->prepare(48000, 64);
+        for (int note : { 40, 47, 52, 56, 59, 64 })
+            engine->noteOn(note, 0.8f);
+        std::array<float, 64> left {}, right {}, under {};
+        for (int block = 0; block < 1500; ++block)
+        {
+            if (block == 750)
+                for (int note : { 40, 47, 52, 56, 59, 64 })
+                    engine->noteOff(note);
+            engine->process(left.data(), right.data(),
+                            acustra::AcustraEngine::OutputBuses { under.data() }, 64);
+            main.insert(main.end(), left.begin(), left.end());
+            main.insert(main.end(), right.begin(), right.end());
+            piezo.insert(piezo.end(), under.begin(), under.end());
+        }
+    };
+    for (auto capture : { acustra::CaptureType::StereoMic, acustra::CaptureType::MonoMic,
+                          acustra::CaptureType::Piezo })
+    {
+        std::vector<float> dryMain, dryPiezo, roomMain, roomPiezo;
+        play(capture, 0.0f, dryMain, dryPiezo);
+        play(capture, 0.8f, roomMain, roomPiezo);
+        expect(dryPiezo == roomPiezo, "the room reached the separate Piezo output");
+        if (capture == acustra::CaptureType::Piezo)
+        {
+            expect(dryMain == roomMain, "the room reached Main with Capture on Piezo");
+            continue;
+        }
+        double direct = 0.0, added = 0.0;
+        for (std::size_t index = 0; index < dryMain.size(); ++index)
+        {
+            const double difference = static_cast<double>(roomMain[index]) - dryMain[index];
+            direct += static_cast<double>(dryMain[index]) * dryMain[index];
+            added += difference * difference;
+        }
+        expect(added > 0.0, "the room did not reach a microphone capture");
+        // 0.8 sends 6.8 dB more than the 0.5 the plug-in starts at.
+        const double ratio = 10.0 * std::log10(direct / std::max(added, 1.0e-30));
+        expect(ratio > 0.0 && ratio < 8.0,
+               "the room at 0.8 sat " + std::to_string(ratio) + " dB under the guitar");
+    }
+}
+
+// 12. The room at the plug-in's 50% sits 11-14 dB under a held chord (about
+// 10 under a released phrase, whose own sound stops before its room's), and
+// decays in about 0.45 s, at every sample rate: it runs at the host rate
+// divided down to 64 kHz or under and is energy-normalised at prepare.
+void testRoomLevelAndDecayAcrossRates()
+{
+    std::vector<double> levels;
+    for (int rate : { 44100, 48000, 96000, 192000 })
+    {
+        acustra::EngineParameters parameters;
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->setParameters(parameters);
+        engine->prepare(rate, 64);
+        const auto impulse = Access::roomImpulse(*engine, static_cast<int>(1.5 * rate));
+        // Broadband energy decay (Schroeder integration), -5 to -25 dB.
+        std::vector<double> remaining(impulse.size() / 2);
+        double sum = 0.0;
+        for (std::size_t index = remaining.size(); index-- > 0;)
+        {
+            const double left = impulse[2 * index], right = impulse[2 * index + 1];
+            sum += left * left + right * right;
+            remaining[index] = sum;
+        }
+        const auto crossing = [&] (double db)
+        {
+            for (std::size_t index = 0; index < remaining.size(); ++index)
+                if (10.0 * std::log10(remaining[index] / remaining[0]) < db)
+                    return static_cast<double>(index) / rate;
+            return 0.0;
+        };
+        const double rt60 = 3.0 * (crossing(-25.0) - crossing(-5.0));
+        expect(rt60 > 0.35 && rt60 < 0.55,
+               "the room decayed in " + std::to_string(rt60) + " s at " + std::to_string(rate));
+        if (rate == 192000)
+            continue;
+        // The guitar against its room at 0.5, on the same chord.
+        double direct = 0.0, added = 0.0;
+        acustra::EngineParameters roomy;
+        roomy.room = 0.5f;
+        const auto dry = render(parameters, rate);
+        const auto wet = render(roomy, rate);
+        for (std::size_t index = 0; index < dry.left.size(); ++index)
+            for (const auto& [a, b] : { std::pair { dry.left[index], wet.left[index] },
+                                        std::pair { dry.right[index], wet.right[index] } })
+            {
+                direct += static_cast<double>(a) * a;
+                added += (static_cast<double>(b) - a) * (static_cast<double>(b) - a);
+            }
+        levels.push_back(10.0 * std::log10(direct / std::max(added, 1.0e-30)));
+        std::cout << "Room at " << rate << " Hz: RT60 " << rt60 << " s, the guitar "
+                  << levels.back() << " dB over its room at 0.5\n";
+    }
+    for (double level : levels)
+        expect(level > 11.0 && level < 14.0 && std::abs(level - levels.front()) < 0.5,
+               "the room at 0.5 sat " + std::to_string(level) + " dB under the guitar");
+}
+
+// 13. The room renders the same at any block size, follows Width (zero is
+// mono), and once it has rung out, a room returned to zero leaves Main bit
+// for bit as an instrument that never had one.
+void testRoomBlocksWidthAndReturn()
+{
+    const auto phrase = [] (acustra::EngineParameters parameters, int block,
+                            float laterRoom)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->setParameters(parameters);
+        engine->prepare(48000, block);
+        std::vector<float> left(static_cast<std::size_t>(block)), right(left.size());
+        Audio out;
+        constexpr int second = 48000;
+        constexpr std::array<int, 3> edges { second, 2 * second, 6 * second };
+        const int total = 8 * second;
+        for (int done = 0; done < total;)
+        {
+            if (done == 0)
+                for (int note : { 45, 52, 57, 61 })
+                    engine->noteOn(note, 0.8f);
+            if (done == edges[0])
+                for (int note : { 45, 52, 57, 61 })
+                    engine->noteOff(note);
+            if (done == edges[1])
+            {
+                parameters.room = laterRoom;
+                engine->setParameters(parameters);
+            }
+            if (done == edges[2])
+                engine->noteOn(64, 0.7f);
+            int count = std::min(block, total - done);
+            for (int edge : edges)
+                if (done < edge && done + count > edge)
+                    count = edge - done;
+            engine->process(left.data(), right.data(), count);
+            out.left.insert(out.left.end(), left.begin(), left.begin() + count);
+            out.right.insert(out.right.end(), right.begin(), right.begin() + count);
+            done += count;
+        }
+        return out;
+    };
+    acustra::EngineParameters roomy;
+    roomy.room = 0.6f;
+    const auto base = phrase(roomy, 256, 0.6f);
+    for (int block : { 1, 37 })
+    {
+        const auto other = phrase(roomy, block, 0.6f);
+        expect(other.left == base.left && other.right == base.right,
+               "the room rendered differently at block size " + std::to_string(block));
+    }
+    // Returned to zero at 2 s, the room has rung out by the next note at 6 s.
+    const auto dry = phrase(acustra::EngineParameters {}, 256, 0.0f);
+    const auto returned = phrase(roomy, 256, 0.0f);
+    const auto from = static_cast<std::ptrdiff_t>(48000 * 6);
+    expect(std::equal(dry.left.begin() + from, dry.left.end(), returned.left.begin() + from)
+               && std::equal(dry.right.begin() + from, dry.right.end(),
+                             returned.right.begin() + from),
+           "a room returned to zero changed the next note");
+    acustra::EngineParameters mono = roomy;
+    mono.stereoWidth = 0.0f;
+    const auto narrow = phrase(mono, 256, 0.6f);
+    expect(narrow.left == narrow.right, "Width 0 left the room in stereo");
+}
+
+// 13b. The room rings out to exact silence: a released chord reaches exact
+// zero on Main at most 2.5 s after the same chord without a room does (the
+// strings' own residue takes longer than the room's tail).
+void testRoomRingsOutToSilence()
+{
+    const auto lastSound = [] (float room)
+    {
+        acustra::EngineParameters parameters;
+        parameters.room = room;
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->setParameters(parameters);
+        engine->prepare(48000, 256);
+        std::array<float, 256> left {}, right {};
+        long last = -1;
+        for (long block = 0; block < 48000L * 30 / 256; ++block)
+        {
+            if (block == 0)
+                for (int note : { 45, 52, 57, 61 })
+                    engine->noteOn(note, 0.8f);
+            if (block == 48000 / 256)
+                for (int note : { 45, 52, 57, 61 })
+                    engine->noteOff(note);
+            engine->process(left.data(), right.data(), 256);
+            for (std::size_t index = 0; index < left.size(); ++index)
+                if (left[index] != 0.0f || right[index] != 0.0f)
+                    last = block * 256 + static_cast<long>(index);
+        }
+        return static_cast<double>(last + 1) / 48000.0;
+    };
+    const double dry = lastSound(0.0f);
+    const double roomy = lastSound(0.6f);
+    std::cout << "Exact silence after a released chord: " << dry << " s dry, " << roomy
+              << " s with the room at 0.6\n";
+    expect(dry < 29.0 && roomy < 29.0, "the instrument did not reach exact silence");
+    expect(roomy >= dry && roomy - dry < 2.5,
+           "the room's tail outlasted the instrument by " + std::to_string(roomy - dry) + " s");
+}
+
+// 14. The Original's capture voicing (CaptureVoicingData.h) is one smooth
+// gain: within 9 dB of its level from 40 Hz to 20 kHz, moving no more than
+// 2.5 dB in a twelfth of an octave, and making no claim above 4 kHz, where
+// the recordings it was fitted to disagree (within 1.5 dB of its level).
+void testCaptureVoicingIsSmoothAndBounded()
+{
+    const double level = 20.0 * std::log10(Access::voicing(20000.0f));
+    double previous = 20.0 * std::log10(Access::voicing(40.0f));
+    double worstStep = 0.0, worstSpan = 0.0, worstTop = 0.0;
+    for (double frequency = 40.0 * std::exp2(1.0 / 12.0); frequency <= 20000.0;
+         frequency *= std::exp2(1.0 / 12.0))
+    {
+        const double db = 20.0 * std::log10(Access::voicing(static_cast<float>(frequency)));
+        worstStep = std::max(worstStep, std::abs(db - previous));
+        worstSpan = std::max(worstSpan, std::abs(db - level));
+        if (frequency >= 4000.0)
+            worstTop = std::max(worstTop, std::abs(db - level));
+        previous = db;
+    }
+    std::cout << "Capture voicing: within " << worstSpan << " dB of its level, steepest "
+              << worstStep << " dB per twelfth octave, " << worstTop
+              << " dB above 4 kHz\n";
+    expect(worstSpan < 9.0, "the capture voicing moved a band more than 9 dB");
+    expect(worstStep < 2.5, "the capture voicing is not smooth");
+    expect(worstTop < 1.5, "the capture voicing reaches above 4 kHz");
+}
 } // namespace
 
 int main()
@@ -970,6 +1235,11 @@ int main()
     testPiezoDoesNotReachTheMicrophones();
     testPiezoHeadroom();
     testPiezoRateConsistency();
+    testRoomReachesOnlyTheMicrophones();
+    testRoomLevelAndDecayAcrossRates();
+    testRoomBlocksWidthAndReturn();
+    testRoomRingsOutToSilence();
+    testCaptureVoicingIsSmoothAndBounded();
     if (failures == 0)
         std::cout << "All Acustra capture tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

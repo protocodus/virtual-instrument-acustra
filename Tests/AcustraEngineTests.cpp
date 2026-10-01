@@ -446,6 +446,11 @@ struct AcustraEngineTestAccess
         return { frequency, q, std::hypot(mode.leftReal, mode.leftImaginary) };
     }
 
+    static double captureVoicing(double frequency)
+    {
+        return AcustraEngine::captureVoicingGain(static_cast<float>(frequency));
+    }
+
     static double bridgeAdmittance(PhysicalCalibration calibration)
     {
         auto engineOwner = std::make_unique<AcustraEngine>();
@@ -6355,15 +6360,21 @@ void testStringAgeKeepsARepluckedTail()
         // String Age reaches the wound strings' bending loss (2026-09-30) this
         // E3 on the D string ages about eight times as fast per step as it
         // did, and the step's own change grew to 2.4e-4 of the peak, where the
-        // test once held the whole difference to 1e-4.
+        // test once held the whole difference to 1e-4. Since 2026-10-01 the
+        // microphones' capture voicing (CaptureVoicingData.h) lifts 1-1.6 kHz,
+        // where a loss step's change lives, by up to 7 dB against the note's
+        // low partials that set its peak: the step's own change reads 1.5-1.7
+        // times what it did (2.4e-4 -> 3.8e-4), and this tolerance twice its
+        // old 1e-4, which leaves the 256-sample case the 7% headroom it had.
+        constexpr double tolerance = 2.0e-4;
         expect(ageing > 0.0, "a String Age step did not reach the sound");
-        expect(click <= agedClick + 1.0e-4 * peak,
+        expect(click <= agedClick + tolerance * peak,
                "a 0.001 String Age step " + std::to_string(delay)
                    + " samples after a re-pluck moved the output by "
                    + std::to_string(click / std::max(peak, 1.0e-12))
                    + " of its peak within 5 ms, where the step before the re-pluck moves it by "
                    + std::to_string(agedClick / std::max(peak, 1.0e-12)));
-        expect(difference <= ageing + 1.0e-4 * peak,
+        expect(difference <= ageing + tolerance * peak,
                "a 0.001 String Age step " + std::to_string(delay)
                    + " samples after a re-pluck moved the output by "
                    + std::to_string(difference / std::max(peak, 1.0e-12))
@@ -8060,17 +8071,24 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
 
     // The small box radiates its A0 more strongly per unit force (the piston
     // is smaller, so the same force is more cavity pressure) while its plate
-    // modes radiate from less area; the large box the other way round.
+    // modes radiate from less area; the large box the other way round. The
+    // capture voicing (CaptureVoicingData.h) reads each mode at its own
+    // frequency, which Shape moves, so the box's own radiation is compared
+    // with the microphones' voicing divided back out.
+    const auto radiated = [] (const auto& mode)
+    {
+        return mode.residue / Access::captureVoicing(mode.frequency);
+    };
     const auto steelParlor0 = body(BodyShape::Parlor, 0);
     const auto steelJumbo0 = body(BodyShape::Jumbo, 0);
     const auto steelParlor9 = body(BodyShape::Parlor, 9);
     const auto steelDread9 = body(BodyShape::Dreadnought, 9);
     const auto steelJumbo9 = body(BodyShape::Jumbo, 9);
-    expect(steelParlor0.residue > steelDread0.residue
-               && steelJumbo0.residue < steelDread0.residue,
+    expect(radiated(steelParlor0) > radiated(steelDread0)
+               && radiated(steelJumbo0) < radiated(steelDread0),
            "A0 radiation did not follow the coupled model's residues");
-    expect(steelParlor9.residue < steelDread9.residue
-               && steelJumbo9.residue > steelDread9.residue,
+    expect(radiated(steelParlor9) < radiated(steelDread9)
+               && radiated(steelJumbo9) > radiated(steelDread9),
            "plate radiation did not scale with the plate area");
 }
 
@@ -8784,6 +8802,12 @@ void testAFingerBrightensWithVelocityAsTheRecordingsDo()
 // release is the shape the listener chose), from a mean of -15.5 dB to
 // -19.2 for the Finger and -15.5 to -20.2 for the Thumb over these notes,
 // toward the Eastman E1D's finger take. The Pick keeps its law, -10.0.
+// Since 2026-10-01 the microphones carry the capture voicing
+// (CaptureVoicingData.h), whose 1-1.6 kHz lift and 250-500 Hz cut raise this
+// share for every Picking alike: on the same build without it they read
+// -18.7, -19.5 and -9.1, with it -14.5, -15.5 and -6.7. The bounds moved by
+// that lift (4.1 dB for the soft contacts, 2.4 for the Pick); the Pick's
+// lead over the soft contacts, which the voicing cannot make, keeps its 6 dB.
 void testSoftContactsCarryLessAttackHiss()
 {
     constexpr std::array<std::pair<int, int>, 6> notes { {
@@ -8823,9 +8847,9 @@ void testSoftContactsCarryLessAttackHiss()
     const double thumb = share[static_cast<std::size_t>(acustra::PickingTechnique::Thumb)];
     std::cout << "Acustra attack 2-12 kHz share of the first 15 ms: Finger " << finger
               << " dB, Thumb " << thumb << " dB, Pick " << pick << " dB\n";
-    expect(finger < -16.5, "a Finger's attack kept its hiss: " + std::to_string(finger) + " dB");
-    expect(thumb < -16.5, "a Thumb's attack kept its hiss: " + std::to_string(thumb) + " dB");
-    expect(pick > -12.0 && pick > finger + 6.0 && pick > thumb + 6.0,
+    expect(finger < -12.4, "a Finger's attack kept its hiss: " + std::to_string(finger) + " dB");
+    expect(thumb < -12.4, "a Thumb's attack kept its hiss: " + std::to_string(thumb) + " dB");
+    expect(pick > -9.6 && pick > finger + 6.0 && pick > thumb + 6.0,
            "the Pick's attack lost the brightness it keeps over the soft contacts");
 }
 
