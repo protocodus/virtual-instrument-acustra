@@ -4,6 +4,142 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-10-01 — at the user's request: the microphones as a recording hears them, and the room around them
+
+The user asked to "further improve realism of the instrument audibly by
+multiple techniques, make the sound more pleasant, natural, balanced,
+benchmarking with real audio". Measured first, against every real recording
+this session could obtain: the reference bank (archtop training and
+validation rows, the eight flat-top rows), the CC0 Eastman E1D dreadnought's
+picked and finger-plucked takes (104 notes, Tools/PrepareEastmanCorpus.py),
+the CC0 Martin HD28 (11 notes, Tools/PrepareMartinCorpus.py) and GuitarSet's
+six performances (a U87 about 30 cm from the 18th fret,
+Tools/BenchmarkPerformances.py). No recording is committed.
+
+What the comparisons found, main (4f19875) against the recordings:
+
+- **Balance.** Third octaves over each note's first second, every note
+  weighted equally, recording minus model, each source's level removed: the
+  sources agree that the model is short about 5 dB at 125 Hz, 4-6 dB over at
+  250-630 Hz and 2-7.5 dB short at 0.8-1.6 kHz (the 1.26 kHz band 6-16 dB on
+  every source, the archtop's too). Above 3 kHz they disagree: the Eastman's
+  two takes and the bank's flat-top want less, the Martin and GuitarSet more.
+  GuitarSet's octave bands said the same: 80-160 Hz -10.1 dB, 640-1280 Hz
+  -6.0, 1280-2560 Hz -11.9. The 1.26 kHz hole did not move with Pluck
+  Position's distance scale (1.8 -> 1.4: -6.0 -> -5.2 dB on the Eastman picked
+  rows), so it is the radiation, not the pluck's comb: g21's two microphones
+  close over a flamenca's bridge and upper bout, which no recording of a
+  steel-string guitar is made from.
+- **Dryness.** Between partials the recordings carry 15-25 dB more energy
+  than the model over 0.03-0.3 s (0.5-2 kHz: -36/-38 dB against -50/-48;
+  2-6 kHz: -23.5/-28 against -48/-49, Eastman picked/finger), and the
+  scorer's body term, 40 bands of the first 0.9 s, is the largest term on
+  every split. Every recording is made in a room; the model is anechoic.
+- **Unevenness.** On the picked Eastman rows the model's notes are about as
+  rough as the recording's (2.34 dB against 2.54) but in other places: E2
+  6 dB weak, G#3-A#3 6-9 dB loud (the bridge conductance peaks 5-10 times its
+  neighbours at 188-210 Hz), C#5 15 dB weak, and the register slopes
+  -0.27 dB per semitone against the recording's -0.12.
+
+What ships (each shown to the listener as B against the main engine's A):
+
+1. **The microphones' capture voicing** (Source/DSP/CaptureVoicingData.h,
+   Tools/FitCaptureVoicing.py). One smooth gain on every radiation mode of
+   the Original's banks, read at the mode's own frequency in
+   AcustraEngine::configureBody, as the anchor's bass tilt and Wood's
+   brilliance already are: no per-sample cost, it moves with Shape and Wood,
+   the piezo never sees it and the Bellido keeps its own microphones. Fitted
+   to the consensus of the five sources (the Eastman's two takes as one
+   source), engine in the loop, twice: a low shelf at 120 Hz +2.52 dB and
+   peaks at 125 Hz +4.05, 250 Hz -6.00, 500 Hz -6.00, 1 kHz +3.30, 1.4 kHz
+   +6.00 dB (Q 0.7 and 1.2, every gain bounded to 6 dB), so +3.3 to +3.8 dB
+   at 80-125 Hz, -6 dB at 250-500 Hz, +5 to +7 dB at 1-1.6 kHz and nothing
+   above 4 kHz, where the sources disagree. A first fit carried a 6 kHz shelf
+   of +1.6 dB; it was dropped, as the sources' disagreement there says, and
+   because it brightened the Finger's attack, already 8 dB brighter than
+   the Eastman finger take (below). captureVoicingLevelDb +3.10 dB keeps the
+   default construction at -23.24 LUFS, and the Original's other 35 cells
+   were re-levelled (CalibrateConstructionLoudness.py --write-header
+   --models original): every construction and capture within +-1 LU, the
+   Pick headroom rule held.
+2. **Room** (EngineParameters::room, the plug-in's "Room", 50% for a new
+   instance, 0 for a session saved before it). A small studio, 5.2 x 4.1 x
+   2.7 m, the microphones 0.32 m from the guitar: its ten strongest image
+   sources within two bounces as early reflections (the floor's at 5.0 ms,
+   then the walls' and ceiling's, panned by side), then an eight-line
+   feedback delay network (17-41 ms lines, Hadamard mix, four input
+   allpasses) whose field decays in 0.45 s to 1 kHz, 0.36 s at 4 kHz and
+   0.26 s at 8 kHz, dense within 20 ms (normalised echo density 0.81 at
+   20-50 ms, 0.94 at 50-100). Microphones only, Width applies to it, and it
+   is energy-normalised at prepare so its level is the same at every rate
+   (it runs at the host rate divided to 64 kHz or under: 148 KB per engine).
+   At 0.5 it sits 12.5 dB under a held chord and 10 dB under a released
+   phrase, rate to rate within 0.3 dB; 4% of the engine's time while it
+   sounds. Zero is an exact no-op: an engine whose room has rung out at zero
+   plays the next note bit for bit as one that never had a room, and every
+   test and benchmark render that does not set it is dry.
+
+Benchmark, shipping calibration and default controls (Finger; the bank's
+archtop rows with Finger as ever), main against this build, lower is better:
+
+| | train | validation | bank flat-top | Eastman pick | Eastman finger | Martin | GuitarSet log / SC / chroma |
+|---|---|---|---|---|---|---|---|
+| main 4f19875 | 6.9259 | 6.6772 | 6.5531 | 6.1818 | 6.4737 | 7.0697 | 14.419 / 0.828 / 0.224 |
+| voicing, Room 0 | 6.6952 (-3.3%) | 6.5136 (-2.5%) | 6.7439 (+2.9%) | 5.8671 (-5.1%) | 6.4892 (+0.2%) | 6.5626 (-7.2%) | 14.166 / 0.796 / 0.209 |
+| voicing, Room 0.5 | 6.2551 (-9.7%) | 6.1195 (-8.4%) | 6.5735 (+0.3%) | 5.6299 (-8.9%) | 6.2282 (-3.8%) | 6.4047 (-9.4%) | 13.999 / 0.804 / 0.210 |
+
+The archtop rows were in no fit. Held out from its own fit (the final
+structure as a filter on main's renders, each source left out in turn): the
+Eastman picked rows -4.8% and finger +1.0%, the Martin -3.5%, the bank's
+flat-top +4.1%, GuitarSet 14.415 / 0.806 / 0.216. The two that lose alone are
+the finger-plucked sets, the room recovers them (finger -3.8%, flat-top
+within 0.3%), and both point at the Finger's attack below. GuitarSet's octave
+bands with the room: 80-160 Hz -5.1, 640-1280 Hz +2.5, 1280-2560 Hz -3.7,
+2560-5120 Hz -5.0 dB. A longer room (0.5 s) or a louder one (0.65) scored
+better still on the notes and worse on GuitarSet's convergence and chroma; a
+room scores what the scorer cannot tell from a guitar, so the level is a
+small studio's at a player's distance, not the score's optimum.
+
+Note to note, by BodyShapeTests' own measure (E2-C6 with the Finger, 1 s
+at the Stereo mic, each note against its seven-note neighbourhood) the
+Dreadnought's roughness falls from 3.28 to 2.71 dB and its deepest hole from
+9.13 to 5.45 dB (the Eastman takes: 1.8-2.2 and 4.4-9.3 dB). On the picked
+Eastman rows' own notes the worst hole is -4.3 dB (-6.7 on main) and the
+register slope -0.11 dB per semitone (the recording -0.12). Two things move
+the wrong way: on the finger-plucked Eastman rows' notes (several on two
+strings) the model's roughness rose from 4.1 to 4.7 dB (the recording 2.4),
+the voicing lifting G2-G#2, near the air mode, 2-5 dB over their
+neighbours; and E2 is still 6-8 dB weak against them, as on main.
+
+Tried and not shipped, by measurement: removing the authored per-plane
+round-trip losses (configureVoice) to lengthen the mids' sustain, which runs
+2-5 dB/s fast at 0.3-2.4 kHz late in the note (five splits +3.0 to +4.6%,
+the bank's flat-top level);
+a softer anchor spring (6 and 12 mm: every flat-top split better by up to
+5.3%, but the archtop rows worse and the chord pulls the 2026-09-02 sweep
+measured at those lengths, 12-14 cents, are what the user heard as out of
+tune); a weaker Finger burst (transientScale 1.0 and 0.4) to meet the
+Eastman finger take's attack (its 2-12 kHz share of the first 15 ms is
+-27.8 dB, main's -19.4, this build's -14.9), which every split rejects; and
+a per-pluck Touch jitter to reach the recordings' round-robin colour, which
+moves the 0-40 ms centroid 45 cents per 0.1 of Touch and would need +-0.4.
+
+Tests that pinned the old voicing now assert the new, each with its reason
+in the test: the Finger's and Thumb's attack-hiss bounds moved by the
+voicing's own 4.1 dB lift of that share (the Pick's 6 dB lead kept), the
+String Age re-pluck step's tolerance from 1e-4 to 2e-4 of the peak (the
+voicing lifts the 1-1.6 kHz a loss step changes, the step's own change
+reading 1.5-1.7 times what it did), and the Shape test reads the box's
+plate radiation with the voicing divided out. New: CaptureTests' room and
+voicing checks, Acustra.FitCaptureVoicing's self-test.
+
+A listening set was sent with A the main engine and B this build: two
+GuitarSet performances beside their real recordings, and four repertoire
+excerpts on the Original (Gavotte en rondeau on the Dreadnought, the Sanz
+Preludio and Milán Pavana on the Parlor, the Sarabande on the Auditorium),
+each pair matched to -20 LUFS. The verdict is not in; the benchmark decided
+what was built and the listener decides what stays.
+
 ## 2026-09-30 — defect: a forming chord's refret kept an impossible new note
 
 Hand-timed strums (notes 5-20 ms apart, not on one sample) came out beyond
