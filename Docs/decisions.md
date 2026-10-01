@@ -4,6 +4,233 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-10-01 — at the user's request, continued: the top springs back from the held string
+
+After the entry below was heard and merged, the user asked to "continue
+improving". Measured first, against the same recordings, at main (7d53637):
+the scorer's body term (40 bands, 80 Hz-8 kHz, a note's 0.08-0.9 s) was
+still the largest on every split, and broken down by band it was the model's
+spectrum standing too clean wherever a band holds no partial of the note.
+Below the note it was a whole component missing. For notes above 200 Hz,
+whose 60-180 Hz holds no partial, that band against each note's first
+100 ms read, at 0-40/40-100/100-200/200-400 ms:
+
+| | 0-40 ms | 40-100 | 100-200 | 200-400 | noise floor |
+|---|---|---|---|---|---|
+| Eastman E1D, picked | -17.1 | -20.5 | -21.4 | -31.0 | -44 |
+| Eastman E1D, finger | -17.4 | -20.4 | -21.7 | -29.7 | -49 |
+| Martin HD28 | -12.1 | -15.7 | -21.9 | -33.6 | -63 |
+| main, dry, Eastman picked notes | -30.2 | -35.5 | -43.7 | -57.4 | |
+
+It decays with the note, far over each recording's floor, picked and
+finger-plucked alike, and a fine spectrum of the same notes over 40-400 ms
+puts it at 93-95 Hz on both guitars: the air mode, ringing on every note
+(+12.5 and +8.2 dB against each note's first 100 ms, where the model stood at
+-19.7 and -14.9), with the open strings' sympathetic partials beside it
+(146.9, 164.8, 196.3, 220.1 and 247.6 Hz: D3, the low E's octave, G3, the A
+string's octave and B3). The model's air mode is there - G2 and G#2, on it,
+stand 2-5 dB over their neighbours (the entry below) - but nothing on a
+higher note excites it: the release of the held
+string's static force, the mechanism built and set aside on 2026-09-10,
+"exact, parameter-free, and the recordings say no". The recordings that said
+no were the bank's archtop and classical rows; the one split of the modelled
+instrument's kind, eight flat-top rows, wanted it by 8%, and the entry named
+what would license it: "a flat-top recording set of the benchmark's size".
+The Eastman's 104 notes and the Martin's 11 are that set.
+
+What ships, rebuilt from that entry's description: the static force the hand
+held the string aside with, T y / a on the saddle, read from the line the
+pluck writes as 2Z times its steep flank's rise per sample (the normal
+plane's share; the parallel plane's acts along the top), enters the junction
+as an external force at the string's point on the saddle, (n + 1) d^n times
+that kick, d the 10 ms pole: a step high-passed at 16 Hz with no net
+impulse, starting on the sample the junction's derivatives re-reference, so
+without a click. Nothing is chosen. Its sign is the engine's own: a traced
+E5 shows the bridge reading the line's shallow flank first (+6e-4) and its
+steep one second (-1.5e-3, 2.5 times, the pluck point at 0.29). The steep
+flank is the bridge-side segment that held the force, so against the level
+before the release the force while it lasts is zero: the step takes it from
+-1.5e-3 toward zero, and the opposite sign would take it to -2.0e-3. That
+opposite sign scored better on five of the six sets (by 0.6-2.7%; the
+Martin 2.3% worse), all of it in the scorer's body term and in every
+register, high notes as much as low: through the junction the step also
+moves the bridge under the played string and its body modes, coherent with
+the note's own response, and flipped it takes from the partials the model
+already carries too strongly against the bands between them (+6 to +15 dB
+in the bands holding a partial, -10 to -22 in those that do not, the
+breakdown above). The sign is the string's geometry, not the score's.
+Applied to the body directly instead, past the bridge's fixed tail
+anchors, the step rang 8-9 dB over every recording in the first 100 ms and
+put its peak at 80-90 Hz (training +10.6%); through the junction the anchors
+take their share and the first 100 ms land on the recordings:
+
+| 60-180 Hz, dry | 0-40 ms | 40-100 | 100-200 | 200-400 |
+|---|---|---|---|---|
+| Eastman picked: recording / this build | -17.1 / -15.1 | -20.5 / -18.5 | -21.4 / -26.9 | -31.0 / -41.9 |
+| Eastman finger | -17.4 / -17.3 | -20.4 / -21.0 | -21.7 / -29.4 | -29.7 / -44.3 |
+| Martin HD28 | -12.1 / -16.0 | -15.7 / -19.7 | -21.9 / -28.1 | -33.6 / -42.8 |
+
+After 100 ms the model's ring is still short (below). The piezo does not
+take the step into its own weighted sum: fed to it, the player's hardest
+Pick strums kept 0.11 dB of the preamp's swing where they keep 0.39, the
+overdrive aliasing test failed its bounds, and the preamp's gain was set
+without it (2026-09-30), so the piezo reads only the saddle's motion the
+step causes. A test-only switch (releaseStepEnabled_) leaves the step out
+where a test audits the strings' own waves at the junction: the retained
+tail's wave-norm identity and the piezo's unit-weight identity.
+
+The capture voicing was then refitted (Tools/FitCaptureVoicing.py, dry
+renders of the five sources, six passes until no gain moved 0.1 dB): its
+bass lift had partly stood in for the missing thump. The low shelf at 120 Hz
+went from +2.52 to +0.58 dB and the 125 Hz peak from +4.05 to +2.75, so
++1.1 to +1.5 dB at 80-125 Hz where it was +3.3 to +3.8; the mid cut and the
+1-1.6 kHz lift moved under 0.05 dB. Its level rose from 3.10 to 3.82 dB to
+keep the default construction at -23.24 LUFS, and every construction of
+both models was re-levelled (CalibrateConstructionLoudness.py --write-header;
+--check holds every cell within +-1 LU and the Pick headroom rule).
+
+Benchmark, shipping calibration and default controls, main against this
+build, lower is better:
+
+| | train | validation | bank flat-top | Eastman pick | Eastman finger | Martin | GuitarSet log / SC / chroma |
+|---|---|---|---|---|---|---|---|
+| main 7d53637, Room 0 | 6.6952 | 6.5136 | 6.7439 | 5.8671 | 6.4892 | 6.5626 | 14.166 / 0.796 / 0.209 |
+| this build, Room 0 | 6.7519 (+0.8%) | 6.7685 (+3.9%) | 6.3771 (-5.4%) | 5.4751 (-6.7%) | 6.1932 (-4.6%) | 6.3438 (-3.3%) | 14.082 / 0.792 / 0.207 |
+| main 7d53637, Room 0.5 | 6.2551 | 6.1195 | 6.5735 | 5.6299 | 6.2282 | 6.4047 | 13.999 / 0.804 / 0.210 |
+| this build, Room 0.5 | 6.3644 (+1.7%) | 6.4139 (+4.8%) | 6.1318 (-6.7%) | 5.1353 (-8.8%) | 5.8787 (-5.6%) | 6.1656 (-3.7%) | 13.903 / 0.803 / 0.211 |
+
+Every flat-top set and every GuitarSet measure dry improves; the bank's
+archtop and classical splits, training and development validation, lose
+0.8-4.8%, as they did on 2026-09-10: with the step their 92 Hz attack band
+reads 13-43 dB over those recordings, guitars whose tops barely ring there.
+They are kept as monitors; the instrument modelled is a flat-top, and four
+flat-top sources agree. GuitarSet's 80-160 Hz octave, under its recordings
+on main by 3.5 dB dry and 5.1 at Room 0.5, reads -0.8 and -2.4. The
+attack's 2-12 kHz share over the first 15 ms (MIDI 40-66, dry) is -11.5 dB
+picked against the Eastman's -10.5 (main -8.4), and -17.7 finger-plucked
+against -29.1 (main -16.9). Note to note
+(BodyShapeTests) 2.71 -> 2.64 dB rough, deepest hole 5.45 -> 5.25 dB.
+
+Tried and not shipped. The Finger's and Thumb's release slip applied in full
+rather than as a ratio to its full-velocity slip (2026-09-30): at the same
+0.2 mm it lowers H10 about 6.5 dB against H1 in every register, toward the
+Eastman finger take and the bank's flat-top rows, which are 7-13 dB too
+bright at 3.4-8 kHz in their first 40 ms (Eastman finger -5% more, bank
+flat-top -1.4%), but the finger's soft-to-loud H5-H12 over H1-H4 rise
+falls from 9.1 to 6.8 dB against the recordings' 9.0, the dynamics that test
+was built on; and the benchmark's finger rows are compared at an assumed
+velocity of 91 on recordings whose dynamics are unknown, so it cannot tell
+a brighter release from a different velocity law. Twice the 0.2 mm radius
+went further both ways.
+
+What stays open: the air mode rings too briefly. After 100 ms the low band
+reads 5-15 dB under the recordings; over 40-400 ms the 90-100 Hz peak, dry,
+reads +4.7 and +4.0 dB against the Eastman's +12.5 and the Martin's +8.2,
+and 88-106 Hz decays with T60 0.44 s against 0.83 and 0.46. The model's air
+mode sits at 84.7 Hz (g21's 92.5 Hz lowered by the wide Dreadnought
+anchor's 98/107, chosen by ear on 2026-09-24) where both dreadnoughts ring
+at 93-95 Hz; its Q, 19, is the Martin's (about 20) and half the Eastman's
+(about 36). The hardest playing's peak before the limiter (the Pick at
+velocity 127, Touch 1, Pluck Position 0, six strings on one sample) rises
+from +0.91 to +2.44 dBFS on the stereo microphones (21 of 24 constructions
+over the knee, from 7) and from -0.63 to +0.85 on the mono (17, from 2); the
+default construction's from -3.05 to +0.09 dBFS, 1.1 dB past the knee where
+it kept 2.1 dB under it: a hand at the bridge holds the most force against
+its note, and six releases add. The piezo's own release is not modelled.
+
+Tests that pinned what the step changes assert the new, each with its
+reason: the Pick's attack share bound follows its recording (-10.5 less
+2.5 dB; it reads -10.5 at velocity 127 in the test) and its lead over the
+soft contacts keeps 5 dB where it kept 6 (the recordings' lead is 18.6 dB,
+short for the finger's brightness, not the pick's); a +48 member glide
+against a slide reads 5.04 dB where it read 4.89 (the refit voicing at the
+two glides' final pitches), its bound 5.5 where it was 5.0, the 25 dB it
+guards against untouched.
+
+A listening set was sent with A the main engine and B this build, matched
+to -20 LUFS: the two GuitarSet performances beside their recordings, the
+same four repertoire excerpts, single notes (Finger then Pick, E3-E5 on the
+Dreadnought) and five Pick strums, all at Room 50%.
+
+Heard, the listener answered: "i like the thump but i would maybe make it
+80% of the current strength". The step is given back at 0.8 of the released
+force (releaseStepShare in initialisePluck), chosen by ear; nothing else
+moved. The voicing was not refitted after it: a refit would hand part of
+what was taken back to the bass lift, the low end the listener asked to
+have less of. Every construction was re-levelled to the default
+construction, which reads -23.29 LUFS (0.05 LU under the full release;
+--check holds every cell within +-1 LU and the Pick headroom rule). Asked
+whether it follows the velocity and the Picking: it does, as the force it
+releases does. On E4 and A4 on the Dreadnought, where 60-180 Hz holds no
+partial, that band's power over the first 300 ms against the note's over
+its first second reads -14.1 to -14.3 dB for the Finger at velocities 0.3,
+0.6 and 0.9, -10.1 to -12.0 for the Pick (its hand at 0.40 of the Finger's
+distance from the bridge, where the same displacement is a larger force)
+and -14.9 to -15.3 for the Thumb (at 1.95 of it), and with the note it grows
+about 7 dB from 0.3 to 0.9. At 0.8, against the same main:
+
+| | train | validation | bank flat-top | Eastman pick | Eastman finger | Martin | GuitarSet log / SC / chroma |
+|---|---|---|---|---|---|---|---|
+| 0.8, Room 0 | 6.7387 (+0.6%) | 6.7221 (+3.2%) | 6.4178 (-4.8%) | 5.4959 (-6.3%) | 6.2364 (-3.9%) | 6.3510 (-3.2%) | 14.105 / 0.793 / 0.208 |
+| 0.8, Room 0.5 | 6.3401 (+1.4%) | 6.3571 (+3.9%) | 6.1925 (-5.8%) | 5.1751 (-8.1%) | 5.9352 (-4.7%) | 6.1720 (-3.6%) | 13.929 / 0.804 / 0.211 |
+
+Against the full release the flat-top sets read 0.1-1.0% worse and the
+archtop and classical rows 0.2-0.9% better; every flat-top set and every
+GuitarSet measure dry still improve on main. In the first 100 ms the low
+band (60-180 Hz, dry, 0-40/40-100 ms) reads -16.6 and -20.1 dB on the
+Eastman's picked notes against its -17.1 and -20.5, -18.7 and -22.5
+finger-plucked against -17.4 and -20.4, and -17.4 and -21.2 against the
+Martin's -12.1 and -15.7: the Pick meets its take, the Finger sits 1.3-2.1
+dB under its own and the Martin 5.3-5.5 dB under. After 100 ms it reads 7-16
+dB under them all, and over 40-400 ms the 90-100 Hz peak +3.3 and +2.7 dB
+against +12.5 and +8.2. The attack's 2-12 kHz share is -10.7 dB picked (the
+Eastman -10.5) and -17.3 finger-plucked (-29.1); note to note 2.66 dB rough,
+deepest hole 5.32 dB; the Finger's soft-to-loud brightening 9.06 dB (the
+recordings 9.0). The hardest playing's peak before the limiter falls to
++1.59 dBFS on the stereo microphones (20 of 24 constructions over the knee)
+and -0.13 on the mono (5), and the default construction's to -1.20 dBFS,
+back under the knee by 0.2 dB. The attack-share test's figures are -15.5,
+-15.6 and -9.6 (Finger, Thumb, Pick), inside the bounds set above. A second
+listening set, A main and B at 0.8, was sent the same way.
+
+Review (Codex, on PR #10) found three ways the step did not give back the
+force the hand held, each verified and corrected; none is a choice. A
+re-pluck within the step's 0.4 s reset it: the earlier step's first lobe
+stayed on the bridge as a net impulse, at a 10 ms re-pluck 0.99 of the
+step's peak. (n + 1) d^n is two one-pole stages at d in cascade, so a pluck
+is now one impulse into them and an earlier step runs out beside the new one
+(net impulse -0.006 of the peak, the samples the junction re-references
+aside). The step took the string's port on every sample, so a bend inside
+its 0.4 s rescaled a force already let go; it now takes the port of its
+pluck's sample. And a natural harmonic left the step out, on the reading
+that a touched string is not held aside; it is, by the picking hand, and the
+finger on the node damps only once the string is let go, so a harmonic now
+sheds its open string's force (E6 the same as an E4 on the high E). The
+single notes and strums move by -89 to -93 dB of their level, the stages'
+rounding; GuitarSet's six performances by -89 to -99 dB, and they score as
+before to the printed digit (13.929 / 0.804 / 0.211 at Room 0.5); --check
+holds unchanged. The harmonic is audible: on E6 and F#6 the 60-180 Hz band
+over the first 300 ms now reads -0.2 to -4.9 dB against the note's first
+second, where it read -30 to -53, because the engine's harmonics are quiet:
+before the step E6 sat 25 dB under an E4 at the same velocity with the
+Finger, 20 with the Thumb and 14 with the Pick, where the modes a
+quarter-string node keeps hold 8-11 dB under a plucked string's energy
+(plucked 0.10-0.17 of the string from the bridge). The knock is the open
+string's; the Finger's harmonic is what is short (README, Known gaps). A
+harmonics clip, A this entry's 0.8 build and B with the corrections, at one
+gain, went with the second listening set.
+
+Heard against main and the full release, the listener kept it: "80% is
+better, keep it and merge to main". The harmonics clip drew no comment.
+
+A second review asked that two plucks on one sample, a doubled note-on
+before any audio, each give back their force. They stay one release: the
+first wave goes under the hand before it has sounded, and a hand that let go
+and held the string again in no time put back the force it had let go.
+Added, a doubled note's step was 1.95 times a single pluck's, 5.8 dB harder
+than the one pluck it sounds as; the engine test now pins it at the single
+pluck's (0.95, the second pluck's own point).
+
 ## 2026-10-01 — at the user's request: the microphones as a recording hears them, and the room around them
 
 The user asked to "further improve realism of the instrument audibly by
@@ -137,8 +364,8 @@ A listening set was sent with A the main engine and B this build: two
 GuitarSet performances beside their real recordings, and four repertoire
 excerpts on the Original (Gavotte en rondeau on the Dreadnought, the Sanz
 Preludio and Milán Pavana on the Parlor, the Sarabande on the Auditorium),
-each pair matched to -20 LUFS. The verdict is not in; the benchmark decided
-what was built and the listener decides what stays.
+each pair matched to -20 LUFS. The listener's verdict: "sounds better, pls
+merge and continue improving" (merged as PR #9). Recorded as chosen by ear.
 
 ## 2026-09-30 — defect: a forming chord's refret kept an impossible new note
 

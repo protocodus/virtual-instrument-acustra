@@ -1027,6 +1027,10 @@ struct AcustraEngineTestAccess
         engine.prepare(rate, 1);
         engine.setStringPerChannelMode(true);
         engine.setLowerZoneMemberCount(6);
+        // The released static force (initialisePluck) is an external force
+        // on the saddle, outside the strings' wave-norm identity, as the
+        // excitation's sources below are.
+        engine.releaseStepEnabled_ = false;
         const int string = bendChange == 0 ? 0 : 5;
         const int note = bendChange == 0 ? 40 : 64;
         const int channel = string + 1;
@@ -1412,6 +1416,63 @@ struct AcustraEngineTestAccess
             state.push_back(static_cast<float>(derivative->index));
         }
         return state;
+    }
+
+    // The released static force's level at the junction on `string`
+    // (voice.releaseStepLevel) after each sample of a 48 kHz render from a
+    // note-on at sample 0, with a re-pluck of the same note at `repluckAt`
+    // and a two-semitone bend at `bendAt` (-1: none). `channel` 0 lets the
+    // allocator place the note; 1-6 plays it on that string's own channel.
+    struct ReleaseStepTrace
+    {
+        std::vector<double> level;
+        std::vector<int> plucks;
+        int harmonic { 1 };
+        float portAtPluck { 0.0f };
+        float portAtEnd { 0.0f };
+    };
+    static ReleaseStepTrace releaseStepTrace(int string, int note, int channel,
+                                             int repluckAt, int bendAt,
+                                             int samples)
+    {
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
+        engine.setParameters(EngineParameters {});
+        engine.prepare(48000.0, 1);
+        if (channel > 0)
+        {
+            engine.setStringPerChannelMode(true);
+            engine.setLowerZoneMemberCount(6);
+        }
+        const int noteChannel = channel > 0 ? channel : 1;
+        const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
+        const auto port = [&voice]
+        {
+            return voice.characteristicImpedance * voice.appliedBendImpedanceScale;
+        };
+        ReleaseStepTrace trace;
+        float left = 0.0f, right = 0.0f;
+        engine.noteOn(note, 0.8f, noteChannel);
+        for (int sample = 0; sample < samples; ++sample)
+        {
+            if (sample == repluckAt)
+                engine.noteOn(note, 0.8f, noteChannel);
+            if (sample == bendAt)
+                engine.setPitchBend(2.0f, noteChannel);
+            engine.process(&left, &right, 1);
+            trace.level.push_back(voice.releaseStepLevel);
+            // The junction takes a pluck's step on the sample its age
+            // leaves zero.
+            if (voice.releaseStepAge == 1)
+            {
+                trace.plucks.push_back(sample);
+                if (trace.plucks.size() == 1)
+                    trace.portAtPluck = port();
+            }
+        }
+        trace.harmonic = voice.harmonic;
+        trace.portAtEnd = port();
+        return trace;
     }
 
 };
@@ -3973,6 +4034,10 @@ void testAnExtremeBendSaturatesInsideTheBendRange()
 // it, so it is about as loud as the same glide on a conventional channel,
 // which is a slide throughout, and it stays below the output limiter. At
 // 170 times the tuning tension it was 25 dB louder and pinned the limiter.
+// The +48 glide read 4.89 dB before the capture voicing was refitted with
+// the released static force (2026-10-01, second entry) and 5.04 after: the
+// voicing, heard at the two glides' different final pitches, moves all
+// three widths by 0.06-0.15 dB, which is not the failure this bounds.
 void testAWideMemberGlideStaysAsLoudAsASlide()
 {
     for (const float semitones : { 12.0f, 24.0f, 48.0f })
@@ -4012,7 +4077,7 @@ void testAWideMemberGlideStaysAsLoudAsASlide()
         const double louder = 10.0 * std::log10(memberEnergy / slideEnergy);
         std::cout << "Acustra steel A3 member glide +" << semitones << ": " << louder
                   << " dB against a slide, peak " << memberPeak << '\n';
-        expect(louder < 5.0 && memberPeak < 0.89125094,
+        expect(louder < 5.5 && memberPeak < 0.89125094,
                "a +" + std::to_string(semitones) + " member glide was "
                    + std::to_string(louder) + " dB louder than a slide, peak "
                    + std::to_string(memberPeak));
@@ -8806,8 +8871,20 @@ void testAFingerBrightensWithVelocityAsTheRecordingsDo()
 // (CaptureVoicingData.h), whose 1-1.6 kHz lift and 250-500 Hz cut raise this
 // share for every Picking alike: on the same build without it they read
 // -18.7, -19.5 and -9.1, with it -14.5, -15.5 and -6.7. The bounds moved by
-// that lift (4.1 dB for the soft contacts, 2.4 for the Pick); the Pick's
-// lead over the soft contacts, which the voicing cannot make, keeps its 6 dB.
+// that lift (4.1 dB for the soft contacts, 2.4 for the Pick).
+// The held string's released static force (initialisePluck, 2026-10-01,
+// second entry) puts the top's spring-back into the same 15 ms, all of it
+// under 2 kHz, and with the voicing refitted after it every share fell, at
+// the full release, to -16.0, -15.9 and -10.5; at the 0.8 of it a listener
+// chose they read -15.5, -15.6 and -9.6. The Pick's falls furthest (2.9 dB
+// against the Finger's 1.0), as its hand holds the string nearer the bridge,
+// where the same displacement is a larger force against its note. Against
+// the recordings measured the same way (MIDI 40-66, a Hann window over each
+// note's first 15 ms) the Eastman E1D's picked take reads -10.5 and its
+// finger take -29.1, an 18.6 dB lead: the Pick's own share meets its
+// recording, and what keeps its lead short is the soft contacts' known
+// brightness (README, Known gaps), not the Pick. Its bound follows its
+// recording (-10.5 less 2.5 dB) and the lead keeps 5 dB.
 void testSoftContactsCarryLessAttackHiss()
 {
     constexpr std::array<std::pair<int, int>, 6> notes { {
@@ -8849,7 +8926,7 @@ void testSoftContactsCarryLessAttackHiss()
               << " dB, Thumb " << thumb << " dB, Pick " << pick << " dB\n";
     expect(finger < -12.4, "a Finger's attack kept its hiss: " + std::to_string(finger) + " dB");
     expect(thumb < -12.4, "a Thumb's attack kept its hiss: " + std::to_string(thumb) + " dB");
-    expect(pick > -9.6 && pick > finger + 6.0 && pick > thumb + 6.0,
+    expect(pick > -13.0 && pick > finger + 5.0 && pick > thumb + 5.0,
            "the Pick's attack lost the brightness it keeps over the soft contacts");
 }
 
@@ -8912,6 +8989,86 @@ void testStringAgeReachesTheWoundStrings()
            "fresh wound strings did not ring longer than the default set");
 }
 
+// The held string's released force (initialisePluck) is a step on the
+// saddle high-passed to zero net impulse, at the port the string had when it
+// was let go. Three things a note can meet within the step's 0.4 s leave it
+// so. A re-pluck of the same string adds its step to the earlier one, which
+// still runs out: cut off at the re-pluck, the earlier step's first lobe
+// stayed on the bridge as a low kick, at 10 ms nearly the whole of its
+// peak. A doubled note-on on one sample is one release, not two (two
+// added thumped 6 dB harder than the one pluck it sounds as). A bend after
+// the release moves the string, not the force already taken off the
+// saddle. A natural harmonic is held aside by the picking hand as its open
+// string is, so its saddle sheds that string's force.
+void testEachReleaseGivesBackTheForceItHeld()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    constexpr int string = 5;
+    constexpr int channel = string + 1;
+    const int samples = static_cast<int>(0.6 * 48000.0);
+    // The bridge's derivatives re-reference on a pluck's own sample, so the
+    // body is given the level's change on every other sample.
+    const auto netAndPeak = [] (const Access::ReleaseStepTrace& trace)
+    {
+        double net = 0.0;
+        double peak = 0.0;
+        for (std::size_t n = 0; n < trace.level.size(); ++n)
+        {
+            peak = std::max(peak, std::abs(trace.level[n]));
+            if (n == 0 || std::find(trace.plucks.begin(), trace.plucks.end(),
+                                    static_cast<int>(n)) != trace.plucks.end())
+                continue;
+            net += trace.level[n] - trace.level[n - 1];
+        }
+        return std::pair { net, peak };
+    };
+
+    const auto replucked = Access::releaseStepTrace(string, 64, channel, 480, -1,
+                                                    samples);
+    expect(replucked.plucks.size() == 2
+               && replucked.plucks[1] - replucked.plucks[0] < 4800,
+           "the re-pluck did not land inside the first pluck's step");
+    const auto [net, peak] = netAndPeak(replucked);
+    std::cout << "Acustra released force across a re-pluck at 10 ms: net "
+              << net / std::max(peak, 1.0e-30) << " of its peak\n";
+    expect(peak > 0.0 && std::abs(net) < 0.02 * peak,
+           "a re-pluck cut off the earlier pluck's released force");
+    expect(replucked.level.back() == 0.0,
+           "the released force did not run out");
+
+    const auto plain = Access::releaseStepTrace(string, 64, channel, -1, -1,
+                                                samples);
+    // The second note-on comes before the first sample is rendered; its
+    // pluck draws its own point, so its force is the single pluck's within
+    // that spread.
+    const auto doubled = Access::releaseStepTrace(string, 64, channel, 0, -1,
+                                                  samples);
+    const double single = netAndPeak(plain).second;
+    const double twice = netAndPeak(doubled).second;
+    std::cout << "Acustra released force, doubled note-on over one pluck: "
+              << twice / std::max(single, 1.0e-30) << "\n";
+    expect(doubled.plucks.size() == 1 && twice > 0.8 * single
+               && twice < 1.25 * single,
+           "a doubled note-on on one sample released the held force twice");
+    const auto bent = Access::releaseStepTrace(string, 64, channel, -1, 240,
+                                               samples);
+    expect(std::abs(bent.portAtEnd / bent.portAtPluck - 1.0f) > 0.01f,
+           "the bend did not change the string's port");
+    expect(bent.level == plain.level,
+           "a bend after the release changed the force it had let go");
+
+    // E6 is the open high E's fourth harmonic.
+    const auto harmonic = Access::releaseStepTrace(string, 88, 0, -1, -1,
+                                                   samples);
+    const double touched = netAndPeak(harmonic).second;
+    std::cout << "Acustra released force, E6 harmonic over the open high E: "
+              << touched / std::max(single, 1.0e-30) << "\n";
+    expect(harmonic.harmonic == 4,
+           "E6 was not the open high E's fourth harmonic");
+    expect(touched > 0.8 * single && touched < 1.25 * single,
+           "a natural harmonic did not shed its open string's held force");
+}
+
 } // namespace
 
 int main()
@@ -8920,6 +9077,7 @@ int main()
     testPluckPositionChangesEveryFret();
     testAFingerBrightensWithVelocityAsTheRecordingsDo();
     testSoftContactsCarryLessAttackHiss();
+    testEachReleaseGivesBackTheForceItHeld();
     testStringAgeReachesTheWoundStrings();
     testIdleFlushIsIndependentOfBlockSize();
     testThePlateFloorDampsAlikeAtEveryRate();

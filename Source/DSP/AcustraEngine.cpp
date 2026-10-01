@@ -3078,6 +3078,8 @@ void AcustraEngine::prepare(double sampleRate, int)
     sampleRate_ = std::clamp(sampleRate, 8000.0, 384000.0);
     ++voiceConfigurationGeneration_;
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
+    releaseStepPole_ = static_cast<float>(std::exp(-1.0 / (0.010 * sampleRate_)));
+    releaseStepSamples_ = static_cast<int>(std::ceil(0.4 * sampleRate_));
     // The piezo chain (renderPiezo; PiezoDesign has the parts and their
     // sources, Tools/PiezoReference.py simulates the same circuit).
     {
@@ -3267,6 +3269,12 @@ void AcustraEngine::resetSoundState() noexcept
     micDelayMono_.fill(0.0f);
     micDelayIndex_ = 0;
     room_.reset();
+    for (auto& voice : voices_)
+    {
+        voice.releaseStepAge = -1;
+        voice.releaseStepRise = voice.releaseStepForce
+            = voice.releaseStepLevel = 0.0f;
+    }
     piezoForceDerivative_.reset();
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
     lastPiezoImpedanceSum_ = lastPiezoImpedanceMoment_ = 0.0f;
@@ -5450,6 +5458,45 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const float polarisationGain = polarisation == 0
             ? exact::sqrt(voice.polarisationMix)
             : exact::sqrt(1.0f - voice.polarisationMix);
+        // The hand held the string aside before it let go, so the saddle
+        // carried the static force of the string's slope there, T y / a,
+        // and the top stood deflected under it. The wave written here
+        // carries what follows the release but not that the force existed
+        // before it, so the top never sprang back: on the flat-top
+        // recordings every note, picked or plucked, rings the air mode and
+        // the low top modes (60-180 Hz at -17 dB re its first 100 ms on the
+        // Eastman E1D, -12 on the Martin HD28, above a G string's pitch)
+        // where the model stood 13-30 dB under. In the line's own terms the
+        // force is the level of its steep flank, 2Z times the flank's rise
+        // per sample, and the junction gets it back as the release's step
+        // (process). Only the normal plane's share pushes on the top; the
+        // parallel plane's acts along it. A natural harmonic is held aside
+        // by the picking hand as any note is - the finger on its node damps
+        // what the node does not share only once the string is let go - so
+        // its saddle sheds the same force. The step is given back at 0.8 of
+        // that force: a listener liked the thump and chose it at 80% of the
+        // full release (Docs/decisions.md, 2026-10-01), chosen by ear. A
+        // re-pluck adds its step to what an earlier one has still to give
+        // back rather than cutting it off: cut, the earlier step's net
+        // impulse is no longer zero and the bridge keeps a low kick. Two
+        // plucks on one sample - a doubled note-on before any audio - are
+        // one release: the first wave goes under the hand (captureTail)
+        // before it has sounded, and a hand that let go and held the string
+        // again in no time put back the force it had let go, so the rise
+        // still waiting is replaced, not added to. Added, a doubled note
+        // thumped 6 dB harder than the one pluck it sounds as.
+        constexpr float releaseStepShare = 0.8f;
+        if (polarisation == 0 && releaseStepEnabled_)
+        {
+            const float rise = releaseStepShare * releasedAmplitude
+                * polarisationGain
+                / (localPosition * static_cast<float>(length));
+            if (rise != 0.0f)
+            {
+                voice.releaseStepRise = rise;
+                voice.releaseStepAge = 0;
+            }
+        }
         const float currentReferenceLength = loop.targetDelay * 48000.0f
             / static_cast<float>(sampleRate_);
 #if defined(ACUSTRA_ANALYSIS_APERTURE_MILLISECONDS)
@@ -5829,6 +5876,9 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
         voice.releaseNoiseBand1 = voice.releaseNoiseBand2 = 0.0f;
         voice.releaseNoiseLaunched = 0.0f;
         voice.releaseNoiseTravel.active = false;
+        voice.releaseStepAge = -1;
+        voice.releaseStepRise = voice.releaseStepForce
+            = voice.releaseStepLevel = 0.0f;
     }
     voice.attackPitchCents = 0.0f;
     voice.attackPitchDecay = 1.0f;
@@ -9131,6 +9181,42 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 drive.impedance2 += arm * arm * branchImpedance;
                 drive.incidentHeave += incident;
                 drive.incidentRock += arm * incident;
+                // The static force the hand held this string aside with,
+                // let go at its pluck (initialisePluck), enters as an
+                // external force on the saddle at this string's point:
+                // 2Z h / (p D) times (n + 1) d^n, d the 10 ms pole, a step
+                // high-passed at 16 Hz (0.97 of a true step at the 90 Hz air
+                // mode) whose net impulse is zero, so it leaves the saddle
+                // where it was. Its sample of release is the one the
+                // junction's derivatives re-reference (firePluck), so it
+                // starts without a click. The force is the one released at
+                // that sample, at the port the string had then: a bend after
+                // it moves the string, not the force its release already
+                // took off the saddle. (n + 1) d^n is two one-pole stages at
+                // d in cascade, so a re-pluck's step is one more impulse into
+                // them and an earlier step still runs out to its zero net
+                // impulse. The piezo's own sum below does not take it - its
+                // preamp's headroom was set without it (PiezoDesign,
+                // 2026-09-30) - and reads only the saddle's motion it causes.
+                if (voice.releaseStepAge >= 0)
+                {
+                    float force = releaseStepPole_ * voice.releaseStepForce;
+                    if (voice.releaseStepRise != 0.0f)
+                    {
+                        force += 2.0f * port * voice.releaseStepRise;
+                        voice.releaseStepRise = 0.0f;
+                    }
+                    voice.releaseStepForce = force;
+                    voice.releaseStepLevel
+                        = releaseStepPole_ * voice.releaseStepLevel + force;
+                    drive.incidentHeave += voice.releaseStepLevel;
+                    drive.incidentRock += arm * voice.releaseStepLevel;
+                    if (++voice.releaseStepAge >= releaseStepSamples_)
+                    {
+                        voice.releaseStepAge = -1;
+                        voice.releaseStepForce = voice.releaseStepLevel = 0.0f;
+                    }
+                }
                 const float piezoWeight
                     = piezoStringWeights_[static_cast<std::size_t>(string)];
                 const float piezoBranch = piezoWeight * branchImpedance;
