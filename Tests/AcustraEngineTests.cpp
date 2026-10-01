@@ -8817,16 +8817,17 @@ void testAFingerBrightensWithVelocityAsTheRecordingsDo()
 // that lift (4.1 dB for the soft contacts, 2.4 for the Pick).
 // The held string's released static force (initialisePluck, 2026-10-01,
 // second entry) puts the top's spring-back into the same 15 ms, all of it
-// under 2 kHz, and with the voicing refitted after it every share falls:
-// -16.0, -15.9 and -10.5. The Pick's falls 2.3 dB further, as its hand holds
-// the string nearer the bridge, where the same displacement is a larger
-// force against its note. Against the recordings measured the same way
-// (MIDI 40-66, a Hann window over each note's first 15 ms) the Eastman
-// E1D's picked take reads -10.5 and its finger take -29.1, an 18.6 dB lead:
-// the Pick's own share now meets its recording, and what keeps its lead
-// short is the soft contacts' known brightness (README, Known gaps), not the
-// Pick. Its bound follows its recording (-10.5 less 2.5 dB) and the lead
-// keeps 5 dB.
+// under 2 kHz, and with the voicing refitted after it every share fell, at
+// the full release, to -16.0, -15.9 and -10.5; at the 0.8 of it a listener
+// chose they read -15.5, -15.6 and -9.6. The Pick's falls furthest (2.9 dB
+// against the Finger's 1.0), as its hand holds the string nearer the bridge,
+// where the same displacement is a larger force against its note. Against
+// the recordings measured the same way (MIDI 40-66, a Hann window over each
+// note's first 15 ms) the Eastman E1D's picked take reads -10.5 and its
+// finger take -29.1, an 18.6 dB lead: the Pick's own share meets its
+// recording, and what keeps its lead short is the soft contacts' known
+// brightness (README, Known gaps), not the Pick. Its bound follows its
+// recording (-10.5 less 2.5 dB) and the lead keeps 5 dB.
 void testSoftContactsCarryLessAttackHiss()
 {
     constexpr std::array<std::pair<int, int>, 6> notes { {

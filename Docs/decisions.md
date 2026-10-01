@@ -152,6 +152,47 @@ to -20 LUFS: the two GuitarSet performances beside their recordings, the
 same four repertoire excerpts, single notes (Finger then Pick, E3-E5 on the
 Dreadnought) and five Pick strums, all at Room 50%.
 
+Heard, the listener answered: "i like the thump but i would maybe make it
+80% of the current strength". The step is given back at 0.8 of the released
+force (releaseStepShare in initialisePluck), chosen by ear; nothing else
+moved. The voicing was not refitted after it: a refit would hand part of
+what was taken back to the bass lift, the low end the listener asked to
+have less of. Every construction was re-levelled to the default
+construction, which reads -23.29 LUFS (0.05 LU under the full release;
+--check holds every cell within +-1 LU and the Pick headroom rule). Asked
+whether it follows the velocity and the Picking: it does, as the force it
+releases does. On E4 and A4 on the Dreadnought, where 60-180 Hz holds no
+partial, that band's power over the first 300 ms against the note's over
+its first second reads -14.1 to -14.3 dB for the Finger at velocities 0.3,
+0.6 and 0.9, -10.1 to -12.0 for the Pick (its hand at 0.40 of the Finger's
+distance from the bridge, where the same displacement is a larger force)
+and -14.9 to -15.3 for the Thumb (at 1.95 of it), and with the note it grows
+about 7 dB from 0.3 to 0.9. At 0.8, against the same main:
+
+| | train | validation | bank flat-top | Eastman pick | Eastman finger | Martin | GuitarSet log / SC / chroma |
+|---|---|---|---|---|---|---|---|
+| 0.8, Room 0 | 6.7387 (+0.6%) | 6.7221 (+3.2%) | 6.4178 (-4.8%) | 5.4959 (-6.3%) | 6.2364 (-3.9%) | 6.3510 (-3.2%) | 14.105 / 0.793 / 0.208 |
+| 0.8, Room 0.5 | 6.3401 (+1.4%) | 6.3571 (+3.9%) | 6.1925 (-5.8%) | 5.1751 (-8.1%) | 5.9352 (-4.7%) | 6.1720 (-3.6%) | 13.929 / 0.804 / 0.211 |
+
+Against the full release the flat-top sets read 0.1-1.0% worse and the
+archtop and classical rows 0.2-0.9% better; every flat-top set and every
+GuitarSet measure dry still improve on main. In the first 100 ms the low
+band (60-180 Hz, dry, 0-40/40-100 ms) reads -16.6 and -20.1 dB on the
+Eastman's picked notes against its -17.1 and -20.5, -18.7 and -22.5
+finger-plucked against -17.4 and -20.4, and -17.4 and -21.2 against the
+Martin's -12.1 and -15.7: the Pick meets its take, the Finger sits 1.3-2.1
+dB under its own and the Martin 5.3-5.5 dB under. After 100 ms it reads 7-16
+dB under them all, and over 40-400 ms the 90-100 Hz peak +3.3 and +2.7 dB
+against +12.5 and +8.2. The attack's 2-12 kHz share is -10.7 dB picked (the
+Eastman -10.5) and -17.3 finger-plucked (-29.1); note to note 2.66 dB rough,
+deepest hole 5.32 dB; the Finger's soft-to-loud brightening 9.06 dB (the
+recordings 9.0). The hardest playing's peak before the limiter falls to
++1.59 dBFS on the stereo microphones (20 of 24 constructions over the knee)
+and -0.13 on the mono (5), and the default construction's to -1.20 dBFS,
+back under the knee by 0.2 dB. The attack-share test's figures are -15.5,
+-15.6 and -9.6 (Finger, Thumb, Pick), inside the bounds set above. A second
+listening set, A main and B at 0.8, was sent the same way.
+
 ## 2026-10-01 — at the user's request: the microphones as a recording hears them, and the room around them
 
 The user asked to "further improve realism of the instrument audibly by

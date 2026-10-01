@@ -5467,11 +5467,14 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // per sample, and the junction gets it back as the release's step
         // (process). Only the normal plane's share pushes on the top; the
         // parallel plane's acts along it. A natural harmonic is touched,
-        // not held aside.
+        // not held aside. The step is given back at 0.8 of that force: a
+        // listener liked the thump and chose it at 80% of the full release
+        // (Docs/decisions.md, 2026-10-01), chosen by ear.
+        constexpr float releaseStepShare = 0.8f;
         if (polarisation == 0)
         {
             voice.releaseStepRise = voice.harmonic <= 1
-                ? releasedAmplitude * polarisationGain
+                ? releaseStepShare * releasedAmplitude * polarisationGain
                     / (localPosition * static_cast<float>(length))
                 : 0.0f;
             voice.releaseStepDecay = 1.0f;

@@ -255,8 +255,8 @@ controls (Docs/decisions.md has the method and the held-out readings):
 | main 4f19875 | 6.9259 | 6.6772 | 6.5531 | 6.1818 | 6.4737 | 7.0697 | 14.419 / 0.828 / 0.224 |
 | voicing, Room 0 | 6.6952 | 6.5136 | 6.7439 | 5.8671 | 6.4892 | 6.5626 | 14.166 / 0.796 / 0.209 |
 | voicing, Room 0.5 | 6.2551 | 6.1195 | 6.5735 | 5.6299 | 6.2282 | 6.4047 | 13.999 / 0.804 / 0.210 |
-| spring-back, Room 0 | 6.7519 | 6.7685 | 6.3771 | 5.4751 | 6.1932 | 6.3438 | 14.082 / 0.792 / 0.207 |
-| spring-back, Room 0.5 | 6.3644 | 6.4139 | 6.1318 | 5.1353 | 5.8787 | 6.1656 | 13.903 / 0.803 / 0.211 |
+| spring-back, Room 0 | 6.7387 | 6.7221 | 6.4178 | 5.4959 | 6.2364 | 6.3510 | 14.105 / 0.793 / 0.208 |
+| spring-back, Room 0.5 | 6.3401 | 6.3571 | 6.1925 | 5.1751 | 5.9352 | 6.1720 | 13.929 / 0.804 / 0.211 |
 
 The renderers and both benchmark drivers take `--room` (default 0, the dry
 engine the calibration was fitted on); the plug-in plays at 0.5. The archtop
@@ -264,10 +264,11 @@ rows were in no fit. The voicing alone loses on the two finger-plucked sets
 when each is held out of its own fit (Eastman finger +1.0%, the bank's
 flat-top +4.1%), and with the room the bank's flat-top is within 0.3%.
 The spring-back rows add the held string's released static force
-([The top's spring-back](#the-tops-spring-back)) with the voicing refitted
-after it: every flat-top set improves again (3.3-8.8%) and so does GuitarSet
-dry, while the archtop and classical training and validation rows lose
-0.8-4.8%, guitars whose tops barely ring where a flat-top's air mode does.
+([The top's spring-back](#the-tops-spring-back)), at the 0.8 of it a
+listener chose, with the voicing refitted after the full release: every
+flat-top set improves again (3.2-8.1%) and so does GuitarSet dry, while the
+archtop and classical training and validation rows lose 0.6-3.9%, guitars
+whose tops barely ring where a flat-top's air mode does.
 
 Run `python3 Tools/SummarizePhysicalBenchmark.py` to print the compact split
 table, historical sample-player control and five retained realism paths from
@@ -1444,12 +1445,19 @@ model's. The
 engine now reads the force from the line it wrote - 2Z times its steep
 flank's rise per sample, the normal plane's share - and gives it back to
 the junction as an external force on the saddle at the string's point: a
-step high-passed at 16 Hz by a double pole at 10 ms, with no net impulse and
-no constant chosen. In the first 100 ms the low band lands within 2 dB of
-the Eastman's two takes and 4 dB of the Martin; after it the model's air
-mode still rings shorter than theirs (Known gaps). The piezo's own sum does
-not take the step, only the saddle motion it causes. Docs/decisions.md
-(2026-10-01) has the measurements, the sign check and what was not shipped.
+step high-passed at 16 Hz by a double pole at 10 ms, with no net impulse.
+Its size is the force's own, given back at 0.8 of it: a listener liked the
+thump and chose it at 80% of the full release (2026-10-01), by ear. In the
+first 100 ms the low band reads within 0.5 dB of the Eastman's picked take,
+1.3-2.1 dB under its finger take and 5.3-5.5 under the Martin; after it the
+model's air mode still rings shorter than theirs (Known gaps). It follows
+the playing as the force does: on E4 and A4 its 60-180 Hz power over the
+first 300 ms reads about -14 dB against the note for the Finger, -10 to -12
+for the Pick, whose hand holds the string nearer the bridge, and -15 for the
+Thumb, at every velocity, so it grows with the note (about 7 dB from
+velocity 0.3 to 0.9). The piezo's own sum does not take the step, only the
+saddle motion it causes. Docs/decisions.md (2026-10-01) has the
+measurements, the sign check and what was not shipped.
 
 ### The microphones and the room
 
@@ -1998,10 +2006,10 @@ engine.
 - The hardest playing - velocity 127 with the Pick at Touch 1 and Pluck
   Position 0 - reaches the output's soft safety limiter on most
   constructions. Since the top's spring-back (2026-10-01) its peak before
-  the limiter is up to +2.44 dBFS on the stereo microphones, past the knee on
-  21 of the 24 constructions (7 before), +0.85 on the mono (17, from 2) and
-  +2.04 on the piezo (all 24, as before); the default construction's reaches
-  +0.09 dBFS on the stereo microphones, 1.1 dB past the knee, where it kept
+  the limiter is up to +1.59 dBFS on the stereo microphones, past the knee on
+  20 of the 24 constructions (7 before), -0.13 on the mono (5, from 2) and
+  +2.02 on the piezo (all 24, as before); the default construction's reaches
+  -1.20 dBFS on the stereo microphones, 0.2 dB under the knee, where it kept
   2.1 dB under it. A hand at the bridge holds the most force against its
   note, and six strings released on one sample add their releases.
   A Model switch under a ringing chord also still swells:
@@ -2135,7 +2143,8 @@ engine.
   its first corner as a/L of the real step while the held string's static
   load was not released, so its loud onset came a period late (since
   2026-10-01 the load is released, The top's spring-back, and the scorer
-  finds the onset on the first sample).
+  finds the onset within 0.6 ms of the first sample, where it found it up
+  to 4 ms late).
   The recordings have a hiss floor the engine does not: the soft archtop
   layer's 5-12 kHz is that floor from the first frame, and strings whose upper
   partials die as fast as the recordings' fall a median 12-16 dB under it by
@@ -2311,8 +2320,8 @@ engine.
   split for stopped strings would settle it.
 - The top's spring-back (The top's spring-back) rings the model's air mode,
 but shorter and lower than the recordings': after a note's first 100 ms the
-60-180 Hz band reads 5-15 dB under the Eastman E1D and Martin HD28, and
-over 40-400 ms their 90-100 Hz peak stands 4-8 dB over the model's. The
+60-180 Hz band reads 7-16 dB under the Eastman E1D and Martin HD28, and
+over 40-400 ms their 90-100 Hz peak stands 5-9 dB over the model's. The
 model's air mode sits at 84.7 Hz, g21's lowered by the wide Dreadnought
 anchor a listener chose (2026-09-24), where both dreadnoughts ring at
 93-95 Hz; its Q, 19, is the Martin's and half the Eastman's. Moving it
@@ -2712,12 +2721,15 @@ git history rather than here.
   ("sounds better, pls merge and continue improving", on the entry below).
   The static force the hand held each string aside with is released at the
   pluck, so every note rings the body's air mode and low top modes as the
-  Eastman E1D and Martin HD28 recordings do; the capture voicing was
+  Eastman E1D and Martin HD28 recordings do, more for the Pick than the
+  Finger and Thumb and growing with velocity; the capture voicing was
   refitted after it (its bass lift +1.1 to +1.5 dB at 80-125 Hz, from +3.3
-  to +3.8) and every construction re-levelled. Against main at Room 50%:
-  Eastman picked -8.8%, Eastman finger -5.6%, Martin -3.7%, the bank's
-  flat-top -6.7%, GuitarSet's log-spectral error 14.00 -> 13.90 dB; the
-  archtop training and validation rows +1.7% and +4.8%. See
+  to +3.8) and every construction re-levelled. A listener liked the thump
+  and chose it at 80% of the full release ("i like the thump but i would
+  maybe make it 80% of the current strength"). Against main at Room 50%:
+  Eastman picked -8.1%, Eastman finger -4.7%, Martin -3.6%, the bank's
+  flat-top -5.8%, GuitarSet's log-spectral error 14.00 -> 13.93 dB; the
+  archtop training and validation rows +1.4% and +3.9%. See
   [The top's spring-back](#the-tops-spring-back) and Docs/decisions.md.
 - **The microphones as a recording hears them, and a room around them, at
   the user's request** ("further improve realism of the instrument audibly
