@@ -1455,8 +1455,11 @@ the playing as the force does: on E4 and A4 its 60-180 Hz power over the
 first 300 ms reads about -14 dB against the note for the Finger, -10 to -12
 for the Pick, whose hand holds the string nearer the bridge, and -15 for the
 Thumb, at every velocity, so it grows with the note (about 7 dB from
-velocity 0.3 to 0.9). The piezo's own sum does not take the step, only the
-saddle motion it causes. Docs/decisions.md (2026-10-01) has the
+velocity 0.3 to 0.9). A re-pluck adds its step to one still running out,
+a bend after the pluck leaves the force already let go alone, and a natural
+harmonic, held aside by the picking hand like any note, sheds its open
+string's force (Known gaps). The piezo's own sum does not take the step,
+only the saddle motion it causes. Docs/decisions.md (2026-10-01) has the
 measurements, the sign check and what was not shipped.
 
 ### The microphones and the room
@@ -2331,6 +2334,15 @@ too much low end in their attacks, and the piezo reads only the saddle
 motion it causes, not the released force itself: fed that, the hardest
 Pick strums kept 0.11 dB of the preamp's swing, and the preamp's gain was
 set without it.
+- A natural harmonic sheds its open string's held force at the pluck, as
+  any note does (The top's spring-back), but its own tone is quiet: without
+  that knock E6, the open high E's fourth harmonic, sits 25 dB under an E4
+  at the same velocity with the Finger, 20 with the Thumb and 14 with the
+  Pick, where the modes a quarter-string node keeps hold 8-11 dB under a
+  plucked string's energy. Against it the knock's 60-180 Hz over the first
+  300 ms reads -0.2 to -4.9 dB against the harmonic's first second on E6
+  and F#6, where an ordinary note's reads -10 to -15. A harmonic measured
+  beside its open string would settle the harmonic's own level.
 - Steel's excitation was fitted with Finger on recordings that were picked,
   and refitting it with the technique that played them does not ship. The
   optimizer's pick-excitation stage (aperture, transient, pluck distance and

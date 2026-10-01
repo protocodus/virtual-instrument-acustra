@@ -193,6 +193,33 @@ back under the knee by 0.2 dB. The attack-share test's figures are -15.5,
 -15.6 and -9.6 (Finger, Thumb, Pick), inside the bounds set above. A second
 listening set, A main and B at 0.8, was sent the same way.
 
+Review (Codex, on PR #10) found three ways the step did not give back the
+force the hand held, each verified and corrected; none is a choice. A
+re-pluck within the step's 0.4 s reset it: the earlier step's first lobe
+stayed on the bridge as a net impulse, at a 10 ms re-pluck 0.99 of the
+step's peak. (n + 1) d^n is two one-pole stages at d in cascade, so a pluck
+is now one impulse into them and an earlier step runs out beside the new one
+(net impulse -0.006 of the peak, the samples the junction re-references
+aside). The step took the string's port on every sample, so a bend inside
+its 0.4 s rescaled a force already let go; it now takes the port of its
+pluck's sample. And a natural harmonic left the step out, on the reading
+that a touched string is not held aside; it is, by the picking hand, and the
+finger on the node damps only once the string is let go, so a harmonic now
+sheds its open string's force (E6 the same as an E4 on the high E). The
+single notes and strums move by -89 to -93 dB of their level, the stages'
+rounding; GuitarSet's six performances by -89 to -99 dB, and they score as
+before to the printed digit (13.929 / 0.804 / 0.211 at Room 0.5); --check
+holds unchanged. The harmonic is audible: on E6 and F#6 the 60-180 Hz band
+over the first 300 ms now reads -0.2 to -4.9 dB against the note's first
+second, where it read -30 to -53, because the engine's harmonics are quiet:
+before the step E6 sat 25 dB under an E4 at the same velocity with the
+Finger, 20 with the Thumb and 14 with the Pick, where the modes a
+quarter-string node keeps hold 8-11 dB under a plucked string's energy
+(plucked 0.10-0.17 of the string from the bridge). The knock is the open
+string's; the Finger's harmonic is what is short (README, Known gaps). A
+harmonics clip, A this entry's 0.8 build and B with the corrections, at one
+gain, went with the second listening set.
+
 ## 2026-10-01 — at the user's request: the microphones as a recording hears them, and the room around them
 
 The user asked to "further improve realism of the instrument audibly by

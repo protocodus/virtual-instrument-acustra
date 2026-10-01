@@ -972,10 +972,12 @@ private:
         float pluckPoint { 0.0f };
         // The static force the hand held the string aside with, let go at
         // the pluck (initialisePluck): the normal plane's steep-flank rise
-        // per sample, its high-pass's decay so far, and the samples since
-        // the release (-1: none sounding).
+        // per sample still to reach the junction, the two first-order
+        // stages whose cascade gives it (n + 1) d^n there (process), and
+        // the samples since the latest release (-1: none sounding).
         float releaseStepRise { 0.0f };
-        float releaseStepDecay { 0.0f };
+        float releaseStepForce { 0.0f };
+        float releaseStepLevel { 0.0f };
         int releaseStepAge { -1 };
         // Set by noteOn's strumMember argument and read once by
         // initialisePluck for its own level jitter; noteOn itself reads it
