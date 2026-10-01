@@ -2738,7 +2738,8 @@ git history rather than here.
   refitted after it (its bass lift +1.1 to +1.5 dB at 80-125 Hz, from +3.3
   to +3.8) and every construction re-levelled. A listener liked the thump
   and chose it at 80% of the full release ("i like the thump but i would
-  maybe make it 80% of the current strength"). Against main at Room 50%:
+  maybe make it 80% of the current strength"), and kept it on hearing it
+  ("80% is better, keep it and merge to main"). Against main at Room 50%:
   Eastman picked -8.1%, Eastman finger -4.7%, Martin -3.6%, the bank's
   flat-top -5.8%, GuitarSet's log-spectral error 14.00 -> 13.93 dB; the
   archtop training and validation rows +1.4% and +3.9%. See

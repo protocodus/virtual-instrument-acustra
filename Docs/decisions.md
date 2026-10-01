@@ -220,6 +220,9 @@ string's; the Finger's harmonic is what is short (README, Known gaps). A
 harmonics clip, A this entry's 0.8 build and B with the corrections, at one
 gain, went with the second listening set.
 
+Heard against main and the full release, the listener kept it: "80% is
+better, keep it and merge to main". The harmonics clip drew no comment.
+
 ## 2026-10-01 — at the user's request: the microphones as a recording hears them, and the room around them
 
 The user asked to "further improve realism of the instrument audibly by
