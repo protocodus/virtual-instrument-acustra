@@ -2014,7 +2014,17 @@ engine.
   +2.02 on the piezo (all 24, as before); the default construction's reaches
   -1.20 dBFS on the stereo microphones, 0.2 dB under the knee, where it kept
   2.1 dB under it. A hand at the bridge holds the most force against its
-  note, and six strings released on one sample add their releases.
+  note, and six strings released on one sample add their releases. That
+  one segment is the peak: a chord on one channel is strummed (Performer),
+  and the hardest case's strums - 9 ms and 4 ms a string - stay under the
+  knee on 22 of the 24 constructions on the stereo microphones (at least
+  1 dB under on 20; the Bellido Parlor in mahogany and spruce reach -0.04
+  and -0.06 dBFS) and at least 1 dB under on 23 on the mono. Six on one
+  sample reaches the engine from a chord spread over channels (MPE,
+  string-per-channel). Keeping it under the knee there on every
+  construction at the same parity means lowering every construction, the
+  default with it, by 2.6 dB (3.6 for the calibration's 1 dB margin),
+  which is the user's to choose.
   A Model switch under a ringing chord also still swells:
   steel from the Original to the Bellido reaches 3.3 times the louder
   steady chord for about 0.3 s, the Original's less-drained strings pouring
@@ -2053,16 +2063,18 @@ engine.
 - The Finger's attack is brighter than the finger-plucked flat-top
   recordings'. Over the first 15 ms the Eastman finger take puts -27.8 dB of
   its energy at 2-12 kHz; the engine put -19.4 dB there before the voicing
-  and -14.9 dB after it (its 1-1.6 kHz lift reaches the attack too). A
-  weaker finger burst brings it toward the recording and every benchmark
-  split rejects it, and the Finger's contact and release were chosen by ear
-  (2026-09-28, 2026-09-30), so it is left for the listener. Releasing the
-  finger through its full slip, rather than its slip as a ratio to a
-  full-velocity stroke's, darkens it toward the recordings but takes the
-  finger's soft-to-loud brightening from 9.1 dB to 6.8 against the
-  recordings' 9.0, and the benchmark's finger rows, played at dynamics
-  nobody wrote down, cannot tell a darker release from a different
-  velocity law (Docs/decisions.md, 2026-10-01).
+  and -14.9 dB after it (its 1-1.6 kHz lift reaches the attack too).
+  Measured over MIDI 40-66 since the spring-back (-17.3 dB against the
+  Eastman take's -29.1), the soft burst carries 3.2 dB of it and the
+  contact's width 1 dB; releasing the finger through its full slip, rather
+  than its slip as a ratio to a full-velocity stroke's, with the burst
+  halved, reaches -21.8 but takes the finger's soft-to-loud brightening
+  from 9.1 dB to 5.9 against the recordings' 9.0, scores worse on the
+  picked sets rendered with the Finger and on GuitarSet, and better on the
+  finger-plucked flat-top sets. What remains, about -21 dB with no burst
+  and a wide contact, is not the Finger's. The Finger's contact and
+  release were chosen by ear (2026-09-28, 2026-09-30), so the darker
+  release is with the listener (Docs/decisions.md, 2026-10-01).
 - The room is a model of a room, not a measured one: an image-source
   shoebox for its first reflections and a feedback delay network for its
   field, at a level and decay a small treated studio has. The recordings it
@@ -2322,27 +2334,36 @@ engine.
   correction on an open string and publishes no law for a fret; a measured
   split for stopped strings would settle it.
 - The top's spring-back (The top's spring-back) rings the model's air mode,
-but shorter and lower than the recordings': after a note's first 100 ms the
-60-180 Hz band reads 7-16 dB under the Eastman E1D and Martin HD28, and
-over 40-400 ms their 90-100 Hz peak stands 5-9 dB over the model's. The
-model's air mode sits at 84.7 Hz, g21's lowered by the wide Dreadnought
-anchor a listener chose (2026-09-24), where both dreadnoughts ring at
-93-95 Hz; its Q, 19, is the Martin's and half the Eastman's. Moving it
-would move a choice made by ear, so it waits for one. The bank's archtop
+but lower than the recordings', and their low end lasts longer: after a
+note's first 100 ms the 60-180 Hz band reads 7-16 dB under the Eastman E1D
+and Martin HD28, and over 40-400 ms their 90-100 Hz peak stands 5-9 dB over
+the model's. The air mode's own band decays as theirs does (85-105 Hz,
+median T60 0.46 s against 0.47). The model's air mode sits at 84.7 Hz,
+g21's lowered by the wide Dreadnought anchor a listener chose
+(2026-09-24), where both dreadnoughts ring at 93-95 Hz; its Q, 19, is the
+Martin's and half the Eastman's. Moving it would move a choice made by
+ear: placed at 94.2 Hz the single-note flat-top sets read about 1% worse
+and GuitarSet's 80-160 Hz octave 1.2 dB nearer its recordings, and that
+candidate is with the listener (Docs/decisions.md, 2026-10-01). The bank's archtop
 and classical rows, whose tops barely ring there, read the step as 13-43 dB
 too much low end in their attacks, and the piezo reads only the saddle
 motion it causes, not the released force itself: fed that, the hardest
 Pick strums kept 0.11 dB of the preamp's swing, and the preamp's gain was
 set without it.
 - A natural harmonic sheds its open string's held force at the pluck, as
-  any note does (The top's spring-back), but its own tone is quiet: without
-  that knock E6, the open high E's fourth harmonic, sits 25 dB under an E4
-  at the same velocity with the Finger, 20 with the Thumb and 14 with the
-  Pick, where the modes a quarter-string node keeps hold 8-11 dB under a
-  plucked string's energy. Against it the knock's 60-180 Hz over the first
-  300 ms reads -0.2 to -4.9 dB against the harmonic's first second on E6
-  and F#6, where an ordinary note's reads -10 to -15. A harmonic measured
-  beside its open string would settle the harmonic's own level.
+  any note does (The top's spring-back), and against a quiet harmonic that
+  knock stands near the harmonic's own level: on E6 and F#6 its 60-180 Hz
+  over the first 300 ms reads -0.2 to -4.9 dB against the harmonic's first
+  second, where an ordinary note's reads -10 to -15. The harmonic is quiet
+  for the string's own reason, not the model's: read in the string, it
+  keeps the modes its pluck put on the node's multiples to within 1.2 dB,
+  and the hand that plucks the open high E stands at 0.237 of it with the
+  Finger, beside the fourth harmonic's node at 1/4, so those modes hold
+  27.8 dB under the pluck's energy (13.9 with the Thumb at 0.328, 7.4 with
+  the Pick at 0.099). Without the knock E6 sits 25 dB under an E4 at the
+  same velocity with the Finger, 20 with the Thumb and 14 with the Pick. A
+  player moves the hand off a node for a harmonic; the engine keeps it
+  where Pluck Position puts it, and moving it would be a choice by ear.
 - Steel's excitation was fitted with Finger on recordings that were picked,
   and refitting it with the technique that played them does not ship. The
   optimizer's pick-excitation stage (aperture, transient, pluck distance and
