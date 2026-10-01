@@ -17,6 +17,62 @@
 #include <string>
 #include <vector>
 
+namespace acustra
+{
+struct AcustraEngineTestAccess
+{
+    struct TailHandState
+    {
+        bool active;
+        float gain, highLoss, parallelGain, parallelHighLoss, period;
+        float currentGain, currentHighLoss;
+    };
+
+    static TailHandState tailHandState(const AcustraEngine& engine, int string)
+    {
+        const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
+        return { voice.tailActive, voice.tailLoop.loopGain,
+            voice.tailLoop.highLossMix, voice.tailParallelLoop.loopGain,
+            voice.tailParallelLoop.highLossMix, voice.tailLoop.targetDelay,
+            voice.loops[0].loopGain, voice.loops[0].highLossMix };
+    }
+
+    struct DrivenTail { double returnEnergy, suppliedEnergy; };
+    // A fixed bridge-motion probe drives the old branch even after its
+    // initial wave has gone, just as another held string backdrives it. The
+    // returned wave, and the net work that must come from the bridge, are
+    // observed independently of the new note or microphone response.
+    static DrivenTail drivenTail(const AcustraEngine& engine, int string,
+                                 double rate, double frequency, bool captured)
+    {
+        const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
+        auto loop = std::make_unique<AcustraEngine::StringLoop>(voice.tailLoop);
+        if (captured)
+        {
+            loop->loopGain = voice.tailCapturedLoopGain[0];
+            loop->highLossMix = voice.tailCapturedHighLoss[0];
+        }
+        loop->reset();
+        DrivenTail result {};
+        for (int sample = 0; sample < static_cast<int>(0.25 * rate); ++sample)
+        {
+            const double bridge = 0.001 * std::sin(
+                6.2831853071795864769 * frequency * sample / rate);
+            const float incident = loop->advance(engine.delaySmoothing_, voice.tailDamping);
+            const float reflected = incident - static_cast<float>(bridge);
+            loop->write(reflected);
+            if (sample > static_cast<int>(0.15 * rate))
+            {
+                result.returnEnergy += static_cast<double>(incident) * incident;
+                result.suppliedEnergy += static_cast<double>(reflected) * reflected
+                                     - static_cast<double>(incident) * incident;
+            }
+        }
+        return result;
+    }
+};
+}
+
 namespace
 {
 constexpr int blockSize = 127;
@@ -517,6 +573,113 @@ void testHandBackIsSilent()
     }
 }
 
+// CC2 is the same physical bridge hand on the newly plucked string and on
+// its retained wave. In the former implementation captureTail froze the
+// copied loop coefficients: changing pressure darkened the new note while
+// its old branch kept the pressure that was present at capture.
+void testBridgeHandFollowsRetainedTails()
+{
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+    {
+        auto performer = std::make_unique<acustra::Performer>();
+        acustra::EngineParameters parameters;
+        parameters.room = 0.0f;
+        performer->setParameters(parameters);
+        performer->prepare(rate, 64);
+        auto& engine = performer->engine();
+        engine.setStringPerChannelMode(true);
+        std::array<float, 64> left {}, right {};
+        const auto run = [&] (double seconds, int controller = -1, int value = 0)
+        {
+            const int frames = static_cast<int>(seconds * rate);
+            for (int at = 0; at < frames; at += 64)
+            {
+                const int count = std::min(64, frames - at);
+                performer->beginBlock(left.data(), right.data(), count);
+                if (at == 0 && controller >= 0)
+                    performer->controlChange(0, 1, controller, value);
+                performer->endBlock();
+            }
+        };
+        engine.noteOn(64, 0.8f, 6);
+        run(0.3);
+        engine.noteOn(67, 0.8f, 6);
+        const auto captured = acustra::AcustraEngineTestAccess::tailHandState(engine, 5);
+        run(0.03, 2, 127);
+        const auto muted = acustra::AcustraEngineTestAccess::tailHandState(engine, 5);
+        expect(captured.active && muted.active, "bridge-hand test retained no old wave");
+        expect(muted.currentGain < captured.currentGain
+                   && muted.currentHighLoss > captured.currentHighLoss,
+               "CC2 test did not reach the current string");
+        expect(muted.gain < captured.gain && muted.parallelGain < captured.parallelGain,
+               "CC2 left the retained wave's fundamental loss frozen");
+        expect(muted.highLoss > captured.highLoss
+                   && muted.parallelHighLoss > captured.parallelHighLoss,
+               "CC2 left the retained wave's darkening frozen");
+        expect(muted.period == captured.period,
+               "CC2 retuned a retained wave to the new note's period");
+        for (const double frequency : { 330.0, 2000.0, 6000.0 })
+        {
+            const auto before = acustra::AcustraEngineTestAccess::drivenTail(
+                engine, 5, rate, frequency, true);
+            const auto after = acustra::AcustraEngineTestAccess::drivenTail(
+                engine, 5, rate, frequency, false);
+            expect(after.returnEnergy < before.returnEnergy * 0.85,
+                   "CC2 did not damp the bridge-driven old wave at "
+                       + std::to_string(frequency) + " Hz");
+            expect(before.suppliedEnergy >= 0.0 && after.suppliedEnergy >= 0.0,
+                   "a bridge-driven retained branch produced net energy");
+            std::cout << "Acustra driven tail " << frequency << " Hz at " << rate
+                      << ": CC2 return " << 10.0 * std::log10(
+                          after.returnEnergy / before.returnEnergy) << " dB\n";
+        }
+        run(0.06, 2, 0);
+        // A fresh bass note keeps moving the bridge while the hand lifts;
+        // without a driver the already damped old branch can retire first.
+        engine.noteOn(40, 0.9f, 1);
+        run(0.19);
+        const auto lifted = acustra::AcustraEngineTestAccess::tailHandState(engine, 5);
+        expect(lifted.active && lifted.gain == captured.gain
+                   && lifted.highLoss == captured.highLoss
+                   && lifted.parallelGain == captured.parallelGain
+                   && lifted.parallelHighLoss == captured.parallelHighLoss,
+               "lifting CC2 did not restore the retained wave's original loss: active="
+                   + std::to_string(lifted.active) + ", gain="
+                   + std::to_string(lifted.gain) + ", shelf="
+                   + std::to_string(lifted.highLoss));
+        std::cout << "Acustra retained CC2 at " << rate << " Hz: gain "
+                  << captured.gain << " -> " << muted.gain << ", shelf "
+                  << captured.highLoss << " -> " << muted.highLoss << '\n';
+
+        performer->prepare(rate, 64);
+        engine.setStringPerChannelMode(true);
+        run(0.25, 2, 127);
+        engine.noteOn(64, 0.8f, 6);
+        run(0.008);
+        engine.noteOn(67, 0.8f, 6);
+        const auto caughtMuted = acustra::AcustraEngineTestAccess::tailHandState(engine, 5);
+        run(0.04, 2, 0);
+        const auto liftingMuted = acustra::AcustraEngineTestAccess::tailHandState(engine, 5);
+        expect(caughtMuted.active && liftingMuted.active
+                   && liftingMuted.gain > caughtMuted.gain
+                   && liftingMuted.parallelGain > caughtMuted.parallelGain
+                   && liftingMuted.highLoss < caughtMuted.highLoss
+                   && liftingMuted.parallelHighLoss < caughtMuted.parallelHighLoss,
+               "a tail captured under CC2 pressure kept that pressure after the hand lifted");
+        expect(liftingMuted.period == caughtMuted.period,
+               "lifting a captured mute changed the retained wave's period");
+    }
+
+    const acustra::EngineParameters parameters;
+    const std::vector<Timed> replucks {
+        { 0.1, { 0x90, 40, 110 } }, { 0.4, { 0x90, 40, 110 } } };
+    auto zeroPressure = replucks;
+    zeroPressure.push_back({ 0.45, { 0xb0, 2, 0 } });
+    expect(same(renderEvents(parameters, 0.8, replucks),
+                renderEvents(parameters, 0.8, zeroPressure)),
+           "zero CC2 changed a complete repluck wave");
+}
+
 int main(int argc, char** argv)
 {
     if (argc == 3 && std::string(argv[1]) == "--render")
@@ -531,6 +694,7 @@ int main(int argc, char** argv)
         testSlidNotesAreDampedAtTheirSlidPitch();
         testReleaseNoise();
         testHandBackIsSilent();
+        testBridgeHandFollowsRetainedTails();
     }
     return failures == 0 ? 0 : 1;
 }

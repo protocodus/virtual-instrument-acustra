@@ -569,6 +569,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/BenchmarkOpenCorpora.py"
                                  --smoke --renderer "$<TARGET_FILE:AcustraExternalCorpusRenderer>")
                 set_tests_properties(Acustra.OpenCorporaBenchmark PROPERTIES TIMEOUT 180)
+                add_test(NAME Acustra.AirModeAudit
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditAirMode.py"
+                                 --self-test)
+                set_tests_properties(Acustra.AirModeAudit PROPERTIES TIMEOUT 120)
                 # Every tool with a self-test is one of the above.
                 add_test(NAME Acustra.SelfTestRegistry
                          COMMAND "${Python3_EXECUTABLE}"

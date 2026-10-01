@@ -500,7 +500,9 @@ that sample, and each is released when the pick reaches it. An already held
 note keeps its preceding vibration until its scheduled re-pluck. The k-th string
 sounds k string-spacings later at the pick's speed, low to high on a downstroke and
 back on the return, so consecutive strums alternate, and a rest of more than
-two seconds restarts with a downstroke. The spacing is the set-up dimension
+two seconds restarts with a downstroke. The shape is planned before this
+timing: string order can cross pitch order, and an unplayed string between
+two reached strings still takes one spacing to cross. The spacing is the set-up dimension
 at the saddle; the pick's speed is a player's map of velocity over the
 0.51–2.46 m/s range measured from GuitarSet strokes. The corpus does not
 establish that velocity-to-speed relationship. Chords whose notes arrive
@@ -2191,8 +2193,9 @@ engine.
   measured contact noise and click per pluck (after Akay, JASA 111 (2002)
   1525-1548: one random contact force from the release, decaying at the
   recordings' 420 dB/s) is in the code at zero, because a blind listener
-  rejected it as too loud on every picked pair; the static-load step
-  is not modelled. So the benchmark charges the shipped loss: steel training
+  rejected it as too loud on every picked pair. These loss comparisons
+  predate the static-load spring-back added on 2026-10-01. The benchmark
+  then charged the shipped loss: steel training
   +4.6% (Finger) and +5.7% (Pick), development validation +3.9% and +3.1%,
   the frozen test split 6.1015 -> 6.3473 (+4.0%) and 5.4031 -> 5.6644 (+4.8%),
   the flat-top rows +2.1%. With
@@ -2333,18 +2336,22 @@ engine.
   by-ear changes; the decision log has the figures). Woodhouse measured the
   correction on an open string and publishes no law for a fret; a measured
   split for stopped strings would settle it.
-- The top's spring-back (The top's spring-back) rings the model's air mode,
-but lower than the recordings', and their low end lasts longer: after a
-note's first 100 ms the 60-180 Hz band reads 7-16 dB under the Eastman E1D
-and Martin HD28, and over 40-400 ms their 90-100 Hz peak stands 5-9 dB over
-the model's. The air mode's own band decays as theirs does (85-105 Hz,
-median T60 0.46 s against 0.47). The model's air mode sits at 84.7 Hz,
-g21's lowered by the wide Dreadnought anchor a listener chose
-(2026-09-24), where both dreadnoughts ring at 93-95 Hz; its Q, 19, is the
-Martin's and half the Eastman's. Moving it would move a choice made by
-ear: placed at 94.2 Hz the single-note flat-top sets read about 1% worse
-and GuitarSet's 80-160 Hz octave 1.2 dB nearer its recordings, and that
-candidate is with the listener (Docs/decisions.md, 2026-10-01). The bank's archtop
+- The top's spring-back (The top's spring-back) excites the low body modes.
+  The earlier 85-105 Hz envelope comparison did not establish matched air
+  decay: it cuts through the model's intrinsic 84.7 Hz radiation pole and
+  mixes adjacent components. A broad-filter, source-domain audit now
+  separates that pole from the dominant rendered transient near 99 Hz.
+  With the modest Original air-Q extension, its fitted output T60 rises
+  from about 0.45 to 0.50 s, against screened medians of 0.65 s for Eastman
+  picked, 0.51 s for Eastman finger and 0.55 s for Martin. Those recording
+  estimates include room and microphone effects. Frequency and spring-back
+  level retain the listener's choices. Martin still has an approximately
+  4.9 dB air-component onset deficit on matched notes; Eastman does not
+  support a general gain increase. The intrinsic 94.2 Hz retune remains an
+  experiment: raising a bank pole does not necessarily move the loaded
+  transient toward the recordings. See the
+  [2026-10-02 audit](Docs/realism-consolidation-2026-10-02.md).
+  The bank's archtop
 and classical rows, whose tops barely ring there, read the step as 13-43 dB
 too much low end in their attacks, and the piezo reads only the saddle
 motion it causes, not the released force itself: fed that, the hardest
@@ -2415,24 +2422,24 @@ set without it.
   hand sliding on a wound string, buzz, artificial and pinch harmonics, body
   knocks and pick direction are absent. A harmonic's sounding partial runs a few cents sharp of equal
   temperament, which is the stiff string's own inharmonicity plus the model's
-  partial-placement residual, and is not corrected. The bridge hand does not
-  reach a tail left by a taken or replucked string, whose loop is not
-  reconfigured while it rings out. The nominal 10 ms loss setting does not
+  partial-placement residual, and is not corrected. Bridge-hand pressure
+  now reaches a tail left by a taken or replucked string while its captured
+  pitch and intrinsic filters stay fixed. The nominal 10 ms loss setting does not
   bound its lifetime: bridge back-drive kept it active for 1.4–5.0 seconds
   in the overlap audit. A physical contact boundary acting on one continuing
   string, with displacement and velocity preserved through a refret, remains
   unimplemented; the present two-port accounting only makes the existing
   transition's junction algebra consistent.
-- The instrument repeats a pluck exactly, and none of its excitation controls
-  can express the variation real takes show. Across the reference corpus's
+- The instrument varies pluck position, polarisation share and shared stroke
+  speed, but that variation remains narrower than real takes. Across the reference corpus's
   round robins — the same root at the same captured velocity, played again —
   attack spectral centroid ranges by a median 287 cents over the first 40 ms.
   Measured against the model's own sensitivities, reproducing that would take
   30 mm of pluck-point movement on an 85 mm pluck distance, 14 dB of plucking
   force, or a 111% change in release aperture. All three are an order of
   magnitude beyond anything a player does, so the model's attack colour is
-  locked to note and velocity for a reason its excitation parameters cannot
-  reach. The plucking angle is the mechanism this points to. The parallel
+  too closely tied to note and velocity for a reason its excitation parameters
+  cannot reach. The plucking angle is the mechanism this points to. The parallel
   polarisation now radiates where the rocking was measured (Pluck and
   strings), so an angle colours a note rather than only scaling it, but each
   pluck still draws its share from a narrow authored spread (+-0.025 about
@@ -2721,7 +2728,8 @@ set without it.
   split | 14 | 8.2; flat-top A#3 H1 17.8 | 78 | 15 | 8.3; steel A3 H1 8.1 | 30 | 29 |
   8.3; and the low E, where no spring exposes the flamenco body's own 83 and
   91 Hz modes, 4.5--8.6 | 10 | 68 with a split | 7.8). The halo of the
-  one-way idle strings masks most of it today. Scores: no spring 6.8723,
+  then-one-way idle strings masked most of it in that audit; idle strings
+  now participate reciprocally in the junction. Scores: no spring 6.8723,
   6.8800 and 5.8989; the stub 6.4921, 6.4762 and 6.5464 - 5% better on the
   picked splits and 16% worse on the flat-top rows. The chord-tuning
   measurement then decided it (decision log): the stub ships.

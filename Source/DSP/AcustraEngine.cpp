@@ -600,7 +600,18 @@ ModalPole radiationPole(const detail::MeasuredBodyMode& measured, int index,
         * (1.0f + alternating * anchor.asymmetry
            / exact::sqrt(static_cast<float>(index + 1)));
     // AcustraEngine::clamp: a non-finite Q takes the lower bound.
-    const float q = measured.q * wood.q * calibration.bodyQScale;
+    // A modest A0 decay extension on the Original, shared with its bridge
+    // twin below. At the default construction its free radiation T60 rises
+    // from 0.50 to 0.61 s; the loaded note's audible low component rises
+    // from 0.45 to 0.50 s, towards the fingered Eastman and Martin recordings.
+    // Frequency, residues and the listener's spring-back share stay fixed.
+    // The low-frequency joint-body component takes the same ratio so the
+    // blend retains its own relative damping. Higher modes and Bellido do not.
+    // See Docs/realism-consolidation-2026-10-02.md for the measured bracket.
+    constexpr float airQScale = 23.5f / 19.311932f;
+    const float decayScale = !named && measured.frequency > 85.0f
+        && measured.frequency < 105.0f ? airQScale : 1.0f;
+    const float q = measured.q * wood.q * calibration.bodyQScale * decayScale;
     const float low = named ? 1.0f : 4.0f;
     return { frequency, exact::isfinite(q) ? std::max(low, std::min(150.0f, q))
                                            : low };
@@ -3249,9 +3260,9 @@ void AcustraEngine::reset() noexcept
         voice.returnSamples = 0;
         returnToOpenString(voice, string, true);
     }
-    // Initialise every open-string loop. Unplayed strings are driven one-way
-    // by the shared bridge and therefore add no return-impedance phase here;
-    // the repeated pass also preserves the normal post-pluck update order.
+    // Initialise every reciprocal open-string loop. The second pass settles
+    // tuning against all six configured ports and preserves the normal
+    // post-pluck update order.
     for (int pass = 0; pass < 2; ++pass)
         for (int string = 0; string < stringCount; ++string)
             configureVoice(voices_[static_cast<std::size_t>(string)], string,
@@ -3523,6 +3534,7 @@ void AcustraEngine::updateControlState() noexcept
         auto& voice = voices_[static_cast<std::size_t>(string)];
         updateAttackPitch(voice, string);
         configureVoice(voice, string, voice.midiNote, false);
+        updateTailHandLoss(voice);
     }
 }
 
@@ -5965,10 +5977,87 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
         * voice.appliedBendImpedanceScale;
     constexpr float tailT60Seconds = 0.010f;
     voice.tailDamping = handDamping(tailT60Seconds, loopFundamental(voice));
+    // Keep the old pitch and intrinsic loss when the main string is retuned
+    // or aged. Only the heel of the bridge hand is common to both branches:
+    // copying its pressure-dependent coefficients once made CC2 stop
+    // reaching the retained wave. Save the capture coefficients as well so
+    // unchanged pressure, including zero, keeps the old render's exact bits.
+    const int stringIndex = static_cast<int>(&voice - voices_.data());
+    const auto& physical = physicalCalibration_.steel;
+    const float age = parameters_.stringAge;
+    const int stoppedMidi = voice.harmonic > 1 ? voice.openMidi : voice.midiNote;
+    const int fret = std::max(0, stoppedMidi - voice.openMidi);
+    const float fretT60Factor = clamp(1.0f
+        - physicalCalibration_.steelFretT60Slope * static_cast<float>(fret),
+        0.10f, 2.0f);
+    voice.tailHandFrequency = static_cast<float>(sampleRate_)
+                            / voice.contactPeriodSamples;
+    voice.tailHandUnbentFrequency = midiFrequency(stoppedMidi);
+    voice.tailHandIntrinsicT60 = 5.4f * (1.0f - 0.12f * age)
+                              * fretT60Factor * physical.fundamentalT60Scale;
+    voice.tailHandIntrinsicHighLoss = clamp((0.035f + 0.42f * age
+        + 0.018f * static_cast<float>(stringCount - 1 - stringIndex))
+        * physical.frequencyLossScale, 0.0f, 0.95f);
+    voice.tailHandPressure = voice.tailCapturedHandPressure = palmMute_;
+    for (int plane = 0; plane < 2; ++plane)
+    {
+        const auto& loop = voice.loops[static_cast<std::size_t>(plane)];
+        voice.tailCapturedLoopGain[static_cast<std::size_t>(plane)] = loop.loopGain;
+        voice.tailCapturedHighLoss[static_cast<std::size_t>(plane)] = loop.highLossMix;
+    }
     voice.tailLevel = voice.level;
     voice.tailQuietSamples = 0;
     voice.tailActive = true;
     voice.tailRetiring = false;
+}
+
+void AcustraEngine::updateTailHandLoss(Voice& voice) noexcept
+{
+    if (!voice.tailActive || palmMute_ == voice.tailHandPressure)
+        return;
+    voice.tailHandPressure = palmMute_;
+    if (palmMute_ == voice.tailCapturedHandPressure)
+    {
+        voice.tailLoop.loopGain = voice.tailCapturedLoopGain[0];
+        voice.tailParallelLoop.loopGain = voice.tailCapturedLoopGain[1];
+        voice.tailLoop.highLossMix = voice.tailCapturedHighLoss[0];
+        voice.tailParallelLoop.highLossMix = voice.tailCapturedHighLoss[1];
+        return;
+    }
+    // Same additive loss rates and high/fundamental time ratio as
+    // configureVoice. The tail's independent 10 ms repluck damping is kept;
+    // its driven bridge response still passes through these live shelves.
+    // Redesigning the old delay, dispersion or intrinsic filters here would
+    // make its old note follow the newly fretted one.
+    const float handRate = palmMute_ > 0.0f
+        ? palmMute_ / std::exp(std::log(4.0f)
+            + palmMute_ * (std::log(0.080f) - std::log(4.0f)))
+        : 0.0f;
+    const float highLoss = voice.tailHandIntrinsicHighLoss;
+    const float mutedHighLoss = handRate > 0.0f
+        ? clamp(1.0f - (1.0f - highLoss) * std::pow(0.001f,
+              (1.0f / 0.62f - 1.0f) * handRate
+              / std::max(voice.tailHandUnbentFrequency, 1.0f)), 0.0f, 0.95f)
+        : highLoss;
+    float fundamentalT60 = voice.tailHandIntrinsicT60;
+    if (handRate > 0.0f)
+        fundamentalT60 = 1.0f / (1.0f / fundamentalT60 + handRate);
+    const float frequency = voice.tailHandFrequency;
+    const float omega = twoPi * frequency * inverseSampleRate_;
+    const float lossOmega = static_cast<float>(referenceLossOmega(omega, sampleRate_));
+    const auto& loop = voice.tailLoop;
+    const float filterGain = magnitudeForOnePoleMix(
+        loop.broadLossCoefficient, loop.broadLossMix, lossOmega)
+        * magnitudeForOnePoleMix(loop.lowpassCoefficient, mutedHighLoss, lossOmega)
+        * static_cast<float>(bendingLossMagnitude(loop.bendingLossGain,
+            loop.bendingLossA1, loop.bendingLossA2, omega));
+    const float loopGain = std::pow(0.001f,
+        1.0f / std::max(fundamentalT60 * frequency, 1.0f))
+        / std::max(filterGain, 0.50f);
+    voice.tailLoop.loopGain = clamp(loopGain * 0.9995f, 0.70f, 0.999995f);
+    voice.tailParallelLoop.loopGain = clamp(loopGain * 0.9988f, 0.70f, 0.999995f);
+    voice.tailLoop.highLossMix = mutedHighLoss;
+    voice.tailParallelLoop.highLossMix = clamp(mutedHighLoss * 1.08f, 0.0f, 1.0f);
 }
 
 void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
@@ -7146,6 +7235,20 @@ void AcustraEngine::planChord(const int* midiNotes, int count,
     plannedCount_ = search.count;
     plannedChannel_ = midiChannel;
     plannedSample_ = sampleClock_;
+}
+
+int AcustraEngine::plannedString(int midiNote, int midiChannel) const noexcept
+{
+    if (midiNote < 0 || midiNote > 127
+        || plannedSample_ != sampleClock_ || plannedChannel_ != midiChannel)
+        return -1;
+    for (int index = 0; index < plannedCount_; ++index)
+    {
+        const auto slot = static_cast<std::size_t>(index);
+        if (plannedNotes_[slot] == midiNote)
+            return plannedStrings_[slot];
+    }
+    return -1;
 }
 
 // A chord that arrives one key at a time can be fretted into a corner: a

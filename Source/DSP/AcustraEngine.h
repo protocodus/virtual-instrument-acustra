@@ -206,6 +206,11 @@ public:
     // are placed one at a time as before. Inert for string-per-channel
     // controllers and MPE member channels, whose strings are their own.
     void planChord(const int* midiNotes, int count, int midiChannel = 1) noexcept;
+    // The current chord plan's assignment (0 is the low E), or -1 for a
+    // note the plan does not place. Read before noteOn consumes the plan,
+    // so a player can time its stroke across the actual strings, including
+    // strings skipped between them, rather than across pitches.
+    [[nodiscard]] int plannedString(int midiNote, int midiChannel = 1) const noexcept;
     // Observer for displays and tests: the string (0 is the low E) whose key
     // is down for this note on this channel, or -1.
     [[nodiscard]] int heldString(int midiNote, int midiChannel = 1) const noexcept;
@@ -796,6 +801,16 @@ private:
         StringLoop tailParallelLoop {};
         ContactTravel tailContactTravel {};
         float tailDamping { 1.0f };
+        // Intrinsic loss and pitch belong to the captured string. The bridge
+        // hand remains live CC2 expression while that old wave is retained.
+        float tailHandFrequency { 1.0f };
+        float tailHandUnbentFrequency { 1.0f };
+        float tailHandIntrinsicT60 { 1.0f };
+        float tailHandIntrinsicHighLoss { 0.0f };
+        float tailHandPressure { 0.0f };
+        float tailCapturedHandPressure { 0.0f };
+        std::array<float, 2> tailCapturedLoopGain {};
+        std::array<float, 2> tailCapturedHighLoss {};
         // The retained virtual-string branch keeps the port it had at capture,
         // including its applied member bend, while the main voice is retuned.
         float tailCharacteristicImpedance { 0.0f };
@@ -1202,6 +1217,7 @@ private:
     void releaseKey(int midiNote, int midiChannel, bool sustainGiven,
                     bool sustained, float releaseVelocity = -1.0f) noexcept;
     void captureTail(Voice& voice) noexcept;
+    void updateTailHandLoss(Voice& voice) noexcept;
     // The Pick technique's released state (FittedPhysicalData.h): a rest
     // triangle of this height with its apex at position, a fraction of the
     // sounding length from the bridge, smoothed by the contact aperture (in

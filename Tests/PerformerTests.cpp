@@ -31,6 +31,21 @@ void* operator new(std::size_t size)
 void operator delete(void* pointer) noexcept { std::free(pointer); }
 void operator delete(void* pointer, std::size_t) noexcept { std::free(pointer); }
 
+namespace acustra
+{
+struct AcustraEngineTestAccess
+{
+    static int pluckDelay(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].pluckDelay;
+    }
+    static int owners(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].ownerCount;
+    }
+};
+} // namespace acustra
+
 namespace
 {
 using acustra::Performer;
@@ -393,6 +408,147 @@ void testStrumsAreTimedByTheNotesThatSound()
                + " samples late");
     expect(firstSound({ 36, 40, 43 }, { 127, 40, 40 }).second == lowCAudio,
            "an unreachable note's velocity changed the strum's speed");
+}
+
+// A pick traverses physical strings, including the gaps between strings it
+// does not strike. In a crossed C4-E4-G4 voicing E4 is on the high E while G4
+// is on B: sorting the pitches used to reach E before B. An open E2-B3-E4
+// stroke skips A/D/G, whose distance used to disappear from the timing.
+void testStrumsFollowPhysicalStrings()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    for (const double sampleRate : { 44100.0, 48000.0, 96000.0 })
+        for (const bool sparse : { false, true })
+        {
+            const std::array<int, 3> notes = sparse
+                ? std::array<int, 3> { 40, 59, 64 }
+                : std::array<int, 3> { 60, 67, 64 };
+            const std::array<int, 3> expectedStrings = sparse
+                ? std::array<int, 3> { 0, 4, 5 }
+                : std::array<int, 3> { 3, 4, 5 };
+            auto performer = std::make_unique<Performer>();
+            performer->prepare(sampleRate, 64);
+            std::array<float, 64> left {}, right {};
+            const auto stroke = [&]
+            {
+                performer->beginBlock(left.data(), right.data(), 1);
+                for (const int note : notes)
+                    performer->noteOn(0, 1, note, 100);
+                performer->endBlock();
+                std::array<int, 3> delay {};
+                for (std::size_t index = 0; index < notes.size(); ++index)
+                {
+                    const int string = performer->engine().heldString(notes[index]);
+                    expect(string == expectedStrings[index],
+                           "the physical-strum fixture changed string assignment");
+                    // After the first rendered sample this is the number of
+                    // samples left before that string's pick arrives.
+                    delay[index] = string >= 0
+                        ? Access::pluckDelay(performer->engine(), string) : -1;
+                }
+                return delay;
+            };
+            const auto down = stroke();
+            expect(down[0] == 0 && down[1] > 0 && down[2] > down[1],
+                   "a downstroke did not traverse low to high physical strings");
+            if (sparse)
+                expect(std::abs(5 * down[1] - 4 * down[2]) <= 8,
+                       "a downstroke did not cross the three skipped strings");
+            else
+                expect(std::abs(2 * down[1] - down[2]) <= 3,
+                       "adjacent strings did not retain one shared pick speed");
+
+            for (int start = 0; start < sampleAt(0.2, sampleRate); start += 64)
+                performer->process(left.data(), right.data(), 64);
+            const auto up = stroke();
+            expect(up[2] == 0 && up[1] > 0 && up[0] > up[1],
+                   "the returning upstroke did not reverse physical string order");
+            if (sparse)
+                expect(std::abs(5 * up[1] - up[0]) <= 8,
+                       "an upstroke did not cross the three skipped strings");
+            else
+                expect(std::abs(2 * up[1] - up[0]) <= 3,
+                       "the upstroke lost its shared speed between adjacent strings");
+        }
+
+    // Canonical note insertion and block boundaries cannot change either
+    // stroke. Test both the ordinary group and Gather Chords' delayed group.
+    for (const auto notes : { std::array<int, 3> { 60, 64, 67 },
+                              std::array<int, 3> { 40, 59, 64 } })
+        for (const bool gather : { false, true })
+        {
+            const auto phrase = [&](bool reverse)
+            {
+                std::vector<Event> events;
+                for (const double at : { 0.01, 0.15 })
+                    for (std::size_t index = 0; index < notes.size(); ++index)
+                        events.push_back(message(at, 0x90,
+                            notes[reverse ? notes.size() - 1 - index : index], 100));
+                return custom("physical strings", 0.3, events);
+            };
+            const auto reference = render(phrase(false), 48000.0, 1, gather);
+            for (const int blockSize : { 64, 4096 })
+            {
+                const auto audio = render(phrase(true), 48000.0, blockSize, gather);
+                expect(audio == reference,
+                       "physical strum timing changed with insertion order/block size");
+                expect(audio.latency == acustra::AcustraEngine::outputLatencySamples()
+                           + (gather ? Performer::gatherWindowSamples(48000.0) : 0),
+                       "physical strum timing added host latency");
+            }
+        }
+}
+
+// Planning filters unreachable notes and coalesces duplicated keys without
+// losing their owners. Where no complete assignment exists (harmonics or an
+// MPE member), preserve the previous note-by-note schedule and allocation.
+void testPhysicalStrumPlanningKeepsSpecialNotes()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    const auto delays = [](const std::vector<int>& notes, int channel = 1,
+                           bool mpe = false)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 64);
+        std::array<float, 64> left {}, right {};
+        performer->beginBlock(left.data(), right.data(), 1);
+        if (mpe)
+        {
+            performer->controlChange(0, 1, 101, 0);
+            performer->controlChange(0, 1, 100, 6);
+            performer->controlChange(0, 1, 6, 1);
+        }
+        for (const int note : notes)
+            performer->noteOn(0, channel, note, 100);
+        performer->endBlock();
+        std::vector<int> result;
+        for (const int note : notes)
+        {
+            const int string = performer->engine().heldString(note, channel);
+            result.push_back(string >= 0
+                ? Access::pluckDelay(performer->engine(), string) : -1);
+            if (note == 59 && std::count(notes.begin(), notes.end(), note) > 1)
+                expect(string >= 0 && Access::owners(performer->engine(), string) == 2,
+                       "a duplicated key lost an owner in its chord plan");
+        }
+        return result;
+    };
+    const auto ordinary = delays({ 40, 59, 64 });
+    const auto unreachable = delays({ 36, 40, 59, 64 });
+    expect(unreachable[0] == -1
+               && std::equal(ordinary.begin(), ordinary.end(), unreachable.begin() + 1),
+           "an unreachable key changed physical string timing");
+    const auto duplicate = delays({ 40, 59, 64, 59 });
+    expect(std::equal(ordinary.begin(), ordinary.end(), duplicate.begin())
+               && duplicate[1] == duplicate[3],
+           "a duplicated key acquired a second physical string spacing");
+    const auto harmonic = delays({ 60, 64, 67, 88 });
+    expect(harmonic[0] == 0 && harmonic[1] > 0
+               && harmonic[2] > harmonic[1] && harmonic[3] > harmonic[2],
+           "an unplanned harmonic chord changed its existing note-by-note stroke");
+    const auto member = delays({ 60, 64, 67 }, 2, true);
+    expect(member[0] == 0 && member[1] > 0 && member[2] > member[1],
+           "an MPE member's unplanned chord changed its existing stroke");
 }
 
 void testGatheredRollSoundsAsOneSampleChord()
@@ -1038,6 +1194,8 @@ int main()
     testOneSampleIsOneCanonicalEvent();
     testStrumRestIsMeasuredBetweenStrums();
     testStrumsAreTimedByTheNotesThatSound();
+    testStrumsFollowPhysicalStrings();
+    testPhysicalStrumPlanningKeepsSpecialNotes();
     testGatheredRollSoundsAsOneSampleChord();
     testCc68AndReleaseVelocityChangeNothing(battery);
     testHelpersSpellMidi();
