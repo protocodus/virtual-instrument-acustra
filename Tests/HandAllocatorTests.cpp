@@ -65,6 +65,14 @@ struct AcustraEngineTestAccess
     {
         return engine.voices_[static_cast<std::size_t>(string)].ownerCount;
     }
+    static int harmonic(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].harmonic;
+    }
+    static bool pedalHeld(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].pedalHeld;
+    }
 };
 } // namespace acustra
 
@@ -485,6 +493,188 @@ void testRepeatedNotesReplickTheirString()
     }
 }
 
+// D6 is the G string's sixth or the D string's eighth harmonic; B6 is the
+// high E's sixth or the B's eighth. A lower harmonic does not justify taking
+// a held string when the other physical string is available. Both candidates
+// are above the fretted range and within the existing 25-cent tolerance.
+void testNaturalHarmonicsKeepHeldStrings()
+{
+    enum class State { Silent, HeldAndSilent, HeldAndReleased,
+                       ReleasedAndHeld, BothHeld, BothReleased,
+                       HeldAndPedalled, DuplicateHeldAndReleased };
+    for (const auto model : { acustra::GuitarModel::Original,
+                              acustra::GuitarModel::Bellido1978 })
+        for (const double rate : { 44100.0, 48000.0, 96000.0 })
+            for (const int harmonicNote : { 86, 95 })
+                for (const auto state : { State::Silent, State::HeldAndSilent,
+                         State::HeldAndReleased, State::ReleasedAndHeld,
+                         State::BothHeld, State::BothReleased,
+                         State::HeldAndPedalled, State::DuplicateHeldAndReleased })
+                {
+                    auto engine = std::make_unique<AcustraEngine>();
+                    engine->prepare(rate, blockSize);
+                    acustra::EngineParameters parameters;
+                    parameters.room = 0.0f;
+                    parameters.guitarModel = model;
+                    if (model == acustra::GuitarModel::Bellido1978)
+                    {
+                        parameters.shape = acustra::BodyShape::Auditorium;
+                        parameters.bodyMaterial = acustra::BodyMaterial::Mahogany;
+                    }
+                    engine->setParameters(parameters);
+                    const auto advance = [&] (int samples)
+                    {
+                        std::array<float, blockSize> left {}, right {};
+                        while (samples > 0)
+                        {
+                            const int count = std::min(samples, blockSize);
+                            engine->process(left.data(), right.data(), count);
+                            samples -= count;
+                        }
+                    };
+                    const int wait = static_cast<int>(std::lround(0.05 * rate));
+                    advance(wait);
+                    const int lowOrderString = harmonicNote == 86 ? 3 : 5;
+                    const int highOrderString = lowOrderString - 1;
+                    const int lowOrderNote = harmonicNote == 86 ? 55 : 64;
+                    const int highOrderNote = harmonicNote == 86 ? 50 : 59;
+                    if (state != State::Silent)
+                    {
+                        engine->noteOn(lowOrderNote, 0.7f);
+                        advance(wait);
+                    }
+                    if (state != State::Silent && state != State::HeldAndSilent)
+                    {
+                        engine->noteOn(highOrderNote, 0.7f);
+                        advance(wait);
+                    }
+                    if (state == State::ReleasedAndHeld || state == State::BothReleased)
+                        engine->noteOff(lowOrderNote);
+                    if (state == State::HeldAndReleased || state == State::BothReleased
+                        || state == State::DuplicateHeldAndReleased)
+                        engine->noteOff(highOrderNote);
+                    if (state == State::HeldAndPedalled)
+                    {
+                        engine->setSustainPedal(true);
+                        engine->noteOff(highOrderNote);
+                    }
+                    if (state == State::DuplicateHeldAndReleased)
+                        engine->noteOn(lowOrderNote, 0.7f);
+                    advance(blockSize);
+                    const bool preserveHeld = state == State::HeldAndSilent
+                        || state == State::HeldAndReleased
+                        || state == State::HeldAndPedalled
+                        || state == State::DuplicateHeldAndReleased;
+                    if (preserveHeld)
+                    {
+                        expect(engine->heldString(lowOrderNote) == lowOrderString,
+                               "harmonic fixture did not hold its low-order candidate");
+                        expect(!Access::keyDown(*engine, highOrderString),
+                               "harmonic fixture's available candidate was held");
+                    }
+                    if (state == State::HeldAndPedalled)
+                        expect(Access::pedalHeld(*engine, highOrderString),
+                               "harmonic fixture did not retain the released note under the pedal");
+                    const auto before = Access::attackStates(*engine);
+                    const int owners = Access::owners(*engine, lowOrderString);
+                    engine->noteOn(harmonicNote, 0.7f);
+                    const int chosen = preserveHeld ? highOrderString : lowOrderString;
+                    expect(engine->heldString(harmonicNote) == chosen
+                               && Access::harmonic(*engine, chosen) == (preserveHeld ? 8 : 6),
+                           "natural harmonic took a held string ahead of an available one"
+                               " or changed the existing equal-availability choice");
+                    const auto after = Access::attackStates(*engine);
+                    for (int string = 0; string < AcustraEngine::stringCount; ++string)
+                        expect((before[static_cast<std::size_t>(string)]
+                                    != after[static_cast<std::size_t>(string)]) == (string == chosen),
+                               "harmonic allocation released an attack on the wrong string");
+                    if (preserveHeld)
+                    {
+                        expect(engine->heldString(lowOrderNote) == lowOrderString
+                                   && Access::owners(*engine, lowOrderString) == owners,
+                               "a natural harmonic stole a held note or its duplicate owners");
+                        if (owners == 2)
+                        {
+                            engine->noteOff(lowOrderNote);
+                            expect(engine->heldString(lowOrderNote) == lowOrderString
+                                       && Access::owners(*engine, lowOrderString) == 1,
+                                   "a harmonic lost one of the held note's owners");
+                            engine->noteOff(lowOrderNote);
+                            expect(engine->heldString(lowOrderNote) < 0,
+                                   "a held note preserved by a harmonic ignored its final key-up");
+                        }
+                    }
+                    if (state == State::BothHeld || state == State::ReleasedAndHeld)
+                        expect(engine->heldString(highOrderNote) == highOrderString,
+                               "a harmonic changed its existing all-held fallback");
+                }
+}
+
+void testReleasedHarmonicReplucksItsString()
+{
+    for (const auto model : { acustra::GuitarModel::Original,
+                              acustra::GuitarModel::Bellido1978 })
+        for (const double rate : { 44100.0, 48000.0, 96000.0 })
+            for (const int note : { 86, 95 })
+            {
+                auto engine = std::make_unique<AcustraEngine>();
+                engine->prepare(rate, blockSize);
+                acustra::EngineParameters parameters;
+                parameters.room = 0.0f;
+                parameters.guitarModel = model;
+                if (model == acustra::GuitarModel::Bellido1978)
+                {
+                    parameters.shape = acustra::BodyShape::Auditorium;
+                    parameters.bodyMaterial = acustra::BodyMaterial::Mahogany;
+                }
+                engine->setParameters(parameters);
+                std::array<float, blockSize> left {}, right {};
+                for (int block = 0; block < 80; ++block)
+                    engine->process(left.data(), right.data(), blockSize);
+                engine->noteOn(note, 0.7f);
+                const int original = engine->heldString(note);
+                expect(original == (note == 86 ? 3 : 5)
+                           && Access::harmonic(*engine, original) == 6,
+                       "an isolated harmonic's original string choice changed");
+                if (original < 0)
+                    continue;
+                for (int block = 0; block < 40; ++block)
+                    engine->process(left.data(), right.data(), blockSize);
+                engine->noteOff(note);
+                engine->process(left.data(), right.data(), blockSize);
+                expect(!Access::keyDown(*engine, original)
+                           && Access::ringing(*engine, original),
+                       "repeated harmonic fixture was no longer ringing after key-up");
+                const auto before = Access::attackStates(*engine);
+                engine->noteOn(note, 0.7f);
+                expect(engine->heldString(note) == original
+                           && Access::harmonic(*engine, original) == 6,
+                       "a released harmonic hopped to an unused string on its repeat");
+                const auto after = Access::attackStates(*engine);
+                for (int string = 0; string < AcustraEngine::stringCount; ++string)
+                    expect((before[static_cast<std::size_t>(string)]
+                                != after[static_cast<std::size_t>(string)]) == (string == original),
+                           "repeating a harmonic excited a different physical string");
+                // A tuning change retunes the old vibration. The stale MIDI
+                // owner must not make canSound accept an unreachable pitch:
+                // B6 has no eligible natural harmonic in Half Step Down.
+                if (note == 95)
+                {
+                    engine->noteOff(note);
+                    parameters.tuning = acustra::Tuning::HalfStepDown;
+                    engine->setParameters(parameters);
+                    engine->process(left.data(), right.data(), blockSize);
+                    expect(!engine->canSound(note),
+                           "a ringing harmonic bypassed the new tuning's pitch eligibility");
+                    const auto tunedBefore = Access::attackStates(*engine);
+                    engine->noteOn(note, 0.7f);
+                    expect(engine->heldString(note) < 0
+                               && Access::attackStates(*engine) == tunedBefore,
+                           "a stale harmonic assignment sounded an unreachable note after retuning");
+                }
+            }
+}
+
 void testControllerStringsAreUnchanged()
 {
     // String-per-channel: the channel names the string, hand or no hand.
@@ -797,6 +987,8 @@ int main()
     testScaleRunStaysInPositionThenShifts();
     testMelodyOverHeldBassKeepsTheBass();
     testRepeatedNotesReplickTheirString();
+    testNaturalHarmonicsKeepHeldStrings();
+    testReleasedHarmonicReplucksItsString();
     testControllerStringsAreUnchanged();
     testChordsOnOneSampleAreOneShape();
     testHandTimedStrumsKeepTheirAttacks();

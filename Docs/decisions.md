@@ -4,6 +4,62 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-10-02 — natural harmonics preserve available strings and ringing repeats
+
+D6 can sound as the G string's sixth or D string's eighth harmonic. The
+allocator preferred the sixth even when G was held and D had just been
+released, dropping the held G unnecessarily. B6 has the equivalent high-E/B
+choice. Natural harmonics now prefer unused strings, then key-up strings,
+before taking held keys; the lower-node and existing tie preferences remain
+within each availability class. A released harmonic repeats on its ringing
+string, following the regular allocator's continuity rule. Its current
+tuning must still reach the requested pitch within the existing 25-cent
+tolerance. No contact/body parameter, visible control or legato changes.
+
+Both presets at three rates cover 96 availability cases, 12 repeats and six
+retuning cases. The pre-change library fails 192 assertions in 48 affected
+fixtures. The four affected native suites, strict C++17 compilation and JUCE
+processor test pass. All 246 existing recording renders and all twelve full
+score reports, descriptor counts and residual arrays remain exact. Those
+MIDI 40–84 recordings guard the established tone; they do not test the new
+above-fretboard behavior. Public A/B examples expose the higher-node timbre
+and preserved note without an inferred listener preference.
+
+An additional frozen GuitarSet annotation replay checks the earlier sounded
+chord-attack commitment. On six fixed twelve-second excerpts, each model
+removes two collateral remaps/reattacks, retaining all 315 explicit attacks
+at their supplied sample and losing no held keys. This is an event/assignment
+measurement, not a waveform score. The two affected passages also widen
+positive-fret spans from 0/1 to 10/7; preserving sounded strings can exceed
+the hand's stretch. The existing 12 occupied-string takes in 88 synthetic
+rolls remain disclosed. Fewer extra attacks therefore do not establish
+uniformly more physical chords. Timing annotations, collapsed MIDI channels,
+fixed velocity and omitted fractional bends limit the comparison. See the
+[playing verification](realism-playing-verification-2026-10-02.md).
+
+## 2026-10-02 — seed uncertainty and source geometry do not select a sound change
+
+The 32-seed native Finger audit shows that the earlier fixed burst draw
+inflated aggregate rate spread. Both declared windows, all channels and
+individual unadjusted bootstrap intervals remain retained; per-note
+differences and capture cancellation remain. This does not establish a
+sample-rate defect, Finger velocity ground truth or a new listening choice.
+The earlier width screen's failed gate remains failed.
+
+Rotating Finger's burst toward the selected stroke direction preserves its
+Euclidean gain-vector norm, not injected work. Bass attack descriptors improve
+on both presets, but three individual corpus comparisons fail the declared
+1% total/body guard. Common pluck centers fail seven of twelve comparisons;
+their static normal release force changes with the geometry, so body-term
+changes cannot identify comb alignment alone. Both source candidates remain
+excluded. Full outcomes and frozen methods are in the
+[seed and geometry report](realism-seed-and-geometry-2026-10-02.md).
+
+The primary IDMT-SMT-Guitar archive was also inspected for stronger Finger
+references. Its acoustic pieces have chord/pattern labels; note/string/Finger
+XML belongs to electric recordings. It does not supply identified acoustic
+Finger velocity tiers. No source gain or velocity law is fitted to it.
+
 ## 2026-10-02 — bounded Finger and low-body screens reject further timbre changes
 
 The both-model baseline now supports native candidate comparisons. Finger

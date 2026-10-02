@@ -6853,8 +6853,22 @@ AcustraEngine::chooseHarmonic(int midiNote) const noexcept
     constexpr int highestHarmonic = 8;
     constexpr float toleranceCents = 25.0f;
     const float wanted = midiFrequency(midiNote);
+    // Re-strike a released harmonic on the string still ringing it, just
+    // as chooseString does for a fretted note. Moving to an unused string
+    // would leave the first vibration sounding alongside the new attack.
+    for (int string = stringCount - 1; string >= 0; --string)
+    {
+        const auto& voice = voices_[static_cast<std::size_t>(string)];
+        if (voice.played && !voice.keyDown && voice.harmonic > 1
+            && voice.midiNote == midiNote && voice.level > 2.0e-7f
+            // Tuning automation can move the ringing harmonic away from
+            // its requested MIDI pitch. It must still reach this note.
+            && exact::abs(1200.0f * std::log2(midiFrequency(voice.openMidi)
+                * static_cast<float>(voice.harmonic) / wanted)) <= toleranceCents)
+            return { string, voice.harmonic };
+    }
     HarmonicChoice best {};
-    bool bestFree = false;
+    int bestAvailability = 0;
     for (int string = stringCount - 1; string >= 0; --string)
     {
         const auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -6865,14 +6879,15 @@ AcustraEngine::chooseHarmonic(int midiNote) const noexcept
             if (exact::abs(1200.0f * std::log2(sounding / wanted))
                 > toleranceCents)
                 continue;
-            // Prefer a string nobody is using, then the lowest node, which is
+            // Prefer an unused string, then one whose key is up, before
+            // taking a held note. Within that choice the lowest node is
             // the loudest and the one a player reaches for first.
-            const bool free = !voice.played;
-            if (best.string < 0 || (free && !bestFree)
-                || (free == bestFree && harmonic < best.harmonic))
+            const int availability = !voice.played ? 0 : !voice.keyDown ? 1 : 2;
+            if (best.string < 0 || availability < bestAvailability
+                || (availability == bestAvailability && harmonic < best.harmonic))
             {
                 best = { string, harmonic };
-                bestFree = free;
+                bestAvailability = availability;
             }
             break;
         }
