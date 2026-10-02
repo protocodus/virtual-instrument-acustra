@@ -22,12 +22,18 @@ done
 if command -v xcodebuild >/dev/null 2>&1 \
     && xcodebuild -version >/dev/null 2>&1; then
     GENERATOR=Xcode
-elif command -v ninja >/dev/null 2>&1 \
-    && xcrun --sdk macosx --show-sdk-path >/dev/null 2>&1; then
+elif xcrun --sdk macosx --show-sdk-path >/dev/null 2>&1; then
     # Command Line Tools contain the macOS SDK and both universal compilers.
-    GENERATOR=Ninja
+    if command -v ninja >/dev/null 2>&1; then
+        GENERATOR=Ninja
+    elif command -v make >/dev/null 2>&1; then
+        GENERATOR="Unix Makefiles"
+    else
+        echo "error: Command Line Tools builds require Ninja or Make" >&2
+        exit 1
+    fi
 else
-    echo "error: install Xcode, or Command Line Tools and Ninja" >&2
+    echo "error: install Xcode or Command Line Tools" >&2
     exit 1
 fi
 
