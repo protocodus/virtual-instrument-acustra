@@ -57,6 +57,7 @@ void render(const std::filesystem::path& path, std::vector<Event> events,
     parameters.room = room;
     player->setParameters(parameters);
     player->prepare(rate, 64);
+    player->setGatherChords(false);
     player->engine().setStringPerChannelMode(stringChannels);
     constexpr int frames = 5 * rate;
     std::vector<float> audio(2 * frames);
@@ -97,6 +98,22 @@ std::vector<Event> chords(std::initializer_list<int> notes)
         }
     return events;
 }
+
+std::vector<Event> rolledChords(std::initializer_list<int> notes)
+{
+    std::vector<Event> events;
+    for (const int start : { rate / 5, 3 * rate / 2, 14 * rate / 5 })
+    {
+        int offset = 0;
+        for (const int note : notes)
+        {
+            events.push_back({ start + offset, 0x90, 1, note, 100 });
+            events.push_back({ start + rate * 3 / 4, 0x80, 1, note, 64 });
+            offset += rate / 100;
+        }
+    }
+    return events;
+}
 }
 
 int main(int argc, char** argv)
@@ -123,8 +140,10 @@ int main(int argc, char** argv)
             { rate * 3, 0xb0, 1, 2, 0 }
         }, true);
         render(directory / "04-high-notes-air-decay.wav", chords({ 72 }), false, 0.0f);
-        std::cout << "Four 5-second stereo review cases at 48 kHz; strums/mute\n"
-                     "at Room 50%, high-note decay dry.\n";
+        render(directory / "05-live-rolled-chord.wav", rolledChords({ 60, 64, 67 }), false, 0.0f);
+        render(directory / "06-dense-live-roll.wav", rolledChords({ 47, 55, 60, 64, 71 }), false, 0.0f);
+        std::cout << "Six 5-second stereo review cases at 48 kHz; strums/mute\n"
+                     "at Room 50%, high-note decay and live rolls dry.\n";
         return 0;
     }
     catch (const std::exception& e)

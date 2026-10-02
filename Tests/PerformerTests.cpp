@@ -43,6 +43,14 @@ struct AcustraEngineTestAccess
     {
         return engine.voices_[static_cast<std::size_t>(string)].ownerCount;
     }
+    static std::array<std::uint32_t, AcustraEngine::stringCount> attackStates(
+        const AcustraEngine& engine)
+    {
+        std::array<std::uint32_t, AcustraEngine::stringCount> states {};
+        for (std::size_t string = 0; string < states.size(); ++string)
+            states[string] = engine.voices_[string].randomState;
+        return states;
+    }
 };
 } // namespace acustra
 
@@ -295,6 +303,82 @@ Event message(double seconds, std::uint8_t status, int data1, int data2,
     event.bytes[2] = static_cast<std::uint8_t>(data2);
     event.size = size;
     return event;
+}
+
+void testLiveRollKeepsItsOriginalAttacks()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    const std::vector<Event> events {
+        message(0.010, 0x90, 60, 100), message(0.020, 0x90, 64, 100),
+        message(0.030, 0x90, 67, 100) };
+    const auto roll = custom("committed roll", 0.09, events);
+    const auto lone = custom("first rolled note", 0.09, { events.front() });
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+    {
+        const auto reference = render(roll, rate, 1, false);
+        const auto first = render(lone, rate, 1, false);
+        const auto prefix = static_cast<std::size_t>(sampleAt(0.020, rate));
+        expect(std::equal(first.left.begin(), first.left.begin() + prefix,
+                          reference.left.begin())
+                   && std::equal(first.right.begin(), first.right.begin() + prefix,
+                                 reference.right.begin()),
+               "a future rolled key changed the first attack or added look-ahead");
+        expect(std::any_of(reference.left.begin(), reference.left.begin() + prefix,
+                          [](float sample) { return std::abs(sample) > 1e-6f; }),
+               "a live roll waited for later pitches before sounding its first key");
+
+        // The per-string pluck generator is advanced by a release, never by
+        // ongoing burst noise. An isolated open-string release gives the
+        // state after one attack on that string, independently of chord
+        // reshaping. It detects hidden second attacks even in a large block
+        // containing all three onsets.
+        auto fresh = std::make_unique<acustra::AcustraEngine>();
+        fresh->prepare(rate, 64);
+        const auto initial = Access::attackStates(*fresh);
+        auto expected = initial;
+        constexpr std::array<int, 6> open { 40, 45, 50, 55, 59, 64 };
+        for (const int string : { 3, 4, 5 })
+        {
+            auto isolated = std::make_unique<acustra::AcustraEngine>();
+            isolated->prepare(rate, 64);
+            isolated->noteOn(open[static_cast<std::size_t>(string)], 100.0f / 127.0f);
+            expected[static_cast<std::size_t>(string)]
+                = Access::attackStates(*isolated)[static_cast<std::size_t>(string)];
+        }
+        for (const int frames : { 1, 64, 4096 })
+        {
+            const auto audio = render(roll, rate, frames, false);
+            expect(audio == reference,
+                   "a committed roll changed with block size " + std::to_string(frames));
+            expect(audio.latency == acustra::AcustraEngine::outputLatencySamples(),
+                   "committing a sounded string added player latency");
+            auto performer = std::make_unique<Performer>();
+            performer->prepare(rate, frames);
+            std::vector<float> left(static_cast<std::size_t>(frames)), right(left.size());
+            const int length = sampleAt(0.040, rate);
+            for (int start = 0; start < length; start += frames)
+            {
+                const int count = std::min(frames, length - start);
+                performer->beginBlock(left.data(), right.data(), count);
+                for (const auto& event : events)
+                {
+                    const int at = sampleAt(event.seconds, rate);
+                    if (at >= start && at < start + count)
+                        performer->handleMidi(at - start, event.bytes.data(), event.size);
+                }
+                performer->endBlock();
+            }
+            expect(performer->engine().heldString(60) == 4
+                       && performer->engine().heldString(64) == 5
+                       && performer->engine().heldString(67) == 3,
+                   "a later live key moved a committed physical string");
+            expect(Access::attackStates(performer->engine()) == expected,
+                   "three live keys created more than three releases");
+            for (const int string : { 3, 4, 5 })
+                expect(Access::owners(performer->engine(), string) == 1,
+                       "a live chord lost a sounded key's ownership");
+        }
+    }
 }
 
 // The two-second rest that starts strumming over on a downstroke is
@@ -1192,6 +1276,7 @@ int main()
     testBatteryPlaysSoundsAndRepeats(battery);
     testBlockSizeDoesNotChangeThePerformance(battery);
     testOneSampleIsOneCanonicalEvent();
+    testLiveRollKeepsItsOriginalAttacks();
     testStrumRestIsMeasuredBetweenStrums();
     testStrumsAreTimedByTheNotesThatSound();
     testStrumsFollowPhysicalStrings();

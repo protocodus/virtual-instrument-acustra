@@ -976,6 +976,9 @@ private:
         int returnSamples { 0 };
         // Samples until a scheduled pluck is released; zero when none waits.
         int pluckDelay { 0 };
+        // Once this note's first release has fired, live chord formation
+        // cannot move its physical string or manufacture another attack.
+        bool attackFired { false };
         // A held string keeps its wave until this scheduled re-pluck fires.
         bool repluckPending { false };
         // A strum member whose key came up before the pick reached it: the

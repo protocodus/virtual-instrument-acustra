@@ -50,6 +50,21 @@ struct AcustraEngineTestAccess
     {
         return engine.voices_[static_cast<std::size_t>(string)].keyDown;
     }
+    // This generator advances only when initialisePluck releases an attack;
+    // the continuing excitation noise has its own generator. Its change
+    // therefore detects an extra attack without adding a production counter.
+    static std::array<std::uint32_t, AcustraEngine::stringCount> attackStates(
+        const AcustraEngine& engine)
+    {
+        std::array<std::uint32_t, AcustraEngine::stringCount> states {};
+        for (std::size_t string = 0; string < states.size(); ++string)
+            states[string] = engine.voices_[string].randomState;
+        return states;
+    }
+    static int owners(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].ownerCount;
+    }
 };
 } // namespace acustra
 
@@ -154,46 +169,43 @@ bool sameShape(const std::vector<Placement>& shape,
     return true;
 }
 
-void testRolledTriadStaysInOneHand()
+void testRolledTriadKeepsItsAttacks()
 {
-    // C4-E4-G4 rolled low to high, 10 ms apart, as a keyboard hand plays it.
-    // Taken one key at a time with no hand, C4 claims the B string's first
-    // fret and E4 the open E, and G4 was left the G string's twelfth fret:
-    // an eleven-fret stretch no hand makes.
-    // D4-F#4-A4 and E4-G4-B4 stretched 12 and 8 frets the same way.
-    for (const auto& triad : { std::vector<int> { 62, 66, 69 },
+    // With no look-ahead C4 claims B1 and E4 the open high E before G4
+    // arrives. Moving C4 to G5 then used to pluck it again. These exposed
+    // rolls keep each attack where it sounded, accepting the wider final
+    // fingering. The whole-shape/Gather tests retain the one-hand gate.
+    for (const auto& triad : { std::vector<int> { 60, 64, 67 },
+                               std::vector<int> { 62, 66, 69 },
                                std::vector<int> { 64, 67, 71 } })
     {
-        auto other = freshEngine();
+        auto engine = freshEngine();
+        std::vector<int> played;
         for (const int note : triad)
         {
-            other->noteOn(note, 0.8f);
-            run(*other, 0.010);
+            const auto before = shapeOf(*engine, played);
+            const auto attacks = Access::attackStates(*engine);
+            engine->noteOn(note, 0.8f);
+            const auto after = shapeOf(*engine, played);
+            const auto nextAttacks = Access::attackStates(*engine);
+            int fired = 0;
+            for (std::size_t string = 0; string < attacks.size(); ++string)
+                fired += attacks[string] != nextAttacks[string] ? 1 : 0;
+            expect(fired == 1, "one rolled key created " + std::to_string(fired)
+                       + " attacks instead of one");
+            for (std::size_t index = 0; index < played.size(); ++index)
+                expect(after[index].string == before[index].string,
+                       "a later rolled key moved an already sounded note");
+            played.push_back(note);
+            run(*engine, 0.010);
         }
-        const auto shape = shapeOf(*other, triad);
+        const auto shape = shapeOf(*engine, triad);
         std::cout << "Acustra rolled triad " << triad[0] << "-" << triad[1]
                   << "-" << triad[2] << " over 20 ms: " << describe(shape) << '\n';
-        expect(oneHand(shape, 4),
-               "a rolled triad is not one hand's shape: " + describe(shape));
+        expect(std::all_of(shape.begin(), shape.end(), [](const Placement& note)
+                   { return note.string >= 0; }),
+               "preserving a rolled attack dropped a triad note");
     }
-    auto engine = freshEngine();
-    engine->noteOn(60, 0.8f);
-    run(*engine, 0.010);
-    engine->noteOn(64, 0.8f);
-    run(*engine, 0.010);
-    engine->noteOn(67, 0.8f);
-    const auto shape = shapeOf(*engine, { 60, 64, 67 });
-    std::cout << "Acustra rolled C4-E4-G4 over 20 ms: " << describe(shape) << '\n';
-    expect(oneHand(shape, 4),
-           "a rolled C major triad is not one hand's shape: " + describe(shape));
-    // The refretted string is replucked, not left sounding its old note.
-    run(*engine, 0.4);
-    int sounding = 0;
-    for (int string = 0; string < AcustraEngine::stringCount; ++string)
-        sounding += Access::soundingNote(*engine, string) >= 0 ? 1 : 0;
-    expect(sounding == 3,
-           "refretting the rolled triad left a fourth string sounding: "
-               + std::to_string(sounding));
 
     // Spread wider than the chord window the notes are melody, not a chord,
     // and nothing already sounding moves.
@@ -251,6 +263,84 @@ void testRefrettedStrumMemberLetGoIsReleased()
         expect(released, "a let-go strum member refretted as its pick fell due "
                          "kept its key down: lead " + std::to_string(lead));
     }
+}
+
+void testOnlyUnfiredAttacksMove()
+{
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const int frames : { 1, 64, 4096 })
+        {
+            const auto advance = [frames](AcustraEngine& engine, int samples)
+            {
+                std::vector<float> left(static_cast<std::size_t>(frames));
+                std::vector<float> right(left.size());
+                while (samples > 0)
+                {
+                    const int count = std::min(samples, frames);
+                    engine.process(left.data(), right.data(), count);
+                    samples -= count;
+                }
+            };
+            auto engine = std::make_unique<AcustraEngine>();
+            engine->prepare(rate, frames);
+            // The two first keys have not sounded. A duplicate owns the
+            // same pending release; it does not imply a preceding attack.
+            engine->noteOn(64, 0.8f, 1, 1500, true);
+            engine->noteOn(60, 0.8f, 1, 2500, true);
+            engine->noteOn(60, 0.8f, 1, 2500, true);
+            advance(*engine, 100);
+            const int from = engine->heldString(60);
+            const int delay = Access::pluckDelay(*engine, from);
+            const auto before = Access::attackStates(*engine);
+            engine->noteOn(67, 0.8f, 1, 2000, true);
+            const int to = engine->heldString(60);
+            expect(to >= 0 && to != from,
+                   "the unfired doubled C4 was not moved into the pending chord shape");
+            expect(Access::attackStates(*engine) == before,
+                   "planning a pending shape released an attack before its pick");
+            expect(to >= 0 && Access::pluckDelay(*engine, to) == delay,
+                   "moving an unfired attack changed its remaining delay");
+            expect(to >= 0 && Access::owners(*engine, to) == 2,
+                   "moving an unfired attack dropped its duplicate owner");
+            if (to >= 0)
+            {
+                advance(*engine, delay - 1);
+                const auto waiting = Access::attackStates(*engine);
+                expect(waiting[static_cast<std::size_t>(to)]
+                           == before[static_cast<std::size_t>(to)],
+                       "the moved attack fired before its original due sample");
+                advance(*engine, 1);
+                expect(Access::attackStates(*engine)[static_cast<std::size_t>(to)]
+                           != waiting[static_cast<std::size_t>(to)],
+                       "the moved attack missed its original due sample");
+                engine->noteOff(60);
+                expect(Access::keyDown(*engine, to) && Access::owners(*engine, to) == 1,
+                       "the first key-up released both pending owners");
+                engine->noteOff(60);
+                expect(!Access::keyDown(*engine, to),
+                       "the final key-up did not release the moved attack");
+            }
+
+            auto sounded = std::make_unique<AcustraEngine>();
+            sounded->prepare(rate, frames);
+            sounded->noteOn(60, 0.8f);
+            advance(*sounded, static_cast<int>(0.010 * rate));
+            sounded->noteOn(64, 0.8f);
+            advance(*sounded, static_cast<int>(0.005 * rate));
+            const int committed = sounded->heldString(60);
+            sounded->noteOn(60, 0.8f, 1, 2500, true);
+            const int repeatedDelay = Access::pluckDelay(*sounded, committed);
+            const auto prior = Access::attackStates(*sounded);
+            sounded->noteOn(67, 0.8f);
+            const auto next = Access::attackStates(*sounded);
+            expect(sounded->heldString(60) == committed
+                       && Access::pluckDelay(*sounded, committed) == repeatedDelay,
+                   "a pending explicit repeat moved its already sounded string");
+            expect(next[static_cast<std::size_t>(committed)]
+                       == prior[static_cast<std::size_t>(committed)]
+                       && Access::owners(*sounded, committed) == 2,
+                   "joining a live chord restarted or lost a pending explicit repeat");
+        }
 }
 
 void playOneKeyAtATime(AcustraEngine& engine, const std::vector<int>& notes,
@@ -442,6 +532,11 @@ void testChordsOnOneSampleAreOneShape()
             { { 1, 3 } } } },
         { "D major", { 66, 62, 57, 50 },
           { { { 5, 2 } }, { { 4, 3 } }, { { 3, 2 } }, { { 2, 0 } } } },
+        // These ungathered downstrokes can use up all three strings the
+        // final high note reaches. A complete plan keeps every note.
+        { "B2-G3-C4-E4-B4", { 71, 64, 60, 55, 47 }, {} },
+        { "B2-G3-B3-G4-B4", { 71, 67, 59, 55, 47 }, {} },
+        { "B2-G3-C4-G4-C5", { 72, 67, 60, 55, 47 }, {} },
     };
     for (const auto& chord : cases)
     {
@@ -493,18 +588,12 @@ void testChordsOnOneSampleAreOneShape()
                      + describe(second));
 }
 
-// A strum played by hand reaches the engine one string at a time, 5-20 ms
-// apart, not on one sample, so no plan places it: each note is chosen as it
-// comes and the forming chord is refretted around it. A shape the refret
-// found that moved none of the held notes - only the new one, to another
-// string - was thrown away and the new note left on the string first
-// chosen: an upstroke's B2 on the A string's second fret under G3-C4-E4-B4
-// held at frets 5-7, a five-fret stretch, and a downstroke's A2-C3-G3-D4-G4
-// ended with G4 on the open-position high E under a C3 at the low E's eighth
-// fret and a D4 at the D string's twelfth. Every chord here, strummed either
-// way at every spacing after an open G has been let go, must come out one
-// note to a string within the span the same-sample chords keep.
-void testHandTimedStrumsStayInOneHand()
+// An ungathered physical stroke reaches the engine without its future
+// pitches. Commit each attack as it sounds; a later key can choose another
+// string but cannot regenerate earlier attacks to improve the final shape.
+// Report the fingering compromise rather than requiring an extra pluck to
+// make every arrival order end in the same one-hand shape.
+void testHandTimedStrumsKeepTheirAttacks()
 {
     const std::vector<std::vector<int>> chords {
         { 40, 47, 52, 56, 59, 64 }, { 45, 52, 57, 60, 64 },
@@ -514,7 +603,7 @@ void testHandTimedStrumsStayInOneHand()
         { 45, 48, 55, 62, 67 }, { 47, 55, 59, 67, 71 },
         { 47, 55, 60, 67, 72 } };
     const std::vector<int> openG { 43, 47, 50, 55, 59, 67 };
-    int strums = 0, impossible = 0;
+    int strums = 0, impossible = 0, takenNotes = 0, forcedTakes = 0;
     for (const auto& chord : chords)
         for (const double gap : { 0.005, 0.010, 0.015, 0.020 })
             for (const bool upstroke : { false, true })
@@ -528,9 +617,43 @@ void testHandTimedStrumsStayInOneHand()
                 auto order = chord;
                 if (upstroke)
                     std::reverse(order.begin(), order.end());
-                playOneKeyAtATime(*engine, order, gap);
+                for (const int note : order)
+                {
+                    const auto before = Access::attackStates(*engine);
+                    std::array<int, AcustraEngine::stringCount> committed {};
+                    bool available = false;
+                    for (int string = 0; string < AcustraEngine::stringCount; ++string)
+                    {
+                        committed[static_cast<std::size_t>(string)]
+                            = Access::keyDown(*engine, string)
+                                ? Access::soundingNote(*engine, string) : -1;
+                        const int fret = note - Access::openMidi(*engine, string);
+                        available |= committed[static_cast<std::size_t>(string)] < 0
+                            && fret >= 0 && fret <= AcustraEngine::fretCount;
+                    }
+                    engine->noteOn(note, 0.7f);
+                    const auto after = Access::attackStates(*engine);
+                    int fired = 0;
+                    for (std::size_t string = 0; string < before.size(); ++string)
+                        fired += before[string] != after[string] ? 1 : 0;
+                    expect(fired == 1, "one hand-timed key regenerated earlier attacks");
+                    for (int string = 0; string < AcustraEngine::stringCount; ++string)
+                    {
+                        const int earlier = committed[static_cast<std::size_t>(string)];
+                        if (earlier < 0 || engine->heldString(earlier) == string)
+                            continue;
+                        expect(!available,
+                               "an incoming key took a sounded note while a valid free string served");
+                        expect(engine->heldString(note) == string,
+                               "an incoming key removed a sounded note from a different string");
+                        ++forcedTakes;
+                    }
+                    run(*engine, gap);
+                }
                 const auto shape = shapeOf(*engine, chord);
                 ++strums;
+                takenNotes += std::any_of(shape.begin(), shape.end(),
+                    [](const Placement& note) { return note.string < 0; }) ? 1 : 0;
                 if (!oneHand(shape, 4))
                 {
                     ++impossible;
@@ -540,9 +663,9 @@ void testHandTimedStrumsStayInOneHand()
                 }
             }
     std::cout << "Acustra hand-timed strums outside one hand: " << impossible
-              << " of " << strums << '\n';
-    expect(impossible == 0, "hand-timed strums fretted beyond one hand: "
-               + std::to_string(impossible) + " of " + std::to_string(strums));
+              << " of " << strums << "; incoming notes took an occupied string in "
+              << takenNotes << " of " << strums << " (" << forcedTakes
+              << " takes with no valid free string)\n";
 }
 
 void testForgottenHandIsTheHandlessAllocator()
@@ -639,10 +762,8 @@ void testAllocatorCost()
         widest = std::min(widest, microseconds(start) / (repeats / 10));
     }
 
-    // The rolled triad's refret: C4 and E4 down 10 ms apart, G4 chosen on
-    // the G string's twelfth fret. The refret changes the engine, so each
-    // timing runs cold on its own copy, and the best of them is the refret's
-    // cost.
+    // The exposed rolled triad keeps C4 and E4 on their sounded strings;
+    // searching the constrained shape cannot regenerate their attacks.
     auto rolled = freshEngine();
     rolled->noteOn(60, 0.8f);
     run(*rolled, 0.010);
@@ -660,7 +781,7 @@ void testAllocatorCost()
     std::cout << "Acustra allocator cost per note-on (best of "
               << passes << " passes, refret best of " << copies << "): single " << single
               << " us, six-note plan " << plan << " us (widest search "
-              << widest << " us), rolled-chord refret with two replucks "
+              << widest << " us), committed rolled-chord search "
               << reshape << " us\n";
     expect(single < 20.0 && plan < 500.0 && widest < 1000.0 && reshape < 500.0,
            "the hand allocator is too slow for a note-on");
@@ -669,15 +790,16 @@ void testAllocatorCost()
 
 int main()
 {
-    testRolledTriadStaysInOneHand();
+    testRolledTriadKeepsItsAttacks();
     testRefrettedStrumMemberLetGoIsReleased();
+    testOnlyUnfiredAttacksMove();
     testOpenChordsOneKeyAtATime();
     testScaleRunStaysInPositionThenShifts();
     testMelodyOverHeldBassKeepsTheBass();
     testRepeatedNotesReplickTheirString();
     testControllerStringsAreUnchanged();
     testChordsOnOneSampleAreOneShape();
-    testHandTimedStrumsStayInOneHand();
+    testHandTimedStrumsKeepTheirAttacks();
     testForgottenHandIsTheHandlessAllocator();
     testAllocatorCost();
     if (failures == 0)

@@ -4,6 +4,36 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-10-02 — live chords keep their attacks; low ringing gets a coupled probe
+
+After merging PR #12, the user approved the recommended follow-up. A live
+forming chord can now move only attacks that have not fired. An already
+sounded note retains its physical string, including while it waits for an
+explicit repeat. Pending moves retain their original delay and duplicate
+owners. The exposed C4–E4–G4 roll no longer adds a second C4 attack when G4
+arrives; no latency or visible control is added.
+
+The allocation compromise is explicit. Some exposed rolls keep wide
+fingerings, and twelve of 88 hand-timed stroke fixtures have no free string
+that can fret their final high note. The incoming note takes a held string
+under the normal six-string allocator. Same-sample and Gather plans retain
+every note in those shapes. The listener can review both the ordinary roll
+and this dense-roll limitation; the patch is not recorded as a choice made
+by ear. The report is
+[realism-attribution-2026-10-02.md](realism-attribution-2026-10-02.md).
+
+The ringing probe retains all six reciprocal ports and traces individual
+body contributions and string motion. Its perturbations use public
+Standard/Drop D tuning and passive added low-E loss. A custom-tuning helper
+failed an independent comparison against public Drop D and was discarded;
+its measurements do not support the conclusions. A sympathy-off difference
+changes the mechanical load and cannot isolate string radiation.
+
+Spatial CC2 damping remains a measurement task. Available targets have no
+contact-position or pressure labels; a passive spatial contact also needs
+an energy balance covering the string, transport filters and retained waves.
+The existing damping law is retained.
+
 ## 2026-10-02 — realism consolidation and correction to the air-decay claim
 
 The user approved pursuing promising realism work and consolidating existing

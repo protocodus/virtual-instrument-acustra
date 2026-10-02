@@ -518,22 +518,17 @@ G, C and D land in their first-position open shapes; C4-E4-G4 on its own
 becomes G fret 5, B fret 8 and open E.
 
 A chord played live reaches the plug-in one key at a time, in whatever order
-the fingers land, and each note used to take the free string with the lowest
-fret before the next was known. Played low to high, C4-E4-G4 became G fret
-12, B fret 1 and open E, an 11-fret stretch no hand makes, and a note high on
-a wound string does not sound like the same note on a plain one. The hand now
-refrets a chord still forming: when a note arrives within 30 ms of the one
-before it on its channel and would otherwise take a held string or leave the
-hand an impossible stretch, the chord so far is refretted with it as one
-shape, moving as few of its notes as the shape allows (none, when the new
-note alone fits on another string: a strum strung out over 5-20 ms by hand
-used to keep it where it was first put, five or more frets out). A moved note is
-replucked on its new string, inside the chord's own onset spread, and the
-string it leaves is taken by another note of the shape or damped by the
-leaving finger. The same C4-E4-G4 rolled over 20 ms becomes G fret 5, B fret
-8 and open E, with C4 plucked twice, 20 ms apart. Gather Chords, the CHORDS
-switch beside PANIC, avoids that second pluck at the cost of latency: it
-holds every MIDI event back by 30 ms.
+the fingers land. When a new note arrives within 30 ms of the previous note
+on its channel, the hand can improve the forming shape by moving attacks
+that have not fired. A note already sounded keeps its string and vibration;
+a later key cannot pluck it again just to improve the final fingering.
+Without future pitches, some exposed rolls retain a wide shape: C4-E4-G4
+over 20 ms keeps C4 on B1 and E4 on the open high E, leaving G4 on G12.
+Denser rolls can also fill every string that reaches the incoming high
+note, so the normal allocator takes an earlier note's string.
+Gather Chords, the CHORDS switch beside PANIC, can instead plan G5, B8 and
+open E before any attack, at the cost of latency: it holds every MIDI event
+back by 30 ms.
 A Note On that comes due takes along the Note Ons its channel received in the
 30 ms after it, and the group reaches the allocator as one wrist event:
 fretted as one shape and strummed exactly as the same chord sent on one
@@ -1816,8 +1811,10 @@ The JUCE-free suites cover:
   with Finger and Pick and any Touch, nor the player's own
   strums, reaches U1A's range or U1B's swing; the hottest puts 0.7-2.5 V on
   the element); and the chain's response agreeing between 44.1 and 96 kHz;
-- the fretting hand (Tests/HandAllocatorTests.cpp): rolled triads within one
-  hand, E major, A minor, G and C one key at a time in their open shapes, a
+- the fretting hand (Tests/HandAllocatorTests.cpp): exposed rolls retain
+  their sounded assignments and attacks, pending attacks can move with
+  their delays and owners, E major, A minor, G and C one key at a time in
+  their open shapes, a
   scale that stays in position and then shifts, a melody that leaves a held
   bass string alone, repeats replucked where they ring, string-per-channel
   and MPE member notes unchanged, one-sample chords planned as one shape, the handless allocator
@@ -2099,16 +2096,15 @@ engine.
   its body resonances; a bridge mobility measured strung would say by how
   much. BodyShapeTests keeps it within 5 cents.
 - With Gather Chords off, its default, a chord played live on a keyboard is
-  fretted as it arrives and refretted by the hand when the shape it has
-  started cannot take the next note: rolled low to high over 20 ms,
-  C4-E4-G4, D4-F#4-A4 and E4-G4-B4 now land within one hand (G5 B8 e0, G7
-  B7 e5 and e0 G12 B12; before the hand they stretched 11, 12 and 8 frets),
-  but a moved note is plucked a second time, when the note that moved it
-  arrives (within 30 ms of the note before it).
-  Switching Gather Chords on voices them once, as a guitarist would, at 30 ms
-  of latency. A chord whose notes spread over more than 30 ms, such as a slow
-  roll, is taken as melody: each note goes where the hand reaches, and a
-  shape that has run out of strings within reach is not refretted. The
+  fretted as it arrives. Already sounded notes stay on their strings;
+  unfired attacks can be moved inside the 30 ms forming window. Some
+  arrival orders therefore keep a wider final fingering than one hand can
+  reach. A dense roll may occupy every string that can fret its last high
+  note; the incoming note then takes an earlier note's string, retaining
+  its old wave as the normal re-pluck tail.
+  Switching Gather Chords on plans the entire shape before sounding it,
+  at 30 ms of latency. Successive notes more than 30 ms apart are taken
+  as melody: each note goes where the hand reaches. The
   hand's span, memory and costs are set by the listener's direction and the
   finger-span study above, not fitted to recorded fingerings.
 - Capture choices provide measured microphone positions and a piezo chain

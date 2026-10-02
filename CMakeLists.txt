@@ -218,6 +218,11 @@ if(ACUSTRA_BUILD_TOOLS)
     target_link_libraries(AcustraBridgeProbe PRIVATE AcustraDSP)
     target_compile_features(AcustraBridgeProbe PRIVATE cxx_std_20)
 
+    # Read-only modal/string traces with all reciprocal bridge ports retained.
+    add_executable(AcustraTraceRinging Tools/TraceRinging.cpp)
+    target_link_libraries(AcustraTraceRinging PRIVATE AcustraDSP)
+    target_compile_features(AcustraTraceRinging PRIVATE cxx_std_20)
+
     add_executable(AcustraPerformanceRenderer Tools/PerformanceRenderer.cpp)
     target_link_libraries(AcustraPerformanceRenderer PRIVATE AcustraDSP)
 
@@ -236,6 +241,7 @@ if(ACUSTRA_BUILD_TOOLS)
         target_compile_options(AcustraExternalCorpusRenderer
             PRIVATE /W4 /permissive-)
         target_compile_options(AcustraBridgeProbe PRIVATE /W4 /permissive-)
+        target_compile_options(AcustraTraceRinging PRIVATE /W4 /permissive-)
     else()
         target_compile_options(AcustraRenderDemos PRIVATE
             -Wall -Wextra -Wpedantic)
@@ -246,6 +252,8 @@ if(ACUSTRA_BUILD_TOOLS)
         target_compile_options(AcustraExternalCorpusRenderer PRIVATE
             -Wall -Wextra -Wpedantic)
         target_compile_options(AcustraBridgeProbe PRIVATE
+            -Wall -Wextra -Wpedantic)
+        target_compile_options(AcustraTraceRinging PRIVATE
             -Wall -Wextra -Wpedantic)
     endif()
 endif()
@@ -422,6 +430,10 @@ if(BUILD_TESTING)
                          on 0.5 auditorium 40)
         set_tests_properties(Acustra.BridgeProbe PROPERTIES TIMEOUT 30)
 
+        add_test(NAME Acustra.TraceRinging
+                 COMMAND AcustraTraceRinging --self-test)
+        set_tests_properties(Acustra.TraceRinging PROPERTIES TIMEOUT 60)
+
         # ExtractExcitation.py's self-test fails only on a synthesised note
         # whose excitation is known exactly, so what this pins is the
         # estimator, not the engine; the probe renders beside it are reported,
@@ -574,6 +586,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditAirMode.py"
                                  --self-test)
                 set_tests_properties(Acustra.AirModeAudit PROPERTIES TIMEOUT 120)
+                add_test(NAME Acustra.RingingTraceAnalysis
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AnalyzeRingingTrace.py"
+                                 --self-test)
+                set_tests_properties(Acustra.RingingTraceAnalysis PROPERTIES TIMEOUT 60)
                 # Every tool with a self-test is one of the above.
                 add_test(NAME Acustra.SelfTestRegistry
                          COMMAND "${Python3_EXECUTABLE}"

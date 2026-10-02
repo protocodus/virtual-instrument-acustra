@@ -7045,6 +7045,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     rememberFinger(string);
     voice.strumming = strumMember;
     voice.repluckPending = false;
+    voice.attackFired = false;
     voice.releaseAfterPluck = false;
     if (delaySamples > 0)
     {
@@ -7258,11 +7259,13 @@ int AcustraEngine::plannedString(int midiNote, int midiChannel) const noexcept
 // cannot be held in one hand with the notes already down, and it follows
 // notes of its own channel still forming a chord (onsets within
 // chordWindowSeconds of each other), the chord so far is refretted with
-// it as one shape, moving as few of its notes as the shape allows. A moved
-// note is replucked on its new string, inside the chord's own onset
-// spread; the string it leaves is either taken by another note of the
-// shape or damped by the leaving finger. Returns the string for the new
-// note.
+// it as one shape. Only an attack that has not fired can move: a note
+// already sounding stays on its physical string instead of being plucked
+// again when a later key completes the chord. A pending explicit re-pluck
+// also stays with its preceding vibration. Without looking ahead, some
+// rolls cannot fit the final shape with those strings committed; they keep
+// the note-by-note allocation. Gather Chords can plan the whole shape before
+// any attack. Returns the string for the new note.
 int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
                                        int chosenString) noexcept
 {
@@ -7293,6 +7296,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         ShapeNote note {};
         note.midiNote = voice.midiNote;
         note.current = string;
+        note.fixed = voice.attackFired;
         search.notes[static_cast<std::size_t>(search.count++)] = note;
         search.movable |= 1u << string;
     }
@@ -7431,6 +7435,7 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
         configureVoice(voice, stringIndex, voice.midiNote, true);
     }
     initialisePluck(voice, stringIndex, voice.velocity);
+    voice.attackFired = true;
     bridgeDerivativesCrossRelease_ = true;
     configureVoice(voice, stringIndex, voice.midiNote, false);
     if (voice.releaseAfterPluck)
