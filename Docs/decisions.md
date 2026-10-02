@@ -4,6 +4,48 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-10-02 — realism consolidation and correction to the air-decay claim
+
+The user approved pursuing promising realism work and consolidating existing
+branches only where they add realism, without new visible controls. Most
+useful branches are already integrated. Rejected pick-click, high-loss,
+anechoic-body and full joint-body experiments are not restored; removed
+legato stays removed. The complete branch disposition and measurements are
+in [the consolidation report](realism-consolidation-2026-10-02.md).
+
+Two playing corrections are implemented. The Performer now plans a fretted
+shape before scheduling its strum, so the stroke follows physical string
+order and skipped-string distances. CC2 reaches the pressure-dependent loss
+of retained re-pluck tails while their captured pitch, intrinsic filters and
+10 ms damping stay fixed. Tests cover crossed voicings, sparse strokes,
+controller fallbacks, pressure applied/lifted after capture and dissipative
+returned-wave behaviour. No control is added.
+
+The earlier entry's claim that 85–105 Hz envelope T60 established matched air
+decay was too strong. The model's intrinsic default pole is 84.68 Hz,
+Q19.31, free T60 0.501 s; its dominant rendered low transient is near 99 Hz
+with fitted T60 about 0.45 s. A broad-filter source-domain fit, tested for
+window sensitivity and nearby-tone attribution, finds screened apparent
+decays of 0.646 s on Eastman picked, 0.508 s on Eastman finger and 0.552 s
+on Martin. These include room and capture effects. The original entry below
+is retained as the historical claim, superseded by these measurements.
+
+A modest Original-only air-Q extension to 23.5 is included for review. Its
+shared radiation/bridge poles remain matched; rendered T60 rises to about
+0.50 s with onset level changing about 0.06 dB. Higher modes, Bellido Q,
+frequencies and the accepted spring-back share stay fixed. The four flat-top
+descriptor sets improve slightly; picked archtop training/validation regress
+about 0.6%. This is a measured candidate, not a choice already made by ear.
+Original construction gains are remeasured to retain loudness parity.
+
+Pre-onset open-tone projections do not support earlier-note carry-over as a
+general explanation for the Eastman finger discrepancy. Its larger apparent
+open-tone level is dominated by a rapidly dying 165 Hz component that may be
+a body mode as well as a string partial. Martin's air level is low, but the
+Eastman does not support a universal increase. Neither sympathy nor air gain
+is boosted. The intrinsic 94 Hz retune remains an experiment because the
+loaded transient does not sit on that intrinsic pole.
+
 ## 2026-10-01 — at the user's request, continued: what the open items need
 
 After the spring-back was heard and merged the user asked to "solve all of

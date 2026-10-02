@@ -214,6 +214,19 @@ void Performer::flushNoteGroup() noexcept
         pendingNoteOns_.begin(), pendingNoteOns_.begin() + pendingNoteOnCount_,
         [&](const PendingNoteOn& note)
         { return note.channel == pendingNoteOns_[0].channel; });
+    // Form the shape before timing the stroke: pitch order can cross string
+    // order (C4 on G5, G4 on B8, E4 on open E), and a skipped string still
+    // takes the pick one spacing to cross.
+    if (pendingNoteOnCount_ >= 2 && oneChannel
+        && pendingNoteOnCount_ <= AcustraEngine::stringCount)
+    {
+        std::array<int, AcustraEngine::stringCount> chord {};
+        for (int index = 0; index < pendingNoteOnCount_; ++index)
+            chord[static_cast<std::size_t>(index)]
+                = pendingNoteOns_[static_cast<std::size_t>(index)].note;
+        engine_.planChord(chord.data(), pendingNoteOnCount_,
+                          pendingNoteOns_[0].channel);
+    }
     // Only notes the tuning can sound make a stroke: a note no string
     // reaches neither times it (below) nor turns one or two notes into one.
     int soundingNotes = 0;
@@ -239,6 +252,10 @@ void Performer::flushNoteGroup() noexcept
         // The stroke is timed by the strings it reaches: a note the tuning
         // cannot sound takes no place in it and no part in its speed.
         std::array<bool, sampleGroupCapacity> sounds {};
+        std::array<int, sampleGroupCapacity> strings {};
+        bool completePlan = true;
+        int firstString = AcustraEngine::stringCount;
+        int lastString = -1;
         int sounding = 0;
         float meanVelocity = 0.0f;
         for (int index = 0; index < pendingNoteOnCount_; ++index)
@@ -250,12 +267,23 @@ void Performer::flushNoteGroup() noexcept
             {
                 meanVelocity += note.velocity;
                 ++sounding;
+                const int string = engine_.plannedString(note.note, note.channel);
+                strings[static_cast<std::size_t>(index)] = string;
+                completePlan &= string >= 0;
+                if (string >= 0)
+                {
+                    firstString = std::min(firstString, string);
+                    lastString = std::max(lastString, string);
+                }
             }
         }
         if (sounding > 0)
             meanVelocity /= static_cast<float>(sounding);
-        // The list is sorted high to low, so a downstroke's rank counts from
-        // the end.
+        // A complete fretted shape gives the physical string indices. A
+        // harmonic outside it, a larger group or a controller-owned layout
+        // has no complete plan: keep its existing note-by-note behaviour.
+        // Duplicated keys share one string's place while noteOn retains its
+        // ownership/re-pluck handling. The first reached string starts now.
         for (int index = 0, reached = 0; index < pendingNoteOnCount_; ++index)
         {
             auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
@@ -264,24 +292,15 @@ void Performer::flushNoteGroup() noexcept
                 note.pluckDelay = 0;
                 continue;
             }
-            const int rank = strumUpstroke_ ? reached : sounding - 1 - reached;
+            const int string = strings[static_cast<std::size_t>(index)];
+            const int rank = completePlan
+                ? (strumUpstroke_ ? lastString - string : string - firstString)
+                : (strumUpstroke_ ? reached : sounding - 1 - reached);
             ++reached;
             note.pluckDelay = engine_.strumDelaySamples(rank, meanVelocity);
         }
         strumUpstroke_ = ! strumUpstroke_;
         engine_.beginStrum();
-    }
-    // Notes that land together on one channel are one fretting-hand shape:
-    // the engine places them as a chord before they sound.
-    if (pendingNoteOnCount_ >= 2 && oneChannel
-        && pendingNoteOnCount_ <= AcustraEngine::stringCount)
-    {
-        std::array<int, AcustraEngine::stringCount> chord {};
-        for (int index = 0; index < pendingNoteOnCount_; ++index)
-            chord[static_cast<std::size_t>(index)]
-                = pendingNoteOns_[static_cast<std::size_t>(index)].note;
-        engine_.planChord(chord.data(), pendingNoteOnCount_,
-                          pendingNoteOns_[0].channel);
     }
     for (int index = 0; index < pendingNoteOnCount_; ++index)
     {

@@ -6010,8 +6010,8 @@ void testHeldStringsDoNotLengthenANoteDecay()
         acustra::EngineParameters parameters;
         engine.setParameters(parameters);
         engine.prepare(sampleRate, blockSize);
-        // The idle-string path is one-way radiation, not the junction; mute
-        // it so this measures the bridge port and nothing else.
+        // Idle strings exchange incident waves and impedance at the junction;
+        // unload them so this measures the played strings' bridge port.
         engine.setSympatheticStringsEnabled(false);
         for (const int note : companions)
             engine.noteOn(note, companionVelocity);

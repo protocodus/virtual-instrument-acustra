@@ -33,6 +33,8 @@ struct AcustraEngineTestAccess
     static std::array<float, 2> radiationPole(const EngineParameters& p,
                                               const PhysicalCalibration& c, int index)
     { return AcustraEngine::radiationModePole(p, c, index); }
+    static std::array<float, 4> woodFactors(const EngineParameters& p)
+    { return AcustraEngine::bodyWoodFactors(p); }
     static std::array<int, 2> bodyCounts(const AcustraEngine& e)
     { return { e.bodyBank_.count, e.bodyBank_.ordered }; }
     static constexpr int continuationSlots = AcustraEngine::radiationContinuationSlots;
@@ -105,6 +107,83 @@ acustra::BodyShape nativeShape(acustra::GuitarModel model)
 {
     return model == acustra::GuitarModel::Original
         ? acustra::BodyShape::Dreadnought : acustra::BodyShape::Auditorium;
+}
+
+// The A0 extension belongs to the Original's 90.8 Hz radiation mode and
+// its 90.3 Hz joint-body companion. Read their actual digital decay, rather
+// than reimplementing the frequency-selection rule, and keep the 83.5 Hz
+// joint mode, plate modes and Bellido on their recorded damping.
+void testOriginalAirDecayIsLocalized()
+{
+    namespace d = acustra::detail;
+    const auto digitalDecay = [](const Engine& engine, int slot, double rate)
+    {
+        const auto pole = Access::bodyPole(engine, slot);
+        const double radius = std::hypot(pole[0], pole[1]);
+        const double frequency = std::atan2(pole[1], pole[0]) * rate / (2.0 * pi);
+        const double decay = -rate * std::log(radius);
+        return std::array<double, 3> { frequency, pi * frequency / decay,
+                                      std::log(1000.0) / decay };
+    };
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+    {
+        acustra::EngineParameters original;
+        auto engine = std::make_unique<Engine>();
+        engine->setParameters(original);
+        engine->prepare(rate, 64);
+        const auto& calibration = Access::calibration(*engine);
+        const auto air = digitalDecay(*engine, 0, rate);
+        expect(air[0] > 84.6 && air[0] < 84.8,
+               "the air decay extension moved the Original's A0 frequency");
+        expect(air[2] > 0.60 && air[2] < 0.62,
+               "the Original's configured A0 free T60 left the 0.60-0.62 s bracket");
+        expect(std::abs(Access::radiationPole(original, calibration, 0)[1] - 23.5f)
+                   < 2e-5f,
+               "the Original's air pole does not have the selected Q of 23.5");
+        expect(Access::radiationPole(original, calibration, 1)[1]
+                   == d::measuredSteelBodyModes[1].q * calibration.bodyQScale,
+               "the air decay extension changed the Original's T1 damping");
+
+        if (d::steelBlendJointBodyWeight > 0.0f)
+        {
+            const int joint = static_cast<int>(d::measuredSteelBodyModes.size());
+            const double selectedRatio = 23.5 / d::measuredSteelBodyModes[0].q;
+            const auto lowJoint = digitalDecay(*engine, joint, rate);
+            const auto airJoint = digitalDecay(*engine, joint + 1, rate);
+            const auto plateJoint = digitalDecay(*engine, joint + 2, rate);
+            expect(std::abs(airJoint[1]
+                       / (d::measuredSteelJointBodyModes[1].q * selectedRatio) - 1.0)
+                       < 0.005,
+                   "the Original's 90.3 Hz joint companion missed the air Q ratio");
+            expect(std::abs(lowJoint[1] / d::measuredSteelJointBodyModes[0].q - 1.0)
+                       < 0.005,
+                   "the air decay extension changed the 83.5 Hz joint mode");
+            expect(std::abs(plateJoint[1] / d::measuredSteelJointBodyModes[2].q - 1.0)
+                       < 0.005,
+                   "the air decay extension changed the joint T1 damping");
+        }
+
+        acustra::EngineParameters bellido;
+        bellido.guitarModel = acustra::GuitarModel::Bellido1978;
+        bellido.shape = nativeShape(bellido.guitarModel);
+        auto named = std::make_unique<Engine>();
+        named->setParameters(bellido);
+        named->prepare(rate, 64);
+        const auto& namedCalibration = Access::calibration(*named);
+        const float woodQ = Access::woodFactors(bellido)[1];
+        for (const int index : { 0, 1, 5 })
+        {
+            const float measuredQ = d::bellidoBodyModes[static_cast<std::size_t>(index)].q;
+            const float expectedQ = measuredQ * woodQ * namedCalibration.bodyQScale;
+            expect(Access::radiationPole(bellido, namedCalibration, index)[1] == expectedQ,
+                   "the Original's air adjustment changed a Bellido pole's measured Q");
+            const auto actual = digitalDecay(*named, index, rate);
+            expect(std::abs(actual[1] / expectedQ - 1.0) < 0.005,
+                   "a Bellido digital pole no longer carries its measured Q");
+        }
+        std::cout << "Original A0 at " << rate << " Hz: " << air[0]
+                  << " Hz, free T60 " << air[2] << " s\n";
+    }
 }
 
 // Read the ACTUAL configured digital section, including float rounding and
@@ -1291,6 +1370,7 @@ void testTheBellidoKeepsTheHighBandConductance()
 
 int main()
 {
+    testOriginalAirDecayIsLocalized();
     testRadiationContinuesAboveTheFittedBand();
     testTheBellidoKeepsTheHighBandConductance();
     testSteelOwnBridgeSharesTheRadiationPoles();
