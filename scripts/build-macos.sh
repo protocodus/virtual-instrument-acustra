@@ -13,21 +13,29 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
     exit 1
 fi
 
-for tool in cmake xcodebuild codesign; do
+for tool in cmake codesign xcrun; do
     command -v "${tool}" >/dev/null 2>&1 || {
         echo "error: required tool '${tool}' was not found" >&2
         exit 1
     }
 done
-xcodebuild -version >/dev/null 2>&1 || {
-    echo "error: select a full Xcode installation with xcode-select" >&2
+if command -v xcodebuild >/dev/null 2>&1 \
+    && xcodebuild -version >/dev/null 2>&1; then
+    GENERATOR=Xcode
+elif command -v ninja >/dev/null 2>&1 \
+    && xcrun --sdk macosx --show-sdk-path >/dev/null 2>&1; then
+    # Command Line Tools contain the macOS SDK and both universal compilers.
+    GENERATOR=Ninja
+else
+    echo "error: install Xcode, or Command Line Tools and Ninja" >&2
     exit 1
-}
+fi
 
 cmake_args=(
     -S "${PROJECT_DIR}"
     -B "${BUILD_DIR}"
-    -G Xcode
+    -G "${GENERATOR}"
+    "-DCMAKE_BUILD_TYPE=${CONFIG}"
     "-DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}"
     "-DACUSTRA_BUILD_UNIVERSAL=${BUILD_UNIVERSAL}"
     -DACUSTRA_BUILD_PLUGIN=ON
