@@ -2702,14 +2702,13 @@ float AcustraEngine::FixedDerivative::process(float input,
     const float fraction = historyDelay - static_cast<float>(whole);
     const auto at = [&] (int samplesAgo)
     {
-        int readIndex = index - samplesAgo;
-        while (readIndex < 0)
-            readIndex += static_cast<int>(history.size());
-        return history[static_cast<std::size_t>(readIndex)];
+        const unsigned readIndex = (static_cast<unsigned>(index)
+            - static_cast<unsigned>(samplesAgo)) & historyMask;
+        return history[readIndex];
     };
     const float first = at(whole);
     const float delayed = first + fraction * (at(whole + 1) - first);
-    index = (index + 1) % static_cast<int>(history.size());
+    index = static_cast<int>((static_cast<unsigned>(index) + 1) & historyMask);
     return input - delayed;
 }
 
@@ -6853,8 +6852,22 @@ AcustraEngine::chooseHarmonic(int midiNote) const noexcept
     constexpr int highestHarmonic = 8;
     constexpr float toleranceCents = 25.0f;
     const float wanted = midiFrequency(midiNote);
+    // Re-strike a released harmonic on the string still ringing it, just
+    // as chooseString does for a fretted note. Moving to an unused string
+    // would leave the first vibration sounding alongside the new attack.
+    for (int string = stringCount - 1; string >= 0; --string)
+    {
+        const auto& voice = voices_[static_cast<std::size_t>(string)];
+        if (voice.played && !voice.keyDown && voice.harmonic > 1
+            && voice.midiNote == midiNote && voice.level > 2.0e-7f
+            // Tuning automation can move the ringing harmonic away from
+            // its requested MIDI pitch. It must still reach this note.
+            && exact::abs(1200.0f * std::log2(midiFrequency(voice.openMidi)
+                * static_cast<float>(voice.harmonic) / wanted)) <= toleranceCents)
+            return { string, voice.harmonic };
+    }
     HarmonicChoice best {};
-    bool bestFree = false;
+    int bestAvailability = 0;
     for (int string = stringCount - 1; string >= 0; --string)
     {
         const auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -6865,14 +6878,15 @@ AcustraEngine::chooseHarmonic(int midiNote) const noexcept
             if (exact::abs(1200.0f * std::log2(sounding / wanted))
                 > toleranceCents)
                 continue;
-            // Prefer a string nobody is using, then the lowest node, which is
+            // Prefer an unused string, then one whose key is up, before
+            // taking a held note. Within that choice the lowest node is
             // the loudest and the one a player reaches for first.
-            const bool free = !voice.played;
-            if (best.string < 0 || (free && !bestFree)
-                || (free == bestFree && harmonic < best.harmonic))
+            const int availability = !voice.played ? 0 : !voice.keyDown ? 1 : 2;
+            if (best.string < 0 || availability < bestAvailability
+                || (availability == bestAvailability && harmonic < best.harmonic))
             {
                 best = { string, harmonic };
-                bestFree = free;
+                bestAvailability = availability;
             }
             break;
         }
@@ -7045,6 +7059,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     rememberFinger(string);
     voice.strumming = strumMember;
     voice.repluckPending = false;
+    voice.attackFired = false;
     voice.releaseAfterPluck = false;
     if (delaySamples > 0)
     {
@@ -7258,11 +7273,13 @@ int AcustraEngine::plannedString(int midiNote, int midiChannel) const noexcept
 // cannot be held in one hand with the notes already down, and it follows
 // notes of its own channel still forming a chord (onsets within
 // chordWindowSeconds of each other), the chord so far is refretted with
-// it as one shape, moving as few of its notes as the shape allows. A moved
-// note is replucked on its new string, inside the chord's own onset
-// spread; the string it leaves is either taken by another note of the
-// shape or damped by the leaving finger. Returns the string for the new
-// note.
+// it as one shape. Only an attack that has not fired can move: a note
+// already sounding stays on its physical string instead of being plucked
+// again when a later key completes the chord. A pending explicit re-pluck
+// also stays with its preceding vibration. Without looking ahead, some
+// rolls cannot fit the final shape with those strings committed; they keep
+// the note-by-note allocation. Gather Chords can plan the whole shape before
+// any attack. Returns the string for the new note.
 int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
                                        int chosenString) noexcept
 {
@@ -7293,6 +7310,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         ShapeNote note {};
         note.midiNote = voice.midiNote;
         note.current = string;
+        note.fixed = voice.attackFired;
         search.notes[static_cast<std::size_t>(search.count++)] = note;
         search.movable |= 1u << string;
     }
@@ -7431,6 +7449,7 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
         configureVoice(voice, stringIndex, voice.midiNote, true);
     }
     initialisePluck(voice, stringIndex, voice.velocity);
+    voice.attackFired = true;
     bridgeDerivativesCrossRelease_ = true;
     configureVoice(voice, stringIndex, voice.midiNote, false);
     if (voice.releaseAfterPluck)

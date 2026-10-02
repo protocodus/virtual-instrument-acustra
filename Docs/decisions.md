@@ -4,6 +4,149 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-10-02 — natural harmonics preserve available strings and ringing repeats
+
+D6 can sound as the G string's sixth or D string's eighth harmonic. The
+allocator preferred the sixth even when G was held and D had just been
+released, dropping the held G unnecessarily. B6 has the equivalent high-E/B
+choice. Natural harmonics now prefer unused strings, then key-up strings,
+before taking held keys; the lower-node and existing tie preferences remain
+within each availability class. A released harmonic repeats on its ringing
+string, following the regular allocator's continuity rule. Its current
+tuning must still reach the requested pitch within the existing 25-cent
+tolerance. No contact/body parameter, visible control or legato changes.
+
+Both presets at three rates cover 96 availability cases, 12 repeats and six
+retuning cases. The pre-change library fails 192 assertions in 48 affected
+fixtures. The four affected native suites, strict C++17 compilation and JUCE
+processor test pass. All 246 existing recording renders and all twelve full
+score reports, descriptor counts and residual arrays remain exact. Those
+MIDI 40–84 recordings guard the established tone; they do not test the new
+above-fretboard behavior. Public A/B examples expose the higher-node timbre
+and preserved note without an inferred listener preference.
+
+An additional frozen GuitarSet annotation replay checks the earlier sounded
+chord-attack commitment. On six fixed twelve-second excerpts, each model
+removes two collateral remaps/reattacks, retaining all 315 explicit attacks
+at their supplied sample and losing no held keys. This is an event/assignment
+measurement, not a waveform score. The two affected passages also widen
+positive-fret spans from 0/1 to 10/7; preserving sounded strings can exceed
+the hand's stretch. The existing 12 occupied-string takes in 88 synthetic
+rolls remain disclosed. Fewer extra attacks therefore do not establish
+uniformly more physical chords. Timing annotations, collapsed MIDI channels,
+fixed velocity and omitted fractional bends limit the comparison. See the
+[playing verification](realism-playing-verification-2026-10-02.md).
+
+## 2026-10-02 — seed uncertainty and source geometry do not select a sound change
+
+The 32-seed native Finger audit shows that the earlier fixed burst draw
+inflated aggregate rate spread. Both declared windows, all channels and
+individual unadjusted bootstrap intervals remain retained; per-note
+differences and capture cancellation remain. This does not establish a
+sample-rate defect, Finger velocity ground truth or a new listening choice.
+The earlier width screen's failed gate remains failed.
+
+Rotating Finger's burst toward the selected stroke direction preserves its
+Euclidean gain-vector norm, not injected work. Bass attack descriptors improve
+on both presets, but three individual corpus comparisons fail the declared
+1% total/body guard. Common pluck centers fail seven of twelve comparisons;
+their static normal release force changes with the geometry, so body-term
+changes cannot identify comb alignment alone. Both source candidates remain
+excluded. Full outcomes and frozen methods are in the
+[seed and geometry report](realism-seed-and-geometry-2026-10-02.md).
+
+The primary IDMT-SMT-Guitar archive was also inspected for stronger Finger
+references. Its acoustic pieces have chord/pattern labels; note/string/Finger
+XML belongs to electric recordings. It does not supply identified acoustic
+Finger velocity tiers. No source gain or velocity law is fitted to it.
+
+## 2026-10-02 — bounded Finger and low-body screens reject further timbre changes
+
+The both-model baseline now supports native candidate comparisons. Finger
+aperture widths 1.25 and 1.5 improve Eastman Finger and bank flat-top
+descriptor totals by less than 1% on each preset, preserving Pick audio,
+onset and played pitch. Both fail the declared velocity-brightness gate;
+some baseline rate/model cells already fail it, and the threshold is not
+relaxed. A before-feedback initializer diagnostic has nearly invariant
+velocity contrast across rates and bodies, so the larger acoustic variation
+needs downstream attribution rather than a release-law retune.
+
+Integrated partial/channel checks retain the acoustic rate variation.
+A native single-field burst ablation, preceded by 96/96 baseline byte parity,
+reduces the per-model median rate span from 1.263/1.561 to 0.205/0.194 dB.
+This identifies a contribution in the fixed draws, not a systematic rate
+defect. Absolute contrast and model differences remain. The listener-selected
+burst and the failed width-screen gate stay unchanged.
+
+Lifting existing T1 microphone residues reduces Eastman's early 165-region
+error but worsens Martin and other bands. A native Original-only T1 Q×4
+changes radiation and reciprocal bridge poles together, with fixed residues.
+It improves Eastman Finger total by 0.562%, but bank development total
+worsens 3.221% and Martin 1.695%; body errors worsen 1.466–4.799% on five
+of six Original splits. Bellido remains byte-identical. The separately
+predeclared full-corpus total/body 1% guard rejects Q×4. The earlier regional
+no-regression check was exploratory and assessed after initial measurements;
+it is not recorded as a preregistered threshold.
+
+None of these sound changes enters production or overrides a listener
+choice. All candidates, source hooks, methods and evidence are retained in
+[the bounded-screen report](realism-screens-2026-10-02.md).
+
+## 2026-10-02 — recording baselines cover both current presets
+
+The realism goal continues across Original and Bellido 1978. The external
+and bank recording renderers lacked a wood option, so selecting Bellido did
+not render its Auditorium/Mahogany preset. They now accept the same offline
+`--body-material` choice and record the wood actually synthesized; omitted
+wood remains Spruce, preserving existing commands. This adds no product
+control or production sound change.
+
+Fresh measurements use Original/Dreadnought/Spruce and
+Bellido/Auditorium/Mahogany. The bank's known picked rows use Pick, its
+flat-top rows Finger; Eastman follows its labels, and Martin retains the
+declared unknown-tool Finger assumption. Historical Finger-rendered bank
+scores remain separate. Bellido is closer on the picked archtop bank and
+Original on these flat-top recordings, so no overall model winner is chosen.
+Both source bodies were measured nylon-strung and are adapted for steel;
+played recordings of other steel guitars provide transfer evidence.
+
+The shared Eastman Finger attack discrepancy supports a bounded contact-width
+screen, with unchanged velocity-relative slip and the prior listener choices
+fixed. Martin and recorded velocity contrast remain hard guards. Radiation
+residue and reciprocal-pole experiments likewise remain offline until they
+pass discovery, other-note and cross-corpus checks. Measurements and limitations
+are in [the current-model baseline](cross-model-recording-baseline-2026-10-02.md).
+
+## 2026-10-02 — live chords keep their attacks; low ringing gets a coupled probe
+
+After merging PR #12, the user approved the recommended follow-up. A live
+forming chord can now move only attacks that have not fired. An already
+sounded note retains its physical string, including while it waits for an
+explicit repeat. Pending moves retain their original delay and duplicate
+owners. The exposed C4–E4–G4 roll no longer adds a second C4 attack when G4
+arrives; no latency or visible control is added.
+
+The allocation compromise is explicit. Some exposed rolls keep wide
+fingerings, and twelve of 88 hand-timed stroke fixtures have no free string
+that can fret their final high note. The incoming note takes a held string
+under the normal six-string allocator. Same-sample and Gather plans retain
+every note in those shapes. The listener can review both the ordinary roll
+and this dense-roll limitation; the patch is not recorded as a choice made
+by ear. The report is
+[realism-attribution-2026-10-02.md](realism-attribution-2026-10-02.md).
+
+The ringing probe retains all six reciprocal ports and traces individual
+body contributions and string motion. Its perturbations use public
+Standard/Drop D tuning and passive added low-E loss. A custom-tuning helper
+failed an independent comparison against public Drop D and was discarded;
+its measurements do not support the conclusions. A sympathy-off difference
+changes the mechanical load and cannot isolate string radiation.
+
+Spatial CC2 damping remains a measurement task. Available targets have no
+contact-position or pressure labels; a passive spatial contact also needs
+an energy balance covering the string, transport filters and retained waves.
+The existing damping law is retained.
+
 ## 2026-10-02 — realism consolidation and correction to the air-decay claim
 
 The user approved pursuing promising realism work and consolidating existing

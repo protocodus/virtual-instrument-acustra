@@ -149,9 +149,8 @@ sign_bundle "${PACKAGE_ROOT}/Applications/Acustra.app"
 ZIP_PATH="${DIST_DIR}/Acustra-${VERSION}-macOS-${ARTIFACT_ARCH}.zip"
 PKG_UNSIGNED="${DIST_DIR}/Acustra-${VERSION}-unsigned.pkg"
 PKG_FINAL="${DIST_DIR}/Acustra-${VERSION}-macOS-${ARTIFACT_ARCH}.pkg"
-rm -f "${DIST_DIR}/Acustra-"*-macOS-*.zip
-rm -f "${DIST_DIR}/Acustra-"*-macOS-*.pkg
-rm -f "${DIST_DIR}/Acustra-"*-unsigned.pkg
+# Rebuilding this version must not remove packages from earlier releases.
+rm -f "${ZIP_PATH}" "${PKG_FINAL}" "${PKG_UNSIGNED}"
 
 COPYFILE_DISABLE=1 pkgbuild \
     --root "${PACKAGE_ROOT}" \

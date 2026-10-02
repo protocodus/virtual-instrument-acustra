@@ -1,0 +1,204 @@
+{
+  "date": "2026-10-02",
+  "baseline_instrument_revision": "52c7ef0",
+  "optimized_dsp_revision": "06cd0504d0682ed69457267f9a23934491a5c2ff",
+  "machine": "Apple M1 Max, macOS 26.5.1 (25F80)",
+  "sdk": "JukeboxSDK_500_028, TargetVersion=5.0",
+  "measurement": "64-frame SDK callback, 8-second performances, 3 interleaved repetitions per module; median of per-run mean thread CPU time",
+  "rates": [
+    44100,
+    48000,
+    88200,
+    96000,
+    192000
+  ],
+  "candidate_audio_comparisons": 70,
+  "candidate_audio_identical": true,
+  "final_native_audio_comparisons": 20,
+  "final_native_audio_identical": true,
+  "native_callback_checksum_comparisons": 48,
+  "native_callback_checksums_identical": true,
+  "final_native_cases": [
+    {
+      "model": "original",
+      "scenario": "chord",
+      "rate": 44100,
+      "baseline_mean_us": 50.9652,
+      "optimized_mean_us": 47.936,
+      "saving_percent": 5.9437
+    },
+    {
+      "model": "original",
+      "scenario": "chord",
+      "rate": 48000,
+      "baseline_mean_us": 50.2232,
+      "optimized_mean_us": 47.0404,
+      "saving_percent": 6.3373
+    },
+    {
+      "model": "original",
+      "scenario": "chord",
+      "rate": 88200,
+      "baseline_mean_us": 50.6885,
+      "optimized_mean_us": 47.7454,
+      "saving_percent": 5.8062
+    },
+    {
+      "model": "original",
+      "scenario": "chord",
+      "rate": 96000,
+      "baseline_mean_us": 50.8446,
+      "optimized_mean_us": 47.7532,
+      "saving_percent": 6.0801
+    },
+    {
+      "model": "original",
+      "scenario": "chord",
+      "rate": 192000,
+      "baseline_mean_us": 51.2155,
+      "optimized_mean_us": 47.7037,
+      "saving_percent": 6.8569
+    },
+    {
+      "model": "original",
+      "scenario": "tail",
+      "rate": 44100,
+      "baseline_mean_us": 38.9222,
+      "optimized_mean_us": 36.6292,
+      "saving_percent": 5.8912
+    },
+    {
+      "model": "original",
+      "scenario": "tail",
+      "rate": 48000,
+      "baseline_mean_us": 38.0733,
+      "optimized_mean_us": 35.8049,
+      "saving_percent": 5.958
+    },
+    {
+      "model": "original",
+      "scenario": "tail",
+      "rate": 88200,
+      "baseline_mean_us": 38.4561,
+      "optimized_mean_us": 36.3298,
+      "saving_percent": 5.5292
+    },
+    {
+      "model": "original",
+      "scenario": "tail",
+      "rate": 96000,
+      "baseline_mean_us": 38.7436,
+      "optimized_mean_us": 36.7029,
+      "saving_percent": 5.2672
+    },
+    {
+      "model": "original",
+      "scenario": "tail",
+      "rate": 192000,
+      "baseline_mean_us": 39.7393,
+      "optimized_mean_us": 38.8661,
+      "saving_percent": 2.1973
+    },
+    {
+      "model": "classical",
+      "scenario": "chord",
+      "rate": 44100,
+      "baseline_mean_us": 50.2899,
+      "optimized_mean_us": 47.159,
+      "saving_percent": 6.2257
+    },
+    {
+      "model": "classical",
+      "scenario": "chord",
+      "rate": 48000,
+      "baseline_mean_us": 49.5919,
+      "optimized_mean_us": 47.78,
+      "saving_percent": 3.6536
+    },
+    {
+      "model": "classical",
+      "scenario": "chord",
+      "rate": 88200,
+      "baseline_mean_us": 49.9858,
+      "optimized_mean_us": 47.0469,
+      "saving_percent": 5.8795
+    },
+    {
+      "model": "classical",
+      "scenario": "chord",
+      "rate": 96000,
+      "baseline_mean_us": 49.769,
+      "optimized_mean_us": 46.682,
+      "saving_percent": 6.2027
+    },
+    {
+      "model": "classical",
+      "scenario": "chord",
+      "rate": 192000,
+      "baseline_mean_us": 49.6595,
+      "optimized_mean_us": 46.6474,
+      "saving_percent": 6.0655
+    },
+    {
+      "model": "classical",
+      "scenario": "tail",
+      "rate": 44100,
+      "baseline_mean_us": 37.7867,
+      "optimized_mean_us": 35.6475,
+      "saving_percent": 5.6613
+    },
+    {
+      "model": "classical",
+      "scenario": "tail",
+      "rate": 48000,
+      "baseline_mean_us": 37.0826,
+      "optimized_mean_us": 35.1257,
+      "saving_percent": 5.2771
+    },
+    {
+      "model": "classical",
+      "scenario": "tail",
+      "rate": 88200,
+      "baseline_mean_us": 37.0893,
+      "optimized_mean_us": 34.8748,
+      "saving_percent": 5.9707
+    },
+    {
+      "model": "classical",
+      "scenario": "tail",
+      "rate": 96000,
+      "baseline_mean_us": 37.1312,
+      "optimized_mean_us": 34.9643,
+      "saving_percent": 5.8358
+    },
+    {
+      "model": "classical",
+      "scenario": "tail",
+      "rate": 192000,
+      "baseline_mean_us": 36.9585,
+      "optimized_mean_us": 34.8783,
+      "saving_percent": 5.6285
+    }
+  ],
+  "module_sha256": {
+    "baseline_native_arm64": "cb6f962dd069e9bf4a0f4f28e798158ca979650626acfee9030473017bb4608b",
+    "optimized_native_arm64": "bc6904c4f24a289238dec3ad65937c42d749ed78bc097d9144cff4befbab1b6d"
+  },
+  "dsp_sha256": {
+    "AcustraEngine.cpp": "0e2fd5e11ea84583803e9ce0432a07fed66a1db38237240aa3e4e963e5169d6c",
+    "AcustraEngine.h": "965bf10a456385231bfd7ee233187882e98d03278cb6b5d5d04ada504760c092",
+    "AcustraPerformer.cpp": "f1931b02a3fcca99228d84a92f4fbc5fab940b152f5ee8b7c5684063221c8d78",
+    "AcustraPerformer.h": "11a9a578ebd229e2978720be9f4799b48527b3d16b6866badcbb6cb3ed893f56",
+    "BellidoData.h": "3cb03760834fac554daec1c0e378f9785cf4065ff7528a9aa0144f969878d470",
+    "CaptureVoicingData.h": "7f496e043ca11eda799321447bc85f3dba82a7e693887f1c97aeb41c122851e7",
+    "ConstructionLoudnessData.h": "21b71c5dbfaf82fb815f616b519c2c2c0d7080caf0ddf2000bf909c3d088ad13",
+    "FittedPhysicalData.h": "bcc6ba1b53f8e83d6e13aaef6220c64961edd2a2e7c610fecfa76dbfc2589c9f",
+    "GaussianApertureData.h": "5383edf9778c013587ab9578f262e40ac61ec5d8660a7fbd4348f072a24a834a",
+    "GuitarModelData.h": "308f8cc20f0dbb612cf3f2effb60f2c3ca0161b90fff3d618d930524fe5825e5",
+    "MeasuredBodyData.h": "1c54a31e2546db4095d373591a45a188fc21bac3820f9b0a3f72c66c96fd9be0",
+    "MeasuredBridgeData.h": "1a6e129e9693b6193d8bd19efccb091dc504d767733582a72263a43565cab085",
+    "MeasuredJointBodyData.h": "155fd5b0e20a8045ab8db2e97ca7b19a6a689385c953a47a02fa6ee34c251123",
+    "PiezoBlampTable.h": "5d4c18901af73d3a8b11e68784af16830f11fa0923647d2da71137e824b91399",
+    "SteelBodyBlend.h": "f4e6072d5f127f0fe63dc10644cf52828644c66dce91aacbc8c1f1ccebc14aaf"
+  }
+}

@@ -103,9 +103,9 @@ int main(int argc, char** argv)
         std::cerr << "MIDI note must be an integer between 0 and 127\n";
         return EXIT_FAILURE;
     }
-    // The idle strings' one-way radiation sum, separable from the bridge so a
-    // probe can hold the excitation fixed and change only what the played
-    // string's wave meets on its way out.
+    // Omitting idle-string ports changes the reciprocal junction's load.
+    // An on/off difference is a coupled response, not isolated radiation
+    // from sympathetic strings with the played wave held fixed.
     if (argc == 7)
     {
         const std::string sympathy(argv[6]);

@@ -28,7 +28,7 @@
 #endif
 
 // Asks the compiler to inline a function at every call it can see, whatever
-// its size (StringLoop::advance).
+// its size (the hot string-loop and bridge-derivative recurrences).
 #if defined(__clang__)
 #define ACUSTRA_ALWAYS_INLINE __attribute__((always_inline))
 #elif defined(_MSC_VER)
@@ -521,7 +521,10 @@ private:
 
     struct FixedDerivative
     {
-        std::array<float, 10> history {};
+        // The longest reference delay needs nine samples of history. A
+        // power-of-two ring makes both reads and the write wrap one mask.
+        static constexpr unsigned historyMask = 15;
+        std::array<float, historyMask + 1> history {};
         int index { 0 };
 
         void reset(float value = 0.0f) noexcept
@@ -529,7 +532,7 @@ private:
             history.fill(value);
             index = 0;
         }
-        float process(float input, float sampleRateRatio) noexcept;
+        ACUSTRA_ALWAYS_INLINE float process(float input, float sampleRateRatio) noexcept;
         // A released shape entering the junction moves the wave variable
         // without the bridge having moved: the shape was standing on the
         // string before the finger let go. Re-reference the history to the
@@ -624,7 +627,7 @@ private:
         // - which is the filtered, dispersed one advance() returns, not the
         // raw delay tap - or establishing the released shape reads as a
         // one-sample velocity impulse the size of the whole displacement.
-        float bridgeVelocity(float incident, float sampleRateRatio) noexcept;
+        ACUSTRA_ALWAYS_INLINE float bridgeVelocity(float incident, float sampleRateRatio) noexcept;
         void write(float value) noexcept;
     };
 
@@ -976,6 +979,9 @@ private:
         int returnSamples { 0 };
         // Samples until a scheduled pluck is released; zero when none waits.
         int pluckDelay { 0 };
+        // Once this note's first release has fired, live chord formation
+        // cannot move its physical string or manufacture another attack.
+        bool attackFired { false };
         // A held string keeps its wave until this scheduled re-pluck fires.
         bool repluckPending { false };
         // A strum member whose key came up before the pick reached it: the

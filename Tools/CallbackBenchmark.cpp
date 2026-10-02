@@ -11,8 +11,8 @@
 // retired on 2026-09-29 (a frozen tree from before then defaults to steel
 // too); the Bellido plays Mahogany, the plug-in's "Bellido 1978" preset.
 // Usage: AcustraCallbackBenchmark OUTPUT.json [pairs=256] [warmup=16] [--guitar-models]
-// Output contains every timed observation; construction/prepare/50 ms pre-roll and
-// result checking are outside the interval. Each pair alternates engine order.
+// Output contains every timed observation; construction, preparation, scenario
+// pre-roll and result checking are outside the interval. Each pair alternates order.
 
 #include <algorithm>
 #include <array>
@@ -77,16 +77,27 @@ struct CallbackState
     void setup(int scenario)
     {
         engine.reset();
-        engine.setStringPerChannelMode(scenario != 2);
-        if (scenario == 1)
+        engine.setStringPerChannelMode(scenario != 2 && scenario != 3);
+        const auto preroll = [&](int samples)
         {
-            playChord();
-            for (int remaining = rate / 20; remaining > 0;)
+            for (int remaining = samples; remaining > 0;)
             {
                 const int count = std::min(remaining, frames);
                 engine.process(left.data(), right.data(), count);
                 remaining -= count;
             }
+        };
+        if (scenario == 1)
+        {
+            playChord();
+            preroll(rate / 20);
+        }
+        else if (scenario == 3)
+        {
+            engine.noteOn(60, 1.0f);
+            preroll(rate / 100);
+            engine.noteOn(64, 1.0f);
+            preroll(rate / 100);
         }
     }
 
@@ -94,6 +105,8 @@ struct CallbackState
     {
         if (scenario == 2)
             engine.noteOn(100, 1.0f); // high E's eighth natural harmonic
+        else if (scenario == 3)
+            engine.noteOn(67, 1.0f); // joins two already sounded keyboard notes
         else
             playChord();
         engine.process(left.data(), right.data(), frames);
@@ -215,7 +228,7 @@ struct EngineInstance
             throw std::runtime_error("reset trials did not reproduce identical output");
         expectedHash = hash;
         hasHash = true;
-        if (api.active(state) != (scenario == 2 ? 1 : 6))
+        if (api.active(state) != (scenario == 2 ? 1 : scenario == 3 ? 3 : 6))
             throw std::runtime_error("unexpected active-string count");
         return std::chrono::duration<double, std::micro>(stop - start).count();
     }
@@ -286,7 +299,7 @@ int main(int argc, char** argv)
         if (!output)
             throw std::runtime_error("could not create output");
         output << std::setprecision(12)
-               << "{\n\"protocol\":\"paired_native_noteOn_plus_process_v2\","
+               << "{\n\"protocol\":\"paired_native_noteOn_plus_process_v3\","
                   "\n\"scope\":\"native DSP including MIDI noteOns; excludes JUCE and host overhead\","
                   "\n\"ordering\":\"baseline first on even trials, current first on odd trials\","
                   "\n\"setup\":\"fresh engine prepared before each timed callback\","
@@ -296,6 +309,7 @@ int main(int argc, char** argv)
                   "\n\"touch\":0.58,\n\"pluck_position\":0.28,"
                   "\n\"capture\":\"stereo_mic\",\n\"picking\":\"finger\","
                   "\n\"chord_midi\":[40,47,52,56,59,64],\n\"harmonic_midi\":100,"
+                  "\n\"rolled_chord_midi\":[60,64,67],\n\"rolled_chord_spacing_seconds\":0.01,"
                << "\n\"baseline_has_guitar_models\":" << (baselineHasGuitarModels ? "true" : "false")
                << ",\n\"current_has_guitar_models\":" << (currentHasGuitarModels ? "true" : "false")
                << ",\n\"named_model_comparison\":\""
@@ -303,7 +317,8 @@ int main(int argc, char** argv)
                    : baselineHasGuitarModels ? "matching named models on both adapters"
                    : "current named model versus baseline Original with matching shape and wood")
                << "\",\n\"results\":[\n";
-        constexpr std::array scenarios { "six_string_initial", "six_string_repick", "eighth_harmonic" };
+        constexpr std::array scenarios { "six_string_initial", "six_string_repick", "eighth_harmonic",
+                                         "live_rolled_chord_join" };
         struct ModelCase { int guitar; const char* name; const char* shape; const char* wood; };
         std::vector<ModelCase> cases {
             { 0, "Original", "dreadnought", "spruce" }
@@ -316,7 +331,7 @@ int main(int argc, char** argv)
         for (const int rate : { 48000, 96000 })
             for (const int frames : { 32, 64, 128 })
                 for (const auto& model : cases)
-                    for (int scenario = 0; scenario < 3; ++scenario)
+                    for (int scenario = 0; scenario < static_cast<int>(scenarios.size()); ++scenario)
                     {
                         EngineInstance baseline(ACUSTRA_API(baseline), rate, frames, model.guitar);
                         EngineInstance current(ACUSTRA_API(current), rate, frames, model.guitar);
