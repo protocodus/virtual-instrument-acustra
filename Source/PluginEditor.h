@@ -19,7 +19,6 @@ public:
                                const juce::Colour&, bool isHighlighted,
                                bool isDown) override;
     juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override;
-    juce::Font getComboBoxFont (juce::ComboBox&) override;
 };
 
 class AcustraAudioProcessorEditor final : public juce::AudioProcessorEditor,
@@ -40,8 +39,9 @@ private:
 
     void timerCallback() override;
     void updateConstructionControls();
-    void configureSetupMenu (std::size_t index, const juce::String& name,
-                             const juce::String& description);
+    void configureSetupChoice (std::size_t index, const juce::String& name,
+                               const char* parameterId,
+                               const juce::String& description, int columns = 2);
     void configureChoice (std::size_t index, const juce::String& name,
                           const char* parameterId,
                           const juce::String& description);
@@ -63,12 +63,7 @@ private:
         gatherChordsAttachment;
 
     std::array<juce::Label, 4> setupLabels;
-    std::array<juce::ComboBox, 4> setupControls;
-    int displayedConstructionPresetId = 0;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
-        pickingAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> captureAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> guitarModelAttachment;
+    std::array<std::unique_ptr<ChoiceButtonGroup>, 4> setupControls;
 
     std::array<juce::Label, 3> choiceLabels;
     std::array<std::unique_ptr<ChoiceButtonGroup>, 3> choiceControls;
@@ -82,9 +77,9 @@ private:
 
     std::array<std::unique_ptr<SliderAttachment>, 7> sliderAttachments;
 
-    juce::Rectangle<int> setupPanelBounds;
-    juce::Rectangle<int> choicePanelBounds;
-    juce::Rectangle<int> tonePanelBounds;
+    juce::Rectangle<int> guitarPanelBounds;
+    juce::Rectangle<int> playerPanelBounds;
+    juce::Rectangle<int> capturePanelBounds;
     juce::Rectangle<int> keyboardPanelBounds;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AcustraAudioProcessorEditor)

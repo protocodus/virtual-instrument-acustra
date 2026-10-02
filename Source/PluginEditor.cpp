@@ -18,6 +18,7 @@ constexpr int keyboardWhiteKeyCount = 28;
 struct ConstructionPreset
 {
     const char* name;
+    const char* caption;
     acustra::BodyShape shape;
     acustra::BodyMaterial wood;
     acustra::GuitarModel model { acustra::GuitarModel::Original };
@@ -30,29 +31,29 @@ struct ConstructionPreset
 // works). The Bellido preset selects that measured guitar in its own family,
 // in Mahogany, the kept wood nearest the cedar it was built of.
 constexpr std::array<ConstructionPreset, 4> constructionPresets {{
-    { "Dreadnought / Martin style", acustra::BodyShape::Dreadnought,
+    { "Dreadnought / Martin style", "Dreadnought", acustra::BodyShape::Dreadnought,
       acustra::BodyMaterial::Spruce },
-    { "Auditorium / Taylor style", acustra::BodyShape::Auditorium,
+    { "Auditorium / Taylor style", "Auditorium", acustra::BodyShape::Auditorium,
       acustra::BodyMaterial::Spruce },
-    { "Parlor / Fender style", acustra::BodyShape::Parlor,
+    { "Parlor / Fender style", "Parlor", acustra::BodyShape::Parlor,
       acustra::BodyMaterial::Spruce },
-    { "Bellido 1978", acustra::BodyShape::Auditorium,
+    { "Bellido 1978", "Bellido 1978", acustra::BodyShape::Auditorium,
       acustra::BodyMaterial::Mahogany, acustra::GuitarModel::Bellido1978 }
 }};
 
-// Palette drawn from the classical-guitar reference: pale soundboard, ebony
-// fingerboard, rosewood furniture, ivory nut and muted gold machines.
-const juce::Colour ebony { 0xff08090b };
-const juce::Colour pianoBlack { 0xff050607 };
-const juce::Colour pianoHighlight { 0xff3c3b3d };
-const juce::Colour darkWood { 0xff26130e };
-const juce::Colour rosewood { 0xff421b13 };
-const juce::Colour soundboard { 0xffe6b65e };
-const juce::Colour ivory { 0xfffff4d8 };
-const juce::Colour mutedText { 0xffd7c5a3 };
-const juce::Colour brass { 0xffb88635 };
-const juce::Colour panel { 0xff171110 };
-const juce::Colour panelEdge { 0xff825332 };
+// Spruce soundboard, rosewood sides, ebony fingerboard, bone inlays and
+// aged brass. The Rack artwork uses the same material and colour direction.
+const juce::Colour ebony { 0xff151311 };
+const juce::Colour pianoBlack { 0xff0d0c0a };
+const juce::Colour pianoHighlight { 0xff454038 };
+const juce::Colour darkWood { 0xff34251c };
+const juce::Colour rosewood { 0xff30231c };
+const juce::Colour soundboard { 0xffe4c99a };
+const juce::Colour ivory { 0xfff3e8cf };
+const juce::Colour mutedText { 0xffcaba9d };
+const juce::Colour brass { 0xffc5a56b };
+const juce::Colour panel { 0xff241c16 };
+const juce::Colour panelEdge { 0xff756044 };
 
 juce::Font displayFont (float height, int style = juce::Font::plain)
 {
@@ -64,18 +65,18 @@ void drawPanel (juce::Graphics& g, juce::Rectangle<int> bounds)
 {
     const auto area = bounds.toFloat();
     g.setColour (juce::Colours::black.withAlpha (0.30f));
-    g.fillRoundedRectangle (area.translated (0.0f, 2.0f), 12.0f);
-    juce::ColourGradient fill { panel.brighter (0.08f).withAlpha (0.90f),
+    g.fillRoundedRectangle (area.translated (0.0f, 2.0f), 8.0f);
+    juce::ColourGradient fill { panel.brighter (0.09f).withAlpha (0.97f),
                                 area.getX(), area.getY(),
-                                panel.darker (0.24f).withAlpha (0.90f),
+                                panel.darker (0.14f).withAlpha (0.97f),
                                 area.getX(), area.getBottom(),
                                 false };
     g.setGradientFill (fill);
-    g.fillRoundedRectangle (area, 12.0f);
-    g.setColour (panelEdge.withAlpha (0.66f));
-    g.drawRoundedRectangle (area.reduced (0.5f), 12.0f, 1.0f);
-    g.setColour (ivory.withAlpha (0.07f));
-    g.drawRoundedRectangle (area.reduced (2.0f), 10.0f, 0.8f);
+    g.fillRoundedRectangle (area, 8.0f);
+    g.setColour (ivory.withAlpha (0.58f));
+    g.drawRoundedRectangle (area.reduced (0.7f), 8.0f, 1.2f);
+    g.setColour (ebony);
+    g.drawRoundedRectangle (area.reduced (2.4f), 6.0f, 1.0f);
 }
 } // namespace
 
@@ -85,22 +86,17 @@ AcustraLookAndFeel::AcustraLookAndFeel()
     setColour (juce::Slider::rotarySliderOutlineColourId, panelEdge);
     setColour (juce::Slider::textBoxTextColourId, ivory);
     setColour (juce::Slider::textBoxBackgroundColourId, ebony.withAlpha (0.72f));
-    setColour (juce::Slider::textBoxOutlineColourId, ivory.withAlpha (0.42f));
+    setColour (juce::Slider::textBoxOutlineColourId, panelEdge);
     setColour (juce::Label::textColourId, ivory);
     setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
     setColour (juce::Label::outlineColourId, juce::Colours::transparentBlack);
     setColour (juce::TooltipWindow::backgroundColourId, panel.withAlpha (1.0f));
     setColour (juce::TooltipWindow::textColourId, ivory);
     setColour (juce::TooltipWindow::outlineColourId, panelEdge);
-    setColour (juce::TextButton::buttonColourId, rosewood);
-    setColour (juce::TextButton::buttonOnColourId, ebony.brighter (0.12f));
-    setColour (juce::TextButton::textColourOffId, ivory.withAlpha (0.90f));
-    setColour (juce::TextButton::textColourOnId, ivory);
-    setColour (juce::ComboBox::backgroundColourId, ebony);
-    setColour (juce::ComboBox::textColourId, ivory);
-    setColour (juce::ComboBox::outlineColourId, panelEdge);
-    setColour (juce::ComboBox::focusedOutlineColourId, brass);
-    setColour (juce::ComboBox::arrowColourId, brass);
+    setColour (juce::TextButton::buttonColourId, ebony);
+    setColour (juce::TextButton::buttonOnColourId, ivory);
+    setColour (juce::TextButton::textColourOffId, ivory);
+    setColour (juce::TextButton::textColourOnId, darkWood);
     setColour (juce::PopupMenu::backgroundColourId, panel);
     setColour (juce::PopupMenu::textColourId, ivory);
     setColour (juce::PopupMenu::highlightedBackgroundColourId, rosewood);
@@ -118,12 +114,12 @@ void AcustraLookAndFeel::drawRotarySlider (
     const auto angle = rotaryStartAngle
                      + sliderPos * (rotaryEndAngle - rotaryStartAngle);
     const auto trackRadius = radius - 3.5f;
-    const auto trackWidth = juce::jmax (2.5f, radius * 0.085f);
+    const auto trackWidth = juce::jmax (2.5f, radius * 0.055f);
 
     juce::Path track;
     track.addCentredArc (centre.x, centre.y, trackRadius, trackRadius, 0.0f,
                          rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour (ebony.withAlpha (0.76f));
+    g.setColour (panelEdge.withAlpha (0.75f));
     g.strokePath (track, juce::PathStrokeType (
         trackWidth, juce::PathStrokeType::curved,
         juce::PathStrokeType::rounded));
@@ -151,12 +147,12 @@ void AcustraLookAndFeel::drawRotarySlider (
                                 centre.y - bodyRadius * 0.72f,
                                 pianoBlack, centre.x + bodyRadius * 0.52f,
                                 centre.y + bodyRadius * 0.80f, false };
-    body.addColour (0.34, juce::Colour { 0xff18191b });
+    body.addColour (0.34, juce::Colour { 0xff2b2721 });
     body.addColour (0.72, ebony);
     g.setGradientFill (body);
     g.fillEllipse (centre.x - bodyRadius, centre.y - bodyRadius,
                    bodyRadius * 2.0f, bodyRadius * 2.0f);
-    g.setColour (ivory.withAlpha (0.72f));
+    g.setColour (ivory.withAlpha (0.36f));
     g.drawEllipse (centre.x - bodyRadius, centre.y - bodyRadius,
                    bodyRadius * 2.0f, bodyRadius * 2.0f, 1.25f);
     g.setColour (juce::Colours::white.withAlpha (0.10f));
@@ -168,20 +164,16 @@ void AcustraLookAndFeel::drawRotarySlider (
         1.3f, juce::PathStrokeType::curved,
         juce::PathStrokeType::rounded));
 
-    const auto pointerLength = bodyRadius * 0.74f;
-    const auto pointerWidth = juce::jmax (1.7f, bodyRadius * 0.10f);
+    const auto pointerLength = bodyRadius * 0.78f;
+    const auto pointerWidth = juce::jmax (1.7f, bodyRadius * 0.065f);
     juce::Path pointer;
     pointer.addRoundedRectangle (-pointerWidth * 0.5f, -pointerLength,
-                                 pointerWidth, pointerLength,
+                                 pointerWidth, pointerLength * 0.62f,
                                  pointerWidth * 0.5f);
     pointer.applyTransform (
         juce::AffineTransform::rotation (angle).translated (centre.x, centre.y));
     g.setColour (ivory);
     g.fillPath (pointer);
-    g.setColour (brass.darker (0.10f));
-    const auto pinRadius = juce::jmax (2.4f, bodyRadius * 0.075f);
-    g.fillEllipse (centre.x - pinRadius, centre.y - pinRadius,
-                   pinRadius * 2.0f, pinRadius * 2.0f);
 
     if (slider.hasKeyboardFocus (true))
     {
@@ -202,15 +194,15 @@ void AcustraLookAndFeel::drawButtonBackground (
 
     const auto bounds = button.getLocalBounds().toFloat().reduced (1.0f);
     g.setColour (fill);
-    g.fillRoundedRectangle (bounds, 7.0f);
+    g.fillRoundedRectangle (bounds, 4.0f);
     g.setColour (button.getToggleState()
-                     ? ivory.withAlpha (0.92f) : panelEdge);
-    g.drawRoundedRectangle (bounds, 7.0f,
+                     ? brass : panelEdge);
+    g.drawRoundedRectangle (bounds, 4.0f,
                             button.getToggleState() ? 1.5f : 1.0f);
     if (button.hasKeyboardFocus (true))
     {
         g.setColour (brass.brighter (0.20f));
-        g.drawRoundedRectangle (bounds.reduced (2.0f), 5.5f, 2.0f);
+        g.drawRoundedRectangle (bounds.reduced (2.0f), 3.0f, 2.0f);
     }
 }
 
@@ -222,11 +214,6 @@ juce::Font AcustraLookAndFeel::getTextButtonFont (juce::TextButton&,
         juce::Font::bold);
 }
 
-juce::Font AcustraLookAndFeel::getComboBoxFont (juce::ComboBox&)
-{
-    return displayFont (16.0f, juce::Font::bold);
-}
-
 class AcustraAudioProcessorEditor::ChoiceButtonGroup final
     : public juce::Component
 {
@@ -234,15 +221,22 @@ public:
     ChoiceButtonGroup (juce::RangedAudioParameter& parameter,
                        const juce::StringArray& items,
                        const juce::String& groupName,
-                       const juce::String& description)
-        : attachment (parameter, [this] (float value)
-          {
-              const auto selected = juce::jlimit (
-                  0, static_cast<int> (buttons.size()) - 1,
-                  juce::roundToInt (value));
-              buttons[static_cast<std::size_t> (selected)]->setToggleState (
-                  true, juce::dontSendNotification);
-          })
+                       const juce::String& description, int columns = 2)
+        : ChoiceButtonGroup (items, groupName, description, columns)
+    {
+        attachment = std::make_unique<juce::ParameterAttachment> (
+            parameter, [this] (float value) { setSelectedIndex (juce::roundToInt (value)); });
+        onChoice = [this] (int item)
+        {
+            attachment->setValueAsCompleteGesture (static_cast<float> (item));
+        };
+        attachment->sendInitialUpdate();
+    }
+
+    ChoiceButtonGroup (const juce::StringArray& items,
+                       const juce::String& groupName,
+                       const juce::String& description, int columns = 2)
+        : columnCount (columns)
     {
         jassert (! items.isEmpty() && items.size() < 8);
         buttons.reserve (static_cast<std::size_t> (items.size()));
@@ -259,20 +253,36 @@ public:
             button->setRadioGroupId (1, juce::dontSendNotification);
             button->onClick = [this, item]
             {
-                attachment.setValueAsCompleteGesture (static_cast<float> (item));
+                if (onChoice != nullptr)
+                    onChoice (item);
             };
             addAndMakeVisible (*button);
             buttons.push_back (std::move (button));
         }
 
-        attachment.sendInitialUpdate();
+    }
+
+    std::function<void (int)> onChoice;
+
+    void setSelectedIndex (int selected)
+    {
+        for (std::size_t index = 0; index < buttons.size(); ++index)
+            buttons[index]->setToggleState (static_cast<int> (index) == selected,
+                                            juce::dontSendNotification);
+    }
+
+    void setChoiceDescription (std::size_t index, const juce::String& description)
+    {
+        buttons[index]->setDescription (description);
+        buttons[index]->setTooltip (description);
     }
 
     void resized() override
     {
         auto area = getLocalBounds();
-        constexpr int gap = 4;
-        constexpr int columns = 2;
+        const auto scale = static_cast<float> (getParentComponent()->getWidth()) / designWidth;
+        const auto gap = juce::roundToInt (4.0f * scale);
+        const auto columns = columnCount;
         const auto rows = (static_cast<int> (buttons.size()) + columns - 1)
                         / columns;
         const auto rowHeight = (area.getHeight() - gap * (rows - 1)) / rows;
@@ -284,23 +294,21 @@ public:
                 area.removeFromTop (gap);
 
             const auto remaining = static_cast<int> (buttons.size()) - item;
-            if (remaining == 1)
+            const auto count = juce::jmin (columns, remaining);
+            const auto buttonWidth = (rowArea.getWidth() - gap * (columns - 1)) / columns;
+            for (int column = 0; column < count; ++column)
             {
-                buttons[static_cast<std::size_t> (item)]->setBounds (rowArea);
-                break;
+                buttons[static_cast<std::size_t> (item++)]->setBounds (
+                    rowArea.removeFromLeft (buttonWidth));
+                rowArea.removeFromLeft (gap);
             }
-
-            const auto buttonWidth = (rowArea.getWidth() - gap) / columns;
-            buttons[static_cast<std::size_t> (item++)]->setBounds (
-                rowArea.removeFromLeft (buttonWidth));
-            rowArea.removeFromLeft (gap);
-            buttons[static_cast<std::size_t> (item++)]->setBounds (rowArea);
         }
     }
 
 private:
     std::vector<std::unique_ptr<juce::TextButton>> buttons;
-    juce::ParameterAttachment attachment;
+    std::unique_ptr<juce::ParameterAttachment> attachment;
+    int columnCount;
 };
 
 AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
@@ -367,21 +375,17 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
             audioProcessor.parameters, acustra::parameters::gatherChords,
             gatherChordsButton);
 
-    configureSetupMenu (
-        0, "GUITAR", "Set the body model, shape and wood together. "
+    configureSetupChoice (
+        0, "GUITAR", nullptr,
+        "Set the body model, shape and wood together. "
         "Style presets use the original body; named years select measured bodies. "
         "Adjust any construction control below to make your own guitar.");
-    auto& guitarMenu = setupControls[0];
-    guitarMenu.addItem ("Custom construction", 1);
-    guitarMenu.setItemEnabled (1, false);
     for (std::size_t index = 0; index < constructionPresets.size(); ++index)
-        guitarMenu.addItem (constructionPresets[index].name,
-                            static_cast<int> (index) + 2);
-    guitarMenu.onChange = [this]
+        setupControls[0]->setChoiceDescription (
+            index, juce::String (constructionPresets[index].name) + ". "
+                + "Set the body model, shape and wood together; keep tuning, playing and capture.");
+    setupControls[0]->onChoice = [this] (int index)
     {
-        const auto index = setupControls[0].getSelectedId() - 2;
-        if (index < 0 || index >= static_cast<int> (constructionPresets.size()))
-            return;
         const auto& preset = constructionPresets[static_cast<std::size_t> (index)];
         const auto setChoice = [this] (const char* id, auto value)
         {
@@ -398,46 +402,22 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         setChoice (acustra::parameters::guitarModel, preset.model);
         timerCallback();
     };
-    configureSetupMenu (
-        1, "PICKING", "Finger: balanced attack. Pick: crisp and bridgeward. "
+    configureSetupChoice (
+        1, "PICKING", acustra::parameters::picking,
+        "Finger: balanced attack. Pick: crisp and bridgeward. "
         "Thumb: rounder and neckward. Touch adjusts the contact within each "
-        "technique. MIDI: CC2 bridge-hand damping.");
-    configureSetupMenu (
-        2, "CAPTURE", "Stereo body microphones, one mono body microphone, or "
+        "technique. MIDI: CC2 bridge-hand damping.", 3);
+    configureSetupChoice (
+        2, "CAPTURE", acustra::parameters::captureMode,
+        "Stereo body microphones, one mono body microphone, or "
         "an under-saddle piezo through its onboard preamp. Mono mic and piezo "
-        "send the same signal to both channels and ignore Stereo Width.");
-    configureSetupMenu (
-        3, "MODEL", "Choose the measured guitar body. Original is the "
+        "send the same signal to both channels and ignore Stereo Width.", 3);
+    configureSetupChoice (
+        3, "MODEL", acustra::parameters::guitarModel,
+        "Choose the measured guitar body. Original is the "
         "steel-string voice; Bellido is a measured 1978 classical strung with "
         "steel, with three microphones. Shape and wood controls remain "
         "adjustable construction changes.");
-    if (auto* parameter = dynamic_cast<juce::AudioParameterChoice*> (
-            audioProcessor.parameters.getParameter (acustra::parameters::picking)))
-    {
-        setupControls[1].addItemList (parameter->choices, 1);
-        pickingAttachment = std::make_unique<
-            juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
-                audioProcessor.parameters, acustra::parameters::picking,
-                setupControls[1]);
-    }
-    if (auto* parameter = dynamic_cast<juce::AudioParameterChoice*> (
-            audioProcessor.parameters.getParameter (acustra::parameters::captureMode)))
-    {
-        setupControls[2].addItemList (parameter->choices, 1);
-        captureAttachment = std::make_unique<
-            juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
-                audioProcessor.parameters, acustra::parameters::captureMode,
-                setupControls[2]);
-    }
-    if (auto* parameter = dynamic_cast<juce::AudioParameterChoice*> (
-            audioProcessor.parameters.getParameter (acustra::parameters::guitarModel)))
-    {
-        setupControls[3].addItemList (parameter->choices, 1);
-        guitarModelAttachment = std::make_unique<
-            juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
-                audioProcessor.parameters, acustra::parameters::guitarModel,
-                setupControls[3]);
-    }
 
     configureChoice (
         0, "BODY SHAPE", acustra::parameters::shape,
@@ -481,6 +461,13 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     keyboard.setAvailableRange (keyboardFirstNote, keyboardLastNote);
     keyboard.setLowestVisibleKey (keyboardFirstNote);
     keyboard.setMidiChannel (1);
+    keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, ivory);
+    keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, ebony);
+    keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, panelEdge);
+    keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId,
+                        brass.withAlpha (0.25f));
+    keyboard.setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId,
+                        brass.withAlpha (0.55f));
     addAndMakeVisible (keyboard);
 
     setResizable (true, true);
@@ -499,55 +486,52 @@ AcustraAudioProcessorEditor::~AcustraAudioProcessorEditor()
     setLookAndFeel (nullptr);
 }
 
-void AcustraAudioProcessorEditor::configureSetupMenu (
-    std::size_t index, const juce::String& name, const juce::String& description)
+void AcustraAudioProcessorEditor::configureSetupChoice (
+    std::size_t index, const juce::String& name, const char* parameterId,
+    const juce::String& description, int columns)
 {
     auto& label = setupLabels[index];
     label.setText (name, juce::dontSendNotification);
-    label.setFont (displayFont (15.0f, juce::Font::bold));
-    label.setColour (juce::Label::textColourId, brass);
+    label.setColour (juce::Label::textColourId, mutedText);
     label.setInterceptsMouseClicks (false, false);
     label.setAccessible (false);
     addAndMakeVisible (label);
 
     auto& control = setupControls[index];
-    control.setName (name);
-    control.setTitle (name);
-    control.setDescription (description);
-    control.setTooltip (description);
-    control.setWantsKeyboardFocus (true);
-    addAndMakeVisible (control);
+    if (parameterId == nullptr)
+    {
+        juce::StringArray captions;
+        for (const auto& preset : constructionPresets)
+            captions.add (preset.caption);
+        control = std::make_unique<ChoiceButtonGroup> (captions, name, description, columns);
+    }
+    else if (auto* parameter = dynamic_cast<juce::AudioParameterChoice*> (
+                 audioProcessor.parameters.getParameter (parameterId)))
+    {
+        control = std::make_unique<ChoiceButtonGroup> (
+            *parameter, parameter->choices, name, description, columns);
+    }
+    jassert (control != nullptr);
+    addAndMakeVisible (*control);
 }
 
 void AcustraAudioProcessorEditor::updateConstructionControls()
 {
     const auto state = audioProcessor.snapshotEngineParameters();
-    int presetId = 1;
+    int selected = -1;
     for (std::size_t index = 0; index < constructionPresets.size(); ++index)
     {
         const auto& preset = constructionPresets[index];
         if (state.guitarModel == preset.model
             && state.shape == preset.shape && state.bodyMaterial == preset.wood)
         {
-            presetId = static_cast<int> (index) + 2;
+            selected = static_cast<int> (index);
             break;
         }
     }
-    // A user selection is queued until ComboBox delivers its callback. Only a
-    // changed construction should replace it; an unchanged display timer must
-    // not restore the previous preset before that callback can apply the new one.
-    if (presetId != displayedConstructionPresetId)
-    {
-        const bool selectionPending = setupControls[0].getSelectedId()
-            != displayedConstructionPresetId;
-        displayedConstructionPresetId = presetId;
-        if (! selectionPending)
-        {
-            setupControls[0].setSelectedId (presetId, juce::dontSendNotification);
-            if (auto* handler = setupControls[0].getAccessibilityHandler())
-                handler->notifyAccessibilityEvent (juce::AccessibilityEvent::valueChanged);
-        }
-    }
+    setupControls[0]->setSelectedIndex (selected);
+    setupLabels[0].setText (selected < 0 ? "CONSTRUCTION / CUSTOM" : "CONSTRUCTION",
+                            juce::dontSendNotification);
 }
 
 void AcustraAudioProcessorEditor::configureChoice (
@@ -557,7 +541,7 @@ void AcustraAudioProcessorEditor::configureChoice (
     auto& label = choiceLabels[index];
     label.setText (name, juce::dontSendNotification);
     label.setFont (displayFont (17.0f, juce::Font::bold));
-    label.setColour (juce::Label::textColourId, brass);
+    label.setColour (juce::Label::textColourId, mutedText);
     label.setJustificationType (juce::Justification::centredLeft);
     label.setInterceptsMouseClicks (false, false);
     label.setAccessible (false);
@@ -582,7 +566,7 @@ void AcustraAudioProcessorEditor::configureSlider (
     auto& label = sliderLabels[index];
     label.setText (name, juce::dontSendNotification);
     label.setFont (displayFont (17.0f, juce::Font::bold));
-    label.setColour (juce::Label::textColourId, brass);
+    label.setColour (juce::Label::textColourId, mutedText);
     label.setJustificationType (juce::Justification::centred);
     label.setInterceptsMouseClicks (false, false);
     label.setAccessible (false);
@@ -606,158 +590,129 @@ void AcustraAudioProcessorEditor::configureSlider (
 void AcustraAudioProcessorEditor::paint (juce::Graphics& g)
 {
     const auto full = getLocalBounds().toFloat();
+    const auto scale = static_cast<float> (getWidth()) / designWidth;
+    g.fillAll (soundboard);
     if (cedarBackground.isValid())
     {
         g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
         g.drawImage (cedarBackground, full,
                      juce::RectanglePlacement::fillDestination);
-    }
-    else
-    {
-        juce::ColourGradient background {
-            soundboard.brighter (0.14f), 0.0f, 0.0f,
-            soundboard.darker (0.18f), full.getWidth(), full.getHeight(), false };
-        g.setGradientFill (background);
-        g.fillAll();
+        // A pale satin finish keeps the grain quiet behind the control plates.
+        g.setColour (soundboard.withAlpha (0.72f));
+        g.fillRect (full);
     }
 
-    g.setColour (darkWood.withAlpha (0.10f));
-    g.fillRect (full);
     juce::ColourGradient headerShade {
-        ebony.withAlpha (0.88f), 0.0f, 0.0f,
-        rosewood.withAlpha (0.72f), full.getWidth(), 86.0f, false };
+        rosewood, 0.0f, 0.0f, darkWood.brighter (0.08f),
+        full.getWidth(), 86.0f * scale, false };
     g.setGradientFill (headerShade);
-    g.fillRect (0.0f, 0.0f, full.getWidth(), 86.0f);
+    g.fillRect (0.0f, 0.0f, full.getWidth(), 86.0f * scale);
+    g.setColour (ivory.withAlpha (0.6f));
+    g.drawLine (22.0f * scale, 82.0f * scale,
+                full.getWidth() - 22.0f * scale, 82.0f * scale, scale);
 
-    g.setColour (brass.withAlpha (0.22f));
-    g.drawLine (24.0f, 80.0f, static_cast<float> (getWidth() - 24), 80.0f,
-                1.0f);
+    drawPanel (g, guitarPanelBounds);
+    drawPanel (g, playerPanelBounds);
+    drawPanel (g, capturePanelBounds);
 
-    drawPanel (g, setupPanelBounds);
-    drawPanel (g, choicePanelBounds);
-    drawPanel (g, tonePanelBounds);
-
-    // A restrained soundboard/sound-hole watermark anchors the seven controls
-    // visually to the instrument they alter while leaving every label clear.
-    const auto watermark = tonePanelBounds.toFloat().reduced (18.0f);
-    const auto centre = watermark.getCentre();
-    const auto bodyHeight = watermark.getHeight() * 0.72f;
-    const auto bodyWidth = bodyHeight * 0.58f;
-    juce::Path guitar;
-    guitar.startNewSubPath (centre.x, centre.y - bodyHeight * 0.5f);
-    guitar.cubicTo (centre.x - bodyWidth * 0.34f,
-                    centre.y - bodyHeight * 0.52f,
-                    centre.x - bodyWidth * 0.64f,
-                    centre.y - bodyHeight * 0.31f,
-                    centre.x - bodyWidth * 0.42f,
-                    centre.y - bodyHeight * 0.08f);
-    guitar.cubicTo (centre.x - bodyWidth * 0.72f,
-                    centre.y + bodyHeight * 0.12f,
-                    centre.x - bodyWidth * 0.55f,
-                    centre.y + bodyHeight * 0.50f,
-                    centre.x, centre.y + bodyHeight * 0.50f);
-    guitar.cubicTo (centre.x + bodyWidth * 0.55f,
-                    centre.y + bodyHeight * 0.50f,
-                    centre.x + bodyWidth * 0.72f,
-                    centre.y + bodyHeight * 0.12f,
-                    centre.x + bodyWidth * 0.42f,
-                    centre.y - bodyHeight * 0.08f);
-    guitar.cubicTo (centre.x + bodyWidth * 0.64f,
-                    centre.y - bodyHeight * 0.31f,
-                    centre.x + bodyWidth * 0.34f,
-                    centre.y - bodyHeight * 0.52f,
-                    centre.x, centre.y - bodyHeight * 0.5f);
-    guitar.closeSubPath();
-    g.setColour (soundboard.withAlpha (0.025f));
-    g.fillPath (guitar);
-    g.setColour (brass.withAlpha (0.055f));
-    g.strokePath (guitar, juce::PathStrokeType (1.0f));
-    g.drawEllipse (centre.x - bodyWidth * 0.12f,
-                   centre.y - bodyWidth * 0.12f,
-                   bodyWidth * 0.24f, bodyWidth * 0.24f, 1.0f);
-
-    g.setFont (displayFont (15.0f, juce::Font::bold));
-    g.setColour (mutedText.withAlpha (0.86f));
-    g.drawText ("INSTRUMENT", choicePanelBounds.reduced (15).removeFromTop (18),
-                juce::Justification::centredLeft, false);
-    g.drawText ("VOICE & OUTPUT", tonePanelBounds.reduced (15).removeFromTop (18),
-                juce::Justification::centredLeft, false);
+    const auto heading = [&] (juce::Rectangle<int> bounds, const char* title)
+    {
+        auto area = bounds.reduced (juce::roundToInt (18.0f * scale),
+                                    juce::roundToInt (12.0f * scale));
+        g.setFont (displayFont (19.0f * scale, juce::Font::bold));
+        g.setColour (ivory);
+        g.drawText (title, area.removeFromTop (juce::roundToInt (24.0f * scale)),
+                    juce::Justification::centredLeft, false);
+        g.setColour (brass.withAlpha (0.65f));
+        g.drawLine (static_cast<float> (area.getX()), static_cast<float> (area.getY()),
+                    area.getX() + 76.0f * scale, static_cast<float> (area.getY()), scale);
+    };
+    heading (guitarPanelBounds, "GUITAR");
+    heading (playerPanelBounds, "PLAYER");
+    heading (capturePanelBounds, "CAPTURE & OUTPUT");
 }
 
 void AcustraAudioProcessorEditor::resized()
 {
-    const auto keyboardHeight = juce::jmax (96, getHeight() / 7);
-    keyboardPanelBounds = getLocalBounds().removeFromBottom (keyboardHeight)
-                                         .reduced (22, 0);
+    // Lay out one instrument at the documented aspect ratio. Scaling the
+    // complete grid keeps captions, gestures and keyboard aligned at every
+    // supported host size, rather than reflowing individual controls.
+    const auto scale = static_cast<float> (getWidth()) / designWidth;
+    const auto box = [scale] (int x, int y, int w, int h)
+    {
+        return juce::Rectangle<int> {
+            juce::roundToInt (x * scale), juce::roundToInt (y * scale),
+            juce::roundToInt (w * scale), juce::roundToInt (h * scale) };
+    };
+
+    titleLabel.setFont (displayFont (36.0f * scale, juce::Font::bold));
+    subtitleLabel.setFont (displayFont (12.5f * scale, juce::Font::bold));
+    statusLabel.setFont (displayFont (14.0f * scale));
+    titleLabel.setBounds (box (26, 12, 380, 42));
+    subtitleLabel.setBounds (box (28, 54, 460, 20));
+    statusLabel.setBounds (box (636, 27, 252, 32));
+    gatherChordsButton.setBounds (box (908, 25, 94, 36));
+    panicButton.setBounds (box (1014, 25, 80, 36));
+
+    guitarPanelBounds = box (22, 96, 348, 580);
+    playerPanelBounds = box (382, 96, 716, 282);
+    capturePanelBounds = box (382, 390, 716, 286);
+
+    for (auto& label : setupLabels)
+        label.setFont (displayFont (13.5f * scale, juce::Font::bold));
+    for (auto& label : choiceLabels)
+        label.setFont (displayFont (13.5f * scale, juce::Font::bold));
+    for (auto& label : sliderLabels)
+        label.setFont (displayFont (14.0f * scale, juce::Font::bold));
+
+    setupLabels[0].setBounds (box (40, 143, 312, 20));
+    // All left-hand switches share one exact cell size, even after rounding
+    // at the host's minimum or maximum scale. Odd rows retain the same grid.
+    const auto leftSwitches = [&] (int y, int rows)
+    {
+        auto bounds = box (40, y, 312, 1);
+        bounds.setHeight (rows * juce::roundToInt (32.0f * scale)
+                          + (rows - 1) * juce::roundToInt (4.0f * scale));
+        return bounds;
+    };
+    setupControls[0]->setBounds (leftSwitches (166, 2));
+    setupLabels[3].setBounds (box (40, 246, 312, 20));
+    setupControls[3]->setBounds (leftSwitches (272, 1));
+
+    const std::array<int, 3> choiceY { 316, 424, 532 };
+    const std::array<int, 3> choiceRows { 2, 2, 3 };
+    for (std::size_t index = 0; index < choiceControls.size(); ++index)
+    {
+        choiceLabels[index].setBounds (box (40, choiceY[index], 312, 22));
+        if (choiceControls[index] != nullptr)
+            choiceControls[index]->setBounds (leftSwitches (choiceY[index] + 28, choiceRows[index]));
+    }
+
+    // The technique belongs with the contact controls; the capture belongs
+    // with the signal controls. They remain the same parameter attachments.
+    setupLabels[1].setBounds (box (512, 111, 82, 22));
+    setupControls[1]->setBounds (box (594, 104, 486, 38));
+    setupLabels[2].setBounds (box (622, 405, 82, 22));
+    setupControls[2]->setBounds (box (704, 398, 376, 38));
+
+    for (std::size_t index = 0; index < 3; ++index)
+    {
+        const auto x = 424 + static_cast<int> (index) * 218;
+        sliderLabels[index].setBounds (box (x, 158, 196, 24));
+        sliderControls[index].setBounds (box (x, 187, 196, 182));
+    }
+    for (std::size_t index = 3; index < sliderControls.size(); ++index)
+    {
+        const auto x = 400 + static_cast<int> (index - 3) * 170;
+        sliderLabels[index].setBounds (box (x, 446, 170, 24));
+        sliderControls[index].setBounds (box (x + 9, 475, 152, 182));
+    }
+
+    keyboardPanelBounds = box (22, 688, 1076, 112);
+    keyboardPanelBounds.setBottom (getHeight());
     keyboard.setKeyWidth (static_cast<float> (keyboardPanelBounds.getWidth())
                           / static_cast<float> (keyboardWhiteKeyCount));
     keyboard.setBounds (keyboardPanelBounds);
-
-    auto bounds = getLocalBounds().reduced (22);
-    bounds.setBottom (keyboardPanelBounds.getY() - 12);
-    auto header = bounds.removeFromTop (58);
-    titleLabel.setBounds (header.removeFromLeft (
-        juce::jmin (318, header.getWidth() / 4)));
-    panicButton.setBounds (header.removeFromRight (80).reduced (3, 10));
-    gatherChordsButton.setBounds (header.removeFromRight (96).reduced (3, 10));
-    subtitleLabel.setBounds (header.removeFromLeft (
-        juce::jmin (480, header.getWidth() / 2)).reduced (8, 0));
-    statusLabel.setBounds (header.reduced (8, 0));
-
-    bounds.removeFromTop (12);
-    setupPanelBounds = bounds.removeFromTop (80);
-    auto setupArea = setupPanelBounds.reduced (14, 10);
-    const auto setupWidth = setupArea.getWidth() - 36;
-    const int guitarWidth = setupWidth * 30 / 100;
-    const int pickingWidth = juce::jmax (175, setupWidth * 17 / 100);
-    const int captureWidth = juce::jmax (175, setupWidth * 23 / 100);
-    const std::array<int, 4> setupWidths {
-        guitarWidth, pickingWidth, captureWidth,
-        setupWidth - guitarWidth - pickingWidth - captureWidth
-    };
-    for (const auto index : std::array<std::size_t, 4> { 0, 3, 1, 2 })
-    {
-        auto cell = setupArea.removeFromLeft (setupWidths[index]);
-        setupLabels[index].setBounds (cell.removeFromTop (24));
-        setupControls[index].setBounds (cell);
-        setupArea.removeFromLeft (12);
-    }
-    bounds.removeFromTop (12);
-    choicePanelBounds = bounds.removeFromTop (
-        juce::jmax (154, bounds.getHeight() * 36 / 100));
-    bounds.removeFromTop (12);
-    tonePanelBounds = bounds;
-
-    auto choiceArea = choicePanelBounds.reduced (14);
-    choiceArea.removeFromTop (20);
-    const int choiceGap = 10;
-    const int choiceCount = static_cast<int> (choiceControls.size());
-    const int choiceWidth =
-        (choiceArea.getWidth() - choiceGap * (choiceCount - 1)) / choiceCount;
-    for (std::size_t index = 0; index < choiceControls.size(); ++index)
-    {
-        auto cell = choiceArea.removeFromLeft (choiceWidth);
-        if (index + 1 < choiceControls.size())
-            choiceArea.removeFromLeft (choiceGap);
-        choiceLabels[index].setBounds (cell.removeFromTop (30));
-        if (choiceControls[index] != nullptr)
-            choiceControls[index]->setBounds (cell);
-    }
-
-    auto toneArea = tonePanelBounds.reduced (13);
-    toneArea.removeFromTop (20);
-    const int sliderGap = 3;
-    const int sliderCount = static_cast<int> (sliderControls.size());
-    const int sliderWidth =
-        (toneArea.getWidth() - sliderGap * (sliderCount - 1)) / sliderCount;
-    for (std::size_t index = 0; index < sliderControls.size(); ++index)
-    {
-        auto cell = toneArea.removeFromLeft (sliderWidth);
-        if (index + 1 < sliderControls.size())
-            toneArea.removeFromLeft (sliderGap);
-        sliderLabels[index].setBounds (cell.removeFromTop (30));
-        sliderControls[index].setBounds (cell);
-    }
 }
 
 void AcustraAudioProcessorEditor::timerCallback()

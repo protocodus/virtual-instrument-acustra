@@ -1539,7 +1539,7 @@ void testEditorRendering()
     std::vector<juce::TextButton*> choiceButtons;
     juce::MidiKeyboardComponent* midiKeyboard = nullptr;
     juce::Label* engineStatus = nullptr;
-    std::vector<juce::ComboBox*> setupMenus;
+    int comboBoxCount = 0;
     while (! pending.empty())
     {
         auto* parent = pending.back();
@@ -1547,8 +1547,8 @@ void testEditorRendering()
         for (auto* child : parent->getChildren())
         {
             pending.push_back (child);
-            if (auto* menu = dynamic_cast<juce::ComboBox*> (child))
-                setupMenus.push_back (menu);
+            if (dynamic_cast<juce::ComboBox*> (child) != nullptr)
+                ++comboBoxCount;
             if (auto* label = dynamic_cast<juce::Label*> (child);
                 label != nullptr && label->getName() == "Engine status")
                 engineStatus = label;
@@ -1560,16 +1560,14 @@ void testEditorRendering()
         }
     }
 
-    expect (setupMenus.size() == 4,
-            "the guitar, model, picking and capture setup menus are missing");
+    expect (comboBoxCount == 0, "the editor still hides choices in a combo box");
     const auto refreshDisplayTimer = [&]
     {
         expect (engineStatus != nullptr, "the visible engine status is missing");
         if (engineStatus == nullptr)
             return;
         engineStatus->setText ("timer pending", juce::dontSendNotification);
-        // TimerThread may already be waiting for an older queued callback.
-        // Keep ComboBox notifications queued until an observed display refresh,
+        // Observe a real display refresh, including the construction selection,
         // rather than assuming one sleep made the editor's timer due.
         for (int attempt = 0; attempt < 50; ++attempt)
         {
@@ -1580,8 +1578,8 @@ void testEditorRendering()
         }
         expect (false, "the editor display timer did not run");
     };
-    expect (choiceButtons.size() == 12,
-            "the three compact choices do not expose all 12 options");
+    expect (choiceButtons.size() == 24,
+            "the seven radio groups do not expose all 24 existing options");
     expect (std::all_of (choiceButtons.begin(), choiceButtons.end(),
                         [] (const auto* button)
                         {
@@ -1593,8 +1591,8 @@ void testEditorRendering()
     std::set<juce::Component*> choiceGroups;
     for (auto* button : choiceButtons)
         choiceGroups.insert (button->getParentComponent());
-    expect (choiceGroups.size() == 3,
-            "choice buttons are not split into three radio groups");
+    expect (choiceGroups.size() == 7,
+            "choice buttons are not split into seven independent radio groups");
     expect (std::none_of (choiceButtons.begin(), choiceButtons.end(),
                           [] (const auto* button)
                           {
@@ -1638,119 +1636,111 @@ void testEditorRendering()
                 "host automation did not update the visible choice selection");
     }
 
-    for (auto* menu : setupMenus)
+    const auto findChoice = [&] (const juce::String& name) -> juce::TextButton*
     {
-        namespace ids = acustra::parameters;
-        expect (menu->getWantsKeyboardFocus() && menu->getDescription().isNotEmpty(),
-                "a setup menu lacks keyboard focus or an accessible description");
-        if (menu->getName() == "GUITAR")
+        for (auto* button : choiceButtons)
+            if (button->getName() == name)
+                return button;
+        expect (false, "missing choice: " + name.toStdString());
+        return nullptr;
+    };
+    const auto choose = [&] (const juce::String& name)
+    {
+        if (auto* button = findChoice (name))
         {
-            // Real ComboBox selections notify asynchronously. A due status
-            // timer must preserve the pending preset until its callback runs.
-            menu->setSelectedId (5, juce::sendNotificationAsync);
-            refreshDisplayTimer();
-            expect (menu->getSelectedId() == 5,
-                    "a display timer discarded the pending guitar preset");
-            // Drain the pending notification through a different synchronous
-            // selection before testing the resulting construction below.
-            menu->setSelectedId (2, juce::sendNotificationSync);
-            setValue (processor, ids::tuning, 2.0f);
-            setValue (processor, ids::output, -4.0f);
-            setValue (processor, ids::captureMode, 2.0f);
-            expect (menu->getNumItems() == 5 && menu->getItemText (4) == "Bellido 1978",
-                    "the guitar menu does not hold Custom, the three style presets and the Bellido");
-            expect (! menu->getTooltip().contains ("Fylde") && ! menu->getTooltip().contains ("nylon"),
-                    "the guitar menu still describes a retired bridge or string choice");
-            struct Expected { int id; acustra::BodyShape shape; acustra::BodyMaterial wood;
-                              acustra::GuitarModel model; };
-            constexpr std::array presets {
-                Expected { 2, acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce,
-                           acustra::GuitarModel::Original },
-                Expected { 3, acustra::BodyShape::Auditorium, acustra::BodyMaterial::Spruce,
-                           acustra::GuitarModel::Original },
-                Expected { 4, acustra::BodyShape::Parlor, acustra::BodyMaterial::Spruce,
-                           acustra::GuitarModel::Original },
-                Expected { 5, acustra::BodyShape::Auditorium, acustra::BodyMaterial::Mahogany,
-                           acustra::GuitarModel::Bellido1978 } };
-            for (const auto& preset : presets)
-            {
-                menu->setSelectedId (preset.id, juce::sendNotificationSync);
-                const auto state = processor.snapshotEngineParameters();
-                expect (state.shape == preset.shape && state.bodyMaterial == preset.wood
-                            && state.guitarModel == preset.model
-                            && state.capture == acustra::CaptureType::Piezo,
-                        "guitar preset " + std::to_string (preset.id)
-                            + " missed its construction or changed capture");
-                refreshDisplayTimer();
-                expect (menu->getSelectedId() == preset.id,
-                        "guitar preset " + std::to_string (preset.id) + " lost its caption");
-                expect (engineStatus != nullptr && engineStatus->getText().contains ("kHz"),
-                        "a guitar preset did not show normal status");
-            }
-            expect (valueOf (processor, ids::tuning) == 2.0f
-                        && std::abs (valueOf (processor, ids::output) + 4.0f) < 0.011f,
-                    "a guitar construction preset changed tuning or output");
-            menu->setSelectedId (2, juce::sendNotificationSync);
-            expect (processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Original,
-                    "an original construction preset retained a measured body override");
-            setValue (processor, ids::tuning, 0.0f);
-            setValue (processor, ids::output, -7.5f);
+            expect (button->getDescription().isNotEmpty(), "a setup choice lacks an accessible description");
+            // Exercise the actual click handler even when reapplying a selected
+            // construction. Host automation can make a preset custom between clicks.
+            button->onClick();
         }
-        else if (menu->getName() == "MODEL")
-        {
-            expect (menu->getNumItems() == 2 && menu->getItemText (0) == "Original"
-                        && menu->getItemText (1) == "Bellido 1978",
-                    "the model menu does not expose the two supported bodies");
-            expect (! menu->getTooltip().contains ("Martin")
-                        && ! menu->getTooltip().contains ("Washburn"),
-                    "the model menu still describes a retired body");
-            menu->setSelectedItemIndex (1, juce::sendNotificationSync);
-            expect (processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Bellido1978,
-                    "the Bellido model menu selection did not reach the engine");
-            setValue (processor, ids::guitarModel, 1.0f);
-            expect (menu->getSelectedId() == 2,
-                    "host body-model automation did not update the menu");
-            setValue (processor, ids::guitarModel, 0.0f);
-        }
-        else
-        {
-            const bool captureMenu = menu->getName() == "CAPTURE";
-            const auto* id = captureMenu ? ids::captureMode : ids::picking;
-            menu->setSelectedItemIndex (2, juce::sendNotificationSync);
-            expect (std::abs (valueOf (processor, id) - 2.0f) < 0.011f,
-                    "a setup menu did not update its host parameter");
-            if (captureMenu)
-            {
-                expect (menu->getNumItems() == 3 && menu->getItemText (0) == "Stereo mic"
-                            && menu->getItemText (1) == "Mono mic" && menu->getItemText (2) == "Piezo",
-                        "the Capture menu must expose only stereo mic, mono mic and piezo");
-                expect (menu->getTooltip().contains ("ignore Stereo Width"),
-                        "the capture menu conceals that mono mic and piezo ignore Stereo Width");
-                menu->setSelectedId (2, juce::sendNotificationAsync);
-                refreshDisplayTimer();
-                expect (menu->getSelectedId() == 2,
-                        "a display timer discarded the pending mono-mic selection");
-                menu->setSelectedId (3, juce::sendNotificationSync);
-                menu->setSelectedId (2, juce::sendNotificationSync);
-                expect (processor.snapshotEngineParameters().capture == acustra::CaptureType::MonoMic,
-                        "the mono microphone menu selection did not reach the engine");
-                setValue (processor, ids::captureMode, 2.0f);
-                expect (menu->getSelectedId() == 3,
-                        "host capture automation did not update the menu");
-            }
-            setValue (processor, id, 0.0f);
-            expect (menu->getSelectedItemIndex() == 0,
-                    "host automation did not update the setup menu");
-        }
+    };
+    const auto selected = [&] (const juce::String& name)
+    {
+        auto* button = findChoice (name);
+        return button != nullptr && button->getToggleState();
+    };
+    namespace ids = acustra::parameters;
+    setValue (processor, ids::tuning, 2.0f);
+    setValue (processor, ids::output, -4.0f);
+    setValue (processor, ids::captureMode, 2.0f);
+    struct Expected { const char* caption; acustra::BodyShape shape; acustra::BodyMaterial wood;
+                      acustra::GuitarModel model; };
+    constexpr std::array presets {
+        Expected { "Dreadnought", acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce,
+                   acustra::GuitarModel::Original },
+        Expected { "Auditorium", acustra::BodyShape::Auditorium, acustra::BodyMaterial::Spruce,
+                   acustra::GuitarModel::Original },
+        Expected { "Parlor", acustra::BodyShape::Parlor, acustra::BodyMaterial::Spruce,
+                   acustra::GuitarModel::Original },
+        Expected { "Bellido 1978", acustra::BodyShape::Auditorium, acustra::BodyMaterial::Mahogany,
+                   acustra::GuitarModel::Bellido1978 } };
+    for (const auto& preset : presets)
+    {
+        const auto name = juce::String ("GUITAR: ") + preset.caption;
+        choose (name);
+        const auto state = processor.snapshotEngineParameters();
+        expect (state.shape == preset.shape && state.bodyMaterial == preset.wood
+                    && state.guitarModel == preset.model && state.capture == acustra::CaptureType::Piezo,
+                "a construction switch missed its construction or changed capture");
+        refreshDisplayTimer();
+        expect (selected (name), "a construction switch lost its selection");
+        expect (valueOf (processor, ids::tuning) == 2.0f
+                    && std::abs (valueOf (processor, ids::output) + 4.0f) < 0.011f,
+                "a guitar construction switch changed tuning or output");
     }
+    setValue (processor, ids::shape, 3.0f);
+    refreshDisplayTimer();
+    expect (std::none_of (choiceButtons.begin(), choiceButtons.end(), [] (const auto* button)
+            { return button->getName().startsWith ("GUITAR:") && button->getToggleState(); }),
+            "a custom construction misleadingly shows a selected preset");
+    choose ("GUITAR: Dreadnought");
+    expect (processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Original,
+            "an original construction switch retained a measured body override");
+    setValue (processor, ids::tuning, 0.0f);
+    setValue (processor, ids::output, -7.5f);
+
+    for (const auto& setup : std::array {
+        std::pair { ids::guitarModel, juce::StringArray { "MODEL: Original", "MODEL: Bellido 1978" } },
+        std::pair { ids::picking, juce::StringArray { "PICKING: Finger", "PICKING: Pick", "PICKING: Thumb" } },
+        std::pair { ids::captureMode, juce::StringArray { "CAPTURE: Stereo mic", "CAPTURE: Mono mic", "CAPTURE: Piezo" } } })
+    {
+        for (int index = 0; index < setup.second.size(); ++index)
+        {
+            choose (setup.second[index]);
+            expect (std::abs (valueOf (processor, setup.first) - index) < 0.011f,
+                    "a setup radio switch did not update its host parameter");
+            setValue (processor, setup.first, static_cast<float> ((index + 1) % setup.second.size()));
+            expect (selected (setup.second[(index + 1) % setup.second.size()]),
+                    "host automation did not update a setup radio switch");
+        }
+        setValue (processor, setup.first, 0.0f);
+    }
+    if (auto* capture = findChoice ("CAPTURE: Mono mic"))
+        expect (capture->getTooltip().contains ("ignore Stereo Width"),
+                "capture switches conceal that mono mic and piezo ignore Stereo Width");
 
     const auto renderAt = [&] (int width, int height)
     {
         editor->setSize (width, height);
-        for (auto* menu : setupMenus)
-            expect (menu->getWidth() >= 175 && menu->getHeight() >= 32
-                        && editor->getLocalBounds().contains (menu->getBounds()),
-                    "a setup menu is clipped or too small at a supported size");
+        for (auto* button : choiceButtons)
+        {
+            const auto bounds = button->getBoundsInParent();
+            expect (button->getWidth() >= 96 && button->getHeight() >= 20
+                        && button->getParentComponent()->getLocalBounds().contains (bounds),
+                    "a radio switch is clipped or too small at a supported size");
+            for (auto* other : choiceButtons)
+                if (other != button && other->getParentComponent() == button->getParentComponent())
+                    expect (! bounds.intersects (other->getBoundsInParent()), "radio switches overlap");
+        }
+        juce::Point<int> leftCell;
+        for (auto* button : choiceButtons)
+            if (button->getParentComponent()->getX() < width / 3)
+            {
+                const juce::Point<int> size { button->getWidth(), button->getHeight() };
+                if (leftCell.isOrigin())
+                    leftCell = size;
+                expect (size == leftCell, "left-column radio buttons do not share the same cell size");
+            }
         expect (midiKeyboard != nullptr && midiKeyboard->getBottom() == height,
                 "the MIDI keyboard is not anchored to the editor bottom edge");
         juce::Image image { juce::Image::ARGB, width, height, true };
@@ -1791,64 +1781,39 @@ void testEditorRendering()
         expect (written, "the requested editor screenshot could not be written");
     };
 
-    const auto findMenu = [&] (const char* name) -> juce::ComboBox*
-    {
-        for (auto* menu : setupMenus)
-            if (menu->getName() == name)
-                return menu;
-        return nullptr;
-    };
-    auto* guitarMenu = findMenu ("GUITAR");
-    auto* pickingMenu = findMenu ("PICKING");
-    auto* captureMenu = findMenu ("CAPTURE");
-    auto* modelMenu = findMenu ("MODEL");
-    if (guitarMenu != nullptr && pickingMenu != nullptr && captureMenu != nullptr
-        && modelMenu != nullptr)
-    {
-        // Reload an actual serialized state into an already-open editor. The
-        // composite capture menu, preset caption and radio groups must all agree
-        // with the restored construction, not retain the intervening controls.
-        juce::MemoryBlock initialState, bellidoState;
-        processor.getStateInformation (initialState);
-        guitarMenu->setSelectedId (5, juce::sendNotificationSync);
-        pickingMenu->setSelectedId (3, juce::sendNotificationSync);
-        captureMenu->setSelectedId (2, juce::sendNotificationSync);
-        processor.getStateInformation (bellidoState);
-        guitarMenu->setSelectedId (2, juce::sendNotificationSync);
-        pickingMenu->setSelectedId (1, juce::sendNotificationSync);
-        captureMenu->setSelectedId (1, juce::sendNotificationSync);
-        processor.setStateInformation (bellidoState.getData(),
-                                      static_cast<int> (bellidoState.getSize()));
-        refreshDisplayTimer();
-        const auto mahogany = std::find_if (choiceButtons.begin(), choiceButtons.end(),
-            [] (const auto* button) { return button->getName() == "BODY MATERIAL: Mahogany"; });
-        expect (guitarMenu->getSelectedId() == 5 && pickingMenu->getSelectedId() == 3
-                    && modelMenu->getSelectedId() == 2
-                    && captureMenu->getSelectedId() == 2 && captureMenu->isItemEnabled (3)
-                    && mahogany != choiceButtons.end() && (*mahogany)->getToggleState()
-                    && processor.snapshotEngineParameters().capture == acustra::CaptureType::MonoMic
-                    && processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Bellido1978,
-                "live state reload left the editor showing a different guitar or capture");
-        saveImage (renderAt (editorWidth, editorHeight), "-restored-bellido-mono");
-
-        setValue (processor, acustra::parameters::captureMode, 2.0f);
-        refreshDisplayTimer();
-        saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-bellido-piezo");
-        captureMenu->setSelectedId (3, juce::sendNotificationSync);
-        juce::MemoryBlock loadedState;
-        processor.getStateInformation (loadedState);
-        captureMenu->setSelectedId (1, juce::sendNotificationSync);
-        processor.setStateInformation (loadedState.getData(),
-                                      static_cast<int> (loadedState.getSize()));
-        refreshDisplayTimer();
-        expect (captureMenu->getSelectedId() == 3 && captureMenu->isItemEnabled (3)
-                    && processor.snapshotEngineParameters().capture == acustra::CaptureType::LoadedPiezo,
-                "live loaded-piezo state reload left an incorrect capture in the editor");
-        saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-loaded-piezo");
-        processor.setStateInformation (initialState.getData(),
-                                      static_cast<int> (initialState.getSize()));
-        refreshDisplayTimer();
-    }
+    // Reload a serialized state into the open editor. Every switch, including
+    // the construction shorthand, must describe the engine's restored state.
+    juce::MemoryBlock initialState, bellidoState;
+    processor.getStateInformation (initialState);
+    choose ("GUITAR: Bellido 1978");
+    choose ("PICKING: Thumb");
+    choose ("CAPTURE: Mono mic");
+    processor.getStateInformation (bellidoState);
+    choose ("GUITAR: Dreadnought");
+    choose ("PICKING: Finger");
+    choose ("CAPTURE: Stereo mic");
+    processor.setStateInformation (bellidoState.getData(), static_cast<int> (bellidoState.getSize()));
+    refreshDisplayTimer();
+    expect (selected ("GUITAR: Bellido 1978") && selected ("PICKING: Thumb")
+                && selected ("MODEL: Bellido 1978") && selected ("CAPTURE: Mono mic")
+                && selected ("BODY MATERIAL: Mahogany")
+                && processor.snapshotEngineParameters().capture == acustra::CaptureType::MonoMic
+                && processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Bellido1978,
+            "live state reload left the editor showing a different guitar or capture");
+    saveImage (renderAt (editorWidth, editorHeight), "-restored-bellido-mono");
+    choose ("CAPTURE: Piezo");
+    saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-bellido-piezo");
+    juce::MemoryBlock loadedState;
+    processor.getStateInformation (loadedState);
+    choose ("CAPTURE: Stereo mic");
+    processor.setStateInformation (loadedState.getData(), static_cast<int> (loadedState.getSize()));
+    refreshDisplayTimer();
+    expect (selected ("CAPTURE: Piezo")
+                && processor.snapshotEngineParameters().capture == acustra::CaptureType::LoadedPiezo,
+            "live loaded-piezo state reload left an incorrect capture switch");
+    saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-loaded-piezo");
+    processor.setStateInformation (initialState.getData(), static_cast<int> (initialState.getSize()));
+    refreshDisplayTimer();
 
     saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-minimum");
     saveImage (renderAt (editorMaximumWidth, editorMaximumHeight), "-maximum");

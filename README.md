@@ -23,8 +23,10 @@ parameter (50% for a new instance) puts a small studio around them; see
 remains the goal, not a validated claim; controlled listening against real
 guitars and leading instruments is still required.
 
-Shape, Material and Tuning use directly visible button groups;
-the continuous sound controls remain knobs. The Picking tooltip names CC2 as
+Guitar construction, Model, Shape, Material, Tuning, Picking and Capture use
+directly visible radio switches; the continuous sound controls remain knobs.
+The spruce, rosewood, bone and brass palette groups construction at the left,
+playing technique above capture and output, with the keyboard along the bottom. The Picking tooltip names CC2 as
 the bridge hand. Note-off always damps the note. Existing
 saved sessions retain their parameter IDs. The revised picking styles and
 stronger body variations intentionally change their sound. See the
@@ -1229,7 +1231,7 @@ rectangle (0.72, and 0.75 for the dreadnought's shoulders) is read off the
 plantillas, and the plate law assumes tops of one thickness; both are model
 assumptions, not measurements of those instruments.
 
-The Guitar menu applies construction controls together, using the documented
+The Guitar construction switches apply construction controls together, using the documented
 body families as starting points: Dreadnought / Martin style (spruce, as in the
 [D-28](https://www.martinguitar.com/guitars/standard-series/D-28.html)),
 Auditorium / Taylor style (spruce, the
@@ -1239,7 +1241,7 @@ Parlor / Fender style (spruce, as in the
 Original model and its own bridge, and Bellido 1978 (the measured Bellido in
 its own Auditorium slot, in Mahogany, the kept wood nearest the cedar it was
 built of). These reuse the bounded construction directions;
-they are not independently measured models of those manufacturers. The menu
+they are not independently measured models of those manufacturers. Each switch
 changes Shape, Material and Model with host automation gestures,
 leaving tuning and output where the player set them. Other combinations show Custom
 construction.
