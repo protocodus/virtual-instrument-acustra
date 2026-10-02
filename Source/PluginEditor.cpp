@@ -619,13 +619,15 @@ void AcustraAudioProcessorEditor::paint (juce::Graphics& g)
     {
         auto area = bounds.reduced (juce::roundToInt (18.0f * scale),
                                     juce::roundToInt (12.0f * scale));
-        g.setFont (displayFont (19.0f * scale, juce::Font::bold));
+        const auto headingFont = displayFont (19.0f * scale, juce::Font::bold);
+        const auto titleWidth = juce::GlyphArrangement::getStringWidth (headingFont, title);
+        g.setFont (headingFont);
         g.setColour (ivory);
         g.drawText (title, area.removeFromTop (juce::roundToInt (24.0f * scale)),
                     juce::Justification::centredLeft, false);
         g.setColour (brass.withAlpha (0.65f));
         g.drawLine (static_cast<float> (area.getX()), static_cast<float> (area.getY()),
-                    area.getX() + 76.0f * scale, static_cast<float> (area.getY()), scale);
+                    area.getX() + titleWidth, static_cast<float> (area.getY()), scale);
     };
     heading (guitarPanelBounds, "GUITAR");
     heading (playerPanelBounds, "PLAYER");
