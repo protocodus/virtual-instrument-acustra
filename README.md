@@ -3488,14 +3488,19 @@ microphone recording cannot validate a pickup's response.
 `--self-test --renderer ./build-dsp/AcustraPerformanceRenderer`
 checks the scoring, string scheduling and renderer without downloading audio.
 For dry-note comparisons, `AcustraPhysicalFitRenderer` takes the optional
-`--models-only`/`--smoke` mode, then `--shape`, `--archtop-picking` and
+`--models-only`/`--smoke` mode, then `--shape`, `--body-material`, `--archtop-picking` and
 `--guitar-model`, the output directory and the 37 calibration arguments in
 `OptimizePhysicalModel.NAMES` order (the 48-value vectors of the builds with
 nylon strings are refused). `--guitar-model bellido1978` asks which measured
 body the recordings sit closest to; it measures, it does not choose. The
-selected shape, guitar model and archtop picking tool are recorded in each
+selected shape, wood, guitar model and archtop picking tool are recorded in each
 model manifest; without them every row renders at the default Dreadnought and
 the archtop rows with Finger.
+`AcustraExternalCorpusRenderer` accepts the same `--shape`, `--body-material`
+and `--guitar-model` options; `BenchmarkOpenCorpora.py` forwards them and
+records the returned controls. Wood defaults to Spruce even when Bellido is
+selected. To benchmark the Bellido preset explicitly, use
+`--shape auditorium --body-material mahogany --guitar-model bellido1978`.
 For an explicit performance event file, `AcustraPerformanceRenderer` also
 accepts a trailing `--tuning standard|drop_d|dadgad|open_g|half_step_down`
 option (the plug-in's five tunings). String/fret validation uses the selected

@@ -4,6 +4,31 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-10-02 — recording baselines cover both current presets
+
+The realism goal continues across Original and Bellido 1978. The external
+and bank recording renderers lacked a wood option, so selecting Bellido did
+not render its Auditorium/Mahogany preset. They now accept the same offline
+`--body-material` choice and record the wood actually synthesized; omitted
+wood remains Spruce, preserving existing commands. This adds no product
+control or production sound change.
+
+Fresh measurements use Original/Dreadnought/Spruce and
+Bellido/Auditorium/Mahogany. The bank's known picked rows use Pick, its
+flat-top rows Finger; Eastman follows its labels, and Martin retains the
+declared unknown-tool Finger assumption. Historical Finger-rendered bank
+scores remain separate. Bellido is closer on the picked archtop bank and
+Original on these flat-top recordings, so no overall model winner is chosen.
+Both source bodies were measured nylon-strung and are adapted for steel;
+played recordings of other steel guitars provide transfer evidence.
+
+The shared Eastman Finger attack discrepancy supports a bounded contact-width
+screen, with unchanged velocity-relative slip and the prior listener choices
+fixed. Martin and recorded velocity contrast remain hard guards. Radiation
+residue and reciprocal-pole experiments likewise remain offline until they
+pass discovery, other-note and cross-corpus checks. Measurements and limitations
+are in [the current-model baseline](cross-model-recording-baseline-2026-10-02.md).
+
 ## 2026-10-02 — live chords keep their attacks; low ringing gets a coupled probe
 
 After merging PR #12, the user approved the recommended follow-up. A live

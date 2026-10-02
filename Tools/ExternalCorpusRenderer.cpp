@@ -59,6 +59,8 @@ using acustra::fittedPhysicalCalibration;
 // default wood (Spruce, the wood the measured g21 body was built of).
 std::optional<acustra::BodyShape> renderShapeOverride;
 constexpr std::array shapeNames { "parlor", "auditorium", "dreadnought", "jumbo" };
+acustra::BodyMaterial renderBodyMaterial { acustra::EngineParameters {}.bodyMaterial };
+constexpr std::array bodyMaterialNames { "spruce", "mahogany", "maple" };
 acustra::GuitarModel renderGuitarModel { acustra::GuitarModel::Original };
 // --room: the Room every model renders with (0, the engine's default, is
 // the dry instrument the calibration was fitted on).
@@ -210,6 +212,7 @@ std::vector<float> renderModel(acustra::PickingTechnique picking,
     EngineParameters parameters;
     parameters.guitarModel = renderGuitarModel;
     parameters.shape = renderShape();
+    parameters.bodyMaterial = renderBodyMaterial;
     parameters.room = renderRoom;
     parameters.picking = picking;
     engine.setParameters(parameters);
@@ -257,7 +260,7 @@ std::string modelControlsJson()
     text << std::setprecision(9);
     text << "{\"shape\": \""
          << shapeNames[static_cast<std::size_t>(renderShape())]
-         << "\", \"body_material\": " << static_cast<int>(parameters.bodyMaterial)
+         << "\", \"body_material\": " << static_cast<int>(renderBodyMaterial)
          << ", \"guitar_model\": \""
          << guitarModelNames[static_cast<std::size_t>(renderGuitarModel)]
          << "\""
@@ -418,6 +421,7 @@ void printUsage()
     std::printf(
         "usage: AcustraExternalCorpusRenderer "
         "[--shape parlor|auditorium|dreadnought|jumbo] "
+        "[--body-material spruce|mahogany|maple] "
         "[--guitar-model original|bellido1978] [--room 0..1] "
         "JOBFILE|- OUTDIR "
         "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT DIRECT_GAIN "
@@ -466,6 +470,19 @@ int main(int argc, char** argv)
         }
         renderShapeOverride = static_cast<acustra::BodyShape>(
             std::distance(shapeNames.begin(), name));
+        first += 2;
+    }
+    if (argc > first && std::string(argv[first]) == "--body-material")
+    {
+        const auto name = std::find(bodyMaterialNames.begin(), bodyMaterialNames.end(),
+            argc > first + 1 ? std::string(argv[first + 1]) : std::string());
+        if (name == bodyMaterialNames.end())
+        {
+            printUsage();
+            return 2;
+        }
+        renderBodyMaterial = static_cast<acustra::BodyMaterial>(
+            std::distance(bodyMaterialNames.begin(), name));
         first += 2;
     }
     if (argc > first && std::string(argv[first]) == "--guitar-model")

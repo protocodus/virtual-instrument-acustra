@@ -208,3 +208,8 @@ python3.11 Tools/AnalyzeRingingTrace.py --summary-from-report /tmp/acustra-ringi
 The callback compiler commands are recorded in the JSON and the adapter
 instructions in `Tools/CallbackBenchmark.cpp`. Repeat measurements with
 the same frozen baseline and current sources, keeping all observations.
+
+The continued [two-model recording baseline](cross-model-recording-baseline-2026-10-02.md)
+adds explicit wood selection to the offline renderers and evaluates the
+Original and Bellido presets separately. That changes benchmark coverage;
+it does not change production DSP or the ringing measurements above.

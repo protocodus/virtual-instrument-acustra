@@ -62,6 +62,8 @@ using acustra::dense::ZoneView;
 // wood (Spruce, the wood the measured g21 body was built of).
 std::optional<acustra::BodyShape> renderShapeOverride;
 constexpr std::array shapeNames { "parlor", "auditorium", "dreadnought", "jumbo" };
+acustra::BodyMaterial renderBodyMaterial { acustra::EngineParameters {}.bodyMaterial };
+constexpr std::array bodyMaterialNames { "spruce", "mahogany", "maple" };
 // --archtop-picking renders the picked archtop rows (Material::Steel) with
 // that tool; the finger-plucked flat-top rows always render with Finger,
 // which is what was on the string in those recordings.
@@ -440,6 +442,7 @@ std::vector<float> renderModel(Material material, int midi, int velocity,
     EngineParameters parameters;
     parameters.guitarModel = renderGuitarModel;
     parameters.shape = renderShape();
+    parameters.bodyMaterial = renderBodyMaterial;
     parameters.room = renderRoom;
     if (material == Material::Steel)
         parameters.picking = archtopPicking;
@@ -577,7 +580,7 @@ std::string modelControlsJson()
     text << std::setprecision(9);
     text << "{\"shape\": \""
          << shapeNames[static_cast<std::size_t>(renderShape())]
-         << "\", \"body_material\": " << static_cast<int>(parameters.bodyMaterial)
+         << "\", \"body_material\": " << static_cast<int>(renderBodyMaterial)
          << ", \"guitar_model\": \""
          << guitarModelNames[static_cast<std::size_t>(renderGuitarModel)]
          << "\""
@@ -1219,6 +1222,7 @@ void printUsage()
         "usage: AcustraPhysicalFitRenderer "
         "[--smoke|--models-only [--scope all|train]|--test] "
         "[--shape parlor|auditorium|dreadnought|jumbo] "
+        "[--body-material spruce|mahogany|maple] "
         "[--archtop-picking finger|pick|thumb] "
         "[--guitar-model original|bellido1978] [--room 0..1] "
         "OUTPUT "
@@ -1295,6 +1299,19 @@ int main(int argc, char** argv)
         }
         renderShapeOverride = static_cast<acustra::BodyShape>(
             std::distance(shapeNames.begin(), name));
+        first += 2;
+    }
+    if (argc > first && std::string(argv[first]) == "--body-material")
+    {
+        const auto name = std::find(bodyMaterialNames.begin(), bodyMaterialNames.end(),
+            argc > first + 1 ? std::string(argv[first + 1]) : std::string());
+        if (name == bodyMaterialNames.end())
+        {
+            printUsage();
+            return 2;
+        }
+        renderBodyMaterial = static_cast<acustra::BodyMaterial>(
+            std::distance(bodyMaterialNames.begin(), name));
         first += 2;
     }
     if (argc > first && std::string(argv[first]) == "--archtop-picking")
