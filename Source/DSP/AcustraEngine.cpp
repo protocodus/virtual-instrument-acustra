@@ -2702,14 +2702,13 @@ float AcustraEngine::FixedDerivative::process(float input,
     const float fraction = historyDelay - static_cast<float>(whole);
     const auto at = [&] (int samplesAgo)
     {
-        int readIndex = index - samplesAgo;
-        while (readIndex < 0)
-            readIndex += static_cast<int>(history.size());
-        return history[static_cast<std::size_t>(readIndex)];
+        const unsigned readIndex = (static_cast<unsigned>(index)
+            - static_cast<unsigned>(samplesAgo)) & historyMask;
+        return history[readIndex];
     };
     const float first = at(whole);
     const float delayed = first + fraction * (at(whole + 1) - first);
-    index = (index + 1) % static_cast<int>(history.size());
+    index = static_cast<int>((static_cast<unsigned>(index) + 1) & historyMask);
     return input - delayed;
 }
 
