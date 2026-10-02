@@ -4,6 +4,38 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-10-02 — bounded Finger and low-body screens reject further timbre changes
+
+The both-model baseline now supports native candidate comparisons. Finger
+aperture widths 1.25 and 1.5 improve Eastman Finger and bank flat-top
+descriptor totals by less than 1% on each preset, preserving Pick audio,
+onset and played pitch. Both fail the declared velocity-brightness gate;
+some baseline rate/model cells already fail it, and the threshold is not
+relaxed. A before-feedback initializer diagnostic has nearly invariant
+velocity contrast across rates and bodies, so the larger acoustic variation
+needs downstream attribution rather than a release-law retune.
+
+Integrated partial/channel checks retain the acoustic rate variation.
+A native single-field burst ablation, preceded by 96/96 baseline byte parity,
+reduces the per-model median rate span from 1.263/1.561 to 0.205/0.194 dB.
+This identifies a contribution in the fixed draws, not a systematic rate
+defect. Absolute contrast and model differences remain. The listener-selected
+burst and the failed width-screen gate stay unchanged.
+
+Lifting existing T1 microphone residues reduces Eastman's early 165-region
+error but worsens Martin and other bands. A native Original-only T1 Q×4
+changes radiation and reciprocal bridge poles together, with fixed residues.
+It improves Eastman Finger total by 0.562%, but bank development total
+worsens 3.221% and Martin 1.695%; body errors worsen 1.466–4.799% on five
+of six Original splits. Bellido remains byte-identical. The separately
+predeclared full-corpus total/body 1% guard rejects Q×4. The earlier regional
+no-regression check was exploratory and assessed after initial measurements;
+it is not recorded as a preregistered threshold.
+
+None of these sound changes enters production or overrides a listener
+choice. All candidates, source hooks, methods and evidence are retained in
+[the bounded-screen report](realism-screens-2026-10-02.md).
+
 ## 2026-10-02 — recording baselines cover both current presets
 
 The realism goal continues across Original and Bellido 1978. The external

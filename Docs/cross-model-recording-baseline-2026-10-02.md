@@ -70,6 +70,11 @@ change sign between external flat-top recordings and the picked bank.
 This supports bounded, technique-specific experiments with Martin and
 picked-note guards, not a shared damping or brightness adjustment.
 
+The subsequent [bounded-screen report](realism-screens-2026-10-02.md)
+retains the Finger-width, low-mode radiation and native reciprocal-Q
+experiments. None passes its stated eligibility checks, so none changes
+the instrument's sound.
+
 ## Verification and reproduction
 
 The affected PhysicalFitRenderer, CalibrationVector and OpenCorporaBenchmark
