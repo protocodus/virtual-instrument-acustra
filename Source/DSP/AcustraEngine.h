@@ -838,6 +838,15 @@ private:
         bool memberPitchBendFrozen { false };
         std::uint64_t startOrder { 0 };
         std::uint32_t randomState { 1 };
+        // A recent same-note/same-velocity repeat may vary its force a little.
+        // This separate stream never moves the position/angle/noise draws,
+        // and is advanced once per repeated pluck, independent of host rate.
+        std::uint32_t repeatPluckState { 1 };
+        int lastPluckMidiNote { -1 };
+        int lastPluckMidiChannel { 0 };
+        float lastPluckVelocity { 0.0f };
+        std::uint64_t lastPluckSample { 0 };
+        float repeatedPluckGain { 1.0f };
         // The release burst's noise, handed over from randomState at each
         // pluck (initialisePluck).
         std::uint32_t excitationNoiseState { 1 };

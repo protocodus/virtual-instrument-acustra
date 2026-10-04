@@ -2392,6 +2392,8 @@ void AcustraEngine::restartRandomDraws() noexcept
         auto& voice = voices_[static_cast<std::size_t>(string)];
         voice.randomState = 0x9e3779b9u
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 1));
+        voice.repeatPluckState = 0xa511e9b3u
+            ^ (0x63d83595u * static_cast<std::uint32_t>(string + 1));
         voice.contactNoiseState = 0x2545f491u
             ^ (0x9e3779b9u * static_cast<std::uint32_t>(string + 1));
         voice.releaseNoiseState = 0x68e31da4u
@@ -3251,6 +3253,11 @@ void AcustraEngine::reset() noexcept
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
         voice.openMidi = notes[static_cast<std::size_t>(string)];
+        voice.lastPluckMidiNote = -1;
+        voice.lastPluckMidiChannel = 0;
+        voice.lastPluckVelocity = 0.0f;
+        voice.lastPluckSample = 0;
+        voice.repeatedPluckGain = 1.0f;
         voice.ownerCount = 0;
         voice.played = false;
         voice.keyDown = false;
@@ -5437,6 +5444,35 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // so it never draws this and stays exactly as it was.
     const float strumLevelGain = voice.strumming
         ? std::pow(10.0f, 7.74f * nextNoise(voice) / 20.0f) : 1.0f;
+    // Repeated single-note sequencer strokes deserve modest force variety
+    // too, below the spread of the real Eastman same-pitch/style takes:
+    // their 20-250 ms levels have median within-group SD 1.09 dB (Finger)
+    // and 1.47 dB (Pick). Their intended force/string/fret is unknown, so
+    // +/-1 dB is a conservative authored listening candidate, not a fitted
+    // universal law. The strum already has its own measured variation.
+    // A first pluck, a changed MIDI velocity (including explicit accents),
+    // a new note/channel, a duplicate on one sample, or a rest beyond the
+    // existing hand-memory window keeps the exact nominal force. The
+    // independent draw is linear-mean normalised: E[exp(a*U)] = sinh(a)/a.
+    voice.repeatedPluckGain = 1.0f;
+    const bool recentRepeat = !voice.strumming
+        && voice.midiNote == voice.lastPluckMidiNote
+        && voice.midiChannel == voice.lastPluckMidiChannel
+        && v == voice.lastPluckVelocity
+        && sampleClock_ > voice.lastPluckSample
+        && sampleClock_ - voice.lastPluckSample <= static_cast<std::uint64_t>(
+            handMemorySeconds * sampleRate_);
+    if (recentRepeat)
+    {
+        constexpr double halfWidth = 0.1151292546497022842; // ln(10)/20: 1 dB
+        voice.repeatedPluckGain = static_cast<float>(std::exp(halfWidth
+            * xorshiftNoise(voice.repeatPluckState)) * halfWidth
+            / std::sinh(halfWidth));
+    }
+    voice.lastPluckMidiNote = voice.midiNote;
+    voice.lastPluckMidiChannel = voice.midiChannel;
+    voice.lastPluckVelocity = v;
+    voice.lastPluckSample = sampleClock_;
     // A hand lets the string go at the force it can hold, not at a set
     // displacement: a point force F at distance a from the bridge deflects a
     // string of tension T and speaking length L by F a (L - a) / (T L), so the
@@ -5448,7 +5484,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         / clamp(1.0f - heldDistance / scaleLength, 0.05f, 1.0f);
     const float amplitude = 0.24f
         * std::pow(v, velocityExponent) * (0.92f + 0.08f * touch)
-        * strumLevelGain;
+        * strumLevelGain * voice.repeatedPluckGain;
     // The contact noise below follows the force; the shape it leaves, the
     // displacement.
     const float releasedAmplitude = amplitude * releaseScale;
@@ -5513,7 +5549,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // the same note released weakly and firmly had identical slips.
         // A non-strummed pluck divides by exactly one and keeps its law.
         const double referencePole = plectrumSlipPole(voice, releasedAmplitude
-                / strumLevelGain
+                / (strumLevelGain * voice.repeatedPluckGain)
                 * std::pow(releaseReferenceVelocity / v, velocityExponent),
             heldDistance, soundingLength, scaleLength, fingerReleaseRadius);
         const double pole = plectrumSlipPole(voice, releasedAmplitude,
@@ -5899,7 +5935,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             v, 0.5f * physicalCalibration_.pickReleaseVelocityExponent);
         voice.excitationEnvelope = physicalCalibration_.pickTransientGain
             * 0.24f * 0.017f * physical.transientScale
-            * speedRatio * strumLevelGain;
+            * speedRatio * strumLevelGain * voice.repeatedPluckGain;
     }
     else
         voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
