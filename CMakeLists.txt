@@ -717,3 +717,12 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.RepeatedPluckRealism COMMAND AcustraRepeatedPluckRealismTests)
     set_tests_properties(Acustra.RepeatedPluckRealism PROPERTIES TIMEOUT 60)
 endif()
+
+# Recording-guided realism regression 8.
+if(BUILD_TESTING)
+    add_executable(AcustraStrummingRealismTests Tests/StrummingRealismTests.cpp)
+    target_link_libraries(AcustraStrummingRealismTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraStrummingRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.StrummingRealism COMMAND AcustraStrummingRealismTests)
+    set_tests_properties(Acustra.StrummingRealism PROPERTIES TIMEOUT 60)
+endif()

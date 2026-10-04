@@ -5334,7 +5334,8 @@ float AcustraEngine::nextNoise(Voice& voice) noexcept
     return xorshiftNoise(voice.randomState);
 }
 
-void AcustraEngine::beginStrum() noexcept
+void AcustraEngine::beginStrum(int strokeSpanSamples,
+                              int repeatIntervalSamples) noexcept
 {
     // A stroke's own pick speed varies stroke to stroke (GuitarSet's
     // comping tracks, Tools/MeasureStrums.py -- see strumDelaySamples and
@@ -5344,6 +5345,16 @@ void AcustraEngine::beginStrum() noexcept
     // stroke regardless of which voice noteOn happens to land it on.
     strumSpeedScale_ = 1.0f + strumSpeedJitterHalfWidth
         * xorshiftNoise(strumRandomState_);
+    // A return stroke cannot repeatedly replace the far strings' queued
+    // attacks before reaching them. Use the last actual inter-stroke
+    // interval as a causal rhythm estimate, applying one scale to the whole
+    // traversal so physical order and skipped-string distance survive.
+    // This timing constraint is separate from the GuitarSet speed fit; it
+    // introduces no gain, independent jitter, or host lookahead/latency.
+    if (strokeSpanSamples > 0 && repeatIntervalSamples > 0)
+        strumSpeedScale_ = std::min(strumSpeedScale_,
+            static_cast<float>(repeatIntervalSamples - 1)
+                / static_cast<float>(strokeSpanSamples));
 }
 
 void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,

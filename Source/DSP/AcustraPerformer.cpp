@@ -71,6 +71,8 @@ void Performer::reset() noexcept
     rpnStates_.fill(RpnState {});
     vibratoChannel_ = 0;
     engine_.reset();
+    lastStrumSample_ = -1;
+    strumUpstroke_ = false;
     for (int channel = 1; channel <= 16; ++channel)
         refreshPitchBend(channel);
     heldCount_ = 0;
@@ -232,9 +234,15 @@ void Performer::flushNoteGroup() noexcept
     int soundingNotes = 0;
     if (pendingNoteOnCount_ >= 3 && oneChannel)
         for (int index = 0; index < pendingNoteOnCount_; ++index)
-            soundingNotes += engine_.canSound(
-                pendingNoteOns_[static_cast<std::size_t>(index)].note,
-                pendingNoteOns_[static_cast<std::size_t>(index)].channel) ? 1 : 0;
+        {
+            const auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
+            // Duplicate MIDI owners share one physical string; two pitches
+            // do not become a three-string stroke because one key repeats.
+            if (index > 0 && note.note
+                == pendingNoteOns_[static_cast<std::size_t>(index - 1)].note)
+                continue;
+            soundingNotes += engine_.canSound(note.note, note.channel) ? 1 : 0;
+        }
     const bool strum = soundingNotes >= 3;
     if (strum)
     {
@@ -243,9 +251,10 @@ void Performer::flushNoteGroup() noexcept
         // wherever it is flushed (handleEvent, endBlock).
         const auto strumSample = processedSamples_
             + static_cast<std::int64_t>(std::max(0, groupedSample_));
+        const auto interval = lastStrumSample_ < 0 ? std::int64_t { 0 }
+                                                   : strumSample - lastStrumSample_;
         const bool restarted = lastStrumSample_ < 0
-            || strumSample - lastStrumSample_
-                   > static_cast<std::int64_t>(strumRestSeconds * sampleRate_);
+            || interval > static_cast<std::int64_t>(strumRestSeconds * sampleRate_);
         if (restarted)
             strumUpstroke_ = false;
         lastStrumSample_ = strumSample;
@@ -284,6 +293,7 @@ void Performer::flushNoteGroup() noexcept
         // has no complete plan: keep its existing note-by-note behaviour.
         // Duplicated keys share one string's place while noteOn retains its
         // ownership/re-pluck handling. The first reached string starts now.
+        int strokeSpan = 0;
         for (int index = 0, reached = 0; index < pendingNoteOnCount_; ++index)
         {
             auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
@@ -298,9 +308,10 @@ void Performer::flushNoteGroup() noexcept
                 : (strumUpstroke_ ? reached : sounding - 1 - reached);
             ++reached;
             note.pluckDelay = engine_.strumDelaySamples(rank, meanVelocity);
+            strokeSpan = std::max(strokeSpan, note.pluckDelay);
         }
         strumUpstroke_ = ! strumUpstroke_;
-        engine_.beginStrum();
+        engine_.beginStrum(strokeSpan, restarted ? 0 : static_cast<int>(interval));
     }
     for (int index = 0; index < pendingNoteOnCount_; ++index)
     {

@@ -185,7 +185,12 @@ public:
     // beginStrum() call. Scaling every string's delay by the same drawn
     // factor is what keeps a stroke's own strings in order even though its
     // total span varies stroke to stroke -- see noteOn.
-    void beginStrum() noexcept;
+    // When a repeated gesture supplies a positive observed interval, cap
+    // this stroke's complete traversal to finish before the next predicted
+    // stroke. The first stroke, rests and ordinary slower repeats preserve
+    // the measured speed draw exactly. Both optional durations are samples.
+    void beginStrum(int strokeSpanSamples = 0,
+                    int repeatIntervalSamples = 0) noexcept;
     // A pluck can be scheduled: the string is taken and fretted now, the
     // fretting hand having formed the chord, and released this many samples
     // later, which is how a strum reaches its strings one after another.
