@@ -923,6 +923,14 @@ private:
         // The string's tension now, in newtons, bend included. Kept so the
         // bend can be checked against Grimes' law rather than inferred.
         float tensionNewtons { 0.0f };
+        // Fretting point after a conventional/manager slide. A lateral
+        // member bend keeps it fixed. The attack's extension uses the same
+        // geometry as dispersion and the string's axial modes.
+        float speakingLengthMetres { 0.648f };
+        // Fractional fret position used by the fitted fret-decay law. Slides
+        // remain within its measured/playable fret range; a tension bend
+        // keeps this position. Zero slide retains the exact MIDI fret.
+        float speakingFret { 0.0f };
         float bridgeTailStiffness { initialBridgeTailStiffness };
         float attackPitchCents { 0.0f };
         float attackPitchDecay { 1.0f };

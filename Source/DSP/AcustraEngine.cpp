@@ -4568,13 +4568,36 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // note-off and ownership match on.
     const int stoppedMidi = voice.harmonic > 1 ? voice.openMidi : midiNote;
     const int fret = std::max(0, stoppedMidi - voice.openMidi);
-    const float soundingLength = scaleLength * std::exp2(-static_cast<float>(fret) / 12.0f);
+    const float fretLength = scaleLength * std::exp2(-static_cast<float>(fret) / 12.0f);
     const float unbentFrequency = midiFrequency(stoppedMidi);
     // The bounded Kirchhoff-Carrier surrogate follows the waveguide's inferred
     // slope energy; its delay target slews on the existing 6 ms time constant.
     const auto bend = voiceBend(voice);
     const float performedBend = bend.performed;
     const float memberBendSemitones = bend.member;
+    // A conventional wheel or MPE manager slides the fretting point; its
+    // interval therefore shortens the same physical string that the delay
+    // retunes. B = pi^2 EI/(T L^2), the axial modes and the end correction
+    // must all follow that length. A member's lateral bend changes tension
+    // at its fixed fret and contributes no shortening. Keep the exact fret
+    // geometry at zero slide, and bound extreme wheels by the same band as
+    // the finite waveguide before taking a physical reciprocal.
+    const float slideInterval = clamp(performedBend - memberBendSemitones,
+                                       -192.0f, 192.0f);
+    const float slideFrequency = clamp(unbentFrequency
+        * std::exp2(slideInterval / 12.0f),
+        static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+        0.24f * static_cast<float>(sampleRate_));
+    const float soundingLength = slideInterval == 0.0f ? fretLength
+        : fretLength * unbentFrequency / slideFrequency;
+    voice.speakingLengthMetres = soundingLength;
+    // Apply the existing fret-decay calibration to the same fretting point,
+    // including a fractional slide. Outside the playable fretboard retain
+    // its nearest supported target rather than extrapolating the fit.
+    voice.speakingFret = slideInterval == 0.0f ? static_cast<float>(fret)
+        : clamp(static_cast<float>(fret)
+            + 12.0f * std::log2(slideFrequency / unbentFrequency),
+            0.0f, static_cast<float>(fretCount));
     // The wheel's vibrato is the fretting hand modulating the string's
     // tension at a fixed length (see vibratoSemitones), and a tension
     // modulation is heard as a pitch modulation: the same excursion goes into
@@ -4817,7 +4840,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     }
     dispersion.used[1] = voice.dispersionDecayRatios[1] > 0.0f;
     const float fretT60Factor = clamp(1.0f
-        - physicalCalibration_.steelFretT60Slope * static_cast<float>(fret),
+        - physicalCalibration_.steelFretT60Slope * voice.speakingFret,
         0.10f, 2.0f);
     float fundamentalT60 = 5.4f
         * (1.0f - 0.12f * age)
@@ -5124,8 +5147,7 @@ void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
     const auto& physical = physicalCalibration_.steel;
     const auto index = static_cast<std::size_t>(stringIndex);
     constexpr float scaleLength = 0.648f;
-    const float soundingLength = scaleLength
-        * std::exp2(-static_cast<float>(voice.fret) / 12.0f);
+    const float soundingLength = voice.speakingLengthMetres;
     // Wound axial rigidity uses the same effective core proxy as bending;
     // treating its outside diameter as solid 200 GPa steel is less physical.
     const float diameter = steelBendingDiameter[index];
@@ -5135,7 +5157,8 @@ void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
                              / 64.0f;
     const float openWaveSpeed = 2.0f * scaleLength
                               * midiFrequency(voice.openMidi);
-    const float tension = voice.characteristicImpedance * openWaveSpeed;
+    const float tension = voice.tensionNewtons > 0.0f
+        ? voice.tensionNewtons : voice.characteristicImpedance * openWaveSpeed;
     const float lengthSquared = soundingLength * soundingLength;
     const float displacement = physicalCalibration_.steelDisplacementScaleMetres;
     const float tensionIncrease = youngsModulus * area
@@ -5991,9 +6014,8 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     const auto& physical = physicalCalibration_.steel;
     const float age = parameters_.stringAge;
     const int stoppedMidi = voice.harmonic > 1 ? voice.openMidi : voice.midiNote;
-    const int fret = std::max(0, stoppedMidi - voice.openMidi);
     const float fretT60Factor = clamp(1.0f
-        - physicalCalibration_.steelFretT60Slope * static_cast<float>(fret),
+        - physicalCalibration_.steelFretT60Slope * voice.speakingFret,
         0.10f, 2.0f);
     voice.tailHandFrequency = static_cast<float>(sampleRate_)
                             / voice.contactPeriodSamples;
