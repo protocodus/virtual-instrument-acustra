@@ -27,7 +27,17 @@ choices, not fitted measurements of a fret-motion recording.
 
 A new focused A/B compares the approved candidate with this addition on
 Connected melody, in Dry and Studio room modes. Only that passage requires
-another vote. Approval of the added friction remains pending.
+another vote. After this focused package was delivered, the user instructed:
+
+> otherwise - switch to candidate and push
+
+This authorizes adopting and publishing the current candidate, including the
+fret-friction follow-up at `ace1ab6660a69ad03c984cfaa6466975c5e6d42b`.
+No separate scores or exported votes are inferred. The follow-up passed seven
+affected native tests and fourteen browser checks in each review layout;
+direct-file navigation was skipped because managed Chromium blocks it.
+The other four demo songs remain byte-identical in both Dry and Studio room
+modes. Both connected-melody pairs are matched to the same measured LUFS.
 
 ## 2026-10-02 — natural harmonics preserve available strings and ringing repeats
 

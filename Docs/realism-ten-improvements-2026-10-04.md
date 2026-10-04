@@ -5,7 +5,10 @@ Ten changes are committed separately against baseline
 `9dc7ac9fbb26f44fbbafad987d8c3539d4681c19`. Each declared candidate
 regression passed. The real-recording benchmark preserves isolated-note
 behavior exactly; it does **not** demonstrate a perceptual realism increase.
-Approval remains pending the user's listening review.
+The user subsequently accepted this candidate, requested a fret-friction
+follow-up, and instructed adopting and pushing the current candidate. See
+`Docs/decisions.md` for the verdict and follow-up validation. The benchmark
+results below remain the measurements of the original ten-change candidate.
 
 | # | Commit | Result and engineering evidence |
 |---|---|---|
@@ -192,6 +195,6 @@ python Tools/BuildRealismEvidence.py \
 The shared DSP builds as C++17 for Rack compatibility. Full JUCE plugin and
 licensed Reason Jukebox SDK builds were not run; these checks do not qualify
 host integration. The current Rack interface cannot send raw CC65/CC84 or
-release velocity. Its Instrument submodule remains at the published commit;
-it has not been advanced to this unpublished candidate. No changes are pushed
-or merged by this review workflow.
+release velocity. At the time of this original review, its Instrument submodule
+had not been advanced and no changes had been pushed. The later adoption and
+publication instruction is recorded in `Docs/decisions.md`.

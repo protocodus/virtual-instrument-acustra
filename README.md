@@ -468,7 +468,9 @@ octave fall back to an ordinary pluck. CC65 off or Reset All Controllers
 clears the request. The JUCE-free API exposes the same operation as
 `transitionNote`. There is no new panel control or host latency. The current
 Rack wrapper cannot send these explicit gestures. The contact map is
-authored and awaits listening approval; it is not a fitted hammer-on recording.
+authored and accepted for adoption in the user's listening review; it is not
+a fitted hammer-on recording. See `Docs/decisions.md` for the review and
+publication instruction.
 
 CC2 is continuous bridge-hand pressure: the heel of the picking hand resting
 by the saddle, a soft lossy absorber whose loss rate adds to the string's own,
