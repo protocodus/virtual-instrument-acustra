@@ -654,3 +654,12 @@ if(BUILD_TESTING)
         set_tests_properties(Acustra.PluginProcessor PROPERTIES TIMEOUT 90)
     endif()
 endif()
+
+# Recording-guided realism regression 1.
+if(BUILD_TESTING)
+    add_executable(AcustraVelocityRealismTests Tests/VelocityRealismTests.cpp)
+    target_link_libraries(AcustraVelocityRealismTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraVelocityRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.VelocityRealism COMMAND AcustraVelocityRealismTests)
+    set_tests_properties(Acustra.VelocityRealism PROPERTIES TIMEOUT 60)
+endif()

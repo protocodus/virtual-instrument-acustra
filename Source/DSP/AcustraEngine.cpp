@@ -5412,7 +5412,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             physicalCalibration_.pickEdgeRadiusMetres * releaseTouch);
     else
     {
+        // The full-velocity reference is the nominal release, independent
+        // of this stroke's force draw. Letting its reference follow the
+        // draw as well cancelled brightness variation at v=1 entirely:
+        // the same note released weakly and firmly had identical slips.
+        // A non-strummed pluck divides by exactly one and keeps its law.
         const double referencePole = plectrumSlipPole(voice, releasedAmplitude
+                / strumLevelGain
                 * std::pow(releaseReferenceVelocity / v, velocityExponent),
             heldDistance, soundingLength, scaleLength, fingerReleaseRadius);
         const double pole = plectrumSlipPole(voice, releasedAmplitude,
@@ -5798,7 +5804,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             v, 0.5f * physicalCalibration_.pickReleaseVelocityExponent);
         voice.excitationEnvelope = physicalCalibration_.pickTransientGain
             * 0.24f * 0.017f * physical.transientScale
-            * speedRatio;
+            * speedRatio * strumLevelGain;
     }
     else
         voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
