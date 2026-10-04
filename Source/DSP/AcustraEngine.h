@@ -244,10 +244,11 @@ public:
     // made, for a caller that orders the key-ups of one sample after their
     // Note Ons but a pedal change on that sample after them (the Performer).
     void noteOff(int midiNote, int midiChannel, bool sustained) noexcept;
-    // The same two key-ups with MIDI's release velocity (0-1). It damps the
-    // note exactly as noteOff does and sets only how firmly the hand lands,
-    // which the release noise follows (EngineParameters::releaseNoise); a
-    // negative value is "not sent" and plays as the nominal key-up.
+    // The same two key-ups with MIDI's release velocity (0-1). A firm
+    // damping contact shortens the tail; a gentle one lets it ring longer.
+    // Only loss and optional release noise change, never pitch or a pluck.
+    // A negative value is "not sent" and plays as the nominal key-up;
+    // MIDI's default 64/127 also preserves that nominal hand time.
     void noteOffWithVelocity(int midiNote, int midiChannel,
                              float releaseVelocity) noexcept;
     void noteOffWithVelocity(int midiNote, int midiChannel, bool sustained,

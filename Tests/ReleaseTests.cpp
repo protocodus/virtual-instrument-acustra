@@ -220,7 +220,7 @@ void renderComparisons(const std::filesystem::path& directory)
               << " bit-identical=" << same(normal, fast) << '\n';
 }
 
-void testOrdinaryReleaseIsIndependentOfLiftSpeed()
+void testExplicitLiftSpeedChangesOnlyDamping()
 {
     int cases = 0;
     for (const auto shape : { acustra::BodyShape::Parlor, acustra::BodyShape::Auditorium,
@@ -235,10 +235,22 @@ void testOrdinaryReleaseIsIndependentOfLiftSpeed()
                     const auto fast = render(parameters, rate, note, velocity, 127);
                     const std::string label = "case " + std::to_string(++cases)
                         + " note " + std::to_string(note) + " at " + std::to_string(rate);
-                    expect(same(ordinary, fast), label + ": fast key-up changed the stereo wave");
+                    // The coupled body and sympathetic strings can exchange
+                    // energy through cancellation; tail RMS is not a direct
+                    // measure of the hand's passive loss. ReleaseRealismTests
+                    // checks the damping law and string's wave energy itself.
+                    expect(!same(ordinary, fast),
+                           label + ": explicit release velocity did not change damping");
+                    expect(std::equal(ordinary.left.begin(),
+                                      ordinary.left.begin() + static_cast<int>(rate),
+                                      fast.left.begin())
+                           && std::equal(ordinary.right.begin(),
+                                         ordinary.right.begin() + static_cast<int>(rate),
+                                         fast.right.begin()),
+                           label + ": release velocity changed audio before key-up");
                     expect(fast.activeAtEnd == 0, label + ": a fretted key-up retained note ownership");
                 }
-    std::cout << "Acustra ordinary release invariance: " << cases << " cases\n";
+    std::cout << "Acustra explicit release damping: " << cases << " cases\n";
 }
 
 void testPedalCannotTurnOrdinaryReleaseIntoAnExcitation()
@@ -264,10 +276,10 @@ void testCc68ChangesNothing()
     for (const int note : { 43, 60 })
     {
         const acustra::EngineParameters parameters;
-        const auto plain = render(parameters, 48000.0, note, 100, 64);
         for (const int release : { 0, 64, 127 })
-            expect(same(plain, render(parameters, 48000.0, note, 100, release,
-                                      Gesture::Cc68)),
+            expect(same(render(parameters, 48000.0, note, 100, release),
+                        render(parameters, 48000.0, note, 100, release,
+                               Gesture::Cc68)),
                    "CC68 changed a note at release velocity "
                        + std::to_string(release));
     }
@@ -686,7 +698,7 @@ int main(int argc, char** argv)
         renderComparisons(argv[2]);
     else
     {
-        testOrdinaryReleaseIsIndependentOfLiftSpeed();
+        testExplicitLiftSpeedChangesOnlyDamping();
         testPedalCannotTurnOrdinaryReleaseIntoAnExcitation();
         testCc68ChangesNothing();
         testHardPluckReleaseDoesNotCreateAnAttack();

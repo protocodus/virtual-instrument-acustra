@@ -684,17 +684,11 @@ void testTheModulationWheelReachesTheEngineAsVibrato()
               << largest << "\n";
 }
 
-void testReleaseVelocityAndCc68ChangeNothing()
+void testReleaseGesturesAndRetiredCc68()
 {
-    // A key-up damps its note however fast it is lifted, and CC68, MIDI's
-    // Legato Footswitch, is not read: legato was removed everywhere at the
-    // user's request (Docs/decisions.md, 2026-09-28). With Release Noise off
-    // every release encoding, with or without the footswitch down, renders
-    // the same wave. At its default the key's release velocity reaches the
-    // damping hand's touch alone (Docs/decisions.md, 2026-09-30): a Note Off
-    // without a velocity, at 64 or as a zero-velocity Note On all read as the
-    // nominal 64, a fast one only adds a little to that touch, and CC68 still
-    // changes nothing.
+    // Missing/64/zero-On release encodings keep nominal damping. Explicit
+    // firm releases shorten the tail without creating a new pluck, and the
+    // retired CC68 remains inert at the same release velocity.
     namespace ids = acustra::parameters;
     const auto phrase = [] (const juce::MidiMessage& off, bool footswitch = false,
                             float releaseNoise = 0.0f)
@@ -743,13 +737,17 @@ void testReleaseVelocityAndCc68ChangeNothing()
         = phrase (juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (127)));
     const auto footswitch
         = phrase (juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (127)), true);
-    expect (plain == sixtyFour && plain == zeroOn && plain == fast,
-            "release velocity re-excited or changed the damped note");
-    expect (plain == footswitch, "CC68 changed the performance");
+    expect (plain == sixtyFour && plain == zeroOn,
+            "missing release velocity changed nominal damping");
+    expect (plain != fast, "explicit firm release did not change hand damping");
+    expect (fast == footswitch, "CC68 changed the performance");
+    const std::size_t releaseAt = static_cast<std::size_t>(
+        static_cast<int> (0.8 * sampleRate / blockSize) * blockSize);
+    expect (std::equal (plain.begin (), plain.begin () + releaseAt, fast.begin ()),
+            "release velocity changed the performance before key-up");
 
-    // At the default: the encodings without a velocity are the nominal one,
-    // a fast key-up differs only by the release touch - far under the note -
-    // and the footswitch still changes nothing.
+    // Optional release noise follows the same explicit gesture, beside the
+    // passive hand loss, while unspecified/default releases remain exact.
     const float standard = 70.0f;
     const auto touched = phrase (juce::MidiMessage::noteOff (1, 43), false, standard);
     const auto touchedSixtyFour = phrase (
@@ -764,15 +762,13 @@ void testReleaseVelocityAndCc68ChangeNothing()
             "a release without a velocity did not read as the nominal 64");
     expect (touched != plain, "Release Noise at its default added nothing at key-up");
     expect (touchedFast == touchedFootswitch, "CC68 changed the performance");
-    double peak = 0.0, difference = 0.0;
-    for (std::size_t index = 0; index < touched.size() && index < touchedFast.size(); ++index)
-    {
-        peak = std::max (peak, static_cast<double> (std::abs (touched[index])));
-        difference = std::max (difference,
-            static_cast<double> (std::abs (touchedFast[index] - touched[index])));
-    }
-    expect (touchedFast != touched && difference < 0.05 * peak,
-            "a fast key-up did not reach the release touch, or re-excited the note");
+    expect (touchedFast != touched,
+            "explicit fast key-up did not change damping and optional touch");
+    expect (std::equal (touched.begin (), touched.begin () + releaseAt, touchedFast.begin ()),
+            "explicit fast key-up changed the audio before its release");
+    expect (std::all_of (touchedFast.begin (), touchedFast.end (),
+                        [] (float x) { return std::isfinite (x); }),
+            "explicit release gesture produced a non-finite sample");
 }
 
 void testResetAllControllersReleasesSustain()
@@ -2398,7 +2394,7 @@ int main()
     testMpePressureReachesTheEngineOnMemberChannelOnly();
     testStringPerChannelModeViaMonoModeOn();
     testTheAdapterPlaysExactlyThePerformer();
-    testReleaseVelocityAndCc68ChangeNothing();
+    testReleaseGesturesAndRetiredCc68();
     testResetAllControllersReleasesSustain();
     testMemberChannelOwnershipAndControllers();
     testMemberPitchBendDoesNotLeakChannels();

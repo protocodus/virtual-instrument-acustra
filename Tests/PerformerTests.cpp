@@ -668,20 +668,14 @@ void testGatheredRollSoundsAsOneSampleChord()
     }
 }
 
-// CC68 was MIDI's Legato Footswitch here until the user asked for legato to
-// be removed everywhere (Docs/decisions.md, 2026-09-28), and release
-// velocity only ever reached a legato finger lift. Neither may change a
-// sample now: every scenario is played again with CC68 pressed and let go
-// around its notes and every Note Off at the fastest release, gathering and
-// not, and must come out bit-identical.
-void testCc68AndReleaseVelocityChangeNothing(const std::vector<Scenario>& battery)
+// Retired CC68 remains inert at every supplied release velocity. Explicit
+// release gestures now change damping, tested independently by the release
+// suites; toggling CC68 must still preserve every sample of this battery.
+void testCc68ChangesNothing(const std::vector<Scenario>& battery)
 {
     for (const auto& scenario : battery)
     {
         auto changed = scenario;
-        for (auto& event : changed.events)
-            if (event.size == 3 && (event.bytes[0] & 0xf0u) == 0x80u)
-                event.bytes[2] = 127;
         std::vector<Event> pedal;
         for (const auto& event : scenario.events)
             if (event.size == 3 && (event.bytes[0] & 0xf0u) == 0x90u)
@@ -699,7 +693,7 @@ void testCc68AndReleaseVelocityChangeNothing(const std::vector<Scenario>& batter
             expect(render(changed, 48000.0, 64, gather)
                        == render(scenario, 48000.0, 64, gather),
                    std::string { scenario.name } + (gather ? " (gathering)" : "")
-                       + ": CC68 or release velocity changed the performance");
+                       + ": CC68 changed the performance");
     }
 }
 
@@ -1282,7 +1276,7 @@ int main()
     testStrumsFollowPhysicalStrings();
     testPhysicalStrumPlanningKeepsSpecialNotes();
     testGatheredRollSoundsAsOneSampleChord();
-    testCc68AndReleaseVelocityChangeNothing(battery);
+    testCc68ChangesNothing(battery);
     testHelpersSpellMidi();
     testMasterTune();
     testResetAllControllersResetsVibratoAndPressure();

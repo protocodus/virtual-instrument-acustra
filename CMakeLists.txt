@@ -735,3 +735,12 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.LegatoRealism COMMAND AcustraLegatoRealismTests)
     set_tests_properties(Acustra.LegatoRealism PROPERTIES TIMEOUT 60)
 endif()
+
+# Recording-guided realism regression 10.
+if(BUILD_TESTING)
+    add_executable(AcustraReleaseRealismTests Tests/ReleaseRealismTests.cpp)
+    target_link_libraries(AcustraReleaseRealismTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraReleaseRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.ReleaseRealism COMMAND AcustraReleaseRealismTests)
+    set_tests_properties(Acustra.ReleaseRealism PROPERTIES TIMEOUT 60)
+endif()

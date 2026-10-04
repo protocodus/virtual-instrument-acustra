@@ -383,8 +383,8 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
     }
     else if (noteOff && pendingNoteOffCount_ < sampleGroupCapacity)
     {
-        // A key-up damps its note; its release velocity, when the Note Off
-        // carries one, sets only how firmly the hand lands.
+        // A key-up damps its note; its explicit release velocity sets the
+        // hand's damping time and optional sound, never a new pluck.
         const bool hasReleaseVelocity = status == 0x80u && size >= 3
             && (data[2] & 0x7fu) != 0u;
         pendingNoteOffs_[static_cast<std::size_t>(pendingNoteOffCount_++)] = {

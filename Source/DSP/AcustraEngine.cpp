@@ -6247,7 +6247,17 @@ void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
     if (voice.contactTravelEnabled)
         voice.excitationEnvelope = 0.0f;
     voice.contactNoiseAmplitude = 0.0f;
-    const float releaseSeconds = voice.fret == 0 ? 1.25f : 0.16f;
+    const float nominalReleaseSeconds = voice.fret == 0 ? 1.25f : 0.16f;
+    // An explicit fast key-up represents a firm damping contact; a slow
+    // one a gentler contact. This is a bounded performance map, not a fit
+    // to recordings (the sustained-note corpora carry no release gesture).
+    // MIDI's usual/default 64 and a missing velocity preserve the existing
+    // hand time exactly. Only loss changes: no refret or new excitation.
+    constexpr float nominalReleaseVelocity = 64.0f / 127.0f;
+    const float releaseScale = voice.releaseVelocity >= 0.0f
+        ? std::exp2(2.0f * (nominalReleaseVelocity
+            - clamp(voice.releaseVelocity, 0.0f, 1.0f))) : 1.0f;
+    const float releaseSeconds = nominalReleaseSeconds * releaseScale;
     voice.releaseSeconds = releaseSeconds;
     voice.releaseDamping = handDamping(releaseSeconds, loopFundamental(voice));
     voice.returnSamples = static_cast<int>(

@@ -475,7 +475,11 @@ construction setting, so it stays a controller and the panel keeps its ten
 controls; a pressure of zero is an exact no-op, proven by 71 bit-identical
 corpus renders.
 
-Note-off damps a fretted note over 160 ms and an open note over 1.25 seconds,
+At nominal release velocity, Note-off damps a fretted note over 160 ms and
+an open note over 1.25 seconds. Explicit softer key-ups extend that damping
+time by up to about two times, and firmer key-ups shorten it to about half;
+missing velocity and MIDI 64 retain the nominal time exactly. This is a
+bounded playing map, not a contact-force calibration from the sustain corpus,
 and that loss is a gain per round trip: the loop slews the gain it applies
 toward the requested one across one round trip, in either direction, because
 applying the whole of it to the first sample after the key came up stepped the
@@ -1788,8 +1792,9 @@ The JUCE-free suites cover:
   repeatable, allocation-free, independent of block size, and identical when
   spelt through the helpers a front end without MIDI uses; plus canonical
   same-sample order, the gathered roll, master tune and overflow counts, and
-  that CC68 and release velocity change no sample of any of it (with Release
-  Noise at the engine's default of 0);
+  that retired CC68 changes no sample at the same supplied release velocity;
+  explicit release firmness is checked separately for passive damping,
+  nominal-velocity parity and unchanged audio before key-up;
 - the separate Piezo output (Tests/OutputBusTests.cpp), over that battery:
   Main bit-identical whether or not Piezo is wanted, Piezo equal to Main with
   Capture on Piezo and independent of Capture, a null
@@ -1942,9 +1947,9 @@ The JUCE-free suites cover:
   5 ms against the preceding and simultaneous held peaks, with a separate
   allowance for later ringing. Restoring the abrupt release loss fails all
   nine cases; the peak gates are not physical-energy measurements;
-- release: with Release Noise off the wrapper and the player map every
-  release velocity, including 127, to the same damped wave; at its default
-  release velocity reaches the release touch alone, and CC68 changes nothing.
+- release: missing velocity and MIDI 64 keep the nominal damped wave; an
+  explicit softer/firmer release changes passive loss without replacing
+  stored waves or adding a picking attack, and CC68 changes nothing.
   The release suite also bounds the release touch: nothing before key-up,
   28-60 dB under the attack, no new onset, headroom kept. A dedicated release
   suite, played through the player, checks high note-on velocities across
@@ -1972,8 +1977,8 @@ The C++ suites run under ctest at a shell's default 8 MB stack (ctest itself
 raises the limit on macOS), so each also runs directly or under a debugger;
 the tests keep their engines and processors on the heap.
 
-The wrapper suite additionally checks that release velocity reaches only
-the release touch and CC68 changes nothing, sample-accurate MIDI, canonical
+The wrapper suite additionally checks nominal release parity, explicit
+release damping and inert CC68, sample-accurate MIDI, canonical
 same-time chord order, gathered live chords (a triad rolled low to high over
 20 ms, and a six-string E major rolled over 25 ms after a D major the hand
 remembers, sound bit-identical to the same chord on one sample, while notes more

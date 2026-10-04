@@ -150,8 +150,8 @@ public:
     // Channels are 1-16, data values 0-127; out-of-range values are clamped.
     void noteOn(int sampleOffset, int channel, int note, int velocity) noexcept;
     // Release velocity is spelt into the Note Off: a key-up damps its note
-    // however fast it is lifted, and the velocity sets only how firmly the
-    // hand lands (EngineParameters::releaseNoise).
+    // however fast it is lifted. An explicit firm contact shortens its
+    // damping tail and sets the optional release noise; 64 is nominal.
     void noteOff(int sampleOffset, int channel, int note,
                  int releaseVelocity = 64) noexcept;
     void controlChange(int sampleOffset, int channel, int controller,
