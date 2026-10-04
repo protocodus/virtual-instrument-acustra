@@ -6734,6 +6734,8 @@ float AcustraEngine::shapeCost(const StringFrets& shapeFrets,
                                const HandWeights& weights) const noexcept
 {
     std::array<int, 2 * stringCount> held {};
+    StringFrets fingerFrets {};
+    fingerFrets.fill(-1);
     int heldCount = 0;
     std::array<int, stringCount> remembered {};
     std::array<float, stringCount> rememberedWeight {};
@@ -6752,11 +6754,14 @@ float AcustraEngine::shapeCost(const StringFrets& shapeFrets,
         const auto& voice = voices_[index];
         const bool movable = ((movableStrings >> string) & 1u) != 0u;
         const bool keyed = voice.played && voice.keyDown && !movable;
-        if (shapeFrets[index] >= 1)
-            hold(shapeFrets[index]);
-        else if (shapeFrets[index] < 0 && keyed && voice.harmonic == 1
-                 && voice.fret >= 1)
-            hold(voice.fret);
+        // Open strings need no finger, but they prevent a lower barre from
+        // spanning across them. Keep them alongside the stopped strings.
+        if (shapeFrets[index] >= 0)
+            fingerFrets[index] = shapeFrets[index];
+        else if (keyed && voice.harmonic == 1)
+            fingerFrets[index] = voice.fret;
+        if (fingerFrets[index] >= 1)
+            hold(fingerFrets[index]);
         if (movable || (voice.played && voice.keyDown))
             continue;
         if (weights[index] > 0.0f)
@@ -6772,6 +6777,31 @@ float AcustraEngine::shapeCost(const StringFrets& shapeFrets,
         return 0.0f;
     if (heldCount > 0 && high - low > handStretchSpan)
         return impossibleShapeCost + static_cast<float>(high - low);
+    // A narrow fret span alone does not establish that four fretting
+    // fingers can hold it. Equal-fret stops can share a barre only when no
+    // intervening played string must remain open or stop below that fret.
+    // Higher stops can sit above the barre; unused strings may be muted.
+    // This is a necessary conventional four-finger grip constraint, not a
+    // full hand/contact solver (thumb-over and exceptional grips are outside
+    // this model). An impossible grip stays a scored fallback, never a drop.
+    int fingers = 0;
+    for (int fret = low; fret <= high; ++fret)
+    {
+        bool barre = false;
+        for (const int stop : fingerFrets)
+        {
+            if (stop >= 0 && stop < fret)
+                barre = false;
+            else if (stop == fret)
+            {
+                if (!barre)
+                    ++fingers;
+                barre = true;
+            }
+        }
+    }
+    if (fingers > 4)
+        return impossibleShapeCost + static_cast<float>(fingers);
     int firstPosition = 1;
     int lastPosition = fretCount - handPositionSpan;
     if (heldCount > 0)
