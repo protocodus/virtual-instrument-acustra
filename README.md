@@ -2766,6 +2766,21 @@ A concise ledger of the changes that move what Acustra sounds like or how it is
 controlled. Pure refactors, deduplications and test-coverage additions are in
 git history rather than here.
 
+### 2026-10-04
+
+- **Ten playing and physical behavior improvements, awaiting listening review.**
+  Stroke brightness follows force; slide geometry and partial loss follow the
+  speaking string; body and sympathetic tails survive live control changes;
+  voicings fit a conventional four-finger grip; equal-velocity repeats vary
+  within a bounded force range; rapid strums finish their traversal; explicit
+  CC65/CC84 finger transitions retain the sounding wave; and key-up firmness
+  controls passive damping. CC68 remains ignored. Each improvement has its
+  own commit and regression. All 115 real-recording rows in each of the two
+  presets retain byte-identical isolated-note renders and unchanged descriptor
+  losses. The original-song blind A/B package evaluates the changed performance
+  behavior; its scores never approve a change automatically. See
+  [the ten-change evidence and listening protocol](Docs/realism-ten-improvements-2026-10-04.md).
+
 ### 2026-10-01
 
 - **The top springs back from the held string, at the user's request**

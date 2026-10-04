@@ -203,6 +203,10 @@ if(ACUSTRA_BUILD_TOOLS)
     target_link_libraries(AcustraRenderDemos PRIVATE AcustraDSP)
     target_compile_features(AcustraRenderDemos PRIVATE cxx_std_20)
 
+    add_executable(AcustraRenderRealismSongs Tools/RenderRealismSongs.cpp)
+    target_link_libraries(AcustraRenderRealismSongs PRIVATE AcustraDSP)
+    target_compile_features(AcustraRenderRealismSongs PRIVATE cxx_std_20)
+
     add_executable(AcustraPhysicalFitRenderer Tools/PhysicalFitRenderer.cpp)
     target_link_libraries(AcustraPhysicalFitRenderer
         PRIVATE AcustraDSP AcustraReferenceBank)
