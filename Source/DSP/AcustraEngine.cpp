@@ -3386,17 +3386,39 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
         configureBody();
     if (bridgeChanged)
     {
-        if (!force && bridgeLoadFade_ < 1.0f)
+        const bool matchesTarget = configuredBridgeModel_ == parameters_.guitarModel
+            && configuredBridgeShape_ == parameters_.shape
+            && configuredBridgeMaterial_ == parameters_.bodyMaterial;
+        if (!force && matchesTarget)
+            bridgeUpdatePending_ = false;
+        else if (!force && bridgeLoadFade_ > 0.0f && bridgeLoadFade_ < 1.0f)
             bridgeUpdatePending_ = true;
         else
         {
+            bool keepModalState = sameBridgeBank;
+            bool restoresSoundingBridge = false;
             if (!force)
             {
-                fadingBridgeLoad_ = bridgeLoad_;
-                bridgeLoadFade_ = 0.0f;
+                if (bridgeLoadFade_ >= 1.0f)
+                {
+                    fadingBridgeLoad_ = bridgeLoad_;
+                    fadingBridgeModel_ = configuredBridgeModel_;
+                    fadingBridgeShape_ = configuredBridgeShape_;
+                    fadingBridgeMaterial_ = configuredBridgeMaterial_;
+                }
+                else if (fadingBridgeModel_ == parameters_.guitarModel)
+                {
+                    // No sample has heard the target yet. Returning to the
+                    // sounding guitar takes its own modal state, rather than
+                    // the silent replacement's state or a second queued fade.
+                    bridgeLoad_ = fadingBridgeLoad_;
+                    keepModalState = true;
+                    restoresSoundingBridge = fadingBridgeShape_ == parameters_.shape
+                        && fadingBridgeMaterial_ == parameters_.bodyMaterial;
+                }
+                bridgeLoadFade_ = restoresSoundingBridge ? 1.0f : 0.0f;
             }
-            configureBridge(sameBridgeBank);
-            configuredBridgeModel_ = parameters_.guitarModel;
+            configureBridge(keepModalState);
             bridgeUpdatePending_ = false;
         }
     }
@@ -3624,15 +3646,25 @@ void AcustraEngine::configureBody() noexcept
     // ringing chord they beat against it while they settle, 30-45 dB over
     // the steady sound above 5 kHz (audit F14). Model exchanges it for
     // another guitar's, whose modes start from rest.
+    const bool restoresSoundingBank = bodyConfigured_ && bodyModelFade_ == 0.0f
+        && fadingBodyModel_ == parameters_.guitarModel;
+    const bool restoresSoundingBody = restoresSoundingBank
+        && fadingBodyShape_ == parameters_.shape
+        && fadingBodyMaterial_ == parameters_.bodyMaterial;
     const bool sameBodyBank = bodyConfigured_
-        && configuredGuitarModel_ == parameters_.guitarModel;
+        && (configuredGuitarModel_ == parameters_.guitarModel || restoresSoundingBank);
+    if (restoresSoundingBank)
+        bodyBank_ = fadingBodyBank_;
     if (bodyConfigured_)
     {
         if (bodyModelFade_ >= 1.0f)
         {
             fadingBodyBank_ = bodyBank_;
+            fadingBodyModel_ = configuredGuitarModel_;
+            fadingBodyShape_ = configuredBodyShape_;
+            fadingBodyMaterial_ = configuredBodyMaterial_;
         }
-        bodyModelFade_ = 0.0f;
+        bodyModelFade_ = restoresSoundingBody ? 1.0f : 0.0f;
     }
     else
     {
@@ -4117,6 +4149,9 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     }
     // A slot whose sections and residues are all zero returns +-0 and adds
     // +-0 to sums that start at +0, so leaving it out changes no bit.
+    configuredBridgeModel_ = parameters_.guitarModel;
+    configuredBridgeShape_ = parameters_.shape;
+    configuredBridgeMaterial_ = parameters_.bodyMaterial;
     bridgeLoad_.activeModeCount = 0;
     for (std::size_t index = 0; index < bridgeLoad_.heaveModes.size(); ++index)
     {
@@ -4144,6 +4179,9 @@ void AcustraEngine::applyPendingBridge(bool fade) noexcept
     if (fade)
     {
         fadingBridgeLoad_ = bridgeLoad_;
+        fadingBridgeModel_ = configuredBridgeModel_;
+        fadingBridgeShape_ = configuredBridgeShape_;
+        fadingBridgeMaterial_ = configuredBridgeMaterial_;
         bridgeLoadFade_ = 0.0f;
         bridgeDerivativesCrossConfigure_ = true;
     }

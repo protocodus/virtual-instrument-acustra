@@ -681,3 +681,12 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.StringDecayRealism COMMAND AcustraStringDecayRealismTests)
     set_tests_properties(Acustra.StringDecayRealism PROPERTIES TIMEOUT 60)
 endif()
+
+# Recording-guided realism regression 4.
+if(BUILD_TESTING)
+    add_executable(AcustraBodyRealismTests Tests/BodyRealismTests.cpp)
+    target_link_libraries(AcustraBodyRealismTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraBodyRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.BodyRealism COMMAND AcustraBodyRealismTests)
+    set_tests_properties(Acustra.BodyRealism PROPERTIES TIMEOUT 60)
+endif()

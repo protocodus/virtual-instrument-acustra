@@ -1384,6 +1384,9 @@ private:
     // BodyBank::count stops before them.
     BodyBank bodyBank_ {}, fadingBodyBank_ {};
     GuitarModel configuredGuitarModel_ { GuitarModel::Original };
+    GuitarModel fadingBodyModel_ { GuitarModel::Original };
+    BodyShape fadingBodyShape_ { BodyShape::Dreadnought };
+    BodyMaterial fadingBodyMaterial_ { BodyMaterial::Spruce };
     BodyShape configuredBodyShape_ { BodyShape::Dreadnought };
     BodyMaterial configuredBodyMaterial_ { BodyMaterial::Spruce };
     bool bodyUpdatePending_ { false };
@@ -1620,6 +1623,11 @@ private:
     // banks, or rebuilding under it, stepped the bridge.
     bool bridgeUpdatePending_ { false };
     GuitarModel configuredBridgeModel_ { GuitarModel::Original };
+    GuitarModel fadingBridgeModel_ { GuitarModel::Original };
+    BodyShape fadingBridgeShape_ { BodyShape::Dreadnought };
+    BodyMaterial fadingBridgeMaterial_ { BodyMaterial::Spruce };
+    BodyShape configuredBridgeShape_ { BodyShape::Dreadnought };
+    BodyMaterial configuredBridgeMaterial_ { BodyMaterial::Spruce };
     void applyPendingBridge(bool fade) noexcept;
     int controlCounter_ { 0 };
     int lowerZoneMemberCount_ { 0 };
