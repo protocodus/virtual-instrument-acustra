@@ -27,11 +27,14 @@ int Performer::gatherWindowSamples(double sampleRate) noexcept
 Performer::Performer() noexcept
 {
     conventionalPitchBendRanges_.fill(2.0f);
+    portamentoSources_.fill(-1);
 }
 
 void Performer::prepare(double sampleRate, int maximumBlockSize)
 {
     rawPitchWheels_.fill(0.0f);
+    portamentoSwitches_.fill(false);
+    portamentoSources_.fill(-1);
     rpnStates_.fill(RpnState {});
     vibratoChannel_ = 0;
     engine_.prepare(sampleRate, maximumBlockSize);
@@ -68,6 +71,8 @@ void Performer::setMasterTuneCents(float cents) noexcept
 void Performer::reset() noexcept
 {
     rawPitchWheels_.fill(0.0f);
+    portamentoSwitches_.fill(false);
+    portamentoSources_.fill(-1);
     rpnStates_.fill(RpnState {});
     vibratoChannel_ = 0;
     engine_.reset();
@@ -316,8 +321,11 @@ void Performer::flushNoteGroup() noexcept
     for (int index = 0; index < pendingNoteOnCount_; ++index)
     {
         const auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
-        engine_.noteOn(note.note, note.velocity, note.channel,
-                       strum ? note.pluckDelay : 0, strum);
+        const bool unambiguous = std::count_if(pendingNoteOns_.begin(),
+            pendingNoteOns_.begin() + pendingNoteOnCount_,
+            [&](const PendingNoteOn& other) { return other.channel == note.channel; }) == 1;
+        playNote(note.note, note.velocity, note.channel,
+                 strum ? note.pluckDelay : 0, strum, unambiguous);
     }
     pendingNoteOnCount_ = 0;
 
@@ -436,7 +444,7 @@ void Performer::gatherChord(int first) noexcept
             // MPE zone all change the allocation.
             switch (held.bytes[1] & 0x7fu)
             {
-                case 6: case 38: case 96: case 97: case 98:
+                case 6: case 38: case 65: case 84: case 96: case 97: case 98:
                 case 99: case 100: case 101: case 120: case 121:
                 case 123: case 126: case 127:
                     return;
@@ -474,8 +482,8 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
     {
         const auto note = static_cast<int>(data[1] & 0x7fu);
         if ((data[2] & 0x7fu) != 0u)
-            engine_.noteOn(note, static_cast<float>(data[2] & 0x7fu) / 127.0f,
-                           midiChannel);
+            playNote(note, static_cast<float>(data[2] & 0x7fu) / 127.0f,
+                     midiChannel);
         else
             engine_.noteOff(note, midiChannel);
     }
@@ -532,6 +540,18 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
         {
             engine_.setSustainPedal(value >= 64u, midiChannel);
         }
+        else if (controller == 65u)
+        {
+            const auto channel = static_cast<std::size_t>(midiChannel - 1);
+            portamentoSwitches_[channel] = value >= 64u;
+            if (!portamentoSwitches_[channel])
+                portamentoSources_[channel] = -1;
+        }
+        else if (controller == 84u)
+        {
+            portamentoSources_[static_cast<std::size_t>(midiChannel - 1)]
+                = static_cast<int>(value);
+        }
         else if (controller == 74u)
         {
             // MPE Timbre: where this one note's own member channel met the
@@ -563,6 +583,9 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
         else if (controller == 120u)
         {
             engine_.allSoundOff(midiChannel);
+            for (int channel = 1; channel <= 16; ++channel)
+                if (channelIsInControllerScope(midiChannel, channel))
+                    portamentoSources_[static_cast<std::size_t>(channel - 1)] = -1;
         }
         else if (controller == 121u)
         {
@@ -571,8 +594,24 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
         else if (controller == 123u)
         {
             engine_.allNotesOff(midiChannel);
+            for (int channel = 1; channel <= 16; ++channel)
+                if (channelIsInControllerScope(midiChannel, channel))
+                    portamentoSources_[static_cast<std::size_t>(channel - 1)] = -1;
         }
     }
+}
+
+void Performer::playNote(int note, float velocity, int channel,
+                          int delay, bool strumming,
+                          bool unambiguousTransition) noexcept
+{
+    const auto index = static_cast<std::size_t>(channel - 1);
+    const int source = portamentoSources_[index];
+    portamentoSources_[index] = -1;
+    if (unambiguousTransition && portamentoSwitches_[index] && source >= 0
+        && engine_.transitionNote(source, note, velocity, channel))
+        return;
+    engine_.noteOn(note, velocity, channel, delay, strumming);
 }
 
 // RPN parsing follows MIDI 1.0 (and JUCE's MidiRPNDetector, which the
@@ -672,6 +711,8 @@ void Performer::setLowerZoneMemberCount(int memberCount) noexcept
     for (int channel = 1; channel <= lastAffected; ++channel)
     {
         rawPitchWheels_[static_cast<std::size_t>(channel - 1)] = 0.0f;
+        portamentoSwitches_[static_cast<std::size_t>(channel - 1)] = false;
+        portamentoSources_[static_cast<std::size_t>(channel - 1)] = -1;
         rpnStates_[static_cast<std::size_t>(channel - 1)] = RpnState {};
     }
     lowerMasterPitchBendRange_ = 2.0f;
@@ -728,6 +769,8 @@ void Performer::resetControllerScope(int midiChannel) noexcept
         if (! channelIsInControllerScope(midiChannel, channel))
             continue;
         rawPitchWheels_[static_cast<std::size_t>(channel - 1)] = 0.0f;
+        portamentoSwitches_[static_cast<std::size_t>(channel - 1)] = false;
+        portamentoSources_[static_cast<std::size_t>(channel - 1)] = -1;
         rpnStates_[static_cast<std::size_t>(channel - 1)] = RpnState {};
         engine_.setPitchBend(tunedBend(channel, 0.0f), channel);
         engine_.setSustainPedal(false, channel);

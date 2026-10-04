@@ -455,12 +455,18 @@ everything else — so the surviving modes keep precisely the amplitude the pluc
 gave them, and a harmonic comes out quieter than the stopped note rather than
 louder.
 
-There is no legato mode. CC68, MIDI's Legato Footswitch, used to switch the
-fretting hand to hammer-ons and pull-offs; at the user's request (2026-09-28,
-[decisions](Docs/decisions.md)) legato was removed everywhere, from the
-engine, the shared player and both front ends, and CC68 is now ignored. Every
-note is plucked, and notes that arrive together are voiced and strummed as a
-chord whatever CC68 says.
+Ordinary Note Ons pluck, and notes that arrive together are voiced and
+strummed as chords. Retired CC68 remains ignored. Connected finger gestures
+are explicit: turn on CC65 on the note's channel, send CC84 with the held
+source pitch, then send one destination Note On. A valid request transfers
+that string's sounding wave to the new fret, with a short bounded finger
+contact rather than a new picking attack. The source request is consumed
+once; ambiguous ownership, chords, out-of-range frets and intervals over an
+octave fall back to an ordinary pluck. CC65 off or Reset All Controllers
+clears the request. The JUCE-free API exposes the same operation as
+`transitionNote`. There is no new panel control or host latency. The current
+Rack wrapper cannot send these explicit gestures. The contact map is
+authored and awaits listening approval; it is not a fitted hammer-on recording.
 
 CC2 is continuous bridge-hand pressure: the heel of the picking hand resting
 by the saddle, a soft lossy absorber whose loss rate adds to the string's own,
@@ -2414,9 +2420,9 @@ set without it.
   specific enough to license a shipped gain. A close-miked solo slide/bend
   capture built to isolate the mechanism would close it.
 
-- Apart from bridge-hand damping and natural harmonics, version 0.1 is
-  sustain-only. There are no hammer-ons or pull-offs: legato was removed at
-  the user's request on 2026-09-28. Fret and finger noise, the squeak of a
+- Explicit hammer-on and pull-off gestures now preserve the sounding string,
+  but their short contact is an authored approximation rather than a full
+  moving-fret scattering boundary. Fret and finger noise, the squeak of a
   hand sliding on a wound string, buzz, artificial and pinch harmonics, body
   knocks and pick direction are absent. A harmonic's sounding partial runs a few cents sharp of equal
   temperament, which is the stiff string's own inharmonicity plus the model's
@@ -2698,7 +2704,8 @@ set without it.
   natural harmonics, continuous finger-to-pick contact through Touch, slides —
   pitch bend retunes a sounding string without replaying it, verified by the
   delay line moving 276.4 to 245.6 samples for two semitones and back. It
-  lacks tapping, slapping, legato and buzz. Like the commercial
+  lacks tapping, slapping and buzz. Its explicit connected finger gestures
+  remain an approximation needing controlled listening. Like the commercial
   instrument it now radiates both transverse axes, the second through the
   measured rocking rather than a modelled one. Its measured-body and
   published-fit approach has no counterpart in either. This is a reading of

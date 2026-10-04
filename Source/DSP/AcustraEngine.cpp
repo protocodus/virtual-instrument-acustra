@@ -3480,6 +3480,8 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
                 continue;
             voice.tailActive = false;
             voice.tailRetiring = false;
+            voice.tailLegatoContactTravel.active = false;
+            voice.tailLegatoContactSamples = 0;
             voice.tailCharacteristicImpedance = 0.0f;
             voice.tailLevel = 0.0f;
             voice.tailQuietSamples = 0;
@@ -4610,6 +4612,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         voice.contactTravel.active = false;
         voice.contactNoiseTravel.active = false;
         voice.contactNoiseSamples = 0;
+        voice.legatoContactTravel.active = false;
+        voice.legatoContactSamples = 0;
     }
     constexpr float scaleLength = 0.648f;
     // A natural harmonic is the open string vibrating in its nth mode, so the
@@ -6017,6 +6021,10 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.midiChannel = 1;
     voice.fret = 0;
     voice.velocity = 0.0f;
+    voice.legatoContactSamples = 0;
+    voice.legatoContactAmplitude = 0.0f;
+    if (clearDelay)
+        voice.legatoContactTravel.active = false;
     voice.excitationEnvelope = 0.0f;
     voice.contactTravelEnabled = false;
     voice.contactTravel.active = false;
@@ -6065,6 +6073,8 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
         voice.tailActive = false;
         voice.tailRetiring = false;
         voice.tailContactTravel.active = false;
+        voice.tailLegatoContactTravel.active = false;
+        voice.tailLegatoContactSamples = 0;
         voice.tailCharacteristicImpedance = 0.0f;
         voice.tailLevel = 0.0f;
         voice.tailQuietSamples = 0;
@@ -6089,17 +6099,35 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     // has damped; the existing reaction-force threshold decides retirement.
     if (!(voice.level > 2.0e-7f)
         && !(voice.contactTravelEnabled && voice.contactTravel.active)
-        && !voice.contactNoiseTravel.active)
+        && !voice.contactNoiseTravel.active
+        && !voice.legatoContactTravel.active && voice.legatoContactSamples == 0)
     {
         voice.tailActive = false;
         voice.tailRetiring = false;
         voice.tailContactTravel.active = false;
         voice.tailContactNoiseTravel.active = false;
+        voice.tailLegatoContactTravel.active = false;
+        voice.tailLegatoContactSamples = 0;
         voice.tailCharacteristicImpedance = 0.0f;
         return;
     }
     voice.tailLoop = voice.loops[0];
     voice.tailParallelLoop = voice.loops[1];
+    if (voice.legatoContactTravel.active || voice.legatoContactSamples > 0)
+    {
+        voice.tailLegatoContactTravel = voice.legatoContactTravel;
+        voice.tailLegatoContactAmplitude = voice.legatoContactAmplitude;
+        voice.tailLegatoContactAge = voice.legatoContactAge;
+        voice.tailLegatoContactSamples = voice.legatoContactSamples;
+    }
+    else
+    {
+        voice.tailLegatoContactTravel.active = false;
+        voice.tailLegatoContactSamples = 0;
+    }
+    voice.legatoContactTravel.active = false;
+    voice.legatoContactSamples = 0;
+    voice.legatoContactAmplitude = 0.0f;
     // Already emitted contact waves still travelling toward the bridge are
     // part of the retained string state. The old source stops here;
     // this copied transport receives only zeros while the new pluck starts.
@@ -6209,6 +6237,10 @@ void AcustraEngine::updateTailHandLoss(Voice& voice) noexcept
 void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
 {
     releaseFinger(stringIndex);
+    // An explicitly started 2-3 ms finger pulse finishes smoothly under the
+    // hand's loss; cutting a nonzero sin^2 pulse here would inject a sharp
+    // edge whose slope energy can exceed its original contact budget.
+    // Key-up itself never requests a new source.
     voice.pedalHeld = false;
     // A damping release ends the picking contact. Waves already emitted
     // remain in transit and receive the same hand loss on arrival.
@@ -7205,6 +7237,92 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
               strumMember);
 }
 
+bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
+                                     float fingerVelocity, int midiChannel) noexcept
+{
+    if (!prepared_ || sourceMidiNote == targetMidiNote
+        || targetMidiNote < 0 || targetMidiNote > 127
+        || !exact::isfinite(fingerVelocity) || fingerVelocity <= 0.0f
+        || midiChannel < 1 || midiChannel > midiChannelCount)
+        return false;
+    const int string = heldString(sourceMidiNote, midiChannel);
+    if (string < 0 || heldString(targetMidiNote, midiChannel) >= 0)
+        return false;
+    auto& voice = voices_[static_cast<std::size_t>(string)];
+    const int targetFret = targetMidiNote - voice.openMidi;
+    if (voice.ownerCount != 1 || voice.harmonic != 1 || !voice.attackFired
+        || voice.pluckDelay != 0 || voice.repluckPending
+        || targetFret < 0 || targetFret > fretCount
+        || std::abs(targetMidiNote - sourceMidiNote) > 12
+        || voice.legatoContactTravel.active || voice.legatoContactSamples > 0)
+        return false;
+
+    // No shape replacement and no tail copy: these are the same physical
+    // waves at a new fret. A released source's later Note Off is harmless;
+    // only the target owns this vibrating string after the transfer.
+    const bool hammer = targetMidiNote > sourceMidiNote;
+    const float contactPosition = clamp(std::exp2(-static_cast<float>(
+        std::abs(targetMidiNote - sourceMidiNote)) / 12.0f), 0.5f, 0.97f);
+    const float displacement = voice.loops[0].displacementAt(contactPosition);
+    double slopeEnergy = 0.0;
+    for (const auto& loop : voice.loops)
+    {
+        const int length = std::clamp(static_cast<int>(
+            std::round(loop.currentDelay)), 8, maximumDelaySamples - 3);
+        float previous = loop.delay[static_cast<std::size_t>(
+            wrapDelayIndex(loop.writeIndex - length))];
+        for (int age = length - 1; age >= 0; --age)
+        {
+            const float current = loop.delay[static_cast<std::size_t>(
+                wrapDelayIndex(loop.writeIndex - age))];
+            const double difference = static_cast<double>(current) - previous;
+            slopeEnergy += difference * difference;
+            previous = current;
+        }
+    }
+    const float period = voice.loops[0].currentDelay;
+    voice.legatoContactSamples = std::max(4, static_cast<int>(
+        (hammer ? 0.002 : 0.003) * sampleRate_));
+    voice.legatoContactAge = 0;
+    // sin^2(pi n/N) starts and ends at rest. Sum the exact sampled source
+    // slope norm once at the event so rates and contact durations carry the
+    // same <=2% source-energy budget, without a guessed gain in the loop.
+    double norm = 0.0;
+    double previous = 0.0;
+    for (int age = 1; age <= voice.legatoContactSamples; ++age)
+    {
+        const double phase = piDouble * age / voice.legatoContactSamples;
+        const double value = std::sin(phase) * std::sin(phase);
+        norm += (value - previous) * (value - previous);
+        previous = value;
+    }
+    const float velocity = clamp(fingerVelocity, 0.0f, 1.0f);
+    const float amplitude = slopeEnergy > 0.0 && norm > 0.0
+        ? static_cast<float>(std::sqrt(0.02 * velocity * velocity
+                                       * slopeEnergy / norm)) : 0.0f;
+    voice.legatoContactAmplitude = (hammer ? -1.0f : 1.0f)
+        * (displacement < 0.0f ? -amplitude : amplitude);
+    voice.legatoContactTravel.reset(0.5f * period * contactPosition,
+                                    period * (1.0f - 0.5f * contactPosition));
+    voice.velocity = velocity;
+    voice.startOrder = ++noteOrder_;
+    voice.onsetSample = sampleClock_;
+    voice.memberPitchBendFrozen = false;
+    voice.releaseVelocity = -1.0f;
+    voice.releaseSeconds = 0.0f;
+    voice.returnSamples = 0;
+    voice.attackPitchCents = 0.0f;
+    voice.attackPitchDecay = 1.0f;
+    // Stop only future picking input. Already emitted waves keep travelling.
+    voice.excitationEnvelope = 0.0f;
+    voice.contactNoiseAmplitude = 0.0f;
+    voice.strumming = false;
+    configureVoice(voice, string, targetMidiNote, false);
+    rememberFinger(string);
+    plannedCount_ = 0;
+    return true;
+}
+
 void AcustraEngine::startNote(int string, int harmonic, int midiNote,
                               float velocity, int midiChannel,
                               int delaySamples, bool strumMember) noexcept
@@ -7215,8 +7333,11 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     // the new pluck is released from rest.
     if (voice.level > 2.0e-7f
         || (voice.contactTravelEnabled && voice.contactTravel.active)
-        || voice.contactNoiseTravel.active)
+        || voice.contactNoiseTravel.active
+        || voice.legatoContactTravel.active || voice.legatoContactSamples > 0)
         captureTail(voice);
+    voice.legatoContactSamples = 0;
+    voice.legatoContactAmplitude = 0.0f;
     voice.harmonic = harmonic;
     voice.played = true;
     voice.keyDown = true;
@@ -7621,7 +7742,8 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
         // is released, exactly as for an immediate re-pluck.
         if (voice.level > 2.0e-7f
             || (voice.contactTravelEnabled && voice.contactTravel.active)
-            || voice.contactNoiseTravel.active)
+            || voice.contactNoiseTravel.active
+            || voice.legatoContactTravel.active || voice.legatoContactSamples > 0)
             captureTail(voice);
         configureVoice(voice, stringIndex, voice.midiNote, true);
     }
@@ -8677,7 +8799,8 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             voice.tailQuietSamples = 0;
         if (voice.tailQuietSamples > static_cast<int>(0.08 * sampleRate_)
             && !voice.tailContactTravel.active
-            && !voice.tailContactNoiseTravel.active)
+            && !voice.tailContactNoiseTravel.active
+            && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0)
             voice.tailRetiring = true;
         // A retiring tail's port leaves the junction on the delay's own
         // 6 ms time constant, as a bend's impedance moves (the junction sums
@@ -8691,6 +8814,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                 -= delaySmoothing_ * voice.tailCharacteristicImpedance;
         if (voice.tailRetiring && !voice.tailContactTravel.active
             && !voice.tailContactNoiseTravel.active
+            && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0
             && !(voice.tailCharacteristicImpedance
                  > 1.0e-4f * voice.characteristicImpedance))
         {
@@ -8698,6 +8822,8 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             voice.tailRetiring = false;
             voice.tailContactTravel.active = false;
             voice.tailContactNoiseTravel.active = false;
+            voice.tailLegatoContactTravel.active = false;
+            voice.tailLegatoContactSamples = 0;
             voice.tailCharacteristicImpedance = 0.0f;
             voice.tailLevel = 0.0f;
             voice.tailQuietSamples = 0;
@@ -9396,6 +9522,24 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 horizontalIncident[static_cast<std::size_t>(string)]
                     += 0.51f * horizontalContact;
             }
+            if (voice.legatoContactSamples > 0 || voice.legatoContactTravel.active)
+            {
+                float contact = 0.0f;
+                if (voice.legatoContactSamples > 0)
+                {
+                    const float phase = pi * static_cast<float>(voice.legatoContactAge)
+                        / static_cast<float>(voice.legatoContactSamples);
+                    const float sine = std::sin(phase);
+                    contact = voice.legatoContactAmplitude * sine * sine;
+                    if (++voice.legatoContactAge > voice.legatoContactSamples)
+                        voice.legatoContactSamples = 0;
+                }
+                const auto paths = voice.legatoContactTravel.process(contact);
+                constexpr float equalEnergySplit = 0.7071067811865475f;
+                const float local = equalEnergySplit * (paths[0] - paths[1]);
+                verticalIncident[static_cast<std::size_t>(string)]
+                    += local * voice.loops[0].appliedReleaseGain;
+            }
             // The contact's noise force, launched both ways from the contact
             // point along the stroke; the nut inverts what reaches it. Out of
             // line and behind the two fields it would read first: at zero
@@ -9416,6 +9560,24 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 tailParallelIncident[static_cast<std::size_t>(string)]
                     = voice.tailParallelLoop.advance(delaySmoothing_,
                                                      voice.tailDamping);
+                if (voice.tailLegatoContactSamples > 0 || voice.tailLegatoContactTravel.active)
+                {
+                    float contact = 0.0f;
+                    if (voice.tailLegatoContactSamples > 0)
+                    {
+                        const float phase = pi * static_cast<float>(voice.tailLegatoContactAge)
+                            / static_cast<float>(voice.tailLegatoContactSamples);
+                        const float sine = std::sin(phase);
+                        contact = voice.tailLegatoContactAmplitude * sine * sine;
+                        if (++voice.tailLegatoContactAge > voice.tailLegatoContactSamples)
+                            voice.tailLegatoContactSamples = 0;
+                    }
+                    const auto paths = voice.tailLegatoContactTravel.process(contact);
+                    constexpr float equalEnergySplit = 0.7071067811865475f;
+                    tailIncident[static_cast<std::size_t>(string)]
+                        += equalEnergySplit * (paths[0] - paths[1])
+                            * voice.tailLoop.appliedReleaseGain;
+                }
                 if (voice.tailContactTravel.active)
                 {
                     const auto paths = voice.tailContactTravel.process(0.0f);
@@ -10210,7 +10372,9 @@ void AcustraEngine::processIdleFlush(float samplePeak) noexcept
             && !voice.repluckPending && !voice.contactTravel.active
             && !voice.contactNoiseTravel.active && voice.contactNoiseSamples == 0
             && !voice.tailContactTravel.active
-            && !voice.tailContactNoiseTravel.active;
+            && !voice.tailContactNoiseTravel.active
+            && !voice.legatoContactTravel.active && voice.legatoContactSamples == 0
+            && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0;
     if (!idle)
     {
         idleQuietSamples_ = 0;

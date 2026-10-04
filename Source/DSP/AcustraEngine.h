@@ -202,6 +202,16 @@ public:
     // false and is unaffected down to the bit.
     void noteOn(int midiNote, float velocity, int midiChannel = 1,
                 int pluckDelaySamples = 0, bool strumMember = false) noexcept;
+    // Explicit connected hammer-on/pull-off on the source's physical string.
+    // Transfers one held owner to the new note and keeps its travelling wave;
+    // ordinary overlapping noteOn calls remain independent plucks. Returns
+    // false without changing state if the source is absent, multiply owned,
+    // harmonic/scheduled, or the target cannot be fretted on that string.
+    // The bounded finger contact is an authored performance map, not a fit
+    // to the sustained-note recording corpora. No fresh picking noise.
+    [[nodiscard]] bool transitionNote(int sourceMidiNote, int targetMidiNote,
+                                      float fingerVelocity,
+                                      int midiChannel = 1) noexcept;
     // Call just before the noteOn() calls for notes that arrive together on
     // one sample and one channel (a sequenced chord, or one the plug-in has
     // gathered): the fretting hand forms them as one shape, one note per
@@ -808,6 +818,12 @@ private:
         StringLoop tailLoop {};
         StringLoop tailParallelLoop {};
         ContactTravel tailContactTravel {};
+        // The connected finger's already emitted and remaining smooth
+        // contact source belongs to this retained wave on a re-pluck.
+        ContactTravel tailLegatoContactTravel {};
+        float tailLegatoContactAmplitude { 0.0f };
+        int tailLegatoContactAge { 0 };
+        int tailLegatoContactSamples { 0 };
         float tailDamping { 1.0f };
         // Intrinsic loss and pitch belong to the captured string. The bridge
         // hand remains live CC2 expression while that old wave is retained.
@@ -1053,6 +1069,13 @@ private:
         // the leaky integrator that launches the displacement, the samples
         // left, the stroke's normal and parallel shares, its own draws and
         // its travel from the damping point.
+        // An explicitly requested connected finger articulation: a smooth
+        // finite contact pulse, transported from its point on the string.
+        // Its source slope energy is bounded by the sounding wave's energy.
+        float legatoContactAmplitude { 0.0f };
+        int legatoContactAge { 0 };
+        int legatoContactSamples { 0 };
+        ContactTravel legatoContactTravel {};
         float releaseVelocity { -1.0f };
         float peakLevel { 0.0f };
         float releaseNoiseTouch { 0.0f };

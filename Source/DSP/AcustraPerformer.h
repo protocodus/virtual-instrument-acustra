@@ -14,7 +14,8 @@ namespace acustra
 //
 // It covers sample-accurate splitting of a block at its events, MIDI channel
 // messages (notes, pitch bend per channel with its RPN 0 range, CC1 vibrato,
-// CC2 bridge hand, CC64 sustain, CC74 and channel pressure for MPE,
+// CC2 bridge hand, CC64 sustain, explicit CC65+CC84 connected articulations,
+// CC74 and channel pressure for MPE,
 // CC120/121/123, CC126/127 string-per-channel mode), the MPE lower zone
 // (RPN 6 on channel 1) and its controller scope, same-sample note grouping
 // (canonical order, strums, chord shapes) and the Gather Chords window with
@@ -225,6 +226,9 @@ private:
     bool processRpnController(int midiChannel, int controller, int value) noexcept;
     void setLowerZoneMemberCount(int memberCount) noexcept;
     void refreshPitchBend(int midiChannel) noexcept;
+    void playNote(int note, float velocity, int channel,
+                  int delay = 0, bool strumming = false,
+                  bool unambiguousTransition = true) noexcept;
     [[nodiscard]] bool isLowerZoneMember(int midiChannel) const noexcept;
     [[nodiscard]] float tunedBend(int midiChannel, float bend) const noexcept;
     void resetControllerScope(int midiChannel) noexcept;
@@ -244,6 +248,10 @@ private:
     std::int64_t lastStrumSample_ { -1 };
     std::array<RpnState, 16> rpnStates_ {};
     std::array<float, 16> rawPitchWheels_ {};
+    // Both messages are required: CC65 never infers legato from overlap.
+    // CC84 names one source note for one subsequent target on its channel.
+    std::array<bool, 16> portamentoSwitches_ {};
+    std::array<int, 16> portamentoSources_ {};
     std::array<float, 16> conventionalPitchBendRanges_ {};
     float lowerMasterPitchBendRange_ { 2.0f };
     float lowerMemberPitchBendRange_ { 48.0f };
