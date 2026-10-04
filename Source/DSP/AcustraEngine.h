@@ -954,15 +954,22 @@ private:
         // delay: an expf per sample until the delay has slewed to its target.
         std::uint32_t observedSlopeDelay { 0xffffffffu };
         float observedSlopeAlpha { 0.0f };
+        // The performed fundamental, including slide/bend/vibrato but
+        // excluding the small energy-dependent attack transient; intrinsic
+        // partial loss is timed by this physical round-trip frequency.
         float dispersionDesignFrequency { 0.0f };
         float dispersionDesignInharmonicity { -1.0f };
         float dispersionDesignAge { -1.0f };
         float dispersionDesignFrequencyLossScale { -1.0f };
-        // Exact arguments of the last completed dispersion solve. Frequency
-        // is positive, so the zero-initialized key cannot be a valid hit.
+        // Exact arguments of the last completed dispersion solve. Its fit
+        // frequency is bounded beyond the playable fretboard plus the
+        // documented 12-semitone panel/Reason bend range; above that the
+        // inexpensive bending section still follows the physical pitch.
+        // Frequency is positive, so an all-zero key cannot be a valid hit.
         std::array<double, 9> dispersionDesignArguments {};
-        // The bending-loss section designed with that solve, for the
-        // unbent string; both polarisations carry it.
+        // The bending-loss section at the physical playing frequency,
+        // including beyond the bounded phase-fit band above; both
+        // polarisations carry it.
         float bendingLossGain { 1.0f };
         float bendingLossA1 { 0.0f };
         float bendingLossA2 { 0.0f };

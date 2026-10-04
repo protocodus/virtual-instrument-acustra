@@ -4617,6 +4617,14 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
         0.24f * static_cast<float>(sampleRate_));
     voice.contactPeriodSamples = static_cast<float>(sampleRate_) / frequency;
+    // Frequency of the physical gesture before the few-cent transient
+    // from the string's own transverse energy. A loss realised once per
+    // round trip must be designed at the pitch being played: probing the
+    // old-fundamental section higher on its curve over-damps bent partials.
+    const float lossDesignFrequency = clamp(unbentFrequency * std::exp2(
+        (clamp(performedBend, -192.0f, 192.0f) + vibratoInterval) / 12.0f),
+        static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+        0.24f * static_cast<float>(sampleRate_));
 
     const float bendingDiameter = steelBendingDiameter[index];
     const float openFrequency = midiFrequency(voice.openMidi);
@@ -4731,17 +4739,31 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         * clamp(broadLossCutoff, 500.0f,
                 0.44f * 48000.0f)
         * (1.0f / 48000.0f));
+    // The expensive phase fit is useful across the fretboard and the
+    // documented panel/Reason +/-12-semitone bend range. Beyond it, retain
+    // a bounded fit and scale its stable allpasses as before, while the
+    // inexpensive intrinsic-loss section still follows the actual pitch.
+    // The fit also needs its three collocation partials inside its stated
+    // 0.42 fs band (collocateDispersion), at every supported host rate.
+    const float highestFitFrequency = std::min(
+        midiFrequency(voice.openMidi + fretCount + 12),
+        static_cast<float>(0.42 * sampleRate_
+            / stretchedPartial(3.0, inharmonicity)));
+    const float dispersionFitFrequency = std::min(lossDesignFrequency,
+                                                   highestFitFrequency);
     const float designBroadLossCoefficient = std::exp(-twoPi
-        * clamp(14.3f * unbentFrequency, 500.0f,
+        * clamp(14.3f * dispersionFitFrequency, 500.0f,
                 0.44f * 48000.0f)
         * (1.0f / 48000.0f));
-    // The dispersion allpass is designed for the open string. Its cached
-    // design is invalidated by frequency, inharmonicity, age and loss scale,
-    // and deliberately not by bridge-hand pressure: tracking a gliding hand
-    // would rerun this iterative design every control period, and the hand
-    // only adds loss on top of a shape this already fixes.
+    // Inside that supported band dispersion includes the bending section's
+    // phase at the physical playing frequency. A 0.1% pitch change (1.73 cents)
+    // invalidates the design at the same rate as the existing 0.2% B bound
+    // for a tension bend; the tiny attack excursion still uses the scaled
+    // allpass coefficients without rerunning the iterative solve. The hand
+    // only adds loss and does not invalidate this intrinsic string design.
     const bool dispersionDesignChanged = clearDelay
-        || exact::abs(voice.dispersionDesignFrequency - unbentFrequency) > 1.0e-4f
+        || exact::abs(voice.dispersionDesignFrequency - lossDesignFrequency)
+               > std::max(1.0e-4f, 0.001f * lossDesignFrequency)
         // A bend or a vibrato moves B continuously, and this design is an
         // iterative solve, so B is only re-solved once it has moved 0.2%.
         // That relative tolerance applies to every caller, not only to a
@@ -4757,9 +4779,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         || exact::abs(voice.dispersionDesignAge - age) > 1.0e-5f
         || exact::abs(voice.dispersionDesignFrequencyLossScale
                     - physical.frequencyLossScale) > 1.0e-5f;
-    // The string's own bending loss (bendingLossSection), for the unbent
-    // string the dispersion is designed for, and held through a bend the
-    // way that design is. The four basses are the wound constructions
+    // The string's own bending loss (bendingLossSection), for the physical
+    // frequency and tension the dispersion is designed for. The four basses are the wound constructions
     // (steelBendingDiameter above says so).
     const bool wound = stringIndex <= 3;
     // A wound string goes dead first: grime and corrosion between its
@@ -4804,14 +4825,18 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         const auto bending = bendingLossSection(
             static_cast<double>(bendingFactor),
             static_cast<double>(inharmonicity),
-            static_cast<double>(unbentFrequency), sampleRate_);
+            static_cast<double>(lossDesignFrequency), sampleRate_);
         voice.bendingLossGain = static_cast<float>(bending.gain);
         voice.bendingLossA1 = static_cast<float>(bending.a1);
         voice.bendingLossA2 = static_cast<float>(bending.a2);
+        const auto fitBending = dispersionFitFrequency == lossDesignFrequency
+            ? bending : bendingLossSection(static_cast<double>(bendingFactor),
+                static_cast<double>(inharmonicity),
+                static_cast<double>(dispersionFitFrequency), sampleRate_);
         const std::array<double, 9> arguments {
-            inharmonicity, unbentFrequency, sampleRate_,
+            inharmonicity, dispersionFitFrequency, sampleRate_,
             designBroadLossCoefficient, broadLoss, lowpassCoefficient, highLoss,
-            voice.bendingLossA1, voice.bendingLossA2
+            static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2)
         };
         // Resetting a wave does not change an otherwise identical design.
         // Keep the existing request tolerances and metadata updates, while
@@ -4823,7 +4848,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             voice.dispersionPoleRatios = poleRatios;
             voice.dispersionDesignArguments = arguments;
         }
-        voice.dispersionDesignFrequency = unbentFrequency;
+        voice.dispersionDesignFrequency = lossDesignFrequency;
         voice.dispersionDesignInharmonicity = inharmonicity;
         voice.dispersionDesignAge = age;
         voice.dispersionDesignFrequencyLossScale
@@ -4873,13 +4898,17 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         const auto bending = bendingLossSection(
             static_cast<double>(bendingFactor),
             static_cast<double>(inharmonicity),
-            static_cast<double>(unbentFrequency), referenceRate);
+            static_cast<double>(lossDesignFrequency), referenceRate);
         const auto bendingA1 = static_cast<float>(bending.a1);
         const auto bendingA2 = static_cast<float>(bending.a2);
+        const auto fitBending = dispersionFitFrequency == lossDesignFrequency
+            ? bending : bendingLossSection(static_cast<double>(bendingFactor),
+                static_cast<double>(inharmonicity),
+                static_cast<double>(dispersionFitFrequency), referenceRate);
         const auto [decayRatios, poleRatios] = solvedDispersion({
-            inharmonicity, unbentFrequency, referenceRate,
+            inharmonicity, dispersionFitFrequency, referenceRate,
             designBroadLossCoefficient, broadLoss, lowpassCoefficient, highLoss,
-            bendingA1, bendingA2 });
+            static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2) });
         const float referenceOmega = twoPi * frequency
             * static_cast<float>(1.0 / referenceRate);
         DispersionSections referenceDispersion;
