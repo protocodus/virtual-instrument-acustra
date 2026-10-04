@@ -21,10 +21,11 @@ struct AcustraEngineTestAccess
         std::array<std::array<float, AcustraEngine::maximumDelaySamples>, 2> lines;
         std::array<int, 2> index;
         std::array<float, 2> delay;
-        std::uint32_t random;
+        std::uint32_t random, releaseRandom;
         bool tail;
         float pitch, contactAmplitude;
         int contactSamples;
+        std::array<float, 1153> contactPulse;
     };
     static WaveState wave(const AcustraEngine& engine, int string)
     {
@@ -32,8 +33,9 @@ struct AcustraEngineTestAccess
         return { { v.loops[0].delay, v.loops[1].delay },
                  { v.loops[0].writeIndex, v.loops[1].writeIndex },
                  { v.loops[0].currentDelay, v.loops[1].currentDelay },
-                 v.randomState, v.tailActive, v.attackPitchCents,
-                 v.legatoContactAmplitude, v.legatoContactSamples };
+                 v.randomState, v.releaseNoiseState, v.tailActive, v.attackPitchCents,
+                 v.legatoContactAmplitude, v.legatoContactSamples,
+                 v.legatoContactPulse };
     }
     static double lineSlope(const AcustraEngine& e, int string)
     {
@@ -61,6 +63,7 @@ struct AcustraEngineTestAccess
         int writeIndex, remaining, age, samples;
         bool active;
         float amplitude;
+        std::array<float, 1153> pulse;
     };
     static FingerTravel fingerTravel(const AcustraEngine& e, bool tail)
     {
@@ -69,7 +72,8 @@ struct AcustraEngineTestAccess
         return { t.history, t.writeIndex, t.historyRemaining,
                  tail ? v.tailLegatoContactAge : v.legatoContactAge,
                  tail ? v.tailLegatoContactSamples : v.legatoContactSamples,
-                 t.active, tail ? v.tailLegatoContactAmplitude : v.legatoContactAmplitude };
+                 t.active, tail ? v.tailLegatoContactAmplitude : v.legatoContactAmplitude,
+                 tail ? v.tailLegatoContactPulse : v.legatoContactPulse };
     }
 };
 }
@@ -102,19 +106,40 @@ void continuousAndOwned()
             expect(before.lines == after.lines && before.index == after.index,
                    "connected note replaced or re-plucked the existing travelling wave");
             expect(before.random == after.random, "connected note drew fresh picking noise");
+            expect(before.releaseRandom == after.releaseRandom,
+                   "finger friction consumed the key-up noise stream");
             expect(before.tail == after.tail, "connected note manufactured a repluck tail branch");
             expect(e->heldString(notes[0], notes[2]) < 0 && e->heldString(notes[1], notes[2]) == string,
                    "connected note did not transfer ownership on its original string");
             double pulseEnergy = 0.0, previous = 0.0;
             for (int age = 0; age <= after.contactSamples; ++age)
             {
-                const double sine = std::sin(3.14159265358979323846 * age / after.contactSamples);
-                const double sample = after.contactAmplitude * sine * sine;
+                const double sample = after.contactAmplitude
+                    * after.contactPulse[static_cast<std::size_t>(age)];
                 pulseEnergy += (sample - previous) * (sample - previous);
                 previous = sample;
             }
             expect(pulseEnergy <= energy * 0.02 * 0.8 * 0.8 * 1.00001,
-                   "finger contact exceeded its source slope-energy budget");
+                   "combined finger contact/friction exceeded its source slope-energy budget");
+            expect(after.contactPulse[0] == 0.0f
+                       && after.contactPulse[static_cast<std::size_t>(after.contactSamples)] == 0.0f,
+                   "finger friction did not start/end at rest");
+            // Remove the smooth contact in the slope inner product. The
+            // remaining roughness must be present but a small energy share.
+            double smoothNorm = 0.0, cross = 0.0, total = 0.0;
+            double lastSmooth = 0.0, lastPulse = 0.0;
+            for (int age = 1; age <= after.contactSamples; ++age)
+            {
+                const double sine = std::sin(3.14159265358979323846 * age / after.contactSamples);
+                const double smooth = age == after.contactSamples ? 0.0 : sine * sine;
+                const double pulse = after.contactPulse[static_cast<std::size_t>(age)];
+                const double ds = smooth - lastSmooth, dp = pulse - lastPulse;
+                smoothNorm += ds * ds; cross += ds * dp; total += dp * dp;
+                lastSmooth = smooth; lastPulse = pulse;
+            }
+            const double roughShare = (total - cross * cross / smoothNorm) / total;
+            expect(roughShare > 0.01 && roughShare < 0.15,
+                   "fret friction was absent or overwhelmed the smooth contact");
             e->noteOff(notes[0], notes[2]);
             expect(e->heldString(notes[1], notes[2]) == string, "late source off stole target ownership");
             for (int i = 0; i < 100; ++i)
@@ -175,7 +200,8 @@ void repluckRetainsFingerTransit()
                "re-pluck left the old finger contact entering the new main loop");
         expect(tail.history == before.history && tail.writeIndex == before.writeIndex
                    && tail.remaining == before.remaining && tail.age == before.age
-                   && tail.samples == before.samples && tail.active == before.active,
+                   && tail.samples == before.samples && tail.active == before.active
+                   && tail.pulse == before.pulse,
                "re-pluck discarded or changed the finger contact's retained transit/pulse");
         const int tailIndex = tail.writeIndex;
         e->process(left.data(), right.data(), 127);
@@ -257,6 +283,8 @@ std::vector<float> midiPerformance(int mode, bool reverseOffOrder = false,
 void midiRequiresExplicitSource()
 {
     const auto ordinary = midiPerformance(0);
+    expect(midiPerformance(1) == midiPerformance(1),
+           "fresh connected performances did not reproduce their fret friction");
     expect(ordinary != midiPerformance(1), "CC65 plus CC84 did not enable a connected articulation");
     for (int mode : { 2, 3, 5 })
         expect(ordinary == midiPerformance(mode), "switch/source/CC68 inferred a connected note: " + std::to_string(mode));

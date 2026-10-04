@@ -118,6 +118,8 @@ def main() -> None:
         p.add_argument("--"+name, type=Path, required=True)
     p.add_argument("--baseline-commit", required=True)
     p.add_argument("--candidate-commit", required=True)
+    p.add_argument("--track", action="append", choices=list(TITLES),
+        help="Package only selected songs as required passages; omit for the full review")
     p.add_argument("--reference-rows", type=Path,
         help="Optional verified Eastman rows.json for clearly separate real-note references")
     p.add_argument("--reference-evidence", type=Path,
@@ -177,8 +179,10 @@ def main() -> None:
         review["reference_provenance"] = {"rows_sha256": digest(a.reference_rows),
             "frozen_evidence_sha256": digest(a.reference_evidence), "recorded_provenance": published}
     for number, (song, (title, description)) in enumerate(TITLES.items(), 1):
+        if a.track and song not in a.track:
+            continue
         item = {"id": song, "title": title, "description": description, "modes": {},
-            "required": number <= 4}
+            "required": bool(a.track) or number <= 4}
         for mode in ("dry", "room"):
             first, second = (raw[label, mode]/(song+".wav") for label in ("baseline", "candidate"))
             scores = [raw[label, mode]/(song+".events") for label in ("baseline", "candidate")]
@@ -227,7 +231,7 @@ def main() -> None:
         "Acustra blind A/B approval test\n\nOpen index.html in a browser. For seamless Web Audio switching, "
         "serve this folder with: python3 -m http.server 8000\nThen open it in your browser. Direct file "
         "opening uses the synchronized media-element fallback.\n\nUse headphones. Vote on each of the "
-        "four songs, then reveal the revisions and record your approval. The fifth study is optional. "
+        "required songs, then reveal the revisions and record your approval. Other studies are optional. "
         "Export your JSON decisions and send them back with your review.\n\nRealism remains a listening "
         "judgment; engineering regression passes and descriptor losses are separate evidence.\n")
     with zipfile.ZipFile(out/"Acustra-AB-listening-test.zip", "w", zipfile.ZIP_DEFLATED) as archive:

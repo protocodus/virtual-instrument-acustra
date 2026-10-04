@@ -819,12 +819,13 @@ private:
         StringLoop tailLoop {};
         StringLoop tailParallelLoop {};
         ContactTravel tailContactTravel {};
-        // The connected finger's already emitted and remaining smooth
-        // contact source belongs to this retained wave on a re-pluck.
+        // The connected finger's already emitted and remaining contact and
+        // fret-friction source belongs to this retained wave on a re-pluck.
         ContactTravel tailLegatoContactTravel {};
         float tailLegatoContactAmplitude { 0.0f };
         int tailLegatoContactAge { 0 };
         int tailLegatoContactSamples { 0 };
+        std::array<float, 1153> tailLegatoContactPulse {};
         float tailDamping { 1.0f };
         // Intrinsic loss and pitch belong to the captured string. The bridge
         // hand remains live CC2 expression while that old wave is retained.
@@ -1071,11 +1072,15 @@ private:
         // left, the stroke's normal and parallel shares, its own draws and
         // its travel from the damping point.
         // An explicitly requested connected finger articulation: a smooth
-        // finite contact pulse, transported from its point on the string.
-        // Its source slope energy is bounded by the sounding wave's energy.
+        // finite contact pulse and filtered fret friction, transported from
+        // the finger's point on the string. Their combined slope energy is
+        // bounded by the sounding wave. 1152 samples cover 3 ms at 384 kHz;
+        // event-time preparation avoids random draws/filter work per sample.
         float legatoContactAmplitude { 0.0f };
         int legatoContactAge { 0 };
         int legatoContactSamples { 0 };
+        std::array<float, 1153> legatoContactPulse {};
+        std::uint32_t legatoFrictionState { 1 };
         ContactTravel legatoContactTravel {};
         float releaseVelocity { -1.0f };
         float peakLevel { 0.0f };

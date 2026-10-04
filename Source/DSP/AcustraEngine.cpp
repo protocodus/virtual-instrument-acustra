@@ -2398,6 +2398,8 @@ void AcustraEngine::restartRandomDraws() noexcept
             ^ (0x9e3779b9u * static_cast<std::uint32_t>(string + 1));
         voice.releaseNoiseState = 0x68e31da4u
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 7));
+        voice.legatoFrictionState = 0xd1b54a35u
+            ^ (0x9e3779b9u * static_cast<std::uint32_t>(string + 1));
         voice.bridgeTailStiffness = initialBridgeTailStiffness;
     }
 }
@@ -6119,6 +6121,7 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
         voice.tailLegatoContactAmplitude = voice.legatoContactAmplitude;
         voice.tailLegatoContactAge = voice.legatoContactAge;
         voice.tailLegatoContactSamples = voice.legatoContactSamples;
+        voice.tailLegatoContactPulse = voice.legatoContactPulse;
     }
     else
     {
@@ -7291,19 +7294,67 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
         }
     }
     const float period = voice.loops[0].currentDelay;
-    voice.legatoContactSamples = std::max(4, static_cast<int>(
-        (hammer ? 0.002 : 0.003) * sampleRate_));
+    voice.legatoContactSamples = std::clamp(static_cast<int>(
+        (hammer ? 0.002 : 0.003) * sampleRate_), 4,
+        static_cast<int>(voice.legatoContactPulse.size()) - 1);
     voice.legatoContactAge = 0;
-    // sin^2(pi n/N) starts and ends at rest. Sum the exact sampled source
-    // slope norm once at the event so rates and contact durations carry the
-    // same <=2% source-energy budget, without a guessed gain in the loop.
-    double norm = 0.0;
-    double previous = 0.0;
+    // A little skin/fret friction accompanies the smooth contact, especially
+    // on wound strings and longer finger movements. This is an authored
+    // listening map, not a measured contact-force fit. Its independent draws
+    // cannot change the picking/release streams or ordinary overlapping MIDI.
+    // Windowed 0.9--5 kHz noise starts/ends at rest. Orthogonalise its sampled
+    // slope against the smooth pulse, then give it a small part of the SAME
+    // <=2% budget: adding fret noise must not add an unconstrained attack.
+    auto& pulse = voice.legatoContactPulse;
+    std::array<float, 1153> smoothPulse {};
+    pulse[0] = 0.0f;
+    const double high = 1.0 - std::exp(-2.0 * piDouble
+        * std::min(5000.0, 0.4 * sampleRate_) / sampleRate_);
+    const double low = 1.0 - std::exp(-2.0 * piDouble * 900.0 / sampleRate_);
+    double highState = 0.0, lowState = 0.0;
+    double smoothNorm = 0.0, cross = 0.0;
+    double previousSmooth = 0.0, previousNoise = 0.0;
     for (int age = 1; age <= voice.legatoContactSamples; ++age)
     {
         const double phase = piDouble * age / voice.legatoContactSamples;
-        const double value = std::sin(phase) * std::sin(phase);
-        norm += (value - previous) * (value - previous);
+        smoothPulse[static_cast<std::size_t>(age)] = age == voice.legatoContactSamples ? 0.0f
+            : static_cast<float>(std::sin(phase) * std::sin(phase));
+        const double smooth = smoothPulse[static_cast<std::size_t>(age)];
+        const double white = xorshiftNoise(voice.legatoFrictionState);
+        highState += high * (white - highState);
+        lowState += low * (white - lowState);
+        pulse[static_cast<std::size_t>(age)] = static_cast<float>(
+            smooth * (highState - lowState));
+        const double noise = pulse[static_cast<std::size_t>(age)];
+        const double ds = smooth - previousSmooth;
+        smoothNorm += ds * ds;
+        cross += ds * (noise - previousNoise);
+        previousSmooth = smooth; previousNoise = noise;
+    }
+    const double projection = cross / smoothNorm;
+    double noiseNorm = 0.0;
+    previousNoise = 0.0;
+    for (int age = 1; age <= voice.legatoContactSamples; ++age)
+    {
+        const double smooth = smoothPulse[static_cast<std::size_t>(age)];
+        auto& noise = pulse[static_cast<std::size_t>(age)];
+        noise = static_cast<float>(noise - projection * smooth);
+        const double difference = noise - previousNoise;
+        noiseNorm += difference * difference;
+        previousNoise = noise;
+    }
+    const double distance = std::sqrt(std::abs(targetMidiNote - sourceMidiNote) / 12.0);
+    const double frictionShare = (string < 4 ? 0.12 : 0.05) * (0.5 + 0.5 * distance);
+    const double frictionGain = noiseNorm > 0.0 ? std::sqrt(
+        frictionShare * smoothNorm / ((1.0 - frictionShare) * noiseNorm)) : 0.0;
+    double norm = 0.0, previous = 0.0;
+    for (int age = 1; age <= voice.legatoContactSamples; ++age)
+    {
+        const double smooth = smoothPulse[static_cast<std::size_t>(age)];
+        auto& value = pulse[static_cast<std::size_t>(age)];
+        value = static_cast<float>(smooth + frictionGain * value);
+        const double difference = value - previous;
+        norm += difference * difference;
         previous = value;
     }
     const float velocity = clamp(fingerVelocity, 0.0f, 1.0f);
@@ -9537,10 +9588,8 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 float contact = 0.0f;
                 if (voice.legatoContactSamples > 0)
                 {
-                    const float phase = pi * static_cast<float>(voice.legatoContactAge)
-                        / static_cast<float>(voice.legatoContactSamples);
-                    const float sine = std::sin(phase);
-                    contact = voice.legatoContactAmplitude * sine * sine;
+                    contact = voice.legatoContactAmplitude
+                        * voice.legatoContactPulse[static_cast<std::size_t>(voice.legatoContactAge)];
                     if (++voice.legatoContactAge > voice.legatoContactSamples)
                         voice.legatoContactSamples = 0;
                 }
@@ -9575,10 +9624,8 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                     float contact = 0.0f;
                     if (voice.tailLegatoContactSamples > 0)
                     {
-                        const float phase = pi * static_cast<float>(voice.tailLegatoContactAge)
-                            / static_cast<float>(voice.tailLegatoContactSamples);
-                        const float sine = std::sin(phase);
-                        contact = voice.tailLegatoContactAmplitude * sine * sine;
+                        contact = voice.tailLegatoContactAmplitude
+                            * voice.tailLegatoContactPulse[static_cast<std::size_t>(voice.tailLegatoContactAge)];
                         if (++voice.tailLegatoContactAge > voice.tailLegatoContactSamples)
                             voice.tailLegatoContactSamples = 0;
                     }

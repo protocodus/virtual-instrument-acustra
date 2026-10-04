@@ -460,7 +460,9 @@ strummed as chords. Retired CC68 remains ignored. Connected finger gestures
 are explicit: turn on CC65 on the note's channel, send CC84 with the held
 source pitch, then send one destination Note On. A valid request transfers
 that string's sounding wave to the new fret, with a short bounded finger
-contact rather than a new picking attack. The source request is consumed
+contact and a faint filtered fret-friction sound rather than a new picking
+attack. The friction shares the contact's energy limit and grows with finger
+travel, with more roughness on wound strings. The source request is consumed
 once; ambiguous ownership, chords, out-of-range frets and intervals over an
 octave fall back to an ordinary pluck. CC65 off or Reset All Controllers
 clears the request. The JUCE-free API exposes the same operation as

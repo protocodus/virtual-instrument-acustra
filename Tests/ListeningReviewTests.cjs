@@ -172,7 +172,8 @@ function checkScheduledPair(starts) {
     report.review_id = data.review_id;
     report.package_content_sha256 = data.package_content_sha256 || null;
     if (packageDirectory) report.manifest_sha256 = sha256(fs.readFileSync(path.join(packageDirectory, 'manifest.json')));
-    assert(data.tracks.length >= 4); const initialStorage = await storageOf(page);
+    const required = data.tracks.map((track, index) => ({track, index})).filter(item => item.track.required !== false);
+    const requiredCount = required.length; assert(requiredCount > 0); const initialStorage = await storageOf(page);
     assert.equal(initialStorage.approval, null);
     assert.equal(await page.locator('#reveal').isDisabled(), true);
     assert.equal(await page.locator('[data-decision="approve_candidate"]').isDisabled(), true);
@@ -180,7 +181,7 @@ function checkScheduledPair(starts) {
     const visibleText = await page.locator('body').innerText();
     for (const secret of [data.baseline_commit, data.candidate_commit, data.tracks[0].description, ...data.tracks[0].modes.dry.versions.map(version => version.file)]) if (secret) assert(!visibleText.includes(secret), 'Version identities, descriptions and filenames must stay out of the visible blind interface');
     assert.equal((await page.evaluate(() => window.__listeningProbe.decoded.length)), 2);
-    pass('HTTP decoding, hidden identities, and four-vote reveal/approval gate');
+    pass('HTTP decoding, hidden identities, and required-vote reveal/approval gate');
     await page.screenshot({path: path.join(artifactDirectory, 'desktop-blind.png'), fullPage: true});
 
     await page.locator('#play').click();
@@ -223,17 +224,17 @@ function checkScheduledPair(starts) {
     assert.equal(await page.evaluate(() => window.__listeningProbe.starts.length), 0);
     pass('Reload preserves blind mapping and mode without autoplay');
 
-    for (let i = 0; i < 4; ++i) {
-      if (i > 0) { await page.locator('[data-track]').nth(i).click(); await audioReady(page); }
+    for (let i = 0; i < requiredCount; ++i) {
+      if (i > 0) { await page.locator('[data-track]').nth(required[i].index).click(); await audioReady(page); }
       assert.equal(await page.locator('#save-vote').isDisabled(), true, 'Both naturalness scores and a preference are required');
-      await page.locator('input[name="preference"][value="' + ['none', 'A', 'B', 'A'][i] + '"]').check();
+      await page.locator('input[name="preference"][value="' + ['none', 'A', 'B', 'A'][i % 4] + '"]').check();
       await page.locator('#score-a').selectOption(String(4 + i % 3));
       assert.equal(await page.locator('#save-vote').isDisabled(), true, 'One score is insufficient');
       await page.locator('#score-b').selectOption(String(3 + i % 3));
       await page.locator('#comment').fill('AUTOMATED_BROWSER_TEST_NOT_USER_APPROVAL — passage ' + (i + 1));
       await page.locator('#save-vote').click();
-      assert.equal(await page.locator('#progress-label').textContent(), (i + 1) + ' of 4 passages reviewed');
-      assert.equal(await page.locator('#reveal').isDisabled(), i < 3);
+      assert.equal(await page.locator('#progress-label').textContent(), (i + 1) + ' of ' + requiredCount + (requiredCount === 1 ? ' passage reviewed' : ' passages reviewed'));
+      assert.equal(await page.locator('#reveal').isDisabled(), i < requiredCount - 1);
       assert.equal(await page.locator('[data-decision="approve_candidate"]').isDisabled(), true);
       if (i === 0) {
         const partial = await exportReview(page, 'AUTOMATION-only-partial-review.json');
@@ -249,7 +250,7 @@ function checkScheduledPair(starts) {
     }
     pass('Votes, both scores, comments, timestamp persistence, and partial export blinding');
     const fullBlind = await exportReview(page, 'AUTOMATION-only-complete-unrevealed-review.json');
-    assert.equal(fullBlind.identities_revealed, false); assert.equal(fullBlind.main_passages_completed, 4);
+    assert.equal(fullBlind.identities_revealed, false); assert.equal(fullBlind.main_passages_completed, requiredCount);
     assert(fullBlind.tracks.every(track => track.mapping === null));
     assert(fullBlind.tracks.every(track => !track.result || (!Object.hasOwn(track.result, 'preferred_source') && !Object.hasOwn(track.result, 'naturalness_by_source'))), 'Source-decoded votes and scores must be absent before explicit Reveal');
     pass('Complete blind export preserves A/B secrecy until explicit Reveal');
@@ -260,19 +261,19 @@ function checkScheduledPair(starts) {
     await page.locator('[data-decision="approve_candidate"]').click();
     const exported = await exportReview(page, 'AUTOMATION-only-approved-review-NOT-HUMAN-APPROVAL.json');
     assert.equal(exported.baseline_commit, data.baseline_commit); assert.equal(exported.candidate_commit, data.candidate_commit);
-    assert.equal(exported.main_passages_completed, 4); assert.equal(exported.identities_revealed, true);
+    assert.equal(exported.main_passages_completed, requiredCount); assert.equal(exported.identities_revealed, true);
     assert.equal(exported.explicit_decision.decision, 'approve_candidate'); assert(Number.isFinite(Date.parse(exported.explicit_decision.timestamp)));
     assert(Number.isFinite(Date.parse(exported.revealed_at))); assert(Number.isFinite(Date.parse(exported.exported_at)));
     assert.equal(exported.playback.method, 'simultaneously_scheduled_web_audio'); assert.equal(exported.playback.switching_crossfade_ms, 10);
-    for (let i = 0; i < 4; ++i) {
-      const track = exported.tracks[i], saved = (await storageOf(page)).decisions[track.id];
+    for (let i = 0; i < requiredCount; ++i) {
+      const track = exported.tracks[required[i].index], saved = (await storageOf(page)).decisions[track.id];
       assert(track.mapping.A !== track.mapping.B); assert.equal(track.result.mode, 'room'); assert.equal(track.result.blind_at_vote, true);
-      assert(Number.isFinite(Date.parse(track.result.timestamp))); assert.deepEqual(track.modes, data.tracks[i].modes);
+      assert(Number.isFinite(Date.parse(track.result.timestamp))); assert.deepEqual(track.modes, required[i].track.modes);
       assert.equal(track.result.preference, saved.preference); assert.equal(track.result.naturalness_by_source.baseline, track.result.naturalness[track.mapping.A === 'baseline' ? 'A' : 'B']);
       assert.equal(track.result.naturalness_by_source.candidate, track.result.naturalness[track.mapping.A === 'candidate' ? 'A' : 'B']);
       assert.equal(track.result.preferred_source, track.result.preference === 'none' ? 'no_preference' : track.mapping[track.result.preference]);
     }
-    if (exported.tracks.length > 4) { assert.equal(exported.tracks[4].required, false); assert.equal(exported.tracks[4].result, null); }
+    for (const track of exported.tracks.filter(track => !track.required)) assert.equal(track.result, null);
     pass('Explicit decision and complete JSON evidence export');
     await page.screenshot({path: path.join(artifactDirectory, 'desktop-revealed-AUTOMATION.png'), fullPage: true});
 

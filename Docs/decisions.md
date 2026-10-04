@@ -4,6 +4,31 @@ Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 
+## 2026-10-04 — ten-change candidate accepted; finger movement needs fret noise
+
+The user listened to the original-song A/B package comparing
+`567cf692b975addeded686b38f161b95ea212691` with the ten-change DSP candidate
+`9dc7ac9fbb26f44fbbafad987d8c3539d4681c19` and said:
+
+> candidate passed everywhere. just in connected melody - there should be probabyl some fret noise caused by moving finger
+
+This accepts the existing candidate across the passages and requests a small
+follow-up in the connected melody. It is the user's qualitative verdict;
+no naturalness scores, exported voting JSON or recording-loss improvement
+are inferred from it.
+
+Explicit finger transitions now include brief, filtered fret friction. Its
+independent random stream does not consume picking or key-up draws. Wound
+strings and longer movements get a larger roughness share. The smooth contact
+and friction together retain the same at-most-2% source slope-energy budget,
+begin/end at rest, travel through the string/body, and remain attached to the
+old wave if a re-pluck retains it. The level/spectrum are authored listening
+choices, not fitted measurements of a fret-motion recording.
+
+A new focused A/B compares the approved candidate with this addition on
+Connected melody, in Dry and Studio room modes. Only that passage requires
+another vote. Approval of the added friction remains pending.
+
 ## 2026-10-02 — natural harmonics preserve available strings and ringing repeats
 
 D6 can sound as the G string's sixth or D string's eighth harmonic. The

@@ -22,7 +22,7 @@
 <body>
   <div class="shell">
     <header class="masthead"><div class="brand">ACUSTRA<small>THE LISTENING ROOM</small></div><div class="session-badge"><span class="dot"></span><span id="session-label">Blind review · saved locally</span></div></header>
-    <section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">A guitar, heard closely</p><h1 id="page-title">Hear the guitar.<br>Trust your ears.</h1><p>Compare the same passage in two hidden versions. Listen for the attack, the moving pitch, the body of the note, and how the strings let go.</p></div><div class="progress" aria-live="polite"><strong id="progress-label">0 of 4 passages reviewed</strong><div class="progress-track" aria-hidden="true"><span id="progress-fill"></span></div></div></section>
+    <section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">A guitar, heard closely</p><h1 id="page-title">Hear the guitar.<br>Trust your ears.</h1><p>Compare the same passage in two hidden versions. Listen for the attack, the moving pitch, the body of the note, and how the strings let go.</p></div><div class="progress" aria-live="polite"><strong id="progress-label">Review progress</strong><div class="progress-track" aria-hidden="true"><span id="progress-fill"></span></div></div></section>
     <div id="fatal" class="fatal" role="alert" hidden></div>
     <main id="workspace" class="workspace">
       <aside class="sidebar" aria-label="Listening passages"><p class="section-label">Original performances</p><nav id="track-list" class="track-list" aria-label="Choose a passage"></nav><div class="listen-note"><h3>A little listening space</h3><p>Use headphones at a comfortable volume. Switch A/B during the same phrase. Both files are already level matched: leave your listening volume fixed.</p></div></aside>
@@ -42,7 +42,7 @@
           <div class="vote-actions"><button id="save-vote" type="button" class="primary-button" disabled>Save this vote</button><p id="vote-message" class="vote-message" role="status" aria-live="polite">Choose a preference and score both versions.</p><button id="next-passage" type="button" class="next-button">Next passage →</button></div>
         </section>
         <section id="reference-card" class="reference-card" aria-labelledby="reference-title" hidden><p class="eyebrow">Separate listening reference</p><h3 id="reference-title">Recorded guitar</h3><p>This is a different recorded guitar and a different take. It is a listening reference, outside the A/B comparison and voting.</p><audio id="reference-audio" controls preload="none" aria-label="Separate recorded guitar reference"></audio><p id="reference-credit" class="reference-credit"></p></section>
-        <section class="review-card" aria-labelledby="decision-title"><p class="eyebrow">Your decision</p><h2 id="decision-title">Listen first. Reveal when ready.</h2><p id="reveal-instruction">Save a vote for each of the four original passages to reveal the versions. Approval remains your decision; listening scores never approve a change automatically.</p><div class="review-actions"><button id="reveal" type="button" class="secondary-button" disabled>Reveal the versions</button><button id="export" type="button" class="secondary-button">Export review JSON</button></div>
+        <section class="review-card" aria-labelledby="decision-title"><p class="eyebrow">Your decision</p><h2 id="decision-title">Listen first. Reveal when ready.</h2><p id="reveal-instruction">Save a vote for every required passage to reveal the versions. Approval remains your decision; listening scores never approve a change automatically.</p><div class="review-actions"><button id="reveal" type="button" class="secondary-button" disabled>Reveal the versions</button><button id="export" type="button" class="secondary-button">Export review JSON</button></div>
           <div id="reveal-panel" class="reveal-panel" hidden><div class="commit-grid"><div><p class="commit-label">Baseline</p><div id="baseline-commit" class="commit-value"></div></div><div><p class="commit-label">Candidate</p><div id="candidate-commit" class="commit-value"></div></div></div><div id="mapping" class="mapping"></div><p class="approval-prompt">Having heard and reviewed the comparison, what is your decision?</p><div class="approval-group" role="group" aria-label="Explicit review decision"><button type="button" class="secondary-button" data-decision="approve_candidate" aria-pressed="false" disabled>Approve candidate</button><button type="button" class="secondary-button" data-decision="keep_baseline" aria-pressed="false" disabled>Keep baseline</button><button type="button" class="secondary-button" data-decision="request_revision" aria-pressed="false" disabled>Request revision</button></div><p id="approval-status" class="approval-status" role="status" aria-live="polite">No approval decision recorded.</p><details class="evidence"><summary>Level matching and file evidence for this passage</summary><div class="table-wrap"><table><thead><tr><th>Version</th><th>Source</th><th>LUFS</th><th>True peak</th><th>Gain</th></tr></thead><tbody id="measurements"></tbody></table></div><div id="file-evidence" class="hash" style="margin-top:12px;line-height:1.8"></div></details></div>
         </section>
       </div>
@@ -59,7 +59,7 @@
     let data;
     try {
       data = JSON.parse($('review-data').textContent);
-      if (!data || !Array.isArray(data.tracks) || data.tracks.length < 4 || !data.review_id || !data.baseline_commit || !data.candidate_commit) throw new Error('This listening package is incomplete. It needs four passages and both commit identities.');
+      if (!data || !Array.isArray(data.tracks) || data.tracks.length < 1 || !data.tracks.some(t => t.required !== false) || !data.review_id || !data.baseline_commit || !data.candidate_commit) throw new Error('This listening package is incomplete. It needs a required passage and both commit identities.');
       const ids = new Set();
       for (const track of data.tracks) {
         if (!track.id || ids.has(track.id)) throw new Error('Passage identifiers must be present and unique.');
@@ -73,7 +73,8 @@
       $('fatal').textContent = error.message.startsWith('This listening') || error.message.startsWith('Each passage') || error.message.startsWith('Passage identifiers') ? error.message : 'This review has not been built yet. Open the generated listening package, which contains the audio and review data.';
       return;
     }
-    const mainTracks = data.tracks.slice(0, 4);
+    const mainTracks = data.tracks.filter(t => t.required !== false);
+    const requiredTotal = mainTracks.length;
     const key = 'acustra.listening.v1:' + JSON.stringify([data.review_id, data.baseline_commit, data.candidate_commit]);
     const randomBit = () => {
       if (window.crypto?.getRandomValues) { const value = new Uint32Array(1); crypto.getRandomValues(value); return value[0] & 1; }
@@ -89,7 +90,7 @@
       if (prior && [0, 1].includes(prior.A) && prior.B === 1 - prior.A && decision && ['A', 'B', 'none'].includes(decision.preference) && ['dry', 'room'].includes(decision.mode) && Number.isInteger(decision.naturalness?.A) && decision.naturalness.A >= 1 && decision.naturalness.A <= 7 && Number.isInteger(decision.naturalness?.B) && decision.naturalness.B >= 1 && decision.naturalness.B <= 7) state.decisions[track.id] = decision;
     }
     const completed = () => mainTracks.filter(t => state.decisions[t.id]).length;
-    if (state.revealed && completed() === 4 && ['approve_candidate', 'keep_baseline', 'request_revision'].includes(saved?.approval?.decision)) state.approval = saved.approval;
+    if (state.revealed && completed() === requiredTotal && ['approve_candidate', 'keep_baseline', 'request_revision'].includes(saved?.approval?.decision)) state.approval = saved.approval;
     // No playback position or playing state is restored; reopening never starts audio.
     const persist = () => { try { localStorage.setItem(key, JSON.stringify(state)); } catch (_) { $('storage-warning').hidden = false; } };
     persist();
@@ -265,7 +266,7 @@
         const number = document.createElement('span'); number.className = 'track-number'; number.textContent = String(index + 1).padStart(2, '0');
         const copy = document.createElement('span'); copy.className = 'track-copy';
         const title = document.createElement('span'); title.className = 'track-title'; title.textContent = track.title || 'Passage ' + (index + 1);
-        const meta = document.createElement('span'); meta.className = 'track-meta'; meta.textContent = (index >= 4 ? 'Optional control study · ' : '') + fmtTime(Number(track.duration)) + (state.decisions[track.id] ? ' · vote saved' : ' · awaiting review');
+        const meta = document.createElement('span'); meta.className = 'track-meta'; meta.textContent = (track.required === false ? 'Optional control study · ' : '') + fmtTime(Number(track.duration)) + (state.decisions[track.id] ? ' · vote saved' : ' · awaiting review');
         copy.append(title, meta); button.append(number, copy);
         if (state.decisions[track.id]) { const mark = document.createElement('span'); mark.className = 'saved-mark'; mark.textContent = '✓'; mark.setAttribute('aria-hidden', 'true'); button.append(mark); }
         button.addEventListener('click', () => selectTrack(track.id)); nav.append(button);
@@ -282,14 +283,14 @@
       }
     };
     const renderReview = () => {
-      const count = completed(); $('progress-label').textContent = count + ' of 4 passages reviewed'; $('progress-fill').style.width = count * 25 + '%';
-      $('reveal').disabled = count < 4 || state.revealed; $('reveal').textContent = state.revealed ? 'Versions revealed' : 'Reveal the versions';
+      const count = completed(); $('progress-label').textContent = count + ' of ' + requiredTotal + (requiredTotal === 1 ? ' passage reviewed' : ' passages reviewed'); $('progress-fill').style.width = count * 100 / requiredTotal + '%';
+      $('reveal').disabled = count < requiredTotal || state.revealed; $('reveal').textContent = state.revealed ? 'Versions revealed' : 'Reveal the versions';
       $('reveal-panel').hidden = !state.revealed;
       $('blind-tag').textContent = state.revealed ? 'IDENTITIES REVEALED' : 'IDENTITIES HIDDEN';
       $('session-label').textContent = state.revealed ? 'Review revealed · saved locally' : 'Blind review · saved locally';
-      $('reveal-instruction').textContent = state.revealed ? 'Your saved votes are shown with their original A/B labels. Choose an explicit decision below; listening scores never approve a change automatically.' : 'Save a vote for each of the four original passages to reveal the versions. Approval remains your decision; listening scores never approve a change automatically.';
+      $('reveal-instruction').textContent = state.revealed ? 'Your saved votes are shown with their original A/B labels. Choose an explicit decision below; listening scores never approve a change automatically.' : 'Save a vote for every required passage to reveal the versions. Approval remains your decision; listening scores never approve a change automatically.';
       $('passage-description').textContent = state.revealed || state.decisions[state.selected_track] ? currentTrack().description || 'An original musical performance.' : 'An original performance, with two hidden versions.';
-      for (const button of document.querySelectorAll('[data-decision]')) { button.disabled = !state.revealed || count !== 4; button.setAttribute('aria-pressed', String(state.approval?.decision === button.dataset.decision)); }
+      for (const button of document.querySelectorAll('[data-decision]')) { button.disabled = !state.revealed || count !== requiredTotal; button.setAttribute('aria-pressed', String(state.approval?.decision === button.dataset.decision)); }
       const names = {approve_candidate: 'Candidate approved', keep_baseline: 'Baseline retained', request_revision: 'Revision requested'};
       $('approval-status').textContent = state.approval ? names[state.approval.decision] + ' · ' + new Date(state.approval.timestamp).toLocaleString() + '. Export the review to share this decision.' : 'No approval decision recorded.';
       if (!state.revealed) return;
@@ -306,7 +307,7 @@
     };
     const renderTrack = (preserveDraft = false) => {
       const index = data.tracks.findIndex(track => track.id === state.selected_track), track = currentTrack(), prior = state.decisions[track.id];
-      $('passage-number').textContent = (index < 4 ? 'Original passage ' : 'Optional control study ') + String(index + 1).padStart(2, '0'); $('passage-title').textContent = track.title || 'Passage ' + (index + 1);
+      $('passage-number').textContent = (track.required !== false ? 'Original passage ' : 'Optional control study ') + String(index + 1).padStart(2, '0'); $('passage-title').textContent = track.title || 'Passage ' + (index + 1);
       if (!preserveDraft) draft = {preference: prior?.preference || '', A: prior?.naturalness?.A || '', B: prior?.naturalness?.B || '', comment: prior?.comment || ''};
       document.querySelectorAll('input[name="preference"]').forEach(input => { input.checked = input.value === draft.preference; });
       $('score-a').value = String(draft.A); $('score-b').value = String(draft.B); $('comment').value = draft.comment;
@@ -330,10 +331,10 @@
       state.approval = null; persist(); $('vote-message').textContent = 'Vote saved. Continue to the next passage, or listen again.'; renderNavigation(); renderReview(); updateVoteControls();
     });
     $('next-passage').addEventListener('click', () => { const index = data.tracks.findIndex(track => track.id === state.selected_track); if (index + 1 < data.tracks.length) selectTrack(data.tracks[index + 1].id); });
-    $('reveal').addEventListener('click', () => { if (completed() !== 4) return; state.revealed = true; state.revealed_at ||= timestamp(); persist(); renderReview(); $('reveal-panel').scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'nearest'}); });
-    document.querySelectorAll('[data-decision]').forEach(button => button.addEventListener('click', () => { if (!state.revealed || completed() !== 4) return; state.approval = {decision: button.dataset.decision, timestamp: timestamp()}; persist(); renderReview(); }));
+    $('reveal').addEventListener('click', () => { if (completed() !== requiredTotal) return; state.revealed = true; state.revealed_at ||= timestamp(); persist(); renderReview(); $('reveal-panel').scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'nearest'}); });
+    document.querySelectorAll('[data-decision]').forEach(button => button.addEventListener('click', () => { if (!state.revealed || completed() !== requiredTotal) return; state.approval = {decision: button.dataset.decision, timestamp: timestamp()}; persist(); renderReview(); }));
     $('export').addEventListener('click', () => {
-      const result = {schema_version: 1, review_id: data.review_id, session_id: state.session_id, baseline_commit: data.baseline_commit, candidate_commit: data.candidate_commit, created_at: state.created_at, exported_at: timestamp(), identities_revealed: state.revealed, revealed_at: state.revealed_at, explicit_decision: state.approval, main_passages_completed: completed(), playback: {method: useWebAudio ? 'simultaneously_scheduled_web_audio' : 'audio_element_fallback', switching_crossfade_ms: useWebAudio ? 10 : 0, pre_rendered_level_matching: true}, tracks: data.tracks.map((track, index) => { const mapping = state.mappings[track.id], vote = state.decisions[track.id]; return {id: track.id, title: track.title, required: index < 4, mapping: state.revealed ? {A: mapping.A === 0 ? 'baseline' : 'candidate', B: mapping.B === 0 ? 'baseline' : 'candidate'} : null, modes: track.modes, optional_reference: track.optional_reference || null, result: vote ? {...vote, ...(state.revealed ? {preferred_source: vote.preference === 'none' ? 'no_preference' : mapping[vote.preference] === 0 ? 'baseline' : 'candidate', naturalness_by_source: {baseline: vote.naturalness[mapping.A === 0 ? 'A' : 'B'], candidate: vote.naturalness[mapping.A === 1 ? 'A' : 'B']}} : {})} : null}; })};
+      const result = {schema_version: 1, review_id: data.review_id, session_id: state.session_id, baseline_commit: data.baseline_commit, candidate_commit: data.candidate_commit, created_at: state.created_at, exported_at: timestamp(), identities_revealed: state.revealed, revealed_at: state.revealed_at, explicit_decision: state.approval, main_passages_completed: completed(), playback: {method: useWebAudio ? 'simultaneously_scheduled_web_audio' : 'audio_element_fallback', switching_crossfade_ms: useWebAudio ? 10 : 0, pre_rendered_level_matching: true}, tracks: data.tracks.map((track, index) => { const mapping = state.mappings[track.id], vote = state.decisions[track.id]; return {id: track.id, title: track.title, required: track.required !== false, mapping: state.revealed ? {A: mapping.A === 0 ? 'baseline' : 'candidate', B: mapping.B === 0 ? 'baseline' : 'candidate'} : null, modes: track.modes, optional_reference: track.optional_reference || null, result: vote ? {...vote, ...(state.revealed ? {preferred_source: vote.preference === 'none' ? 'no_preference' : mapping[vote.preference] === 0 ? 'baseline' : 'candidate', naturalness_by_source: {baseline: vote.naturalness[mapping.A === 0 ? 'A' : 'B'], candidate: vote.naturalness[mapping.A === 1 ? 'A' : 'B']}} : {})} : null}; })};
       const blob = new Blob([JSON.stringify(result, null, 2) + '\n'], {type: 'application/json'}), url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = 'acustra-review-' + String(data.review_id).replace(/[^a-zA-Z0-9._-]/g, '-') + '.json'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
     window.addEventListener('keydown', event => { if (event.ctrlKey || event.altKey || event.metaKey || event.repeat || event.target.closest('input,textarea,select,[contenteditable="true"]')) return; const key = event.key.toLowerCase(); if (key === 'a' || key === 'b') { event.preventDefault(); switchVersion(key.toUpperCase()); } else if (event.code === 'Space' && !event.target.closest('button,a')) { event.preventDefault(); play(); } });
