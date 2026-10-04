@@ -699,3 +699,12 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.VoicingRealism COMMAND AcustraVoicingRealismTests)
     set_tests_properties(Acustra.VoicingRealism PROPERTIES TIMEOUT 60)
 endif()
+
+# Recording-guided realism regression 6.
+if(BUILD_TESTING)
+    add_executable(AcustraSympathyRealismTests Tests/SympathyRealismTests.cpp)
+    target_link_libraries(AcustraSympathyRealismTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraSympathyRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.SympathyRealism COMMAND AcustraSympathyRealismTests)
+    set_tests_properties(Acustra.SympathyRealism PROPERTIES TIMEOUT 60)
+endif()

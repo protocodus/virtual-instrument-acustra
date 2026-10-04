@@ -3428,6 +3428,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
         const int newOpen = notes[static_cast<std::size_t>(string)];
+        const bool openChanged = voice.openMidi != newOpen;
         voice.openMidi = newOpen;
         if (force)
         {
@@ -3436,8 +3437,12 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             voice.attackSlopeEnergy = 0.0f;
             voice.observedSlopeEnergy = 0.0f;
         }
-        if (!voice.played && tuningChanged)
-            returnToOpenString(voice, string, true);
+        if (!voice.played && tuningChanged && (force || openChanged))
+            // An idle string is still physically vibrating through the shared
+            // bridge. A tuning change moves its pitch and port, preserving
+            // those waves; only reset/prepare clears them. Strings whose open
+            // pitch stays unchanged retain their full sympathetic state.
+            returnToOpenString(voice, string, force);
         else if (constructionChanged || ageChanged || shapeChanged)
             configureVoice(voice, string, voice.midiNote, false);
     }
