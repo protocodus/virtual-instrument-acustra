@@ -873,6 +873,8 @@ void testSustainMeetsSameSampleKeyUpsInOrder()
     const auto released = play({ on, off });
     expect(play({ on, off, pedal(0.5, true) }) == released,
            "a pedal pressed after a key-up on its sample caught the note");
+    expect(play({ on, off, pedal(0.5 + 0.5 * 7.5 / 120.0, true) }) == released,
+           "a pedal pressed inside an ordinary release's grace window caught the note");
     const auto pedalled = play({ on, pedal(0.5, true), off });
     expect(pedalled != released, "a pedal pressed before a key-up did not hold it");
     const auto lifted = play({ on, pedal(0.2, true), off, pedal(0.5, false) });
@@ -920,8 +922,22 @@ void testSustainMeetsSameSampleKeyUpsInOrder()
            "the manager's pedal lifted after a member's key-up let it go under "
            "the member's own");
     expect(mpe({ memberOn, managerPedal(0.2, true), memberOff, managerPedal(0.5, false) })
-               == memberReleased,
+               == mpe({ memberOn, message(0.5, 0xb1, 123, 0) }),
            "the manager's pedal lifted after a member's key-up did not let it go");
+    // The deferred same-sample key-up keeps the pedal state at key-up.
+    // A subsequent pedal-up (including Reset All Controllers) starts the
+    // nominal immediate contact; the earlier key release velocity cannot
+    // turn it into an ordinary grace or a different damping gesture.
+    const auto pedalContact = mpe({ memberOn, message(0.5, 0xb1, 123, 0) });
+    for (const int status : { 0xb0, 0xb1 })
+        for (const int controller : { 64, 121 })
+            for (const int velocity : { 0, 64, 127 })
+                expect(mpe({ memberOn, message(0.2, status, 64, 127),
+                             message(0.5, 0x81, 60, velocity),
+                             message(0.5, status, controller, 0) }) == pedalContact,
+                       "a deferred pedal-held key-up lost nominal immediate contact at velocity "
+                           + std::to_string(velocity) + " under controller "
+                           + std::to_string(controller));
 }
 
 void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
@@ -993,8 +1009,13 @@ void testShortStrumsSoundEveryString()
                 for (const int note : notes)
                 {
                     const double frequency = 440.0 * std::exp2((note - 69) / 12.0);
-                    const double missing = bandLevel(held, 48000.0, frequency, 0.08, 0.18)
-                        - bandLevel(shortStab, 48000.0, frequency, 0.08, 0.18);
+                    // Preserve the same 100 ms post-damping observation
+                    // window with the default-tempo 1/32-note grace.
+                    constexpr double grace = 7.5 / 120.0;
+                    const double missing = bandLevel(held, 48000.0, frequency,
+                                                    0.08 + grace, 0.18 + grace)
+                        - bandLevel(shortStab, 48000.0, frequency,
+                                    0.08 + grace, 0.18 + grace);
                     expect(missing < 8.0,
                            "a " + std::to_string(static_cast<int>(seconds * 1000.0))
                                + " ms strum at velocity " + std::to_string(velocity)
@@ -1004,6 +1025,24 @@ void testShortStrumsSoundEveryString()
                 }
             }
     }
+    // The pedal can lift on a later sample while a slow strum's remaining
+    // picks are still approaching. Its held key-up velocity is ignored on
+    // every physical string, including those not yet plucked at pedal-up.
+    const auto liftedBeforePicks = [&] (int releaseVelocity)
+    {
+        std::vector<Event> events { message(0.0, 0xb0, 64, 127) };
+        for (const int note : notes)
+            events.push_back(message(0.01, 0x90, note, 20));
+        for (const int note : notes)
+            events.push_back(message(0.015, 0x80, note, releaseVelocity));
+        events.push_back(message(0.020, 0xb0, 64, 0));
+        return render(custom("pedal lifted before queued picks", 0.4, std::move(events)),
+                      48000.0, 64, false);
+    };
+    const auto nominalPedalRelease = liftedBeforePicks(64);
+    for (const int velocity : { 0, 127 })
+        expect(liftedBeforePicks(velocity) == nominalPedalRelease,
+               "a pedal-held key-up velocity changed a queued strum's later pedal contact");
     // Under the pedal the stab rings on; without it every string is let go.
     auto performer = std::make_unique<Performer>();
     performer->prepare(48000.0, 64);
@@ -1051,7 +1090,7 @@ void testShortStrumsSoundEveryString()
                                          pedal == Pedal::UpBeforePicks ? 0 : 127);
             performer->endBlock();
         }
-        // Released open strings are handed back 1.33 s after key-up.
+        // Released open strings are handed back 1.33 s after damping starts.
         expect(performer->engine().getActiveVoiceCount()
                    == (pedal == Pedal::Throughout ? 6 : 0),
                pedal == Pedal::Throughout

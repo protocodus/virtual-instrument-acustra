@@ -26,6 +26,25 @@ struct AcustraEngineTestAccess
             samples -= count;
         }
     }
+    static bool advanceMatched(AcustraEngine& released, AcustraEngine& held,
+                               int samples)
+    {
+        std::array<float, 128> left {}, right {}, heldLeft {}, heldRight {};
+        bool matched = true;
+        while (samples > 0)
+        {
+            const int count = std::min(samples, 128);
+            released.process(left.data(), right.data(), count);
+            held.process(heldLeft.data(), heldRight.data(), count);
+            matched = matched
+                && std::equal(left.begin(), left.begin() + count, heldLeft.begin())
+                && std::equal(right.begin(), right.begin() + count, heldRight.begin())
+                && voice(released).releaseNoiseSamples == 0
+                && !voice(released).releaseNoiseTravel.active;
+            samples -= count;
+        }
+        return matched;
+    }
     static double pending(Travel travel)
     {
         double energy = 0.0;
@@ -138,14 +157,60 @@ void testOrdinaryAndPedalRelease()
     for (double rate : { 8000.0, 48000.0, 96000.0, 384000.0 })
     {
         auto engine = fresh(rate);
+        auto held = fresh(rate);
+        acustra::EngineParameters noisyRelease;
+        noisyRelease.releaseNoise = 1.0f;
+        engine->setParameters(noisyRelease);
+        held->setParameters(noisyRelease);
         engine->noteOn(43, 1.0f, 1);
+        held->noteOn(43, 1.0f, 1);
         Access::advance(*engine, std::max(1, static_cast<int>(0.001 * rate)));
+        Access::advance(*held, std::max(1, static_cast<int>(0.001 * rate)));
         auto& voice = Access::voice(*engine);
         expect(voice.contactTravel.active && voice.excitationEnvelope > 1.0e-8f,
                "early release probe did not contain an active source and travelling waves");
         engine->noteOff(43, 1);
-        expect(voice.excitationEnvelope == 0.0f && voice.contactTravel.active,
-               "ordinary release continued emission or discarded already emitted waves");
+        expect(!voice.keyDown && voice.releaseJoinPending
+               && voice.excitationEnvelope == Access::voice(*held).excitationEnvelope
+               && Access::pending(voice.contactTravel)
+                    == Access::pending(Access::voice(*held).contactTravel),
+               "ordinary key-up changed held contact physics during release grace");
+        const int graceSamples = static_cast<int>(std::ceil(0.125 * 60.0 * rate / 120.0));
+        expect(Access::advanceMatched(*engine, *held, graceSamples + 1)
+               && voice.releaseJoinPending && voice.releaseNoiseSamples == 0,
+               "inclusive release grace damped held physics or emitted release noise");
+        Access::advance(*engine, 1);
+        expect(!voice.releaseJoinPending && voice.excitationEnvelope == 0.0f
+               && voice.releaseNoiseSamples > 0,
+               "ordinary damping and release noise did not begin after the grace deadline");
+
+        // A normal finite burst has finished naturally before 120 BPM's
+        // deadline. A valid one-sample grace keeps this original early-source
+        // probe active until damping, so emission-stop and packet-preservation
+        // remain independently tested at every supported rate.
+        engine = fresh(rate);
+        held = fresh(rate);
+        engine->setParameters(noisyRelease);
+        held->setParameters(noisyRelease);
+        engine->setTempoBpm(0.125 * 60.0 * rate);
+        held->setTempoBpm(0.125 * 60.0 * rate);
+        engine->noteOn(43, 1.0f, 1);
+        held->noteOn(43, 1.0f, 1);
+        Access::advance(*engine, std::max(1, static_cast<int>(0.001 * rate)));
+        Access::advance(*held, std::max(1, static_cast<int>(0.001 * rate)));
+        engine->noteOff(43, 1);
+        expect(Access::advanceMatched(*engine, *held, 2),
+               "early finite source changed inside inclusive one-sample grace");
+        auto& earlyVoice = Access::voice(*engine);
+        expect(earlyVoice.excitationEnvelope > 1.0e-8f && earlyVoice.contactTravel.active,
+               "short-grace release probe lost its source or travelling packet");
+        auto expectedTravel = earlyVoice.contactTravel;
+        expectedTravel.process(0.0f); // Damping ends emission, not prior arrivals.
+        Access::advance(*engine, 1);
+        expect(earlyVoice.excitationEnvelope == 0.0f && earlyVoice.contactTravel.active,
+               "ordinary damping continued emission or discarded already emitted waves");
+        expect(Access::pending(earlyVoice.contactTravel) == Access::pending(expectedTravel),
+               "ordinary damping changed an already emitted travelling packet");
 
         engine = fresh(rate);
         engine->setSustainPedal(true);
@@ -273,7 +338,9 @@ void testArrivalDampingAndTailRetention()
     auto engine = fresh();
     engine->noteOn(43, 1.0f);
     Access::advance(*engine, 48);
-    for (int target : { 43, 50 })
+    // A refret retains the previous pitch's branch; an equal-pitch repick
+    // continues the existing string instead of creating a second port.
+    for (int target : { 44, 50 })
     {
         auto expected = Access::voice(*engine).contactTravel;
         expect(Access::pending(expected) > 1e-10,
@@ -292,19 +359,63 @@ void testArrivalDampingAndTailRetention()
     }
 
     // A delayed repick must preserve the old transport until the actual
-    // event, then retain exactly its state from that sample in the tail.
+    // event, then carry its emitted packets into the continuing string.
     engine = fresh();
-    engine->noteOn(43, 1.0f);
-    Access::advance(*engine, 48);
-    engine->noteOn(43, 1.0f, 1, 100);
-    Access::advance(*engine, 100);
+    auto withoutPackets = fresh();
+    for (auto* instrument : { engine.get(), withoutPackets.get() })
+    {
+        instrument->setSympatheticStringsEnabled(false);
+        instrument->setBridgeCouplingEnabled(false);
+        instrument->noteOn(43, 1.0f);
+        Access::advance(*instrument, 48);
+        // Isolate the displacement-wave burst already travelling along the
+        // string. The new stroke's identical sources cancel in the pair.
+        auto& sounding = Access::voice(*instrument);
+        sounding.contactNoiseSamples = 0;
+        sounding.contactNoiseTravel.active = false;
+        instrument->noteOn(43, 1.0f, 1, 100);
+        Access::advance(*instrument, 100);
+    }
     auto expected = Access::voice(*engine).contactTravel;
     expected.process(0.0f);
     Access::advance(*engine, 1);
-    auto captured = Access::voice(*engine).tailContactTravel;
-    for (int n = 0; n < 1024; ++n)
-        expect(captured.process(0.0f) == expected.process(0.0f),
-               "scheduled repick captured the transport at the wrong sample");
+    Access::advance(*withoutPackets, 1);
+    // Keep this transport probe linear: the separate pitch-realism suite
+    // covers tension changes caused by the arriving wave's energy.
+    Access::voice(*engine).attackSlopeEnergy = 0.0f;
+    Access::voice(*withoutPackets).attackSlopeEnergy = 0.0f;
+    expect(!Access::voice(*engine).tailActive
+               && Access::voice(*engine).repluckArrivals.remaining > 0,
+           "scheduled equal-pitch repick lost its emitted packets or added a second port");
+    Access::voice(*withoutPackets).repluckArrivals = {};
+    std::array<float, 1> packetLeft {}, packetRight {};
+    double expectedEnergy = 0.0, arrivingEnergy = 0.0;
+    // Before one round trip, subtracting otherwise-identical string states
+    // isolates each queued first arrival, including its scheduled sample.
+    for (int n = 0; n < 128; ++n)
+    {
+        const auto paths = expected.process(0.0f);
+        const float local = 0.7071067811865475f * (paths[0] - paths[1]);
+        engine->process(packetLeft.data(), packetRight.data(), 1);
+        withoutPackets->process(packetLeft.data(), packetRight.data(), 1);
+        const auto& carried = Access::voice(*engine);
+        const auto& cleared = Access::voice(*withoutPackets);
+        const float vertical = Access::lastWritten(carried.loops[0])
+                             - Access::lastWritten(cleared.loops[0]);
+        const float horizontal = Access::lastWritten(carried.loops[1])
+                               - Access::lastWritten(cleared.loops[1]);
+        const float expectedVertical = 0.76f * local
+            * carried.loops[0].appliedReleaseGain;
+        const float expectedHorizontal = 0.51f * local
+            * carried.loops[1].appliedReleaseGain;
+        expect(std::abs(vertical - expectedVertical) < 2.0e-8f
+                   && std::abs(horizontal - expectedHorizontal) < 2.0e-8f,
+               "scheduled repick did not carry emitted packets into the same string at their arrival samples");
+        expectedEnergy += expectedVertical * expectedVertical;
+        arrivingEnergy += vertical * vertical;
+    }
+    expect(expectedEnergy > 1.0e-10 && arrivingEnergy > 1.0e-10,
+           "scheduled repick packet probe had no audible arrival to retain");
 
     // Independently isolate the retained branch with an exactly delayed
     // packet. Its first arrival must see its own captured hand damping.
@@ -356,10 +467,10 @@ void testDrainPanicAndExtremeOwnership()
     Access::voice(*engine).level = 0.0f;
     expect(Access::voice(*engine).contactTravel.active,
            "quiet capture probe has no in-flight packet");
-    engine->noteOn(43, 1.0f);
+    engine->noteOn(44, 1.0f);
     expect(Access::voice(*engine).tailActive
            && Access::voice(*engine).tailContactTravel.active,
-           "quiet level threshold discarded pending contact during capture");
+           "quiet level threshold discarded pending contact during refret capture");
 
     engine = fresh();
     engine->noteOn(43, 1.0f);

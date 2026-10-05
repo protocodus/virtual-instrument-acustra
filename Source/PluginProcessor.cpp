@@ -11,6 +11,18 @@ namespace
 {
 namespace ids = acustra::parameters;
 
+double hostTempoBpm (juce::AudioPlayHead* playHead)
+{
+    // PositionInfo and its BPM are independently optional. Never retain a
+    // stale tempo when a host stops supplying one.
+    if (playHead != nullptr)
+        if (const auto position = playHead->getPosition())
+            if (const auto bpm = position->getBpm())
+                if (std::isfinite (*bpm) && *bpm > 0.0)
+                    return *bpm;
+    return 120.0;
+}
+
 using StringActivity = acustra::AcustraEngine::StringActivity;
 
 // One lock-free word keeps a string's pitch, ownership and raw envelope
@@ -377,6 +389,9 @@ void AcustraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     keyboardState.reset();
     performer.setParameters (snapshotEngineParameters());
     performer.prepare (sampleRate, samplesPerBlock);
+    // JUCE permits play-head queries only inside processBlock. The first
+    // block supplies host tempo before any MIDI, including its Note Offs.
+    performer.setTempoBpm (120.0);
     // The player gathers at the engine's own rate, which it clamps to the
     // modelled range, so the latency it reports must be counted there too.
     gatherWindowSamples.store (acustra::Performer::gatherWindowSamples (
@@ -438,6 +453,8 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     const bool panicked = panicRequested.exchange (false, std::memory_order_acq_rel);
     if (panicked)
         performer.reset();
+
+    performer.setTempoBpm (hostTempoBpm (getPlayHead()));
 
     // The performer splits the block at its events and plays them; see
     // DSP/AcustraPerformer.h.

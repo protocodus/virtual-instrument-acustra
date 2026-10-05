@@ -244,8 +244,11 @@ void testRefrettedStrumMemberLetGoIsReleased()
         engine->beginStrum();
         engine->noteOn(64, 0.8f, 1, 150, true);
         engine->noteOn(60, 0.8f, 1, 300, true);
-        engine->noteOff(60);
         const int string = engine->heldString(60, 1);
+        engine->noteOff(60);
+        expect(engine->heldString(60, 1) < 0 && string >= 0
+                   && !Access::keyDown(*engine, string) && Access::owners(*engine, string) == 0,
+               "an early strum key-up kept its pending attack's key ownership");
         std::array<float, 1> left {}, right {};
         for (int guard = 0; string >= 0 && guard < 2000
                             && Access::pluckDelay(*engine, string) != lead; ++guard)
@@ -671,6 +674,23 @@ void testReleasedHarmonicReplucksItsString()
                     expect(engine->heldString(note) < 0
                                && Access::attackStates(*engine) == tunedBefore,
                            "a stale harmonic assignment sounded an unreachable note after retuning");
+                    // Current tuning governs eligibility during the join
+                    // window and after it. Waiting for the grace to expire
+                    // must not be necessary to reject an impossible pitch.
+                    int remaining = static_cast<int>(std::ceil(rate * 7.5 / 120.0)) + 2;
+                    while (remaining > 0)
+                    {
+                        const int count = std::min(remaining, blockSize);
+                        engine->process(left.data(), right.data(), count);
+                        remaining -= count;
+                    }
+                    const auto expiredBefore = Access::attackStates(*engine);
+                    expect(!engine->canSound(note),
+                           "an expired grace revived an unreachable harmonic's pitch eligibility");
+                    engine->noteOn(note, 0.7f);
+                    expect(engine->heldString(note) < 0
+                               && Access::attackStates(*engine) == expiredBefore,
+                           "an expired grace sounded an unreachable harmonic after retuning");
                 }
             }
 }

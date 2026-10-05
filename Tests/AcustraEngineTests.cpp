@@ -1054,7 +1054,9 @@ struct AcustraEngineTestAccess
         const float expectedTailZ = retained.characteristicImpedance
                                  * retained.appliedBendImpedanceScale;
         engine.setPitchBend(bendChange > 0 ? 2.0f : 0.0f, channel);
-        engine.noteOn(bendChange == 0 ? note : note + 3, 0.7f, channel);
+        // A different fret retains an old-pitch branch; a same-pitch stroke
+        // now joins the wave already held by its one physical string port.
+        engine.noteOn(note + 3, 0.7f, channel);
         removeExtraSources();
         const bool captured = retained.tailActive
             && retained.tailCharacteristicImpedance == expectedTailZ;
@@ -1160,20 +1162,20 @@ struct AcustraEngineTestAccess
         auto& repluck = *repluckOwner;
         repluck.setParameters(parameters);
         repluck.prepare(rate, 128);
-        repluck.noteOn(52, 0.8f);
+        repluck.setStringPerChannelMode(true);
+        repluck.noteOn(52, 0.8f, 3);
         for (int i = 0; i < static_cast<int>(0.5 * rate); i += 128)
             repluck.process(l.data(), r.data(), 128);
-        repluck.noteOff(52);
-        repluck.noteOn(52, 0.8f);
+        repluck.noteOff(52, 3);
+        repluck.noteOn(55, 0.8f, 3);
         out.tailActiveAfterRepluck = false;
         for (const auto& voice : repluck.voices_)
             out.tailActiveAfterRepluck |= voice.tailActive;
         return out;
     }
 
-    // The energy the picking hand's contact leaves in a stolen or replucked
-    // voice's tail loop, at capture and 60 ms later, on the string doing the
-    // repluck (voice 0) rather than the new pluck (voice 1's own string).
+    // The old-pitch wave retained by a refret on the same physical string,
+    // at capture and 60 ms later. Same-pitch strokes use the main port.
     static std::pair<double, double> repluckTailEnergyAt60ms(double rate)
     {
         auto engineOwner = std::make_unique<AcustraEngine>();
@@ -1181,11 +1183,12 @@ struct AcustraEngineTestAccess
         EngineParameters parameters;
         engine.setParameters(parameters);
         engine.prepare(rate, 128);
+        engine.setStringPerChannelMode(true);
         std::vector<float> l(128), r(128);
-        engine.noteOn(40, 0.8f);
+        engine.noteOn(40, 0.8f, 1);
         for (int i = 0; i < static_cast<int>(0.3 * rate); i += 128)
             engine.process(l.data(), r.data(), 128);
-        engine.noteOn(40, 0.8f); // repluck: captureTail runs on voice 0
+        engine.noteOn(43, 0.8f, 1); // refret: captureTail retains voice 0's old pitch
         const double atCapture = loopEnergy(engine.voices_[0].tailLoop);
         for (int i = 0; i < static_cast<int>(0.06 * rate); i += 128)
             engine.process(l.data(), r.data(), 128);
@@ -2311,6 +2314,15 @@ void testPhysicalVoiceOwnsReleaseLifecycle()
            "one duplicate-note owner released both key instances");
 
     engine.noteOff(52);
+    // Key ownership ends now; the ordinary release's unchanged decay
+    // allowance begins after the default-tempo 1/32-note join window.
+    const int graceSamples = static_cast<int>(std::ceil(sampleRate * 7.5 / 120.0));
+    for (int rendered = 0; rendered < graceSamples + 1;)
+    {
+        const int count = std::min(blockSize, graceSamples + 1 - rendered);
+        engine.process(left.data(), right.data(), count);
+        rendered += count;
+    }
     for (int block = 0; block < 115; ++block)
         engine.process(left.data(), right.data(), blockSize);
     expect(engine.getActiveVoiceCount() == 0,
@@ -5642,11 +5654,10 @@ void testStolenStringKeepsRingingUnderHandDamping()
     expect(snapshot.parallelTailEnergyAfterDecay
                < 0.01 * snapshot.keptInParallelTail,
            "the stolen parallel tail did not decay under the hand damping");
-    // Replucking the same note is the hand landing on the string too: what
-    // it held goes on in the tail under the hand while the pluck is released
-    // from rest.
+    // Taking a released string for a different fret also retains its old
+    // pitch under the hand while the newly fretted pluck is released.
     expect(snapshot.tailActiveAfterRepluck,
-           "replucking a sounding note did not carry it into the tail");
+           "refretting a sounding note did not carry its old pitch into the tail");
 
     // Repeated chord changes restart a tail on a string whose previous tail is
     // still sounding, which discards the older one. Run that hard: forty
@@ -6195,10 +6206,11 @@ void testBodyChangesPreserveTheSoundingStrings()
                 {
                     engine->setParameters(parameters);
                     engine->prepare(sampleRate, 64);
-                    engine->noteOn(52, 0.8f);
+                    engine->setStringPerChannelMode(true);
+                    engine->noteOn(52, 0.8f, 3);
                     continueConstructionProbe(*engine, 48000);
                     if (repluck)
-                        engine->noteOn(52, 0.8f);
+                        engine->noteOn(55, 0.8f, 3);
                     continueConstructionProbe(*engine, 64);
                 }
                 expect(Access::retainedTailCount(changed) == (repluck ? 1 : 0),
@@ -6361,6 +6373,7 @@ void testStringAgeKeepsARepluckedTail()
             acustra::EngineParameters parameters;
             engine.setParameters(parameters);
             engine.prepare(sampleRate, block);
+            engine.setStringPerChannelMode(true);
             std::vector<float> left(static_cast<std::size_t>(block));
             std::vector<float> right(static_cast<std::size_t>(block));
             const auto run = [&] (int samples, std::vector<float>* out)
@@ -6372,18 +6385,20 @@ void testStringAgeKeepsARepluckedTail()
                         out->insert(out->end(), left.begin(), left.end());
                 }
             };
-            engine.noteOn(52, 0.8f);
+            // Keep the observed new attack at the original E3 while taking
+            // an actually different old pitch on the same D string.
+            engine.noteOn(50, 0.8f, 3);
             run(static_cast<int>(0.25 * sampleRate), nullptr);
             if (nudge == 2)
             {
                 parameters.stringAge += 0.001f;
                 engine.setParameters(parameters);
             }
-            engine.noteOn(52, 0.8f);
+            engine.noteOn(52, 0.8f, 3);
             std::vector<float> output;
             run(delay, &output);
             expect(acustra::AcustraEngineTestAccess::retainedTailCount(engine) > 0,
-                   "a re-pluck of a sounding string left no tail to test");
+                   "a refret of a sounding string left no old-pitch tail to test");
             if (nudge == 1)
             {
                 parameters.stringAge += 0.001f;
@@ -6951,14 +6966,13 @@ void testRepluckLandsTheHandOnTheString()
                    "a repeated E4 clicked on its first samples" + at);
         }
 
-        // Gate: the picking hand's 10 ms contact time leaves the captured
-        // tail's energy below 1% of what it started with 60 ms after a
-        // repluck.
+        // A changed fret retains an old-pitch branch. Its existing hand
+        // damping must leave less than 1% of its captured energy after60 ms.
         const auto [atCapture, after60ms]
             = acustra::AcustraEngineTestAccess::repluckTailEnergyAt60ms(rate);
-        expect(atCapture > 0.0, "a repluck captured no tail energy" + at);
+        expect(atCapture > 0.0, "a refret captured no old-pitch tail energy" + at);
         expect(after60ms < 0.01 * atCapture,
-               "the repluck tail held more than 1% of its energy 60 ms later"
+               "the refret tail held more than 1% of its energy 60 ms later"
                + at);
     }
 
@@ -7621,8 +7635,18 @@ void testNoteOffDoesNotCreateANewAttack()
                     { copy[0], copy[1], copy[2], copy[3], copy[4], copy[5] },
                     true, rate);
             }
-            const int offAt = static_cast<int>(1.0 * rate);
+            const int keyUpAt = static_cast<int>(1.0 * rate);
+            // At the default 120 BPM, the 1/32-note deadline is inclusive:
+            // damping starts on the following sample, not on MIDI key-up.
+            const int offAt = keyUpAt
+                + static_cast<int>(std::ceil(rate * 7.5 / 120.0)) + 1;
             const int window = static_cast<int>(0.05 * rate);
+            expect(std::equal(lifted.left.begin() + keyUpAt,
+                              lifted.left.begin() + offAt, held.left.begin() + keyUpAt)
+                       && std::equal(lifted.right.begin() + keyUpAt,
+                                     lifted.right.begin() + offAt,
+                                     held.right.begin() + keyUpAt),
+                   "ordinary key-up damped the sounding string before its join deadline");
             const double before = peak(held, offAt - window, offAt);
             const double after = peak(lifted, offAt, offAt + window);
             double removed = 0.0;
@@ -7642,7 +7666,7 @@ void testNoteOffDoesNotCreateANewAttack()
             // A hand-damped note leaves what it drove ringing: in the
             // two-way junction a G2's third partial keeps the idle D
             // string's second sounding through the anchor's 306 Hz
-            // resonance, peaking 35 ms after the note-off at 1.4x the
+            // resonance, peaking 35 ms after damping starts at 1.4x the
             // held peak. These peaks are an audible-attack heuristic,
             // not a measure of physical energy or a passivity proof.
             // The held envelope can already be rising after the event,
@@ -7663,6 +7687,7 @@ void testNoteOffDoesNotCreateANewAttack()
             expect(removed <= 2.0 * before,
                    label + ": the release adds " + std::to_string(removed)
                    + " against a held " + std::to_string(before));
+            expect(removed > 0.0, label + ": the release never damped the held wave");
         }
 }
 

@@ -37,6 +37,23 @@ int failures = 0;
 void expect(bool ok, const std::string& message)
 { if (!ok) { ++failures; std::cerr << "FAIL: " << message << '\n'; } }
 
+int graceSamples(double rate)
+{ return static_cast<int>(std::ceil(rate * 7.5 / 120.0)); }
+
+void advance(acustra::AcustraEngine& engine, int samples)
+{
+    std::array<float, 127> left {}, right {};
+    while (samples > 0)
+    {
+        const int count = std::min(samples, 127);
+        engine.process(left.data(), right.data(), count);
+        for (int i = 0; i < count; ++i)
+            expect(std::isfinite(left[i]) && std::isfinite(right[i]),
+                   "release grace became non-finite");
+        samples -= count;
+    }
+}
+
 std::vector<float> render(double rate, int note, float velocity)
 {
     auto engine = std::make_unique<acustra::AcustraEngine>();
@@ -81,13 +98,21 @@ void nominalAndMonotonic()
                 const double before = Access::lineEnergy(*e, 0);
                 const float oldGain = Access::appliedGain(*e, 0);
                 e->noteOffWithVelocity(note, 1, velocity);
-                const float time = Access::releaseSeconds(*e, 0);
-                expect(time < previousTime, "higher release velocity did not shorten hand T60");
-                previousTime = time;
                 expect(Access::lineEnergy(*e, 0) == before, "key-up wrote a new wave into the delay lines");
                 expect(Access::appliedGain(*e, 0) == oldGain, "key-up stepped applied hand gain");
                 expect(Access::note(*e, 0) == note, "key-up refretted the vibrating string");
                 expect(e->heldString(note) < 0, "key-up retained held ownership");
+                advance(*e, graceSamples(rate) + 1);
+                expect(Access::releaseSeconds(*e, 0) == 0.0f
+                           && Access::appliedGain(*e, 0) == oldGain,
+                       "release velocity damped the string inside its ordinary join window");
+                const double beforeDamping = Access::lineEnergy(*e, 0);
+                advance(*e, 1);
+                const float time = Access::releaseSeconds(*e, 0);
+                expect(time < previousTime, "higher release velocity did not shorten hand T60");
+                previousTime = time;
+                // Keep the original 25 ms physical damping window, now
+                // measured from actual hand contact after the deadline.
                 const int trips = static_cast<int>(0.025 * rate / 127.0);
                 for (int i = 0; i < trips; ++i)
                 {
@@ -98,6 +123,7 @@ void nominalAndMonotonic()
                 }
                 const double after = Access::lineEnergy(*e, 0);
                 expect(after < before, "released string did not lose wave energy");
+                expect(after < beforeDamping, "hand contact did not remove wave energy after its deadline");
                 expect(after < previousEnergy, "firmer damping did not remove more wave energy");
                 previousEnergy = after;
             }
@@ -114,6 +140,7 @@ void ownershipAndPedal()
     e->noteOffWithVelocity(43, 1, 1.0f);
     expect(e->heldString(43) == 0, "first duplicate off released the second owner");
     e->noteOffWithVelocity(43, 1, 0.0f);
+    advance(*e, graceSamples(48000.0) + 2);
     expect(Access::releaseSeconds(*e, 0) > 0.16f, "final owner's gentle release was lost");
     e->reset();
     e->setSustainPedal(true);
@@ -126,6 +153,7 @@ void ownershipAndPedal()
     expect(e->getActiveVoiceCount() == 0, "all sound off retained a release voice");
     e->noteOn(43, 0.7f);
     e->noteOff(43);
+    advance(*e, graceSamples(48000.0) + 2);
     expect(Access::releaseSeconds(*e, 0) == 0.16f, "panic left a stale release velocity");
 }
 }

@@ -58,6 +58,53 @@ void Performer::setParameters(const EngineParameters& parameters) noexcept
     engine_.setParameters(parameters);
 }
 
+void Performer::setTempoBpm(double bpm) noexcept
+{
+    engine_.setTempoBpm(bpm);
+}
+
+void Performer::handleTempoEvent(int eventSample, double bpm) noexcept
+{
+    if (groupedSample_ >= 0 && eventSample != groupedSample_)
+        flushNoteGroup();
+    renderTo(eventSample);
+    groupedSample_ = eventSample;
+    engine_.setTempoBpm(bpm);
+}
+
+void Performer::setTempoBpmAt(int sampleOffset, double bpm) noexcept
+{
+    if (left_ == nullptr || right_ == nullptr)
+    {
+        setTempoBpm(bpm);
+        return;
+    }
+    const int sample = std::max(renderedTo_, std::clamp(sampleOffset, 0, blockSamples_));
+    if (direct_)
+    {
+        handleTempoEvent(sample, bpm);
+        return;
+    }
+    if (heldCount_ == heldEventCapacity)
+    {
+        ++droppedEvents_;
+        return;
+    }
+    HeldEvent tempoEvent {};
+    tempoEvent.due = processedSamples_ + sample;
+    tempoEvent.tempo = true;
+    tempoEvent.tempoBpm = bpm;
+    // MIDI is delayed while gathering, but host tempo remains at its real
+    // sample. Insert by due time in the same bounded allocation-free queue.
+    int index = heldCount_++;
+    while (index > 0 && held_[static_cast<std::size_t>(index - 1)].due > tempoEvent.due)
+    {
+        held_[static_cast<std::size_t>(index)] = held_[static_cast<std::size_t>(index - 1)];
+        --index;
+    }
+    held_[static_cast<std::size_t>(index)] = tempoEvent;
+}
+
 void Performer::setMasterTuneCents(float cents) noexcept
 {
     const float semitones = 0.01f * cents;
@@ -136,6 +183,13 @@ void Performer::handleMidi(int sampleOffset, const std::uint8_t* data,
     held.size = size;
     std::copy_n(data, size, held.bytes.begin());
     held.gathered = false;
+    held.tempo = false;
+}
+
+void Performer::endBlockAt(int sampleOffset) noexcept
+{
+    blockSamples_ = std::max(renderedTo_, std::clamp(sampleOffset, 0, blockSamples_));
+    endBlock();
 }
 
 void Performer::endBlock() noexcept
@@ -163,6 +217,12 @@ void Performer::endBlock() noexcept
             const auto& held = held_[static_cast<std::size_t>(next)];
             if (held.gathered)
                 continue;
+            if (held.tempo)
+            {
+                handleTempoEvent(static_cast<int>(std::max<std::int64_t>(
+                    0, held.due - processedSamples_)), held.tempoBpm);
+                continue;
+            }
             const bool joined = handleEvent(
                 static_cast<int>(std::max<std::int64_t>(
                     0, held.due - processedSamples_)),
@@ -344,7 +404,8 @@ void Performer::flushNoteGroup() noexcept
         const auto& note = pendingNoteOffs_[static_cast<std::size_t>(index)];
         if (note.pedalMoved)
             engine_.noteOffWithVelocity(note.note, note.channel,
-                                        note.sustained, note.releaseVelocity);
+                                        note.sustained, note.releaseVelocity,
+                                        note.pedalReleased);
         else
             engine_.noteOffWithVelocity(note.note, note.channel,
                                         note.releaseVelocity);
@@ -389,7 +450,7 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
             && (data[2] & 0x7fu) != 0u;
         pendingNoteOffs_[static_cast<std::size_t>(pendingNoteOffCount_++)] = {
             static_cast<int>(data[1] & 0x7fu), midiChannel,
-            engine_.sustainHolds(midiChannel), false,
+            engine_.sustainHolds(midiChannel), false, false,
             hasReleaseVelocity
                 ? static_cast<float>(data[2] & 0x7fu) / 127.0f : -1.0f
         };
@@ -416,6 +477,8 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
                 if (!channelIsInControllerScope(midiChannel, off.channel))
                     continue;
                 off.pedalMoved = true;
+                off.pedalReleased = off.pedalReleased
+                    || (off.sustained && !engine_.sustainHolds(off.channel));
                 off.sustained = off.sustained
                     && engine_.sustainHolds(off.channel);
             }
@@ -436,6 +499,8 @@ void Performer::gatherChord(int first) noexcept
         if (held.due > lead.due + gatherWindow_)
             return;
         if (held.gathered)
+            continue;
+        if (held.tempo)
             continue;
         const auto status = static_cast<unsigned>(held.bytes[0]) & 0xf0u;
         if (status == 0xb0u && held.size >= 3)

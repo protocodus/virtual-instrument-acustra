@@ -75,6 +75,37 @@ struct AcustraEngineTestAccess
                  t.active, tail ? v.tailLegatoContactAmplitude : v.legatoContactAmplitude,
                  tail ? v.tailLegatoContactPulse : v.legatoContactPulse };
     }
+    static void isolateFingerArrivals(AcustraEngine& e)
+    {
+        auto& v = e.voices_[0];
+        v.excitationEnvelope = 0.0f;
+        v.contactTravel.active = false;
+        v.contactNoiseSamples = 0;
+        v.contactNoiseTravel.active = false;
+    }
+    static std::vector<float> futureFingerArrivals(const AcustraEngine& e)
+    {
+        const auto& v = e.voices_[0];
+        auto travel = v.legatoContactTravel;
+        int age = v.legatoContactAge;
+        int samples = v.legatoContactSamples;
+        std::vector<float> arrivals;
+        while ((travel.active || samples > 0)
+               && arrivals.size() < AcustraEngine::RepluckArrivals::capacity)
+        {
+            float source = 0.0f;
+            if (samples > 0)
+            {
+                source = v.legatoContactAmplitude
+                    * v.legatoContactPulse[static_cast<std::size_t>(age)];
+                if (++age > samples) samples = 0;
+            }
+            const auto paths = travel.process(source);
+            arrivals.push_back(0.7071067811865475f * (paths[0] - paths[1]));
+        }
+        return arrivals;
+    }
+    static auto& arrivals(AcustraEngine& e) { return e.voices_[0].repluckArrivals; }
 };
 }
 
@@ -182,6 +213,7 @@ void invalidIsInert()
 void repluckRetainsFingerTransit()
 {
     using Access = acustra::AcustraEngineTestAccess;
+    for (bool merge : { false, true })
     for (int arrived : { 0, 1, 60, 180, 400 })
     {
         auto e = std::make_unique<acustra::AcustraEngine>();
@@ -192,26 +224,60 @@ void repluckRetainsFingerTransit()
         expect(e->transitionNote(43, 45, 0.8f), "transit fixture did not start its hammer-on");
         for (int at = 0; at < arrived; at += 127)
             e->process(left.data(), right.data(), std::min(127, arrived - at));
+        std::vector<float> expected;
+        if (merge)
+        {
+            Access::isolateFingerArrivals(*e);
+            expected = Access::futureFingerArrivals(*e);
+        }
         const auto before = Access::fingerTravel(*e, false);
-        e->noteOn(45, 0.7f);
+        // Refretting keeps the old pitch's branch; repicking the connected
+        // target carries the finger's committed arrivals into one string.
+        e->noteOn(merge ? 45 : 46, 0.7f);
         const auto main = Access::fingerTravel(*e, false);
         const auto tail = Access::fingerTravel(*e, true);
         expect(!main.active && main.samples == 0,
-               "re-pluck left the old finger contact entering the new main loop");
-        expect(tail.history == before.history && tail.writeIndex == before.writeIndex
-                   && tail.remaining == before.remaining && tail.age == before.age
-                   && tail.samples == before.samples && tail.active == before.active
-                   && tail.pulse == before.pulse,
-               "re-pluck discarded or changed the finger contact's retained transit/pulse");
-        const int tailIndex = tail.writeIndex;
-        e->process(left.data(), right.data(), 127);
-        expect(Access::fingerTravel(*e, true).writeIndex != tailIndex,
-               "retained finger contact did not continue through the old tail branch");
+               "re-pluck duplicated the old finger contact's source");
+        if (merge)
+        {
+            auto& queue = Access::arrivals(*e);
+            expect(!Access::wave(*e, 0).tail && !queue.overflow,
+                   "same-pitch repick created another string port or overflowed its finger arrivals");
+            double energy = 0.0;
+            for (std::size_t n = 0; n < expected.size(); ++n)
+            {
+                const auto slot = static_cast<std::size_t>((queue.readIndex
+                    + static_cast<int>(n)) % queue.capacity);
+                expect(std::abs(queue.wave[0][slot] - expected[n]) < 1.0e-9f
+                           && queue.wave[1][slot] == 0.0f,
+                       "same-pitch repick changed the finger contact's future arrival samples");
+                energy += static_cast<double>(expected[n]) * expected[n];
+            }
+            expect(energy > 0.0 && queue.remaining > 0,
+                   "same-pitch finger-transit fixture retained no pending arrival");
+            const int remaining = queue.remaining;
+            e->process(left.data(), right.data(), 127);
+            expect(queue.remaining == std::max(remaining - 127, 0),
+                   "retained finger arrivals did not drain into the continuing string");
+        }
+        else
+        {
+            expect(tail.history == before.history && tail.writeIndex == before.writeIndex
+                       && tail.remaining == before.remaining && tail.age == before.age
+                       && tail.samples == before.samples && tail.active == before.active
+                       && tail.pulse == before.pulse,
+                   "refret discarded or changed the finger contact's retained transit/pulse");
+            const int tailIndex = tail.writeIndex;
+            e->process(left.data(), right.data(), 127);
+            expect(Access::fingerTravel(*e, true).writeIndex != tailIndex,
+                   "retained finger contact did not continue through the old refret branch");
+        }
         expect(!Access::fingerTravel(*e, false).active,
-               "old finger contact reappeared in the new main string");
+               "old finger contact source reappeared after its transit was retained");
         e->allSoundOff();
         expect(!Access::fingerTravel(*e, true).active
-                   && Access::fingerTravel(*e, true).samples == 0,
+                   && Access::fingerTravel(*e, true).samples == 0
+                   && Access::arrivals(*e).remaining == 0,
                "panic retained stale finger-contact transit");
     }
 }

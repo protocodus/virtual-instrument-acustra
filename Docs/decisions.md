@@ -3,6 +3,86 @@
 Directions chosen by ear, recorded per the A–Z listening-test convention in
 the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
+Entries for numerical optimizations state their validation separately.
+
+## 2026-10-05 — lower CPU with exact audio preservation
+
+The user requested lower CPU usage while preserving sound quality. Fixed
+derivative and string-delay geometry now use exact input-bit caches, while
+x86-64 GCC/Clang SSE2 builds advance each bridge mode's heave/rock pair in
+two double lanes. Signal history, recurrence grouping and serial mode sums
+retain their original order; other targets keep scalar bridge processing.
+
+Frozen before/after comparisons pass 320 GCC configurations and 35 Clang
+configurations with identical audio bits and public states. All ten freshly
+rendered demos match the preceding global 1/32 release archive byte-for-byte.
+Across 18 cloud callback configurations, median processing-time reduction is
+14.3% with GCC and 4.8% with Clang; the 48 kHz/128-frame GCC tremolo case
+improves 17.0%. Twenty targeted suites and the native host-tempo suite pass.
+These measurements preserve the existing sound; they establish no new
+listening preference. See [the protocol, results and provenance](cpu-optimization-2026-10-05.md).
+
+## 2026-10-05 — a global 1/32-note release window
+
+The user proposed joining neighboring tremolo notes, chose a gap of up to
+one 1/32 note, then directed: "ok lets use 1/32 everywhere for now".
+Every ordinary Note-off now ends MIDI ownership immediately while physical
+damping and its release touch wait for that musical interval. An eligible
+same-pitch/channel stroke on the same string within the inclusive window
+cancels the pending damping and uses the continuing-string contact.
+Unrepeated notes therefore also ring for the extra interval.
+
+Host and offline-score tempo determine the duration, with a 120 BPM fallback;
+live tempo changes preserve the remaining beats. Note-on timing, Gather and
+reported MIDI latency retain their existing behavior. Pedal-up and explicit
+All Notes Off/All Sound Off keep their direct controller semantics. The
+window is an authorized performance rule, not a measured finger-contact
+duration. This supersedes the immediate ordinary key-up contract recorded
+below; the continuing-string work and Recuerdos holds remain. See
+[the implementation and comparison protocol](release-join-2026-10-05.md).
+
+## 2026-10-05 — one continuing tremolo string and Recuerdos articulation
+
+The user reported that Recuerdos sounded robotic and plucky, then clarified
+that a new hit should merge with the already vibrating string. The preceding
+contact correction still kept independent old/new string branches and did
+not fulfill that physical interpretation.
+
+Elapsed same-pitch normal-string repeats now keep one waveguide and bridge
+port per physical string. An ideal stopped contact passively conditions the
+existing local displacement and cyclic motion; the new release adds to that
+continuing wave, preserving its phase and filter histories. A shared force
+gain bounds sampled wave-energy growth by the nominal new release's work.
+This is a conservative authored work map, not a measured finger trajectory
+or whole-instrument passivity proof. Different-pitch plucked refrets retain
+the provisional tail transition.
+
+Recuerdos also interpreted every written short melody duration as a damping
+gesture. Its melody now remains held through the thumb slots until the next
+melody attack, with pitches, onsets, velocities and accompaniment unchanged.
+The MIDI contract stays explicit: Note-off begins damping unless sustain
+holds the note. No timing jitter or widened random force spread was added.
+See [the implementation and comparison protocol](recuerdos-tremolo-2026-10-05.md).
+The comparisons do not establish a listening preference; no new user verdict
+has been recorded yet.
+
+## 2026-10-05 — repeated-string contact and sample-accurate release history
+
+The user requested more realistic repeated strumming of one string, especially
+tremolo. A same-pitch re-pluck now conditions the captured old wave at the new
+fractional contact point before the existing release starts. A minimum-energy
+constraint in the sampled slope norm removes its old displacement there without another force,
+position or noise draw. It retains the existing tail loss, avoiding the old
+shift-and-average projection's undamped near-node accumulation. The sampled
+energy identity is a numerical guard, not a whole-instrument passivity claim
+or a listening verdict; the separate-tail transition remains provisional.
+
+Delayed releases also now record their actual sample rather than the block's
+starting timestamp. A negative-first equal-velocity regression reproduces the
+old audible difference between scheduled and immediate releases at the same
+sample. See [the implementation and listening protocol](repeated-pluck-contact-2026-10-05.md).
+Fresh before/after audio uses identical scores and common gain; no user verdict
+on naturalness has yet been recorded for this change.
 
 ## 2026-10-04 — ten-change candidate accepted; finger movement needs fret noise
 

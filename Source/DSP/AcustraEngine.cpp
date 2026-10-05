@@ -15,6 +15,7 @@
 #include "PiezoBlampTable.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <complex>
 #include <cstring>
@@ -2660,6 +2661,7 @@ void AcustraEngine::StringLoop::reset() noexcept
     writeIndex = 0;
     allpassY1 = 0.0f;
     allpassY2 = 0.0f;
+    readDelayValid = false;
     broadLossFilter.reset();
     lossFilter.reset();
     bendingLossY1 = 0.0f;
@@ -2669,6 +2671,7 @@ void AcustraEngine::StringLoop::reset() noexcept
     secondDispersion.reset();
     bridgeDerivative.reset();
     derivativeNeedsPriming = true;
+    derivativeCrossesContact = false;
     appliedReleaseGain = 1.0f;
     requestedReleaseGain = 1.0f;
     releaseGainStep = 0.0f;
@@ -2681,6 +2684,13 @@ float AcustraEngine::StringLoop::bridgeVelocity(
     {
         bridgeDerivative.reset(incident);
         derivativeNeedsPriming = false;
+        derivativeCrossesContact = false;
+    }
+    else if (derivativeCrossesContact)
+    {
+        derivativeCrossesContact = false;
+        derivativeCrossesRelease = false;
+        return bridgeDerivative.processAcrossStep(incident, sampleRateRatio);
     }
     else if (derivativeCrossesRelease)
     {
@@ -2689,6 +2699,7 @@ float AcustraEngine::StringLoop::bridgeVelocity(
         // steps by that factor at once. The hand landing on a string damps it;
         // it does not move it, so the step is not motion either.
         derivativeCrossesRelease = false;
+        derivativeCrossesContact = false;
         return bridgeDerivative.processAcrossRelease(
             incident, sampleRateRatio);
     }
@@ -2701,10 +2712,18 @@ float AcustraEngine::FixedDerivative::process(float input,
     history[static_cast<std::size_t>(index)] = input;
     // sampleRateRatio samples span exactly the 48 kHz reference period, so
     // this finite difference already has one host-rate-independent scale.
-    const float historyDelay = AcustraEngine::clamp(
-        sampleRateRatio, 0.1f, 8.0f);
-    const int whole = static_cast<int>(historyDelay);
-    const float fraction = historyDelay - static_cast<float>(whole);
+    const auto rateBits = exact::bits(sampleRateRatio);
+    if (!geometryValid || rateBits != geometryRateBits)
+    {
+        const float historyDelay = AcustraEngine::clamp(
+            sampleRateRatio, 0.1f, 8.0f);
+        geometryWhole = static_cast<int>(historyDelay);
+        geometryFraction = historyDelay - static_cast<float>(geometryWhole);
+        geometryRateBits = rateBits;
+        geometryValid = true;
+    }
+    const int whole = geometryWhole;
+    const float fraction = geometryFraction;
     const auto at = [&] (int samplesAgo)
     {
         const unsigned readIndex = (static_cast<unsigned>(index)
@@ -2750,10 +2769,26 @@ float AcustraEngine::FixedDerivative::processAcrossStep(
 
 float AcustraEngine::StringLoop::readDelay(float samples) noexcept
 {
-    const float bounded = AcustraEngine::clamp(
-        samples, 3.0f, static_cast<float>(maximumDelaySamples - 3));
-    const int whole = delayAnchor(bounded);
-    const float fraction = bounded - static_cast<float>(whole);
+    const auto sampleBits = exact::bits(samples);
+    if (!readDelayValid || sampleBits != readDelayBits)
+    {
+        const float bounded = AcustraEngine::clamp(
+            samples, 3.0f, static_cast<float>(maximumDelaySamples - 3));
+        readDelayWhole = delayAnchor(bounded);
+        const float fraction = bounded - static_cast<float>(readDelayWhole);
+        if (exact::bits(fraction) != exact::bits(thiranFraction))
+        {
+            double a1 = 0.0;
+            double a2 = 0.0;
+            thiranCoefficients(static_cast<double>(fraction), a1, a2);
+            thiranFraction = fraction;
+            thiranFirst = static_cast<float>(a1);
+            thiranSecond = static_cast<float>(a2);
+        }
+        readDelayBits = sampleBits;
+        readDelayValid = true;
+    }
+    const int whole = readDelayWhole;
     const auto at = [&] (int samplesAgo)
     {
         return delay[static_cast<std::size_t>(
@@ -2770,15 +2805,6 @@ float AcustraEngine::StringLoop::readDelay(float samples) noexcept
     // transients in time-varying allpass fractional delay filters with
     // application to digital waveguide modeling", ICMC 1995, 327-334, which
     // for a line-read section is exactly this signal-valued state.
-    if (exact::bits(fraction) != exact::bits(thiranFraction))
-    {
-        double a1 = 0.0;
-        double a2 = 0.0;
-        thiranCoefficients(static_cast<double>(fraction), a1, a2);
-        thiranFraction = fraction;
-        thiranFirst = static_cast<float>(a1);
-        thiranSecond = static_cast<float>(a2);
-    }
     const float first = thiranFirst;
     const float second = thiranSecond;
     const float output = second * at(whole) + first * at(whole + 1)
@@ -2961,11 +2987,45 @@ void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
     for (int active = 0; active < activeModeCount; ++active)
     {
         const std::size_t index = activeModes[static_cast<std::size_t>(active)];
-        const double heaveState = heaveModes[index].processPast(bodyForce);
+        double heaveState, rockState;
+        // Pack this mode's heave and rock with their own coefficients and history.
+        // Preserve each lane's arithmetic and the serial residue sums below.
+#if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
+        if (rocking[index])
+        {
+            typedef double Vector __attribute__((vector_size(16)));
+            auto& h = heaveModes[index];
+            auto& r = rockModes[index];
+            const Vector input = { bodyForce, bodyMoment };
+            const Vector n1 = { h.numerator1, r.numerator1 };
+            const Vector n2 = { h.numerator2, r.numerator2 };
+            const Vector d1 = { h.denominator1, r.denominator1 };
+            const Vector d2 = { h.denominator2, r.denominator2 };
+            const Vector i1 = { h.input1, r.input1 };
+            const Vector o1 = { h.output1, r.output1 };
+            const Vector o2 = { h.output2, r.output2 };
+            const Vector output = n1 * input + n2 * i1 - d1 * o1 - d2 * o2;
+            h.input1 = bodyForce;
+            r.input1 = bodyMoment;
+            h.output2 = h.output1;
+            r.output2 = r.output1;
+            h.output1 = output[0];
+            r.output1 = output[1];
+            heaveState = output[0];
+            rockState = output[1];
+        }
+        else
+        {
+            heaveState = heaveModes[index].processPast(bodyForce);
+            rockState = 0.0;
+        }
+#else
+        heaveState = heaveModes[index].processPast(bodyForce);
+        rockState = rocking[index] ? rockModes[index].processPast(bodyMoment) : 0.0;
+#endif
         nextPastHeave += residueHeave[index] * heaveState;
         if (!rocking[index])
             continue;
-        const double rockState = rockModes[index].processPast(bodyMoment);
         nextPastHeave += residueCross[index] * rockState;
         nextPastRock += residueCross[index] * heaveState
                       + residueRock[index] * rockState;
@@ -3261,6 +3321,7 @@ void AcustraEngine::reset() noexcept
         voice.lastPluckVelocity = 0.0f;
         voice.lastPluckSample = 0;
         voice.repeatedPluckGain = 1.0f;
+        voice.repluckForceGain = 1.0f;
         voice.ownerCount = 0;
         voice.played = false;
         voice.keyDown = false;
@@ -3336,6 +3397,33 @@ void AcustraEngine::setParameters(const EngineParameters& parameters) noexcept
     targetParameters_ = sanitise(parameters);
     if (prepared_)
         applyDiscreteParameters(false);
+}
+
+void AcustraEngine::setTempoBpm(double bpm) noexcept
+{
+    const double next = exact::isfinite(bpm) && bpm > 0.0 ? bpm : 120.0;
+    if (next == tempoBpm_)
+        return;
+    // No accumulated floating-point beat clock: each pending note is
+    // anchored to the exact sample clock, and only a tempo change converts
+    // its elapsed samples to beats. An overdue release cannot be revived.
+    for (int string = 0; string < stringCount; ++string)
+    {
+        auto& voice = voices_[static_cast<std::size_t>(string)];
+        processPendingRelease(voice, string);
+        if (!voice.releaseJoinPending)
+            continue;
+        const auto elapsed = sampleClock_ - voice.releaseJoinAnchorSample;
+        const long double consumed = static_cast<long double>(elapsed)
+            * (static_cast<long double>(tempoBpm_) / 60.0L) / sampleRate_;
+        voice.releaseJoinRemainingBeats = static_cast<double>(std::max(
+            0.0L, static_cast<long double>(voice.releaseJoinRemainingBeats) - consumed));
+        voice.releaseJoinAnchorSample = sampleClock_;
+    }
+    tempoBpm_ = next;
+    for (auto& voice : voices_)
+        if (voice.releaseJoinPending)
+            updateReleaseJoinWindow(voice);
 }
 
 void AcustraEngine::setPhysicalCalibration(
@@ -4746,7 +4834,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     if (!clearDelay && configurationKey == voice.configurationKey)
     {
         voice.midiNote = midiNote;
-        if (voice.keyDown || voice.pedalHeld || !voice.played)
+        if (voice.keyDown || voice.pedalHeld || voice.releaseJoinPending
+            || voice.releaseAfterPluck || !voice.played)
             voice.releaseDamping = 1.0f;
         return;
     }
@@ -5183,7 +5272,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                                          / stretchedMass);
     if (clearDelay)
         voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
-    if (voice.keyDown || voice.pedalHeld || !voice.played)
+    if (voice.keyDown || voice.pedalHeld || voice.releaseJoinPending
+        || voice.releaseAfterPluck || !voice.played)
         voice.releaseDamping = 1.0f;
     else if (voice.releaseSeconds > 0.0f)
     {
@@ -5383,9 +5473,10 @@ void AcustraEngine::beginStrum(int strokeSpanSamples,
 }
 
 void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
-                                    float velocity) noexcept
+                                    float velocity, bool merge) noexcept
 {
     const float v = clamp(velocity, 0.001f, 1.0f);
+    voice.repluckForceGain = 1.0f;
     const auto& physical = physicalCalibration_.steel;
     const float touch = effectiveTouch(voice.velocity);
     constexpr float scaleLength = 0.648f;
@@ -5458,6 +5549,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     else if (position < lowestPoint)
         position = 2.0f * lowestPoint - position;
     voice.pluckPoint = position;
+    voice.repluckContactPending = false;
     // Freeze the two transport paths at contact. D=2L/c, x=pL, hence the
     // direct arrival is pD/2 and the nut-reflected arrival is (1-p/2)D.
     // The source's two polarisations meet the same physical pluck point.
@@ -5929,11 +6021,41 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             applyPlectrumSlip(loop, length, slipPole);
     }
 
+    if (merge)
+    {
+        double freshEnergy = 0.0;
+        double cross = 0.0;
+        for (int plane = 0; plane < 2; ++plane)
+        {
+            auto& previous = repluckOldLoops_[static_cast<std::size_t>(plane)];
+            conditionRepluckContact(previous, position, true);
+            const auto work = repluckIncrementWork(
+                voice.loops[static_cast<std::size_t>(plane)], previous);
+            freshEnergy += work[0];
+            cross += work[1];
+        }
+        // A prescribed stroke can supply its fresh release's work, not an
+        // extra positive interference term from a coherently ringing wave.
+        // Reduce force only when that cross term is positive; cancellation
+        // may dissipate work, and never boosts a softer stroke. This is a
+        // conservative authored work bound, not a fitted hand-force law.
+        if (cross > 0.0 && freshEnergy > 0.0)
+            voice.repluckForceGain = static_cast<float>(freshEnergy
+                / (cross + std::sqrt(cross * cross + freshEnergy * freshEnergy)));
+        for (int plane = 0; plane < 2; ++plane)
+            mergeRepluckLoop(voice.loops[static_cast<std::size_t>(plane)],
+                repluckOldLoops_[static_cast<std::size_t>(plane)], voice.repluckForceGain);
+        voice.releaseStepRise *= voice.repluckForceGain;
+        // Restored memories carry the old coefficients too. Reapply current
+        // controls after the merge even when the prior cache key was equal.
+        voice.configurationKey.generation = 0;
+    }
+
     double slopeEnergy = 0.0;
     for (auto& loop : voice.loops)
     {
         const int length = std::clamp(
-            static_cast<int>(std::round(loop.targetDelay)), 8,
+            static_cast<int>(std::round(merge ? loop.currentDelay : loop.targetDelay)), 8,
             maximumDelaySamples - 3);
         const auto at = [&] (int sample)
         {
@@ -5976,6 +6098,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     else
         voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
             * physical.transientScale;
+    voice.excitationEnvelope *= voice.repluckForceGain;
     // A natural harmonic's finger is still on the node when the pluck lets
     // go, so the release's broadband burst is filtered by it as every other
     // mode the node does not share is. The burst is written at the bridge,
@@ -6015,7 +6138,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         voice.randomState = mixed == 0u ? 0x6d2b79f5u : mixed;
     }
     initialiseContactNoise(voice, v, position, heldDistance,
-                           releasedAmplitude, contactWidthRatio);
+                           releasedAmplitude * voice.repluckForceGain, contactWidthRatio);
     voice.level = std::max(voice.level, 0.02f * v);
     voice.releaseDamping = 1.0f;
     voice.releaseSeconds = 0.0f;
@@ -6035,6 +6158,10 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.played = false;
     voice.keyDown = false;
     voice.pedalHeld = false;
+    voice.releaseJoinPending = false;
+    voice.releaseJoinRemainingBeats = 0.0;
+    voice.releaseJoinAnchorSample = 0;
+    voice.releaseJoinWindowSamples = 0;
     voice.mpeMember = false;
     voice.memberPitchBendFrozen = false;
     voice.ownerCount = 0;
@@ -6081,8 +6208,12 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.returnSamples = 0;
     voice.pluckDelay = 0;
     voice.repluckPending = false;
+    voice.repluckContactPending = false;
+    if (clearDelay)
+        voice.repluckArrivals.clear();
     voice.releaseAfterPluck = false;
     voice.pedalHeldAtKeyUp = false;
+    voice.pedalReleasedBeforePluck = false;
     // The string's retained tail is a port on the bridge. The hand-back
     // after a key-up lets it go the way a quiet tail goes (finishVoice),
     // fading its port out of the junction: dropped here in one sample, the
@@ -6101,10 +6232,277 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
         voice.tailQuietSamples = 0;
         voice.tailLoop.reset();
         voice.tailParallelLoop.reset();
+        voice.tailRepluckArrivals.clear();
     }
     else
         voice.tailRetiring = true;
     configureVoice(voice, stringIndex, voice.openMidi, clearDelay);
+}
+
+void AcustraEngine::conditionRepluckContact(StringLoop& loop,
+                                            float position,
+                                            bool stopVelocity) noexcept
+{
+    if (!(position > 0.0f && position < 1.0f))
+        return;
+    const float period = loop.currentDelay;
+    const int length = std::clamp(static_cast<int>(std::ceil(period)) + 1,
+                                  4, maximumDelaySamples - 2);
+    const auto at = [&] (int age) -> float&
+    {
+        return loop.delay[static_cast<std::size_t>(
+            wrapDelayIndex(loop.writeIndex - 1 - age))];
+    };
+    // The same fractional taps as displacementAt: include their complete
+    // read prehistory rather than rounding the period/contact to a grid.
+    const float travel = 0.5f * period * position;
+    const float reflected = period - travel;
+    const int directAge = static_cast<int>(travel);
+    const int reflectedAge = static_cast<int>(reflected);
+    const double directFraction = travel - directAge;
+    const double reflectedFraction = reflected - reflectedAge;
+    std::array<std::array<int, 8>, 2> ages {};
+    std::array<std::array<double, 8>, 2> weights {};
+    ages[0] = { reflectedAge, reflectedAge + 1, directAge, directAge + 1 };
+    weights[0] = { 1.0 - reflectedFraction, reflectedFraction,
+                   -(1.0 - directFraction), -directFraction };
+    // One ideal cyclic advance of the same field, minus its current point
+    // observation, is the local velocity functional in wave/sample units.
+    for (int tap = 0; tap < 4; ++tap)
+    {
+        ages[1][static_cast<std::size_t>(tap)]
+            = (ages[0][static_cast<std::size_t>(tap)] + length - 1) % length;
+        weights[1][static_cast<std::size_t>(tap)]
+            = weights[0][static_cast<std::size_t>(tap)];
+        ages[1][static_cast<std::size_t>(tap + 4)]
+            = ages[0][static_cast<std::size_t>(tap)];
+        weights[1][static_cast<std::size_t>(tap + 4)]
+            = -weights[0][static_cast<std::size_t>(tap)];
+    }
+    const auto contactWeight = [&] (int axis, int age)
+    {
+        double result = 0.0;
+        for (int tap = 0; tap < (axis == 0 ? 4 : 8); ++tap)
+            if (age == ages[static_cast<std::size_t>(axis)][static_cast<std::size_t>(tap)])
+                result += weights[static_cast<std::size_t>(axis)][static_cast<std::size_t>(tap)];
+        return result;
+    };
+    // The static point-force triangle is the ideal string's Green function.
+    // Use its discrete counterpart h: cyclic Laplacian(h) = contactWeight,
+    // so <Ds,Dh> = displacementAt(p). Removing its slope-orthogonal component
+    // makes the retained displacement zero under the hand and gives exactly
+    // E_after = E_before - cross^2/norm before float rounding. The wrap-edge
+    // difference belongs to this norm too. Integrating the sparse contact
+    // weights twice solves h without allocating a delay-sized scratch array.
+    // This is a preceding-hold approximation, not a resolved tool trajectory
+    // or a full string/body energy ledger. Fractional-period discretisation
+    // and copied filter memories remain outside that physical claim. The
+    // ordinary intrinsic string loss still damps uncoupled modes; there is
+    // no second string branch or artificial post-release tail on a merge.
+    const int axes = stopVelocity ? 2 : 1;
+    std::array<double, 2> firstSlope {}, cross {}, norm {}, cumulativeWeight {},
+                          wave {}, waveSum {};
+    for (int axis = 0; axis < axes; ++axis)
+        for (int tap = 0; tap < (axis == 0 ? 4 : 8); ++tap)
+            firstSlope[static_cast<std::size_t>(axis)]
+                += (length - 1 - ages[static_cast<std::size_t>(axis)][static_cast<std::size_t>(tap)])
+                    * weights[static_cast<std::size_t>(axis)][static_cast<std::size_t>(tap)] / length;
+    double mixedNorm = 0.0;
+    double previous = at(length - 1);
+    for (int age = 0; age < length; ++age)
+    {
+        const double current = at(age);
+        for (int axis = 0; axis < axes; ++axis)
+        {
+            const auto a = static_cast<std::size_t>(axis);
+            const double slope = firstSlope[a] - cumulativeWeight[a];
+            cross[a] += (current - previous) * slope;
+            norm[a] += slope * slope;
+            wave[a] += slope;
+            waveSum[a] += wave[a];
+        }
+        mixedNorm += (firstSlope[0] - cumulativeWeight[0])
+                   * (firstSlope[1] - cumulativeWeight[1]);
+        for (int axis = 0; axis < axes; ++axis)
+            cumulativeWeight[static_cast<std::size_t>(axis)] += contactWeight(axis, age);
+        previous = current;
+    }
+    if (!(norm[0] > 0.0) || !exact::isfinite(cross[0]))
+        return;
+    std::array<double, 2> removed { cross[0] / norm[0], 0.0 };
+    const double determinant = norm[0] * norm[1] - mixedNorm * mixedNorm;
+    if (stopVelocity && determinant > 1.0e-12 * norm[0] * norm[1])
+    {
+        removed[0] = (cross[0] * norm[1] - cross[1] * mixedNorm) / determinant;
+        removed[1] = (cross[1] * norm[0] - cross[0] * mixedNorm) / determinant;
+    }
+    if (removed[0] == 0.0 && removed[1] == 0.0)
+        return;
+    cumulativeWeight = {};
+    wave = {};
+    for (int age = 0; age < length; ++age)
+    {
+        double correction = 0.0;
+        for (int axis = 0; axis < axes; ++axis)
+        {
+            const auto a = static_cast<std::size_t>(axis);
+            wave[a] += firstSlope[a] - cumulativeWeight[a];
+            correction += removed[a] * (wave[a] - waveSum[a] / length);
+            cumulativeWeight[a] += contactWeight(axis, age);
+        }
+        at(age) = static_cast<float>(at(age) - correction);
+    }
+    // The observer should retain the incoming wave's velocity trend rather
+    // than count the imposed displacement constraint as an impact.
+    loop.derivativeCrossesContact = true;
+}
+
+float AcustraEngine::alignedRepluckIncrement(const StringLoop& fresh,
+    const StringLoop& previous, int age) noexcept
+{
+    const float sourceAge = static_cast<float>(age)
+        * fresh.currentDelay / previous.currentDelay;
+    const int whole = static_cast<int>(sourceAge);
+    const float part = sourceAge - whole;
+    const auto at = [&] (int n)
+    {
+        return fresh.delay[static_cast<std::size_t>(
+            wrapDelayIndex(fresh.writeIndex - 1 - n))];
+    };
+    return at(whole) + part * (at(whole + 1) - at(whole));
+}
+
+std::array<double, 2> AcustraEngine::repluckIncrementWork(
+    const StringLoop& fresh, const StringLoop& previous) noexcept
+{
+    const int length = std::clamp(static_cast<int>(std::ceil(previous.currentDelay)) + 1,
+                                  4, maximumDelaySamples - 2);
+    const auto at = [&] (int age)
+    {
+        return previous.delay[static_cast<std::size_t>(
+            wrapDelayIndex(previous.writeIndex - 1 - age))];
+    };
+    double old = at(length - 1);
+    double increment = alignedRepluckIncrement(fresh, previous, length - 1);
+    std::array<double, 2> result {};
+    for (int age = 0; age < length; ++age)
+    {
+        const double current = at(age);
+        const double next = alignedRepluckIncrement(fresh, previous, age);
+        const double slope = next - increment;
+        result[0] += slope * slope;
+        result[1] += (current - old) * slope;
+        old = current;
+        increment = next;
+    }
+    return result;
+}
+
+void AcustraEngine::mergeRepluckLoop(StringLoop& fresh, StringLoop& previous,
+                                     float gain) noexcept
+{
+    const int length = std::clamp(static_cast<int>(std::ceil(previous.currentDelay)) + 1,
+                                  4, maximumDelaySamples - 2);
+    for (int age = 0; age < length; ++age)
+        previous.delay[static_cast<std::size_t>(
+            wrapDelayIndex(previous.writeIndex - 1 - age))]
+            += gain * alignedRepluckIncrement(fresh, previous, age);
+    previous.targetDelay = fresh.targetDelay;
+    // Keep the already travelling field, its ring phase and every stored
+    // filter state. The ordinary continuing configure below adopts current
+    // control coefficients without resetting those memories.
+    previous.derivativeCrossesContact = true;
+    fresh = previous;
+}
+
+void AcustraEngine::RepluckArrivals::clear() noexcept
+{
+    for (auto& plane : wave) plane.fill(0.0f);
+    readIndex = remaining = 0;
+    overflow = false;
+}
+
+void AcustraEngine::RepluckArrivals::add(int offset, float normal,
+                                       float parallel) noexcept
+{
+    if (offset >= capacity)
+    {
+        overflow = true;
+        return;
+    }
+    if (normal == 0.0f && parallel == 0.0f)
+        return;
+    const auto slot = static_cast<std::size_t>((readIndex + offset) % capacity);
+    wave[0][slot] += normal;
+    wave[1][slot] += parallel;
+    remaining = std::max(remaining, offset + 1);
+}
+
+std::array<float, 2> AcustraEngine::RepluckArrivals::process() noexcept
+{
+    if (remaining <= 0) return {};
+    const auto slot = static_cast<std::size_t>(readIndex);
+    const std::array<float, 2> result { wave[0][slot], wave[1][slot] };
+    wave[0][slot] = wave[1][slot] = 0.0f;
+    readIndex = (readIndex + 1) % capacity;
+    --remaining;
+    return result;
+}
+
+void AcustraEngine::retainRepluckArrivals(Voice& voice) noexcept
+{
+    // Freeze each already emitted packet's own contact delays. They cannot
+    // be mixed by adding delay histories whose tap coefficients differ.
+    // This queue holds their future arrivals, preserving a third rapid
+    // attack without allocating another string or discarding the first.
+    // Transport input history is <=8192 samples. Legal contact geometry
+    // bounds first-order poles below .82 and second-order poles below .88;
+    // another 8192 zero samples drains even float-max input below the double
+    // retirement threshold. The <=1153-sample explicit finger pulse fits
+    // within that bound. Overflow is an asserted invariant, never hidden.
+    int offset = 0;
+    while ((voice.contactTravelEnabled && voice.contactTravel.active)
+        || voice.contactNoiseTravel.active || voice.legatoContactTravel.active
+        || voice.legatoContactSamples > 0)
+    {
+        if (offset >= RepluckArrivals::capacity)
+        {
+            voice.repluckArrivals.overflow = true;
+            assert(false && "repluck contact transport exceeded its proven bound");
+            break;
+        }
+        float normal = 0.0f;
+        float parallel = 0.0f;
+        constexpr float split = 0.7071067811865475f;
+        if (voice.contactTravelEnabled && voice.contactTravel.active)
+        {
+            const auto paths = voice.contactTravel.process(0.0f);
+            const float local = split * (paths[0] - paths[1]);
+            normal += 0.76f * local;
+            parallel += 0.51f * local;
+        }
+        if (voice.contactNoiseTravel.active)
+        {
+            const auto paths = voice.contactNoiseTravel.process(0.0f);
+            const float local = paths[0] - paths[1];
+            normal += voice.contactNoiseNormal * local;
+            parallel += voice.contactNoiseParallel * local;
+        }
+        if (voice.legatoContactSamples > 0 || voice.legatoContactTravel.active)
+        {
+            float source = 0.0f;
+            if (voice.legatoContactSamples > 0)
+            {
+                source = voice.legatoContactAmplitude
+                    * voice.legatoContactPulse[static_cast<std::size_t>(voice.legatoContactAge)];
+                if (++voice.legatoContactAge > voice.legatoContactSamples)
+                    voice.legatoContactSamples = 0;
+            }
+            const auto paths = voice.legatoContactTravel.process(source);
+            normal += split * (paths[0] - paths[1]);
+        }
+        voice.repluckArrivals.add(offset++, normal, parallel);
+    }
 }
 
 void AcustraEngine::captureTail(Voice& voice) noexcept
@@ -6121,7 +6519,8 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     if (!(voice.level > 2.0e-7f)
         && !(voice.contactTravelEnabled && voice.contactTravel.active)
         && !voice.contactNoiseTravel.active
-        && !voice.legatoContactTravel.active && voice.legatoContactSamples == 0)
+        && !voice.legatoContactTravel.active && voice.legatoContactSamples == 0
+        && voice.repluckArrivals.remaining == 0)
     {
         voice.tailActive = false;
         voice.tailRetiring = false;
@@ -6134,6 +6533,8 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     }
     voice.tailLoop = voice.loops[0];
     voice.tailParallelLoop = voice.loops[1];
+    voice.tailRepluckArrivals = voice.repluckArrivals;
+    voice.repluckArrivals.clear();
     if (voice.legatoContactTravel.active || voice.legatoContactSamples > 0)
     {
         voice.tailLegatoContactTravel = voice.legatoContactTravel;
@@ -6256,9 +6657,55 @@ void AcustraEngine::updateTailHandLoss(Voice& voice) noexcept
     voice.tailParallelLoop.highLossMix = clamp(mutedHighLoss * 1.08f, 0.0f, 1.0f);
 }
 
+void AcustraEngine::updateReleaseJoinWindow(Voice& voice) noexcept
+{
+    // Round up by less than one sample so a MIDI gap rounded from an exact
+    // 1/32 note remains eligible. Keep an elapsed-sample limit rather than
+    // adding an absolute deadline, including for exceptionally slow tempos.
+    long double duration =
+        static_cast<long double>(voice.releaseJoinRemainingBeats)
+        * (60.0L * sampleRate_) / static_cast<long double>(tempoBpm_);
+    const auto maximum = std::numeric_limits<std::uint64_t>::max();
+    if (duration >= static_cast<long double>(maximum))
+    {
+        voice.releaseJoinWindowSamples = maximum;
+        return;
+    }
+    // Converting remaining beats back from double must not turn an exact
+    // integer duration into an extra sample (e.g. 4425 + 2e-13). Only remove
+    // numerical residue near a positive integer: a genuinely sub-sample
+    // positive interval still rounds up to one, even at DBL_MAX tempo.
+    const long double nearest = std::round(duration);
+    const long double tolerance = std::min(0.125L,
+        8.0L * std::numeric_limits<double>::epsilon() * std::max(1.0L, duration));
+    if (nearest >= 1.0L && std::abs(duration - nearest) <= tolerance)
+        duration = nearest;
+    const long double samples = std::ceil(duration);
+    voice.releaseJoinWindowSamples = static_cast<std::uint64_t>(samples);
+}
+
+void AcustraEngine::processPendingRelease(Voice& voice, int stringIndex) noexcept
+{
+    if (!voice.releaseJoinPending)
+        return;
+    if (!voice.played || voice.keyDown || voice.pedalHeld)
+    {
+        voice.releaseJoinPending = false;
+        return;
+    }
+    // MIDI at the inclusive endpoint is handled before rendering it. Only
+    // the first later sample begins damping and the optional release noise.
+    if (sampleClock_ - voice.releaseJoinAnchorSample > voice.releaseJoinWindowSamples)
+        beginRelease(voice, stringIndex);
+}
+
 void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
 {
-    releaseFinger(stringIndex);
+    const bool deferredKeyUp = voice.releaseJoinPending;
+    voice.releaseJoinPending = false;
+    voice.releaseJoinRemainingBeats = 0.0;
+    if (!deferredKeyUp)
+        releaseFinger(stringIndex);
     // An explicitly started 2-3 ms finger pulse finishes smoothly under the
     // hand's loss; cutting a nonzero sin^2 pulse here would inject a sharp
     // edge whose slope energy can exceed its original contact budget.
@@ -7164,6 +7611,8 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
         || !exact::isfinite(velocity) || velocity <= 0.0f
         || midiChannel < 1 || midiChannel > midiChannelCount)
         return;
+    if (!canSound(midiNote, midiChannel))
+        return;
 
     // The scheduled delay is bounded before anything scales or counts it:
     // ten seconds is far beyond any strum (at most about 0.12 s), and at the
@@ -7194,6 +7643,27 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
+        processPendingRelease(voice, string);
+        if (voice.played && !voice.keyDown && voice.midiNote == midiNote
+            && voice.midiChannel == midiChannel
+            && (voice.releaseJoinPending || voice.releaseAfterPluck))
+        {
+            const bool controllerString = stringPerChannelMode_
+                && midiChannel <= stringCount;
+            const int fret = midiNote - voice.openMidi;
+            const bool placementValid = (!controllerString || string == midiChannel - 1)
+                && (voice.harmonic == 1 ? fret >= 0 && fret <= fretCount
+                    : !controllerString && exact::abs(1200.0f * std::log2(
+                        midiFrequency(voice.openMidi) * static_cast<float>(voice.harmonic)
+                        / midiFrequency(midiNote))) <= 25.0f);
+            if (!placementValid)
+                continue;
+            // The released MIDI owner is gone, but this is still its
+            // physical string. Cancel that key-up before taking a new owner.
+            startNote(string, voice.harmonic, midiNote, velocity, midiChannel,
+                      delaySamples, strumMember);
+            return;
+        }
         if (voice.played && voice.midiNote == midiNote
             && voice.midiChannel == midiChannel && voice.keyDown)
         {
@@ -7205,6 +7675,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             // The key is down again before the pick came: its key-up is
             // void, and one pick serves both strokes, as it always has.
             voice.releaseAfterPluck = false;
+            voice.pedalReleasedBeforePluck = false;
             if (delaySamples > 0)
                 voice.pluckDelay = delaySamples + 1;
             else
@@ -7408,16 +7879,27 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
                               int delaySamples, bool strumMember) noexcept
 {
     auto& voice = voices_[static_cast<std::size_t>(string)];
+    voice.releaseJoinPending = false;
+    voice.releaseJoinRemainingBeats = 0.0;
     // Taking a string that is still sounding, for any note, is a refret and a
     // repluck, not a cut: what it still holds carries on under the hand while
     // the new pluck is released from rest.
-    if (voice.level > 2.0e-7f
+    const bool retainedWave = voice.level > 2.0e-7f
         || (voice.contactTravelEnabled && voice.contactTravel.active)
         || voice.contactNoiseTravel.active
-        || voice.legatoContactTravel.active || voice.legatoContactSamples > 0)
+        || voice.legatoContactTravel.active || voice.legatoContactSamples > 0
+        || voice.repluckArrivals.remaining > 0;
+    voice.repluckContactPending = retainedWave && voice.played && voice.attackFired
+        && harmonic == 1 && voice.harmonic == 1 && voice.midiNote == midiNote
+        && voice.midiChannel == midiChannel;
+    const bool continuing = voice.repluckContactPending;
+    if (retainedWave && !continuing)
         captureTail(voice);
-    voice.legatoContactSamples = 0;
-    voice.legatoContactAmplitude = 0.0f;
+    if (!continuing)
+    {
+        voice.legatoContactSamples = 0;
+        voice.legatoContactAmplitude = 0.0f;
+    }
     voice.harmonic = harmonic;
     voice.played = true;
     voice.keyDown = true;
@@ -7432,19 +7914,23 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     voice.velocity = v;
     voice.attackPitchCents = 0.0f;
     voice.attackPitchDecay = 1.0f;
-    configureVoice(voice, string, midiNote, true);
+    configureVoice(voice, string, midiNote, !continuing);
     voice.onsetSample = sampleClock_;
     rememberFinger(string);
     voice.strumming = strumMember;
-    voice.repluckPending = false;
-    voice.attackFired = false;
+    voice.repluckPending = continuing;
+    voice.attackFired = continuing;
     voice.releaseAfterPluck = false;
+    voice.pedalHeldAtKeyUp = false;
+    voice.pedalReleasedBeforePluck = false;
+    voice.releaseVelocity = -1.0f;
     if (delaySamples > 0)
     {
         // Fretted and waiting: a junction member with nothing on it until
         // the pick arrives. The countdown fires at the top of that sample,
         // exactly where a note-on issued then would have put the shape.
-        voice.excitationEnvelope = 0.0f;
+        if (!continuing)
+            voice.excitationEnvelope = 0.0f;
         voice.pluckDelay = delaySamples + 1;
         return;
     }
@@ -7668,7 +8154,8 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         frets.fill(-1);
         frets[static_cast<std::size_t>(chosenString)]
             = midiNote - chosen.openMidi;
-        const bool steal = chosen.played && chosen.keyDown;
+        const bool steal = chosen.played
+            && (chosen.keyDown || chosen.releaseAfterPluck);
         if (!steal && shapeCost(frets, 0u, weights) < impossibleShapeCost)
             return chosenString;
     }
@@ -7678,7 +8165,8 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
     for (int string = 0; string < stringCount; ++string)
     {
         const auto& voice = voices_[static_cast<std::size_t>(string)];
-        if (!voice.played || !voice.keyDown || voice.harmonic != 1
+        if (!voice.played || (!voice.keyDown && !voice.releaseAfterPluck)
+            || voice.harmonic != 1
             || voice.mpeMember
             || voice.midiChannel != midiChannel
             || voice.onsetSample
@@ -7715,8 +8203,8 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
     struct Moved
     {
         int from, to, midiNote, channel, ownerCount, delay;
-        float velocity;
-        bool strumming, releaseAfterPluck, pedalHeldAtKeyUp;
+        float velocity, releaseVelocity;
+        bool strumming, releaseAfterPluck, pedalHeldAtKeyUp, pedalReleasedBeforePluck;
         std::uint64_t startOrder, onsetSample;
     };
     std::array<Moved, stringCount> moved {};
@@ -7733,8 +8221,9 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         moved[static_cast<std::size_t>(movedCount++)] = {
             from, to, voice.midiNote, voice.midiChannel, voice.ownerCount,
             voice.pluckDelay > 0 ? voice.pluckDelay - 1 : 0,
-            voice.velocity, voice.strumming, voice.releaseAfterPluck,
-            voice.pedalHeldAtKeyUp, voice.startOrder, voice.onsetSample };
+            voice.velocity, voice.releaseVelocity, voice.strumming, voice.releaseAfterPluck,
+            voice.pedalHeldAtKeyUp, voice.pedalReleasedBeforePluck,
+            voice.startOrder, voice.onsetSample };
         voice.keyDown = false;
         voice.pedalHeld = false;
         voice.ownerCount = 0;
@@ -7762,13 +8251,21 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         // owner and the note rang on unreleased.
         if (move.releaseAfterPluck)
         {
+            voice.releaseVelocity = move.releaseVelocity;
             if (voice.pluckDelay > 0)
             {
                 voice.releaseAfterPluck = true;
                 voice.pedalHeldAtKeyUp = move.pedalHeldAtKeyUp;
+                voice.pedalReleasedBeforePluck = move.pedalReleasedBeforePluck;
+                voice.keyDown = false;
+                voice.pedalHeld = move.pedalHeldAtKeyUp;
             }
             else
+            {
                 completeKeyUp(voice, move.to, move.pedalHeldAtKeyUp);
+                if (move.pedalReleasedBeforePluck && !voice.pedalHeld)
+                    beginRelease(voice, move.to);
+            }
         }
     }
     for (int string = 0; string < stringCount; ++string)
@@ -7781,6 +8278,8 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
 // with the hand loss a released fretted note already has, open or not.
 void AcustraEngine::muteVacatedString(Voice& voice, int stringIndex) noexcept
 {
+    voice.releaseJoinPending = false;
+    voice.releaseJoinRemainingBeats = 0.0;
     static_cast<void>(stringIndex);
     if (voice.contactTravelEnabled)
         voice.excitationEnvelope = 0.0f;
@@ -7812,27 +8311,54 @@ int AcustraEngine::heldString(int midiNote, int midiChannel) const noexcept
 void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
 {
     voice.pluckDelay = 0;
+    // initialisePluck clears a preceding release's velocity. A strum's
+    // queued key-up belongs to this stroke instead, so keep it until the
+    // actual pluck arms the ordinary release grace.
+    const float queuedReleaseVelocity = voice.releaseVelocity;
+    bool merge = false;
     if (voice.repluckPending)
     {
         voice.repluckPending = false;
+        merge = voice.attackFired && voice.harmonic == 1
+            && sampleClock_ > voice.lastPluckSample;
         voice.attackPitchCents = 0.0f;
         voice.attackPitchDecay = 1.0f;
         // The pick reaches this held string now. Keep its preceding wave
         // intact until then, and carry it under the hand while the new pluck
         // is released, exactly as for an immediate re-pluck.
-        if (voice.level > 2.0e-7f
+        if (merge)
+        {
+            repluckOldLoops_ = voice.loops;
+            retainRepluckArrivals(voice);
+        }
+        else if (voice.level > 2.0e-7f
             || (voice.contactTravelEnabled && voice.contactTravel.active)
             || voice.contactNoiseTravel.active
-            || voice.legatoContactTravel.active || voice.legatoContactSamples > 0)
+            || voice.legatoContactTravel.active || voice.legatoContactSamples > 0
+            || voice.repluckArrivals.remaining > 0)
+        {
+            voice.repluckContactPending = voice.attackFired && voice.harmonic == 1;
             captureTail(voice);
-        configureVoice(voice, stringIndex, voice.midiNote, true);
+        }
+        else
+            voice.repluckContactPending = false;
+        configureVoice(voice, stringIndex, voice.midiNote, !merge);
     }
-    initialisePluck(voice, stringIndex, voice.velocity);
+    initialisePluck(voice, stringIndex, voice.velocity, merge);
     voice.attackFired = true;
-    bridgeDerivativesCrossRelease_ = true;
+    if (merge)
+        bridgeDerivativesCrossConfigure_ = true;
+    else
+        bridgeDerivativesCrossRelease_ = true;
     configureVoice(voice, stringIndex, voice.midiNote, false);
     if (voice.releaseAfterPluck)
+    {
+        const bool immediate = voice.pedalReleasedBeforePluck;
+        voice.releaseVelocity = queuedReleaseVelocity;
         completeKeyUp(voice, stringIndex, voice.pedalHeldAtKeyUp);
+        if (immediate && !voice.pedalHeld)
+            beginRelease(voice, stringIndex);
+    }
 }
 
 int AcustraEngine::strumDelaySamples(int stringRank,
@@ -7886,6 +8412,14 @@ void AcustraEngine::noteOffWithVelocity(int midiNote, int midiChannel,
     releaseKey(midiNote, midiChannel, true, sustained, releaseVelocity);
 }
 
+void AcustraEngine::noteOffWithVelocity(int midiNote, int midiChannel,
+                                        bool sustained, float releaseVelocity,
+                                        bool pedalReleased) noexcept
+{
+    releaseKey(midiNote, midiChannel, true, sustained,
+               pedalReleased ? -1.0f : releaseVelocity, pedalReleased);
+}
+
 bool AcustraEngine::sustainHolds(int midiChannel) const noexcept
 {
     if (midiChannel < 1 || midiChannel > midiChannelCount)
@@ -7896,7 +8430,7 @@ bool AcustraEngine::sustainHolds(int midiChannel) const noexcept
 
 void AcustraEngine::releaseKey(int midiNote, int midiChannel,
                                bool sustainGiven, bool sustained,
-                               float releaseVelocity) noexcept
+                               float releaseVelocity, bool immediateRelease) noexcept
 {
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return;
@@ -7928,29 +8462,47 @@ void AcustraEngine::releaseKey(int midiNote, int midiChannel,
         // under the pedal as it was at this key-up (setSustainPedal keeps
         // that current). An explicit, non-strum delay is still cancelled.
         candidate.releaseAfterPluck = true;
+        candidate.pedalReleasedBeforePluck = immediateRelease;
         candidate.pedalHeldAtKeyUp = sustainGiven ? sustained
                                                   : sustainIsDown(candidate);
+        if (candidate.pedalHeldAtKeyUp)
+            candidate.releaseVelocity = -1.0f;
+        candidate.keyDown = false;
+        candidate.pedalHeld = candidate.pedalHeldAtKeyUp;
         return;
     }
     candidate.pluckDelay = 0;
     candidate.repluckPending = false;
     completeKeyUp(candidate, candidateIndex,
-                  sustainGiven ? sustained : sustainIsDown(candidate));
+                  sustainGiven ? sustained : sustainIsDown(candidate), immediateRelease);
 }
 
 void AcustraEngine::completeKeyUp(Voice& voice, int stringIndex,
-                                  bool pedalHeld) noexcept
+                                  bool pedalHeld, bool immediateRelease) noexcept
 {
     voice.releaseAfterPluck = false;
     voice.pedalHeldAtKeyUp = false;
+    voice.pedalReleasedBeforePluck = false;
     voice.keyDown = false;
     voice.pedalHeld = pedalHeld;
+    voice.releaseJoinPending = false;
     // Under the pedal the hand damps the string at pedal-up, long after the
     // key came up, so how fast the key came up does not reach it.
     if (voice.pedalHeld)
         voice.releaseVelocity = -1.0f;
-    if (!voice.pedalHeld)
+    if (!voice.pedalHeld && immediateRelease)
         beginRelease(voice, stringIndex);
+    else if (!voice.pedalHeld)
+    {
+        releaseFinger(stringIndex);
+        voice.releaseJoinPending = true;
+        voice.releaseJoinRemainingBeats = 0.125;
+        voice.releaseJoinAnchorSample = sampleClock_;
+        updateReleaseJoinWindow(voice);
+        voice.releaseDamping = 1.0f;
+        voice.releaseSeconds = 0.0f;
+        voice.returnSamples = 0;
+    }
 }
 
 void AcustraEngine::setSustainPedal(bool down, int midiChannel) noexcept
@@ -7968,7 +8520,13 @@ void AcustraEngine::setSustainPedal(bool down, int midiChannel) noexcept
         auto& voice = voices_[static_cast<std::size_t>(string)];
         if (voice.releaseAfterPluck && channelControlsVoice(midiChannel, voice)
             && !sustainIsDown(voice))
+        {
+            voice.pedalReleasedBeforePluck = voice.pedalReleasedBeforePluck
+                || voice.pedalHeldAtKeyUp;
             voice.pedalHeldAtKeyUp = false;
+            voice.pedalHeld = false;
+            continue;
+        }
         if (!voice.pedalHeld || voice.keyDown
             || !channelControlsVoice(midiChannel, voice)
             || sustainIsDown(voice))
@@ -8052,17 +8610,24 @@ void AcustraEngine::allNotesOff(int midiChannel) noexcept
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
-        if (!voice.played || !voice.keyDown
+        if (!voice.played || (!voice.keyDown && !voice.releaseJoinPending
+                             && !voice.releaseAfterPluck)
             || !channelControlsVoice(midiChannel, voice))
             continue;
+        const bool alreadyReleased = voice.releaseJoinPending;
         voice.ownerCount = 0;
         voice.pluckDelay = 0;
         voice.repluckPending = false;
         voice.releaseAfterPluck = false;
         voice.pedalHeldAtKeyUp = false;
+        voice.pedalReleasedBeforePluck = false;
         freezeMemberPitchBend(voice);
         voice.keyDown = false;
-        voice.pedalHeld = sustainIsDown(voice);
+        // A pedal pressed after this ordinary key-up never recatches it,
+        // including when an explicit All Notes Off flushes its grace.
+        voice.pedalHeld = !alreadyReleased && sustainIsDown(voice);
+        voice.releaseJoinPending = false;
+        voice.releaseJoinRemainingBeats = 0.0;
         if (!voice.pedalHeld)
             beginRelease(voice, string);
     }
@@ -8880,7 +9445,8 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
         if (voice.tailQuietSamples > static_cast<int>(0.08 * sampleRate_)
             && !voice.tailContactTravel.active
             && !voice.tailContactNoiseTravel.active
-            && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0)
+            && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0
+            && voice.tailRepluckArrivals.remaining == 0)
             voice.tailRetiring = true;
         // A retiring tail's port leaves the junction on the delay's own
         // 6 ms time constant, as a bend's impedance moves (the junction sums
@@ -8895,6 +9461,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
         if (voice.tailRetiring && !voice.tailContactTravel.active
             && !voice.tailContactNoiseTravel.active
             && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0
+            && voice.tailRepluckArrivals.remaining == 0
             && !(voice.tailCharacteristicImpedance
                  > 1.0e-4f * voice.characteristicImpedance))
         {
@@ -8909,6 +9476,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             voice.tailQuietSamples = 0;
             voice.tailLoop.reset();
             voice.tailParallelLoop.reset();
+            voice.tailRepluckArrivals.clear();
         }
     }
     const float localReactionForce = impedance
@@ -9559,8 +10127,10 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             auto& voice = voices_[static_cast<std::size_t>(string)];
             if (voice.pluckDelay > 0 && --voice.pluckDelay == 0)
                 firePluck(voice, string);
+            processPendingRelease(voice, string);
             float releaseGain = (voice.keyDown || voice.pedalHeld
-                                 || !voice.played)
+                                 || voice.releaseJoinPending
+                                 || voice.releaseAfterPluck || !voice.played)
                 ? 1.0f : voice.releaseDamping;
             // A bend is a tension change, so the port this string presents
             // moves with it. The junction sums impedances every sample and a
@@ -9631,6 +10201,14 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 addReleaseNoise(voice,
                     verticalIncident[static_cast<std::size_t>(string)],
                     horizontalIncident[static_cast<std::size_t>(string)]);
+            if (voice.repluckArrivals.remaining > 0)
+            {
+                const auto arrivals = voice.repluckArrivals.process();
+                verticalIncident[static_cast<std::size_t>(string)]
+                    += arrivals[0] * voice.loops[0].appliedReleaseGain;
+                horizontalIncident[static_cast<std::size_t>(string)]
+                    += arrivals[1] * voice.loops[1].appliedReleaseGain;
+            }
             if (voice.tailActive)
             {
                 tailIncident[static_cast<std::size_t>(string)]
@@ -9638,6 +10216,14 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 tailParallelIncident[static_cast<std::size_t>(string)]
                     = voice.tailParallelLoop.advance(delaySmoothing_,
                                                      voice.tailDamping);
+                if (voice.tailRepluckArrivals.remaining > 0)
+                {
+                    const auto arrivals = voice.tailRepluckArrivals.process();
+                    tailIncident[static_cast<std::size_t>(string)]
+                        += arrivals[0] * voice.tailLoop.appliedReleaseGain;
+                    tailParallelIncident[static_cast<std::size_t>(string)]
+                        += arrivals[1] * voice.tailParallelLoop.appliedReleaseGain;
+                }
                 if (voice.tailLegatoContactSamples > 0 || voice.tailLegatoContactTravel.active)
                 {
                     float contact = 0.0f;
@@ -10108,8 +10694,10 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         left[sample] = exact::isfinite(outputLeft) ? outputLeft : 0.0f;
         right[sample] = exact::isfinite(outputRight) ? outputRight : 0.0f;
         processIdleFlush(std::max(idlePeak, roomPeak));
+        // Scheduled releases run inside this loop. Their repeat history must
+        // use the same absolute sample as a note-on issued between blocks.
+        ++sampleClock_;
     }
-    sampleClock_ += static_cast<std::uint64_t>(numSamples);
 }
 
 // The room (EngineParameters::room): a small studio, 5.2 x 4.1 x 2.7 m, the
@@ -10449,6 +11037,8 @@ void AcustraEngine::processIdleFlush(float samplePeak) noexcept
             && !voice.contactNoiseTravel.active && voice.contactNoiseSamples == 0
             && !voice.tailContactTravel.active
             && !voice.tailContactNoiseTravel.active
+            && voice.repluckArrivals.remaining == 0
+            && voice.tailRepluckArrivals.remaining == 0
             && !voice.legatoContactTravel.active && voice.legatoContactSamples == 0
             && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0;
     if (!idle)

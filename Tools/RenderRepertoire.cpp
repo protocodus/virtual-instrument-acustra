@@ -13,7 +13,8 @@
 //   sample_rate <Hz>
 //   tail <seconds rendered after the last event>
 //   part <id> key=value ...     one line per guitar (see readPart)
-//   # ...                       a comment (the generator writes its tempo map)
+//   tempo <seconds> <BPM>      quarter-note tempo, shared by all guitars
+//   # ...                       a comment (including the score-to-seconds map)
 //   e <seconds> <part> on <midi> <velocity>
 //   e <seconds> <part> chord <midi>:<velocity>:<delay seconds> ...
 //   e <seconds> <part> off <midi> <release velocity>
@@ -24,8 +25,9 @@
 // A chord is one wrist event: the fretting hand forms it as one shape
 // (planChord) and each string is plucked at its own delay after the first,
 // which is how a rolled chord or a thumb-before-fingers attack is played.
-// Events of one part at one sample apply key-ups before plucks, so a
-// repeated note is plucked again rather than doubled.
+// Events of one part at one sample apply tempo changes before key-ups and
+// key-ups before plucks, so a repeated note is plucked again rather than
+// doubled. Older files without tempo statements use 120 BPM.
 //
 // The mix is normalised once, whole file, to -1 dBFS peak, then written as
 // 24-bit PCM with TPDF dither (or 32-bit float with --float) in a
@@ -74,12 +76,13 @@ struct PluckedString
 
 struct Event
 {
-    enum class Kind { On, Chord, Off, Vibrato, Tone, Hand };
+    enum class Kind { On, Chord, Off, Vibrato, Tone, Hand, Tempo };
     double seconds {};
     Kind kind {};
     int note {};
     float value {};
     float second {};
+    double tempoBpm { 120.0 };
     std::vector<PluckedString> strings;
     std::size_t order {};
 };
@@ -129,6 +132,20 @@ float number(const std::string& text)
     if (!stream || !std::isfinite(value))
         throw std::runtime_error("not a number: " + text);
     return static_cast<float>(value);
+}
+
+double tempoNumber(const std::string& text)
+{
+    std::istringstream stream(text);
+    stream.imbue(std::locale::classic());
+    double value {};
+    stream >> value;
+    if (!stream || !std::isfinite(value))
+        throw std::runtime_error("not a finite tempo number: " + text);
+    stream >> std::ws;
+    if (!stream.eof())
+        throw std::runtime_error("not a tempo number: " + text);
+    return value;
 }
 
 // part <id> model= shape= material= tuning= picking= capture= age= pluck=
@@ -206,6 +223,7 @@ Performance readPerformance(const std::filesystem::path& path)
         throw std::runtime_error(path.string() + ": not an ACUSTRA_REPERTOIRE_V1 file");
 
     std::map<std::string, std::size_t> partIndex;
+    std::vector<Event> tempos;
     std::size_t order = 0;
     int lineNumber = 1;
     while (std::getline(input, text))
@@ -245,6 +263,22 @@ Performance readPerformance(const std::filesystem::path& path)
                     throw std::runtime_error("duplicate part " + part.id);
                 partIndex[part.id] = performance.parts.size();
                 performance.parts.push_back(std::move(part));
+            }
+            else if (keyword == "tempo")
+            {
+                std::string seconds, bpm, extra;
+                if (!(line >> seconds >> bpm) || line >> extra)
+                    throw std::runtime_error("tempo needs seconds and BPM");
+                Event event;
+                event.kind = Event::Kind::Tempo;
+                event.seconds = tempoNumber(seconds);
+                event.tempoBpm = tempoNumber(bpm);
+                if (event.seconds < 0.0)
+                    throw std::runtime_error("negative tempo time");
+                if (event.tempoBpm <= 0.0)
+                    throw std::runtime_error("tempo BPM must be positive");
+                event.order = order++;
+                tempos.push_back(event);
             }
             else if (keyword == "e")
             {
@@ -317,6 +351,13 @@ Performance readPerformance(const std::filesystem::path& path)
     }
     if (performance.parts.empty())
         throw std::runtime_error(path.string() + ": no parts");
+    for (const auto& tempo : tempos)
+        if (tempo.seconds >= static_cast<double>(std::numeric_limits<long long>::max())
+                              / performance.sampleRate)
+            throw std::runtime_error(path.string() + ": tempo time is outside the sample range");
+    // Tempo is global, including parts declared after a tempo statement.
+    for (auto& part : performance.parts)
+        part.events.insert(part.events.end(), tempos.begin(), tempos.end());
     return performance;
 }
 
@@ -326,7 +367,7 @@ void renderPart(Part& part, double sampleRate, double endSeconds)
     try
     {
         auto& events = part.events;
-        // Key-ups first at a shared sample, then everything else in file order.
+        // Tempo first, then key-ups, then everything else in file order.
         const auto sampleOf = [sampleRate] (double seconds)
         {
             return static_cast<long long>(std::llround(seconds * sampleRate));
@@ -338,6 +379,10 @@ void renderPart(Part& part, double sampleRate, double endSeconds)
                              const auto r = sampleOf(right.seconds);
                              if (l != r)
                                  return l < r;
+                             const bool leftTempo = left.kind == Event::Kind::Tempo;
+                             const bool rightTempo = right.kind == Event::Kind::Tempo;
+                             if (leftTempo != rightTempo)
+                                 return leftTempo;
                              const bool leftOff = left.kind == Event::Kind::Off;
                              const bool rightOff = right.kind == Event::Kind::Off;
                              if (leftOff != rightOff)
@@ -349,6 +394,7 @@ void renderPart(Part& part, double sampleRate, double endSeconds)
         engine.setParameters(part.parameters);
         engine.prepare(sampleRate, renderBlockSize);
         engine.setParameters(part.parameters);
+        engine.setTempoBpm(120.0);
         // Observers never reach the output; the audio is bit-identical.
         engine.setPortObserversEnabled(false);
 
@@ -375,6 +421,9 @@ void renderPart(Part& part, double sampleRate, double endSeconds)
             renderTo(static_cast<std::size_t>(std::max(0LL, sampleOf(event.seconds))));
             switch (event.kind)
             {
+            case Event::Kind::Tempo:
+                engine.setTempoBpm(event.tempoBpm);
+                break;
             case Event::Kind::On:
                 if (!engine.canSound(event.note))
                     ++part.silentNotes;
@@ -629,6 +678,10 @@ int renderFile(const std::filesystem::path& input, const std::filesystem::path& 
     for (const auto& part : performance.parts)
         for (const auto& event : part.events)
         {
+            // Tempo updates can continue through a hold or tail, but do not
+            // add music or change the performance's existing duration.
+            if (event.kind == Event::Kind::Tempo)
+                continue;
             double end = event.seconds;
             for (const auto& string : event.strings)
                 end = std::max(end, event.seconds + string.delaySeconds);
@@ -716,6 +769,132 @@ int renderFile(const std::filesystem::path& input, const std::filesystem::path& 
     return 0;
 }
 
+bool tempoSmokeTest(const std::filesystem::path& directory)
+{
+    const auto source = directory / "acustra-repertoire-tempo-smoke.txt";
+    const auto write = [&](const std::string& tempo, bool keyUps = true)
+    {
+        std::ofstream file(source);
+        file << "ACUSTRA_REPERTOIRE_V1\n"
+                "title tempo smoke\nsample_rate 48000\ntail 0.1\n"
+                "part a\n" << tempo << "part b\n"
+                "e 0 a on 64 0.5\ne 0 b on 69 0.5\n";
+        if (keyUps)
+            file << "e 0.020 a off 64 0.5\ne 0.020 b off 69 0.5\n";
+    };
+    const auto render = [&](const std::string& tempo, bool keyUps = true)
+    {
+        write(tempo, keyUps);
+        auto performance = readPerformance(source);
+        for (auto& part : performance.parts)
+        {
+            renderPart(part, performance.sampleRate, 0.16);
+            if (!part.error.empty())
+                throw std::runtime_error(part.error);
+        }
+        return performance;
+    };
+    try
+    {
+        for (const auto* statement : {
+                 "tempo -0.1 120\n", "tempo nan 120\n", "tempo inf 120\n",
+                 "tempo 1e308 120\n", "tempo 0.1seconds 120\n",
+                 "tempo 0 0\n", "tempo 0 -1\n", "tempo 0 nan\n",
+                 "tempo 0 inf\n", "tempo 0 120bpm\n", "tempo 0\n",
+                 "tempo 0 120 240\n" })
+        {
+            write(statement);
+            bool rejected = false;
+            try { (void) readPerformance(source); }
+            catch (const std::exception&) { rejected = true; }
+            if (!rejected)
+                throw std::runtime_error(std::string("accepted invalid ") + statement);
+        }
+
+        const auto fallback = render("");
+        const auto explicitDefault = render("tempo 0 120\n");
+        // Deliberately not a block boundary. Last tempo at a shared sample
+        // wins, and applies to both guitars, even the one declared later.
+        const std::string change = "tempo 0.030020833333333333 80\n"
+                                   "tempo 0.030020833333333333 240\n";
+        const auto changed = render(change);
+        const auto held = render("", false);
+        const auto heldChanged = render(change, false);
+        constexpr std::size_t keyUpSample = 960;
+        constexpr std::size_t tempoSample = 1441;
+        for (std::size_t index = 0; index < fallback.parts.size(); ++index)
+        {
+            const auto& original = fallback.parts[index];
+            const auto& atDefault = explicitDefault.parts[index];
+            const auto& atTempo = changed.parts[index];
+            if (original.left != atDefault.left || original.right != atDefault.right)
+                throw std::runtime_error("files without tempo did not use 120 BPM");
+            if (held.parts[index].left != heldChanged.parts[index].left
+                || held.parts[index].right != heldChanged.parts[index].right)
+                throw std::runtime_error("tempo changed a note without a key-up");
+            if (!std::equal(original.left.begin(), original.left.begin() + tempoSample,
+                            atTempo.left.begin())
+                || !std::equal(original.right.begin(), original.right.begin() + tempoSample,
+                               atTempo.right.begin())
+                || original.left == atTempo.left)
+                throw std::runtime_error("tempo did not affect only the pending release");
+
+            // An independent, directly scheduled engine reference proves the
+            // file tempo takes effect at sample 1441, during the join grace.
+            AcustraEngine engine;
+            engine.setParameters(original.parameters);
+            engine.prepare(48000.0, renderBlockSize);
+            engine.setParameters(original.parameters);
+            engine.setPortObserversEnabled(false);
+            std::vector<float> left(original.left.size()), right(original.right.size());
+            std::size_t position = 0;
+            const auto processTo = [&](std::size_t target)
+            {
+                while (position < target)
+                {
+                    const auto count = static_cast<int>(std::min<std::size_t>(
+                        renderBlockSize, target - position));
+                    engine.process(left.data() + position, right.data() + position, count);
+                    position += static_cast<std::size_t>(count);
+                }
+            };
+            const int note = index == 0 ? 64 : 69;
+            engine.noteOn(note, 0.5f);
+            processTo(keyUpSample);
+            engine.noteOffWithVelocity(note, 1, 0.5f);
+            processTo(tempoSample);
+            engine.setTempoBpm(240.0);
+            processTo(left.size());
+            if (left != atTempo.left || right != atTempo.right)
+                throw std::runtime_error("file tempo was not forwarded at its exact sample");
+        }
+
+        const auto first = directory / "acustra-repertoire-tempo-fallback.wav";
+        const auto second = directory / "acustra-repertoire-tempo-late.wav";
+        write("");
+        const bool firstWritten = renderFile(source, first, true) == 0;
+        write("tempo 0.2 240\n");
+        const bool secondWritten = renderFile(source, second, true) == 0;
+        const bool sameDuration = firstWritten && secondWritten
+            && std::filesystem::file_size(first) == std::filesystem::file_size(second);
+        std::error_code error;
+        std::filesystem::remove(first, error);
+        std::filesystem::remove(second, error);
+        if (!sameDuration)
+            throw std::runtime_error("a tempo statement changed the render duration");
+    }
+    catch (const std::exception& failure)
+    {
+        std::fprintf(stderr, "repertoire tempo smoke test failed: %s\n", failure.what());
+        std::error_code error;
+        std::filesystem::remove(source, error);
+        return false;
+    }
+    std::error_code error;
+    std::filesystem::remove(source, error);
+    return true;
+}
+
 int smokeTest()
 {
     // Two differently built guitars, a rolled chord and a melody, rendered
@@ -757,7 +936,7 @@ int smokeTest()
     }
     std::error_code error;
     std::filesystem::remove(source, error);
-    if (result != 0)
+    if (result != 0 || !tempoSmokeTest(directory))
     {
         std::fprintf(stderr, "repertoire smoke test failed\n");
         return 1;

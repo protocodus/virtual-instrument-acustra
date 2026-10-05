@@ -311,6 +311,12 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.Engine AcustraEngineTests)
     set_tests_properties(Acustra.Engine PROPERTIES TIMEOUT 600)
 
+    add_executable(AcustraReleaseJoinTests Tests/ReleaseJoinTests.cpp)
+    target_link_libraries(AcustraReleaseJoinTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraReleaseJoinTests PRIVATE cxx_std_20)
+    acustra_add_suite(Acustra.ReleaseJoin AcustraReleaseJoinTests)
+    set_tests_properties(Acustra.ReleaseJoin PROPERTIES TIMEOUT 120)
+
     add_executable(AcustraHandAllocatorTests Tests/HandAllocatorTests.cpp)
     target_link_libraries(AcustraHandAllocatorTests PRIVATE AcustraDSP)
     target_compile_features(AcustraHandAllocatorTests PRIVATE cxx_std_20)
@@ -404,6 +410,13 @@ if(BUILD_TESTING)
     set_tests_properties(Acustra.ConstructionLoudness PROPERTIES TIMEOUT 600)
 
     if(ACUSTRA_BUILD_TOOLS)
+        add_executable(AcustraRecuerdosArticulationTests
+            Tests/RecuerdosArticulationTests.cpp)
+        target_link_libraries(AcustraRecuerdosArticulationTests PRIVATE AcustraDSP)
+        target_compile_features(AcustraRecuerdosArticulationTests PRIVATE cxx_std_20)
+        acustra_add_suite(Acustra.RecuerdosArticulation AcustraRecuerdosArticulationTests)
+        set_tests_properties(Acustra.RecuerdosArticulation PROPERTIES TIMEOUT 60)
+
         add_test(NAME Acustra.RenderDemos
                  COMMAND AcustraRenderDemos --smoke
                          "${CMAKE_CURRENT_BINARY_DIR}/demo-smoke")
@@ -447,6 +460,10 @@ if(BUILD_TESTING)
         # without them still configures.
         find_package(Python3 COMPONENTS Interpreter QUIET)
         if(Python3_Interpreter_FOUND)
+            add_test(NAME Acustra.RepertoireTempo
+                     COMMAND "${Python3_EXECUTABLE}"
+                             "${CMAKE_CURRENT_SOURCE_DIR}/Tests/RepertoireTempoTests.py")
+            set_tests_properties(Acustra.RepertoireTempo PROPERTIES TIMEOUT 60)
             add_test(NAME Acustra.GaussianApertureData
                      COMMAND "${Python3_EXECUTABLE}"
                              "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateGaussianAperture.py"
@@ -661,6 +678,22 @@ if(BUILD_TESTING)
         acustra_add_suite(Acustra.PluginProcessor
                  AcustraPluginProcessorTests)
         set_tests_properties(Acustra.PluginProcessor PROPERTIES TIMEOUT 90)
+
+        add_executable(AcustraPluginTempoReleaseTests
+            Tests/PluginTempoReleaseTests.cpp)
+        target_link_libraries(AcustraPluginTempoReleaseTests PRIVATE Acustra)
+        target_include_directories(AcustraPluginTempoReleaseTests PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+            "$<TARGET_PROPERTY:Acustra,JUCE_GENERATED_SOURCES_DIRECTORY>"
+            "$<TARGET_PROPERTY:Acustra,INCLUDE_DIRECTORIES>")
+        target_compile_features(AcustraPluginTempoReleaseTests PRIVATE cxx_std_20)
+        if(MSVC)
+            target_compile_options(AcustraPluginTempoReleaseTests PRIVATE /W4 /permissive-)
+        else()
+            target_compile_options(AcustraPluginTempoReleaseTests PRIVATE -Wall -Wextra -Wpedantic)
+        endif()
+        acustra_add_suite(Acustra.PluginTempoRelease AcustraPluginTempoReleaseTests)
+        set_tests_properties(Acustra.PluginTempoRelease PROPERTIES TIMEOUT 120)
     endif()
 endif()
 

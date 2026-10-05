@@ -81,6 +81,13 @@ public:
     // The construction and mix controls; call any time, typically once per
     // block before beginBlock.
     void setParameters(const EngineParameters& parameters) noexcept;
+    // Supply the host's current quarter-note tempo before this block's MIDI.
+    // The engine keeps it across reset/prepare; invalid values use 120 BPM.
+    void setTempoBpm(double bpm) noexcept;
+    // A tempo notification within the current block. Audio before its
+    // sample keeps the previous tempo; pending notes on that sample use
+    // the new tempo. Host tempo is not delayed by Gather Chords.
+    void setTempoBpmAt(int sampleOffset, double bpm) noexcept;
 
     // Gather Chords (off by default). While on, every event is held back by
     // the window (gatherWindowSamples at the engine's rate). Switching it
@@ -132,6 +139,10 @@ public:
     // their sample.
     void handleMidi(int sampleOffset, const std::uint8_t* data, int size) noexcept;
     void endBlock() noexcept;
+    // Finish only this prefix when a front end splits for a control change.
+    // The unrendered suffix is untouched, and the clock advances by exactly
+    // the prefix. Start the suffix with a new beginBlock after the change.
+    void endBlockAt(int sampleOffset) noexcept;
     // A block without events.
     void process(float* left, float* right, int numSamples) noexcept
     {
@@ -193,6 +204,9 @@ private:
         // pedal change on its sample came after it (see handleEvent).
         bool sustained { false };
         bool pedalMoved { false };
+        // This key-up was held, then the last sustaining pedal came up on
+        // its sample. The explicit pedal contact must bypass ordinary grace.
+        bool pedalReleased { false };
         // MIDI's release velocity, 0-1, or -1 when the key-up carried none
         // (a Note On at velocity 0, or a Note Off at 0).
         float releaseVelocity { -1.0f };
@@ -205,6 +219,8 @@ private:
         std::array<std::uint8_t, 3> bytes {};
         int size { 0 };
         bool gathered { false };
+        bool tempo { false };
+        double tempoBpm { 120.0 };
     };
 
     // MIDI 1.0 RPN/NRPN selection state for one channel, as JUCE's
@@ -219,6 +235,7 @@ private:
     };
 
     bool handleEvent(int eventSample, const std::uint8_t* data, int size) noexcept;
+    void handleTempoEvent(int eventSample, double bpm) noexcept;
     void flushNoteGroup() noexcept;
     void gatherChord(int first) noexcept;
     void renderTo(int sample) noexcept;

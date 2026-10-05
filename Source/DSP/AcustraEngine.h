@@ -170,6 +170,12 @@ public:
     static constexpr int radiationContinuationSlots = 19;
     void reset() noexcept;
     void setParameters(const EngineParameters& parameters) noexcept;
+    // Host tempo in quarter-note beats per minute. Until supplied, or for
+    // a nonfinite/nonpositive value, 120 BPM is used. Ordinary key-ups wait
+    // at most a 1/32 note before damping: ceil(0.125 beat in samples), with
+    // a same-pitch/channel reattack at that endpoint still joining. Tempo
+    // changes retime the remaining beats; reset/prepare keep the host tempo.
+    void setTempoBpm(double bpm) noexcept;
 
     // Setup/offline-fitting control. If already prepared, changing the
     // calibration resets the engine; do not call it from the audio thread.
@@ -237,8 +243,9 @@ public:
     // and channel mode, rather than drop it (below the lowest string with no
     // harmonic to reach it, or off a string-per-channel string's frets).
     [[nodiscard]] bool canSound(int midiNote, int midiChannel = 1) const noexcept;
-    // Key-up damps the note at every release velocity: lifting a key is the
-    // fretting hand letting go, never a new stroke.
+    // Key-up releases MIDI ownership at once. Physical damping and release
+    // noise wait through the tempo-relative join window above, cancelled by
+    // a same-pitch/channel reattack. Lifting a key is never a new stroke.
     void noteOff(int midiNote, int midiChannel = 1) noexcept;
     // The same key-up, told whether the sustain pedal held it when it was
     // made, for a caller that orders the key-ups of one sample after their
@@ -253,6 +260,11 @@ public:
                              float releaseVelocity) noexcept;
     void noteOffWithVelocity(int midiNote, int midiChannel, bool sustained,
                              float releaseVelocity) noexcept;
+    // A grouped key-up originally under sustain whose last pedal was then
+    // lifted on that same sample: apply the pedal's immediate contact, not
+    // another ordinary key-up grace. Its release velocity is disregarded.
+    void noteOffWithVelocity(int midiNote, int midiChannel, bool sustained,
+                             float releaseVelocity, bool pedalReleased) noexcept;
     // Whether a key-up on this channel now would be held by the sustain
     // pedal: its own, or, on an MPE lower-zone member, the manager's too.
     [[nodiscard]] bool sustainHolds(int midiChannel) const noexcept;
@@ -562,9 +574,17 @@ private:
         static constexpr unsigned historyMask = 15;
         std::array<float, historyMask + 1> history {};
         int index { 0 };
+        // The reference-delay geometry depends only on the host rate. Keep
+        // its exact result while that rate is unchanged; history still
+        // advances for every call, including release/contact crossings.
+        std::uint32_t geometryRateBits { 0 };
+        int geometryWhole { 0 };
+        float geometryFraction { 0.0f };
+        bool geometryValid { false };
 
         void reset(float value = 0.0f) noexcept
         {
+            // Reset the signal history; the rate-only geometry remains valid.
             history.fill(value);
             index = 0;
         }
@@ -631,9 +651,16 @@ private:
         float thiranFraction { -1.0f };
         float thiranFirst { 0.0f };
         float thiranSecond { 0.0f };
+        // The delay's input bits select its clamped tap and fractional
+        // section and Thiran coefficients. Reusing it leaves history untouched;
+        // invalidate this key if the tap or coefficients change independently.
+        std::uint32_t readDelayBits { 0 };
+        int readDelayWhole { 0 };
+        bool readDelayValid { false };
         FixedDerivative bridgeDerivative {};
         bool derivativeNeedsPriming { true };
         bool derivativeCrossesRelease { false };
+        bool derivativeCrossesContact { false };
         // A hand's loss is a gain per round trip, and a contact settles over
         // one. Slewing the applied gain toward the requested one across a
         // round trip, in either direction, is what keeps the wave the
@@ -828,6 +855,20 @@ private:
     // it; prepare() restores it (see restartRandomDraws).
     static constexpr float initialBridgeTailStiffness = 10000.0f;
 
+    // Old contact packets feed the continuing string, without another port.
+    // One maximum transport history plus its bounded fractional IIR drain.
+    struct RepluckArrivals
+    {
+        static constexpr int capacity = 2 * maximumDelaySamples;
+        std::array<std::array<float, capacity>, 2> wave {};
+        int readIndex { 0 };
+        int remaining { 0 };
+        bool overflow { false };
+        void clear() noexcept;
+        void add(int offset, float normal, float parallel) noexcept;
+        std::array<float, 2> process() noexcept;
+    };
+
     struct Voice
     {
         std::array<StringLoop, 2> loops {};
@@ -866,6 +907,8 @@ private:
         // A tail being let go: its port fades out of the junction on the
         // delay's time constant before the branch is dropped (finishVoice).
         bool tailRetiring { false };
+        RepluckArrivals repluckArrivals {};
+        RepluckArrivals tailRepluckArrivals {};
         int openMidi { 40 };
         int midiNote { 40 };
         // 1 is a stopped note. Above that the string sounds open in its nth
@@ -877,6 +920,12 @@ private:
         bool played { false };
         bool keyDown { false };
         bool pedalHeld { false };
+        // MIDI ownership is already gone. The hand has not damped this
+        // string yet, so a nearby reattack can meet its continuing wave.
+        bool releaseJoinPending { false };
+        double releaseJoinRemainingBeats { 0.0 };
+        std::uint64_t releaseJoinAnchorSample { 0 };
+        std::uint64_t releaseJoinWindowSamples { 0 };
         bool mpeMember { false };
         bool memberPitchBendFrozen { false };
         std::uint64_t startOrder { 0 };
@@ -890,6 +939,7 @@ private:
         float lastPluckVelocity { 0.0f };
         std::uint64_t lastPluckSample { 0 };
         float repeatedPluckGain { 1.0f };
+        float repluckForceGain { 1.0f };
         // The release burst's noise, handed over from randomState at each
         // pluck (initialisePluck).
         std::uint32_t excitationNoiseState { 1 };
@@ -1051,11 +1101,15 @@ private:
         bool attackFired { false };
         // A held string keeps its wave until this scheduled re-pluck fires.
         bool repluckPending { false };
+        bool repluckContactPending { false };
         // A strum member whose key came up before the pick reached it: the
         // pick still arrives and the key-up is applied right after it, held
         // by the pedal if the pedal held it at key-up and still does.
         bool releaseAfterPluck { false };
         bool pedalHeldAtKeyUp { false };
+        // A pedal-up before the scheduled pick still releases immediately
+        // after that pick; it does not start a second ordinary-key-up grace.
+        bool pedalReleasedBeforePluck { false };
         // Where this pluck landed, as a fraction of the sounding length.
         float pluckPoint { 0.0f };
         // The static force the hand held the string aside with, let go at
@@ -1289,7 +1343,8 @@ private:
     [[nodiscard]] float mpePressureFor(const Voice& voice) const noexcept;
     [[nodiscard]] float vibratoSemitones(const Voice& voice,
                                          int fret) const noexcept;
-    void initialisePluck(Voice& voice, int stringIndex, float velocity) noexcept;
+    void initialisePluck(Voice& voice, int stringIndex, float velocity,
+                         bool merge = false) noexcept;
     // Scale every state a string's two loops store of the travelling wave -
     // the delay line and each filter's memory - by gain.
     static void scaleStoredWaves(Voice& voice, float gain) noexcept;
@@ -1297,10 +1352,26 @@ private:
                             bool clearDelay) noexcept;
     void firePluck(Voice& voice, int stringIndex) noexcept;
     void beginRelease(Voice& voice, int stringIndex) noexcept;
-    void completeKeyUp(Voice& voice, int stringIndex, bool pedalHeld) noexcept;
+    void updateReleaseJoinWindow(Voice& voice) noexcept;
+    void processPendingRelease(Voice& voice, int stringIndex) noexcept;
+    void completeKeyUp(Voice& voice, int stringIndex, bool pedalHeld,
+                       bool immediateRelease = false) noexcept;
     void releaseKey(int midiNote, int midiChannel, bool sustainGiven,
-                    bool sustained, float releaseVelocity = -1.0f) noexcept;
+                    bool sustained, float releaseVelocity = -1.0f,
+                    bool immediateRelease = false) noexcept;
     void captureTail(Voice& voice) noexcept;
+    // Remove the contact-coupled static displacement from a retained wave.
+    // Orthogonal in the sampled delay-line slope norm; filter memories and
+    // already emitted travelling contact waves remain unchanged.
+    static void conditionRepluckContact(StringLoop& loop, float position,
+                                         bool stopVelocity = false) noexcept;
+    void retainRepluckArrivals(Voice& voice) noexcept;
+    static float alignedRepluckIncrement(const StringLoop& fresh,
+        const StringLoop& previous, int age) noexcept;
+    static std::array<double, 2> repluckIncrementWork(const StringLoop& fresh,
+        const StringLoop& previous) noexcept;
+    static void mergeRepluckLoop(StringLoop& fresh, StringLoop& previous,
+        float gain) noexcept;
     void updateTailHandLoss(Voice& voice) noexcept;
     // The Pick technique's released state (FittedPhysicalData.h): a rest
     // triangle of this height with its apex at position, a fraction of the
@@ -1727,7 +1798,10 @@ private:
     // Samples rendered since reset(); the hand's memory and the chord window
     // are timed on it.
     std::uint64_t sampleClock_ { 0 };
+    double tempoBpm_ { 120.0 };
     std::array<HandFinger, stringCount> hand_ {};
+    // Reused synchronously by one note-on; never a second bridge-loaded string.
+    std::array<StringLoop, 2> repluckOldLoops_ {};
     std::array<std::uint64_t, midiChannelCount> lastNoteOnSample_ {};
     std::array<std::uint64_t, midiChannelCount> chordStartSample_ {};
     std::array<bool, midiChannelCount> noteOnSeen_ {};

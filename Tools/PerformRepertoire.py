@@ -1104,6 +1104,12 @@ def build_clock(piece: Piece, timeline: Timeline, notes: list[Note]):
             return seconds[cells]
         return seconds[low] + (seconds[low + 1] - seconds[low]) * (position - low)
     clock.range = (min(factors), max(factors))
+    # The renderer uses this same piecewise clock for the key-up join grace.
+    # Include breaths and the final hold: each cell advances 1/48 quarter,
+    # even when it takes longer than the surrounding musical pulse.
+    clock.tempos = [(seconds[cell], 60.0 / GRID
+                     / (seconds[cell + 1] - seconds[cell]))
+                    for cell in range(cells)]
     return clock
 
 
@@ -1396,6 +1402,12 @@ def perform(piece: Piece, midi: MidiFile, sample_rate: int):
     # The tempo map, one line per quarter note: "# clock <quarter> <seconds>".
     for k in range(int(timeline.end) + 1):
         lines.append(f"# clock {k} {LEAD_IN + clock(k):.4f}")
+    # Keep the authored note/control events unchanged. Tempo applies to all
+    # guitars at its exact clock-cell boundary; the first cell also covers
+    # the lead-in and any player's early first attack.
+    for index, (seconds, bpm) in enumerate(clock.tempos):
+        when = 0.0 if index == 0 else LEAD_IN + seconds
+        lines.append(f"tempo {when:.9f} {bpm:.12g}")
     for seconds, _, text in events:
         lines.append(f"e {seconds:.5f} {text}")
     performed = [n for n in notes if n.off > 0.0]

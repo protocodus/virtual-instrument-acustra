@@ -10,6 +10,7 @@
 
 #include "DSP/AcustraEngine.h"
 #include "RepertoireScores.h"
+#include "TremoloPerformance.h"
 
 #include <algorithm>
 #include <array>
@@ -48,13 +49,14 @@ struct Audio
 class Take
 {
 public:
-    explicit Take(const EngineParameters& parameters)
+    explicit Take(const EngineParameters& parameters, double beatsPerMinute = 120.0)
     {
         // Match the plug-in's prepare sequence: the construction is available
         // when reset configures its strings/body, then published once more.
         engine_.setParameters(parameters);
         engine_.prepare(demoSampleRate, renderBlockSize);
         engine_.setParameters(parameters);
+        engine_.setTempoBpm(beatsPerMinute);
     }
 
     void noteOn(int note, float velocity) { engine_.noteOn(note, velocity); }
@@ -168,7 +170,7 @@ Audio playScore(const EngineParameters& parameters, double beatsPerMinute,
                               < static_cast<int>(right.starts);
                      });
 
-    Take take(parameters);
+    Take take(parameters, beatsPerMinute);
     long long rendered = 0;
     for (const auto& event : events)
     {
@@ -396,7 +398,7 @@ Audio alternateTunings()
 Audio recuerdosDeLaAlhambra()
 {
     // Tárrega's tremolo: the thumb keeps an arpeggio underneath while the ring,
-    // middle and index fingers repeat one melody note on one string, eleven
+    // middle and index fingers repeat one melody note on one string, about ten
     // strokes a second. Every stroke lands on a string that is still ringing
     // from the last, which is what the two-way junction and the take-to-take
     // pluck point are for. Played on the Bellido 1978, the measured
@@ -411,9 +413,10 @@ Audio recuerdosDeLaAlhambra()
     parameters.touch = 0.10f;
     parameters.bodyAmount = 0.90f;
 
+    const auto performance = acustra::repertoire::joinTremoloLine(
+        acustra::repertoire::recuerdos);
     return playScore(parameters, acustra::repertoire::recuerdosBeatsPerMinute,
-                     acustra::repertoire::recuerdos.data(),
-                     acustra::repertoire::recuerdos.size(), 2.4);
+                     performance.data(), performance.size(), 2.4);
 }
 
 Audio lagrima()

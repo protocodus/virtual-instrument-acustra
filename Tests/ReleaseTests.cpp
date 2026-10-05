@@ -76,6 +76,26 @@ struct AcustraEngineTestAccess
 namespace
 {
 constexpr int blockSize = 127;
+// Default host tempo: the ordinary key-up remains a held wave through the
+// inclusive 1/32-note endpoint; physical damping starts on the next sample.
+int releaseDelaySamples(double rate)
+{
+    return static_cast<int>(std::ceil(0.125 * 60.0 * rate / 120.0)) + 1;
+}
+
+double releaseDelaySeconds(double rate)
+{
+    return static_cast<double>(releaseDelaySamples(rate)) / rate;
+}
+
+double dampingStart(double keyUp, double rate, bool blockQuantised = false)
+{
+    int sample = static_cast<int>(keyUp * rate);
+    if (blockQuantised)
+        sample = sample / blockSize * blockSize;
+    return static_cast<double>(sample + releaseDelaySamples(rate)) / rate;
+}
+
 struct Audio { std::vector<float> left, right; int activeAtEnd; };
 // Cc68 holds MIDI's old legato footswitch down through the note;
 // Cc68UpUnderPedal, Cc68DownUnderPedal and ToggleCc68UnderPedal move it while
@@ -104,7 +124,9 @@ Audio render(acustra::EngineParameters parameters, double rate, int note,
                     || gesture == Gesture::Cc68UpUnderPedal
                     || gesture == Gesture::Cc68DownUnderPedal
                     || gesture == Gesture::ToggleCc68UnderPedal;
-    const auto frames = static_cast<std::size_t>(1.8 * rate);
+    // Retain the original 0.8 s of post-damping observation at every rate.
+    const double endSeconds = 1.8 + releaseDelaySeconds(rate);
+    const auto frames = static_cast<std::size_t>(endSeconds * rate);
     Audio audio { std::vector<float>(frames), std::vector<float>(frames), 0 };
     int position = 0;
     // Events land at the start of the next block the player renders.
@@ -154,6 +176,7 @@ Audio render(acustra::EngineParameters parameters, double rate, int note,
         send(0xb0, 64, 0);
     to(1.8);
     audio.activeAtEnd = performer->engine().getActiveVoiceCount();
+    to(endSeconds);
     return audio;
 }
 
@@ -211,12 +234,14 @@ void renderComparisons(const std::filesystem::path& directory)
     const acustra::EngineParameters parameters;
     const auto normal = render(parameters, rate, 43, 127, 64);
     const auto fast = render(parameters, rate, 43, 127, 127);
+    const double release = dampingStart(1.0, rate);
     writeWave(directory / "ordinary-release.wav", normal, 48000);
     writeWave(directory / "fast-release.wav", fast, 48000);
-    std::cout << "fast/ordinary first-50ms peak="
-              << peak(fast, rate, 1.0, 1.05) / peak(normal, rate, 1.0, 1.05)
-              << " tail-energy-ratio=" << energy(fast, rate, 1.3, 1.8)
-                 / energy(normal, rate, 1.3, 1.8)
+    std::cout << "fast/ordinary first-50ms after damping peak="
+              << peak(fast, rate, release, release + 0.05)
+                 / peak(normal, rate, release, release + 0.05)
+              << " tail-energy-ratio=" << energy(fast, rate, release + 0.3, release + 0.8)
+                 / energy(normal, rate, release + 0.3, release + 0.8)
               << " bit-identical=" << same(normal, fast) << '\n';
 }
 
@@ -233,6 +258,7 @@ void testExplicitLiftSpeedChangesOnlyDamping()
                     parameters.shape = shape;
                     const auto ordinary = render(parameters, rate, note, velocity, 64);
                     const auto fast = render(parameters, rate, note, velocity, 127);
+                    const auto releaseSample = static_cast<int>(rate) + releaseDelaySamples(rate);
                     const std::string label = "case " + std::to_string(++cases)
                         + " note " + std::to_string(note) + " at " + std::to_string(rate);
                     // The coupled body and sympathetic strings can exchange
@@ -242,12 +268,12 @@ void testExplicitLiftSpeedChangesOnlyDamping()
                     expect(!same(ordinary, fast),
                            label + ": explicit release velocity did not change damping");
                     expect(std::equal(ordinary.left.begin(),
-                                      ordinary.left.begin() + static_cast<int>(rate),
+                                      ordinary.left.begin() + releaseSample,
                                       fast.left.begin())
                            && std::equal(ordinary.right.begin(),
-                                         ordinary.right.begin() + static_cast<int>(rate),
+                                         ordinary.right.begin() + releaseSample,
                                          fast.right.begin()),
-                           label + ": release velocity changed audio before key-up");
+                           label + ": release velocity changed audio before damping");
                     expect(fast.activeAtEnd == 0, label + ": a fretted key-up retained note ownership");
                 }
     std::cout << "Acustra explicit release damping: " << cases << " cases\n";
@@ -294,13 +320,20 @@ void testHardPluckReleaseDoesNotCreateAnAttack()
             const acustra::EngineParameters parameters;
             const auto held = render(parameters, rate, note, 127, 64, Gesture::Held);
             const auto released = render(parameters, rate, note, 127, 127);
-            const double reference = peak(held, rate, 0.95, 1.005);
-            const double ratio = peak(released, rate, 1.0, 1.005) / reference;
+            const double release = dampingStart(1.0, rate);
+            const auto releaseSample = static_cast<int>(rate) + releaseDelaySamples(rate);
+            expect(std::equal(held.left.begin(), held.left.begin() + releaseSample,
+                              released.left.begin())
+                   && std::equal(held.right.begin(), held.right.begin() + releaseSample,
+                                 released.right.begin()),
+                   "maximum-velocity release changed the held audio during grace");
+            const double reference = peak(held, rate, release - 0.05, release + 0.005);
+            const double ratio = peak(released, rate, release, release + 0.005) / reference;
             worst = std::max(worst, ratio);
             expect(std::isfinite(ratio) && ratio <= 1.05,
                    "maximum-velocity release creates a new onset: ratio " + std::to_string(ratio));
         }
-    std::cout << "Acustra maximum-velocity release/held 5-ms peak: " << worst << '\n';
+    std::cout << "Acustra maximum-velocity release/held first-5-ms damping peak: " << worst << '\n';
 }
 
 double decibels(double ratio) { return 10.0 * std::log10(std::max(ratio, 1.0e-30)); }
@@ -362,10 +395,11 @@ void testReleasedHarmonicsAreDampedLikeTheirOpenString()
     {
         const Timed on { 0.1, { 0x90, static_cast<std::uint8_t>(note), 115 } };
         const Timed off { 0.5, { 0x80, static_cast<std::uint8_t>(note), 64 } };
-        return releaseDrop(parameters, { on }, { on, off }, 0.8, 1.0);
+        const double release = dampingStart(off.seconds, 48000.0, true);
+        return releaseDrop(parameters, { on }, { on, off }, release + 0.3, release + 0.5);
     };
     const double open = drop(64);
-    std::cout << "Acustra released/held 0.3-0.5 s after key-up: open E4 -" << open << " dB";
+    std::cout << "Acustra released/held 0.3-0.5 s after damping: open E4 -" << open << " dB";
     for (const int note : { 88, 91, 95 })
     {
         const double harmonic = drop(note);
@@ -382,7 +416,7 @@ void testReleasedHarmonicsAreDampedLikeTheirOpenString()
 // so the hand's loss per trip round it follows the slide, before key-up or
 // after it (audit F1). Two octaves down redoubles the period; damped per
 // trip as if unslid, it rang four times as long. Measured 50 to 100 ms
-// after key-up, while the released string still dominates the sound.
+// after damping starts, while the released string still dominates the sound.
 void testSlidNotesAreDampedAtTheirSlidPitch()
 {
     const std::vector<Timed> range24 {
@@ -399,14 +433,17 @@ void testSlidNotesAreDampedAtTheirSlidPitch()
         const Timed on { 0.1, { 0x90, 69, 100 } };
         const Timed off { 0.5, { 0x80, 69, 64 } };
         const Timed down { 0.3, { 0xe0, 0, 0 } };
-        const Timed downAfter { 0.52, { 0xe0, 0, 0 } };
-        const double plain = releaseDrop(parameters, with({ on }), with({ on, off }), 0.55, 0.6);
+        const double release = dampingStart(off.seconds, 48000.0, true);
+        const Timed downAfter { release + 0.02, { 0xe0, 0, 0 } };
+        const double plain = releaseDrop(parameters, with({ on }), with({ on, off }),
+                                         release + 0.05, release + 0.1);
         const double slid = releaseDrop(parameters, with({ on, down }),
-                                        with({ on, down, off }), 0.55, 0.6);
+                                        with({ on, down, off }), release + 0.05, release + 0.1);
         const double slidAfter = releaseDrop(parameters, with({ on, downAfter }),
-                                             with({ on, off, downAfter }), 0.55, 0.6);
-        std::cout << "Acustra A4 released/held 50-100 ms after key-up: unslid -" << plain
-                  << " dB, slid two octaves down -" << slid << " dB, slid down after key-up -"
+                                             with({ on, off, downAfter }),
+                                             release + 0.05, release + 0.1);
+        std::cout << "Acustra A4 released/held 50-100 ms after damping: unslid -" << plain
+                  << " dB, slid two octaves down -" << slid << " dB, slid down after damping -"
                   << slidAfter << " dB\n";
         // Damped per trip as if unslid, the slide drops a quarter to a half
         // as far as the unslid note in this window (6.8 and 12.0 dB against
@@ -437,6 +474,7 @@ void testReleaseNoise()
             const auto plain = render(off, rate, note, 100, 64);
             const auto noisy = render(on, rate, note, 100, 64);
             const auto firm = render(on, rate, note, 100, 127);
+            const double release = dampingStart(1.0, rate);
             Audio difference { {}, {}, 0 };
             difference.left.resize(plain.left.size());
             difference.right.resize(plain.left.size());
@@ -447,23 +485,24 @@ void testReleaseNoise()
             }
             const std::string label = "note " + std::to_string(note) + " at "
                 + std::to_string(static_cast<int>(rate));
-            expect(peak(difference, rate, 0.0, 1.0) == 0.0,
-                   label + ": release noise sounded before the key-up");
+            expect(peak(difference, rate, 0.0, release) == 0.0,
+                   label + ": release noise sounded before damping");
             const double attack = energy(plain, rate, 0.2, 0.25) / 0.05;
-            const double touch = energy(difference, rate, 1.0, 1.03) / 0.03;
+            const double touch = energy(difference, rate, release, release + 0.03) / 0.03;
             const double level = decibels(touch / attack);
             quietest = std::min(quietest, level);
             loudest = std::max(loudest, level);
             expect(level < -28.0 && level > -60.0,
                    label + ": release noise at " + std::to_string(level)
                        + " dB re attack");
-            const double reference = peak(plain, rate, 0.95, 1.005);
-            expect(peak(firm, rate, 1.0, 1.005) / reference <= 1.05,
+            const double reference = peak(plain, rate, release - 0.05, release + 0.005);
+            expect(peak(firm, rate, release, release + 0.005) / reference <= 1.05,
                    label + ": a firm key-up with release noise made an onset");
-            expect(energy(firm, rate, 1.0, 1.1) > energy(noisy, rate, 1.0, 1.1)
+            expect(energy(firm, rate, release, release + 0.1)
+                       > energy(noisy, rate, release, release + 0.1)
                        || !same(firm, noisy),
                    label + ": release velocity did not reach the release noise");
-            expect(peak(noisy, rate, 1.0, 1.8) <= peak(plain, rate, 0.2, 1.0),
+            expect(peak(noisy, rate, release, release + 0.8) <= peak(plain, rate, 0.2, 1.0),
                    label + ": release noise escaped the note's headroom");
         }
     std::cout << "Acustra release noise 30 ms re attack: " << loudest
@@ -471,13 +510,13 @@ void testReleaseNoise()
 }
 
 // A released string is handed back to the open string once its hand has
-// damped it (returnToOpenString, 0.16 s + 80 ms after a fretted key-up,
-// 1.25 s + 80 ms after an open one). A string re-struck while it rang keeps
+// damped it (returnToOpenString, 0.16 s + 80 ms after fretted damping starts,
+// 1.25 s + 80 ms after open damping starts). A string refretted while it rings keeps
 // its old wave as a tail, which is a port on the bridge; the hand-back cut
 // that port out in one sample, and the impedance step moved the bridge under
 // every other string sounding: a faint tick, a few samples wide and 30 dB
-// over the local high-frequency floor. Here the low E is re-struck at its
-// fifth fret, released, and handed back under a held open B and G. The
+// over the local high-frequency floor. Here the low E moves from its
+// fifth to seventh fret, is released, and is handed back under held open B and G. The
 // output is first band-limited to 20 kHz (a fourth-order Butterworth), so
 // at 96 kHz an ultrasonic transient cannot pass for a tick; then the fifth
 // difference is a high pass steep enough to leave the strings' own partials
@@ -522,7 +561,7 @@ void testHandBackIsSilent()
             { 0.0, 0xb0, 1, 126, 6 },
             { 0.1, 0x90, 5, 59, 127 }, { 0.1, 0x90, 4, 55, 127 },
             { 0.2, 0x90, 1, 45, 127 }, { 0.45, 0x80, 1, 45, 64 },
-            { 0.5, 0x90, 1, 45, 127 }, { 0.8, 0x80, 1, 45, 64 } };
+            { 0.5, 0x90, 1, 47, 127 }, { 0.8, 0x80, 1, 47, 64 } };
         std::size_t next = 0;
         int position = 0;
         while (position < static_cast<int>(frames))
@@ -564,15 +603,17 @@ void testHandBackIsSilent()
             {
                 return static_cast<std::size_t>(seconds * rate);
             };
-            // The floor is the median of the 70 ms before the hand-back.
+            // Preserve the original scan and 70-ms floor relative to the
+            // hand-back, now delayed by the ordinary release grace.
+            const double delay = releaseDelaySeconds(rate);
             std::vector<double> floor;
-            for (std::size_t i = at(0.95); i < at(1.02); ++i)
+            for (std::size_t i = at(0.95 + delay); i < at(1.02 + delay); ++i)
                 floor.push_back(fifth(i));
             std::nth_element(floor.begin(), floor.begin()
                 + static_cast<std::ptrdiff_t>(floor.size() / 2), floor.end());
             const double median = floor[floor.size() / 2];
             double across = 0.0;
-            for (std::size_t i = at(1.02); i < at(1.10); ++i)
+            for (std::size_t i = at(1.02 + delay); i < at(1.10 + delay); ++i)
                 across = std::max(across, fifth(i));
             worst = std::max(worst, 20.0 * std::log10(
                 across / std::max(median, 1.0e-30)));
