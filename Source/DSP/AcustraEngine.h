@@ -335,6 +335,26 @@ public:
 
     [[nodiscard]] int getActiveVoiceCount() const noexcept;
     [[nodiscard]] int getSympatheticStringCount() const noexcept;
+    struct StringActivity
+    {
+        int openMidi { 0 };
+        int midiNote { 0 };
+        int fret { 0 };
+        int harmonic { 1 };
+        bool keyDown { false };
+        bool played { false };
+        bool pedalHeld { false };
+        float level { 0.0f };
+    };
+    // Read on the audio thread, or while processing is stopped. Low string
+    // first; played includes a fretted note waiting for its scheduled pluck.
+    // Idle strings and natural harmonics have fret 0; harmonic > 1 identifies
+    // the latter and midiNote is their requested sounding pitch. level is the
+    // existing smoothed absolute string reaction force (including a retained
+    // re-pluck tail), not displacement or output volume. This observer does
+    // no extra per-sample work and does not advance any synthesis state.
+    [[nodiscard]] std::array<StringActivity, stringCount>
+        getStringActivity() const noexcept;
     [[nodiscard]] float getLastBridgeVelocity() const noexcept;
     [[nodiscard]] float getLastBridgeReactionForce() const noexcept;
     [[nodiscard]] float getLastBridgeBodyForce() const noexcept;

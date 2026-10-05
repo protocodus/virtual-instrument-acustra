@@ -1,16 +1,17 @@
 #include "PluginEditor.h"
 #include "AcustraUIAssets.h"
 
+#include <cmath>
 #include <vector>
 
 namespace
 {
 constexpr int designWidth = 1120;
-constexpr int designHeight = 800;
+constexpr int designHeight = 980;
 constexpr int minimumWidth = 896;
-constexpr int minimumHeight = 640;
+constexpr int minimumHeight = 784;
 constexpr int maximumWidth = 1456;
-constexpr int maximumHeight = 1040;
+constexpr int maximumHeight = 1274;
 constexpr int keyboardFirstNote = 38; // Drop-D low string
 constexpr int keyboardLastNote = 84;  // twentieth fret of the high E string
 constexpr int keyboardWhiteKeyCount = 28;
@@ -214,6 +215,336 @@ juce::Font AcustraLookAndFeel::getTextButtonFont (juce::TextButton&,
         juce::Font::bold);
 }
 
+class AcustraAudioProcessorEditor::StringActivityDisplay final
+    : public juce::Component,
+      public juce::SettableTooltipClient,
+      private juce::Timer
+{
+public:
+    explicit StringActivityDisplay (AcustraAudioProcessor& processor)
+        : audioProcessor (processor)
+    {
+        setName ("String activity");
+        setTitle ("String activity");
+        setOpaque (true);
+        setTooltip (
+            "Six strings, high E at the top. Filled markers show held frets; "
+            "outlined markers show released notes. Blue-green open markers "
+            "show sympathetic vibration from another string. H marks a natural "
+            "harmonic. Line movement and brightness show schematic vibration "
+            "activity, not the audio waveform or the string's actual motion.");
+        audioProcessor.setStringDisplayEnabled (true);
+        refresh();
+        startTimerHz (24);
+    }
+
+    ~StringActivityDisplay() override
+    {
+        stopTimer();
+        audioProcessor.setStringDisplayEnabled (false);
+    }
+
+    void paint (juce::Graphics& graphics) override
+    {
+        // The text and fretboard are cached at the display's pixel density.
+        // Only six short waves and their markers are drawn on each tick.
+        updateBackdrop (graphics.getInternalContext().getPhysicalPixelScaleFactor());
+        graphics.drawImage (backdrop, getLocalBounds().toFloat());
+        juce::Graphics::ScopedSaveState saved (graphics);
+        graphics.addTransform (juce::AffineTransform::scale (
+            static_cast<float> (getWidth()) / panelWidth,
+            static_cast<float> (getHeight()) / panelHeight));
+        auto& g = graphics;
+        for (std::size_t string = 0; string < activity.size(); ++string)
+        {
+            const auto& state = activity[string];
+            const auto row = 5 - static_cast<int> (string);
+            const auto y = firstY + rowSpacing * static_cast<float> (row);
+            const float amount = vibration[string];
+            const bool vibrating = amount > 0.0f;
+            const bool sympathetic = ! state.played && vibrating;
+            const bool assigned = state.played &&
+                (state.keyDown || state.pedalHeld || vibrating);
+            const bool markerVisible = assigned || sympathetic;
+            const int fret = assigned ? juce::jlimit (0, 20, state.fret) : 0;
+            const auto colour = sympathetic ? sympatheticColour
+                              : state.keyDown ? brass : ivory;
+            const float weight = 0.65f + 0.11f * static_cast<float> (5 - string);
+
+            if (vibrating)
+            {
+                const auto start = fretX (fret);
+                const auto end = fretX (20) + 9.0f;
+                const float amplitude = 2.5f * amount;
+                float previousX = start;
+                float previousY = y;
+                g.setColour (colour.withAlpha (0.2f + 0.8f * amount));
+                // A small fixed drawing, independent of audio frequency.
+                // Its envelope comes from the existing string observer.
+                for (int segment = 1; segment <= 24; ++segment)
+                {
+                    const float position = static_cast<float> (segment) / 24.0f;
+                    const float x = start + position * (end - start);
+                    const float motion = amplitude
+                        * std::sin (juce::MathConstants<float>::pi * position)
+                        * std::sin (juce::MathConstants<float>::twoPi
+                            * (3.0f * position - phase
+                               + 0.13f * static_cast<float> (string)));
+                    g.drawLine (previousX, previousY, x, y + motion,
+                                weight + 0.3f);
+                    previousX = x;
+                    previousY = y + motion;
+                }
+            }
+
+            if (markerVisible)
+            {
+                const juce::Rectangle<float> marker {
+                    fretX (fret) - 7.3f, y - 7.3f, 14.6f, 14.6f };
+                g.setColour (panel);
+                g.fillEllipse (marker);
+                g.setColour (colour.withAlpha (
+                    state.keyDown ? 1.0f : 0.45f + 0.55f * amount));
+                if (state.keyDown)
+                    g.fillEllipse (marker);
+                else
+                    g.drawEllipse (marker, 1.4f);
+                g.setColour (state.keyDown ? ebony : colour);
+                g.setFont (displayFont (9.5f, juce::Font::bold));
+                g.drawText (assigned && state.harmonic > 1 ? "H"
+                                                           : juce::String (fret),
+                            marker, juce::Justification::centred, false);
+            }
+        }
+    }
+
+    void resized() override { backdropNeedsUpdate = true; }
+    void lookAndFeelChanged() override { backdropNeedsUpdate = true; }
+
+private:
+    using Activity = acustra::AcustraEngine::StringActivity;
+    static constexpr float panelWidth = 1076.0f;
+    static constexpr float panelHeight = 168.0f;
+    static constexpr float firstY = 57.0f;
+    static constexpr float rowSpacing = 18.0f;
+    const juce::Colour sympatheticColour { 0xff8dbbb1 };
+
+    void updateBackdrop (float pixelScale)
+    {
+        const auto width = juce::jmax (1, juce::roundToInt (static_cast<float> (getWidth()) * pixelScale));
+        const auto height = juce::jmax (1, juce::roundToInt (static_cast<float> (getHeight()) * pixelScale));
+        if (! backdropNeedsUpdate && backdrop.getWidth() == width
+            && backdrop.getHeight() == height)
+            return;
+        if (backdrop.getWidth() != width || backdrop.getHeight() != height)
+            backdrop = juce::Image (juce::Image::RGB, width, height, false);
+        juce::Graphics g (backdrop);
+        g.fillAll (panel);
+        g.addTransform (juce::AffineTransform::scale (
+            static_cast<float> (width) / panelWidth,
+            static_cast<float> (height) / panelHeight));
+        drawBackdrop (g);
+        backdropNeedsUpdate = false;
+    }
+
+    void drawBackdrop (juce::Graphics& g)
+    {
+        const auto frame = juce::Rectangle<float> (0.8f, 0.8f,
+                                                  panelWidth - 1.6f,
+                                                  panelHeight - 1.6f);
+        g.setColour (ivory.withAlpha (0.48f));
+        g.drawRoundedRectangle (frame, 7.0f, 1.2f);
+        g.setColour (ebony);
+        g.drawRoundedRectangle (frame.reduced (2.0f), 5.0f, 1.0f);
+
+        g.setColour (ivory);
+        g.setFont (displayFont (16.0f, juce::Font::bold));
+        g.drawText ("STRINGS", 18, 9, 116, 22,
+                    juce::Justification::centredLeft, false);
+        g.setFont (displayFont (11.5f));
+        g.setColour (brass);
+        g.fillEllipse (628.0f, 15.0f, 7.0f, 7.0f);
+        g.drawText ("HELD", 641, 8, 61, 22,
+                    juce::Justification::centredLeft, false);
+        g.setColour (ivory.withAlpha (0.8f));
+        g.drawEllipse (711.0f, 15.0f, 7.0f, 7.0f, 1.1f);
+        g.drawText ("RELEASED", 724, 8, 85, 22,
+                    juce::Justification::centredLeft, false);
+        g.setColour (sympatheticColour);
+        g.drawEllipse (825.0f, 15.0f, 7.0f, 7.0f, 1.1f);
+        g.drawText ("SYMPATHETIC", 838, 8, 126, 22,
+                    juce::Justification::centredLeft, false);
+
+        constexpr float lastY = firstY + 5.0f * rowSpacing;
+        g.setFont (displayFont (10.5f));
+        for (int fret = 0; fret <= acustra::AcustraEngine::fretCount; ++fret)
+        {
+            const float x = fretX (fret);
+            g.setColour (mutedText.withAlpha (fret == 0 ? 0.9f : 0.68f));
+            g.drawText (fret == 0 ? "0" : juce::String (fret),
+                        juce::Rectangle<float> (x - 12.0f, 32.0f, 24.0f, 15.0f),
+                        juce::Justification::centred, false);
+            g.setColour (fret == 0 ? ivory.withAlpha (0.32f)
+                                  : panelEdge.withAlpha (0.36f));
+            g.drawLine (x, firstY - 7.0f, x, lastY + 7.0f,
+                        fret == 0 ? 2.0f : 0.65f);
+        }
+        for (int fret : { 3, 5, 7, 9, 12, 15, 17, 19 })
+        {
+            g.setColour (brass.withAlpha (0.25f));
+            g.fillEllipse (fretX (fret) - 1.6f, 157.0f, 3.2f, 3.2f);
+            if (fret == 12)
+                g.fillEllipse (fretX (fret) - 1.6f, 161.5f, 3.2f, 3.2f);
+        }
+
+        for (std::size_t string = 0; string < activity.size(); ++string)
+        {
+            const auto& state = activity[string];
+            const auto row = 5 - static_cast<int> (string);
+            const auto y = firstY + rowSpacing * static_cast<float> (row);
+            const bool vibrating = vibration[string] > 0.0f;
+            const bool sympathetic = ! state.played && vibrating;
+            const bool assigned = state.played &&
+                (state.keyDown || state.pedalHeld || vibrating);
+            const bool markerVisible = assigned || sympathetic;
+            const auto colour = sympathetic ? sympatheticColour
+                              : state.keyDown ? brass : ivory;
+            const float weight = 0.65f + 0.11f * static_cast<float> (5 - string);
+
+            g.setColour (mutedText.withAlpha (0.7f));
+            g.setFont (displayFont (10.0f));
+            g.drawText (juce::String (6 - static_cast<int> (string)),
+                        16, juce::roundToInt (y - 8.0f), 16, 16,
+                        juce::Justification::centredLeft, false);
+            g.setColour (markerVisible ? ivory : mutedText);
+            g.setFont (displayFont (12.5f, juce::Font::bold));
+            g.drawText (openNames[string],
+                        35, juce::roundToInt (y - 8.0f), 48, 16,
+                        juce::Justification::centredLeft, false);
+            g.setColour (panelEdge.withAlpha (0.75f));
+            g.drawLine (fretX (0), y, fretX (20), y, weight);
+
+            g.setFont (displayFont (11.0f));
+            g.setColour (markerVisible ? colour.withAlpha (0.9f)
+                                      : mutedText.withAlpha (0.5f));
+            g.drawText (rowText[string],
+                        juce::Rectangle<float> (898.0f, y - 8.0f, 162.0f, 16.0f),
+                        juce::Justification::centredRight, false);
+        }
+    }
+
+    static float fretX (int fret) noexcept
+    {
+        return 105.0f + static_cast<float> (fret) * 38.5f;
+    }
+
+    static float visibleLevel (float level) noexcept
+    {
+        // The same activity floor as the engine's sympathetic observer.
+        // Display a wide dynamic range without depending on Output gain.
+        return level > 2.0e-7f && std::isfinite (level)
+            ? juce::jlimit (0.0f, 1.0f,
+                           std::log10 (level / 2.0e-7f) / 5.0f) : 0.0f;
+    }
+
+    static bool sameState (const Activity& a, const Activity& b) noexcept
+    {
+        return a.openMidi == b.openMidi && a.midiNote == b.midiNote
+            && a.fret == b.fret && a.harmonic == b.harmonic
+            && a.keyDown == b.keyDown && a.played == b.played
+            && a.pedalHeld == b.pedalHeld;
+    }
+
+    void timerCallback() override { refresh(); }
+
+    void refresh()
+    {
+        auto next = audioProcessor.getStringActivityForDisplay();
+        const auto standard = acustra::AcustraEngine::openNotes (
+            acustra::Tuning::Standard);
+        bool stateChanged = ! initialised;
+        bool animating = false;
+        for (std::size_t string = 0; string < next.size(); ++string)
+        {
+            if (next[string].openMidi <= 0)
+                next[string].openMidi = standard[string];
+            const auto amount = visibleLevel (next[string].level);
+            stateChanged = stateChanged || ! sameState (next[string], activity[string])
+                || ((amount > 0.0f) != (vibration[string] > 0.0f));
+            vibration[string] = amount;
+            animating = animating || amount > 0.0f;
+        }
+        activity = next;
+        initialised = true;
+        if (stateChanged)
+            updateDescriptions();
+        if (animating)
+        {
+            phase += 1.25f / 24.0f;
+            if (phase >= 1.0f)
+                phase -= 1.0f;
+        }
+        if (stateChanged || animating)
+            repaint();
+    }
+
+    void updateDescriptions()
+    {
+        backdropNeedsUpdate = true;
+        juce::String summary { "Six strings, high to low. " };
+        for (int index = 5; index >= 0; --index)
+        {
+            const auto string = static_cast<std::size_t> (index);
+            const auto& state = activity[string];
+            const bool vibrating = vibration[string] > 0.0f;
+            const bool assigned = state.played &&
+                (state.keyDown || state.pedalHeld || vibrating);
+            openNames[string] = juce::MidiMessage::getMidiNoteName (
+                state.openMidi, true, true, 4);
+            const auto noteName = juce::MidiMessage::getMidiNoteName (
+                assigned ? state.midiNote : state.openMidi, true, true, 4);
+            juce::String stateName;
+            if (state.keyDown)
+                stateName = "held";
+            else if (state.pedalHeld)
+                stateName = "pedal held";
+            else if (assigned)
+                stateName = "released, ringing";
+            else if (vibrating)
+                stateName = "sympathetic vibration";
+            else
+                stateName = "at rest";
+
+            const auto harmonic = assigned && state.harmonic > 1
+                ? "H" + juce::String (state.harmonic) + "  " : juce::String {};
+            rowText[string] = ! assigned && ! vibrating ? "REST"
+                : ! assigned ? "OPEN / SYMPATHY"
+                : noteName + " / " + harmonic
+                    + (state.keyDown ? "HELD" : state.pedalHeld ? "PEDAL" : "RINGING");
+            summary += "String " + juce::String (6 - index) + ", "
+                + openNames[string] + " open tuning, "
+                + (assigned && state.harmonic > 1
+                    ? "natural harmonic " + juce::String (state.harmonic)
+                    : "fret " + juce::String (assigned ? state.fret : 0))
+                + ", " + noteName + ", " + stateName + ". ";
+        }
+        setDescription (summary);
+        if (auto* handler = getAccessibilityHandler())
+            handler->notifyAccessibilityEvent (
+                juce::AccessibilityEvent::valueChanged);
+    }
+
+    AcustraAudioProcessor& audioProcessor;
+    std::array<Activity, acustra::AcustraEngine::stringCount> activity {};
+    std::array<float, acustra::AcustraEngine::stringCount> vibration {};
+    std::array<juce::String, acustra::AcustraEngine::stringCount> openNames;
+    std::array<juce::String, acustra::AcustraEngine::stringCount> rowText;
+    juce::Image backdrop;
+    float phase { 0.0f };
+    bool initialised { false };
+    bool backdropNeedsUpdate { true };
+};
+
 class AcustraAudioProcessorEditor::ChoiceButtonGroup final
     : public juce::Component
 {
@@ -323,7 +654,8 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     setWantsKeyboardFocus (true);
     setTitle ("Acustra acoustic guitar controls");
     setDescription (
-        "Physically modelled acoustic guitar controls and an on-screen MIDI keyboard");
+        "Physically modelled acoustic guitar controls, live string activity "
+        "and an on-screen MIDI keyboard");
 
     titleLabel.setText ("ACUSTRA", juce::dontSendNotification);
     titleLabel.setFont (displayFont (40.0f, juce::Font::bold));
@@ -453,6 +785,9 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         6, "OUTPUT", acustra::parameters::output,
         "Final output level in decibels", true);
 
+    stringActivityDisplay = std::make_unique<StringActivityDisplay> (audioProcessor);
+    addAndMakeVisible (*stringActivityDisplay);
+
     keyboard.setName ("Acustra MIDI keyboard");
     keyboard.setTitle ("MIDI keyboard");
     keyboard.setDescription (
@@ -483,6 +818,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
 AcustraAudioProcessorEditor::~AcustraAudioProcessorEditor()
 {
     stopTimer();
+    stringActivityDisplay.reset();
     setLookAndFeel (nullptr);
 }
 
@@ -710,7 +1046,8 @@ void AcustraAudioProcessorEditor::resized()
         sliderControls[index].setBounds (box (x + 9, 475, 152, 182));
     }
 
-    keyboardPanelBounds = box (22, 688, 1076, 112);
+    stringActivityDisplay->setBounds (box (22, 688, 1076, 168));
+    keyboardPanelBounds = box (22, 868, 1076, 112);
     keyboardPanelBounds.setBottom (getHeight());
     keyboard.setKeyWidth (static_cast<float> (keyboardPanelBounds.getWidth())
                           / static_cast<float> (keyboardWhiteKeyCount));

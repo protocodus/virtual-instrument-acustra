@@ -1,5 +1,6 @@
 #include "DSP/AcustraEngine.h"
 #include "DSP/GuitarModelData.h"
+#include "DSP/ModelConvergenceData.h"
 
 #include <algorithm>
 #include <array>
@@ -21,6 +22,37 @@ struct AcustraEngineTestAccess
     { return AcustraEngine::radiationModePole(p, fittedPhysicalCalibration, index); }
     static bool hasModel(const AcustraEngine& e, GuitarModel model)
     { return e.configuredGuitarModel_ == model; }
+    // Remove only the observation voicing from a prepared, silent engine.
+    // Reload the configured record so both test engines retain identical
+    // poles, states, slot ordering and physical bridge/string coefficients.
+    static bool removeModelConvergence(AcustraEngine& e)
+    {
+        const auto poleReal = e.bodyBank_.poleReal;
+        const auto poleImaginary = e.bodyBank_.poleImaginary;
+        const int count = e.bodyBank_.count, ordered = e.bodyBank_.ordered;
+        const bool bellido = e.configuredGuitarModel_ == GuitarModel::Bellido1978;
+        constexpr float twoPi = 6.28318530717958647692f;
+        for (int index = 0; index < count; ++index)
+        {
+            auto& mode = e.bodyModes_[static_cast<std::size_t>(index)];
+            if (mode.poleImaginary == 0.0f)
+                continue;
+            const float frequency = std::atan2(mode.poleImaginary, mode.poleReal)
+                * static_cast<float>(e.sampleRate_) / twoPi;
+            const float gain = detail::modelConvergenceGain(frequency, bellido);
+            if (!std::isfinite(gain) || gain <= 0.0f)
+                return false;
+            for (float* residue : { &mode.leftReal, &mode.leftImaginary,
+                    &mode.rightReal, &mode.rightImaginary,
+                    &mode.leftMomentReal, &mode.leftMomentImaginary,
+                    &mode.rightMomentReal, &mode.rightMomentImaginary })
+                *residue /= gain;
+        }
+        e.bodyBank_.load(e.bodyModes_, count, ordered, true);
+        return e.bodyBank_.count == count && e.bodyBank_.ordered == ordered
+            && e.bodyBank_.poleReal == poleReal
+            && e.bodyBank_.poleImaginary == poleImaginary;
+    }
     template <typename Bank>
     static bool nominalBridgeMatches(const AcustraEngine& e, const Bank& bank,
                                      const AcustraEngine& original)
@@ -188,10 +220,27 @@ std::vector<acustra::detail::MeasuredBodyMode> continuationOf(
 
 // The bank with its continuation at this rate: what the engine radiates.
 std::vector<acustra::detail::MeasuredBodyMode> radiatedAt(
-    std::vector<acustra::detail::MeasuredBodyMode> bank, double rate)
+    std::vector<acustra::detail::MeasuredBodyMode> bank, double rate,
+    acustra::GuitarModel model)
 {
     const auto continuation = continuationOf(bank, rate);
     bank.insert(bank.end(), continuation.begin(), continuation.end());
+    // The two measured guitars keep their own poles and complex phases;
+    // their observation balance moves a quarter of the way toward the
+    // other's in dB. Generate the original continuation first, then voice
+    // every residue once, including that continuation and both inputs.
+    for (auto& mode : bank)
+    {
+        const float gain = acustra::detail::modelConvergenceGain(mode.frequency,
+            model == acustra::GuitarModel::Bellido1978);
+        for (float* residue : { &mode.leftReal, &mode.leftImaginary,
+                &mode.rightReal, &mode.rightImaginary,
+                &mode.upperReal, &mode.upperImaginary,
+                &mode.leftMomentReal, &mode.leftMomentImaginary,
+                &mode.rightMomentReal, &mode.rightMomentImaginary,
+                &mode.upperMomentReal, &mode.upperMomentImaginary })
+            *residue *= gain;
+    }
     return bank;
 }
 
@@ -201,7 +250,7 @@ void testRadiation(acustra::GuitarModel model, const Bank& measured, int delay48
     const auto heard = heardBank(model, measured);
     for (int rate : { 24000, 48000, 96000 })
     {
-        const auto bank = radiatedAt(heard, rate);
+        const auto bank = radiatedAt(heard, rate, model);
         auto engine = std::make_unique<acustra::AcustraEngine>();
         engine->setParameters(parametersFor(model));
         engine->prepare(rate, 64);
@@ -276,7 +325,7 @@ void testFractionalRadiation(acustra::GuitarModel model, const Bank& measured, i
     for (const int rate : { 44100, 88200, 192000 })
         for (const int axis : { 0, 1 })
         {
-            const auto bank = radiatedAt(heard, rate);
+            const auto bank = radiatedAt(heard, rate, model);
             if (axis == 1 && model != acustra::GuitarModel::Bellido1978)
                 continue;
             auto engine = std::make_unique<acustra::AcustraEngine>();
@@ -410,6 +459,110 @@ void testRetiredModelsPlayOriginal()
     }
 }
 
+void testConvergenceOnlyChangesObservation()
+{
+    using namespace acustra;
+    for (float frequency : { 45.0f, 80.0f, 120.0f, 250.0f, 700.0f,
+                             1200.0f, 2500.0f, 5000.0f, 9000.0f, 18000.0f })
+    {
+        const float original = detail::modelConvergenceGain(frequency, false);
+        const float bellido = detail::modelConvergenceGain(frequency, true);
+        expect(std::isfinite(original) && std::isfinite(bellido)
+                   && original > 0.0f && bellido > 0.0f,
+               "model convergence gain must remain finite and positive");
+        expect(std::abs(original * bellido - 1.0f) < 1.0e-5f,
+               "models must move toward each other by mirrored dB gains");
+    }
+    for (const auto model : { GuitarModel::Original, GuitarModel::Bellido1978 })
+        for (const int rate : { 48000, 96000 })
+            for (const auto capture : { CaptureType::StereoMic,
+                                       CaptureType::MonoMic, CaptureType::Piezo })
+            {
+                auto p = parametersFor(model);
+                p.capture = capture;
+                p.outputGain = 0.2f;
+                p.room = 0.0f;
+                p.piezoMix = 0.0f;
+                auto voiced = std::make_unique<AcustraEngine>();
+                auto unvoiced = std::make_unique<AcustraEngine>();
+                voiced->setParameters(p);
+                unvoiced->setParameters(p);
+                voiced->prepare(rate, 64);
+                unvoiced->prepare(rate, 64);
+                expect(AcustraEngineTestAccess::removeModelConvergence(*unvoiced),
+                       "bypassing model voicing changed body poles or mode count");
+                bool samePhysicalInstrument = true, samePiezo = true;
+                bool finiteAndBounded = true;
+                double differenceEnergy = 0.0, referenceEnergy = 0.0;
+                double piezoEnergy = 0.0;
+                for (int n = 0; n < rate / 3; ++n)
+                {
+                    // Open B3 alongside fretted B2, A3 and B4, then a
+                    // release and repick. These exercise the physical
+                    // sympathetic junction as well as the two sensors.
+                    if (n == 0)
+                        for (int note : { 47, 57, 59, 71 })
+                        {
+                            voiced->noteOn(note, 0.75f);
+                            unvoiced->noteOn(note, 0.75f);
+                        }
+                    if (n == rate / 16)
+                    {
+                        voiced->noteOff(59);
+                        unvoiced->noteOff(59);
+                    }
+                    if (n == rate / 8)
+                    {
+                        voiced->noteOn(71, 0.94f);
+                        unvoiced->noteOn(71, 0.94f);
+                    }
+                    if (n == 3 * rate / 16)
+                        for (int note : { 47, 57, 71 })
+                        {
+                            voiced->noteOff(note);
+                            unvoiced->noteOff(note);
+                        }
+                    float vl, vr, vp, ul, ur, up;
+                    voiced->process(&vl, &vr, AcustraEngine::OutputBuses { &vp }, 1);
+                    unvoiced->process(&ul, &ur, AcustraEngine::OutputBuses { &up }, 1);
+                    samePhysicalInstrument = samePhysicalInstrument
+                        && voiced->getLastBridgeVelocity() == unvoiced->getLastBridgeVelocity()
+                        && voiced->getLastBridgeReactionForce() == unvoiced->getLastBridgeReactionForce()
+                        && voiced->getLastBridgeBodyForce() == unvoiced->getLastBridgeBodyForce()
+                        && voiced->getLastBridgeTailForce() == unvoiced->getLastBridgeTailForce()
+                        && voiced->getLastBridgePower() == unvoiced->getLastBridgePower()
+                        && voiced->getLastBridgeBodyPower() == unvoiced->getLastBridgeBodyPower()
+                        && voiced->getLastBridgeTailPower() == unvoiced->getLastBridgeTailPower();
+                    samePiezo = samePiezo && vp == up;
+                    finiteAndBounded = finiteAndBounded
+                        && std::isfinite(vl) && std::isfinite(vr) && std::isfinite(vp)
+                        && std::isfinite(ul) && std::isfinite(ur) && std::isfinite(up)
+                        && std::max({ std::abs(vl), std::abs(vr), std::abs(vp),
+                                      std::abs(ul), std::abs(ur), std::abs(up) }) <= 1.0f;
+                    const double dl = double(vl) - ul, dr = double(vr) - ur;
+                    differenceEnergy += dl * dl + dr * dr;
+                    referenceEnergy += double(ul) * ul + double(ur) * ur;
+                    piezoEnergy += double(up) * up;
+                }
+                std::cout << "convergence model=" << int(model) << " rate=" << rate
+                          << " capture=" << int(capture) << " relative difference="
+                          << std::sqrt(differenceEnergy / std::max(referenceEnergy, 1e-30))
+                          << '\n';
+                expect(samePhysicalInstrument,
+                       "microphone convergence altered the physical string/bridge response");
+                expect(samePiezo && piezoEnergy > 1e-12,
+                       "microphone convergence altered or silenced the dedicated piezo output");
+                expect(finiteAndBounded, "model convergence produced nonfinite or unbounded audio");
+                expect(referenceEnergy > 1e-12, "model convergence observation test was silent");
+                if (capture == CaptureType::Piezo)
+                    expect(differenceEnergy == 0.0,
+                           "model convergence altered Main with the piezo selected");
+                else
+                    expect(differenceEnergy > referenceEnergy * 1e-6,
+                           "model convergence failed to change the microphone observation");
+            }
+}
+
 void testCoupledModels()
 {
     for (int model = 0; model < 2; ++model)
@@ -519,6 +672,7 @@ int main()
     testFractionalRadiation(GuitarModel::Bellido1978, detail::bellidoBodyModes, 0);
     testNominalBridge(GuitarModel::Bellido1978, detail::bellidoBridgeModes);
     testRetiredModelsPlayOriginal();
+    testConvergenceOnlyChangesObservation();
     testCoupledModels();
     testEachBodyIsAsMeasuredAtItsOwnWood();
     return failures == 0 ? 0 : 1;

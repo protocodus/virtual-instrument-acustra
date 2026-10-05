@@ -26,7 +26,12 @@ guitars and leading instruments is still required.
 Guitar construction, Model, Shape, Material, Tuning, Picking and Capture use
 directly visible radio switches; the continuous sound controls remain knobs.
 The spruce, rosewood, bone and brass palette groups construction at the left,
-playing technique above capture and output, with the keyboard along the bottom. The Picking tooltip names CC2 as
+playing technique above capture and output, with the keyboard along the bottom.
+A six-string fretboard above the keyboard shows the actual frets being played,
+released notes, and sympathetic vibration on open strings. Its animation shows
+vibration activity rather than an audio-rate waveform. The editor opens at
+1120 × 980, with the existing controls retaining their size.
+The Picking tooltip names CC2 as
 the bridge hand. Note-off always damps the note. Existing
 saved sessions retain their parameter IDs. The revised picking styles and
 stronger body variations intentionally change their sound. See the
@@ -1342,7 +1347,7 @@ resonances meet it (Known gaps).
 | **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. It also sets how fast every technique lets the string go: the release edge scales over two octaves across the control (none at its default), firmer faster and brighter, softer slower and darker, even at velocity 127. |
 | **Body Amount** | Scales microphone radiation; pickup observations have their own signal path. |
 | **Stereo Width** | Blends the measured stereo pair toward mono; Mono mic and Piezo ignore width and send identical samples to both channels. |
-| **Output** | Final gain; exactly linear through −1 dBFS, then bounded by a headroom-only safety limiter. |
+| **Output** | Final gain, default 0 dB; exactly linear through −1 dBFS, then bounded by a headroom-only safety limiter. |
 
 Original and Bellido Stereo mic use the measured treble-bridge/upper-bout pair. Mono mic uses the
 upper-bout microphone alone; it does not sum two spaced microphone signals and
@@ -1500,6 +1505,20 @@ construction was re-levelled within +-1 LU.
 [`Tools/FitCaptureVoicing.py`](Tools/FitCaptureVoicing.py) refits it from
 renders of the five sources (twice, the engine in the loop, after any change
 to the Original's radiation).
+
+**Model brightness balance.** Both models also receive a small reciprocal
+tilt, requested by the listener on 2026-10-02 to bring each about 25% toward
+the other's brightness. Original brightens by 0.4375 dB/octave around 1 kHz;
+Bellido warms by the same amount. The tilt stops changing below 60 Hz and
+above 10 kHz. [`Source/DSP/ModelConvergenceData.h`](Source/DSP/ModelConvergenceData.h)
+is applied once to the completed radiation bank, including its high-frequency
+continuation. It keeps each model's poles, mode count, complex residue phases
+and physical bridge/string behavior; the summed microphone phase may move.
+It adds no per-sample processing. The piezo pickup response stays intact,
+and the existing construction level trims are recalibrated separately.
+[`Tools/FitModelConvergence.py`](Tools/FitModelConvergence.py) checks the
+brightness movement from matched before/after renders; a broad voicing
+does not force each note, capture or decay window to move by exactly 25%.
 
 **Room.** `EngineParameters::room`, the plug-in's Room, puts a small studio
 (5.2 x 4.1 x 2.7 m, the microphones 0.32 m from the guitar) around the
@@ -3487,6 +3506,15 @@ three formats:
 ./scripts/build-macos.sh
 ./scripts/sign-and-package-macos.sh
 ```
+
+Rack builds also need the current Rack panel source. The approved spruce and
+rosewood layout is recorded at Rack revision `b28a7bb`
+(`codex/acustra-control-spacing`); its earlier SDK checkout has the old 6U
+cedar panel. The corrected Rack wrapper retains the padded controls and adds
+its own 24 Hz fretboard in a 9U panel. Record the Rack design revision and
+shared DSP snapshot separately, and verify the installed panel images and
+both GUI definitions against the build's manifest before testing in Recon.
+The JUCE editor is not part of a Rack build.
 
 To run the bounded offline fit after building the JUCE-free tools:
 

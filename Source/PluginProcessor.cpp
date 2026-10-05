@@ -3,12 +3,53 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <memory>
 #include <vector>
 
 namespace
 {
 namespace ids = acustra::parameters;
+
+using StringActivity = acustra::AcustraEngine::StringActivity;
+
+// One lock-free word keeps a string's pitch, ownership and raw envelope
+// coherent. The float retains its exact bits; conversion to visual motion
+// belongs to the editor. All supported frets fit in five bits.
+static_assert (acustra::AcustraEngine::fretCount <= 31);
+std::uint64_t packStringActivity (const StringActivity& activity) noexcept
+{
+    std::uint32_t levelBits {};
+    static_assert (sizeof (levelBits) == sizeof (activity.level));
+    std::memcpy (&levelBits, &activity.level, sizeof (levelBits));
+    const auto field = [] (int value, int maximum, int shift)
+    {
+        return static_cast<std::uint64_t> (std::clamp (value, 0, maximum)) << shift;
+    };
+    return levelBits
+        | field (activity.openMidi, 127, 32)
+        | field (activity.midiNote, 127, 39)
+        | field (activity.fret, 31, 46)
+        | field (activity.harmonic, 127, 51)
+        | (static_cast<std::uint64_t> (activity.keyDown) << 58)
+        | (static_cast<std::uint64_t> (activity.played) << 59)
+        | (static_cast<std::uint64_t> (activity.pedalHeld) << 60);
+}
+
+StringActivity unpackStringActivity (std::uint64_t packed) noexcept
+{
+    StringActivity activity;
+    const auto levelBits = static_cast<std::uint32_t> (packed);
+    std::memcpy (&activity.level, &levelBits, sizeof (levelBits));
+    activity.openMidi = static_cast<int> ((packed >> 32) & 127u);
+    activity.midiNote = static_cast<int> ((packed >> 39) & 127u);
+    activity.fret = static_cast<int> ((packed >> 46) & 31u);
+    activity.harmonic = static_cast<int> ((packed >> 51) & 127u);
+    activity.keyDown = ((packed >> 58) & 1u) != 0;
+    activity.played = ((packed >> 59) & 1u) != 0;
+    activity.pedalHeld = ((packed >> 60) & 1u) != 0;
+    return activity;
+}
 
 enum ParameterSlot
 {
@@ -226,7 +267,7 @@ AcustraAudioProcessor::createParameterLayout()
 
     result.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { ids::output, 1 }, "Output",
-        juce::NormalisableRange<float> { -24.0f, 6.0f, 0.1f }, -7.5f,
+        juce::NormalisableRange<float> { -24.0f, 6.0f, 0.1f }, 0.0f,
         juce::AudioParameterFloatAttributes()
             .withLabel ("dB")
             .withStringFromValueFunction ([] (float value, int)
@@ -331,6 +372,8 @@ AcustraAudioProcessor::snapshotEngineParameters() const noexcept
 void AcustraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     engineReady.store (false, std::memory_order_release);
+    const auto displayRevision = stringDisplayRevision.fetch_add (
+        1, std::memory_order_acq_rel) + 1;
     keyboardState.reset();
     performer.setParameters (snapshotEngineParameters());
     performer.prepare (sampleRate, samplesPerBlock);
@@ -344,17 +387,24 @@ void AcustraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     displaySampleRate.store (sampleRate, std::memory_order_relaxed);
     activeVoiceCount.store (0, std::memory_order_relaxed);
     sympatheticStringCount.store (0, std::memory_order_relaxed);
+    stringDisplayIntervalSamples = std::max (1, static_cast<int> (
+        std::lround (performer.engine().sampleRate() / 30.0)));
+    stringDisplaySamplesUntilUpdate = 0;
+    if (stringDisplayEnabled.load (std::memory_order_acquire))
+        publishStringActivity (displayRevision);
     engineReady.store (true, std::memory_order_release);
 }
 
 void AcustraAudioProcessor::releaseResources()
 {
     engineReady.store (false, std::memory_order_release);
+    stringDisplayRevision.fetch_add (1, std::memory_order_acq_rel);
     performer.reset();
     keyboardState.reset();
     activeVoiceCount.store (0, std::memory_order_relaxed);
     sympatheticStringCount.store (0, std::memory_order_relaxed);
     displaySampleRate.store (0.0, std::memory_order_relaxed);
+    stringDisplaySamplesUntilUpdate = 0;
 }
 
 bool AcustraAudioProcessor::isBusesLayoutSupported (
@@ -378,11 +428,15 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     if (! engineReady.load (std::memory_order_acquire))
         return;
 
+    // Capture the request before consuming Panic. A request arriving during
+    // this callback invalidates its display publication until the next one.
+    const auto displayRevision = stringDisplayRevision.load (std::memory_order_acquire);
     const auto numSamples = buffer.getNumSamples();
     keyboardState.processNextMidiBuffer (midiMessages, 0, numSamples, true);
     updateEngineParameters();
 
-    if (panicRequested.exchange (false, std::memory_order_acq_rel))
+    const bool panicked = panicRequested.exchange (false, std::memory_order_acq_rel);
+    if (panicked)
         performer.reset();
 
     // The performer splits the block at its events and plays them; see
@@ -411,6 +465,66 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                             std::memory_order_relaxed);
     sympatheticStringCount.store (engine.getSympatheticStringCount(),
                                   std::memory_order_relaxed);
+    if (stringDisplayEnabled.load (std::memory_order_acquire))
+    {
+        if (panicked || displayRevision != audioStringDisplayRevision)
+            stringDisplaySamplesUntilUpdate = 0;
+        stringDisplaySamplesUntilUpdate -= numSamples;
+        if (stringDisplaySamplesUntilUpdate <= 0)
+        {
+            publishStringActivity (displayRevision);
+            stringDisplaySamplesUntilUpdate = stringDisplayIntervalSamples
+                + stringDisplaySamplesUntilUpdate % stringDisplayIntervalSamples;
+        }
+    }
+    else
+        stringDisplaySamplesUntilUpdate = 0;
+}
+
+void AcustraAudioProcessor::setStringDisplayEnabled (bool enabled) noexcept
+{
+    if (stringDisplayEnabled.exchange (enabled, std::memory_order_acq_rel) != enabled)
+        stringDisplayRevision.fetch_add (1, std::memory_order_acq_rel);
+}
+
+std::array<acustra::AcustraEngine::StringActivity, acustra::AcustraEngine::stringCount>
+AcustraAudioProcessor::getStringActivityForDisplay() const noexcept
+{
+    std::array<StringActivity, acustra::AcustraEngine::stringCount> silent {};
+    const auto tuning = choiceValue<acustra::Tuning> (
+        parameterPointers[slotTuning]->load (std::memory_order_relaxed), 4);
+    const auto open = acustra::AcustraEngine::openNotes (tuning);
+    for (std::size_t string = 0; string < silent.size(); ++string)
+        silent[string].openMidi = silent[string].midiNote = open[string];
+
+    const auto revision = stringDisplayRevision.load (std::memory_order_acquire);
+    const auto unavailable = [&]
+    {
+        return ! stringDisplayEnabled.load (std::memory_order_acquire)
+            || ! engineReady.load (std::memory_order_acquire)
+            || panicRequested.load (std::memory_order_acquire)
+            || stringDisplayRevision.load (std::memory_order_acquire) != revision;
+    };
+    if (unavailable()
+        || stringDisplayPublishedRevision.load (std::memory_order_acquire) != revision)
+        return silent;
+    std::array<StringActivity, acustra::AcustraEngine::stringCount> activity {};
+    for (std::size_t string = 0; string < activity.size(); ++string)
+        activity[string] = unpackStringActivity (
+            stringDisplayActivity[string].load (std::memory_order_relaxed));
+    // A lifecycle or Panic request can race the six loads. Return silence
+    // rather than retrying, waiting, or exposing the previous editor's notes.
+    return unavailable() ? silent : activity;
+}
+
+void AcustraAudioProcessor::publishStringActivity (std::uint32_t revision) noexcept
+{
+    const auto activity = performer.engine().getStringActivity();
+    for (std::size_t string = 0; string < activity.size(); ++string)
+        stringDisplayActivity[string].store (
+            packStringActivity (activity[string]), std::memory_order_relaxed);
+    audioStringDisplayRevision = revision;
+    stringDisplayPublishedRevision.store (revision, std::memory_order_release);
 }
 
 void AcustraAudioProcessor::updateEngineParameters() noexcept
@@ -422,6 +536,7 @@ void AcustraAudioProcessor::requestPanic() noexcept
 {
     keyboardState.reset();
     panicRequested.store (true, std::memory_order_release);
+    stringDisplayRevision.fetch_add (1, std::memory_order_acq_rel);
 }
 
 void AcustraAudioProcessor::getStateInformation (

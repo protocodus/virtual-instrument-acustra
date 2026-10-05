@@ -6,6 +6,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <set>
@@ -17,11 +18,11 @@ namespace
 constexpr double sampleRate = 48000.0;
 constexpr int blockSize = 256;
 constexpr int editorWidth = 1120;
-constexpr int editorHeight = 800;
+constexpr int editorHeight = 980;
 constexpr int editorMinimumWidth = 896;
-constexpr int editorMinimumHeight = 640;
+constexpr int editorMinimumHeight = 784;
 constexpr int editorMaximumWidth = 1456;
-constexpr int editorMaximumHeight = 1040;
+constexpr int editorMaximumHeight = 1274;
 
 int failureCount = 0;
 
@@ -122,7 +123,7 @@ void testParameterContract()
     // Piezo Mix defaults to 0, so Main is the microphones alone; Release
     // Noise to 70%, the level a listener chose; Room to 50%.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
-        2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, -7.5f,
+        2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, 0.0f,
         0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 70.0f, 50.0f
     };
 
@@ -1420,7 +1421,7 @@ void testStateRoundTripAndMigration()
     expect (valueOf (restored, ids::shape) == 1.0f,
             "a retained parameter was not restored from an old state");
     expect (std::abs (valueOf (restored, ids::stringAge) - 15.0f) < 0.011f
-                && std::abs (valueOf (restored, ids::output) + 7.5f) < 0.011f
+                && std::abs (valueOf (restored, ids::output)) < 0.011f
                 && valueOf (restored, ids::capture) == 0.0f
                 && valueOf (restored, ids::picking) == 0.0f
                 && valueOf (restored, ids::piezoMix) == 0.0f
@@ -1535,6 +1536,7 @@ void testEditorRendering()
     std::vector<juce::TextButton*> choiceButtons;
     juce::MidiKeyboardComponent* midiKeyboard = nullptr;
     juce::Label* engineStatus = nullptr;
+    juce::Component* stringActivity = nullptr;
     int comboBoxCount = 0;
     while (! pending.empty())
     {
@@ -1543,6 +1545,8 @@ void testEditorRendering()
         for (auto* child : parent->getChildren())
         {
             pending.push_back (child);
+            if (child->getName() == "String activity")
+                stringActivity = child;
             if (dynamic_cast<juce::ComboBox*> (child) != nullptr)
                 ++comboBoxCount;
             if (auto* label = dynamic_cast<juce::Label*> (child);
@@ -1557,6 +1561,8 @@ void testEditorRendering()
     }
 
     expect (comboBoxCount == 0, "the editor still hides choices in a combo box");
+    expect (stringActivity != nullptr,
+            "the six-string activity display is missing");
     const auto refreshDisplayTimer = [&]
     {
         expect (engineStatus != nullptr, "the visible engine status is missing");
@@ -1693,7 +1699,7 @@ void testEditorRendering()
     expect (processor.snapshotEngineParameters().guitarModel == acustra::GuitarModel::Original,
             "an original construction switch retained a measured body override");
     setValue (processor, ids::tuning, 0.0f);
-    setValue (processor, ids::output, -7.5f);
+    setValue (processor, ids::output, 0.0f);
 
     for (const auto& setup : std::array {
         std::pair { ids::guitarModel, juce::StringArray { "MODEL: Original", "MODEL: Bellido 1978" } },
@@ -1739,6 +1745,11 @@ void testEditorRendering()
             }
         expect (midiKeyboard != nullptr && midiKeyboard->getBottom() == height,
                 "the MIDI keyboard is not anchored to the editor bottom edge");
+        if (stringActivity != nullptr && midiKeyboard != nullptr)
+            expect (stringActivity->getHeight() >= 130
+                        && editor->getLocalBounds().contains (stringActivity->getBounds())
+                        && ! stringActivity->getBounds().intersects (midiKeyboard->getBounds()),
+                    "the string display is clipped or overlaps the keyboard");
         juce::Image image { juce::Image::ARGB, width, height, true };
         juce::Graphics graphics { image };
         editor->paintEntireComponent (graphics, true);
@@ -1815,7 +1826,54 @@ void testEditorRendering()
     saveImage (renderAt (editorMaximumWidth, editorMaximumHeight), "-maximum");
     saveImage (renderAt (editorWidth, editorHeight), "");
 
+    // A played B4 also drives the open B sympathetically. Capture both states
+    // through the actual processor and display timers for visual verification.
+    juce::AudioBuffer<float> sounding { 2, blockSize };
+    for (int block = 0; block < 48; ++block)
+    {
+        juce::MidiBuffer midi;
+        if (block == 0)
+            midi.addEvent (juce::MidiMessage::noteOn (1, 71, 0.8f), 0);
+        processor.processBlock (sounding, midi);
+    }
+    refreshDisplayTimer();
+    expect (stringActivity != nullptr
+                && stringActivity->getDescription().contains ("fret 7, B4, held"),
+            "the accessible string display did not follow the actual held fret");
+    saveImage (renderAt (editorWidth, editorHeight), "-strings-active");
+    saveImage (renderAt (editorMinimumWidth, editorMinimumHeight), "-strings-active-minimum");
+    if (stringActivity != nullptr
+        && juce::SystemStats::getEnvironmentVariable (
+               "ACUSTRA_STRING_DISPLAY_BENCHMARK", {}) == "1")
+    {
+        editor->setSize (editorWidth, editorHeight);
+        juce::Image image { juce::Image::ARGB, stringActivity->getWidth(),
+                           stringActivity->getHeight(), true };
+        std::vector<double> costs;
+        for (int frame = 0; frame < 120; ++frame)
+        {
+            const auto begin = juce::Time::getHighResolutionTicks();
+            {
+                juce::Graphics graphics { image };
+                stringActivity->paintEntireComponent (graphics, true);
+            }
+            const double micros = 1.0e6 * juce::Time::highResolutionTicksToSeconds (
+                juce::Time::getHighResolutionTicks() - begin);
+            if (frame >= 20)
+                costs.push_back (micros);
+        }
+        std::sort (costs.begin(), costs.end());
+        std::cout << "Acustra active string panel paint: median " << costs[50]
+                  << " us, p95 " << costs[95]
+                  << " us (offscreen software renderer, default size)\n";
+    }
+
     editor.reset();
+    const auto closedDisplay = processor.getStringActivityForDisplay();
+    expect (processor.getActiveVoiceCount() > 0
+                && std::all_of (closedDisplay.begin(), closedDisplay.end(),
+                    [] (const auto& string) { return ! string.keyDown && string.level == 0.0f; }),
+            "closing the editor stopped audio or retained display publication");
     processor.releaseResources();
 }
 } // namespace
@@ -2374,6 +2432,100 @@ void testOptionalPiezoOutputBus()
     }
 }
 
+static void testStringActivityDisplay()
+{
+    // Observe real allocation and sympathetic motion, not a second MIDI
+    // keyboard. Publishing the display must leave every audio sample intact.
+    auto visible = std::make_unique<AcustraAudioProcessor>();
+    auto hidden = std::make_unique<AcustraAudioProcessor>();
+    for (auto* processor : { visible.get(), hidden.get() })
+    {
+        setValue (*processor, acustra::parameters::guitarModel, 1.0f);
+        setValue (*processor, acustra::parameters::shape, 1.0f);
+        setValue (*processor, acustra::parameters::bodyMaterial, 1.0f);
+        setValue (*processor, acustra::parameters::room, 0.0f);
+        processor->prepareToPlay (sampleRate, blockSize);
+    }
+    visible->setStringDisplayEnabled (true);
+    juce::AudioBuffer<float> displayed { 2, blockSize }, undisplayed { 2, blockSize };
+    const auto render = [&] (int blocks, const juce::MidiBuffer& events)
+    {
+        bool identical = true;
+        for (int block = 0; block < blocks; ++block)
+        {
+            juce::MidiBuffer leftMidi, rightMidi;
+            if (block == 0)
+            {
+                leftMidi = events;
+                rightMidi = events;
+            }
+            visible->processBlock (displayed, leftMidi);
+            hidden->processBlock (undisplayed, rightMidi);
+            for (int channel = 0; channel < 2; ++channel)
+                identical = identical && std::memcmp (
+                    displayed.getReadPointer (channel),
+                    undisplayed.getReadPointer (channel),
+                    static_cast<std::size_t> (blockSize) * sizeof (float)) == 0;
+        }
+        expect (identical, "string display telemetry changed the audio");
+    };
+    juce::MidiBuffer start;
+    start.addEvent (juce::MidiMessage::noteOn (1, 71, 0.72f), 0);
+    render (132, start);
+    auto strings = visible->getStringActivityForDisplay();
+    expect (strings[5].midiNote == 71 && strings[5].fret == 7
+                && strings[5].keyDown && strings[5].played && strings[5].level > 0.0f,
+            "the display did not report B4 on high E fret 7");
+    expect (strings[4].openMidi == 59 && ! strings[4].keyDown
+                && ! strings[4].played && strings[4].level > 2.0e-7f,
+            "the display omitted the sympathetically vibrating open B string");
+
+    juce::MidiBuffer release;
+    release.addEvent (juce::MidiMessage::noteOff (1, 71), 0);
+    render (8, release);
+    strings = visible->getStringActivityForDisplay();
+    expect (! strings[5].keyDown && strings[5].level > 0.0f
+                && strings[4].level > 2.0e-7f,
+            "key-up cleared actual string vibration or retained the held marker");
+
+    visible->requestPanic();
+    hidden->requestPanic();
+    render (1, {});
+    strings = visible->getStringActivityForDisplay();
+    expect (std::all_of (strings.begin(), strings.end(), [] (const auto& string)
+            { return ! string.keyDown && ! string.played && string.level == 0.0f; }),
+            "panic left a stale active fret or vibration in the display");
+
+    for (auto* processor : { visible.get(), hidden.get() })
+        setValue (*processor, acustra::parameters::tuning, 1.0f);
+    render (12, {});
+    expect (visible->getStringActivityForDisplay()[0].openMidi == 38,
+            "the string display did not follow Drop D tuning");
+
+    juce::MidiBuffer harmonic;
+    harmonic.addEvent (juce::MidiMessage::noteOn (1, 88, 0.72f), 0);
+    render (12, harmonic);
+    strings = visible->getStringActivityForDisplay();
+    expect (std::any_of (strings.begin(), strings.end(), [] (const auto& string)
+            { return string.keyDown && string.midiNote == 88 && string.harmonic > 1; }),
+            "the display lost the natural-harmonic identity");
+
+    visible->releaseResources();
+    strings = visible->getStringActivityForDisplay();
+    expect (std::all_of (strings.begin(), strings.end(), [] (const auto& string)
+            { return ! string.keyDown && ! string.played && string.level == 0.0f; }),
+            "stopping audio left stale string activity");
+    visible->prepareToPlay (sampleRate, blockSize);
+    strings = visible->getStringActivityForDisplay();
+    expect (strings[0].openMidi == 38
+                && std::all_of (strings.begin(), strings.end(), [] (const auto& string)
+                    { return ! string.keyDown && ! string.played && string.level == 0.0f; }),
+            "restarting audio restored stale notes or lost the current tuning");
+    visible->setStringDisplayEnabled (false);
+    visible->releaseResources();
+    hidden->releaseResources();
+}
+
 int main()
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -2402,6 +2554,7 @@ int main()
     testLowerZoneLifecycleAndControllerBoundaries();
     testControllerResetSoundOffAndUiPanic();
     testStateRoundTripAndMigration();
+    testStringActivityDisplay();
     testEditorRendering();
 
     if (failureCount != 0)

@@ -39,6 +39,54 @@ direct-file navigation was skipped because managed Chromium blocks it.
 The other four demo songs remain byte-identical in both Dry and Studio room
 modes. Both connected-melody pairs are matched to the same measured LUFS.
 
+## 2026-10-02 — Rack design source and string display correction
+
+The d8/d9 Rack builds selected the SDK main checkout, which still held the
+older 6U cedar/ebony artwork. The approved spruce/rosewood panel and padded
+7U controls were in the separate `codex/acustra-control-spacing` worktree at
+`b28a7bb`. Installed, staged and source panel hashes were identical, so the
+rollback came from source selection, not a stale installation. The fretboard
+had also been implemented only in the JUCE editor and was absent from Rack.
+
+The corrected Rack candidate restores that design, preserves the existing
+control positions, and extends the device to 9U with six physical strings and
+frets 0–20. It consumes the shared engine's read-only string activity observer;
+transient RT properties carry frets, held/released/sympathetic state, harmonic
+status and quantized reaction-force activity. Animation uses 24 Hz publication, plus immediate wake/reset updates,
+with cached static art and no extra per-sample synthesis.
+The build records the Rack design source and the current DSP snapshot as
+separate inputs, and validates both consumed GUI formats and installed assets.
+This correction retains the reciprocal brightness voicing and 0 dB default.
+
+## 2026-10-02 — bring each model about a quarter toward the other's brightness
+
+The user requested that Original and Bellido 1978 move about 25% toward each
+other after comparing their brightness. This is an artistic voicing request,
+not evidence that either measured guitar or its bridge is wrong. A small
+reciprocal logarithmic tilt brightens Original and warms Bellido by 0.4375
+dB/octave around 1 kHz, bounded at 60 Hz and 10 kHz. It changes each completed
+radiation mode's complex residues once, after the high-frequency continuation
+has been generated, so the continuation is not colored twice. No second
+instrument, mode, output filter or per-sample operation is added.
+
+Matched renders cover Dreadnought/Spruce and Auditorium/Mahogany, all three
+picking styles, ten notes and both microphone captures. Over 3–500 ms, the
+mean treble/low energy gap moves from 5.60 to 2.97 dB: Original moves 23.95%
+and Bellido 23.10% toward the other. Stereo and mono, individual notes and
+later decay windows differ; 25% is a broad brightness target, not a waveform
+crossfade or a promise for every note. Tools/FitModelConvergence.py records
+the metric and analytical seed separately from the actual modal renders.
+
+Each model keeps its bridge feedback, string calibration, poles and mode
+counts. The mode residues retain their phases and relative microphone
+proportions; the phase of their sum can change. Paired corrected/bypass
+renders at 48 and 96 kHz check identical physical bridge observers and
+dedicated piezo samples while microphone audio changes. Construction loudness
+trims are regenerated separately to keep the captures and models level with
+the updated default; Main's piezo level follows that calibration, while its
+pickup tone and the dedicated piezo output do not change. This preserves the
+requested 0 dB plug-in gain default.
+
 ## 2026-10-02 — natural harmonics preserve available strings and ringing repeats
 
 D6 can sound as the G string's sixth or D string's eighth harmonic. The

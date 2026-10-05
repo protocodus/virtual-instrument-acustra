@@ -33,6 +33,7 @@ public:
 
 private:
     class ChoiceButtonGroup;
+    class StringActivityDisplay;
 
     using SliderAttachment =
         juce::AudioProcessorValueTreeState::SliderAttachment;
@@ -69,6 +70,7 @@ private:
     std::array<std::unique_ptr<ChoiceButtonGroup>, 3> choiceControls;
     std::array<juce::Label, 7> sliderLabels;
     std::array<juce::Slider, 7> sliderControls;
+    std::unique_ptr<StringActivityDisplay> stringActivityDisplay;
 
     juce::MidiKeyboardComponent keyboard {
         audioProcessor.keyboardState,

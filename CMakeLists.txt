@@ -574,6 +574,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FitCaptureVoicing.py"
                                  --self-test)
                 set_tests_properties(Acustra.FitCaptureVoicing PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.FitModelConvergence
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FitModelConvergence.py"
+                                 --self-test)
+                set_tests_properties(Acustra.FitModelConvergence PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.ValidateCapture
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/ValidateCapture.py"

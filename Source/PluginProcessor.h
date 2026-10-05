@@ -6,6 +6,7 @@
 
 #include <array>
 #include <atomic>
+#include <cstdint>
 
 namespace acustra::parameters
 {
@@ -86,6 +87,12 @@ public:
     {
         return engineReady.load (std::memory_order_acquire);
     }
+    // The editor subscribes only while open. Reads never touch the live
+    // engine: each string's assignment and activity travel in one atomic.
+    void setStringDisplayEnabled (bool enabled) noexcept;
+    [[nodiscard]] std::array<acustra::AcustraEngine::StringActivity,
+                            acustra::AcustraEngine::stringCount>
+        getStringActivityForDisplay() const noexcept;
 
     juce::AudioProcessorValueTreeState parameters;
     juce::MidiKeyboardState keyboardState;
@@ -101,6 +108,7 @@ private:
     void parameterChanged (const juce::String& parameterID,
                            float newValue) override;
     void updateEngineParameters() noexcept;
+    void publishStringActivity (std::uint32_t revision) noexcept;
 
     std::array<std::atomic<float>*, acustra::parameters::parameterCount>
         parameterPointers {};
@@ -114,6 +122,17 @@ private:
     std::atomic<int> activeVoiceCount { 0 };
     std::atomic<int> sympatheticStringCount { 0 };
     std::atomic<double> displaySampleRate { 0.0 };
+    static_assert (std::atomic<std::uint64_t>::is_always_lock_free,
+                   "String display publication must never lock the audio thread");
+    std::array<std::atomic<std::uint64_t>, acustra::AcustraEngine::stringCount>
+        stringDisplayActivity {};
+    std::atomic<bool> stringDisplayEnabled { false };
+    std::atomic<std::uint32_t> stringDisplayRevision { 1 };
+    std::atomic<std::uint32_t> stringDisplayPublishedRevision { 0 };
+    // These three fields belong exclusively to prepare/process/release.
+    std::uint32_t audioStringDisplayRevision { 0 };
+    int stringDisplayIntervalSamples { 1600 };
+    int stringDisplaySamplesUntilUpdate { 0 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AcustraAudioProcessor)
 };

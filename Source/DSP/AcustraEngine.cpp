@@ -11,6 +11,7 @@
 #include "GuitarModelData.h"
 #include "ConstructionLoudnessData.h"
 #include "CaptureVoicingData.h"
+#include "ModelConvergenceData.h"
 #include "PiezoBlampTable.h"
 
 #include <algorithm>
@@ -3979,6 +3980,24 @@ void AcustraEngine::configureBody() noexcept
     const int count = slot;
     for (; slot < bodyModeCount; ++slot)
         bodyModes_[static_cast<std::size_t>(slot)] = {};
+    // A quarter-step toward the other model's broad brightness. Apply once
+    // to the completed bank: the continuation above takes its density from
+    // the unvoiced measured modes, so none of its gain is counted twice.
+    // A positive gain preserves every mode's complex phase and mic balance.
+    for (int index = 0; index < count; ++index)
+    {
+        auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+        if (mode.poleImaginary == 0.0f)
+            continue;
+        const float frequency = std::atan2(mode.poleImaginary, mode.poleReal)
+            * static_cast<float>(sampleRate_) / twoPi;
+        const float gain = detail::modelConvergenceGain(frequency, named);
+        for (auto* residue : { &mode.leftReal, &mode.leftImaginary,
+                &mode.rightReal, &mode.rightImaginary,
+                &mode.leftMomentReal, &mode.leftMomentImaginary,
+                &mode.rightMomentReal, &mode.rightMomentImaginary })
+            *residue *= gain;
+    }
     // g21's own modes are summed in index order, as ever; the parts after
     // them in vector accumulators (BodyBank::render). Shape and Wood keep
     // the same modes in the same slots ringing (sameBodyBank, audit F14).
@@ -10461,6 +10480,27 @@ int AcustraEngine::getSympatheticStringCount() const noexcept
         {
             return !voice.played && voice.level > 2.0e-7f;
         }));
+}
+
+std::array<AcustraEngine::StringActivity, AcustraEngine::stringCount>
+AcustraEngine::getStringActivity() const noexcept
+{
+    std::array<StringActivity, stringCount> activity {};
+    for (std::size_t string = 0; string < activity.size(); ++string)
+    {
+        const auto& voice = voices_[string];
+        auto& current = activity[string];
+        current.openMidi = voice.openMidi;
+        current.midiNote = voice.midiNote;
+        current.fret = voice.fret;
+        current.harmonic = voice.harmonic;
+        current.keyDown = voice.keyDown;
+        current.played = voice.played;
+        current.pedalHeld = voice.pedalHeld;
+        current.level = std::max(voice.level,
+            voice.tailActive ? voice.tailLevel : 0.0f);
+    }
+    return activity;
 }
 
 float AcustraEngine::getLastBridgeVelocity() const noexcept
