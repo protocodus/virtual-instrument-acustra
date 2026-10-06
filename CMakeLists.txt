@@ -792,6 +792,11 @@ if(BUILD_TESTING)
     set_target_properties(AcustraStringPitchRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     add_test(NAME Acustra.StringPitchRealism COMMAND AcustraStringPitchRealismTests)
     set_tests_properties(Acustra.StringPitchRealism PROPERTIES TIMEOUT 60)
+    add_executable(AcustraPalmMutePitchTests Tests/PalmMutePitchTests.cpp)
+    target_link_libraries(AcustraPalmMutePitchTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraPalmMutePitchTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.PalmMutePitch COMMAND AcustraPalmMutePitchTests)
+    set_tests_properties(Acustra.PalmMutePitch PROPERTIES TIMEOUT 60)
 endif()
 
 # Recording-guided realism regression 3.
