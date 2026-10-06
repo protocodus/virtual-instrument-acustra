@@ -6,6 +6,8 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-${PROJECT_DIR}/build-macos}"
 CONFIG="${CONFIG:-Release}"
 VERSION_OVERRIDE="${VERSION:-}"
+BUILD_NUMBER_OVERRIDE="${BUILD_NUMBER:-}"
+BUILD_NUMBER_OVERRIDE_SET="${BUILD_NUMBER+x}"
 APP_SIGN_IDENTITY="${APP_SIGN_IDENTITY:--}"
 INSTALLER_SIGN_IDENTITY="${INSTALLER_SIGN_IDENTITY:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
@@ -79,6 +81,9 @@ identity_args=(--build-dir "${BUILD_DIR}" --config "${CONFIG}" --platform macOS
     --arch "${ARTIFACT_ARCH}" --formats VST3 AU Standalone)
 DIST_DIR="$(python3 "${SCRIPT_DIR}/distribution.py" "${identity_args[@]}" --require-new)"
 BUILD_NUMBER="$(sed -n 's/^ACUSTRA_BUILD_NUMBER:STRING=//p' "${BUILD_DIR}/CMakeCache.txt")"
+if [[ "${BUILD_NUMBER_OVERRIDE_SET}" == x && "${BUILD_NUMBER_OVERRIDE}" != "${BUILD_NUMBER}" ]]; then
+    echo "error: BUILD_NUMBER disagrees with the configured build; rebuild before packaging" >&2; exit 1
+fi
 CONFIGURED_VERSION="$(sed -n 's/^CMAKE_PROJECT_VERSION:STATIC=//p' "${BUILD_DIR}/CMakeCache.txt")"
 if [[ "${VERSION}" != "${CONFIGURED_VERSION}" ]]; then
     echo "error: built version does not match configured version; rebuild" >&2; exit 1
