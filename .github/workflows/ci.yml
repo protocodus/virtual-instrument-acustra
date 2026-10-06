@@ -44,6 +44,9 @@ jobs:
       - name: Install numpy and scipy
         run: python -m pip install numpy scipy
 
+      - name: Check distribution identities and packaging
+        run: python scripts/test-distribution.py
+
       - name: Configure
         run: |
           cmake \
@@ -90,33 +93,19 @@ jobs:
             --target "Acustra_VST3" "Acustra_Standalone"
 
       - name: Package Linux VST3 and standalone
+        id: linux-package
         run: |
           set -euo pipefail
-          artefacts="build-dsp/Acustra_artefacts/Release"
-          test -d "$artefacts/VST3/Acustra.vst3"
-          test -x "$artefacts/Standalone/Acustra"
-          dist="build-dsp/dist"
-          mkdir -p "$dist"
-          archive="$dist/Acustra-Linux-x64.tar.gz"
-          # Licence and notice files ship inside the binary archive when the
-          # instrument carries them (the MIT licence requires the notice to
-          # accompany binaries).
-          contents=("VST3/Acustra.vst3" "Standalone/Acustra")
-          for notice in LICENSE THIRD_PARTY_NOTICES.md ThirdParty/JUCE-LICENSE.md; do
-            if [[ -f "$notice" ]]; then
-              cp "$notice" "$artefacts/$(basename "$notice")"
-              contents+=("$(basename "$notice")")
-            fi
-          done
-          tar -czf "$archive" -C "$artefacts" "${contents[@]}"
-          test -s "$archive"
-          tar -tzf "$archive" >/dev/null
+          python3 scripts/package-desktop.py --build-dir build-dsp --platform Linux
+          directory="$(python3 scripts/distribution.py --build-dir build-dsp --platform Linux --arch x64 --formats VST3 Standalone)"
+          echo "directory=$directory" >> "$GITHUB_OUTPUT"
 
+          echo "distribution=$(sed -n 's/^ACUSTRA_DISTRIBUTION_VERSION:INTERNAL=//p' build-dsp/CMakeCache.txt)" >> "$GITHUB_OUTPUT"
       - name: Upload Linux package
         uses: actions/upload-artifact@v4
         with:
-          name: ci-linux-acustra
-          path: build-dsp/dist/Acustra-Linux-x64.tar.gz
+          name: ci-linux-acustra-${{ steps.linux-package.outputs.distribution }}
+          path: ${{ steps.linux-package.outputs.directory }}/*
           if-no-files-found: error
           retention-days: 7
 
@@ -171,6 +160,22 @@ jobs:
           fi
           echo "Rendered $screenshot ($(wc -c < "$screenshot") bytes)."
 
+      - name: Package macOS formats
+        id: macos-package
+        run: |
+          ./scripts/sign-and-package-macos.sh
+          directory="$(python3 scripts/distribution.py --build-dir build-macos --platform macOS --arch "$(uname -m)" --formats VST3 AU Standalone)"
+          echo "directory=$directory" >> "$GITHUB_OUTPUT"
+          echo "distribution=$(sed -n 's/^ACUSTRA_DISTRIBUTION_VERSION:INTERNAL=//p' build-macos/CMakeCache.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload macOS package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-macos-acustra-${{ steps.macos-package.outputs.distribution }}
+          path: ${{ steps.macos-package.outputs.directory }}/*
+          if-no-files-found: error
+          retention-days: 7
+
   dsp-tests-windows:
     name: DSP tests (Acustra, JUCE-free, Windows)
     runs-on: windows-2025
@@ -208,40 +213,18 @@ jobs:
           cmake --build "build-win" --config Release --parallel --target "Acustra_VST3" "Acustra_Standalone"
 
       - name: Package Windows VST3 and standalone
-        shell: pwsh
+        id: windows-package
+        shell: bash
         run: |
-          $artefacts = "build-win/Acustra_artefacts/Release"
-          $vst3 = Join-Path $artefacts "VST3/Acustra.vst3"
-          $standalone = Join-Path $artefacts "Standalone/Acustra.exe"
-          if (-not (Test-Path -LiteralPath $vst3 -PathType Container)) {
-            throw "expected VST3 bundle at $vst3"
-          }
-          if (-not (Test-Path -LiteralPath $standalone -PathType Leaf)) {
-            throw "expected standalone executable at $standalone"
-          }
-          $dist = "build-win/dist"
-          New-Item -ItemType Directory -Force -Path $dist | Out-Null
-          $zip = Join-Path $dist "Acustra-Windows-x64.zip"
-          # Licence and notice files ship inside the binary archive when the
-          # instrument carries them (the MIT licence requires the notice to
-          # accompany binaries).
-          $contents = @((Join-Path $artefacts "VST3"), (Join-Path $artefacts "Standalone"))
-          foreach ($notice in @("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdParty/JUCE-LICENSE.md")) {
-            $source = Join-Path "." $notice
-            if (Test-Path -LiteralPath $source -PathType Leaf) {
-              $contents += $source
-            }
-          }
-          Compress-Archive -LiteralPath $contents -DestinationPath $zip
-          if (-not (Test-Path -LiteralPath $zip -PathType Leaf) -or
-              (Get-Item -LiteralPath $zip).Length -eq 0) {
-            throw "expected package at $zip"
-          }
+          python scripts/package-desktop.py --build-dir build-win --platform Windows
+          directory="$(python scripts/distribution.py --build-dir build-win --platform Windows --arch x64)"
+          echo "directory=$directory" >> "$GITHUB_OUTPUT"
 
+          echo "distribution=$(sed -n 's/^ACUSTRA_DISTRIBUTION_VERSION:INTERNAL=//p' build-win/CMakeCache.txt)" >> "$GITHUB_OUTPUT"
       - name: Upload Windows package
         uses: actions/upload-artifact@v4
         with:
-          name: ci-windows-acustra
-          path: build-win/dist/Acustra-Windows-x64.zip
+          name: ci-windows-acustra-${{ steps.windows-package.outputs.distribution }}
+          path: ${{ steps.windows-package.outputs.directory }}/*
           if-no-files-found: error
           retention-days: 7

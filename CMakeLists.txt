@@ -23,6 +23,7 @@ endif()
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
 project(Acustra VERSION 1.0.0 LANGUAGES C CXX)
+include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -126,6 +127,7 @@ if(ACUSTRA_BUILD_PLUGIN)
 
     juce_add_plugin(Acustra
         VERSION ${PROJECT_VERSION}
+        BUILD_VERSION ${ACUSTRA_BUILD_NUMBER}
         COMPANY_NAME "Protocodus"
         COMPANY_WEBSITE "https://protocodus.cz"
         COMPANY_EMAIL "protocodus@proton.me"
@@ -145,6 +147,8 @@ if(ACUSTRA_BUILD_PLUGIN)
         EDITOR_WANTS_KEYBOARD_FOCUS TRUE
         AU_SANDBOX_SAFE TRUE
         COPY_PLUGIN_AFTER_BUILD FALSE)
+
+    instrument_distribution_identity(Acustra ${ACUSTRA_PLUGIN_FORMATS})
 
     juce_add_binary_data(AcustraUIAssets
         NAMESPACE AcustraUIAssets
