@@ -58,6 +58,48 @@ stronger body variations intentionally change their sound. See the
 [latest picking/body character comparison](Docs/control-character-feedback-2026-09-08.md)
 and [realism work](Docs/realism-work.md) for measurements and limits.
 
+## Versioned builds and packages
+
+Customer files use `Acustra-<version>-build.<number>-<Platform>-<arch>` and live
+under `dist/<version>/build.<number>/<Platform>-<arch>/`. The current local
+universal build is `dist/1.0.0/build.1/macOS-universal/`, containing
+`Acustra-1.0.0-build.1-macOS-universal.zip`, the matching `.pkg`,
+`.manifest.json` and `-SHA256SUMS.txt`. The manifest records the compiled
+identity, source revision, architectures and package hashes. These are local
+development packages; the existing validation findings are not a release claim.
+
+The default `dist/` belongs to the primary Git checkout. Linked worktrees use
+the Git common directory plus the project's repository-relative path, so their
+packages land in the same stable location. Without Git, it is the source
+project's `dist/`. Set `DIST_ROOT` to choose another root. Earlier version/build
+folders are retained. A populated version/build/platform folder is immutable:
+packaging rejects it, so select a fresh build number for a new package. Generated `Acustra_artefacts/` files and package staging
+folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
+`.app` names and host IDs stay stable.
+
+`ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
+locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
+it with version `1.0.0` and the source revision. Changing that identity rebuilds
+the wrappers; each linked format receives its frozen identity record, and macOS
+bundles embed the build number. Packaging rejects a cache
+that disagrees with those records or macOS bundle metadata. Assign a new build
+number for a new distributable; changing the package name alone is insufficient.
+
+To rebuild only the macOS product formats and package build 1:
+
+```sh
+cmake -S . -B build-macos -DCMAKE_BUILD_TYPE=Release -DACUSTRA_BUILD_NUMBER=1
+cmake --build build-macos --config Release --parallel 3 --target Acustra_VST3 Acustra_AU Acustra_Standalone
+./scripts/sign-and-package-macos.sh
+```
+
+The full validation script accepts `BUILD_NUMBER=42 ./scripts/build-macos.sh`.
+For existing Windows or Linux builds, package with
+`python scripts/package-desktop.py --build-dir build-win --platform Windows`
+or `python3 scripts/package-desktop.py --build-dir build-dsp --platform Linux`.
+Both use the same versioned layout and named manifests/checksums. Run
+`python3 scripts/test-distribution.py` to check packaging without rebuilding DSP.
+
 ## Audio demos
 
 WAV files are omitted from this repository. Generate the ten demos locally
