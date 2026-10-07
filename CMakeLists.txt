@@ -22,7 +22,7 @@ endif()
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.0.0 LANGUAGES C CXX)
+project(Acustra VERSION 1.1.0 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -153,7 +153,7 @@ if(ACUSTRA_BUILD_PLUGIN)
     juce_add_binary_data(AcustraUIAssets
         NAMESPACE AcustraUIAssets
         HEADER_NAME AcustraUIAssets.h
-        SOURCES Assets/UI/cedar-background.png)
+        SOURCES Assets/UI/cedar-background.png Assets/UI/walnut-satin.png)
 
     juce_generate_juce_header(Acustra)
 

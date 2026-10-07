@@ -42,19 +42,20 @@ constexpr std::array<ConstructionPreset, 4> constructionPresets {{
       acustra::BodyMaterial::Mahogany, acustra::GuitarModel::Bellido1978 }
 }};
 
-// Spruce soundboard, rosewood sides, ebony fingerboard, bone inlays and
-// aged brass. The Rack artwork uses the same material and colour direction.
-const juce::Colour ebony { 0xff151311 };
-const juce::Colour pianoBlack { 0xff0d0c0a };
-const juce::Colour pianoHighlight { 0xff454038 };
-const juce::Colour darkWood { 0xff34251c };
-const juce::Colour rosewood { 0xff30231c };
-const juce::Colour soundboard { 0xffe4c99a };
-const juce::Colour ivory { 0xfff3e8cf };
-const juce::Colour mutedText { 0xffcaba9d };
-const juce::Colour brass { 0xffc5a56b };
-const juce::Colour panel { 0xff241c16 };
-const juce::Colour panelEdge { 0xff756044 };
+// Satin walnut, honey spruce, bone inlay and aged brass: a luthier's
+// material palette, with every interactive legend kept independent of grain.
+const juce::Colour ebony { 0xff181512 };
+const juce::Colour pianoBlack { 0xff10100e };
+const juce::Colour pianoHighlight { 0xff4f4a40 };
+const juce::Colour darkWood { 0xff38271d };
+const juce::Colour rosewood { 0xff231a16 };
+const juce::Colour soundboard { 0xffe1c292 };
+const juce::Colour ivory { 0xfff3e6cb };
+const juce::Colour mutedText { 0xffd5c2a1 };
+const juce::Colour brass { 0xffbda16d };
+const juce::Colour panel { 0xff211b16 };
+const juce::Colour panelEdge { 0xff766247 };
+const juce::Colour engraved { 0xff493525 };
 
 juce::Font displayFont (float height, int style = juce::Font::plain)
 {
@@ -62,22 +63,65 @@ juce::Font displayFont (float height, int style = juce::Font::plain)
         juce::Font::getDefaultSansSerifFontName(), height, style));
 }
 
-void drawPanel (juce::Graphics& g, juce::Rectangle<int> bounds)
+juce::Font brandFont (float height)
+{
+    return juce::Font (juce::FontOptions (
+        juce::Font::getDefaultSerifFontName(), height, juce::Font::plain)
+            .withKerningFactor (0.12f));
+}
+
+void drawPanel (juce::Graphics& g, juce::Rectangle<int> bounds,
+                const juce::Image& wood, bool light, float scale)
 {
     const auto area = bounds.toFloat();
-    g.setColour (juce::Colours::black.withAlpha (0.30f));
-    g.fillRoundedRectangle (area.translated (0.0f, 2.0f), 8.0f);
-    juce::ColourGradient fill { panel.brighter (0.09f).withAlpha (0.97f),
-                                area.getX(), area.getY(),
-                                panel.darker (0.14f).withAlpha (0.97f),
-                                area.getX(), area.getBottom(),
-                                false };
-    g.setGradientFill (fill);
-    g.fillRoundedRectangle (area, 8.0f);
-    g.setColour (ivory.withAlpha (0.58f));
-    g.drawRoundedRectangle (area.reduced (0.7f), 8.0f, 1.2f);
-    g.setColour (ebony);
-    g.drawRoundedRectangle (area.reduced (2.4f), 6.0f, 1.0f);
+    const auto radius = 7.0f * scale;
+    g.setColour (juce::Colours::black.withAlpha (0.58f));
+    g.fillRoundedRectangle (area.translated (0.0f, 3.0f * scale), radius);
+    {
+        juce::Graphics::ScopedSaveState saved (g);
+        juce::Path inset;
+        inset.addRoundedRectangle (area, radius);
+        g.reduceClipRegion (inset);
+        g.setColour (light ? soundboard : panel);
+        g.fillRect (area);
+        if (wood.isValid())
+        {
+            g.setOpacity (light ? 0.60f : 0.42f);
+            g.drawImage (wood, area, juce::RectanglePlacement::fillDestination);
+            g.setOpacity (1.0f);
+        }
+        g.setColour ((light ? soundboard : panel).withAlpha (light ? 0.37f : 0.65f));
+        g.fillRect (area);
+        juce::ColourGradient finish {
+            ivory.withAlpha (light ? 0.31f : 0.08f),
+            area.getX(), area.getY(), juce::Colours::black.withAlpha (light ? 0.07f : 0.24f),
+            area.getX(), area.getBottom(), false };
+        g.setGradientFill (finish);
+        g.fillRect (area);
+    }
+    g.setColour (juce::Colours::black.withAlpha (0.75f));
+    g.drawRoundedRectangle (area, radius, 1.7f * scale);
+    g.setColour ((light ? ivory : brass).withAlpha (0.64f));
+    g.drawRoundedRectangle (area.reduced (1.6f * scale), 5.5f * scale, 0.8f * scale);
+    g.setColour ((light ? engraved : juce::Colours::black).withAlpha (0.36f));
+    g.drawRoundedRectangle (area.reduced (3.2f * scale), 4.2f * scale, 0.6f * scale);
+}
+
+void drawRosette (juce::Graphics& g, juce::Point<float> centre, float scale)
+{
+    for (const auto radius : { 22.0f, 19.5f, 15.0f })
+    {
+        g.setColour (brass.withAlpha (radius == 19.5f ? 0.32f : 0.8f));
+        g.drawEllipse (centre.x - radius * scale, centre.y - radius * scale,
+                       radius * 2.0f * scale, radius * 2.0f * scale, scale);
+    }
+    g.setColour (ivory.withAlpha (0.75f));
+    for (int string = 0; string < 6; ++string)
+    {
+        const auto x = centre.x + (static_cast<float> (string) - 2.5f) * 3.2f * scale;
+        g.drawLine (x, centre.y - 12.0f * scale, x, centre.y + 12.0f * scale,
+                    (0.50f + 0.08f * static_cast<float> (string)) * scale);
+    }
 }
 } // namespace
 
@@ -86,8 +130,8 @@ AcustraLookAndFeel::AcustraLookAndFeel()
     setColour (juce::Slider::rotarySliderFillColourId, brass);
     setColour (juce::Slider::rotarySliderOutlineColourId, panelEdge);
     setColour (juce::Slider::textBoxTextColourId, ivory);
-    setColour (juce::Slider::textBoxBackgroundColourId, ebony.withAlpha (0.72f));
-    setColour (juce::Slider::textBoxOutlineColourId, panelEdge);
+    setColour (juce::Slider::textBoxBackgroundColourId, ebony);
+    setColour (juce::Slider::textBoxOutlineColourId, brass.withAlpha (0.75f));
     setColour (juce::Label::textColourId, ivory);
     setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
     setColour (juce::Label::outlineColourId, juce::Colours::transparentBlack);
@@ -95,7 +139,7 @@ AcustraLookAndFeel::AcustraLookAndFeel()
     setColour (juce::TooltipWindow::textColourId, ivory);
     setColour (juce::TooltipWindow::outlineColourId, panelEdge);
     setColour (juce::TextButton::buttonColourId, ebony);
-    setColour (juce::TextButton::buttonOnColourId, ivory);
+    setColour (juce::TextButton::buttonOnColourId, juce::Colour { 0xffe9d5aa });
     setColour (juce::TextButton::textColourOffId, ivory);
     setColour (juce::TextButton::textColourOnId, darkWood);
     setColour (juce::PopupMenu::backgroundColourId, panel);
@@ -114,56 +158,79 @@ void AcustraLookAndFeel::drawRotarySlider (
     const auto centre = bounds.getCentre();
     const auto angle = rotaryStartAngle
                      + sliderPos * (rotaryEndAngle - rotaryStartAngle);
-    const auto trackRadius = radius - 3.5f;
-    const auto trackWidth = juce::jmax (2.5f, radius * 0.055f);
+    const auto trackRadius = radius - 4.0f;
+    const auto trackWidth = juce::jmax (1.8f, radius * 0.033f);
+    const auto trackColour = slider.findColour (juce::Slider::rotarySliderOutlineColourId);
 
+    // Quiet engraved graduations sit outside a brass position arc.
+    for (int tick = 0; tick <= 10; ++tick)
+    {
+        const auto tickAngle = rotaryStartAngle
+            + static_cast<float> (tick) * (rotaryEndAngle - rotaryStartAngle) / 10.0f;
+        const auto inner = radius - (tick % 5 == 0 ? 2.2f : 0.5f);
+        const auto outer = radius + 2.0f;
+        g.setColour (trackColour.withAlpha (tick % 5 == 0 ? 0.72f : 0.40f));
+        g.drawLine (centre.x + std::sin (tickAngle) * inner,
+                    centre.y - std::cos (tickAngle) * inner,
+                    centre.x + std::sin (tickAngle) * outer,
+                    centre.y - std::cos (tickAngle) * outer, 0.8f);
+    }
     juce::Path track;
     track.addCentredArc (centre.x, centre.y, trackRadius, trackRadius, 0.0f,
                          rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour (panelEdge.withAlpha (0.75f));
-    g.strokePath (track, juce::PathStrokeType (
-        trackWidth, juce::PathStrokeType::curved,
-        juce::PathStrokeType::rounded));
-
+    g.setColour (trackColour.withAlpha (0.32f));
+    g.strokePath (track, juce::PathStrokeType (trackWidth));
     if (angle > rotaryStartAngle + 0.001f)
     {
         juce::Path valueArc;
         valueArc.addCentredArc (centre.x, centre.y, trackRadius, trackRadius,
                                 0.0f, rotaryStartAngle, angle, true);
-        g.setColour (slider.findColour (
-            juce::Slider::rotarySliderFillColourId));
+        g.setColour (engraved.withAlpha (0.86f));
         g.strokePath (valueArc, juce::PathStrokeType (
             trackWidth, juce::PathStrokeType::curved,
             juce::PathStrokeType::rounded));
     }
 
-    const auto bodyRadius = radius - trackWidth * 1.9f;
-    g.setColour (juce::Colours::black.withAlpha (0.34f));
-    g.fillEllipse (centre.x - bodyRadius + 1.8f,
-                   centre.y - bodyRadius + 3.0f,
-                   bodyRadius * 2.0f, bodyRadius * 2.0f);
+    const auto bodyRadius = radius - 11.0f;
+    const juce::Rectangle<float> bodyBounds {
+        centre.x - bodyRadius, centre.y - bodyRadius,
+        bodyRadius * 2.0f, bodyRadius * 2.0f };
+    for (int shadow = 5; shadow > 0; --shadow)
+    {
+        g.setColour (juce::Colours::black.withAlpha (0.028f * static_cast<float> (6 - shadow)));
+        g.fillEllipse (bodyBounds.expanded (static_cast<float> (shadow))
+                          .translated (1.0f, 3.0f));
+    }
+    juce::ColourGradient collet { ivory, bodyBounds.getX(), bodyBounds.getY(),
+                                  juce::Colour { 0xff665037 }, bodyBounds.getRight(),
+                                  bodyBounds.getBottom(), false };
+    collet.addColour (0.25, brass);
+    collet.addColour (0.5, juce::Colour { 0xff8e754f });
+    collet.addColour (0.72, juce::Colour { 0xffd7bc85 });
+    g.setGradientFill (collet);
+    g.fillEllipse (bodyBounds.expanded (2.0f));
+    g.setColour (pianoBlack);
+    g.drawEllipse (bodyBounds.expanded (2.0f), 0.9f);
 
     juce::ColourGradient body { pianoHighlight,
-                                centre.x - bodyRadius * 0.64f,
-                                centre.y - bodyRadius * 0.72f,
-                                pianoBlack, centre.x + bodyRadius * 0.52f,
-                                centre.y + bodyRadius * 0.80f, false };
-    body.addColour (0.34, juce::Colour { 0xff2b2721 });
-    body.addColour (0.72, ebony);
+                                centre.x - bodyRadius * 0.55f,
+                                centre.y - bodyRadius * 0.82f,
+                                pianoBlack, centre.x + bodyRadius * 0.40f,
+                                centre.y + bodyRadius * 0.88f, false };
+    body.addColour (0.34, juce::Colour { 0xff302d27 });
+    body.addColour (0.70, ebony);
     g.setGradientFill (body);
-    g.fillEllipse (centre.x - bodyRadius, centre.y - bodyRadius,
-                   bodyRadius * 2.0f, bodyRadius * 2.0f);
-    g.setColour (ivory.withAlpha (0.36f));
-    g.drawEllipse (centre.x - bodyRadius, centre.y - bodyRadius,
-                   bodyRadius * 2.0f, bodyRadius * 2.0f, 1.25f);
-    g.setColour (juce::Colours::white.withAlpha (0.10f));
+    g.fillEllipse (bodyBounds);
+    g.setColour (juce::Colours::black.withAlpha (0.75f));
+    g.drawEllipse (bodyBounds.reduced (2.4f), 1.0f);
+    g.setColour (ivory.withAlpha (0.14f));
+    g.drawEllipse (bodyBounds.reduced (3.4f), 0.75f);
+    g.setColour (ivory.withAlpha (0.12f));
     juce::Path highlight;
     highlight.addCentredArc (centre.x, centre.y,
-                             bodyRadius * 0.78f, bodyRadius * 0.78f,
+                             bodyRadius * 0.91f, bodyRadius * 0.91f,
                              0.0f, 3.65f, 5.78f, true);
-    g.strokePath (highlight, juce::PathStrokeType (
-        1.3f, juce::PathStrokeType::curved,
-        juce::PathStrokeType::rounded));
+    g.strokePath (highlight, juce::PathStrokeType (1.2f));
 
     const auto pointerLength = bodyRadius * 0.78f;
     const auto pointerWidth = juce::jmax (1.7f, bodyRadius * 0.065f);
@@ -189,21 +256,28 @@ void AcustraLookAndFeel::drawButtonBackground (
 {
     auto fill = colour;
     if (isDown)
-        fill = fill.brighter (0.28f);
+        fill = fill.darker (0.10f);
     else if (isHighlighted)
-        fill = fill.brighter (0.13f);
+        fill = fill.brighter (0.14f);
 
-    const auto bounds = button.getLocalBounds().toFloat().reduced (1.0f);
-    g.setColour (fill);
-    g.fillRoundedRectangle (bounds, 4.0f);
-    g.setColour (button.getToggleState()
-                     ? brass : panelEdge);
-    g.drawRoundedRectangle (bounds, 4.0f,
-                            button.getToggleState() ? 1.5f : 1.0f);
+    const auto bounds = button.getLocalBounds().toFloat().reduced (1.4f);
+    const auto selected = button.getToggleState();
+    g.setColour (juce::Colours::black.withAlpha (0.48f));
+    g.fillRoundedRectangle (bounds.translated (0.0f, 1.2f), 3.8f);
+    juce::ColourGradient surface { fill.brighter (selected ? 0.13f : 0.15f),
+                                   0.0f, bounds.getY(), fill.darker (0.10f),
+                                   0.0f, bounds.getBottom(), false };
+    g.setGradientFill (surface);
+    g.fillRoundedRectangle (bounds, 3.8f);
+    g.setColour (selected ? brass : panelEdge.withAlpha (0.80f));
+    g.drawRoundedRectangle (bounds, 3.8f, selected ? 1.25f : 0.8f);
+    g.setColour (ivory.withAlpha (selected ? 0.55f : 0.12f));
+    g.drawLine (bounds.getX() + 5.0f, bounds.getY() + 1.6f,
+                bounds.getRight() - 5.0f, bounds.getY() + 1.6f, 0.7f);
     if (button.hasKeyboardFocus (true))
     {
-        g.setColour (brass.brighter (0.20f));
-        g.drawRoundedRectangle (bounds.reduced (2.0f), 3.0f, 2.0f);
+        g.setColour (selected ? engraved : ivory);
+        g.drawRoundedRectangle (bounds.reduced (2.0f), 2.5f, 1.5f);
     }
 }
 
@@ -221,8 +295,8 @@ class AcustraAudioProcessorEditor::StringActivityDisplay final
       private juce::Timer
 {
 public:
-    explicit StringActivityDisplay (AcustraAudioProcessor& processor)
-        : audioProcessor (processor)
+    explicit StringActivityDisplay (AcustraAudioProcessor& processor, const juce::Image& wood)
+        : audioProcessor (processor), woodTexture (wood)
     {
         setName ("String activity");
         setTitle ("String activity");
@@ -340,6 +414,13 @@ private:
             backdrop = juce::Image (juce::Image::RGB, width, height, false);
         juce::Graphics g (backdrop);
         g.fillAll (panel);
+        if (woodTexture.isValid())
+        {
+            g.setOpacity (0.17f);
+            g.drawImage (woodTexture, backdrop.getBounds().toFloat(),
+                         juce::RectanglePlacement::fillDestination);
+            g.setOpacity (1.0f);
+        }
         g.addTransform (juce::AffineTransform::scale (
             static_cast<float> (width) / panelWidth,
             static_cast<float> (height) / panelHeight));
@@ -352,8 +433,8 @@ private:
         const auto frame = juce::Rectangle<float> (0.8f, 0.8f,
                                                   panelWidth - 1.6f,
                                                   panelHeight - 1.6f);
-        g.setColour (ivory.withAlpha (0.48f));
-        g.drawRoundedRectangle (frame, 7.0f, 1.2f);
+        g.setColour (brass.withAlpha (0.72f));
+        g.drawRoundedRectangle (frame, 7.0f, 1.0f);
         g.setColour (ebony);
         g.drawRoundedRectangle (frame.reduced (2.0f), 5.0f, 1.0f);
 
@@ -540,6 +621,7 @@ private:
     std::array<juce::String, acustra::AcustraEngine::stringCount> openNames;
     std::array<juce::String, acustra::AcustraEngine::stringCount> rowText;
     juce::Image backdrop;
+    juce::Image woodTexture;
     float phase { 0.0f };
     bool initialised { false };
     bool backdropNeedsUpdate { true };
@@ -650,6 +732,8 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     cedarBackground = juce::ImageCache::getFromMemory (
         AcustraUIAssets::cedarbackground_png,
         AcustraUIAssets::cedarbackground_pngSize);
+    walnutBackground = juce::ImageCache::getFromMemory (
+        AcustraUIAssets::walnutsatin_png, AcustraUIAssets::walnutsatin_pngSize);
     setOpaque (true);
     setWantsKeyboardFocus (true);
     setTitle ("Acustra acoustic guitar controls");
@@ -658,7 +742,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         "and an on-screen MIDI keyboard");
 
     titleLabel.setText ("ACUSTRA", juce::dontSendNotification);
-    titleLabel.setFont (displayFont (40.0f, juce::Font::bold));
+    titleLabel.setFont (brandFont (40.0f));
     titleLabel.setColour (juce::Label::textColourId, ivory);
     titleLabel.setJustificationType (juce::Justification::centredLeft);
     titleLabel.setInterceptsMouseClicks (false, false);
@@ -785,7 +869,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         6, "OUTPUT", acustra::parameters::output,
         "Final output level in decibels", true);
 
-    stringActivityDisplay = std::make_unique<StringActivityDisplay> (audioProcessor);
+    stringActivityDisplay = std::make_unique<StringActivityDisplay> (audioProcessor, walnutBackground);
     addAndMakeVisible (*stringActivityDisplay);
 
     keyboard.setName ("Acustra MIDI keyboard");
@@ -797,7 +881,8 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     keyboard.setLowestVisibleKey (keyboardFirstNote);
     keyboard.setMidiChannel (1);
     keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, ivory);
-    keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, ebony);
+    keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, pianoBlack);
+    keyboard.setColour (juce::MidiKeyboardComponent::shadowColourId, juce::Colours::black.withAlpha (0.50f));
     keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, panelEdge);
     keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId,
                         brass.withAlpha (0.25f));
@@ -902,13 +987,19 @@ void AcustraAudioProcessorEditor::configureSlider (
     auto& label = sliderLabels[index];
     label.setText (name, juce::dontSendNotification);
     label.setFont (displayFont (17.0f, juce::Font::bold));
-    label.setColour (juce::Label::textColourId, mutedText);
+    label.setColour (juce::Label::textColourId, engraved);
     label.setJustificationType (juce::Justification::centred);
     label.setInterceptsMouseClicks (false, false);
     label.setAccessible (false);
     addAndMakeVisible (label);
 
     auto& control = sliderControls[index];
+    // Slider text boxes are created before the control joins this editor.
+    // Set their palette directly so they never retain the global JUCE theme.
+    control.setColour (juce::Slider::textBoxTextColourId, ivory);
+    control.setColour (juce::Slider::textBoxBackgroundColourId, ebony);
+    control.setColour (juce::Slider::textBoxOutlineColourId, brass);
+    control.setColour (juce::Slider::rotarySliderOutlineColourId, engraved);
     control.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     control.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 76, 26);
     control.setTextValueSuffix (decibels ? " dB" : " %");
@@ -927,47 +1018,51 @@ void AcustraAudioProcessorEditor::paint (juce::Graphics& g)
 {
     const auto full = getLocalBounds().toFloat();
     const auto scale = static_cast<float> (getWidth()) / designWidth;
-    g.fillAll (soundboard);
-    if (cedarBackground.isValid())
-    {
-        g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
-        g.drawImage (cedarBackground, full,
-                     juce::RectanglePlacement::fillDestination);
-        // A pale satin finish keeps the grain quiet behind the control plates.
-        g.setColour (soundboard.withAlpha (0.72f));
-        g.fillRect (full);
-    }
+    g.fillAll (rosewood);
+    g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+    if (walnutBackground.isValid())
+        g.drawImage (walnutBackground, full, juce::RectanglePlacement::fillDestination);
+    g.setColour (rosewood.withAlpha (0.24f));
+    g.fillRect (full);
+    juce::ColourGradient lacquer {
+        ivory.withAlpha (0.09f), 0.0f, 0.0f,
+        juce::Colours::black.withAlpha (0.36f), full.getWidth(), full.getHeight(), false };
+    g.setGradientFill (lacquer);
+    g.fillRect (full);
 
-    juce::ColourGradient headerShade {
-        rosewood, 0.0f, 0.0f, darkWood.brighter (0.08f),
-        full.getWidth(), 86.0f * scale, false };
-    g.setGradientFill (headerShade);
+    // Double purfling follows the perimeter like the binding of a guitar.
+    g.setColour (brass.withAlpha (0.66f));
+    g.drawRect (full.reduced (6.0f * scale), 0.8f * scale);
+    g.setColour (ivory.withAlpha (0.22f));
+    g.drawRect (full.reduced (9.0f * scale), 0.65f * scale);
+    g.setColour (juce::Colours::black.withAlpha (0.25f));
     g.fillRect (0.0f, 0.0f, full.getWidth(), 86.0f * scale);
-    g.setColour (ivory.withAlpha (0.6f));
+    g.setColour (brass.withAlpha (0.62f));
     g.drawLine (22.0f * scale, 82.0f * scale,
-                full.getWidth() - 22.0f * scale, 82.0f * scale, scale);
+                full.getWidth() - 22.0f * scale, 82.0f * scale, 0.8f * scale);
+    drawRosette (g, { 48.0f * scale, 42.0f * scale }, scale);
 
-    drawPanel (g, guitarPanelBounds);
-    drawPanel (g, playerPanelBounds);
-    drawPanel (g, capturePanelBounds);
+    drawPanel (g, guitarPanelBounds, walnutBackground, false, scale);
+    drawPanel (g, playerPanelBounds, cedarBackground, true, scale);
+    drawPanel (g, capturePanelBounds, cedarBackground, true, scale);
 
-    const auto heading = [&] (juce::Rectangle<int> bounds, const char* title)
+    const auto heading = [&] (juce::Rectangle<int> bounds, const char* title, bool light)
     {
         auto area = bounds.reduced (juce::roundToInt (18.0f * scale),
                                     juce::roundToInt (12.0f * scale));
-        const auto headingFont = displayFont (19.0f * scale, juce::Font::bold);
-        const auto titleWidth = juce::GlyphArrangement::getStringWidth (headingFont, title);
-        g.setFont (headingFont);
-        g.setColour (ivory);
+        const auto font = displayFont (17.5f * scale, juce::Font::bold);
+        const auto titleWidth = juce::GlyphArrangement::getStringWidth (font, title);
+        g.setFont (font);
+        g.setColour (light ? engraved : ivory);
         g.drawText (title, area.removeFromTop (juce::roundToInt (24.0f * scale)),
                     juce::Justification::centredLeft, false);
-        g.setColour (brass.withAlpha (0.65f));
+        g.setColour ((light ? engraved : brass).withAlpha (0.4f));
         g.drawLine (static_cast<float> (area.getX()), static_cast<float> (area.getY()),
-                    area.getX() + titleWidth, static_cast<float> (area.getY()), scale);
+                    static_cast<float> (area.getX()) + titleWidth, static_cast<float> (area.getY()), 0.6f * scale);
     };
-    heading (guitarPanelBounds, "GUITAR");
-    heading (playerPanelBounds, "PLAYER");
-    heading (capturePanelBounds, "CAPTURE & OUTPUT");
+    heading (guitarPanelBounds, "GUITAR", false);
+    heading (playerPanelBounds, "PLAYER", true);
+    heading (capturePanelBounds, "CAPTURE & OUTPUT", true);
 }
 
 void AcustraAudioProcessorEditor::resized()
@@ -979,15 +1074,17 @@ void AcustraAudioProcessorEditor::resized()
     const auto box = [scale] (int x, int y, int w, int h)
     {
         return juce::Rectangle<int> {
-            juce::roundToInt (x * scale), juce::roundToInt (y * scale),
-            juce::roundToInt (w * scale), juce::roundToInt (h * scale) };
+            juce::roundToInt (static_cast<float> (x) * scale),
+            juce::roundToInt (static_cast<float> (y) * scale),
+            juce::roundToInt (static_cast<float> (w) * scale),
+            juce::roundToInt (static_cast<float> (h) * scale) };
     };
 
-    titleLabel.setFont (displayFont (36.0f * scale, juce::Font::bold));
-    subtitleLabel.setFont (displayFont (12.5f * scale, juce::Font::bold));
+    titleLabel.setFont (brandFont (37.0f * scale));
+    subtitleLabel.setFont (displayFont (10.5f * scale, juce::Font::bold));
     statusLabel.setFont (displayFont (14.0f * scale));
-    titleLabel.setBounds (box (26, 12, 380, 42));
-    subtitleLabel.setBounds (box (28, 54, 460, 20));
+    titleLabel.setBounds (box (80, 10, 440, 44));
+    subtitleLabel.setBounds (box (84, 52, 460, 20));
     statusLabel.setBounds (box (636, 27, 252, 32));
     gatherChordsButton.setBounds (box (908, 25, 94, 36));
     panicButton.setBounds (box (1014, 25, 80, 36));
@@ -1028,6 +1125,8 @@ void AcustraAudioProcessorEditor::resized()
 
     // The technique belongs with the contact controls; the capture belongs
     // with the signal controls. They remain the same parameter attachments.
+    setupLabels[1].setColour (juce::Label::textColourId, engraved);
+    setupLabels[2].setColour (juce::Label::textColourId, engraved);
     setupLabels[1].setBounds (box (512, 111, 82, 22));
     setupControls[1]->setBounds (box (594, 104, 486, 38));
     setupLabels[2].setBounds (box (622, 405, 82, 22));

@@ -1,0 +1,7 @@
+{
+  "tool": "Built-in image_gen",
+  "created": "2026-10-07",
+  "file": "walnut-satin.png",
+  "use": "Shared Acustra UI material texture; functional controls and shop previews rendered from source",
+  "prompt": "Use case: photorealistic-natural. Create a production material texture for a premium physically modeled acoustic guitar software instrument named Acustra. The image is ONLY a perfectly flat, full-bleed, straight-on macro photograph of exquisite quarter-sawn dark American walnut / subtle rosewood instrument tonewood, finished with fine satin oil. Tight elegant predominantly vertical grain with gently flowing figured ribbons and natural minute pores, rich medium-dark warm tobacco brown, chocolate, soft amber highlights, high-end luthier craftsmanship. Understated expensive natural material, softly lit evenly with diffuse studio light, low contrast suitable underneath cream UI lettering. It must be clearly real wood, never plastic, muddy noise or repeated procedural waves. Entire square 2048x2048 frame is uninterrupted wood surface, no object edges, no perspective, no vignetting, no shadows, no seams, no knobs, screws, text, logos, soundhole, borders or other objects. Crisp fine-scale grain not oversized knots; avoid dramatic stripes."
+}

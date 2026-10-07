@@ -53,6 +53,7 @@ private:
     AcustraAudioProcessor& audioProcessor;
     AcustraLookAndFeel lookAndFeel;
     juce::Image cedarBackground;
+    juce::Image walnutBackground;
     juce::TooltipWindow tooltipWindow { this, 600 };
 
     juce::Label titleLabel;
