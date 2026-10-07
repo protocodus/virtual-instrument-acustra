@@ -32,7 +32,10 @@ moving resonance centers or independent random pole motion are added.
 The same pure helper supplies radiation poles, deployed bridge coefficients
 and the cached analytic bridge mobility used by string tuning. Radiation
 residues retain their continuous input coupling through the zero-order-hold
-ratio between the loaded pole and the unloaded 48 kHz reference. Bridge
+integral between the loaded pole and the unloaded 48 kHz reference. For
+continuous pole `s`, that integral is `(exp(s*T)-1)/s`: changing Q requires
+the continuous-pole ratio as well as the discrete-pole ratio. Original and
+the disabled mechanism skip this additional factor exactly. Bridge
 force/moment residue matrices are unchanged. A construction configures one
 fixed posture; attacks do not rebuild the body. The existing modal
 recurrences are unchanged, and the new work occurs during configuration or
@@ -66,14 +69,21 @@ they are not promises of equivalent emitted-note attenuation.
 | 751.69 Hz | 0.2180 s | 0.1939 s | 0.1745 s | −1.932 dB |
 
 The focused native held/released chord changes Main RMS level by
-−0.3255/−0.3267/−0.3205 dB at 44.1/48/96 kHz; paired waveform RMS differences
-are 11.37/11.39/10.52%. Held pitch for MIDI 40, 52 and 67 differs from the
+−0.3358/−0.3359/−0.3340 dB at 44.1/48/96 kHz; paired waveform RMS differences
+are 10.93/11.02/10.29%. Held pitch for MIDI 40, 52 and 67 differs from the
 unloaded version by at most 0.1 cent in a 0.35–0.80 s spectral scan. Native
 levels and existing loudness reference tables are retained. Signal change
 does not by itself establish better realism or listener preference.
 
 `Acustra.PlayerBodyLoading` verifies independent loss math, actual radiation
-centers and residue conversion, analytic/deployed mobility agreement,
+centers and continuous input coupling recovered by numerical held-input
+quadrature. It also compares deployed complex frequency responses with an
+independently integrated continuous state equation for force and moment at
+three rates. This response integration decodes the deployed float poles to
+avoid confusing radius quantization with a changed input coupling; the
+nominal Q/poles and recovered coupling have separate independent guards.
+An old-formula negative control must fail that same response bound. It
+verifies analytic/deployed mobility agreement,
 positive-real matrix response across four shapes and three rates, Original
 audio identity, pickup independence of microphone capture, held tuning,
 chord/release stability, reprepare, setup-switch invalidation, interrupted
@@ -81,6 +91,10 @@ construction/model fades and block partition invariance. Existing supported/
 free-measurement reconstruction fixtures explicitly disable player loading
 so their original independent math and tolerances continue to verify the raw
 model; they do not present the loaded production response as a free-body fit.
+
+The corrected continuous-response check has relative errors below
+3.0×10⁻⁶; its old-formula negative control gives 5.9×10⁻⁴–2.21×10⁻³,
+exceeding the same 5×10⁻⁵ bound in every tested rate, mode and drive axis.
 
 The new suite and the six affected existing suites (Engine, Capture,
 GuitarModels, BodyShape, StringPitchRealism and StringDecayRealism) pass in the

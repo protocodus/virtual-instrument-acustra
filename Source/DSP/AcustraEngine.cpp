@@ -3908,11 +3908,12 @@ void AcustraEngine::configureBody() noexcept
         const float playedDrive = drive * share;
         // The stored residues drive unit-input discrete states fitted at
         // 48 kHz. Player contact changes the runtime pole, while the reference
-        // retains its unloaded Q: its residue ratio therefore retains the
-        // same continuous-input coupling, including at 48 kHz. Convert that
-        // state as a zero-order-held continuous mode:
-        // q=(p_new-1)/(p_48k-1). The former real 48k/rate approximation lost
-        // q's phase and changed the summed response at higher host rates.
+        // retains its unloaded Q. A continuous input residue c gives the
+        // discrete residue c*(exp(s*T)-1)/s, so a change of Q also requires
+        // s_reference/s_loaded. At fixed Q the continuous pole cancels and
+        // only (p_new-1)/(p_48k-1) remains. The former real 48k/rate
+        // approximation lost phase and changed the summed response at
+        // higher host rates.
         const float referenceRate = 48000.0f;
         const std::complex<float> referencePole = std::polar(
             std::exp(-pi * frequency / (engine.q * referenceRate)),
@@ -3928,8 +3929,16 @@ void AcustraEngine::configureBody() noexcept
         };
         const float holdDroop = sampleRate_ == 48000.0 ? 1.0f
             : static_cast<float>(holdGain(48000.0) / holdGain(sampleRate_));
-        const std::complex<float> residueRateScale
+        std::complex<float> residueRateScale
             = (pole - 1.0f) / (referencePole - 1.0f) * holdDroop;
+        if (q != engine.q)
+        {
+            const std::complex<float> referenceContinuousPole(
+                -pi * frequency / engine.q, twoPi * frequency);
+            const std::complex<float> loadedContinuousPole(
+                -pi * frequency / q, twoPi * frequency);
+            residueRateScale *= referenceContinuousPole / loadedContinuousPole;
+        }
         const auto scaledResidue = [playedDrive, residueRateScale]
             (float real, float imaginary)
         {

@@ -19,6 +19,35 @@ struct AcustraEngineTestAccess
     static std::array<float, 2> runtimePole(const AcustraEngine& e, int index)
     { return { e.bodyBank_.poleReal[std::size_t(index)],
                e.bodyBank_.poleImaginary[std::size_t(index)] }; }
+    static void isolateMode(AcustraEngine& e, int index)
+    {
+        auto modes = e.bodyModes_;
+        const auto chosen = modes[std::size_t(index)];
+        modes.fill({});
+        modes[0] = chosen;
+        e.bodyBank_.load(modes, 1, 1, true);
+        e.bodyBank_.captureFilter.enabled = false;
+    }
+    static std::array<float, 2> renderMode(AcustraEngine& e, float force, float moment)
+    {
+        const auto value = e.bodyBank_.render(force, moment);
+        return { value.left, value.right };
+    }
+    static void removeContinuousFactor(AcustraEngine& e, std::complex<double> inverse)
+    {
+        // Negative control: restore the old rate-only residue on the already
+        // isolated loaded mode without changing its pole or state equation.
+        for (auto arrays : { std::array<AcustraEngine::BodyBank::Lanes*, 2> {
+                &e.bodyBank_.leftReal, &e.bodyBank_.leftImaginary },
+                { &e.bodyBank_.rightReal, &e.bodyBank_.rightImaginary },
+                { &e.bodyBank_.leftMomentReal, &e.bodyBank_.leftMomentImaginary },
+                { &e.bodyBank_.rightMomentReal, &e.bodyBank_.rightMomentImaginary } })
+        {
+            const auto old = std::complex<double>((*arrays[0])[0], (*arrays[1])[0])*inverse;
+            (*arrays[0])[0] = float(old.real());
+            (*arrays[1])[0] = float(old.imag());
+        }
+    }
     static const auto& bridge(const AcustraEngine& e) { return e.bridgeLoad_; }
     static const auto& mobility(const AcustraEngine& e) { return e.bridgeMobilityTable(); }
     static auto pole(const EngineParameters& p, int index, bool loaded)
@@ -55,6 +84,18 @@ double independentlyLoadedQ(double f, double q, double magnitude)
     const double participation = f*f / (f*f + 180.0*180.0)
         * (900.0*900.0 / (f*f + 900.0*900.0));
     return 1.0 / (1.0/q + magnitude*participation);
+}
+
+// Numerically integrate the unit-input continuous state equation over one
+// held-input interval. This does not reuse the engine's residue-ratio formula.
+Complex heldInputIntegral(Complex pole, double duration)
+{
+    constexpr int steps = 256;
+    const double step = duration/steps;
+    Complex sum = 1.+std::exp(pole*duration);
+    for (int i = 1; i < steps; ++i)
+        sum += (i%2 == 0 ? 2. : 4.)*std::exp(pole*(i*step));
+    return sum*(step/3.);
 }
 
 acustra::EngineParameters parameters(acustra::GuitarModel model)
@@ -147,7 +188,10 @@ void testActualPolesAndResidues()
                        "player loading shifted a radiation center frequency");
                 expect(std::abs(newPole) <= std::abs(oldPole)+1e-7,
                        "player contact reduced radiation loss");
-                const auto expectedScale = (newPole-Complex(1)) / (oldPole-Complex(1));
+                const Complex oldContinuousPole(-pi*base[0]/base[1], 2*pi*base[0]);
+                const Complex newContinuousPole(-pi*base[0]/q, 2*pi*base[0]);
+                const auto freeInputIntegral = heldInputIntegral(oldContinuousPole, 1./rate);
+                const auto heldInput = heldInputIntegral(newContinuousPole, 1./rate);
                 const std::array<Complex, 4> oldResidues {
                     Complex(a.leftReal,a.leftImaginary), Complex(a.rightReal,a.rightImaginary),
                     Complex(a.leftMomentReal,a.leftMomentImaginary),
@@ -157,9 +201,13 @@ void testActualPolesAndResidues()
                     Complex(b.leftMomentReal,b.leftMomentImaginary),
                     Complex(b.rightMomentReal,b.rightMomentImaginary) };
                 for (std::size_t part = 0; part < oldResidues.size(); ++part)
-                    expect(std::abs(newResidues[part]-oldResidues[part]*expectedScale)
-                               < 3e-7*std::abs(oldResidues[part])+1e-10,
-                           "player loss changed physical radiation coupling beyond ZOH conversion");
+                {
+                    const auto oldCoupling = oldResidues[part]/freeInputIntegral;
+                    const auto loadedCoupling = newResidues[part]/heldInput;
+                    expect(std::abs(loadedCoupling-oldCoupling)
+                               < 2e-5*std::abs(oldCoupling)+1e-8,
+                           "player loss changed the independently recovered continuous input coupling");
+                }
             }
             const auto& a = Access::mobility(*free);
             const auto& b = Access::mobility(*held);
@@ -243,6 +291,101 @@ void testActualBridgePassivity()
                         "cached mobility differs from actual loaded digital sections");
             }
         }
+}
+
+void testContinuousHeldInputResponse()
+{
+    // Drive the deployed single-mode recurrence and an independently
+    // integrated continuous state equation with the same held sample input.
+    // Their complex Fourier responses must agree, including phase. The
+    // continuous coupling is recovered from the unloaded mode by numerical
+    // held-input quadrature; the loaded residue formula is never called.
+    const auto p = parameters(acustra::GuitarModel::Bellido1978);
+    for (double rate : { 44100., 48000., 96000. })
+        for (int mode : { 0, 3, 10 })
+            for (int axis : { 0, 1 })
+            {
+                const auto free = makeEngine(rate, p, false);
+                auto held = makeEngine(rate, p, true);
+                auto wrong = makeEngine(rate, p, true);
+                const auto& original = Access::body(*free)[std::size_t(mode)];
+                const auto base = Access::pole(p, mode, false);
+                const double newQ = independentlyLoadedQ(base[0], base[1], .006f);
+                const Complex nominalOldPole(-pi*base[0]/base[1], 2*pi*base[0]);
+                const Complex nominalNewPole(-pi*base[0]/newQ, 2*pi*base[0]);
+                // The nominal pole/Q was independently verified above.
+                // Propagate the precisely represented float-pole system
+                // here: low modes' radius quantization otherwise dominates
+                // a long response comparison against an ideal double pole.
+                const auto freeDigital = Access::runtimePole(*free, mode);
+                const auto heldDigital = Access::runtimePole(*held, mode);
+                const Complex oldPole = rate*std::log(Complex(freeDigital[0], freeDigital[1]));
+                const Complex newPole = rate*std::log(Complex(heldDigital[0], heldDigital[1]));
+                const auto integral = heldInputIntegral(oldPole, 1./rate);
+                const std::array<Complex, 2> coupling = axis == 0
+                    ? std::array<Complex, 2> {
+                        Complex(original.leftReal, original.leftImaginary)/integral,
+                        Complex(original.rightReal, original.rightImaginary)/integral }
+                    : std::array<Complex, 2> {
+                        Complex(original.leftMomentReal, original.leftMomentImaginary)/integral,
+                        Complex(original.rightMomentReal, original.rightMomentImaginary)/integral };
+                Access::isolateMode(*held, mode);
+                Access::isolateMode(*wrong, mode);
+                Access::removeContinuousFactor(*wrong, nominalNewPole/nominalOldPole);
+                constexpr int frames = 4096, subdivisions = 16;
+                const double h = 1./(rate*subdivisions);
+                Complex continuousState {};
+                std::array<std::array<Complex, 3>, 2> actual {}, reference {}, oldFormula {};
+                for (int n = 0; n < frames; ++n)
+                {
+                    const float input = float(.25*std::cos(2*pi*base[0]*.73*n/rate));
+                    for (int part = 0; part < subdivisions; ++part)
+                    {
+                        const auto rhs = [newPole, input] (Complex x)
+                        { return newPole*x+double(input); };
+                        const Complex k1 = rhs(continuousState);
+                        const Complex k2 = rhs(continuousState+h*.5*k1);
+                        const Complex k3 = rhs(continuousState+h*.5*k2);
+                        const Complex k4 = rhs(continuousState+h*k3);
+                        continuousState += h/6.*(k1+2.*k2+2.*k3+k4);
+                    }
+                    const auto pressure = Access::renderMode(*held,
+                        axis == 0 ? input : 0.f, axis == 1 ? input : 0.f);
+                    const auto wrongPressure = Access::renderMode(*wrong,
+                        axis == 0 ? input : 0.f, axis == 1 ? input : 0.f);
+                    const double window = .5-.5*std::cos(2*pi*n/(frames-1));
+                    for (int frequency = 0; frequency < 3; ++frequency)
+                    {
+                        const double evaluated = base[0]*(.73+.135*frequency);
+                        const auto phase = std::polar(window, -2*pi*evaluated*n/rate);
+                        for (std::size_t channel = 0; channel < 2; ++channel)
+                        {
+                            actual[channel][std::size_t(frequency)]
+                                += double(pressure[channel])*phase;
+                            oldFormula[channel][std::size_t(frequency)]
+                                += double(wrongPressure[channel])*phase;
+                            reference[channel][std::size_t(frequency)]
+                                += 2.*(coupling[channel]*continuousState).real()*phase;
+                        }
+                    }
+                }
+                double error = 0., energy = 0., negativeError = 0.;
+                for (std::size_t channel = 0; channel < 2; ++channel)
+                    for (std::size_t frequency = 0; frequency < 3; ++frequency)
+                    {
+                        error += std::norm(actual[channel][frequency]-reference[channel][frequency]);
+                        negativeError += std::norm(oldFormula[channel][frequency]-reference[channel][frequency]);
+                        energy += std::norm(reference[channel][frequency]);
+                    }
+                std::cout << "Continuous response " << rate << " Hz mode " << mode
+                          << " axis " << axis << " relative error " << std::sqrt(error/energy)
+                          << "; old-formula negative control " << std::sqrt(negativeError/energy)
+                          << '\n';
+                expect(energy > 1e-12 && std::sqrt(error/energy) < 5e-5,
+                       "loaded radiation response differs from independently integrated continuous H(s)");
+                expect(std::sqrt(negativeError/energy) > 5e-5,
+                       "continuous-response test failed to reject the old rate-only residue formula");
+            }
 }
 
 std::vector<float> passage(Engine& e, double rate, acustra::EngineParameters p,
@@ -409,6 +552,7 @@ int main()
     testLawAndBracket();
     testActualPolesAndResidues();
     testActualBridgePassivity();
+    testContinuousHeldInputResponse();
     testPlayedState();
     testHeldTuning();
     if (failures) std::cerr << failures << " player-body loading checks failed\n";
