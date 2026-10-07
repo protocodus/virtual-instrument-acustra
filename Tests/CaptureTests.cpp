@@ -33,6 +33,9 @@ struct AcustraEngineTestAccess
     }
     // U1B's clipped output, seven samples behind the drive the probe shows.
     static double gainStage(const AcustraEngine& engine) { return engine.piezoLastStage_; }
+    // U1B's drive before U1A's input-range/diode knees, the same continuous
+    // corner source that renderPiezo retains in its four-sample history.
+    static double freeDrive(const AcustraEngine& engine) { return engine.piezoDrive_[3]; }
     static void setWeights(AcustraEngine& engine,
                            const std::array<float, 6>& weights)
     {
@@ -372,7 +375,7 @@ void fft(std::vector<std::complex<double>>& data, int sign)
 struct Strum
 {
     std::vector<float> force, open, volts, input, drive;
-    std::vector<double> stage;
+    std::vector<double> stage, freeDrive;
 };
 
 Strum hardStrum(double rate, float velocity, float touch,
@@ -424,6 +427,7 @@ Strum hardStrum(double rate, float velocity, float touch,
         strum.input.push_back(probe.bufferInput);
         strum.drive.push_back(probe.gainStageDrive);
         strum.stage.push_back(Access::gainStage(*engine));
+        strum.freeDrive.push_back(Access::freeDrive(*engine));
     }
     return strum;
 }
@@ -925,14 +929,17 @@ void testPiezoHeadroom()
 }
 
 // 5b. The clip's aliasing: the Pick at velocity 127 at the bridge (Pluck
-// Position 0) keeps 1.4 dB of U1B's swing, so it is driven 3.5 dB harder
-// here (string weights 1.5 times) to pass the swing by 2.1 dB; U1A's input
-// range, 0.3 dB behind U1B's swing on this strum, stops it too (1.9 dB
-// past). U1B's drive, band-limited and run through the same clip 8x
-// oversampled, then brought back to the host rate, is the reference for the chain's clipped output;
-// what differs below 0.45 fs is what the host-rate clip folded back, less
-// what the BLAMP took out - and what the BLAMP's own kernel does to the band,
-// which a bare clip, reported beside it, does not.
+// Position 0), driven beyond U1B's swing through heavier string weights.
+// U1A's input range and diodes also act, entirely inside U1B's saturated
+// interval. The guard below verifies that clipping the free and actual
+// host drives gives identical samples, at the float probe's precision.
+// Interpolate the free drive and clip it 8x oversampled for the reference:
+// interpolating the already kinked U1A output would invent different U1B
+// corners, even though U1B hides those input knees. The independent circuit
+// overload/harmonic tests cover the input section's physical behavior.
+// What differs below 0.45 fs is what the host-rate clip folded back, less
+// what the BLAMP took out, including its kernel's passband error. A bare
+// clip of that same free drive is reported beside it.
 // The strum is taken at the default Touch. At velocity 127 the contact's
 // Touch law saturates, so until 2026-09-30 any Touch from the default up
 // played this strum sample for sample, and the drives below were set on it;
@@ -950,7 +957,14 @@ void testPiezoClipAliasing()
     {
         auto strum = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
                                1.0, 0, 0.0f, overdrive);
-        auto& drive = strum.drive;
+        bool inputKneesHidden = true;
+        for (std::size_t i = 0; i < strum.drive.size(); ++i)
+            inputKneesHidden = inputKneesHidden && std::isfinite(strum.freeDrive[i])
+                && static_cast<float>(std::clamp(strum.freeDrive[i],
+                    Design::railLow, Design::railHigh))
+                    == std::clamp(strum.drive[i], static_cast<float>(Design::railLow),
+                                  static_cast<float>(Design::railHigh));
+        auto& drive = strum.freeDrive;
         std::vector<double> stage(strum.stage.begin() + 7, strum.stage.end());
         drive.resize(stage.size());
         const std::size_t fade = static_cast<std::size_t>(rate / 20);
@@ -1009,17 +1023,13 @@ void testPiezoClipAliasing()
         const double lowDb = 10.0 * std::log10(std::max(lowError, 1.0e-300) / lowSignal);
         const std::string label = "at " + std::to_string(rate) + ", driven " + std::to_string(overdrive)
             + ", Touch " + std::to_string(touch);
+        expect(inputKneesHidden,
+               "U1A input knees are not hidden by U1B's clipped interval, " + label);
         expect(clipped > 0, "the Pick at the bridge driven harder does not clip the piezo preamp, "
                                 + label);
-        // The strum passes U1B's swing by 1.7-2.9 dB over these drives (the
-        // player's hardest Pick strums keep 0.26 dB, 2026-09-30). The chain
-        // must stay under -60 dB at every one. How far it sits under a bare
-        // clip rests on which few host samples pass the rail and swings
-        // several dB from one drive to the next (at 48 kHz from 6.4 dB under
-        // it to 0.1 under), so that comparison is taken over the drives
-        // together, below: 6.0 dB under at 44.1 kHz, 2.7 at 48 kHz. The
-        // brighter Touch 1 release sits 1.1 dB under it at 44.1 kHz, 4.9 at
-        // 48 kHz, which that comparison does not hold it to.
+        // Keep the same -60 dB limit at every drive. Improvement over bare
+        // clipping varies with the few samples that cross a rail, so the
+        // separate 1.5 dB improvement guard uses the default-Touch mean.
         expect(aliasDb < -60.0,
                "piezo clip aliasing on an overdriven strum is above -60 dB, " + label);
         chainSum += aliasDb;
