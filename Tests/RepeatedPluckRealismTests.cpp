@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -17,6 +18,12 @@ struct AcustraEngineTestAccess
     using Loop = AcustraEngine::StringLoop;
     static void condition(Loop& loop, float position, bool stopVelocity = false)
     { AcustraEngine::conditionRepluckContact(loop, position, stopVelocity); }
+    static std::array<double, 2> work(const Loop& fresh, const Loop& previous,
+                                     float* increments = nullptr)
+    { return AcustraEngine::repluckIncrementWork(fresh, previous, increments); }
+    static void merge(Loop& fresh, Loop& previous, float gain,
+                      const float* increments = nullptr)
+    { AcustraEngine::mergeRepluckLoop(fresh, previous, gain, increments); }
     static std::array<Loop, 2> sounding(const AcustraEngine& engine, int string = 0)
     { return engine.voices_[static_cast<std::size_t>(string)].loops; }
     static std::array<Loop, 2> retained(const AcustraEngine& engine)
@@ -57,6 +64,65 @@ using Access = acustra::AcustraEngineTestAccess;
 int failures = 0;
 void expect(bool condition, const char* message)
 { if (!condition) { ++failures; std::cerr << "FAIL: " << message << '\n'; } }
+
+void testAlignedIncrementScratchPreservesWorkAndCompleteState()
+{
+    // Exercise fractional alignment at both delay bounds and wrapped ring
+    // positions. The forced recompute route retains the pre-cache arithmetic;
+    // compare complete loop state as well as both accumulated work terms.
+    auto freshWave = std::make_unique<Access::Loop>();
+    auto oldWave = std::make_unique<Access::Loop>();
+    auto cachedFresh = std::make_unique<Access::Loop>();
+    auto cachedOld = std::make_unique<Access::Loop>();
+    auto directFresh = std::make_unique<Access::Loop>();
+    auto directOld = std::make_unique<Access::Loop>();
+    const int capacity = static_cast<int>(freshWave->delay.size());
+    constexpr float sentinel = 12345.25f;
+    std::vector<float> increments(static_cast<std::size_t>(capacity + 2), sentinel);
+    for (int i = 0; i < capacity; ++i)
+    {
+        freshWave->delay[static_cast<std::size_t>(i)]
+            = static_cast<float>(0.2 * std::sin(0.031 * i));
+        oldWave->delay[static_cast<std::size_t>(i)]
+            = static_cast<float>(0.07 * std::cos(0.053 * i));
+    }
+    oldWave->bendingLossY1 = 0.0123f;
+    oldWave->secondDispersion.y2 = -0.0432f;
+    oldWave->intrinsicCoefficientSamples = 23;
+    oldWave->gestureContact.active = true;
+    oldWave->gestureContact.memory = 0.001f;
+    for (const float freshDelay : { 3.0f, 31.375f, 8190.0f })
+    for (const float oldDelay : { 3.0f, 17.875f, 511.125f, 8190.0f })
+    for (const int writeIndex : { 0, 23, 8191 })
+    {
+        freshWave->currentDelay = freshDelay;
+        freshWave->targetDelay = freshDelay + 0.125f;
+        oldWave->currentDelay = oldDelay;
+        freshWave->writeIndex = writeIndex;
+        oldWave->writeIndex = (writeIndex + 19) % capacity;
+        std::fill(increments.begin(), increments.end(), sentinel);
+        const auto directWork = Access::work(*freshWave, *oldWave);
+        const auto cachedWork = Access::work(*freshWave, *oldWave, increments.data() + 1);
+        expect(directWork == cachedWork,
+               "cached alignment changed the prescribed release work");
+        const int length = std::clamp(static_cast<int>(std::ceil(oldDelay)) + 1,
+                                      4, capacity - 2);
+        expect(increments.front() == sentinel
+                   && std::all_of(increments.begin() + length + 1, increments.end(),
+                       [] (float x) { return x == sentinel; }),
+               "aligned increment scratch exceeded the retained loop's length");
+        for (const float gain : { 0.0f, 0.371f, 1.0f })
+        {
+            *cachedFresh = *directFresh = *freshWave;
+            *cachedOld = *directOld = *oldWave;
+            Access::merge(*directFresh, *directOld, gain);
+            Access::merge(*cachedFresh, *cachedOld, gain, increments.data() + 1);
+            expect(std::memcmp(cachedFresh.get(), directFresh.get(), sizeof(Access::Loop)) == 0
+                       && std::memcmp(cachedOld.get(), directOld.get(), sizeof(Access::Loop)) == 0,
+                   "cached merge changed wave bits, phase, or retained filter/contact state");
+        }
+    }
+}
 
 auto fresh(double rate = 48000.0)
 {
@@ -712,6 +778,7 @@ void testRapidTremoloAudioRemainsBoundedAndBlockExact()
 
 int main()
 {
+    testAlignedIncrementScratchPreservesWorkAndCompleteState();
     testBoundsMeanAndForceTracking();
     testExplicitPerformanceAndResetBoundaries();
     testIndependentRateAndBlockInvariantSequence();

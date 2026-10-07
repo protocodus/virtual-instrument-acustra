@@ -6378,12 +6378,20 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     {
         double freshEnergy = 0.0;
         double cross = 0.0;
+        // Both fresh planes are complete: writePickRelease no longer needs
+        // its scratch waves. Reuse them for exactly the aligned increments
+        // whose work is measured here, then applied below. This avoids a
+        // second fractional read/divide for every sample without changing
+        // either pass's arithmetic or adding delay-sized storage.
+        const std::array<float*, 2> increments {
+            pickReleaseDisplacement_.data(), pickReleaseVelocity_.data() };
         for (int plane = 0; plane < 2; ++plane)
         {
             auto& previous = repluckOldLoops_[static_cast<std::size_t>(plane)];
             conditionRepluckContact(previous, position, true);
             const auto work = repluckIncrementWork(
-                voice.loops[static_cast<std::size_t>(plane)], previous);
+                voice.loops[static_cast<std::size_t>(plane)], previous,
+                increments[static_cast<std::size_t>(plane)]);
             freshEnergy += work[0];
             cross += work[1];
         }
@@ -6397,7 +6405,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                 / (cross + std::sqrt(cross * cross + freshEnergy * freshEnergy)));
         for (int plane = 0; plane < 2; ++plane)
             mergeRepluckLoop(voice.loops[static_cast<std::size_t>(plane)],
-                repluckOldLoops_[static_cast<std::size_t>(plane)], voice.repluckForceGain);
+                repluckOldLoops_[static_cast<std::size_t>(plane)], voice.repluckForceGain,
+                increments[static_cast<std::size_t>(plane)]);
         voice.releaseStepRise *= voice.repluckForceGain;
         // Restored memories carry the old coefficients too. Reapply current
         // controls after the merge even when the prior cache key was equal.
@@ -6758,7 +6767,8 @@ float AcustraEngine::alignedRepluckIncrement(const StringLoop& fresh,
 }
 
 std::array<double, 2> AcustraEngine::repluckIncrementWork(
-    const StringLoop& fresh, const StringLoop& previous) noexcept
+    const StringLoop& fresh, const StringLoop& previous,
+    float* alignedIncrements) noexcept
 {
     const int length = std::clamp(static_cast<int>(std::ceil(previous.currentDelay)) + 1,
                                   4, maximumDelaySamples - 2);
@@ -6774,6 +6784,8 @@ std::array<double, 2> AcustraEngine::repluckIncrementWork(
     {
         const double current = at(age);
         const double next = alignedRepluckIncrement(fresh, previous, age);
+        if (alignedIncrements != nullptr)
+            alignedIncrements[age] = static_cast<float>(next);
         const double slope = next - increment;
         result[0] += slope * slope;
         result[1] += (current - old) * slope;
@@ -6784,14 +6796,15 @@ std::array<double, 2> AcustraEngine::repluckIncrementWork(
 }
 
 void AcustraEngine::mergeRepluckLoop(StringLoop& fresh, StringLoop& previous,
-                                     float gain) noexcept
+                                     float gain, const float* alignedIncrements) noexcept
 {
     const int length = std::clamp(static_cast<int>(std::ceil(previous.currentDelay)) + 1,
                                   4, maximumDelaySamples - 2);
     for (int age = 0; age < length; ++age)
         previous.delay[static_cast<std::size_t>(
             wrapDelayIndex(previous.writeIndex - 1 - age))]
-            += gain * alignedRepluckIncrement(fresh, previous, age);
+            += gain * (alignedIncrements != nullptr ? alignedIncrements[age]
+                : alignedRepluckIncrement(fresh, previous, age));
     previous.targetDelay = fresh.targetDelay;
     // Keep the already travelling field, its ring phase and every stored
     // filter state. The ordinary continuing configure below adopts current

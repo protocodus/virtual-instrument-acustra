@@ -1485,9 +1485,9 @@ private:
     static float alignedRepluckIncrement(const StringLoop& fresh,
         const StringLoop& previous, int age) noexcept;
     static std::array<double, 2> repluckIncrementWork(const StringLoop& fresh,
-        const StringLoop& previous) noexcept;
+        const StringLoop& previous, float* alignedIncrements = nullptr) noexcept;
     static void mergeRepluckLoop(StringLoop& fresh, StringLoop& previous,
-        float gain) noexcept;
+        float gain, const float* alignedIncrements = nullptr) noexcept;
     void updateTailHandLoss(Voice& voice) noexcept;
     // The Pick technique's released state (FittedPhysicalData.h): a rest
     // triangle of this height with its apex at position, a fraction of the
@@ -1660,6 +1660,8 @@ private:
     // writePickRelease's two released waves at every sample of the loop: its
     // energy pass evaluates them (ten Gaussian edges and ten corner lookups
     // a sample), and its write pass writes the same samples from them.
+    // Once both fresh planes are built, a continuing re-pluck reuses these
+    // arrays for the aligned increments shared by its work and merge passes.
     std::array<float, maximumDelaySamples> pickReleaseDisplacement_ {};
     std::array<float, maximumDelaySamples> pickReleaseVelocity_ {};
     int nextDispersionSolve_ { 0 };
