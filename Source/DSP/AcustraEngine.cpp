@@ -7320,7 +7320,10 @@ double AcustraEngine::gaussianReleaseStep(double argument,
     // For x >= 28, erfc(x) < exp(-x*x)/(x*sqrt(pi)) < 7e-343,
     // below half the smallest IEEE double subnormal; erfc(-x) rounds to 2.
     // Retain libm for every near-edge value and other rounding modes.
-    if (nearestRounding && std::numeric_limits<double>::is_iec559)
+    if (nearestRounding && std::numeric_limits<double>::is_iec559
+        && std::numeric_limits<double>::radix == 2
+        && std::numeric_limits<double>::digits == 53
+        && std::numeric_limits<double>::min_exponent == -1021)
     {
         if (argument >= 28.0) return 0.0;
         if (argument <= -28.0) return 1.0;
