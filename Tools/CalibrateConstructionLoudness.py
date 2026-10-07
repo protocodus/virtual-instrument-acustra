@@ -52,6 +52,16 @@ A microphone-only update can keep the existing absolute pickup level with
 the new microphone reference; float32 rounding can change the product by a
 few ulps. This does not waive any loudness or headroom checks.
 
+`--pickings` additionally scopes the written cells to the selected playing
+styles, while retaining every other model/style cell's built gains:
+
+  python3 Tools/CalibrateConstructionLoudness.py --measurements m.json \\
+      --write-header --models bellido1978 --pickings pick --preserve-piezo-level
+
+`--models` and `--pickings` select header writes only. Measurement and `--check`
+still cover every construction, style and capture. `--all-pickings` independently
+adds Finger and Thumb to the hardest-case rendering protocol.
+
 The gains already built in (read from the header) are divided out of each
 measurement, so writing the header again from a build that has them gives the
 same gains. Renders go to a temporary directory and are removed as soon as
@@ -299,15 +309,27 @@ def to_float32(value: float) -> float:
     return float(np.float32(value))
 
 
+def retain_unselected_gains(tables: dict[str, np.ndarray],
+                            built: dict[str, np.ndarray], models,
+                            pickings=PICKINGS) -> None:
+    """Keep all existing gains outside the selected model/style intersection."""
+    for cell in itertools.product(MODELS, SHAPES, WOODS, PICKINGS):
+        if cell[0] not in models or cell[3] not in pickings:
+            i = index(*cell)
+            for name in tables:
+                tables[name][i] = built[name][i]
+
+
 def preserve_piezo_level(tables: dict[str, np.ndarray],
-                         built: dict[str, np.ndarray], models) -> None:
-    """Keep the previous mic*piezo gain on only the selected model cells.
+                         built: dict[str, np.ndarray], models,
+                         pickings=PICKINGS) -> None:
+    """Keep the previous mic*piezo gain on only the selected model/style cells.
 
     Use the float32 microphone references that the generated C++ will read,
     not the unrounded fit. The runtime also multiplies a common string
     reference, so this preserves level to float rounding, not sample bits.
     """
-    for cell in itertools.product(models, SHAPES, WOODS, PICKINGS):
+    for cell in itertools.product(models, SHAPES, WOODS, pickings):
         i = index(*cell)
         old_level = to_float32(built["mic"][i]) * to_float32(built["piezo"][i])
         tables["piezo"][i] = old_level / to_float32(tables["mic"][i])
@@ -495,6 +517,52 @@ def self_test() -> None:
         * old["piezo"][selected].astype(np.float32).astype(float)
     actual = generated["mic"][selected] * generated["piezo"][selected]
     assert np.allclose(previous, actual, rtol=1e-7, atol=0)
+    # Write selectors intersect, rather than render fewer cells. An isolated
+    # Bellido Pick update must preserve every Original, Finger and Thumb entry.
+    fitted = {name: old[name] * np.linspace(1.1, 1.9, CELLS)
+              for name in old}
+    for models, pickings in ((MODELS, PICKINGS),
+                             (("bellido1978",), ("pick",)),
+                             (("original",), ("finger", "thumb")),
+                             (MODELS, ("thumb",))):
+        scoped = {name: values.copy() for name, values in fitted.items()}
+        retain_unselected_gains(scoped, old, models, pickings)
+        for cell in itertools.product(MODELS, SHAPES, WOODS, PICKINGS):
+            i = index(*cell)
+            expected = fitted if cell[0] in models and cell[3] in pickings else old
+            for name in scoped:
+                assert scoped[name][i] == expected[name][i], (cell, name)
+    scoped = {name: values.copy() for name, values in fitted.items()}
+    retain_unselected_gains(scoped, old, ("bellido1978",), ("pick",))
+    before = {name: values.copy() for name, values in scoped.items()}
+    preserve_piezo_level(scoped, old, ("bellido1978",), ("pick",))
+    assert np.array_equal(scoped["mic"], before["mic"])
+    assert np.array_equal(scoped["mono"], before["mono"])
+    with tempfile.TemporaryDirectory() as scratch:
+        path = Path(scratch) / "pick-scoped.h"
+        path.write_text(header_text(scoped))
+        generated = built_gains(path)
+    for cell in itertools.product(MODELS, SHAPES, WOODS, PICKINGS):
+        i = index(*cell)
+        if cell[0] == "bellido1978" and cell[3] == "pick":
+            old_product = np.float32(np.float32(old["mic"][i]) * np.float32(old["piezo"][i]))
+            new_product = np.float32(np.float32(generated["mic"][i])
+                                     * np.float32(generated["piezo"][i]))
+            assert abs(int(old_product.view(np.uint32))
+                       - int(new_product.view(np.uint32))) <= 1, cell
+        else:
+            assert scoped["piezo"][i] == before["piezo"][i], cell
+            for name in scoped:
+                assert np.float32(generated[name][i]) == np.float32(old[name][i]), (cell, name)
+    arguments = argument_parser().parse_args([])
+    assert tuple(arguments.models) == MODELS
+    assert tuple(arguments.pickings) == PICKINGS
+    selected = argument_parser().parse_args([
+        "--models", "bellido1978", "--pickings", "pick",
+        "--write-header", "--preserve-piezo-level"])
+    assert selected.models == ["bellido1978"] and selected.pickings == ["pick"]
+    assert selected.write_header and selected.preserve_piezo_level
+    assert not selected.all_pickings
     fake = {"lufs": {}, "peaks": {}}
     for construction in constructions():
         for picking in PICKINGS:
@@ -530,7 +598,7 @@ def self_test() -> None:
     print("CalibrateConstructionLoudness self-test passed")
 
 
-def main() -> int:
+def argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--renderer", help="AcustraPerformanceRenderer")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
@@ -538,7 +606,7 @@ def main() -> int:
     parser.add_argument("--write-header", action="store_true",
                         help=f"write the gains to {HEADER.name}")
     parser.add_argument("--preserve-piezo-level", action="store_true",
-                        help="with --write-header, keep the selected models' existing"
+                        help="with --write-header, keep the selected model/style cells' existing"
                              " absolute pickup level during a microphone-only update")
     parser.add_argument("--check", action="store_true",
                         help="fail unless the built gains hold every cell within"
@@ -557,7 +625,16 @@ def main() -> int:
                              " and keep the other cells' built gains (a change that"
                              " moved one model's level; the target is the default"
                              " cell's either way)")
+    parser.add_argument("--pickings", nargs="+", choices=PICKINGS, default=PICKINGS,
+                        help="with --write-header, rewrite only these styles within"
+                             " --models; preserve every other cell's built gains"
+                             " (does not restrict measurements or --check)")
     parser.add_argument("--self-test", action="store_true")
+    return parser
+
+
+def main() -> int:
+    parser = argument_parser()
     arguments = parser.parse_args()
     if arguments.preserve_piezo_level and not arguments.write_header:
         parser.error("--preserve-piezo-level requires --write-header")
@@ -585,12 +662,9 @@ def main() -> int:
     if arguments.write_header:
         tables = gains(raw, arguments.max_headroom_cut)
         built = built_gains()
-        for model in set(MODELS) - set(arguments.models):
-            for cell in itertools.product([model], SHAPES, WOODS, PICKINGS):
-                for name in tables:
-                    tables[name][index(*cell)] = built[name][index(*cell)]
+        retain_unselected_gains(tables, built, arguments.models, arguments.pickings)
         if arguments.preserve_piezo_level:
-            preserve_piezo_level(tables, built, arguments.models)
+            preserve_piezo_level(tables, built, arguments.models, arguments.pickings)
         HEADER.write_text(header_text(tables))
         print(f"wrote {HEADER}")
     if arguments.check:
