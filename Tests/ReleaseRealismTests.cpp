@@ -44,6 +44,12 @@ struct AcustraEngineTestAccess
     { return e.voices_[0].loops[0].gestureContact.withdrawalScale; }
     static int withdrawalSamples(const AcustraEngine& e)
     { return e.voices_[0].loops[0].gestureContact.withdrawalSamples; }
+    static std::array<float, 5> contactState(const AcustraEngine& e, bool tail = false)
+    {
+        const auto& c = tail ? e.voices_[0].tailLoop.gestureContact
+                             : e.voices_[0].loops[0].gestureContact;
+        return { c.coupling, c.memoryGain, c.offsetScale, c.memory, c.withdrawalScale };
+    }
     static std::array<double, 3> contactGeometry(const AcustraEngine& e,
                                                 int string, int plane)
     {
@@ -531,10 +537,65 @@ void contactWithdrawalDeadline()
         }
 }
 
+void contactWithdrawalLifecycle()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    for (double rate : { 44100.0, 48000.0, 96000.0 })
+        for (int action = 0; action < 6; ++action)
+        {
+            auto engine = std::make_unique<acustra::AcustraEngine>();
+            engine->prepare(rate, 127);
+            engine->setStringPerChannelMode(true);
+            engine->noteOn(47, 0.8f, 1);
+            advance(*engine, static_cast<int>(0.3 * rate));
+            engine->noteOff(47);
+            advance(*engine, graceSamples(rate) + 2);
+            advance(*engine, Access::returnSamples(*engine)
+                - Access::withdrawalSamples(*engine) / 2);
+            const int remaining = Access::returnSamples(*engine);
+            const auto contact = Access::contactState(*engine);
+            expect(contact[4] > 0.0f && contact[4] < 1.0f,
+                   "lifecycle fixture did not reach a partially withdrawn contact");
+            if (action < 3)
+            {
+                acustra::EngineParameters parameters;
+                if (action == 0) parameters.guitarModel = acustra::GuitarModel::Bellido1978;
+                if (action == 1) parameters.shape = acustra::BodyShape::Parlor;
+                if (action == 2) parameters.tuning = acustra::Tuning::DropD;
+                engine->setParameters(parameters);
+                expect(Access::returnSamples(*engine) == remaining
+                    && Access::contactState(*engine) == contact,
+                    "live construction change restarted the withdrawal or its deadline");
+                advance(*engine, remaining - 1);
+                expect(Access::returnSamples(*engine) == 1 && Access::contact(*engine, 0),
+                       "live construction change ended the release early");
+                advance(*engine, 1);
+                expect(Access::returnSamples(*engine) == 0 && !Access::contact(*engine, 0),
+                       "live construction change delayed the release hand-back");
+            }
+            else if (action == 3)
+            {
+                engine->noteOn(57, 0.7f, 1);
+                expect(!Access::contact(*engine, 0) && Access::tailContact(*engine, 0)
+                    && Access::contactState(*engine, true) == contact,
+                    "retaining old waves changed the partially withdrawn contact state");
+            }
+            else
+            {
+                if (action == 4) engine->allSoundOff();
+                else engine->prepare(rate, 127);
+                expect(!Access::contact(*engine, 0) && !Access::tailContact(*engine, 0)
+                    && Access::returnSamples(*engine) == 0,
+                    "panic or prepare retained a withdrawal or release deadline");
+            }
+        }
+}
+
 int main()
 {
     spatialContactPhysics(); contactBoundariesAndContinuity();
     contactWithdrawalDeadline();
+    contactWithdrawalLifecycle();
     releasePadFollowsPhysicalSlideLength();
     nominalAndMonotonic(); ownershipAndPedal();
     if (failures) return 1;
