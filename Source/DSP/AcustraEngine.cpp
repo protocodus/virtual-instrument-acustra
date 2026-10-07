@@ -3067,7 +3067,22 @@ void AcustraEngine::StringLoop::GestureContact::configure(
     coupling = static_cast<float>(std::sqrt(r * (1.0 - c * c)));
     memoryGain = static_cast<float>(-c);
     offsetScale = static_cast<float>(0.5 * std::sqrt(r * (1.0 - c) / (1.0 + c)));
+    withdrawalSamples = std::max(1, relaxationSamples);
+    withdrawalInverseSamples = 1.0f / static_cast<float>(withdrawalSamples);
+    withdrawalScale = 1.0f;
     active = r > 0.0;
+}
+
+void AcustraEngine::StringLoop::GestureContact::withdraw(int remainingSamples) noexcept
+{
+    // The bridge can keep driving a released string, so its contact storage
+    // need not be zero at the fixed return-to-open deadline. Lift the hand
+    // during its final relaxation interval, reaching zero offset on the last
+    // sample before that deadline. Smoothstep has zero endpoint velocity.
+    const float x = AcustraEngine::clamp(
+        static_cast<float>(remainingSamples - 1) * withdrawalInverseSamples,
+        0.0f, 1.0f);
+    withdrawalScale = x * x * (3.0f - 2.0f * x);
 }
 
 void AcustraEngine::StringLoop::GestureContact::scatter(
@@ -3090,9 +3105,15 @@ void AcustraEngine::StringLoop::GestureContact::scatter(
     // velocity power plus stored contact energy cannot increase. Unlike a
     // fixed viscous clamp, this has unity DC transfer: its displacement
     // offset relaxes to zero rather than storing a late release pluck.
-    memory = coupling * (incomingFirst - incomingSecond) + memoryGain * memory;
+    // Scaling both coefficients by f gives the same instantaneous passive
+    // matrix with strength r*f*f. Moving the hand also contributes the
+    // bounded velocity term -delta(K*f)*oldMemory to the first wave (and its
+    // opposite to the second). That physical withdrawal work is not covered
+    // by the fixed-contact passivity proof above.
+    memory = (coupling * withdrawalScale) * (incomingFirst - incomingSecond)
+        + memoryGain * memory;
     previousIncoming = { first, second };
-    const float offset = offsetScale * memory;
+    const float offset = (offsetScale * withdrawalScale) * memory;
     // This is the integral of the matrix's outgoing velocity, expressed
     // without a accumulating displacement integrator's rounding drift.
     first -= offset;
@@ -9810,6 +9831,10 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                          + voice.excitationParallelGain * boundaryExcitation);
     if (voice.loops[0].gestureContact.active)
     {
+        if (voice.returnSamples > 0
+            && voice.returnSamples <= voice.loops[0].gestureContact.withdrawalSamples + 1)
+            for (auto& loop : voice.loops)
+                loop.gestureContact.withdraw(voice.returnSamples);
         voice.loops[0].applyGestureContact();
         voice.loops[1].applyGestureContact();
     }

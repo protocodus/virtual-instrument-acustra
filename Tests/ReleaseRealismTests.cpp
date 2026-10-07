@@ -38,6 +38,12 @@ struct AcustraEngineTestAccess
     static float contactMemory(const AcustraEngine& e, bool tail = false)
     { return tail ? e.voices_[0].tailLoop.gestureContact.memory
                   : e.voices_[0].loops[0].gestureContact.memory; }
+    static int returnSamples(const AcustraEngine& e)
+    { return e.voices_[0].returnSamples; }
+    static float withdrawalScale(const AcustraEngine& e)
+    { return e.voices_[0].loops[0].gestureContact.withdrawalScale; }
+    static int withdrawalSamples(const AcustraEngine& e)
+    { return e.voices_[0].loops[0].gestureContact.withdrawalSamples; }
     static std::array<double, 3> contactGeometry(const AcustraEngine& e,
                                                 int string, int plane)
     {
@@ -125,6 +131,70 @@ struct AcustraEngineTestAccess
             if (i >= 28 * period) energy += velocity * velocity;
         }
         return energy;
+    }
+    static bool withdrawalWorkIsBounded()
+    {
+        // Observe actual outgoing displacement increments. Subtract only
+        // the independently derived work of moving K; the remaining waves
+        // and contact storage must obey the fixed-contact energy bound.
+        for (int rate : { 8000, 44100, 48000, 96000, 192000, 384000 })
+            for (float strength : { 0.005f, 0.10f, 0.22f })
+                for (bool stillInput : { false, true })
+                {
+                    AcustraEngine::StringLoop::GestureContact contact;
+                    const int count = static_cast<int>(std::ceil(0.006 * rate));
+                    contact.configure(strength, count);
+                    std::array<float, 2> previousIn {}, previousOut {};
+                    double previousK = contact.offsetScale;
+                    const double maximumKStep = 1.5 * contact.offsetScale / count;
+                    for (int i = 0; i <= 3 * count; ++i)
+                    {
+                        const double t = static_cast<double>(i) / rate;
+                        float a = 0.001f * static_cast<float>(std::sin(1130.0 * t)
+                            + 0.31 * std::cos(7170.0 * t));
+                        float b = 0.001f * static_cast<float>(std::sin(790.0 * t + 0.7)
+                            - 0.17 * std::cos(6310.0 * t));
+                        if (i >= 2 * count && stillInput)
+                        { a = previousIn[0]; b = previousIn[1]; }
+                        const std::array<float, 2> incoming { a, b };
+                        const double oldMemory = contact.memory;
+                        if (i >= 2 * count)
+                            contact.withdraw(3 * count - i + 1);
+                        const double k = static_cast<float>(
+                            contact.offsetScale * contact.withdrawalScale);
+                        const double deltaK = k - previousK;
+                        contact.scatter(a, b);
+                        if (i > 0)
+                        {
+                            const double ia = static_cast<double>(incoming[0]) - previousIn[0];
+                            const double ib = static_cast<double>(incoming[1]) - previousIn[1];
+                            const double oa = static_cast<double>(a) - previousOut[0];
+                            const double ob = static_cast<double>(b) - previousOut[1];
+                            const double hand = -deltaK * oldMemory;
+                            const double passiveA = oa - hand;
+                            const double passiveB = ob + hand;
+                            const double input = ia * ia + ib * ib + 0.5 * oldMemory * oldMemory;
+                            const double storage = 0.5 * contact.memory * contact.memory;
+                            const double passive = passiveA * passiveA + passiveB * passiveB + storage;
+                            const double actual = oa * oa + ob * ob + storage;
+                            const double workBound = 2.0 * std::abs(hand)
+                                * (std::abs(passiveA - passiveB) + std::abs(hand));
+                            const double tolerance = input * 1.0e-4 + 1.0e-18;
+                            if (passive > input + tolerance
+                                || actual > input + workBound + tolerance
+                                || std::abs(deltaK) > maximumKStep * 1.001 + 1.0e-7)
+                                return false;
+                        }
+                        if (i == 3 * count
+                            && (contact.withdrawalScale != 0.0f
+                                || a != incoming[0] || b != incoming[1]))
+                            return false; // Detaching leaves no displacement offset.
+                        previousIn = incoming;
+                        previousOut = { a, b };
+                        previousK = k;
+                    }
+                }
+        return true;
     }
 };
 }
@@ -417,9 +487,54 @@ void contactBoundariesAndContinuity()
 }
 }
 
+void contactWithdrawalDeadline()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    expect(Access::withdrawalWorkIsBounded(),
+           "moving hand exceeded its derived velocity/work bound or left a detach offset");
+    for (double rate : { 44100.0, 48000.0, 96000.0 })
+        for (float velocity : { 0.0f, 64.0f / 127.0f, 1.0f })
+        {
+            auto engine = std::make_unique<acustra::AcustraEngine>();
+            engine->prepare(rate, 127);
+            engine->setStringPerChannelMode(true);
+            engine->noteOn(59, 0.9f, 5); // Keep driving the shared bridge.
+            engine->noteOn(47, 0.8f, 1);
+            advance(*engine, static_cast<int>(0.3 * rate));
+            engine->noteOffWithVelocity(47, 1, velocity);
+            advance(*engine, graceSamples(rate) + 2);
+            const int totalRemaining = Access::returnSamples(*engine);
+            const int liftSamples = Access::withdrawalSamples(*engine);
+            expect(totalRemaining > liftSamples + 2,
+                   "withdrawal fixture missed the existing release countdown");
+            advance(*engine, totalRemaining - liftSamples - 1);
+            expect(Access::withdrawalScale(*engine) == 1.0f,
+                   "hand withdrew before its final relaxation interval");
+            float previous = 1.0f;
+            for (int remaining = liftSamples + 1; remaining > 1; --remaining)
+            {
+                expect(Access::returnSamples(*engine) == remaining,
+                       "hand withdrawal changed the return-to-open deadline");
+                advance(*engine, 1);
+                const float scale = Access::withdrawalScale(*engine);
+                expect(scale >= 0.0f && scale <= previous,
+                       "hand withdrawal reversed or exceeded its physical endpoints");
+                previous = scale;
+            }
+            expect(previous <= 3.01f / (liftSamples * liftSamples)
+                       && Access::contact(*engine, 0),
+                   "hand was not almost detached on the penultimate release sample");
+            advance(*engine, 1);
+            expect(Access::returnSamples(*engine) == 0 && !Access::contact(*engine, 0)
+                       && Access::note(*engine, 0) == 40,
+                   "hand contact persisted beyond the unchanged return deadline");
+        }
+}
+
 int main()
 {
     spatialContactPhysics(); contactBoundariesAndContinuity();
+    contactWithdrawalDeadline();
     releasePadFollowsPhysicalSlideLength();
     nominalAndMonotonic(); ownershipAndPedal();
     if (failures) return 1;

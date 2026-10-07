@@ -708,9 +708,13 @@ private:
             float memoryGain { 0.0f };
             float offsetScale { 0.0f };
             float memory { 0.0f };
+            int withdrawalSamples { 1 };
+            float withdrawalInverseSamples { 1.0f };
+            float withdrawalScale { 1.0f };
             std::array<float, 2> previousIncoming {};
 
             void configure(float strength, int relaxationSamples) noexcept;
+            void withdraw(int remainingSamples) noexcept;
             void scatter(float& first, float& second) noexcept;
         } gestureContact {};
 
