@@ -68,7 +68,7 @@ if [[ -n "${BUILD_NUMBER:-}" ]]; then
 fi
 
 cmake "${cmake_args[@]}"
-cmake --build "${BUILD_DIR}" --config "${CONFIG}" --parallel
+cmake --build "${BUILD_DIR}" --config "${CONFIG}" --parallel "${BUILD_JOBS:-3}"
 
 snapshot="${ACUSTRA_EDITOR_SNAPSHOT:-${PROJECT_DIR}/Docs/screenshots/acustra-standalone.png}"
 ACUSTRA_EDITOR_SNAPSHOT="${snapshot}" \

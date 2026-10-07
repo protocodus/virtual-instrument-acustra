@@ -44,8 +44,11 @@ the rendered audio while reducing redundant pitch and pluck calculations.
 
 Guitar construction, Model, Shape, Material, Tuning, Picking and Capture use
 directly visible radio switches; the continuous sound controls remain knobs.
-The spruce, rosewood, bone and brass palette groups construction at the left,
+The 1.1.0 interface pairs a satin walnut chassis with honey spruce inlays,
+bone lettering and aged brass hardware. Construction stays at the left,
 playing technique above capture and output, with the keyboard along the bottom.
+The wood grain is embedded in the plug-in; labels, graduations, switches and
+focus rings are drawn independently for clear interaction at every supported size.
 A six-string fretboard above the keyboard shows the actual frets being played,
 released notes, and sympathetic vibration on open strings. Its animation shows
 vibration activity rather than an audio-rate waveform. The editor opens at
@@ -62,8 +65,8 @@ and [realism work](Docs/realism-work.md) for measurements and limits.
 
 Customer files use `Acustra-<version>-build.<number>-<Platform>-<arch>` and live
 under `dist/<version>/build.<number>/<Platform>-<arch>/`. The current local
-universal build is `dist/1.0.0/build.1/macOS-universal/`, containing
-`Acustra-1.0.0-build.1-macOS-universal.zip`, the matching `.pkg`,
+universal build is `dist/1.1.0/build.1/macOS-universal/`, containing
+`Acustra-1.1.0-build.1-macOS-universal.zip`, the matching `.pkg`,
 `.manifest.json` and `-SHA256SUMS.txt`. The manifest records the compiled
 identity, source revision, architectures and package hashes. These are local
 development packages; the existing validation findings are not a release claim.
@@ -79,7 +82,7 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
 locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
-it with version `1.0.0` and the source revision. Changing that identity rebuilds
+it with the project version (currently `1.1.0`) and the source revision. Changing that identity rebuilds
 the wrappers; each linked format receives its frozen identity record, and macOS
 bundles embed the build number. Packaging rejects a cache
 that disagrees with those records or macOS bundle metadata. Assign a new build
@@ -94,6 +97,7 @@ cmake --build build-macos --config Release --parallel 3 --target Acustra_VST3 Ac
 ```
 
 The full validation script accepts `BUILD_NUMBER=42 ./scripts/build-macos.sh`.
+It defaults to three concurrent build jobs; set `BUILD_JOBS` to change that limit.
 For existing Windows or Linux builds, package with
 `python scripts/package-desktop.py --build-dir build-win --platform Windows`
 or `python3 scripts/package-desktop.py --build-dir build-dsp --platform Linux`.
