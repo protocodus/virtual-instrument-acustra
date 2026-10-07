@@ -39,6 +39,8 @@ local damping-hand contact, and Classical 78 includes restrained player-body
 loss. Velocity accents, sustain and the existing note-join window remain
 directly playable, without added input latency or new controls. See the
 [natural-performance changes and comparisons](Docs/natural-performance-2026-10-07.md).
+The subsequent [CPU optimization](Docs/cpu-optimization-2026-10-07.md) preserves
+the rendered audio while reducing redundant pitch and pluck calculations.
 
 Guitar construction, Model, Shape, Material, Tuning, Picking and Capture use
 directly visible radio switches; the continuous sound controls remain knobs.

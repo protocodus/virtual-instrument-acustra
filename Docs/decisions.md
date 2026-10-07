@@ -5,6 +5,23 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-07 — reduce repeated work while preserving the new model
+
+The CPU pass keeps the published natural-performance sound and MIDI behavior.
+Profiling traced dense Gather spikes mainly to repeated attack construction,
+especially Pick Gaussian evaluation. Pure pitch geometry is now cached by its
+complete exact inputs; re-pluck work and merge passes share their already
+computed fractional alignment using existing scratch storage. Pick Gaussian
+tails use exact binary64 saturation only under nearest rounding, with the
+original libm path for other modes and the complete contact edge.
+
+Final audio/state comparisons use each frozen revision's own headers and
+matched toolchains. Timing is measured separately with inherited denormal
+handling and the FTZ/DAZ mode used by JUCE, because that setting changes Pick
+cost substantially. No sound-quality switch or reduced physical model is
+introduced. Results, deadline limits, libc diagnostic side effects and platform
+coverage are recorded in the [CPU report](cpu-optimization-2026-10-07.md).
+
 ## 2026-10-07 — connected performance gestures with ordinary MIDI playability
 
 Following the request to implement the proposed realism work while keeping
