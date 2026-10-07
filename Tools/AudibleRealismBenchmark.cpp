@@ -6,6 +6,11 @@
 // Usage: AcustraAudibleRealismBenchmark OUTPUT.json [pairs=256] [warmup=32]
 //        [--technique finger|pick|thumb] [--velocity 1..127] [--include-44100]
 //        [--held-rebend] [--controls-only | --initial-only | --transitions-only | --single-low-e-only]
+// Natural-performance comparison adds --natural-performance, --capture stereo|mono|piezo,
+// --touch 0..1 and --untimed-check. The latter executes/checks callbacks without
+// invoking Clock::now(); use it before the coordinated quiet timing window.
+// Tools/BuildAudibleRealismBenchmark.sh OLD_SOURCE CURRENT_SOURCE NEW_BUILD
+// builds this harness against both frozen source trees with matching flags.
 // Defaults preserve the original Pick/v108/two-rate/seven-scenario matrix.
 // Controls-only selects dry 64-frame initial/return/held callbacks; initial-only
 // keeps the full rate/block/model/room grid but measures just the first attack.
@@ -49,6 +54,29 @@ namespace acustra
 // the timed interval. No observer work enters normal DSP processing.
 struct AcustraEngineTestAccess
 {
+    static int untilRelease(const AcustraEngine& engine) noexcept
+    {
+        int remaining = 100000000;
+        for (const auto& voice : engine.voices_)
+            if (voice.releaseJoinPending)
+                remaining = std::min(remaining, static_cast<int>(voice.releaseJoinAnchorSample
+                    + voice.releaseJoinWindowSamples + 1 - engine.sampleClock_));
+        return remaining;
+    }
+    static int releasing(const AcustraEngine& engine) noexcept
+    {
+        int count = 0;
+        for (const auto& voice : engine.voices_)
+            if (voice.played && !voice.releaseJoinPending && !voice.keyDown && voice.releaseSeconds > 0.0f)
+                ++count;
+        return count;
+    }
+    static int attacks(const AcustraEngine& engine) noexcept
+    {
+        int count = 0;
+        for (const auto& voice : engine.voices_) if (voice.attackFired) ++count;
+        return count;
+    }
     static std::array<double, 2> lowEReleasePoles(const AcustraEngine& engine) noexcept
     {
         return { engine.voices_[0].releaseSlipPole, engine.voices_[0].releaseReferencePole };
@@ -71,11 +99,11 @@ struct CallbackState
     int rate {}, frames {}, scenario {}, velocity {};
     static constexpr std::array chord { 40, 47, 52, 56, 59, 64 };
     CallbackState(int sampleRate, int blockSize, int guitar, float room, int selectedScenario,
-                  int technique, int selectedVelocity)
+                  int technique, int selectedVelocity, int capture, float touch)
         : rate(sampleRate), frames(blockSize), scenario(selectedScenario), velocity(selectedVelocity)
     {
         acustra::EngineParameters parameters;
-        parameters.capture = acustra::CaptureType::StereoMic;
+        parameters.capture = static_cast<acustra::CaptureType>(capture);
         parameters.picking = static_cast<acustra::PickingTechnique>(technique);
         parameters.guitarModel = static_cast<acustra::GuitarModel>(guitar);
         parameters.shape = guitar == 1 ? acustra::BodyShape::Auditorium
@@ -83,13 +111,60 @@ struct CallbackState
         parameters.bodyMaterial = guitar == 1 ? acustra::BodyMaterial::Mahogany
                                              : acustra::BodyMaterial::Spruce;
         parameters.room = room;
-        parameters.touch = 0.58f;
+        parameters.touch = touch;
         parameters.pluckPosition = 0.28f;
         tuningParameters = parameters;
         tuningParameters.tuning = acustra::Tuning::Dadgad;
         prepared.setParameters(parameters);
         prepared.prepare(rate, frames);
         prepared.setTempoBpm(120.0);
+        if (scenario >= 13)
+        {
+            if (scenario == 21) return;
+            if (scenario == 18)
+            {
+                prepared.setGatherChords(true);
+                prepared.beginBlock(left.data(), right.data(), frames);
+                for (int stroke = 0; stroke < 4; ++stroke)
+                    for (const int pitch : chord)
+                        prepared.noteOn(stroke * 8, 1, pitch, velocity);
+                prepared.endBlock();
+                // The 24 fixed MIDI events become due at offsets 8..32 in
+                // the measured callback; no setup/queueing work is timed.
+                preroll(acustra::Performer::gatherWindowSamples(rate) - frames - 8);
+            }
+            else
+            {
+                const int strokes = scenario == 13 ? 8 : 1;
+                for (int stroke = 0; stroke < strokes; ++stroke)
+                {
+                    prepared.beginBlock(left.data(), right.data(), frames);
+                    playChord(prepared);
+                    prepared.endBlock();
+                    preroll(rate * 3 / 20 - frames);
+                }
+                if (scenario == 19)
+                    preroll(rate * 2 - rate * 3 / 20);
+                if (scenario == 14 || scenario == 15 || scenario == 17)
+                {
+                    prepared.beginBlock(left.data(), right.data(), 1);
+                    if (scenario == 17) prepared.controlChange(0, 1, 64, 127);
+                    for (const int pitch : chord)
+                        prepared.noteOff(0, 1, pitch, scenario == 14 ? 16 : 120);
+                    prepared.endBlock();
+                    if (scenario == 17)
+                        preroll(rate / 40);
+                    else
+                    {
+                        const int remaining = acustra::AcustraEngineTestAccess::untilRelease(prepared.engine());
+                        if (remaining < frames / 2 || remaining > rate / 10)
+                            throw std::runtime_error("release scenario failed to reach its ordinary join window");
+                        preroll(remaining - frames / 2);
+                    }
+                }
+            }
+            return;
+        }
         // The normal keyboard layout uses conventional ±2-semitone bend,
         // plans the fretted chord, and alternates the player's own strums.
         if (scenario == 1 || scenario == 2 || scenario == 6 || scenario == 7)
@@ -195,6 +270,18 @@ struct CallbackState
 
     void callback() noexcept
     {
+        if (scenario >= 13)
+        {
+            player.beginBlock(left.data(), right.data(), frames);
+            if (scenario == 21) player.noteOn(0, 1, 40, velocity);
+            else if (scenario == 13) playChord(player);
+            else if (scenario == 16)
+                for (const int pitch : chord) player.noteOff(frames / 2, 1, pitch, 64);
+            else if (scenario == 17) player.controlChange(frames / 2, 1, 64, 0);
+            else if (scenario == 20) player.controlChange(frames / 2, 1, 2, 96);
+            player.endBlock();
+            return;
+        }
         if (scenario == 12)
         {
             player.beginBlock(left.data(), right.data(), frames);
@@ -231,7 +318,7 @@ struct CallbackState
                 hash ^= std::bit_cast<std::uint32_t>(value);
                 hash *= 1099511628211ULL;
             }
-        const int expectedActive = scenario == 12 ? 1 : scenario == 8 || scenario == 9 ? 5 : 6;
+        const int expectedActive = scenario == 12 || scenario == 21 ? 1 : scenario == 8 || scenario == 9 ? 5 : 6;
         if (player.engine().getActiveVoiceCount() != expectedActive)
             throw std::runtime_error("unexpected active physical-string count");
         if ((scenario == 8 || scenario == 9)
@@ -239,6 +326,14 @@ struct CallbackState
             throw std::runtime_error("return-to-open callback did not hand back its released string");
         if (player.droppedEventCount() != 0)
             throw std::runtime_error("player dropped a benchmark event");
+        if ((scenario == 14 || scenario == 15 || scenario == 17)
+            && acustra::AcustraEngineTestAccess::releasing(player.engine()) != 6)
+            throw std::runtime_error("release benchmark did not reach physical damping on all six strings");
+        if (scenario == 16)
+            for (const auto& activity : player.engine().getStringActivity())
+                if (activity.keyDown) throw std::runtime_error("key-up benchmark retained MIDI ownership");
+        if (scenario == 18 && acustra::AcustraEngineTestAccess::attacks(player.engine()) == 0)
+            throw std::runtime_error("queued burst never reached a physical attack");
         return hash;
     }
 };
@@ -246,9 +341,9 @@ struct CallbackState
 
 extern "C" void* ACUSTRA_REALISM_SYMBOL(_create)(int rate, int frames, int guitar,
                                                   float room, int scenario,
-                                                  int technique, int velocity)
+                                                  int technique, int velocity, int capture, float touch)
 {
-    return new CallbackState(rate, frames, guitar, room, scenario, technique, velocity);
+    return new CallbackState(rate, frames, guitar, room, scenario, technique, velocity, capture, touch);
 }
 extern "C" void ACUSTRA_REALISM_SYMBOL(_destroy)(void* state)
 {
@@ -277,7 +372,7 @@ extern "C" void ACUSTRA_REALISM_SYMBOL(_release_poles)(void* state, double* slip
 #else
 
 #define ACUSTRA_REALISM_DECLARE(name) \
-    extern "C" void* ACUSTRA_REALISM_SYMBOL_INNER(name, _create)(int, int, int, float, int, int, int); \
+    extern "C" void* ACUSTRA_REALISM_SYMBOL_INNER(name, _create)(int, int, int, float, int, int, int, int, float); \
     extern "C" void ACUSTRA_REALISM_SYMBOL_INNER(name, _destroy)(void*); \
     extern "C" void ACUSTRA_REALISM_SYMBOL_INNER(name, _restore)(void*); \
     extern "C" void ACUSTRA_REALISM_SYMBOL_INNER(name, _run)(void*); \
@@ -293,7 +388,7 @@ static_assert(Clock::is_steady);
 
 struct PlayerApi
 {
-    void* (*create)(int, int, int, float, int, int, int);
+    void* (*create)(int, int, int, float, int, int, int, int, float);
     void (*destroy)(void*);
     void (*restore)(void*);
     void (*run)(void*);
@@ -313,8 +408,8 @@ struct PlayerInstance
     bool requireSingleSlipProof {}, baseline {};
     double slipPole {}, referencePole {};
     PlayerInstance(PlayerApi selected, int rate, int frames, int guitar, float room, int scenario,
-                   int technique, int velocity)
-        : api(selected), state(api.create(rate, frames, guitar, room, scenario, technique, velocity)),
+                   int technique, int velocity, int capture, float touch)
+        : api(selected), state(api.create(rate, frames, guitar, room, scenario, technique, velocity, capture, touch)),
           requireSingleSlipProof(scenario == 12), baseline(selected.create == realism_baseline_create) {}
     ~PlayerInstance() { api.destroy(state); }
     PlayerInstance(const PlayerInstance&) = delete;
@@ -383,7 +478,7 @@ int main(int argc, char** argv)
 {
     try
     {
-        constexpr const char* usage = "usage: AcustraAudibleRealismBenchmark OUTPUT.json [pairs=256] [warmup=32] [--technique finger|pick|thumb] [--velocity 1..127] [--include-44100] [--held-rebend] [--controls-only | --initial-only | --transitions-only | --single-low-e-only]";
+        constexpr const char* usage = "usage: AcustraAudibleRealismBenchmark OUTPUT.json [pairs=256] [warmup=32] [--technique finger|pick|thumb] [--velocity 1..127] [--capture stereo|mono|piezo] [--touch 0..1] [--include-44100] [--held-rebend] [--untimed-check] [--controls-only | --initial-only | --transitions-only | --single-low-e-only | --natural-performance]";
         if (argc < 2)
             throw std::runtime_error(usage);
         int nextArgument = 2;
@@ -395,6 +490,10 @@ int main(int argc, char** argv)
         const int warmups = hasCount() ? positiveInteger(argv[nextArgument++]) : 32;
         int technique = 1;
         int velocity = 108;
+        int capture = 0;
+        float touch = 0.58f;
+        std::string captureName = "stereo_mic";
+        bool naturalPerformance = false, untimedCheck = false;
         bool include44100 = false, heldRebend = false, controlsOnly = false, initialOnly = false,
              transitionsOnly = false, singleLowEOnly = false;
         constexpr std::array techniqueNames { "finger", "pick", "thumb" };
@@ -423,6 +522,24 @@ int main(int argc, char** argv)
             }
             else if (option == "--include-44100")
                 include44100 = true;
+            else if (option == "--capture")
+            {
+                const std::string value(optionValue());
+                if (value == "stereo") { capture = 0; captureName = "stereo_mic"; }
+                else if (value == "mono") { capture = 7; captureName = "mono_mic"; }
+                else if (value == "piezo") { capture = 6; captureName = "piezo"; }
+                else throw std::runtime_error("unknown capture");
+            }
+            else if (option == "--touch")
+            {
+                const std::string value(optionValue());
+                std::size_t length {};
+                touch = std::stof(value, &length);
+                if (length != value.size() || !(touch >= 0.0f && touch <= 1.0f))
+                    throw std::runtime_error("Touch must be a finite number from zero to one");
+            }
+            else if (option == "--natural-performance") naturalPerformance = true;
+            else if (option == "--untimed-check") untimedCheck = true;
             else if (option == "--held-rebend")
                 heldRebend = true;
             else if (option == "--controls-only")
@@ -437,7 +554,8 @@ int main(int argc, char** argv)
                 throw std::runtime_error("unknown option: " + option);
         }
         if (static_cast<int>(controlsOnly) + static_cast<int>(initialOnly)
-            + static_cast<int>(transitionsOnly) + static_cast<int>(singleLowEOnly) > 1)
+            + static_cast<int>(transitionsOnly) + static_cast<int>(singleLowEOnly)
+            + static_cast<int>(naturalPerformance) > 1)
             throw std::runtime_error("select only one scenario subset");
         if (singleLowEOnly && (technique != 0 || velocity != 127))
             throw std::runtime_error("single-low-e-only requires technique finger and velocity 127");
@@ -447,16 +565,19 @@ int main(int argc, char** argv)
         if (!output)
             throw std::runtime_error("could not create output");
         output << std::setprecision(12)
-               << "{\n\"protocol\":\"paired_hot_native_performer_callback_v2\","
+               << "{\n\"protocol\":\"" << (naturalPerformance
+                   ? "paired_hot_native_performer_callback_natural_performance_v1"
+                   : "paired_hot_native_performer_callback_v2") << "\","
                   "\n\"scope\":\"native Performer and DSP; excludes host/JUCE overhead\","
                   "\n\"ordering\":\"baseline first on even trials, current first on odd trials\","
                   "\n\"setup\":\"prepared fixed-storage player snapshot restored before each timed callback; warms instance memory\","
                   "\n\"timing_excludes\":[\"construction\",\"prepare\",\"preroll\",\"snapshot_restore\",\"checksum\",\"output\"],"
-                  "\n\"quantiles\":\"nearest-rank\",\n\"measured_pairs\":" << repeats
-               << ",\n\"warmup_pairs\":" << warmups
+                  "\n\"quantiles\":\"nearest-rank\",\n\"untimed_validation_only\":" << (untimedCheck ? "true" : "false")
+               << ",\n\"measured_pairs\":" << (untimedCheck ? 0 : repeats)
+               << ",\n\"warmup_pairs\":" << (untimedCheck ? 0 : warmups)
                << ",\n\"return_stroke_and_held_preroll_seconds\":0.125,"
-                  "\n\"velocity_midi\":" << velocity << ",\n\"touch\":0.58,\n\"pluck_position\":0.28,"
-                  "\n\"capture\":\"stereo_mic\",\n\"picking\":\""
+                  "\n\"velocity_midi\":" << velocity << ",\n\"touch\":" << touch << ",\n\"pluck_position\":0.28,"
+                  "\n\"capture\":\"" << captureName << "\",\n\"picking\":\""
                << techniqueNames[static_cast<std::size_t>(technique)] << "\","
                   "\n\"chord_midi\":[40,47,52,56,59,64],\n\"channel\":1,"
                   "\n\"scheduled_contact_scenario\":\"five held strings; new high-E attack queued outside timing with delay 4; channel 6 wheel at timed offset 1; setup ends at 32-sample control boundary\","
@@ -465,19 +586,25 @@ int main(int argc, char** argv)
                   "\n\"live_tuning_scenario\":\"held chord after 0.5 s; measured Standard-to-Dadgad setParameters plus process\","
                   "\n\"transition_followup_settling_seconds\":0.1,"
                   "\n\"single_low_e_scenario\":\"one normal Performer MIDI40 noteOn, no strum/repeat force draw; legacy zero slip/reference and current positive slip/zero reference verified after every callback outside timing\","
+                  "\n\"natural_scenarios\":\"eight prior 150 ms strums before reattack; release velocities 16/120 with existing join deadline halfway through callback; ordinary keyup halfway; pedal release halfway after held keyups; 24 Gather events due at offsets 8..32; chord held 2 s; CC2=96 halfway; one normal low-E attack\","
+                  "\n\"natural_validation\":\"zero dropped MIDI; six physical strings; release scenarios prove all six are physically damping; keyup releases all ownership; queued burst proves at least one physical attack; each restored callback output hash repeats\","
                   "\n\"conventional_bend_range_semitones\":2,\n\"results\":[\n";
         constexpr std::array scenarios { "initial_downstroke", "return_upstroke",
                                          "held_chord", "bend_down_new_chord", "bend_up_new_chord",
                                          "scheduled_contact_after_bend", "bend_up_return_upstroke",
                                          "bend_up_held_chord", "return_to_open_handoff",
                                          "return_to_open_settled", "live_tuning_change",
-                                         "live_tuning_settled", "single_low_e_initial" };
+                                         "live_tuning_settled", "single_low_e_initial",
+                                         "coherent_hand_repeated_strum", "gentle_release_contact",
+                                         "firm_release_contact", "ordinary_key_up", "pedal_release_contact",
+                                         "gather_queued_burst_24_events", "held_body_two_seconds", "bridge_hand_contact",
+                                         "single_low_e_contact" };
         constexpr std::array models { "Original", "Bellido1978" };
         const std::vector<int> rates = include44100 ? std::vector<int> { 44100, 48000, 96000 }
                                                    : std::vector<int> { 48000, 96000 };
         const std::vector<int> blockSizes = controlsOnly || transitionsOnly ? std::vector<int> { 64 }
                                                                           : std::vector<int> { 64, 128 };
-        const std::vector<float> rooms = controlsOnly || transitionsOnly ? std::vector<float> { 0.0f }
+        const std::vector<float> rooms = controlsOnly || transitionsOnly || naturalPerformance ? std::vector<float> { 0.0f }
                                                                         : std::vector<float> { 0.0f, 0.5f };
         std::vector<int> selectedScenarios = singleLowEOnly ? std::vector<int> { 12 }
             : transitionsOnly ? std::vector<int> { 8, 9, 10, 11 }
@@ -486,6 +613,8 @@ int main(int argc, char** argv)
                            : std::vector<int> { 0, 1, 2, 3, 4, 5, 6 };
         if (heldRebend && !controlsOnly && !initialOnly && !transitionsOnly && !singleLowEOnly)
             selectedScenarios.push_back(7);
+        if (naturalPerformance)
+            selectedScenarios = {13, 14, 15, 16, 17, 18, 19, 20, 21};
         bool first = true;
         for (const int rate : rates)
             for (const int frames : blockSizes)
@@ -493,8 +622,32 @@ int main(int argc, char** argv)
                     for (const float room : rooms)
                         for (const int scenario : selectedScenarios)
                         {
-                            PlayerInstance baseline(ACUSTRA_REALISM_API(baseline), rate, frames, guitar, room, scenario, technique, velocity);
-                            PlayerInstance current(ACUSTRA_REALISM_API(current), rate, frames, guitar, room, scenario, technique, velocity);
+                            PlayerInstance baseline(ACUSTRA_REALISM_API(baseline), rate, frames, guitar, room, scenario, technique, velocity, capture, touch);
+                            PlayerInstance current(ACUSTRA_REALISM_API(current), rate, frames, guitar, room, scenario, technique, velocity, capture, touch);
+                            if (untimedCheck)
+                            {
+                                for (auto* instance : { &baseline, &current })
+                                {
+                                    instance->api.restore(instance->state);
+                                    instance->api.run(instance->state);
+                                    const auto firstHash = instance->api.checksum(instance->state);
+                                    instance->api.restore(instance->state);
+                                    instance->api.run(instance->state);
+                                    if (firstHash != instance->api.checksum(instance->state))
+                                        throw std::runtime_error("untimed snapshot reproducibility failure");
+                                    instance->expectedHash = firstHash;
+                                }
+                                output << (first ? "" : ",\n") << "{\"rate\":" << rate
+                                       << ",\"frames\":" << frames << ",\"guitar_model\":\""
+                                       << models[static_cast<std::size_t>(guitar)] << "\",\"room\":" << room
+                                       << ",\"scenario\":\"" << scenarios[static_cast<std::size_t>(scenario)]
+                                       << "\",\"untimed_checks_passed\":true,\"baseline_output_fnv64\":\""
+                                       << baseline.expectedHash << "\",\"current_output_fnv64\":\""
+                                       << current.expectedHash << "\"}";
+                                first = false;
+                                std::cout << "Untimed validated: " << rate << '/' << frames << '/' << guitar << '/' << scenario << '\n';
+                                continue;
+                            }
                             std::vector<double> before, after;
                             before.reserve(static_cast<std::size_t>(repeats));
                             after.reserve(static_cast<std::size_t>(repeats));
