@@ -789,13 +789,18 @@ if(BUILD_TESTING)
     set_tests_properties(Acustra.RepeatedPluckRealism PROPERTIES TIMEOUT 60)
 endif()
 
-# Recording-guided realism regression 8.
+# Correlated picking gestures and controller/scheduling boundaries.
 if(BUILD_TESTING)
     add_executable(AcustraPickingHandTests Tests/PickingHandTests.cpp)
     target_link_libraries(AcustraPickingHandTests PRIVATE AcustraDSP)
     set_target_properties(AcustraPickingHandTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     add_test(NAME Acustra.PickingHand COMMAND AcustraPickingHandTests)
     set_tests_properties(Acustra.PickingHand PROPERTIES TIMEOUT 120)
+    add_executable(AcustraPickingHandBoundaryTests Tests/PickingHandBoundaryTests.cpp)
+    target_link_libraries(AcustraPickingHandBoundaryTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraPickingHandBoundaryTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.PickingHandBoundary COMMAND AcustraPickingHandBoundaryTests)
+    set_tests_properties(Acustra.PickingHandBoundary PROPERTIES TIMEOUT 120)
 endif()
 
 # Recording-guided realism regression 8.
