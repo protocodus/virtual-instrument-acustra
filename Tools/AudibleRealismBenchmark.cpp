@@ -9,6 +9,8 @@
 // Natural-performance comparison adds --natural-performance, --capture stereo|mono|piezo,
 // --touch 0..1 and --untimed-check. The latter executes/checks callbacks without
 // invoking Clock::now(); use it before the coordinated quiet timing window.
+// --flush-denormals enables x86 FTZ/DAZ for both versions, matching JUCE's
+// callback setting. Default preserves the process's inherited floating-point mode.
 // Tools/BuildAudibleRealismBenchmark.sh OLD_SOURCE CURRENT_SOURCE NEW_BUILD
 // builds this harness against both frozen source trees with matching flags.
 // Defaults preserve the original Pick/v108/two-rate/seven-scenario matrix.
@@ -36,6 +38,10 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+
+#if defined(__SSE2__) || defined(_M_X64)
+#include <xmmintrin.h>
+#endif
 
 #define ACUSTRA_REALISM_JOIN_INNER(a, b) a##b
 #define ACUSTRA_REALISM_JOIN(a, b) ACUSTRA_REALISM_JOIN_INNER(a, b)
@@ -411,6 +417,23 @@ namespace
 using Clock = std::chrono::steady_clock;
 static_assert(Clock::is_steady);
 
+struct DenormalMode
+{
+#if defined(__SSE2__) || defined(_M_X64)
+    unsigned previous = _mm_getcsr();
+    explicit DenormalMode(bool flush)
+    {
+        if (flush) _mm_setcsr(previous | 0x8040u); // FTZ and DAZ, as in JUCE.
+    }
+    ~DenormalMode() { _mm_setcsr(previous); }
+#else
+    explicit DenormalMode(bool flush)
+    {
+        if (flush) throw std::runtime_error("--flush-denormals requires x86 SSE2");
+    }
+#endif
+};
+
 struct PlayerApi
 {
     void* (*create)(int, int, int, float, int, int, int, int, float);
@@ -504,7 +527,7 @@ int main(int argc, char** argv)
 {
     try
     {
-        constexpr const char* usage = "usage: AcustraAudibleRealismBenchmark OUTPUT.json [pairs=256] [warmup=32] [--technique finger|pick|thumb] [--velocity 1..127] [--capture stereo|mono|piezo] [--touch 0..1] [--include-44100] [--held-rebend] [--untimed-check] [--controls-only | --initial-only | --transitions-only | --single-low-e-only | --natural-performance]";
+        constexpr const char* usage = "usage: AcustraAudibleRealismBenchmark OUTPUT.json [pairs=256] [warmup=32] [--technique finger|pick|thumb] [--velocity 1..127] [--capture stereo|mono|piezo] [--touch 0..1] [--include-44100] [--held-rebend] [--untimed-check] [--flush-denormals] [--controls-only | --initial-only | --transitions-only | --single-low-e-only | --natural-performance]";
         if (argc < 2)
             throw std::runtime_error(usage);
         int nextArgument = 2;
@@ -519,7 +542,7 @@ int main(int argc, char** argv)
         int capture = 0;
         float touch = 0.58f;
         std::string captureName = "stereo_mic";
-        bool naturalPerformance = false, untimedCheck = false;
+        bool naturalPerformance = false, untimedCheck = false, flushDenormals = false;
         bool include44100 = false, heldRebend = false, controlsOnly = false, initialOnly = false,
              transitionsOnly = false, singleLowEOnly = false;
         constexpr std::array techniqueNames { "finger", "pick", "thumb" };
@@ -566,6 +589,7 @@ int main(int argc, char** argv)
             }
             else if (option == "--natural-performance") naturalPerformance = true;
             else if (option == "--untimed-check") untimedCheck = true;
+            else if (option == "--flush-denormals") flushDenormals = true;
             else if (option == "--held-rebend")
                 heldRebend = true;
             else if (option == "--controls-only")
@@ -585,6 +609,7 @@ int main(int argc, char** argv)
             throw std::runtime_error("select only one scenario subset");
         if (singleLowEOnly && (technique != 0 || velocity != 127))
             throw std::runtime_error("single-low-e-only requires technique finger and velocity 127");
+        const DenormalMode denormalMode(flushDenormals);
         if (std::filesystem::exists(argv[1]))
             throw std::runtime_error("output already exists");
         std::ofstream output(argv[1]);
@@ -599,6 +624,7 @@ int main(int argc, char** argv)
                   "\n\"setup\":\"prepared fixed-storage player snapshot restored before each timed callback; warms instance memory\","
                   "\n\"timing_excludes\":[\"construction\",\"prepare\",\"preroll\",\"snapshot_restore\",\"checksum\",\"output\"],"
                   "\n\"quantiles\":\"nearest-rank\",\n\"untimed_validation_only\":" << (untimedCheck ? "true" : "false")
+               << ",\n\"denormal_mode\":\"" << (flushDenormals ? "x86_ftz_daz" : "inherited") << '"'
                << ",\n\"measured_pairs\":" << (untimedCheck ? 0 : repeats)
                << ",\n\"warmup_pairs\":" << (untimedCheck ? 0 : warmups)
                << ",\n\"return_stroke_and_held_preroll_seconds\":0.125,"
