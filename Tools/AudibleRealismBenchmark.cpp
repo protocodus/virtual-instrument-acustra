@@ -81,6 +81,19 @@ struct AcustraEngineTestAccess
     {
         return { engine.voices_[0].releaseSlipPole, engine.voices_[0].releaseReferencePole };
     }
+    static int intrinsicRamps(const AcustraEngine& engine) noexcept
+    {
+#if __has_include("DSP/PerformanceRealism.h")
+        int active = 0;
+        for (const auto& voice : engine.voices_)
+            for (const auto& loop : voice.loops)
+                if (loop.intrinsicCoefficientSamples > 0) ++active;
+        return active;
+#else
+        (void) engine;
+        return -1; // The preceding DSP has no intrinsic-coefficient ramp.
+#endif
+    }
 };
 }
 
@@ -334,6 +347,12 @@ struct CallbackState
                 if (activity.keyDown) throw std::runtime_error("key-up benchmark retained MIDI ownership");
         if (scenario == 18 && acustra::AcustraEngineTestAccess::attacks(player.engine()) == 0)
             throw std::runtime_error("queued burst never reached a physical attack");
+        if (scenario >= 8 && scenario <= 11)
+        {
+            const int active = acustra::AcustraEngineTestAccess::intrinsicRamps(player.engine());
+            if (active >= 0 && ((scenario == 8 || scenario == 10) ? active == 0 : active != 0))
+                throw std::runtime_error("intrinsic-coefficient transition did not match active/settled scenario");
+        }
         return hash;
     }
 };
@@ -368,6 +387,11 @@ extern "C" void ACUSTRA_REALISM_SYMBOL(_release_poles)(void* state, double* slip
     *slip = poles[0];
     *reference = poles[1];
 }
+extern "C" int ACUSTRA_REALISM_SYMBOL(_intrinsic_ramps)(void* state)
+{
+    return acustra::AcustraEngineTestAccess::intrinsicRamps(
+        static_cast<CallbackState*>(state)->player.engine());
+}
 
 #else
 
@@ -377,7 +401,8 @@ extern "C" void ACUSTRA_REALISM_SYMBOL(_release_poles)(void* state, double* slip
     extern "C" void ACUSTRA_REALISM_SYMBOL_INNER(name, _restore)(void*); \
     extern "C" void ACUSTRA_REALISM_SYMBOL_INNER(name, _run)(void*); \
     extern "C" std::uint64_t ACUSTRA_REALISM_SYMBOL_INNER(name, _checksum)(void*); \
-    extern "C" void ACUSTRA_REALISM_SYMBOL_INNER(name, _release_poles)(void*, double*, double*);
+    extern "C" void ACUSTRA_REALISM_SYMBOL_INNER(name, _release_poles)(void*, double*, double*); \
+    extern "C" int ACUSTRA_REALISM_SYMBOL_INNER(name, _intrinsic_ramps)(void*);
 ACUSTRA_REALISM_DECLARE(baseline)
 ACUSTRA_REALISM_DECLARE(current)
 
@@ -394,10 +419,11 @@ struct PlayerApi
     void (*run)(void*);
     std::uint64_t (*checksum)(void*);
     void (*releasePoles)(void*, double*, double*);
+    int (*intrinsicRamps)(void*);
 };
 #define ACUSTRA_REALISM_API(name) PlayerApi { realism_##name##_create, \
     realism_##name##_destroy, realism_##name##_restore, realism_##name##_run, \
-    realism_##name##_checksum, realism_##name##_release_poles }
+    realism_##name##_checksum, realism_##name##_release_poles, realism_##name##_intrinsic_ramps }
 
 struct PlayerInstance
 {
@@ -585,6 +611,7 @@ int main(int argc, char** argv)
                   "\n\"return_to_open_scenario\":\"five held strings plus released fretted low-E; public played-to-idle observer locates handoff outside timing; measured process contains that handoff\","
                   "\n\"live_tuning_scenario\":\"held chord after 0.5 s; measured Standard-to-Dadgad setParameters plus process\","
                   "\n\"transition_followup_settling_seconds\":0.1,"
+                  "\n\"intrinsic_transition_validation\":\"where available, active coefficient sections are counted outside timing; return-to-open/live-tuning callbacks must contain an active ramp, their 100ms followups must have none; preceding DSP reports -1 (absent)\","
                   "\n\"single_low_e_scenario\":\"one normal Performer MIDI40 noteOn, no strum/repeat force draw; legacy zero slip/reference and current positive slip/zero reference verified after every callback outside timing\","
                   "\n\"natural_scenarios\":\"eight prior 150 ms strums before reattack; release velocities 16/120 with existing join deadline halfway through callback; ordinary keyup halfway; pedal release halfway after held keyups; 24 Gather events due at offsets 8..32; chord held 2 s; CC2=96 halfway; one normal low-E attack\","
                   "\n\"natural_validation\":\"zero dropped MIDI; six physical strings; release scenarios prove all six are physically damping; keyup releases all ownership; queued burst proves at least one physical attack; each restored callback output hash repeats\","
@@ -643,7 +670,13 @@ int main(int argc, char** argv)
                                        << ",\"scenario\":\"" << scenarios[static_cast<std::size_t>(scenario)]
                                        << "\",\"untimed_checks_passed\":true,\"baseline_output_fnv64\":\""
                                        << baseline.expectedHash << "\",\"current_output_fnv64\":\""
-                                       << current.expectedHash << "\"}";
+                                       << current.expectedHash << "\"";
+                                if (scenario >= 8 && scenario <= 11)
+                                    output << ",\"intrinsic_ramp_proof\":{\"baseline_active_sections\":"
+                                           << baseline.api.intrinsicRamps(baseline.state)
+                                           << ",\"current_active_sections\":" << current.api.intrinsicRamps(current.state)
+                                           << ",\"expected_active\":" << ((scenario == 8 || scenario == 10) ? "true" : "false") << '}';
+                                output << '}';
                                 first = false;
                                 std::cout << "Untimed validated: " << rate << '/' << frames << '/' << guitar << '/' << scenario << '\n';
                                 continue;
@@ -688,6 +721,11 @@ int main(int argc, char** argv)
                                        << baseline.slipPole << ",\"baseline_reference_pole\":" << baseline.referencePole
                                        << ",\"current_slip_pole\":" << current.slipPole
                                        << ",\"current_reference_pole\":" << current.referencePole << '}';
+                            if (scenario >= 8 && scenario <= 11)
+                                output << ",\"intrinsic_ramp_proof\":{\"baseline_active_sections\":"
+                                       << baseline.api.intrinsicRamps(baseline.state)
+                                       << ",\"current_active_sections\":" << current.api.intrinsicRamps(current.state)
+                                       << ",\"expected_active\":" << ((scenario == 8 || scenario == 10) ? "true" : "false") << '}';
                             output << ",\"bit_identical\":"
                                    << (baseline.expectedHash == current.expectedHash ? "true" : "false")
                                    << ",\"paired_current_over_baseline_p50\":" << percentile(ratios, 0.5)
