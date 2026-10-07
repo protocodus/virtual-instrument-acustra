@@ -6,6 +6,7 @@
 #pragma once
 
 #include "FittedPhysicalData.h"
+#include "PerformanceRealism.h"
 
 #include <array>
 #include <complex>
@@ -180,6 +181,12 @@ public:
     // Setup/offline-fitting control. If already prepared, changing the
     // calibration resets the engine; do not call it from the audio thread.
     void setPhysicalCalibration(const PhysicalCalibration&) noexcept;
+
+    // Setup-only mechanism ablation; changing it clears the sound state and
+    // restarts deterministic performance draws. Never call on the audio thread.
+    void setPerformanceRealism(const PerformanceRealism&) noexcept;
+    [[nodiscard]] const PerformanceRealism& performanceRealism() const noexcept
+    { return performanceRealism_; }
 
     // The MIDI notes of the open strings, low E string first, in a tuning:
     // what the engine tunes to and the lowest note each string can play.
@@ -1563,6 +1570,7 @@ private:
     EngineParameters targetParameters_ {};
     EngineParameters parameters_ {};
     PhysicalCalibration physicalCalibration_ { fittedPhysicalCalibration };
+    PerformanceRealism performanceRealism_ {};
     std::array<Voice, stringCount> voices_ {};
     std::array<BodyMode, bodyModeCount> bodyModes_ {};
     // What renderBody runs: the two banks above as BodyBank lanes, with

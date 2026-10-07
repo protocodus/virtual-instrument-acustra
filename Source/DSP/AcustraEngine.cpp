@@ -3481,6 +3481,17 @@ void AcustraEngine::setPhysicalCalibration(
     reset();
 }
 
+void AcustraEngine::setPerformanceRealism(
+    const PerformanceRealism& options) noexcept
+{
+    performanceRealism_ = options;
+    bridgeMobilityTable_.valid = false;
+    ++voiceConfigurationGeneration_;
+    restartRandomDraws();
+    if (prepared_)
+        reset();
+}
+
 void AcustraEngine::applyDiscreteParameters(bool force) noexcept
 {
     const auto next = sanitise(targetParameters_);
