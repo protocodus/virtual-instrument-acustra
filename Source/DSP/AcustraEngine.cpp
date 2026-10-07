@@ -2681,6 +2681,7 @@ void AcustraEngine::StringLoop::reset() noexcept
     appliedReleaseGain = 1.0f;
     requestedReleaseGain = 1.0f;
     releaseGainStep = 0.0f;
+    gestureContact = {};
     if (loopGainTransitionSamples > 0)
         loopGain = targetLoopGain;
     targetLoopGain = loopGain;
@@ -2987,6 +2988,69 @@ void AcustraEngine::StringLoop::write(float value) noexcept
         value = 0.0f;
     delay[static_cast<std::size_t>(writeIndex)] = value;
     writeIndex = wrapDelayIndex(writeIndex + 1);
+}
+
+void AcustraEngine::StringLoop::GestureContact::configure(
+    float strength, int relaxationSamples) noexcept
+{
+    const double r = AcustraEngine::clamp(strength, 0.0f, 0.22f);
+    const double c = -std::exp(-1.0 / std::max(1, relaxationSamples));
+    coupling = static_cast<float>(std::sqrt(r * (1.0 - c * c)));
+    memoryGain = static_cast<float>(-c);
+    offsetScale = static_cast<float>(0.5 * std::sqrt(r * (1.0 - c) / (1.0 + c)));
+    active = r > 0.0;
+}
+
+void AcustraEngine::StringLoop::GestureContact::scatter(
+    float& first, float& second) noexcept
+{
+    if (!seeded)
+    {
+        previousIncoming = { first, second };
+        seeded = true;
+        return;
+    }
+    const float incomingFirst = first - previousIncoming[0];
+    const float incomingSecond = second - previousIncoming[1];
+    // The nut inversion is folded into this line: the physical waves at
+    // the contact have opposite signs. A resistive equal-impedance shunt
+    // consequently acts on their difference. A relaxing contact's scattering
+    // matrix on that velocity difference and its internal state is
+    // [[1-r+r*c, sqrt(r*(1-c*c))], [sqrt(r*(1-c*c)), -c]].
+    // Its eigenvalues are 1 and -r-(1-r)*c, both bounded by one. Thus wave
+    // velocity power plus stored contact energy cannot increase. Unlike a
+    // fixed viscous clamp, this has unity DC transfer: its displacement
+    // offset relaxes to zero rather than storing a late release pluck.
+    memory = coupling * (incomingFirst - incomingSecond) + memoryGain * memory;
+    previousIncoming = { first, second };
+    const float offset = offsetScale * memory;
+    // This is the integral of the matrix's outgoing velocity, expressed
+    // without a accumulating displacement integrator's rounding drift.
+    first -= offset;
+    second += offset;
+}
+
+void AcustraEngine::StringLoop::beginGestureContact(
+    float position, float strength, int relaxationSamples) noexcept
+{
+    gestureContact = {};
+    const int length = std::clamp(static_cast<int>(std::lround(currentDelay)),
+                                  8, maximumDelaySamples - 2);
+    const int first = std::clamp(static_cast<int>(std::lround(
+        0.5f * length * AcustraEngine::clamp(position, 0.02f, 0.98f))),
+        1, length / 2 - 1);
+    gestureContact.firstAge = first;
+    gestureContact.secondAge = length - first;
+    gestureContact.configure(strength, relaxationSamples);
+}
+
+void AcustraEngine::StringLoop::applyGestureContact() noexcept
+{
+    auto& first = delay[static_cast<std::size_t>(wrapDelayIndex(
+        writeIndex - 1 - gestureContact.firstAge))];
+    auto& second = delay[static_cast<std::size_t>(wrapDelayIndex(
+        writeIndex - 1 - gestureContact.secondAge))];
+    gestureContact.scatter(first, second);
 }
 
 double AcustraEngine::BridgeMode::processPast(double input) noexcept
@@ -6405,6 +6469,8 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.releaseDamping = 1.0f;
     voice.releaseSeconds = 0.0f;
     voice.returnSamples = 0;
+    for (auto& loop : voice.loops)
+        loop.gestureContact = {};
     voice.pluckDelay = 0;
     voice.repluckPending = false;
     voice.repluckContactPending = false;
@@ -6720,7 +6786,11 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
         && !(voice.contactTravelEnabled && voice.contactTravel.active)
         && !voice.contactNoiseTravel.active
         && !voice.legatoContactTravel.active && voice.legatoContactSamples == 0
-        && voice.repluckArrivals.remaining == 0)
+        && voice.repluckArrivals.remaining == 0
+        && !(voice.loops[0].gestureContact.active
+            && exact::abs(voice.loops[0].gestureContact.memory) > 1.0e-12f)
+        && !(voice.loops[1].gestureContact.active
+            && exact::abs(voice.loops[1].gestureContact.memory) > 1.0e-12f))
     {
         voice.tailActive = false;
         voice.tailRetiring = false;
@@ -6934,10 +7004,37 @@ void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
     voice.releaseDamping = handDamping(releaseSeconds, loopFundamental(voice));
     voice.returnSamples = static_cast<int>(
         (releaseSeconds + 0.08f) * static_cast<float>(sampleRate_));
+    beginGestureDamping(voice);
     if (targetParameters_.releaseNoise > 0.0f)
         startReleaseNoise(voice, stringIndex,
                           voice.fret > 0 && voice.harmonic <= 1);
     voice.releaseVelocity = -1.0f;
+}
+
+void AcustraEngine::beginGestureDamping(Voice& voice) noexcept
+{
+    if (!performanceRealism_.gestureDamping || voice.loops[0].gestureContact.active)
+        return;
+    // These are authored contact assumptions, not measured releases. The
+    // trailing fretting pad touches 18 mm inside the old speaking length;
+    // an open string is caught where its picking contact was. The existing
+    // scalar hand T60 remains the fundamental release prescription. This
+    // bounded extra loss makes partials respond to that contact's location.
+    float position = voice.pluckPoint;
+    const bool fretContact = voice.fret > 0 && voice.harmonic <= 1;
+    if (fretContact)
+    {
+        const float speakingLength = 0.648f * std::exp2(-voice.speakingFret / 12.0f);
+        position = 1.0f - 0.018f / std::max(speakingLength, 0.05f);
+    }
+    const float strength = clamp((fretContact ? 0.45f : 0.06f)
+                                    * (1.0f - voice.releaseDamping),
+                                  0.0f, 0.22f);
+    // Six milliseconds is an authored soft-contact relaxation time, not
+    // a release T60 or a measured guitarist gesture duration.
+    const int relaxation = std::max(1, static_cast<int>(std::ceil(0.006 * sampleRate_)));
+    for (auto& loop : voice.loops)
+        loop.beginGestureContact(position, strength, relaxation);
 }
 
 // A plectrum's release. The rest displacement is Smith's opposed half-height
@@ -8100,13 +8197,21 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
         || (voice.contactTravelEnabled && voice.contactTravel.active)
         || voice.contactNoiseTravel.active
         || voice.legatoContactTravel.active || voice.legatoContactSamples > 0
-        || voice.repluckArrivals.remaining > 0;
+        || voice.repluckArrivals.remaining > 0
+        || (voice.loops[0].gestureContact.active
+            && exact::abs(voice.loops[0].gestureContact.memory) > 1.0e-12f)
+        || (voice.loops[1].gestureContact.active
+            && exact::abs(voice.loops[1].gestureContact.memory) > 1.0e-12f);
     voice.repluckContactPending = retainedWave && voice.played && voice.attackFired
         && harmonic == 1 && voice.harmonic == 1 && voice.midiNote == midiNote
         && voice.midiChannel == midiChannel;
     const bool continuing = voice.repluckContactPending;
     if (retainedWave && !continuing)
         captureTail(voice);
+    // A new stroke lifts the release hand. A different note retains the
+    // old contact with its copied tail; it must not damp the fresh string.
+    for (auto& loop : voice.loops)
+        loop.gestureContact = {};
     if (!continuing)
     {
         voice.legatoContactSamples = 0;
@@ -8511,6 +8616,7 @@ void AcustraEngine::muteVacatedString(Voice& voice, int stringIndex) noexcept
     voice.releaseDamping = handDamping(releaseSeconds, loopFundamental(voice));
     voice.returnSamples = static_cast<int>(
         (releaseSeconds + 0.08f) * static_cast<float>(sampleRate_));
+    beginGestureDamping(voice);
     if (targetParameters_.releaseNoise > 0.0f)
         startReleaseNoise(voice, stringIndex,
                           voice.fret > 0 && voice.harmonic <= 1);
@@ -9597,6 +9703,11 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                               ? horizontalIncident - horizontalBridgeDisplacement
                               : horizontalIncident)
                          + voice.excitationParallelGain * boundaryExcitation);
+    if (voice.loops[0].gestureContact.active)
+    {
+        voice.loops[0].applyGestureContact();
+        voice.loops[1].applyGestureContact();
+    }
 
     const float sampleRateRatio = static_cast<float>(sampleRate_) / 48000.0f;
     const float verticalVelocity = voice.loops[0].bridgeVelocity(
@@ -9669,6 +9780,11 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
         voice.tailParallelLoop.write(horizontalBridgeDisplacement != 0.0f
             ? tailParallelIncident - horizontalBridgeDisplacement
             : tailParallelIncident);
+        if (voice.tailLoop.gestureContact.active)
+        {
+            voice.tailLoop.applyGestureContact();
+            voice.tailParallelLoop.applyGestureContact();
+        }
         const float tailVelocity = voice.tailLoop.bridgeVelocity(
             tailIncident, sampleRateRatio);
         const float tailForce = voice.tailCharacteristicImpedance

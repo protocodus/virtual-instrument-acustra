@@ -686,6 +686,26 @@ private:
         float requestedReleaseGain { 1.0f };
         float releaseGainStep { 0.0f };
 
+        // A local soft hand contact scatters travelling-wave increments,
+        // not displacement samples. Integrating its two outgoing waves
+        // keeps a landing from moving the string instantaneously. Geometry
+        // is frozen on the integer waveguide grid at the actual landing.
+        struct GestureContact
+        {
+            bool active { false };
+            bool seeded { false };
+            int firstAge { 0 };
+            int secondAge { 0 };
+            float coupling { 0.0f };
+            float memoryGain { 0.0f };
+            float offsetScale { 0.0f };
+            float memory { 0.0f };
+            std::array<float, 2> previousIncoming {};
+
+            void configure(float strength, int relaxationSamples) noexcept;
+            void scatter(float& first, float& second) noexcept;
+        } gestureContact {};
+
         void reset() noexcept;
         [[nodiscard]] float readDelay(float samples) noexcept;
         // Switches the second dispersion section in or out under a sounding
@@ -710,6 +730,9 @@ private:
         // one-sample velocity impulse the size of the whole displacement.
         ACUSTRA_ALWAYS_INLINE float bridgeVelocity(float incident, float sampleRateRatio) noexcept;
         void write(float value) noexcept;
+        void beginGestureContact(float position, float strength,
+                                 int relaxationSamples) noexcept;
+        void applyGestureContact() noexcept;
     };
 
     // Double precision: a direct-form section's coefficients sit within
@@ -1430,6 +1453,7 @@ private:
                             bool clearDelay) noexcept;
     void firePluck(Voice& voice, int stringIndex) noexcept;
     void beginRelease(Voice& voice, int stringIndex) noexcept;
+    void beginGestureDamping(Voice& voice) noexcept;
     void updateReleaseJoinWindow(Voice& voice) noexcept;
     void processPendingRelease(Voice& voice, int stringIndex) noexcept;
     void completeKeyUp(Voice& voice, int stringIndex, bool pedalHeld,

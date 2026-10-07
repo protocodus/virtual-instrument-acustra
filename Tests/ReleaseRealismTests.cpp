@@ -28,6 +28,96 @@ struct AcustraEngineTestAccess
     }
     static int note(const AcustraEngine& e, int string)
     { return e.voices_[static_cast<std::size_t>(string)].midiNote; }
+    static bool contact(const AcustraEngine& e, int string)
+    { return e.voices_[static_cast<std::size_t>(string)].loops[0].gestureContact.active; }
+    static bool tailContact(const AcustraEngine& e, int string)
+    {
+        const auto& v = e.voices_[static_cast<std::size_t>(string)];
+        return v.tailActive && v.tailLoop.gestureContact.active;
+    }
+    static float contactMemory(const AcustraEngine& e, bool tail = false)
+    { return tail ? e.voices_[0].tailLoop.gestureContact.memory
+                  : e.voices_[0].loops[0].gestureContact.memory; }
+    static void retainQuietContact(AcustraEngine& e)
+    {
+        auto& v = e.voices_[0];
+        v.level = 0.0f;
+        v.contactTravel.active = v.contactNoiseTravel.active = v.legatoContactTravel.active = false;
+        v.legatoContactSamples = 0;
+        v.repluckArrivals.clear();
+    }
+    static bool passiveVelocityContact()
+    {
+        AcustraEngine::StringLoop::GestureContact contact;
+        contact.configure(0.22f, 288);
+        std::array<float, 2> previousIn {}, previousOut {};
+        for (int i = 0; i < 4096; ++i)
+        {
+            float a = 0.001f * static_cast<float>(std::sin(0.053 * i)
+                                                   + 0.31 * std::cos(0.213 * i));
+            float b = 0.001f * static_cast<float>(std::sin(0.031 * i + 0.7)
+                                                   - 0.17 * std::cos(0.187 * i));
+            const std::array<float, 2> incoming { a, b };
+            const double oldMemory = contact.memory;
+            contact.scatter(a, b);
+            if (i == 0 && (a != incoming[0] || b != incoming[1]))
+                return false; // No displacement step at contact establishment.
+            if (i > 0)
+            {
+                // Temporal differences of each directional displacement
+                // wave are its velocity; Z*Fs^2 cancels in this comparison.
+                // Raw displacement-cell L2 would not establish passivity.
+                const double ia = incoming[0] - previousIn[0];
+                const double ib = incoming[1] - previousIn[1];
+                const double oa = a - previousOut[0];
+                const double ob = b - previousOut[1];
+                const double inputPower = ia * ia + ib * ib + 0.5 * oldMemory * oldMemory;
+                const double outputPower = oa * oa + ob * ob
+                    + 0.5 * contact.memory * contact.memory;
+                if (outputPower > inputPower * (1.0 + 2.0e-5) + 1.0e-18)
+                    return false;
+            }
+            previousIn = incoming;
+            previousOut = { a, b };
+        }
+        // With a stationary string the stored deformation must relax;
+        // otherwise lifting the hand launches a spurious late pluck.
+        float outA = 0.0f, outB = 0.0f;
+        for (int i = 0; i < 8192; ++i)
+        {
+            outA = previousIn[0]; outB = previousIn[1];
+            contact.scatter(outA, outB);
+        }
+        return std::abs(outA - previousIn[0]) < 1.0e-9f
+            && std::abs(outB - previousIn[1]) < 1.0e-9f;
+    }
+    static double modalVelocityEnergy(int harmonic, bool damping, double phase)
+    {
+        // An ideal, lossless, rigidly reflected folded string isolates the
+        // contact from the engine's bridge/intrinsic-loss filters. Center
+        // contact is an antinode of odd partials and a node of even ones.
+        auto loop = std::make_unique<AcustraEngine::StringLoop>();
+        constexpr int period = 256;
+        loop->currentDelay = loop->targetDelay = static_cast<float>(period);
+        for (int age = 0; age < period; ++age)
+            loop->delay[static_cast<std::size_t>((-1 - age) & (AcustraEngine::maximumDelaySamples - 1))]
+                = 0.001f * static_cast<float>(std::cos(
+                    6.283185307179586 * harmonic * age / period + phase));
+        if (damping) loop->beginGestureContact(0.5f, 0.10f, period);
+        double energy = 0.0;
+        float previous = loop->delay[static_cast<std::size_t>((-period) & (AcustraEngine::maximumDelaySamples - 1))];
+        for (int i = 0; i < 32 * period; ++i)
+        {
+            const float incident = loop->delay[static_cast<std::size_t>(
+                (loop->writeIndex - period) & (AcustraEngine::maximumDelaySamples - 1))];
+            loop->write(incident);
+            if (damping) loop->applyGestureContact();
+            const double velocity = incident - previous;
+            previous = incident;
+            if (i >= 28 * period) energy += velocity * velocity;
+        }
+        return energy;
+    }
 };
 }
 
@@ -156,12 +246,132 @@ void ownershipAndPedal()
     advance(*e, graceSamples(48000.0) + 2);
     expect(Access::releaseSeconds(*e, 0) == 0.16f, "panic left a stale release velocity");
 }
+
+void spatialContactPhysics()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    expect(Access::passiveVelocityContact(),
+           "local contact created directional wave-velocity energy or a displacement step");
+    for (double phase : { 0.0, 0.8, 1.7 })
+        for (int harmonic : { 1, 2, 3, 4 })
+        {
+            const double free = Access::modalVelocityEnergy(harmonic, false, phase);
+            const double caught = Access::modalVelocityEnergy(harmonic, true, phase);
+            if ((harmonic & 1) == 0)
+                expect(std::abs(caught / free - 1.0) < 2.0e-5,
+                       "contact damped a partial with a node at its position");
+            else
+                expect(caught / free < 0.005,
+                       "contact did not selectively remove an antinode's velocity energy");
+        }
+}
+
+auto configured(bool gesture, double rate)
+{
+    auto e = std::make_unique<acustra::AcustraEngine>();
+    auto options = e->performanceRealism();
+    options.gestureDamping = gesture;
+    e->setPerformanceRealism(options);
+    e->prepare(rate, 127);
+    e->setStringPerChannelMode(true);
+    e->setSympatheticStringsEnabled(false);
+    return e;
+}
+
+void contactBoundariesAndContinuity()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    for (double rate : { 44100.0, 48000.0, 96000.0 })
+    {
+        auto on = configured(true, rate), off = configured(false, rate);
+        std::array<float, 127> onL {}, onR {}, offL {}, offR {};
+        const auto paired = [&] (int count, bool identical)
+        {
+            while (count > 0)
+            {
+                const int n = std::min(count, 127);
+                on->process(onL.data(), onR.data(), n);
+                off->process(offL.data(), offR.data(), n);
+                if (identical)
+                    expect(std::equal(onL.begin(), onL.begin() + n, offL.begin())
+                        && std::equal(onR.begin(), onR.begin() + n, offR.begin()),
+                        "gesture damping changed held, sustained or join-window audio");
+                count -= n;
+            }
+        };
+        on->noteOn(43, 0.75f); off->noteOn(43, 0.75f);
+        paired(static_cast<int>(rate * 0.6), true);
+        expect(!Access::contact(*on, 0), "held long note acquired autonomous damping");
+        on->noteOff(43); off->noteOff(43);
+        paired(graceSamples(rate) + 1, true);
+        expect(!Access::contact(*on, 0), "contact began inside the inclusive join window");
+        // A stroke at the inclusive endpoint cancels contact without ever
+        // affecting the old wave, force draw, or attack timing.
+        on->noteOn(43, 0.9f); off->noteOn(43, 0.9f);
+        paired(511, true);
+        on->setSustainPedal(true); off->setSustainPedal(true);
+        on->noteOffWithVelocity(43, 1, 1.0f);
+        off->noteOffWithVelocity(43, 1, 1.0f);
+        paired(static_cast<int>(rate * 0.4), true);
+        expect(!Access::contact(*on, 0), "pedal-held string acquired a key-up contact");
+        on->setSustainPedal(false); off->setSustainPedal(false);
+        expect(Access::contact(*on, 0) && !Access::contact(*off, 0),
+               "pedal-up did not establish the optional actual damping contact");
+        paired(static_cast<int>(rate * 0.035), false);
+        const float oldMemory = Access::contactMemory(*on);
+        on->noteOn(45, 0.7f); off->noteOn(45, 0.7f);
+        expect(!Access::contact(*on, 0) && Access::tailContact(*on, 0),
+               "fresh note inherited old damping or retained tail lost its contact");
+        expect(Access::contactMemory(*on, true) == oldMemory,
+               "capturing the retained tail reset or altered contact storage");
+        paired(1024, false);
+        on->allSoundOff();
+        expect(!Access::contact(*on, 0) && !Access::tailContact(*on, 0),
+               "panic retained a local damping contact");
+        on->noteOn(43, 0.75f);
+        on->noteOff(43);
+        advance(*on, graceSamples(rate) + 2);
+        expect(Access::contact(*on, 0), "ordinary key-up failed to land after its deadline");
+        advance(*on, static_cast<int>(rate * 0.25));
+        expect(!Access::contact(*on, 0), "finished release kept its contact on the idle string");
+        // Prior ownership/reset checks deliberately played only the enabled
+        // engine. Fresh fixtures restore matched random-draw histories.
+        on = configured(true, rate); off = configured(false, rate);
+        on->noteOn(55, 0.75f); off->noteOn(55, 0.75f);
+        paired(static_cast<int>(rate * 0.3), true);
+        on->noteOff(55); off->noteOff(55);
+        paired(graceSamples(rate) + static_cast<int>(rate * 0.015), false);
+        expect(Access::contact(*on, 0), "late repeat fixture missed the release contact");
+        on->noteOn(55, 0.9f); off->noteOn(55, 0.9f);
+        expect(!Access::contact(*on, 0), "continuing same-pitch stroke retained the damping hand");
+        double onPeak = 0.0, offPeak = 0.0;
+        for (int i = 0; i < static_cast<int>(rate * 0.01); ++i)
+        {
+            on->process(onL.data(), onR.data(), 1);
+            off->process(offL.data(), offR.data(), 1);
+            onPeak = std::max(onPeak, static_cast<double>(std::abs(onL[0])));
+            offPeak = std::max(offPeak, static_cast<double>(std::abs(offL[0])));
+        }
+        expect(onPeak < 1.10 * offPeak,
+               "lifting an active contact made a late same-pitch reattack overshoot its headroom");
+        on->noteOff(55);
+        advance(*on, graceSamples(rate) + static_cast<int>(rate * 0.01));
+        const float quietMemory = Access::contactMemory(*on);
+        expect(std::abs(quietMemory) > 1.0e-12f, "quiet tail fixture has no contact storage");
+        Access::retainQuietContact(*on);
+        on->noteOn(57, 0.7f);
+        expect(Access::tailContact(*on, 0)
+            && Access::contactMemory(*on, true) == quietMemory,
+               "a floor-level bridge observer discarded stored physical contact energy");
+    }
+}
 }
 
 int main()
 {
+    spatialContactPhysics(); contactBoundariesAndContinuity();
     nominalAndMonotonic(); ownershipAndPedal();
     if (failures) return 1;
-    std::cout << "Explicit release damping, nominal parity, passive gain and ownership passed\n";
+    std::cout << "Release damping, passive spatial contact, node selectivity, join/pedal parity and ownership passed\n";
     return 0;
 }
