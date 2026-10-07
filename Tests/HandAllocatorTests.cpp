@@ -23,6 +23,34 @@ struct AcustraEngineTestAccess
     {
         return engine.chooseStringWithoutHand(midiNote);
     }
+    static int chooseHarmonic(const AcustraEngine& engine, int midiNote)
+    {
+        return engine.chooseHarmonic(midiNote).string;
+    }
+    static bool contact(const AcustraEngine& engine, int string)
+    {
+        const auto& loops = engine.voices_[static_cast<std::size_t>(string)].loops;
+        return loops[0].gestureContact.active || loops[1].gestureContact.active;
+    }
+    static int returnSamples(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].returnSamples;
+    }
+    // The level is only the allocator's observer. Changing it does not create
+    // a hand contact, alter any travelling wave, or change the release deadline.
+    static void quietObserver(AcustraEngine& engine, int string)
+    {
+        engine.voices_[static_cast<std::size_t>(string)].level = 0.0f;
+    }
+    static void removeContact(AcustraEngine& engine, int string, int plane)
+    {
+        engine.voices_[static_cast<std::size_t>(string)]
+            .loops[static_cast<std::size_t>(plane)].gestureContact = {};
+    }
+    static void forgetHand(AcustraEngine& engine)
+    {
+        for (auto& finger : engine.hand_) finger.valid = false;
+    }
     static int openMidi(const AcustraEngine& engine, int string)
     {
         return engine.voices_[static_cast<std::size_t>(string)].openMidi;
@@ -494,6 +522,149 @@ void testRepeatedNotesReplickTheirString()
         engine->noteOff(note);
         run(*engine, 0.02);
     }
+}
+
+// Follow the real key-up and hand landing until its measured level crosses
+// the allocator floor. This G3 case needs no injected observer value: the
+// damping contact is still present when the old allocator chooses the D string.
+void testQuietContactKeepsRepeatedString()
+{
+    auto engine = freshEngine();
+    engine->noteOn(55, 0.7f);
+    expect(engine->heldString(55) == 3, "quiet repeat fixture did not use open G");
+    run(*engine, 0.2);
+    engine->noteOff(55);
+    std::array<float, blockSize> left {}, right {};
+    for (int block = 0; block < 1500
+         && (!Access::contact(*engine, 3) || Access::ringing(*engine, 3)); ++block)
+        engine->process(left.data(), right.data(), blockSize);
+    expect(Access::soundingNote(*engine, 3) == 55
+               && Access::contact(*engine, 3) && !Access::ringing(*engine, 3),
+           "G3 did not become quiet before its physical hand-back deadline");
+    expect(!Access::keyDown(*engine, 3) && Access::owners(*engine, 3) == 0,
+           "a quiet physical contact retained MIDI ownership");
+    expect(Access::chooseString(*engine, 55) == 3
+               && Access::chooseStringWithoutHand(*engine, 55) == 3,
+           "a quiet release contact let the repeated G3 hop to a different string");
+    for (const int removedPlane : { 0, 1 })
+    {
+        auto onePlane = std::make_unique<AcustraEngine>(*engine);
+        Access::removeContact(*onePlane, 3, removedPlane);
+        expect(Access::chooseString(*onePlane, 55) == 3
+                   && Access::chooseStringWithoutHand(*onePlane, 55) == 3,
+               "the other plane's release contact lost its repeated-string preference");
+    }
+    auto noContact = std::make_unique<AcustraEngine>(*engine);
+    Access::removeContact(*noContact, 3, 0);
+    Access::removeContact(*noContact, 3, 1);
+    expect(Access::chooseString(*noContact, 55) == 2
+               && Access::chooseStringWithoutHand(*noContact, 55) == 2,
+           "an inactive contact changed the existing quiet-string allocator");
+    auto repeated = std::make_unique<AcustraEngine>(*engine);
+    const auto attacks = Access::attackStates(*repeated);
+    repeated->noteOn(55, 0.7f);
+    expect(repeated->heldString(55) == 3 && Access::owners(*repeated, 3) == 1,
+           "the quiet repeat failed to establish its new owner on the same string");
+    const auto after = Access::attackStates(*repeated);
+    for (int string = 0; string < AcustraEngine::stringCount; ++string)
+        expect((attacks[static_cast<std::size_t>(string)]
+                    != after[static_cast<std::size_t>(string)]) == (string == 3),
+               "the quiet repeat excited an additional or different string");
+
+    // Retaining the preferred string never extends its physical deadline.
+    auto expired = std::make_unique<AcustraEngine>(*engine);
+    int remaining = Access::returnSamples(*expired, 3);
+    expect(remaining > 1, "quiet contact had no future hand-back deadline");
+    while (remaining > 1)
+    {
+        const int count = std::min(blockSize, remaining - 1);
+        expired->process(left.data(), right.data(), count);
+        remaining -= count;
+    }
+    expect(Access::contact(*expired, 3), "physical contact ended before its deadline");
+    expired->process(left.data(), right.data(), 1);
+    expect(!Access::contact(*expired, 3) && Access::soundingNote(*expired, 3) < 0,
+           "repeat preference kept the physical string after its hand-back deadline");
+    engine->allSoundOff(1);
+    expect(!Access::contact(*engine, 3) && Access::soundingNote(*engine, 3) < 0
+               && Access::owners(*engine, 3) == 0,
+           "panic retained a quiet contact or its MIDI owner");
+}
+
+void testQuietContactHarmonicAndChordPreference()
+{
+    for (const int note : { 86, 95 })
+    {
+        auto engine = freshEngine();
+        engine->noteOn(note, 0.7f);
+        const int string = engine->heldString(note);
+        expect(string == (note == 86 ? 3 : 5), "quiet harmonic used wrong initial string");
+        if (string < 0) continue;
+        run(*engine, 0.2);
+        engine->noteOff(note);
+        run(*engine, 0.1);
+        expect(Access::contact(*engine, string), "harmonic key-up failed to land its contact");
+        // Exercise the observer boundary independently of the noise seed and
+        // decay rate, retaining the actual contact and all its wave histories.
+        Access::quietObserver(*engine, string);
+        expect(Access::chooseHarmonic(*engine, note) == string,
+               "a quiet harmonic abandoned the string under its release contact");
+        auto noContact = std::make_unique<AcustraEngine>(*engine);
+        Access::removeContact(*noContact, string, 0);
+        Access::removeContact(*noContact, string, 1);
+        expect(Access::chooseHarmonic(*noContact, note) == string - 1,
+               "inactive harmonic contact changed the existing unused-string preference");
+        auto repeated = std::make_unique<AcustraEngine>(*engine);
+        repeated->noteOn(note, 0.7f);
+        expect(repeated->heldString(note) == string
+                   && Access::harmonic(*repeated, string) == 6,
+               "quiet harmonic reattack moved to another string or harmonic node");
+        if (note == 95)
+        {
+            auto parameters = acustra::EngineParameters {};
+            parameters.tuning = acustra::Tuning::HalfStepDown;
+            engine->setParameters(parameters);
+            run(*engine, 0.002);
+            expect(Access::contact(*engine, string) && !engine->canSound(note)
+                       && Access::chooseHarmonic(*engine, note) < 0,
+                   "an active quiet contact bypassed harmonic tuning eligibility");
+        }
+    }
+    auto engine = freshEngine();
+    engine->setStringPerChannelMode(true);
+    engine->noteOn(60, 0.7f, 4); // C4 on G5, with an ordinary B1 alternative.
+    engine->setStringPerChannelMode(false);
+    run(*engine, 0.2);
+    engine->noteOff(60, 4);
+    run(*engine, 0.1);
+    expect(Access::contact(*engine, 3), "chord fixture did not land its fretting contact");
+    Access::quietObserver(*engine, 3);
+    // Equalize only the allocator's posture cost to isolate its repeat
+    // preference from the stronger existing hand-reachability preference.
+    Access::forgetHand(*engine);
+    auto noContact = std::make_unique<AcustraEngine>(*engine);
+    Access::removeContact(*noContact, 3, 0);
+    Access::removeContact(*noContact, 3, 1);
+    const std::array<int, 2> notes { 60, 64 };
+    engine->planChord(notes.data(), static_cast<int>(notes.size()));
+    noContact->planChord(notes.data(), static_cast<int>(notes.size()));
+    expect(engine->plannedString(60) == 3 && noContact->plannedString(60) == 4,
+           "the chord planner lost its quiet-contact repeat preference");
+    expect(engine->plannedString(64) == 5 && noContact->plannedString(64) == 5,
+           "quiet repeat preference displaced the chord's available open E");
+
+    auto disabled = std::make_unique<AcustraEngine>();
+    disabled->setPerformanceRealism({ false, false, false, false, false });
+    disabled->prepare(sampleRate, blockSize);
+    disabled->noteOn(55, 0.7f);
+    run(*disabled, 0.2);
+    disabled->noteOff(55);
+    run(*disabled, 0.1);
+    Access::quietObserver(*disabled, 3);
+    expect(!Access::contact(*disabled, 3)
+               && Access::chooseString(*disabled, 55) == 2
+               && Access::chooseStringWithoutHand(*disabled, 55) == 2,
+           "all-off realism changed the old quiet-string allocator");
 }
 
 // D6 is the G string's sixth or the D string's eighth harmonic; B6 is the
@@ -1007,6 +1178,8 @@ int main()
     testScaleRunStaysInPositionThenShifts();
     testMelodyOverHeldBassKeepsTheBass();
     testRepeatedNotesReplickTheirString();
+    testQuietContactKeepsRepeatedString();
+    testQuietContactHarmonicAndChordPreference();
     testNaturalHarmonicsKeepHeldStrings();
     testReleasedHarmonicReplucksItsString();
     testControllerStringsAreUnchanged();

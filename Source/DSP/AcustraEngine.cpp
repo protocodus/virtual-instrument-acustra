@@ -7737,12 +7737,17 @@ int AcustraEngine::chooseString(int midiNote) const noexcept
 {
     // A note repeated after its key came up is replucked on the string still
     // sounding it, as a guitarist does, rather than hopping to whichever free
-    // string can also reach it and leaving the first one ringing.
+    // string can also reach it and leaving the first one ringing. A local
+    // release contact keeps that physical string occupied until its existing
+    // hand-back deadline, even when the level estimate crosses the quiet floor.
     for (int string = stringCount - 1; string >= 0; --string)
     {
         const auto& voice = voices_[static_cast<std::size_t>(string)];
         if (voice.played && !voice.keyDown && voice.harmonic == 1
-            && voice.midiNote == midiNote && voice.level > 2.0e-7f)
+            && voice.midiNote == midiNote
+            && (voice.level > 2.0e-7f
+                || voice.loops[0].gestureContact.active
+                || voice.loops[1].gestureContact.active))
             return string;
     }
     const auto weights = handWeights();
@@ -7814,7 +7819,10 @@ int AcustraEngine::chooseStringWithoutHand(int midiNote) const noexcept
     {
         const auto& voice = voices_[static_cast<std::size_t>(string)];
         if (voice.played && !voice.keyDown && voice.harmonic == 1
-            && voice.midiNote == midiNote && voice.level > 2.0e-7f)
+            && voice.midiNote == midiNote
+            && (voice.level > 2.0e-7f
+                || voice.loops[0].gestureContact.active
+                || voice.loops[1].gestureContact.active))
             return string;
     }
     int best = -1;
@@ -7884,7 +7892,10 @@ AcustraEngine::chooseHarmonic(int midiNote) const noexcept
     {
         const auto& voice = voices_[static_cast<std::size_t>(string)];
         if (voice.played && !voice.keyDown && voice.harmonic > 1
-            && voice.midiNote == midiNote && voice.level > 2.0e-7f
+            && voice.midiNote == midiNote
+            && (voice.level > 2.0e-7f
+                || voice.loops[0].gestureContact.active
+                || voice.loops[1].gestureContact.active)
             // Tuning automation can move the ringing harmonic away from
             // its requested MIDI pitch. It must still reach this note.
             && exact::abs(1200.0f * std::log2(midiFrequency(voice.openMidi)
@@ -8450,7 +8461,10 @@ void AcustraEngine::planChord(const int* midiNotes, int count,
                 note.fixed = true;
             }
             else if (voice.played && !voice.keyDown && voice.harmonic == 1
-                     && voice.midiNote == midiNote && voice.level > 2.0e-7f)
+                     && voice.midiNote == midiNote
+                     && (voice.level > 2.0e-7f
+                         || voice.loops[0].gestureContact.active
+                         || voice.loops[1].gestureContact.active))
                 note.ringing = string;
         }
         search.notes[static_cast<std::size_t>(search.count++)] = note;
