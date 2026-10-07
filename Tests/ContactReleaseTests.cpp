@@ -93,6 +93,7 @@ auto fresh(double rate, acustra::PickingTechnique technique, bool coupled,
     options.coherentHand = false;
     options.gestureDamping = false;
     options.playerBodyLoading = false;
+    options.retuneContinuity = false;
     engine->setPerformanceRealism(options);
     engine->prepare(rate, 128);
     engine->setStringPerChannelMode(true);

@@ -74,7 +74,7 @@ auto fresh(bool hand = true, double rate = 48000.0,
            PickingTechnique style = PickingTechnique::Finger)
 {
     auto engine = std::make_unique<AcustraEngine>();
-    engine->setPerformanceRealism({ false, hand, false, false });
+    engine->setPerformanceRealism({ false, hand, false, false, false });
     acustra::EngineParameters parameters;
     parameters.picking = style;
     engine->setParameters(parameters);
