@@ -19,6 +19,14 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    static void sharePickingContact(const AcustraEngine& source, AcustraEngine& target)
+    {
+        target.pickingGesture_ = source.pickingGesture_;
+        target.pickingGestureRandom_ = source.pickingGestureRandom_;
+        target.pickingGestureSample_ = source.pickingGestureSample_;
+        target.pickingGestureSeen_ = source.pickingGestureSeen_;
+        target.sampleClock_ = source.sampleClock_;
+    }
     struct AnchorState { float target, applied, period; int remaining; };
     static AnchorState anchor(const AcustraEngine& e, int string)
     {
@@ -931,7 +939,13 @@ void testRetuneAndTailOwnership()
                "new note did not use the selected shape instrument");
         auto fresh = std::make_unique<Engine>();
         fresh->setParameters(p); fresh->prepare(48000,64);
-        fresh->setStringPerChannelMode(true); fresh->noteOn(67,.75f,6);
+        fresh->setStringPerChannelMode(true);
+        // This comparison isolates construction tuning. The live engine has
+        // a moving hand; the fresh engine must use the same actual contact
+        // rather than its independent first-pluck posture. Otherwise the
+        // physical attack-pitch transient legitimately changes targetDelay.
+        Access::sharePickingContact(*e, *fresh);
+        fresh->noteOn(67,.75f,6);
         expect(Access::voices(*e)[5].loops[0].targetDelay
                    == Access::voices(*fresh)[5].loops[0].targetDelay,
                "new note retained the previous shape's tuning compensation");
