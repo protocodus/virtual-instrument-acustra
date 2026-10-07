@@ -15,6 +15,7 @@ analysis and production DSP snapshots; both are preserved with their builds.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import importlib.util
 import json
@@ -27,12 +28,17 @@ from scipy.io import wavfile
 from scipy.signal import resample_poly
 
 
-VARIANTS = ("baseline", "contact", "hand", "damping", "body", "combined")
+LEGACY_VARIANTS = ("baseline", "contact", "hand", "damping", "body", "combined")
+VARIANTS = ("baseline", "contact", "hand", "damping", "body", "continuity", "combined")
 METER_SPEC = importlib.util.spec_from_file_location(
     "acustra_natural_loudness_meter", Path(__file__).with_name("MeasureMaterialLoudness.py"))
 assert METER_SPEC is not None and METER_SPEC.loader is not None
 METER = importlib.util.module_from_spec(METER_SPEC)
 METER_SPEC.loader.exec_module(METER)
+
+
+def variant_order(manifest: dict) -> tuple[str, ...]:
+    return VARIANTS if manifest["schema"] == 2 else LEGACY_VARIANTS
 
 
 def sha256(path: Path) -> str:
@@ -113,14 +119,19 @@ def collect_sources(source: Path, build: Path, binary: Path, output: Path) -> di
 
 def inspect_renders(root: Path, require_baseline: bool = True) -> tuple[dict, dict[str, dict[str, dict]], list[dict]]:
     manifest = json.loads((root / "manifest.json").read_text())
-    if manifest["schema"] != 1 or manifest["channels"] != 2 or manifest["post_gain"] != 1:
+    if manifest["schema"] not in (1, 2) or manifest["channels"] != 2 or manifest["post_gain"] != 1:
         raise ValueError("unsupported native render schema")
+    if manifest["schema"] == 2 and manifest.get("explicit_string_mode_cc126_value") != 6:
+        raise ValueError("physical-string fixture must use CC126 value 6")
     groups: dict[str, dict[str, dict]] = {}
     reports = []
     for render in manifest["renders"]:
         switch_names = ("contactRelease", "coherentHand", "gestureDamping", "playerBodyLoading")
         single = {"contact": 0, "hand": 1, "damping": 2, "body": 3}
-        if render["variant"] not in VARIANTS:
+        if manifest["schema"] == 2:
+            switch_names += ("retuneContinuity",)
+            single["continuity"] = 4
+        if render["variant"] not in variant_order(manifest):
             raise ValueError("unknown render variant")
         expected = {name: render["variant"] == "combined" or single.get(render["variant"]) == index
                     for index, name in enumerate(switch_names)}
@@ -145,6 +156,9 @@ def inspect_renders(root: Path, require_baseline: bool = True) -> tuple[dict, di
             raise ValueError(f"duplicate case and variant: {raw_path}")
         record = dict(render, raw_sha256=sha256(raw_path), wav_sha256=sha256(wav_path),
                       score_sha256=sha256(root / render["score"]))
+        if manifest["schema"] == 2:
+            validate_allocations(root, render)
+            record["allocation_sha256"] = sha256(root / render["allocations"])
         records[render["variant"]] = record
         reports.append(record)
     for name, group in groups.items():
@@ -154,6 +168,43 @@ def inspect_renders(root: Path, require_baseline: bool = True) -> tuple[dict, di
                 if record[key] != reference[key]:
                     raise ValueError(f"variant input confound: {name}: {key}")
     return manifest, groups, reports
+
+
+def validate_allocations(root: Path, render: dict) -> None:
+    """Cross-check actual attacks against the MIDI score, including mode changes."""
+    def rows(path):
+        with path.open() as stream:
+            return [{key: int(value) for key, value in row.items()}
+                    for row in csv.DictReader(stream, delimiter="\t")]
+    explicit = False
+    expected = []
+    for event in rows(root / render["score"]):
+        if event["status"] == 0xb0 and event["channel"] == 1:
+            if event["data1"] == 126:
+                if event["data2"] != 6:
+                    raise ValueError("physical-string fixture must use CC126 value 6")
+                explicit = True
+            elif event["data1"] == 127:
+                explicit = False
+        if event["status"] == 0x90 and event["data2"] > 0:
+            expected.append({"frame": event["frame"], "channel": event["channel"],
+                             "midi_note": event["data1"], "explicit_strings": int(explicit),
+                             "expected_string": event["channel"] - 1 if explicit else -1})
+    allocations = rows(root / render["allocations"])
+    if len(expected) != len(allocations):
+        raise ValueError(f"score and physical attack counts differ: {render['case']}")
+    explicit_count = 0
+    for intent, actual in zip(expected, allocations):
+        if any(actual[key] != value for key, value in intent.items()):
+            raise ValueError(f"score and physical attack evidence differ: {render['case']}")
+        if intent["explicit_strings"]:
+            explicit_count += 1
+            if (actual["actual_string"] != intent["expected_string"]
+                    or not 0 <= actual["actual_string"] < 6
+                    or actual["fret"] != actual["midi_note"] - actual["open_midi"]):
+                raise ValueError(f"explicit physical-string mismatch in evidence: {render['case']}")
+    if explicit_count != render["verified_explicit_attacks"]:
+        raise ValueError(f"physical allocation evidence count mismatch: {render['case']}")
 
 
 def compare_previous(root: Path, groups: dict, previous: Path) -> dict:
@@ -220,15 +271,16 @@ def make_listening(root: Path, manifest: dict, groups: dict, output: Path,
                    production_root: Path | None = None, production_groups: dict | None = None,
                    previous_root: Path | None = None, previous_groups: dict | None = None) -> list[dict]:
     rate = manifest["sample_rate"]
+    order = variant_order(manifest)
     gap = np.zeros((rate, 2))
     derivatives = []
     for case, group in sorted(groups.items()):
-        if set(group) != set(VARIANTS):
+        if set(group) != set(order):
             continue
         before = np.fromfile(root / group["baseline"]["raw"], dtype="<f4").reshape(-1, 2).astype(np.float64)
         baseline_rms = rms(before)
         gains, sounds = {}, {}
-        for variant in VARIANTS:
+        for variant in order:
             audio = np.fromfile(root / group[variant]["raw"], dtype="<f4").reshape(-1, 2).astype(np.float64)
             gain = baseline_rms / rms(audio)
             gains[variant] = gain
@@ -270,16 +322,17 @@ def make_listening(root: Path, manifest: dict, groups: dict, output: Path,
             derivatives.append(info)
         if "01-repeated-notes-finger" in case or "04-release-control-finger" in case:
             parts = []
-            for index, variant in enumerate(VARIANTS):
+            for index, variant in enumerate(order):
                 if index:
                     parts.append(gap)
                 parts.append(sounds[variant])
-            info = write_wave(output / f"{case}-six-ablations.wav", rate, np.concatenate(parts) * common)
-            info.update(case=case, kind="six-independent-ablations", matching_gains=gains,
+            count_name = "seven" if len(order) == 7 else "six"
+            info = write_wave(output / f"{case}-{count_name}-ablations.wav", rate, np.concatenate(parts) * common)
+            info.update(case=case, kind=f"{count_name}-independent-ablations", matching_gains=gains,
                         comparison="isolated-mechanisms-with-one-shared-calibration",
                         common_gain=common,
                         segments=[{"variant": variant, "start_seconds": index * (len(before) / rate + 1)}
-                                  for index, variant in enumerate(VARIANTS)])
+                                  for index, variant in enumerate(order)])
             derivatives.append(info)
         if "02-melody-accompaniment-finger" in case:
             bed = synthetic_bed(len(before), rate)
@@ -328,11 +381,11 @@ def validate_production(analysis_manifest: dict, analysis_groups: dict, producti
     if cases != set(production_groups) or cases != set(previous_groups):
         raise ValueError("analysis, production and previous render case sets differ")
     for name, candidate in (("production", production_manifest), ("previous", previous_manifest)):
-        for key in ("sample_rate", "channels", "block_size", "tempo_bpm", "gather_chords", "latency_samples", "post_gain"):
+        for key in ("schema", "sample_rate", "channels", "block_size", "tempo_bpm", "gather_chords", "latency_samples", "post_gain"):
             if candidate[key] != analysis_manifest[key]:
                 raise ValueError(f"{name} renderer configuration differs: {key}")
     for case in cases:
-        if set(analysis_groups[case]) != set(VARIANTS):
+        if set(analysis_groups[case]) != set(variant_order(analysis_manifest)):
             raise ValueError(f"isolated analysis is missing an ablation: {case}")
         if "combined" not in production_groups[case] or "baseline" not in previous_groups[case]:
             raise ValueError(f"required production or preceding variant missing: {case}")
@@ -440,12 +493,12 @@ def main() -> None:
     (args.output / "validation.json").write_text(json.dumps(report, indent=2) + "\n")
     rows = ["Acustra natural-performance audition", "", report["interpretation"], "",
             "Before/after: baseline first, one second of silence, combined second.",
-            "Six ablations: baseline, contact, hand, damping, body, combined; one second between each.",
+            "Ablations: " + ", ".join(variant_order(manifest)) + "; one second between each.",
             "Release passages: short/long holds, then repeat with release velocities 16, 64 and 120.",
             "All native input scores, float audio, levels and derivative gains are in validation.json.", ""]
     if args.production_renders:
         rows[3:3] = ["Primary before/after and test mixes: actual previous production versus current production calibration.",
-                     "Six-way reels: isolated mechanisms, all using the previous construction trims.",
+                     "Ablation reels: isolated mechanisms, all using the previous construction trims.",
                      "Production-native peaks, RMS and LUFS shifts are retained separately in validation.json.", ""]
     for artifact in derivatives:
         if "segments" in artifact:

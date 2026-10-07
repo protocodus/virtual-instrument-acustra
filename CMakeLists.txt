@@ -525,6 +525,10 @@ if(BUILD_TESTING)
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tests/OptimizerFreezeTests.py")
                 set_tests_properties(Acustra.OptimizerFreeze PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.NaturalPerformancePackaging
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tests/NaturalPerformancePackagingTests.py")
+                set_tests_properties(Acustra.NaturalPerformancePackaging PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.MaterialLoudness
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/MeasureMaterialLoudness.py"

@@ -18,6 +18,20 @@
 #include <string>
 #include <vector>
 
+namespace acustra
+{
+struct AcustraEngineTestAccess
+{
+    static bool explicitAttackMatches(const AcustraEngine& engine, int string, int note) noexcept
+    {
+        const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
+        return voice.played && voice.keyDown && voice.attackFired && voice.pluckDelay == 0
+            && voice.midiNote == note && voice.midiChannel == string + 1
+            && voice.fret == note - voice.openMidi;
+    }
+};
+}
+
 namespace
 {
 struct Event { int frame, channel, status, data1, data2; };
@@ -28,14 +42,15 @@ struct Passage
     acustra::PickingTechnique picking;
     std::vector<Event> events;
 };
-struct Variant { const char* name; bool contact, hand, damping, body; };
-constexpr std::array<Variant, 6> variants {{
-    { "baseline", false, false, false, false },
-    { "contact", true, false, false, false },
-    { "hand", false, true, false, false },
-    { "damping", false, false, true, false },
-    { "body", false, false, false, true },
-    { "combined", true, true, true, true }
+struct Variant { const char* name; bool contact, hand, damping, body, continuity; };
+constexpr std::array<Variant, 7> variants {{
+    { "baseline", false, false, false, false, false },
+    { "contact", true, false, false, false, false },
+    { "hand", false, true, false, false, false },
+    { "damping", false, false, true, false, false },
+    { "body", false, false, false, true, false },
+    { "continuity", false, false, false, false, true },
+    { "combined", true, true, true, true, true }
 }};
 int frame(double seconds, int rate) { return static_cast<int>(std::lround(seconds * rate)); }
 void midi(Passage& p, int rate, double seconds, int status, int a, int b, int channel = 1)
@@ -59,7 +74,7 @@ std::vector<Passage> score(int rate)
     {
         const std::string style = styleName(picking);
         Passage repeats { "01-repeated-notes-" + style, 11.0, picking, {} };
-        midi(repeats, rate, 0, 0xb0, 126, 0); // Explicit strings: no allocation confound.
+        midi(repeats, rate, 0, 0xb0, 126, 6); // Six explicit string channels.
         // Constant velocities expose timbral variation rather than authored
         // MIDI dynamics; three registers include wound and plain strings.
         for (int registerIndex = 0; registerIndex < 3; ++registerIndex)
@@ -70,7 +85,7 @@ std::vector<Passage> score(int rate)
         result.push_back(std::move(repeats));
 
         Passage release { "04-release-control-" + style, 12.0, picking, {} };
-        midi(release, rate, 0, 0xb0, 126, 0);
+        midi(release, rate, 0, 0xb0, 126, 6);
         // Equal input notes, short then long key holds at three explicitly
         // declared release velocities. The existing 1/32 join remains active.
         for (int group = 0; group < 3; ++group)
@@ -84,7 +99,7 @@ std::vector<Passage> score(int rate)
     for (const auto picking : { PickingTechnique::Finger, PickingTechnique::Thumb })
     {
         Passage melody { std::string("02-melody-accompaniment-") + styleName(picking), 14.0, picking, {} };
-        midi(melody, rate, 0, 0xb0, 126, 0);
+        midi(melody, rate, 0, 0xb0, 126, 6);
         constexpr std::array<std::array<int, 4>, 4> chords {{
             {{45, 52, 60, 64}}, {{41, 53, 60, 65}}, {{48, 55, 60, 64}}, {{43, 50, 59, 67}}
         }};
@@ -130,7 +145,7 @@ std::vector<Passage> score(int rate)
     result.push_back(std::move(held));
 
     Passage stress { "06-timing-controller-stress-pick", 10.0, PickingTechnique::Pick, {} };
-    midi(stress, rate, 0, 0xb0, 126, 0);
+    midi(stress, rate, 0, 0xb0, 126, 6);
     for (int attack = 0; attack < 16; ++attack)
         note(stress, rate, 0.2 + 0.075 * attack, 0.067, 64, attack % 4 == 0 ? 104 : 48, 6,
              attack % 2 ? 112 : 24);
@@ -194,7 +209,8 @@ void render(const Passage& p, const Variant& variant, acustra::GuitarModel model
     const std::string name = p.name + "-" + modelName;
     auto player = std::make_unique<acustra::Performer>();
 #ifndef ACUSTRA_NATURAL_BASELINE
-    player->engine().setPerformanceRealism({ variant.contact, variant.hand, variant.damping, variant.body });
+    player->engine().setPerformanceRealism({ variant.contact, variant.hand, variant.damping,
+                                            variant.body, variant.continuity });
 #endif
     acustra::EngineParameters parameters;
     parameters.picking = p.picking;
@@ -209,18 +225,56 @@ void render(const Passage& p, const Variant& variant, acustra::GuitarModel model
     std::vector<float> audio(static_cast<std::size_t>(2 * count));
     std::vector<float> left(static_cast<std::size_t>(block)), right(left.size());
     std::size_t next = 0;
+    bool explicitStrings = false;
+    int checkedAttacks = 0;
+    std::filesystem::create_directories(output / variant.name);
+    std::ofstream allocations(output / variant.name / (name + ".allocations.tsv"));
+    allocations << "frame\tchannel\tmidi_note\texplicit_strings\texpected_string\tactual_string\topen_midi\tfret\n";
     for (int at = 0; at < count;)
     {
-        const int n = std::min(block, count - at);
+        int n = std::min(block, count - at);
+        // End before the next event, then process all same-sample messages
+        // together in one sample. This permits a check immediately after an
+        // attack, before a later Note Off can hide a wrong physical string.
+        if (next < p.events.size())
+            n = p.events[next].frame == at ? 1 : std::min(n, p.events[next].frame - at);
+        const auto firstEvent = next;
         player->beginBlock(left.data(), right.data(), n);
         while (next < p.events.size() && p.events[next].frame < at + n)
         {
             const auto& e = p.events[next++];
+            if (e.status == 0xb0 && e.channel == 1 && e.data1 == 126)
+            {
+                if (e.data2 != 6)
+                    throw std::runtime_error("explicit-string fixture requires CC126 value 6");
+                explicitStrings = true;
+            }
+            else if (e.status == 0xb0 && e.channel == 1 && e.data1 == 127)
+                explicitStrings = false;
             const std::uint8_t bytes[] { static_cast<std::uint8_t>(e.status | (e.channel - 1)),
                 static_cast<std::uint8_t>(e.data1), static_cast<std::uint8_t>(e.data2) };
             player->handleMidi(e.frame - at, bytes, 3);
         }
         player->endBlock();
+        for (auto index = firstEvent; index < next; ++index)
+        {
+            const auto& e = p.events[index];
+            if (e.status != 0x90 || e.data2 == 0) continue;
+            const int actual = player->engine().heldString(e.data1, e.channel);
+            if (explicitStrings)
+            {
+                if (actual != e.channel - 1 || !acustra::AcustraEngineTestAccess::explicitAttackMatches(
+                        player->engine(), actual, e.data1))
+                    throw std::runtime_error("explicit physical-string attack mismatch: " + name
+                        + " at frame " + std::to_string(e.frame));
+                ++checkedAttacks;
+            }
+            const auto activity = player->engine().getStringActivity();
+            allocations << e.frame << '\t' << e.channel << '\t' << e.data1 << '\t' << explicitStrings
+                << '\t' << (explicitStrings ? e.channel - 1 : -1) << '\t' << actual << '\t'
+                << (actual >= 0 ? activity[static_cast<std::size_t>(actual)].openMidi : -1) << '\t'
+                << (actual >= 0 ? activity[static_cast<std::size_t>(actual)].fret : -1) << '\n';
+        }
         for (int i = 0; i < n; ++i)
         { audio[static_cast<std::size_t>(2 * (at + i))] = left[static_cast<std::size_t>(i)];
           audio[static_cast<std::size_t>(2 * (at + i) + 1)] = right[static_cast<std::size_t>(i)]; }
@@ -228,7 +282,7 @@ void render(const Passage& p, const Variant& variant, acustra::GuitarModel model
     }
     if (next != p.events.size() || player->droppedEventCount() != 0)
         throw std::runtime_error("score was not consumed without drops");
-    std::filesystem::create_directories(output / variant.name);
+    if (!allocations) throw std::runtime_error("allocation evidence write failed");
     writeAudio(output / variant.name / name, audio, rate);
     double sum = 0.0;
     float peak = 0.0f;
@@ -241,9 +295,11 @@ void render(const Passage& p, const Variant& variant, acustra::GuitarModel model
         << variant.name << '/' << name << ".f32\",\"score\":\"scores/" << p.name
         << ".tsv\",\"frames\":" << count << ",\"peak\":" << peak
         << ",\"rms\":" << std::sqrt(sum / audio.size()) << ",\"dropped_events\":0"
+        << ",\"verified_explicit_attacks\":" << checkedAttacks
+        << ",\"allocations\":\"" << variant.name << '/' << name << ".allocations.tsv\""
         << ",\"switches\":{\"contactRelease\":" << variant.contact
         << ",\"coherentHand\":" << variant.hand << ",\"gestureDamping\":" << variant.damping
-        << ",\"playerBodyLoading\":" << variant.body << "}"
+        << ",\"playerBodyLoading\":" << variant.body << ",\"retuneContinuity\":" << variant.continuity << "}"
         << ",\"parameters\":{\"model\":\"" << modelName << "\",\"shape\":" << static_cast<int>(parameters.shape)
         << ",\"bodyMaterial\":" << static_cast<int>(parameters.bodyMaterial)
         << ",\"capture\":" << static_cast<int>(parameters.capture)
@@ -287,10 +343,12 @@ int main(int argc, char** argv)
         std::filesystem::create_directories(output / "scores");
         std::ofstream manifest(output / "manifest.json");
         manifest << std::setprecision(12) << std::boolalpha
-            << "{\n  \"schema\":1,\"sample_rate\":" << rate << ",\"channels\":2,\"block_size\":" << block
+            << "{\n  \"schema\":2,\"sample_rate\":" << rate << ",\"channels\":2,\"block_size\":" << block
             << ",\"format\":\"little-endian IEEE float32 interleaved stereo\",\"tempo_bpm\":120"
             << ",\"gather_chords\":false,\"post_gain\":1,\"latency_samples\":"
             << acustra::AcustraEngine::outputLatencySamples()
+            << ",\"explicit_string_mode_cc126_value\":6"
+            << ",\"event_partition\":\"split before each event time; one-sample grouped event blocks; physical string/attack/fret checked immediately\""
             << ",\"randomness\":\"Engine reset seed; no random MIDI; identical written score across variants\""
             << ",\"renders\":[\n";
         bool first = true;
