@@ -7117,10 +7117,14 @@ void AcustraEngine::updateReleaseJoinWindow(Voice& voice) noexcept
     // Jukebox represents both types with binary64 precision but exposes
     // only double math overloads. These casts lose no precision there;
     // desktop targets retain their wider long-double calculation below.
+    // The SDK's analyzer impersonates __phdsp__ on an x86 desktop target
+    // with wider long double. Enforce this on actual DSP compilation.
+#if !defined(__clang_analyzer__)
     static_assert(std::numeric_limits<long double>::digits == std::numeric_limits<double>::digits
         && std::numeric_limits<long double>::max_exponent == std::numeric_limits<double>::max_exponent
         && std::numeric_limits<long double>::min_exponent == std::numeric_limits<double>::min_exponent,
         "Restricted math needs identical double and long-double precision");
+#endif
     const long double nearest = std::round(static_cast<double>(duration));
 #else
     const long double nearest = std::round(duration);
