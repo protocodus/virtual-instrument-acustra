@@ -5,11 +5,18 @@ Native floats and source/build evidence are retained. Listening derivatives
 use explicitly recorded whole-passage RMS matching, without EQ or limiting.
 The optional mix audition uses a separately retained synthetic bass/drum bed;
 it is neither a recorded performance nor an independent realism reference.
+
+When all four --production-* arguments are supplied, --renders is the
+analysis-only ablation set with the previous construction trims. Primary
+before/after clips instead compare --previous-renders with production's
+combined variant. Only ConstructionLoudnessData.h may differ between the
+analysis and production DSP snapshots; both are preserved with their builds.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import math
 import shutil
@@ -17,9 +24,15 @@ from pathlib import Path
 
 import numpy as np
 from scipy.io import wavfile
+from scipy.signal import resample_poly
 
 
 VARIANTS = ("baseline", "contact", "hand", "damping", "body", "combined")
+METER_SPEC = importlib.util.spec_from_file_location(
+    "acustra_natural_loudness_meter", Path(__file__).with_name("MeasureMaterialLoudness.py"))
+assert METER_SPEC is not None and METER_SPEC.loader is not None
+METER = importlib.util.module_from_spec(METER_SPEC)
+METER_SPEC.loader.exec_module(METER)
 
 
 def sha256(path: Path) -> str:
@@ -32,6 +45,16 @@ def sha256(path: Path) -> str:
 
 def rms(audio: np.ndarray) -> float:
     return float(np.sqrt(np.mean(np.square(audio, dtype=np.float64))))
+
+
+def native_lufs(audio: np.ndarray, rate: int) -> float:
+    if rate != METER.RATE:
+        divisor = math.gcd(rate, METER.RATE)
+        audio = resample_poly(audio, METER.RATE // divisor, rate // divisor, axis=0)
+    loudness = METER.integrated_loudness(audio)
+    if not math.isfinite(loudness):
+        raise ValueError("native passage is too short or quiet for integrated loudness")
+    return loudness
 
 
 def write_wave(path: Path, rate: int, audio: np.ndarray) -> dict:
@@ -56,8 +79,13 @@ def collect_sources(source: Path, build: Path, binary: Path, output: Path) -> di
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
         hashes[str(relative)] = sha256(path)
-    for tool_name in ("RenderNaturalPerformance.cpp", "PackageNaturalPerformance.py"):
-        path = source / "Tools" / tool_name
+    tool_origins = {}
+    for tool_name in ("RenderNaturalPerformance.cpp", "PackageNaturalPerformance.py", "MeasureMaterialLoudness.py"):
+        # The packager and meter run now, and can postdate a frozen DSP
+        # revision. Record their actual executing source, not an older copy
+        # that happens to exist inside that revision's Tools directory.
+        path = (source / "Tools" / tool_name if tool_name == "RenderNaturalPerformance.cpp"
+                else Path(__file__).resolve().with_name(tool_name))
         if not path.is_file():
             # The old DSP snapshot cannot contain a newly authored renderer.
             # Explicitly retain the actual current harness in this case.
@@ -66,6 +94,7 @@ def collect_sources(source: Path, build: Path, binary: Path, output: Path) -> di
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
         hashes[f"Tools/{tool_name}"] = sha256(path)
+        tool_origins[tool_name] = str(path.resolve())
     build_hashes = {}
     for relative in ("CMakeCache.txt", "compile_commands.json", "CMakeFiles/AcustraDSP.dir/flags.make"):
         path = build / relative
@@ -77,17 +106,26 @@ def collect_sources(source: Path, build: Path, binary: Path, output: Path) -> di
     if not build_hashes:
         raise ValueError("build provenance is missing")
     return {"source_root": str(source.resolve()), "source_sha256": hashes,
+            "actual_tool_source_paths": tool_origins,
             "build_root": str(build.resolve()), "build_sha256": build_hashes,
             "renderer_binary": str(binary.resolve()), "renderer_sha256": sha256(binary)}
 
 
-def inspect_renders(root: Path) -> tuple[dict, dict[str, dict[str, dict]], list[dict]]:
+def inspect_renders(root: Path, require_baseline: bool = True) -> tuple[dict, dict[str, dict[str, dict]], list[dict]]:
     manifest = json.loads((root / "manifest.json").read_text())
     if manifest["schema"] != 1 or manifest["channels"] != 2 or manifest["post_gain"] != 1:
         raise ValueError("unsupported native render schema")
     groups: dict[str, dict[str, dict]] = {}
     reports = []
     for render in manifest["renders"]:
+        switch_names = ("contactRelease", "coherentHand", "gestureDamping", "playerBodyLoading")
+        single = {"contact": 0, "hand": 1, "damping": 2, "body": 3}
+        if render["variant"] not in VARIANTS:
+            raise ValueError("unknown render variant")
+        expected = {name: render["variant"] == "combined" or single.get(render["variant"]) == index
+                    for index, name in enumerate(switch_names)}
+        if render["switches"] != expected:
+            raise ValueError(f"variant switches do not match label: {render['case']}: {render['variant']}")
         raw_path, wav_path = root / render["raw"], root / render["wav"]
         audio = np.fromfile(raw_path, dtype="<f4").reshape(-1, 2)
         rate, wave = wavfile.read(wav_path)
@@ -110,7 +148,7 @@ def inspect_renders(root: Path) -> tuple[dict, dict[str, dict[str, dict]], list[
         records[render["variant"]] = record
         reports.append(record)
     for name, group in groups.items():
-        reference = group["baseline"]
+        reference = group["baseline"] if require_baseline else next(iter(group.values()))
         for record in group.values():
             for key in ("parameters", "frames", "score_sha256"):
                 if record[key] != reference[key]:
@@ -178,7 +216,9 @@ def synthetic_bed(frames: int, rate: int) -> np.ndarray:
     return bed
 
 
-def make_listening(root: Path, manifest: dict, groups: dict, output: Path) -> list[dict]:
+def make_listening(root: Path, manifest: dict, groups: dict, output: Path,
+                   production_root: Path | None = None, production_groups: dict | None = None,
+                   previous_root: Path | None = None, previous_groups: dict | None = None) -> list[dict]:
     rate = manifest["sample_rate"]
     gap = np.zeros((rate, 2))
     derivatives = []
@@ -193,21 +233,40 @@ def make_listening(root: Path, manifest: dict, groups: dict, output: Path) -> li
             gain = baseline_rms / rms(audio)
             gains[variant] = gain
             sounds[variant] = audio * gain
+        primary_before, primary_after = before, sounds["combined"]
+        primary_gains = {key: gains[key] for key in ("baseline", "combined")}
+        primary_sources = {"before": str((root / group["baseline"]["raw"]).resolve()),
+                           "after": str((root / group["combined"]["raw"]).resolve())}
+        primary_native_delta = 20 * math.log10(group["combined"]["rms"] / group["baseline"]["rms"])
+        if production_root is not None:
+            assert production_groups is not None and previous_root is not None and previous_groups is not None
+            old, new = previous_groups[case]["baseline"], production_groups[case]["combined"]
+            primary_before = np.fromfile(previous_root / old["raw"], dtype="<f4").reshape(-1, 2).astype(np.float64)
+            production_audio = np.fromfile(production_root / new["raw"], dtype="<f4").reshape(-1, 2).astype(np.float64)
+            primary_gains = {"baseline": 1.0, "combined": rms(primary_before) / rms(production_audio)}
+            primary_after = production_audio * primary_gains["combined"]
+            primary_sources = {"before": str((previous_root / old["raw"]).resolve()),
+                               "after": str((production_root / new["raw"]).resolve())}
+            primary_native_delta = 20 * math.log10(new["rms"] / old["rms"])
         # A single shared gain protects audition playback from any overs;
         # it never alters relative levels or compresses the transient.
         peak = max(float(np.max(np.abs(audio))) for audio in sounds.values())
         common = min(1.0, 0.97 / peak)
+        primary_common = min(1.0, 0.97 / max(float(np.max(np.abs(primary_before))),
+                                             float(np.max(np.abs(primary_after)))))
         main_case = any(token in case for token in (
             "01-repeated-notes-finger", "02-melody-accompaniment-finger",
             "03-alternating-strums-pick", "04-release-control-finger"))
         if main_case:
-            comparison = np.concatenate((sounds["baseline"], gap, sounds["combined"])) * common
+            comparison = np.concatenate((primary_before, gap, primary_after)) * primary_common
             info = write_wave(output / f"{case}-before-after.wav", rate, comparison)
             info.update(case=case, kind="whole-passage-RMS-matched-before-after",
                         segments=[{"variant": "baseline", "start_seconds": 0},
                                   {"variant": "combined", "start_seconds": len(before) / rate + 1}],
-                        matching_gains={key: gains[key] for key in ("baseline", "combined")},
-                        common_gain=common)
+                        matching_gains=primary_gains, common_gain=primary_common,
+                        native_after_minus_before_rms_db=primary_native_delta,
+                        native_sources=primary_sources,
+                        comparison="previous-production-versus-current-production" if production_root else "shared-calibration-ablation")
             derivatives.append(info)
         if "01-repeated-notes-finger" in case or "04-release-control-finger" in case:
             parts = []
@@ -217,19 +276,22 @@ def make_listening(root: Path, manifest: dict, groups: dict, output: Path) -> li
                 parts.append(sounds[variant])
             info = write_wave(output / f"{case}-six-ablations.wav", rate, np.concatenate(parts) * common)
             info.update(case=case, kind="six-independent-ablations", matching_gains=gains,
+                        comparison="isolated-mechanisms-with-one-shared-calibration",
                         common_gain=common,
                         segments=[{"variant": variant, "start_seconds": index * (len(before) / rate + 1)}
                                   for index, variant in enumerate(VARIANTS)])
             derivatives.append(info)
         if "02-melody-accompaniment-finger" in case:
             bed = synthetic_bed(len(before), rate)
-            bed *= baseline_rms * 10.0 ** (-11.0 / 20.0) / rms(bed)
-            mix_before, mix_after = sounds["baseline"] + bed, sounds["combined"] + bed
+            bed *= rms(primary_before) * 10.0 ** (-11.0 / 20.0) / rms(bed)
+            mix_before, mix_after = primary_before + bed, primary_after + bed
             mix_gain = min(1.0, 0.97 / max(float(np.max(np.abs(mix_before))), float(np.max(np.abs(mix_after)))))
             info = write_wave(output / f"{case}-synthetic-test-mix-before-after.wav", rate,
                               np.concatenate((mix_before, gap, mix_after)) * mix_gain)
             info.update(case=case, kind="synthetic-bass-drums-test-mix", bed_level_db_relative_to_guitar_rms=-11,
-                        matching_gains={key: gains[key] for key in ("baseline", "combined")},
+                        matching_gains=primary_gains, native_sources=primary_sources,
+                        native_after_minus_before_rms_db=primary_native_delta,
+                        comparison="previous-production-versus-current-production" if production_root else "shared-calibration-ablation",
                         common_gain=mix_gain,
                         segments=[{"variant": "baseline", "start_seconds": 0},
                                   {"variant": "combined", "start_seconds": len(before) / rate + 1}])
@@ -256,6 +318,66 @@ def measurements(root: Path, groups: dict) -> list[dict]:
     return rows
 
 
+def validate_production(analysis_manifest: dict, analysis_groups: dict, production_manifest: dict,
+                        production_groups: dict, previous_manifest: dict, previous_groups: dict,
+                        analysis_source: Path, production_source: Path) -> dict:
+    # Reject incomplete overlaps rather than silently selecting the convenient
+    # subset. A combined-only production render is enough; no production
+    # all-disabled render substitutes for the real preceding instrument.
+    cases = set(analysis_groups)
+    if cases != set(production_groups) or cases != set(previous_groups):
+        raise ValueError("analysis, production and previous render case sets differ")
+    for name, candidate in (("production", production_manifest), ("previous", previous_manifest)):
+        for key in ("sample_rate", "channels", "block_size", "tempo_bpm", "gather_chords", "latency_samples", "post_gain"):
+            if candidate[key] != analysis_manifest[key]:
+                raise ValueError(f"{name} renderer configuration differs: {key}")
+    for case in cases:
+        if set(analysis_groups[case]) != set(VARIANTS):
+            raise ValueError(f"isolated analysis is missing an ablation: {case}")
+        if "combined" not in production_groups[case] or "baseline" not in previous_groups[case]:
+            raise ValueError(f"required production or preceding variant missing: {case}")
+        reference = analysis_groups[case]["baseline"]
+        for candidate in (production_groups[case]["combined"], previous_groups[case]["baseline"]):
+            for key in ("parameters", "frames", "score_sha256"):
+                if candidate[key] != reference[key]:
+                    raise ValueError(f"production comparison input confound: {case}: {key}")
+        if not all(production_groups[case]["combined"]["switches"].values()):
+            raise ValueError(f"production combined render has a disabled mechanism: {case}")
+    def source_hashes(source):
+        return {str(path.relative_to(source)): sha256(path)
+                for path in (source / "Source" / "DSP").rglob("*") if path.is_file()}
+    analysis_hashes, production_hashes = source_hashes(analysis_source), source_hashes(production_source)
+    if set(analysis_hashes) != set(production_hashes):
+        raise ValueError("production and analysis DSP file inventories differ")
+    differences = sorted(name for name in analysis_hashes if analysis_hashes[name] != production_hashes[name])
+    allowed = "Source/DSP/ConstructionLoudnessData.h"
+    if any(name != allowed for name in differences):
+        raise ValueError(f"production and analysis DSP differ beyond output calibration: {differences}")
+    for tool in ("Tools/RenderNaturalPerformance.cpp", "CMakeLists.txt"):
+        if sha256(analysis_source / tool) != sha256(production_source / tool):
+            raise ValueError(f"production and analysis build/renderer differ: {tool}")
+    return {"case_count": len(cases), "shared_scores_and_parameters": True,
+            "allowed_DSP_difference": allowed, "actual_DSP_differences": differences,
+            "analysis_calibration_sha256": analysis_hashes[allowed],
+            "production_calibration_sha256": production_hashes[allowed]}
+
+
+def production_measurements(previous_root: Path, previous_groups: dict,
+                            production_root: Path, production_groups: dict, rate: int) -> list[dict]:
+    rows = []
+    for case in sorted(production_groups):
+        old, new = previous_groups[case]["baseline"], production_groups[case]["combined"]
+        before = np.fromfile(previous_root / old["raw"], dtype="<f4").reshape(-1, 2).astype(np.float64)
+        after = np.fromfile(production_root / new["raw"], dtype="<f4").reshape(-1, 2).astype(np.float64)
+        before_lufs, after_lufs = native_lufs(before, rate), native_lufs(after, rate)
+        rows.append({"case": case, "baseline_native_peak": old["peak"], "production_native_peak": new["peak"],
+                     "baseline_native_lufs": before_lufs, "production_native_lufs": after_lufs,
+                     "native_loudness_change_lu": after_lufs - before_lufs,
+                     "native_rms_change_db": 20 * math.log10(new["rms"] / old["rms"]),
+                     "difference_rms_relative_to_baseline": rms(after - before) / rms(before)})
+    return rows
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--renders", type=Path, required=True)
@@ -264,26 +386,54 @@ def main() -> None:
     parser.add_argument("--build-dir", type=Path, required=True)
     parser.add_argument("--renderer-binary", type=Path, required=True)
     parser.add_argument("--previous-renders", type=Path, help="old-API frozen 9bf1cff render directory")
+    parser.add_argument("--production-renders", type=Path, help="combined renders with the delivered calibration")
+    parser.add_argument("--production-source-tree", type=Path)
+    parser.add_argument("--production-build-dir", type=Path)
+    parser.add_argument("--production-renderer-binary", type=Path)
     args = parser.parse_args()
+    production_arguments = (args.production_renders, args.production_source_tree,
+                            args.production_build_dir, args.production_renderer_binary)
+    if any(production_arguments) and (not all(production_arguments) or not args.previous_renders):
+        parser.error("all four --production-* arguments and --previous-renders are required together")
     if args.output.exists():
         parser.error("output exists; preserve existing listening evidence")
     manifest, groups, renders = inspect_renders(args.renders)
     previous = None
+    previous_manifest, previous_groups = None, None
     if args.previous_renders:
         old_manifest = json.loads((args.previous_renders / "manifest.json").read_text())
         for key in ("sample_rate", "channels", "block_size", "tempo_bpm", "gather_chords", "latency_samples"):
             if old_manifest[key] != manifest[key]:
                 raise ValueError(f"prior renderer configuration differs: {key}")
         previous = compare_previous(args.renders, groups, args.previous_renders)
+        previous_manifest, previous_groups, _ = inspect_renders(args.previous_renders)
+    production_manifest, production_groups, production_renders = None, None, None
+    production_validation = None
+    if args.production_renders:
+        production_manifest, production_groups, production_renders = inspect_renders(args.production_renders, require_baseline=False)
+        production_validation = validate_production(manifest, groups, production_manifest, production_groups,
+            previous_manifest, previous_groups, args.source_tree, args.production_source_tree)
     args.output.mkdir(parents=True)
     provenance = collect_sources(args.source_tree, args.build_dir, args.renderer_binary, args.output)
+    production_provenance = None
+    if args.production_renders:
+        (args.output / "production").mkdir()
+        production_provenance = collect_sources(args.production_source_tree, args.production_build_dir,
+                                                args.production_renderer_binary, args.output / "production")
     listening = args.output / "listening"
     listening.mkdir()
-    derivatives = make_listening(args.renders, manifest, groups, listening)
+    derivatives = make_listening(args.renders, manifest, groups, listening, args.production_renders,
+                                 production_groups, args.previous_renders, previous_groups)
     report = {"schema": 1, "native_renders": str(args.renders.resolve()),
               "manifest_sha256": sha256(args.renders / "manifest.json"), "provenance": provenance,
               "previous_byte_parity": previous, "renders": renders,
               "measurements": measurements(args.renders, groups), "listening": derivatives,
+              "production_render_root": str(args.production_renders.resolve()) if args.production_renders else None,
+              "production_provenance": production_provenance, "production_validation": production_validation,
+              "production_renders": production_renders,
+              "production_measurements": production_measurements(args.previous_renders, previous_groups,
+                  args.production_renders, production_groups, manifest["sample_rate"]) if args.production_renders else None,
+              "native_loudness_meter": "BS.1770-4 via MeasureMaterialLoudness.py; non-48k audio polyphase-resampled to48k for metering only",
               "interpretation": "Difference measurements and validated renders do not establish listener preference. "
               "All variants use identical MIDI and controls. RMS matching is for listening derivatives only; "
               "native levels are retained. The synthetic test bed is not a real recording reference."}
@@ -293,6 +443,10 @@ def main() -> None:
             "Six ablations: baseline, contact, hand, damping, body, combined; one second between each.",
             "Release passages: short/long holds, then repeat with release velocities 16, 64 and 120.",
             "All native input scores, float audio, levels and derivative gains are in validation.json.", ""]
+    if args.production_renders:
+        rows[3:3] = ["Primary before/after and test mixes: actual previous production versus current production calibration.",
+                     "Six-way reels: isolated mechanisms, all using the previous construction trims.",
+                     "Production-native peaks, RMS and LUFS shifts are retained separately in validation.json.", ""]
     for artifact in derivatives:
         if "segments" in artifact:
             rows.append(f"{artifact['file']}: " + ", ".join(
