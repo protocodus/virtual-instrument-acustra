@@ -49,6 +49,7 @@
 #include <limits>
 #include <locale>
 #include <map>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -390,7 +391,9 @@ void renderPart(Part& part, double sampleRate, double endSeconds)
                              return left.order < right.order;
                          });
 
-        AcustraEngine engine;
+        // The engine exceeds macOS's default worker-thread stack size.
+        const auto engineStorage = std::make_unique<AcustraEngine>();
+        auto& engine = *engineStorage;
         engine.setParameters(part.parameters);
         engine.prepare(sampleRate, renderBlockSize);
         engine.setParameters(part.parameters);
@@ -841,7 +844,8 @@ bool tempoSmokeTest(const std::filesystem::path& directory)
 
             // An independent, directly scheduled engine reference proves the
             // file tempo takes effect at sample 1441, during the join grace.
-            AcustraEngine engine;
+            const auto engineStorage = std::make_unique<AcustraEngine>();
+            auto& engine = *engineStorage;
             engine.setParameters(original.parameters);
             engine.prepare(48000.0, renderBlockSize);
             engine.setParameters(original.parameters);
