@@ -21,6 +21,49 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    struct IntrinsicGainProbe
+    {
+        std::vector<float> gains;
+        float beforeRestart { 0.0f };
+        int restartSamples { 0 };
+        int finalSamples { 0 };
+        float resetGain { 0.0f };
+    };
+    static IntrinsicGainProbe intrinsicGains(float start, float target,
+                                            int period, bool reverse,
+                                            bool repeatTarget = true)
+    {
+        auto loop = std::make_unique<AcustraEngine::StringLoop>();
+        loop->currentDelay = loop->targetDelay = static_cast<float>(period);
+        loop->setLoopGain(start);
+        loop->reset();
+        loop->setLoopGain(target, true);
+        IntrinsicGainProbe result;
+        if (reverse)
+        {
+            for (int sample = 0; sample < period - 1; ++sample)
+                loop->advance(0.0f, 1.0f);
+            result.beforeRestart = loop->loopGain;
+            loop->setLoopGain(start, true);
+            result.restartSamples = loop->loopGainTransitionSamples;
+        }
+        for (int sample = 0; sample < period; ++sample)
+        {
+            // The two-pass tuning design may repeat an unchanged target,
+            // and continuous control may update it without a fresh event.
+            if (repeatTarget)
+                loop->setLoopGain(reverse ? start : target, sample % 2 == 0);
+            loop->advance(0.0f, 1.0f);
+            result.gains.push_back(loop->loopGain);
+        }
+        result.finalSamples = loop->loopGainTransitionSamples;
+        loop->setLoopGain(reverse ? target : start, true);
+        loop->advance(0.0f, 1.0f);
+        loop->reset();
+        result.resetGain = loop->loopGain;
+        return result;
+    }
+
     struct TailHandState
     {
         bool active;
@@ -107,6 +150,41 @@ int failures = 0;
 void expect(bool condition, const std::string& message)
 {
     if (!condition) { ++failures; std::cerr << "FAIL: " << message << '\n'; }
+}
+
+void testIntrinsicLossRetunesStayContinuousAndBounded()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    for (const int period : { 128, 512, 4093, 8189, 8190 })
+        for (const auto endpoints : {
+                std::array<float, 2> { 0.70f, 0.999995f },
+                std::array<float, 2> { 0.999995f, 0.70f },
+                std::array<float, 2> { 0.999815f, 0.999995f } })
+        {
+            const auto probe = Access::intrinsicGains(
+                endpoints[0], endpoints[1], period, false);
+            const auto uninterrupted = Access::intrinsicGains(
+                endpoints[0], endpoints[1], period, false, false);
+            expect(probe.gains == uninterrupted.gains,
+                   "unchanged configuration altered an intrinsic-loss transition");
+            expect(std::all_of(probe.gains.begin(), probe.gains.end(),
+                       [&] (float gain) { return std::isfinite(gain)
+                           && gain >= std::min(endpoints[0], endpoints[1])
+                           && gain <= std::max(endpoints[0], endpoints[1]); }),
+                   "an intrinsic-loss retune left its passive endpoint interval");
+            expect(probe.gains.back() == endpoints[1] && probe.finalSamples == 0,
+                   "an intrinsic-loss retune did not reach its exact finite target");
+            expect(probe.resetGain == endpoints[0],
+                   "reset did not settle an in-flight intrinsic-loss target");
+        }
+    const auto reversed = Access::intrinsicGains(0.70f, 0.99f, 512, true);
+    expect(reversed.restartSamples == 512 && reversed.gains.front() > 0.98f,
+           "a second discrete retune near the old deadline stepped to its target");
+    expect(std::all_of(reversed.gains.begin(), reversed.gains.end(),
+               [&] (float gain) { return gain >= 0.70f
+                   && gain <= reversed.beforeRestart; })
+               && reversed.gains.back() == 0.70f && reversed.finalSamples == 0,
+           "an interrupted intrinsic-loss retune did not stay bounded and finish");
 }
 
 Audio render(acustra::EngineParameters parameters, double rate, int note,
@@ -739,6 +817,7 @@ int main(int argc, char** argv)
         renderComparisons(argv[2]);
     else
     {
+        testIntrinsicLossRetunesStayContinuousAndBounded();
         testExplicitLiftSpeedChangesOnlyDamping();
         testPedalCannotTurnOrdinaryReleaseIntoAnExcitation();
         testCc68ChangesNothing();

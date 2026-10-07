@@ -5,6 +5,51 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-07 — Finger release compared with real recordings
+
+The renewed goal explicitly requested audible realism benchmarked against
+real recordings. Finger now applies the existing 0.2 mm release slip in full,
+retaining the displacement's AC-spread normalization. Thumb keeps its
+selected reference ratio, and Pick is byte-identical. This is an isolated
+revisit: earlier full-slip experiments bundled Thumb and/or a weaker burst
+and assessed Finger against a picked-note velocity target. That target does
+not identify a Finger law and is not reused here.
+
+Verified Eastman Finger descriptor error falls 5.25%/5.11% on Original/Bellido;
+upper-partial balance moves about 2.3 dB closer on most pitches and repeated
+takes. All known picked-note scores remain exact. Aggregate six-player
+GuitarSet spectral, convergence and chroma errors improve, with mixed clips.
+Martin's brighter, unknown-tool recordings worsen 3.52%/1.84%, including
+spectral/body terms, and bass attack noise remains substantially excessive.
+Those transfer tradeoffs are retained rather than treated as listener votes.
+
+The darker tone exposed existing hand-back loss and live-tuning anchor-force
+steps. Bounded finite ramps preserve their physical targets and original
+audio limits, including reset and interrupted-retune cases. They add small
+inactive checks, whose runtime cost is included in the final benchmark.
+
+The selected change is a Finger contact-spectrum improvement; no universal
+realism verdict follows. The [recording report](recording-realism-2026-10-07.md)
+records paired real/before/after audio, source integrity, exact assumptions,
+individual results, CPU measurements and regression verification.
+
+## 2026-10-07 — audible gesture realism with bounded runtime cost
+
+The user requested clearer audible realism improvements with CPU cost in
+mind. Automatic return strokes now reverse their fresh parallel string
+release and contact sources; scheduled notes capture direction, while old
+waves and travelling packets retain theirs. This is an authored gesture
+approximation, with no listener verdict inferred.
+
+Attacks now follow slide-adjusted length/fret geometry and tension-bend
+release speed. Queued attacks use controls at contact, and non-48-kHz Pick
+repeats refresh their reference grid through an exact attack-configuration
+cache. Existing filter histories remain intact. Ordinary unbent tone is
+byte-identical over 162 final comparisons. Matched musical renders show
+substantial changed strum/slide audio; common native levels are preserved.
+Implementation, listening provenance, CPU protocol and validation are
+recorded in [the gesture report](audible-realism-2026-10-07.md).
+
 ## 2026-10-05 — lower CPU with exact audio preservation
 
 The user requested lower CPU usage while preserving sound quality. Fixed

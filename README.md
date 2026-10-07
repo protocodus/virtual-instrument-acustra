@@ -23,6 +23,16 @@ parameter (50% for a new instance) puts a small studio around them; see
 remains the goal, not a validated claim; controlled listening against real
 guitars and leading instruments is still required.
 
+Automatic return strokes now reverse the sideways string release as well
+as the traversal order. Attacks under slides and MPE tension bends follow
+the current string geometry, including queued attacks and picked repeats.
+See [audible gesture changes and before/after evidence](Docs/audible-realism-2026-10-07.md).
+
+Finger now applies its finite release smoothing at full force as well as
+soft force, producing a rounder upper-partial balance. Matched comparisons
+with real Finger recordings improve, with a tradeoff on brighter Martin
+recordings; see [the recording benchmark](Docs/recording-realism-2026-10-07.md).
+
 Guitar construction, Model, Shape, Material, Tuning, Picking and Capture use
 directly visible radio switches; the continuous sound controls remain knobs.
 The spruce, rosewood, bone and brass palette groups construction at the left,
@@ -241,7 +251,8 @@ a shared schema (no audio is committed): 49 picked and 55 finger-plucked notes
 from the two full CC0 Eastman E1D dreadnought takes
 ([`PrepareEastmanCorpus.py`](Tools/PrepareEastmanCorpus.py)), 11 regions of a
 CC0 Martin HD28 sample bank whose samples start at the attack and stop at their
-loop, so its attack term is not read
+loop. The scorer includes its cropped attack term in historical totals;
+that term does not independently validate release timing
 ([`PrepareMartinCorpus.py`](Tools/PrepareMartinCorpus.py)). Its
 renderer is the fit renderer's model half, byte-identical to it. With steel
 on its own bridge (2026-09-28) they read 6.3767 (Eastman picked), 6.8426
@@ -808,14 +819,15 @@ loss on 2026-09-28: 70% of the way from the joint refit's 0.122 mm toward the
 0.114 mm refitted around half the measured loss.
 
 A fingertip or the thumb's pad lets go the same way, over an effective
-0.2 mm edge (a chosen length, not a measured fingertip). The Finger and Thumb
-shapes the listener chose were written with no slip, so only the ratio to
-the slip at full velocity is applied, and the line is rescaled to the
-displacement it had so the fitted level law stays: a velocity-127 stroke at
-the default Touch is the shipped release sample for sample, and a softer
-one is released more slowly and darker. A Finger's sustained H5-H12 over
-H1-H4 now rises a median 9.2 dB from MIDI 16 to 112 (the finger-plucked
-recordings 9.0; 2.1 before), a Thumb's 8.2 (5.4). Touch is how fast the hand
+0.2 mm edge (a chosen length, not a measured fingertip). Finger applies the
+full slip, including at velocity 127; Thumb retains the ratio to its
+full-velocity reference. The line is rescaled to its original AC spread,
+preserving the displacement level law, although the emitted level changes
+with the spectrum. A softer stroke is released more slowly and darker.
+Finger's sustained H5-H12 over H1-H4 rises a median 6.67 dB from MIDI 16
+to 112 in the current fixture. The previously cited 9 dB recording target
+was picked material and does not establish a Finger velocity law. Thumb's
+existing contrast remains 8.2 dB. Touch is how fast the hand
 lets go, for every technique: it scales the release edge over two octaves,
 none at its default of 0.58, so a firm Touch releases faster and brighter
 (bounded to three times the full-velocity release speed for the fingers) and
@@ -1372,7 +1384,7 @@ resonances meet it (Known gaps).
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
 | **Body Material** | Spruce, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. Each measured body is moved relative to the wood it was built of: the Original's g21 is heard as measured at Spruce; the Bellido was built of cedar, which is not a choice, so every Wood moves it, Mahogany least. A session saved with Cedar loads as Mahogany. |
 | **Tuning** | Standard, Drop D, DADGAD, Open G or Half-step down: the six open strings and the notes each can reach. A retuned string keeps its gauge (its linear mass), so its tension, impedance and stiffness follow its new pitch, as on a real guitar. |
-| **Picking** | Finger retains the calibrated contact. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity. Finger and Thumb let the string go by the same slip law as a ratio to their full-velocity release, so soft strokes are darker than loud ones as on the finger-plucked recordings, and their contact burst is a soft double corner with no white hiss. Explicit MPE position overrides hand position and can reduce the distinction. |
+| **Picking** | Finger retains the calibrated contact and applies its finite release slip in full, including at maximum velocity, with normalized displacement. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity, retaining its slip ratio to the full-velocity release. Finger and Thumb have a soft double-corner contact burst with no white hiss. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
 | **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% (the default) the output is exactly as without it; with Capture on Piezo it does nothing, since the piezo is already the whole output. |
 | **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. 0-100% (50% nominal, 70% default, chosen by ear), scaled by release velocity and what the string still carries. 0% is exactly silent; a session saved before it existed loads at 0%. Host-automatable, not on the panel. |
@@ -2151,13 +2163,15 @@ engine.
   Eastman take's -29.1), the soft burst carries 3.2 dB of it and the
   contact's width 1 dB; releasing the finger through its full slip, rather
   than its slip as a ratio to a full-velocity stroke's, with the burst
-  halved, reaches -21.8 but takes the finger's soft-to-loud brightening
-  from 9.1 dB to 5.9 against the recordings' 9.0, scores worse on the
+  halved, reached -21.8 but took the finger's soft-to-loud brightening
+  from 9.1 dB to 5.9 against a picked-recording target of 9.0, scored worse on the
   picked sets rendered with the Finger and on GuitarSet, and better on the
   finger-plucked flat-top sets. What remains, about -21 dB with no burst
   and a wide contact, is not the Finger's. The Finger's contact and
-  release were chosen by ear (2026-09-28, 2026-09-30), so the darker
-  release is with the listener (Docs/decisions.md, 2026-10-01).
+  release were chosen by ear (2026-09-28, 2026-09-30). The isolated Finger
+  full-slip revisit on 2026-10-07 keeps the burst and Thumb unchanged:
+  Finger recording scores improve about 5%, but the bass attack excess
+  remains about 21 dB. See the [current recording comparison](Docs/recording-realism-2026-10-07.md).
 - The room is a model of a room, not a measured one: an image-source
   shoebox for its first reflections and a feedback delay network for its
   field, at a level and decay a small treated studio has. The recordings it

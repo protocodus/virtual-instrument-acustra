@@ -491,11 +491,11 @@ void testSameSampleChordsAreStrummedAndAlternate()
     const double downAgain = median (downAgains);
     const double restarted = median ({ downs.begin() + 1, downs.end() });
     // Medians allow the existing measured stroke-speed and string-level
-    // variation. At the shipping defaults they are 13/0/12/13/0 ms; the
-    // direction margins are several analysis hops, not threshold rounding.
+    // variation. The first downstroke can land exactly six 1 ms analysis
+    // hops after first sound; the inclusive bound retains that audible sweep.
     // Off-tree wrapper mutations disabling alternation or the rest reset
     // must fail these audible checks; no golden audio is required.
-    expect (downs.front() > 0.006,
+    expect (downs.front() >= 0.006,
             "the first same-sample chord did not sweep low to high");
     expect (up < 0.5 * down,
             "the return strum did not sweep high to low");

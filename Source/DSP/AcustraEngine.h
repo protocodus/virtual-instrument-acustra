@@ -195,8 +195,12 @@ public:
     // this stroke's complete traversal to finish before the next predicted
     // stroke. The first stroke, rests and ordinary slower repeats preserve
     // the measured speed draw exactly. Both optional durations are samples.
+    // A return stroke releases the sideways plane in the opposite direction.
+    // Each scheduled string captures its own direction at note-on, so a later
+    // stroke cannot change an earlier contact still travelling to the bridge.
     void beginStrum(int strokeSpanSamples = 0,
-                    int repeatIntervalSamples = 0) noexcept;
+                    int repeatIntervalSamples = 0,
+                    bool upstroke = false) noexcept;
     // A pluck can be scheduled: the string is taken and fretted now, the
     // fretting hand having formed the chord, and released this many samples
     // later, which is how a strum reaches its strings one after another.
@@ -613,6 +617,12 @@ private:
         float currentDelay { 128.0f };
         float targetDelay { 128.0f };
         float loopGain { 0.995f };
+        // A discrete retune keeps its feedback loss continuous over one
+        // current round trip. This is separate from hand loss: sources still
+        // in flight must never receive an inverse loss compensation.
+        float targetLoopGain { 0.995f };
+        float loopGainStep { 0.0f };
+        int loopGainTransitionSamples { 0 };
         float broadLossMix { 0.02f };
         float highLossMix { 0.1f };
         float broadLossCoefficient { 0.5f };
@@ -684,6 +694,7 @@ private:
         // host, which never did.
         ACUSTRA_ALWAYS_INLINE float advance(float delaySmoothing,
                                             float releaseGain) noexcept;
+        void setLoopGain(float gain, bool transition = false) noexcept;
         // A plucked string is released from rest, so the wave the bridge
         // reads was already standing there when the finger let go. Prime the
         // finite difference from the first value this loop actually produces
@@ -940,6 +951,11 @@ private:
         std::uint64_t lastPluckSample { 0 };
         float repeatedPluckGain { 1.0f };
         float repluckForceGain { 1.0f };
+        // The scheduled fresh release's sideways direction. Sources already
+        // in flight keep their own signed gain until firePluck retains them.
+        float pluckParallelSign { 1.0f };
+        float excitationParallelGain { 0.51f };
+        float tailExcitationParallelGain { 0.51f };
         // The release burst's noise, handed over from randomState at each
         // pluck (initialisePluck).
         std::uint32_t excitationNoiseState { 1 };
@@ -1004,9 +1020,9 @@ private:
         // Where each plane's release shape put its kink, as a share of the
         // line it was written on (initialisePluck).
         std::array<float, 2> releaseShapePosition {};
-        // A Finger or Thumb release's slip and the full-velocity slip it is
-        // taken as a ratio to (initialisePluck); zero when the release is
-        // the written shape itself.
+        // Finger applies releaseSlipPole in full and has no inverse
+        // reference. Thumb retains its full-velocity reference ratio;
+        // both poles are zero when that ratio leaves the written shape.
         double releaseSlipPole { 0.0 };
         double releaseReferencePole { 0.0 };
         // Routing identity survives transport retirement: a drained contact
@@ -1034,6 +1050,12 @@ private:
         // keeps this position. Zero slide retains the exact MIDI fret.
         float speakingFret { 0.0f };
         float bridgeTailStiffness { initialBridgeTailStiffness };
+        // The target spring still tunes the physical port. During a live
+        // retune the junction reaches it over one string round trip, so its
+        // retained displacement does not see a one-sample force step.
+        float appliedBridgeTailStiffness { initialBridgeTailStiffness };
+        float bridgeTailStiffnessStep { 0.0f };
+        int bridgeTailStiffnessSamples { 0 };
         float attackPitchCents { 0.0f };
         float attackPitchDecay { 1.0f };
         float frozenMemberPitchBendSemitones { 0.0f };
@@ -1087,6 +1109,10 @@ private:
         // samples, for a Pick release at another rate (writePickRelease);
         // zero when not tuned for one.
         std::array<float, 2> referencePickDelay {};
+        // Reference-rate release geometry belongs to an attack, not every
+        // control update. Reuse it until the next Pick meets a new string
+        // configuration; refreshing it must not reset a retained wave.
+        VoiceConfigurationKey referencePickConfigurationKey {};
         float level { 0.0f };
         float releaseDamping { 1.0f };
         // The hand's T60 for the release under way (beginRelease), from
@@ -1333,7 +1359,8 @@ private:
     void bridgeAnchorMoments(float& stiffness0, float& stiffness1,
                              float& stiffness2) const noexcept;
     void configureVoice(Voice& voice, int stringIndex, int midiNote,
-                        bool clearDelay) noexcept;
+                        bool clearDelay, bool refreshPickReference = false,
+                        bool transitionRetune = false) noexcept;
     void updateAttackPitch(Voice& voice, int stringIndex) noexcept;
     float effectiveTouch(float velocity) const noexcept;
     // MPE channel pressure for this voice's own member channel, -1 with no
@@ -1847,6 +1874,7 @@ private:
     // string's delay together and never reorders them.
     std::uint32_t strumRandomState_ { 0x9e3779b9u };
     float strumSpeedScale_ { 1.0f };
+    float strumParallelSign_ { 1.0f };
     // Half-width of the uniform draw beginStrum() applies to strumSpeedScale_.
     // GuitarSet's comping tracks (Tools/MeasureStrums.py), pooled over runs
     // of >=3 repeats of one chord and direction, put a stroke's own total

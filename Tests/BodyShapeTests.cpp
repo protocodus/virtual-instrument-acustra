@@ -19,6 +19,13 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    struct AnchorState { float target, applied, period; int remaining; };
+    static AnchorState anchor(const AcustraEngine& e, int string)
+    {
+        const auto& v = e.voices_[static_cast<std::size_t>(string)];
+        return { v.bridgeTailStiffness, v.appliedBridgeTailStiffness,
+                 v.loops[0].currentDelay, v.bridgeTailStiffnessSamples };
+    }
     static auto bridge(const AcustraEngine& e) { return e.bridgeLoad_; }
     static const auto& voices(const AcustraEngine& e) { return e.voices_; }
     static float phase(const AcustraEngine& e, float f, int string)
@@ -1047,6 +1054,59 @@ void testConstructionSwitchesDoNotTick()
               << " dB (" << worstName << ")\n";
 }
 
+void testLiveTuningPreservesAnchorForceAndReachesItsTarget()
+{
+    for (const int rate : { 44100, 48000, 96000 })
+    {
+        auto e = std::make_unique<Engine>();
+        acustra::EngineParameters p;
+        e->setParameters(p); e->prepare(rate, 1);
+        e->setStringPerChannelMode(true);
+        e->noteOn(47, 0.8f, 1);
+        float left {}, right {};
+        for (int sample = 0; sample < rate / 10; ++sample)
+            e->process(&left, &right, 1);
+        const auto before = Access::anchor(*e, 0);
+        p.tuning = acustra::Tuning::Dadgad;
+        e->setParameters(p);
+        const auto retuned = Access::anchor(*e, 0);
+        expect(retuned.target != before.target && retuned.applied == before.applied
+                   && retuned.remaining > 1,
+               "live tuning stepped the retained anchor spring to its new force");
+        for (int sample = 0; sample < retuned.remaining - 1; ++sample)
+        {
+            e->process(&left, &right, 1);
+            const auto active = Access::anchor(*e, 0);
+            expect(active.applied >= std::min(before.applied, retuned.target)
+                       && active.applied <= std::max(before.applied, retuned.target),
+                   "a retuning anchor spring left its physical endpoint interval");
+        }
+        const auto nearDeadline = Access::anchor(*e, 0);
+        p.tuning = acustra::Tuning::Standard;
+        e->setParameters(p);
+        const auto reversed = Access::anchor(*e, 0);
+        expect(reversed.applied == nearDeadline.applied
+                   && reversed.remaining > 1,
+               "a second tuning near the old deadline stepped the anchor force");
+        // A fresh wave belongs to the same physical anchor; attacking it
+        // during the retune must not finish the instrument's transition.
+        e->noteOn(48, 0.8f, 1);
+        expect(Access::anchor(*e, 0).applied == reversed.applied,
+               "a fresh attack snapped an anchor retune to its target");
+        const int remaining = Access::anchor(*e, 0).remaining;
+        for (int sample = 0; sample < remaining; ++sample)
+            e->process(&left, &right, 1);
+        const auto settled = Access::anchor(*e, 0);
+        expect(settled.remaining == 0 && settled.applied == settled.target
+                   && settled.target == before.target,
+               "the anchor retune did not reach its exact physical target");
+        e->reset();
+        const auto reset = Access::anchor(*e, 0);
+        expect(reset.remaining == 0 && reset.applied == reset.target,
+               "reset retained an in-flight anchor retune");
+    }
+}
+
 // A note near a strong, lossy low bridge or body mode is pulled a few cents
 // from its request (README, Known gaps; audit F15): the loop is tuned to
 // the bridge's reflection phase at the note, not to the damped pole. Keep
@@ -1382,6 +1442,7 @@ int main()
     testRetuneAndTailOwnership();
     testStaticWorkAndRapidChanges();
     testConstructionSwitchesDoNotTick();
+    testLiveTuningPreservesAnchorForceAndReachesItsTarget();
     testCoupledPitchPullIsBounded();
     testNoteToNoteLevelSpreadIsBounded();
     std::cout << "Body shape failures=" << failures << '\n';

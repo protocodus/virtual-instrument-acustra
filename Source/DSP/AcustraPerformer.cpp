@@ -375,8 +375,9 @@ void Performer::flushNoteGroup() noexcept
             note.pluckDelay = engine_.strumDelaySamples(rank, meanVelocity);
             strokeSpan = std::max(strokeSpan, note.pluckDelay);
         }
+        engine_.beginStrum(strokeSpan, restarted ? 0 : static_cast<int>(interval),
+                           strumUpstroke_);
         strumUpstroke_ = ! strumUpstroke_;
-        engine_.beginStrum(strokeSpan, restarted ? 0 : static_cast<int>(interval));
     }
     for (int index = 0; index < pendingNoteOnCount_; ++index)
     {

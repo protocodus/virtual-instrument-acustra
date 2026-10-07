@@ -230,6 +230,16 @@ if(ACUSTRA_BUILD_TOOLS)
     add_executable(AcustraPerformanceRenderer Tools/PerformanceRenderer.cpp)
     target_link_libraries(AcustraPerformanceRenderer PRIVATE AcustraDSP)
 
+    # Identical short scores for frozen before/after listening comparisons.
+    add_executable(AcustraRenderAudibleRealism Tools/RenderAudibleRealism.cpp)
+    target_link_libraries(AcustraRenderAudibleRealism PRIVATE AcustraDSP)
+    target_compile_features(AcustraRenderAudibleRealism PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(AcustraRenderAudibleRealism PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(AcustraRenderAudibleRealism PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+
     # Expressive repertoire, solo and ensemble: one engine per guitar, the
     # performances written by Tools/PerformRepertoire.py.
     find_package(Threads REQUIRED)
@@ -316,6 +326,17 @@ if(BUILD_TESTING)
     target_compile_features(AcustraReleaseJoinTests PRIVATE cxx_std_20)
     acustra_add_suite(Acustra.ReleaseJoin AcustraReleaseJoinTests)
     set_tests_properties(Acustra.ReleaseJoin PROPERTIES TIMEOUT 120)
+
+    add_executable(AcustraStrumDirectionTests Tests/StrumDirectionTests.cpp)
+    target_link_libraries(AcustraStrumDirectionTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraStrumDirectionTests PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(AcustraStrumDirectionTests PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(AcustraStrumDirectionTests PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+    acustra_add_suite(Acustra.StrumDirection AcustraStrumDirectionTests)
+    set_tests_properties(Acustra.StrumDirection PROPERTIES TIMEOUT 120)
 
     add_executable(AcustraHandAllocatorTests Tests/HandAllocatorTests.cpp)
     target_link_libraries(AcustraHandAllocatorTests PRIVATE AcustraDSP)

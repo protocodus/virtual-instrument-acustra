@@ -1,5 +1,5 @@
-// The release's brightness follows the actual stroke, while its reference
-// remains the nominal full-velocity contact. No fitted parameters are changed.
+// Finger uses the actual release slip; Thumb retains its nominal reference
+// ratio. Both keep force-sensitive brightness without fitting new parameters.
 #include "DSP/AcustraEngine.h"
 
 #include <algorithm>
@@ -17,10 +17,11 @@ struct AcustraEngineTestAccess
     struct Release
     {
         double pole, reference, position, burst, displacement, brightness;
+        double absolutePole;
     };
-    static Release inspect(AcustraEngine& engine)
+    static Release inspect(AcustraEngine& engine, int string = 0)
     {
-        const auto& voice = engine.voices_[0];
+        const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
         const auto& loop = voice.loops[0];
         const int length = static_cast<int>(std::round(loop.currentDelay));
         const auto at = [&] (int n)
@@ -39,9 +40,24 @@ struct AcustraEngineTestAccess
         const double displacement = voice.releaseStepRise
             * voice.releaseShapePosition[0] * length
             / (0.8 * std::sqrt(voice.polarisationMix));
+        // Independently predict the default-Touch 0.2 mm contact's r/u
+        // release from observed held force and string geometry, rather than
+        // consulting plectrumSlipPole or the initializer's pole metadata.
+        const double speakingLength = voice.speakingLengthMetres;
+        const double a = voice.pluckPoint * speakingLength;
+        const double waveSpeed = 2.0 * 0.648 * 440.0
+            * std::exp2((voice.openMidi - 69.0) / 12.0)
+            * voice.bendImpedanceScale;
+        const double heldMetres = displacement
+            * engine.physicalCalibration_.steelDisplacementScaleMetres;
+        const double releaseSpeed = 0.5 * waveSpeed * heldMetres
+            * (1.0 / a + 1.0 / (speakingLength - a));
+        const double absolutePole = std::exp(-releaseSpeed
+            / (0.2e-3 * engine.sampleRate_));
         return { voice.releaseSlipPole, voice.releaseReferencePole,
                  voice.pluckPoint, voice.excitationEnvelope, displacement,
-                 length * length * slopes / std::max(variance, 1.0e-30) };
+                 length * length * slopes / std::max(variance, 1.0e-30),
+                 absolutePole };
     }
     static void seed(AcustraEngine& engine, std::uint32_t seed)
     { engine.voices_[0].randomState = seed; }
@@ -70,7 +86,7 @@ auto fresh(double rate, acustra::PickingTechnique picking,
     return engine;
 }
 
-void testNominalReferenceAndForceSensitiveBrightness()
+void testContactLawAndForceSensitiveBrightness()
 {
     for (const auto technique : { acustra::PickingTechnique::Finger,
                                   acustra::PickingTechnique::Thumb })
@@ -85,19 +101,26 @@ void testNominalReferenceAndForceSensitiveBrightness()
                 engine->beginStrum();
                 engine->noteOn(40, 0.12f, 1, 0, true);
                 const auto state = Access::inspect(*engine);
-                expect(state.pole > state.reference && state.reference > 0.0,
-                       "soft stroke did not have a slower release than its reference");
-                // r/u divided by p(1-p) is constant at one nominal force:
-                // u = c*y/[2*L*p(1-p)]. A reference that includes the
-                // random stroke gain violates this invariant.
-                const double nominal = -1.0 / std::log(state.reference)
-                    / (state.position * (1.0 - state.position));
+                const bool finger = technique == acustra::PickingTechnique::Finger;
+                if (finger)
+                    expect(state.pole > 0.0 && state.reference == 0.0
+                               && std::abs(state.pole - state.absolutePole) < 1.0e-6,
+                           "Finger did not apply its physical release slip in full");
+                else
+                    expect(state.pole > state.reference && state.reference > 0.0,
+                           "soft Thumb did not have a slower release than its reference");
+                // tau*y/[p(1-p)] is constant for Finger's actual force;
+                // tau/[p(1-p)] is constant for Thumb's nominal force.
+                const double observedPole = finger ? state.pole : state.reference;
+                const double nominal = -1.0 / std::log(observedPole)
+                    / (state.position * (1.0 - state.position))
+                    * (finger ? state.displacement : 1.0);
                 smallestReference = std::min(smallestReference, nominal);
                 largestReference = std::max(largestReference, nominal);
                 releases.push_back(state);
             }
             expect(largestReference / smallestReference < 1.00002,
-                   "full-velocity reference followed random stroke intensity");
+                   "release time violated its force/geometry invariant");
             std::sort(releases.begin(), releases.end(), [] (const auto& a, const auto& b)
                 { return a.displacement < b.displacement; });
             double weak = 0.0, strong = 0.0;
@@ -109,7 +132,7 @@ void testNominalReferenceAndForceSensitiveBrightness()
             expect(strong > 1.04 * weak,
                    "firmer same-velocity strokes did not excite brighter string spectra");
             std::cout << "Force-sensitive release rate=" << rate
-                      << " reference spread=" << largestReference / smallestReference
+                      << " force/geometry spread=" << largestReference / smallestReference
                       << " strong/weak spectral moment=" << strong / weak << '\n';
         }
 }
@@ -143,16 +166,23 @@ void testPickImpactTracksTheStringStroke()
         }
 }
 
-void testFullVelocityNominalReleaseRemainsUnfiltered()
+void testFullVelocityFingerStillSlipsAndThumbKeepsItsShape()
 {
-    for (const auto technique : { acustra::PickingTechnique::Finger,
-                                  acustra::PickingTechnique::Thumb })
+    for (double rate : { 44100.0, 48000.0, 96000.0 })
+        for (int string : { 0, 5 })
     {
-        auto engine = fresh(48000.0, technique);
-        engine->noteOn(40, 1.0f, 1);
-        const auto state = Access::inspect(*engine);
-        expect(state.pole == 0.0 && state.reference == 0.0,
-               "nominal full-velocity release no longer keeps its approved shape");
+        const int note = string == 0 ? 40 : 64;
+        auto finger = fresh(rate, acustra::PickingTechnique::Finger);
+        finger->noteOn(note, 1.0f, string + 1);
+        const auto state = Access::inspect(*finger, string);
+        expect(state.pole > 0.0 && state.reference == 0.0
+                   && std::abs(state.pole - state.absolutePole) < 1.0e-6,
+               "full-velocity Finger cancelled its absolute physical slip");
+        auto thumb = fresh(rate, acustra::PickingTechnique::Thumb);
+        thumb->noteOn(note, 1.0f, string + 1);
+        const auto thumbState = Access::inspect(*thumb, string);
+        expect(thumbState.pole == 0.0 && thumbState.reference == 0.0,
+               "nominal full-velocity Thumb no longer keeps its approved shape");
     }
     expect(acustra::AcustraEngine::outputLatencySamples() == 7,
            "release correction changed output latency");
@@ -161,8 +191,8 @@ void testFullVelocityNominalReleaseRemainsUnfiltered()
 
 int main()
 {
-    testNominalReferenceAndForceSensitiveBrightness();
+    testContactLawAndForceSensitiveBrightness();
     testPickImpactTracksTheStringStroke();
-    testFullVelocityNominalReleaseRemainsUnfiltered();
+    testFullVelocityFingerStillSlipsAndThumbKeepsItsShape();
     return failures == 0 ? 0 : 1;
 }
