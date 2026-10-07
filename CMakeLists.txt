@@ -401,6 +401,12 @@ if(BUILD_TESTING)
     add_executable(AcustraGuitarModelTests Tests/GuitarModelTests.cpp)
     target_link_libraries(AcustraGuitarModelTests PRIVATE AcustraDSP)
     acustra_add_suite(Acustra.GuitarModels AcustraGuitarModelTests)
+
+    add_executable(AcustraPlayerBodyLoadingTests Tests/PlayerBodyLoadingTests.cpp)
+    target_link_libraries(AcustraPlayerBodyLoadingTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraPlayerBodyLoadingTests PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    acustra_add_suite(Acustra.PlayerBodyLoading AcustraPlayerBodyLoadingTests)
     set_tests_properties(Acustra.GuitarModels PROPERTIES TIMEOUT 180)
 
     add_executable(AcustraBodyShapeTests Tests/BodyShapeTests.cpp)

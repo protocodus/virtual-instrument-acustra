@@ -1330,10 +1330,12 @@ private:
     void configureBridge(bool keepModalState = false) noexcept;
     // The frequency and Q configureBody gives radiation mode `index` of the
     // bank these parameters select, before the host-rate clamp: the pole
-    // steel's own bridge modes share (tests).
+    // steel's own bridge modes share (tests). By default this observes the
+    // fitted/free-body pole; an explicit true includes authored player loss.
     static std::array<float, 2> radiationModePole(
         const EngineParameters& parameters,
-        const PhysicalCalibration& calibration, int index) noexcept;
+        const PhysicalCalibration& calibration, int index,
+        bool playerBodyLoading = false) noexcept;
     // Body Material's factors on frequency, Q, brightness and radiation for
     // these parameters, relative to the wood the model's measured bank was
     // built of (tests).
@@ -1373,7 +1375,7 @@ private:
             float rock { 0.0f };
         };
         const void* bank { nullptr };
-        std::array<std::uint32_t, 12> key {};
+        std::array<std::uint32_t, 13> key {};
         bool valid { false };
         int count { 0 };
         // The first `ordered` modes are evaluated as ever; the steel blend's

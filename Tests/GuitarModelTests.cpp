@@ -317,6 +317,11 @@ void testRadiation(acustra::GuitarModel model, const Bank& measured, int delay48
         const auto bank = radiatedAt(heard, rate, model);
         auto engine = std::make_unique<acustra::AcustraEngine>();
         engine->setParameters(parametersFor(model));
+        // This contract reconstructs the supported/free measurement.
+        // Player-contact loss is independently checked in PlayerBodyLoading.
+        auto realism = engine->performanceRealism();
+        realism.playerBodyLoading = false;
+        engine->setPerformanceRealism(realism);
         engine->prepare(rate, 64);
         const double pi = std::acos(-1.0);
         MicrophoneFilterReference filter(rate, model);
@@ -395,6 +400,9 @@ void testFractionalRadiation(acustra::GuitarModel model, const Bank& measured, i
                 continue;
             auto engine = std::make_unique<acustra::AcustraEngine>();
             engine->setParameters(parametersFor(model));
+            auto realism = engine->performanceRealism();
+            realism.playerBodyLoading = false;
+            engine->setPerformanceRealism(realism);
             engine->prepare(rate, 64);
             // 0.743 s exceeds nine time constants of the slowest retained
             // radiation pole; scale duration, not just sample count, at192k.

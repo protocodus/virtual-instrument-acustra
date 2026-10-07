@@ -175,6 +175,11 @@ void testOriginalAirDecayIsLocalized()
         bellido.shape = nativeShape(bellido.guitarModel);
         auto named = std::make_unique<Engine>();
         named->setParameters(bellido);
+        // Isolate the measured/free Q from the authored player-contact loss.
+        // The latter has its own actual-pole and passive-mobility contract.
+        auto realism = named->performanceRealism();
+        realism.playerBodyLoading = false;
+        named->setPerformanceRealism(realism);
         named->prepare(rate, 64);
         const auto& namedCalibration = Access::calibration(*named);
         const float woodQ = Access::woodFactors(bellido)[1];

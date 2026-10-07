@@ -12,6 +12,7 @@
 #include "ConstructionLoudnessData.h"
 #include "CaptureVoicingData.h"
 #include "ModelConvergenceData.h"
+#include "PlayerBodyLoading.h"
 #include "PiezoBlampTable.h"
 
 #include <algorithm>
@@ -3723,7 +3724,7 @@ void AcustraEngine::updateControlState() noexcept
 
 std::array<float, 2> AcustraEngine::radiationModePole(
     const EngineParameters& parameters, const PhysicalCalibration& calibration,
-    int index) noexcept
+    int index, bool playerBodyLoading) noexcept
 {
     const auto bank = measuredBodyBank(parameters.guitarModel);
     if (index < 0 || static_cast<std::size_t>(index) >= bank.size())
@@ -3735,7 +3736,8 @@ std::array<float, 2> AcustraEngine::radiationModePole(
     const auto pole = radiationPole(bank, index, anchor, morph,
         woodFactorsFor(parameters.bodyMaterial, parameters.guitarModel),
         parameters.guitarModel != GuitarModel::Original, calibration);
-    return { pole.frequency, pole.q };
+    return { pole.frequency, detail::playerLoadedBodyQ(pole.frequency, pole.q,
+        playerBodyLoading && parameters.guitarModel == GuitarModel::Bellido1978) };
 }
 
 std::array<float, 4> AcustraEngine::bodyWoodFactors(
@@ -3878,7 +3880,8 @@ void AcustraEngine::configureBody() noexcept
 
         const float upper = clamp(std::log2(std::max(frequency, 120.0f)
             / 120.0f) / 6.0f, 0.0f, 1.0f);
-        const float q = engine.q;
+        const float q = detail::playerLoadedBodyQ(frequency, engine.q,
+            named && performanceRealism_.playerBodyLoading);
         const float radius = std::exp(-pi * frequency
                                       / (q * static_cast<float>(sampleRate_)));
         const std::complex<float> pole = std::polar(
@@ -3904,12 +3907,15 @@ void AcustraEngine::configureBody() noexcept
             : 0.0f;
         const float playedDrive = drive * share;
         // The stored residues drive unit-input discrete states fitted at
-        // 48 kHz. Convert that state as a zero-order-held continuous mode:
+        // 48 kHz. Player contact changes the runtime pole, while the reference
+        // retains its unloaded Q: its residue ratio therefore retains the
+        // same continuous-input coupling, including at 48 kHz. Convert that
+        // state as a zero-order-held continuous mode:
         // q=(p_new-1)/(p_48k-1). The former real 48k/rate approximation lost
         // q's phase and changed the summed response at higher host rates.
         const float referenceRate = 48000.0f;
         const std::complex<float> referencePole = std::polar(
-            std::exp(-pi * frequency / (q * referenceRate)),
+            std::exp(-pi * frequency / (engine.q * referenceRate)),
             twoPi * frequency / referenceRate);
         // That hold droops by sinc(pi f / rate) at the mode, which the 48 kHz
         // fit absorbed at 48 kHz; keep the 48 kHz level at other rates rather
@@ -4203,7 +4209,12 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         const double prewarpRate = plateFloor ? 48000.0 : rateD;
         const double omega = 2.0 * prewarpRate * std::tan(
             static_cast<double>(pi) * frequency / prewarpRate);
-        const double damping = omega / (2.0 * q);
+        // The same additional modal loss as the radiating measured body;
+        // retain the broadband conductance floor's calibrated prototype.
+        const float loadedQ = detail::playerLoadedBodyQ(frequency, q,
+            !plateFloor && parameters_.guitarModel == GuitarModel::Bellido1978
+                && performanceRealism_.playerBodyLoading);
+        const double damping = omega / (2.0 * loadedQ);
         const double denominator0 = bilinearD * bilinearD
             + 2.0 * damping * bilinearD + omega * omega;
         const double denominator1 = (-2.0 * bilinearD * bilinearD
@@ -4421,14 +4432,15 @@ AcustraEngine::bridgeMobilityTable() const noexcept
     const auto plate = plateConductanceMode(physicalCalibration_);
     const auto wood = woodFactorsFor(parameters_.bodyMaterial,
                                      parameters_.guitarModel);
-    const std::array<std::uint32_t, 12> key {
+    const std::array<std::uint32_t, 13> key {
         exact::bits(rate), exact::bits(bridgeShapeA0_), exact::bits(bridgeShapeT1_),
         exact::bits(bridgeShapePlate_), exact::bits(bridgeShapeT1UpperHz_),
         exact::bits(scale), exact::bits(plate.frequency), exact::bits(plate.q),
         exact::bits(plate.weight),
         exact::bits(wood.frequency), exact::bits(wood.q),
         // The joint-pole body's own Shape morph (visitSteelBlendBridge).
-        static_cast<std::uint32_t>(parameters_.shape) };
+        static_cast<std::uint32_t>(parameters_.shape),
+        static_cast<std::uint32_t>(performanceRealism_.playerBodyLoading) };
     auto& table = bridgeMobilityTable_;
     if (table.valid && table.bank == bank.begin() && table.key == key)
         return table;
@@ -4449,7 +4461,9 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         auto& mode = table.modes[static_cast<std::size_t>(table.count++)];
         mode.omega = bilinear * std::tan(
             pi * measured.frequency / rate);
-        mode.damping = mode.omega / (2.0f * measured.q);
+        const float q = detail::playerLoadedBodyQ(measured.frequency, measured.q,
+            !ownBridge && performanceRealism_.playerBodyLoading);
+        mode.damping = mode.omega / (2.0f * q);
         mode.heave = measured.heave * level;
         mode.cross = measured.cross * level;
         mode.rock = measured.rock * level;
