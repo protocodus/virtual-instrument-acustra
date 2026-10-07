@@ -887,6 +887,21 @@ private:
         std::array<float, 2> process() noexcept;
     };
 
+    struct PickingGesture
+    {
+        float position { 0.0f };
+        float pressure { 0.0f };
+        bool active { false };
+    };
+
+    // A slowly moving picking hand, sampled only when a contact/stroke starts.
+    // A queued stroke owns its snapshot; later strokes cannot change it.
+    [[nodiscard]] PickingGesture nextPickingGesture() noexcept;
+    PickingGesture pickingGesture_ {}, strumGesture_ {};
+    std::uint32_t pickingGestureRandom_ { 0x7f4a7c15u };
+    std::uint64_t pickingGestureSample_ { 0 };
+    bool pickingGestureSeen_ { false };
+
     struct Voice
     {
         std::array<StringLoop, 2> loops {};
@@ -961,6 +976,7 @@ private:
         // The scheduled fresh release's sideways direction. Sources already
         // in flight keep their own signed gain until firePluck retains them.
         float pluckParallelSign { 1.0f };
+        PickingGesture pluckGesture {};
         float excitationParallelGain { 0.51f };
         float tailExcitationParallelGain { 0.51f };
         // The release burst's noise, handed over from randomState at each
@@ -1525,7 +1541,9 @@ private:
     [[nodiscard]] int reshapeFormingChord(int midiNote, int midiChannel,
                                           int chosenString) noexcept;
     void startNote(int stringIndex, int harmonic, int midiNote, float velocity,
-                   int midiChannel, int delaySamples, bool strumMember) noexcept;
+                   int midiChannel, int delaySamples, bool strumMember,
+                   const PickingGesture* capturedGesture = nullptr,
+                   float capturedParallelSign = 1.0f) noexcept;
     void muteVacatedString(Voice& voice, int stringIndex) noexcept;
     void rememberFinger(int stringIndex) noexcept;
     void releaseFinger(int stringIndex) noexcept;

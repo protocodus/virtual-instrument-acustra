@@ -2390,6 +2390,7 @@ void AcustraEngine::restartRandomDraws() noexcept
     strumRandomState_ = 0x9e3779b9u;
     strumSpeedScale_ = 1.0f;
     strumParallelSign_ = 1.0f;
+    pickingGestureRandom_ = 0x7f4a7c15u;
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -3321,6 +3322,10 @@ void AcustraEngine::reset() noexcept
     vibratoOnset_ = 0.0f;
     noteOrder_ = 0;
     sampleClock_ = 0;
+    pickingGesture_ = {};
+    strumGesture_ = {};
+    pickingGestureSeen_ = false;
+    pickingGestureSample_ = 0;
     hand_.fill({});
     lastNoteOnSample_.fill(0);
     chordStartSample_.fill(0);
@@ -5530,19 +5535,69 @@ float AcustraEngine::nextNoise(Voice& voice) noexcept
     return xorshiftNoise(voice.randomState);
 }
 
+AcustraEngine::PickingGesture AcustraEngine::nextPickingGesture() noexcept
+{
+    if (!performanceRealism_.coherentHand)
+        return {};
+
+    const bool rest = !pickingGestureSeen_
+        || sampleClock_ < pickingGestureSample_
+        || sampleClock_ - pickingGestureSample_
+            > static_cast<std::uint64_t>(handMemorySeconds * sampleRate_);
+    if (rest)
+    {
+        // The first contact keeps the previous model's independent draw.
+        // Establish a hand posture for the following contacts without taking
+        // anything away from the player's first note or explicit accent.
+        pickingGesture_.position = xorshiftNoise(pickingGestureRandom_);
+        pickingGesture_.pressure = xorshiftNoise(pickingGestureRandom_);
+        pickingGesture_.active = false;
+        pickingGestureSeen_ = true;
+    }
+    else if (sampleClock_ != pickingGestureSample_)
+    {
+        // Bounded diffusion with reflection, not a periodic modulation.
+        // Symmetric reflected increments preserve a uniform marginal over
+        // [-1,1]; elapsed seconds set movement, never host block size. The
+        // 0.70/sqrt(s) mobility is an authored small-gesture map, not a
+        // measured universal statistic of a player's hand.
+        const float elapsed = static_cast<float>(
+            static_cast<double>(sampleClock_ - pickingGestureSample_)
+            / sampleRate_);
+        const float step = 0.70f * std::sqrt(std::min(elapsed, 1.0f));
+        const auto reflect = [] (float value) noexcept
+        {
+            return value > 1.0f ? 2.0f - value
+                 : value < -1.0f ? -2.0f - value : value;
+        };
+        pickingGesture_.position = reflect(pickingGesture_.position
+            + step * xorshiftNoise(pickingGestureRandom_));
+        pickingGesture_.pressure = reflect(pickingGesture_.pressure
+            + step * xorshiftNoise(pickingGestureRandom_));
+        pickingGesture_.active = true;
+    }
+    pickingGestureSample_ = sampleClock_;
+    return pickingGesture_;
+}
+
 void AcustraEngine::beginStrum(int strokeSpanSamples,
                               int repeatIntervalSamples,
                               bool upstroke) noexcept
 {
     strumParallelSign_ = upstroke ? -1.0f : 1.0f;
+    strumGesture_ = nextPickingGesture();
     // A stroke's own pick speed varies stroke to stroke (GuitarSet's
     // comping tracks, Tools/MeasureStrums.py -- see strumDelaySamples and
     // noteOn's strumMember path for the measured figures this scale is
     // fitted to). Drawn from the engine's own generator, not any one
     // voice's, so it is one shared value applied to every string of this
     // stroke regardless of which voice noteOn happens to land it on.
-    strumSpeedScale_ = 1.0f + strumSpeedJitterHalfWidth
-        * xorshiftNoise(strumRandomState_);
+    const float speedDraw = xorshiftNoise(strumRandomState_);
+    // A firmer shared stroke is faster. Its residual timing still varies;
+    // the convex blend never exceeds the existing traversal bounds.
+    const float speedVariation = strumGesture_.active
+        ? 0.80f * speedDraw - 0.20f * strumGesture_.pressure : speedDraw;
+    strumSpeedScale_ = 1.0f + strumSpeedJitterHalfWidth * speedVariation;
     // A return stroke cannot repeatedly replace the far strings' queued
     // attacks before reaching them. Use the last actual inter-stroke
     // interval as a causal rhythm estimate, applying one scale to the whole
@@ -5563,6 +5618,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     voice.excitationParallelGain = 0.51f * voice.pluckParallelSign;
     const auto& physical = physicalCalibration_.steel;
     const float touch = effectiveTouch(voice.velocity);
+    if (!voice.strumming)
+        voice.pluckGesture = nextPickingGesture();
+    const auto gesture = voice.pluckGesture;
     constexpr float scaleLength = 0.648f;
     // The fretting hand may already have slid when this stroke arrives.
     // configureVoice supplies the same physical length as the tuned string;
@@ -5587,7 +5645,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // (Traube-Smith comb on the soft rows, where the estimate is clean),
     // which for three draws from a uniform spread is the spread's half-width;
     // each pluck draws its own offset within it.
-    const float takeOffset = 0.02f * nextNoise(voice);
+    const float positionDraw = nextNoise(voice);
     // MPE Timbre, CC74, on this note's own member channel says directly
     // where the string was met (0-1 across the same 0.05-0.46 band the
     // panel control reaches), in place of the panel's one hand position for
@@ -5599,6 +5657,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     const bool hasTimbre = voice.mpeMember && voice.midiChannel >= 1
         && voice.midiChannel <= midiChannelCount
         && mpeTimbre_[channelIndex] >= 0.0f;
+    const float takeOffset = 0.02f * (gesture.active && !hasTimbre
+        ? 0.70f * gesture.position + 0.30f * positionDraw : positionDraw);
     float basePosition = hasTimbre
         ? 0.05f + 0.41f * mpeTimbre_[channelIndex]
         : distanceFromBridge / soundingLength;
@@ -5657,8 +5717,18 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // a 4.47 dB standard deviation, matched here by uniform jitter at a
     // half-width of std*sqrt(3). A single note never sets voice.strumming,
     // so it never draws this and stays exactly as it was.
-    const float strumLevelGain = voice.strumming
-        ? std::pow(10.0f, 7.74f * nextNoise(voice) / 20.0f) : 1.0f;
+    float strumLevelGain = 1.0f;
+    if (voice.strumming)
+    {
+        const float forceDraw = nextNoise(voice);
+        // One hand drives the chord, with smaller string-to-string contact
+        // differences. The same bounds retain headroom; a convex blend
+        // reduces the old marginal spread as it adds shared motion. The
+        // new distribution must be checked in phrase-level calibration.
+        const float forceVariation = gesture.active
+            ? 0.35f * gesture.pressure + 0.65f * forceDraw : forceDraw;
+        strumLevelGain = std::pow(10.0f, 7.74f * forceVariation / 20.0f);
+    }
     // Repeated single-note sequencer strokes deserve modest force variety
     // too, below the spread of the real Eastman same-pitch/style takes:
     // their 20-250 ms levels have median within-group SD 1.09 dB (Finger)
@@ -5722,7 +5792,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // of the 2026-09-24 set (Docs/decisions.md). It is a selected share, not
     // a measured angle; a higher Touch turns it further along the top, and
     // each pluck draws its own.
-    const float randomAngle = 0.025f * nextNoise(voice);
+    const float angleDraw = nextNoise(voice);
+    const bool pressureOwned = voice.mpeMember && mpePressureFor(voice) >= 0.0f;
+    const float randomAngle = 0.025f * (gesture.active && !pressureOwned
+        ? 0.65f * gesture.pressure + 0.35f * angleDraw : angleDraw);
     voice.polarisationMix = pluckNormalShare(touch, randomAngle);
     // The shared register law pivots at one fixed 48 kHz MIDI-61 period,
     // independent of material, string choice and host sample rate.
@@ -5738,6 +5811,11 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // over a smaller effective edge, a soft one over a larger, two octaves
     // of radius across the control and none at its default.
     const float releaseTouch = std::exp2(2.0f * (0.58f - parameters_.touch));
+    // A firmer contact is slightly less compliant. This small release-radius
+    // change shares the gesture's angle/force state, not a new Touch draw.
+    // Explicit member pressure remains the player's own contact expression.
+    const float gestureCompliance = gesture.active && !pressureOwned
+        ? 1.0f - 0.06f * gesture.pressure : 1.0f;
     double slipPole = 0.0;
     // The held force unloads in r/u, u the speed its own displacement gives
     // the string (plectrumSlipPole), so softer strokes release more slowly.
@@ -5761,7 +5839,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     if (pick)
         slipPole = plectrumSlipPole(voice, releasedAmplitude, heldDistance,
             soundingLength, scaleLength,
-            physicalCalibration_.pickEdgeRadiusMetres * releaseTouch);
+            physicalCalibration_.pickEdgeRadiusMetres * releaseTouch
+                * gestureCompliance);
     else
     {
         // The nominal full-velocity contact bounds release speed. Thumb
@@ -5774,7 +5853,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             heldDistance, soundingLength, scaleLength, fingerReleaseRadius);
         const double pole = plectrumSlipPole(voice, releasedAmplitude,
             heldDistance, soundingLength, scaleLength,
-            fingerReleaseRadius * releaseTouch);
+            fingerReleaseRadius * releaseTouch * gestureCompliance);
         if (referencePole > 0.0 && pole > 0.0)
         {
             const double referenceTau = -1.0 / std::log(referencePole);
@@ -7778,6 +7857,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             voice.velocity = clamp(velocity, 0.001f, 1.0f);
             voice.strumming = strumMember;
             voice.pluckParallelSign = strumMember ? strumParallelSign_ : 1.0f;
+            voice.pluckGesture = strumMember ? strumGesture_ : PickingGesture {};
             voice.repluckPending = true;
             // The key is down again before the pick came: its key-up is
             // void, and one pick serves both strokes, as it always has.
@@ -7983,7 +8063,9 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
 
 void AcustraEngine::startNote(int string, int harmonic, int midiNote,
                               float velocity, int midiChannel,
-                              int delaySamples, bool strumMember) noexcept
+                              int delaySamples, bool strumMember,
+                              const PickingGesture* capturedGesture,
+                              float capturedParallelSign) noexcept
 {
     auto& voice = voices_[static_cast<std::size_t>(string)];
     voice.releaseJoinPending = false;
@@ -8025,7 +8107,14 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     voice.onsetSample = sampleClock_;
     rememberFinger(string);
     voice.strumming = strumMember;
-    voice.pluckParallelSign = strumMember ? strumParallelSign_ : 1.0f;
+    // A forming chord may move an unfired string while another stroke has
+    // already begun. Restore the original stroke before a zero-delay move
+    // can fire; neither its direction nor its hand posture belongs to the
+    // latest beginStrum call.
+    voice.pluckParallelSign = capturedGesture != nullptr
+        ? capturedParallelSign : strumMember ? strumParallelSign_ : 1.0f;
+    voice.pluckGesture = capturedGesture != nullptr
+        ? *capturedGesture : strumMember ? strumGesture_ : PickingGesture {};
     voice.repluckPending = continuing;
     voice.attackFired = continuing;
     voice.releaseAfterPluck = false;
@@ -8314,6 +8403,8 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         float velocity, releaseVelocity;
         bool strumming, releaseAfterPluck, pedalHeldAtKeyUp, pedalReleasedBeforePluck;
         std::uint64_t startOrder, onsetSample;
+        float parallelSign;
+        PickingGesture gesture;
     };
     std::array<Moved, stringCount> moved {};
     int movedCount = 0;
@@ -8331,7 +8422,8 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
             voice.pluckDelay > 0 ? voice.pluckDelay - 1 : 0,
             voice.velocity, voice.releaseVelocity, voice.strumming, voice.releaseAfterPluck,
             voice.pedalHeldAtKeyUp, voice.pedalReleasedBeforePluck,
-            voice.startOrder, voice.onsetSample };
+            voice.startOrder, voice.onsetSample,
+            voice.pluckParallelSign, voice.pluckGesture };
         voice.keyDown = false;
         voice.pedalHeld = false;
         voice.ownerCount = 0;
@@ -8347,7 +8439,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         const auto& move = moved[static_cast<std::size_t>(index)];
         taken |= 1u << move.to;
         startNote(move.to, 1, move.midiNote, move.velocity, move.channel,
-                  move.delay, move.strumming);
+                  move.delay, move.strumming, &move.gesture, move.parallelSign);
         auto& voice = voices_[static_cast<std::size_t>(move.to)];
         voice.ownerCount = move.ownerCount;
         voice.startOrder = move.startOrder;
@@ -8766,6 +8858,9 @@ void AcustraEngine::allSoundOff(int midiChannel) noexcept
         for (int string = 0; string < stringCount; ++string)
             returnToOpenString(voices_[static_cast<std::size_t>(string)], string, true);
         resetSoundState();
+        pickingGesture_ = {};
+        strumGesture_ = {};
+        pickingGestureSeen_ = false;
     }
 }
 

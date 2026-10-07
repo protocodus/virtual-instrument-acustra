@@ -232,6 +232,8 @@ if(ACUSTRA_BUILD_TOOLS)
 
     # Identical short scores for frozen before/after listening comparisons.
     add_executable(AcustraRenderAudibleRealism Tools/RenderAudibleRealism.cpp)
+    add_executable(AcustraRenderNaturalPerformance Tools/RenderNaturalPerformance.cpp)
+    target_link_libraries(AcustraRenderNaturalPerformance PRIVATE AcustraDSP)
     target_link_libraries(AcustraRenderAudibleRealism PRIVATE AcustraDSP)
     target_compile_features(AcustraRenderAudibleRealism PRIVATE cxx_std_20)
     if(MSVC)
@@ -779,6 +781,15 @@ if(BUILD_TESTING)
     set_target_properties(AcustraRepeatedPluckRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     add_test(NAME Acustra.RepeatedPluckRealism COMMAND AcustraRepeatedPluckRealismTests)
     set_tests_properties(Acustra.RepeatedPluckRealism PROPERTIES TIMEOUT 60)
+endif()
+
+# Recording-guided realism regression 8.
+if(BUILD_TESTING)
+    add_executable(AcustraPickingHandTests Tests/PickingHandTests.cpp)
+    target_link_libraries(AcustraPickingHandTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraPickingHandTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.PickingHand COMMAND AcustraPickingHandTests)
+    set_tests_properties(Acustra.PickingHand PROPERTIES TIMEOUT 120)
 endif()
 
 # Recording-guided realism regression 8.
