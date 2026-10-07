@@ -33,6 +33,13 @@ soft force, producing a rounder upper-partial balance. Matched comparisons
 with real Finger recordings improve, with a tradeoff on brighter Martin
 recordings; see [the recording benchmark](Docs/recording-realism-2026-10-07.md).
 
+Recent strokes now share a gently changing picking-hand posture. Finger bass
+attack noise follows the actual contact release, note endings respond to a
+local damping-hand contact, and Classical 78 includes restrained player-body
+loss. Velocity accents, sustain and the existing note-join window remain
+directly playable, without added input latency or new controls. See the
+[natural-performance changes and comparisons](Docs/natural-performance-2026-10-07.md).
+
 Guitar construction, Model, Shape, Material, Tuning, Picking and Capture use
 directly visible radio switches; the continuous sound controls remain knobs.
 The spruce, rosewood, bone and brass palette groups construction at the left,

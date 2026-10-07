@@ -5,6 +5,31 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-07 — connected performance gestures with ordinary MIDI playability
+
+Following the request to implement the proposed realism work while keeping
+the instrument easy to play, four small mechanisms are enabled together:
+Finger burst bandwidth follows actual contact release, recent strokes share
+bounded hand position/pressure, note endings use a local relaxing contact,
+and Classical 78 receives a fixed authored player-contact loss. No new panel
+control, saved parameter, lookahead or pitch drift is introduced. Explicit
+velocity/MPE intent, sustain and the global 1/32-note join remain authoritative.
+
+The bass Finger attack correction is measurable but not an across-the-board
+recording-score improvement. Original's known Finger total changes +0.12%,
+Classical 78's isolated contact total −1.20%, and unknown-tool Martin transfer
+worsens. The release/body assumptions and correlated hand statistics are
+authored, not fitted human measurements. The hand's convex blends reduce
+marginal level scatter, which is evaluated at native phrase levels rather
+than concealed with per-note makeup. A rejected release prototype left a
+static deformation and late tick; the selected relaxing contact avoids it.
+
+Independent review also corrected continuous body-residue scaling and
+preserved queued gesture/direction snapshots. Validation, exact ablations,
+recording tradeoffs, listening material and CPU measurements belong to the
+[natural-performance report](natural-performance-2026-10-07.md). This records
+an implementation decision with signal evidence, not a claimed listening win.
+
 ## 2026-10-07 — Classical 78's close microphone capture
 
 The user identified an unnatural G4 emphasis and requested its cause rather
