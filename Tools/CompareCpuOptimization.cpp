@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -28,7 +29,7 @@
 
 struct Configuration
 {
-    int scenario {}, rate {48000}, block {64}, model {}, technique {}, capture {};
+    int scenario {}, rate {48000}, block {64}, model {}, technique {}, capture {}, shape {2}, wood {};
     bool gather {}, observers {true}, auxiliary {true};
     float room {}, age {0.15f}, touch {0.58f};
 };
@@ -194,6 +195,8 @@ Rendered JOIN(parity_, ACUSTRA_PARITY_ADAPTER)(const Configuration& c)
     auto player = std::make_unique<Performer>();
     EngineParameters p;
     p.guitarModel = static_cast<GuitarModel>(c.model);
+    p.shape = static_cast<BodyShape>(c.shape);
+    p.bodyMaterial = static_cast<BodyMaterial>(c.wood);
     p.picking = static_cast<PickingTechnique>(c.technique);
     p.capture = c.capture == 0 ? CaptureType::StereoMic : c.capture == 1 ? CaptureType::MonoMic : CaptureType::Piezo;
     p.room = c.room; p.stringAge = c.age; p.touch = c.touch; p.releaseNoise = 0.5f;
@@ -222,6 +225,13 @@ Rendered JOIN(parity_, ACUSTRA_PARITY_ADAPTER)(const Configuration& c)
         for (const double seconds : {0.375, 0.5, 0.75})
             if (c.scenario == 20 && sampleAt(seconds, c.rate) > start)
                 count = std::min(count, sampleAt(seconds, c.rate) - start);
+        if (c.scenario == 19)
+            for (const auto& tune : {std::pair<double,float>{0.15, -32.0f}, {0.346, 0.001f}, {0.53, 0.0f}})
+            {
+                const int sample = sampleAt(tune.first, c.rate);
+                if (sample == start) player->setMasterTuneCents(tune.second);
+                else if (sample > start) count = std::min(count, sample - start);
+            }
         if (c.scenario == 20)
         {
             if (start == sampleAt(0.375, c.rate)) { player->prepare(c.rate, 511); player->setParameters(p); }
@@ -304,7 +314,8 @@ void valid(const Rendered& output, int scenario)
 }
 int main(int argc, char** argv)
 {
-    if (argc < 2) {std::cerr << "usage: comparison OUTPUT.json [--quick] [--negative-control]\n"; return 2;}
+    if (argc < 2) {std::cerr << "usage: comparison OUTPUT.json [--quick] [--flush-denormals]\n"
+        "       [--rounding nearest|up|down|zero] [--negative-control | --negative-state-control]\n"; return 2;}
     bool quick = false, negative = false, negativeState = false, flushDenormals = false;
     int rounding = FE_TONEAREST;
     std::string roundingName = "nearest";
@@ -331,6 +342,11 @@ int main(int argc, char** argv)
 #else
     if (flushDenormals) {std::cerr << "FTZ/DAZ mode requires SSE2\n"; return 2;}
 #endif
+    if (std::filesystem::exists(argv[1]))
+    {
+        std::cerr << "Preserve existing evidence: output already exists\n";
+        return 2;
+    }
     std::ofstream report(argv[1]);
     if (!report) return 2;
     report << "{\n  \"protocol\": \"exact samples and serialized public state; untimed\",\n  \"rounding\":\"" << roundingName << "\",\n  \"flush_denormals_requested\":" << flushDenormals << ",\n  \"mxcsr_initial\":" << mxcsr << ",\n  \"cases\": [\n";
@@ -364,8 +380,10 @@ int main(int argc, char** argv)
                         configurations.push_back(c);
                     }
         }
-        for (const auto& c : configurations)
+        for (auto c : configurations)
         {
+            c.shape = (c.scenario + c.model) % 4;
+            c.wood = (c.scenario + static_cast<int>(c.gather)) % 3;
             const auto a = parity_baseline(c);
             auto b = parity_current(c);
             if (negative && count==0) b.left.at(b.left.size()/2) = std::nextafter(b.left.at(b.left.size()/2), INFINITY);
@@ -388,7 +406,7 @@ int main(int argc, char** argv)
             if (count++) report << ",\n";
             report << "    {\"scenario\":\"" << names[static_cast<std::size_t>(c.scenario)] << "\",\"rate\":" << c.rate
                    << ",\"block\":" << c.block << ",\"model\":" << c.model << ",\"technique\":" << c.technique
-                   << ",\"capture\":" << c.capture << ",\"gather\":" << c.gather << ",\"room\":" << c.room
+                   << ",\"capture\":" << c.capture << ",\"shape\":" << c.shape << ",\"wood\":" << c.wood << ",\"gather\":" << c.gather << ",\"room\":" << c.room
                    << ",\"age\":" << c.age << ",\"touch\":" << c.touch << ",\"observers\":" << c.observers
                    << ",\"auxiliary\":" << c.auxiliary << ",\"frames\":" << a.left.size() << ",\"events\":" << a.events
                    << ",\"controls\":" << a.controls << ",\"dropped\":" << a.dropped << ",\"state_words\":" << a.states.size()
