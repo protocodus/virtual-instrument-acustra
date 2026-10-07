@@ -1013,11 +1013,13 @@ private:
         float excitationLowpass { 0.0f };
         float excitationLowpass2 { 0.0f };
         bool excitationSoft { false };
-        // renderExcitation's lowpass coefficient for this colour and host
-        // rate, which a burst keeps throughout: a powf per sample otherwise.
+        // The colour corner is cached across attacks. The effective burst
+        // corner additionally follows this contact's Finger release time;
+        // both are fixed at actual contact, before any later style changes.
         std::uint32_t excitationCoefficientColour { 0xffffffffu };
         std::uint32_t excitationCoefficientRate { 0xffffffffu };
         float excitationCoefficient { 0.0f };
+        float excitationReleaseCoefficient { 0.0f };
         // The Pick technique's contact transient is an impact and enters
         // broadband, bypassing the Finger burst's colour filter.
         bool excitationWhite { false };

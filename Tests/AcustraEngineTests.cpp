@@ -30,6 +30,11 @@ struct AcustraEngineTestAccess
         for (auto& voice : engine.voices_)
             voice.loops[1].reset();
     }
+    static void seedExcitationNoise(AcustraEngine& engine, int string,
+                                     std::uint32_t seed)
+    {
+        engine.voices_[static_cast<std::size_t>(string - 1)].excitationNoiseState = seed;
+    }
     static float highLossMix(const AcustraEngine& engine, int string)
     {
         return engine.voices_[static_cast<std::size_t>(string)].loops[0].highLossMix;
@@ -8739,7 +8744,8 @@ void testPluckPositionChangesEveryFret()
 // One note on its own string at 48 kHz, as the strings' A/B probes played
 // it: the engine settled over 40 blocks, then one stroke, read in mono.
 std::vector<double> renderOnString(acustra::EngineParameters parameters, int midiNote,
-                                   float velocity, int string, double seconds)
+                                   float velocity, int string, double seconds,
+                                   std::uint32_t burstSeed = 0)
 {
     constexpr int block = 256;
     auto engine = std::make_unique<acustra::AcustraEngine>();
@@ -8750,6 +8756,11 @@ std::vector<double> renderOnString(acustra::EngineParameters parameters, int mid
     for (int settle = 0; settle < 40; ++settle)
         engine->process(left.data(), right.data(), block);
     engine->noteOn(midiNote, velocity, string);
+    // Change only the already initialized contact burst's draws. Position,
+    // angle, held force, release geometry and every other noise retain their
+    // standard deterministic state.
+    if (burstSeed != 0)
+        acustra::AcustraEngineTestAccess::seedExcitationNoise(*engine, string, burstSeed);
     const int samples = static_cast<int>(seconds * sampleRate);
     std::vector<double> mono;
     mono.reserve(static_cast<std::size_t>(samples));
@@ -8888,14 +8899,30 @@ void testAFingerBrightensWithVelocity()
     std::vector<double> rises;
     for (const auto& [midi, string] : notes)
     {
-        const double soft = upperPartialBalance(
-            renderOnString(parameters, midi, 16.0f / 127.0f, string, 0.4), midi);
-        const double loud = upperPartialBalance(
-            renderOnString(parameters, midi, 112.0f / 127.0f, string, 0.4), midi);
-        rises.push_back(loud - soft);
-        expect(loud - soft > 3.0,
-               "a loud Finger stroke was not brighter than a soft one on MIDI "
+        // Predeclared 16 seeds, identical between velocity layers, varied
+        // only after the actual contact. A single stochastic burst was a
+        // fragile brightness fixture: baseline E2 failed 8/16 of these draws
+        // and unchanged upper notes also failed some. Keep the same 3 dB
+        // per-note articulation requirement on the ensemble median.
+        std::array<double, 16> contrasts {};
+        for (std::size_t take = 0; take < contrasts.size(); ++take)
+        {
+            const std::uint32_t seed = 0x6d2b79f5u * static_cast<std::uint32_t>(take + 1);
+            const double soft = upperPartialBalance(
+                renderOnString(parameters, midi, 16.0f / 127.0f, string, 0.4, seed), midi);
+            const double loud = upperPartialBalance(
+                renderOnString(parameters, midi, 112.0f / 127.0f, string, 0.4, seed), midi);
+            contrasts[take] = loud - soft;
+        }
+        std::sort(contrasts.begin(), contrasts.end());
+        const double rise = 0.5 * (contrasts[7] + contrasts[8]);
+        rises.push_back(rise);
+        expect(rise > 3.0,
+               "the Finger velocity ensemble did not brighten on MIDI "
                    + std::to_string(midi));
+        std::cout << "Acustra Finger MIDI " << midi << " noise-ensemble velocity rise: "
+                  << rise << " dB, " << contrasts.front() << ".." << contrasts.back()
+                  << " dB\n";
     }
     std::sort(rises.begin(), rises.end());
     const double median = 0.5 * (rises[3] + rises[4]);

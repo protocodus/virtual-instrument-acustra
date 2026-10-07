@@ -6385,6 +6385,35 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // share: -12 dB per octave above the corner instead of -6 and a flat
     // floor. The plectrum keeps its law.
     voice.excitationSoft = parameters_.picking != PickingTechnique::Pick;
+    // Contact roughness cannot shed force faster than the contact releases
+    // it. Finger's existing two-stage burst therefore has at least the
+    // actual release's sampled mean time. A one-pole at b has mean b/(1-b);
+    // two stages at q have mean 2q/(1-q), equal for q=b/(2-b). Apply that
+    // corner only when it is slower than the existing colour corner.
+    // This is an authored coupling of the existing effective contact model,
+    // not a measured fingertip trajectory. Preserve DC gain, noise draws,
+    // envelope and all wave/held-force levels; do not normalize away the
+    // resulting native noise-energy change. Pick and Thumb keep their law.
+    // Freeze the corner at actual contact (including scheduled controls),
+    // and cache only its force-independent colour part across attacks.
+    const float burstRateRatio = static_cast<float>(sampleRate_) / 48000.0f;
+    if (exact::bits(voice.excitationColour) != voice.excitationCoefficientColour
+        || exact::bits(burstRateRatio) != voice.excitationCoefficientRate)
+    {
+        const float referenceCoefficient = 0.05f + 0.42f * voice.excitationColour;
+        voice.excitationCoefficient = 1.0f - std::pow(
+            1.0f - referenceCoefficient, 1.0f / burstRateRatio);
+        voice.excitationCoefficientColour = exact::bits(voice.excitationColour);
+        voice.excitationCoefficientRate = exact::bits(burstRateRatio);
+    }
+    voice.excitationReleaseCoefficient = voice.excitationCoefficient;
+    if (performanceRealism_.contactRelease
+        && parameters_.picking == PickingTechnique::Finger
+        && voice.releaseSlipPole > 0.0)
+        voice.excitationReleaseCoefficient = std::min(
+            voice.excitationCoefficient,
+            static_cast<float>(2.0 * (1.0 - voice.releaseSlipPole)
+                               / (2.0 - voice.releaseSlipPole)));
     // The burst draws on from where this pluck's draws ended, as it always
     // has, but from its own copy: its length follows velocity, Touch and the
     // rate, so drawn from randomState it moved every later pluck's draws
@@ -9646,17 +9675,7 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
             excitation = noise * voice.excitationEnvelope;
         else
         {
-            if (exact::bits(voice.excitationColour) != voice.excitationCoefficientColour
-                || exact::bits(rateRatio) != voice.excitationCoefficientRate)
-            {
-                const float referenceCoefficient = 0.05f
-                    + 0.42f * voice.excitationColour;
-                voice.excitationCoefficient = 1.0f - std::pow(
-                    1.0f - referenceCoefficient, 1.0f / rateRatio);
-                voice.excitationCoefficientColour = exact::bits(voice.excitationColour);
-                voice.excitationCoefficientRate = exact::bits(rateRatio);
-            }
-            const float excitationCoefficient = voice.excitationCoefficient;
+            const float excitationCoefficient = voice.excitationReleaseCoefficient;
             voice.excitationLowpass += excitationCoefficient
                 * (noise - voice.excitationLowpass);
             if (voice.excitationSoft)

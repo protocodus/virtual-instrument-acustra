@@ -737,6 +737,12 @@ endif()
 
 # Recording-guided realism regression 2.
 if(BUILD_TESTING)
+    add_executable(AcustraContactReleaseTests Tests/ContactReleaseTests.cpp)
+    target_link_libraries(AcustraContactReleaseTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraContactReleaseTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.ContactRelease COMMAND AcustraContactReleaseTests)
+    set_tests_properties(Acustra.ContactRelease PROPERTIES TIMEOUT 60)
+
     add_executable(AcustraStringPitchRealismTests Tests/StringPitchRealismTests.cpp)
     target_link_libraries(AcustraStringPitchRealismTests PRIVATE AcustraDSP)
     set_target_properties(AcustraStringPitchRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
