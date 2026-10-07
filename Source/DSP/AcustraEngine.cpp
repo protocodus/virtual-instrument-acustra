@@ -7053,7 +7053,10 @@ void AcustraEngine::beginGestureDamping(Voice& voice) noexcept
     const bool fretContact = voice.fret > 0 && voice.harmonic <= 1;
     if (fretContact)
     {
-        const float speakingLength = 0.648f * std::exp2(-voice.speakingFret / 12.0f);
+        // Conventional/manager slides change the physical length beyond
+        // the decay table's 0..20-fret range. speakingFret is clamped for
+        // that table; the pad must use the actual slide geometry instead.
+        const float speakingLength = voice.speakingLengthMetres;
         position = 1.0f - 0.018f / std::max(speakingLength, 0.05f);
     }
     const float strength = clamp((fretContact ? 0.45f : 0.06f)

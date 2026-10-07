@@ -38,6 +38,14 @@ struct AcustraEngineTestAccess
     static float contactMemory(const AcustraEngine& e, bool tail = false)
     { return tail ? e.voices_[0].tailLoop.gestureContact.memory
                   : e.voices_[0].loops[0].gestureContact.memory; }
+    static std::array<double, 3> contactGeometry(const AcustraEngine& e,
+                                                int string, int plane)
+    {
+        const auto& v = e.voices_[static_cast<std::size_t>(string)];
+        const auto& contact = v.loops[static_cast<std::size_t>(plane)].gestureContact;
+        return { v.speakingLengthMetres, static_cast<double>(contact.firstAge),
+                 static_cast<double>(contact.firstAge + contact.secondAge) };
+    }
     static void retainQuietContact(AcustraEngine& e)
     {
         auto& v = e.voices_[0];
@@ -278,6 +286,48 @@ auto configured(bool gesture, double rate)
     return e;
 }
 
+void releasePadFollowsPhysicalSlideLength()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const int gesture : { 0, 1, 2 })
+            for (const int fret : { 8, 20 })
+            {
+                // The normal +/-12-semitone wheel reaches virtual fret -4
+                // or 32 here. The decay calibration clamps to frets 0..20;
+                // that clamp must not move the physical 18 mm damping pad.
+                // Conventional/manager wheels slide, a member wheel changes
+                // tension at a fixed length and must keep that pad geometry.
+                auto engine = configured(true, rate);
+                if (gesture != 0)
+                    engine->setLowerZoneMemberCount(15);
+                const float bend = fret == 8 ? -12.0f : 12.0f;
+                engine->setPitchBend(bend, gesture == 1 ? 1 : 2);
+                engine->noteOn(45 + fret, 0.75f, 2);
+                advance(*engine, static_cast<int>(0.1 * rate));
+                engine->noteOff(45 + fret, 2);
+                advance(*engine, graceSamples(rate) + 2);
+                expect(Access::contact(*engine, 1),
+                       "slide geometry fixture did not reach its release contact");
+                const double expectedLength = 0.648 * std::exp2(
+                    -(fret + (gesture == 2 ? 0.0 : bend)) / 12.0);
+                for (int plane = 0; plane < 2; ++plane)
+                {
+                    const auto geometry = Access::contactGeometry(*engine, 1, plane);
+                    expect(std::abs(geometry[0] / expectedLength - 1.0) < 1.0e-6,
+                           "the release fixture did not retain its physical slide length");
+                    const double relativePosition = 2.0 * geometry[1] / geometry[2];
+                    const double padInset = expectedLength * (1.0 - relativePosition);
+                    // The contact rounds its half-period tap to the nearest
+                    // cell. One full-period cell in metres is the resulting
+                    // maximum inset error; use it as the geometry tolerance.
+                    const double gridError = expectedLength / geometry[2];
+                    expect(std::abs(padInset - 0.018) <= gridError + 1.0e-7,
+                           "a supported slide moved the 18 mm release pad with the decay clamp");
+                }
+            }
+}
+
 void contactBoundariesAndContinuity()
 {
     using Access = acustra::AcustraEngineTestAccess;
@@ -370,6 +420,7 @@ void contactBoundariesAndContinuity()
 int main()
 {
     spatialContactPhysics(); contactBoundariesAndContinuity();
+    releasePadFollowsPhysicalSlideLength();
     nominalAndMonotonic(); ownershipAndPedal();
     if (failures) return 1;
     std::cout << "Release damping, passive spatial contact, node selectivity, join/pedal parity and ownership passed\n";
