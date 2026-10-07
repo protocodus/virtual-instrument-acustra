@@ -4969,96 +4969,123 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // note-off and ownership match on.
     const int stoppedMidi = voice.harmonic > 1 ? voice.openMidi : midiNote;
     const int fret = std::max(0, stoppedMidi - voice.openMidi);
-    const float fretLength = scaleLength * std::exp2(-static_cast<float>(fret) / 12.0f);
-    const float unbentFrequency = midiFrequency(stoppedMidi);
-    // The bounded Kirchhoff-Carrier surrogate follows the waveguide's inferred
-    // slope energy; its delay target slews on the existing 6 ms time constant.
     const auto bend = voiceBend(voice);
     const float performedBend = bend.performed;
     const float memberBendSemitones = bend.member;
-    // A conventional wheel or MPE manager slides the fretting point; its
-    // interval therefore shortens the same physical string that the delay
-    // retunes. B = pi^2 EI/(T L^2), the axial modes and the end correction
-    // must all follow that length. A member's lateral bend changes tension
-    // at its fixed fret and contributes no shortening. Keep the exact fret
-    // geometry at zero slide, and bound extreme wheels by the same band as
-    // the finite waveguide before taking a physical reciprocal.
-    const float slideInterval = clamp(performedBend - memberBendSemitones,
-                                       -192.0f, 192.0f);
-    const float slideFrequency = clamp(unbentFrequency
-        * std::exp2(slideInterval / 12.0f),
-        static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
-        0.24f * static_cast<float>(sampleRate_));
-    const float soundingLength = slideInterval == 0.0f ? fretLength
-        : fretLength * unbentFrequency / slideFrequency;
-    voice.speakingLengthMetres = soundingLength;
-    // Apply the existing fret-decay calibration to the same fretting point,
-    // including a fractional slide. Outside the playable fretboard retain
-    // its nearest supported target rather than extrapolating the fit.
-    voice.speakingFret = slideInterval == 0.0f ? static_cast<float>(fret)
-        : clamp(static_cast<float>(fret)
-            + 12.0f * std::log2(slideFrequency / unbentFrequency),
-            0.0f, static_cast<float>(fretCount));
-    // The wheel's vibrato is the fretting hand modulating the string's
-    // tension at a fixed length (see vibratoSemitones), and a tension
-    // modulation is heard as a pitch modulation: the same excursion goes into
-    // the performed interval, so the tuned delay carries it, and into the
-    // tension below, so the inharmonicity and the junction port carry it too.
-    // The wheel down is + 0.0f, which is exact.
-    const float axialRigidity = stringAxialRigidity(stringIndex);
     const float vibratoInterval = vibratoSemitones(voice, fret);
-    const float performedSemitones = clamp(performedBend, -192.0f, 192.0f)
-        + 0.01f * voice.attackPitchCents + vibratoInterval;
-    // An eight-octave RPN range is legal even when the requested pitch is
-    // outside this finite waveguide's representable band. Keep the performed
-    // interval, then bound the physical frequency at the existing delay-line
-    // limits so hostile wheels remain finite.
-    const float frequency = clamp(
-        unbentFrequency * std::exp2(performedSemitones / 12.0f),
-        static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
-        0.24f * static_cast<float>(sampleRate_));
-    voice.contactPeriodSamples = static_cast<float>(sampleRate_) / frequency;
-    // Frequency of the physical gesture before the few-cent transient
-    // from the string's own transverse energy. A loss realised once per
-    // round trip must be designed at the pitch being played: probing the
-    // old-fundamental section higher on its curve over-damps bent partials.
-    const float lossDesignFrequency = clamp(unbentFrequency * std::exp2(
-        (clamp(performedBend, -192.0f, 192.0f) + vibratoInterval) / 12.0f),
-        static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
-        0.24f * static_cast<float>(sampleRate_));
-
+    const float axialRigidity = stringAxialRigidity(stringIndex);
     const float bendingDiameter = steelBendingDiameter[index];
-    const float openFrequency = midiFrequency(voice.openMidi);
-    const float openWaveSpeed = 2.0f * scaleLength * openFrequency;
-    const float standardWaveSpeed = 2.0f * scaleLength
-        * midiFrequency(standardOpenMidi[index]);
-    const float linearMass = steelTensionNewtons[index]
-        / (standardWaveSpeed * standardWaveSpeed);
-    const float tension = voice.openMidi == standardOpenMidi[index]
-        ? steelTensionNewtons[index]
-        : std::max(linearMass * openWaveSpeed * openWaveSpeed, 1.0f);
-    // Slide or bend, settled. A channel's pitch bend is a slide: the fretting
-    // hand moves along the neck, the sounding length changes and the tension
-    // does not. That is what the frequency and delay above have always done
-    // and what the README documents, so it is left exactly as it was. An MPE
-    // member channel's own bend is the other gesture - one finger pushing one
-    // string across the fret, at a length the fret fixes - so it goes through
-    // the string's tension: the frequency it asks for is still reached by the
-    // delay, but the inharmonicity that goes as 1/T and the impedance the
-    // junction reads move with the tension that would produce it. The
-    // manager's zone-wide bend stays a slide, because a whole zone bending is
-    // a hand moving rather than six fingers pushing. Grimes (see
-    // bentStringTension) notes a lateral bend can only raise pitch; a
-    // downward member bend is the release of a pre-bend, the same law run
-    // backwards. The attack glide stays out of it: it is the model's own
-    // few-cent tension transient (updateAttackPitch), already carried as a
-    // pitch, and routing it here would modulate the junction port on every
-    // note's attack, which no measurement asks for.
-    const float tensionSemitones = memberBendSemitones + vibratoInterval;
-    const float bentTension = tensionSemitones != 0.0f
-        ? bentStringTension(tension, axialRigidity,
-                            std::exp2(tensionSemitones / 12.0f))
-        : tension;
+    const PitchGeometryKey pitchKey {
+        stoppedMidi, voice.openMidi, stringIndex,
+        exact::bits(static_cast<float>(sampleRate_)), exact::bits(performedBend),
+        exact::bits(memberBendSemitones), exact::bits(vibratoInterval),
+        exact::bits(voice.attackPitchCents) };
+    auto& geometry = voice.pitchGeometry;
+    if (!geometry.valid || !(pitchKey == geometry.key))
+    {
+        const float fretLength = scaleLength * std::exp2(-static_cast<float>(fret) / 12.0f);
+        const float unbentFrequency = midiFrequency(stoppedMidi);
+        // The bounded Kirchhoff-Carrier surrogate follows the waveguide's inferred
+        // slope energy; its delay target slews on the existing 6 ms time constant.
+        // A conventional wheel or MPE manager slides the fretting point; its
+        // interval therefore shortens the same physical string that the delay
+        // retunes. B = pi^2 EI/(T L^2), the axial modes and the end correction
+        // must all follow that length. A member's lateral bend changes tension
+        // at its fixed fret and contributes no shortening. Keep the exact fret
+        // geometry at zero slide, and bound extreme wheels by the same band as
+        // the finite waveguide before taking a physical reciprocal.
+        const float slideInterval = clamp(performedBend - memberBendSemitones,
+                                           -192.0f, 192.0f);
+        const float slideFrequency = clamp(unbentFrequency
+            * std::exp2(slideInterval / 12.0f),
+            static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+            0.24f * static_cast<float>(sampleRate_));
+        const float soundingLength = slideInterval == 0.0f ? fretLength
+            : fretLength * unbentFrequency / slideFrequency;
+        // Apply the existing fret-decay calibration to the same fretting point,
+        // including a fractional slide. Outside the playable fretboard retain
+        // its nearest supported target rather than extrapolating the fit.
+        const float speakingFret = slideInterval == 0.0f ? static_cast<float>(fret)
+            : clamp(static_cast<float>(fret)
+                + 12.0f * std::log2(slideFrequency / unbentFrequency),
+                0.0f, static_cast<float>(fretCount));
+        // The wheel's vibrato is the fretting hand modulating the string's
+        // tension at a fixed length (see vibratoSemitones), and a tension
+        // modulation is heard as a pitch modulation: the same excursion goes into
+        // the performed interval, so the tuned delay carries it, and into the
+        // tension below, so the inharmonicity and the junction port carry it too.
+        // The wheel down is + 0.0f, which is exact.
+        const float performedSemitones = clamp(performedBend, -192.0f, 192.0f)
+            + 0.01f * voice.attackPitchCents + vibratoInterval;
+        // An eight-octave RPN range is legal even when the requested pitch is
+        // outside this finite waveguide's representable band. Keep the performed
+        // interval, then bound the physical frequency at the existing delay-line
+        // limits so hostile wheels remain finite.
+        const float frequency = clamp(
+            unbentFrequency * std::exp2(performedSemitones / 12.0f),
+            static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+            0.24f * static_cast<float>(sampleRate_));
+        const float contactPeriodSamples = static_cast<float>(sampleRate_) / frequency;
+        // Frequency of the physical gesture before the few-cent transient
+        // from the string's own transverse energy. A loss realised once per
+        // round trip must be designed at the pitch being played: probing the
+        // old-fundamental section higher on its curve over-damps bent partials.
+        const float lossDesignFrequency = clamp(unbentFrequency * std::exp2(
+            (clamp(performedBend, -192.0f, 192.0f) + vibratoInterval) / 12.0f),
+            static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+            0.24f * static_cast<float>(sampleRate_));
+
+        const float openFrequency = midiFrequency(voice.openMidi);
+        const float openWaveSpeed = 2.0f * scaleLength * openFrequency;
+        const float standardWaveSpeed = 2.0f * scaleLength
+            * midiFrequency(standardOpenMidi[index]);
+        const float linearMass = steelTensionNewtons[index]
+            / (standardWaveSpeed * standardWaveSpeed);
+        const float tension = voice.openMidi == standardOpenMidi[index]
+            ? steelTensionNewtons[index]
+            : std::max(linearMass * openWaveSpeed * openWaveSpeed, 1.0f);
+        // Slide or bend, settled. A channel's pitch bend is a slide: the fretting
+        // hand moves along the neck, the sounding length changes and the tension
+        // does not. That is what the frequency and delay above have always done
+        // and what the README documents, so it is left exactly as it was. An MPE
+        // member channel's own bend is the other gesture - one finger pushing one
+        // string across the fret, at a length the fret fixes - so it goes through
+        // the string's tension: the frequency it asks for is still reached by the
+        // delay, but the inharmonicity that goes as 1/T and the impedance the
+        // junction reads move with the tension that would produce it. The
+        // manager's zone-wide bend stays a slide, because a whole zone bending is
+        // a hand moving rather than six fingers pushing. Grimes (see
+        // bentStringTension) notes a lateral bend can only raise pitch; a
+        // downward member bend is the release of a pre-bend, the same law run
+        // backwards. The attack glide stays out of it: it is the model's own
+        // few-cent tension transient (updateAttackPitch), already carried as a
+        // pitch, and routing it here would modulate the junction port on every
+        // note's attack, which no measurement asks for.
+        const float tensionSemitones = memberBendSemitones + vibratoInterval;
+        const float bentTension = tensionSemitones != 0.0f
+            ? bentStringTension(tension, axialRigidity,
+                                std::exp2(tensionSemitones / 12.0f))
+            : tension;
+        geometry.value = { unbentFrequency, soundingLength, speakingFret,
+            contactPeriodSamples, frequency, lossDesignFrequency, linearMass,
+            tension, tensionSemitones, bentTension };
+        geometry.key = pitchKey;
+        geometry.valid = true;
+    }
+    const auto& pitch = geometry.value;
+    const float unbentFrequency = pitch.unbentFrequency;
+    const float soundingLength = pitch.soundingLength;
+    const float frequency = pitch.frequency;
+    const float lossDesignFrequency = pitch.lossDesignFrequency;
+    const float linearMass = pitch.linearMass;
+    const float tension = pitch.tension;
+    const float tensionSemitones = pitch.tensionSemitones;
+    const float bentTension = pitch.bentTension;
+    // These pre-configuration outputs are refreshed even when the original
+    // full configuration key hits. No filter/reset/reference path is skipped.
+    voice.speakingLengthMetres = soundingLength;
+    voice.speakingFret = pitch.speakingFret;
+    voice.contactPeriodSamples = pitch.contactPeriodSamples;
     // Every value below is a function of this key (VoiceConfigurationKey),
     // and configureVoice is the only writer of what it sets from here on, so
     // an unchanged key - an idle string, or a held one once its attack glide

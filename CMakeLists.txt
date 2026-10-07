@@ -847,3 +847,11 @@ if(BUILD_TESTING)
     set_target_properties(AcustraRetuneContinuityTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     acustra_add_suite(Acustra.RetuneContinuity AcustraRetuneContinuityTests)
 endif()
+
+# Exact-input memoization must preserve pitch, contact geometry and transitions.
+if(BUILD_TESTING)
+    add_executable(AcustraPitchGeometryCacheTests Tests/PitchGeometryCacheTests.cpp)
+    target_link_libraries(AcustraPitchGeometryCacheTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraPitchGeometryCacheTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    acustra_add_suite(Acustra.PitchGeometryCache AcustraPitchGeometryCacheTests)
+endif()

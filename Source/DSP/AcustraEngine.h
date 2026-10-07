@@ -904,6 +904,51 @@ private:
         }
     };
 
+    // Pure pitch geometry ahead of the full configuration cache. These inputs
+    // include both length-changing slides and fixed-length tension bends; the
+    // rounded final frequency alone cannot distinguish them. Host rate enters
+    // every expression here as float, so its float bits are the complete key.
+    struct PitchGeometryKey
+    {
+        int stoppedMidi { 0 };
+        int openMidi { 0 };
+        int stringIndex { 0 };
+        std::uint32_t sampleRate { 0 };
+        std::uint32_t performedBend { 0 };
+        std::uint32_t memberBend { 0 };
+        std::uint32_t vibrato { 0 };
+        std::uint32_t attackPitch { 0 };
+
+        bool operator==(const PitchGeometryKey& other) const noexcept
+        {
+            return stoppedMidi == other.stoppedMidi && openMidi == other.openMidi
+                && stringIndex == other.stringIndex && sampleRate == other.sampleRate
+                && performedBend == other.performedBend && memberBend == other.memberBend
+                && vibrato == other.vibrato && attackPitch == other.attackPitch;
+        }
+    };
+
+    struct PitchGeometry
+    {
+        float unbentFrequency { 0.0f };
+        float soundingLength { 0.0f };
+        float speakingFret { 0.0f };
+        float contactPeriodSamples { 0.0f };
+        float frequency { 0.0f };
+        float lossDesignFrequency { 0.0f };
+        float linearMass { 0.0f };
+        float tension { 0.0f };
+        float tensionSemitones { 0.0f };
+        float bentTension { 0.0f };
+    };
+
+    struct PitchGeometryCache
+    {
+        PitchGeometryKey key {};
+        PitchGeometry value {};
+        bool valid { false };
+    };
+
     // What a string's bridge anchor holds before configureVoice first sets
     // it; prepare() restores it (see restartRandomDraws).
     static constexpr float initialBridgeTailStiffness = 10000.0f;
@@ -941,6 +986,10 @@ private:
     {
         std::array<StringLoop, 2> loops {};
         VoiceConfigurationKey configurationKey {};
+        // Key and payload follow whole-voice copies. Waveform resets may retain
+        // these pure values: pitch/rate changes miss the exact key, while model,
+        // calibration and anchor changes still use configurationKey below it.
+        PitchGeometryCache pitchGeometry {};
         // A string taken for a new note is still vibrating. This carries that
         // vibration on under the hand damping the model already uses for a
         // stopped note, instead of deleting it, in both planes: the parallel
