@@ -94,6 +94,61 @@ struct AcustraEngineTestAccess
     {
         return AcustraEngine::captureVoicingGain(frequency);
     }
+    static auto captureFilter(const AcustraEngine& engine)
+    {
+        return engine.bodyBank_.captureFilter;
+    }
+    template <typename Filter>
+    static std::array<float, 2> filterSample(Filter& filter, float left, float right)
+    {
+        AcustraEngine::BodyOutput value { left, right, right };
+        filter.render(value);
+        return { value.left, value.right };
+    }
+    static void bypassCaptureFilters(AcustraEngine& engine)
+    {
+        engine.bodyBank_.captureFilter.enabled = false;
+        engine.fadingBodyBank_.captureFilter.enabled = false;
+    }
+    static auto body(AcustraEngine& engine, float force, float moment)
+    {
+        return engine.renderBody(force, moment);
+    }
+    static auto bodyBank(const AcustraEngine& engine)
+    {
+        return engine.bodyBank_;
+    }
+    template <typename Filter>
+    static std::array<float, 8> filterHistory(const Filter& filter)
+    {
+        static_assert(Filter::sections == 2, "The capture fixture expects two peak sections");
+        std::array<float, 8> values {};
+        std::size_t index = 0;
+        for (const auto* channel : { &filter.stateLeft, &filter.stateRight })
+            for (const auto& section : *channel)
+                for (const float value : section)
+                    values[index++] = value;
+        return values;
+    }
+    static std::array<float, 16> filterStates(const AcustraEngine& engine)
+    {
+        const auto active = filterHistory(engine.bodyBank_.captureFilter);
+        const auto fading = filterHistory(engine.fadingBodyBank_.captureFilter);
+        std::array<float, 16> values {};
+        std::copy(active.begin(), active.end(), values.begin());
+        std::copy(fading.begin(), fading.end(), values.begin() + active.size());
+        return values;
+    }
+    static auto fadingFilterStates(const AcustraEngine& engine)
+    {
+        return filterHistory(engine.fadingBodyBank_.captureFilter);
+    }
+    static float bodyFade(const AcustraEngine& engine) { return engine.bodyModelFade_; }
+    static bool bodyPending(const AcustraEngine& engine) { return engine.bodyUpdatePending_; }
+    static bool hasBodyModel(const AcustraEngine& engine, GuitarModel model)
+    {
+        return engine.configuredGuitarModel_ == model;
+    }
 };
 } // namespace acustra
 
@@ -1229,6 +1284,304 @@ void testCaptureVoicingIsSmoothAndBounded()
     expect(worstStep < 2.5, "the capture voicing is not smooth");
     expect(worstTop < 1.5, "the capture voicing reaches above 4 kHz");
 }
+
+// Independent analog prototypes, bilinear transformed at each evaluation
+// frequency. Checking complex pressure catches a pole-frequency residue gain
+// substitution even when its modal peaks happen to have the desired levels.
+std::complex<double> bellidoMicrophoneTransfer(double frequency, double rate)
+{
+    std::complex<double> response = 1.0;
+    for (const auto section : { std::array<double, 2> { 500.0, -6.0 },
+                                std::array<double, 2> { 1400.0, 6.0 } })
+    {
+        const double a = std::pow(10.0, section[1] / 40.0);
+        const std::complex<double> s(0.0,
+            std::tan(pi * frequency / rate) / std::tan(pi * section[0] / rate));
+        response *= (s * s + a * s / 1.2 + 1.0)
+            / (s * s + s / (a * 1.2) + 1.0);
+    }
+    return response;
+}
+
+void testMicrophoneFilterDigitalTransfer()
+{
+    using namespace acustra;
+    for (const int rate : { 24000, 44100, 48000, 96000, 192000 })
+    {
+        EngineParameters p;
+        p.guitarModel = GuitarModel::Bellido1978;
+        auto engine = std::make_unique<AcustraEngine>();
+        engine->setParameters(p);
+        engine->prepare(rate, 64);
+        auto filter = Access::captureFilter(*engine);
+        const int length = rate / 20;
+        std::vector<float> left(static_cast<std::size_t>(length));
+        std::vector<float> right(left.size());
+        for (int n = 0; n < length; ++n)
+        {
+            const auto out = Access::filterSample(filter, n == 0 ? .25f : 0.0f,
+                                                  n == 17 ? -.125f : 0.0f);
+            left[static_cast<std::size_t>(n)] = out[0];
+            right[static_cast<std::size_t>(n)] = out[1];
+        }
+        double worst = 0.0;
+        for (const double frequency : { 0.0, 80.0, 200.0, 392.0, 500.0, 800.0,
+                                        1400.0, 2800.0, 5000.0, .45 * rate })
+        {
+            const auto expected = bellidoMicrophoneTransfer(frequency, rate);
+            const auto actualLeft = responseAt(left, frequency, rate) / .25;
+            const auto actualRight = responseAt(right, frequency, rate)
+                / (-.125 * std::polar(1.0, -2.0 * pi * frequency * 17.0 / rate));
+            worst = std::max({ worst, std::abs(actualLeft - expected) / std::abs(expected),
+                                     std::abs(actualRight - expected) / std::abs(expected) });
+        }
+        std::cout << "Bellido microphone digital transfer " << rate
+                  << " Hz: relative complex error " << worst << '\n';
+        expect(worst < .0005,
+               "summed microphone pressure differs from the independent digital peak cascade");
+    }
+}
+
+void testMicrophoneFilterBypassAndLifecycle()
+{
+    using namespace acustra;
+    for (const int rate : { 24000, 44100, 48000, 96000, 192000 })
+    {
+        auto engine = std::make_unique<AcustraEngine>();
+        engine->prepare(rate, 64);
+        auto bypass = Access::captureFilter(*engine);
+        expect(!bypass.enabled, "Original must bypass the new microphone filter");
+        bool sameBits = true;
+        for (int n = 0; n < 2048; ++n)
+        {
+            const float left = static_cast<float>(std::sin(n * .371) * .2);
+            const float right = static_cast<float>(std::cos(n * .173) * .13);
+            const auto out = Access::filterSample(bypass, left, right);
+            sameBits = sameBits && out[0] == left && out[1] == right;
+        }
+        expect(sameBits, "Original bypass changed microphone sample bits");
+        expect(Access::filterHistory(bypass) == std::array<float, 8> {},
+               "Original bypass advanced an unnecessary filter history");
+
+        EngineParameters p;
+        p.guitarModel = GuitarModel::Bellido1978;
+        engine->setParameters(p);
+        engine->reset();
+        auto filter = Access::captureFilter(*engine);
+        auto fresh = filter;
+        expect(filter.enabled, "Bellido did not configure its microphone filter");
+        for (int n = 0; n < rate / 100; ++n)
+            Access::filterSample(filter, static_cast<float>(std::sin(n * .19)),
+                                static_cast<float>(std::cos(n * .071)));
+        expect(filter.stateLeft != fresh.stateLeft && filter.stateRight != fresh.stateRight,
+               "microphone filter lifecycle probe did not establish both histories");
+        const auto hotFilter = filter;
+        filter.configure(rate, true);
+        expect(filter.coefficients == hotFilter.coefficients
+                   && filter.stateLeft == hotFilter.stateLeft
+                   && filter.stateRight == hotFilter.stateRight,
+               "unchanged filter configuration altered its coefficients or histories");
+        filter.reset();
+        bool sameReset = true;
+        for (int n = 0; n < 128; ++n)
+            sameReset = sameReset && Access::filterSample(filter, n == 0 ? .2f : 0.0f,
+                n == 1 ? -.13f : 0.0f) == Access::filterSample(fresh, n == 0 ? .2f : 0.0f,
+                n == 1 ? -.13f : 0.0f);
+        expect(sameReset, "filter reset did not recover the cold two-channel impulse response");
+
+        for (int n = 0; n < rate / 100; ++n)
+            Access::body(*engine, static_cast<float>(std::sin(n * .13)), .27f);
+        const auto hot = Access::filterStates(*engine);
+        expect(std::any_of(hot.begin(), hot.end(), [] (float value) { return value != 0.0f; }),
+               "body filter clear probe did not establish a history");
+        engine->allSoundOff();
+        expect(Access::filterStates(*engine) == std::array<float, 16> {},
+               "all sound off retained a microphone filter history");
+        for (int n = 0; n < 64; ++n)
+        {
+            const auto out = Access::body(*engine, 0.0f, 0.0f);
+            expect(out.left == 0.0f && out.right == 0.0f && out.upper == 0.0f,
+                   "cleared microphone filter emitted a tail");
+        }
+        Access::body(*engine, .4f, -.2f);
+        engine->prepare(44100, 64);
+        auto cold = std::make_unique<AcustraEngine>();
+        cold->setParameters(p);
+        cold->prepare(44100, 64);
+        expect(Access::filterStates(*engine) == std::array<float, 16> {},
+               "prepare retained a microphone filter history from the previous rate");
+        bool samePrepared = true;
+        for (int n = 0; n < 128; ++n)
+        {
+            const auto actual = Access::body(*engine, n == 0 ? .2f : 0.0f, 0.0f);
+            const auto reference = Access::body(*cold, n == 0 ? .2f : 0.0f, 0.0f);
+            samePrepared = samePrepared && actual.left == reference.left
+                && actual.right == reference.right && actual.upper == reference.upper;
+        }
+        expect(samePrepared, "prepare reused stale capture-filter coefficients or history");
+    }
+}
+
+// A bank's microphone filter must follow that bank through a model fade.
+// Independent copies of the sounding banks retain their pre-switch histories;
+// the delivered fade must be their blend, including an interrupted request.
+void testMicrophoneFilterModelTransitions()
+{
+    using namespace acustra;
+    for (const int rate : { 44100, 48000, 96000 })
+    {
+        EngineParameters p;
+        p.guitarModel = GuitarModel::Bellido1978;
+        auto engine = std::make_unique<AcustraEngine>();
+        auto held = std::make_unique<AcustraEngine>();
+        for (auto* target : { engine.get(), held.get() })
+        {
+            target->setParameters(p);
+            target->prepare(rate, 64);
+            for (int n = 0; n < rate / 100; ++n)
+                Access::body(*target, static_cast<float>(std::sin(n * .23)), .13f);
+        }
+        const auto before = Access::captureFilter(*engine);
+        auto original = p;
+        original.guitarModel = GuitarModel::Original;
+        engine->setParameters(original);
+        expect(Access::fadingFilterStates(*engine)
+                   == Access::filterHistory(before),
+               "model fade did not copy the sounding microphone filter history");
+        engine->setParameters(p); // Cancel before the first target sample.
+        bool restored = true;
+        for (int n = 0; n < 256; ++n)
+        {
+            const float force = static_cast<float>(std::cos(n * .17));
+            const auto actual = Access::body(*engine, force, -.21f);
+            const auto reference = Access::body(*held, force, -.21f);
+            restored = restored && actual.left == reference.left
+                && actual.right == reference.right && actual.upper == reference.upper;
+        }
+        expect(restored, "same-tick model cancellation lost the sounding filter history");
+
+        const auto beforeWood = Access::captureFilter(*engine);
+        auto maple = p;
+        maple.bodyMaterial = BodyMaterial::Maple;
+        engine->setParameters(maple);
+        const auto afterWood = Access::captureFilter(*engine);
+        expect(afterWood.coefficients == beforeWood.coefficients
+                   && afterWood.stateLeft == beforeWood.stateLeft
+                   && afterWood.stateRight == beforeWood.stateRight,
+               "same-model Wood reconfiguration reset the microphone filter history");
+        engine->setParameters(p); // Restore the sounding bank before advancing.
+
+        auto oldBank = Access::bodyBank(*engine);
+        engine->setParameters(original);
+        auto nextBank = Access::bodyBank(*engine);
+        bool sameFade = true;
+        int samples = 0;
+        while (Access::bodyFade(*engine) < 1.0f && samples < rate / 20)
+        {
+            if (samples == 17)
+            {
+                engine->setParameters(p);
+                expect(Access::bodyPending(*engine), "interrupted filter fade was not queued");
+            }
+            const float force = static_cast<float>(std::sin(samples * .151));
+            const float moment = static_cast<float>(std::cos(samples * .097) * .17);
+            const auto old = oldBank.render(force, moment);
+            const auto next = nextBank.render(force, moment);
+            const float mix = Access::bodyFade(*engine);
+            const auto actual = Access::body(*engine, force, moment);
+            sameFade = sameFade && actual.left == old.left + mix * (next.left - old.left)
+                && actual.right == old.right + mix * (next.right - old.right)
+                && actual.upper == old.upper + mix * (next.upper - old.upper);
+            ++samples;
+            if (samples > 17 && !Access::bodyPending(*engine))
+                break; // The first fade ended and the queued Bellido began.
+        }
+        expect(samples > 17 && samples < rate / 20 && sameFade,
+               "queued model update interrupted a sounding bank's filtered waveform");
+        expect(Access::hasBodyModel(*engine, GuitarModel::Bellido1978)
+                   && Access::bodyFade(*engine) == 0.0f,
+               "queued filter model did not start at the existing fade boundary");
+        engine->reset();
+        held->reset();
+        expect(Access::filterStates(*engine) == std::array<float, 16> {},
+               "reset retained active or fading microphone filter histories");
+        bool resetMatches = true;
+        for (int n = 0; n < 128; ++n)
+        {
+            const auto actual = Access::body(*engine, n == 0 ? .4f : 0.0f, 0.0f);
+            const auto reference = Access::body(*held, n == 0 ? .4f : 0.0f, 0.0f);
+            resetMatches = resetMatches && actual.left == reference.left
+                && actual.right == reference.right && actual.upper == reference.upper;
+        }
+        expect(resetMatches, "reset after an interrupted model fade retained stale filter output");
+    }
+}
+
+void testMicrophoneFilterOnlyChangesObservation()
+{
+    using namespace acustra;
+    for (const int rate : { 44100, 96000 })
+        for (const auto capture : { CaptureType::StereoMic, CaptureType::MonoMic, CaptureType::Piezo })
+        {
+            EngineParameters p;
+            p.guitarModel = GuitarModel::Bellido1978;
+            p.capture = capture;
+            p.room = 0.0f;
+            p.outputGain = .05f;
+            auto filtered = std::make_unique<AcustraEngine>();
+            auto bypass = std::make_unique<AcustraEngine>();
+            for (auto* engine : { filtered.get(), bypass.get() })
+            {
+                engine->setParameters(p);
+                engine->prepare(rate, 64);
+            }
+            Access::bypassCaptureFilters(*bypass);
+            bool physicalSame = true, piezoSame = true, piezoMainSame = true;
+            double difference = 0.0, signal = 0.0;
+            for (int n = 0; n < rate / 5; ++n)
+            {
+                if (n == 0)
+                    for (int note : { 47, 59, 67 })
+                    {
+                        filtered->noteOn(note, .7f);
+                        bypass->noteOn(note, .7f);
+                    }
+                if (n == rate / 12)
+                {
+                    filtered->noteOff(59);
+                    bypass->noteOff(59);
+                }
+                if (n == rate / 9)
+                {
+                    filtered->noteOn(67, .83f);
+                    bypass->noteOn(67, .83f);
+                }
+                float fl, fr, fp, bl, br, bp;
+                filtered->process(&fl, &fr, AcustraEngine::OutputBuses { &fp }, 1);
+                bypass->process(&bl, &br, AcustraEngine::OutputBuses { &bp }, 1);
+                physicalSame = physicalSame
+                    && filtered->getLastBridgeVelocity() == bypass->getLastBridgeVelocity()
+                    && filtered->getLastBridgeReactionForce() == bypass->getLastBridgeReactionForce()
+                    && filtered->getLastBridgeBodyForce() == bypass->getLastBridgeBodyForce()
+                    && filtered->getLastBridgeTailForce() == bypass->getLastBridgeTailForce()
+                    && filtered->getLastBridgePower() == bypass->getLastBridgePower()
+                    && filtered->getLastBridgeBodyPower() == bypass->getLastBridgeBodyPower()
+                    && filtered->getLastBridgeTailPower() == bypass->getLastBridgeTailPower();
+                piezoSame = piezoSame && fp == bp;
+                piezoMainSame = piezoMainSame && fl == bl && fr == br;
+                difference += (double(fl) - bl) * (double(fl) - bl)
+                    + (double(fr) - br) * (double(fr) - br);
+                signal += double(bl) * bl + double(br) * br;
+            }
+            expect(physicalSame && piezoSame && Access::chainState(*filtered) == Access::chainState(*bypass),
+                   "microphone output filter changed the physical junction or loaded piezo history");
+            expect(signal > 1e-12, "filter observation control was silent");
+            if (capture == CaptureType::Piezo)
+                expect(piezoMainSame, "microphone output filter reached Main with Piezo selected");
+            else
+                expect(difference > signal * 1e-6, "microphone output filter did not reach the microphones");
+        }
+}
 } // namespace
 
 int main()
@@ -1249,6 +1602,10 @@ int main()
     testRoomBlocksWidthAndReturn();
     testRoomRingsOutToSilence();
     testCaptureVoicingIsSmoothAndBounded();
+    testMicrophoneFilterDigitalTransfer();
+    testMicrophoneFilterBypassAndLifecycle();
+    testMicrophoneFilterModelTransitions();
+    testMicrophoneFilterOnlyChangesObservation();
     if (failures == 0)
         std::cout << "All Acustra capture tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -138,6 +138,70 @@ double holdDroop(double frequency, double rate)
     return rate == 48000. ? 1. : sinc(pi * frequency / 48000.) / sinc(pi * frequency / rate);
 }
 
+// The Bellido microphone's two output peaks filter the summed pressure, not
+// a gain sampled at each modal pole. Rebuild each from the bilinear analog
+// prototype H(s)=(s^2+A*s/Q+1)/(s^2+s/(A*Q)+1), with its center prewarped:
+// 500 Hz -6 dB, then 1400 Hz +6 dB, both Q=1.2. This retains the
+// complex phase at the evaluation frequency independently of the engine's
+// RBJ coefficient generation and transposed filter recurrence.
+std::complex<double> microphoneFilter(double frequency, double rate,
+                                      acustra::GuitarModel model)
+{
+    if (model != acustra::GuitarModel::Bellido1978)
+        return 1.0;
+    std::complex<double> response = 1.0;
+    for (const auto section : { std::array<double, 2> { 500.0, -6.0 },
+                                std::array<double, 2> { 1400.0, 6.0 } })
+    {
+        const double a = std::pow(10.0, section[1] / 40.0);
+        const std::complex<double> s(0.0,
+            std::tan(std::acos(-1.0) * frequency / rate)
+            / std::tan(std::acos(-1.0) * section[0] / rate));
+        response *= (s * s + a * s / 1.2 + 1.0)
+            / (s * s + s / (a * 1.2) + 1.0);
+    }
+    return response;
+}
+
+struct MicrophoneFilterReference
+{
+    std::array<std::array<double, 3>, 2> numerator {}, denominator {};
+    std::array<std::array<double, 2>, 2> input {}, output {};
+    bool enabled;
+    MicrophoneFilterReference(double rate, acustra::GuitarModel model)
+        : enabled(model == acustra::GuitarModel::Bellido1978)
+    {
+        const std::array<std::array<double, 2>, 2> sections {{ { 500.0, -6.0 },
+                                                              { 1400.0, 6.0 } }};
+        for (std::size_t index = 0; index < sections.size(); ++index)
+        {
+            const double a = std::pow(10.0, sections[index][1] / 40.0);
+            const double k = std::tan(std::acos(-1.0) * sections[index][0] / rate);
+            denominator[index] = { 1.0 + k / (a * 1.2) + k * k,
+                2.0 * (k * k - 1.0), 1.0 - k / (a * 1.2) + k * k };
+            numerator[index] = { 1.0 + a * k / 1.2 + k * k,
+                2.0 * (k * k - 1.0), 1.0 - a * k / 1.2 + k * k };
+        }
+    }
+    double process(double value)
+    {
+        if (!enabled)
+            return value;
+        for (std::size_t index = 0; index < numerator.size(); ++index)
+        {
+            const auto& b = numerator[index];
+            const auto& a = denominator[index];
+            const double filtered = (b[0] * value + b[1] * input[index][0]
+                + b[2] * input[index][1] - a[1] * output[index][0]
+                - a[2] * output[index][1]) / a[0];
+            input[index] = { value, input[index][0] };
+            output[index] = { filtered, output[index][0] };
+            value = filtered;
+        }
+        return value;
+    }
+};
+
 // The radiation above the bank's fitted band, as configureBody continues it
 // at this rate, rebuilt here from its definition: from the highest mode
 // sounding at the rate (below 0.46 fs), modes on a 1/16-octave grid at unit
@@ -255,6 +319,7 @@ void testRadiation(acustra::GuitarModel model, const Bank& measured, int delay48
         engine->setParameters(parametersFor(model));
         engine->prepare(rate, 64);
         const double pi = std::acos(-1.0);
+        MicrophoneFilterReference filter(rate, model);
         double worst = 0, magnitude = 0;
         for (int n = 0; n < 768; ++n)
         {
@@ -271,8 +336,8 @@ void testRadiation(acustra::GuitarModel model, const Bank& measured, int delay48
                         * holdDroop(m.frequency, rate);
                     expected += residue * std::pow(pole, age);
                 }
-            const double target = 2 * expected.real()
-                * acustra::detail::guitarMicrophoneTrims[static_cast<std::size_t>(model)];
+            const double target = filter.process(2 * expected.real()
+                * acustra::detail::guitarMicrophoneTrims[static_cast<std::size_t>(model)]);
             magnitude = std::max(magnitude, std::abs(target));
             worst = std::max(worst, std::abs(double(actual.left) - target));
             if (model != acustra::GuitarModel::Bellido1978)
@@ -375,7 +440,7 @@ void testFractionalRadiation(acustra::GuitarModel model, const Bank& measured, i
                     * double(acustra::detail::guitarMicrophoneTrims[static_cast<std::size_t>(model)]);
                 for (std::size_t channel = 0; channel < expected.size(); ++channel)
                 {
-                    expected[channel] *= idealDelay;
+                    expected[channel] *= idealDelay * microphoneFilter(hz, rate, model);
                     const double error = std::norm(actual[channel] - expected[channel]);
                     const double reference = std::norm(expected[channel]);
                     totalError += error;

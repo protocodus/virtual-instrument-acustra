@@ -47,6 +47,11 @@ keeping every other cell's built gain (the target stays the default cell):
       --json m.json --write-header --models bellido1978
   python3 Tools/CalibrateConstructionLoudness.py --self-test
 
+A microphone-only update can keep the existing absolute pickup level with
+`--write-header --preserve-piezo-level`. Its relative pickup trim compensates
+the new microphone reference; float32 rounding can change the product by a
+few ulps. This does not waive any loudness or headroom checks.
+
 The gains already built in (read from the header) are divided out of each
 measurement, so writing the header again from a build that has them gives the
 same gains. Renders go to a temporary directory and are removed as soon as
@@ -294,6 +299,20 @@ def to_float32(value: float) -> float:
     return float(np.float32(value))
 
 
+def preserve_piezo_level(tables: dict[str, np.ndarray],
+                         built: dict[str, np.ndarray], models) -> None:
+    """Keep the previous mic*piezo gain on only the selected model cells.
+
+    Use the float32 microphone references that the generated C++ will read,
+    not the unrounded fit. The runtime also multiplies a common string
+    reference, so this preserves level to float rounding, not sample bits.
+    """
+    for cell in itertools.product(models, SHAPES, WOODS, PICKINGS):
+        i = index(*cell)
+        old_level = to_float32(built["mic"][i]) * to_float32(built["piezo"][i])
+        tables["piezo"][i] = old_level / to_float32(tables["mic"][i])
+
+
 def float_literal(value: float) -> str:
     """A C++ float literal that reads back as the same float32."""
     text = f"{to_float32(value):.9g}"
@@ -459,6 +478,23 @@ def self_test() -> None:
     for name in tables:
         assert np.allclose(read[name], tables[name], rtol=1e-7)
         assert read[name][index(*DEFAULT)] == 1.0
+    # Microphone-only calibration must not silently relevel the pickup or
+    # touch unselected models, even when the microphone gain changes widely.
+    old = {name: values.copy() for name, values in tables.items()}
+    updated = {name: values.copy() for name, values in tables.items()}
+    updated["mic"] *= np.geomspace(0.2, 5.0, CELLS)
+    untouched = updated["piezo"][:CELLS // 2].copy()
+    preserve_piezo_level(updated, old, ("bellido1978",))
+    with tempfile.TemporaryDirectory() as scratch:
+        path = Path(scratch) / "preserved.h"
+        path.write_text(header_text(updated))
+        generated = built_gains(path)
+    assert np.array_equal(updated["piezo"][:CELLS // 2], untouched)
+    selected = slice(CELLS // 2, CELLS)
+    previous = old["mic"][selected].astype(np.float32).astype(float) \
+        * old["piezo"][selected].astype(np.float32).astype(float)
+    actual = generated["mic"][selected] * generated["piezo"][selected]
+    assert np.allclose(previous, actual, rtol=1e-7, atol=0)
     fake = {"lufs": {}, "peaks": {}}
     for construction in constructions():
         for picking in PICKINGS:
@@ -501,6 +537,9 @@ def main() -> int:
     parser.add_argument("--json", type=Path, help="write every measurement here")
     parser.add_argument("--write-header", action="store_true",
                         help=f"write the gains to {HEADER.name}")
+    parser.add_argument("--preserve-piezo-level", action="store_true",
+                        help="with --write-header, keep the selected models' existing"
+                             " absolute pickup level during a microphone-only update")
     parser.add_argument("--check", action="store_true",
                         help="fail unless the built gains hold every cell within"
                              f" +-{TOLERANCE_LU:g} LU and {HEADROOM_DB:g} dB under the knee")
@@ -520,6 +559,8 @@ def main() -> int:
                              " cell's either way)")
     parser.add_argument("--self-test", action="store_true")
     arguments = parser.parse_args()
+    if arguments.preserve_piezo_level and not arguments.write_header:
+        parser.error("--preserve-piezo-level requires --write-header")
     if arguments.self_test:
         self_test()
         return 0
@@ -548,6 +589,8 @@ def main() -> int:
             for cell in itertools.product([model], SHAPES, WOODS, PICKINGS):
                 for name in tables:
                     tables[name][index(*cell)] = built[name][index(*cell)]
+        if arguments.preserve_piezo_level:
+            preserve_piezo_level(tables, built, arguments.models)
         HEADER.write_text(header_text(tables))
         print(f"wrote {HEADER}")
     if arguments.check:

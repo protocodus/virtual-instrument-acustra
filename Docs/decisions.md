@@ -5,6 +5,32 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-07 — Classical 78's close microphone capture
+
+The user identified an unnatural G4 emphasis and requested its cause rather
+than a one-note fix, explicitly allowing microphone changes. Fresh raw g35
+measurements confirm the prominent pressure response beside the soundhole
+at 10 cm; the fit does not invent or over-amplify its peak. The sustained
+sound follows the played note, and removing the static pluck preload does
+not resolve it. Phrase loudness makeup further emphasizes this register.
+
+Classical 78 now applies two broad microphone-output sections, 500 Hz
+−6 dB and 1.4 kHz +6 dB, both Q 1.2. This is an authored, recording-supported
+capture contour, not an exact reconstructed distant microphone. It filters
+the summed pressure, preserving complex modal cancellation and all physical
+poles/residues. Original is unchanged. Filter histories follow each bank
+through reset and model/construction fades; Bellido's microphone levels are
+recalibrated while its absolute pickup reference is preserved to rounding.
+
+Eleven capture alternatives were retained. Direct relocation to the measured
+bass-side bridge microphone, broad high shelves and copied Original voicing
+had poorer transfer. The selected native correction improves overall
+descriptor scores on Eastman Finger/Pick and Martin, and on each pitch
+register; G4's harmonic balance improves while its total descriptor score
+still worsens 0.90%. No listener preference is inferred. Matched native
+listening, calibration, tests, CPU evidence and the limits of two-way room
+coupling are recorded in the [capture report](classical78-capture-2026-10-07.md).
+
 ## 2026-10-07 — Finger release compared with real recordings
 
 The renewed goal explicitly requested audible realism benchmarked against

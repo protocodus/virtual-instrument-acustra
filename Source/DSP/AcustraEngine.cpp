@@ -3915,7 +3915,7 @@ void AcustraEngine::configureBody() noexcept
                 * residueRateScale;
         };
         // The Stereo mic pair is the treble-bridge microphone on the left and
-        // the upper-bout one on the right, the bridge/twelfth-fret placement
+        // the upper-bout one on the right, the bridge/upper-bout placement
         // a blind listener chose over the bridge's own treble/bass pair
         // (2026-09-25). The bass-bridge microphone is not heard. The air-mode
         // gain reaches the bridge microphone alone: at x4, chosen by ear, a
@@ -4132,6 +4132,8 @@ void AcustraEngine::configureBody() noexcept
     // the same modes in the same slots ringing (sameBodyBank, audit F14).
     bodyBank_.load(bodyModes_, count, ownCount,
                    bodyConfigured_ && !sameBodyBank);
+    bodyBank_.captureFilter.configure(sampleRate_,
+        parameters_.guitarModel == GuitarModel::Bellido1978);
     configuredGuitarModel_ = parameters_.guitarModel;
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
@@ -9623,10 +9625,75 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
 
 }
 
+void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
+                                                     bool bellido) noexcept
+{
+    if (enabled != bellido)
+        reset();
+    enabled = bellido;
+    if (!enabled)
+    {
+        for (auto& section : coefficients)
+            section = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+        return;
+    }
+    // A recording-supported broad capture contour compensates the nearfield
+    // observation's 250-630 Hz excess and 0.8-1.6 kHz deficit. This authored
+    // microphone voicing does not simulate an exact distance or notch an
+    // individual mode: every mechanical/radiation pole and residue is intact.
+    // Shape and Wood retain its history; model fades copy it with the bank.
+    constexpr std::array<double, sections> frequency { 500.0, 1400.0 };
+    constexpr std::array<double, sections> gainDb { -6.0, 6.0 };
+    constexpr double q = 1.2;
+    constexpr double doublePi = 3.141592653589793238462643383279502884;
+    for (int index = 0; index < sections; ++index)
+    {
+        const auto slot = static_cast<std::size_t>(index);
+        const double amplitude = std::pow(10.0, gainDb[slot] / 40.0);
+        const double omega = 2.0 * doublePi * frequency[slot] / sampleRate;
+        const double cosine = std::cos(omega);
+        const double alpha = std::sin(omega) / (2.0 * q);
+        const double a0 = 1.0 + alpha / amplitude;
+        coefficients[slot] = {
+            static_cast<float>((1.0 + alpha * amplitude) / a0),
+            static_cast<float>(-2.0 * cosine / a0),
+            static_cast<float>((1.0 - alpha * amplitude) / a0),
+            static_cast<float>(-2.0 * cosine / a0),
+            static_cast<float>((1.0 - alpha / amplitude) / a0)
+        };
+    }
+}
+
+void AcustraEngine::BodyBank::CaptureFilter::render(BodyOutput& output) noexcept
+{
+    // Original bypasses the arithmetic entirely, preserving its sample bits.
+    if (!enabled)
+        return;
+    const auto filter = [] (float input, const std::array<float, 5>& coefficient,
+                           std::array<float, 2>& state)
+    {
+        const float result = coefficient[0] * input + state[0];
+        const float first = coefficient[1] * input - coefficient[3] * result
+                          + state[1];
+        const float second = coefficient[2] * input - coefficient[4] * result;
+        state[0] = exact::abs(first) < 1.0e-30f ? 0.0f : first;
+        state[1] = exact::abs(second) < 1.0e-30f ? 0.0f : second;
+        return result;
+    };
+    for (int index = 0; index < sections; ++index)
+    {
+        const auto slot = static_cast<std::size_t>(index);
+        output.left = filter(output.left, coefficients[slot], stateLeft[slot]);
+        output.right = filter(output.right, coefficients[slot], stateRight[slot]);
+    }
+}
+
 void AcustraEngine::BodyBank::load(const std::array<BodyMode, bodyModeCount>& modes,
                                    int modeCount, int orderedCount,
                                    bool resetStates) noexcept
 {
+    if (resetStates)
+        captureFilter.reset();
     count = std::clamp(modeCount, 0, bodyModeCount);
     ordered = std::clamp(orderedCount, 0, count);
     for (int index = 0; index < capacity; ++index)
@@ -9772,6 +9839,7 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
             ? 0.0f : nextMomentImaginary;
     }
 #endif
+    captureFilter.render(output);
     // The mono microphone's sum is the right channel's: configureBody gives
     // them the same residues.
     output.upper = output.right;

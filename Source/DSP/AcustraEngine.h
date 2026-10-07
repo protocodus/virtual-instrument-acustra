@@ -1226,6 +1226,30 @@ private:
     // coefficients here. The states live here only.
     struct BodyBank
     {
+        // A capture correction acts on the summed microphone pressure, not
+        // on the physical modes. Each fading bank keeps its own history.
+        struct CaptureFilter
+        {
+            static constexpr int sections = 2;
+            // Each section's normalized RBJ coefficients: b0, b1, b2, a1, a2.
+            std::array<std::array<float, 5>, sections> coefficients {{
+                { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f },
+                { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f }
+            }};
+            std::array<std::array<float, 2>, sections> stateLeft {}, stateRight {};
+            bool enabled { false };
+
+            void configure(double sampleRate, bool bellido) noexcept;
+            void reset() noexcept
+            {
+                for (auto& state : stateLeft)
+                    state.fill(0.0f);
+                for (auto& state : stateRight)
+                    state.fill(0.0f);
+            }
+            void render(BodyOutput& output) noexcept;
+        };
+
         static constexpr int lanes = 4;
         static constexpr int capacity = (bodyModeCount + lanes - 1) / lanes * lanes;
         using Lanes = std::array<float, capacity>;
@@ -1239,6 +1263,7 @@ private:
         // the rest (the steel blend's parallel parts, starting on a group of
         // four) in vector accumulators.
         int ordered { 0 };
+        CaptureFilter captureFilter {};
 
         // The first modeCount modes' coefficients; with resetStates their
         // states restart from rest. Slots past the bank are zero.
@@ -1250,6 +1275,7 @@ private:
             imaginary.fill(0.0f);
             momentReal.fill(0.0f);
             momentImaginary.fill(0.0f);
+            captureFilter.reset();
         }
         // Every mode's two-pole state advanced by the force and moment and
         // summed into the left and right residues, then a flush of tiny
