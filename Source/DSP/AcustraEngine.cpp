@@ -7118,12 +7118,32 @@ void AcustraEngine::updateReleaseJoinWindow(Voice& voice) noexcept
     // integer duration into an extra sample (e.g. 4425 + 2e-13). Only remove
     // numerical residue near a positive integer: a genuinely sub-sample
     // positive interval still rounds up to one, even at DBL_MAX tempo.
+#if defined(PH_LIBCPP_NO_LONG_DOUBLE_MATH)
+    // Jukebox represents both types with binary64 precision but exposes
+    // only double math overloads. These casts lose no precision there;
+    // desktop targets retain their wider long-double calculation below.
+    static_assert(std::numeric_limits<long double>::digits == std::numeric_limits<double>::digits
+        && std::numeric_limits<long double>::max_exponent == std::numeric_limits<double>::max_exponent
+        && std::numeric_limits<long double>::min_exponent == std::numeric_limits<double>::min_exponent,
+        "Restricted math needs identical double and long-double precision");
+    const long double nearest = std::round(static_cast<double>(duration));
+#else
     const long double nearest = std::round(duration);
+#endif
     const long double tolerance = std::min(0.125L,
         8.0L * std::numeric_limits<double>::epsilon() * std::max(1.0L, duration));
-    if (nearest >= 1.0L && std::abs(duration - nearest) <= tolerance)
+#if defined(PH_LIBCPP_NO_LONG_DOUBLE_MATH)
+    const long double residue = std::abs(static_cast<double>(duration - nearest));
+#else
+    const long double residue = std::abs(duration - nearest);
+#endif
+    if (nearest >= 1.0L && residue <= tolerance)
         duration = nearest;
+#if defined(PH_LIBCPP_NO_LONG_DOUBLE_MATH)
+    const long double samples = std::ceil(static_cast<double>(duration));
+#else
     const long double samples = std::ceil(duration);
+#endif
     voice.releaseJoinWindowSamples = static_cast<std::uint64_t>(samples);
 }
 
