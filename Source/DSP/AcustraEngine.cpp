@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cfenv>
 #include <cmath>
 #include <complex>
 #include <cstring>
@@ -7313,6 +7314,20 @@ void AcustraEngine::applyPlectrumSlip(StringLoop& loop, int length,
     }, length, slipPole);
 }
 
+double AcustraEngine::gaussianReleaseStep(double argument,
+                                          bool nearestRounding) noexcept
+{
+    // For x >= 28, erfc(x) < exp(-x*x)/(x*sqrt(pi)) < 7e-343,
+    // below half the smallest IEEE double subnormal; erfc(-x) rounds to 2.
+    // Retain libm for every near-edge value and other rounding modes.
+    if (nearestRounding && std::numeric_limits<double>::is_iec559)
+    {
+        if (argument >= 28.0) return 0.0;
+        if (argument <= -28.0) return 1.0;
+    }
+    return 0.5 * std::erfc(argument);
+}
+
 void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                                      float position, float aperture, int modes,
                                      float releaseShare, double slipPole,
@@ -7377,9 +7392,14 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     {
         return sigma * unitCorner(exact::abs(z) / sigma);
     };
+    // Query the caller's mode once per waveform; never change it. Outer
+    // images whose Gaussian result is exactly saturated can avoid libm's
+    // underflow work without changing the edge or the image sum's order.
+    const bool nearestRounding = std::fegetround() == FE_TONEAREST;
     const auto step = [&] (double z)
     {
-        return 0.5 * std::erfc(-z / (sigma * sqrt2Double));
+        const double argument = -z / (sigma * sqrt2Double);
+        return gaussianReleaseStep(argument, nearestRounding);
     };
     const auto images = [] (double z, const auto& kernel)
     {

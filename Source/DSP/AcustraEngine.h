@@ -1537,6 +1537,8 @@ private:
         const StringLoop& previous, float* alignedIncrements = nullptr) noexcept;
     static void mergeRepluckLoop(StringLoop& fresh, StringLoop& previous,
         float gain, const float* alignedIncrements = nullptr) noexcept;
+    static double gaussianReleaseStep(double argument,
+                                       bool nearestRounding) noexcept;
     void updateTailHandLoss(Voice& voice) noexcept;
     // The Pick technique's released state (FittedPhysicalData.h): a rest
     // triangle of this height with its apex at position, a fraction of the

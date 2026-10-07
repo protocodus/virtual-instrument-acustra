@@ -5,11 +5,16 @@
 
 #include <algorithm>
 #include <array>
+#include <cfenv>
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <vector>
+#if defined(__SSE2__)
+#include <xmmintrin.h>
+#endif
 
 namespace acustra
 {
@@ -24,6 +29,8 @@ struct AcustraEngineTestAccess
     static void merge(Loop& fresh, Loop& previous, float gain,
                       const float* increments = nullptr)
     { AcustraEngine::mergeRepluckLoop(fresh, previous, gain, increments); }
+    static double gaussianStep(double argument, bool nearestRounding)
+    { return AcustraEngine::gaussianReleaseStep(argument, nearestRounding); }
     static std::array<Loop, 2> sounding(const AcustraEngine& engine, int string = 0)
     { return engine.voices_[static_cast<std::size_t>(string)].loops; }
     static std::array<Loop, 2> retained(const AcustraEngine& engine)
@@ -122,6 +129,62 @@ void testAlignedIncrementScratchPreservesWorkAndCompleteState()
                    "cached merge changed wave bits, phase, or retained filter/contact state");
         }
     }
+}
+
+void testGaussianReleaseStepMatchesLibmAtRoundingBoundaries()
+{
+    const int previousRounding = std::fegetround();
+#if defined(__SSE2__)
+    const auto previousControl = _mm_getcsr();
+    constexpr std::array<unsigned, 2> flushModes { 0u, 0x8040u };
+#else
+    constexpr std::array<unsigned, 1> flushModes { 0u };
+#endif
+    // Use a runtime function pointer so the reference calls this toolchain's
+    // libm under each selected mode, rather than folding constant arguments.
+    double (*volatile nativeErfc)(double) = std::erfc;
+    const auto check = [&](double argument)
+    {
+        const double reference = 0.5 * nativeErfc(argument);
+        const double result = Access::gaussianStep(argument,
+            std::fegetround() == FE_TONEAREST);
+        expect(std::memcmp(&result, &reference, sizeof(double)) == 0,
+               "Gaussian release saturation changed native erfc bits");
+    };
+    for (const auto flushMode : flushModes)
+    {
+#if defined(__SSE2__)
+        _mm_setcsr((_mm_getcsr() & ~0x8040u) | flushMode);
+#else
+        static_cast<void>(flushMode);
+#endif
+        for (const int rounding : { FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO })
+        {
+            expect(std::fesetround(rounding) == 0, "could not set Gaussian test rounding mode");
+            for (const double edge : { -28.0, 0.0, 28.0 })
+            {
+                check(edge);
+                double below = edge, above = edge;
+                for (int neighbor = 0; neighbor < 32; ++neighbor)
+                {
+                    below = std::nextafter(below, -std::numeric_limits<double>::infinity());
+                    above = std::nextafter(above, std::numeric_limits<double>::infinity());
+                    check(below); check(above);
+                }
+            }
+            for (int sample = -1024; sample <= 1024; ++sample)
+                check(static_cast<double>(sample) / 16.0);
+            for (const double argument : { 128.0, 1.0e4, 1.0e9, 1.0e10,
+                                           std::numeric_limits<double>::infinity() })
+            { check(argument); check(-argument); }
+            expect(std::fegetround() == rounding,
+                   "Gaussian release changed its caller's rounding mode");
+        }
+    }
+    expect(std::fesetround(previousRounding) == 0, "could not restore test rounding mode");
+#if defined(__SSE2__)
+    _mm_setcsr(previousControl);
+#endif
 }
 
 auto fresh(double rate = 48000.0)
@@ -779,6 +842,7 @@ void testRapidTremoloAudioRemainsBoundedAndBlockExact()
 int main()
 {
     testAlignedIncrementScratchPreservesWorkAndCompleteState();
+    testGaussianReleaseStepMatchesLibmAtRoundingBoundaries();
     testBoundsMeanAndForceTracking();
     testExplicitPerformanceAndResetBoundaries();
     testIndependentRateAndBlockInvariantSequence();
