@@ -17,7 +17,12 @@
 
 #include <algorithm>
 #include <cassert>
+#if __has_include(<cfenv>)
 #include <cfenv>
+#define ACUSTRA_HAS_FLOATING_POINT_ENVIRONMENT 1
+#else
+#define ACUSTRA_HAS_FLOATING_POINT_ENVIRONMENT 0
+#endif
 #include <cmath>
 #include <complex>
 #include <cstring>
@@ -7403,7 +7408,14 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     // Query the caller's mode once per waveform; never change it. Outer
     // images whose Gaussian result is exactly saturated can avoid libm's
     // underflow work without changing the edge or the image sum's order.
+#if ACUSTRA_HAS_FLOATING_POINT_ENVIRONMENT
     const bool nearestRounding = std::fegetround() == FE_TONEAREST;
+#else
+    // Jukebox's restricted C++ runtime has no floating-point environment
+    // query. Keep libm's exact path rather than assume a rounding mode and
+    // apply a shortcut whose proof requires round-to-nearest binary64.
+    constexpr bool nearestRounding = false;
+#endif
     const auto step = [&] (double z)
     {
         const double argument = -z / (sigma * sqrt2Double);
