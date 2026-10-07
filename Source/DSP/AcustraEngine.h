@@ -654,6 +654,14 @@ private:
         float bendingLossA2 { 0.0f };
         float bendingLossY1 { 0.0f };
         float bendingLossY2 { 0.0f };
+        // A discrete refret/retune changes intrinsic sections over the same
+        // one-roundtrip physical transition as its feedback loss. Histories
+        // stay intact; target revisions retain a finite completion deadline.
+        std::array<float, 7> intrinsicCoefficientTarget {};
+        std::array<float, 7> intrinsicCoefficientStep {};
+        int intrinsicCoefficientSamples { 0 };
+        void setIntrinsicCoefficients(const std::array<float, 7>& target,
+                                      bool transition) noexcept;
         OnePole broadLossFilter {};
         OnePole lossFilter {};
         SecondOrderAllpass dispersion {};

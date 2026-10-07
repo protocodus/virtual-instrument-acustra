@@ -839,3 +839,11 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.ReleaseRealism COMMAND AcustraReleaseRealismTests)
     set_tests_properties(Acustra.ReleaseRealism PROPERTIES TIMEOUT 60)
 endif()
+
+# Live tuning changes must preserve both waves and filter histories.
+if(BUILD_TESTING)
+    add_executable(AcustraRetuneContinuityTests Tests/RetuneContinuityTests.cpp)
+    target_link_libraries(AcustraRetuneContinuityTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraRetuneContinuityTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    acustra_add_suite(Acustra.RetuneContinuity AcustraRetuneContinuityTests)
+endif()

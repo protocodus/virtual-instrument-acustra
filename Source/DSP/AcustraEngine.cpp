@@ -2687,6 +2687,54 @@ void AcustraEngine::StringLoop::reset() noexcept
     targetLoopGain = loopGain;
     loopGainStep = 0.0f;
     loopGainTransitionSamples = 0;
+    if (intrinsicCoefficientSamples > 0)
+    {
+        const std::array<float*, 7> applied { &bendingLossGain, &bendingLossA1,
+            &bendingLossA2, &dispersionA1, &dispersionA2,
+            &secondDispersionA1, &secondDispersionA2 };
+        for (std::size_t index = 0; index < applied.size(); ++index)
+            *applied[index] = intrinsicCoefficientTarget[index];
+    }
+    intrinsicCoefficientTarget = { bendingLossGain, bendingLossA1,
+        bendingLossA2, dispersionA1, dispersionA2,
+        secondDispersionA1, secondDispersionA2 };
+    intrinsicCoefficientStep.fill(0.0f);
+    intrinsicCoefficientSamples = 0;
+}
+
+void AcustraEngine::StringLoop::setIntrinsicCoefficients(
+    const std::array<float, 7>& target, bool transition) noexcept
+{
+    // Repeated/forced configuration of the same target must not change its
+    // applied values, step bits or remaining deadline.
+    bool targetChanged = false;
+    for (std::size_t index = 0; index < target.size(); ++index)
+        targetChanged |= exact::bits(target[index])
+            != exact::bits(intrinsicCoefficientTarget[index]);
+    if (intrinsicCoefficientSamples > 0 && !targetChanged)
+        return;
+    const std::array<float*, 7> applied { &bendingLossGain, &bendingLossA1,
+        &bendingLossA2, &dispersionA1, &dispersionA2,
+        &secondDispersionA1, &secondDispersionA2 };
+    bool changed = false;
+    for (std::size_t index = 0; index < applied.size(); ++index)
+        changed |= *applied[index] != target[index];
+    if (transition && targetChanged && changed)
+        intrinsicCoefficientSamples = std::max(1, static_cast<int>(
+            std::ceil(currentDelay)));
+    // Interpolation stays inside each section's Schur-stable coefficient
+    // triangle. The bending numerator follows its unit-DC denominator.
+    // This is a bounded change of the existing filters, not a claim of
+    // passivity for arbitrary time-varying coefficients.
+    intrinsicCoefficientTarget = target;
+    for (std::size_t index = 0; index < applied.size(); ++index)
+    {
+        if (intrinsicCoefficientSamples > 0)
+            intrinsicCoefficientStep[index] = (target[index] - *applied[index])
+                / intrinsicCoefficientSamples;
+        else
+            *applied[index] = target[index];
+    }
 }
 
 void AcustraEngine::StringLoop::setLoopGain(float gain, bool transition) noexcept
@@ -2941,6 +2989,27 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
             loopGain = loopGainStep > 0.0f
                 ? std::min(targetLoopGain, loopGain + loopGainStep)
                 : std::max(targetLoopGain, loopGain + loopGainStep);
+    }
+    if (intrinsicCoefficientSamples > 0)
+    {
+        const std::array<float*, 7> applied { &bendingLossGain, &bendingLossA1,
+            &bendingLossA2, &dispersionA1, &dispersionA2,
+            &secondDispersionA1, &secondDispersionA2 };
+        --intrinsicCoefficientSamples;
+        for (std::size_t index = 0; index < applied.size(); ++index)
+        {
+            const float target = intrinsicCoefficientTarget[index];
+            // Evaluate from the target and fixed step instead of accumulating
+            // seven independently rounded additions. In particular, the
+            // bending numerator must keep following the denominator's DC sum.
+            const float next = static_cast<float>(static_cast<double>(target)
+                - static_cast<double>(intrinsicCoefficientStep[index])
+                    * intrinsicCoefficientSamples);
+            *applied[index] = intrinsicCoefficientSamples == 0 ? target
+                : intrinsicCoefficientStep[index] > 0.0f
+                    ? std::min(target, std::max(*applied[index], next))
+                    : std::max(target, std::min(*applied[index], next));
+        }
     }
     currentDelay += delaySmoothing * (targetDelay - currentDelay);
     float delayed = readDelay(currentDelay);
@@ -5408,13 +5477,13 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         if (polarisation != 0)
             loop.bendingLossActive = false;
 #endif
-        loop.bendingLossGain = voice.bendingLossGain;
-        loop.bendingLossA1 = voice.bendingLossA1;
-        loop.bendingLossA2 = voice.bendingLossA2;
-        loop.dispersionA1 = static_cast<float>(dispersion.a1[0]);
-        loop.dispersionA2 = static_cast<float>(dispersion.a2[0]);
-        loop.secondDispersionA1 = static_cast<float>(dispersion.a1[1]);
-        loop.secondDispersionA2 = static_cast<float>(dispersion.a2[1]);
+        if (clearDelay || !performanceRealism_.retuneContinuity)
+            loop.intrinsicCoefficientSamples = 0;
+        loop.setIntrinsicCoefficients({ voice.bendingLossGain,
+            voice.bendingLossA1, voice.bendingLossA2,
+            static_cast<float>(dispersion.a1[0]), static_cast<float>(dispersion.a2[0]),
+            static_cast<float>(dispersion.a1[1]), static_cast<float>(dispersion.a2[1]) },
+            performanceRealism_.retuneContinuity && transitionRetune && !clearDelay);
         if (clearDelay)
             loop.secondDispersionActive = dispersion.used[1];
         else
