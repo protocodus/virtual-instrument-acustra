@@ -169,6 +169,22 @@ void addMissingParameterDefaults (
     }
 }
 
+void sanitiseSavedParameterValues (
+    juce::ValueTree& state, const juce::AudioProcessorValueTreeState& parameters)
+{
+    for (auto child : state)
+    {
+        if (! child.hasType ("PARAM") || ! child.hasProperty ("value"))
+            continue;
+        const auto* parameter = parameters.getParameter (
+            child.getProperty ("id").toString());
+        if (parameter != nullptr
+            && ! std::isfinite (static_cast<float> (child.getProperty ("value"))))
+            child.setProperty ("value", parameter->convertFrom0to1 (
+                                   parameter->getDefaultValue()), nullptr);
+    }
+}
+
 // Saved states carry this in their root; one without it predates the
 // 2026-09-29 simplification (four Body Materials, the String Material and
 // Bridge Model parameters).
@@ -197,7 +213,7 @@ void migrateVersionOneState (juce::ValueTree& state)
         {
             const auto value = static_cast<float> (child.getProperty (valueProperty));
             const int old = std::isfinite (value)
-                ? std::clamp (static_cast<int> (std::lround (value)), 0, 3) : 0;
+                ? static_cast<int> (std::lround (std::clamp (value, 0.0f, 3.0f))) : 0;
             constexpr std::array<float, 4> migrated { 0.0f, 1.0f, 1.0f, 2.0f };
             child.setProperty (valueProperty,
                                migrated[static_cast<std::size_t> (old)], nullptr);
@@ -572,6 +588,11 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
     if (xml != nullptr && xml->hasTagName (parameters.state.getType()))
     {
         auto restoredState = juce::ValueTree::fromXml (*xml);
+        // JUCE clamps finite out-of-range values, but NaN can survive its
+        // range conversion and mute Output or reach the editor. Repair only
+        // explicit malformed values; absent Room and Release Noise retain
+        // their separate legacy defaults below.
+        sanitiseSavedParameterValues (restoredState, parameters);
         if (static_cast<int> (restoredState.getProperty (stateVersionProperty, 1))
             < currentStateVersion)
             migrateVersionOneState (restoredState);

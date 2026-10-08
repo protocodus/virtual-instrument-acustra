@@ -16,6 +16,21 @@ struct AcustraEngineTestAccess
             voice.pitchGeometry.valid = false;
     }
 
+    static void invalidateConfiguration(AcustraEngine& engine)
+    {
+        for (auto& voice : engine.voices_)
+            voice.configurationKey.generation = 0;
+    }
+
+    static std::array<float, 3> memberGeometry(const AcustraEngine& engine)
+    {
+        for (const auto& voice : engine.voices_)
+            if (voice.played && voice.midiChannel == 2)
+                return { voice.pitchGeometry.value.frequency,
+                         voice.speakingLengthMetres, voice.speakingFret };
+        return {};
+    }
+
     // A deliberately changed cached payload proves reuse without adding a
     // counter or a diagnostic branch to production's configuration path.
     static bool hitAndResetContract(AcustraEngine& engine)
@@ -127,6 +142,11 @@ struct AcustraEngineTestAccess
                 y.appliedBendImpedanceScale, y.attackPitchCents,
                 y.observedSlopeEnergy, y.appliedBridgeTailStiffness };
             if (!same(sx, sy) || !same(x.referencePickDelay, y.referencePickDelay)
+                || !same(x.dispersionDesignFrequency, y.dispersionDesignFrequency)
+                || !same(x.dispersionDesignInharmonicity, y.dispersionDesignInharmonicity)
+                || !same(x.longitudinalDrive, y.longitudinalDrive)
+                || !same(x.longitudinalA1, y.longitudinalA1)
+                || !same(x.longitudinalA2, y.longitudinalA2)
                 || !(x.configurationKey == y.configurationKey)
                 || !(x.referencePickConfigurationKey == y.referencePickConfigurationKey)
                 || x.pluckDelay != y.pluckDelay || x.returnSamples != y.returnSamples
@@ -153,6 +173,71 @@ struct AcustraEngineTestAccess
 };
 }
 
+// At either finite-waveguide pitch limit, a manager slide can move the
+// physical fret without changing the rounded final frequency or tension.
+// The full configuration cache must still refresh its length/fret-dependent
+// dispersion, loss and longitudinal coefficients. Compare against an observer
+// that bypasses only that cache, keeping the geometry cache and all histories.
+bool clampedSlideConfigurationContract()
+{
+    using Engine = acustra::AcustraEngine;
+    using Access = acustra::AcustraEngineTestAccess;
+    for (const double rate : {44100.0, 48000.0, 96000.0})
+    for (const auto model : {acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978})
+    for (const auto picking : {acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick})
+    for (const float memberBend : {-48.0f, 96.0f})
+    {
+        auto cached = std::make_unique<Engine>();
+        acustra::EngineParameters parameters;
+        parameters.guitarModel = model;
+        parameters.picking = picking;
+        parameters.room = 0.0f;
+        cached->setParameters(parameters);
+        cached->prepare(rate, 32);
+        cached->setLowerZoneMemberCount(2);
+        cached->noteOn(memberBend < 0.0f ? 40 : 52, 0.8f, 2);
+        std::array<float, 32> left {}, right {}, forcedLeft {}, forcedRight {};
+        for (int block = 0; block < 150; ++block)
+            cached->process(left.data(), right.data(), 32);
+        cached->setPitchBend(memberBend, 2);
+        for (int block = 0; block < 4; ++block)
+            cached->process(left.data(), right.data(), 32);
+        const auto before = Access::memberGeometry(*cached);
+        auto forced = std::make_unique<Engine>(*cached);
+        // The lower-limit case uses the default MPE +/-48 member range and
+        // only half a semitone of the manager's ordinary +/-2 range.
+        cached->setPitchBend(0.5f, 1);
+        forced->setPitchBend(0.5f, 1);
+        for (int block = 0; block < 200; ++block)
+        {
+            Access::invalidateConfiguration(*forced);
+            cached->process(left.data(), right.data(), 32);
+            forced->process(forcedLeft.data(), forcedRight.data(), 32);
+            if (block == 0)
+            {
+                const auto after = Access::memberGeometry(*cached);
+                if (before[0] != after[0] || !(after[1] < before[1])
+                    || !(after[2] > before[2]))
+                {
+                    std::cerr << "FAIL: clamped-slide fixture did not isolate changed geometry\n";
+                    return false;
+                }
+            }
+            if (!Access::sameState(*cached, *forced)
+                || std::memcmp(left.data(), forcedLeft.data(), sizeof(left)) != 0
+                || std::memcmp(right.data(), forcedRight.data(), sizeof(right)) != 0)
+            {
+                std::cerr << "FAIL: clamped-slide configuration parity at " << rate
+                          << " Hz, model " << static_cast<int>(model)
+                          << ", picking " << static_cast<int>(picking)
+                          << ", member bend " << memberBend << ", block " << block << '\n';
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 int main()
 {
     using Engine = acustra::AcustraEngine;
@@ -164,6 +249,8 @@ int main()
         std::cerr << "FAIL: exact pitch-geometry hit/miss/reset/copy contract\n";
         return 1;
     }
+    if (!clampedSlideConfigurationContract())
+        return 1;
     std::uint64_t frames = 0;
     for (const double rate : {8000.0, 44100.0, 48000.0, 96000.0, 192000.0, 384000.0})
     for (const auto model : {acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978})
@@ -236,6 +323,6 @@ int main()
             return 1;
         }
     }
-    std::cout << "Pitch geometry: exact raw-key hits/misses, reset/copy and " << frames
+    std::cout << "Pitch geometry: exact raw-key hits/misses, reset/copy, 24 clamped-slide cases and " << frames
               << " forced-uncached audio/state frames passed\n";
 }

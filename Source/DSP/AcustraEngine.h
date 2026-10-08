@@ -880,8 +880,9 @@ private:
     // computed from: the engine-wide state configureVoice reads (calibration,
     // host rate, construction, tuning, bridge bank, every string's anchor
     // stiffness) enters as one generation count that changes whenever any of
-    // it does; the voice's own pitch, tension, age and hand enter as their
-    // exact bits. configureVoice writes the same values for an equal key, so
+    // it does; the voice's own pitch, geometry, tension, age and hand enter as
+    // their exact bits. A bounded final pitch does not identify the physical
+    // length, fret or pre-attack loss pitch. Equal keys produce equal values, so
     // an equal key lets it keep what it already wrote.
     struct VoiceConfigurationKey
     {
@@ -890,6 +891,9 @@ private:
         int openMidi { 0 };
         std::uint32_t frequency { 0 };
         std::uint32_t tensionSemitones { 0 };
+        std::uint32_t soundingLength { 0 };
+        std::uint32_t speakingFret { 0 };
+        std::uint32_t lossDesignFrequency { 0 };
         std::uint32_t age { 0 };
         std::uint32_t palmMute { 0 };
 
@@ -900,6 +904,9 @@ private:
                 && openMidi == other.openMidi
                 && frequency == other.frequency
                 && tensionSemitones == other.tensionSemitones
+                && soundingLength == other.soundingLength
+                && speakingFret == other.speakingFret
+                && lossDesignFrequency == other.lossDesignFrequency
                 && age == other.age && palmMute == other.palmMute;
         }
     };

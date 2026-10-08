@@ -5,6 +5,37 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-08 — keep pitch geometry and restored parameters consistent
+
+The follow-up audit found an incomplete voice-configuration cache key. A legal
+extreme MPE member bend can hold the output at the waveguide's frequency limit
+while a manager slide still changes the string's physical length. The old key
+then reused stiffness, longitudinal and loss coefficients from the previous
+geometry. The key now includes exact sounding length, speaking fret and loss
+design frequency alongside its existing inputs. Cached and forced
+configuration must agree even when the final frequency is unchanged.
+For example, E2 with a -48-semitone member bend and a manager slide from
+0 to +0.5 semitones stayed at the lower pitch limit while its cached delay
+target lagged the recalculated target by about 42 samples at 48 kHz. This
+repairs a bounded-pitch edge case, not an authored change to the normal tone.
+
+Malformed saved parameters also needed handling before JUCE state replacement:
+an explicit NaN Output value could mute the instrument and an invalid Room
+value could survive another save. Non-finite saved values now use the declared
+parameter default; missing legacy Room and Release Noise still restore their
+intentional silent values. Legacy Body Material values are bounded before
+integer rounding so extreme finite inputs migrate deterministically.
+
+The cache regression covers 24 upper/lower pitch-limit cases across both
+models at 44.1, 48 and 96 kHz and fails against the preceding revision.
+A separate 36-case comparison with that frozen revision preserves every
+stereo and pickup sample over 884,736 frames of ordinary notes, slides,
+member bends, pressure, re-plucks and releases, including all three picking
+techniques and dry/Room 50%. Malformed-state tests check declared defaults,
+modern Capture precedence, finite re-save/reload and legacy wood endpoints.
+All 70 DSP/tool tests, both native host suites and the C++17 compatibility
+build pass; Linux VST3 and Standalone builds also succeed.
+
 ## 2026-10-08 — preserve modal cancellation in microphone correction
 
 The body/capture audit found that Original's per-mode microphone weighting

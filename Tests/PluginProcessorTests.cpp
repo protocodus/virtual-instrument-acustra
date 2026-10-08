@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <set>
 #include <string>
@@ -1516,6 +1517,97 @@ void testStateRoundTripAndMigration()
             "invalid host state was applied instead of ignored");
 }
 
+void testMalformedStateParameters()
+{
+    namespace ids = acustra::parameters;
+    auto owner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *owner;
+    const auto restore = [] (AcustraAudioProcessor& target,
+                            const juce::ValueTree& state)
+    {
+        juce::MemoryBlock bytes;
+        if (const auto xml = state.createXml())
+            juce::AudioProcessor::copyXmlToBinary (*xml, bytes);
+        target.setStateInformation (bytes.getData(), static_cast<int> (bytes.getSize()));
+    };
+
+    for (const char* invalid : { "nan", "inf", "-inf" })
+    {
+        auto state = processor.parameters.copyState();
+        state.setProperty ("stateVersion", 2, nullptr);
+        for (auto child : state)
+            if (child.hasType ("PARAM"))
+                child.setProperty ("value", invalid, nullptr);
+        // An explicitly present modern Capture still wins the legacy
+        // overrides when its malformed value falls back to its own default.
+        for (auto child : state)
+        {
+            const auto id = child.getProperty ("id").toString();
+            if (id == ids::capture)
+                child.setProperty ("value", 4.0f, nullptr);
+            else if (id == ids::upperMic)
+                child.setProperty ("value", 1.0f, nullptr);
+        }
+        restore (processor, state);
+
+        const auto check = [&] (const AcustraAudioProcessor& target)
+        {
+            for (const auto* hostParameter : target.getParameters())
+            {
+                const auto* parameter = dynamic_cast<const juce::RangedAudioParameter*> (
+                    hostParameter);
+                if (parameter == nullptr)
+                    continue;
+                const float expected = parameter->paramID == ids::capture ? 4.0f
+                    : parameter->paramID == ids::upperMic ? 1.0f
+                    : parameter->convertFrom0to1 (parameter->getDefaultValue());
+                const float actual = valueOf (target, parameter->paramID.toRawUTF8());
+                expect (std::isfinite (actual) && std::abs (actual - expected) < 0.011f,
+                        std::string { invalid } + " state did not recover the default for "
+                            + parameter->paramID.toStdString());
+            }
+            const auto snapshot = target.snapshotEngineParameters();
+            expect (snapshot.capture == acustra::CaptureType::StereoMic
+                        && snapshot.outputGain == 1.0f
+                        && std::abs (snapshot.room - 0.5f) < 0.002f
+                        && std::abs (snapshot.releaseNoise - 0.7f) < 0.002f,
+                    "malformed explicit controls used legacy missing-control defaults");
+        };
+        check (processor);
+        juce::MemoryBlock resaved;
+        processor.getStateInformation (resaved);
+        const auto xml = juce::AudioProcessor::getXmlFromBinary (
+            resaved.getData(), static_cast<int> (resaved.getSize()));
+        expect (xml != nullptr, "repaired state could not be saved");
+        if (xml != nullptr)
+            for (const auto& child : juce::ValueTree::fromXml (*xml))
+                if (child.hasType ("PARAM"))
+                    expect (std::isfinite (static_cast<float> (child.getProperty ("value"))),
+                            "repaired state saved a non-finite parameter");
+        auto reloaded = std::make_unique<AcustraAudioProcessor>();
+        reloaded->setStateInformation (resaved.getData(), static_cast<int> (resaved.getSize()));
+        check (*reloaded);
+    }
+
+    // Clamp old choice values in floating point before rounding: finite
+    // corrupt values can exceed both lround's and int's representable range.
+    for (const float oldWood : { std::numeric_limits<float>::max(),
+                                -std::numeric_limits<float>::max() })
+    {
+        juce::ValueTree old { "ACUSTRA_STATE" };
+        juce::ValueTree wood { "PARAM" };
+        wood.setProperty ("id", ids::bodyMaterial, nullptr);
+        wood.setProperty ("value", oldWood, nullptr);
+        old.appendChild (wood, nullptr);
+        restore (processor, old);
+        expect (valueOf (processor, ids::bodyMaterial) == (oldWood > 0.0f ? 2.0f : 0.0f),
+                "an extreme finite legacy wood did not clamp before migration");
+        expect (valueOf (processor, ids::room) == 0.0f
+                    && valueOf (processor, ids::releaseNoise) == 0.0f,
+                "repairing an old state added room or release noise");
+    }
+}
+
 void testEditorRendering()
 {
     auto processorOwner = std::make_unique<AcustraAudioProcessor>();
@@ -2554,6 +2646,7 @@ int main()
     testLowerZoneLifecycleAndControllerBoundaries();
     testControllerResetSoundOffAndUiPanic();
     testStateRoundTripAndMigration();
+    testMalformedStateParameters();
     testStringActivityDisplay();
     testEditorRendering();
 

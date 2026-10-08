@@ -5099,6 +5099,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const VoiceConfigurationKey configurationKey {
         voiceConfigurationGeneration_, stoppedMidi, voice.openMidi,
         exact::bits(frequency), exact::bits(tensionSemitones),
+        exact::bits(soundingLength), exact::bits(pitch.speakingFret),
+        exact::bits(lossDesignFrequency),
         exact::bits(parameters_.stringAge), exact::bits(palmMute_) };
     const bool usePickReference = (clearDelay || refreshPickReference)
         && sampleRate_ != 48000.0 && parameters_.picking == PickingTechnique::Pick;
