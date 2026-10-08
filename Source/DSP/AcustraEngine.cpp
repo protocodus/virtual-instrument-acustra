@@ -211,6 +211,14 @@ namespace
 constexpr float pi = 3.14159265358979323846f;
 constexpr float twoPi = 2.0f * pi;
 constexpr int localMaximumDelaySamples = ACUSTRA_EXTENDED_SAMPLE_RATES ? 32768 : 8192;
+int delayCapacityForRate([[maybe_unused]] double rate) noexcept
+{
+#if ACUSTRA_EXTENDED_SAMPLE_RATES
+    return rate <= 192000.0 ? 8192 : rate <= 384000.0 ? 16384 : 32768;
+#else
+    return localMaximumDelaySamples;
+#endif
+}
 // Legacy output reference gain. The pair bank preserves raw measured complex
 // phase; this gain is not an absolute-SPL calibration of the new bank. Any
 // audition RMS match is applied after render.
@@ -1616,7 +1624,7 @@ double tunedLoopDelay(double fundamental, double sampleRate,
         + dispersionPhase(dispersion, omega);
     double delay = std::clamp(sampleRate / fundamental - fixedPhase / omega,
                               3.0,
-                              static_cast<double>(localMaximumDelaySamples - 3));
+                              static_cast<double>(delayCapacityForRate(sampleRate) - 3));
     for (int round = 0; round < 3; ++round)
     {
         const int anchor = delayAnchor(delay);
@@ -1634,7 +1642,7 @@ double tunedLoopDelay(double fundamental, double sampleRate,
             if (exact::abs(slope) < 1.0e-12)
                 break;
             delay = std::clamp(delay - residual / slope, 3.0,
-                static_cast<double>(localMaximumDelaySamples - 3));
+                static_cast<double>(delayCapacityForRate(sampleRate) - 3));
         }
         if (delayAnchor(delay) == anchor)
             break;
@@ -1808,7 +1816,7 @@ DispersionCalibration collocateDispersion(
             {
                 double candidate[] {
                     std::clamp(values[0] + amount * update[0], 3.0,
-                        static_cast<double>(localMaximumDelaySamples - 3)),
+                        static_cast<double>(delayCapacityForRate(sampleRate) - 3)),
                     std::clamp(values[1] + amount * update[1], 0.1, 30.0),
                     std::clamp(values[2] + amount * update[2], 0.05, 15.0)
                 };
@@ -1921,6 +1929,7 @@ DispersionCalibration collocateDispersion(
 struct DispersionPartials
 {
     static constexpr int capacity = 12;
+    int maximumDelay { 8192 };
     int highest { 0 };
     double omega0 { 0.0 };
     std::array<double, capacity> omega {};
@@ -1944,6 +1953,7 @@ DispersionPartials dispersionPartials(
     double bendingA1, double bendingA2) noexcept
 {
     DispersionPartials partials;
+    partials.maximumDelay = delayCapacityForRate(sampleRate);
     partials.omega0 = 2.0 * piDouble * fundamental / sampleRate;
     const auto stretched = [&] (int partial)
     {
@@ -2087,10 +2097,10 @@ void refineDispersionDesign(const DispersionPartials& partials,
     const int count = partials.highest;
     const double startDecay = x[1];
     const double startPole = x[2];
-    const auto bound = [] (double values[dispersionDesignValues])
+    const auto bound = [&partials] (double values[dispersionDesignValues])
     {
         values[0] = std::clamp(values[0], 3.0,
-            static_cast<double>(localMaximumDelaySamples - 3));
+            static_cast<double>(partials.maximumDelay - 3));
         values[1] = std::clamp(values[1], 0.1, 40.0);
         values[2] = std::clamp(values[2], 0.05, 20.0);
     };
@@ -2860,7 +2870,7 @@ float AcustraEngine::StringLoop::readDelay(float samples) noexcept
     if (!readDelayValid || sampleBits != readDelayBits)
     {
         const float bounded = AcustraEngine::clamp(
-            samples, 3.0f, static_cast<float>(maximumDelaySamples - 3));
+            samples, 3.0f, static_cast<float>(static_cast<int>(delay.size()) - 3));
         readDelayWhole = delayAnchor(bounded);
         const float fraction = bounded - static_cast<float>(readDelayWhole);
         if (exact::bits(fraction) != exact::bits(thiranFraction))
@@ -2945,7 +2955,7 @@ void AcustraEngine::StringLoop::switchSecondDispersion(bool active) noexcept
         return;
     secondDispersionActive = active;
     const float bounded = AcustraEngine::clamp(
-        currentDelay, 3.0f, static_cast<float>(maximumDelaySamples - 3));
+        currentDelay, 3.0f, static_cast<float>(static_cast<int>(delay.size()) - 3));
     const int whole = delayAnchor(bounded);
     if (active)
     {
@@ -3131,7 +3141,7 @@ void AcustraEngine::StringLoop::beginGestureContact(
 {
     gestureContact = {};
     const int length = std::clamp(static_cast<int>(std::lround(currentDelay)),
-                                  8, maximumDelaySamples - 2);
+                                  8, static_cast<int>(delay.size()) - 2);
     const int first = std::clamp(static_cast<int>(std::lround(
         0.5f * length * AcustraEngine::clamp(position, 0.02f, 0.98f))),
         1, length / 2 - 1);
@@ -3354,6 +3364,25 @@ void AcustraEngine::prepare(double sampleRate, int)
     if (!exact::isfinite(sampleRate) || sampleRate <= 0.0)
         sampleRate = 48000.0;
     sampleRate_ = std::clamp(sampleRate, 8000.0, maximumSupportedSampleRate);
+#if ACUSTRA_EXTENDED_SAMPLE_RATES
+    const auto active = static_cast<std::size_t>(delayCapacityForRate(sampleRate_));
+    pickReleaseDisplacement_.prepareSize(active);
+    pickReleaseVelocity_.prepareSize(active);
+    for (auto& loop : repluckOldLoops_) loop.delay.prepareSize(active);
+    for (auto& voice : voices_)
+    {
+        for (auto& loop : voice.loops) loop.delay.prepareSize(active);
+        voice.tailLoop.delay.prepareSize(active);
+        voice.tailParallelLoop.delay.prepareSize(active);
+        for (auto* travel : { &voice.contactTravel, &voice.tailContactTravel,
+                &voice.contactNoiseTravel, &voice.tailContactNoiseTravel,
+                &voice.legatoContactTravel, &voice.tailLegatoContactTravel,
+                &voice.releaseNoiseTravel })
+            travel->history.prepareSize(active);
+        for (auto* arrivals : { &voice.repluckArrivals, &voice.tailRepluckArrivals })
+            for (auto& plane : arrivals->wave) plane.prepareSize(2 * active);
+    }
+#endif
     ++voiceConfigurationGeneration_;
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
     releaseStepPole_ = static_cast<float>(std::exp(-1.0 / (0.010 * sampleRate_)));
@@ -5009,7 +5038,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                                            -192.0f, 192.0f);
         const float slideFrequency = clamp(unbentFrequency
             * std::exp2(slideInterval / 12.0f),
-            static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
             0.24f * static_cast<float>(sampleRate_));
         const float soundingLength = slideInterval == 0.0f ? fretLength
             : fretLength * unbentFrequency / slideFrequency;
@@ -5034,7 +5063,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // limits so hostile wheels remain finite.
         const float frequency = clamp(
             unbentFrequency * std::exp2(performedSemitones / 12.0f),
-            static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
             0.24f * static_cast<float>(sampleRate_));
         const float contactPeriodSamples = static_cast<float>(sampleRate_) / frequency;
         // Frequency of the physical gesture before the few-cent transient
@@ -5043,7 +5072,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // old-fundamental section higher on its curve over-damps bent partials.
         const float lossDesignFrequency = clamp(unbentFrequency * std::exp2(
             (clamp(performedBend, -192.0f, 192.0f) + vibratoInterval) / 12.0f),
-            static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
             0.24f * static_cast<float>(sampleRate_));
 
         const float openFrequency = midiFrequency(voice.openMidi);
@@ -5486,7 +5515,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             : planeDelay - measuredBridgeDelay;
         loop.targetDelay = clamp(
             polarisationDelay * (1.0f + endCorrection / soundingLength),
-            3.0f, static_cast<float>(maximumDelaySamples - 3));
+            3.0f, static_cast<float>(activeDelaySamples() - 3));
         if (clearDelay)
             loop.currentDelay = loop.targetDelay;
         if (referenceTuning)
@@ -5498,7 +5527,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                 : referenceRawDelay - referenceBridgeDelay;
             voice.referencePickDelay[static_cast<std::size_t>(polarisation)] = clamp(
                 referenceDelay * (1.0f + endCorrection / soundingLength),
-                3.0f, static_cast<float>(maximumDelaySamples - 3));
+                3.0f, static_cast<float>(activeDelaySamples() - 3));
         }
         else if (clearDelay && !usePickReference)
             voice.referencePickDelay[static_cast<std::size_t>(polarisation)] = 0.0f;
@@ -5622,7 +5651,7 @@ float AcustraEngine::loopFundamental(const Voice& voice) const noexcept
     if (bend == 0.0f)
         return unbent;
     return clamp(unbent * std::exp2(clamp(bend, -192.0f, 192.0f) / 12.0f),
-                 static_cast<float>(sampleRate_) / (maximumDelaySamples - 3.0f),
+                 static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
                  0.24f * static_cast<float>(sampleRate_));
 }
 
@@ -6104,7 +6133,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         loop.currentDelay = loop.targetDelay;
         const int length = std::clamp(
             static_cast<int>(std::round(loop.targetDelay)), 8,
-            maximumDelaySamples - 3);
+            activeDelaySamples() - 3);
         // The two planes are released a little apart (-0.006 and +0.009 of
         // the string, authored), so their spectra are not one comb twice.
         // The shape is laid over the `length` samples written below, but the
@@ -6458,7 +6487,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     {
         const int length = std::clamp(
             static_cast<int>(std::round(merge ? loop.currentDelay : loop.targetDelay)), 8,
-            maximumDelaySamples - 3);
+            activeDelaySamples() - 3);
         const auto at = [&] (int sample)
         {
             return loop.delay[static_cast<std::size_t>(wrapDelayIndex(
@@ -6681,7 +6710,7 @@ void AcustraEngine::conditionRepluckContact(StringLoop& loop,
         return;
     const float period = loop.currentDelay;
     const int length = std::clamp(static_cast<int>(std::ceil(period)) + 1,
-                                  4, maximumDelaySamples - 2);
+                                  4, static_cast<int>(loop.delay.size()) - 2);
     const auto at = [&] (int age) -> float&
     {
         return loop.delay[static_cast<std::size_t>(
@@ -6811,7 +6840,7 @@ std::array<double, 2> AcustraEngine::repluckIncrementWork(
     float* alignedIncrements) noexcept
 {
     const int length = std::clamp(static_cast<int>(std::ceil(previous.currentDelay)) + 1,
-                                  4, maximumDelaySamples - 2);
+                                  4, static_cast<int>(previous.delay.size()) - 2);
     const auto at = [&] (int age)
     {
         return previous.delay[static_cast<std::size_t>(
@@ -6839,7 +6868,7 @@ void AcustraEngine::mergeRepluckLoop(StringLoop& fresh, StringLoop& previous,
                                      float gain, const float* alignedIncrements) noexcept
 {
     const int length = std::clamp(static_cast<int>(std::ceil(previous.currentDelay)) + 1,
-                                  4, maximumDelaySamples - 2);
+                                  4, static_cast<int>(previous.delay.size()) - 2);
     for (int age = 0; age < length; ++age)
         previous.delay[static_cast<std::size_t>(
             wrapDelayIndex(previous.writeIndex - 1 - age))]
@@ -6863,7 +6892,7 @@ void AcustraEngine::RepluckArrivals::clear() noexcept
 void AcustraEngine::RepluckArrivals::add(int offset, float normal,
                                        float parallel) noexcept
 {
-    if (offset >= capacity)
+    if (offset >= static_cast<int>(wave[0].size()))
     {
         overflow = true;
         return;
@@ -6903,7 +6932,7 @@ void AcustraEngine::retainRepluckArrivals(Voice& voice) noexcept
         || voice.contactNoiseTravel.active || voice.legatoContactTravel.active
         || voice.legatoContactSamples > 0)
     {
-        if (offset >= RepluckArrivals::capacity)
+        if (offset >= static_cast<int>(voice.repluckArrivals.wave[0].size()))
         {
             voice.repluckArrivals.overflow = true;
             assert(false && "repluck contact transport exceeded its proven bound");
@@ -7603,7 +7632,7 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
             : static_cast<double>(loop.targetDelay) * 48000.0 / sampleRate_;
         const int grid = std::clamp(
             static_cast<int>(std::round(periodAt48k)),
-            8, std::min(maximumDelaySamples - 3,
+            8, std::min(activeDelaySamples() - 3,
                         static_cast<int>(pickReleaseDisplacement_.size())));
         const double referencePole = slipPole > 0.0
             ? std::pow(slipPole, sampleRate_ / 48000.0) : 0.0;
@@ -8317,7 +8346,7 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     for (const auto& loop : voice.loops)
     {
         const int length = std::clamp(static_cast<int>(
-            std::round(loop.currentDelay)), 8, maximumDelaySamples - 3);
+            std::round(loop.currentDelay)), 8, activeDelaySamples() - 3);
         float previous = loop.delay[static_cast<std::size_t>(
             wrapDelayIndex(loop.writeIndex - length))];
         for (int age = length - 1; age >= 0; --age)
@@ -9318,7 +9347,7 @@ void AcustraEngine::ContactTravel::reset(float directDelay,
         auto& tap = taps[i];
         tap = {};
         const double delay = std::clamp(static_cast<double>(delays[i]),
-            0.0, static_cast<double>(maximumDelaySamples - 3));
+            0.0, static_cast<double>(history.size() - 3));
         // The existing second-order Thiran convention is stable for its
         // residual delay >=1.1. Very short causal paths need first order.
         if (delay >= 1.1)

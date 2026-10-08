@@ -21,7 +21,13 @@ int main(int argc, char** argv)
         performer->setParameters(parameters);
         performer->setTempoBpm(97.0);
         std::array<float, 64> left {}, right {}, piezo {};
-        for (int block = 0; block < 350; ++block)
+        // Rack hosts stop at 192 kHz, where both builds use 8192 histories.
+        // At 384 kHz the extended ring is deliberately larger: the legacy
+        // explicit legato energy observer reads its unwritten ring slot,
+        // which contains a different old sample. Keep the ordinary 384 kHz
+        // fixture while exercising legato/wrapped tails at every host rate.
+        const int blocks = rate <= 192000.0 ? 1200 : 350;
+        for (int block = 0; block < blocks; ++block)
         {
             if (block == 130)
             {
@@ -44,7 +50,18 @@ int main(int argc, char** argv)
             if (block == 120) performer->pitchWheel(29, 1, 0.25f);
             if (block == 160) performer->noteOn(11, 1, 69, 96);
             if (block == 200) performer->controlChange(13, 1, 123, 0);
+            // Repeated six-string strokes exercise active-prefix copies,
+            // retained arrivals and the smaller ring after several wraps.
+            if (block >= 400 && block < 1000 && block % 100 == 0)
+                for (const int note : { 40, 47, 52, 56, 59, 64 })
+                {
+                    performer->noteOff(2, 1, note);
+                    performer->noteOn(3, 1, note, 110);
+                }
             performer->endBlock();
+            if (block == 450 && !performer->engine().transitionNote(64, 65, 0.65f))
+                return 2;
+            if (block == 1050) performer->reset();
             for (const auto* bus : { &left, &right, &piezo })
                 output.write(reinterpret_cast<const char*>(bus->data()),
                              static_cast<std::streamsize>(sizeof(float) * bus->size()));

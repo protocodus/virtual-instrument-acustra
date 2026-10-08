@@ -15,6 +15,57 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    static bool activeStorageIsBounded()
+    {
+        using History = AcustraEngine::DelayHistory<32768>;
+        auto source = std::make_unique<History>();
+        auto destination = std::make_unique<History>();
+        source->prepareSize(8192);
+        source->data()[9000] = 17.0f;
+        source->fill(0.25f);
+        if (source->data()[9000] != 17.0f || (*source)[32767] != 0.25f)
+            return false;
+        destination->data()[9000] = 23.0f;
+        *destination = *source;
+        auto copied = std::make_unique<History>(*source);
+        if (destination->data()[9000] != 23.0f || copied->size() != 8192
+            || (*copied)[32767] != 0.25f)
+            return false;
+        source->prepareSize(32768);
+        if (source->data()[9000] != 0.0f)
+            return false;
+        source->fill(1.0f);
+        source->prepareSize(8192);
+        source->prepareSize(32768);
+        return std::all_of(source->begin(), source->end(), [](float value) { return value == 0.0f; });
+    }
+
+    static bool capacitiesMatchRate(const AcustraEngine& engine, double rate)
+    {
+        const std::size_t expected = rate <= 192000.0 ? 8192 : rate <= 384000.0 ? 16384 : 32768;
+        if (engine.pickReleaseDisplacement_.size() != expected
+            || engine.pickReleaseVelocity_.size() != expected)
+            return false;
+        for (const auto& loop : engine.repluckOldLoops_)
+            if (loop.delay.size() != expected) return false;
+        for (const auto& voice : engine.voices_)
+        {
+            for (const auto& loop : voice.loops)
+                if (loop.delay.size() != expected) return false;
+            if (voice.tailLoop.delay.size() != expected
+                || voice.tailParallelLoop.delay.size() != expected) return false;
+            for (const auto* travel : { &voice.contactTravel, &voice.tailContactTravel,
+                    &voice.contactNoiseTravel, &voice.tailContactNoiseTravel,
+                    &voice.legatoContactTravel, &voice.tailLegatoContactTravel,
+                    &voice.releaseNoiseTravel })
+                if (travel->history.size() != expected) return false;
+            for (const auto* arrivals : { &voice.repluckArrivals, &voice.tailRepluckArrivals })
+                for (const auto& plane : arrivals->wave)
+                    if (plane.size() != 2 * expected) return false;
+        }
+        return true;
+    }
+
     static bool derivativePreservesReferenceTime(double rate)
     {
         AcustraEngine::FixedDerivative derivative;
@@ -107,6 +158,8 @@ void lowPitchAndStability(double rate, acustra::GuitarModel model)
     performer->setParameters(parameters);
     performer->prepare(rate, 256);
     expect(performer->engine().sampleRate() == rate, "requested high rate was clamped");
+    expect(acustra::AcustraEngineTestAccess::capacitiesMatchRate(performer->engine(), rate),
+           "a main/tail/contact/scratch history has the wrong active capacity");
     performer->setMasterTuneCents(-100.0f);
     // A downward octave plus global tuning needs >22000 samples at 768k.
     performer->engine().setPitchBend(-13.0f);
@@ -154,7 +207,7 @@ void controllerAndReprepare(double rate)
     performer->engine().noteOn(59, 0.6f);
     fresh->engine().noteOn(59, 0.6f);
     Audio other;
-    for (int block = 0; block < 16; ++block)
+    for (int block = 0; block < 144; ++block)
     {
         performer->process(audio.left.data(), audio.right.data(), 256);
         fresh->process(other.left.data(), other.right.data(), 256);
@@ -186,9 +239,10 @@ void fingerDuration(double rate, bool hammer)
 int main()
 {
     using Access = acustra::AcustraEngineTestAccess;
+    expect(Access::activeStorageIsBounded(), "history fill/copy touched dormant storage or resize retained it");
     expect(acustra::AcustraEngine::maximumSupportedSampleRate == 768000.0,
            "extended build does not expose its actual rate limit");
-    for (const double rate : { 352800.0, 384000.0, 705600.0, 768000.0 })
+    for (const double rate : { 48000.0, 96000.0, 192000.0, 352800.0, 384000.0, 705600.0, 768000.0 })
     {
         expect(Access::derivativePreservesReferenceTime(rate), "bridge derivative lost its 48k reference time");
         expect(Access::lossIsPassive(rate), "remapped loss pole left the unit circle");

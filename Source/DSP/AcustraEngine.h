@@ -9,6 +9,8 @@
 #include "PerformanceRealism.h"
 
 #include <array>
+#include <algorithm>
+#include <cassert>
 #include <complex>
 #include <cstddef>
 #include <cstdint>
@@ -432,6 +434,63 @@ private:
         = ACUSTRA_EXTENDED_SAMPLE_RATES ? 32768 : 8192;
     static constexpr int maximumLegatoContactSamples
         = ACUSTRA_EXTENDED_SAMPLE_RATES ? 2304 : 1152;
+
+#if ACUSTRA_EXTENDED_SAMPLE_RATES
+    // Fixed allocation, rate-sized work. All legal active sizes divide the
+    // physical capacity, so existing maximum-ring indices (including the
+    // negative-age initial pluck writes) map into the same active history.
+    // A copied history carries its ring size and only its live storage;
+    // dormant samples are never read, and prepare clears any enlarged span.
+    template <std::size_t Capacity>
+    class DelayHistory
+    {
+    public:
+        DelayHistory() noexcept : values_ {} {}
+        DelayHistory(const DelayHistory& other) noexcept : mask_(other.mask_)
+        {
+            std::copy_n(other.values_.begin(), size(), values_.begin());
+        }
+        DelayHistory& operator=(const DelayHistory& other) noexcept
+        {
+            if (this != &other)
+            {
+                mask_ = other.mask_;
+                std::copy_n(other.values_.begin(), size(), values_.begin());
+            }
+            return *this;
+        }
+        void prepareSize(std::size_t samples) noexcept
+        {
+            assert(samples > 0 && samples <= Capacity
+                && (samples & (samples - 1)) == 0);
+            mask_ = samples - 1;
+            fill(0.0f);
+        }
+        std::size_t size() const noexcept { return mask_ + 1; }
+        float& operator[](std::size_t index) noexcept { return values_[index & mask_]; }
+        const float& operator[](std::size_t index) const noexcept { return values_[index & mask_]; }
+        float* data() noexcept { return values_.data(); }
+        const float* data() const noexcept { return values_.data(); }
+        float* begin() noexcept { return values_.data(); }
+        const float* begin() const noexcept { return values_.data(); }
+        float* end() noexcept { return begin() + size(); }
+        const float* end() const noexcept { return begin() + size(); }
+        void fill(float value) noexcept { std::fill_n(begin(), size(), value); }
+    private:
+        // Deliberately no member initializer: copying an active prefix must
+        // not first zero the full capacity. The default constructor does.
+        std::array<float, Capacity> values_;
+        std::size_t mask_ { Capacity / 4 - 1 };
+    };
+#else
+    template <std::size_t Capacity>
+    using DelayHistory = std::array<float, Capacity>;
+#endif
+
+    int activeDelaySamples() const noexcept
+    {
+        return static_cast<int>(pickReleaseDisplacement_.size());
+    }
     static constexpr int bodyModeCount = ACUSTRA_BODY_MODE_COUNT;
     static constexpr int bridgeModeCount = ACUSTRA_BRIDGE_MODE_COUNT;
     static_assert(bridgeModeCount < 255, "BridgeLoad::activeModes holds a byte");
@@ -632,7 +691,7 @@ private:
 
     struct StringLoop
     {
-        std::array<float, maximumDelaySamples> delay {};
+        DelayHistory<maximumDelaySamples> delay {};
         int writeIndex { 0 };
         float currentDelay { 128.0f };
         float targetDelay { 128.0f };
@@ -879,7 +938,7 @@ private:
             double a1 { 0.0 }, a2 { 0.0 };
             double y1 { 0.0 }, y2 { 0.0 };
         };
-        std::array<float, maximumDelaySamples> history {};
+        DelayHistory<maximumDelaySamples> history {};
         std::array<Tap, 2> taps {};
         int writeIndex { 0 };
         int historyLength { 0 };
@@ -978,7 +1037,7 @@ private:
     struct RepluckArrivals
     {
         static constexpr int capacity = 2 * maximumDelaySamples;
-        std::array<std::array<float, capacity>, 2> wave {};
+        std::array<DelayHistory<capacity>, 2> wave {};
         int readIndex { 0 };
         int remaining { 0 };
         bool overflow { false };
@@ -1735,8 +1794,8 @@ private:
     // a sample), and its write pass writes the same samples from them.
     // Once both fresh planes are built, a continuing re-pluck reuses these
     // arrays for the aligned increments shared by its work and merge passes.
-    std::array<float, maximumDelaySamples> pickReleaseDisplacement_ {};
-    std::array<float, maximumDelaySamples> pickReleaseVelocity_ {};
+    DelayHistory<maximumDelaySamples> pickReleaseDisplacement_ {};
+    DelayHistory<maximumDelaySamples> pickReleaseVelocity_ {};
     int nextDispersionSolve_ { 0 };
     // Advanced whenever engine state that configureVoice reads changes; see
     // VoiceConfigurationKey. Starts past the keys' never-matching zero.
