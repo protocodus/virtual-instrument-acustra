@@ -71,7 +71,7 @@ canonical DSP with its existing dry Room policy.
 
 Customer files use `Acustra-<version>-build.<number>-<Platform>-<arch>` and live
 under `dist/<version>/build.<number>/<Platform>-<arch>/`. For example, a
-universal 1.1.0 build numbered 1 uses `dist/1.1.1/build.1/macOS-universal/`, containing
+universal 1.1.1 build numbered 1 uses `dist/1.1.1/build.1/macOS-universal/`, containing
 `Acustra-1.1.1-build.1-macOS-universal.zip`, the matching `.pkg`,
 `.manifest.json` and `-SHA256SUMS.txt`. The manifest records the compiled
 identity, source revision, architectures and package hashes. These are local
