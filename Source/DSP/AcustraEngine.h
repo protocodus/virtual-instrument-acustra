@@ -1339,14 +1339,16 @@ private:
         // on the physical modes. Each fading bank keeps its own history.
         struct CaptureFilter
         {
-            static constexpr int sections = 2;
+            static constexpr int sections = 6;
             // Each section's normalized RBJ coefficients: b0, b1, b2, a1, a2.
-            std::array<std::array<float, 5>, sections> coefficients {{
-                { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f },
-                { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f }
-            }};
-            std::array<std::array<float, 2>, sections> stateLeft {}, stateRight {};
+            // Double storage keeps the low-frequency Original sections
+            // accurate up to 384 kHz. Bellido retains its legacy float steps.
+            std::array<std::array<double, 5>, sections> coefficients {};
+            std::array<std::array<double, 2>, sections> stateLeft {}, stateRight {};
+            int activeSections { 0 };
             bool enabled { false };
+            bool bellidoModel { false };
+            float gain { 1.0f };
 
             void configure(double sampleRate, bool bellido) noexcept;
             void reset() noexcept
@@ -1428,8 +1430,8 @@ private:
     static std::array<float, 4> bodyWoodFactors(
         const EngineParameters& parameters) noexcept;
     // The Original's capture voicing (CaptureVoicingData.h) as an amplitude
-    // gain at a frequency, its level included; configureBody multiplies
-    // each of the Original's radiation modes by it (tests).
+    // gain at a frequency, its level included. This is the analog target;
+    // the summed microphone pressure takes its causal digital filter.
     static float captureVoicingGain(float frequency) noexcept;
     float bridgePhaseDelay(float frequency, int stringIndex) const noexcept;
     // The saddle's mobility at one string's two ports, bridge and anchors in

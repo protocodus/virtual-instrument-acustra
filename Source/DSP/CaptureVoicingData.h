@@ -15,15 +15,16 @@
 // difference as one smooth gain, fitted to the consensus of the sources
 // (each weighted equally, the Eastman's two takes as one source) in third
 // octaves over each note's first second; above 3 kHz the sources disagree
-// and the fit stays near flat. It multiplies every radiation mode's
-// residues at the mode's own frequency (AcustraEngine::configureBody), so it
-// costs nothing per sample, moves with Shape and Wood as the modes do, and
-// reaches only the microphones: the piezo reads the saddle force, which no
-// microphone position changes. The named Bellido keeps its own measured
-// microphones.
+// and the fit stays near flat. A causal filter applies this contour to the
+// summed microphone pressure, preserving cancellation between the complex
+// modal tails. Per-mode magnitude weighting does not implement this response
+// and can turn the intended low-mid cuts into boosts. The contour reaches
+// only the microphones: the piezo reads the saddle force, which no microphone
+// position changes. The named Bellido keeps its separate capture contour.
 //
-// Each section is the analog prototype of an RBJ cookbook filter, read as a
-// magnitude at the mode's frequency; levelDb keeps the default
+// Each section is the analog prototype of an RBJ cookbook filter, implemented
+// with a frequency-prewarped bilinear transform at the host rate; levelDb is
+// the authored capture gain. Fixed construction trims keep the default
 // construction's loudness where it was (Tools/CalibrateConstructionLoudness.py
 // measures it).
 
@@ -56,6 +57,6 @@ inline constexpr CaptureVoicingSection captureVoicingSections[] {
     { CaptureVoicingKind::Peak, 1400.0f, 6.00f, 1.2f },
 };
 
-inline constexpr float captureVoicingLevelDb = 3.82f;
+inline constexpr float captureVoicingLevelDb = 4.12f;
 
 } // namespace acustra::detail

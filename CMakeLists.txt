@@ -384,6 +384,12 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.Capture AcustraCaptureTests)
     set_tests_properties(Acustra.Capture PROPERTIES TIMEOUT 300)
 
+    add_executable(AcustraCaptureVoicingTests Tests/CaptureVoicingTests.cpp)
+    target_link_libraries(AcustraCaptureVoicingTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraCaptureVoicingTests PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    acustra_add_suite(Acustra.CaptureVoicing AcustraCaptureVoicingTests)
+
     # The piezo chain against Tools/PiezoReference.py's circuit simulation,
     # through the fixtures it wrote (Tests/Fixtures).
     add_executable(AcustraPiezoCircuitTests Tests/PiezoCircuitTests.cpp)

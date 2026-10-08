@@ -4050,15 +4050,12 @@ void AcustraEngine::configureBody() noexcept
         const float residueTilt = std::exp2(
             physicalCalibration_.residueTiltDbPerOctave
             * std::log2(frequency / 1000.0f) / 6.02059991f);
-        // The Original's close pair heard from where a recording hears it
-        // (CaptureVoicingData.h); the Bellido keeps its own microphones.
-        const float voicing = steelBank ? captureVoicingGain(frequency) : 1.0f;
         const float drive = audibleAtThisRate
             ? detail::guitarMicrophoneTrims[static_cast<std::size_t>(parameters_.guitarModel)]
                 * anchor.volume * shapeLevel
                 * woodFactors.radiation
                 * bassTilt * brilliance
-                * residueTilt * voicing
+                * residueTilt
             : 0.0f;
         const float playedDrive = drive * share;
         // The stored residues drive unit-input discrete states fitted at
@@ -4586,16 +4583,22 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
 const AcustraEngine::BridgeMobilityTable&
 AcustraEngine::bridgeMobilityTable() const noexcept
 {
+    // A host request may be queued behind the sounding bridge's fade. Its
+    // tuning observer belongs to the configured target of that fade, not the
+    // newer request: mixing requested Model/Wood/Shape with bridgeShape* from
+    // the configured bank creates a third, nonexistent mechanical body.
+    // configureBridge advances the voice generation when the request is
+    // actually applied, so cached string tuning then follows the new bank.
     // Every input the terms below are computed from, as exact bits.
     const float rate = static_cast<float>(sampleRate_);
-    const auto bank = measuredBridgeBank(parameters_.guitarModel);
-    const bool ownBridge = parameters_.guitarModel == GuitarModel::Original;
+    const auto bank = measuredBridgeBank(configuredBridgeModel_);
+    const bool ownBridge = configuredBridgeModel_ == GuitarModel::Original;
     const float scale = physicalCalibration_.bridgeMobilityScale
         / (ownBridge ? 1.0f : fittedPhysicalCalibration.bridgeMobilityScale)
         * (ownBridge ? detail::steelTopMobilityRatio : 1.0f);
     const auto plate = plateConductanceMode(physicalCalibration_);
-    const auto wood = woodFactorsFor(parameters_.bodyMaterial,
-                                     parameters_.guitarModel);
+    const auto wood = woodFactorsFor(configuredBridgeMaterial_,
+                                     configuredBridgeModel_);
     const std::array<std::uint32_t, 13> key {
         exact::bits(rate), exact::bits(bridgeShapeA0_), exact::bits(bridgeShapeT1_),
         exact::bits(bridgeShapePlate_), exact::bits(bridgeShapeT1UpperHz_),
@@ -4603,17 +4606,17 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         exact::bits(plate.weight),
         exact::bits(wood.frequency), exact::bits(wood.q),
         // The joint-pole body's own Shape morph (visitSteelBlendBridge).
-        static_cast<std::uint32_t>(parameters_.shape),
+        static_cast<std::uint32_t>(configuredBridgeShape_),
         static_cast<std::uint32_t>(performanceRealism_.playerBodyLoading) };
     auto& table = bridgeMobilityTable_;
     if (table.valid && table.bank == bank.begin() && table.key == key)
         return table;
     // The terms as bridgePortMobility computed them in its mode loop.
     const float bilinear = 2.0f * rate;
-    const auto anchor = anchorTransformFor(parameters_.guitarModel);
-    const auto morph = bodyShapeMorph(measuredBodyBank(parameters_.guitarModel),
-        anchor, anchorBodyFor(parameters_.guitarModel),
-        targetBodyFor(parameters_.guitarModel, parameters_.shape));
+    const auto anchor = anchorTransformFor(configuredBridgeModel_);
+    const auto morph = bodyShapeMorph(measuredBodyBank(configuredBridgeModel_),
+        anchor, anchorBodyFor(configuredBridgeModel_),
+        targetBodyFor(configuredBridgeModel_, configuredBridgeShape_));
     table.count = 0;
     // One mode's terms; `level` multiplies its residues relative to scale.
     const auto add = [&] (const detail::MeasuredBridgeMode& source,
@@ -4636,7 +4639,7 @@ AcustraEngine::bridgeMobilityTable() const noexcept
     if (ownBridge)
         visitSteelBlendBridge(bridgeShapeA0_, bridgeShapeT1_, bridgeShapePlate_,
             bridgeShapeT1UpperHz_, anchor, morph,
-            steelJointMorph(anchor, parameters_.shape), wood,
+            steelJointMorph(anchor, configuredBridgeShape_), wood,
             physicalCalibration_,
             [&] (const detail::MeasuredBridgeMode& source,
                  const detail::MeasuredBridgeMode& measured, float level, bool own)
@@ -10066,63 +10069,119 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
 void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
                                                      bool bellido) noexcept
 {
-    if (enabled != bellido)
+    if (!enabled || bellidoModel != bellido)
         reset();
-    enabled = bellido;
-    if (!enabled)
-    {
-        for (auto& section : coefficients)
-            section = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f };
-        return;
-    }
-    // A recording-supported broad capture contour compensates the nearfield
-    // observation's 250-630 Hz excess and 0.8-1.6 kHz deficit. This authored
-    // microphone voicing does not simulate an exact distance or notch an
-    // individual mode: every mechanical/radiation pole and residue is intact.
+    enabled = true;
+    bellidoModel = bellido;
+    static_assert(sizeof(detail::captureVoicingSections)
+                      / sizeof(detail::captureVoicingSections[0]) == sections,
+                  "the Original capture filter must hold every authored section");
+    activeSections = bellido ? 2 : sections;
+    gain = bellido ? 1.0f
+        : static_cast<float>(std::pow(10.0,
+            static_cast<double>(detail::captureVoicingLevelDb) / 20.0));
+    // Both authored recording contours act on the summed pressure. Weighting
+    // modal residues by a contour instead breaks off-resonance cancellation:
+    // the Original's intended 500 Hz cut could become a boost on treble notes.
+    // Every mechanical/radiation pole and relative modal residue stays intact.
     // Shape and Wood retain its history; model fades copy it with the bank.
-    constexpr std::array<double, sections> frequency { 500.0, 1400.0 };
-    constexpr std::array<double, sections> gainDb { -6.0, 6.0 };
-    constexpr double q = 1.2;
+    constexpr std::array<double, 2> bellidoFrequency { 500.0, 1400.0 };
+    constexpr std::array<double, 2> bellidoGainDb { -6.0, 6.0 };
     constexpr double doublePi = 3.141592653589793238462643383279502884;
     for (int index = 0; index < sections; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
-        const double amplitude = std::pow(10.0, gainDb[slot] / 40.0);
-        const double omega = 2.0 * doublePi * frequency[slot] / sampleRate;
+        if (index >= activeSections)
+        {
+            coefficients[slot] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+            continue;
+        }
+        const auto& original = detail::captureVoicingSections[slot];
+        const auto kind = bellido ? detail::CaptureVoicingKind::Peak : original.kind;
+        const double frequency = bellido ? bellidoFrequency[slot] : original.frequencyHz;
+        const double gainDb = bellido ? bellidoGainDb[slot] : original.gainDb;
+        const double q = bellido ? 1.2 : original.q;
+        const double amplitude = std::pow(10.0, gainDb / 40.0);
+        const double omega = 2.0 * doublePi * frequency / sampleRate;
         const double cosine = std::cos(omega);
         const double alpha = std::sin(omega) / (2.0 * q);
-        const double a0 = 1.0 + alpha / amplitude;
-        coefficients[slot] = {
-            static_cast<float>((1.0 + alpha * amplitude) / a0),
-            static_cast<float>(-2.0 * cosine / a0),
-            static_cast<float>((1.0 - alpha * amplitude) / a0),
-            static_cast<float>(-2.0 * cosine / a0),
-            static_cast<float>((1.0 - alpha / amplitude) / a0)
+        const auto stored = [bellido] (double value)
+        {
+            return bellido ? static_cast<double>(static_cast<float>(value)) : value;
         };
+        if (kind == detail::CaptureVoicingKind::Peak)
+        {
+            const double a0 = 1.0 + alpha / amplitude;
+            coefficients[slot] = {
+                stored((1.0 + alpha * amplitude) / a0),
+                stored(-2.0 * cosine / a0),
+                stored((1.0 - alpha * amplitude) / a0),
+                stored(-2.0 * cosine / a0),
+                stored((1.0 - alpha / amplitude) / a0)
+            };
+        }
+        else
+        {
+            const bool low = kind == detail::CaptureVoicingKind::LowShelf;
+            const double direction = low ? 1.0 : -1.0;
+            const double slope = 2.0 * std::sqrt(amplitude) * alpha;
+            const double sum = amplitude + 1.0;
+            const double difference = amplitude - 1.0;
+            const double a0 = sum + direction * difference * cosine + slope;
+            coefficients[slot] = {
+                stored(amplitude * (sum - direction * difference * cosine + slope) / a0),
+                stored(2.0 * amplitude * (direction * difference - sum * cosine) / a0),
+                stored(amplitude * (sum - direction * difference * cosine - slope) / a0),
+                stored(-2.0 * (direction * difference + sum * cosine) / a0),
+                stored((sum + direction * difference * cosine - slope) / a0)
+            };
+        }
     }
 }
 
 void AcustraEngine::BodyBank::CaptureFilter::render(BodyOutput& output) noexcept
 {
-    // Original bypasses the arithmetic entirely, preserving its sample bits.
     if (!enabled)
         return;
-    const auto filter = [] (float input, const std::array<float, 5>& coefficient,
-                           std::array<float, 2>& state)
+    const auto legacyFilter = [] (float input, const std::array<double, 5>& coefficient,
+                                 std::array<double, 2>& state)
     {
-        const float result = coefficient[0] * input + state[0];
-        const float first = coefficient[1] * input - coefficient[3] * result
-                          + state[1];
-        const float second = coefficient[2] * input - coefficient[4] * result;
+        const float result = static_cast<float>(coefficient[0]) * input
+                           + static_cast<float>(state[0]);
+        const float first = static_cast<float>(coefficient[1]) * input
+                          - static_cast<float>(coefficient[3]) * result
+                          + static_cast<float>(state[1]);
+        const float second = static_cast<float>(coefficient[2]) * input
+                           - static_cast<float>(coefficient[4]) * result;
         state[0] = exact::abs(first) < 1.0e-30f ? 0.0f : first;
         state[1] = exact::abs(second) < 1.0e-30f ? 0.0f : second;
         return result;
     };
-    for (int index = 0; index < sections; ++index)
+    const auto filter = [] (float input, const std::array<double, 5>& coefficient,
+                           std::array<double, 2>& state)
+    {
+        const double result = coefficient[0] * input + state[0];
+        const double first = coefficient[1] * input - coefficient[3] * result
+                           + state[1];
+        const double second = coefficient[2] * input - coefficient[4] * result;
+        state[0] = exact::abs(first) < 1.0e-30 ? 0.0 : first;
+        state[1] = exact::abs(second) < 1.0e-30 ? 0.0 : second;
+        return static_cast<float>(result);
+    };
+    for (int index = 0; index < activeSections; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
-        output.left = filter(output.left, coefficients[slot], stateLeft[slot]);
-        output.right = filter(output.right, coefficients[slot], stateRight[slot]);
+        output.left = bellidoModel
+            ? legacyFilter(output.left, coefficients[slot], stateLeft[slot])
+            : filter(output.left, coefficients[slot], stateLeft[slot]);
+        output.right = bellidoModel
+            ? legacyFilter(output.right, coefficients[slot], stateRight[slot])
+            : filter(output.right, coefficients[slot], stateRight[slot]);
+    }
+    if (gain != 1.0f)
+    {
+        output.left *= gain;
+        output.right *= gain;
     }
 }
 
@@ -11202,10 +11261,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         monoReference_ += parameterSmoothing_
             * (monoReferenceFor(parameters_) - monoReference_);
         const float reference = radiationReferenceGain * outputReference_;
+        const float dryLeft = bodyScale * spreadLeft + directScale * spreadDirectLeft;
+        const float dryRight = bodyScale * spreadRight + directScale * spreadDirectRight;
         float outputLeft = reference * outputGain_
-            * (bodyScale * spreadLeft + directScale * spreadDirectLeft);
+            * dryLeft;
         float outputRight = reference * outputGain_
-            * (bodyScale * spreadRight + directScale * spreadDirectRight);
+            * dryRight;
 
         // Capture is an observation: every route shares the unchanged
         // vibrating instrument, so switching sensors never resets a note.
@@ -11260,14 +11321,19 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 }
                 float wetLeft = 0.0f;
                 float wetRight = 0.0f;
-                room_.process(roomSend_ * 0.5f * (outputLeft + outputRight),
+                // Output is the capture's level, not an acoustic room send.
+                // Keep the room warm before that gain and scale its return
+                // with the dry microphones, so automation preserves their
+                // balance and a mute also silences an existing room tail.
+                room_.process(roomSend_ * 0.5f
+                                  * (reference * dryLeft + reference * dryRight),
                               wetLeft, wetRight);
                 const float wetMid = 0.5f * (wetLeft + wetRight);
                 const float wetSide = 0.5f * width_ * (wetLeft - wetRight);
-                outputLeft += wetMid + wetSide;
-                outputRight += wetMid - wetSide;
+                outputLeft += outputGain_ * (wetMid + wetSide);
+                outputRight += outputGain_ * (wetMid - wetSide);
                 monoMic += 1.41421356f * wetMid * monoReference_
-                    / std::max(outputReference_, 1.0e-6f);
+                    / std::max(outputReference_, 1.0e-6f) * outputGain_;
                 roomPeak = std::max(exact::abs(wetLeft), exact::abs(wetRight));
             }
         }

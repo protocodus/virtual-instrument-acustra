@@ -1550,11 +1550,14 @@ holds the difference as one smooth gain - a low shelf and five broad peaks,
 none past 6 dB: +1.1 to +1.5 dB at 80-125 Hz, -6 to -6.5 dB at 250-500 Hz,
 +5 to +7 dB at 1-1.6 kHz, nothing above 4 kHz where the recordings disagree;
 refitted after the top's spring-back, which supplied low end the first fit's
-+3.3 to +3.8 dB had stood in for - and
-`configureBody` multiplies each of the Original's radiation modes by it at
-the mode's own frequency, as it does the anchor's bass tilt and Wood's
-brilliance. It costs nothing per sample, moves with Shape and Wood, never
-reaches the piezo, and leaves the Bellido's own measured microphones alone.
++3.3 to +3.8 dB had stood in for. Since 2026-10-08, six causal filter
+sections apply this contour to the summed microphone pressure. The previous
+per-mode weighting could disrupt cancellation between modal tails and turn
+an intended low-mid cut into a boost. The correction preserves the physical
+bridge and radiation poles, never reaches the piezo, and keeps separate
+histories for each bank during construction fades. Classical 78 retains its
+own two-section capture contour. See the
+[body and capture audit](Docs/body-capture-2026-10-08.md).
 Its level keeps the default construction at its loudness, and every
 construction was re-levelled within +-1 LU.
 [`Tools/FitCaptureVoicing.py`](Tools/FitCaptureVoicing.py) refits it from
@@ -1594,7 +1597,9 @@ same from 44.1 to 192 kHz (within 0.3 dB). It renders the same at any block
 size, costs about 4% of the engine's time while it sounds and 148 KB per
 instance, and at 0 is an exact no-op once it has rung out. The engine's own
 default is 0, so the benchmark, the demos and every test that does not ask
-for it are the dry instrument.
+for it are the dry instrument. Output scales the dry microphones and the
+existing room tail together; it does not change the room send or leave old
+room energy behind at the previous output level.
 
 ### Outputs
 

@@ -51,6 +51,7 @@ struct AcustraEngineTestAccess
     {
         return engine.captureMix_;
     }
+    static float outputGain(const AcustraEngine& engine) { return engine.outputGain_; }
     static float piezoForce(const AcustraEngine& engine) { return engine.lastPiezoForce_; }
     static float drivingForce(const AcustraEngine& engine)
     {
@@ -122,22 +123,21 @@ struct AcustraEngineTestAccess
         return engine.bodyBank_;
     }
     template <typename Filter>
-    static std::array<float, 8> filterHistory(const Filter& filter)
+    static auto filterHistory(const Filter& filter)
     {
-        static_assert(Filter::sections == 2, "The capture fixture expects two peak sections");
-        std::array<float, 8> values {};
+        std::array<double, 4 * Filter::sections> values {};
         std::size_t index = 0;
         for (const auto* channel : { &filter.stateLeft, &filter.stateRight })
             for (const auto& section : *channel)
-                for (const float value : section)
+                for (const double value : section)
                     values[index++] = value;
         return values;
     }
-    static std::array<float, 16> filterStates(const AcustraEngine& engine)
+    static auto filterStates(const AcustraEngine& engine)
     {
         const auto active = filterHistory(engine.bodyBank_.captureFilter);
         const auto fading = filterHistory(engine.fadingBodyBank_.captureFilter);
-        std::array<float, 16> values {};
+        std::array<double, 2 * std::tuple_size<decltype(active)>::value> values {};
         std::copy(active.begin(), active.end(), values.begin());
         std::copy(fading.begin(), fading.end(), values.begin() + active.size());
         return values;
@@ -1108,6 +1108,88 @@ void testRoomReachesOnlyTheMicrophones()
     }
 }
 
+// Output must scale an already-sounding room with its dry microphone. Compare
+// an automated render with a constant-gain observation of the same instrument,
+// using the engine's applied gain and accounting for the microphone pipeline.
+// Starting muted also checks that opening Output reveals a warm room, while
+// Piezo Mix and the separate output keep the piezo's own gain timing.
+void testOutputGainScalesTheWholeCapture()
+{
+    using namespace acustra;
+    constexpr float referenceGain = .03f;
+    constexpr float piezoMix = .4f;
+    constexpr int latency = AcustraEngine::outputLatencySamples();
+    double worstRelativeError = 0.0;
+    for (const int rate : { 44100, 96000 })
+        for (const auto model : { GuitarModel::Original, GuitarModel::Bellido1978 })
+            for (const auto capture : { CaptureType::StereoMic, CaptureType::MonoMic,
+                                        CaptureType::Piezo })
+                for (const bool initiallyMuted : { false, true })
+                {
+                    EngineParameters p;
+                    p.guitarModel = model;
+                    p.capture = capture;
+                    p.room = .8f;
+                    p.piezoMix = piezoMix;
+                    p.outputGain = referenceGain;
+                    auto reference = std::make_unique<AcustraEngine>();
+                    reference->setParameters(p);
+                    reference->prepare(rate, 64);
+                    p.outputGain = initiallyMuted ? 0.0f : referenceGain;
+                    auto moved = std::make_unique<AcustraEngine>();
+                    moved->setParameters(p);
+                    moved->prepare(rate, 64);
+                    for (auto* engine : { reference.get(), moved.get() })
+                        for (const int note : { 40, 47, 55, 64 })
+                            engine->noteOn(note, .65f);
+                    std::array<float, latency + 1> gains;
+                    gains.fill(p.outputGain);
+                    double peak = 0.0, error = 0.0;
+                    for (int n = 0; n < rate / 3; ++n)
+                    {
+                        if (n == rate / 12 || n == rate / 6 || n == rate / 4)
+                        {
+                            p.outputGain = n == rate / 12
+                                ? (initiallyMuted ? .06f : 0.0f)
+                                : n == rate / 6 ? .015f : .04f;
+                            moved->setParameters(p);
+                        }
+                        float rl, rr, rp, ml, mr, mp;
+                        reference->process(&rl, &rr, AcustraEngine::OutputBuses { &rp }, 1);
+                        moved->process(&ml, &mr, AcustraEngine::OutputBuses { &mp }, 1);
+                        gains[static_cast<std::size_t>(n % gains.size())]
+                            = Access::outputGain(*moved);
+                        const double current = double(Access::outputGain(*moved)) / referenceGain;
+                        const int delayed = n >= latency ? n - latency : 0;
+                        const double held = double(gains[static_cast<std::size_t>(
+                            delayed % gains.size())]) / referenceGain;
+                        for (const auto samples : { std::array<double, 2> { rl, ml },
+                                                    std::array<double, 2> { rr, mr } })
+                        {
+                            const double expected = capture == CaptureType::Piezo
+                                ? samples[0] * current
+                                : (samples[0] - piezoMix * double(rp)) * held
+                                    + piezoMix * double(rp) * current;
+                            peak = std::max(peak, std::abs(expected));
+                            error = std::max(error, std::abs(samples[1] - expected));
+                        }
+                        peak = std::max(peak, std::abs(double(rp) * current));
+                        error = std::max(error, std::abs(double(mp) - double(rp) * current));
+                    }
+                    expect(peak > 1.0e-6, "Output automation reference was silent");
+                    const double relative = error / std::max(peak, 1.0e-30);
+                    worstRelativeError = std::max(worstRelativeError, relative);
+                    expect(relative < 2.0e-6,
+                           "Output changed the wet/dry balance or misaligned Piezo Mix, model "
+                               + std::to_string(static_cast<int>(model)) + ", capture "
+                               + std::to_string(static_cast<int>(capture)) + ", rate "
+                               + std::to_string(rate) + ", initially muted "
+                               + std::to_string(initiallyMuted));
+                }
+    std::cout << "Output automation whole-capture relative peak error: "
+              << worstRelativeError << '\n';
+}
+
 // 12. The room at the plug-in's 50% sits 11-14 dB under a held chord (about
 // 10 under a released phrase, whose own sound stops before its room's), and
 // decays in about 0.45 s, at every sample rate: it runs at the host rate
@@ -1360,7 +1442,8 @@ void testMicrophoneFilterBypassAndLifecycle()
         auto engine = std::make_unique<AcustraEngine>();
         engine->prepare(rate, 64);
         auto bypass = Access::captureFilter(*engine);
-        expect(!bypass.enabled, "Original must bypass the new microphone filter");
+        expect(bypass.enabled, "Original did not configure its microphone filter");
+        bypass.enabled = false; // Explicit diagnostic bypass preserves sample bits.
         bool sameBits = true;
         for (int n = 0; n < 2048; ++n)
         {
@@ -1369,9 +1452,9 @@ void testMicrophoneFilterBypassAndLifecycle()
             const auto out = Access::filterSample(bypass, left, right);
             sameBits = sameBits && out[0] == left && out[1] == right;
         }
-        expect(sameBits, "Original bypass changed microphone sample bits");
-        expect(Access::filterHistory(bypass) == std::array<float, 8> {},
-               "Original bypass advanced an unnecessary filter history");
+        expect(sameBits, "Disabled capture filter changed microphone sample bits");
+        expect(Access::filterHistory(bypass) == decltype(Access::filterHistory(bypass)) {},
+               "Disabled capture filter advanced an unnecessary history");
 
         EngineParameters p;
         p.guitarModel = GuitarModel::Bellido1978;
@@ -1405,7 +1488,7 @@ void testMicrophoneFilterBypassAndLifecycle()
         expect(std::any_of(hot.begin(), hot.end(), [] (float value) { return value != 0.0f; }),
                "body filter clear probe did not establish a history");
         engine->allSoundOff();
-        expect(Access::filterStates(*engine) == std::array<float, 16> {},
+        expect(Access::filterStates(*engine) == decltype(Access::filterStates(*engine)) {},
                "all sound off retained a microphone filter history");
         for (int n = 0; n < 64; ++n)
         {
@@ -1418,7 +1501,7 @@ void testMicrophoneFilterBypassAndLifecycle()
         auto cold = std::make_unique<AcustraEngine>();
         cold->setParameters(p);
         cold->prepare(44100, 64);
-        expect(Access::filterStates(*engine) == std::array<float, 16> {},
+        expect(Access::filterStates(*engine) == decltype(Access::filterStates(*engine)) {},
                "prepare retained a microphone filter history from the previous rate");
         bool samePrepared = true;
         for (int n = 0; n < 128; ++n)
@@ -1513,7 +1596,7 @@ void testMicrophoneFilterModelTransitions()
                "queued filter model did not start at the existing fade boundary");
         engine->reset();
         held->reset();
-        expect(Access::filterStates(*engine) == std::array<float, 16> {},
+        expect(Access::filterStates(*engine) == decltype(Access::filterStates(*engine)) {},
                "reset retained active or fading microphone filter histories");
         bool resetMatches = true;
         for (int n = 0; n < 128; ++n)
@@ -1531,10 +1614,11 @@ void testMicrophoneFilterOnlyChangesObservation()
 {
     using namespace acustra;
     for (const int rate : { 44100, 96000 })
+        for (const auto model : { GuitarModel::Original, GuitarModel::Bellido1978 })
         for (const auto capture : { CaptureType::StereoMic, CaptureType::MonoMic, CaptureType::Piezo })
         {
             EngineParameters p;
-            p.guitarModel = GuitarModel::Bellido1978;
+            p.guitarModel = model;
             p.capture = capture;
             p.room = 0.0f;
             p.outputGain = .05f;
@@ -1608,6 +1692,7 @@ int main()
     testPiezoHeadroom();
     testPiezoRateConsistency();
     testRoomReachesOnlyTheMicrophones();
+    testOutputGainScalesTheWholeCapture();
     testRoomLevelAndDecayAcrossRates();
     testRoomBlocksWidthAndReturn();
     testRoomRingsOutToSilence();

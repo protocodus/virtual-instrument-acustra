@@ -514,6 +514,10 @@ void testPiezoMix()
 // 10 kHz, line up with no lag between the rates (74 us before), and the
 // blend's third-octave levels over the sensors' power sum agree within
 // 0.5 dB on average from 150 Hz to 12.5 kHz (0.6-0.9 dB before).
+// Use the deterministic released string for this timing comparison. The
+// stochastic attack burst draws at the host rate, so equal seeds at 48 and
+// 96 kHz do not produce the same broadband source. Its rate-dependent
+// interference can change these bands without a sensor alignment error.
 struct BlendBands
 {
     std::vector<double> centre, mic, piezo, blend;
@@ -560,6 +564,9 @@ BlendBands blendBands(double rate, acustra::GuitarModel model, float mix)
         parameters.guitarModel = model;
         parameters.outputGain = 0.3f;
         parameters.piezoMix = mixed ? mix : 0.0f;
+        auto calibration = acustra::fittedPhysicalCalibration;
+        calibration.steel.transientScale = 0.0f;
+        engine->setPhysicalCalibration(calibration);
         engine->setParameters(parameters);
         engine->prepare(rate, 64);
         engine->beginStrum();

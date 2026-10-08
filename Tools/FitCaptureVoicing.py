@@ -5,8 +5,8 @@ The Original's radiation bank is g21's two close microphones, morphed to the
 steel-string Shapes. Real steel-string flat-tops are recorded from further
 away, and every open recording here hears a different balance from them. This
 tool measures that difference and fits it as one smooth gain
-(Source/DSP/CaptureVoicingData.h), which AcustraEngine::configureBody applies
-to every radiation mode's residues at the mode's own frequency.
+(Source/DSP/CaptureVoicingData.h), which the engine applies as a causal
+filter to the summed microphone pressure, preserving modal cancellation.
 
 Protocol (deterministic; no audio is committed or downloaded):
 

@@ -5,6 +5,29 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-08 — preserve modal cancellation in microphone correction
+
+The body/capture audit found that Original's per-mode microphone weighting
+could turn an intended low-mid cut into a boost. Its existing six-section
+contour now filters summed microphone pressure, with double precision for
+accuracy at high host rates and bank-local histories through construction
+fades. The physical resonances, bridge and string excitation are retained;
+Classical 78 keeps its microphone contour and float arithmetic.
+
+Queued construction tuning now observes the configured bridge instead of a
+hybrid of that bridge and the latest host request. Output scales existing
+room energy together with the dry microphones. Microphone construction gains
+are refreshed; Pick piezo trims on both models fall 0.11–0.33 dB to restore
+the existing headroom allowance. The fixed seven-sample pipeline remains.
+
+Matched native renders show less low-mid emphasis around B3–G4 and a restored
+weak B4 fundamental; phrase balance moves little. This is not a uniform bass
+cut or a claimed listening win. The velocity and sample-rate tests now isolate
+their mechanisms from microphone coloration and different random attack
+waveforms, while retaining their original reference thresholds and adding a
+native brightness check. Evidence, tradeoffs, reproducible comparisons and
+validation are in the [body/capture report](body-capture-2026-10-08.md).
+
 ## 2026-10-07 — reduce repeated work while preserving the new model
 
 The CPU pass keeps the published natural-performance sound and MIDI behavior.
