@@ -210,7 +210,7 @@ namespace
 {
 constexpr float pi = 3.14159265358979323846f;
 constexpr float twoPi = 2.0f * pi;
-constexpr int localMaximumDelaySamples = 8192;
+constexpr int localMaximumDelaySamples = ACUSTRA_EXTENDED_SAMPLE_RATES ? 32768 : 8192;
 // Legacy output reference gain. The pair bank preserves raw measured complex
 // phase; this gain is not an absolute-SPL calibration of the new bank. Any
 // audition RMS match is applied after render.
@@ -2803,7 +2803,7 @@ float AcustraEngine::FixedDerivative::process(float input,
     if (!geometryValid || rateBits != geometryRateBits)
     {
         const float historyDelay = AcustraEngine::clamp(
-            sampleRateRatio, 0.1f, 8.0f);
+            sampleRateRatio, 0.1f, ACUSTRA_EXTENDED_SAMPLE_RATES ? 16.0f : 8.0f);
         geometryWhole = static_cast<int>(historyDelay);
         geometryFraction = historyDelay - static_cast<float>(geometryWhole);
         geometryRateBits = rateBits;
@@ -3346,12 +3346,14 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
 
 void AcustraEngine::prepare(double sampleRate, int)
 {
+    static_assert(localMaximumDelaySamples == maximumDelaySamples,
+                  "delay indexing and fixed string storage must agree");
     // Only a rate that is no rate at all falls back to 48 kHz; a finite one
     // outside the modelled range is held at its nearer bound, so pitch moves
     // continuously across it instead of jumping at 8 kHz.
     if (!exact::isfinite(sampleRate) || sampleRate <= 0.0)
         sampleRate = 48000.0;
-    sampleRate_ = std::clamp(sampleRate, 8000.0, 384000.0);
+    sampleRate_ = std::clamp(sampleRate, 8000.0, maximumSupportedSampleRate);
     ++voiceConfigurationGeneration_;
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
     releaseStepPole_ = static_cast<float>(std::exp(-1.0 / (0.010 * sampleRate_)));
@@ -6891,10 +6893,10 @@ void AcustraEngine::retainRepluckArrivals(Voice& voice) noexcept
     // be mixed by adding delay histories whose tap coefficients differ.
     // This queue holds their future arrivals, preserving a third rapid
     // attack without allocating another string or discarding the first.
-    // Transport input history is <=8192 samples. Legal contact geometry
+    // Transport input history is <=maximumDelaySamples. Legal contact geometry
     // bounds first-order poles below .82 and second-order poles below .88;
-    // another 8192 zero samples drains even float-max input below the double
-    // retirement threshold. The <=1153-sample explicit finger pulse fits
+    // another maximumDelaySamples zero samples drains even float-max input
+    // below the double retirement threshold. The explicit finger pulse fits
     // within that bound. Overflow is an asserted invariant, never hidden.
     int offset = 0;
     while ((voice.contactTravelEnabled && voice.contactTravel.active)
@@ -8340,7 +8342,7 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     // slope against the smooth pulse, then give it a small part of the SAME
     // <=2% budget: adding fret noise must not add an unconstrained attack.
     auto& pulse = voice.legatoContactPulse;
-    std::array<float, 1153> smoothPulse {};
+    std::array<float, maximumLegatoContactSamples + 1> smoothPulse {};
     pulse[0] = 0.0f;
     const double high = 1.0 - std::exp(-2.0 * piDouble
         * std::min(5000.0, 0.4 * sampleRate_) / sampleRate_);

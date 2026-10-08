@@ -1,0 +1,208 @@
+#include "DSP/AcustraPerformer.h"
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <iostream>
+#include <memory>
+#include <string>
+
+#if !ACUSTRA_EXTENDED_SAMPLE_RATES
+#error This suite must link the extended-rate engine with the same storage layout.
+#endif
+
+namespace acustra
+{
+struct AcustraEngineTestAccess
+{
+    static bool derivativePreservesReferenceTime(double rate)
+    {
+        AcustraEngine::FixedDerivative derivative;
+        const float ratio = static_cast<float>(rate / 48000.0);
+        const float expected = 0.125f * ratio;
+        for (int n = 0; n < 96; ++n)
+        {
+            const float result = derivative.process(0.125f * n, ratio);
+            if (n > 32 && std::abs(result - expected) > 2.0e-6f)
+                return false;
+        }
+        // A body/configuration step must preserve the preceding slope,
+        // including the >8-sample reference history at 705.6/768 kHz.
+        const float stepped = derivative.processAcrossStep(0.125f * 96 + 9.0f, ratio);
+        return std::abs(stepped - expected) < 2.0e-6f;
+    }
+
+    static float requestedFrequency(const AcustraEngine& engine, int note)
+    {
+        for (const auto& voice : engine.voices_)
+            if (voice.played && voice.midiNote == note)
+                return voice.pitchGeometry.value.frequency;
+        return 0.0f;
+    }
+
+    static int fingerContactSamples(const AcustraEngine& engine)
+    {
+        for (const auto& voice : engine.voices_)
+            if (voice.legatoContactSamples > 0)
+                return voice.legatoContactSamples;
+        return 0;
+    }
+
+    static bool lossIsPassive(double rate)
+    {
+        for (const float reference : { 0.01f, 0.25f, 0.75f, 0.99f })
+        {
+            AcustraEngine::OnePole filter;
+            filter.configureRate(reference, rate);
+            if (!std::isfinite(filter.ratePole) || std::abs(filter.ratePole) >= 1.0f)
+                return false;
+        }
+        return true;
+    }
+};
+}
+
+namespace
+{
+int failures = 0;
+void expect(bool condition, const std::string& message)
+{
+    if (!condition) { ++failures; std::cerr << "FAIL: " << message << '\n'; }
+}
+
+struct Audio
+{
+    std::array<float, 256> left {}, right {}, piezo {};
+};
+
+bool renderFinite(acustra::Performer& performer, int samples, double& energy)
+{
+    Audio audio;
+    bool finite = true;
+    for (int rendered = 0; rendered < samples; rendered += 256)
+    {
+        const int count = std::min(256, samples - rendered);
+        performer.beginBlock(audio.left.data(), audio.right.data(), { audio.piezo.data() }, count);
+        performer.endBlock();
+        for (int i = 0; i < count; ++i)
+            for (const float value : { audio.left[static_cast<std::size_t>(i)],
+                                       audio.right[static_cast<std::size_t>(i)],
+                                       audio.piezo[static_cast<std::size_t>(i)] })
+            {
+                finite = finite && std::isfinite(value) && std::abs(value) <= 1.00001f;
+                energy += static_cast<double>(value) * value;
+            }
+    }
+    return finite;
+}
+
+void lowPitchAndStability(double rate, acustra::GuitarModel model)
+{
+    auto performer = std::make_unique<acustra::Performer>();
+    acustra::EngineParameters parameters;
+    parameters.guitarModel = model;
+    parameters.tuning = acustra::Tuning::DropD;
+    parameters.room = 0.2f;
+    parameters.piezoMix = 0.25f;
+    performer->setParameters(parameters);
+    performer->prepare(rate, 256);
+    expect(performer->engine().sampleRate() == rate, "requested high rate was clamped");
+    performer->setMasterTuneCents(-100.0f);
+    // A downward octave plus global tuning needs >22000 samples at 768k.
+    performer->engine().setPitchBend(-13.0f);
+    performer->engine().noteOn(38, 0.75f);
+    const double expected = 440.0 * std::exp2((38.0 - 13.0 - 69.0) / 12.0);
+    const float actual = acustra::AcustraEngineTestAccess::requestedFrequency(performer->engine(), 38);
+    expect(std::abs(1200.0 * std::log2(actual / expected)) < 2.0,
+           "low bent Drop D reached a delay limit at " + std::to_string(rate));
+    double energy = 0.0;
+    expect(renderFinite(*performer, static_cast<int>(0.2 * rate), energy),
+           "high-rate low note produced unbounded/nonfinite audio");
+    expect(energy > 1.0e-5, "high-rate low note rendered silence");
+    performer->engine().noteOff(38);
+    expect(renderFinite(*performer, static_cast<int>(0.12 * rate), energy),
+           "high-rate release or room tail became unstable");
+    performer->setGatherChords(true);
+    expect(performer->latencySamples() == 7 + static_cast<int>(std::lround(0.030 * rate)),
+           "performer gather latency is not measured in internal samples");
+}
+
+void controllerAndReprepare(double rate)
+{
+    auto performer = std::make_unique<acustra::Performer>();
+    performer->prepare(rate, 256);
+    performer->setMasterTuneCents(-100.0f);
+    Audio audio;
+    performer->beginBlock(audio.left.data(), audio.right.data(), 256);
+    performer->setPitchBendRange(0, 1, 12);
+    performer->pitchWheel(0, 1, -1.0f);
+    performer->noteOn(0, 1, 40, 96);
+    performer->endBlock();
+    const double expected = 440.0 * std::exp2((40.0 - 13.0 - 69.0) / 12.0);
+    const float actual = acustra::AcustraEngineTestAccess::requestedFrequency(performer->engine(), 40);
+    expect(std::abs(1200.0 * std::log2(actual / expected)) < 2.0,
+           "master tune plus wheel failed at " + std::to_string(rate));
+
+    // Reprepare must clear old rate-dependent history, pending notes and
+    // controllers. Matching a fresh instance is stronger than finite output.
+    performer->prepare(48000.0, 256);
+    performer->prepare(rate, 256);
+    auto fresh = std::make_unique<acustra::Performer>();
+    fresh->setMasterTuneCents(-100.0f);
+    fresh->setPitchBendRange(0, 1, 12);
+    fresh->prepare(rate, 256);
+    performer->engine().noteOn(59, 0.6f);
+    fresh->engine().noteOn(59, 0.6f);
+    Audio other;
+    for (int block = 0; block < 16; ++block)
+    {
+        performer->process(audio.left.data(), audio.right.data(), 256);
+        fresh->process(other.left.data(), other.right.data(), 256);
+        expect(audio.left == other.left && audio.right == other.right,
+               "reprepare retained high-rate history or random state");
+    }
+}
+
+void fingerDuration(double rate, bool hammer)
+{
+    auto performer = std::make_unique<acustra::Performer>();
+    performer->prepare(rate, 256);
+    const int start = hammer ? 40 : 42;
+    const int end = hammer ? 42 : 40;
+    performer->engine().noteOn(start, 0.6f);
+    double energy = 0.0;
+    renderFinite(*performer, static_cast<int>(0.035 * rate), energy);
+    const bool transitioned = performer->engine().transitionNote(start, end, 0.65f);
+    expect(transitioned, "finger-duration fixture could not connect its note");
+    if (transitioned)
+        expect(acustra::AcustraEngineTestAccess::fingerContactSamples(performer->engine())
+                   == static_cast<int>((hammer ? 0.002 : 0.003) * rate),
+               "high-rate connected contact was truncated to the old capacity");
+    expect(renderFinite(*performer, static_cast<int>(0.025 * rate), energy),
+           "high-rate connected contact became unstable");
+}
+}
+
+int main()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    expect(acustra::AcustraEngine::maximumSupportedSampleRate == 768000.0,
+           "extended build does not expose its actual rate limit");
+    for (const double rate : { 352800.0, 384000.0, 705600.0, 768000.0 })
+    {
+        expect(Access::derivativePreservesReferenceTime(rate), "bridge derivative lost its 48k reference time");
+        expect(Access::lossIsPassive(rate), "remapped loss pole left the unit circle");
+        for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
+            lowPitchAndStability(rate, model);
+        controllerAndReprepare(rate);
+        fingerDuration(rate, true);
+        fingerDuration(rate, false);
+    }
+    auto bound = std::make_unique<acustra::AcustraEngine>();
+    bound->prepare(1536000.0, 64);
+    expect(bound->sampleRate() == 768000.0, "extended upper bound did not clamp");
+    std::cout << "Extended-rate engine bytes=" << sizeof(acustra::AcustraEngine)
+              << ", performer bytes=" << sizeof(acustra::Performer)
+              << ", failures=" << failures << '\n';
+    return failures == 0 ? 0 : 1;
+}

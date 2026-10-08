@@ -28,6 +28,13 @@
 #define ACUSTRA_BODY_MODE_COUNT 160
 #endif
 
+// Opt in consistently in the engine, performer and every consumer: this
+// changes their fixed storage layout. Rack's 4x rendering at a 192 kHz host
+// needs 768 kHz; ordinary builds retain their existing storage and range.
+#if !defined(ACUSTRA_EXTENDED_SAMPLE_RATES)
+#define ACUSTRA_EXTENDED_SAMPLE_RATES 0
+#endif
+
 // Asks the compiler to inline a function at every call it can see, whatever
 // its size (the hot string-loop and bridge-derivative recurrences).
 #if defined(__clang__)
@@ -146,8 +153,10 @@ public:
 
     AcustraEngine() noexcept;
 
-    // Models 8 kHz to 384 kHz: a finite rate outside that is clamped to the
-    // nearer bound (and so plays off pitch), and one that is no rate at all
+    static constexpr double maximumSupportedSampleRate
+        = ACUSTRA_EXTENDED_SAMPLE_RATES ? 768000.0 : 384000.0;
+    // Models 8 kHz to maximumSupportedSampleRate: a finite rate outside is
+    // clamped to the nearer bound (and so plays off pitch), and no rate at all
     // (NaN, infinite, zero or negative) falls back to 48 kHz.
     void prepare(double sampleRate, int maximumBlockSize);
     // The rate prepare() settled on, which every time constant follows.
@@ -419,7 +428,10 @@ public:
 private:
     friend struct AcustraEngineTestAccess;
 
-    static constexpr int maximumDelaySamples = 8192;
+    static constexpr int maximumDelaySamples
+        = ACUSTRA_EXTENDED_SAMPLE_RATES ? 32768 : 8192;
+    static constexpr int maximumLegatoContactSamples
+        = ACUSTRA_EXTENDED_SAMPLE_RATES ? 2304 : 1152;
     static constexpr int bodyModeCount = ACUSTRA_BODY_MODE_COUNT;
     static constexpr int bridgeModeCount = ACUSTRA_BRIDGE_MODE_COUNT;
     static_assert(bridgeModeCount < 255, "BridgeLoad::activeModes holds a byte");
@@ -580,9 +592,10 @@ private:
 
     struct FixedDerivative
     {
-        // The longest reference delay needs nine samples of history. A
-        // power-of-two ring makes both reads and the write wrap one mask.
-        static constexpr unsigned historyMask = 15;
+        // The longest reference delay needs nine (extended: seventeen)
+        // samples of history. A power-of-two ring makes both reads and the
+        // write wrap one mask.
+        static constexpr unsigned historyMask = ACUSTRA_EXTENDED_SAMPLE_RATES ? 31 : 15;
         std::array<float, historyMask + 1> history {};
         int index { 0 };
         // The reference-delay geometry depends only on the host rate. Keep
@@ -1010,7 +1023,7 @@ private:
         float tailLegatoContactAmplitude { 0.0f };
         int tailLegatoContactAge { 0 };
         int tailLegatoContactSamples { 0 };
-        std::array<float, 1153> tailLegatoContactPulse {};
+        std::array<float, maximumLegatoContactSamples + 1> tailLegatoContactPulse {};
         float tailDamping { 1.0f };
         // Intrinsic loss and pitch belong to the captured string. The bridge
         // hand remains live CC2 expression while that old wave is retained.
@@ -1276,7 +1289,7 @@ private:
         // The contact noise's buffers (renderContactNoise), last: at zero
         // levels nothing reads them, and between the per-sample fields they
         // would put 66 KB between the excitation's and the contact's.
-        std::array<float, 512> contactNoiseAirLine {};
+        std::array<float, ACUSTRA_EXTENDED_SAMPLE_RATES ? 2048 : 512> contactNoiseAirLine {};
         ContactTravel contactNoiseTravel {};
         ContactTravel tailContactNoiseTravel {};
         // The key-up's sound (startReleaseNoise): the release velocity the
@@ -1290,12 +1303,12 @@ private:
         // An explicitly requested connected finger articulation: a smooth
         // finite contact pulse and filtered fret friction, transported from
         // the finger's point on the string. Their combined slope energy is
-        // bounded by the sounding wave. 1152 samples cover 3 ms at 384 kHz;
+        // bounded by the sounding wave. Storage covers 3 ms at the maximum rate;
         // event-time preparation avoids random draws/filter work per sample.
         float legatoContactAmplitude { 0.0f };
         int legatoContactAge { 0 };
         int legatoContactSamples { 0 };
-        std::array<float, 1153> legatoContactPulse {};
+        std::array<float, maximumLegatoContactSamples + 1> legatoContactPulse {};
         std::uint32_t legatoFrictionState { 1 };
         ContactTravel legatoContactTravel {};
         float releaseVelocity { -1.0f };

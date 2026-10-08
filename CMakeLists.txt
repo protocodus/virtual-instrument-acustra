@@ -362,6 +362,45 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.Performer AcustraPerformerTests)
     set_tests_properties(Acustra.Performer PROPERTIES TIMEOUT 600)
 
+    # A separate ABI: opt-in fixed storage for 4x at 192 kHz. Keeping this
+    # definition PUBLIC makes every consumer use the matching engine layout.
+    # Compile the library and its heap-only regression suite as SDK C++17.
+    add_library(AcustraDSPExtendedCxx17 STATIC
+        Source/DSP/AcustraEngine.cpp
+        Source/DSP/AcustraPerformer.cpp)
+    target_include_directories(AcustraDSPExtendedCxx17
+        PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Source")
+    target_compile_definitions(AcustraDSPExtendedCxx17
+        PUBLIC ACUSTRA_EXTENDED_SAMPLE_RATES=1)
+    set_target_properties(AcustraDSPExtendedCxx17 PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    if(MSVC)
+        target_compile_options(AcustraDSPExtendedCxx17 PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(AcustraDSPExtendedCxx17 PRIVATE
+            -Wall -Wextra -Wshadow -Werror)
+    endif()
+    add_executable(AcustraExtendedSampleRateTests Tests/ExtendedSampleRateTests.cpp)
+    target_link_libraries(AcustraExtendedSampleRateTests PRIVATE AcustraDSPExtendedCxx17)
+    set_target_properties(AcustraExtendedSampleRateTests PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    acustra_add_suite(Acustra.ExtendedSampleRates AcustraExtendedSampleRateTests)
+    set_tests_properties(Acustra.ExtendedSampleRates PROPERTIES TIMEOUT 120)
+
+    add_executable(AcustraNormalLayoutParity Tests/SampleRateLayoutParity.cpp)
+    target_link_libraries(AcustraNormalLayoutParity PRIVATE AcustraDSP)
+    add_executable(AcustraExtendedLayoutParity Tests/SampleRateLayoutParity.cpp)
+    target_link_libraries(AcustraExtendedLayoutParity PRIVATE AcustraDSPExtendedCxx17)
+    set_target_properties(AcustraExtendedLayoutParity PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME Acustra.SampleRateLayoutParity
+        COMMAND "${CMAKE_COMMAND}"
+            "-Dnormal=$<TARGET_FILE:AcustraNormalLayoutParity>"
+            "-Dextended=$<TARGET_FILE:AcustraExtendedLayoutParity>"
+            "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/sample-rate-layout-parity"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CheckSampleRateLayoutParity.cmake")
+    set_tests_properties(Acustra.SampleRateLayoutParity PROPERTIES TIMEOUT 120)
+
     add_executable(AcustraReleaseTests Tests/ReleaseTests.cpp)
     target_link_libraries(AcustraReleaseTests PRIVATE AcustraDSP)
     acustra_add_suite(Acustra.Release AcustraReleaseTests)
