@@ -63,7 +63,12 @@ and [realism work](Docs/realism-work.md) for measurements and limits.
 
 ## Versioned builds and packages
 
-Version 1.1.1 includes the October 8 body/capture and bridge-alignment fixes,
+Version 1.1.2 reduces delay-ring indexing work while preserving rendered audio,
+parameter identities and the wooden interface. See the [CPU validation and
+screening report](Docs/cpu-optimization-2026-10-08.md). The measured Rack screening
+also includes wrapper changes; it does not establish a desktop CPU percentage.
+
+Version 1.1.1 included the October 8 body/capture and bridge-alignment fixes,
 correct room output gain, clamped-pitch cache geometry and invalid-preset
 parameter handling from upstream `3beb61c`. It retains the wooden interface
 and stable parameter identities. The matching Rack release uses this same
@@ -71,8 +76,8 @@ canonical DSP with its existing dry Room policy.
 
 Customer files use `Acustra-<version>-build.<number>-<Platform>-<arch>` and live
 under `dist/<version>/build.<number>/<Platform>-<arch>/`. For example, a
-universal 1.1.1 build numbered 1 uses `dist/1.1.1/build.1/macOS-universal/`, containing
-`Acustra-1.1.1-build.1-macOS-universal.zip`, the matching `.pkg`,
+universal 1.1.2 build numbered 1 uses `dist/1.1.2/build.1/macOS-universal/`, containing
+`Acustra-1.1.2-build.1-macOS-universal.zip`, the matching `.pkg`,
 `.manifest.json` and `-SHA256SUMS.txt`. The manifest records the compiled
 identity, source revision, architectures and package hashes. These are local
 development packages; the existing validation findings are not a release claim.
@@ -88,7 +93,7 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
 locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
-it with the project version (currently `1.1.1`) and the source revision. Changing that identity rebuilds
+it with the project version (currently `1.1.2`) and the source revision. Changing that identity rebuilds
 the wrappers; each linked format receives its frozen identity record, and macOS
 bundles embed the build number. Packaging rejects a cache
 that disagrees with those records or macOS bundle metadata. Assign a new build

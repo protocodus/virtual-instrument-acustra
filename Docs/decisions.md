@@ -5,6 +5,25 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-08 — reduce ring indexing, retain scalar bridge behavior
+
+Version 1.1.2 replaces delay-index wrapping loops with an unsigned power-of-two
+mask, preserving the physical and active ring slots for negative indices too.
+The Rack adapter separately reduces unused output and control work. Combined
+SDK screening reduced median mean callback cost by about 3.8–4.7% across three
+workloads; those short SDK runs do not establish a desktop percentage or prove
+high-rate callback deadlines. The demanding 192 kHz/4x bend case still misses
+its budget in some blocks.
+
+A broader paired bridge SIMD guard was exact but slower in SDK screening, so
+it was removed. An exact per-process sample-rate ratio hoist also failed to
+improve its comparison and was removed. Keep the rejected snapshots and raw
+runs; do not repeat them as presumed wins. No capture, solver, coefficient,
+precision, timing or voice-scheduling changes are included. See the
+[CPU report](cpu-optimization-2026-10-08.md) for absolute timings, parity scope,
+remaining limitations and validation evidence. This is a numeric optimization,
+not a listening-based sound change.
+
 ## 2026-10-08 — keep pitch geometry and restored parameters consistent
 
 The follow-up audit found an incomplete voice-configuration cache key. A legal

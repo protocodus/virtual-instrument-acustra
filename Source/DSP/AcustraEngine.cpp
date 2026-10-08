@@ -1238,11 +1238,12 @@ PlateConductanceMode plateConductanceMode(
 
 int wrapDelayIndex(int index) noexcept
 {
-    while (index < 0)
-        index += localMaximumDelaySamples;
-    while (index >= localMaximumDelaySamples)
-        index -= localMaximumDelaySamples;
-    return index;
+    static_assert(localMaximumDelaySamples > 0
+                  && (localMaximumDelaySamples & (localMaximumDelaySamples - 1)) == 0,
+                  "The delay ring must have a power-of-two capacity.");
+    // Unsigned conversion preserves the low bits for negative indices too.
+    return static_cast<int>(static_cast<unsigned int>(index)
+                            & (localMaximumDelaySamples - 1u));
 }
 
 bool sameStringConstruction(const EngineParameters& a,
