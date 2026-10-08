@@ -24,6 +24,11 @@ precision, timing or voice-scheduling changes are included. See the
 remaining limitations and validation evidence. This is a numeric optimization,
 not a listening-based sound change.
 
+Release CI also exposed three pre-existing GCC shadow warnings in the
+extended-rate C++17 target. Rename only those locals and retain `-Wshadow
+-Werror`; changing warning policy or arithmetic is unnecessary. Preserve the
+first macOS build and create a fresh build number from the corrected source.
+
 ## 2026-10-08 — keep pitch geometry and restored parameters consistent
 
 The follow-up audit found an incomplete voice-configuration cache key. A legal

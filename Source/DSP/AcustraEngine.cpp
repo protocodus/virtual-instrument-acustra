@@ -4031,7 +4031,7 @@ void AcustraEngine::configureBody() noexcept
     const auto bank = measuredBodyBank(parameters_.guitarModel);
     // A named guitar is unwarped at its own family/wood setting. Moving Shape
     // or Wood away from that point is explicitly a construction variation.
-    const auto morph = bodyShapeMorph(
+    const auto shapeMorph = bodyShapeMorph(
         bank, anchor, anchorBodyFor(parameters_.guitarModel),
         targetBodyFor(parameters_.guitarModel, parameters_.shape));
     const bool named = parameters_.guitarModel != GuitarModel::Original;
@@ -4166,7 +4166,7 @@ void AcustraEngine::configureBody() noexcept
     const int ownCount = static_cast<int>(std::min(
         bank.size(), static_cast<std::size_t>(bodyModeCount)));
     for (int index = 0; index < ownCount; ++index)
-        place(bank[static_cast<std::size_t>(index)], index, morph,
+        place(bank[static_cast<std::size_t>(index)], index, shapeMorph,
               steelBank ? steelBlendG21Share(bank[static_cast<std::size_t>(index)].frequency)
                         : 1.0f);
     if (steelBank && steelBlendJointShare > 0.0f)
@@ -10297,15 +10297,15 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
 #if defined(__clang__) || defined(__GNUC__)
     typedef float Vector __attribute__((vector_size(16)));
     typedef std::int32_t Mask __attribute__((vector_size(16)));
-    const auto load = [] (const Lanes& lanes, int index)
+    const auto load = [] (const Lanes& values, int index)
     {
         Vector value;
-        __builtin_memcpy(&value, lanes.data() + index, sizeof(value));
+        __builtin_memcpy(&value, values.data() + index, sizeof(value));
         return value;
     };
-    const auto store = [] (Lanes& lanes, int index, Vector value)
+    const auto store = [] (Lanes& values, int index, Vector value)
     {
-        __builtin_memcpy(lanes.data() + index, &value, sizeof(value));
+        __builtin_memcpy(values.data() + index, &value, sizeof(value));
     };
     // |x| < 1e-30 is exactly -1e-30 < x < 1e-30, NaN included (false).
     const auto flush = [] (Vector value)

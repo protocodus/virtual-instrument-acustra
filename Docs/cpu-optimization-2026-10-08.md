@@ -9,8 +9,16 @@ excitation, parameter, history length or tuning formula changes.
 
 The baseline canonical source is `3c6b01d9b9847944da6344164ae12845ca1cf998`.
 The retained `AcustraEngine.cpp` SHA-256 is
-`a4f2fe7f8ae57c67b13f1792af995b68df1ebe9cd4ad6edb2a7fd99b81ada14e`.
+`5ca508dafa99b5ba54d5a8d7a255481dc416e1ca8bc103c2ccbee915ac6901cd`.
 The header and Performer remain identical to that baseline.
+
+Linux CI exposed three existing shadowed names when compiling the extended-rate
+C++17 target with GCC's `-Wshadow -Werror`. The same errors occur in baseline
+run `37833771122` and initial 1.1.2 run `37841576505`. Renaming the outer body
+morph and two SIMD load/store arguments fixes those diagnostics without
+changing any calculation or source line count; strict compiler flags remain.
+The initial macOS build 1 is retained at source `62e8e10`; build 2 follows this
+portability fix. Failed CI logs and each validation attempt remain separate.
 
 ## SDK screening, not final release timing
 
@@ -86,7 +94,7 @@ the frozen baseline: normal export SHA-256
 `5d99ce60c160fe7f23df8f5f818bad89206578f6131fe01fbb23eed1eaa19f89`, extended
 export `9148c74a5cfa34a3c8d702f6783f8c0b1db4d28a325fc9b4499294dab941ca39`.
 
-The complete applicable JUCE-free suite passes 72/72 in 153.59 seconds with
+The complete applicable JUCE-free suite passes 72/72 in 143.29 seconds with
 two concurrent test workers. All targets, including normal and extended C++17
 compatibility builds, compile successfully. The distribution metadata tests
 pass 20/20. These checks use Apple Clang 21, Release settings and Python 3.11
