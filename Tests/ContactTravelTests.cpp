@@ -371,8 +371,6 @@ void testArrivalDampingAndTailRetention()
         // Isolate the displacement-wave burst already travelling along the
         // string. The new stroke's identical sources cancel in the pair.
         auto& sounding = Access::voice(*instrument);
-        sounding.contactNoiseSamples = 0;
-        sounding.contactNoiseTravel.active = false;
         instrument->noteOn(43, 1.0f, 1, 100);
         Access::advance(*instrument, 100);
     }

@@ -1,0 +1,697 @@
+{
+  "schema": "acustra_classical_microphone_ablation_v1",
+  "date": "2026-10-09",
+  "baseline": "First microphone-balance candidate: Classical 78 summed-pressure contour 500 Hz \u22126 dB Q1.2, 1400 Hz +3 dB Q1.2; current calibrated level references. Original retains its accepted boom correction.",
+  "scope": {
+    "instrument_construction_choices_total": 24,
+    "classical_constructions_rendered": 12,
+    "original_constructions_affected_by_classical_contour": 0,
+    "techniques": [
+      "finger",
+      "pick",
+      "thumb"
+    ],
+    "captures": [
+      "mono_mic",
+      "stereo_mic"
+    ],
+    "focused_notes": [
+      "G4",
+      "A4",
+      "B4",
+      "E5"
+    ],
+    "phrase": true,
+    "variants_rendered_all_constructions": [
+      "current",
+      "softer",
+      "mode_notch"
+    ],
+    "all_construction_render_count": 1080
+  },
+  "protocol": {
+    "sample_rate_hz": 48000,
+    "midi_velocity": 96,
+    "fresh_engine_per_isolated_note": true,
+    "note_hold_s": 1.2,
+    "render_length_s": 1.8,
+    "room": 0,
+    "touch": 0.58,
+    "pluck_position": 0.28,
+    "metric_windows_s": {
+      "early": [
+        0.04,
+        0.25
+      ],
+      "late": [
+        0.3,
+        0.9
+      ]
+    },
+    "metric_method": "Native mean L/R power, Hann FFT; sum H1..H12 in \u00b1max(5 Hz,0.007*harmonic Hz) windows around nominal equal-tempered centers. H1 share measures harmonic-band power, not all signal energy. H1/H2..H12 ratio is level-independent. Identical native phrase score is used for every construction/style/capture/variant.",
+    "level_policy": "Native float output retained with existing first-candidate reference tables. No normalization. Candidate level recalibration is separate and does not change these harmonic ratios.",
+    "physical_policy": "Ablations alter only bank-local microphone biquad coefficients after prepare. Strings, bridge, poles, modal residues, piezo and room remain unchanged. Modal-convergence and alternate-microphone diagnostics are separate optional experiments, excluded from the all-construction table.",
+    "isolated_note_string_channel": 6
+  },
+  "variant_recipes": {
+    "current": {
+      "peak_1": [
+        500,
+        -6,
+        1.2
+      ],
+      "peak_2": [
+        1400,
+        3,
+        1.2
+      ]
+    },
+    "softer": {
+      "peak_1": [
+        500,
+        -3,
+        1.2
+      ],
+      "peak_2": [
+        1400,
+        0,
+        1.2
+      ]
+    },
+    "mode_notch": {
+      "peak_1": [
+        "configured 410.8 Hz-family radiation pole, bank index3",
+        -6,
+        3.0
+      ],
+      "peak_2": [
+        1400,
+        0,
+        1.2
+      ],
+      "center_formula": "atan2(bodyBank.poleImaginary[3],bodyBank.poleReal[3])*sample_rate/(2*pi)",
+      "status": "Diagnostic optional alternative; not the selected second audition contour."
+    }
+  },
+  "summary_range_order": [
+    "minimum",
+    "median",
+    "maximum"
+  ],
+  "all_construction_harmonic_summary": {
+    "softer": {
+      "G4": {
+        "early_h1_over_h2_h12_delta_db": [
+          1.752254,
+          2.679603,
+          3.947205
+        ],
+        "late_h1_over_h2_h12_delta_db": [
+          1.714795,
+          2.624055,
+          3.918219
+        ],
+        "highest_late_h1_share": {
+          "case": [
+            "auditorium",
+            "mahogany",
+            "finger",
+            "mono_mic",
+            "G4"
+          ],
+          "baseline_percent": 93.96491,
+          "variant_percent": 97.15288
+        }
+      },
+      "A4": {
+        "early_h1_over_h2_h12_delta_db": [
+          2.785705,
+          3.275792,
+          4.521756
+        ],
+        "late_h1_over_h2_h12_delta_db": [
+          2.801597,
+          3.180049,
+          4.444015
+        ],
+        "highest_late_h1_share": {
+          "case": [
+            "parlor",
+            "mahogany",
+            "finger",
+            "mono_mic",
+            "A4"
+          ],
+          "baseline_percent": 84.252312,
+          "variant_percent": 92.684848
+        }
+      },
+      "B4": {
+        "early_h1_over_h2_h12_delta_db": [
+          3.329856,
+          3.68953,
+          4.682811
+        ],
+        "late_h1_over_h2_h12_delta_db": [
+          3.53716,
+          3.781738,
+          4.646116
+        ],
+        "highest_late_h1_share": {
+          "case": [
+            "jumbo",
+            "mahogany",
+            "finger",
+            "stereo_mic",
+            "B4"
+          ],
+          "baseline_percent": 96.700725,
+          "variant_percent": 98.614477
+        }
+      },
+      "E5": {
+        "early_h1_over_h2_h12_delta_db": [
+          2.195179,
+          2.959473,
+          3.838089
+        ],
+        "late_h1_over_h2_h12_delta_db": [
+          2.523991,
+          3.252653,
+          3.876056
+        ],
+        "highest_late_h1_share": {
+          "case": [
+            "auditorium",
+            "maple",
+            "finger",
+            "stereo_mic",
+            "E5"
+          ],
+          "baseline_percent": 99.540238,
+          "variant_percent": 99.758334
+        }
+      }
+    },
+    "mode_notch": {
+      "G4": {
+        "early_h1_over_h2_h12_delta_db": [
+          -2.658115,
+          0.537897,
+          3.182713
+        ],
+        "late_h1_over_h2_h12_delta_db": [
+          -2.326386,
+          0.555357,
+          2.90553
+        ],
+        "highest_late_h1_share": {
+          "case": [
+            "auditorium",
+            "mahogany",
+            "finger",
+            "mono_mic",
+            "G4"
+          ],
+          "baseline_percent": 93.96491,
+          "variant_percent": 93.984492
+        }
+      },
+      "A4": {
+        "early_h1_over_h2_h12_delta_db": [
+          -0.971781,
+          2.409877,
+          5.090352
+        ],
+        "late_h1_over_h2_h12_delta_db": [
+          -0.945217,
+          2.383288,
+          4.551695
+        ],
+        "highest_late_h1_share": {
+          "case": [
+            "parlor",
+            "mahogany",
+            "finger",
+            "mono_mic",
+            "A4"
+          ],
+          "baseline_percent": 84.252312,
+          "variant_percent": 87.186755
+        }
+      },
+      "B4": {
+        "early_h1_over_h2_h12_delta_db": [
+          0.291082,
+          4.568744,
+          6.583113
+        ],
+        "late_h1_over_h2_h12_delta_db": [
+          0.462462,
+          4.49735,
+          6.558957
+        ],
+        "highest_late_h1_share": {
+          "case": [
+            "jumbo",
+            "mahogany",
+            "finger",
+            "stereo_mic",
+            "B4"
+          ],
+          "baseline_percent": 96.700725,
+          "variant_percent": 99.084877
+        }
+      },
+      "E5": {
+        "early_h1_over_h2_h12_delta_db": [
+          3.263716,
+          4.188776,
+          5.166523
+        ],
+        "late_h1_over_h2_h12_delta_db": [
+          3.718591,
+          4.394908,
+          5.210172
+        ],
+        "highest_late_h1_share": {
+          "case": [
+            "auditorium",
+            "maple",
+            "finger",
+            "stereo_mic",
+            "E5"
+          ],
+          "baseline_percent": 99.540238,
+          "variant_percent": 99.814989
+        }
+      }
+    }
+  },
+  "selected_cases": {
+    "shape": "auditorium",
+    "wood": "mahogany",
+    "capture": "mono_mic",
+    "metric_array_order": [
+      "variant",
+      "technique",
+      "note",
+      "early_h1_share_fraction",
+      "early_h1_over_h2_h12_db",
+      "late_h1_share_fraction",
+      "late_h1_over_h2_h12_db"
+    ],
+    "cases": [
+      [
+        "current",
+        "finger",
+        "G4",
+        0.91685,
+        10.424378,
+        0.939649,
+        11.92282
+      ],
+      [
+        "current",
+        "finger",
+        "A4",
+        0.108325,
+        -9.154792,
+        0.330342,
+        -3.068901
+      ],
+      [
+        "current",
+        "finger",
+        "B4",
+        0.206016,
+        -5.859102,
+        0.132564,
+        -8.15811
+      ],
+      [
+        "current",
+        "finger",
+        "E5",
+        0.936925,
+        11.718475,
+        0.925412,
+        10.936642
+      ],
+      [
+        "current",
+        "pick",
+        "G4",
+        0.483962,
+        -0.27871,
+        0.514297,
+        0.248429
+      ],
+      [
+        "current",
+        "pick",
+        "A4",
+        0.008045,
+        -20.909423,
+        0.058413,
+        -12.073495
+      ],
+      [
+        "current",
+        "pick",
+        "B4",
+        0.025068,
+        -15.898567,
+        0.008252,
+        -20.798434
+      ],
+      [
+        "current",
+        "pick",
+        "E5",
+        0.393765,
+        -1.874046,
+        0.644622,
+        2.586153
+      ],
+      [
+        "current",
+        "thumb",
+        "G4",
+        0.903198,
+        9.698993,
+        0.933969,
+        11.50582
+      ],
+      [
+        "current",
+        "thumb",
+        "A4",
+        0.137574,
+        -7.971848,
+        0.357781,
+        -2.540653
+      ],
+      [
+        "current",
+        "thumb",
+        "B4",
+        0.171119,
+        -6.851947,
+        0.121215,
+        -8.603261
+      ],
+      [
+        "current",
+        "thumb",
+        "E5",
+        0.921368,
+        10.688348,
+        0.91638,
+        10.397677
+      ],
+      [
+        "softer",
+        "finger",
+        "G4",
+        0.958406,
+        13.625207,
+        0.971529,
+        15.3305
+      ],
+      [
+        "softer",
+        "finger",
+        "A4",
+        0.188608,
+        -6.336716,
+        0.49523,
+        -0.082873
+      ],
+      [
+        "softer",
+        "finger",
+        "B4",
+        0.383856,
+        -2.055147,
+        0.269916,
+        -4.321442
+      ],
+      [
+        "softer",
+        "finger",
+        "E5",
+        0.967841,
+        14.785041,
+        0.966028,
+        14.538701
+      ],
+      [
+        "softer",
+        "pick",
+        "G4",
+        0.67089,
+        3.093103,
+        0.712285,
+        3.936911
+      ],
+      [
+        "softer",
+        "pick",
+        "A4",
+        0.017678,
+        -17.448084,
+        0.133611,
+        -8.11869
+      ],
+      [
+        "softer",
+        "pick",
+        "B4",
+        0.065306,
+        -11.557196,
+        0.022703,
+        -16.33939
+      ],
+      [
+        "softer",
+        "pick",
+        "E5",
+        0.555645,
+        0.970666,
+        0.788341,
+        5.710779
+      ],
+      [
+        "softer",
+        "thumb",
+        "G4",
+        0.949792,
+        12.768549,
+        0.969343,
+        14.999537
+      ],
+      [
+        "softer",
+        "thumb",
+        "A4",
+        0.241002,
+        -4.982204,
+        0.54083,
+        0.710865
+      ],
+      [
+        "softer",
+        "thumb",
+        "B4",
+        0.337929,
+        -2.920794,
+        0.255921,
+        -4.635131
+      ],
+      [
+        "softer",
+        "thumb",
+        "E5",
+        0.956068,
+        13.377112,
+        0.958727,
+        13.66034
+      ],
+      [
+        "mode_notch",
+        "finger",
+        "G4",
+        0.912269,
+        10.169691,
+        0.939845,
+        11.937839
+      ],
+      [
+        "mode_notch",
+        "finger",
+        "A4",
+        0.096012,
+        -9.738395,
+        0.320358,
+        -3.266441
+      ],
+      [
+        "mode_notch",
+        "finger",
+        "B4",
+        0.376879,
+        -2.18371,
+        0.260658,
+        -4.527751
+      ],
+      [
+        "mode_notch",
+        "finger",
+        "E5",
+        0.975548,
+        16.009376,
+        0.973795,
+        15.700836
+      ],
+      [
+        "mode_notch",
+        "pick",
+        "G4",
+        0.484219,
+        -0.274235,
+        0.534731,
+        0.604305
+      ],
+      [
+        "mode_notch",
+        "pick",
+        "A4",
+        0.008524,
+        -20.656595,
+        0.07378,
+        -10.987758
+      ],
+      [
+        "mode_notch",
+        "pick",
+        "B4",
+        0.065296,
+        -11.557861,
+        0.022258,
+        -16.42732
+      ],
+      [
+        "mode_notch",
+        "pick",
+        "E5",
+        0.626343,
+        2.243397,
+        0.831965,
+        6.947058
+      ],
+      [
+        "mode_notch",
+        "thumb",
+        "G4",
+        0.896871,
+        9.393487,
+        0.936168,
+        11.663121
+      ],
+      [
+        "mode_notch",
+        "thumb",
+        "A4",
+        0.127925,
+        -8.335966,
+        0.36563,
+        -2.393007
+      ],
+      [
+        "mode_notch",
+        "thumb",
+        "B4",
+        0.335486,
+        -2.968294,
+        0.25063,
+        -4.756627
+      ],
+      [
+        "mode_notch",
+        "thumb",
+        "E5",
+        0.966836,
+        14.646887,
+        0.968452,
+        14.871092
+      ]
+    ]
+  },
+  "pressure_attribution": {
+    "shape": "auditorium",
+    "wood": "mahogany",
+    "capture": "upper-bout/soundhole microphone",
+    "input": "Unit normal high-E port basis F=1, normalized moment=1.25. This analytic transfer is not a substitute for the complete native played-note render.",
+    "results": [
+      {
+        "midi": 69,
+        "partials": [
+          {
+            "harmonic": 1,
+            "frequency_hz": 440.0,
+            "raw_pressure_gain_db": 2.980562,
+            "current_contour_pressure_gain_db": -2.232939,
+            "modal_sum_over_sum_magnitudes_db": -16.314237,
+            "no_convergence_to_current_pressure_db": -0.247488
+          },
+          {
+            "harmonic": 2,
+            "frequency_hz": 880.0,
+            "raw_pressure_gain_db": 7.455995,
+            "current_contour_pressure_gain_db": 6.736757,
+            "modal_sum_over_sum_magnitudes_db": -14.582931,
+            "no_convergence_to_current_pressure_db": -0.050953
+          }
+        ]
+      },
+      {
+        "midi": 71,
+        "partials": [
+          {
+            "harmonic": 1,
+            "frequency_hz": 493.883,
+            "raw_pressure_gain_db": -2.641604,
+            "current_contour_pressure_gain_db": -8.329405,
+            "modal_sum_over_sum_magnitudes_db": -20.921319,
+            "no_convergence_to_current_pressure_db": -0.395686
+          },
+          {
+            "harmonic": 2,
+            "frequency_hz": 987.767,
+            "raw_pressure_gain_db": 1.45279,
+            "current_contour_pressure_gain_db": 1.67872,
+            "modal_sum_over_sum_magnitudes_db": -19.977793,
+            "no_convergence_to_current_pressure_db": 0.020041
+          }
+        ]
+      }
+    ],
+    "interpretation": "The broad 500 Hz notch deepens already weak A4/B4 fundamentals in the complex pressure response. Removing convergence changes their fundamentals by less than 0.5 dB and makes the native phrase brighter; convergence is not the main cause. A narrower mode-centered notch recovers B4/C5 energy while holding the maximum G4 dominance, but does little for Auditorium/Mahogany A4. The simpler \u22123/0 contour provides broader relief while raising G4 fundamental dominance."
+  },
+  "interpretation_limits": [
+    "Measurements describe spectral mechanisms and tradeoffs. They do not establish a preferred or more realistic timbre.",
+    "The \u22123/0 G4 rise is explicit: its highest late harmonic fundamental share is approximately97%, versus94% in the first candidate. Audition must judge the stronger body against the reduced thin/banjo cue.",
+    "Across 24 total construction choices, only the12 Classical constructions use these contour experiments; Original is unchanged by these overrides."
+  ],
+  "local_evidence": {
+    "directory": "/tmp/acustra-classic-mic-audit-20261009",
+    "renderer_sha256": "82ead7fd7c9e4848185f985d98416fb28424dd18ec587d6a21e1c6cdc0829896",
+    "renderer_source_sha256": "8a64c36a475031f71299acf2cb49439db408ed319347bfa2e0ec5fa92a00f22b",
+    "all_construction_metrics_sha256": "589d36023c5d4346773e959ed002f60ad78e223d27548d893d8417390bbd0310",
+    "all_construction_deltas_sha256": "cce02639c5044961d15867409056d13fc2385fecdc5fcf90fddae75b00f6a8bb",
+    "pressure_transfer_sha256": "d76e651e1b462367ebefebcdbf4e85c7057e27ef32a33965300f1e04856dc7ac",
+    "initial_diagnostic_metrics_sha256": "a0f74b5effb77c788a69d1b80a7c846386d0e0d8792d4a627093f4ee953b8fee",
+    "phrase_score_sha256": "17285fd603b8641c3696f352f0b1890adb6fa666c550f008fcfcd54cc8d97af2"
+  }
+}

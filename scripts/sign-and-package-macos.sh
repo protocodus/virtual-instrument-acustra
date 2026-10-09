@@ -6,18 +6,20 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-${PROJECT_DIR}/build-macos}"
 CONFIG="${CONFIG:-Release}"
 VERSION_OVERRIDE="${VERSION:-}"
+BUILD_NUMBER_OVERRIDE="${BUILD_NUMBER:-}"
+BUILD_NUMBER_OVERRIDE_SET="${BUILD_NUMBER+x}"
 APP_SIGN_IDENTITY="${APP_SIGN_IDENTITY:--}"
 INSTALLER_SIGN_IDENTITY="${INSTALLER_SIGN_IDENTITY:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 ARTIFACT_DIR="${BUILD_DIR}/Acustra_artefacts/${CONFIG}"
-DIST_DIR="${BUILD_DIR}/dist"
+DIST_DIR=""
 PACKAGE_ROOT="${BUILD_DIR}/package-root"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "error: this script requires macOS" >&2
     exit 1
 fi
-for tool in codesign ditto lipo pkgbuild; do
+for tool in codesign ditto lipo pkgbuild python3; do
     command -v "${tool}" >/dev/null 2>&1 || {
         echo "error: required tool '${tool}' was not found" >&2
         exit 1
@@ -74,6 +76,24 @@ if [[ "${APP_ARCHS}" == *arm64* && "${APP_ARCHS}" == *x86_64* ]]; then
 else
     ARTIFACT_ARCH="${APP_ARCHS// /-}"
 fi
+
+identity_args=(--build-dir "${BUILD_DIR}" --config "${CONFIG}" --platform macOS
+    --arch "${ARTIFACT_ARCH}" --formats VST3 AU Standalone)
+DIST_DIR="$(python3 "${SCRIPT_DIR}/distribution.py" "${identity_args[@]}" --require-new)"
+BUILD_NUMBER="$(sed -n 's/^ACUSTRA_BUILD_NUMBER:STRING=//p' "${BUILD_DIR}/CMakeCache.txt")"
+if [[ "${BUILD_NUMBER_OVERRIDE_SET}" == x && "${BUILD_NUMBER_OVERRIDE}" != "${BUILD_NUMBER}" ]]; then
+    echo "error: BUILD_NUMBER disagrees with the configured build; rebuild before packaging" >&2; exit 1
+fi
+CONFIGURED_VERSION="$(sed -n 's/^CMAKE_PROJECT_VERSION:STATIC=//p' "${BUILD_DIR}/CMakeCache.txt")"
+if [[ "${VERSION}" != "${CONFIGURED_VERSION}" ]]; then
+    echo "error: built version does not match configured version; rebuild" >&2; exit 1
+fi
+for bundle in "${VST3}" "${AU}" "${APP}"; do
+    if [[ "$("${PLIST_BUDDY}" -c 'Print :CFBundleVersion' "${bundle}/Contents/Info.plist")" != "${BUILD_NUMBER}" ]]; then
+        echo "error: bundle build number does not match compiled identity; rebuild" >&2; exit 1
+    fi
+done
+DISTRIBUTION_VERSION="${VERSION}-build.${BUILD_NUMBER}"
 
 case "${PACKAGE_ROOT}" in
     "${BUILD_DIR}"/*) ;;
@@ -146,16 +166,16 @@ sign_bundle "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/VST3/Acustra.vst3"
 sign_bundle "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/Components/Acustra.component"
 sign_bundle "${PACKAGE_ROOT}/Applications/Acustra.app"
 
-ZIP_PATH="${DIST_DIR}/Acustra-${VERSION}-macOS-${ARTIFACT_ARCH}.zip"
-PKG_UNSIGNED="${DIST_DIR}/Acustra-${VERSION}-unsigned.pkg"
-PKG_FINAL="${DIST_DIR}/Acustra-${VERSION}-macOS-${ARTIFACT_ARCH}.pkg"
+ZIP_PATH="${DIST_DIR}/Acustra-${DISTRIBUTION_VERSION}-macOS-${ARTIFACT_ARCH}.zip"
+PKG_UNSIGNED="${DIST_DIR}/Acustra-${DISTRIBUTION_VERSION}-unsigned.pkg"
+PKG_FINAL="${DIST_DIR}/Acustra-${DISTRIBUTION_VERSION}-macOS-${ARTIFACT_ARCH}.pkg"
 # Rebuilding this version must not remove packages from earlier releases.
 rm -f "${ZIP_PATH}" "${PKG_FINAL}" "${PKG_UNSIGNED}"
 
 COPYFILE_DISABLE=1 pkgbuild \
     --root "${PACKAGE_ROOT}" \
     --identifier cz.protocodus.acustra.pkg \
-    --version "${VERSION}" \
+    --version "${BUILD_NUMBER}" \
     --install-location / \
     "${PKG_UNSIGNED}"
 if [[ -n "${INSTALLER_SIGN_IDENTITY}" ]]; then
@@ -182,6 +202,8 @@ if [[ -n "${NOTARY_PROFILE}" ]]; then
     xcrun stapler staple "${PKG_FINAL}"
     xcrun stapler validate "${PKG_FINAL}"
 fi
+
+python3 "${SCRIPT_DIR}/distribution.py" "${identity_args[@]}" --manifest "${ZIP_PATH}" "${PKG_FINAL}"
 
 echo
 echo "Packaging complete:"

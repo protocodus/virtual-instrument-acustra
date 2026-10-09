@@ -63,8 +63,12 @@ if [[ -n "${PYTHON:-}" ]]; then
     cmake_args+=("-DPython3_EXECUTABLE=${PYTHON}" -DACUSTRA_REQUIRE_PYTHON_TESTS=ON)
 fi
 
+if [[ -n "${BUILD_NUMBER:-}" ]]; then
+    cmake_args+=("-DACUSTRA_BUILD_NUMBER=${BUILD_NUMBER}")
+fi
+
 cmake "${cmake_args[@]}"
-cmake --build "${BUILD_DIR}" --config "${CONFIG}" --parallel
+cmake --build "${BUILD_DIR}" --config "${CONFIG}" --parallel "${BUILD_JOBS:-3}"
 
 snapshot="${ACUSTRA_EDITOR_SNAPSHOT:-${PROJECT_DIR}/Docs/screenshots/acustra-standalone.png}"
 ACUSTRA_EDITOR_SNAPSHOT="${snapshot}" \

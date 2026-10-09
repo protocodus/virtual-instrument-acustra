@@ -1,0 +1,497 @@
+{
+  "schema": "AcustraFocusedFreshAttackListeningV1",
+  "status": "Frozen fresh-note fairness auditions: Pick zero rejected as Too dull; the separate Pick midpoint was accepted as Natural guitar attack. Thumb full-slip was Less banjo-like, later sounds better and keep for now as is. Isolated production review/calibration are underway; no canonical release-law change yet.",
+  "player": "http://127.0.0.1:18789/attack-review.html",
+  "default": "Classic78/Auditorium/Mahogany/Pick/stereo_mic/upper",
+  "canonical_before_renderer_sha256": "bc4d00109ac6ff541b729a11076b4fdecfdbf64a68b6a6c926d65e007a9eeb9d",
+  "producer_renderers": {
+    "AttackRender": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review/provenance/AttackRender",
+      "sha256": "168f01da73f6db0744c6059dd1cd4e5fde9afb6bd6d7e13f577366ca4cd007e7"
+    },
+    "ThumbAttackRender": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review/provenance/ThumbAttackRender",
+      "sha256": "cd21ea96315f0a9148f2707ad70ad963197c8abf0beeb1666f7977ffcb6b1fe4"
+    }
+  },
+  "compiled_table_sha256": "4c1e4e098844d31b2ee49bf250ef5552aa26a7c21116b2378acdde5b50c48ce8",
+  "controls": {
+    "velocity": 0.7874015748031497,
+    "touch": 0.58,
+    "pluck": 0.28,
+    "room": 0,
+    "outputGain": 0.42,
+    "rate": 48000,
+    "defaultModel": "Classic",
+    "defaultShapeWood": "Auditorium/Mahogany forfocusedpage; causalgridusedSpruce"
+  },
+  "note_order": {
+    "E2_lowE": [
+      40,
+      1
+    ],
+    "G4_D": [
+      67,
+      3
+    ],
+    "G4_highE": [
+      67,
+      6
+    ],
+    "A4_highE": [
+      69,
+      6
+    ],
+    "B4_highE": [
+      71,
+      6
+    ],
+    "E5_highE": [
+      76,
+      6
+    ]
+  },
+  "timing": {
+    "fresh_note_seconds": 3,
+    "hold_seconds": 2.4,
+    "release_seconds": 0.6,
+    "upper_phrase_seconds": 12,
+    "upper_AB_seconds": 25,
+    "AB_silence_seconds": 1,
+    "bass_D_phrase_seconds": 6,
+    "bass_D_AB_seconds": 13,
+    "all6_notes_phrase_seconds": 18,
+    "all6_AB_seconds": 37
+  },
+  "variants": {
+    "Pick": "pick_velocity_off; existing calibrated kinetic release share setzero only forClassic; stored fresh energy matched internally to baseline.",
+    "Thumb": "thumb_full_slip; stops inverse of authored reference slip only forClassic Thumb; renderer receives matched baseline stored energy from stdout/stdin."
+  },
+  "energy_fairness": {
+    "scope": "Each renderer invocation creates one fresh engine and one note. Changed initialized periodicfield is uniformly scaled after NoteOn before firstaudio sample to the independent baseline stored cyclic slope-energy, with same gain appliedfreshstep/burst and attackpitchcache refreshed. A fairness control, not a proposed general release-work or retained/repluck law. No per-note audio-level normalization.",
+    "maximum_actual_relative_error": 1.2765441814721612e-07,
+    "audio_level_normalization": "No pernote audio-level normalization. One fixed playback gain across every clip/version/capture/technique.",
+    "independent_fresh_notes": true,
+    "retained_repluck_or_harmonic_or_full_velocity_scope": false
+  },
+  "playback": {
+    "native8_note_files": 48,
+    "PCM16_individual_phrase_files": 72,
+    "combined_AB_files": 36,
+    "common_gain": 2.3694243635979895,
+    "common_gain_db": 7.492856995493708,
+    "same_gain_as_prior_review": true,
+    "maximum_native_microphone_peak": 0.2670845687389374,
+    "maximum_scaled_native_peak": 0.6328366843111002,
+    "preserved_old_players": {
+      "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/index.html": "ca904dc93d21411c6c88ffdf35fda2d6f46ea00f52ce16f5e8addd1298b1fada",
+      "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/construction/audition.json": "6f79d7de7cd09c53908b4f23ad8102f7470b14b6772510800889466941f0f74f",
+      "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/string-review.html": "e7198c8b64c84334cc0c5102aa1c70280e06eb884c5df62dbe3600411161d2c9",
+      "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/string-review/manifest.json": "f3ae694b5d5abd599c57c0d5392820a4cde5926ca84fce2b7480719f8070f9db"
+    }
+  },
+  "verification": {
+    "native8_files_hashed_finite_correct_frames": 48,
+    "PCM16_files_decoded_hashed_segments_exact": 72,
+    "AB_files_decoded_hashed_segments_exact_gap_48000_zero_frames": 36,
+    "all108_HTML_audio_paths_exist": true,
+    "player_JS_syntax_valid": true,
+    "all_previous_index_string_review_and_audio_manifests_preserved": true,
+    "maximum_initial_energy_relative_error": 1.2765441814721612e-07,
+    "shared_gain_db": 7.492856995493708,
+    "manifest_sha256": "b1c5ecadf1888d57752e91c6b18cf1ea8409881df6b52a888ea14ca13c6941e0",
+    "html_sha256": "bc61bce1bda5310d41e2f41e85a65e06da24f0a4cd093320c186af77976f0846"
+  },
+  "UI_verification": {
+    "scope": "Read-only browser inspection of separate attack-review page; no playback invoked by the agent.",
+    "url": "http://127.0.0.1:18789/attack-review.html?shape=auditorium&wood=mahogany&technique=pick&capture=stereo_mic&phrase=upper",
+    "page_sha256": "bc61bce1bda5310d41e2f41e85a65e06da24f0a4cd093320c186af77976f0846",
+    "selection": {
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "phrase": "upper"
+    },
+    "media": [
+      {
+        "id": "before",
+        "duration": 12,
+        "readyState": 4,
+        "error": null
+      },
+      {
+        "id": "candidate",
+        "duration": 12,
+        "readyState": 4,
+        "error": null
+      },
+      {
+        "id": "ab",
+        "duration": 25,
+        "readyState": 4,
+        "error": null
+      }
+    ],
+    "warn_error_console": [],
+    "note": "Before was already playing when observed; the agent did not start, pause or seek it."
+  },
+  "full_manifest": {
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review/manifest.json",
+    "sha256": "b1c5ecadf1888d57752e91c6b18cf1ea8409881df6b52a888ea14ca13c6941e0"
+  },
+  "producer_manifest": {
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review/provenance/producer-manifest.json",
+    "sha256": "d6af4ca25c4c1cfda89a9f48433feb11b599ec084f798055038d664534e30b0d"
+  },
+  "focused_ABs": {
+    "pick": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review/auditorium-mahogany-pick-stereo_mic/upper-AB.wav",
+    "thumb": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review/auditorium-mahogany-thumb-stereo_mic/upper-AB.wav"
+  },
+  "independent_12_construction_screen": {
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/Docs/classical78-periodic-release-attack-screen-2026-10-09.json",
+    "sha256": "e93125644d9ab289f5a670ae51c831ffce7b36e37259089983dafc466760a5d9",
+    "schema": "AcustraIndependentFreshPeriodicAttackScreenV1",
+    "focused_Classic_pairs": 336,
+    "all_canonical_before_exact": 1008,
+    "Original_Finger_exact": 672,
+    "maximum_initial_energy_relative_error": 1.3e-07,
+    "summary": "Pick consistently darker acrossall12 constructions; Thumb low-E E2/E3 changes are mixed. Existing exactcontrols and phase-separated force/pressure measurements are independent of this focused player."
+  },
+  "native_5_80ms_descriptors": {
+    "columns": [
+      "case",
+      "note",
+      "initial_energy_relative_error",
+      "before_centroid_hz",
+      "experiment_centroid_hz",
+      "2k_6k_fraction_change_db",
+      "6k_12k_fraction_change_db",
+      "rough_H8_H12_to_H1_change_db",
+      "native_peak_change_dbfs",
+      "native_rms_change_dbfs"
+    ],
+    "rows": [
+      [
+        "auditorium-mahogany-pick-stereo_mic",
+        "E2_lowE",
+        3.1856048909872925e-08,
+        472.8111574225777,
+        397.04867004914314,
+        -6.483111360228339,
+        1.0560139162385234,
+        -0.9768899237100541,
+        0.7306085820508734,
+        0.5455330282962265
+      ],
+      [
+        "auditorium-mahogany-pick-stereo_mic",
+        "G4_D",
+        6.192991008902027e-09,
+        543.3690499727604,
+        458.2616216420937,
+        -4.143858929248161,
+        -5.382601428727057,
+        -5.419360653318311,
+        -0.7197017257851588,
+        1.2229228023183083
+      ],
+      [
+        "auditorium-mahogany-pick-stereo_mic",
+        "G4_highE",
+        8.812400442703705e-08,
+        995.5418190929839,
+        571.7884285262594,
+        -2.741219283055642,
+        -9.587844181528205,
+        -5.099811751605333,
+        0.3372230349747092,
+        1.1134083132486445
+      ],
+      [
+        "auditorium-mahogany-pick-stereo_mic",
+        "A4_highE",
+        1.6419436255077358e-08,
+        1823.0165956384035,
+        1022.723169076674,
+        -2.4310603409018654,
+        -8.154259064353212,
+        -5.918372837131688,
+        0.06106040082881847,
+        0.5428775808125472
+      ],
+      [
+        "auditorium-mahogany-pick-stereo_mic",
+        "B4_highE",
+        3.859520436577668e-08,
+        2352.4869781586967,
+        1371.0872468460268,
+        -2.1865069352832514,
+        -6.706497315348823,
+        -6.2880180233130325,
+        0.4714880175249583,
+        0.22024165900853987
+      ],
+      [
+        "auditorium-mahogany-pick-stereo_mic",
+        "E5_highE",
+        7.264102630522018e-08,
+        2189.4331651965263,
+        1194.8594911356183,
+        -3.6457201821354595,
+        -9.407128874681153,
+        -6.178512771283295,
+        -0.21257243218912514,
+        0.32462634144933133
+      ],
+      [
+        "auditorium-mahogany-pick-mono_mic",
+        "E2_lowE",
+        3.1856048909872925e-08,
+        597.0835615942087,
+        468.37465857859866,
+        -6.0203566716082975,
+        1.2333721352295086,
+        -0.6349210137468759,
+        0.5642668981714092,
+        0.3809798115700751
+      ],
+      [
+        "auditorium-mahogany-pick-mono_mic",
+        "G4_D",
+        6.192991008902027e-09,
+        603.0744634628669,
+        472.97664331193295,
+        -4.304827460524663,
+        -5.264680375614432,
+        -6.341445561432717,
+        -0.8428943140251661,
+        1.1473776951756136
+      ],
+      [
+        "auditorium-mahogany-pick-mono_mic",
+        "G4_highE",
+        8.812400442703705e-08,
+        1686.5063872957205,
+        671.5063148259809,
+        -2.269599287289715,
+        -9.439203165345923,
+        -5.343771192594801,
+        -1.3027699058754223,
+        0.6509547789750698
+      ],
+      [
+        "auditorium-mahogany-pick-mono_mic",
+        "A4_highE",
+        1.6419436255077358e-08,
+        2406.6657279288233,
+        1049.6952194395792,
+        -2.1383691504296785,
+        -8.133650246035717,
+        -5.121037784986907,
+        -1.8961094969102081,
+        0.13958782840252937
+      ],
+      [
+        "auditorium-mahogany-pick-mono_mic",
+        "B4_highE",
+        3.859520436577668e-08,
+        3746.9761290073184,
+        2113.142214645249,
+        -0.8201740759791747,
+        -5.97530352793914,
+        -5.971498325079068,
+        -0.5952952315268121,
+        -0.7819322919425424
+      ],
+      [
+        "auditorium-mahogany-pick-mono_mic",
+        "E5_highE",
+        7.264102630522018e-08,
+        3038.2649632620164,
+        1469.5333343756097,
+        -3.218222979671772,
+        -8.884214371202592,
+        -6.249375558626152,
+        -1.930969689030503,
+        -0.4257204750652477
+      ],
+      [
+        "auditorium-mahogany-thumb-stereo_mic",
+        "E2_lowE",
+        2.375069163562671e-08,
+        414.1458284941539,
+        439.60979392105594,
+        1.5986844205514075,
+        2.172901178217842,
+        -1.4846439164909881,
+        0.4739091094138246,
+        -1.5740333026592026
+      ],
+      [
+        "auditorium-mahogany-thumb-stereo_mic",
+        "G4_D",
+        1.2765441814721612e-07,
+        414.00269679353323,
+        408.23512066015746,
+        -0.8922348312690183,
+        1.080114692586612,
+        -1.6750770117072165,
+        -0.011186579136150954,
+        0.050931883716248905
+      ],
+      [
+        "auditorium-mahogany-thumb-stereo_mic",
+        "G4_highE",
+        8.537094975391568e-08,
+        414.7668190955198,
+        410.1511578532983,
+        -1.7361723803779334,
+        -0.12094037943353797,
+        -1.8076293446677347,
+        -0.02166499319601023,
+        0.19761172414107975
+      ],
+      [
+        "auditorium-mahogany-thumb-stereo_mic",
+        "A4_highE",
+        8.8247449347989e-09,
+        682.8585710098861,
+        628.2302128578069,
+        -1.4023607469077497,
+        -3.5389770128624782,
+        0.03175931603425042,
+        -0.21239386516513115,
+        -0.011873617165825578
+      ],
+      [
+        "auditorium-mahogany-thumb-stereo_mic",
+        "B4_highE",
+        5.483033493902667e-08,
+        815.694031512299,
+        683.1009407086501,
+        -3.3820828218704335,
+        -2.358151051686079,
+        -4.779840209537916,
+        -0.2625980619826187,
+        -0.03200552449009919
+      ],
+      [
+        "auditorium-mahogany-thumb-stereo_mic",
+        "E5_highE",
+        4.2657947618707226e-08,
+        769.7603261693049,
+        731.7718404880472,
+        -3.156591519602184,
+        -1.365547609763464,
+        -1.3811638842103662,
+        -0.31073852280330705,
+        0.1742974620464146
+      ],
+      [
+        "auditorium-mahogany-thumb-mono_mic",
+        "E2_lowE",
+        2.375069163562671e-08,
+        499.6173726474168,
+        555.9092659208244,
+        1.4683218010399415,
+        1.9569348907543969,
+        -1.3490188835041366,
+        0.39100748847640077,
+        -1.3310332567233871
+      ],
+      [
+        "auditorium-mahogany-thumb-mono_mic",
+        "G4_D",
+        1.2765441814721612e-07,
+        424.33894220988475,
+        413.2761211159948,
+        -1.3741187736330112,
+        1.2425088613987683,
+        -3.830741450148299,
+        -0.2111198259906395,
+        0.04756690106859551
+      ],
+      [
+        "auditorium-mahogany-thumb-mono_mic",
+        "G4_highE",
+        8.537094975391568e-08,
+        430.427779961279,
+        422.30164214620225,
+        -2.2868270285208396,
+        -0.35455778409237837,
+        -2.3867667285420353,
+        -0.29508374513950564,
+        0.195412978848033
+      ],
+      [
+        "auditorium-mahogany-thumb-mono_mic",
+        "A4_highE",
+        8.8247449347989e-09,
+        615.6613816682019,
+        546.4617811473324,
+        -2.3081908302390453,
+        -4.034852419783444,
+        -0.4847170420723579,
+        -0.3649776596982335,
+        0.06631572671837205
+      ],
+      [
+        "auditorium-mahogany-thumb-mono_mic",
+        "B4_highE",
+        5.483033493902667e-08,
+        1725.9561502748509,
+        1379.1589678708233,
+        -2.0573030845421094,
+        -1.554023802676948,
+        -4.849598302879301,
+        -1.2921818616951306,
+        -0.7533849235357799
+      ],
+      [
+        "auditorium-mahogany-thumb-mono_mic",
+        "E5_highE",
+        4.2657947618707226e-08,
+        866.4547654905546,
+        788.106443366701,
+        -3.214877110747814,
+        -1.5804519593413247,
+        -1.600126711538092,
+        -0.6496442932412858,
+        0.1389108715968419
+      ]
+    ]
+  },
+  "limits": [
+    "Independent fresh notes; no retained/repluck or harmonic-path claim. A production implementation must work before merge with fresh-only alignment.",
+    "Thumb full-slip prototype uses the baseline nonzero-slip branch; at fullvelocity/defaultTouch bounded==reference, that branch may not run. Scope is specified velocity100/127.",
+    "Zero Pick share switches to legacy displacement triangle and changes release phase representation as well as kinetic contribution.",
+    "Low-E Thumb can be relativelybrighter and somewhatquieter; include E2/E3 and woundD/G anchors.",
+    "The current minimal production source proposal deliberately removes old kinetic source work and therefore has different energy semantics from this matched-energy audition. Its general retained/repluck/fullvelocity paths need separate native and calibration validation.",
+    "Natural-guitar attack, remaining banjo cue or dullness are listener judgments; descriptor changes alone do not establish acceptance."
+  ],
+  "human_focused_feedback": {
+    "pick": {
+      "human_feedback": "Too dull",
+      "scope": "Frozen focused stereo highE G4/A4/B4/E5 fairness A/B, Before12s/gap1s/Experiment12s.",
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review/auditorium-mahogany-pick-stereo_mic/upper-AB.wav",
+      "sha256": "ecb0be4567ba6ce88f474f55ccd68118a37db7e9e180903ca0ef3ffd825146f8",
+      "remaining_status": "Zero kinetic-share experiment rejected; one midpoint bracket requested."
+    },
+    "thumb": {
+      "human_feedback": "Less banjo-like",
+      "scope": "Frozen focused stereo highE G4/A4/B4/E5 fairness A/B, Before12s/gap1s/Experiment12s.",
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review/auditorium-mahogany-thumb-stereo_mic/upper-AB.wav",
+      "sha256": "d17d5776d6450363fb1f5543b0df4bb3bec882fc54f9a3e5550a0f37e17338fa",
+      "remaining_status": "User accepted retaining full-slip for now; separate production and calibration review required before canonical release-law application.",
+      "initial_human_feedback": "Less banjo-like",
+      "latest_human_feedback": "sounds better, keep for now as is"
+    }
+  },
+  "next_step": "No more attack/timbre variants. Review and calibrate isolated Classic Pick half-share and Thumb full-slip production source, preserving the already-auditioned audio and native fairness records.",
+  "separate_midpoint_review": {
+    "player": "http://127.0.0.1:18789/attack-midpoint-review.html",
+    "evidence": "Docs/classic78-pick-midpoint-2026-10-09.json",
+    "frozen_Before_and_gain_identical": true,
+    "old_zero_Thumb_page_and_manifest_unchanged": true,
+    "latest_human_feedback": "Natural guitar attack"
+  }
+}

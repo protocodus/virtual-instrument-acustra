@@ -1,0 +1,221 @@
+{
+  "schema": "AcustraClassicSustainExplorationV1",
+  "date": "2026-10-09",
+  "status": "Historical sustain auditions; user selected gentle Option1 for Pick and Thumb, now applied and verified in the Classic-specific production profile.",
+  "human_cue": "Tone stays too static as it fades",
+  "canonical_checkpoint": {
+    "engine_sha256": "6425605f2f22442b6a90011596bb51aa439d20d60672b1a61677a7dc7adc6bcc",
+    "renderer_sha256": "64ce04e1a84267ccc4acf5820fd0394a40dc7c9379fe33fa969b4bc77c016d59",
+    "construction_table_sha256": "9b1f20597a1eff3d3ad58fbfe45659eb943ee1d511c6044412700eb4f327ad73",
+    "isolated_suites_passed": 75,
+    "canonical_affected_suites_passed": 9
+  },
+  "protocol": {
+    "rate": 48000,
+    "hold_seconds": 4,
+    "release_seconds": 0.6,
+    "room": 0,
+    "touch": 0.58,
+    "pluck_position": 0.28,
+    "velocity": 0.7874015748031497,
+    "shared_gain_db": 7.492856995493708,
+    "independent_normalization": false,
+    "upper_pair_order": [
+      "highE_A4",
+      "highE_E5"
+    ],
+    "triple_order": [
+      "current",
+      "gentle",
+      "stronger"
+    ],
+    "triple_seconds": [
+      9.2,
+      1,
+      9.2,
+      1,
+      9.2
+    ]
+  },
+  "bending_loss_study": {
+    "native_cases": 60,
+    "baseline_exact_cases": 20,
+    "calibration_scales": [
+      1,
+      1.3,
+      1.6
+    ],
+    "scope": "Classic Auditorium/Mahogany Pick/Thumb,4 physical-string/note anchors,both microphones;12 small Original controls. Both planes use identical intrinsic factors.",
+    "conclusion": "A uniform modest bending multiplier changes wound-string partials much more than the persistent plain-string treble. Not advocated as a treble sustain fix."
+  },
+  "broad_loss_study": {
+    "native_cases": 28,
+    "baseline_same_toolchain_exact_cases": 10,
+    "capture_physics_exact_pairs": 12,
+    "corner_scales": [
+      1,
+      0.75,
+      0.5
+    ],
+    "scope": "Classic Auditorium/Mahogany Pick/Thumb A4/E5,both microphones;4 Original controls. Authored off-tree loss-shape experiment,not measured body/bridge correction.",
+    "changes": "Only both broad-loss corner expressions, including matching dispersion phase fit. Bending loss/release settings/body and bridge data remain current.",
+    "gentle": {
+      "extra_early_to_middle_H5_12_vs_H1_4_decline_db": [
+        2.7,
+        4.4
+      ],
+      "attack_5_80ms_contrast_delta_db": [
+        -0.167,
+        -0.095
+      ],
+      "middle_rms_delta_db": [
+        -0.559,
+        -0.084
+      ]
+    },
+    "stronger": {
+      "extra_early_to_middle_H5_12_vs_H1_4_decline_db": [
+        7.96,
+        15.05
+      ],
+      "attack_5_80ms_contrast_delta_db": [
+        -1.07,
+        1.01
+      ],
+      "middle_rms_delta_db": [
+        -1.388,
+        -0.175
+      ],
+      "A4_source_work_change_percent": -1.088846923746234,
+      "maximum_cached_attack_hardening_change_cents": -0.08178377151489258
+    },
+    "global_transfer_limit": "Original stronger-option middle RMS drops1.97\u20133.02dB. Local Classic observations do not justify global adoption."
+  },
+  "analysis_limits": [
+    "Window-dependent harmonic resolution,off-harmonic floors and comb/beat effects are recorded.",
+    "Baseline already evolves spectrally; scalar descriptors cannot establish perceived staticness.",
+    "Late tails near the noise floor cannot establish a whole-spectrum realism target.",
+    "Observed harmonic peak shifts qualify local pitch behavior,not all rates,fretboards or polarization eigenmodes.",
+    "New sources are isolated options until listening selection and any subsequent broad implementation validation."
+  ],
+  "reference_audit": {
+    "takes": 56,
+    "archtop_middle_admitted": 42,
+    "archtop_middle_mellowed": 37,
+    "archtop_late_admitted": 29,
+    "archtop_late_mellowed": 28,
+    "Eastman_middle_admitted": 6,
+    "Eastman_middle_mellowed": 3,
+    "Eastman_late_admitted": 4,
+    "Eastman_late_mellowed": 2,
+    "scope": "Existing admitted/reused steel recordings,with identical surviving partial subsets across two windows and\u00b125ms probes; not fresh independent target data or a Classic Thumb recording."
+  },
+  "reports": {
+    "validation/attack/accepted-release-review/canonical-verification.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/canonical-verification.json",
+      "sha256": "a3c5e7a6e64d5728044fc944942f95173787ad1f7987a26d577867f9a21eecba"
+    },
+    "sustain-probes/manifest.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-probes/manifest.json",
+      "sha256": "ad3f92233c5496017494becbea1161282ec9a9163ef1e36eebc6b2c8a9809f13"
+    },
+    "sustain-probes/original-controls-manifest.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-probes/original-controls-manifest.json",
+      "sha256": "31340ef52d921405593d0d85ea572e71fbf3d1f6eb33886fd1d93ad433c5da25"
+    },
+    "sustain-probes/source-effects.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-probes/source-effects.json",
+      "sha256": "4039860df9c826a2585873e8b8a601c6927be07093d715cce627abbabff93b7e"
+    },
+    "sustain-review/comparison-summary.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-review/comparison-summary.json",
+      "sha256": "5abb8f772cc252a72bbffea2734f9da4f53a1879309999ad70087c12fa83b62e"
+    },
+    "sustain-review/scorer-validation.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-review/scorer-validation.json",
+      "sha256": "f5b62e88b7560e20ef4957cc7978082fb9c9aeda0b8adbee093e1a8914908887"
+    },
+    "sustain-review/manifest.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-review/manifest.json",
+      "sha256": "b5d35b89b3d1dd81b5b40474173bb1da348be8806878ca0e97f87ed1ff5defdd"
+    },
+    "sustain-reference-audit/reference-evolution-compact.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-reference-audit/reference-evolution-compact.json",
+      "sha256": "9516d2df130becce2b2fe4acdfbf6297958808d0d96554a751509b3305905ac8"
+    },
+    "sustain-broad-corner/all-captures-manifest.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-broad-corner/all-captures-manifest.json",
+      "sha256": "90db643bb4e8be249ea2722103b004c52ad81da0b5e6924fb0b56aabffd387e7"
+    },
+    "sustain-broad-corner/source-effects-all-captures.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-broad-corner/source-effects-all-captures.json",
+      "sha256": "c1fbe55ceda3e71ca5d786886f87a113d4f0c73163ae038a2b7b1c3f85b6a12f"
+    },
+    "sustain-broad-corner/proof.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-broad-corner/proof.json",
+      "sha256": "a0deaf34eb721e31721603a4e70813e7021b01b9d745a4a84d89f9be584fa27e"
+    },
+    "sustain-broad-review/manifest.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-broad-review/manifest.json",
+      "sha256": "71d99f9182c5c211f58911e24ab9118304d2ff7eb9474bfb253e43855919bfa9"
+    },
+    "sustain-broad-review/comparison-summary.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-broad-review/comparison-summary.json",
+      "sha256": "8326d237274bac4e667f7bcda7ed2f54002da19080c93877eacdc364d2a552fa"
+    },
+    "sustain-broad-review/browser-verification.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-broad-review/browser-verification.json",
+      "sha256": "ee52058b402a04e3ebf029a4b255fc7928ac28642d3ea7fb4f3c1e06d30f70d2"
+    },
+    "sustain-broad-corner/independent-source-review.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-broad-corner/independent-source-review.json",
+      "sha256": "37f170d53a19866610d11e03b92b9f3a263e079c11d7ea3e47431597331f58fc"
+    },
+    "sustain-broad-corner/independent-native-review.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-broad-corner/independent-native-review.json",
+      "sha256": "635dcd4387d8e9f28b3932ab5c76ec779985d1867f063b9e4cd20a59b7d03ce5"
+    },
+    "sustain-broad-corner/parent-baseline-controls/verification.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/sustain-broad-corner/parent-baseline-controls/verification.json",
+      "sha256": "c7f9c04bfa3bbceb5562c1b4a2e5554fc5e1455413988a1911b4b633d3f1f003"
+    }
+  },
+  "listening_feedback": {
+    "Pick": "Option 1 \u2014 gentle warming",
+    "Thumb": "Option 1 \u2014 gentle warming",
+    "selected_broad_loss_corner_scale": 0.75,
+    "scope": "Auditioned Classic Auditorium/Mahogany high-E A4/E5 comparison; no inferred verdict for Finger or every construction."
+  },
+  "baseline_parity_evidence": {
+    "producer": "10 same-toolchain duplicates compared by hash/initial-field/state assertions before redundant arrays were replaced with frozen accepted paths; generator and report retained.",
+    "independent_parent_current_files": "Two representative ClassicPickA4 and OriginalPickE5 duplicates independently rerendered and retained; native8,initial fields andmetadata exact. This current duplicate proof covers2cases,not10.",
+    "capture_parity": "All12 present-file physical-channel comparisons independently checked."
+  },
+  "local_native_review": {
+    "intrinsic_maximum_roundtrip_magnitude": 0.998874551,
+    "dispersion_maximum_pole_radius": 0.355548,
+    "Classic_observed_H1_peak_change_cents_gentle": [
+      -0.0767,
+      0.0796
+    ],
+    "Classic_observed_H1_peak_change_cents_stronger": [
+      -0.2089,
+      0.3145
+    ],
+    "known_pitch_estimator_control_max_error_cents": 0.000285,
+    "qualification": "Selected microphone harmonic peak measurements at .65/1.2/2.2/3.2s,window andfloor qualified; not broad production tuning/parameter validation."
+  },
+  "integration_design": {
+    "scope": "Model-only Classic profile for every intrinsic string loop/technique, including sympathetic strings; Original retains factor1.",
+    "reason": "Intrinsic loss stays stable when the UI technique changes. Newly affected Classic Finger and construction transfer passed engineering checks; no new Finger ear verdict inferred.",
+    "ownership": "Active configured bridge model, not the queued requested model.",
+    "cache_requirements": [
+      "Exact effective broad-loss factor in full voice configuration key.",
+      "Exact factor in dispersion design validity, with previous frequency/B tolerances retained.",
+      "Matching runtime and dispersion-fit cutoff factors and 48k Pick reference design."
+    ],
+    "validation_status": "Applied: full76/canonical12, same guards, source/binary parity and native selected-profile proof pass."
+  },
+  "canonical_checkpoint_role": "Immutable accepted-attack reference used during these historical auditions; current applied source is recorded separately.",
+  "applied_production_record": "classic78-sustain-integration-2026-10-09.json"
+}

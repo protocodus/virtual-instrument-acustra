@@ -95,7 +95,7 @@ Usage:
       [--body-material spruce|mahogany|maple] \
       [--guitar-model original|bellido1978] \
       [--picking-default finger|pick|thumb] [--picking-override finger|pick|thumb] \
-      [--values V1 ... V37 | --set INDEX_OR_NAME=VALUE ...] \
+      [--values V1 ... V24 | --set INDEX_OR_NAME=VALUE ...] \
       [--splits SPLIT_OR_CORPUS.SPLIT,...] [--keep] [--compare BASEDIR] \
       [--jobs N] [--lenient] [--allow-unfaded]
   python3 Tools/BenchmarkOpenCorpora.py --smoke \

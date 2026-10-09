@@ -1,0 +1,141 @@
+{
+  "schema": "AcustraFinalCurrentConstructionReviewV1",
+  "date": "2026-10-09",
+  "status": "Historical accepted-attack source64ce construction review, preserved unchanged in audio/evidence. Superseded for current listening by applied-gentle source4b3948.",
+  "renderer_sha256": "64ce04e1a84267ccc4acf5820fd0394a40dc7c9379fe33fa969b4bc77c016d59",
+  "source_freeze_sha256": "353fbd887b41783027622bdaf21add05ad73df8518e58029e25ca5d4e3ebf271",
+  "coverage": {
+    "models": 2,
+    "shapes": 4,
+    "woods": 3,
+    "styles": 3,
+    "captures": 2,
+    "cases": 144,
+    "native_phrases": 288,
+    "PCM16_phrases": 288,
+    "notes": 1152
+  },
+  "axes": {
+    "models": [
+      "Original",
+      "Classic78"
+    ],
+    "shapes": [
+      "Parlor",
+      "Auditorium",
+      "Dreadnought",
+      "Jumbo"
+    ],
+    "woods": [
+      "Spruce",
+      "Mahogany",
+      "Maple"
+    ],
+    "techniques": [
+      "Finger",
+      "Pick",
+      "Thumb"
+    ],
+    "microphones": [
+      "Close Mic (stereo)",
+      "Mono Mic"
+    ]
+  },
+  "protocol": {
+    "sample_rate": 48000,
+    "frames": 576000,
+    "phrase_seconds": 12,
+    "note_seconds": 3,
+    "hold_seconds": 2.4,
+    "release_seconds": 0.6,
+    "velocity_midi": 96,
+    "tuning": "standard",
+    "room": 0,
+    "touch": 0.58,
+    "pluck_position": 0.28,
+    "fresh_engine_per_phrase": true,
+    "scheduling": "Ordinary PerformanceRenderer noteOn/noteOff, channels fix physical string.",
+    "shared_playback_gain_db": 7.492856995493708,
+    "shared_playback_gain": 2.3694243635979895,
+    "jobs": 3,
+    "pcm16_transform": "np.rint(native.astype(float64) * shared_gain * 32767).astype(<i2); no clamp or per-file gain."
+  },
+  "phrases": {
+    "bass": [
+      "G#2 on low E",
+      "A2 on open A",
+      "A#2 on A",
+      "A2 on low E"
+    ],
+    "upper": [
+      "G4 on high E",
+      "A4 on high E",
+      "B4 on high E",
+      "E5 on high E"
+    ]
+  },
+  "maximum_native_peak": 0.2673540711402893,
+  "maximum_playback_float_peak": 0.6334752498669116,
+  "verification": {
+    "native_and_WAV_files": 288,
+    "note_segments": 1152,
+    "exact_source_snapshot_files": 26,
+    "native_PCM16_transform_exact": true,
+    "shared_gain_safe": true,
+    "browser_default_and_alternate_routes_loaded": true,
+    "browser_console_errors": [],
+    "prior_Classic_Finger_upper_hashes_exact": 24
+  },
+  "player": {
+    "url": "http://127.0.0.1:18789/final-construction-review.html",
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/final-construction-review.html",
+    "sha256": "b4cf799b722e81cdbc2270d7bf2960e7ef4c4f69b7355603f843a562bd95efe8",
+    "defaults": "Classic78 / Auditorium / Mahogany / Pick / Close Mic",
+    "comparison": "Optional second model/shape/wood shares technique and microphone."
+  },
+  "scope_limits": [
+    "Coverage exhausts construction/style/affected-capture identities, with eight chosen pitches/fingerings per identity; it is not every note, control, rate or fretboard.",
+    "Every phrase starts a fresh engine, but its four sequential notes use ordinary performance scheduling; there is no fresh-engine reset per note.",
+    "The 24 exact Finger comparisons use retained frozen baseline hashes and current native files; they do not claim all old baseline files remain present.",
+    "No all-case listening acceptance is inferred. The subsequently selected gentle Pick/Thumb option is applied and documented in the newer sustain integration record."
+  ],
+  "reports": {
+    "build-resonance/evidence/final-construction-review/manifest.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/final-construction-review/manifest.json",
+      "sha256": "16394983294868c28f5301076e9a42be2e2628b843647d610da2ec2aec7262e1"
+    },
+    "build-resonance/evidence/final-construction-review/verification.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/final-construction-review/verification.json",
+      "sha256": "8867ba71a92381ddf05293cec1bc9e490fdaac17b755fc19f7a8bb35cd20d9c9"
+    },
+    "build-resonance/evidence/final-construction-review/generation-proof.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/final-construction-review/generation-proof.json",
+      "sha256": "4a6fa97ded9869e6d33899162c910f3756eaaae69fba5e42f986eabb0be9f5da"
+    },
+    "build-resonance/evidence/final-construction-review/browser-verification.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/final-construction-review/browser-verification.json",
+      "sha256": "4eb4ffeb57fcdd6503745ed0db4c8578f281894e2dbd6efdb28dade2fd68d67f"
+    },
+    "build-resonance/evidence/final-construction-review/browser-screenshot.jpg": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/final-construction-review/browser-screenshot.jpg",
+      "sha256": "553be0a187d82827108ad742f841cab3f60744c0040087d73e6dd704dab3755f"
+    },
+    "build-resonance/evidence/final-construction-review/finger-transfer-verification.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/final-construction-review/finger-transfer-verification.json",
+      "sha256": "a0a4aa7f00622a08b21038a79c83180ceb2968071777d6ed0701c3d02ef211e9"
+    },
+    "build-resonance/evidence/final-construction-review/per-note-native-levels.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/final-construction-review/per-note-native-levels.json",
+      "sha256": "d38f1c6ccd607269291b6120c609c169fa1c88be3ed95b99f382ebaba209d480"
+    },
+    "build-resonance/evidence/final-construction-review/provenance/source-freeze.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/final-construction-review/provenance/source-freeze.json",
+      "sha256": "353fbd887b41783027622bdaf21add05ad73df8518e58029e25ca5d4e3ebf271"
+    },
+    "build-resonance/evidence/completion-audit-20261009/independent-scope-audit.json": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/completion-audit-20261009/independent-scope-audit.json",
+      "sha256": "96516bc2e557e19665d76e3a1d98932b4110dd5147085ba84a0d2118b032e1ea"
+    }
+  },
+  "superseded_by": "classic78-final-sustain-construction-review-2026-10-09.json"
+}

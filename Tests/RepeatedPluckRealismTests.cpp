@@ -55,7 +55,6 @@ struct AcustraEngineTestAccess
         auto& v = engine.voices_[0];
         v.level = 0.0f;
         v.contactTravel.active = false;
-        v.contactNoiseTravel.active = false;
         v.tailActive = false;
         // The merge path follows the fired attack, rather than a level
         // estimate. Its absence makes this a pure fresh-source reference;

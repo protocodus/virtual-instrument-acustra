@@ -16,7 +16,7 @@ struct AcustraEngineTestAccess
 {
     struct Release
     {
-        double pole, reference, position, burst, displacement, brightness;
+        double pole, reference, position, displacement, brightness;
         double absolutePole;
     };
     static Release inspect(AcustraEngine& engine, int string = 0)
@@ -55,7 +55,7 @@ struct AcustraEngineTestAccess
         const double absolutePole = std::exp(-releaseSpeed
             / (0.2e-3 * engine.sampleRate_));
         return { voice.releaseSlipPole, voice.releaseReferencePole,
-                 voice.pluckPoint, voice.excitationEnvelope, displacement,
+                 voice.pluckPoint, displacement,
                  length * length * slopes / std::max(variance, 1.0e-30),
                  absolutePole };
     }
@@ -71,13 +71,9 @@ int failures = 0;
 void expect(bool condition, const char* message)
 { if (!condition) { ++failures; std::cerr << "FAIL: " << message << '\n'; } }
 
-auto fresh(double rate, acustra::PickingTechnique picking,
-           float transientGain = 0.0f)
+auto fresh(double rate, acustra::PickingTechnique picking)
 {
     auto engine = std::make_unique<acustra::AcustraEngine>();
-    auto calibration = acustra::fittedPhysicalCalibration;
-    calibration.pickTransientGain = transientGain;
-    engine->setPhysicalCalibration(calibration);
     engine->prepare(rate, 128);
     engine->setStringPerChannelMode(true);
     acustra::EngineParameters parameters;
@@ -137,35 +133,6 @@ void testContactLawAndForceSensitiveBrightness()
         }
 }
 
-void testPickImpactTracksTheStringStroke()
-{
-    for (double rate : { 44100.0, 48000.0, 96000.0 })
-        for (float velocity : { 0.12f, 0.40f, 0.80f })
-        {
-            double minimum = 1.0e30, maximum = 0.0;
-            for (unsigned take = 1; take <= 24; ++take)
-            {
-                // A nonzero public calibration exercises the otherwise
-                // disabled impact path without changing shipping defaults.
-                auto engine = fresh(rate, acustra::PickingTechnique::Pick, 0.125f);
-                Access::seed(*engine, 0x9e3779b9u * take);
-                engine->beginStrum();
-                engine->noteOn(40, velocity, 1, 0, true);
-                const auto state = Access::inspect(*engine);
-                const double ratio = state.burst / state.displacement;
-                minimum = std::min(minimum, ratio);
-                maximum = std::max(maximum, ratio);
-                std::array<float, 128> left {}, right {};
-                engine->process(left.data(), right.data(), 128);
-                expect(std::all_of(left.begin(), left.end(), [] (float x)
-                    { return std::isfinite(x); }), "picked force render was nonfinite");
-            }
-            std::cout << "Pick rate=" << rate << " v=" << velocity << " ratio spread=" << maximum / minimum << "\n";
-            expect(maximum / minimum < 1.00002,
-                   "pick click and held string received different stroke gains");
-        }
-}
-
 void testFullVelocityFingerStillSlipsAndThumbKeepsItsShape()
 {
     for (double rate : { 44100.0, 48000.0, 96000.0 })
@@ -192,7 +159,6 @@ void testFullVelocityFingerStillSlipsAndThumbKeepsItsShape()
 int main()
 {
     testContactLawAndForceSensitiveBrightness();
-    testPickImpactTracksTheStringStroke();
     testFullVelocityFingerStillSlipsAndThumbKeepsItsShape();
     return failures == 0 ? 0 : 1;
 }

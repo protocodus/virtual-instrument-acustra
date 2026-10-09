@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "date": "2026-10-09",
+  "scope": "Remove unavailable/shipping-zero feature code and archived experiments; preserve accepted sound, saved-session compatibility and historical evidence.",
+  "baseline_commit": "65f4940bc3975056a95bbd8cb4d4f1c61867cd46",
+  "implementation_sha256": {
+    "Source/DSP/AcustraEngine.cpp": "06cf6e7150719a0772a967ff3fd39e8b5220765e1248a23e9310fa2a936171be",
+    "Source/DSP/AcustraEngine.h": "dabf70be3fbf5538a42ad86fbcbe3bb29fdc3f2b9d99a70c8a441bc4202cf86f",
+    "Source/DSP/FittedPhysicalData.h": "92c3e2902b1d41bb618d602dd51d5a0ca1923bd786af36f871c2e04f95a3598e",
+    "Source/DSP/AcustraPerformer.cpp": "6f2ce5eea37abab9a1288541ae7914e4cb8c889878f95e28b19a0d98d229236f",
+    "Source/DSP/AcustraPerformer.h": "a231cd41f062c26dce327fc299d979265163327d4f042cc62e9f7b08465c5260",
+    "Source/PluginProcessor.cpp": "3afc51cc950b82b2cc7504a7dd7217eeaaa853526023be8be9f97d83e9e9eca9",
+    "Source/PluginProcessor.h": "5b95c3705163df76f8b20a5b9be4bb96e4bfe7a1a2dc9fd874bbcb72acba82c3",
+    "CMakeLists.txt": "ad7566fa7b1e539f99f7009f1c0be588d9c7cf4204f3ebdebb5dd84902598229"
+  },
+  "calibration": {
+    "old_count": 37,
+    "new_count": 24,
+    "removed": 13,
+    "surviving_values_order_bounds": "unchanged",
+    "old_positional_37_and_48_vectors": "rejected",
+    "historical_named_optimizer_resume": "surviving names preserved"
+  },
+  "host_parameters": {
+    "published_count": 19,
+    "active_cache_count": 16,
+    "published_ids_order_layout_migration": "unchanged"
+  },
+  "archived_source_files_removed": 15,
+  "historical_reports_and_packages": "preserved",
+  "validation": {
+    "full_build_exit": 0,
+    "ctest_suites": 75,
+    "ctest_failed": 0,
+    "python_checks": "required and registered",
+    "ctest_seconds": 153.06,
+    "plugin_integration_suites": 2,
+    "plugin_failed": 0,
+    "strict_cxx17_normal_extended": "passed with -Wall -Wextra -Wshadow -Werror",
+    "parity_cases": 280,
+    "parity_samples_per_variant": 140780160,
+    "eight_columns_exact_raw_bytes_including_signed_zero": true,
+    "finite_nonzero_connected_guards": "passed",
+    "parity_final_library_sha256": "86f072e364b5b5385719bf3f2e8aa635d1c4aa33e100ecb60f096e0716b4e9ab",
+    "native_formats": [
+      {
+        "format": "VST3",
+        "architectures": "arm64",
+        "version": "1.1.3",
+        "build": "2",
+        "executable_sha256": "2553a8f4386b38702bb17624bb49e6c7528ef881c86d466b8cb7ffdf71178a97"
+      },
+      {
+        "format": "AU",
+        "architectures": "arm64",
+        "version": "1.1.3",
+        "build": "2",
+        "executable_sha256": "277235b52c27dab918105e71e1b0310ec4bc71eff5175064a4d7bbb615d5c5b6"
+      },
+      {
+        "format": "Standalone",
+        "architectures": "arm64",
+        "version": "1.1.3",
+        "build": "2",
+        "executable_sha256": "906f6eddd0b721ceaf5defe6646c9225476f16e87767d2ac493bed72de1602de"
+      }
+    ],
+    "re_panel_generated_files_byte_identical": 104,
+    "re_png_pixel_comparisons": 101
+  },
+  "evidence_sha256": {
+    "full-build-post-audit.log": "4f788f2e14b95ee1fea7187cdfc9842757048597bb0fc9640ea9d2cc760ee37a",
+    "full-tests-final.log": "c988a687b578fc668c0ec083e134e690be7b5feb21595610f55f34beaeae7225",
+    "plugin-build-post-audit.log": "4b08d480c65d2d00b8e1f1e3592f977edfe823583ee014ce95c81dc8d1a22272",
+    "plugin-tests.log": "68ddafe74f488af120cb5a80af4fd3786c416fb4fa05cf322f0289442c8dc9d6",
+    "completeness-pass/after-source.json": "0c8152939ccaa1bfe1c480b7014ced4a4db74849fdf814474037d94558626079",
+    "native-parity-final/validation-receipt.json": "bb4ffa0de0342f95a38351fe9ca2d517c67ab20aca58522fafa75f21fbcb28a1",
+    "native-parity-final/comparison.json": "3d36e726ccba9daa922473d18a517e42da8a8b01c702a7502dd497a12fd32946",
+    "archived-code-removal.json": "8805c8b0bdffdf19f7f749c6ef90dd31f65d2519fec144ce1fff85a22db8cfaf",
+    "tool-schema-preservation.json": "35211a7c9889c853eb97c3bc02b99a62251bc670a82239146af6b353a5a7a715",
+    "engine-size-cleanup.json": "8e8aedfa8c5177070edfb4c2cedaf0fcd575490ab7503532c5c04f206e41defa"
+  },
+  "evidence_locations": [
+    "build-cleanup-20261009/evidence",
+    "Rack checkout: Examples/Acustra/Output/cleanup-20261009"
+  ],
+  "limits": [
+    "Representative deterministic control coverage; not every continuous combination.",
+    "Native arm64 runtime/build validation; no new Intel runtime, listening or CPU-speed claim.",
+    "Validation builds only; delivered release packages remain unchanged.",
+    "Rack pin/SDK compilation is recorded separately in the Rack checkout."
+  ]
+}

@@ -22,7 +22,6 @@ struct PhysicalCalibration
     float bodyQScale;
     float bridgeMobilityScale;
     float residueTiltDbPerOctave;
-    float directGain;
     MaterialCalibration steel;
     float apertureRegisterExponent { 1.0f };
     // Radiation gain on steel's measured air mode (the g21 modes between 85
@@ -67,37 +66,6 @@ struct PhysicalCalibration
     // the corpus wants a softer termination than the pull sweep does, and
     // nothing here has measured the pull at 59 mm.
     float bridgeTailLengthMetres { 0.020f };
-    // Transverse motion stretches the string; DAFx-26's tension increase
-    // EA/(2L) times the mean square slope is a force at the saddle, and it
-    // resonates at the string's own longitudinal modes, n*c_long/(2L) with
-    // c_long = sqrt(EA/mu). For this steel set that is 1.5 to 3.9 kHz, from
-    // the construction data the transverse model already uses. Because the drive is a squared slope it carries the
-    // products of transverse partials, so what the resonators pass are the
-    // sum and difference phantom partials rather than an added tone. Zero is
-    // an exact no-op.
-    float longitudinalGain { 0.0f };
-    float longitudinalQ { 80.0f };
-    // The two transverse polarisations of a real string are not in tune with
-    // each other, and Woodhouse, "Plucked guitar transients: comparison of
-    // measurements and synthesis", Acta Acustica 90 (2004) 945-965, Sec. 4.3
-    // (https://euphonics.org/wp-content/uploads/2022/03/Guitar_II.pdf) shows
-    // where the split comes from: not from the body, whose measured 2x2
-    // admittance matrix splits the pair by only about 0.1 Hz, but from an end
-    // correction at the terminations, the string rolling on the fret crown
-    // and possibly the saddle. He measures the polarisation parallel to the
-    // soundboard as the longer one - so the normal polarisation is the higher
-    // member of the pair - by "about 0.8 mm in 650 mm" on the B string, and
-    // calls that "more significant ... than that coming from the body
-    // admittance matrix". This is that length, as a length: it is a total
-    // over both terminations for an open string, not a per-termination
-    // figure, and he publishes no law for how it varies from string to
-    // string, so the same length goes to every string. It is bounded and
-    // fittable rather than fixed because he calls the attribution tentative
-    // and says the exact amount "would require detailed computation"; the
-    // bound is one string diameter - his own remark that the correction is of
-    // the order of the string diameter - taken as the 0.82 mm nylon B string
-    // the 0.8 mm was measured on.
-    float polarisationEndCorrectionMetres { 0.0008f };
     // The Pick technique only; Finger and Thumb never read these. A string
     // does not leave a plectrum's tip from rest: the contact region is
     // carried at the tip's speed until it slips, so the release carries a
@@ -109,13 +77,9 @@ struct PhysicalCalibration
     // reads the loud layer's H7-H12 4-6 dB under the recordings and its
     // H1-H3 5-9 dB over them, and the soft layer the other way; a velocity
     // component's partials fall 6 dB/octave slower than a displacement's,
-    // which is the tilt that grows). Zero is the exact legacy pluck. The
-    // plectrum's contact transient is an impact and grows with the pick's
-    // speed squared, not with the note it starts; pickTransientGain scales
-    // that broadband burst, and zero keeps the Finger burst law.
+    // which is the tilt that grows). Zero is the exact legacy pluck.
     float pickReleaseVelocityShare { 0.0f };
     float pickReleaseVelocityExponent { 2.0f };
-    float pickTransientGain { 0.0f };
     // The Pick technique only. The radius of the plectrum edge the string
     // slides round as it is let go (AcustraEngine::plectrumSlipPole): the
     // release takes r / u, u the speed the string's own held force gives it,
@@ -128,46 +92,6 @@ struct PhysicalCalibration
     // AcustraEngine.cpp). Zero is an exact no-op.
     float steelWoundBendingLoss { 0.0f };
     float steelPlainBendingLoss { 0.0f };
-    // The noise a fingertip, nail or plectrum makes as it leaves the string
-    // (AcustraEngine::initialiseContactNoise and renderContactNoise). One
-    // random contact force per pluck, along the stroke: white between the
-    // string's fundamental and a corner, above which the contact smooths it,
-    // with the corner at the tool's full-velocity value times the MIDI
-    // velocity v (sliding-contact noise moves up in frequency with the
-    // sliding speed and grows with it: Akay, "Acoustics of friction", JASA 111
-    // (2002) 1525-1548), an RMS of v^contactNoiseVelocityExponent times the
-    // force F0 the hand held, and one decay from the release. It reaches the
-    // microphones two ways. Its string-borne part (contactNoiseFinger,
-    // contactNoisePick: the RMS as a fraction of F0 at v = 1) enters the string at the
-    // contact point as velocity waves F / (2Z) both ways, so it reaches the
-    // bridge and body as the string's first arrivals do. Its airborne part
-    // (contactClickFinger, contactClickPick) is the tool's own click, a small
-    // source at the contact whose pressure follows the force's rate of
-    // change up to where a 3 mm radiator stops being small (18 kHz), heard
-    // through the direct path after its flight to the microphone, without
-    // touching the string or the body. The levels are per tool (a finger, a
-    // plectrum); Thumb takes
-    // the finger's with its corner lowered by the ratio of the two contact
-    // widths. Zero levels are an exact no-op.
-    //
-    // What the recordings asked for (Tools/MeasureAttackTransient.py on the
-    // bank's training rows, 2026-09-28): in the first 12 ms a loud picked
-    // note carries 14-29 dB more energy between its partials at 1-12.5 kHz
-    // than the engine renders and a soft one 7-20 dB, rising with frequency; that energy falls at a median 420 dB/s over
-    // 12-40 ms (contactNoiseDecaySeconds, 20.7 ms, is that decay, not a fit);
-    // and on the loud layer it does not recur at the string's period (its
-    // 2-14 kHz content correlates 0.18-0.54 with itself a period later, where
-    // the engine's and the soft layer's correlate 0.80-0.96), so it is not the string's own
-    // vibration nor a room's. A force launched into the string recurs with the
-    // string, and the fits drive the string-borne levels to zero.
-    float contactNoiseFinger { 0.0f };
-    float contactNoisePick { 0.0f };
-    float contactNoiseVelocityExponent { 1.0f };
-    float contactNoiseCornerHz { 4000.0f };
-    float pickContactNoiseCornerHz { 8000.0f };
-    float contactNoiseDecaySeconds { 0.0207f };
-    float contactClickFinger { 0.0f };
-    float contactClickPick { 0.0f };
 };
 
 // Refit on 2026-09-04 around the two-way junction and the saddle anchor, by a
@@ -209,7 +133,7 @@ struct PhysicalCalibration
 // below that cite nylon evidence record how a value still shared by the
 // steel strings was chosen.
 inline constexpr PhysicalCalibration fittedPhysicalCalibration {
-    1.0f, 1.0f, 0.754677154f, 0.0f, 0.0f,
+    1.0f, 1.0f, 0.754677154f, 0.0f,
     // Steel's pluck distance scale is 1.8, chosen by ear on 2026-09-25 over
     // the fitted 0.888 (Docs/decisions.md): at the default Pluck Position a
     // finger meets the string 149 mm from the bridge instead of 74 mm, at
@@ -239,26 +163,7 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // and A#2 stand 11-13 dB stronger against their 2nd and 3rd harmonics
     // than the engine rendered them through the bridge microphones.
     -0.0706290118f, 4.0f, 0.00773577847f, -0.0597851562f, 2.28586032f,
-    // The axial resonators are physically motivated, but without a measured
-    // transfer level their narrow, high-Q onset reads as a pitched water-drop
-    // transient rather than part of the pluck. Keep the calibrated mechanism
-    // available for measurement work, but do not add that synthetic ping to
-    // the shipping voice.
-    0.011f, 2187.76023f, 0.00325f, 0.0f, 35.0f,
-    // Zero, chosen by ear on 2026-09-24 over Woodhouse's published 0.8 mm
-    // (Docs/decisions.md). He measured the correction on an open string and
-    // calls its attribution tentative; carried as a fixed length it splits a
-    // stopped string's planes further the higher it is fretted (4.8 cents at
-    // the 14th fret, 6.8 at the 20th), and once the parallel plane radiated
-    // and held most of a steel pluck, its member took over within 0.2-0.4 s
-    // and high notes drifted flat as they rang, where the recordings' do not.
-    // A blind listener preferred the steady pitch on all three pairs of high
-    // steel and nylon melodies and chords. The benchmark prefers 0.8 mm by
-    // little (Fylde training/validation/flat-top +0.15%/+0.23%/+0.68% at
-    // zero, measured before the nylon share returned) while its
-    // pitch-trajectory term prefers zero (1.199 -> 0.659). The mechanism
-    // stays calibratable up to one string diameter.
-    0.0f,
+    0.011f, 2187.76023f, 0.00325f,
     // The plectrum, first fitted 2026-09-10 by the pick-release stage of
     // Tools/OptimizePhysicalModel.py on the picked archtop training rows
     // rendered with Pick (share 1.0, exponent 2.93, transient 0.078), then
@@ -296,7 +201,7 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // v^0.4921875, toward B, the half-loss snap's 0.828125 v^1.015625, so
     // 0.58203125 v^0.85859375. The listener heard B's pick as "too intense"
     // and asked for 70% of it. The pick burst stays at zero (both endpoints).
-    0.58203125f, 0.85859375f, 0.0f,
+    0.58203125f, 0.85859375f,
     // The plectrum edge, fitted on the picked archtop training rows rendered
     // with Pick (the pick-release stage's steel objective 5.917 / 5.915 /
     // 5.943 at 0.10 / 0.15 / 0.20 mm before and 5.3985 / 5.3664 / 5.3842
@@ -321,8 +226,6 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // plain 0.002334375, so its upper partials die at about 70% of B's added
     // rate and 35% of the rate the recordings measure. Neither is refit.
     0.035f, 0.002334375f
-    // The contact noise and click levels keep their zero defaults: the click
-    // was rejected by ear on 2026-09-28 (Set 16, "the pick is TOO LOUD").
 };
 
 } // namespace acustra

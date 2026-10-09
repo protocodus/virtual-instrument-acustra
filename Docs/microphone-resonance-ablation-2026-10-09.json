@@ -1,0 +1,585 @@
+{
+  "schema": "acustra_microphone_resonance_ablation_v1",
+  "date": "2026-10-09",
+  "purpose": "Separate close microphone capture balance from the vibrating instrument for Auditorium A2; these signal measurements do not establish listening preference.",
+  "baseline": {
+    "source_commit": "8bd0a2fffd2ef9414f08898c619d798366727b99",
+    "source_sha256": {
+      "Source/DSP/AcustraEngine.cpp": "5ca508dafa99b5ba54d5a8d7a255481dc416e1ca8bc103c2ccbee915ac6901cd",
+      "Source/DSP/AcustraEngine.h": "1d4cd40593a2b9efbdc00bd146747b9fe790ca12d62a131e2f8239f0737b2054",
+      "Source/DSP/CaptureVoicingData.h": "a81f1618381a366155600c41d24ae8670e4a519e6b227d7341b9c3d984b48ccc",
+      "Source/DSP/ConstructionLoudnessData.h": "d2584676cf3cec5e66e0df108ead800e978f3722cac27eca72fe6dd15efaed03",
+      "Source/DSP/MeasuredBodyData.h": "1c54a31e2546db4095d373591a45a188fc21bac3820f9b0a3f72c66c96fd9be0",
+      "Source/DSP/ModelConvergenceData.h": "18170344ddf96879dfb56b1848af4343292e0408717c3e9354837b1a23f7e965"
+    },
+    "performance_renderer_sha256": "8fae58e88efaeb07c7ebf6d9c2426782093086194da1f847e76ac26d73105643",
+    "dsp_library_sha256": "f12e389f61f4c9ccf0a061af9a858f7ccf16293d814d68ab7059f7bd0fe7f2a5",
+    "diagnostic_renderer_source_sha256": "c0b3a6b383bc378296eec0c47b533b572b0f21ec00c9bbb60a35edff2f539080",
+    "diagnostic_renderer_sha256": "4e8081a90ea9c90a2f4d5dfcda067403556a08c6c3c8043fc28d5f3281176a3f"
+  },
+  "protocol": {
+    "sample_rate_hz": 48000,
+    "frames_per_render": 62400,
+    "note_on_frame": 0,
+    "note_off_frame": 48000,
+    "midi_velocity": 96,
+    "picking": "thumb",
+    "capture": "mono_mic",
+    "room": 0.0,
+    "touch": 0.58,
+    "pluck_position": 0.28,
+    "other_controls": "EngineParameters defaults",
+    "fresh_deterministic_engine_per_note": true,
+    "all_notes_channels": {
+      "44": [
+        1
+      ],
+      "45": [
+        1,
+        2
+      ],
+      "46": [
+        1,
+        2
+      ]
+    },
+    "models": [
+      "original",
+      "bellido1978"
+    ],
+    "shapes": [
+      "parlor",
+      "auditorium",
+      "dreadnought",
+      "jumbo"
+    ],
+    "woods": [
+      "spruce",
+      "mahogany",
+      "maple"
+    ],
+    "render_count": 120,
+    "ablation": "Prepare both identical engines, then set only bodyBank_.captureFilter.enabled=false in the second. Process one sample per call to retain native force observations. No calibration, physical poles, residues, string state or random draws are altered.",
+    "float_channel_order": [
+      "mono_mic",
+      "capture_bypassed_mono_mic",
+      "body_force",
+      "bypassed_body_force",
+      "reaction_force",
+      "piezo_jack_voltage"
+    ],
+    "metric_windows_s": {
+      "early": [
+        0.04,
+        0.25
+      ],
+      "late": [
+        0.3,
+        0.85
+      ]
+    },
+    "metric_method": "Double precision analysis. RMS over each window. Hann FFT with native window length; H1..H12 power sums within max(5 Hz, 0.007*harmonic frequency) of equal-tempered nominal centers. H1 share is H1/(H1+...+H12); fund_upper_db is 10log10(H1/(H2+...+H12)). Not a total energy fraction.",
+    "force_equality": "Exact float32 sample equality for body-force columns 2 and 3 throughout every complete render, including release.",
+    "selected_result_metric_order": [
+      "rms_db_re_1_native_unit",
+      "h1_share_percent",
+      "h1_over_h2_h12_db"
+    ],
+    "rms_units": "Mic channels use output full scale 1. Body/reaction force use engine force unit 1. Piezo uses 1 volt. Consequently only mic RMS values are dBFS."
+  },
+  "all_120_force_trajectories_identical": true,
+  "selected_baseline_results": [
+    {
+      "model": "original",
+      "shape": "parlor",
+      "wood": "spruce",
+      "midi": 45,
+      "string_channel": 2,
+      "float_audio_sha256": "0c590d5a35af8f83b2db21912161ffd32e02f6b8f38020f8350b1d5c3bbb378f",
+      "force_identical": true,
+      "early": {
+        "mono_mic": [
+          -29.3,
+          82.09,
+          6.61
+        ],
+        "bypassed_mono_mic": [
+          -32.62,
+          47.891,
+          -0.37
+        ],
+        "body_force": [
+          -60.7,
+          0.613,
+          -22.1
+        ],
+        "piezo_jack_voltage": [
+          -28.43,
+          86.771,
+          8.17
+        ]
+      },
+      "late": {
+        "mono_mic": [
+          -34.45,
+          99.464,
+          22.69
+        ],
+        "bypassed_mono_mic": [
+          -40.0,
+          97.828,
+          16.54
+        ],
+        "body_force": [
+          -76.96,
+          16.272,
+          -7.11
+        ],
+        "piezo_jack_voltage": [
+          -32.36,
+          95.013,
+          12.8
+        ]
+      }
+    },
+    {
+      "model": "original",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "midi": 44,
+      "string_channel": 1,
+      "float_audio_sha256": "eb9c5059d0538a60680a090783af9a9a9d328170c536009aef766aa6d07718a7",
+      "force_identical": true,
+      "early": {
+        "mono_mic": [
+          -19.95,
+          96.292,
+          14.14
+        ],
+        "bypassed_mono_mic": [
+          -25.09,
+          84.689,
+          7.43
+        ],
+        "body_force": [
+          -61.58,
+          63.699,
+          2.44
+        ],
+        "piezo_jack_voltage": [
+          -29.11,
+          92.267,
+          10.77
+        ]
+      },
+      "late": {
+        "mono_mic": [
+          -24.54,
+          98.971,
+          19.83
+        ],
+        "bypassed_mono_mic": [
+          -30.02,
+          94.749,
+          12.56
+        ],
+        "body_force": [
+          -68.15,
+          92.977,
+          11.22
+        ],
+        "piezo_jack_voltage": [
+          -32.98,
+          97.077,
+          15.21
+        ]
+      }
+    },
+    {
+      "model": "original",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "midi": 45,
+      "string_channel": 1,
+      "float_audio_sha256": "7c88fd453f74346c45788bef1e50a69b529775ca883a10d5b818ad7703b42d43",
+      "force_identical": true,
+      "early": {
+        "mono_mic": [
+          -15.8,
+          99.717,
+          25.46
+        ],
+        "bypassed_mono_mic": [
+          -21.45,
+          98.749,
+          18.97
+        ],
+        "body_force": [
+          -56.98,
+          94.644,
+          12.47
+        ],
+        "piezo_jack_voltage": [
+          -31.66,
+          89.14,
+          9.14
+        ]
+      },
+      "late": {
+        "mono_mic": [
+          -27.5,
+          96.977,
+          15.06
+        ],
+        "bypassed_mono_mic": [
+          -33.02,
+          86.762,
+          8.17
+        ],
+        "body_force": [
+          -68.57,
+          75.742,
+          4.94
+        ],
+        "piezo_jack_voltage": [
+          -44.85,
+          20.306,
+          -5.94
+        ]
+      }
+    },
+    {
+      "model": "original",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "midi": 45,
+      "string_channel": 2,
+      "float_audio_sha256": "1fa08f25cb761cb3103dbf768d836cee61a4bce3152797cd20174065b0f4628b",
+      "force_identical": true,
+      "early": {
+        "mono_mic": [
+          -15.92,
+          97.544,
+          15.99
+        ],
+        "bypassed_mono_mic": [
+          -21.28,
+          90.01,
+          9.55
+        ],
+        "body_force": [
+          -55.96,
+          70.457,
+          3.77
+        ],
+        "piezo_jack_voltage": [
+          -29.41,
+          80.588,
+          6.18
+        ]
+      },
+      "late": {
+        "mono_mic": [
+          -22.9,
+          99.652,
+          24.57
+        ],
+        "bypassed_mono_mic": [
+          -28.59,
+          98.714,
+          18.85
+        ],
+        "body_force": [
+          -64.21,
+          96.525,
+          14.44
+        ],
+        "piezo_jack_voltage": [
+          -38.31,
+          71.692,
+          4.04
+        ]
+      }
+    },
+    {
+      "model": "original",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "midi": 46,
+      "string_channel": 1,
+      "float_audio_sha256": "01c06679aeea8113b733df58390faab0ec9f0330a2564fc881f4f8b673dbf1d6",
+      "force_identical": true,
+      "early": {
+        "mono_mic": [
+          -20.74,
+          98.238,
+          17.46
+        ],
+        "bypassed_mono_mic": [
+          -26.09,
+          90.988,
+          10.04
+        ],
+        "body_force": [
+          -60.72,
+          87.353,
+          8.39
+        ],
+        "piezo_jack_voltage": [
+          -28.4,
+          89.041,
+          9.1
+        ]
+      },
+      "late": {
+        "mono_mic": [
+          -24.67,
+          95.986,
+          13.79
+        ],
+        "bypassed_mono_mic": [
+          -29.66,
+          80.801,
+          6.24
+        ],
+        "body_force": [
+          -64.45,
+          80.674,
+          6.21
+        ],
+        "piezo_jack_voltage": [
+          -31.97,
+          87.361,
+          8.4
+        ]
+      }
+    },
+    {
+      "model": "original",
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "midi": 45,
+      "string_channel": 2,
+      "float_audio_sha256": "b15df922dfc40dc1c69df04caeb934108ffa87de805df9a22e4f65aa77cf0964",
+      "force_identical": true,
+      "early": {
+        "mono_mic": [
+          -27.73,
+          79.949,
+          6.01
+        ],
+        "bypassed_mono_mic": [
+          -31.7,
+          49.274,
+          -0.13
+        ],
+        "body_force": [
+          -62.22,
+          43.148,
+          -1.2
+        ],
+        "piezo_jack_voltage": [
+          -27.99,
+          75.193,
+          4.82
+        ]
+      },
+      "late": {
+        "mono_mic": [
+          -31.94,
+          84.429,
+          7.34
+        ],
+        "bypassed_mono_mic": [
+          -35.69,
+          53.456,
+          0.6
+        ],
+        "body_force": [
+          -66.51,
+          51.082,
+          0.19
+        ],
+        "piezo_jack_voltage": [
+          -31.89,
+          81.452,
+          6.43
+        ]
+      }
+    },
+    {
+      "model": "original",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "midi": 45,
+      "string_channel": 2,
+      "float_audio_sha256": "50b68dc0b321e712e8fca4023626ea38be0b19f07363a8a6447536c5150fbb2f",
+      "force_identical": true,
+      "early": {
+        "mono_mic": [
+          -32.19,
+          59.393,
+          1.65
+        ],
+        "bypassed_mono_mic": [
+          -34.65,
+          26.779,
+          -4.37
+        ],
+        "body_force": [
+          -64.73,
+          25.886,
+          -4.57
+        ],
+        "piezo_jack_voltage": [
+          -27.82,
+          73.908,
+          4.52
+        ]
+      },
+      "late": {
+        "mono_mic": [
+          -36.27,
+          69.144,
+          3.5
+        ],
+        "bypassed_mono_mic": [
+          -38.72,
+          32.532,
+          -3.17
+        ],
+        "body_force": [
+          -68.8,
+          31.618,
+          -3.35
+        ],
+        "piezo_jack_voltage": [
+          -31.46,
+          79.854,
+          5.98
+        ]
+      }
+    },
+    {
+      "model": "bellido1978",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "midi": 45,
+      "string_channel": 2,
+      "float_audio_sha256": "2cee970023a2090e68944f814718ac5f429677bb2936fd2ee6ba2a646ac15aea",
+      "force_identical": true,
+      "early": {
+        "mono_mic": [
+          -26.65,
+          93.715,
+          11.74
+        ],
+        "bypassed_mono_mic": [
+          -26.38,
+          91.965,
+          10.59
+        ],
+        "body_force": [
+          -72.26,
+          50.632,
+          0.11
+        ],
+        "piezo_jack_voltage": [
+          -27.84,
+          74.412,
+          4.64
+        ]
+      },
+      "late": {
+        "mono_mic": [
+          -31.04,
+          97.105,
+          15.26
+        ],
+        "bypassed_mono_mic": [
+          -30.8,
+          96.265,
+          14.11
+        ],
+        "body_force": [
+          -78.6,
+          78.42,
+          5.6
+        ],
+        "piezo_jack_voltage": [
+          -31.27,
+          76.254,
+          5.07
+        ]
+      }
+    }
+  ],
+  "auditorium_air_mode": {
+    "model": "original",
+    "wood": "spruce",
+    "frequency_hz": 95.7239,
+    "q_deployed": 23.5012,
+    "free_t60_s": 0.53983,
+    "source": "Deployed bodyBank pole decoded with f=atan2(im,re)*fs/(2pi), Q=\u2212pi*f/(fs*log(radius)); not a note pitch."
+  },
+  "auditorium_open_a2_held_component": {
+    "frequency_hz": 110.0,
+    "fit_centers_s": [
+      0.2,
+      0.9
+    ],
+    "fit_step_s": 0.05,
+    "hann_window_s": 0.09,
+    "method": "Project each Hann window onto nominal 110 Hz complex exponential, then fit amplitude dB against time. Extrapolated T60 is \u221260/slope, not a measured 60 dB tail.",
+    "decay": [
+      {
+        "channel": "mono_mic",
+        "slope_db_per_s": -23.763994,
+        "extrapolated_t60_s": 2.524828
+      },
+      {
+        "channel": "capture_bypassed_mono_mic",
+        "slope_db_per_s": -23.77183,
+        "extrapolated_t60_s": 2.523996
+      },
+      {
+        "channel": "body_force",
+        "slope_db_per_s": -23.916678,
+        "extrapolated_t60_s": 2.50871
+      },
+      {
+        "channel": "reaction_force",
+        "slope_db_per_s": -25.166351,
+        "extrapolated_t60_s": 2.384136
+      },
+      {
+        "channel": "piezo_jack_voltage",
+        "slope_db_per_s": -25.165679,
+        "extrapolated_t60_s": 2.384199
+      }
+    ]
+  },
+  "capture_transfer": {
+    "model": "original",
+    "sample_rate_hz": 48000,
+    "method": "Exact deployed digital biquad complex response, including 4.12 dB capture scalar; no construction output reference.",
+    "gain_db_at_hz": {
+      "110": 5.72,
+      "220": -1.21,
+      "440": -2.09
+    },
+    "h1_vs_h2_tilt_db_at_a2": 6.93
+  },
+  "interpretation": [
+    "The sustained A2 component follows string-driven body force rather than the 95.7 Hz free body mode.",
+    "The existing broad capture contour increases low fundamental dominance without changing body force.",
+    "Mono Mic observes the upper-bout/soundhole pressure, identical to the stereo right channel before output references. The x4 Original air gain affects only the stereo left microphone and cannot directly cause mono harmonic imbalance."
+  ],
+  "raw_evidence_sha256": {
+    "all_ablation_metrics_json": "be98fa7aa2bcbf287616aa4069a101b1acf8a64c2ecdea4a61960991f5b17876",
+    "whole_note_matrix_metrics_json": "fe293e300994c779685264b55dcd282f19a6b722950c62a8f86ba4a3c745cd22",
+    "deployed_transfer_csv": "8c7b3c52e399090c69c58faa72bf8c1147e626ca1db68f45b678e71f32b5872e",
+    "deployed_poles_csv": "200ddb26aa2a4e76271bef0aaa59cf29374eb2d37053b88d31d97c6385ee3d42"
+  },
+  "artifact_note": "Native audio and complete exploratory tables remain local under /tmp/acustra-resonance-audit-20261009. This compact permanent record contains baseline diagnostic ablations only; final candidate comparison and construction calibration are reported separately."
+}

@@ -123,14 +123,14 @@ def summarize(report: dict[str, Any]) -> str:
     )
     lines.extend(_floor_lines(report))
 
-    lines.extend(["", "Promoted realism paths retained in the shipping engine:"])
+    lines.extend(["", "Realism paths documented in this historical benchmark:"])
     paths = (
         ("bridge_modal_extension", "50-mode measured passive bridge"),
         ("plate_conductance_floor", "high-frequency plate conductance"),
         ("constant_saddle_anchor", "constant six-string saddle anchor"),
         ("junction_transient_corrections", "release/junction transient correction"),
         ("longitudinal_modes",
-         "longitudinal string modes (calibrated, shipping gain zero)"),
+         "archived longitudinal calibration (gain zero in this benchmark)"),
     )
     for key, label in paths:
         if key not in report:

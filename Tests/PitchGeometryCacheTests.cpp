@@ -46,12 +46,11 @@ struct AcustraEngineTestAccess
         if (voice.speakingFret < 0.0f)
             return false;
         voice.contactTravelEnabled = true;
-        voice.contactNoiseSamples = 10;
         voice.loops[0].delay[17] = 0.75f;
         voice.pitchGeometry.value.speakingFret = -124.0f;
         engine.configureVoice(voice, 0, voice.midiNote, true);
         if (voice.speakingFret != -124.0f || voice.contactTravelEnabled
-            || voice.contactNoiseSamples != 0 || voice.loops[0].delay[17] != 0.0f)
+            || voice.loops[0].delay[17] != 0.0f)
             return false;
         // A whole voice carries its complete key/value tuple to a saved copy.
         auto saved = std::make_unique<AcustraEngine::Voice>(voice);
@@ -144,9 +143,6 @@ struct AcustraEngineTestAccess
             if (!same(sx, sy) || !same(x.referencePickDelay, y.referencePickDelay)
                 || !same(x.dispersionDesignFrequency, y.dispersionDesignFrequency)
                 || !same(x.dispersionDesignInharmonicity, y.dispersionDesignInharmonicity)
-                || !same(x.longitudinalDrive, y.longitudinalDrive)
-                || !same(x.longitudinalA1, y.longitudinalA1)
-                || !same(x.longitudinalA2, y.longitudinalA2)
                 || !(x.configurationKey == y.configurationKey)
                 || !(x.referencePickConfigurationKey == y.referencePickConfigurationKey)
                 || x.pluckDelay != y.pluckDelay || x.returnSamples != y.returnSamples
@@ -176,7 +172,7 @@ struct AcustraEngineTestAccess
 // At either finite-waveguide pitch limit, a manager slide can move the
 // physical fret without changing the rounded final frequency or tension.
 // The full configuration cache must still refresh its length/fret-dependent
-// dispersion, loss and longitudinal coefficients. Compare against an observer
+// dispersion and loss coefficients. Compare against an observer
 // that bypasses only that cache, keeping the geometry cache and all histories.
 bool clampedSlideConfigurationContract()
 {

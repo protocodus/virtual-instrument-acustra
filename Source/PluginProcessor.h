@@ -31,7 +31,9 @@ inline constexpr auto piezoMix = "piezoMix";
 inline constexpr auto releaseNoise = "releaseNoise";
 inline constexpr auto room = "room";
 
-inline constexpr int parameterCount = 19;
+inline constexpr int activeParameterCount = 16;
+// Three non-automatable host slots remain solely for old session identity.
+inline constexpr int parameterCount = activeParameterCount + 3;
 } // namespace acustra::parameters
 
 class AcustraAudioProcessorEditor;
@@ -110,7 +112,7 @@ private:
     void updateEngineParameters() noexcept;
     void publishStringActivity (std::uint32_t revision) noexcept;
 
-    std::array<std::atomic<float>*, acustra::parameters::parameterCount>
+    std::array<std::atomic<float>*, acustra::parameters::activeParameterCount>
         parameterPointers {};
     // Everything between MIDI and the engine: see DSP/AcustraPerformer.h.
     acustra::Performer performer;

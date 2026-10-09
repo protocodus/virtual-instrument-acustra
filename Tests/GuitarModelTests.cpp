@@ -141,7 +141,7 @@ double holdDroop(double frequency, double rate)
 // The Bellido microphone's two output peaks filter the summed pressure, not
 // a gain sampled at each modal pole. Rebuild each from the bilinear analog
 // prototype H(s)=(s^2+A*s/Q+1)/(s^2+s/(A*Q)+1), with its center prewarped:
-// 500 Hz -6 dB, then 1400 Hz +6 dB, both Q=1.2. This retains the
+// 500 Hz -3 dB, then a neutral 1400 Hz section, both Q=1.2. This retains the
 // complex phase at the evaluation frequency independently of the engine's
 // RBJ coefficient generation and transposed filter recurrence.
 std::complex<double> microphoneFilter(double frequency, double rate,
@@ -150,8 +150,8 @@ std::complex<double> microphoneFilter(double frequency, double rate,
     if (model != acustra::GuitarModel::Bellido1978)
         return 1.0;
     std::complex<double> response = 1.0;
-    for (const auto section : { std::array<double, 2> { 500.0, -6.0 },
-                                std::array<double, 2> { 1400.0, 6.0 } })
+    for (const auto section : { std::array<double, 2> { 500.0, -3.0 },
+                                std::array<double, 2> { 1400.0, 0.0 } })
     {
         const double a = std::pow(10.0, section[1] / 40.0);
         const std::complex<double> s(0.0,
@@ -171,8 +171,8 @@ struct MicrophoneFilterReference
     MicrophoneFilterReference(double rate, acustra::GuitarModel model)
         : enabled(model == acustra::GuitarModel::Bellido1978)
     {
-        const std::array<std::array<double, 2>, 2> sections {{ { 500.0, -6.0 },
-                                                              { 1400.0, 6.0 } }};
+        const std::array<std::array<double, 2>, 2> sections {{ { 500.0, -3.0 },
+                                                              { 1400.0, 0.0 } }};
         for (std::size_t index = 0; index < sections.size(); ++index)
         {
             const double a = std::pow(10.0, sections[index][1] / 40.0);

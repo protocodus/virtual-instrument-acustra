@@ -1,0 +1,1986 @@
+{
+  "controls": {
+    "velocity": 100,
+    "touch": 0.58,
+    "pluck_position": 0.28,
+    "room": 0,
+    "hold_seconds": 1.2,
+    "release_seconds": 0.8
+  },
+  "checks": {
+    "outputs": 5760,
+    "all_finite_nonzero_correct_frames": true,
+    "maximum_microphone_peak": 0.5605288743972778,
+    "maximum_piezo_bus_peak": 0.40045320987701416,
+    "microphone_fullscale_samples": 0,
+    "piezo_bus_fullscale_samples": 0,
+    "initial_energy_pairs": 2880,
+    "initial_energy_pairs_match_CSV_precision": 2830,
+    "protected_D_string_pairs": 1368,
+    "protected_D_string_exact_native": 1368,
+    "protected_D_string_frozen_before_controls": 1224,
+    "protected_D_string_exact_frozen_before_controls": 1224,
+    "B_highE_historical_full_controls": 504,
+    "B_highE_exact_historical_full_controls": 196,
+    "high_same_clean_source_full_controls": 576,
+    "high_exact_same_clean_source_full_controls": 576,
+    "additional_fresh_clean_full_reference_outputs": 576,
+    "additional_fresh_high_frozen_reference_outputs": 0,
+    "retained_raw_outputs_at_generation": 640,
+    "retained_raw_outputs_after_verified_pruning": 208
+  },
+  "profile": {
+    "variant": "string-normal-55",
+    "basis": "Fixed default open-string MIDI40/45/50/55/59/64, independent of fret/tuning",
+    "open_string_share_offsets": [
+      0,
+      0,
+      0,
+      0.1944,
+      0.3,
+      0.3
+    ],
+    "source_ramp_zero_through_midi": 52,
+    "source_ramp_full_from_midi": 57
+  },
+  "references": {
+    "global_report_sha256": "fdf434ed93b30e89419c661522935af747cd7a7286ddfb995a28becffefd5dc3",
+    "earlier_A3_E4_report_sha256": "d1dced303adb29d0123658b5942d3c270a75fb2e3f762c1d9187acff19a82784",
+    "global_renderer_sha256": "0de2962eb02feeb9acaa549f4790b97e7927baf8b7dcc12a6872ad9c1509a6c5",
+    "clean_full_renderer_sha256": "cdd6c2bcf494410d2b5cf244d4dddf7e75077c3556bcbaefea4a7a73d6f41651",
+    "early_pitch_profile_report_sha256": "49a94548c294ef22335e03c3e9e67f1967b7ad7461d336b4caea3b435c4cd919",
+    "control_scope": "Same pre-calibration table and prototype controls. Every D-string pitch compares to paired legacy Before and available frozen Before. Every B/highE pitch compares to a full +0.30 control from the same clean native initializer. Historical external-target helper comparisons are separate and can differ slightly due to float normalization path."
+  },
+  "renderer_sha256": "aea76a0c1ae2cfabe40003585f3b19003c1998f9f3651fd5d07a1066b8d3248f",
+  "analysis_sha256": "51c87c29a0a9efe767fa47e08537417ba520583df1b9e20885eeaa863332e74c",
+  "scorer_sha256": "f986438f858fc4aadd2819cb92645901654f1c78ba8138fd3e30fc7412e9d146",
+  "tracked_partial_protocol": "Independent H1\u2013H12 peak tracking in0.1\u20131.15second heldperiodogram131072; STFT6144/1536hop/nfft16384 logpower slope0.15\u20131.10. Peaksearch\u00b1max10/min0.4*f0/0.04*expected; integrate\u00b1max10/0.02*peak. Qualified when early partial>=H1\u221235dB andlate>\u2212140dBFS. Fits and early/late/H1-relative levels remain signal descriptors.",
+  "status": "Frozen physical review evidence; the clean calibrated direction candidate is now canonical. Focused listening found it less banjo-like; sharp or tinny attack remains unresolved.",
+  "physical_viability_conclusion": "Viable as a limited higher-string refinement for review, with incomplete coverage of the reported banjo cue. This protects the entire D string and eliminates the earlier Dsharp4 transient spike, but leaves D upper tails unchanged, improves G-string tails unevenly and adds a mixed-string openG3 prominence increase. B/highE behavior matches the user-heard normal55 direction apart from the documented tiny historical float-normalization difference.",
+  "coverage": {
+    "constructions": 12,
+    "styles": [
+      "finger",
+      "pick",
+      "thumb"
+    ],
+    "microphone_captures": [
+      "stereo_mic",
+      "mono_mic"
+    ],
+    "simultaneous_piezo_bus": true,
+    "fingerings": [
+      [
+        "D3_D",
+        50,
+        3
+      ],
+      [
+        "Dsharp3_D",
+        51,
+        3
+      ],
+      [
+        "E3_D",
+        52,
+        3
+      ],
+      [
+        "F3_D",
+        53,
+        3
+      ],
+      [
+        "Fsharp3_D",
+        54,
+        3
+      ],
+      [
+        "G3_D",
+        55,
+        3
+      ],
+      [
+        "Gsharp3_D",
+        56,
+        3
+      ],
+      [
+        "A3_D",
+        57,
+        3
+      ],
+      [
+        "Asharp3_D",
+        58,
+        3
+      ],
+      [
+        "B3_D",
+        59,
+        3
+      ],
+      [
+        "C4_D",
+        60,
+        3
+      ],
+      [
+        "Csharp4_D",
+        61,
+        3
+      ],
+      [
+        "D4_D",
+        62,
+        3
+      ],
+      [
+        "Dsharp4_D",
+        63,
+        3
+      ],
+      [
+        "E4_D",
+        64,
+        3
+      ],
+      [
+        "F4_D",
+        65,
+        3
+      ],
+      [
+        "Fsharp4_D",
+        66,
+        3
+      ],
+      [
+        "G3_G",
+        55,
+        4
+      ],
+      [
+        "Gsharp3_G",
+        56,
+        4
+      ],
+      [
+        "A3_G",
+        57,
+        4
+      ],
+      [
+        "Asharp3_G",
+        58,
+        4
+      ],
+      [
+        "B3_G",
+        59,
+        4
+      ],
+      [
+        "C4_G",
+        60,
+        4
+      ],
+      [
+        "Csharp4_G",
+        61,
+        4
+      ],
+      [
+        "D4_G",
+        62,
+        4
+      ],
+      [
+        "Dsharp4_G",
+        63,
+        4
+      ],
+      [
+        "E4_G",
+        64,
+        4
+      ],
+      [
+        "F4_G",
+        65,
+        4
+      ],
+      [
+        "A4_highE",
+        69,
+        6
+      ],
+      [
+        "E5_highE",
+        76,
+        6
+      ],
+      [
+        "D4_B",
+        62,
+        5
+      ],
+      [
+        "Dsharp4_B",
+        63,
+        5
+      ],
+      [
+        "E4_B",
+        64,
+        5
+      ],
+      [
+        "E4_highE",
+        64,
+        6
+      ],
+      [
+        "G4_highE",
+        67,
+        6
+      ],
+      [
+        "B4_highE",
+        71,
+        6
+      ],
+      [
+        "G4_D",
+        67,
+        3
+      ],
+      [
+        "A4_D",
+        69,
+        3
+      ],
+      [
+        "G4_G",
+        67,
+        4
+      ],
+      [
+        "A4_G",
+        69,
+        4
+      ]
+    ],
+    "paired_native_outputs": 5760,
+    "additional_clean_full_controls": 576
+  },
+  "native_report": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/construction/normal-string-protected/report.json",
+  "native_report_sha256": "8028a84eeca54ddcbf5ea53f9b9f733a9ee789932d53cf1dac83520f4b62b765",
+  "summarizer_sha256": "cfe4de49c92eb557d841977d9f111644c8114841903d4e378a94c2bd5e25c014",
+  "same_string_neighbor_change_db": {
+    "count": 1728,
+    "minimum": -1.0640712072225966,
+    "median": 0.0,
+    "maximum": 0.9437059080433308
+  },
+  "D_string_neighbor_change_db": {
+    "count": 1080,
+    "minimum": 0.0,
+    "median": 0.0,
+    "maximum": 0.0
+  },
+  "G_string_neighbor_change_db": {
+    "count": 648,
+    "minimum": -1.0640712072225966,
+    "median": 0.032879200874941006,
+    "maximum": 0.9437059080433308
+  },
+  "largest_same_string_neighbor_increases": [
+    {
+      "key": "jumbo-maple-thumb-stereo_mic",
+      "shape": "jumbo",
+      "wood": "maple",
+      "technique": "thumb",
+      "capture": "stereo_mic",
+      "channel": 4,
+      "midi": 63,
+      "note": "Dsharp4_G",
+      "before": 5.920319652321531,
+      "profile": 6.864025560364862,
+      "change_db": 0.9437059080433308
+    },
+    {
+      "key": "jumbo-maple-finger-stereo_mic",
+      "shape": "jumbo",
+      "wood": "maple",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 4,
+      "midi": 63,
+      "note": "Dsharp4_G",
+      "before": 5.493808860760954,
+      "profile": 6.410514162091449,
+      "change_db": 0.9167053013304951
+    },
+    {
+      "key": "dreadnought-mahogany-pick-mono_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 4,
+      "midi": 56,
+      "note": "Gsharp3_G",
+      "before": -2.0873227247335606,
+      "profile": -1.279169608942155,
+      "change_db": 0.8081531157914057
+    },
+    {
+      "key": "parlor-spruce-pick-mono_mic",
+      "shape": "parlor",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 4,
+      "midi": 57,
+      "note": "A3_G",
+      "before": -2.6418034920682416,
+      "profile": -1.8380433773585878,
+      "change_db": 0.8037601147096538
+    },
+    {
+      "key": "parlor-spruce-pick-stereo_mic",
+      "shape": "parlor",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 4,
+      "midi": 57,
+      "note": "A3_G",
+      "before": -1.6912101455712687,
+      "profile": -0.8928633072177234,
+      "change_db": 0.7983468383535453
+    },
+    {
+      "key": "jumbo-spruce-pick-stereo_mic",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 4,
+      "midi": 63,
+      "note": "Dsharp4_G",
+      "before": 5.071988203395168,
+      "profile": 5.866515344870496,
+      "change_db": 0.7945271414753279
+    },
+    {
+      "key": "jumbo-mahogany-pick-mono_mic",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 4,
+      "midi": 63,
+      "note": "Dsharp4_G",
+      "before": 4.791008129470683,
+      "profile": 5.579503730823987,
+      "change_db": 0.7884956013533042
+    },
+    {
+      "key": "jumbo-spruce-pick-mono_mic",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 4,
+      "midi": 63,
+      "note": "Dsharp4_G",
+      "before": 3.6818536872028744,
+      "profile": 4.438632477205154,
+      "change_db": 0.7567787900022793
+    },
+    {
+      "key": "jumbo-mahogany-pick-stereo_mic",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 4,
+      "midi": 63,
+      "note": "Dsharp4_G",
+      "before": 5.941781217408479,
+      "profile": 6.696536255061204,
+      "change_db": 0.7547550376527248
+    },
+    {
+      "key": "jumbo-maple-pick-mono_mic",
+      "shape": "jumbo",
+      "wood": "maple",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 4,
+      "midi": 58,
+      "note": "Asharp3_G",
+      "before": 2.0989424403479617,
+      "profile": 2.827892190164789,
+      "change_db": 0.7289497498168274
+    },
+    {
+      "key": "jumbo-maple-pick-mono_mic",
+      "shape": "jumbo",
+      "wood": "maple",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 4,
+      "midi": 60,
+      "note": "C4_G",
+      "before": 0.4378565792612221,
+      "profile": 1.1497249054616852,
+      "change_db": 0.711868326200463
+    },
+    {
+      "key": "jumbo-spruce-finger-stereo_mic",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 4,
+      "midi": 63,
+      "note": "Dsharp4_G",
+      "before": 7.495602590141388,
+      "profile": 8.185974882454627,
+      "change_db": 0.6903722923132385
+    }
+  ],
+  "mixed_string_G3_boundary": {
+    "protocol": "Native G3 on G string minus mean Fsharp3 on D and Gsharp3 on G, representing the normal switch at the openG string. This intentionally includes differing physical strings; it is not the same-string resonance metric.",
+    "changes_db": {
+      "count": 72,
+      "minimum": 0.06205929142690181,
+      "median": 1.2460449298395382,
+      "maximum": 1.9353111618952852
+    },
+    "largest_increases": [
+      {
+        "key": "auditorium-spruce-finger-stereo_mic",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "technique": "finger",
+        "capture": "stereo_mic",
+        "before": 2.0922777189955752,
+        "profile": 4.02758888089086,
+        "change_db": 1.9353111618952852
+      },
+      {
+        "key": "auditorium-spruce-thumb-stereo_mic",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "technique": "thumb",
+        "capture": "stereo_mic",
+        "before": 1.337133839517243,
+        "profile": 3.2573181820757853,
+        "change_db": 1.9201843425585423
+      },
+      {
+        "key": "auditorium-mahogany-finger-stereo_mic",
+        "shape": "auditorium",
+        "wood": "mahogany",
+        "technique": "finger",
+        "capture": "stereo_mic",
+        "before": 3.0101910222727497,
+        "profile": 4.827938197450337,
+        "change_db": 1.8177471751775869
+      },
+      {
+        "key": "jumbo-maple-thumb-mono_mic",
+        "shape": "jumbo",
+        "wood": "maple",
+        "technique": "thumb",
+        "capture": "mono_mic",
+        "before": -4.737806686757402,
+        "profile": -2.9326224309275375,
+        "change_db": 1.8051842558298645
+      },
+      {
+        "key": "auditorium-maple-thumb-stereo_mic",
+        "shape": "auditorium",
+        "wood": "maple",
+        "technique": "thumb",
+        "capture": "stereo_mic",
+        "before": -0.6000938096568547,
+        "profile": 1.1954587045335074,
+        "change_db": 1.795552514190362
+      },
+      {
+        "key": "auditorium-spruce-pick-stereo_mic",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "technique": "pick",
+        "capture": "stereo_mic",
+        "before": 0.12701801746537456,
+        "profile": 1.912012810884839,
+        "change_db": 1.7849947934194645
+      },
+      {
+        "key": "auditorium-mahogany-thumb-stereo_mic",
+        "shape": "auditorium",
+        "wood": "mahogany",
+        "technique": "thumb",
+        "capture": "stereo_mic",
+        "before": 2.326800468980018,
+        "profile": 4.104783815315606,
+        "change_db": 1.7779833463355885
+      },
+      {
+        "key": "auditorium-spruce-thumb-mono_mic",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "technique": "thumb",
+        "capture": "mono_mic",
+        "before": 0.3865107522109881,
+        "profile": 2.1640346000347783,
+        "change_db": 1.7775238478237902
+      },
+      {
+        "key": "auditorium-spruce-finger-mono_mic",
+        "shape": "auditorium",
+        "wood": "spruce",
+        "technique": "finger",
+        "capture": "mono_mic",
+        "before": 1.1835407169410885,
+        "profile": 2.9326977051985885,
+        "change_db": 1.7491569882575
+      },
+      {
+        "key": "auditorium-maple-finger-stereo_mic",
+        "shape": "auditorium",
+        "wood": "maple",
+        "technique": "finger",
+        "capture": "stereo_mic",
+        "before": 0.28650538286687777,
+        "profile": 1.9912006215622924,
+        "change_db": 1.7046952386954146
+      },
+      {
+        "key": "jumbo-maple-thumb-stereo_mic",
+        "shape": "jumbo",
+        "wood": "maple",
+        "technique": "thumb",
+        "capture": "stereo_mic",
+        "before": 1.591293315529576,
+        "profile": 3.2751334712155398,
+        "change_db": 1.6838401556859637
+      },
+      {
+        "key": "auditorium-mahogany-thumb-mono_mic",
+        "shape": "auditorium",
+        "wood": "mahogany",
+        "technique": "thumb",
+        "capture": "mono_mic",
+        "before": 1.573853397270355,
+        "profile": 3.238373754566524,
+        "change_db": 1.664520357296169
+      }
+    ]
+  },
+  "same_pitch_fingering_level_deltas": {
+    "channel3-midi62": {
+      "mic": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        }
+      },
+      "piezo_bus": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        }
+      }
+    },
+    "channel3-midi63": {
+      "mic": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        }
+      },
+      "piezo_bus": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        }
+      }
+    },
+    "channel3-midi64": {
+      "mic": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        }
+      },
+      "piezo_bus": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 0.0,
+          "median": 0.0,
+          "maximum": 0.0
+        }
+      }
+    },
+    "channel4-midi62": {
+      "mic": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -1.256372563899248,
+          "median": 2.437824377108859,
+          "maximum": 4.606650334317486
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -13.97005833879976,
+          "median": 2.187265717445456,
+          "maximum": 4.198876723455193
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 0.7296509498121537,
+          "median": 2.0203008595242853,
+          "maximum": 2.5152676062999078
+        }
+      },
+      "piezo_bus": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 1.1011937689815596,
+          "median": 2.5825386558617964,
+          "maximum": 12.638509584599191
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -2.6062812157566455,
+          "median": 2.3667607175529604,
+          "maximum": 15.655771992581641
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 1.9780692244915272,
+          "median": 2.44116122032435,
+          "maximum": 3.305366779462176
+        }
+      }
+    },
+    "channel4-midi63": {
+      "mic": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -0.20034174967057794,
+          "median": 2.286863087260496,
+          "maximum": 2.8021552436119563
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -1.714065379990359,
+          "median": 0.7799484442885642,
+          "maximum": 4.767937018978657
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 0.6463334795309308,
+          "median": 2.152534618228046,
+          "maximum": 2.5956153819512977
+        }
+      },
+      "piezo_bus": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.3450075294894219,
+          "median": 2.5413422305351894,
+          "maximum": 3.6253525058304845
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -2.2531374388309686,
+          "median": 0.7742775754644775,
+          "maximum": 4.392130679796104
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 1.2161070256155213,
+          "median": 2.3164526766141087,
+          "maximum": 3.3227353021324824
+        }
+      }
+    },
+    "channel4-midi64": {
+      "mic": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -1.609177420720556,
+          "median": 1.9279089144464763,
+          "maximum": 4.267487376187887
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -7.297240031383261,
+          "median": 1.7878097029393913,
+          "maximum": 4.283863717288938
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 0.6707682664914003,
+          "median": 1.8528540701711655,
+          "maximum": 2.2655435412231455
+        }
+      },
+      "piezo_bus": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.4886599473760782,
+          "median": 2.797473080046144,
+          "maximum": 10.814975411310705
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -6.743224591911698,
+          "median": 2.0389165780162024,
+          "maximum": 3.873576222687312
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 1.7302210848146444,
+          "median": 2.118993852303852,
+          "maximum": 2.982707005300391
+        }
+      }
+    },
+    "channel5-midi62": {
+      "mic": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 1.4269914974051403,
+          "median": 3.773192349594966,
+          "maximum": 7.0309067027655985
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -4.1638443936762,
+          "median": 3.771557888058922,
+          "maximum": 6.697526092148728
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 1.2078200264802632,
+          "median": 3.4847767184972653,
+          "maximum": 4.123071188310952
+        }
+      },
+      "piezo_bus": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 3.984529002728422,
+          "median": 4.403358574243141,
+          "maximum": 5.902559909842921
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -5.421504290007832,
+          "median": 4.3085651044200155,
+          "maximum": 7.54077735120444
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 3.2602075750776223,
+          "median": 3.8250979369127798,
+          "maximum": 5.204714913074561
+        }
+      }
+    },
+    "channel5-midi63": {
+      "mic": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 1.0756091258219556,
+          "median": 3.4597056981161565,
+          "maximum": 4.219074914960942
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -3.6365154593291322,
+          "median": -1.2627555109186872,
+          "maximum": 4.6070532639626975
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 1.4671750433976172,
+          "median": 3.3413397053257867,
+          "maximum": 3.8244951000289156
+        }
+      },
+      "piezo_bus": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.49272030169376535,
+          "median": 3.6802733108414216,
+          "maximum": 4.77307641318982
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -13.097377273476667,
+          "median": -0.9078142981738502,
+          "maximum": 3.9486886454431485
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 2.081397467170035,
+          "median": 3.5016098018744444,
+          "maximum": 3.9971466065137307
+        }
+      }
+    },
+    "channel5-midi64": {
+      "mic": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -3.8724352525898027,
+          "median": 2.9770531346357174,
+          "maximum": 7.013828889018313
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -2.5354697939378426,
+          "median": 1.776484282584196,
+          "maximum": 7.468419512193023
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 1.3335293232981371,
+          "median": 3.1351132252037974,
+          "maximum": 3.7950496216706426
+        }
+      },
+      "piezo_bus": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -0.03261275845776623,
+          "median": 4.130508550098863,
+          "maximum": 7.343696930844786
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 1.8791019985349493,
+          "median": 3.9697104615351115,
+          "maximum": 8.08532590992796
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 3.287279769908963,
+          "median": 3.515007948607632,
+          "maximum": 4.43784965140739
+        }
+      }
+    },
+    "channel6-midi64": {
+      "mic": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 1.105639068489495,
+          "median": 4.396618820572742,
+          "maximum": 7.297913030343558
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -1.064441992058967,
+          "median": 5.085125812528908,
+          "maximum": 13.134465089937578
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 2.5433816895568313,
+          "median": 3.792591242668987,
+          "maximum": 4.704099954357293
+        }
+      },
+      "piezo_bus": {
+        "early_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 3.644623848322645,
+          "median": 4.922368593667972,
+          "maximum": 8.48220698876036
+        },
+        "late_fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": -0.19054929416353872,
+          "median": 4.723062094960067,
+          "maximum": 8.577571288028679
+        },
+        "sustain_rms_dbfs": {
+          "count": 72,
+          "minimum": 3.242479828733103,
+          "median": 3.7172499433716695,
+          "maximum": 4.640260051344022
+        }
+      }
+    }
+  },
+  "late_upper_tail_coverage": {
+    "scope": "Each row aggregates all12 Classic constructions. Paired profile minus Before, before recalibration. Full signal and individual-partial statistics remain in the ignored full summary.",
+    "columns": [
+      "fingering-capture-style",
+      "mic_late_H8_H12_to_H1_min_db",
+      "mic_late_H8_H12_to_H1_median_db",
+      "mic_late_H8_H12_to_H1_max_db",
+      "mic_late_upper_absolute_median_db",
+      "mic_late_H1_absolute_median_db",
+      "mic_late_2k_6k_to_H1_median_db",
+      "qualified_partial_pairs",
+      "qualified_partial_decay_median_db_per_second",
+      "piezo_late_H8_H12_to_H1_median_db",
+      "worst_relative_tail_case"
+    ],
+    "rows": [
+      [
+        "channel3-midi64-stereo_mic-finger",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        17,
+        0.0,
+        0.0,
+        "jumbo-spruce-finger-stereo_mic"
+      ],
+      [
+        "channel3-midi64-stereo_mic-pick",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        39,
+        0.0,
+        0.0,
+        "jumbo-spruce-pick-stereo_mic"
+      ],
+      [
+        "channel3-midi64-stereo_mic-thumb",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        18,
+        0.0,
+        0.0,
+        "jumbo-spruce-thumb-stereo_mic"
+      ],
+      [
+        "channel3-midi64-mono_mic-finger",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        24,
+        0.0,
+        0.0,
+        "jumbo-spruce-finger-mono_mic"
+      ],
+      [
+        "channel3-midi64-mono_mic-pick",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        42,
+        0.0,
+        0.0,
+        "jumbo-spruce-pick-mono_mic"
+      ],
+      [
+        "channel3-midi64-mono_mic-thumb",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        21,
+        0.0,
+        0.0,
+        "jumbo-spruce-thumb-mono_mic"
+      ],
+      [
+        "channel3-midi67-stereo_mic-finger",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        14,
+        0.0,
+        0.0,
+        "jumbo-spruce-finger-stereo_mic"
+      ],
+      [
+        "channel3-midi67-stereo_mic-pick",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        26,
+        0.0,
+        0.0,
+        "jumbo-spruce-pick-stereo_mic"
+      ],
+      [
+        "channel3-midi67-stereo_mic-thumb",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        16,
+        0.0,
+        0.0,
+        "jumbo-spruce-thumb-stereo_mic"
+      ],
+      [
+        "channel3-midi67-mono_mic-finger",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        16,
+        0.0,
+        0.0,
+        "jumbo-spruce-finger-mono_mic"
+      ],
+      [
+        "channel3-midi67-mono_mic-pick",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        28,
+        0.0,
+        0.0,
+        "jumbo-spruce-pick-mono_mic"
+      ],
+      [
+        "channel3-midi67-mono_mic-thumb",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        19,
+        0.0,
+        0.0,
+        "jumbo-spruce-thumb-mono_mic"
+      ],
+      [
+        "channel3-midi69-stereo_mic-finger",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        3,
+        0.0,
+        0.0,
+        "jumbo-spruce-finger-stereo_mic"
+      ],
+      [
+        "channel3-midi69-stereo_mic-pick",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        17,
+        0.0,
+        0.0,
+        "jumbo-spruce-pick-stereo_mic"
+      ],
+      [
+        "channel3-midi69-stereo_mic-thumb",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        2,
+        0.0,
+        0.0,
+        "jumbo-spruce-thumb-stereo_mic"
+      ],
+      [
+        "channel3-midi69-mono_mic-finger",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        12,
+        0.0,
+        0.0,
+        "jumbo-spruce-finger-mono_mic"
+      ],
+      [
+        "channel3-midi69-mono_mic-pick",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        25,
+        0.0,
+        0.0,
+        "jumbo-spruce-pick-mono_mic"
+      ],
+      [
+        "channel3-midi69-mono_mic-thumb",
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        13,
+        0.0,
+        0.0,
+        "jumbo-spruce-thumb-mono_mic"
+      ],
+      [
+        "channel4-midi64-stereo_mic-finger",
+        -4.495125028974524,
+        -2.705243083785392,
+        0.7701413185560773,
+        -1.0631583355615248,
+        1.798730057639279,
+        -2.874672562225186,
+        25,
+        -1.6775894858522378,
+        -0.16796616837970546,
+        "auditorium-maple-finger-stereo_mic"
+      ],
+      [
+        "channel4-midi64-stereo_mic-pick",
+        -4.786335112925103,
+        -3.5241833679030385,
+        2.8672917081727753,
+        -1.3999070937526472,
+        1.9100220886824282,
+        -3.34951591929579,
+        55,
+        -2.272259067730225,
+        0.07063224155778747,
+        "jumbo-mahogany-pick-stereo_mic"
+      ],
+      [
+        "channel4-midi64-stereo_mic-thumb",
+        -4.539016863123583,
+        -2.70711213181946,
+        -0.5123566867932074,
+        -1.0296090431739182,
+        1.803620098170498,
+        -2.8722920303626367,
+        26,
+        -1.8723747692176111,
+        -0.4077435694986318,
+        "auditorium-maple-thumb-stereo_mic"
+      ],
+      [
+        "channel4-midi64-mono_mic-finger",
+        -4.734738292900333,
+        -3.1759974232949326,
+        0.4730742255352558,
+        -1.0287125379545672,
+        2.1472848853403654,
+        -2.7827967461775494,
+        29,
+        -1.44442336415716,
+        -0.16796616837970546,
+        "auditorium-maple-finger-mono_mic"
+      ],
+      [
+        "channel4-midi64-mono_mic-pick",
+        -5.29758527573213,
+        -3.34848927938249,
+        6.7788103185703665,
+        -1.4616429703603107,
+        1.7482016805443337,
+        -3.2635209735857806,
+        58,
+        -2.3289925572312544,
+        0.07063224155778747,
+        "jumbo-mahogany-pick-mono_mic"
+      ],
+      [
+        "channel4-midi64-mono_mic-thumb",
+        -4.7910780435897475,
+        -3.1653147431745596,
+        -0.5393255871823273,
+        -1.0409190838178795,
+        2.2997614968630593,
+        -2.7569531567722088,
+        28,
+        -1.6537173952827295,
+        -0.4077435694986318,
+        "auditorium-spruce-thumb-mono_mic"
+      ],
+      [
+        "channel4-midi67-stereo_mic-finger",
+        -1.3770625068631168,
+        -0.27905086100263876,
+        5.729437484608338,
+        -1.1408599291176116,
+        -0.8027544695584901,
+        -0.4310974887053707,
+        19,
+        -1.2069932182493588,
+        1.9872450118518863,
+        "jumbo-mahogany-finger-stereo_mic"
+      ],
+      [
+        "channel4-midi67-stereo_mic-pick",
+        -1.4298001923170722,
+        -0.23089929921252939,
+        5.7001950070312235,
+        -1.1793835729485642,
+        -0.906965812007055,
+        -0.32421928796150024,
+        40,
+        -1.2440943295234526,
+        2.906316950179457,
+        "jumbo-mahogany-pick-stereo_mic"
+      ],
+      [
+        "channel4-midi67-stereo_mic-thumb",
+        -1.3702177385432208,
+        -0.27645902726318583,
+        5.71889353909657,
+        -1.1518114476976917,
+        -0.8047992114665874,
+        -0.4224128846429789,
+        21,
+        -1.207714290447484,
+        2.2113519397854606,
+        "jumbo-mahogany-thumb-stereo_mic"
+      ],
+      [
+        "channel4-midi67-mono_mic-finger",
+        -0.8340640831089259,
+        -0.0008343577327301066,
+        3.074305618018252,
+        -1.1243730417839193,
+        -0.9113376507120741,
+        -0.1357915224976658,
+        29,
+        -0.3705407825451843,
+        1.9872450118518863,
+        "jumbo-mahogany-finger-mono_mic"
+      ],
+      [
+        "channel4-midi67-mono_mic-pick",
+        -0.7941328392466429,
+        0.08330344955656355,
+        4.460159087166049,
+        -1.0697018033420607,
+        -0.9631920678869612,
+        -0.21186656710855623,
+        49,
+        -0.8935299672437012,
+        2.906316950179457,
+        "dreadnought-maple-pick-mono_mic"
+      ],
+      [
+        "channel4-midi67-mono_mic-thumb",
+        -0.8012164948384113,
+        0.07532352885386695,
+        3.0693009901201598,
+        -1.0968246278658738,
+        -0.9101790167357677,
+        -0.3154393168686518,
+        31,
+        -0.8263104772578913,
+        2.2113519397854606,
+        "jumbo-mahogany-thumb-mono_mic"
+      ],
+      [
+        "channel4-midi69-stereo_mic-finger",
+        -7.091653538426751,
+        -1.6623216918234724,
+        6.3779187471076275,
+        -1.1144868530059675,
+        0.7185095949745772,
+        -1.8101961047118422,
+        21,
+        0.2528873372111917,
+        1.2328769069679244,
+        "parlor-mahogany-finger-stereo_mic"
+      ],
+      [
+        "channel4-midi69-stereo_mic-pick",
+        -4.567106037156106,
+        -1.5865075877528727,
+        7.495897224496246,
+        -1.0537612248204906,
+        0.4251295335466274,
+        -1.7049665955270648,
+        41,
+        1.5722093092773832,
+        1.022547588157533,
+        "parlor-spruce-pick-stereo_mic"
+      ],
+      [
+        "channel4-midi69-stereo_mic-thumb",
+        -7.236715093413737,
+        -1.9668114525811302,
+        5.975037726574893,
+        -1.2617622462716382,
+        0.7279062472494111,
+        -1.9032939665729494,
+        23,
+        0.15755743250545606,
+        0.7525479021038096,
+        "parlor-mahogany-thumb-stereo_mic"
+      ],
+      [
+        "channel4-midi69-mono_mic-finger",
+        -8.47435454528839,
+        -1.0133078209030382,
+        7.593257630698186,
+        -1.1285290007806932,
+        -0.16426970025187515,
+        -1.0003325929589924,
+        31,
+        0.41953167267357117,
+        1.2328769069679244,
+        "parlor-spruce-finger-mono_mic"
+      ],
+      [
+        "channel4-midi69-mono_mic-pick",
+        -7.61526946121161,
+        -1.1310058806817551,
+        7.993480380823085,
+        -1.077268659433244,
+        0.03453183473492416,
+        -1.2060784810933889,
+        50,
+        2.0909301753391674,
+        1.022547588157533,
+        "parlor-spruce-pick-mono_mic"
+      ],
+      [
+        "channel4-midi69-mono_mic-thumb",
+        -8.68029466135433,
+        -1.0983896477900135,
+        5.664397181514314,
+        -1.2581907086850261,
+        -0.20550932527630295,
+        -0.9896543334095931,
+        30,
+        0.8283477201948592,
+        0.7525479021038096,
+        "parlor-mahogany-thumb-mono_mic"
+      ],
+      [
+        "channel6-midi64-stereo_mic-finger",
+        -9.665279803727366,
+        -4.853199148824473,
+        1.075675485863145,
+        -0.06800837971522394,
+        5.191711578079037,
+        -3.743768200068386,
+        51,
+        -3.0325699523322065,
+        -2.2753368217625995,
+        "jumbo-maple-finger-stereo_mic"
+      ],
+      [
+        "channel6-midi64-stereo_mic-pick",
+        -13.023068269060278,
+        -4.9742406555998215,
+        -0.6805736478341369,
+        -0.9067298578702928,
+        5.0563960710376605,
+        -3.810652621376356,
+        59,
+        -1.8956054168025567,
+        -1.2642731902385318,
+        "jumbo-maple-pick-stereo_mic"
+      ],
+      [
+        "channel6-midi64-stereo_mic-thumb",
+        -8.147329475538436,
+        -4.890868012529374,
+        0.24386825720006478,
+        -0.792673895716669,
+        5.23416256776602,
+        -5.024936769932241,
+        50,
+        -3.0158474996199303,
+        -1.9032829652057748,
+        "jumbo-maple-thumb-stereo_mic"
+      ],
+      [
+        "channel6-midi64-mono_mic-finger",
+        -9.060042410695115,
+        -4.682843221406406,
+        0.9005259124481173,
+        -0.17252898338355746,
+        5.196850568310868,
+        -3.898326828153614,
+        50,
+        -2.7187960951422703,
+        -2.2753368217625995,
+        "jumbo-maple-finger-mono_mic"
+      ],
+      [
+        "channel6-midi64-mono_mic-pick",
+        -11.38896284422675,
+        -5.416208388416832,
+        -0.7379859633754726,
+        -1.4910666210259231,
+        4.891950173054077,
+        -4.711623227705512,
+        57,
+        -1.8031721159535472,
+        -1.2642731902385318,
+        "jumbo-maple-pick-mono_mic"
+      ],
+      [
+        "channel6-midi64-mono_mic-thumb",
+        -6.994193285296882,
+        -4.819584568524329,
+        0.7057308733219303,
+        -0.41710864443896956,
+        5.238612052302447,
+        -4.8351544655330585,
+        49,
+        -2.6513266881430724,
+        -1.9032829652057748,
+        "jumbo-maple-thumb-mono_mic"
+      ],
+      [
+        "channel6-midi67-stereo_mic-finger",
+        -7.818290123272123,
+        -4.798492691317579,
+        -1.6337281291127386,
+        -1.6167079844462147,
+        2.8115040579369364,
+        -4.725761859310461,
+        59,
+        -4.421480734670091,
+        -0.7333988860531879,
+        "auditorium-maple-finger-stereo_mic"
+      ],
+      [
+        "channel6-midi67-stereo_mic-pick",
+        -7.883255989581151,
+        -4.231307579988597,
+        -1.9577820354456095,
+        -2.1862038693844377,
+        1.6800379163935375,
+        -4.14956789024061,
+        60,
+        -4.848989070520194,
+        0.04984530873219706,
+        "auditorium-mahogany-pick-stereo_mic"
+      ],
+      [
+        "channel6-midi67-stereo_mic-thumb",
+        -7.658101609289204,
+        -4.260172173064266,
+        -0.6327670972282932,
+        -1.0626455095027354,
+        2.883776182644816,
+        -5.032042943957869,
+        59,
+        -4.379157781343988,
+        -0.6702555257679507,
+        "auditorium-maple-thumb-stereo_mic"
+      ],
+      [
+        "channel6-midi67-mono_mic-finger",
+        -9.725606113895351,
+        -2.565812338111966,
+        0.8089576208844447,
+        -1.5254084418246008,
+        1.480652874066184,
+        -1.989479814567785,
+        60,
+        -4.108205965885199,
+        -0.7333988860531879,
+        "dreadnought-spruce-finger-mono_mic"
+      ],
+      [
+        "channel6-midi67-mono_mic-pick",
+        -8.991309440635064,
+        -3.180978512374078,
+        1.220673970050913,
+        -2.277742137556598,
+        1.1002769761102407,
+        -2.4976104813485214,
+        60,
+        -4.202478151350416,
+        0.04984530873219706,
+        "auditorium-mahogany-pick-mono_mic"
+      ],
+      [
+        "channel6-midi67-mono_mic-thumb",
+        -8.834635654127107,
+        -2.3417987466530965,
+        1.2368490453740346,
+        -0.9198248012474922,
+        1.531684789924224,
+        -3.2942151224225142,
+        60,
+        -3.984389661696051,
+        -0.6702555257679507,
+        "dreadnought-spruce-thumb-mono_mic"
+      ],
+      [
+        "channel6-midi69-stereo_mic-finger",
+        -11.360601448500933,
+        -5.92012792955193,
+        4.464509796878142,
+        -2.3657757515727895,
+        3.5971469361795876,
+        -5.894832694551106,
+        59,
+        -4.623975117525109,
+        -1.1766121223599777,
+        "jumbo-spruce-finger-stereo_mic"
+      ],
+      [
+        "channel6-midi69-stereo_mic-pick",
+        -10.059845008142052,
+        -6.2986673154115564,
+        5.661811577677415,
+        -2.485793443063809,
+        3.8921046268694752,
+        -5.578392671099538,
+        60,
+        -5.90369375734331,
+        -0.3430848042414292,
+        "parlor-maple-pick-stereo_mic"
+      ],
+      [
+        "channel6-midi69-stereo_mic-thumb",
+        -10.39609907487705,
+        -5.387100879016692,
+        5.306367565697847,
+        -1.682904195712387,
+        3.583954677846144,
+        -4.979737485849767,
+        59,
+        -5.795292379834297,
+        -0.14110289853341507,
+        "jumbo-spruce-thumb-stereo_mic"
+      ],
+      [
+        "channel6-midi69-mono_mic-finger",
+        -13.918381665716609,
+        -4.8429880779683865,
+        2.459988917662497,
+        -2.402246486401001,
+        2.8164924893389482,
+        -4.614053443052901,
+        60,
+        -4.222004717075041,
+        -1.1766121223599777,
+        "jumbo-spruce-finger-mono_mic"
+      ],
+      [
+        "channel6-midi69-mono_mic-pick",
+        -12.511620954417605,
+        -5.31895148151835,
+        8.078464663102158,
+        -2.410750705345743,
+        2.9853140375801956,
+        -3.979345897001422,
+        60,
+        -5.347821807260615,
+        -0.3430848042414292,
+        "parlor-maple-pick-mono_mic"
+      ],
+      [
+        "channel6-midi69-mono_mic-thumb",
+        -12.722884129098553,
+        -4.550756112404935,
+        3.2619849948446866,
+        -1.8253221743791734,
+        2.8064567125715065,
+        -3.840964105180353,
+        59,
+        -5.180727210463299,
+        -0.14110289853341507,
+        "jumbo-spruce-thumb-mono_mic"
+      ],
+      [
+        "channel6-midi71-stereo_mic-finger",
+        -9.35900227983605,
+        -5.911016976312915,
+        3.67427033268439,
+        -1.6717891357170849,
+        4.16247588686041,
+        -5.476559074915494,
+        45,
+        -6.00277729197094,
+        -1.7112881552653136,
+        "dreadnought-spruce-finger-stereo_mic"
+      ],
+      [
+        "channel6-midi71-stereo_mic-pick",
+        -8.759718306878503,
+        -5.690239616406339,
+        4.391356364747673,
+        -2.4869119759295746,
+        3.2624633011179434,
+        -5.476747750417593,
+        60,
+        -6.755389431004646,
+        -0.6571786820297686,
+        "dreadnought-spruce-pick-stereo_mic"
+      ],
+      [
+        "channel6-midi71-stereo_mic-thumb",
+        -10.049602870785396,
+        -6.491859869652325,
+        3.3105573332603973,
+        -2.1791477578159775,
+        4.176541470305583,
+        -5.921898585174333,
+        43,
+        -5.864298144708322,
+        -1.2813388217740072,
+        "dreadnought-spruce-thumb-stereo_mic"
+      ],
+      [
+        "channel6-midi71-mono_mic-finger",
+        -15.677334567998455,
+        -4.874965006033595,
+        5.017260738682343,
+        -1.6405118914047825,
+        3.2056170055750073,
+        -3.5889873246551325,
+        53,
+        -5.770107550534082,
+        -1.7112881552653136,
+        "dreadnought-spruce-finger-mono_mic"
+      ],
+      [
+        "channel6-midi71-mono_mic-pick",
+        -11.702719361903874,
+        -5.005645738790589,
+        2.155907395935285,
+        -2.4524807336945647,
+        2.603648636260452,
+        -4.234325402796247,
+        60,
+        -6.114289443096888,
+        -0.6571786820297686,
+        "dreadnought-spruce-pick-mono_mic"
+      ],
+      [
+        "channel6-midi71-mono_mic-thumb",
+        -16.26328808616979,
+        -5.504227248516776,
+        4.55362288673655,
+        -2.1764868434834383,
+        3.235299755231196,
+        -4.497037022803658,
+        56,
+        -4.627012085709774,
+        -1.2813388217740072,
+        "dreadnought-spruce-thumb-mono_mic"
+      ],
+      [
+        "channel6-midi76-stereo_mic-finger",
+        -8.775787990765277,
+        -3.011423894279717,
+        5.383633676170576,
+        -2.1784686374816835,
+        0.7429677135649122,
+        -2.3485246141649183,
+        16,
+        -4.621045770195204,
+        -0.34916257114662086,
+        "parlor-spruce-finger-stereo_mic"
+      ],
+      [
+        "channel6-midi76-stereo_mic-pick",
+        -8.742631093295248,
+        -2.845833131726856,
+        8.623569732898506,
+        -2.2946226760027955,
+        0.3232780418931078,
+        -2.3514922598653554,
+        58,
+        -3.346778681877977,
+        -0.2277179264234509,
+        "parlor-spruce-pick-stereo_mic"
+      ],
+      [
+        "channel6-midi76-stereo_mic-thumb",
+        -8.740082199155228,
+        -3.003840768229468,
+        5.250698038813548,
+        -2.073677333374171,
+        0.7549486356685726,
+        -2.363149196820176,
+        35,
+        -4.725254423490078,
+        -0.8434818254632519,
+        "parlor-spruce-thumb-stereo_mic"
+      ],
+      [
+        "channel6-midi76-mono_mic-finger",
+        -9.748665941141274,
+        -3.293180301214367,
+        2.715710743584492,
+        -2.1927892346979703,
+        1.0030646296191534,
+        -2.9424110828266983,
+        31,
+        -4.168538106724551,
+        -0.34916257114662086,
+        "parlor-spruce-finger-mono_mic"
+      ],
+      [
+        "channel6-midi76-mono_mic-pick",
+        -8.961530289548907,
+        -2.8921430195058244,
+        3.0759178497687962,
+        -2.2852453850140595,
+        0.3871753402105682,
+        -3.258417993893208,
+        59,
+        -3.77044376809436,
+        -0.2277179264234509,
+        "parlor-spruce-pick-mono_mic"
+      ],
+      [
+        "channel6-midi76-mono_mic-thumb",
+        -9.727835268024315,
+        -3.237103278881828,
+        2.644713842051759,
+        -2.07188070302155,
+        1.0056090344911048,
+        -3.0438024481251897,
+        51,
+        -4.218815231949208,
+        -0.8434818254632519,
+        "parlor-spruce-thumb-mono_mic"
+      ]
+    ]
+  },
+  "historical_helper_comparison": {
+    "clips": 504,
+    "byte_identical": 196,
+    "metric_deltas": {
+      "mic": {
+        "rms_dbfs": {
+          "count": 504,
+          "minimum": -6.971016305357125e-05,
+          "median": 0.0,
+          "maximum": 8.385177306280411e-05
+        },
+        "fundamental_power_dbfs": {
+          "count": 504,
+          "minimum": -2.6775622472996474e-05,
+          "median": 0.0,
+          "maximum": 2.5834705468241737e-05
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 504,
+          "minimum": -0.00018599658188056534,
+          "median": 0.0,
+          "maximum": 0.00021559313789154544
+        }
+      },
+      "piezo_bus": {
+        "rms_dbfs": {
+          "count": 504,
+          "minimum": -5.2479647500547344e-05,
+          "median": 0.0,
+          "maximum": 3.97134842557989e-05
+        },
+        "fundamental_power_dbfs": {
+          "count": 504,
+          "minimum": -2.198659936425429e-05,
+          "median": 0.0,
+          "maximum": 1.669460115039101e-05
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 504,
+          "minimum": -0.00012505469142132242,
+          "median": 0.0,
+          "maximum": 8.816033838776605e-05
+        }
+      }
+    }
+  },
+  "assessment_limits": [
+    "Native peaks/frames/hashes and scalar-independent signal changes establish physical behavior, not a listener preference or realism.",
+    "The wound D string is exact Before by design; any banjo cue there is retained. G receives only+.1944 rather than+.30.",
+    "Late H8\u2013H12/H1 values include independent peak tracking. Pooled per-note upper energy and broad2\u20136kHz/H1 checks accompany qualified individual-partial medians, so quiet partials do not determine the conclusion.",
+    "A higher late upper/H1 ratio can come from a weaker late fundamental even if absolute upper energy falls; both changes are reported.",
+    "Prototype precedes level-table recalibration. Passing a native note audit alone does not settle phrase-level targets or alternate-chord policy."
+  ],
+  "full_summary": {
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/construction/normal-string-protected/summary-full.json",
+    "sha256": "705c841b7e2e1998292f0033400c95683445422f7363c119ce28d9ec2b52eb21"
+  },
+  "scratch_native_retention": {
+    "status": "Scored scratch PCM pruned after all existing hashes verified; frozen binary, source, full metrics, commands and selected native controls retained.",
+    "original_rendered_paired_outputs": 5760,
+    "fresh_clean_full_controls": 576,
+    "retained_raw_before": 640,
+    "selected_raw_after": 208,
+    "removed_raw": 432,
+    "removed_bytes": 1327104000,
+    "all_existing_raw_match_scored_sha256": true,
+    "report_sha256": "8028a84eeca54ddcbf5ea53f9b9f733a9ee789932d53cf1dac83520f4b62b765",
+    "full_summary_sha256": "705c841b7e2e1998292f0033400c95683445422f7363c119ce28d9ec2b52eb21",
+    "protocol": "Keep matching D/G/B63 controls, D/G upper tails, highE A4/E5 heard-direction anchors, F3/Fsharp3 bass controls, and Jumbo D/G62/63/64 cancellation controls. The complete report preserves every other scored case and reproducible command.",
+    "manifest": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/construction/normal-string-protected/raw-retention.json",
+      "sha256": "9736349df63d617aef231e634c6c2f30a9be503882cec45fdd863eac8b046d66"
+    }
+  },
+  "calibrated_listener_review": {
+    "player": "http://127.0.0.1:18789/string-review.html",
+    "compact_evidence": "Docs/classic78-string-review-2026-10-09.json",
+    "status": "The separate frozen review preserves its Before/Candidate inputs. The clean candidate is now canonical; residual sharp attack remains under investigation."
+  },
+  "high_precision_initial_energy_recheck": {
+    "status": "All50 round-print mismatch records replayed with the same frozen Engine.o and precision17 logging; no physical/table change.",
+    "records": 50,
+    "unique_physical_cases": 25,
+    "all50_native_PCM_sha256_match_saved_matrix": true,
+    "maximum_actual_relative_initial_energy_error": 5.946792383e-07,
+    "report": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/pre-fit-precision-energy/report.json",
+    "report_sha256": "872a8af4690c9aa7d6d7e1079fcfb1ef83ff15d54884b23ceee708fbe8be38b7"
+  },
+  "focused_listener_feedback": {
+    "scope": "Focused physical normal55 comparison; no claim that the listener auditioned the complete construction/capture corpus.",
+    "human_feedback": "Less banjo-like",
+    "remaining_cue": "Sharp or tinny attack",
+    "source": "Human feedback relayed by the parent agent,2026-10-09."
+  },
+  "canonical_application": {
+    "status": "Clean string-direction source and final calibrated level table are now canonical. The remaining attack is under causal investigation.",
+    "renderer_sha256": "bc4d00109ac6ff541b729a11076b4fdecfdbf64a68b6a6c926d65e007a9eeb9d",
+    "affected_suites_passed": 8,
+    "verification_source": "Parent confirmed canonical renderer byte-identical to the frozen reviewed candidate and all8 affected suites passed.",
+    "frozen_review_inputs_unchanged": true
+  }
+}

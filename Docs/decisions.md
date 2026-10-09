@@ -5,6 +5,99 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-09 — remove unavailable feature code and archived experiments
+
+The user requested a project cleanup and explicitly chose removal of archived
+experimental source too. Remove the shipping-zero axial, direct-radiation,
+impact, contact-noise/click and end-correction paths, their inactive calibration
+fields and obsolete tool interfaces. Remove archived prototypes and patches,
+while preserving current scientific references, saved-session compatibility,
+historical reports and released packages.
+
+The accepted microphone, Classic attack and gentle-warming sustain choices
+remain. Matched native renders are byte-identical across 280 construction and
+control cases. This establishes sound preservation within that test coverage;
+it adds no listening or CPU-speed claim. See
+[the cleanup record](project-cleanup-2026-10-09.md) for scope and validation.
+
+## 2026-10-09 — reduce microphone boom and adopt the selected Classic attack and sustain
+
+Original Auditorium's close/mono contour emphasized the played A2 fundamental,
+rather than a freely ringing body mode. Remove its 125 Hz presence peak and
+lower its low shelf, with a scalar correction for the reference phrase. The
+user confirmed less boom. Classic's revised capture contour alone remained
+banjo-like; retain the measured bridge/body and record that limitation.
+
+The user preferred the fixed physical-string pluck direction and identified
+the remaining cue as a sharp or tinny attack. Removing the Pick kinetic
+release entirely was too dull. The smaller half-share comparison was rated
+"Natural guitar attack"; the full-slip Thumb was described as improved and
+requested to remain as is for now. Adopt those Classic-only release choices
+by ear, preserving Original/Finger arithmetic and measured construction data.
+Production uses the new release's actual work, followed by the existing fresh
+direction-energy and retained-wave merge contracts. Diagnostic energy matching
+is not a new production source of work.
+
+The accepted-attack checkpoint passes all 75 suites, strict default/extended C++17,
+216 phrase checks and the existing Pick level policy. Canonical source and
+renderers match that tested snapshot exactly; nine affected suites pass again.
+Incorrect-source negative controls demonstrate the new release checks. See
+[the investigation](microphone-resonance-2026-10-09.md) and its compact evidence
+for scope and tradeoffs. These checks verify implementation and the selected
+audition's transfer, rather than complete realism across every construction.
+
+The user then authorized sustain exploration and identified the remaining cue
+as "Tone stays too static as it fades". They selected the gentle broad-loss
+corner option (0.75 of the previous value) for both Pick and Thumb. That
+Classic-specific intrinsic profile is now applied, including Finger and
+sympathetic strings, so a held string keeps its loss when the UI technique
+changes. Original keeps its previous profile. Runtime loss, phase fitting,
+configuration keys and completed dispersion-design validity agree on the
+active configured model; existing pitch/B tolerances remain intact.
+
+The current adoption passes all 76 suites and 12 affected canonical checks.
+All 221 reviewed non-Docs source/build/test/tool files and both renderers match
+the frozen tested snapshot. All 216 phrase levels, 360 native strums and the
+existing Pick headroom policy pass with the same guards. The final calibrated
+Pick/Thumb traces reproduce the selected experiment's physical waves and fade;
+output gain changes preserve its harmonic evolution. Finger's broader transfer
+is checked separately and has no inferred listening verdict. See
+[classic78-sustain-integration-2026-10-09.json](classic78-sustain-integration-2026-10-09.json).
+
+The new final sustain construction player covers all 24 guitars, all three
+techniques and both affected microphones: 144 cells and 288 bass/upper phrases
+with the same playback gain. All 144 Original native/PCM phrases remain exact
+to the previous accepted-attack checkpoint. File, score, source-freeze and
+browser checks pass. The focused final sustain player supplies applied
+Pick/Thumb audio alongside the immutable selected experiments. These records
+provide full construction review coverage without claiming a listener has
+accepted every construction. Earlier players and their frozen evidence remain
+preserved as historical checkpoints.
+
+## 2026-10-08 — reduce ring indexing, retain scalar bridge behavior
+
+Version 1.1.2 replaces delay-index wrapping loops with an unsigned power-of-two
+mask, preserving the physical and active ring slots for negative indices too.
+The Rack adapter separately reduces unused output and control work. Combined
+SDK screening reduced median mean callback cost by about 3.8–4.7% across three
+workloads; those short SDK runs do not establish a desktop percentage or prove
+high-rate callback deadlines. The demanding 192 kHz/4x bend case still misses
+its budget in some blocks.
+
+A broader paired bridge SIMD guard was exact but slower in SDK screening, so
+it was removed. An exact per-process sample-rate ratio hoist also failed to
+improve its comparison and was removed. Keep the rejected snapshots and raw
+runs; do not repeat them as presumed wins. No capture, solver, coefficient,
+precision, timing or voice-scheduling changes are included. See the
+[CPU report](cpu-optimization-2026-10-08.md) for absolute timings, parity scope,
+remaining limitations and validation evidence. This is a numeric optimization,
+not a listening-based sound change.
+
+Release CI also exposed three pre-existing GCC shadow warnings in the
+extended-rate C++17 target. Rename only those locals and retain `-Wshadow
+-Werror`; changing warning policy or arithmetic is unnecessary. Preserve the
+first macOS build and create a fresh build number from the corrected source.
+
 ## 2026-10-08 — keep pitch geometry and restored parameters consistent
 
 The follow-up audit found an incomplete voice-configuration cache key. A legal

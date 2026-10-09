@@ -1,0 +1,96 @@
+{
+  "schema": "AcustraFinalGentleSustainConstructionReviewV1",
+  "date": "2026-10-09",
+  "status": "Current applied selected-gentle source, all construction audio verified and browser-checked. No all-case listening verdict inferred.",
+  "renderer_sha256": "4b3948ca2c10b9a40ca6cf36aef005ee77ce156a16b9de1fac1ec9e300157248",
+  "source_freeze": {
+    "path": "build-resonance/evidence/final-sustain-construction-review/provenance/source-freeze.json",
+    "sha256": "f350e63f35e6b433e5aafc539ca3199a2263ba293245d79c975ac623ff0c1f21"
+  },
+  "manifest": {
+    "path": "build-resonance/evidence/final-sustain-construction-review/manifest.json",
+    "sha256": "de83773b2c1af9aa5f66eccbb0074bff99c0c95a37cb6fb16e6fe03cede1b3d2"
+  },
+  "coverage": {
+    "models": 2,
+    "shapes": 4,
+    "woods": 3,
+    "techniques": 3,
+    "affected_microphones": 2,
+    "cells": 144,
+    "phrases": 288,
+    "note_segments": 1152
+  },
+  "protocol": {
+    "phrase_seconds": 12,
+    "bass_midi_fingering": [
+      [
+        44,
+        1
+      ],
+      [
+        45,
+        2
+      ],
+      [
+        46,
+        2
+      ],
+      [
+        45,
+        1
+      ]
+    ],
+    "upper_midi_fingering": [
+      [
+        67,
+        6
+      ],
+      [
+        69,
+        6
+      ],
+      [
+        71,
+        6
+      ],
+      [
+        76,
+        6
+      ]
+    ],
+    "hold_seconds": 2.4,
+    "release_seconds": 0.6,
+    "velocity": 96,
+    "touch": 0.58,
+    "pluck_position": 0.28,
+    "room": 0,
+    "tuning": "standard",
+    "fresh_engine": "per phrase; normal sequential performance scheduling inside each phrase",
+    "playback_gain_db": 7.492856995493708,
+    "normalization": "none"
+  },
+  "maximum_playback_float_peak": 0.634983572,
+  "Original_native_and_PCM_phrases_byte_exact_to_prior_checkpoint": 144,
+  "verification": {
+    "path": "build-resonance/evidence/final-sustain-construction-review/verification.json",
+    "sha256": "311810c9f604863d6f62824094f7baeef92f5f6e7ab724b9f4ce2d2c832516cf"
+  },
+  "browser": {
+    "path": "build-resonance/evidence/final-sustain-construction-review/browser-verification.json",
+    "sha256": "386dfac1f5162ff1d63295979ca77af526240f575390e97e766205722c7054e0"
+  },
+  "player": {
+    "url": "http://127.0.0.1:18789/final-sustain-construction-review.html",
+    "file": {
+      "path": "build-resonance/evidence/final-sustain-construction-review.html",
+      "sha256": "f02469a9de4938649ff11071db0d4f663143337dea3d8a50b7598c15c6f547a5"
+    }
+  },
+  "historical_record_preserved": "classic78-final-construction-review-2026-10-09.json retains the previous accepted-attack renderer64ce pack.",
+  "scope_limits": [
+    "Coverage exhausts model/shape/wood/style/affected-capture identities with selected notes/fingerings, not every note/control/rate.",
+    "All Classic techniques inherit intrinsic warming; Finger transfer is verified but not independently ear-selected.",
+    "No all-construction subjective-realism acceptance is claimed."
+  ]
+}

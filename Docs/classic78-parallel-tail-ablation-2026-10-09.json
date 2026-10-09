@@ -1,0 +1,3458 @@
+{
+  "schema": "acustra_classic78_parallel_tail_ablation_v1",
+  "date": "2026-10-09",
+  "status": "The clean immutable physical-string candidate and constrained capture table are now canonical. Focused physical listening found it Less banjo-like; Sharp or tinny attack remains unresolved. Earlier floor/pitch-ramp proposals remain archived diagnostics.",
+  "root_cause_supported": "The shared authored normal-share (~25%) excites a slowly draining parallel plane. Dedicated piezo primarily observes normal force. Classic78 measured radiation projects the slowly decaying bridge moment more strongly than Original, revealing long high partials in the microphone. This explains why capture EQ alone changed level/contrast but did not satisfy the listener. It is a model-specific excitation/timbre mismatch, not a demonstrated factor-of-two unit bug or missing-damping defect unique to Classic.",
+  "authored_share_provenance": {
+    "source": "Docs/decisions.md, 2026-09-24 \u2014 a pluck releases most of its energy parallel to the top",
+    "basis": "Original/Fylde steel training, development, flat-top sweeps favored around.25 normal; the blind pair retained it on steel. The amount is explicitly selected, not measured. Bellido full measured mobility accepted later inF18,2026-09-29.",
+    "retention": "Original share remains exact. Classic candidate changes the authored release direction while retaining measured mobility/radiation."
+  },
+  "protocol": {
+    "sample_rate": 48000,
+    "shape": "Auditorium",
+    "wood": "Mahogany",
+    "styles": [
+      "Finger",
+      "Pick",
+      "Thumb"
+    ],
+    "notes": [
+      [
+        "G4",
+        67,
+        6
+      ],
+      [
+        "A4",
+        69,
+        6
+      ],
+      [
+        "B4",
+        71,
+        6
+      ],
+      [
+        "E5",
+        76,
+        6
+      ]
+    ],
+    "per_note": "Fresh engine, hold2.25sec/release.75sec",
+    "capture": "Stereo microphone, independent dedicated piezo, native heave/moment force",
+    "panel_and_effective_controls": {
+      "panelTouch": 0.58,
+      "pluckPosition": 0.28,
+      "room": 0.0,
+      "velocity": 0.787402,
+      "velocityDepth": 1.10625,
+      "effectiveTouch": 0.897938,
+      "normalShare": 0.217707,
+      "angleDraw": -0.0104578,
+      "outputGain": 0.42
+    },
+    "measurement": "Hann250ms,12harmonics, \u00b1max8Hz/.8%harmonic capped25%f0; native stereo powers summed. dB/s linear fit centers0.25\u20132.05sec. Held contrast mean centers.45\u20131.05sec. This is coupled-note decay, not body free T60.",
+    "native_gain": "Native f32 unchanged. AB microphone uses one candidate gain over all3 complete phrases; no per-note/style normalization. Dedicated pickup uses finalgainonly. Each cohort finalgain recorded perWAV."
+  },
+  "variants": {
+    "baseline": "Current Second microphone contour -3dB500HzQ1.2 /0dB1400HzQ1.2; measured mechanics; legacy share.",
+    "normal-55": "Classic only +.30 normal-share bias, preserving panelTouch/velocity/draw; actual firststroke.517707. Initial slope energy matched tosame legacy-angle fresh engine by uniformpre-attack-pitch wavegain.",
+    "normal-85": "Classic only+.60 bias; actual firststroke.817707; same energy control. Stronger direction but diminishing A4 improvement, very fundamental E5Finger/Thumb.",
+    "rock-100": "Positive diagonal rocking residue equal toexisting heave floor; same pole/Q, live andanalytic bridgePortMobility updated. Source calibration/share retained. Correct retuning changesE5initial energyaround1%.",
+    "original-control": "Original body/mechanics/capture withsame steel strings and controls; not single-variable ablation."
+  },
+  "separate_stage_validation": {
+    "source": "resonance_audit temporary native exact renderBody F/T pressure component probe; /tmp/acustra-projection-components-20261009/decays.json",
+    "Classic_Aud_Spruce_Thumb_A4_H10": "Heave pressure\u221237.86dB/s,momentpressure\u221210.97,mic\u221214.21,piezo\u221237.82. Moment pressure99.7%componentpower at1.4\u20131.6sec.",
+    "Original_control": "Momentpressure similarlyslow\u221210.79dB/s, butmicrophone\u221224.66 dueweakerprojectedmoment.",
+    "projection_measurement_validation": "Raw g35 highbandmoment/heave pressure ratios areclosely reproduced byfit; strongClassicmomentprojection ismeasurementderived.",
+    "limits": "Rocking admittance highband qualification limited byimpact/sensorgeometry,cross-side disagreement,rigiditycutoff. Negative realparts from unadvancedrawphase werewithdrawn afterdocumentedtwo-samplephaseadvance. No claimthatpassiverockingadmittanceisabsent."
+  },
+  "physical_floor_rejection": "Rock1\u00d7 speedsA4ThumbmicH10\u221215.3\u2192\u221221.1dB/s, butslowspiezo/heave\u221234.3\u2192\u221223.0andraisesG4H1share92.2\u219295.5%. It is not a clean upper-tail correction. Neither measured mobility nor rocking pressure is changed in the normal-share candidate.",
+  "fresh_stroke_shipping_proposal": {
+    "implementation": {
+      "source": "Source/DSP/AcustraEngine.cpp",
+      "helper": "Source/DSP/PluckPolarisationData.h",
+      "register_curve": "Classic-only offset0.30 times cubic smoothstep from A3 MIDI57 to E4 MIDI64; zero through A3, full above E4. Preserves Original, effective Touch slope and existing random draw. One pitch law across all strings/fingerings.",
+      "active_model": "configuredBridgeModel_ selects each new stroke. Parameter changes do not repartition existing waves.",
+      "energy": "Before merge, fresh plane energies are reweighted to the counterfactual legacy share and normalized by one uniform gain. Standalone wave energy includes its cyclic edge; replucks use aligned incremental work. Scale only round(targetDelay) freshly written samples per plane, plus release step/contact envelope. The retained preceding wave and existing coherent-work bound remain intact.",
+      "test_interface": "Existing AcustraEngineTestAccess reads private share/loops/state; legacy-only initialization bypass preserves the same actual Classic mechanical geometry. No public knobs, analysis globals, or new production observer state.",
+      "archive": "build-resonance/evidence/validation/pluck/candidate-freeze-20261009/candidate",
+      "state": "Archived diagnostic proposal; no longer present in canonical source. Source/helper/test/CMake/table and clean applied diff preserved."
+    },
+    "validation": {
+      "status": "Frozen historical validation at that time: Diagnostic only. No earlier ramp, mono offset, or calibration-policy change was applied. Physical listening verdict pending. Canonical pre-pluck second-EQ state restored.",
+      "table_provenance": {
+        "validated_pre_calibration_table_sha256": "cf7f14611a177d4a7304c9cf00def77192faf73a723eb7a2fcd5d16d1b9e9073",
+        "negative_control_compiled_table_sha256": "cf7f14611a177d4a7304c9cf00def77192faf73a723eb7a2fcd5d16d1b9e9073",
+        "pre_calibration_performance_renderer_sha256": "6c8398e780abb44fea4eb3e21efa0bc781ae475631697409b9402941a681da1c",
+        "distinction": "Scoped native/negative-control tests used the pre-calibration compiled candidate pair. Parent later ran all74 suites with the candidate after-calibration table:73passed, ConstructionMatrix failed2quiet alternate mono chords. The candidate engine/helper/tests/table were archived and canonical restored to the pre-pluck second-EQ pair; listening verdict remains pending.",
+        "archived_after_calibration_table_sha256": "740eb66c6aa3e4ce8a648cceff76ef187902eba007689390a03efc42dec352f0",
+        "canonical_restored_table_sha256": "cf7f14611a177d4a7304c9cf00def77192faf73a723eb7a2fcd5d16d1b9e9073"
+      },
+      "native_suite": {
+        "name": "Acustra.PluckPolarisation",
+        "result": "passed",
+        "seconds": 1.57,
+        "independent_oracles": "DFT/Parseval total fresh energy of both stored planes; independent fractional-aligned legacy fresh work plus conditioned old-wave budget; native Original/bass exact microphone/pickup/force comparisons. Configured-model queue and sounding-note partition checked with private friend access only. No new production observers or public profile controls."
+      },
+      "strict_cpp17": "Default and extended DSP targets passed -Wall -Wextra -Wshadow -Werror.",
+      "negative_control": {
+        "exit_code": 1,
+        "fourier_energy_assertion_failures": 36,
+        "all_failures": 39,
+        "engine_sha256": "3c1a78eeb665ea691c55affc9c0410371c1589c3f5f27f190ac0475c1f78daaa"
+      },
+      "negative_control_design": "Canonical engine copied to /tmp with profile/register rotation retained. Only freshEnergyGain assignment replaced by1.0. Fails36 independent Fourier-energy assertions and3 native repluck work-budget assertions; exits1. Canonical source unmodified.",
+      "existing_suites": {
+        "AcustraRepeatedPluckRealismTests": {
+          "exit_code": 0,
+          "output_tail": "e/settled energy=1.29528\nTremolo 48000 Hz note=40 stroke Hz=12 isolated peak ratio=2.99348 isolated energy ratio=4.87901 late/settled energy=1.31555\nTremolo 48000 Hz note=60 stroke Hz=33.3333 isolated peak ratio=1.39637 isolated energy ratio=2.62064 late/settled energy=1.00277\nTremolo 48000 Hz note=60 stroke Hz=12 isolated peak ratio=1 isolated energy ratio=1.7012 late/settled energy=0.825992\nTremolo 96000 Hz note=40 stroke Hz=33.3333 isolated peak ratio=3.04286 isolated energy ratio=14.6218 late/settled energy=1.32832\nTremolo 96000 Hz note=40 stroke Hz=12 isolated peak ratio=2.79949 isolated energy ratio=4.04898 late/settled energy=1.24741\nTremolo 96000 Hz note=60 stroke Hz=33.3333 isolated peak ratio=1.35902 isolated energy ratio=2.56923 late/settled energy=1.05073\nTremolo 96000 Hz note=60 stroke Hz=12 isolated peak ratio=1 isolated energy ratio=1.78939 late/settled energy=0.795544\nTremolo 192000 Hz note=40 stroke Hz=33.3333 isolated peak ratio=2.95601 isolated energy ratio=15.0337 late/settled energy=1.3458\nTremolo 192000 Hz note=40 stroke Hz=12 isolated peak ratio=2.58178 isolated energy ratio=3.17919 late/settled energy=1.17055\nTremolo 192000 Hz note=60 stroke Hz=33.3333 isolated peak ratio=1.4112 isolated energy ratio=2.88148 late/settled energy=1.04049\nTremolo 192000 Hz note=60 stroke Hz=12 isolated peak ratio=1 isolated energy ratio=2.02742 late/settled energy=0.779304\n"
+        },
+        "AcustraStrumDirectionTests": {
+          "exit_code": 0,
+          "output_tail": "Strum direction: fresh energy, scheduled releases, retained arrivals/tails, wrist reset and block invariance passed\n"
+        },
+        "AcustraContactTravelTests": {
+          "exit_code": 0,
+          "output_tail": "Contact allpass worst relative energy=5.59426e-08 DC delay error=6.45756e-06 samples\nQueued first arrival open/half/stopped energy=4.67686e-06/1.16922e-06/0\nContact transport failures: 0\n"
+        },
+        "AcustraCaptureVoicingTests": {
+          "exit_code": 0,
+          "output_tail": "Original capture 8000 Hz complex response error 8.25884e-08\nOriginal capture 24000 Hz complex response error 1.65814e-07\nOriginal capture 44100 Hz complex response error 1.06475e-07\nOriginal capture 48000 Hz complex response error 2.29242e-07\nOriginal capture 96000 Hz complex response error 1.57039e-07\nOriginal capture 192000 Hz complex response error 3.06011e-08\nOriginal capture 384000 Hz complex response error 2.47437e-07\nB4 capture: former modal weighting 6.11556 dB; summed-pressure contour -0.77767 dB\n"
+        },
+        "AcustraMicrophoneBalanceTests": {
+          "exit_code": 0,
+          "output_tail": " expected -3.09514\nnote 69 rate 96000 wood 1 style 1 capture 0 harmonic contrast delta -7.70981 dB; expected -7.69947\nnote 76 rate 96000 wood 1 style 1 capture 0 harmonic contrast delta -6.25195 dB; expected -6.2504\nnote 45 rate 96000 wood 1 style 2 capture 7 harmonic contrast delta -2.86897 dB; expected -3.09514\nnote 69 rate 96000 wood 1 style 2 capture 7 harmonic contrast delta -7.70759 dB; expected -7.69947\nnote 76 rate 96000 wood 1 style 2 capture 7 harmonic contrast delta -6.25113 dB; expected -6.2504\nnote 45 rate 96000 wood 2 style 0 capture 0 harmonic contrast delta -3.11819 dB; expected -3.09514\nnote 69 rate 96000 wood 2 style 0 capture 0 harmonic contrast delta -7.72738 dB; expected -7.69947\nnote 76 rate 96000 wood 2 style 0 capture 0 harmonic contrast delta -6.26128 dB; expected -6.2504\nnote 45 rate 96000 wood 2 style 1 capture 7 harmonic contrast delta -3.11703 dB; expected -3.09514\nnote 69 rate 96000 wood 2 style 1 capture 7 harmonic contrast delta -7.72787 dB; expected -7.69947\nnote 76 rate 96000 wood 2 style 1 capture 7 harmonic contrast delta -6.25723 dB; expected -6.2504\nnote 45 rate 96000 wood 2 style 2 capture 0 harmonic contrast delta -3.11782 dB; expected -3.09514\nnote 69 rate 96000 wood 2 style 2 capture 0 harmonic contrast delta -7.72572 dB; expected -7.69947\nnote 76 rate 96000 wood 2 style 2 capture 0 harmonic contrast delta -6.26132 dB; expected -6.2504\n"
+        },
+        "AcustraReleaseRealismTests": {
+          "exit_code": 0,
+          "output_tail": "Release damping, passive spatial contact, node selectivity, join/pedal parity and ownership passed\n"
+        },
+        "linked_library_sha256": "6f1561c474157928d96698183fad4868f9731b85f418d79063f4e41a38705a7a"
+      },
+      "state_validation": {
+        "fingerings": "378",
+        "low_pitch_sample_exact_cases": "126",
+        "profile_delta_max_error": "2.98023e-08",
+        "queue_requested": "0",
+        "queue_configured": "1",
+        "queue_pending": "1",
+        "queue_delta": "0.3",
+        "sounding_share_retained_after_model_change": "1"
+      },
+      "cpu_validation": "See full-cpu.csv/limited-cpu.csv: 101 timed fresh A4 strokes after10 warmups, reset outside timer. Same native extended temporary instrumentation in both builds; full-buffer and written-region scaling produced byte-identical native output over648 fresh cases/162 replucks. Single-machine timings, not host/plugin guarantees.",
+      "evidence_directory": "build-resonance/evidence/validation/pluck",
+      "archived_candidate_hashes": {
+        "Source/DSP/AcustraEngine.cpp": "2581f7f9c9d29be6003d6741b8b14ee20e426972d598e186bfe3ab257e88d069",
+        "Source/DSP/PluckPolarisationData.h": "8affebbe8e570c0dc792d015d4379f89f672a4da0b2480b18efb1e1137f7fcaf",
+        "Tests/PluckPolarisationTests.cpp": "b17dd1c483ada5596e039d89590deb26d94a0114035537f84d0fc6103f9f0bb0",
+        "CMakeLists.txt": "d51487961b9883a8cbb3c50c0ebac51cc820f09182b51888d4dd4800acf1e4ac",
+        "Source/DSP/ConstructionLoudnessData.h": "740eb66c6aa3e4ce8a648cceff76ef187902eba007689390a03efc42dec352f0"
+      },
+      "canonical_restoration_hashes": {
+        "Source/DSP/AcustraEngine.cpp": "d22287affd1d52e94ebb25b760c05fb723e6e2198495bd7e86832e135e0d05f0",
+        "CMakeLists.txt": "a5a7fc438abaf55df9cd84ac2216b51140711178a8038544d84c128332254db8",
+        "Source/DSP/ConstructionLoudnessData.h": "cf7f14611a177d4a7304c9cf00def77192faf73a723eb7a2fcd5d16d1b9e9073"
+      },
+      "candidate_archive": "build-resonance/evidence/validation/pluck/candidate-freeze-20261009",
+      "parent_after_calibration_full_suite": {
+        "passed": 73,
+        "total": 74,
+        "failed_suite": "Acustra.ConstructionMatrix",
+        "failed_assertions": 2,
+        "quiet_mono_chords_db": {
+          "Classic Jumbo Maple Finger DADGAD": -10.840371,
+          "Classic Jumbo Maple Finger OpenG": -9.184376
+        }
+      },
+      "bounded_chord_feasibility": {
+        "status": "Diagnostic only. No earlier ramp, mono offset, or calibration-policy change was applied. Physical listening verdict pending. Canonical pre-pluck second-EQ state restored.",
+        "scope": "Exact native Classic/Jumbo/Maple/Finger at48k, calibration phrase and open-chord guard. Three requested earlier ramps bounded; high A4/E5 +0.30 unchanged, D3/D#3/E3 shares unchanged.",
+        "root_of_failures": {
+          "mechanism": "The upper-register normal-share candidate raises the measured microphone phrase energy. One construction/style capture reference then trims the entire register, including bass whose native excitation was preserved. Alternate low open chords fall below the existing relative-level guard after this global calibration. This is a phrase/chord loudness tradeoff, not energy loss from the fresh-stroke initializer.",
+          "cell": 69,
+          "old_microphone_reference": 1.678936,
+          "new_microphone_reference": 1.23266494,
+          "microphone_reference_delta_db": -2.68378195310137,
+          "old_mono_relative_reference": 0.992062867,
+          "new_mono_relative_reference": 0.969538808,
+          "mono_relative_reference_delta_db": -0.19947993736431593,
+          "total_mono_reference_delta_db": -2.883261890465688,
+          "same_current_physics_old_scalar_guard_levels_db": {
+            "Standard": -2.848845500981687,
+            "DADGAD": -7.957109068643822,
+            "OpenG": -6.301113964864781
+          },
+          "old_scalar_tradeoff": "Restoring only the prior scalar would raise this candidate calibration phrase by about2.883LU, beyond \u00b11LU. It cannot preserve the stated phrase policy."
+        },
+        "curves": [
+          {
+            "start_midi": 57,
+            "end_midi": 64,
+            "mono_phrase_trim_db": 8.112684213301691e-08,
+            "mono_guard_levels_db": {
+              "Standard": -5.732107391447375,
+              "DADGAD": -10.84037095910951,
+              "OpenG": -9.184375855330469
+            },
+            "minimum_gain_above_exact_phrase_target_for_strict_guard_db": 1.84037095910951,
+            "could_fit_plus_minus_1_lu_check_with_intentional_offset": false,
+            "global_control_excluded_by_known_bass_regression": false
+          },
+          {
+            "start_midi": 52,
+            "end_midi": 57,
+            "mono_phrase_trim_db": -0.4521683436921933,
+            "mono_guard_levels_db": {
+              "Standard": -5.5798305154976795,
+              "DADGAD": -9.830899964242256,
+              "OpenG": -8.299646991508226
+            },
+            "minimum_gain_above_exact_phrase_target_for_strict_guard_db": 0.8308999642422563,
+            "could_fit_plus_minus_1_lu_check_with_intentional_offset": true,
+            "global_control_excluded_by_known_bass_regression": false
+          },
+          {
+            "start_midi": 52,
+            "end_midi": 64,
+            "mono_phrase_trim_db": -0.21046574471975532,
+            "mono_guard_levels_db": {
+              "Standard": -5.766549940368908,
+              "DADGAD": -10.61155001144381,
+              "OpenG": -8.967170944280856
+            },
+            "minimum_gain_above_exact_phrase_target_for_strict_guard_db": 1.6115500114438106,
+            "could_fit_plus_minus_1_lu_check_with_intentional_offset": false,
+            "global_control_excluded_by_known_bass_regression": false
+          },
+          {
+            "start_midi": 53,
+            "end_midi": 59,
+            "mono_phrase_trim_db": -0.4062697344042583,
+            "mono_guard_levels_db": {
+              "Standard": -5.844239471292305,
+              "DADGAD": -10.535144153393954,
+              "OpenG": -8.886829203262977
+            },
+            "minimum_gain_above_exact_phrase_target_for_strict_guard_db": 1.5351441533939543,
+            "could_fit_plus_minus_1_lu_check_with_intentional_offset": false,
+            "global_control_excluded_by_known_bass_regression": false
+          },
+          {
+            "start_midi": -1,
+            "end_midi": 64,
+            "mono_phrase_trim_db": -0.7853354859698207,
+            "mono_guard_levels_db": {
+              "Standard": -5.459782603831304,
+              "DADGAD": -8.60210540172341,
+              "OpenG": -6.965511347642639
+            },
+            "minimum_gain_above_exact_phrase_target_for_strict_guard_db": -0.39789459827659,
+            "could_fit_plus_minus_1_lu_check_with_intentional_offset": true,
+            "global_control_excluded_by_known_bass_regression": true
+          }
+        ],
+        "protocol_and_provenance": {
+          "native_results": "build-resonance/evidence/validation/pluck/chord-feasibility/report.json",
+          "native_results_sha256": "c4b5f7c0e9551754a4aad39030c80fcfd117152c9d440e1e677f7d7600a7d28e",
+          "phrase_exact_to_current_calibrator": true,
+          "phrase_peak_max": 0.4395647346973419,
+          "native_scope": "No per-note normalization; unchanged fresh-energy compensation. Parameters and strum match ConstructionMatrixTests. Actual calibration phrase regenerated and verified byte-identical. Output reference is applied after body projection; these peaks are safely below limiter knee so the per-capture scalar adds directly in dB.",
+          "temporary_source_changes": "Two diagnostic register endpoint globals replace only the cubic endpoints, with negative start sentinel for the global+0.30 control. Canonical initializer, energy restoration, filters, construction tables, and tested play function are frozen unchanged.",
+          "after_calibration_table_sha256": "740eb66c6aa3e4ce8a648cceff76ef187902eba007689390a03efc42dec352f0"
+        },
+        "nearest_protected_case": {
+          "curve": "52\u219257 cubic smoothstep, zero throughE3, full atA3.",
+          "exact_target_mono_DADGAD_db": -9.830899964242256,
+          "intentional_gain_above_exact_phrase_target_db": 0.84,
+          "hypothetical_DADGAD_db": -8.990899964242256,
+          "hypothetical_phrase_offset_lu": 0.84,
+          "policy": "Would fit \u00b11LU check but intentionally offset the mono capture from equal-target calibration, leaving only0.16LU tolerance. This was neither applied nor accepted. Parent stopped curve tuning pending listener feedback."
+        }
+      }
+    },
+    "historical_scope": "Frozen historical diagnostic at the time of that proposal. Its source/hash/measurements and then-current canonical status are retained; current applied status is in immutable_string_review_candidate."
+  },
+  "source_provenance": {
+    "commit": "8bd0a2fffd2ef9414f08898c619d798366727b99",
+    "original_engine_sha256": "d22287affd1d52e94ebb25b760c05fb723e6e2198495bd7e86832e135e0d05f0",
+    "temporary_engine_sha256": "fe58aa5d78316fa02849f1284abddc3129ffab405dbb41343b569bf23d217fc2",
+    "preserved_cli_binary_sha256": "0de2962eb02feeb9acaa549f4790b97e7927baf8b7dcc12a6872ad9c1509a6c5",
+    "preserved_cli_source_sha256": "bd8ac3af894552f417a171acc845433a5e1a2b0a3d56754bb1a271f5d7c97050",
+    "original_render_binary_sha256": "b491b48c745a6d384f2e7693d771564d3d9c4b602ca91c1758d7dfddea8c2b87",
+    "preserved_cli_reproduction_and_unmodified_control": {
+      "finger-baseline": true,
+      "finger-normal-55": true,
+      "finger-normal-85": true,
+      "pick-baseline": true,
+      "pick-normal-55": true,
+      "pick-normal-85": true,
+      "thumb-baseline": true,
+      "thumb-normal-55": true,
+      "thumb-normal-85": true,
+      "finger-unmodified-source-exact": true,
+      "pick-unmodified-source-exact": true,
+      "thumb-unmodified-source-exact": true
+    },
+    "headers": "Full frozen source/header snapshot and manifest underbuild-resonance/evidence/banjo-listening/mechanics-native; source commitalone doesnotrepresentparentdirtycapture/outputtables.",
+    "raw_archive": "build-resonance/evidence/banjo-listening/mechanics-native"
+  },
+  "phrase_candidate_gain_db": {
+    "rock-100": 0.14708997643514302,
+    "normal-55": -3.8164089098264427,
+    "normal-85": -5.986596374387094
+  },
+  "measurement_columns": [
+    "h1_decay_db_per_s",
+    "h3_decay_db_per_s",
+    "h10_decay_db_per_s",
+    "h1_share_h1_h12_pct",
+    "h2_h1_db",
+    "h3_h1_db",
+    "h10_h1_db"
+  ],
+  "measurements": [
+    {
+      "style": "finger",
+      "variant": "baseline",
+      "initial_note_share_energy_csv": "67,0.217707,0.151794\n69,0.217707,0.134776\n71,0.217707,0.121405\n76,0.217707,0.0990454\n",
+      "native_sha256": "057bcc5bfc801c556c4fc94794ed3cff4c83238f5099ec0a0453c50a5eb41650",
+      "measures": {
+        "G4": {
+          "mic": [
+            -7.86605,
+            -15.79207,
+            -22.03327,
+            89.16642,
+            -10.33054,
+            -20.35222,
+            -29.57466
+          ],
+          "piezo": [
+            -9.89119,
+            -19.62342,
+            -30.0469,
+            43.32008,
+            0.72462,
+            -15.57119,
+            -23.89141
+          ],
+          "heave": [
+            -8.66714,
+            -19.24497,
+            -30.03891,
+            58.82954,
+            -1.92158,
+            -18.51311,
+            -30.07908
+          ],
+          "moment": [
+            -13.58293,
+            -8.09153,
+            -22.42433,
+            79.99242,
+            -6.53593,
+            -24.01317,
+            -28.75832
+          ]
+        },
+        "A4": {
+          "mic": [
+            -10.28823,
+            -13.75022,
+            -19.52425,
+            30.08386,
+            3.40671,
+            -18.96988,
+            -23.00993
+          ],
+          "piezo": [
+            -11.94879,
+            -18.7106,
+            -33.35017,
+            44.73411,
+            0.42755,
+            -14.86639,
+            -27.25866
+          ],
+          "heave": [
+            -9.25531,
+            -19.1403,
+            -33.34166,
+            62.12593,
+            -2.54986,
+            -18.55378,
+            -34.99068
+          ],
+          "moment": [
+            -13.55269,
+            -8.89564,
+            -17.58322,
+            98.51509,
+            -20.49592,
+            -33.95318,
+            -42.16703
+          ]
+        },
+        "B4": {
+          "mic": [
+            -14.4209,
+            -20.24439,
+            -21.83031,
+            74.16509,
+            -5.85678,
+            -19.77362,
+            -42.33207
+          ],
+          "piezo": [
+            -18.21769,
+            -20.64581,
+            -37.15808,
+            63.41665,
+            -3.07117,
+            -21.1589,
+            -34.5
+          ],
+          "heave": [
+            -16.47239,
+            -20.9375,
+            -37.10116,
+            82.34402,
+            -7.32986,
+            -24.27543,
+            -44.45449
+          ],
+          "moment": [
+            -3.55918,
+            -18.73521,
+            -21.82638,
+            80.57832,
+            -8.99885,
+            -19.48842,
+            -35.79697
+          ]
+        },
+        "E5": {
+          "mic": [
+            -14.69364,
+            -13.78656,
+            -27.93731,
+            98.31472,
+            -20.37162,
+            -27.57473,
+            -51.11305
+          ],
+          "piezo": [
+            -16.33677,
+            -14.55102,
+            -42.36508,
+            94.1641,
+            -12.74998,
+            -25.91389,
+            -49.58641
+          ],
+          "heave": [
+            -16.34297,
+            -14.61762,
+            -42.36244,
+            93.92493,
+            -12.52065,
+            -25.26915,
+            -54.83091
+          ],
+          "moment": [
+            -7.37595,
+            -12.76942,
+            -26.19879,
+            81.73195,
+            -7.59791,
+            -20.8429,
+            -44.14603
+          ]
+        }
+      }
+    },
+    {
+      "style": "finger",
+      "variant": "rock-100",
+      "initial_note_share_energy_csv": "67,0.217707,0.151794\n69,0.217707,0.134776\n71,0.217707,0.121405\n76,0.217707,0.0983787\n",
+      "native_sha256": "a073882621fe47f09f14aef985baca48e8fdedf039d04cc5b868d2eaac29b9a9",
+      "measures": {
+        "G4": {
+          "mic": [
+            -10.77808,
+            -16.14664,
+            -22.74598,
+            93.05049,
+            -12.40978,
+            -21.1368,
+            -37.92795
+          ],
+          "piezo": [
+            -12.25506,
+            -15.56318,
+            -21.88139,
+            48.58145,
+            -0.1174,
+            -15.66471,
+            -30.55852
+          ],
+          "heave": [
+            -11.03077,
+            -15.60805,
+            -21.81455,
+            64.15739,
+            -2.83932,
+            -18.95514,
+            -36.84835
+          ],
+          "moment": [
+            -9.52142,
+            -10.58149,
+            -23.38609,
+            79.92211,
+            -6.38583,
+            -22.50658,
+            -37.37616
+          ]
+        },
+        "A4": {
+          "mic": [
+            -10.70701,
+            -13.51756,
+            -22.97928,
+            33.15153,
+            2.95803,
+            -20.82942,
+            -30.46311
+          ],
+          "piezo": [
+            -17.02044,
+            -17.21488,
+            -22.44322,
+            47.55584,
+            0.11929,
+            -17.57974,
+            -27.61097
+          ],
+          "heave": [
+            -13.43413,
+            -17.5339,
+            -22.43354,
+            70.11523,
+            -3.96646,
+            -22.5773,
+            -36.40356
+          ],
+          "moment": [
+            -11.92387,
+            -11.80243,
+            -20.45934,
+            98.85937,
+            -20.91889,
+            -31.48278,
+            -45.71468
+          ]
+        },
+        "B4": {
+          "mic": [
+            -9.71847,
+            -16.65793,
+            -23.53078,
+            83.75393,
+            -7.63121,
+            -26.72547,
+            -48.19697
+          ],
+          "piezo": [
+            -9.42246,
+            -14.53935,
+            -24.37589,
+            71.40681,
+            -4.40985,
+            -27.7545,
+            -36.56645
+          ],
+          "heave": [
+            -9.87443,
+            -14.48207,
+            -24.33881,
+            88.34815,
+            -9.19755,
+            -31.61664,
+            -46.77617
+          ],
+          "moment": [
+            -3.29368,
+            -20.18052,
+            -23.54023,
+            81.3078,
+            -7.72225,
+            -23.68871,
+            -41.31512
+          ]
+        },
+        "E5": {
+          "mic": [
+            -18.95982,
+            -14.0158,
+            -31.7542,
+            98.88415,
+            -21.20983,
+            -34.37279,
+            -49.49924
+          ],
+          "piezo": [
+            -18.70373,
+            -12.04184,
+            -32.52227,
+            95.11524,
+            -13.94649,
+            -30.44518,
+            -39.35018
+          ],
+          "heave": [
+            -17.00956,
+            -12.61918,
+            -32.5336,
+            95.34747,
+            -14.04328,
+            -29.19285,
+            -44.68765
+          ],
+          "moment": [
+            -6.74899,
+            -14.48381,
+            -31.15505,
+            84.42285,
+            -7.86409,
+            -24.25171,
+            -41.80907
+          ]
+        }
+      }
+    },
+    {
+      "style": "finger",
+      "variant": "original-control",
+      "initial_note_share_energy_csv": "67,0.217707,0.151794\n69,0.217707,0.134066\n71,0.217707,0.121405\n76,0.217707,0.0990454\n",
+      "native_sha256": "425b2f868f8330656dcd294d13e44d1981b99baed20573a98f056d9d0d12fb3c",
+      "measures": {
+        "G4": {
+          "mic": [
+            -10.10217,
+            -14.37062,
+            -23.4271,
+            94.04581,
+            -14.57263,
+            -25.94997,
+            -34.97147
+          ],
+          "piezo": [
+            -10.19046,
+            -13.15127,
+            -30.04566,
+            75.14755,
+            -5.2643,
+            -18.37709,
+            -31.66069
+          ],
+          "heave": [
+            -10.1555,
+            -13.52227,
+            -30.04058,
+            72.20845,
+            -4.55378,
+            -17.70525,
+            -34.59092
+          ],
+          "moment": [
+            -8.06995,
+            -12.92832,
+            -23.00203,
+            73.49799,
+            -5.11517,
+            -15.96854,
+            -29.61865
+          ]
+        },
+        "A4": {
+          "mic": [
+            -10.9822,
+            -13.97751,
+            -29.00982,
+            35.48566,
+            2.08913,
+            -10.20072,
+            -37.47298
+          ],
+          "piezo": [
+            -10.37677,
+            -16.27578,
+            -33.43412,
+            74.74042,
+            -4.96793,
+            -23.13329,
+            -33.7565
+          ],
+          "heave": [
+            -10.419,
+            -16.30067,
+            -33.42748,
+            77.56642,
+            -5.61694,
+            -23.73209,
+            -38.9504
+          ],
+          "moment": [
+            -7.36472,
+            -16.47375,
+            -18.69955,
+            92.21801,
+            -12.10434,
+            -25.75234,
+            -39.1742
+          ]
+        },
+        "B4": {
+          "mic": [
+            -12.59435,
+            -16.30601,
+            -24.66669,
+            84.41118,
+            -8.13339,
+            -18.87558,
+            -39.10312
+          ],
+          "piezo": [
+            -12.50497,
+            -16.77176,
+            -36.24819,
+            70.00094,
+            -4.27723,
+            -24.04844,
+            -34.87632
+          ],
+          "heave": [
+            -12.9507,
+            -16.38403,
+            -36.22793,
+            76.59771,
+            -5.58484,
+            -25.39498,
+            -43.07424
+          ],
+          "moment": [
+            -10.9852,
+            -16.15993,
+            -23.75721,
+            26.87842,
+            3.66213,
+            -12.50701,
+            -27.44504
+          ]
+        },
+        "E5": {
+          "mic": [
+            -13.71459,
+            -14.47608,
+            -27.3278,
+            46.46554,
+            0.53328,
+            -27.90079,
+            -49.85746
+          ],
+          "piezo": [
+            -12.74909,
+            -18.36929,
+            -49.98112,
+            92.04866,
+            -11.15837,
+            -33.37179,
+            -46.87848
+          ],
+          "heave": [
+            -12.70486,
+            -18.43179,
+            -49.95337,
+            92.65566,
+            -11.40152,
+            -33.80725,
+            -53.62967
+          ],
+          "moment": [
+            -14.36954,
+            -12.71724,
+            -24.40137,
+            65.99834,
+            -5.25096,
+            -14.66045,
+            -43.03165
+          ]
+        }
+      }
+    },
+    {
+      "style": "finger",
+      "variant": "normal-55",
+      "initial_note_share_energy_csv": "67,0.517707,0.151794\n69,0.517707,0.134776\n71,0.517707,0.121405\n76,0.517707,0.0990454\n",
+      "native_sha256": "c4617c44341d08eaeefb2ce68fb7b3c2959f32fd34c0290a87a6c3dfb64de56d",
+      "measures": {
+        "G4": {
+          "mic": [
+            -7.92896,
+            -18.63129,
+            -24.57842,
+            77.54047,
+            -5.92665,
+            -19.43018,
+            -30.11185
+          ],
+          "piezo": [
+            -9.58411,
+            -22.37403,
+            -31.08332,
+            31.72653,
+            2.94688,
+            -13.87969,
+            -23.04121
+          ],
+          "heave": [
+            -7.73173,
+            -21.99217,
+            -31.07979,
+            42.6711,
+            0.95091,
+            -16.02467,
+            -28.40832
+          ],
+          "moment": [
+            -11.84917,
+            -13.01588,
+            -25.38048,
+            72.14881,
+            -4.38832,
+            -24.76336,
+            -31.34504
+          ]
+        },
+        "A4": {
+          "mic": [
+            -11.03312,
+            -17.572,
+            -21.92797,
+            37.67768,
+            2.04159,
+            -21.41067,
+            -27.60334
+          ],
+          "piezo": [
+            -11.92172,
+            -21.71826,
+            -35.84247,
+            56.74212,
+            -1.76476,
+            -16.0202,
+            -28.45565
+          ],
+          "heave": [
+            -10.56664,
+            -22.27228,
+            -35.83426,
+            73.58856,
+            -4.90748,
+            -19.99087,
+            -36.69197
+          ],
+          "moment": [
+            -12.52801,
+            -14.08615,
+            -19.66409,
+            98.92422,
+            -20.63367,
+            -32.91899,
+            -46.6221
+          ]
+        },
+        "B4": {
+          "mic": [
+            -12.16292,
+            -20.95124,
+            -23.56674,
+            81.17575,
+            -7.54212,
+            -20.54543,
+            -47.3664
+          ],
+          "piezo": [
+            -13.30386,
+            -21.21931,
+            -40.42948,
+            64.72195,
+            -3.26358,
+            -20.82196,
+            -34.0308
+          ],
+          "heave": [
+            -12.9561,
+            -21.3907,
+            -40.37908,
+            83.68001,
+            -7.66679,
+            -24.31969,
+            -44.43574
+          ],
+          "moment": [
+            -6.89983,
+            -21.98297,
+            -23.89123,
+            85.61323,
+            -8.75164,
+            -21.40409,
+            -42.12835
+          ]
+        },
+        "E5": {
+          "mic": [
+            -18.42972,
+            -15.85012,
+            -29.05506,
+            99.34493,
+            -24.61623,
+            -29.92413,
+            -53.54298
+          ],
+          "piezo": [
+            -21.41132,
+            -17.24551,
+            -37.16124,
+            96.34065,
+            -14.99777,
+            -28.13126,
+            -55.35827
+          ],
+          "heave": [
+            -23.0524,
+            -17.29587,
+            -37.18667,
+            96.55058,
+            -15.14166,
+            -28.31356,
+            -61.32237
+          ],
+          "moment": [
+            -7.44628,
+            -13.92253,
+            -28.14146,
+            81.037,
+            -7.81729,
+            -17.78499,
+            -39.68337
+          ]
+        }
+      }
+    },
+    {
+      "style": "finger",
+      "variant": "normal-85",
+      "initial_note_share_energy_csv": "67,0.817707,0.151794\n69,0.817707,0.134776\n71,0.817707,0.121405\n76,0.817707,0.0990454\n",
+      "native_sha256": "8c776a7926ec4aaf40caa6c59e5cf062a029b5198d6bbd9de6d7cfd282cb0a43",
+      "measures": {
+        "G4": {
+          "mic": [
+            -9.02742,
+            -21.66897,
+            -29.14384,
+            73.36824,
+            -4.80645,
+            -20.01719,
+            -30.86275
+          ],
+          "piezo": [
+            -9.82597,
+            -24.78044,
+            -32.0921,
+            25.44637,
+            4.32011,
+            -12.9972,
+            -22.31738
+          ],
+          "heave": [
+            -8.73556,
+            -24.44862,
+            -32.09182,
+            35.57485,
+            2.27098,
+            -15.10274,
+            -27.6563
+          ],
+          "moment": [
+            -11.37842,
+            -19.23996,
+            -30.51876,
+            68.27828,
+            -3.60362,
+            -22.48097,
+            -32.44869
+          ]
+        },
+        "A4": {
+          "mic": [
+            -11.46517,
+            -22.1981,
+            -25.08283,
+            40.02642,
+            1.63157,
+            -22.05029,
+            -29.38626
+          ],
+          "piezo": [
+            -12.00811,
+            -24.63898,
+            -38.24207,
+            63.49359,
+            -3.08164,
+            -16.6406,
+            -28.99567
+          ],
+          "heave": [
+            -11.3221,
+            -25.24725,
+            -38.22854,
+            80.3812,
+            -6.62705,
+            -21.17871,
+            -37.94055
+          ],
+          "moment": [
+            -12.14037,
+            -20.50529,
+            -22.82951,
+            97.86929,
+            -17.2514,
+            -30.49128,
+            -47.48293
+          ]
+        },
+        "B4": {
+          "mic": [
+            -11.50766,
+            -21.4297,
+            -28.4737,
+            84.55718,
+            -8.65954,
+            -21.17319,
+            -47.57979
+          ],
+          "piezo": [
+            -11.81059,
+            -21.55094,
+            -43.70259,
+            66.76919,
+            -3.64767,
+            -20.85725,
+            -33.95235
+          ],
+          "heave": [
+            -11.87146,
+            -21.65043,
+            -43.67844,
+            85.04451,
+            -8.08907,
+            -24.5449,
+            -44.59323
+          ],
+          "moment": [
+            -9.09342,
+            -23.33366,
+            -29.27033,
+            86.86862,
+            -8.91437,
+            -23.22759,
+            -43.5616
+          ]
+        },
+        "E5": {
+          "mic": [
+            -22.78164,
+            -19.3021,
+            -29.9208,
+            99.63946,
+            -26.59965,
+            -31.7081,
+            -55.29062
+          ],
+          "piezo": [
+            -26.06446,
+            -21.28181,
+            -37.42156,
+            97.21764,
+            -16.33458,
+            -29.48018,
+            -58.13231
+          ],
+          "heave": [
+            -28.59513,
+            -21.1781,
+            -37.39883,
+            97.43143,
+            -16.49537,
+            -30.05675,
+            -64.40491
+          ],
+          "moment": [
+            -20.22784,
+            -17.02172,
+            -29.27976,
+            96.88254,
+            -16.38832,
+            -25.34383,
+            -46.26975
+          ]
+        }
+      }
+    },
+    {
+      "style": "pick",
+      "variant": "baseline",
+      "initial_note_share_energy_csv": "67,0.217707,0.466924\n69,0.217707,0.414425\n71,0.217707,0.365356\n76,0.217707,0.260615\n",
+      "native_sha256": "49dccc9cd4c9911aaf635b94bc5f240c38914655574845c300adca3bea279b85",
+      "measures": {
+        "G4": {
+          "mic": [
+            -7.9451,
+            -14.76409,
+            -18.03533,
+            57.31094,
+            -7.43819,
+            -5.11686,
+            -16.05677
+          ],
+          "piezo": [
+            -9.71341,
+            -18.80239,
+            -27.76562,
+            14.01526,
+            4.7876,
+            0.69235,
+            -12.58812
+          ],
+          "heave": [
+            -8.54828,
+            -18.38944,
+            -27.73151,
+            26.0659,
+            1.81504,
+            -2.87704,
+            -19.09552
+          ],
+          "moment": [
+            -12.86491,
+            -6.80238,
+            -17.76174,
+            40.22114,
+            -2.1296,
+            -6.22172,
+            -14.42456
+          ]
+        },
+        "A4": {
+          "mic": [
+            -8.63098,
+            -12.09821,
+            -17.68504,
+            7.9288,
+            9.06478,
+            0.63824,
+            -5.29513
+          ],
+          "piezo": [
+            -12.16883,
+            -16.68165,
+            -30.72343,
+            11.06621,
+            6.00937,
+            2.68342,
+            -13.56586
+          ],
+          "heave": [
+            -8.44625,
+            -16.86845,
+            -30.71192,
+            22.70695,
+            2.66128,
+            -1.52457,
+            -21.45747
+          ],
+          "moment": [
+            -13.129,
+            -6.08314,
+            -16.96671,
+            84.09631,
+            -14.32486,
+            -11.3175,
+            -22.77137
+          ]
+        },
+        "B4": {
+          "mic": [
+            -12.85969,
+            -18.55703,
+            -19.75997,
+            20.57202,
+            0.78203,
+            2.53578,
+            -21.42823
+          ],
+          "piezo": [
+            -15.13499,
+            -18.20233,
+            -34.5608,
+            17.69922,
+            3.48642,
+            2.30394,
+            -16.97523
+          ],
+          "heave": [
+            -14.43373,
+            -18.57729,
+            -34.47754,
+            35.1862,
+            -0.80808,
+            -1.13929,
+            -26.92654
+          ],
+          "moment": [
+            -4.40328,
+            -8.97888,
+            -19.0583,
+            41.85489,
+            -3.41873,
+            -5.97851,
+            -17.4576
+          ]
+        },
+        "E5": {
+          "mic": [
+            -14.29416,
+            -14.03208,
+            -30.34452,
+            84.35449,
+            -14.44829,
+            -9.2438,
+            -32.45138
+          ],
+          "piezo": [
+            -16.48131,
+            -16.25173,
+            -42.12511,
+            69.39258,
+            -6.90142,
+            -6.99841,
+            -34.75853
+          ],
+          "heave": [
+            -16.89453,
+            -16.3826,
+            -42.13509,
+            69.64895,
+            -7.19931,
+            -6.42302,
+            -40.3477
+          ],
+          "moment": [
+            -9.22044,
+            -9.68645,
+            -29.68855,
+            55.76177,
+            -3.27593,
+            -6.66057,
+            -27.19963
+          ]
+        }
+      }
+    },
+    {
+      "style": "pick",
+      "variant": "rock-100",
+      "initial_note_share_energy_csv": "67,0.217707,0.466925\n69,0.217707,0.414425\n71,0.217707,0.365356\n76,0.217707,0.257778\n",
+      "native_sha256": "e0a8a518064677a2e6467eb7bc3544ad6f766c468093f33182fae879205cb2e7",
+      "measures": {
+        "G4": {
+          "mic": [
+            -11.77247,
+            -15.1839,
+            -20.57623,
+            62.97492,
+            -8.86534,
+            -5.09703,
+            -21.61369
+          ],
+          "piezo": [
+            -12.26619,
+            -14.92325,
+            -20.23026,
+            15.55924,
+            4.46206,
+            1.57352,
+            -13.15586
+          ],
+          "heave": [
+            -11.70745,
+            -14.92319,
+            -20.17673,
+            28.86785,
+            1.41351,
+            -2.23105,
+            -19.72082
+          ],
+          "moment": [
+            -6.43725,
+            -8.88553,
+            -20.71219,
+            41.43464,
+            -1.64548,
+            -5.41898,
+            -19.97927
+          ]
+        },
+        "A4": {
+          "mic": [
+            -9.48209,
+            -12.51007,
+            -21.59893,
+            10.22752,
+            8.64086,
+            -1.09447,
+            -13.16699
+          ],
+          "piezo": [
+            -15.45063,
+            -15.57647,
+            -21.96032,
+            12.74101,
+            6.26259,
+            0.96204,
+            -9.63733
+          ],
+          "heave": [
+            -12.90048,
+            -15.70412,
+            -21.95122,
+            30.48168,
+            1.81799,
+            -4.45225,
+            -18.59983
+          ],
+          "moment": [
+            -8.78983,
+            -9.12887,
+            -20.27441,
+            85.54021,
+            -14.41487,
+            -10.81931,
+            -26.65745
+          ]
+        },
+        "B4": {
+          "mic": [
+            -8.37058,
+            -14.36045,
+            -22.88851,
+            34.27209,
+            -1.18526,
+            -0.24542,
+            -26.37671
+          ],
+          "piezo": [
+            -7.82134,
+            -13.28091,
+            -24.25835,
+            23.6671,
+            1.99099,
+            0.58495,
+            -14.40105
+          ],
+          "heave": [
+            -8.51234,
+            -13.31,
+            -24.2045,
+            47.87695,
+            -2.88707,
+            -3.46727,
+            -24.73935
+          ],
+          "moment": [
+            -4.34134,
+            -12.78026,
+            -22.36281,
+            49.66526,
+            -3.08684,
+            -6.41562,
+            -21.70904
+          ]
+        },
+        "E5": {
+          "mic": [
+            -18.31729,
+            -16.59251,
+            -32.25793,
+            94.20157,
+            -15.74877,
+            -15.66164,
+            -37.82401
+          ],
+          "piezo": [
+            -18.67404,
+            -14.67645,
+            -32.53924,
+            81.04099,
+            -9.64597,
+            -12.57661,
+            -28.32807
+          ],
+          "heave": [
+            -17.36437,
+            -14.89801,
+            -32.55844,
+            83.19103,
+            -9.86381,
+            -11.66772,
+            -33.86009
+          ],
+          "moment": [
+            -7.86152,
+            -13.79184,
+            -31.5156,
+            52.95969,
+            -1.94485,
+            -7.19472,
+            -30.46296
+          ]
+        }
+      }
+    },
+    {
+      "style": "pick",
+      "variant": "original-control",
+      "initial_note_share_energy_csv": "67,0.217707,0.466925\n69,0.217707,0.411115\n71,0.217707,0.365356\n76,0.217707,0.260615\n",
+      "native_sha256": "0124b83734ab75aa99784ac29e624cf3084673af35a7a759ca9fe498fb0780a4",
+      "measures": {
+        "G4": {
+          "mic": [
+            -10.21886,
+            -10.69394,
+            -19.08694,
+            45.45638,
+            -11.03796,
+            -13.72093,
+            -22.07841
+          ],
+          "piezo": [
+            -10.30681,
+            -10.72334,
+            -28.81327,
+            40.21552,
+            -1.52567,
+            -5.33283,
+            -20.50918
+          ],
+          "heave": [
+            -10.26138,
+            -11.55993,
+            -28.80294,
+            37.39357,
+            -0.83292,
+            -4.2603,
+            -23.44798
+          ],
+          "moment": [
+            -8.12456,
+            -12.52522,
+            -17.9991,
+            35.95359,
+            -2.20158,
+            -2.50417,
+            -17.35346
+          ]
+        },
+        "A4": {
+          "mic": [
+            -11.11267,
+            -12.52334,
+            -24.61129,
+            6.37925,
+            6.83191,
+            8.69469,
+            -26.59549
+          ],
+          "piezo": [
+            -10.7669,
+            -14.56771,
+            -32.16586,
+            36.18651,
+            -0.00761,
+            -4.88387,
+            -21.802
+          ],
+          "heave": [
+            -10.66815,
+            -14.55118,
+            -32.1558,
+            40.97049,
+            -0.77851,
+            -5.50102,
+            -27.05955
+          ],
+          "moment": [
+            -7.09761,
+            -12.60156,
+            -16.25888,
+            61.72501,
+            -8.05565,
+            -10.07021,
+            -23.46672
+          ]
+        },
+        "B4": {
+          "mic": [
+            -14.17592,
+            -12.9728,
+            -22.04612,
+            40.60768,
+            -2.64688,
+            -1.13731,
+            -22.29558
+          ],
+          "piezo": [
+            -14.34687,
+            -15.14178,
+            -35.55446,
+            33.64565,
+            0.68726,
+            -3.06416,
+            -18.4864
+          ],
+          "heave": [
+            -14.54737,
+            -14.59092,
+            -35.52043,
+            41.31052,
+            -0.57317,
+            -4.25541,
+            -26.53654
+          ],
+          "moment": [
+            -10.91097,
+            -11.45403,
+            -20.16272,
+            10.21654,
+            7.30607,
+            1.60769,
+            -13.54381
+          ]
+        },
+        "E5": {
+          "mic": [
+            -13.18836,
+            -14.25266,
+            -31.33811,
+            14.4851,
+            7.46264,
+            -7.46527,
+            -25.96275
+          ],
+          "piezo": [
+            -12.82917,
+            -18.92192,
+            -48.30614,
+            67.46005,
+            -4.83104,
+            -9.94296,
+            -31.79244
+          ],
+          "heave": [
+            -12.74434,
+            -18.92575,
+            -48.31972,
+            70.27023,
+            -5.13801,
+            -10.36941,
+            -38.48705
+          ],
+          "moment": [
+            -13.44847,
+            -10.34915,
+            -29.99283,
+            22.00016,
+            0.8813,
+            2.21934,
+            -19.51952
+          ]
+        }
+      }
+    },
+    {
+      "style": "pick",
+      "variant": "normal-55",
+      "initial_note_share_energy_csv": "67,0.517707,0.466924\n69,0.517707,0.414425\n71,0.517707,0.365356\n76,0.517707,0.260615\n",
+      "native_sha256": "f8e5f56ed5f46247c1d45e5c710ecd53320775f1566d10b4ebd4c246116f31d1",
+      "measures": {
+        "G4": {
+          "mic": [
+            -8.10345,
+            -17.28634,
+            -19.71589,
+            44.2748,
+            -2.40453,
+            -4.43394,
+            -17.99178
+          ],
+          "piezo": [
+            -9.84988,
+            -21.42584,
+            -29.61628,
+            9.65257,
+            6.94296,
+            1.79377,
+            -11.06975
+          ],
+          "heave": [
+            -8.18994,
+            -21.04769,
+            -29.59267,
+            16.05343,
+            4.71313,
+            -0.88622,
+            -16.64813
+          ],
+          "moment": [
+            -11.14648,
+            -10.14555,
+            -19.87555,
+            37.80269,
+            0.08114,
+            -12.63553,
+            -18.89285
+          ]
+        },
+        "A4": {
+          "mic": [
+            -9.90302,
+            -14.88005,
+            -20.24492,
+            11.90008,
+            7.69521,
+            -3.91678,
+            -11.56937
+          ],
+          "piezo": [
+            -11.90471,
+            -19.86887,
+            -34.56895,
+            15.69022,
+            3.80426,
+            1.30166,
+            -13.3794
+          ],
+          "heave": [
+            -9.51991,
+            -20.25375,
+            -34.55708,
+            30.3403,
+            0.68277,
+            -2.73489,
+            -21.39025
+          ],
+          "moment": [
+            -12.46785,
+            -9.12571,
+            -18.01424,
+            93.17067,
+            -16.47418,
+            -19.16913,
+            -29.8362
+          ]
+        },
+        "B4": {
+          "mic": [
+            -11.09307,
+            -19.77258,
+            -20.6215,
+            25.88927,
+            -1.08501,
+            1.87708,
+            -29.03567
+          ],
+          "piezo": [
+            -11.7833,
+            -19.56716,
+            -38.71289,
+            18.36037,
+            3.17634,
+            2.21302,
+            -16.03785
+          ],
+          "heave": [
+            -11.80151,
+            -19.88824,
+            -38.63994,
+            37.06337,
+            -1.17301,
+            -1.4463,
+            -26.32657
+          ],
+          "moment": [
+            -6.03265,
+            -18.15259,
+            -20.37795,
+            38.12926,
+            -1.79183,
+            -2.06829,
+            -25.13591
+          ]
+        },
+        "E5": {
+          "mic": [
+            -18.24671,
+            -17.10099,
+            -30.58435,
+            89.30709,
+            -17.69014,
+            -10.2804,
+            -37.9807
+          ],
+          "piezo": [
+            -21.77789,
+            -18.72055,
+            -45.92737,
+            75.0227,
+            -8.54916,
+            -7.90535,
+            -35.51689
+          ],
+          "heave": [
+            -23.77165,
+            -19.08119,
+            -45.94305,
+            77.28272,
+            -9.16398,
+            -7.95804,
+            -41.64022
+          ],
+          "moment": [
+            -11.67902,
+            -13.5647,
+            -29.73713,
+            66.13735,
+            -6.88651,
+            -6.05172,
+            -29.8847
+          ]
+        }
+      }
+    },
+    {
+      "style": "pick",
+      "variant": "normal-85",
+      "initial_note_share_energy_csv": "67,0.817707,0.466924\n69,0.817707,0.414425\n71,0.817707,0.365356\n76,0.817707,0.260615\n",
+      "native_sha256": "9a722f63b216eb95c8ebe3a6cc1809275ef1fd8ac7aabf934b4fe6c4d386db87",
+      "measures": {
+        "G4": {
+          "mic": [
+            -9.07367,
+            -20.14523,
+            -23.92462,
+            40.23392,
+            -0.87242,
+            -5.10097,
+            -18.57787
+          ],
+          "piezo": [
+            -11.06524,
+            -23.77073,
+            -31.10391,
+            7.86458,
+            8.13565,
+            1.97107,
+            -10.14998
+          ],
+          "heave": [
+            -9.17598,
+            -23.40698,
+            -31.09196,
+            12.60235,
+            6.11092,
+            -0.3783,
+            -15.43787
+          ],
+          "moment": [
+            -10.93397,
+            -16.41254,
+            -24.71998,
+            34.6405,
+            0.72854,
+            -9.91063,
+            -19.97547
+          ]
+        },
+        "A4": {
+          "mic": [
+            -10.76342,
+            -19.24696,
+            -24.34936,
+            14.02244,
+            6.96706,
+            -5.54395,
+            -13.26652
+          ],
+          "piezo": [
+            -11.94218,
+            -23.19879,
+            -37.77534,
+            19.26822,
+            2.28299,
+            0.38833,
+            -13.31532
+          ],
+          "heave": [
+            -10.5359,
+            -23.72679,
+            -37.76431,
+            39.01076,
+            -1.22469,
+            -4.15264,
+            -22.0504
+          ],
+          "moment": [
+            -12.09058,
+            -15.49553,
+            -22.10504,
+            89.19543,
+            -12.90212,
+            -16.33662,
+            -31.51676
+          ]
+        },
+        "B4": {
+          "mic": [
+            -10.78712,
+            -20.47674,
+            -24.45384,
+            29.35246,
+            -2.27451,
+            1.13875,
+            -30.44184
+          ],
+          "piezo": [
+            -10.74508,
+            -20.25974,
+            -42.09245,
+            19.44269,
+            2.78237,
+            1.73895,
+            -15.85935
+          ],
+          "heave": [
+            -11.10161,
+            -20.51732,
+            -42.03461,
+            39.47394,
+            -1.61486,
+            -2.04721,
+            -26.37273
+          ],
+          "moment": [
+            -8.61303,
+            -23.94594,
+            -24.89034,
+            39.39875,
+            -1.96797,
+            -2.09005,
+            -26.42688
+          ]
+        },
+        "E5": {
+          "mic": [
+            -22.73089,
+            -21.71399,
+            -31.87121,
+            89.86024,
+            -19.65444,
+            -10.08471,
+            -44.42445
+          ],
+          "piezo": [
+            -26.40358,
+            -21.9618,
+            -48.96904,
+            76.31873,
+            -9.71031,
+            -7.59079,
+            -35.84036
+          ],
+          "heave": [
+            -29.23988,
+            -22.59541,
+            -48.958,
+            79.21875,
+            -10.2855,
+            -8.0291,
+            -42.16537
+          ],
+          "moment": [
+            -20.72657,
+            -20.4555,
+            -31.00903,
+            73.32375,
+            -13.53447,
+            -5.20658,
+            -38.1821
+          ]
+        }
+      }
+    },
+    {
+      "style": "thumb",
+      "variant": "baseline",
+      "initial_note_share_energy_csv": "67,0.217707,0.137787\n69,0.217707,0.125283\n71,0.217707,0.115027\n76,0.217707,0.0971035\n",
+      "native_sha256": "d0a2ad146567c61c1dc947eaee333989d9a5ccce2351178489e5e393df7353e3",
+      "measures": {
+        "G4": {
+          "mic": [
+            -7.87612,
+            -12.61829,
+            -21.30346,
+            92.24648,
+            -12.30528,
+            -29.18076,
+            -26.9589
+          ],
+          "piezo": [
+            -9.89255,
+            -14.2574,
+            -29.63021,
+            53.91674,
+            -1.48972,
+            -28.18242,
+            -21.90903
+          ],
+          "heave": [
+            -8.67692,
+            -14.09687,
+            -29.62099,
+            68.95891,
+            -4.13918,
+            -30.76811,
+            -28.0864
+          ],
+          "moment": [
+            -13.51885,
+            -10.5402,
+            -21.57741,
+            84.26132,
+            -8.57019,
+            -24.46448,
+            -26.35706
+          ]
+        },
+        "A4": {
+          "mic": [
+            -10.34377,
+            -10.95642,
+            -15.26472,
+            38.05922,
+            1.59755,
+            -19.1638,
+            -21.89298
+          ],
+          "piezo": [
+            -11.94402,
+            -13.3252,
+            -34.25645,
+            52.54859,
+            -1.45584,
+            -20.37838,
+            -20.58374
+          ],
+          "heave": [
+            -9.2885,
+            -13.33562,
+            -34.24328,
+            69.39685,
+            -4.42503,
+            -24.66415,
+            -28.32659
+          ],
+          "moment": [
+            -13.54231,
+            -9.68252,
+            -14.62217,
+            98.54554,
+            -22.67904,
+            -28.30025,
+            -38.11257
+          ]
+        },
+        "B4": {
+          "mic": [
+            -14.48264,
+            -16.83823,
+            -19.80017,
+            75.59661,
+            -7.39053,
+            -21.35055,
+            -35.31643
+          ],
+          "piezo": [
+            -18.33293,
+            -16.4621,
+            -31.91156,
+            67.58867,
+            -4.58603,
+            -21.73264,
+            -35.28709
+          ],
+          "heave": [
+            -16.55138,
+            -16.84145,
+            -31.84762,
+            84.77642,
+            -8.82798,
+            -25.23345,
+            -45.24028
+          ],
+          "moment": [
+            -3.57131,
+            -8.5145,
+            -19.26946,
+            80.91282,
+            -10.45162,
+            -21.36302,
+            -28.87244
+          ]
+        },
+        "E5": {
+          "mic": [
+            -14.69486,
+            -12.40211,
+            -28.31498,
+            97.64524,
+            -21.30832,
+            -22.54638,
+            -39.64948
+          ],
+          "piezo": [
+            -16.33317,
+            -14.32126,
+            -43.16247,
+            94.02621,
+            -13.62804,
+            -19.55079,
+            -38.28575
+          ],
+          "heave": [
+            -16.33985,
+            -14.33636,
+            -43.17026,
+            93.7723,
+            -13.38639,
+            -19.07195,
+            -43.52585
+          ],
+          "moment": [
+            -7.35037,
+            -10.13782,
+            -26.70007,
+            81.27906,
+            -8.52747,
+            -16.90836,
+            -32.73057
+          ]
+        }
+      }
+    },
+    {
+      "style": "thumb",
+      "variant": "rock-100",
+      "initial_note_share_energy_csv": "67,0.217707,0.137788\n69,0.217707,0.125284\n71,0.217707,0.115027\n76,0.217707,0.096554\n",
+      "native_sha256": "5138d3365a7544f7c313ad67544fa9d6070cc9eb60d627e63ed5eef4810f0872",
+      "measures": {
+        "G4": {
+          "mic": [
+            -10.7321,
+            -12.34088,
+            -22.41881,
+            95.4695,
+            -14.40641,
+            -31.0856,
+            -34.82806
+          ],
+          "piezo": [
+            -12.24611,
+            -11.04319,
+            -21.25334,
+            59.9287,
+            -2.39836,
+            -25.65027,
+            -27.95911
+          ],
+          "heave": [
+            -10.99863,
+            -11.07797,
+            -21.19354,
+            74.05463,
+            -5.12409,
+            -28.92854,
+            -34.22341
+          ],
+          "moment": [
+            -9.70574,
+            -11.94722,
+            -22.97424,
+            85.33778,
+            -8.46349,
+            -25.61934,
+            -34.40838
+          ]
+        },
+        "A4": {
+          "mic": [
+            -10.74845,
+            -11.79689,
+            -21.12477,
+            42.23409,
+            1.15444,
+            -20.59576,
+            -25.76893
+          ],
+          "piezo": [
+            -17.0605,
+            -12.90392,
+            -22.96554,
+            56.11976,
+            -1.80507,
+            -21.25835,
+            -20.43386
+          ],
+          "heave": [
+            -13.44393,
+            -12.87548,
+            -22.95977,
+            77.04039,
+            -5.87441,
+            -26.72182,
+            -29.2298
+          ],
+          "moment": [
+            -12.03536,
+            -11.38429,
+            -17.19899,
+            99.00326,
+            -23.18212,
+            -29.81343,
+            -40.20411
+          ]
+        },
+        "B4": {
+          "mic": [
+            -9.76985,
+            -12.03317,
+            -22.80862,
+            86.10107,
+            -9.22124,
+            -22.79752,
+            -40.94251
+          ],
+          "piezo": [
+            -9.4809,
+            -11.50491,
+            -23.85281,
+            76.04427,
+            -5.97485,
+            -21.30059,
+            -29.34541
+          ],
+          "heave": [
+            -9.92487,
+            -11.45288,
+            -23.82115,
+            90.46997,
+            -10.75406,
+            -25.06365,
+            -39.54703
+          ],
+          "moment": [
+            -3.28558,
+            -12.7393,
+            -22.51345,
+            82.71176,
+            -9.1499,
+            -23.39817,
+            -33.86467
+          ]
+        },
+        "E5": {
+          "mic": [
+            -18.96182,
+            -14.21414,
+            -31.78187,
+            98.66503,
+            -22.18155,
+            -28.10363,
+            -41.73845
+          ],
+          "piezo": [
+            -18.69925,
+            -12.7572,
+            -32.61363,
+            95.15338,
+            -14.90362,
+            -23.67349,
+            -31.51737
+          ],
+          "heave": [
+            -16.99982,
+            -13.32915,
+            -32.6227,
+            95.29661,
+            -14.99753,
+            -22.59751,
+            -36.85253
+          ],
+          "moment": [
+            -6.7413,
+            -13.25019,
+            -31.06807,
+            85.54113,
+            -8.8339,
+            -20.27389,
+            -34.08154
+          ]
+        }
+      }
+    },
+    {
+      "style": "thumb",
+      "variant": "original-control",
+      "initial_note_share_energy_csv": "67,0.217707,0.137788\n69,0.217707,0.124775\n71,0.217707,0.115027\n76,0.217707,0.0971035\n",
+      "native_sha256": "15ea156c45a17c23565d73f831aa8234dadac4b2c1cb85e6e877ce5adb70832b",
+      "measures": {
+        "G4": {
+          "mic": [
+            -10.08995,
+            -8.70636,
+            -22.25284,
+            89.88775,
+            -16.69331,
+            -41.0123,
+            -32.49228
+          ],
+          "piezo": [
+            -10.17778,
+            -13.45553,
+            -29.79463,
+            82.10843,
+            -7.45926,
+            -35.36787,
+            -29.79834
+          ],
+          "heave": [
+            -10.14387,
+            -14.05687,
+            -29.78992,
+            80.10206,
+            -6.74857,
+            -34.7514,
+            -32.72813
+          ],
+          "moment": [
+            -8.06621,
+            -8.8963,
+            -21.73035,
+            79.87627,
+            -7.02014,
+            -28.25806,
+            -27.20136
+          ]
+        },
+        "A4": {
+          "mic": [
+            -10.96592,
+            -11.74843,
+            -29.83117,
+            41.97678,
+            0.37105,
+            -10.68832,
+            -31.60108
+          ],
+          "piezo": [
+            -10.35141,
+            -12.33756,
+            -33.94187,
+            80.68684,
+            -6.8441,
+            -26.08468,
+            -27.94005
+          ],
+          "heave": [
+            -10.40006,
+            -12.3254,
+            -33.93276,
+            83.08563,
+            -7.48938,
+            -26.6879,
+            -33.13128
+          ],
+          "moment": [
+            -7.38339,
+            -11.03164,
+            -14.31809,
+            93.0658,
+            -13.70522,
+            -30.86212,
+            -41.07068
+          ]
+        },
+        "B4": {
+          "mic": [
+            -12.54086,
+            -9.87895,
+            -20.30242,
+            86.82781,
+            -9.56146,
+            -21.18892,
+            -36.76457
+          ],
+          "piezo": [
+            -12.4412,
+            -12.80258,
+            -34.7801,
+            74.65608,
+            -5.71002,
+            -23.39923,
+            -33.94454
+          ],
+          "heave": [
+            -12.89352,
+            -12.38433,
+            -34.75549,
+            80.6815,
+            -7.0157,
+            -24.58496,
+            -42.14881
+          ],
+          "moment": [
+            -11.0173,
+            -9.17438,
+            -17.9878,
+            29.92423,
+            2.4011,
+            -14.57685,
+            -25.50809
+          ]
+        },
+        "E5": {
+          "mic": [
+            -13.72253,
+            -13.20257,
+            -28.06696,
+            51.16074,
+            -0.37742,
+            -22.32763,
+            -37.57383
+          ],
+          "piezo": [
+            -12.73981,
+            -17.51079,
+            -51.23491,
+            92.53887,
+            -12.04183,
+            -25.98253,
+            -35.6181
+          ],
+          "heave": [
+            -12.6971,
+            -17.53987,
+            -51.23059,
+            93.26443,
+            -12.28682,
+            -26.37409,
+            -42.37117
+          ],
+          "moment": [
+            -14.39422,
+            -9.4118,
+            -25.21308,
+            61.54216,
+            -6.11382,
+            -11.1201,
+            -31.34371
+          ]
+        }
+      }
+    },
+    {
+      "style": "thumb",
+      "variant": "normal-55",
+      "initial_note_share_energy_csv": "67,0.517707,0.137787\n69,0.517707,0.125283\n71,0.517707,0.115027\n76,0.517707,0.0971035\n",
+      "native_sha256": "50181c66b9a79cd04138fb8be8727a2f3492fba7e9576232500465a51d177ae8",
+      "measures": {
+        "G4": {
+          "mic": [
+            -7.9612,
+            -14.18949,
+            -23.37059,
+            84.56808,
+            -8.08155,
+            -30.84358,
+            -28.33004
+          ],
+          "piezo": [
+            -9.58735,
+            -16.96238,
+            -30.81263,
+            41.94197,
+            0.731,
+            -28.04828,
+            -21.20044
+          ],
+          "heave": [
+            -7.7574,
+            -16.69307,
+            -30.80668,
+            53.9839,
+            -1.27336,
+            -29.93209,
+            -26.57092
+          ],
+          "moment": [
+            -11.8845,
+            -9.65145,
+            -24.05202,
+            79.63598,
+            -6.54553,
+            -31.29411,
+            -29.71387
+          ]
+        },
+        "A4": {
+          "mic": [
+            -11.07136,
+            -11.48289,
+            -18.43742,
+            46.57079,
+            0.26204,
+            -26.6474,
+            -26.09122
+          ],
+          "piezo": [
+            -11.92567,
+            -15.89943,
+            -35.39343,
+            63.68274,
+            -3.61591,
+            -23.20005,
+            -23.50532
+          ],
+          "heave": [
+            -10.60451,
+            -16.15477,
+            -35.3805,
+            79.2757,
+            -6.76104,
+            -27.66308,
+            -31.75993
+          ],
+          "moment": [
+            -12.52847,
+            -8.00585,
+            -15.40305,
+            99.0454,
+            -22.24738,
+            -35.55326,
+            -44.30496
+          ]
+        },
+        "B4": {
+          "mic": [
+            -12.20518,
+            -18.71466,
+            -19.89505,
+            82.20954,
+            -9.03726,
+            -22.38283,
+            -42.90226
+          ],
+          "piezo": [
+            -13.36054,
+            -18.43302,
+            -36.48765,
+            68.81684,
+            -4.75506,
+            -22.00681,
+            -33.29931
+          ],
+          "heave": [
+            -13.00111,
+            -18.80578,
+            -36.43047,
+            86.11309,
+            -9.14679,
+            -25.72243,
+            -43.70172
+          ],
+          "moment": [
+            -6.92615,
+            -11.11774,
+            -19.54519,
+            87.60494,
+            -10.13802,
+            -29.61843,
+            -38.90901
+          ]
+        },
+        "E5": {
+          "mic": [
+            -18.43078,
+            -14.89955,
+            -28.59553,
+            99.00994,
+            -25.52396,
+            -24.52774,
+            -44.43744
+          ],
+          "piezo": [
+            -21.40574,
+            -17.59867,
+            -46.83002,
+            96.08856,
+            -15.83708,
+            -21.24473,
+            -40.01769
+          ],
+          "heave": [
+            -23.04439,
+            -17.54105,
+            -46.81071,
+            96.37332,
+            -15.96938,
+            -21.56033,
+            -45.98226
+          ],
+          "moment": [
+            -7.38312,
+            -10.5994,
+            -26.92755,
+            79.9441,
+            -8.7425,
+            -15.03473,
+            -31.07024
+          ]
+        }
+      }
+    },
+    {
+      "style": "thumb",
+      "variant": "normal-85",
+      "initial_note_share_energy_csv": "67,0.817707,0.137787\n69,0.817707,0.125283\n71,0.817707,0.115027\n76,0.817707,0.0971035\n",
+      "native_sha256": "439547821de5639acd309f6da0f190850e86d2de6ff183adcfca75f00052a7b5",
+      "measures": {
+        "G4": {
+          "mic": [
+            -9.07707,
+            -16.60456,
+            -27.8427,
+            81.86912,
+            -7.04833,
+            -33.72187,
+            -29.43265
+          ],
+          "piezo": [
+            -9.7968,
+            -20.0569,
+            -31.91745,
+            34.80611,
+            2.1037,
+            -28.20245,
+            -20.53203
+          ],
+          "heave": [
+            -8.7602,
+            -19.71447,
+            -31.91547,
+            46.79117,
+            0.02122,
+            -30.17632,
+            -25.90402
+          ],
+          "moment": [
+            -11.4156,
+            -11.26301,
+            -29.19198,
+            77.12524,
+            -5.82417,
+            -37.77729,
+            -31.00848
+          ]
+        },
+        "A4": {
+          "mic": [
+            -11.49069,
+            -14.19575,
+            -21.7422,
+            49.08783,
+            -0.15392,
+            -31.44546,
+            -26.32822
+          ],
+          "piezo": [
+            -12.01331,
+            -19.05265,
+            -36.68829,
+            69.54133,
+            -4.90642,
+            -24.94558,
+            -24.65696
+          ],
+          "heave": [
+            -11.35099,
+            -19.503,
+            -36.67621,
+            84.82807,
+            -8.45496,
+            -29.79393,
+            -33.61527
+          ],
+          "moment": [
+            -12.14259,
+            -10.37406,
+            -19.11521,
+            98.34041,
+            -18.94632,
+            -42.19843,
+            -45.06699
+          ]
+        },
+        "B4": {
+          "mic": [
+            -11.5409,
+            -20.1621,
+            -23.43938,
+            85.16737,
+            -10.13055,
+            -23.05362,
+            -45.81045
+          ],
+          "piezo": [
+            -11.85363,
+            -19.98399,
+            -39.25726,
+            70.67612,
+            -5.12349,
+            -22.38357,
+            -32.5607
+          ],
+          "heave": [
+            -11.90617,
+            -20.2601,
+            -39.21496,
+            87.35261,
+            -9.55683,
+            -26.18345,
+            -43.199
+          ],
+          "moment": [
+            -9.11672,
+            -19.02956,
+            -23.75331,
+            88.72733,
+            -10.33882,
+            -28.34351,
+            -42.48938
+          ]
+        },
+        "E5": {
+          "mic": [
+            -22.7829,
+            -18.64319,
+            -29.35904,
+            99.40453,
+            -27.40464,
+            -25.33538,
+            -49.361
+          ],
+          "piezo": [
+            -26.05915,
+            -21.44603,
+            -46.62824,
+            96.91826,
+            -17.14902,
+            -22.09869,
+            -40.84595
+          ],
+          "heave": [
+            -28.5863,
+            -21.34805,
+            -46.64251,
+            97.24577,
+            -17.30054,
+            -22.75811,
+            -47.12185
+          ],
+          "moment": [
+            -20.23152,
+            -15.15662,
+            -28.06389,
+            96.46696,
+            -17.11461,
+            -20.84719,
+            -42.03005
+          ]
+        }
+      }
+    }
+  ],
+  "focused_wavs": {
+    "mechanics-finger-rock-100-mic-phrase-match-AB.wav": {
+      "sha256": "5608465427b44e849a42cbe9b9df1eb9ad66380f0e46edd815d9832c24beb575",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662411,
+      "silence_exact": true,
+      "peak_dbfs": -2.600717
+    },
+    "mechanics-pick-rock-100-normal-55-piezo-shared-gain-AB.wav": {
+      "sha256": "0978058177243af782921fa4505678acb9102bbfd82aa17966740ade890f2ff1",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662412,
+      "silence_exact": true,
+      "peak_dbfs": 0.0
+    },
+    "mechanics-thumb-rock-100-piezo-shared-gain-AB.wav": {
+      "sha256": "a8da689db7cf9bdc149c5f17e53a6b5c73027b9de7894fff13ecf52bf7cccd18",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662412,
+      "silence_exact": true,
+      "peak_dbfs": -5.480172
+    },
+    "mechanics-finger-rock-100-normal-55-piezo-shared-gain-AB.wav": {
+      "sha256": "6427a7454de31582869daecb064478835cca99f9da40e0f0247d47106a4709ce",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662409,
+      "silence_exact": true,
+      "peak_dbfs": -3.391051
+    },
+    "mechanics-thumb-normal-55-mic-phrase-match-AB.wav": {
+      "sha256": "9d7667aaeda4714c02980aaa90124342b4737ffd7da708e73758d8885daeb902",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662409,
+      "silence_exact": true,
+      "peak_dbfs": -1.224463
+    },
+    "mechanics-finger-normal-85-mic-phrase-match-AB.wav": {
+      "sha256": "b73f6721d79f9c9245850cce3ba6170e49b5e20112eba16566755a07d38e7129",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.63018,
+      "silence_exact": true,
+      "peak_dbfs": -1.650071
+    },
+    "mechanics-thumb-normal-55-piezo-shared-gain-AB.wav": {
+      "sha256": "deeb32164e6f9a17f4d7db9746bed2d0310a36d1de32b619b529e0b691b55105",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662412,
+      "silence_exact": true,
+      "peak_dbfs": -2.114308
+    },
+    "mechanics-thumb-rock-100-normal-55-piezo-shared-gain-AB.wav": {
+      "sha256": "4c99ff984482e2c062147f58ecf5eb3ceda90d16786a8a352c0bfdcd8224d511",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662412,
+      "silence_exact": true,
+      "peak_dbfs": -1.991311
+    },
+    "mechanics-thumb-normal-80-piezo-shared-gain-AB.wav": {
+      "sha256": "5205e832a6a4d27411e341fcc34209da467caaa7a817651101a16e99ea711d3c",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630181,
+      "silence_exact": true,
+      "peak_dbfs": -0.54187
+    },
+    "mechanics-thumb-normal-85-mic-phrase-match-AB.wav": {
+      "sha256": "4ad4872c956e0297a8536c09d3e83a972cac9727fa3c59340979175a666aae19",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630178,
+      "silence_exact": true,
+      "peak_dbfs": -1.0
+    },
+    "mechanics-thumb-normal-85-piezo-shared-gain-AB.wav": {
+      "sha256": "70adb6797734b66c66cf4b27d67155221e63baa6f2d14848529090e379ab08e5",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630181,
+      "silence_exact": true,
+      "peak_dbfs": -0.284016
+    },
+    "mechanics-finger-normal-55-mic-phrase-match-AB.wav": {
+      "sha256": "dcb658a5d1d08977a43f920793b408d1be72521f74331948cb9264b75ec5f57b",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662411,
+      "silence_exact": true,
+      "peak_dbfs": -1.829512
+    },
+    "mechanics-thumb-rock-100-mic-phrase-match-AB.wav": {
+      "sha256": "6933dc461868cd8c6f51b1b16182ce21e580efe44d5c40a387f49f1b05cc2a8f",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662409,
+      "silence_exact": true,
+      "peak_dbfs": -1.640878
+    },
+    "mechanics-finger-half-mobility-normal-55-mic-phrase-match-AB.wav": {
+      "sha256": "659e432496f784826e21105b2fcd97b99e6df3d93cd186d662e4c1e97710aa9d",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.63018,
+      "silence_exact": true,
+      "peak_dbfs": -2.632947
+    },
+    "mechanics-pick-normal-80-mic-phrase-match-AB.wav": {
+      "sha256": "92737a890d6b21c482badf4916381cb4a979789c30b4ee3e9a629175384c84f9",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630178,
+      "silence_exact": true,
+      "peak_dbfs": -3.084159
+    },
+    "mechanics-finger-rock-100-piezo-shared-gain-AB.wav": {
+      "sha256": "b9401431dd010f97c21bb7ffb4451d4d71149d35f7a29314c2c41649b145fcb1",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662409,
+      "silence_exact": true,
+      "peak_dbfs": -6.959457
+    },
+    "mechanics-pick-half-mobility-normal-55-mic-phrase-match-AB.wav": {
+      "sha256": "f0de0cfbefb7c8825a3044b1a25d1584b4283457eae19af61e1b3cee25814433",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630178,
+      "silence_exact": true,
+      "peak_dbfs": -3.084159
+    },
+    "mechanics-pick-normal-55-mic-phrase-match-AB.wav": {
+      "sha256": "4c6a9a5a573a5242cfe69e04375a1f757fd5dd7b06e9f37bf99fec8b6c397a99",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662409,
+      "silence_exact": true,
+      "peak_dbfs": -3.051929
+    },
+    "mechanics-finger-normal-80-piezo-shared-gain-AB.wav": {
+      "sha256": "9a72f14adea71c208cd1334bc8cf0591eb3e2c4b13614789cf6e08b523bebf0a",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630179,
+      "silence_exact": true,
+      "peak_dbfs": -1.923662
+    },
+    "mechanics-thumb-half-mobility-normal-55-piezo-shared-gain-AB.wav": {
+      "sha256": "b7925fd31c8543772d1e43673fa588e8429929742ebacac6ca0770737491a011",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630181,
+      "silence_exact": true,
+      "peak_dbfs": -2.027161
+    },
+    "mechanics-finger-normal-55-piezo-shared-gain-AB.wav": {
+      "sha256": "18f27eba75967699c4eaa2bf675ea4e09a48566f3a1b4c250d009c97a5801ed4",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662409,
+      "silence_exact": true,
+      "peak_dbfs": -3.520014
+    },
+    "mechanics-finger-rock-100-normal-55-mic-phrase-match-AB.wav": {
+      "sha256": "b52dbc82884632b9890a9f437b64a77b7f551d4a0481134b4eb3b943509b9def",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662411,
+      "silence_exact": true,
+      "peak_dbfs": -1.9052
+    },
+    "mechanics-pick-normal-85-piezo-shared-gain-AB.wav": {
+      "sha256": "1b62f453a323aedd57d90426182982759104dccfcd3f1dfd87be1b6b5acd2daf",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630181,
+      "silence_exact": true,
+      "peak_dbfs": 0.0
+    },
+    "mechanics-pick-rock-100-piezo-shared-gain-AB.wav": {
+      "sha256": "65a3c865cc08e1d38e93e6bcfa54ce7435a9c9af0d2be7f7a5807230901a5b24",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662412,
+      "silence_exact": true,
+      "peak_dbfs": -3.133768
+    },
+    "mechanics-finger-normal-80-mic-phrase-match-AB.wav": {
+      "sha256": "7612ba4adfb50fcd46d4f325fc21232024b31398ec289331dc244d8c35106d83",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.63018,
+      "silence_exact": true,
+      "peak_dbfs": -1.676205
+    },
+    "mechanics-thumb-half-mobility-normal-55-mic-phrase-match-AB.wav": {
+      "sha256": "a66e590cdf70ad8921455462caf4571ea9fda51bd6daa84c47d3d29084d211c3",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630178,
+      "silence_exact": true,
+      "peak_dbfs": -1.673109
+    },
+    "mechanics-pick-normal-80-piezo-shared-gain-AB.wav": {
+      "sha256": "de69d0023ced66cf99e4cde92e1e3d7138d9ae0c3335259c08c9ba20f5fecab0",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630181,
+      "silence_exact": true,
+      "peak_dbfs": 0.0
+    },
+    "mechanics-thumb-normal-80-mic-phrase-match-AB.wav": {
+      "sha256": "2275de9c2086703c019503e38b7b274b7edab95b28adc74c48e85c80307bf8d2",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630178,
+      "silence_exact": true,
+      "peak_dbfs": -1.032231
+    },
+    "mechanics-pick-normal-55-piezo-shared-gain-AB.wav": {
+      "sha256": "27df6da0a2dba51b53a379958eb0e016d5715af5e4cdaa3e8a3889edd988817c",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662412,
+      "silence_exact": true,
+      "peak_dbfs": 0.0
+    },
+    "mechanics-finger-half-mobility-normal-55-piezo-shared-gain-AB.wav": {
+      "sha256": "46d0fb8eb777b367d928d6050cf9caff3635588c8f24513d3e1fc1526156ddf4",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630179,
+      "silence_exact": true,
+      "peak_dbfs": -3.430427
+    },
+    "mechanics-thumb-rock-100-normal-55-mic-phrase-match-AB.wav": {
+      "sha256": "af6d1aa41420d57b544b4c3d4df03fe63e299a0a231071ce5970e53cb32d89b8",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662409,
+      "silence_exact": true,
+      "peak_dbfs": -1.309182
+    },
+    "mechanics-finger-normal-85-piezo-shared-gain-AB.wav": {
+      "sha256": "f32a03a633dcbab551566c8c368654f194f29f64a1bd54faad856456cd4ef2c1",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630179,
+      "silence_exact": true,
+      "peak_dbfs": -1.662446
+    },
+    "mechanics-pick-rock-100-normal-55-mic-phrase-match-AB.wav": {
+      "sha256": "f0b59712ec127be7cdc73ad8cb5baac0fdbe169aacb7954a7c6f4e36b5b1632e",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662409,
+      "silence_exact": true,
+      "peak_dbfs": -3.051929
+    },
+    "mechanics-pick-normal-85-mic-phrase-match-AB.wav": {
+      "sha256": "deae332593620d355895b98ab83c3808b7ac717be664fa1a466150b142e025e8",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630178,
+      "silence_exact": true,
+      "peak_dbfs": -3.084159
+    },
+    "mechanics-pick-rock-100-mic-phrase-match-AB.wav": {
+      "sha256": "4c3f97f893718ac09b4ae409cfefa076dee8fbc554fcf84914f28120de67a795",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.662409,
+      "silence_exact": true,
+      "peak_dbfs": -3.051929
+    },
+    "mechanics-pick-half-mobility-normal-55-piezo-shared-gain-AB.wav": {
+      "sha256": "e692bfd08e9be95694a18b5755edeba0723db2ffa8195f1eea6b13f9d7bf02a8",
+      "sample_rate": 48000,
+      "duration_seconds": 25.0,
+      "channels": 2,
+      "baseline_actual_final_gain_db": 11.630181,
+      "silence_exact": true,
+      "peak_dbfs": 0.0
+    }
+  },
+  "no_subjective_claim": "These objective isolations establish mechanism andtradeoffs. Listener preference/cure isnot inferred.",
+  "register_limited_candidate": {
+    "status": "Frozen historical diagnostic at that time: Diagnostic only. No earlier ramp, mono offset, or calibration-policy change was applied. Physical listening verdict pending. Canonical pre-pluck second-EQ state restored.",
+    "reason": "The complete construction sweep found the unbounded +0.30 share exposed a new bass resonance: Jumbo/Spruce D#3 on the D string rose from +1.6 to +6.69 dB against neighbors for Thumb/Finger. A broad pitch curve retains the entire bass stroke rather than altering a specific mode or note.",
+    "curve": "Offset = 0.30*smoothstep((MIDI pitch\u221257)/7), with the position clamped to [0,1]. Zero at/below A3 (220 Hz), full offset at/above E4 (329.6 Hz). One continuous curve for all strings and fingerings. Cubic smoothstep has zero slope at both endpoints.",
+    "model_selection": "Uses configuredBridgeModel_; a queued requested model cannot prematurely alter the excitation of the currently configured bridge. Each pluck stores its partition. Later parameter/model changes do not repartition a sounding wave.",
+    "fresh_energy": "Uniform gain reweights the completed fresh planes to the legacy counterfactual energy before any repluck merge. Standalone strokes use written-line slope energy; replucks use their fractional-aligned increment work. Gain applies only to freshly initialized delay samples, release step and contact envelope, retaining the preceding wave and coherent-work bound. Natural harmonics use the same linear initializer.",
+    "profile_validation": {
+      "fingerings": 378.0,
+      "low_pitch_sample_exact_cases": 126.0,
+      "profile_delta_max_error": 2.98023e-08,
+      "queue_requested": 0.0,
+      "queue_configured": 1.0,
+      "queue_pending": 1.0,
+      "queue_delta": 0.3,
+      "sounding_share_retained_after_model_change": 1.0
+    },
+    "energy_validation": {
+      "cases": 648.0,
+      "merges": 162.0,
+      "initial_energy_relative_error": 3.26198e-07,
+      "fresh_energy_relative_error": 2.09957e-07,
+      "merge_work_relative_excess": 0.0,
+      "gain_min": 0.683103,
+      "gain_max": 1.30454
+    },
+    "limited_scale_exact_to_full": true,
+    "cpu_benchmark": {
+      "method": "101 measured fresh A4 noteOn calls after 10 warmups, reset outside timer; native arm64 O3, extended-rate builds. Both temporary builds include energy observers; production removes their repeated observer passes. Single-machine microbenchmark, not host/plugin real-time guarantee.",
+      "columns": [
+        "sample_rate",
+        "median_noteOn_microseconds",
+        "p95_noteOn_microseconds"
+      ],
+      "full_fixed_buffer": [
+        [
+          48000.0,
+          11.458,
+          14.292
+        ],
+        [
+          96000.0,
+          15.25,
+          18.458
+        ],
+        [
+          768000.0,
+          63.792,
+          72.958
+        ]
+      ],
+      "fresh_written_region": [
+        [
+          48000.0,
+          9.542,
+          12.541
+        ],
+        [
+          96000.0,
+          13.542,
+          16.375
+        ],
+        [
+          768000.0,
+          58.417,
+          61.834
+        ]
+      ]
+    },
+    "cpp17_strict_syntax": "Passed -Wall -Wextra -Wshadow -Werror.",
+    "proposal": "register-limited-production-proposal.diff archived with header/source/test harnesses under mechanics-native. No shipping analysis globals or public configuration knobs.",
+    "hashes": {
+      "register-limited-production-proposal.diff": "4599f72625360c16f28eee943fb413a9eb7423c4a5e15f34a94bc6642a8c0f34",
+      "RegisterProposalEngine.cpp": "2581f7f9c9d29be6003d6741b8b14ee20e426972d598e186bfe3ab257e88d069",
+      "RegisterCandidateEngine.cpp": "452b95c86d10bba802a7f5f72227f8c44a4152a39e098e79a1649f6728cb0740",
+      "RegisterEnergyTest": "2eb634bd7a2cfe55b79488d69b066803d5a1c86f5f289f858df12e48f90aaa77",
+      "ProfileStateTest.cpp": "295b4e922a6edcd0da3c19c8d4db94646780184d7a7c07da792d1eec0fc89841",
+      "ProfileStateTest": "db94db50e654165321ffbe8c6b05a6cd08940b2b7f2fb5c6ab878c1526e73e14",
+      "CpuBench.cpp": "91a8896c47ef7e999bf38af4eb7d435cb69d209b0ddbe66e44c6000b9bc31d7d",
+      "FullCpuBench": "10c0d9b77445630b0422e4a3f1fd18e73cf961f6cde6286f32efa71ee0a251bd",
+      "LimitedCpuBench": "b58853a0189c6bee60748f4c2ce11720eefcdb79fb920e1c378fe0313b7a818c"
+    },
+    "construction_renderer": {
+      "binary_sha256": "bf2e92bb065ab5294a58dd1e5c00976e19c1d8d29d673cd422924026a92158f0",
+      "source_sha256": "2cf448fe916fd110e83fb02abc72eb716dd46733b106bd49738d30b92b84670f",
+      "engine_sha256": "940c78a299e04d58d341323e5c8514d5afa8ef022b745f5ab4da534258e53365",
+      "variant": "register-normal-55; same extended CLI as preserved MechanicsRender. Fresh reference engine controls the initial energy. Frozen before the construction matrix run."
+    },
+    "historical_scope": "Frozen historical diagnostic at the time of that proposal. Its source/hash/measurements and then-current canonical status are retained; current applied status is in immutable_string_review_candidate."
+  },
+  "construction_matrix_calibration_feasibility": {
+    "status": "Frozen historical diagnostic at that time: Diagnostic only. No earlier ramp, mono offset, or calibration-policy change was applied. Physical listening verdict pending. Canonical pre-pluck second-EQ state restored.",
+    "scope": "Exact native Classic/Jumbo/Maple/Finger at48k, calibration phrase and open-chord guard. Three requested earlier ramps bounded; high A4/E5 +0.30 unchanged, D3/D#3/E3 shares unchanged.",
+    "root_of_failures": {
+      "mechanism": "The upper-register normal-share candidate raises the measured microphone phrase energy. One construction/style capture reference then trims the entire register, including bass whose native excitation was preserved. Alternate low open chords fall below the existing relative-level guard after this global calibration. This is a phrase/chord loudness tradeoff, not energy loss from the fresh-stroke initializer.",
+      "cell": 69,
+      "old_microphone_reference": 1.678936,
+      "new_microphone_reference": 1.23266494,
+      "microphone_reference_delta_db": -2.68378195310137,
+      "old_mono_relative_reference": 0.992062867,
+      "new_mono_relative_reference": 0.969538808,
+      "mono_relative_reference_delta_db": -0.19947993736431593,
+      "total_mono_reference_delta_db": -2.883261890465688,
+      "same_current_physics_old_scalar_guard_levels_db": {
+        "Standard": -2.848845500981687,
+        "DADGAD": -7.957109068643822,
+        "OpenG": -6.301113964864781
+      },
+      "old_scalar_tradeoff": "Restoring only the prior scalar would raise this candidate calibration phrase by about2.883LU, beyond \u00b11LU. It cannot preserve the stated phrase policy."
+    },
+    "curves": [
+      {
+        "start_midi": 57,
+        "end_midi": 64,
+        "mono_phrase_trim_db": 8.112684213301691e-08,
+        "mono_guard_levels_db": {
+          "Standard": -5.732107391447375,
+          "DADGAD": -10.84037095910951,
+          "OpenG": -9.184375855330469
+        },
+        "minimum_gain_above_exact_phrase_target_for_strict_guard_db": 1.84037095910951,
+        "could_fit_plus_minus_1_lu_check_with_intentional_offset": false,
+        "global_control_excluded_by_known_bass_regression": false
+      },
+      {
+        "start_midi": 52,
+        "end_midi": 57,
+        "mono_phrase_trim_db": -0.4521683436921933,
+        "mono_guard_levels_db": {
+          "Standard": -5.5798305154976795,
+          "DADGAD": -9.830899964242256,
+          "OpenG": -8.299646991508226
+        },
+        "minimum_gain_above_exact_phrase_target_for_strict_guard_db": 0.8308999642422563,
+        "could_fit_plus_minus_1_lu_check_with_intentional_offset": true,
+        "global_control_excluded_by_known_bass_regression": false
+      },
+      {
+        "start_midi": 52,
+        "end_midi": 64,
+        "mono_phrase_trim_db": -0.21046574471975532,
+        "mono_guard_levels_db": {
+          "Standard": -5.766549940368908,
+          "DADGAD": -10.61155001144381,
+          "OpenG": -8.967170944280856
+        },
+        "minimum_gain_above_exact_phrase_target_for_strict_guard_db": 1.6115500114438106,
+        "could_fit_plus_minus_1_lu_check_with_intentional_offset": false,
+        "global_control_excluded_by_known_bass_regression": false
+      },
+      {
+        "start_midi": 53,
+        "end_midi": 59,
+        "mono_phrase_trim_db": -0.4062697344042583,
+        "mono_guard_levels_db": {
+          "Standard": -5.844239471292305,
+          "DADGAD": -10.535144153393954,
+          "OpenG": -8.886829203262977
+        },
+        "minimum_gain_above_exact_phrase_target_for_strict_guard_db": 1.5351441533939543,
+        "could_fit_plus_minus_1_lu_check_with_intentional_offset": false,
+        "global_control_excluded_by_known_bass_regression": false
+      },
+      {
+        "start_midi": -1,
+        "end_midi": 64,
+        "mono_phrase_trim_db": -0.7853354859698207,
+        "mono_guard_levels_db": {
+          "Standard": -5.459782603831304,
+          "DADGAD": -8.60210540172341,
+          "OpenG": -6.965511347642639
+        },
+        "minimum_gain_above_exact_phrase_target_for_strict_guard_db": -0.39789459827659,
+        "could_fit_plus_minus_1_lu_check_with_intentional_offset": true,
+        "global_control_excluded_by_known_bass_regression": true
+      }
+    ],
+    "protocol_and_provenance": {
+      "native_results": "build-resonance/evidence/validation/pluck/chord-feasibility/report.json",
+      "native_results_sha256": "c4b5f7c0e9551754a4aad39030c80fcfd117152c9d440e1e677f7d7600a7d28e",
+      "phrase_exact_to_current_calibrator": true,
+      "phrase_peak_max": 0.4395647346973419,
+      "native_scope": "No per-note normalization; unchanged fresh-energy compensation. Parameters and strum match ConstructionMatrixTests. Actual calibration phrase regenerated and verified byte-identical. Output reference is applied after body projection; these peaks are safely below limiter knee so the per-capture scalar adds directly in dB.",
+      "temporary_source_changes": "Two diagnostic register endpoint globals replace only the cubic endpoints, with negative start sentinel for the global+0.30 control. Canonical initializer, energy restoration, filters, construction tables, and tested play function are frozen unchanged.",
+      "after_calibration_table_sha256": "740eb66c6aa3e4ce8a648cceff76ef187902eba007689390a03efc42dec352f0"
+    },
+    "nearest_protected_case": {
+      "curve": "52\u219257 cubic smoothstep, zero throughE3, full atA3.",
+      "exact_target_mono_DADGAD_db": -9.830899964242256,
+      "intentional_gain_above_exact_phrase_target_db": 0.84,
+      "hypothetical_DADGAD_db": -8.990899964242256,
+      "hypothetical_phrase_offset_lu": 0.84,
+      "policy": "Would fit \u00b11LU check but intentionally offset the mono capture from equal-target calibration, leaving only0.16LU tolerance. This was neither applied nor accepted. Parent stopped curve tuning pending listener feedback."
+    },
+    "historical_scope": "Frozen historical diagnostic at the time of that proposal. Its source/hash/measurements and then-current canonical status are retained; current applied status is in immutable_string_review_candidate."
+  },
+  "early_register_generic_calibration_proof": {
+    "status": "Frozen historical diagnostic at that time: Prototype only; no canonical source/table/tool/test/player changes. Generic interval calibration is proven feasible for this frozen E3\u2192A3 candidate; body/register viability and human tone verdict remain independent prerequisites.",
+    "profile": "Classic normal share+.30*cubic smoothstep MIDI52..57, native counterfactual fresh-energy normalization; Original exact.",
+    "native_strum_protocol": "Actual Tests/ConstructionMatrixTests play function, including beginStrum, exact0.8 velocity, scheduled strum-member noteOn, open tuning6strings,0.35sec,128sampleblocks,mean K-weighted channel energy; all360settings.",
+    "proof_scope": "24 constructions\u00d73 captures, Finger only. Existing Pick headroom rule not changed. Original values frozen exactly.",
+    "feasibility": {
+      "all_intersections_nonempty": true,
+      "rounding_margin_db": 0.02,
+      "smallest_candidate_interval_width_db": 0.12910003578128082,
+      "changed_cells": [
+        [
+          [
+            "bellido1978",
+            "jumbo",
+            "maple"
+          ],
+          "mono_mic",
+          0.8508999642187192
+        ]
+      ],
+      "native_all360_guard_pass": true,
+      "native_max_phrase_offset_lu": 0.8508999900459493,
+      "native_chord_guard_margin_db": 0.020000024631205093,
+      "Original_all180_strums_exact": true,
+      "Original_default_stereo_phrase_exact": true,
+      "native_phase_rerenders": 37,
+      "unchanged_Original_phase_cells_reused": 35
+    },
+    "float32_policy": "Solve independent absolute capture gain intervals, choose closest feasible gain to measured phrase target, then derive float32 mic reference and mono/piezo relative trims. No manually selected cell offset. Existing Original and Pick/Thumb cells retain exact floats; this scoped proof recalibrates only Classic/Finger.",
+    "gain_prediction_limits": {
+      "native_loudness_meter_gate_scalar_error_lu": 0.032120674788380654,
+      "note": "The integrated meter absolute gate can shift which blocks qualify after a gain, so scalar prediction is checked against native rerenders. Every rerendered phrase remains within existing \u00b11 LU."
+    },
+    "hashes": {
+      "MatrixRender": "dded80221179f0d66a6badd988fa2efa0a20e4814a96fd1c61ad0e0ceeb1788e",
+      "full-reference/MatrixRender": "94f4f24febcea93bbbf4580506cd50c6c0f4a5fc6410b510df7075d03496c5b0",
+      "proof.json": "bc6c27d9f1a117e8844ec78525a871ac615182516a0e0804cd22184e0585badb",
+      "projected/native-validation.json": "94d66cea1244fb306112ac6a9a9419a9596801dd722d75cd8ef1b38326f19c6a",
+      "projected/table-projection.json": "dd5fc4655368d659861d9c4c5009bbbd0c03a1954c18ad3fdd55cfc2bc5c1979",
+      "snapshot/Source/DSP/AcustraEngine.cpp": "3ba313d7f7757a87df5193b2f725f35ed68c96752ee6aa51776e6741b4600865",
+      "snapshot/Source/DSP/PluckPolarisationData.h": "59051385291810efb5457c851f5f4842e1bd4c3bcadef8a7ee57cb6a8ac05596",
+      "snapshot/Source/DSP/ConstructionLoudnessData.h": "cf7f14611a177d4a7304c9cf00def77192faf73a723eb7a2fcd5d16d1b9e9073",
+      "projected/snapshot/Source/DSP/ConstructionLoudnessData.h": "e6562f16838b57fef59155fcf244586bb0d62d9492a7e781782332890f2dfe54"
+    },
+    "archive": "build-resonance/evidence/validation/pluck/early-register-bounded-calibration",
+    "historical_scope": "Frozen historical diagnostic at the time of that proposal. Its source/hash/measurements and then-current canonical status are retained; current applied status is in immutable_string_review_candidate."
+  },
+  "immutable_string_review_candidate": {
+    "status": "Clean fixed immutable physical-string source and its final constrained capture table are now canonical. Focused physical normal55 listening was Less banjo-like; Sharp or tinny attack remains for separate causal investigation.",
+    "profile": {
+      "normal_share_offsets_low_to_high_strings": [
+        0,
+        0,
+        0,
+        0.1944,
+        0.3,
+        0.3
+      ],
+      "selection": "configuredBridgeModel_ during fresh initialisePluck, resolved physical stringIndex; independent of tuning, fret and MIDI routing",
+      "direction": "authored string/gauge proxy, not measured release angle",
+      "fresh_energy": "native counterfactual legacy slope-energy restoration before retained-wave merge",
+      "reference_tables": "Pre-fit diagnostics used frozen cf7f14611a177d4a7304c9cf00def77192faf73a723eb7a2fcd5d16d1b9e9073; full216 parent generic constrained fit generated review-project table, with Original108 entries exact."
+    },
+    "archive": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review",
+    "manifest": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/diagnostic-provenance-manifest.json",
+    "independent_tests": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/diagnostic-provenance/independent-polarisation-tests-report.json",
+    "bounded_native_fit_review": {
+      "schema": "AcustraStringConstraintIndependentReviewV1",
+      "status": "Frozen at the time of isolated review validation: Prototype-only fixed immutable-string review; no subjective tone claim. Canonical second-EQ source remains unchanged.",
+      "original_table_entries_bit_exact": 108,
+      "original_native_strum_rows_exact": 180,
+      "native_rows": 360,
+      "phrase_intersections_feasible": 72,
+      "adjusted_captures": [
+        {
+          "construction": [
+            "bellido1978",
+            "jumbo",
+            "maple"
+          ],
+          "capture": "mono_mic",
+          "phrase_offset_lu": 0.6776885529090642,
+          "absolute_gain_interval_db": [
+            1.9469364570697714,
+            2.249247875715987
+          ]
+        }
+      ],
+      "worst_native_strum": {
+        "abs_relative_db": 8.97999903568611,
+        "key": [
+          [
+            "bellido1978",
+            "jumbo",
+            "maple"
+          ],
+          "mono_mic",
+          "dadgad"
+        ],
+        "relative_db": -8.97999903568611
+      },
+      "native_9db_margin": 0.020000964313890535,
+      "max_scalar_native_prediction_error_db": 1.2668197904019962e-06,
+      "max_scalar_native_prediction_key": [
+        [
+          "bellido1978",
+          "auditorium",
+          "maple"
+        ],
+        "mono_mic",
+        "drop_d"
+      ],
+      "max_scalar_native_prediction_signed_error_db": -1.2668197904019962e-06,
+      "max_native_main_peak": 0.5829771161079407,
+      "max_native_piezo_peak": 0.41591396927833557,
+      "max_finger_phrase_scalar_offset_lu": 0.6776885529090642,
+      "limits": [
+        "All216 native BS.1770 phrase rows have now been rerendered; the +.03266358 LU meter-gating deviation from the scalar projection remains within the existing \u00b11LU bound.",
+        "These checks validate the existing tuning/loudness policy and its nearest feasible scalar projection; they do not establish tone acceptance or full instrument/hand work conservation."
+      ],
+      "hashes": {
+        "/tmp/acustra-string-polarisation-proof-20261009/snapshot/Source/DSP/ConstructionLoudnessData.h": "cf7f14611a177d4a7304c9cf00def77192faf73a723eb7a2fcd5d16d1b9e9073",
+        "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/project/Source/DSP/ConstructionLoudnessData.h": "4c1e4e098844d31b2ee49bf250ef5552aa26a7c21116b2378acdde5b50c48ce8",
+        "/tmp/acustra-string-polarisation-proof-20261009/native-strum-measurements.json": "aeb6e0d60c61954c50cd73ab93472e0fd9eac84bc2882d338820971a130671bb",
+        "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/native-strums-check.json": "a99992616568be5501efcefa354ba49b92a4112b9a4552114c880b792ea08cb8",
+        "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/fit.json": "6b15b2524ad855d0f054f66a5641662ed228ab5d73d50a10ac59a8d8e6d56e14",
+        "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/independent-fit-review.py": "5e83f301b8255f003f5282f60b125c0776589920cf92b7a876506ba03f9af502",
+        "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/level-check.json": "000d3200a440c9457930fa4f4b03d3307a7021ffaef385443054ef1da9fa5c6f",
+        "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/level-check.log": "7f969608abaf43c7b5b3ebe4689d3c6dad0ec75531ebd8ffbcd9a63d0db7d421",
+        "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/tests.log": "f908934b0ab2cc020b09e961dc0516bb954131af092a89ce714b7d22b7474acf",
+        "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/tests-repaired-project.log": "018e6c7e607b1784287f34752b5a5be01217200bdbdad01bfb722719472b8686",
+        "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/build.log": "b54bee85572a069ba126a2e1704407a56c911f8cf8bd8e6bdf238931875ba307"
+      },
+      "completed_native_phrase_check": {
+        "cells": 216,
+        "within_1lu": 216,
+        "capture_ranges_lu": {
+          "stereo_mic": {
+            "min_lu": -0.9000006516061028,
+            "max_lu": 0.02896723801544354,
+            "within_tolerance": 72,
+            "cells": 72
+          },
+          "mono_mic": {
+            "min_lu": -0.9000002996793306,
+            "max_lu": 0.7103521297211444,
+            "within_tolerance": 72,
+            "cells": 72
+          },
+          "piezo": {
+            "min_lu": -0.9000007069545468,
+            "max_lu": 0.3061820207090946,
+            "within_tolerance": 72,
+            "cells": 72
+          }
+        },
+        "original_phrase_rows_exact": 108,
+        "original_pick_peak_rows_exact": 36,
+        "projected_jumbo_maple_mono_finger": {
+          "scalar_prediction_lu": 0.6776885529090642,
+          "actual_native_lu": 0.7103521297211444,
+          "native_minus_scalar_lu": 0.03266357681208021
+        },
+        "existing_pick_policy_passes": true,
+        "policy_note": "Some hardest Pick cases still fall short of the 1 dB headroom goal. Existing policy passes because they have surrendered the allowed 0.9LU level; no new headroom/loudness waiver."
+      },
+      "completed_native_tests": {
+        "aggregate_passed": 74,
+        "total": 74,
+        "initial_code_passed": 72,
+        "initial_staging_failures": [
+          "Acustra.DemoCount (README.md omitted)",
+          "Acustra.CalibrationVector (.github/workflows/ci.yml omitted)"
+        ],
+        "repaired_staging_only_rerun_passed": [
+          "Acustra.DemoCount",
+          "Acustra.CalibrationVector"
+        ],
+        "dsp_unchanged_during_repair": true,
+        "initial_log": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/tests.log",
+        "repaired_log": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/tests-repaired-project.log"
+      }
+    },
+    "scope": [
+      "The authored string candidate improves high-E tails and preserves wound D, but G upper tails remain nearly unchanged; no complete banjo fix claim.",
+      "Generic nearest interval projection improves one Classic Jumbo/Maple mono Finger phrase +.67768856LU rather than relaxing the existing \u00b11LU/9dB policies.",
+      "The microphone and Piezo output trims are calibrated after changed excitation; Classic Piezo PCM is not preserved by this candidate."
+    ],
+    "next_requirement": "Audition the focused attack experiments after their exact native control pairs are verified. The full string candidate is applied; no claim of a complete banjo or attack cure. Retain the measured wound-D and uneven G-tail limits.",
+    "completed_validation": {
+      "independent_review": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/independent-fit-review.json",
+      "aggregate74_tests": "72 code tests passed in initial full74 run; two omitted staging metadata files repaired and exact two doc/vector tests reran green. No DSP edits during repair. Aggregate74/74.",
+      "native_tuning_checks": "360/360 pass; worst\u22128.979999036dB against unchanged9dB guard. Native prediction maxerror1.267e\u22126dB.",
+      "native_levels": "216/216 within existing\u00b11LU; exact Original108phrase and36Pickpeak records preserved.",
+      "projected_mono_meter_gating": {
+        "scalar_prediction_lu": 0.6776885529090642,
+        "actual_native_lu": 0.7103521297211444,
+        "native_minus_scalar_lu": 0.03266357681208021
+      },
+      "independent_energy_suite": "Fresh relativeenergymax3.39426e\u22127; unnormalisednegativecontrol108fresh/18refret/3repluckfailures.",
+      "build": "Parent all-target normal build plus extended sample-rate/strictC++17 targets passed."
+    },
+    "clean_applied_diff": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/pluck/string-review/clean-string-review-candidate.diff",
+      "git_apply_check": true,
+      "against": "Canonical restored Second-EQ files, including existing MicrophoneBalance work; does not include either boom or microphone refinements anew."
+    },
+    "canonical_application": {
+      "renderer_sha256": "bc4d00109ac6ff541b729a11076b4fdecfdbf64a68b6a6c926d65e007a9eeb9d",
+      "affected_suites_passed": 8,
+      "source": "Parent confirmed clean canonical application, byte-identical reviewed renderer and8 affected suites green."
+    },
+    "focused_listener_feedback": {
+      "scope": "Focused physical normal55 comparison, not all construction clips.",
+      "positive_result": "Less banjo-like",
+      "remaining_cue": "Sharp or tinny attack"
+    }
+  }
+}

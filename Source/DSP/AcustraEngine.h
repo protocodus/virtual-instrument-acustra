@@ -9,6 +9,8 @@
 #include "PerformanceRealism.h"
 
 #include <array>
+#include <algorithm>
+#include <cassert>
 #include <complex>
 #include <cstddef>
 #include <cstdint>
@@ -26,6 +28,13 @@
 #endif
 #if !defined(ACUSTRA_BODY_MODE_COUNT)
 #define ACUSTRA_BODY_MODE_COUNT 160
+#endif
+
+// Opt in consistently in the engine, performer and every consumer: this
+// changes their fixed storage layout. Rack's 4x rendering at a 192 kHz host
+// needs 768 kHz; ordinary builds retain their existing storage and range.
+#if !defined(ACUSTRA_EXTENDED_SAMPLE_RATES)
+#define ACUSTRA_EXTENDED_SAMPLE_RATES 0
 #endif
 
 // Asks the compiler to inline a function at every call it can see, whatever
@@ -107,9 +116,7 @@ struct EngineParameters
     float stringAge { 0.15f };       // 0 fresh, 1 worn/dead
     float pluckPosition { 0.28f };   // 0 bridgeward, 1 neckward
     float touch { 0.58f };           // 0 soft/dark, 1 hard/bright
-    // The body's radiation against the direct sound at the contact (the
-    // tool's click; the fitted bridge-local share ships at 0), so mostly a
-    // level on the body.
+    // Scales measured body radiation: 0.68 + 0.72 * bodyAmount.
     float bodyAmount { 0.82f };
     // Scales the stereo microphones' difference: 0 mono, 1 as measured.
     float stereoWidth { 0.62f };
@@ -146,8 +153,10 @@ public:
 
     AcustraEngine() noexcept;
 
-    // Models 8 kHz to 384 kHz: a finite rate outside that is clamped to the
-    // nearer bound (and so plays off pitch), and one that is no rate at all
+    static constexpr double maximumSupportedSampleRate
+        = ACUSTRA_EXTENDED_SAMPLE_RATES ? 768000.0 : 384000.0;
+    // Models 8 kHz to maximumSupportedSampleRate: a finite rate outside is
+    // clamped to the nearer bound (and so plays off pitch), and no rate at all
     // (NaN, infinite, zero or negative) falls back to 48 kHz.
     void prepare(double sampleRate, int maximumBlockSize);
     // The rate prepare() settled on, which every time constant follows.
@@ -382,9 +391,6 @@ public:
     [[nodiscard]] float getLastBridgeReactionForce() const noexcept;
     [[nodiscard]] float getLastBridgeBodyForce() const noexcept;
     [[nodiscard]] float getLastBridgeTailForce() const noexcept;
-    // The played strings' axial wave, observed separately from the two-way
-    // junction because its current radiation surrogate remains one-way.
-    [[nodiscard]] float getLastLongitudinalForce() const noexcept;
     // The under-saddle piezo's voltage at the jack, where it enters the
     // preamp: the element's charge on its own capacitance, the cable's and
     // the preamp's input network (renderPiezo). Read by
@@ -419,7 +425,67 @@ public:
 private:
     friend struct AcustraEngineTestAccess;
 
-    static constexpr int maximumDelaySamples = 8192;
+    static constexpr int maximumDelaySamples
+        = ACUSTRA_EXTENDED_SAMPLE_RATES ? 32768 : 8192;
+    static constexpr int maximumLegatoContactSamples
+        = ACUSTRA_EXTENDED_SAMPLE_RATES ? 2304 : 1152;
+
+#if ACUSTRA_EXTENDED_SAMPLE_RATES
+    // Fixed allocation, rate-sized work. All legal active sizes divide the
+    // physical capacity, so existing maximum-ring indices (including the
+    // negative-age initial pluck writes) map into the same active history.
+    // A copied history carries its ring size and only its live storage;
+    // dormant samples are never read, and prepare clears any enlarged span.
+    template <std::size_t Capacity>
+    class DelayHistory
+    {
+    public:
+        DelayHistory() noexcept : values_ {} {}
+        DelayHistory(const DelayHistory& other) noexcept : mask_(other.mask_)
+        {
+            std::copy_n(other.values_.begin(), size(), values_.begin());
+        }
+        DelayHistory& operator=(const DelayHistory& other) noexcept
+        {
+            if (this != &other)
+            {
+                mask_ = other.mask_;
+                std::copy_n(other.values_.begin(), size(), values_.begin());
+            }
+            return *this;
+        }
+        void prepareSize(std::size_t samples) noexcept
+        {
+            assert(samples > 0 && samples <= Capacity
+                && (samples & (samples - 1)) == 0);
+            mask_ = samples - 1;
+            fill(0.0f);
+        }
+        std::size_t size() const noexcept { return mask_ + 1; }
+        float& operator[](std::size_t index) noexcept { return values_[index & mask_]; }
+        const float& operator[](std::size_t index) const noexcept { return values_[index & mask_]; }
+        float* data() noexcept { return values_.data(); }
+        const float* data() const noexcept { return values_.data(); }
+        float* begin() noexcept { return values_.data(); }
+        const float* begin() const noexcept { return values_.data(); }
+        float* end() noexcept { return begin() + size(); }
+        const float* end() const noexcept { return begin() + size(); }
+        void fill(float value) noexcept { std::fill_n(begin(), size(), value); }
+    private:
+        // Deliberately no member initializer: copying an active prefix must
+        // not first zero the full capacity. The default constructor does.
+        std::array<float, Capacity> values_;
+        std::size_t mask_ { Capacity / 4 - 1 };
+    };
+#else
+    template <std::size_t Capacity>
+    using DelayHistory = std::array<float, Capacity>;
+#endif
+
+    int activeDelaySamples() const noexcept
+    {
+        return static_cast<int>(pickReleaseDisplacement_.size());
+    }
     static constexpr int bodyModeCount = ACUSTRA_BODY_MODE_COUNT;
     static constexpr int bridgeModeCount = ACUSTRA_BRIDGE_MODE_COUNT;
     static_assert(bridgeModeCount < 255, "BridgeLoad::activeModes holds a byte");
@@ -444,10 +510,6 @@ private:
         static constexpr std::array<float, 6> stringWeights {{
             0.912446483f, 1.04762873f, 1.10970464f,
             0.966512336f, 1.07203114f, 0.891676665f }};
-        // The axial force reaches the saddle through the strings' break
-        // angle behind it: sin 25 degrees (chosen, a typical 20-30 degrees).
-        // Zero while longitudinalGain ships at 0.
-        static constexpr float axialShare = 0.422618262f;
         // 2. The force in newtons: an engine force unit is a string's wave
         // impedance times one displacement unit per 48 kHz sample
         // (FixedDerivative differences over the 48 kHz period at every
@@ -580,9 +642,10 @@ private:
 
     struct FixedDerivative
     {
-        // The longest reference delay needs nine samples of history. A
-        // power-of-two ring makes both reads and the write wrap one mask.
-        static constexpr unsigned historyMask = 15;
+        // The longest reference delay needs nine (extended: seventeen)
+        // samples of history. A power-of-two ring makes both reads and the
+        // write wrap one mask.
+        static constexpr unsigned historyMask = ACUSTRA_EXTENDED_SAMPLE_RATES ? 31 : 15;
         std::array<float, historyMask + 1> history {};
         int index { 0 };
         // The reference-delay geometry depends only on the host rate. Keep
@@ -619,7 +682,7 @@ private:
 
     struct StringLoop
     {
-        std::array<float, maximumDelaySamples> delay {};
+        DelayHistory<maximumDelaySamples> delay {};
         int writeIndex { 0 };
         float currentDelay { 128.0f };
         float targetDelay { 128.0f };
@@ -866,7 +929,7 @@ private:
             double a1 { 0.0 }, a2 { 0.0 };
             double y1 { 0.0 }, y2 { 0.0 };
         };
-        std::array<float, maximumDelaySamples> history {};
+        DelayHistory<maximumDelaySamples> history {};
         std::array<Tap, 2> taps {};
         int writeIndex { 0 };
         int historyLength { 0 };
@@ -896,6 +959,7 @@ private:
         std::uint32_t lossDesignFrequency { 0 };
         std::uint32_t age { 0 };
         std::uint32_t palmMute { 0 };
+        std::uint32_t broadLossCornerScale { 0 };
 
         bool operator==(const VoiceConfigurationKey& other) const noexcept
         {
@@ -907,7 +971,8 @@ private:
                 && soundingLength == other.soundingLength
                 && speakingFret == other.speakingFret
                 && lossDesignFrequency == other.lossDesignFrequency
-                && age == other.age && palmMute == other.palmMute;
+                && age == other.age && palmMute == other.palmMute
+                && broadLossCornerScale == other.broadLossCornerScale;
         }
     };
 
@@ -943,7 +1008,6 @@ private:
         float contactPeriodSamples { 0.0f };
         float frequency { 0.0f };
         float lossDesignFrequency { 0.0f };
-        float linearMass { 0.0f };
         float tension { 0.0f };
         float tensionSemitones { 0.0f };
         float bentTension { 0.0f };
@@ -965,7 +1029,7 @@ private:
     struct RepluckArrivals
     {
         static constexpr int capacity = 2 * maximumDelaySamples;
-        std::array<std::array<float, capacity>, 2> wave {};
+        std::array<DelayHistory<capacity>, 2> wave {};
         int readIndex { 0 };
         int remaining { 0 };
         bool overflow { false };
@@ -1010,7 +1074,7 @@ private:
         float tailLegatoContactAmplitude { 0.0f };
         int tailLegatoContactAge { 0 };
         int tailLegatoContactSamples { 0 };
-        std::array<float, 1153> tailLegatoContactPulse {};
+        std::array<float, maximumLegatoContactSamples + 1> tailLegatoContactPulse {};
         float tailDamping { 1.0f };
         // Intrinsic loss and pitch belong to the captured string. The bridge
         // hand remains live CC2 expression while that old wave is retained.
@@ -1088,49 +1152,6 @@ private:
         std::uint32_t excitationCoefficientRate { 0xffffffffu };
         float excitationCoefficient { 0.0f };
         float excitationReleaseCoefficient { 0.0f };
-        // The Pick technique's contact transient is an impact and enters
-        // broadband, bypassing the Finger burst's colour filter.
-        bool excitationWhite { false };
-        // renderContactNoise's state for the pluck in progress: the drive's
-        // amplitude in the loop's per-sample wave units and its per-sample
-        // decay; the coefficients of the three one-pole stages that shape
-        // the launched displacement (two at the contact's corner, one at the
-        // fundamental), their states, and the gain that makes the force they
-        // imply unit RMS; the samples left to run; the shares of
-        // the stroke's direction normal and parallel to the top; its own
-        // generator, so that switching the noise on leaves every other draw
-        // as it was; and its travel from the contact point to the bridge,
-        // direct and by the nut, with the retained tail's copy at a repluck
-        // (those buffers, and the click's flight line, end the voice).
-        float contactNoiseAmplitude { 0.0f };
-        float contactNoiseDecay { 0.0f };
-        float contactNoiseCoefficient { 0.0f };
-        float contactNoiseStage1 { 0.0f };
-        float contactNoiseStage2 { 0.0f };
-        float contactNoiseStage3 { 0.0f };
-        float contactNoiseLowCoefficient { 0.0f };
-        // Its string-borne and airborne levels for this pluck, the last
-        // launched displacement and force at unit level, the click's
-        // radiated term and its per-reference-sample scale.
-        float contactNoiseString { 0.0f };
-        float contactNoiseClick { 0.0f };
-        float contactNoiseLaunched { 0.0f };
-        float contactNoiseForce { 0.0f };
-        float contactNoiseAir { 0.0f };
-        float contactNoiseAirScale { 1.0f };
-        // The click's radiation corner (a one-pole low-pass on dF/dt) and
-        // its flight to the microphone, in whole samples.
-        float contactNoiseAirCoefficient { 1.0f };
-        float contactNoiseAirLowpass { 0.0f };
-        int contactNoiseAirDelay { 1 };
-        int contactNoiseAirWrite { 0 };
-        float contactNoiseGain { 0.0f };
-        int contactNoiseSamples { 0 };
-        float contactNoiseNormal { 0.0f };
-        float contactNoiseParallel { 0.0f };
-        float tailContactNoiseNormal { 0.0f };
-        float tailContactNoiseParallel { 0.0f };
-        std::uint32_t contactNoiseState { 1 };
         ContactTravel contactTravel {};
         float contactPeriodSamples { 0.0f };
         // Where each plane's release shape put its kink, as a share of the
@@ -1159,7 +1180,7 @@ private:
         float tensionNewtons { 0.0f };
         // Fretting point after a conventional/manager slide. A lateral
         // member bend keeps it fixed. The attack's extension uses the same
-        // geometry as dispersion and the string's axial modes.
+        // geometry as dispersion.
         float speakingLengthMetres { 0.648f };
         // Fractional fret position used by the fitted fret-decay law. Slides
         // remain within its measured/playable fret range; a tension bend
@@ -1176,19 +1197,6 @@ private:
         float attackPitchDecay { 1.0f };
         float frozenMemberPitchBendSemitones { 0.0f };
         float attackSlopeEnergy { 0.0f };
-        // Transverse motion stretches the string, and the tension it adds is
-        // carried by the string's own longitudinal modes. Fixed-fixed axial
-        // modes lie at integer multiples of c_long/(2L); the first two modes
-        // with nonzero projection under an integrated extension drive retain
-        // the measured-band cost of a compact real-time model while avoiding
-        // the unphysical single-pole truncation.
-        static constexpr int longitudinalModeCount = 2;
-        std::array<float, longitudinalModeCount> longitudinalY1 {};
-        std::array<float, longitudinalModeCount> longitudinalY2 {};
-        std::array<float, longitudinalModeCount> longitudinalA1 {};
-        std::array<float, longitudinalModeCount> longitudinalA2 {};
-        std::array<float, longitudinalModeCount> longitudinalB0 {};
-        float longitudinalDrive { 0.0f };
         float observedSlopeEnergy { 0.0f };
         // finishVoice's follower coefficient for the normal loop's current
         // delay: an expf per sample until the delay has slewed to its target.
@@ -1201,6 +1209,10 @@ private:
         float dispersionDesignInharmonicity { -1.0f };
         float dispersionDesignAge { -1.0f };
         float dispersionDesignFrequencyLossScale { -1.0f };
+        // The active model's intrinsic broad-loss profile is independent of
+        // technique. Its exact value belongs to the completed phase design,
+        // even when a construction changes at the same pitch and loss scale.
+        float dispersionDesignBroadLossCornerScale { -1.0f };
         // Exact arguments of the last completed dispersion solve. Its fit
         // frequency is bounded beyond the playable fretboard plus the
         // documented 12-semitone panel/Reason bend range; above that the
@@ -1273,12 +1285,6 @@ private:
         // The engine's sample clock when this note was fretted; a chord
         // still forming is the run of notes whose onsets are close together.
         std::uint64_t onsetSample { 0 };
-        // The contact noise's buffers (renderContactNoise), last: at zero
-        // levels nothing reads them, and between the per-sample fields they
-        // would put 66 KB between the excitation's and the contact's.
-        std::array<float, 512> contactNoiseAirLine {};
-        ContactTravel contactNoiseTravel {};
-        ContactTravel tailContactNoiseTravel {};
         // The key-up's sound (startReleaseNoise): the release velocity the
         // key came up with (negative when not sent), the largest bridge force
         // since the pluck, and the release noise's generator state - the
@@ -1290,12 +1296,12 @@ private:
         // An explicitly requested connected finger articulation: a smooth
         // finite contact pulse and filtered fret friction, transported from
         // the finger's point on the string. Their combined slope energy is
-        // bounded by the sounding wave. 1152 samples cover 3 ms at 384 kHz;
+        // bounded by the sounding wave. Storage covers 3 ms at the maximum rate;
         // event-time preparation avoids random draws/filter work per sample.
         float legatoContactAmplitude { 0.0f };
         int legatoContactAge { 0 };
         int legatoContactSamples { 0 };
-        std::array<float, 1153> legatoContactPulse {};
+        std::array<float, maximumLegatoContactSamples + 1> legatoContactPulse {};
         std::uint32_t legatoFrictionState { 1 };
         ContactTravel legatoContactTravel {};
         float releaseVelocity { -1.0f };
@@ -1493,7 +1499,7 @@ private:
     // normal loop was tuned to alone (see AcustraEngine.cpp).
     [[nodiscard]] float coupledPolarisationDetune(
         const PortMobility& port, float impedance, float bentImpedance,
-        float frequency, float parallelExtraDelay, float normalGain,
+        float frequency, float normalGain,
         float parallelGain) const noexcept;
     // The saddle crown's height over the measured body's rocking axis, over
     // the normalized rocking coordinate's half-spacing: what projects a
@@ -1516,8 +1522,10 @@ private:
     [[nodiscard]] float mpePressureFor(const Voice& voice) const noexcept;
     [[nodiscard]] float vibratoSemitones(const Voice& voice,
                                          int fret) const noexcept;
+    // Private per-stroke direction bypass for independent TestAccess oracles.
+    // No observer state or public control; the configured release policy remains active.
     void initialisePluck(Voice& voice, int stringIndex, float velocity,
-                         bool merge = false) noexcept;
+                         bool merge = false, bool applyPluckDirection = true) noexcept;
     // Scale every state a string's two loops store of the travelling wave -
     // the delay line and each filter's memory - by gain.
     static void scaleStoredWaves(Voice& voice, float gain) noexcept;
@@ -1654,19 +1662,9 @@ private:
     };
     [[nodiscard]] HarmonicChoice chooseHarmonic(int midiNote) const noexcept;
     float renderExcitation(Voice& voice) noexcept;
-    void initialiseContactNoise(Voice& voice, float velocity, float position,
-                                float contactDistance, float releasedAmplitude,
-                                float contactWidthRatio) noexcept;
-    float renderContactNoise(Voice& voice) noexcept;
-    // The contact noise's per-sample work, kept out of the voice loop
-    // (process): only a voice whose noise or its travel is running calls it.
-    void addContactNoise(Voice& voice, float& verticalIncident,
-                         float& horizontalIncident) noexcept;
-    void addTailContactNoise(Voice& voice, float& tailIncident,
-                             float& tailParallelIncident) noexcept;
     // The key-up's sound (EngineParameters::releaseNoise): started by
     // beginRelease and muteVacatedString, rendered and launched from the
-    // damping contact like the contact noise.
+    // damping contact.
     void startReleaseNoise(Voice& voice, int stringIndex,
                            bool fretSide) noexcept;
     float renderReleaseNoise(Voice& voice) noexcept;
@@ -1676,9 +1674,7 @@ private:
                      float horizontalIncident, float excitation,
                      float tailIncident, float tailParallelIncident,
                      float bridgeDisplacement,
-                     float bridgeVelocity, float horizontalBridgeDisplacement,
-                     float& directLeft,
-                     float& directRight, float& longitudinalForce) noexcept;
+                     float bridgeVelocity, float horizontalBridgeDisplacement) noexcept;
     BodyOutput renderBody(float bridgeInput, float bodyMoment) noexcept;
     float renderPiezo(float force) noexcept;
     void resetPiezo() noexcept;
@@ -1722,8 +1718,8 @@ private:
     // a sample), and its write pass writes the same samples from them.
     // Once both fresh planes are built, a continuing re-pluck reuses these
     // arrays for the aligned increments shared by its work and merge passes.
-    std::array<float, maximumDelaySamples> pickReleaseDisplacement_ {};
-    std::array<float, maximumDelaySamples> pickReleaseVelocity_ {};
+    DelayHistory<maximumDelaySamples> pickReleaseDisplacement_ {};
+    DelayHistory<maximumDelaySamples> pickReleaseVelocity_ {};
     int nextDispersionSolve_ { 0 };
     // Advanced whenever engine state that configureVoice reads changes; see
     // VoiceConfigurationKey. Starts past the keys' never-matching zero.
@@ -1830,7 +1826,6 @@ private:
     float lastBridgeReactionForce_ { 0.0f };
     float lastBridgeBodyForce_ { 0.0f };
     float lastBridgeTailForce_ { 0.0f };
-    float lastLongitudinalForce_ { 0.0f };
     float lastBridgePower_ { 0.0f };
     float lastBridgeBodyPower_ { 0.0f };
     float lastBridgeTailPower_ { 0.0f };
@@ -2038,13 +2033,6 @@ private:
     // corpus's absolute-ms one, is what a single per-stroke speed draw
     // should match. std of h*U(-1,1) is h/sqrt(3), so h = 0.3647*sqrt(3).
     static constexpr float strumSpeedJitterHalfWidth = 0.6317f;
-    // Each pluck's contact noise may draw its own level within this many dB
-    // either way (initialiseContactNoise). It draws none: across the picked
-    // archtop's three takes of a note the recordings' 0-12 ms energy between
-    // partials ranges a median 1.6 dB (pooled SD 1.2 dB), and a noise of its
-    // own on every pluck already ranges a median 1.1-2.9 dB over three
-    // repeats of a note at MIDI 112 and 16 (Docs/decisions.md, 2026-09-28).
-    static constexpr float contactNoiseTakeSpreadDb = 0.0f;
 };
 
 } // namespace acustra

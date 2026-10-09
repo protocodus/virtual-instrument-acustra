@@ -80,8 +80,6 @@ struct AcustraEngineTestAccess
         auto& v = e.voices_[0];
         v.excitationEnvelope = 0.0f;
         v.contactTravel.active = false;
-        v.contactNoiseSamples = 0;
-        v.contactNoiseTravel.active = false;
     }
     static std::vector<float> futureFingerArrivals(const AcustraEngine& e)
     {

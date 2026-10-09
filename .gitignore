@@ -36,3 +36,7 @@ DerivedData/
 # locally and they are never committed.
 /Source/DSP/RauQualifiedGuitarData.h
 /Docs/rau-guitar-candidate-report.json
+
+# Generated versioned distributions and Python script caches.
+/dist/
+__pycache__/

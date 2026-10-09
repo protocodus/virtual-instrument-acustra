@@ -12,7 +12,7 @@
 //
 // This is PhysicalFitRenderer's model half with the schedule read from a file
 // instead of the embedded bank, so a score on an external corpus is a score of
-// the same renders: the options, the 37-value calibration vector, its bounds
+// the same renders: the options, the 24-value calibration vector, its bounds
 // and makeCalibration, and renderModel (a fresh engine per note, 48 kHz,
 // 127-sample blocks, default public controls, the default Dreadnought unless
 // --shape is given) are copied from Tools/PhysicalFitRenderer.cpp and must be
@@ -76,7 +76,7 @@ acustra::BodyShape renderShape() noexcept
 constexpr int modelSampleRate = 48000;
 constexpr int renderBlockSize = 127;
 constexpr double renderSeconds = 4.2;
-constexpr std::size_t calibrationValueCount = 37;
+constexpr std::size_t calibrationValueCount = 24;
 
 using CalibrationValues = std::array<float, calibrationValueCount>;
 
@@ -84,25 +84,17 @@ using CalibrationValues = std::array<float, calibrationValueCount>;
 // calibration that was actually rendered. These mirror AcustraEngine's bounds
 // and PhysicalFitRenderer's copy of them.
 constexpr CalibrationValues calibrationMinimums {{
-    0.96f, 0.05f, 0.25f, -6.0f, 0.0f,
-    0.25f, 0.4f, 0.35f, 0.35f, 0.0f, 0.7f, 0.0f,
-    -1.0f, 0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f, 0.00325f,
-    0.0f, 10.0f, 0.0f,
-    0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 100.0f, 100.0f, 0.0005f,
-    0.0f, 0.0f,
+    0.96f, 0.05f, 0.25f, -6.0f, 0.25f, 0.4f,
+    0.35f, 0.35f, 0.0f, 0.7f, 0.0f, -1.0f,
+    0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f,
+    0.00325f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 }};
 
 constexpr CalibrationValues calibrationMaximums {{
-    1.04f, 1.8f, 4.0f, 6.0f, 0.12f,
-    4.0f, 2.0f, 3.0f, 2.5f, 3.0f, 3.0f, 1.2f,
-    1.0f, 32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f, 0.060f,
-    0.5f, 400.0f, 0.82e-3f,
-    2.0f, 4.0f, 8.0f,
-    1.0e-3f, 2.0f, 2.0f,
-    4.0f, 4.0f, 4.0f, 20000.0f, 20000.0f, 0.05f,
-    64.0f, 64.0f,
+    1.04f, 1.8f, 4.0f, 6.0f, 4.0f, 2.0f,
+    3.0f, 2.5f, 3.0f, 3.0f, 1.2f, 1.0f,
+    32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f,
+    0.060f, 2.0f, 4.0f, 1.0e-3f, 2.0f, 2.0f,
 }};
 
 struct Job
@@ -165,40 +157,27 @@ PhysicalCalibration makeCalibration(const CalibrationValues& values)
     calibration.bodyQScale = values[1];
     calibration.bridgeMobilityScale = values[2];
     calibration.residueTiltDbPerOctave = values[3];
-    calibration.directGain = values[4];
     MaterialCalibration& steel = calibration.steel;
-    steel.stiffnessScale = values[5];
-    steel.fundamentalT60Scale = values[6];
-    steel.frequencyLossScale = values[7];
-    steel.apertureScale = values[8];
-    steel.transientScale = values[9];
-    steel.pluckDistanceScale = values[10];
-    steel.velocityBrightnessDepth = values[11];
-    calibration.apertureRegisterExponent = values[12];
-    calibration.lowBodyModeGain = values[13];
-    calibration.steelDisplacementScaleMetres = values[14];
-    calibration.steelFretT60Slope = values[15];
-    calibration.highLossCutoffScale = values[16];
-    calibration.bridgeConductanceFloor = values[17];
-    calibration.bridgeConductanceCornerHz = values[18];
-    calibration.bridgeTailLengthMetres = values[19];
-    calibration.longitudinalGain = values[20];
-    calibration.longitudinalQ = values[21];
-    calibration.polarisationEndCorrectionMetres = values[22];
-    calibration.pickReleaseVelocityShare = values[23];
-    calibration.pickReleaseVelocityExponent = values[24];
-    calibration.pickTransientGain = values[25];
-    calibration.pickEdgeRadiusMetres = values[26];
-    calibration.steelWoundBendingLoss = values[27];
-    calibration.steelPlainBendingLoss = values[28];
-    calibration.contactNoiseFinger = values[29];
-    calibration.contactNoisePick = values[30];
-    calibration.contactNoiseVelocityExponent = values[31];
-    calibration.contactNoiseCornerHz = values[32];
-    calibration.pickContactNoiseCornerHz = values[33];
-    calibration.contactNoiseDecaySeconds = values[34];
-    calibration.contactClickFinger = values[35];
-    calibration.contactClickPick = values[36];
+    steel.stiffnessScale = values[4];
+    steel.fundamentalT60Scale = values[5];
+    steel.frequencyLossScale = values[6];
+    steel.apertureScale = values[7];
+    steel.transientScale = values[8];
+    steel.pluckDistanceScale = values[9];
+    steel.velocityBrightnessDepth = values[10];
+    calibration.apertureRegisterExponent = values[11];
+    calibration.lowBodyModeGain = values[12];
+    calibration.steelDisplacementScaleMetres = values[13];
+    calibration.steelFretT60Slope = values[14];
+    calibration.highLossCutoffScale = values[15];
+    calibration.bridgeConductanceFloor = values[16];
+    calibration.bridgeConductanceCornerHz = values[17];
+    calibration.bridgeTailLengthMetres = values[18];
+    calibration.pickReleaseVelocityShare = values[19];
+    calibration.pickReleaseVelocityExponent = values[20];
+    calibration.pickEdgeRadiusMetres = values[21];
+    calibration.steelWoundBendingLoss = values[22];
+    calibration.steelPlainBendingLoss = values[23];
     return calibration;
 }
 
@@ -424,24 +403,17 @@ void printUsage()
         "[--body-material spruce|mahogany|maple] "
         "[--guitar-model original|bellido1978] [--room 0..1] "
         "JOBFILE|- OUTDIR "
-        "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT DIRECT_GAIN "
+        "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT "
         "STEEL_STIFFNESS STEEL_T60 STEEL_FREQUENCY_LOSS STEEL_APERTURE "
         "STEEL_TRANSIENT STEEL_PLUCK_DISTANCE STEEL_VELOCITY_BRIGHTNESS "
         "APERTURE_REGISTER_EXPONENT LOW_BODY_MODE_GAIN "
         "STEEL_DISPLACEMENT_METRES STEEL_FRET_T60_SLOPE "
         "HIGH_LOSS_CUTOFF_SCALE BRIDGE_CONDUCTANCE_FLOOR "
         "BRIDGE_CONDUCTANCE_CORNER_HZ BRIDGE_TAIL_LENGTH_METRES "
-        "LONGITUDINAL_GAIN LONGITUDINAL_Q "
-        "POLARISATION_END_CORRECTION_METRES "
         "PICK_RELEASE_VELOCITY_SHARE PICK_RELEASE_VELOCITY_EXPONENT "
-        "PICK_TRANSIENT_GAIN PICK_EDGE_RADIUS_METRES "
-        "STEEL_WOUND_BENDING_LOSS STEEL_PLAIN_BENDING_LOSS "
-        "CONTACT_NOISE_FINGER CONTACT_NOISE_PICK "
-        "CONTACT_NOISE_VELOCITY_EXPONENT CONTACT_NOISE_CORNER_HZ "
-        "PICK_CONTACT_NOISE_CORNER_HZ "
-        "CONTACT_NOISE_DECAY_SECONDS CONTACT_CLICK_FINGER "
-        "CONTACT_CLICK_PICK\n"
-        "Give all 37 calibration values (OptimizePhysicalModel.NAMES).\n"
+        "PICK_EDGE_RADIUS_METRES "
+        "STEEL_WOUND_BENDING_LOSS STEEL_PLAIN_BENDING_LOSS\n"
+        "Give all 24 calibration values (OptimizePhysicalModel.NAMES).\n"
         "JOBFILE lines: KEY finger|pick|thumb MIDI VELOCITY (steel strings); "
         "writes OUTDIR/model-KEY.f32 (48 kHz stereo float32, 4.2 s)\n");
 }

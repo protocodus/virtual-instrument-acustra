@@ -1,0 +1,1281 @@
+{
+  "schema": "AcustraAcceptedClassicReleaseCalibrationReviewV1",
+  "all_phrase_rows": 216,
+  "all_hardest_rows": 216,
+  "all_capture_ranges_lu": {
+    "stereo_mic": {
+      "min_lu": -0.9130921775237404,
+      "max_lu": 0.02896723801544354,
+      "median_lu": -4.7438632755358867e-07,
+      "quietest": "bellido1978 parlor spruce pick",
+      "loudest": "bellido1978 jumbo mahogany finger",
+      "within_tolerance": 72,
+      "cells": 72
+    },
+    "mono_mic": {
+      "min_lu": -0.900001099021754,
+      "max_lu": 0.7103521297211444,
+      "median_lu": -2.1558014573486162e-07,
+      "quietest": "bellido1978 parlor mahogany pick",
+      "loudest": "bellido1978 jumbo maple finger",
+      "within_tolerance": 72,
+      "cells": 72
+    },
+    "piezo": {
+      "min_lu": -0.900001635231682,
+      "max_lu": 0.3061820207090946,
+      "median_lu": -0.01465543284868076,
+      "quietest": "bellido1978 parlor mahogany pick",
+      "loudest": "original parlor spruce thumb",
+      "within_tolerance": 72,
+      "cells": 72
+    }
+  },
+  "native_finger_rows_exact": 360,
+  "native_finger_all5_tuning_guard_passes": true,
+  "native_worst_row": {
+    "construction": [
+      "bellido1978",
+      "jumbo",
+      "maple"
+    ],
+    "capture": "mono_mic",
+    "tuning": "dadgad",
+    "weighted_db": -24.642809245849328,
+    "reference_db": -15.662810210163219,
+    "relative_db": -8.97999903568611,
+    "peak": 0.17344553768634796,
+    "piezo_peak": 0.411405473947525,
+    "finite": true
+  },
+  "native_9db_margin": 0.020000964313890535,
+  "original_table_entries_bit_exact": 108,
+  "classic_finger_table_entries_bit_exact": 36,
+  "original_phrase_rows_exact": 108,
+  "classic_finger_phrase_rows_exact": 36,
+  "original_all_style_hardest_rows_exact": 108,
+  "all_model_finger_hardest_rows_exact": 72,
+  "default_references_exact": true,
+  "maximum_native_guard_main_peak": 0.5829771161079407,
+  "maximum_native_guard_piezo_peak": 0.41591396927833557,
+  "gain_changes": [
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.7097663470480093,
+      "before_lu": -1.6097662876817154,
+      "after_lu": -0.8999996243104604
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.6361533083486255,
+      "before_lu": -1.5361537620489116,
+      "after_lu": -0.900001052552831
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.4513015955247906,
+      "before_lu": -1.3513017515184345,
+      "after_lu": -0.9000011428996935
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.1513216951090687,
+      "before_lu": -0.15132182101681835,
+      "after_lu": 2.448041165337145e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.22071198660131613,
+      "before_lu": -0.22071207261030779,
+      "after_lu": 2.6845144063258886e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.1558362404981633,
+      "before_lu": -0.15583622708876277,
+      "after_lu": 2.2257746223885988e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.7959364817006921,
+      "before_lu": -1.6959363506578775,
+      "after_lu": -0.8999997032517584
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.6207411394237194,
+      "before_lu": -1.5207412641575644,
+      "after_lu": -0.8999996944571826
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.4964504642752185,
+      "before_lu": -1.3964505358610992,
+      "after_lu": -0.900000199251128
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.24893082307204664,
+      "before_lu": -0.24893081216687207,
+      "after_lu": 4.7305499251137917e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.2587523279036514,
+      "before_lu": -0.25875219302493946,
+      "after_lu": 5.327499543739123e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.22473649442534577,
+      "before_lu": -0.22473662323614363,
+      "after_lu": 4.821224983686534e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.7537856633348263,
+      "before_lu": -1.623102720698025,
+      "after_lu": -0.8693162616742534
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.6180605769195481,
+      "before_lu": -1.5180608699586209,
+      "after_lu": -0.8999997899587378
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.4653096484671554,
+      "before_lu": -1.3653100804476033,
+      "after_lu": -0.8999996454988981
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.21400699468264156,
+      "before_lu": -0.21400727062852098,
+      "after_lu": -4.6163925659925553e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.23682005839178716,
+      "before_lu": -0.23682026494701702,
+      "after_lu": -3.313938172766484e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "auditorium",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.1829726416001715,
+      "before_lu": -0.18297269042389885,
+      "after_lu": 6.519951760708409e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.9245231318829188,
+      "before_lu": -1.0626832060498081,
+      "after_lu": -0.1381598118046803
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.6205540017319053,
+      "before_lu": -1.5205534545428634,
+      "after_lu": -0.8999999683513096
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.023066433018110434,
+      "before_lu": -0.9230662246513184,
+      "after_lu": -0.8999996523908855
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.2314097364074559,
+      "before_lu": -0.2314100126489187,
+      "after_lu": -1.0741572396000265e-06
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.22974980391719846,
+      "before_lu": -0.22975019669896923,
+      "after_lu": -1.189212223806635e-06
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.19756598214178162,
+      "before_lu": -0.1975662181350195,
+      "after_lu": 1.6831459603849908e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.8192391124411809,
+      "before_lu": -1.4773763703087432,
+      "after_lu": -0.6581363391406612
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.663855891311199,
+      "before_lu": -1.5638560830581305,
+      "after_lu": -0.9000000431272532
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.2487148343874262,
+      "before_lu": -0.9717724162727386,
+      "after_lu": -0.7230579264380204
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.38934004352035173,
+      "before_lu": -0.38934002120079825,
+      "after_lu": 1.5645337114733593e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.23145869169569452,
+      "before_lu": -0.23145865835638801,
+      "after_lu": 5.918228538348558e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.3154591278781768,
+      "before_lu": -0.31545902573867934,
+      "after_lu": 3.1428803026756214e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.8502439656658285,
+      "before_lu": -0.850243758166954,
+      "after_lu": 2.462664951963234e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.6400086464048206,
+      "before_lu": -1.540008866256894,
+      "after_lu": -0.8999998399771911
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.15125698557704972,
+      "before_lu": -1.05125702923198,
+      "after_lu": -0.9000002880702951
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.35831600257275875,
+      "before_lu": -0.35831632972040595,
+      "after_lu": -1.1136325639427014e-08
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.24100061095477288,
+      "before_lu": -0.24100049914623867,
+      "after_lu": 1.8365355103355796e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "dreadnought",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.26992136316923093,
+      "before_lu": -0.26992123721912975,
+      "after_lu": 1.361981567526982e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.7629168335178684,
+      "before_lu": -0.7629172799618189,
+      "after_lu": 3.234293863840776e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.6414702407087859,
+      "before_lu": -1.5414706432768916,
+      "after_lu": -0.9000009276800469
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.5578261731082099,
+      "before_lu": -1.4578263403604588,
+      "after_lu": -0.9000001930768313
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.27871507673738616,
+      "before_lu": -0.27871536219085513,
+      "after_lu": -3.200071816422678e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.20983976625445594,
+      "before_lu": -0.2098400265374245,
+      "after_lu": 6.259305855849107e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.17567274455838966,
+      "before_lu": -0.1756728840902113,
+      "after_lu": 8.180761881249055e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.9746531078666759,
+      "before_lu": -1.16917271938199,
+      "after_lu": -0.19452006914894682
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.6187248767738043,
+      "before_lu": -1.5187256307770731,
+      "after_lu": -0.9000000861574158
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.6773935537302742,
+      "before_lu": -1.4606348648379317,
+      "after_lu": -0.7832403888165942
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.32817274346507086,
+      "before_lu": -0.32817276182505495,
+      "after_lu": -9.229525446130538e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.27039146291583405,
+      "before_lu": -0.27039166766300937,
+      "after_lu": -1.1060548033015039e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.17365257528076466,
+      "before_lu": -0.17365273085369637,
+      "after_lu": 1.5222311944285138e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.9251717022945182,
+      "before_lu": -0.9251718383106926,
+      "after_lu": 9.572204682228858e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.6104374291432948,
+      "before_lu": -1.5104372339091832,
+      "after_lu": -0.8999983850343547
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.5726530459970905,
+      "before_lu": -1.4726530165915257,
+      "after_lu": -0.899999067508773
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.32142007954118945,
+      "before_lu": -0.3214202636147441,
+      "after_lu": -9.954290334235338e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.22386943851539196,
+      "before_lu": -0.223869334619895,
+      "after_lu": 5.206411408664735e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "jumbo",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.18815176377800144,
+      "before_lu": -0.18815171943503728,
+      "after_lu": 4.2666277977332356e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.5187170357912084,
+      "before_lu": -1.418717337280878,
+      "after_lu": -0.900001099021754
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.6186811725335781,
+      "before_lu": -1.5186817386910114,
+      "after_lu": -0.900001635231682
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "mahogany"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.40466168396875646,
+      "before_lu": -1.3046618089688131,
+      "after_lu": -0.9000010596562653
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.11279582685340966,
+      "before_lu": -0.11279596990102547,
+      "after_lu": -1.676694907359888e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.22548904495879887,
+      "before_lu": -0.22548907187304934,
+      "after_lu": -9.628750916590434e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "mahogany"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.18274197257365385,
+      "before_lu": -0.18274199233955102,
+      "after_lu": -7.679841083074734e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.7048127477165457,
+      "before_lu": -1.6048124627877414,
+      "after_lu": -0.8999995686346551
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.613891061724817,
+      "before_lu": -1.51389053977136,
+      "after_lu": -0.8999987517165167
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "maple"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.4994394574849096,
+      "before_lu": -1.3994393218957626,
+      "after_lu": -0.9000002742256044
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.2002512144840211,
+      "before_lu": -0.20025121951966085,
+      "after_lu": 5.133865066397902e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.23241532086549715,
+      "before_lu": -0.23241535893322052,
+      "after_lu": 5.0857972055951e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "maple"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.20105373036595725,
+      "before_lu": -0.20105364485395683,
+      "after_lu": -1.0863358923529631e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "mono_mic",
+      "gain_change_db": 0.6624579320692991,
+      "before_lu": -1.5624582449485835,
+      "after_lu": -0.9000009108961642
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "piezo",
+      "gain_change_db": 0.6240828499283037,
+      "before_lu": -1.5240829465933103,
+      "after_lu": -0.8999996651937536
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "spruce"
+      ],
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.42844978169964437,
+      "before_lu": -1.3284499618665428,
+      "after_lu": -0.9130921775237404
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "gain_change_db": 0.15537474930990652,
+      "before_lu": -0.1553750649427279,
+      "after_lu": -2.2536217514357304e-07
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "piezo",
+      "gain_change_db": 0.21062413482541495,
+      "before_lu": -0.2106244981558696,
+      "after_lu": 9.373497533715636e-09
+    },
+    {
+      "construction": [
+        "bellido1978",
+        "parlor",
+        "spruce"
+      ],
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "gain_change_db": 0.17594992794281328,
+      "before_lu": -0.17595021429019297,
+      "after_lu": -8.186793820641469e-08
+    }
+  ],
+  "source_unchanged_since_freeze_except_level_table": true,
+  "limits": [
+    "All216 phrases and hardest rows measured natively after float32 rebuild; no per-note playback or physical-field normalization used by this calibration.",
+    "Some unchanged Original hardest cases exceed the limiter knee. Existing Pick policy passes because those cells surrendered allowed0.9LU. Tone approval is focused human feedback, not descriptor inference.",
+    "Full source/repluck/velocity/equality integration suites are parent/Classic-owned; this record covers native calibration and immutable controls, and must not be cited as their completion."
+  ],
+  "status": "Accepted Classic Pick midpoint and Thumb full-slip production release source applied to canonical worktree and calibrated. Canonical renderer matches the isolated 75-suite-tested source snapshot exactly; 9 affected canonical suites pass. Frozen focused audition files and historical calibration reports remain immutable.",
+  "human_feedback": {
+    "Pick_midpoint": "Natural guitar attack",
+    "Thumb_full_slip": "sounds better, keep for now as is",
+    "rejected_Pick_zero": "Too dull",
+    "frozen_evidence": [
+      "Docs/classic78-pick-midpoint-2026-10-09.json",
+      "Docs/classic78-attack-experiment-2026-10-09.json"
+    ],
+    "scope": "Focused Auditorium/Mahogany high-E comparison; the user has not claimed to audition every construction/capture/tuning."
+  },
+  "production_release_contract": "Only Classic fitted Pick kinetic share multiplied by0.5 and full authored Thumb slip law retained. No post-NoteOn stored-energy restoration to the old-release audition target; physical release energy is intentionally changed. Existing string direction restoration uses the counterfactual new release energy and existing retained-state bound. Integration/retained-state tests are separate from this loudness review.",
+  "protocol": {
+    "rate": 48000,
+    "phrase_seed": 20260929,
+    "phrase_meter": "Tools/MeasureMaterialLoudness.py ITU-RBS.1770 integrated loudness",
+    "default_reference": "Original/Dreadnought/Spruce/Finger stereo_mic unchanged",
+    "write_scope": "Classic Pick/Thumb only; all Original and ClassicFinger table entries retained",
+    "native_guard": "AcustraConstructionStrumLevels Finger16800frames at48kHz, all24constructions\u00d73captures\u00d75tunings",
+    "hardest_styles": "Finger/Pick/Thumb all24constructions\u00d73captures; Touch1/Pluck0/velocity127; safety limiter inverted for reporting",
+    "native_level_rerender": true,
+    "per_note_physical_or_audio_normalization": false
+  },
+  "hardest_summary": {
+    "stereo_mic finger": {
+      "peak_dbfs": 0.5974192164749383,
+      "construction": "bellido1978 parlor maple finger",
+      "median_peak_dbfs": -1.7600337349052335,
+      "headroom_to_knee_db": -1.5974191982869286,
+      "over_knee": 8,
+      "under_1db": 8,
+      "cells": 24
+    },
+    "stereo_mic pick": {
+      "peak_dbfs": -0.17684322734172825,
+      "construction": "bellido1978 auditorium maple pick",
+      "median_peak_dbfs": -1.5357213833826182,
+      "headroom_to_knee_db": -0.823156754470262,
+      "over_knee": 8,
+      "under_1db": 9,
+      "cells": 24
+    },
+    "stereo_mic thumb": {
+      "peak_dbfs": -3.4635768824231876,
+      "construction": "bellido1978 parlor mahogany thumb",
+      "median_peak_dbfs": -5.781976211799066,
+      "headroom_to_knee_db": 2.4635769006111974,
+      "over_knee": 0,
+      "under_1db": 24,
+      "cells": 24
+    },
+    "mono_mic finger": {
+      "peak_dbfs": -0.6355695710287662,
+      "construction": "bellido1978 dreadnought mahogany finger",
+      "median_peak_dbfs": -2.657678120014098,
+      "headroom_to_knee_db": -0.364430410783224,
+      "over_knee": 2,
+      "under_1db": 19,
+      "cells": 24
+    },
+    "mono_mic pick": {
+      "peak_dbfs": -0.9903512358725903,
+      "construction": "bellido1978 auditorium mahogany pick",
+      "median_peak_dbfs": -2.0200003277849103,
+      "headroom_to_knee_db": -0.009648745939399905,
+      "over_knee": 1,
+      "under_1db": 19,
+      "cells": 24
+    },
+    "mono_mic thumb": {
+      "peak_dbfs": -3.850267734255524,
+      "construction": "original auditorium maple thumb",
+      "median_peak_dbfs": -5.963126795209379,
+      "headroom_to_knee_db": 2.850267752443534,
+      "over_knee": 0,
+      "under_1db": 24,
+      "cells": 24
+    },
+    "piezo finger": {
+      "peak_dbfs": 0.8329441254899939,
+      "construction": "bellido1978 dreadnought spruce finger",
+      "median_peak_dbfs": 0.15399442217397447,
+      "headroom_to_knee_db": -1.832944107301984,
+      "over_knee": 24,
+      "under_1db": 0,
+      "cells": 24
+    },
+    "piezo pick": {
+      "peak_dbfs": 0.18160899150757592,
+      "construction": "bellido1978 dreadnought mahogany pick",
+      "median_peak_dbfs": -0.02483883091863189,
+      "headroom_to_knee_db": -1.181608973319566,
+      "over_knee": 24,
+      "under_1db": 0,
+      "cells": 24
+    },
+    "piezo thumb": {
+      "peak_dbfs": -2.430727184682691,
+      "construction": "original jumbo mahogany thumb",
+      "median_peak_dbfs": -3.599908116547876,
+      "headroom_to_knee_db": 1.4307272028707008,
+      "over_knee": 0,
+      "under_1db": 24,
+      "cells": 24
+    }
+  },
+  "pick_headroom_policy": {
+    "passes": true,
+    "required_short_cases_surrender_allowed_0_9lu": true,
+    "all_cases_1db_below_knee": false,
+    "note": "Existing loudness-first policy allows Pick headroom shortfalls after the permitted0.9LU cut. Finger hardest values are measured and unchanged; Thumb hardest values remain below the knee. The final Classic stereo hardest Pick maximum is\u2212.18dBFS beforelimiter, approximately.82dB above its knee; do not equate a passing policy with universal1dBheadroom."
+  },
+  "production_vs_heard_before_calibration": {
+    "pick": {
+      "fresh_energy_ratio": {
+        "min": 0.8392020331082817,
+        "median": 0.8392022427910235,
+        "max": 0.8392024388409199
+      },
+      "fresh_energy_db": {
+        "min": -0.7613347266168841,
+        "median": -0.7613336414902666,
+        "max": -0.7613326269150676
+      },
+      "cached_attack_pitch_delta_cents": {
+        "min": -3.067026138305664,
+        "median": -1.7799854278564453,
+        "max": -1.0212101936340332
+      },
+      "production_vs_heard_5_80ms_contrast_delta_db": {
+        "min": -0.5972649297050587,
+        "median": -0.09294840262825499,
+        "max": 0.1522155840127315
+      },
+      "production_vs_heard_5_80ms_total_band_delta_db": {
+        "min": -0.7601037312962675,
+        "median": -0.7221759367999848,
+        "max": -0.40853383364441437
+      },
+      "production_vs_heard_held_rms_delta_db": {
+        "min": -1.5182773601009458,
+        "median": -0.8214979729932634,
+        "max": -0.3449702095636409
+      },
+      "production_vs_heard_held_piezo_near_h1_pitch_cents": {
+        "min": -0.5861351974846052,
+        "median": -0.25763795649444593,
+        "max": 0.42080037526246444
+      }
+    },
+    "thumb": {
+      "fresh_energy_ratio": {
+        "min": 0.944404501460232,
+        "median": 0.9506463296175564,
+        "max": 0.9643828509536054
+      },
+      "fresh_energy_db": {
+        "min": -0.2484195154388224,
+        "median": -0.21981024243915723,
+        "max": -0.15750521026269965
+      },
+      "cached_attack_pitch_delta_cents": {
+        "min": -0.4658546447753906,
+        "median": -0.22875738143920898,
+        "max": -0.09524357318878174
+      },
+      "production_vs_heard_5_80ms_contrast_delta_db": {
+        "min": -0.09619268517218771,
+        "median": -0.003025977748837505,
+        "max": 0.052641071518721105
+      },
+      "production_vs_heard_5_80ms_total_band_delta_db": {
+        "min": -0.2443438960608825,
+        "median": -0.2081587671253215,
+        "max": -0.15165950577197945
+      },
+      "production_vs_heard_held_rms_delta_db": {
+        "min": -0.26622629510715445,
+        "median": -0.204231458047349,
+        "max": -0.014247215367765768
+      },
+      "production_vs_heard_held_piezo_near_h1_pitch_cents": {
+        "min": -0.10485957242493202,
+        "median": -0.03610863405706043,
+        "max": -0.007849333593949726
+      }
+    }
+  },
+  "production_vs_heard_after_calibration_scalar_predictions": {
+    "pick": {
+      "calibration_gain_change_db": {
+        "min": 0.4513015955247906,
+        "median": 0.5805339712863999,
+        "max": 0.7097663470480093
+      },
+      "production_vs_heard_5_80ms_relative_contrast_delta_db": {
+        "min": -0.5972649297050587,
+        "median": -0.09294840262825499,
+        "max": 0.1522155840127315
+      },
+      "calibrated_production_vs_heard_5_80ms_total_band_delta_db": {
+        "min": -0.29990368967550257,
+        "median": -0.0461920614180783,
+        "max": 0.0982648243400488
+      },
+      "calibrated_production_vs_heard_held_rms_delta_db": {
+        "min": -1.0669757645761553,
+        "median": -0.21101792789506568,
+        "max": 0.24956540480119127
+      }
+    },
+    "thumb": {
+      "calibration_gain_change_db": {
+        "min": 0.1513216951090687,
+        "median": 0.15357896780361602,
+        "max": 0.1558362404981633
+      },
+      "production_vs_heard_5_80ms_relative_contrast_delta_db": {
+        "min": -0.09619268517218771,
+        "median": -0.003025977748837505,
+        "max": 0.052641071518721105
+      },
+      "calibrated_production_vs_heard_5_80ms_total_band_delta_db": {
+        "min": -0.0930222009518138,
+        "median": -0.05683707201625279,
+        "max": 0.0041767347261838506
+      },
+      "calibrated_production_vs_heard_held_rms_delta_db": {
+        "min": -0.11464572516051633,
+        "median": -0.050652490243733,
+        "max": 0.14158902513039753
+      }
+    }
+  },
+  "heard_comparison_limits": [
+    "The fairness audition held stored fresh wave energy equal to Before; production deliberately removes source release work, so PCM is not expected to equal the heard After.",
+    "Auditorium/Mahogany7anchor native production measurements show small relative attack contrast differences. Final capture gains shift absolute level only; reported post-fit anchor levels are scalar predictions below limiter, separate from native216 phrase rerender.",
+    "Pick cache attack pitch falls1.02\u20133.07cents due to lower fresh source energy; held near-H1 Piezo differences stay within\u2212.586\u2026+.421cents. Thumb differences are smaller. These are measurements, not an additional listening verdict."
+  ],
+  "frozen_renderers": {
+    "AcustraPerformanceRenderer": "64ce04e1a84267ccc4acf5820fd0394a40dc7c9379fe33fa969b4bc77c016d59",
+    "AcustraConstructionStrumLevels": "5e20373c72138b2c96fd32eaa91d6bc6b27a9e576c779ba8b8f492ca441c0ef0",
+    "ConstructionLoudnessData.h": "9b1f20597a1eff3d3ad58fbfe45659eb943ee1d511c6044412700eb4f327ad73"
+  },
+  "prefit_renderers": {
+    "status": "Isolated pre-fit accepted release source; frozen binaries and current table; no canonical mutation",
+    "renderers": {
+      "AcustraPerformanceRenderer": "ad45524c9769024e70173cb16f8eec9c013f9f683ce2cf880e5a5e0951b79b4e",
+      "AcustraConstructionStrumLevels": "a7cfe6c6a83b4066ed45c777917d2d6cb77d6eccd3802bf289d2539527f11118"
+    },
+    "table_sha256": "4c1e4e098844d31b2ee49bf250ef5552aa26a7c21116b2378acdde5b50c48ce8"
+  },
+  "reproduction_commands": [
+    "cp prefit/ConstructionLoudnessData.h project/Source/DSP/ConstructionLoudnessData.h",
+    "python3 project/Tools/CalibrateConstructionLoudness.py --renderer prefit/AcustraPerformanceRenderer --jobs 3 --all-pickings --json prefit/full-measurements.json",
+    "prefit/AcustraConstructionStrumLevels > prefit/native-strums.json",
+    "python3 project/Tools/CalibrateConstructionLoudness.py --measurements prefit/full-measurements.json --strum-measurements prefit/native-strums.json --write-header --models bellido1978 --pickings pick thumb --json fit.json",
+    "cmake --build build --target AcustraPerformanceRenderer AcustraConstructionStrumLevels -j 2",
+    "python3 project/Tools/CalibrateConstructionLoudness.py --renderer postfit/AcustraPerformanceRenderer --jobs 3 --all-pickings --json postfit/level-check.json --check",
+    "postfit/AcustraConstructionStrumLevels > postfit/native-strums.json",
+    "python3 project/Tools/CalibrateConstructionLoudness.py --measurements postfit/level-check.json --strum-measurements postfit/native-strums.json --check"
+  ],
+  "persistent_evidence": [
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/calibration-review.json",
+      "sha256": "d43cce6f0ed3b7f32de4d6e9a9c4f9442afd066c12b73992826b29248f8cadb2"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/calibration-review.log",
+      "sha256": "06a083f89a84a47ec05d79f9328bdec31c276d0f4ea816cf3f96e5249da95136"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/prefit/full-measurements.json",
+      "sha256": "4369cd07aeded7bcf94bab02d9e59196ae1a75ce1348ba4a0027bf9361097e74"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/prefit/native-strums.json",
+      "sha256": "a99992616568be5501efcefa354ba49b92a4112b9a4552114c880b792ea08cb8"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/prefit/measure.log",
+      "sha256": "388a7133d2313b66aec3a1f9a7b17630a1669831ef31966deba434d679fdc876"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/fit.json",
+      "sha256": "cee05d0775e070761a30fe815068728b33460a02c69567f44b86724eb3256e3e"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/fit.log",
+      "sha256": "1cb45e01688f5632333098aa33aba915e2bf3cd78c601528d3f030414bd85d14"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/postfit/level-check.json",
+      "sha256": "579ee1ff563cbf37f5b8ae6b0e625ab77b116fce5b4a67e28bad1ae435b4e1fa"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/postfit/level-check.log",
+      "sha256": "f1e476fbe7e97ed5ed70eeb7df074f5d39cf58047c8a0423d434082aa6f6fe97"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/postfit/native-strums.json",
+      "sha256": "0963f9c0da46421bbe1741abe0d8d89c34c1442766f1440297caa6b2311d1c8c"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/postfit/combined-check.log",
+      "sha256": "f1e476fbe7e97ed5ed70eeb7df074f5d39cf58047c8a0423d434082aa6f6fe97"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/postfit-build.log",
+      "sha256": "7822bf585c50748a9ef59202ef4d8e0ab4542a5601b64b893dfd540a5570fbef"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/postfit/compiled-freeze.json",
+      "sha256": "11195cae2a9563c41473da87267b01e18487b232c9ea5e245c53102305eefb9a"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/compiled-freeze.json",
+      "sha256": "1cf83ec0c66943ceec69aafc541ddb7c140f00a0dcb1f4b3a550c71f2f628351"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/production-vs-heard.json",
+      "sha256": "43b821d8654cfef1d3aff210dfc0a98964d4d8147207eeeab18924f5b860ddca"
+    },
+    {
+      "path": "build-resonance/evidence/validation/attack/accepted-release-review/production-vs-heard-after-fit-scalar.json",
+      "sha256": "898bbb7e4a79c949931e714b489e39efe22cc37e181db64df395f6ca9c25dc39"
+    },
+    {
+      "path": "build-resonance/evidence/construction/ValidateAcceptedReleaseCalibration.py",
+      "sha256": "841a64e866b8face75d945e5ad70e8dcfdabd16d4cb6be06a657aa334f79f020"
+    }
+  ],
+  "source_hashes": {
+    "project/Source/DSP/AcustraEngine.cpp": "6425605f2f22442b6a90011596bb51aa439d20d60672b1a61677a7dc7adc6bcc",
+    "project/Source/DSP/AcustraEngine.h": "78ff9a3f40b2a9c300a195bd7466f2d7d2448aa43207462ed252d8ac026406ed",
+    "project/Source/DSP/ReleasePolicyData.h": "8b4ff1beeb3aa4ed3153dcab6eb55f2017813de159e930f4355568439f185c23",
+    "project/Source/DSP/ConstructionLoudnessData.h": "9b1f20597a1eff3d3ad58fbfe45659eb943ee1d511c6044412700eb4f327ad73"
+  },
+  "reproduction_working_directory": "A fresh isolated copy of build-resonance/evidence/validation/attack/accepted-release-review; do not overwrite the frozen reviewed project or canonical tree.",
+  "canonical_application": {
+    "applied": true,
+    "source_parity_files": 200,
+    "isolated_suites_passed": 75,
+    "canonical_affected_suites_passed": 9,
+    "verification_path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/canonical-verification.json",
+    "verification_sha256": "a3c5e7a6e64d5728044fc944942f95173787ad1f7987a26d577867f9a21eecba",
+    "historical_report_note": "The retained isolated calibration-review.json records its status before parent application; current canonical proof is referenced here."
+  }
+}

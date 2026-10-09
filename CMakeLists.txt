@@ -22,7 +22,8 @@ endif()
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.0.0 LANGUAGES C CXX)
+project(Acustra VERSION 1.1.3 LANGUAGES C CXX)
+include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -47,6 +48,10 @@ add_library(AcustraDSP STATIC
     Source/DSP/AcustraEngine.cpp
     Source/DSP/AcustraEngine.h
     Source/DSP/CaptureVoicingData.h
+    Source/DSP/MicrophoneBalanceData.h
+    Source/DSP/PluckPolarisationData.h
+    Source/DSP/ReleasePolicyData.h
+    Source/DSP/SustainPolicyData.h
     Source/DSP/PiezoBlampTable.h
     Source/DSP/AcustraPerformer.cpp
     Source/DSP/AcustraPerformer.h)
@@ -126,6 +131,7 @@ if(ACUSTRA_BUILD_PLUGIN)
 
     juce_add_plugin(Acustra
         VERSION ${PROJECT_VERSION}
+        BUILD_VERSION ${ACUSTRA_BUILD_NUMBER}
         COMPANY_NAME "Protocodus"
         COMPANY_WEBSITE "https://protocodus.cz"
         COMPANY_EMAIL "protocodus@proton.me"
@@ -146,10 +152,12 @@ if(ACUSTRA_BUILD_PLUGIN)
         AU_SANDBOX_SAFE TRUE
         COPY_PLUGIN_AFTER_BUILD FALSE)
 
+    instrument_distribution_identity(Acustra ${ACUSTRA_PLUGIN_FORMATS})
+
     juce_add_binary_data(AcustraUIAssets
         NAMESPACE AcustraUIAssets
         HEADER_NAME AcustraUIAssets.h
-        SOURCES Assets/UI/cedar-background.png)
+        SOURCES Assets/UI/cedar-background.png Assets/UI/walnut-satin.png)
 
     juce_generate_juce_header(Acustra)
 
@@ -358,6 +366,45 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.Performer AcustraPerformerTests)
     set_tests_properties(Acustra.Performer PROPERTIES TIMEOUT 600)
 
+    # A separate ABI: opt-in fixed storage for 4x at 192 kHz. Keeping this
+    # definition PUBLIC makes every consumer use the matching engine layout.
+    # Compile the library and its heap-only regression suite as SDK C++17.
+    add_library(AcustraDSPExtendedCxx17 STATIC
+        Source/DSP/AcustraEngine.cpp
+        Source/DSP/AcustraPerformer.cpp)
+    target_include_directories(AcustraDSPExtendedCxx17
+        PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Source")
+    target_compile_definitions(AcustraDSPExtendedCxx17
+        PUBLIC ACUSTRA_EXTENDED_SAMPLE_RATES=1)
+    set_target_properties(AcustraDSPExtendedCxx17 PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    if(MSVC)
+        target_compile_options(AcustraDSPExtendedCxx17 PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(AcustraDSPExtendedCxx17 PRIVATE
+            -Wall -Wextra -Wshadow -Werror)
+    endif()
+    add_executable(AcustraExtendedSampleRateTests Tests/ExtendedSampleRateTests.cpp)
+    target_link_libraries(AcustraExtendedSampleRateTests PRIVATE AcustraDSPExtendedCxx17)
+    set_target_properties(AcustraExtendedSampleRateTests PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    acustra_add_suite(Acustra.ExtendedSampleRates AcustraExtendedSampleRateTests)
+    set_tests_properties(Acustra.ExtendedSampleRates PROPERTIES TIMEOUT 120)
+
+    add_executable(AcustraNormalLayoutParity Tests/SampleRateLayoutParity.cpp)
+    target_link_libraries(AcustraNormalLayoutParity PRIVATE AcustraDSP)
+    add_executable(AcustraExtendedLayoutParity Tests/SampleRateLayoutParity.cpp)
+    target_link_libraries(AcustraExtendedLayoutParity PRIVATE AcustraDSPExtendedCxx17)
+    set_target_properties(AcustraExtendedLayoutParity PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME Acustra.SampleRateLayoutParity
+        COMMAND "${CMAKE_COMMAND}"
+            "-Dnormal=$<TARGET_FILE:AcustraNormalLayoutParity>"
+            "-Dextended=$<TARGET_FILE:AcustraExtendedLayoutParity>"
+            "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/sample-rate-layout-parity"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CheckSampleRateLayoutParity.cmake")
+    set_tests_properties(Acustra.SampleRateLayoutParity PROPERTIES TIMEOUT 120)
+
     add_executable(AcustraReleaseTests Tests/ReleaseTests.cpp)
     target_link_libraries(AcustraReleaseTests PRIVATE AcustraDSP)
     acustra_add_suite(Acustra.Release AcustraReleaseTests)
@@ -389,6 +436,13 @@ if(BUILD_TESTING)
     set_target_properties(AcustraCaptureVoicingTests PROPERTIES
         CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     acustra_add_suite(Acustra.CaptureVoicing AcustraCaptureVoicingTests)
+
+    add_executable(AcustraMicrophoneBalanceTests Tests/MicrophoneBalanceTests.cpp)
+    target_link_libraries(AcustraMicrophoneBalanceTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraMicrophoneBalanceTests PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    acustra_add_suite(Acustra.MicrophoneBalance AcustraMicrophoneBalanceTests)
+    set_tests_properties(Acustra.MicrophoneBalance PROPERTIES TIMEOUT 50)
 
     # The piezo chain against Tools/PiezoReference.py's circuit simulation,
     # through the fixtures it wrote (Tests/Fixtures).
@@ -469,11 +523,10 @@ if(BUILD_TESTING)
         add_test(NAME Acustra.PhysicalFitRenderer
                  COMMAND AcustraPhysicalFitRenderer --smoke
                          "${CMAKE_CURRENT_BINARY_DIR}/physical-fit-smoke"
-                         1 1 1 0 .03
-                         1 1 1 1 1 1 0
-                         1 1 .0061 -.030 1.3 .001 1000 .02 0 80 .0008
-                         0 2 0 .0001162109375 .035 .002334375
-                         0 0 1 4000 8000 .0207 0 0)
+                         1 1 1 0 1 1
+                         1 1 1 1 0 1
+                         1 .0061 -.030 1.3 .001 1000
+                         .02 0 2 .0001162109375 .035 .002334375)
         set_tests_properties(Acustra.PhysicalFitRenderer PROPERTIES TIMEOUT 120)
 
         add_test(NAME Acustra.BridgeProbe
@@ -620,11 +673,6 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditBridgeSpatialMap.py"
                                  --self-test)
                 set_tests_properties(Acustra.AuditBridgeSpatialMap PROPERTIES TIMEOUT 60)
-                add_test(NAME Acustra.PrototypePlectrumContact
-                         COMMAND "${Python3_EXECUTABLE}"
-                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/PrototypePlectrumContact.py"
-                                 --self-test)
-                set_tests_properties(Acustra.PrototypePlectrumContact PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.FitCaptureVoicing
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FitCaptureVoicing.py"
@@ -860,4 +908,23 @@ if(BUILD_TESTING)
     target_link_libraries(AcustraPitchGeometryCacheTests PRIVATE AcustraDSP)
     set_target_properties(AcustraPitchGeometryCacheTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     acustra_add_suite(Acustra.PitchGeometryCache AcustraPitchGeometryCacheTests)
+endif()
+
+# Native construction-strum measurement and string-release energy checks.
+if(ACUSTRA_BUILD_TOOLS)
+    add_executable(AcustraConstructionStrumLevels Tools/ConstructionStrumLevels.cpp)
+    target_link_libraries(AcustraConstructionStrumLevels PRIVATE AcustraDSP)
+endif()
+if(BUILD_TESTING)
+    add_executable(AcustraPluckPolarisationTests Tests/PluckPolarisationTests.cpp)
+    target_link_libraries(AcustraPluckPolarisationTests PRIVATE AcustraDSP)
+    acustra_add_suite(Acustra.PluckPolarisation AcustraPluckPolarisationTests)
+    add_executable(AcustraReleasePolicyTests Tests/ReleasePolicyTests.cpp)
+    target_link_libraries(AcustraReleasePolicyTests PRIVATE AcustraDSP)
+    acustra_add_suite(Acustra.ReleasePolicy AcustraReleasePolicyTests)
+    add_executable(AcustraSustainPolicyTests Tests/SustainPolicyTests.cpp)
+    target_link_libraries(AcustraSustainPolicyTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraSustainPolicyTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    acustra_add_suite(Acustra.SustainPolicy AcustraSustainPolicyTests)
+    set_tests_properties(Acustra.PluckPolarisation PROPERTIES TIMEOUT 50)
 endif()

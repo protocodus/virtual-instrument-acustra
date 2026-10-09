@@ -1,0 +1,1601 @@
+{
+  "protocol": "Full 216-case matrix and 216 E5 clips per version; same native controls, no per-note gain. Second-vs-first deltas are measured; listener judgment remains required.",
+  "renderer_sha256": {
+    "baseline": "84b1f038ded99b902c90bef19a5b51f8faf44598ea232281995dfbb13b22c9f8",
+    "candidate": "989f2c151d776c1edb0e568a594bb2b1aad3b30a30b832807a072e2e639c7b20",
+    "second_pass": "9765c34ae31d066acfbe096101bdf2fcf1e8726c1b94f0688af3359ec6a66544"
+  },
+  "display_labels": {
+    "baseline": "Before",
+    "candidate": "First pass",
+    "second_pass": "Second pass"
+  },
+  "sample_rate": 48000,
+  "core_clips_per_version": 3960,
+  "E5_clips_per_version": 216,
+  "playback_gain_db": 3.4062228629951843,
+  "classic78_second_minus_first": {
+    "stereo_mic": {
+      "E4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -1.253931070097785,
+            "median": 0.04105589927341313,
+            "maximum": 0.4513431325980406
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 0.05768842690870457,
+            "median": 0.5100890966755394,
+            "maximum": 1.3404092128549863
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -3.2755983004576725,
+            "median": -1.3205822443251338,
+            "maximum": -0.006004725121811383
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.013937924486632447,
+            "median": 0.4448632148230063,
+            "maximum": 2.5209881183158815
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -1.9891201182143767,
+            "median": -1.457164139782357,
+            "maximum": 0.7221069685983306
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -1.1446525949229667,
+            "median": 0.017840403463614152,
+            "maximum": 0.8398992068922553
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.010535748202485706,
+            "median": -0.00010103545911022138,
+            "maximum": 0.04850168837600677
+          }
+        },
+        "finger": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -0.0936941603501964,
+            "median": 0.03652204857900543,
+            "maximum": 0.2628497499924052
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.6825277259719122,
+            "median": -0.7421375236481309,
+            "maximum": -0.07809968152145785
+          }
+        },
+        "pick": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.253931070097785,
+            "median": -0.47275014659172854,
+            "maximum": 0.11778131324224717
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.2755983004576725,
+            "median": -2.4110456728373664,
+            "maximum": -0.712589621735102
+          }
+        },
+        "thumb": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -0.22208144004089547,
+            "median": 0.245269255964363,
+            "maximum": 0.4513431325980406
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.966502291113525,
+            "median": -1.2116838667170144,
+            "maximum": -0.006004725121811383
+          }
+        }
+      },
+      "G4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -1.3837411151532066,
+            "median": -0.18450268630347466,
+            "maximum": 0.7952696868485134
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 0.7352555859495453,
+            "median": 1.1959557370474911,
+            "maximum": 2.022679384691216
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -4.021765770979402,
+            "median": -2.2946227504106096,
+            "maximum": -1.7277263318586815
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.34167302440002467,
+            "median": 1.430500092694342,
+            "maximum": 3.4999541046623612
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -2.114567755624474,
+            "median": -0.9929831792446224,
+            "maximum": 0.9007658944308368
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -0.682978981699712,
+            "median": 0.24201980432568249,
+            "maximum": 1.2649236759183324
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.044756225956987805,
+            "median": -0.0038516828785368773,
+            "maximum": 0.026928798439598722
+          }
+        },
+        "finger": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -0.7047483637494523,
+            "median": 0.17197474314483685,
+            "maximum": 0.6105684731826884
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.7327178589134187,
+            "median": -1.8796772929175123,
+            "maximum": -1.7277263318586815
+          }
+        },
+        "pick": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.3837411151532066,
+            "median": -0.6832994735436024,
+            "maximum": -0.15812954741197416
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.021765770979402,
+            "median": -2.9630712356910527,
+            "maximum": -2.3879175720914176
+          }
+        },
+        "thumb": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -0.6253710117962328,
+            "median": 0.35800075021178657,
+            "maximum": 0.7952696868485134
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.475000534128597,
+            "median": -2.004535755001905,
+            "maximum": -1.81450073243865
+          }
+        }
+      },
+      "A4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -1.7525419393634465,
+            "median": -0.3112130722731017,
+            "maximum": 1.4472012072466143
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.2092677355008163,
+            "median": 1.6685661772626759,
+            "maximum": 2.49793429087363
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -4.5732825932915695,
+            "median": -3.1470783242922904,
+            "maximum": -2.789727172353624
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.7616073551166038,
+            "median": 2.105262748149418,
+            "maximum": 4.142504283024341
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -2.424484418595757,
+            "median": -0.8974869910731806,
+            "maximum": 0.7658247989124369
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -1.3134759891638055,
+            "median": -0.11713820653183404,
+            "maximum": 1.3856565754078929
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.051344145390700646,
+            "median": -0.006739440040000488,
+            "maximum": 0.013418950194846957
+          }
+        },
+        "finger": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.1808037289685558,
+            "median": -0.15680292308021393,
+            "maximum": 1.1469974062882002
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.802342261906689,
+            "median": -2.887748927168443,
+            "maximum": -2.789727172353624
+          }
+        },
+        "pick": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.7525419393634465,
+            "median": -0.8528533719359181,
+            "maximum": -0.3766702863314748
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.5732825932915695,
+            "median": -3.4940455392945475,
+            "maximum": -3.1602266936698395
+          }
+        },
+        "thumb": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.0392905175013354,
+            "median": 0.03796920588841246,
+            "maximum": 1.4472012072466143
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.820155687355165,
+            "median": -3.082015164204588,
+            "maximum": -2.8372113469760842
+          }
+        }
+      },
+      "B4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -1.3463461825195466,
+            "median": 0.16394205864014566,
+            "maximum": 1.5016933011605929
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.4234277809703144,
+            "median": 1.8846599357018157,
+            "maximum": 2.707843322683452
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -4.8413758865816385,
+            "median": -3.765541475743461,
+            "maximum": -3.5468398845544455
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.11881035164718637,
+            "median": 1.9552887888329418,
+            "maximum": 3.7971069290494146
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -3.2321974836139624,
+            "median": -1.4009941974707836,
+            "maximum": 0.5966892354781237
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -0.3101530254445777,
+            "median": 0.34571423915081034,
+            "maximum": 1.6180793924319907
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.034286277744378424,
+            "median": -0.0055449384116990075,
+            "maximum": 0.029592576284095173
+          }
+        },
+        "finger": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.2767474632778146,
+            "median": 0.1799798658443592,
+            "maximum": 1.3813769359920975
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.979888263709663,
+            "median": -3.6668907332406464,
+            "maximum": -3.598047690822346
+          }
+        },
+        "pick": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.3463461825195466,
+            "median": -0.5714213606683529,
+            "maximum": 0.925052658026047
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.8413758865816385,
+            "median": -3.8685313142402515,
+            "maximum": -3.7509609265614925
+          }
+        },
+        "thumb": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -0.9976381718843115,
+            "median": 0.38723503769107737,
+            "maximum": 1.5016933011605929
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.926402628088635,
+            "median": -3.6899613060861727,
+            "maximum": -3.5468398845544455
+          }
+        }
+      },
+      "E5": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -2.38009488428105,
+            "median": -0.1392194605357382,
+            "maximum": 0.69874430107253
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 0.1473670139620964,
+            "median": 0.6043458153691823,
+            "maximum": 1.4265761475326784
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -3.8758508114701344,
+            "median": -3.1840506925002083,
+            "maximum": -2.5110875684882537
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.02199559313406784,
+            "median": 0.6351713746836313,
+            "maximum": 3.3525751209156063
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -1.965973444429686,
+            "median": -1.1822671468884316,
+            "maximum": 1.6161423375809392
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -1.877740271944191,
+            "median": -0.1875230541290822,
+            "maximum": 1.830478561301021
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.0021938972816073488,
+            "median": 0.003880280236430167,
+            "maximum": 0.015420360937461908
+          }
+        },
+        "finger": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -2.38009488428105,
+            "median": -0.02706405884771712,
+            "maximum": 0.417078130228834
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.8758508114701344,
+            "median": -3.3081837227246744,
+            "maximum": -2.6360266970131905
+          }
+        },
+        "pick": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.9058470652011508,
+            "median": -0.5323141035341585,
+            "maximum": 0.69874430107253
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.8035489342779174,
+            "median": -3.088025357507214,
+            "maximum": -2.7087690285995945
+          }
+        },
+        "thumb": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -2.0152999958897624,
+            "median": 0.05068004855219499,
+            "maximum": 0.5400747605962763
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.7881274849319055,
+            "median": -2.9874723532049527,
+            "maximum": -2.5110875684882537
+          }
+        }
+      }
+    },
+    "mono_mic": {
+      "E4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -1.2524864446222352,
+            "median": 0.24858349239723765,
+            "maximum": 0.6010778565430783
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 0.3465906629324955,
+            "median": 0.6993562948381538,
+            "maximum": 1.7498874321213833
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -3.434010917951282,
+            "median": -2.1099941661638084,
+            "maximum": -0.04531628593900394
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.048844260934766126,
+            "median": 0.4425387204852496,
+            "maximum": 2.6974788694775196
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -1.839758939938271,
+            "median": -1.3452953094539994,
+            "maximum": 0.8895285980287033
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -1.809940682886893,
+            "median": 0.005922997224226734,
+            "maximum": 0.729651291017575
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.011072099820559345,
+            "median": -0.00030715227684119384,
+            "maximum": 0.04930723595743558
+          }
+        },
+        "finger": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 0.034369318633459045,
+            "median": 0.2689055237920641,
+            "maximum": 0.4213401339396299
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.757172401482915,
+            "median": -1.0971238970559023,
+            "maximum": -0.12800306550648965
+          }
+        },
+        "pick": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.2524864446222352,
+            "median": -0.19245113510308087,
+            "maximum": 0.4076646746829411
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.434010917951282,
+            "median": -2.8458410319132614,
+            "maximum": -1.02380246512549
+          }
+        },
+        "thumb": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -0.23486700670408567,
+            "median": 0.473592806393178,
+            "maximum": 0.6010778565430783
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.4258760143913705,
+            "median": -2.2805770537818866,
+            "maximum": -0.04531628593900394
+          }
+        }
+      },
+      "G4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -1.6340610062220122,
+            "median": -0.42405162768948657,
+            "maximum": 1.0115876134241546
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.0257932829280776,
+            "median": 1.380104756544302,
+            "maximum": 2.4315392857696736
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -4.090159738635329,
+            "median": -2.876226434409595,
+            "maximum": -1.7913407568642525
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.29138121504842146,
+            "median": 1.9395533131946752,
+            "maximum": 3.8257181760228924
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -2.1427065195847703,
+            "median": -0.4830433485870014,
+            "maximum": 1.3826951986743943
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -0.8963589141518113,
+            "median": 0.11990507131469741,
+            "maximum": 1.36837311252172
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.03681581401954048,
+            "median": -0.0044262380087474185,
+            "maximum": 0.031894741977076535
+          }
+        },
+        "finger": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.1482526041699757,
+            "median": 0.22166444150797204,
+            "maximum": 0.8632084266223217
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.402146550236072,
+            "median": -2.3560605165205297,
+            "maximum": -1.7913407568642525
+          }
+        },
+        "pick": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.6340610062220122,
+            "median": -0.710715243563147,
+            "maximum": 0.09886414563775503
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.090159738635329,
+            "median": -3.5520223963175006,
+            "maximum": -2.887786357455119
+          }
+        },
+        "thumb": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.4712031696212051,
+            "median": 0.31011960513766823,
+            "maximum": 1.0115876134241546
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.5395679063287337,
+            "median": -2.6988676441053543,
+            "maximum": -2.0082264021953518
+          }
+        }
+      },
+      "A4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -1.658919373612406,
+            "median": -0.5127813497790079,
+            "maximum": 1.7239444372557813
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.4984957569094206,
+            "median": 1.8499728908106938,
+            "maximum": 2.90948429367716
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -4.507377641844471,
+            "median": -3.3270965650851982,
+            "maximum": -2.8091529885962405
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.2827711774452559,
+            "median": 2.506297175094109,
+            "maximum": 4.097839234823756
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -3.0116895974621016,
+            "median": -0.5105125646301651,
+            "maximum": 0.8696044091321866
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -2.1553137512055756,
+            "median": -0.32804306404625194,
+            "maximum": 1.3831824975175664
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.04370022644408067,
+            "median": -0.0077699461770386336,
+            "maximum": 0.008795086795672091
+          }
+        },
+        "finger": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -0.9064995803412188,
+            "median": -0.5189076627979858,
+            "maximum": 1.6708734602079005
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.601328925007966,
+            "median": -2.9571022563321874,
+            "maximum": -2.8091529885962405
+          }
+        },
+        "pick": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.658919373612406,
+            "median": -0.6078841921131719,
+            "maximum": -0.0121238350684294
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.507377641844471,
+            "median": -3.812254320594575,
+            "maximum": -3.3182964938381616
+          }
+        },
+        "thumb": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -0.8546005072913729,
+            "median": -0.42080001508933407,
+            "maximum": 1.7239444372557813
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.929354412247042,
+            "median": -3.1943166327281958,
+            "maximum": -2.8399582697810013
+          }
+        }
+      },
+      "B4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -1.570296607624087,
+            "median": -0.1602747265087885,
+            "maximum": 1.4859907441270082
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.7116381711984516,
+            "median": 2.0624073283931317,
+            "maximum": 3.1130496892094968
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -4.568204911771924,
+            "median": -3.8127505333420317,
+            "maximum": -3.509453262954266
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.3519660646810693,
+            "median": 2.259013642800192,
+            "maximum": 4.287617314521917
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -2.98920825681226,
+            "median": -0.8250557527071618,
+            "maximum": 1.0449304430252848
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -1.1351751293787302,
+            "median": 0.20369328385413965,
+            "maximum": 1.5728612256893513
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.034093250004552544,
+            "median": -0.00324138766285742,
+            "maximum": 0.036782694450721465
+          }
+        },
+        "finger": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.258837348937078,
+            "median": -0.056281949669941156,
+            "maximum": 1.337293620811991
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.898233258858517,
+            "median": -3.674302863401545,
+            "maximum": -3.5831240395100696
+          }
+        },
+        "pick": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.570296607624087,
+            "median": -0.6144828678304677,
+            "maximum": 0.7507436230743068
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.568204911771924,
+            "median": -4.054708267381557,
+            "maximum": -3.7725265784212905
+          }
+        },
+        "thumb": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.1424471113200454,
+            "median": 0.21500412839993288,
+            "maximum": 1.4859907441270082
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.012614124943541,
+            "median": -3.735102193237643,
+            "maximum": -3.509453262954266
+          }
+        }
+      },
+      "E5": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -2.568403532077589,
+            "median": -0.4748674453383508,
+            "maximum": 0.6634822939175891
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 0.43587236311561384,
+            "median": 0.7897507818907492,
+            "maximum": 1.8347187150927269
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -3.8588564845999533,
+            "median": -3.3026907728185764,
+            "maximum": -2.4995500739819025
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.09823625169007155,
+            "median": 1.421243047185921,
+            "maximum": 3.439245537777685
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -1.8308750857888327,
+            "median": -0.43425689517592314,
+            "maximum": 1.7910287382206302
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -1.3206615015112249,
+            "median": -0.3182550985802699,
+            "maximum": 1.4046825204075262
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": 0.0004952651743934666,
+            "median": 0.003922009786215597,
+            "maximum": 0.03455833855536383
+          }
+        },
+        "finger": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -2.568403532077589,
+            "median": -0.6602070359155334,
+            "maximum": 0.496747027308416
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.8588564845999533,
+            "median": -3.4959609447594118,
+            "maximum": -2.7411654078038152
+          }
+        },
+        "pick": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -1.765010924981425,
+            "median": -0.4477733682110312,
+            "maximum": 0.41163265696080487
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.6523637971883374,
+            "median": -3.1910965861063305,
+            "maximum": -2.5603375426093624
+          }
+        },
+        "thumb": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": -2.1942502226310197,
+            "median": -0.4487348145175396,
+            "maximum": 0.6634822939175891
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.750062526314413,
+            "median": -3.1710249375755586,
+            "maximum": -2.4995500739819025
+          }
+        }
+      }
+    }
+  },
+  "classic78_second_minus_before": {
+    "stereo_mic": {
+      "E4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -2.1913515375891635,
+            "median": 0.13964251622238422,
+            "maximum": 0.8479195403516329
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 0.681196084031825,
+            "median": 0.9921503652123036,
+            "maximum": 2.3726190649884273
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -5.683232058377587,
+            "median": -2.7335801601281484,
+            "maximum": -0.5958013053837368
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.1220884913893091,
+            "median": 1.1099555671891794,
+            "maximum": 4.493410256801053
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -2.483145346289767,
+            "median": -1.3793249013208406,
+            "maximum": 2.2469579185861566
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -2.2542955703279617,
+            "median": -0.008732376214991788,
+            "maximum": 1.0732645680679198
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.008936383219094068,
+            "median": -0.0008870448961229016,
+            "maximum": 0.045080680013256824
+          }
+        }
+      },
+      "G4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -2.2981596180099473,
+            "median": -0.3444471748646478,
+            "maximum": 0.9894765126437974
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.2857780115450979,
+            "median": 1.6119260983715762,
+            "maximum": 2.9917701217374812
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -6.329843786177693,
+            "median": -3.546976691558763,
+            "maximum": -2.5790533679962966
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.5637456453866304,
+            "median": 2.240541724900835,
+            "maximum": 5.586951725073423
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -2.2555131730431004,
+            "median": -0.4511542282916885,
+            "maximum": 2.4692138431991992
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -1.1764652273843055,
+            "median": 0.32519725047389514,
+            "maximum": 1.6972945771147252
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.04280234422867579,
+            "median": -0.0048482520225689996,
+            "maximum": 0.027759784042366675
+          }
+        }
+      },
+      "A4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -2.9864393370670257,
+            "median": -0.4247643014497804,
+            "maximum": 1.351109577794098
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.7075746679588022,
+            "median": 2.0250234565942478,
+            "maximum": 3.4139978963744113
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -6.8402607596860925,
+            "median": -4.448480651865044,
+            "maximum": -3.8498072656522524
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 1.1613652031562314,
+            "median": 2.949593612802178,
+            "maximum": 6.187626213960085
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -2.612172286327933,
+            "median": -0.3940284438664996,
+            "maximum": 2.0248769523454815
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -1.945335667911447,
+            "median": -0.3197212197794457,
+            "maximum": 1.7452467925819022
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.04775038896982409,
+            "median": -0.00891789873726978,
+            "maximum": 0.015029991211036986
+          }
+        }
+      },
+      "B4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -2.403434343052595,
+            "median": -0.15081753092243844,
+            "maximum": 1.8464142700165986
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.8485496599024245,
+            "median": 2.1629276679344933,
+            "maximum": 3.5419810740459354
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -7.048511470716118,
+            "median": -5.093491382576114,
+            "maximum": -4.446318125279581
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.1861320662096482,
+            "median": 2.7404918033048657,
+            "maximum": 5.620102462134966
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -3.6135469898621224,
+            "median": -0.9522754620180711,
+            "maximum": 2.1363538061925453
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -0.847081203365498,
+            "median": 0.3758058080721174,
+            "maximum": 2.1309200199883875
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.03799996651545001,
+            "median": -0.006010207091708963,
+            "maximum": 0.033766558919872125
+          }
+        }
+      },
+      "E5": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -3.803458350685947,
+            "median": -0.4513797064988765,
+            "maximum": 0.7746858653918736
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 0.25875972821209814,
+            "median": 0.5769553786803101,
+            "maximum": 1.9515121105538498
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -6.098367509670057,
+            "median": -4.792065713057147,
+            "maximum": -3.302143413984883
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.04083135389464796,
+            "median": 1.0846318143980667,
+            "maximum": 5.335753175623886
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -1.9935704555825886,
+            "median": -0.6559207624916841,
+            "maximum": 3.8439228891001154
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -2.7840994872421803,
+            "median": -0.37662721963462964,
+            "maximum": 2.744106489384169
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.0027929519337419606,
+            "median": 0.004811481484491509,
+            "maximum": 0.01944353718091918
+          }
+        }
+      }
+    },
+    "mono_mic": {
+      "E4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -2.7337750423170633,
+            "median": 0.31212003681482514,
+            "maximum": 1.1639130391249957
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 0.8279537314694281,
+            "median": 1.290223811913327,
+            "maximum": 2.807763994903553
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -5.982913960484505,
+            "median": -3.762914442065637,
+            "maximum": -0.6560869537971727
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.16043102186306177,
+            "median": 1.0301538685283784,
+            "maximum": 4.656005090096919
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -2.3392758728794014,
+            "median": -1.2395195786171485,
+            "maximum": 2.386319664313846
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -3.521800385521363,
+            "median": -0.18785456980178594,
+            "maximum": 1.2210781246046096
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.010123717390960962,
+            "median": -0.00016026683049119583,
+            "maximum": 0.04568610972108189
+          }
+        }
+      },
+      "G4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -2.5955867832638475,
+            "median": -0.6045179063653698,
+            "maximum": 1.1726753738007076
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.4313732253419005,
+            "median": 1.9074946097944618,
+            "maximum": 3.426241740875234
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -6.437202308254168,
+            "median": -4.491947358947964,
+            "maximum": -2.699747432510458
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.5004085391963087,
+            "median": 2.9698965023953123,
+            "maximum": 5.994352768229881
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -2.2718968538582374,
+            "median": 0.187439727653814,
+            "maximum": 3.211459973766784
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -1.9732957576897903,
+            "median": -0.026004000426407714,
+            "maximum": 1.9408789374053583
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.03642239905721567,
+            "median": -0.004855743833712012,
+            "maximum": 0.0319460797733484
+          }
+        }
+      },
+      "A4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -2.7562819860752583,
+            "median": -0.833945081061394,
+            "maximum": 1.7555690955656686
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.8540575779502504,
+            "median": 2.3261160647561177,
+            "maximum": 3.8471632982094235
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -6.749495424442305,
+            "median": -4.705875804487244,
+            "maximum": -3.887516064053715
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.44154791210465033,
+            "median": 3.4785081554508617,
+            "maximum": 5.972026833973736
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -3.5697605876903875,
+            "median": 0.12381088664529116,
+            "maximum": 2.293322551353733
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -3.0361017229013285,
+            "median": -0.6006216134584719,
+            "maximum": 1.7110147940300209
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.03931624047818616,
+            "median": -0.009803582654559051,
+            "maximum": 0.009251567260484705
+          }
+        }
+      },
+      "B4": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -2.631435820210278,
+            "median": -0.5742627549574806,
+            "maximum": 1.8153527338546311
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 1.9949534383749068,
+            "median": 2.460149381290055,
+            "maximum": 3.980829986211205
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -6.497776237771599,
+            "median": -5.0929860131187805,
+            "maximum": -4.247084187225103
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.5168879213099435,
+            "median": 3.1024671865656535,
+            "maximum": 6.090875073255532
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -3.2629464524174026,
+            "median": -0.14339323744449617,
+            "maximum": 2.5168498757573428
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -2.3402563974422677,
+            "median": 0.018385564098084117,
+            "maximum": 2.1533465441127078
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": -0.037728754627678995,
+            "median": -0.0031695875616186697,
+            "maximum": 0.040758447299104716
+          }
+        }
+      },
+      "E5": {
+        "all": {
+          "rms_dbfs": {
+            "count": 36,
+            "minimum": -3.965866455220141,
+            "median": -1.00846000230273,
+            "maximum": 0.5196548047707736
+          },
+          "fundamental_power_dbfs": {
+            "count": 36,
+            "minimum": 0.40418560114137847,
+            "median": 0.8706923922969345,
+            "maximum": 2.381298671285137
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 36,
+            "minimum": -6.071068897760182,
+            "median": -5.02124969937631,
+            "maximum": -3.339578372804226
+          },
+          "fundamental_fraction_db": {
+            "count": 36,
+            "minimum": 0.18015088673237423,
+            "median": 2.2975946659865394,
+            "maximum": 5.404641519021482
+          },
+          "treble_fraction_db": {
+            "count": 36,
+            "minimum": -1.7149319268747512,
+            "median": 0.6164949941695337,
+            "maximum": 4.10604056594171
+          },
+          "held_decay_db": {
+            "count": 36,
+            "minimum": -2.4379482870637545,
+            "median": -0.7051635810075556,
+            "maximum": 2.1137668215876175
+          },
+          "fundamental_decay_db": {
+            "count": 36,
+            "minimum": 0.0006851237616629646,
+            "median": 0.0048762782022713225,
+            "maximum": 0.044004548327855275
+          }
+        }
+      }
+    }
+  },
+  "original_second_minus_first": {
+    "stereo_mic": {
+      "A2_rms_dbfs": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "A2_fundamental_fraction_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "A2_same_string_neighbor_excess_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "treble_upper_partial_ratio_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "treble_held_decay_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      }
+    },
+    "mono_mic": {
+      "A2_rms_dbfs": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "A2_fundamental_fraction_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "A2_same_string_neighbor_excess_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "treble_upper_partial_ratio_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "treble_held_decay_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      }
+    },
+    "piezo": {
+      "A2_rms_dbfs": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "A2_fundamental_fraction_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "A2_same_string_neighbor_excess_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "treble_upper_partial_ratio_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "treble_held_decay_db": {
+        "count": 36,
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      }
+    }
+  },
+  "piezo_second_minus_first": {
+    "clips": 1152,
+    "byte_identical_clips": 928,
+    "changed_samples": 34213988,
+    "maximum_absolute_sample_delta": 5.960464477539063e-08,
+    "maximum_float32_ulp_distance": 4,
+    "difference_energy_relative_to_first_pass_db": -148.74905573914052,
+    "difference_is_zero": false
+  },
+  "original_native_second_minus_first": {
+    "clips": 2088,
+    "byte_identical_clips": 2088,
+    "changed_samples": 0,
+    "maximum_absolute_sample_delta": 0.0,
+    "maximum_float32_ulp_distance": 0,
+    "difference_energy_relative_to_first_pass_db": null,
+    "difference_is_zero": true
+  },
+  "construction_matrix": {
+    "models": 2,
+    "shapes": 4,
+    "woods": 3,
+    "techniques": 3,
+    "captures": 3,
+    "cases_per_version": 216,
+    "core_clips_per_version": 3960,
+    "E5_clips_per_version": 216,
+    "versions": 3,
+    "native_clips_total": 12528,
+    "PCM16_clips_total": 12528
+  },
+  "controls": {
+    "touch": 0.58,
+    "pluck_position": 0.28,
+    "room": 0,
+    "velocity": 96,
+    "hold_seconds": 1.2,
+    "note_seconds": 2.0,
+    "fresh_engine_for_every_isolated_note": true,
+    "tuning": "standard"
+  },
+  "analysis_windows_seconds": {
+    "attack": [
+      0.005,
+      0.08
+    ],
+    "sustain": [
+      0.08,
+      1.15
+    ],
+    "early": [
+      0.1,
+      0.3
+    ],
+    "late": [
+      0.95,
+      1.15
+    ],
+    "release": [
+      1.25,
+      1.9
+    ]
+  },
+  "spectral_method": "Welch Hann, at most16384 samples/50% overlap, mean L/R power; partial bands +/-max(bin width, 1.5% partial frequency). Native levels and powers remain unnormalized.",
+  "scorer_sha256": "f986438f858fc4aadd2819cb92645901654f1c78ba8138fd3e30fc7412e9d146",
+  "validation": {
+    "native_outputs": {
+      "count": 12528,
+      "finite": true,
+      "non_silent": true,
+      "correct_frame_counts": true,
+      "samples_at_or_above_full_scale": 0,
+      "maximum_native_peak": 0.6080389022827148,
+      "verification": "Each fresh render validates frame count, all float samples, and non-silence; native metrics count full-scale samples."
+    },
+    "PCM16_outputs": {
+      "count": 12528,
+      "shared_gain": 1.4801684507704975,
+      "shared_gain_db": 3.4062228629951843,
+      "peak_ceiling": 0.9,
+      "native_level_normalization": false,
+      "verification": "Generator validates native samples and the shared ceiling before quantizing; all playback files use the same scalar."
+    },
+    "ctest": {
+      "passed_suites": 73,
+      "failed_suites": 0,
+      "reported_by": "Parent integration run after final second-pass build"
+    },
+    "construction_level_calibration": {
+      "passed_cases": 216,
+      "failed_cases": 0,
+      "reported_by": "Parent integration run after final second-pass calibration"
+    },
+    "javascript_syntax": "node --check passed for generated three-version player"
+  },
+  "tradeoffs": {
+    "G4": "Every microphone G4 case reduces upper-partial/fundamental ratio, while sustained RMS varies across construction/style. Close Mic Finger median +0.172 dB, Thumb +0.358 dB, Pick -0.683 dB relative to First pass; Mono Mic ranges are available per style below.",
+    "E4": "Some E4 changes are small: the least changed Close Mic upper-partial/fundamental ratio is -0.006 dB, compared with stronger A4/B4/E5 reductions.",
+    "physical_decay": "The capture refinement retains physical strings/bridge/radiation poles; it does not establish that the remaining perceived banjo cue is gone."
+  },
+  "local_evidence": {
+    "report": "build-resonance/evidence/construction/report.json",
+    "supplement": "build-resonance/evidence/construction/E5-supplement.json",
+    "audition_manifest": "build-resonance/evidence/construction/audition.json",
+    "player": "build-resonance/evidence/index.html",
+    "playback_default": {
+      "model": "bellido1978",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "technique": "thumb",
+      "capture": "stereo_mic",
+      "clip": "A4"
+    },
+    "version_labels": {
+      "baseline": "Before",
+      "candidate": "First pass",
+      "second_pass": "Second pass"
+    },
+    "full_second_pass_aggregate": "build-resonance/evidence/construction/second-pass-aggregate.json"
+  },
+  "reproduction": {
+    "scorer": "Tools/CompareConstructionResonance.py",
+    "core_command": "python3 Tools/CompareConstructionResonance.py --renderer baseline=BEFORE --renderer candidate=FIRST_PASS --renderer second_pass=SECOND_PASS --output build-resonance/evidence/construction --jobs 4 --no-wav",
+    "E5_command": "python3 build-resonance/evidence/construction/E5Supplement.py --label second_pass",
+    "player_command": "python3 build-resonance/evidence/construction/CreateAudition.py --report build-resonance/evidence/construction/report.json --reuse-wav"
+  },
+  "listener_feedback": {
+    "date": "2026-10-09",
+    "source": "User audition feedback relayed in the parent task",
+    "first_pass": "Boom was improved, while the Classic78 banjo character remained.",
+    "second_pass": "Classic78 still sounded banjo-like with Thumb and Pick; the -3dB500Hz/0dB1400Hz microphone change did not satisfy the timbre goal.",
+    "status": "Second-pass EQ rejected for the unresolved banjo goal. Physical excitation and bridge hypotheses remain under investigation.",
+    "interpretation": "Uncontrolled user listening feedback; signal measurements do not override that feedback or establish realism."
+  }
+}
