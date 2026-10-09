@@ -4,7 +4,7 @@
 OptimizePhysicalModel.NAMES is the calibration vector the renderers take.
 Both renderers' usage must list one argument per value, README must give the
 same count, and the renderers must accept the full vector and no other
-length (the builds that had nylon strings took 48 values).
+length (previous schemas took 37 or 48 values).
 
     CalibrationVectorTests.py PHYSICAL_FIT_RENDERER EXTERNAL_CORPUS_RENDERER
 """
@@ -46,10 +46,11 @@ def main() -> int:
         failures.extend(f"README says {value} for {pattern!r}, the vector has {count}"
                         for value in found if int(value) != count)
     # The renderer takes the full shipping vector and refuses a short one or
-    # the nylon builds' 48.
+    # previous schemas' 37 and 48.
     shipping = [format(float(value), ".9g") for value in optimiser.SHIPPING]
     with tempfile.TemporaryDirectory(prefix="acustra-calibration-") as temporary:
-        for values in (shipping, shipping[:-1], shipping + ["0"] * (48 - count)):
+        for values in (shipping, shipping[:-1], shipping + ["0"] * (37 - count),
+                       shipping + ["0"] * (48 - count)):
             length = len(values)
             output = Path(temporary) / f"smoke-{length}"
             result = subprocess.run([str(fit), "--smoke", str(output), *values],

@@ -88,7 +88,7 @@ struct AcustraEngineTestAccess
     static std::vector<std::string> columns(const std::vector<int>& modes)
     {
         std::vector<std::string> result {"bridge_velocity", "bridge_body_force",
-            "bridge_reaction_force", "longitudinal_force", "bridge_power",
+            "bridge_reaction_force", "bridge_power",
             "body_power", "tail_power", "junction_impedance"};
         for (int i = 0; i < 6; ++i)
             for (const char* field : {"normal_quarter", "parallel_quarter",
@@ -104,7 +104,7 @@ struct AcustraEngineTestAccess
                         std::vector<float>& result)
     {
         result.insert(result.end(), {e.lastBridgeVelocity_, e.lastBridgeBodyForce_,
-            e.lastBridgeReactionForce_, e.lastLongitudinalForce_, e.lastBridgePower_,
+            e.lastBridgeReactionForce_, e.lastBridgePower_,
             e.lastBridgeBodyPower_, e.lastBridgeTailPower_, e.lastImpedanceSum_});
         for (const auto& v : e.voices_)
         {

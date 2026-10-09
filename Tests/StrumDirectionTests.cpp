@@ -18,16 +18,15 @@ struct AcustraEngineTestAccess
     struct Source
     {
         std::array<Loop, 2> loops;
-        float sign, excitation, normalNoise, parallelNoise, step, mix;
-        std::uint32_t pickingRandom, contactRandom;
+        float sign, excitation, step, mix;
+        std::uint32_t pickingRandom, excitationRandom;
     };
     static Source source(const AcustraEngine& e, int string = 0)
     {
         const auto& v = e.voices_[static_cast<std::size_t>(string)];
         return { v.loops, v.pluckParallelSign, v.excitationParallelGain,
-                 v.contactNoiseNormal, v.contactNoiseParallel,
                  v.releaseStepRise, v.polarisationMix,
-                 v.randomState, v.contactNoiseState };
+                 v.randomState, v.excitationNoiseState };
     }
     static int delay(const AcustraEngine& e, int string = 0)
     { return e.voices_[static_cast<std::size_t>(string)].pluckDelay; }
@@ -41,31 +40,18 @@ struct AcustraEngineTestAccess
     { return { e.voices_[0].tailLoop, e.voices_[0].tailParallelLoop }; }
     static float tailGain(const AcustraEngine& e)
     { return e.voices_[0].tailExcitationParallelGain; }
-    static float tailNoiseGain(const AcustraEngine& e)
-    { return e.voices_[0].tailContactNoiseParallel; }
     static std::vector<std::array<float, 2>> futureArrivals(const AcustraEngine& e)
     {
         const auto& v = e.voices_[0];
         auto contact = v.contactTravel;
-        auto noise = v.contactNoiseTravel;
         std::vector<std::array<float, 2>> result;
-        while (contact.active || noise.active)
+        while (contact.active)
         {
             std::array<float, 2> packet {};
-            if (contact.active)
-            {
-                const auto paths = contact.process(0.0f);
-                const float local = 0.7071067811865475f * (paths[0] - paths[1]);
-                packet[0] += 0.76f * local;
-                packet[1] += v.excitationParallelGain * local;
-            }
-            if (noise.active)
-            {
-                const auto paths = noise.process(0.0f);
-                const float local = paths[0] - paths[1];
-                packet[0] += v.contactNoiseNormal * local;
-                packet[1] += v.contactNoiseParallel * local;
-            }
+            const auto paths = contact.process(0.0f);
+            const float local = 0.7071067811865475f * (paths[0] - paths[1]);
+            packet[0] += 0.76f * local;
+            packet[1] += v.excitationParallelGain * local;
             result.push_back(packet);
             if (result.size() >= AcustraEngine::RepluckArrivals::capacity) break;
         }
@@ -93,8 +79,7 @@ void expect(bool condition, const char* message)
 }
 auto fresh(double rate = 48000.0,
            acustra::PickingTechnique picking = acustra::PickingTechnique::Pick,
-           acustra::GuitarModel model = acustra::GuitarModel::Original,
-           bool contactNoise = false)
+           acustra::GuitarModel model = acustra::GuitarModel::Original)
 {
     auto e = std::make_unique<acustra::AcustraEngine>();
     acustra::EngineParameters p;
@@ -103,13 +88,6 @@ auto fresh(double rate = 48000.0,
     if (model == acustra::GuitarModel::Bellido1978)
     { p.shape = acustra::BodyShape::Auditorium; p.bodyMaterial = acustra::BodyMaterial::Mahogany; }
     e->setParameters(p);
-    if (contactNoise)
-    {
-        auto calibration = acustra::fittedPhysicalCalibration;
-        calibration.contactNoisePick = 0.01f;
-        calibration.contactNoiseFinger = 0.01f;
-        e->setPhysicalCalibration(calibration);
-    }
     e->prepare(rate, 127);
     e->setStringPerChannelMode(true);
     return e;
@@ -156,8 +134,8 @@ void testFreshReleaseAndDefaultPaths()
                                    acustra::PickingTechnique::Pick,
                                    acustra::PickingTechnique::Thumb })
         {
-            auto down = fresh(rate, picking, acustra::GuitarModel::Original, true);
-            auto up = fresh(rate, picking, acustra::GuitarModel::Original, true);
+            auto down = fresh(rate, picking, acustra::GuitarModel::Original);
+            auto up = fresh(rate, picking, acustra::GuitarModel::Original);
             down->beginStrum(0, 0, false); up->beginStrum(0, 0, true);
             down->noteOn(47, 0.7f, 1, 0, true); up->noteOn(47, 0.7f, 1, 0, true);
             const auto a = Access::source(*down), b = Access::source(*up);
@@ -173,11 +151,9 @@ void testFreshReleaseAndDefaultPaths()
                    "direction reversal changed fresh cyclic slope energy");
             expect(a.step == b.step && a.mix == b.mix,
                    "direction reversal changed static normal force or polarisation share");
-            expect(a.normalNoise == b.normalNoise && a.parallelNoise == -b.parallelNoise
-                       && a.parallelNoise != 0.0f,
-                   "contact force noise did not retain its normal/reverse its sideways share");
             expect(a.excitation == 0.51f && b.excitation == -0.51f
-                       && a.pickingRandom == b.pickingRandom && a.contactRandom == b.contactRandom,
+                       && a.pickingRandom == b.pickingRandom
+                       && a.excitationRandom == b.excitationRandom,
                    "stroke direction changed noise draws or burst magnitude");
         }
     auto implicit = fresh(), explicitDown = fresh();
@@ -204,7 +180,7 @@ void testScheduledDirectionsAndRetainedSources()
            "later gesture changed an earlier scheduled string's release direction");
 
     auto continuing = fresh(48000.0, acustra::PickingTechnique::Pick,
-                             acustra::GuitarModel::Original, true);
+                             acustra::GuitarModel::Original);
     continuing->beginStrum(0, 0, true);
     continuing->noteOn(47, 0.7f, 1, 0, true);
     advance(*continuing, 11);
@@ -234,7 +210,7 @@ void testScheduledDirectionsAndRetainedSources()
            "scheduled opposite stroke did not adopt direction at release");
 
     auto refret = fresh(48000.0, acustra::PickingTechnique::Pick,
-                        acustra::GuitarModel::Original, true);
+                        acustra::GuitarModel::Original);
     refret->beginStrum(0, 0, true); refret->noteOn(47, 0.7f, 1, 0, true);
     advance(*refret, 11);
     const auto old = Access::source(*refret);
@@ -244,7 +220,7 @@ void testScheduledDirectionsAndRetainedSources()
                && tails[1].delay == old.loops[1].delay,
            "opposite refret stroke reversed or discarded its retained old wave");
     expect(Access::tailGain(*refret) == old.excitation
-               && Access::tailNoiseGain(*refret) == old.parallelNoise,
+              ,
            "refret tail inherited the fresh stroke's source direction");
 }
 void chord(acustra::Performer& p)

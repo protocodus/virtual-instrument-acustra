@@ -4,6 +4,9 @@ Use this as the starting workflow; [README.md](README.md) describes the product
 and [Docs/decisions.md](Docs/decisions.md) records accepted choices and rejected
 experiments. Read the relevant recent entries before repeating an experiment.
 Older reports include retired models and controls; check their date and scope.
+The 2026-10-09 cleanup also removed archived experimental implementations.
+Their dated reports and measurements remain; source paths in those records
+refer to the historical Git revision rather than the current tool inventory.
 
 ## Find the right layer
 

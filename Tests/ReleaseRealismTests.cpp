@@ -62,7 +62,7 @@ struct AcustraEngineTestAccess
     {
         auto& v = e.voices_[0];
         v.level = 0.0f;
-        v.contactTravel.active = v.contactNoiseTravel.active = v.legatoContactTravel.active = false;
+        v.contactTravel.active = v.legatoContactTravel.active = false;
         v.legatoContactSamples = 0;
         v.repluckArrivals.clear();
     }

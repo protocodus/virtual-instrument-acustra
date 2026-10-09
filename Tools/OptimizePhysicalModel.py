@@ -44,7 +44,6 @@ NAMES = (
     "bodyQScale",
     "bridgeMobilityScale",
     "residueTiltDbPerOctave",
-    "directGain",
     "steel.stiffnessScale",
     "steel.fundamentalT60Scale",
     "steel.frequencyLossScale",
@@ -60,95 +59,48 @@ NAMES = (
     "bridgeConductanceFloor",
     "bridgeConductanceCornerHz",
     "bridgeTailLengthMetres",
-    "longitudinalGain",
-    "longitudinalQ",
-    "polarisationEndCorrectionMetres",
     "pickReleaseVelocityShare",
     "pickReleaseVelocityExponent",
-    "pickTransientGain",
     "pickEdgeRadiusMetres",
     "steelWoundBendingLoss",
     "steelPlainBendingLoss",
-    "contactNoiseFinger",
-    "contactNoisePick",
-    "contactNoiseVelocityExponent",
-    "contactNoiseCornerHz",
-    "pickContactNoiseCornerHz",
-    "contactNoiseDecaySeconds",
-    "contactClickFinger",
-    "contactClickPick",
 )
 LOWER = np.asarray((
-    0.96, 0.05, 0.25, -6.0, 0.0,
-    0.25, 0.4, 0.35, 0.35, 0.0, 0.7, 0.0,
-    -1.0, 0.25, 0.0, -0.06, 0.5, 0.0, 100.0, 0.00325, 0.0, 10.0, 0.0,
-    0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 100.0, 100.0, 0.0005,
-    0.0, 0.0,
+    0.96, 0.05, 0.25, -6.0, 0.25, 0.4,
+    0.35, 0.35, 0.0, 0.7, 0.0, -1.0,
+    0.25, 0.0, -0.06, 0.5, 0.0, 100.0,
+    0.00325, 0.0, 0.0, 0.0, 0.0, 0.0,
 ))
 UPPER = np.asarray((
-    1.04, 1.8, 4.0, 6.0, 0.12,
-    4.0, 2.0, 3.0, 2.5, 3.0, 3.0, 1.2,
-    1.0, 32.0, 0.04, 0.05, 4.0, 0.02, 8000.0, 0.060, 0.5, 400.0, 0.82e-3,
-    2.0, 4.0, 8.0,
-    0.5e-3, 0.25, 0.05,
-    4.0, 4.0, 4.0, 20000.0, 20000.0, 0.05,
-    64.0, 64.0,
+    1.04, 1.8, 4.0, 6.0, 4.0, 2.0,
+    3.0, 2.5, 3.0, 3.0, 1.2, 1.0,
+    32.0, 0.04, 0.05, 4.0, 0.02, 8000.0,
+    0.06, 2.0, 4.0, 0.0005, 0.25, 0.05,
 ))
 INITIAL = np.asarray((
-    1.0, 1.0, 1.0, 0.0, 0.0,
-    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0,
-    1.0, 1.0, 0.0061, -0.030, 1.30, 0.0, 1000.0, 0.020, 0.0, 80.0, 0.0008,
-    0.0, 2.0, 0.0,
-    0.0, 0.0, 0.0,
-    0.0, 0.0, 1.0, 4000.0, 8000.0, 0.0207,
-    0.0, 0.0,
+    1.0, 1.0, 1.0, 0.0, 1.0, 1.0,
+    1.0, 1.0, 1.0, 1.0, 0.0, 1.0,
+    1.0, 0.0061, -0.03, 1.3, 0.0, 1000.0,
+    0.02, 0.0, 2.0, 0.0, 0.0, 0.0,
 ))
 # The shipping vector, mirroring fittedPhysicalCalibration in
 # Source/DSP/FittedPhysicalData.h, for --start shipping: a stage that fits a
 # new mechanism around the calibration that ships rather than around the
 # neutral baseline.
 SHIPPING = np.asarray((
-    1.0, 1.0, 0.754677154, 0.0, 0.0,
-    0.749355465, 1.53, 0.52, 0.4883279315, 2.2130696796, 1.8, 1.10625,
-    -0.0706290118, 4.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011,
-    2187.76023, 0.00325, 0.0, 35.0, 0.0,
-    0.58203125, 0.85859375, 0.0,
-    0.1162109375e-3, 0.035, 0.002334375,
-    0.0, 0.0, 1.0, 4000.0, 8000.0, 0.0207,
-    0.0, 0.0,
+    1.0, 1.0, 0.754677154, 0.0, 0.749355465, 1.53,
+    0.52, 0.4883279315, 2.2130696796, 1.8, 1.10625, -0.0706290118,
+    4.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011, 2187.76023,
+    0.00325, 0.58203125, 0.85859375, 0.0001162109375, 0.035, 0.002334375,
 ))
-# The bridge-local direct path is deliberately fixed off. Its score direction
-# was flat (and slightly worse on validation), so fitting it only lets a
-# numerical solver choose an arbitrary raw-string mixture.
-# Values a listening verdict chose are not refit. The corpus disagrees with
-# them by construction - that disagreement is why they went to a listener - so
-# leaving them free would simply undo the verdict on the next run.
+# Values selected by listening remain fixed during every fitting stage.
 BY_EAR = (
     "residueTiltDbPerOctave",
-    # 4 by ear on 2026-09-25: the steel air mode at the bridge microphone,
-    # where the corpus rows other than the flat-top ones prefer 1.
     "lowBodyModeGain",
     "steel.fundamentalT60Scale",
     "steel.frequencyLossScale",
     "bridgeConductanceFloor",
-    # The axial resonators were switched off by ear on 2026-09-01 - their
-    # narrow high-Q onset reads as a pitched water drop at every pluck - and
-    # the corpus disagrees: it scored 6.7685 with them on against 6.8353 off.
-    # That is exactly the disagreement freezing exists for.
-    "longitudinalGain",
-    # Zeroed by ear on 2026-09-24 (a blind listener preferred high notes that
-    # keep their pitch) over the published 0.8 mm the corpus mildly prefers.
-    "polarisationEndCorrectionMetres",
-    # 1.8 (149 mm) by ear on 2026-09-25 over the fitted 0.888 (74 mm): the
-    # archtop rows it was fitted on were picked near the bridge, and the
-    # finger-played flat-top rows agree with the listener.
     "steel.pluckDistanceScale",
-    # Chosen by ear on 2026-09-28 (Docs/decisions.md, Set 14): steel at 70% of
-    # the way from the joint refit's optimum (C) toward the half-loss snap with
-    # its refitted pluck (B). A direction a listener chose between two fits,
-    # so no stage may refit it.
     "steel.apertureScale",
     "steel.transientScale",
     "steel.velocityBrightnessDepth",
@@ -157,37 +109,8 @@ BY_EAR = (
     "pickEdgeRadiusMetres",
     "steelWoundBendingLoss",
     "steelPlainBendingLoss",
-    # Rejected by ear on 2026-09-28 (Docs/decisions.md, Set 16: "the pick is
-    # TOO LOUD"): every contact noise and click level ships at zero, and no
-    # stage may bring one back. The mechanism stays in the code for a later
-    # candidate, which pins a level with --set NAME=VALUE (--set moves a
-    # frozen value; freezing only keeps the search off it).
-    "contactNoiseFinger",
-    "contactNoisePick",
-    "contactClickFinger",
-    "contactClickPick",
 )
-# With longitudinalGain frozen at zero the axial resonators are not summed at
-# all, so their Q multiplies nothing and any value renders the same audio.
-# With every contact noise and click level frozen at zero the noise is never
-# drawn, so its velocity law and corners shape nothing either.
-INERT = (
-    "longitudinalQ",
-    "contactNoiseVelocityExponent",
-    "contactNoiseCornerHz",
-    "pickContactNoiseCornerHz",
-)
-# Values that are a published measurement rather than a fit. The one it held,
-# the polarisation end correction, is now chosen by ear (BY_EAR above).
-MEASURED: tuple[str, ...] = (
-    # The contact's noise decays as the recordings' energy between partials
-    # does over 12-40 ms: 420 dB/s, the median over the bank's training
-    # rows in the registers where a nine-period window resolves that time
-    # (Docs/decisions.md, 2026-09-28). Left free, the search lengthens it to
-    # stand in for the recordings' room and hiss.
-    "contactNoiseDecaySeconds",
-)
-FROZEN = frozenset(NAMES.index(name) for name in BY_EAR + MEASURED + INERT)
+FROZEN = frozenset(NAMES.index(name) for name in BY_EAR)
 
 
 def _free(*names: str) -> np.ndarray:
@@ -198,67 +121,15 @@ def _free(*names: str) -> np.ndarray:
 GLOBAL = _free("bodyFrequencyScale", "bodyQScale", "bridgeMobilityScale",
                "residueTiltDbPerOctave", "apertureRegisterExponent",
                "lowBodyModeGain", "highLossCutoffScale", "bridgeConductanceFloor",
-               "bridgeConductanceCornerHz", "bridgeTailLengthMetres",
-               "longitudinalGain", "longitudinalQ",
-               "polarisationEndCorrectionMetres")
+               "bridgeConductanceCornerHz", "bridgeTailLengthMetres")
 STEEL = _free(*(name for name in NAMES if name.startswith("steel.")),
               "steelDisplacementScaleMetres", "steelFretT60Slope")
-# The plectrum's three values are read by the Pick technique only, so they
-# are fitted on the picked archtop rows rendered with it (--archtop-picking
-# pick) and by nothing else; the finger-plucked flat-top rows render with
-# Finger whatever this stage does. Those a listener chose (BY_EAR,
-# 2026-09-28) stay where they are.
-PICK = _free("pickReleaseVelocityShare", "pickReleaseVelocityExponent",
-             "pickTransientGain", "pickEdgeRadiusMetres")
-# Every value only the Pick technique reads: the plectrum's and its noise's.
-PICK_READ = np.asarray([NAMES.index(name) for name in (
-    "pickReleaseVelocityShare", "pickReleaseVelocityExponent",
-    "pickTransientGain", "pickEdgeRadiusMetres", "contactNoisePick",
-    "pickContactNoiseCornerHz", "contactClickPick")])
-# The steel excitation and the plectrum together, on the same picked rows:
-# the four steel values that shape the pluck's contact, level law and
-# brightness were fitted with Finger on recordings that were picked.
-PICK_EXCITATION = _free("steel.apertureScale", "steel.transientScale",
-                        "steel.pluckDistanceScale", "steel.velocityBrightnessDepth",
-                        "pickReleaseVelocityShare", "pickReleaseVelocityExponent",
-                        "pickTransientGain")
-# A string's bending loss and the excitation that has to supply the attack it
-# takes away, together (Docs/decisions.md, 2026-09-28). Taking the upper
-# partials' sustain to the recordings' decay removes the energy that stood
-# in for the attack's, so the loss is fitted with the values that set how
-# much upper-partial energy a pluck starts with: steel's contact width, burst
-# and velocity brightness under Finger and the plectrum's edge, release
-# velocity and burst under Pick (run with --joint-picking finger,pick, so one
-# steel loss serves both).
-STEEL_SNAP = _free("steel.apertureScale", "steel.transientScale",
-                   "steel.velocityBrightnessDepth", "pickReleaseVelocityShare",
-                   "pickReleaseVelocityExponent", "pickTransientGain",
-                   "pickEdgeRadiusMetres", "steelWoundBendingLoss",
-                   "steelPlainBendingLoss")
-# The same excitation with the loss held where --set puts it: a compass
-# search moves one coordinate at a time, so a loss that only pays once the
-# attack has been rebuilt around it is found by profiling the loss instead.
-STEEL_SNAP_PLUCK = _free("steel.apertureScale", "steel.transientScale",
-                         "steel.velocityBrightnessDepth", "pickReleaseVelocityShare",
-                         "pickReleaseVelocityExponent", "pickTransientGain",
-                         "pickEdgeRadiusMetres")
-# The contact-noise stages that generated Set 16's candidates (transient-*
-# and noise-*, Docs/decisions.md, 2026-09-28) went with its verdict: with
-# every noise and click level frozen at zero, the noise stages had nothing
-# left to search and the transient stages were the snap stages under another
-# name. A new noise candidate takes the levels and shapes out of BY_EAR and
-# INERT and restores those stages from Git history.
-
-# Every stage is scored on the whole training split, which holds only steel
-# rows: its name and the values it searches.
+# Pick-only stages had no searchable coordinates after the rejected impact
+# path was removed. Its surviving release parameters remain fixed by ear.
 STAGES = {
     "shared-body": GLOBAL,
     "steel-string": STEEL,
     "shared-body-refine": GLOBAL,
-    "pick-release": PICK,
-    "pick-excitation": PICK_EXCITATION,
-    "snap-steel": STEEL_SNAP,
-    "snap-steel-pluck": STEEL_SNAP_PLUCK,
 }
 DEFAULT_STAGES = ("shared-body", "steel-string", "shared-body-refine")
 
@@ -565,8 +436,7 @@ def main() -> int:
     parser.add_argument(
         "--archtop-picking", choices=("finger", "pick", "thumb"),
         help="render the picked archtop rows with this tool (the renderer's "
-             "own default otherwise); stages over the plectrum's values "
-             "(pick-release, pick-excitation) need pick",
+             "own default otherwise)",
     )
     parser.add_argument(
         "--joint-picking",
@@ -585,10 +455,6 @@ def main() -> int:
     unknown = [name for name in stage_names if name not in STAGES]
     if unknown or not stage_names:
         parser.error(f"unknown stages: {', '.join(unknown) or 'none given'}")
-    # The plectrum's values are read by Pick only, so a stage over them
-    # rendered with any other tool would search inert coordinates.
-    needs_pick = [name for name in stage_names
-                  if np.intersect1d(STAGES[name], PICK_READ).size > 0]
     renderer = arguments.renderer.resolve()
     output = arguments.output.resolve()
     if not renderer.is_file():
@@ -692,13 +558,8 @@ def main() -> int:
         if not np.all(np.isfinite(candidate)):
             parser.error(f"{result_path.name} has a non-finite calibration")
         values = np.clip(candidate, LOWER, UPPER)
-        values[4] = 0.0
     elif output.exists():
         parser.error("output already exists; use a new path or --resume")
-    if needs_pick and archtop_picking != "pick" and "pick" not in joint:
-        parser.error(f"{', '.join(needs_pick)}: a stage over the plectrum's "
-                     "values needs --archtop-picking pick (or pick among "
-                     "--joint-picking)")
     if not joint:
         RENDER_OPTIONS[:] = (["--archtop-picking", archtop_picking]
                              if archtop_picking is not None else [])

@@ -55,7 +55,6 @@ struct AcustraEngineTestAccess
             if (voice.tailLoop.delay.size() != expected
                 || voice.tailParallelLoop.delay.size() != expected) return false;
             for (const auto* travel : { &voice.contactTravel, &voice.tailContactTravel,
-                    &voice.contactNoiseTravel, &voice.tailContactNoiseTravel,
                     &voice.legatoContactTravel, &voice.tailLegatoContactTravel,
                     &voice.releaseNoiseTravel })
                 if (travel->history.size() != expected) return false;

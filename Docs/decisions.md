@@ -5,6 +5,21 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-09 — remove unavailable feature code and archived experiments
+
+The user requested a project cleanup and explicitly chose removal of archived
+experimental source too. Remove the shipping-zero axial, direct-radiation,
+impact, contact-noise/click and end-correction paths, their inactive calibration
+fields and obsolete tool interfaces. Remove archived prototypes and patches,
+while preserving current scientific references, saved-session compatibility,
+historical reports and released packages.
+
+The accepted microphone, Classic attack and gentle-warming sustain choices
+remain. Matched native renders are byte-identical across 280 construction and
+control cases. This establishes sound preservation within that test coverage;
+it adds no listening or CPU-speed claim. See
+[the cleanup record](project-cleanup-2026-10-09.md) for scope and validation.
+
 ## 2026-10-09 — reduce microphone boom and adopt the selected Classic attack and sustain
 
 Original Auditorium's close/mono contour emphasized the played A2 fundamental,

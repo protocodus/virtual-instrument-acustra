@@ -116,9 +116,7 @@ struct EngineParameters
     float stringAge { 0.15f };       // 0 fresh, 1 worn/dead
     float pluckPosition { 0.28f };   // 0 bridgeward, 1 neckward
     float touch { 0.58f };           // 0 soft/dark, 1 hard/bright
-    // The body's radiation against the direct sound at the contact (the
-    // tool's click; the fitted bridge-local share ships at 0), so mostly a
-    // level on the body.
+    // Scales measured body radiation: 0.68 + 0.72 * bodyAmount.
     float bodyAmount { 0.82f };
     // Scales the stereo microphones' difference: 0 mono, 1 as measured.
     float stereoWidth { 0.62f };
@@ -393,9 +391,6 @@ public:
     [[nodiscard]] float getLastBridgeReactionForce() const noexcept;
     [[nodiscard]] float getLastBridgeBodyForce() const noexcept;
     [[nodiscard]] float getLastBridgeTailForce() const noexcept;
-    // The played strings' axial wave, observed separately from the two-way
-    // junction because its current radiation surrogate remains one-way.
-    [[nodiscard]] float getLastLongitudinalForce() const noexcept;
     // The under-saddle piezo's voltage at the jack, where it enters the
     // preamp: the element's charge on its own capacitance, the cable's and
     // the preamp's input network (renderPiezo). Read by
@@ -515,10 +510,6 @@ private:
         static constexpr std::array<float, 6> stringWeights {{
             0.912446483f, 1.04762873f, 1.10970464f,
             0.966512336f, 1.07203114f, 0.891676665f }};
-        // The axial force reaches the saddle through the strings' break
-        // angle behind it: sin 25 degrees (chosen, a typical 20-30 degrees).
-        // Zero while longitudinalGain ships at 0.
-        static constexpr float axialShare = 0.422618262f;
         // 2. The force in newtons: an engine force unit is a string's wave
         // impedance times one displacement unit per 48 kHz sample
         // (FixedDerivative differences over the 48 kHz period at every
@@ -1017,7 +1008,6 @@ private:
         float contactPeriodSamples { 0.0f };
         float frequency { 0.0f };
         float lossDesignFrequency { 0.0f };
-        float linearMass { 0.0f };
         float tension { 0.0f };
         float tensionSemitones { 0.0f };
         float bentTension { 0.0f };
@@ -1162,49 +1152,6 @@ private:
         std::uint32_t excitationCoefficientRate { 0xffffffffu };
         float excitationCoefficient { 0.0f };
         float excitationReleaseCoefficient { 0.0f };
-        // The Pick technique's contact transient is an impact and enters
-        // broadband, bypassing the Finger burst's colour filter.
-        bool excitationWhite { false };
-        // renderContactNoise's state for the pluck in progress: the drive's
-        // amplitude in the loop's per-sample wave units and its per-sample
-        // decay; the coefficients of the three one-pole stages that shape
-        // the launched displacement (two at the contact's corner, one at the
-        // fundamental), their states, and the gain that makes the force they
-        // imply unit RMS; the samples left to run; the shares of
-        // the stroke's direction normal and parallel to the top; its own
-        // generator, so that switching the noise on leaves every other draw
-        // as it was; and its travel from the contact point to the bridge,
-        // direct and by the nut, with the retained tail's copy at a repluck
-        // (those buffers, and the click's flight line, end the voice).
-        float contactNoiseAmplitude { 0.0f };
-        float contactNoiseDecay { 0.0f };
-        float contactNoiseCoefficient { 0.0f };
-        float contactNoiseStage1 { 0.0f };
-        float contactNoiseStage2 { 0.0f };
-        float contactNoiseStage3 { 0.0f };
-        float contactNoiseLowCoefficient { 0.0f };
-        // Its string-borne and airborne levels for this pluck, the last
-        // launched displacement and force at unit level, the click's
-        // radiated term and its per-reference-sample scale.
-        float contactNoiseString { 0.0f };
-        float contactNoiseClick { 0.0f };
-        float contactNoiseLaunched { 0.0f };
-        float contactNoiseForce { 0.0f };
-        float contactNoiseAir { 0.0f };
-        float contactNoiseAirScale { 1.0f };
-        // The click's radiation corner (a one-pole low-pass on dF/dt) and
-        // its flight to the microphone, in whole samples.
-        float contactNoiseAirCoefficient { 1.0f };
-        float contactNoiseAirLowpass { 0.0f };
-        int contactNoiseAirDelay { 1 };
-        int contactNoiseAirWrite { 0 };
-        float contactNoiseGain { 0.0f };
-        int contactNoiseSamples { 0 };
-        float contactNoiseNormal { 0.0f };
-        float contactNoiseParallel { 0.0f };
-        float tailContactNoiseNormal { 0.0f };
-        float tailContactNoiseParallel { 0.0f };
-        std::uint32_t contactNoiseState { 1 };
         ContactTravel contactTravel {};
         float contactPeriodSamples { 0.0f };
         // Where each plane's release shape put its kink, as a share of the
@@ -1233,7 +1180,7 @@ private:
         float tensionNewtons { 0.0f };
         // Fretting point after a conventional/manager slide. A lateral
         // member bend keeps it fixed. The attack's extension uses the same
-        // geometry as dispersion and the string's axial modes.
+        // geometry as dispersion.
         float speakingLengthMetres { 0.648f };
         // Fractional fret position used by the fitted fret-decay law. Slides
         // remain within its measured/playable fret range; a tension bend
@@ -1250,19 +1197,6 @@ private:
         float attackPitchDecay { 1.0f };
         float frozenMemberPitchBendSemitones { 0.0f };
         float attackSlopeEnergy { 0.0f };
-        // Transverse motion stretches the string, and the tension it adds is
-        // carried by the string's own longitudinal modes. Fixed-fixed axial
-        // modes lie at integer multiples of c_long/(2L); the first two modes
-        // with nonzero projection under an integrated extension drive retain
-        // the measured-band cost of a compact real-time model while avoiding
-        // the unphysical single-pole truncation.
-        static constexpr int longitudinalModeCount = 2;
-        std::array<float, longitudinalModeCount> longitudinalY1 {};
-        std::array<float, longitudinalModeCount> longitudinalY2 {};
-        std::array<float, longitudinalModeCount> longitudinalA1 {};
-        std::array<float, longitudinalModeCount> longitudinalA2 {};
-        std::array<float, longitudinalModeCount> longitudinalB0 {};
-        float longitudinalDrive { 0.0f };
         float observedSlopeEnergy { 0.0f };
         // finishVoice's follower coefficient for the normal loop's current
         // delay: an expf per sample until the delay has slewed to its target.
@@ -1351,12 +1285,6 @@ private:
         // The engine's sample clock when this note was fretted; a chord
         // still forming is the run of notes whose onsets are close together.
         std::uint64_t onsetSample { 0 };
-        // The contact noise's buffers (renderContactNoise), last: at zero
-        // levels nothing reads them, and between the per-sample fields they
-        // would put 66 KB between the excitation's and the contact's.
-        std::array<float, ACUSTRA_EXTENDED_SAMPLE_RATES ? 2048 : 512> contactNoiseAirLine {};
-        ContactTravel contactNoiseTravel {};
-        ContactTravel tailContactNoiseTravel {};
         // The key-up's sound (startReleaseNoise): the release velocity the
         // key came up with (negative when not sent), the largest bridge force
         // since the pluck, and the release noise's generator state - the
@@ -1571,7 +1499,7 @@ private:
     // normal loop was tuned to alone (see AcustraEngine.cpp).
     [[nodiscard]] float coupledPolarisationDetune(
         const PortMobility& port, float impedance, float bentImpedance,
-        float frequency, float parallelExtraDelay, float normalGain,
+        float frequency, float normalGain,
         float parallelGain) const noexcept;
     // The saddle crown's height over the measured body's rocking axis, over
     // the normalized rocking coordinate's half-spacing: what projects a
@@ -1734,19 +1662,9 @@ private:
     };
     [[nodiscard]] HarmonicChoice chooseHarmonic(int midiNote) const noexcept;
     float renderExcitation(Voice& voice) noexcept;
-    void initialiseContactNoise(Voice& voice, float velocity, float position,
-                                float contactDistance, float releasedAmplitude,
-                                float contactWidthRatio) noexcept;
-    float renderContactNoise(Voice& voice) noexcept;
-    // The contact noise's per-sample work, kept out of the voice loop
-    // (process): only a voice whose noise or its travel is running calls it.
-    void addContactNoise(Voice& voice, float& verticalIncident,
-                         float& horizontalIncident) noexcept;
-    void addTailContactNoise(Voice& voice, float& tailIncident,
-                             float& tailParallelIncident) noexcept;
     // The key-up's sound (EngineParameters::releaseNoise): started by
     // beginRelease and muteVacatedString, rendered and launched from the
-    // damping contact like the contact noise.
+    // damping contact.
     void startReleaseNoise(Voice& voice, int stringIndex,
                            bool fretSide) noexcept;
     float renderReleaseNoise(Voice& voice) noexcept;
@@ -1756,9 +1674,7 @@ private:
                      float horizontalIncident, float excitation,
                      float tailIncident, float tailParallelIncident,
                      float bridgeDisplacement,
-                     float bridgeVelocity, float horizontalBridgeDisplacement,
-                     float& directLeft,
-                     float& directRight, float& longitudinalForce) noexcept;
+                     float bridgeVelocity, float horizontalBridgeDisplacement) noexcept;
     BodyOutput renderBody(float bridgeInput, float bodyMoment) noexcept;
     float renderPiezo(float force) noexcept;
     void resetPiezo() noexcept;
@@ -1910,7 +1826,6 @@ private:
     float lastBridgeReactionForce_ { 0.0f };
     float lastBridgeBodyForce_ { 0.0f };
     float lastBridgeTailForce_ { 0.0f };
-    float lastLongitudinalForce_ { 0.0f };
     float lastBridgePower_ { 0.0f };
     float lastBridgeBodyPower_ { 0.0f };
     float lastBridgeTailPower_ { 0.0f };
@@ -2118,13 +2033,6 @@ private:
     // corpus's absolute-ms one, is what a single per-stroke speed draw
     // should match. std of h*U(-1,1) is h/sqrt(3), so h = 0.3647*sqrt(3).
     static constexpr float strumSpeedJitterHalfWidth = 0.6317f;
-    // Each pluck's contact noise may draw its own level within this many dB
-    // either way (initialiseContactNoise). It draws none: across the picked
-    // archtop's three takes of a note the recordings' 0-12 ms energy between
-    // partials ranges a median 1.6 dB (pooled SD 1.2 dB), and a noise of its
-    // own on every pluck already ranges a median 1.1-2.9 dB over three
-    // repeats of a note at MIDI 112 and 16 (Docs/decisions.md, 2026-09-28).
-    static constexpr float contactNoiseTakeSpreadDb = 0.0f;
 };
 
 } // namespace acustra

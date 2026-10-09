@@ -356,25 +356,6 @@ struct AcustraEngineTestAccess
         double decay;
     };
 
-    static std::array<double, 2> longitudinalFrequencies(int midiNote)
-    {
-        auto engineOwner = std::make_unique<AcustraEngine>();
-        auto& engine = *engineOwner;
-        engine.prepare(48000.0, 64);
-        const int stringIndex = engine.chooseString(midiNote);
-        auto& voice = engine.voices_[static_cast<std::size_t>(stringIndex)];
-        engine.configureVoice(voice, stringIndex, midiNote, true);
-        std::array<double, 2> result {};
-        for (std::size_t mode = 0; mode < result.size(); ++mode)
-        {
-            const double radius = std::sqrt(-voice.longitudinalA2[mode]);
-            result[mode] = std::acos(std::clamp(static_cast<double>(
-                voice.longitudinalA1[mode]) / (2.0 * radius), -1.0, 1.0))
-                * 48000.0 / (2.0 * std::numbers::pi);
-        }
-        return result;
-    }
-
     struct BendLifecycleSnapshot
     {
         double heldDelay;
@@ -2258,7 +2239,6 @@ void testPhysicalPluckOnsetIsBounded()
 void testBridgeObservableIsSampleRateNormalised()
 {
     auto bodyOnlyCalibration = acustra::fittedPhysicalCalibration;
-    bodyOnlyCalibration.directGain = 0.0f;
     for (const bool anchoredTouch : { false, true })
     {
         acustra::EngineParameters parameters;
@@ -2876,9 +2856,8 @@ void testPhysicalSustainSettlesNearRequestedPitch()
         // floor), so this is the coupling and not a compensation error.
         // The bound is 1.6 rather than 1.5 because the whole engine moved
         // +0.31 cents when the radiating polarisation stopped carrying the
-        // old authored split's 0.32-cent detune of itself (see
-        // polarisationEndCorrectionMetres). B3 is the only note near the
-        // bound and is what sets it: at the shipping calibration the six
+        // old authored split's 0.32-cent detune of itself. B3 is the only
+        // note near the bound and is what sets it: at the shipping calibration the six
         // read +0.432 (MIDI 40), +0.274 (45), +0.322 (52), +1.515 (59),
         // +0.087 (64) and -0.214 (71) cents, so the other five sit inside
         // half a cent and B3 has 0.08 cents of headroom. That coupling has
@@ -4493,120 +4472,87 @@ void testHostileParametersAreSanitised()
 
 void testHostilePhysicalCalibrationIsSanitised()
 {
-    const auto uniformMaterial = [] (float value)
+    const auto uniformCalibration = [] (float value)
     {
-        return acustra::MaterialCalibration {
-            value, value, value, value, value, value, value
-        };
+        acustra::PhysicalCalibration result;
+        result.bodyFrequencyScale = value;
+        result.bodyQScale = value;
+        result.bridgeMobilityScale = value;
+        result.residueTiltDbPerOctave = value;
+        result.steel.stiffnessScale = value;
+        result.steel.fundamentalT60Scale = value;
+        result.steel.frequencyLossScale = value;
+        result.steel.apertureScale = value;
+        result.steel.transientScale = value;
+        result.steel.pluckDistanceScale = value;
+        result.steel.velocityBrightnessDepth = value;
+        result.apertureRegisterExponent = value;
+        result.lowBodyModeGain = value;
+        result.steelDisplacementScaleMetres = value;
+        result.steelFretT60Slope = value;
+        result.highLossCutoffScale = value;
+        result.bridgeConductanceFloor = value;
+        result.bridgeConductanceCornerHz = value;
+        result.bridgeTailLengthMetres = value;
+        result.pickReleaseVelocityShare = value;
+        result.pickReleaseVelocityExponent = value;
+        result.pickEdgeRadiusMetres = value;
+        result.steelWoundBendingLoss = value;
+        result.steelPlainBendingLoss = value;
+        return result;
     };
-    const auto values = [] (const acustra::MaterialCalibration& material)
+    const auto values = [] (const acustra::PhysicalCalibration& calibration)
     {
         return std::array {
-            material.stiffnessScale, material.fundamentalT60Scale,
-            material.frequencyLossScale, material.apertureScale,
-            material.transientScale, material.pluckDistanceScale,
-            material.velocityBrightnessDepth
+            calibration.bodyFrequencyScale,
+            calibration.bodyQScale,
+            calibration.bridgeMobilityScale,
+            calibration.residueTiltDbPerOctave,
+            calibration.steel.stiffnessScale,
+            calibration.steel.fundamentalT60Scale,
+            calibration.steel.frequencyLossScale,
+            calibration.steel.apertureScale,
+            calibration.steel.transientScale,
+            calibration.steel.pluckDistanceScale,
+            calibration.steel.velocityBrightnessDepth,
+            calibration.apertureRegisterExponent,
+            calibration.lowBodyModeGain,
+            calibration.steelDisplacementScaleMetres,
+            calibration.steelFretT60Slope,
+            calibration.highLossCutoffScale,
+            calibration.bridgeConductanceFloor,
+            calibration.bridgeConductanceCornerHz,
+            calibration.bridgeTailLengthMetres,
+            calibration.pickReleaseVelocityShare,
+            calibration.pickReleaseVelocityExponent,
+            calibration.pickEdgeRadiusMetres,
+            calibration.steelWoundBendingLoss,
+            calibration.steelPlainBendingLoss
         };
-    };
-    const acustra::PhysicalCalibration lowSource {
-        -100.0f, -100.0f, -100.0f, -100.0f, -100.0f,
-        uniformMaterial(-100.0f), -100.0f, -100.0f,
-        -100.0f, -100.0f, -100.0f, -100.0f, -100.0f, -100.0f,
-        -100.0f, -100.0f, -100.0f, -100.0f, -100.0f, -100.0f
-    };
-    const acustra::PhysicalCalibration highSource {
-        100.0f, 100.0f, 100.0f, 100.0f, 100.0f,
-        uniformMaterial(100.0f), 100.0f, 100.0f,
-        100.0f, 100.0f, 100.0f, 100.0f, 100000.0f, 100.0f,
-        100.0f, 100000.0f, 100.0f, 100.0f, 100.0f, 100.0f
     };
     const auto sanitised = [] (acustra::PhysicalCalibration source)
     {
         auto engineOwner = std::make_unique<acustra::AcustraEngine>();
-        auto& engine = *engineOwner;
-        engine.setPhysicalCalibration(source);
-        return acustra::AcustraEngineTestAccess::calibration(engine);
+        engineOwner->setPhysicalCalibration(source);
+        return acustra::AcustraEngineTestAccess::calibration(*engineOwner);
     };
-    const auto low = sanitised(lowSource);
-    const auto high = sanitised(highSource);
-    expect(std::array { low.bodyFrequencyScale, low.bodyQScale,
-                        low.bridgeMobilityScale, low.residueTiltDbPerOctave,
-                        low.directGain, low.apertureRegisterExponent,
-                        low.lowBodyModeGain,
-                        low.steelDisplacementScaleMetres,
-                        low.steelFretT60Slope, low.highLossCutoffScale,
-                        low.bridgeConductanceFloor,
-                        low.bridgeConductanceCornerHz,
-                        low.bridgeTailLengthMetres,
-                        low.polarisationEndCorrectionMetres,
-                        low.pickReleaseVelocityShare,
-                        low.pickReleaseVelocityExponent,
-                        low.pickTransientGain }
-               == std::array { 0.96f, 0.05f, 0.25f, -6.0f, 0.0f, -1.0f,
-                               0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f,
-                               0.00325f, 0.0f, 0.0f, 0.0f, 0.0f },
-           "low physical calibration bounds were not enforced");
-    expect(std::array { high.bodyFrequencyScale, high.bodyQScale,
-                        high.bridgeMobilityScale, high.residueTiltDbPerOctave,
-                        high.directGain, high.apertureRegisterExponent,
-                        high.lowBodyModeGain,
-                        high.steelDisplacementScaleMetres,
-                        high.steelFretT60Slope, high.highLossCutoffScale,
-                        high.bridgeConductanceFloor,
-                        high.bridgeConductanceCornerHz,
-                        high.bridgeTailLengthMetres,
-                        high.polarisationEndCorrectionMetres,
-                        high.pickReleaseVelocityShare,
-                        high.pickReleaseVelocityExponent,
-                        high.pickTransientGain }
-               == std::array { 1.04f, 1.8f, 4.0f, 6.0f, 0.12f, 1.0f,
-                               32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f,
-                               0.060f, 0.82e-3f, 2.0f, 4.0f, 8.0f },
-           "high physical calibration bounds were not enforced");
-    const std::array materialLow {
-        0.25f, 0.4f, 0.35f, 0.35f, 0.0f, 0.7f, 0.0f
-    };
-    const std::array materialHigh {
-        4.0f, 2.0f, 3.0f, 2.5f, 3.0f, 3.0f, 1.2f
-    };
-    expect(values(low.steel) == materialLow,
-           "low material calibration bounds were not enforced");
-    expect(values(high.steel) == materialHigh,
-           "high material calibration bounds were not enforced");
-
-    const float nan = std::numeric_limits<float>::quiet_NaN();
-    const acustra::PhysicalCalibration poisoned {
-        nan, nan, nan, nan, nan, uniformMaterial(nan),
-        nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan
-    };
-    const auto fallback = sanitised(poisoned);
-    expect(std::array { fallback.bodyFrequencyScale, fallback.bodyQScale,
-                        fallback.bridgeMobilityScale,
-                        fallback.residueTiltDbPerOctave, fallback.directGain,
-                        fallback.apertureRegisterExponent,
-                        fallback.lowBodyModeGain,
-                        fallback.steelDisplacementScaleMetres,
-                        fallback.steelFretT60Slope,
-                        fallback.highLossCutoffScale,
-                        fallback.bridgeConductanceFloor,
-                        fallback.bridgeConductanceCornerHz,
-                        fallback.polarisationEndCorrectionMetres }
-               == std::array {
-                    acustra::fittedPhysicalCalibration.bodyFrequencyScale,
-                    acustra::fittedPhysicalCalibration.bodyQScale,
-                    acustra::fittedPhysicalCalibration.bridgeMobilityScale,
-                    acustra::fittedPhysicalCalibration.residueTiltDbPerOctave,
-                    acustra::fittedPhysicalCalibration.directGain,
-                    acustra::fittedPhysicalCalibration.apertureRegisterExponent,
-                    acustra::fittedPhysicalCalibration.lowBodyModeGain,
-                    acustra::fittedPhysicalCalibration.steelDisplacementScaleMetres,
-                    acustra::fittedPhysicalCalibration.steelFretT60Slope,
-                    acustra::fittedPhysicalCalibration.highLossCutoffScale,
-                    acustra::fittedPhysicalCalibration.bridgeConductanceFloor,
-                    acustra::fittedPhysicalCalibration.bridgeConductanceCornerHz,
-                    acustra::fittedPhysicalCalibration.polarisationEndCorrectionMetres }
-               && values(fallback.steel)
-                    == values(acustra::fittedPhysicalCalibration.steel),
+    const auto low = sanitised(uniformCalibration(-100.0f));
+    const auto high = sanitised(uniformCalibration(100000.0f));
+    expect(values(low) == std::array {
+        0.96f, 0.05f, 0.25f, -6.0f, 0.25f, 0.4f,
+        0.35f, 0.35f, 0.0f, 0.7f, 0.0f, -1.0f,
+        0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f,
+        0.00325f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    }, "low physical calibration bounds were not enforced");
+    expect(values(high) == std::array {
+        1.04f, 1.8f, 4.0f, 6.0f, 4.0f, 2.0f,
+        3.0f, 2.5f, 3.0f, 3.0f, 1.2f, 1.0f,
+        32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f,
+        0.060f, 2.0f, 4.0f, 1.0e-3f, 2.0f, 2.0f,
+    }, "high physical calibration bounds were not enforced");
+    const auto fallback = sanitised(uniformCalibration(
+        std::numeric_limits<float>::quiet_NaN()));
+    expect(values(fallback) == values(acustra::fittedPhysicalCalibration),
            "non-finite physical calibration did not use fitted defaults");
 
     auto resetProbeOwner = std::make_unique<acustra::AcustraEngine>();
@@ -5050,20 +4996,11 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
             52, PickingTechnique::Thumb);
         expect(pick.peakDisplacement > thumb.peakDisplacement,
                "pick/thumb did not reach the released shape");
-        // The pick's contact transient follows its own fitted law, an
-        // impact growing with the tip's speed (FittedPhysicalData.h), not
-        // the Finger burst the thumb shares. A zero gain is the Finger
-        // burst law itself.
-        const auto& calibration = acustra::fittedPhysicalCalibration;
-        const auto& physical = calibration.steel;
-        const double expectedPick = calibration.pickTransientGain > 0.0f
-            ? calibration.pickTransientGain * 0.24 * 0.017 * physical.transientScale
-                * std::pow(velocity,
-                           0.5 * calibration.pickReleaseVelocityExponent)
-            : finger.noiseEnvelope;
+        // Picking styles share the existing contact-burst amplitude law.
+        const double expectedPick = finger.noiseEnvelope;
         expect(std::abs(pick.noiseEnvelope - expectedPick)
                    <= 1.0e-5 * std::max(expectedPick, 1.0e-3),
-               "the pick's contact transient did not follow its fitted speed law");
+               "the pick's contact burst did not follow the shared amplitude law");
         expect(pick.touch == finger.touch && finger.touch == thumb.touch
                    && thumb.noiseEnvelope == finger.noiseEnvelope,
                "picking styles changed the shared touch/noise amplitude law");
@@ -5267,19 +5204,7 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
                     / fixedHigh.peakDisplacement,
            "velocity response did not change the pluck-amplitude exponent");
 
-    acustra::EngineParameters quiet;
-    quiet.outputGain = 0.10f;
-    quiet.bodyAmount = 0.0f;
-    auto noDirect = acustra::fittedPhysicalCalibration;
-    noDirect.directGain = 0.0f;
-    auto strongDirect = acustra::fittedPhysicalCalibration;
-    strongDirect.directGain = 0.12f;
-    const auto bodyOnly = renderCalibrated(
-        quiet, noDirect, 52, 0.8f, 0.18);
-    const auto withDirect = renderCalibrated(
-        quiet, strongDirect, 52, 0.8f, 0.18);
-    expect(normalisedDifference(bodyOnly, withDirect) > 1.0e-4,
-           "direct-gain calibration did not change bridge-local output");
+
 }
 
 void testHighLossCutoffScaleChangesOnlyUpperLoss()
@@ -5480,173 +5405,6 @@ void testBendingLossFollowsItsLaw()
 // 44.1 and 96 kHz is the 48 kHz one, it grows with the stroke's velocity, its
 // spectrum moves up with it, and a thumb's sits under a finger's. The
 // string-borne force is heard through the string and stays finite.
-void testContactNoiseFollowsItsLaw()
-{
-    auto off = acustra::fittedPhysicalCalibration;
-    off.contactNoiseFinger = off.contactNoisePick = 0.0f;
-    off.contactClickFinger = off.contactClickPick = 0.0f;
-    auto offOther = off;
-    offOther.contactNoiseVelocityExponent = 2.5f;
-    offOther.contactNoiseCornerHz = 900.0f;
-    offOther.pickContactNoiseCornerHz = 900.0f;
-    offOther.contactNoiseDecaySeconds = 0.002f;
-    const acustra::EngineParameters steel;
-    const auto quiet = renderCalibrated(steel, off, 57, 0.85f, 1.0);
-    const auto other = renderCalibrated(steel, offOther, 57, 0.85f, 1.0);
-    expect(quiet.left == other.left && quiet.right == other.right,
-           "the contact noise's shape was heard at zero levels");
-
-    const auto difference = [] (const Audio& a, const Audio& b)
-    {
-        Audio result { std::vector<float>(a.left.size()),
-                       std::vector<float>(a.right.size()) };
-        for (std::size_t i = 0; i < a.left.size(); ++i)
-        {
-            result.left[i] = a.left[i] - b.left[i];
-            result.right[i] = a.right[i] - b.right[i];
-        }
-        return result;
-    };
-    const auto rms = [] (const Audio& audio, double rate, double begin, double end)
-    {
-        const auto first = static_cast<std::size_t>(begin * rate);
-        const auto last = std::min(audio.left.size(),
-                                   static_cast<std::size_t>(end * rate));
-        double sum = 0.0;
-        for (std::size_t i = first; i < last; ++i)
-            sum += 0.5 * (double(audio.left[i]) * audio.left[i]
-                          + double(audio.right[i]) * audio.right[i]);
-        return last > first ? std::sqrt(sum / double(last - first)) : 0.0;
-    };
-    const auto centroid = [] (const Audio& audio, double rate)
-    {
-        // Power-weighted mean frequency of the first 60 ms, by DFT bins.
-        const int count = static_cast<int>(0.060 * rate);
-        double weighted = 0.0;
-        double total = 0.0;
-        for (int bin = 1; bin < count / 2; bin += 2)
-        {
-            const double angle = -2.0 * std::numbers::pi * bin / count;
-            double real = 0.0;
-            double imaginary = 0.0;
-            for (int n = 0; n < count; ++n)
-            {
-                const double value = 0.5 * (audio.left[static_cast<std::size_t>(n)]
-                    + audio.right[static_cast<std::size_t>(n)]);
-                real += value * std::cos(angle * n);
-                imaginary += value * std::sin(angle * n);
-            }
-            const double power = real * real + imaginary * imaginary;
-            weighted += power * bin * rate / count;
-            total += power;
-        }
-        return total > 0.0 ? weighted / total : 0.0;
-    };
-
-    auto click = off;
-    click.contactClickFinger = 4.0f;
-    auto clickTwice = off;
-    clickTwice.contactClickFinger = 8.0f;
-    const auto withClick = renderCalibrated(steel, click, 57, 0.85f, 1.0);
-    const auto withTwice = renderCalibrated(steel, clickTwice, 57, 0.85f, 1.0);
-    const auto once = difference(withClick, quiet);
-    const auto twice = difference(withTwice, quiet);
-    const double onceRms = rms(once, sampleRate, 0.0, 0.1);
-    const double twiceRms = rms(twice, sampleRate, 0.0, 0.1);
-    expect(onceRms > 0.0, "a finger's click was not heard");
-    expect(std::abs(twiceRms / std::max(onceRms, 1.0e-30) - 2.0) < 1.0e-3,
-           "the click was not linear in its level");
-    // 12 x 20.7 ms and the filters' ring-down: silent by 0.5 s, exactly.
-    bool silent = true;
-    for (std::size_t i = static_cast<std::size_t>(0.5 * sampleRate);
-         i < once.left.size(); ++i)
-        silent = silent && once.left[i] == 0.0f && once.right[i] == 0.0f;
-    expect(silent, "the click went on after its noise had ended");
-
-    for (const double rate : { 44100.0, 96000.0 })
-    {
-        const auto base = renderAtRate(steel, 57, 0.85f, 0.2, rate, blockSize,
-                                       true, off);
-        const auto clicked = renderAtRate(steel, 57, 0.85f, 0.2, rate, blockSize,
-                                          true, click);
-        const auto clickAtRate = difference(clicked, base);
-        const auto base48 = renderAtRate(steel, 57, 0.85f, 0.2, sampleRate,
-                                         blockSize, true, off);
-        const auto clicked48 = renderAtRate(steel, 57, 0.85f, 0.2, sampleRate,
-                                            blockSize, true, click);
-        const double change = 20.0 * std::log10(
-            rms(clickAtRate, rate, 0.0, 0.1)
-            / rms(difference(clicked48, base48), sampleRate, 0.0, 0.1));
-        expect(std::abs(change) < 1.5,
-               "the click's level moved " + std::to_string(change)
-                   + " dB at " + std::to_string(static_cast<int>(rate)) + " Hz");
-    }
-
-    const auto clickAt = [&] (float velocity, acustra::PickingTechnique tool)
-    {
-        auto parameters = steel;
-        parameters.picking = tool;
-        auto calibration = click;
-        calibration.contactClickPick = 4.0f;
-        return difference(renderCalibrated(parameters, calibration, 57,
-                                           velocity, 0.2),
-                          renderCalibrated(parameters, off, 57, velocity, 0.2));
-    };
-    const auto soft = clickAt(0.25f, acustra::PickingTechnique::Finger);
-    const auto loud = clickAt(0.9f, acustra::PickingTechnique::Finger);
-    const auto thumb = clickAt(0.9f, acustra::PickingTechnique::Thumb);
-    expect(rms(loud, sampleRate, 0.0, 0.1) > 2.0 * rms(soft, sampleRate, 0.0, 0.1),
-           "a harder stroke did not click louder");
-    expect(centroid(loud, sampleRate) > 1.5 * centroid(soft, sampleRate),
-           "a harder stroke's click did not move up in frequency");
-    expect(centroid(thumb, sampleRate) < 0.8 * centroid(loud, sampleRate),
-           "a thumb's click was not darker than a finger's");
-
-    auto string = off;
-    string.contactNoiseFinger = 0.05f;
-    const auto withNoise = renderCalibrated(steel, string, 57, 0.85f, 1.0);
-    expect(withNoise.left != quiet.left, "the string-borne noise was not heard");
-    for (std::size_t i = 0; i < withNoise.left.size(); ++i)
-        expect(std::isfinite(withNoise.left[i]) && std::isfinite(withNoise.right[i]),
-               "a string-borne contact noise render was not finite");
-    const double early = tailBandRms(withNoise, sampleRate, 0.0, 0.04, 2000.0, 12000.0);
-    const double earlyOff = tailBandRms(quiet, sampleRate, 0.0, 0.04, 2000.0, 12000.0);
-    expect(early > earlyOff, "the string-borne noise added no early upper band");
-
-    // A repluck while the noise is still in flight hands it to the retained
-    // tail, as the contact transport's waves are, and nothing blows up.
-    {
-        auto both = string;
-        both.contactClickPick = 8.0f;
-        both.contactNoisePick = 0.2f;
-        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
-        auto& engine = *engineOwner;
-        auto parameters = steel;
-        parameters.picking = acustra::PickingTechnique::Pick;
-        engine.setParameters(parameters);
-        engine.setPhysicalCalibration(both);
-        engine.prepare(sampleRate, blockSize);
-        std::vector<float> left(static_cast<std::size_t>(blockSize));
-        std::vector<float> right(static_cast<std::size_t>(blockSize));
-        bool finite = true;
-        double peak = 0.0;
-        for (int block = 0; block < 400; ++block)
-        {
-            if (block % 7 == 0)
-                engine.noteOn(52, 0.3f + 0.1f * static_cast<float>(block % 5));
-            engine.process(left.data(), right.data(), blockSize);
-            for (int i = 0; i < blockSize; ++i)
-            {
-                finite = finite && std::isfinite(left[static_cast<std::size_t>(i)])
-                    && std::isfinite(right[static_cast<std::size_t>(i)]);
-                peak = std::max(peak, static_cast<double>(std::abs(left[static_cast<std::size_t>(i)])));
-            }
-        }
-        expect(finite && peak < 1.0,
-               "replucking through a contact noise in flight was not finite and bounded");
-    }
-}
-
 void testPlateConductanceFloorDampsOnlyTheUpperBand()
 {
     // The plate conductance floor restores the flat conductance a real
@@ -6651,82 +6409,6 @@ void testSwitchingTuningOrModelUnderAChordDoesNotClick()
 }
 
 
-
-void testLongitudinalModesGrowWithVelocity()
-{
-    // Transverse motion stretches the string, and the tension it adds is a
-    // longitudinal wave at the string's own axial resonances. Its drive is a
-    // squared slope, so what it puts into the band is the products of the
-    // transverse partials and it must grow faster than the note that made it.
-    const auto bandEnergy = [] (const Audio& audio, double low, double high)
-    {
-        return tailBandRms(audio, sampleRate, 0.0, 0.12, low, high);
-    };
-    expect(acustra::fittedPhysicalCalibration.longitudinalGain == 0.0f,
-           "the shipping build reintroduced the drip-like axial onset");
-    // The mechanism is measured where it was built: a Finger 74 mm from the
-    // bridge (steel.pluckDistanceScale 0.888, the fitted archtop value). At
-    // the 149 mm chosen by ear on 2026-09-25 the shallower triangle's squared
-    // slope grows E3's axial band only 1.1 dB faster than the note (E2 4.8),
-    // and the path ships switched off, so that is not what is under test.
-    auto silent = acustra::fittedPhysicalCalibration;
-    silent.steel.pluckDistanceScale = 0.88819512f;
-    auto sounding = silent;
-    sounding.longitudinalGain = 0.025f;
-    const auto axial = acustra::AcustraEngineTestAccess::
-        longitudinalFrequencies(40);
-    expect(std::abs(axial[1] / axial[0] - 3.0) < 1.0e-4,
-           "the next odd longitudinal mode is not three times the first");
-
-    const acustra::EngineParameters steel;
-    double quietGrowth = 0.0;
-    double loudGrowth = 0.0;
-    for (const int midiNote : { 40, 52 })
-    {
-        double growth[2] = { 0.0, 0.0 };
-        int index = 0;
-        for (const float velocity : { 0.25f, 0.95f })
-        {
-            const auto off = renderCalibrated(steel, silent, midiNote,
-                                              velocity, 0.5);
-            const auto on = renderCalibrated(steel, sounding, midiNote,
-                                             velocity, 0.5);
-            const double before = bandEnergy(off, 1500.0, 4000.0);
-            const double after = bandEnergy(on, 1500.0, 4000.0);
-            expect(before > 0.0 && after > before,
-                   "the longitudinal path added no axial-band energy");
-            growth[index++] = 20.0 * std::log10(after / before);
-            for (std::size_t sample = 0; sample < on.left.size(); ++sample)
-                expect(std::isfinite(on.left[sample])
-                           && std::isfinite(on.right[sample]),
-                       "a longitudinal render was not finite");
-        }
-        expect(growth[1] > growth[0] + 3.0,
-               "the longitudinal band did not grow faster than the note");
-        quietGrowth = std::max(quietGrowth, growth[0]);
-        loudGrowth = std::max(loudGrowth, growth[1]);
-    }
-    std::cout << "Acustra longitudinal band growth: quiet=" << quietGrowth
-              << " dB, loud=" << loudGrowth << " dB\n";
-
-    // Zero is an exact no-op.
-    auto engineOwner = std::make_unique<acustra::AcustraEngine>();
-    auto& engine = *engineOwner;
-    engine.setPhysicalCalibration(silent);
-    engine.prepare(sampleRate, blockSize);
-    engine.noteOn(52, 0.9f);
-    std::vector<float> left(static_cast<std::size_t>(blockSize));
-    std::vector<float> right(static_cast<std::size_t>(blockSize));
-    double silentForce = 0.0;
-    for (int block = 0; block < 96; ++block)
-    {
-        engine.process(left.data(), right.data(), blockSize);
-        silentForce = std::max(silentForce, static_cast<double>(
-            std::abs(engine.getLastLongitudinalForce())));
-    }
-    expect(silentForce == 0.0,
-           "a zero longitudinal gain still produced a force");
-}
 
 void testTodaysMechanismsSurviveEachOther()
 {
@@ -7915,7 +7597,6 @@ void testAPlectrumReleasesWithVelocity()
     auto plain = acustra::fittedPhysicalCalibration;
     plain.pickReleaseVelocityShare = 0.0f;
     plain.pickReleaseVelocityExponent = 0.0f; // the share applies at every velocity
-    plain.pickTransientGain = 0.0f;
     auto shared = plain;
     shared.pickReleaseVelocityShare = 1.0f;
     auto traceOnly = plain;
@@ -7986,7 +7667,6 @@ void testAPlectrumReleasesWithVelocity()
     auto loud = plain;
     loud.pickReleaseVelocityShare = 2.0f;
     loud.pickReleaseVelocityExponent = 2.0f;
-    loud.pickTransientGain = 8.0f;
     for (const auto rate : { 44100.0, 48000.0, 96000.0 })
     {
         acustra::EngineParameters parameters;
@@ -8003,13 +7683,8 @@ void testAPlectrumReleasesWithVelocity()
         const auto after = renderAtRate(parameters, 52, 0.8f, 0.3, rate, 64, true, loud);
         expect(normalisedDifference(before, after) > 0.01,
                "the plectrum values did not reach a picked note");
-        // Headroom over the whole note; growth read on the ring after the
-        // attack (from 50 ms), where a runaway would keep rising. The
-        // attack's own peak is the 8x broadband contact burst, which the
-        // body radiates up to 18 kHz since its radiation was continued above
-        // the fitted band (Docs/decisions.md, 2026-09-30): 3.4-5.1x the
-        // plain pluck's there, against 1.8-2.6x when that band was 20-40 dB
-        // down, while the ring stays within 1.35x at every rate.
+        // Verify the extreme kinetic release over the whole note and its
+        // ring after 50 ms, where a runaway would keep rising.
         double peakBefore = 0.0, peakAfter = 0.0, ringBefore = 0.0, ringAfter = 0.0;
         const auto attack = static_cast<std::size_t>(0.05 * rate);
         bool finite = true;
@@ -8040,7 +7715,6 @@ void testAPlectrumReleasesWithVelocity()
     auto fitted = plain;
     fitted.pickReleaseVelocityShare = 1.5f;
     fitted.pickReleaseVelocityExponent = 2.0f;
-    fitted.pickTransientGain = 2.0f;
     const auto balance = [&] (PickingTechnique technique, int midi, float velocity,
                               const acustra::PhysicalCalibration& calibration)
     {
@@ -8256,63 +7930,6 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
 // wider than an open one, and it never moves the normal loop, which is the
 // one the tuning is built on. The instrument ships it at zero, chosen by ear
 // (Docs/decisions.md, 2026-09-24), so the shipped pair is exactly in tune.
-void testTheNormalPolarisationIsTheHigherMemberByALength()
-{
-    using acustra::AcustraEngineTestAccess;
-    const auto cents = [] (std::array<double, 2> delays)
-    {
-        return 1200.0 * std::log2(delays[1] / delays[0]);
-    };
-    auto measured = acustra::fittedPhysicalCalibration;
-    measured.polarisationEndCorrectionMetres = 0.0008f;
-    const auto shipped = measured.polarisationEndCorrectionMetres;
-    const double openB = cents(AcustraEngineTestAccess::polarisationDelays(
-        59, measured));
-    const double openE = cents(AcustraEngineTestAccess::polarisationDelays(
-        40, measured));
-    const double stoppedB = cents(
-        AcustraEngineTestAccess::polarisationDelays(71, measured));
-    const double expected
-        = 1200.0 * std::log2(1.0 + static_cast<double>(shipped) / 0.648);
-    expect(openB > 0.0 && openE > 0.0,
-           "the parallel polarisation is not the lower member of the pair");
-    // The tolerance is float rounding of one product, not slack in the law.
-    expect(std::abs(openB - expected) < 1.0e-3
-               && std::abs(openE - expected) < 1.0e-3,
-           "the open-string split is not the measured end correction over "
-           "the scale length");
-    expect(stoppedB > openB * 1.2,
-           "a stopped string did not split wider than an open one, so the "
-           "correction is not being carried as a length");
-
-    const auto none = AcustraEngineTestAccess::polarisationDelays(59);
-    expect(acustra::fittedPhysicalCalibration.polarisationEndCorrectionMetres
-                   == 0.0f
-               && none[0] == none[1],
-           "the shipped zero end correction did not leave the two "
-           "polarisations exactly in tune");
-    auto corrected = AcustraEngineTestAccess::polarisationDelays(
-        59, measured);
-    expect(corrected[0] == none[0],
-           "the end correction moved the normal loop, which carries the "
-           "tuning");
-
-    // The bound is one string diameter, the 0.82 mm nylon B string the
-    // 0.8 mm was measured on: an out-of-range request is clamped, not taken.
-    auto huge = acustra::fittedPhysicalCalibration;
-    huge.polarisationEndCorrectionMetres = 0.01f;
-    const double clamped = cents(AcustraEngineTestAccess::polarisationDelays(
-        59, huge));
-    expect(std::abs(clamped
-                    - 1200.0 * std::log2(1.0 + 0.82e-3 / 0.648)) < 1.0e-3,
-           "the end correction was not bounded at one string diameter");
-
-    std::cout << "Acustra polarisation split: open B " << openB
-              << " cents, open E " << openE
-              << " cents, m71 " << stoppedB
-              << " cents, normal loop unmoved\n";
-}
-
 // The polarisation parallel to the soundboard pushes the saddle crown
 // sideways at its height over the top, which is a moment about the string's
 // own axis: on a bridge whose rocking and moment radiation were measured it
@@ -9282,7 +8899,6 @@ int main()
     testHighLossCutoffScaleChangesOnlyUpperLoss();
     testBendingLossFollowsItsLaw();
     testPlateConductanceFloorDampsOnlyTheUpperBand();
-    testContactNoiseFollowsItsLaw();
     testStolenStringKeepsRingingUnderHandDamping();
     testBridgeHandPressureShortensAndDarkens();
     testNaturalHarmonicsReachAboveTheFretboard();
@@ -9293,7 +8909,6 @@ int main()
     testBodyChangesPreserveAnUnfinishedFade();
     testSwitchingTuningOrModelUnderAChordDoesNotClick();
     testStringAgeKeepsARepluckedTail();
-    testLongitudinalModesGrowWithVelocity();
     testTodaysMechanismsSurviveEachOther();
     testNoteAfterSilenceDoesNotClick();
     testRepluckLandsTheHandOnTheString();
@@ -9312,7 +8927,6 @@ int main()
     testAPlectrumReleasesWithVelocity();
     testAPickReleaseKeepsItsHumpAcrossRates();
     testAPlectrumSlipsOffItsEdgeFasterWhenHarder();
-    testTheNormalPolarisationIsTheHigherMemberByALength();
     testTheParallelPolarisationRadiatesThroughTheRockingSaddle();
     testPerformance();
     if (failures == 0)

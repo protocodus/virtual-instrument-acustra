@@ -55,8 +55,7 @@ struct AcustraEngineTestAccess
     static float piezoForce(const AcustraEngine& engine) { return engine.lastPiezoForce_; }
     static float drivingForce(const AcustraEngine& engine)
     {
-        return engine.lastPiezoForce_
-            + AcustraEngine::PiezoDesign::axialShare * engine.lastLongitudinalForce_;
+        return engine.lastPiezoForce_;
     }
     static std::vector<double> chainState(const AcustraEngine& engine)
     {

@@ -784,9 +784,8 @@ extra harmonics. The profile is a numerical contact assumption, not a measured
 finger shape; [its qualification](Docs/contact-kernel-and-power-2026-09-08.md)
 records the small, mixed improvement against real guitar recordings. Its current phase origin and initially
 empty filter/body histories do not describe a complete release from rest.
-A short deterministic noise burst adds the
-release detail; the bridge-local direct path's fitted gain is zero, so the
-measured body is the only radiator. On steel the burst's level (2.21 of the
+A short deterministic noise burst adds release detail through the measured
+body, which is the only microphone radiator. On steel the burst's level (2.21 of the
 authored law), the contact's width (0.49 of its reference) and the velocity
 brightness (1.106) were chosen by ear with the strings' bending loss below
 (Docs/decisions.md, 2026-09-28): 70% of the way from the joint refit's
@@ -832,11 +831,9 @@ width — the string the tip was carrying when it slipped off — written as
 Smith's equal integrated waves and so unfolding to a hump of velocity with no
 displacement of its own. Its kinetic energy is a fitted share of the
 displacement's, `share(v) = pickReleaseVelocityShare · v^pickReleaseVelocityExponent`
-for MIDI velocity v in 0–1, and the pick's contact transient is an impact:
-broadband, and growing with the tip's speed (`v^(exponent/2)`, the same speed
-law) rather than with the note it starts, scaled by `pickTransientGain`. All
-three are fitted on the picked archtop recordings across their four velocity
-layers and read by the Pick technique only; Finger and Thumb, and so the
+for MIDI velocity v in 0–1. The share and exponent are fitted on the picked
+archtop recordings across their four velocity layers and read by the Pick
+technique only; Finger and Thumb, and so the
 finger-plucked flat-top rows, are bit-identical. The first fit
 (share 1.0 at full velocity growing as v^2.93, transient 0.078 of the Finger
 burst) belonged to a Pick with the wider 0.5 contact and the five-point
@@ -852,8 +849,9 @@ bound, which is the Finger burst law (archtop training under Pick 6.334019 →
 bending loss the share returns: since 2026-09-28 it is 0.582·v^0.859, chosen
 by ear 70% of the way from the joint refit's 0.008·v^0.49 toward the
 0.83·v^1.02 the plectrum was refitted to around half the measured loss, whose
-pick the listener heard as too intense (Docs/decisions.md); the transient gain
-stays at zero. The velocity hump is smoothed by that same
+pick the listener heard as too intense (Docs/decisions.md). The separate
+impact-burst experiment stayed at zero and its implementation is now removed;
+the standard excitation burst remains. The velocity hump is smoothed by that same
 Gaussian contact as the displacement, exactly: the rest wave gains the
 tabulated corner function at its two folded apex corners and the velocity box
 is the difference of two Gaussian edges. The velocity's
@@ -910,23 +908,11 @@ none at its default of 0.58, so a firm Touch releases faster and brighter
 a soft one slower and darker, even at velocity 127, where the contact's own
 Touch law has saturated.
 
-Transverse motion stretches the string, and the tension that adds can also be
-represented as a longitudinal wave with the string's own axial
-resonances, at `c_long/2L` with `c_long = sqrt(EA/mu)`. For this steel set that
-is 1.5 to 3.9 kHz, computed from the same
-construction data the transverse model uses, with the wound steel basses taking
-their axial area from the published core diameter. The first and third
-fixed-fixed axial modes per string can be driven by DAFx-26's `EA/(2L)` times the
-mean square slope, through the same
-displacement scale the attack-pitch surrogate is calibrated with. That path is
-kept at zero in the shipping calibration: without a measured radiation level,
-its narrow onset sounds like a pitched water drop rather than a string pluck.
-Because the drive is a square it carries the products of the transverse
-partials, so what
-the resonators pass are sum and difference phantom partials rather than an
-added tone, and it grows faster than the note that made it: 4.3 dB of extra
-1.5--4 kHz energy at a quarter velocity against 11.1 dB near full. It radiates
-one-way, outside the junction.
+Transverse motion still drives the existing tension and pitch model. A separate
+axial-resonator experiment was rejected because its narrow onset sounded like
+a pitched water drop, and it never contributed to the shipping sound. Its
+resonators and calibration controls are now removed. Historical measurements
+remain in the dated decision log.
 
 Each steel string takes its scale, diameter, tension or density, and Young's
 modulus from published construction data. The loop reads its fractional delay through a second-order
@@ -1330,7 +1316,7 @@ in both channels. The Bellido and the upper-bout microphone hear
 their air modes as measured. Shape and wood
 still apply their documented construction morphs and the existing Q limits;
 even the default Dreadnought is therefore a transformation of the measurement.
-The optional bridge-local direct branch remains disabled. The existing fixed
+The rejected bridge-local direct branch has been removed. The existing fixed
 radiation gain remains, with no runtime RMS matching or automatic level trim;
 absolute sound pressure is not calibrated. Body Amount scales measured
 radiation, Stereo Width moves its two channels toward mono, Output applies
@@ -1393,8 +1379,8 @@ the native construction together. Three steel models once beside it, the
 Washburn 1897, Santa Cruz OM 2022 and Martin D18V 2007, were fitted from Mark
 Rau's measurements, which carry no redistribution license, so their
 coefficients are not published with this repository and the models are
-retired: `Tools/GenerateRauGuitarCandidates.py` still fits them locally for
-comparison, and `.gitignore` keeps its output out of commits. The
+retired. Their unintegrated local fitting generator was removed during the
+2026-10-09 cleanup. The
 `guitarModel` host parameter is appended at version 7 with two choices; old
 saved states default to Original, and a state that chose a retired model
 reloads as Original rather than clamping onto the Bellido. Since
@@ -1804,19 +1790,15 @@ does to a note is a level difference and after t seconds that difference is
 exactly the rate error times t; the relative form scored the same 1.4x error
 identically whether it meant 25 dB or 3 dB after one second. The trajectory
 term measures common H1--H8 pitch movement over 20--100, 80--200 and
-180--400 ms relative to settled partials. The calibration stores 37 bounded
-values (48 while the instrument had nylon strings), in the order of `NAMES` in
-[`OptimizePhysicalModel.py`](Tools/OptimizePhysicalModel.py); the stages
-search 11 of them. The plectrum's values (23-26) are fitted on the picked
-archtop rows alone. The unidentifiable optional direct branch is fixed off, one
-value is a published measurement (the contact noise's decay), four are inert
-while the values they shape are off (the axial resonators' Q; the contact
-noise's velocity law and corners), and 20 are chosen by ear rather than
-fitted (BY_EAR in
-[`OptimizePhysicalModel.py`](Tools/OptimizePhysicalModel.py)), among them the
-string-polarisation end correction (zero, over Woodhouse's published 0.8 mm,
-which the corpus mildly prefers). It does not copy audio or fit an arbitrary
-playback filter.
+180--400 ms relative to settled partials. The calibration stores 24 bounded
+values, in the order of `NAMES` in
+[`OptimizePhysicalModel.py`](Tools/OptimizePhysicalModel.py). Only the supported
+shared-body, steel-string and shared-body-refine stages remain; `BY_EAR` records
+the fixed listener choices. The cleanup removes the 13 controls for rejected
+or disabled direct-radiation, axial, end-correction, impact and contact-noise
+experiments. Existing active values and their relative order are retained.
+Older 37-value and nylon-era 48-value vectors are refused rather than silently
+reinterpreted. The fitter does not copy audio or fit an arbitrary playback filter.
 
 That loss reduces each partial to one robust log2(T60), which is why
 [`Tools/AuditDampingCurve.py`](Tools/AuditDampingCurve.py) exists alongside it:
@@ -2052,9 +2034,6 @@ The JUCE-free suites cover:
   with body tilt alone and only 0.806 to 0.819 with a doubled low-mode gain —
   and the assertions that make it a sympathy test are the off-resonant share
   under 0.30 and a resonant share above five times it;
-- the longitudinal path: its band grows faster than the note that drives it,
-  by more than 3 dB between a quarter velocity and near full on two notes, and
-  it is exactly inert at a zero gain;
 - the constant six-string anchor: a note's own decay stays within a quarter of
   its rate whether it sounds alone, beside a neighbour too quiet to hear, or
   inside a six-string chord, where the played-subset anchor moved it 2.15x;
@@ -2082,10 +2061,6 @@ The JUCE-free suites cover:
   semidefinite, every one of the six string positions' own combined residue
   stays non-negative, both shipped banks carry at least one rocking mode, and
   a rocking-free bank falls back to the exact one-point port algebra;
-- the two string polarisations: the end-correction mechanism, given
-  Woodhouse's 0.8 mm, moves an open steel E by 2.14 cents, matching the geometry exactly, while the untouched
-  polarisation is bit-identical, and at the shipped zero the pair is exactly
-  in tune;
 - MPE per-note pitch bend as a string tension bend: pitch and the twelfth
   partial's stretch track Grimes' published law within 0.001 cents and 0.08
   cents respectively over a whole-tone bend at three sample rates, and a
@@ -2304,15 +2279,16 @@ engine.
   [Picking comparison and assumptions](Docs/picking-styles-2026-09-08.md)
   record the audible separation and the remaining identification limits.
 
-  [`PrototypePlectrumContact.py`](Tools/PrototypePlectrumContact.py) audits
-  Perng's published two-dimensional beam/string contact geometry offline.
+  An offline prototype audited Perng's published two-dimensional beam/string
+  contact geometry.
   With the stated rectangular geometry, the paper and thesis force laws fail
   near the rounded tip. A separately derived virtual-work tip force reaches
   the prescribed 90-degree boundary, but still exerts about 149 N against a
   135 N string and retains pick energy: physical detachment is unvalidated.
   Four rates leave 0.94–4.22% of grip work lost to substep averaging, so the
-  string field is not fully converged either. The tool records those limits
-  and both displacement and velocity; it changes no runtime excitation.
+  string field was not fully converged either. The unavailable solver was
+  removed during the 2026-10-09 cleanup; its recorded findings remain in
+  the historical documentation.
 
 - The recordings snap and then mellow; the engine mellows part of the way and
   does not snap. Over their
@@ -2367,8 +2343,9 @@ engine.
   it does not: the attack those partials stood in for is still missing. A
   measured contact noise and click per pluck (after Akay, JASA 111 (2002)
   1525-1548: one random contact force from the release, decaying at the
-  recordings' 420 dB/s) is in the code at zero, because a blind listener
-  rejected it as too loud on every picked pair. These loss comparisons
+  recordings' 420 dB/s) was rejected by a blind listener as too loud on every
+  picked pair. It stayed at zero and its implementation was removed during
+  the 2026-10-09 cleanup. These loss comparisons
   predate the static-load spring-back added on 2026-10-01. The benchmark
   then charged the shipped loss: steel training
   +4.6% (Finger) and +5.7% (Pick), development validation +3.9% and +3.1%,
@@ -2680,7 +2657,7 @@ set without it.
   bridge where it was -4.2 to +3.7 with one radiating plane. The benchmark's pitch-trajectory term
   rises with it (Finger, Original bridge: training 0.455 -> 0.855,
   validation 0.143 -> 0.499) while every total falls. The superseded
-  [saddle-height prototype](Tools/SaddleHeightExperiment.patch) tuned each
+  saddle-height prototype tuned each
   plane against its own port, which is what left its open B 19.6 cents from
   the mode that sustained.
 - The two-way junction and the stub anchor are calibrated around a
@@ -2929,6 +2906,15 @@ set without it.
   assert the behaviour directly.
 
 ## Release history
+
+### 2026-10-09 — project cleanup
+
+Removed rejected, shipping-zero DSP paths and their 13 inactive calibration
+fields, obsolete tooling, archived experimental implementations and dead Rack
+panel code. Current measurements and fitting references remain, alongside
+saved-session compatibility and historical evidence. The accepted attack and
+sustain tuning is preserved exactly in the matched native comparison. See
+[the cleanup record](Docs/project-cleanup-2026-10-09.md).
 
 A concise ledger of the changes that move what Acustra sounds like or how it is
 controlled. Pure refactors, deduplications and test-coverage additions are in
@@ -3627,8 +3613,8 @@ Release builds here agree exactly - while an unoptimised one does not, because
 the arithmetic contracts differently. Across platforms it no longer holds:
 previous comparisons between CI and local renders of the same source differed
 by up to 981 of 32767 on the polyphonic demo and by 9 on the single-note one.
-The instrument has become chaotic enough - a junction that couples six strings
-and a squared-drive longitudinal path - that a last-bit rounding difference
+The junction couples six strings and the tension model depends on their
+squared slopes, so a last-bit rounding difference
 grows over seconds of chords, and it grows with how polyphonic and how
 hard-played the passage is. Generated WAVs are local outputs, not a
 cross-platform checksum.
@@ -3695,9 +3681,9 @@ microphone recording cannot validate a pickup's response.
 checks the scoring, string scheduling and renderer without downloading audio.
 For dry-note comparisons, `AcustraPhysicalFitRenderer` takes the optional
 `--models-only`/`--smoke` mode, then `--shape`, `--body-material`, `--archtop-picking` and
-`--guitar-model`, the output directory and the 37 calibration arguments in
-`OptimizePhysicalModel.NAMES` order (the 48-value vectors of the builds with
-nylon strings are refused). `--guitar-model bellido1978` asks which measured
+`--guitar-model`, the output directory and the 24 calibration arguments in
+`OptimizePhysicalModel.NAMES` order (the obsolete 37-value and nylon-era
+48-value vectors are refused). `--guitar-model bellido1978` asks which measured
 body the recordings sit closest to; it measures, it does not choose. The
 selected shape, wood, guitar model and archtop picking tool are recorded in each
 model manifest; without them every row renders at the default Dreadnought and
@@ -3789,7 +3775,7 @@ radiation, render the three sources with the new build and fit twice
 (rebuilding between), then re-level the Original's constructions:
 
 ```sh
-./build-dsp/AcustraPhysicalFitRenderer /tmp/bank <37 shipping values>
+./build-dsp/AcustraPhysicalFitRenderer /tmp/bank <24 shipping values>
 python3 Tools/BenchmarkOpenCorpora.py --renderer ./build-dsp/AcustraExternalCorpusRenderer \
   --output /tmp/open --keep eastman/rows.json martin-hd28/rows.json
 python3 Tools/BenchmarkPerformances.py --dataset /path/to/guitarset \

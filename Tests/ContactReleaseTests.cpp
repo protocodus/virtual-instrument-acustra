@@ -47,8 +47,7 @@ struct AcustraEngineTestAccess
         // the expectation below does not copy the production RNG.
         auto whiteVoice = std::make_unique<AcustraEngine::Voice>(engine.voices_[0]);
         auto filteredVoice = std::make_unique<AcustraEngine::Voice>(engine.voices_[0]);
-        whiteVoice->excitationWhite = true;
-        filteredVoice->excitationWhite = false;
+        whiteVoice->excitationReleaseCoefficient = 1.0f;
         for (int n = 0; n < 64; ++n)
         {
             white.push_back(engine.renderExcitation(*whiteVoice));

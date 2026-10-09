@@ -166,7 +166,7 @@ void observe(const Performer& performer, Rendered& output, int frame)
     }
     scalar(engine.getLastBridgeVelocity()); scalar(engine.getLastBridgeReactionForce());
     scalar(engine.getLastBridgeBodyForce()); scalar(engine.getLastBridgeTailForce());
-    scalar(engine.getLastLongitudinalForce()); scalar(engine.getLastPiezoVoltage());
+    scalar(engine.getLastPiezoVoltage());
     scalar(engine.getLastBridgePower()); scalar(engine.getLastBridgeBodyPower());
     scalar(engine.getLastBridgeTailPower());
     const auto probe = engine.getLastPiezoProbe();

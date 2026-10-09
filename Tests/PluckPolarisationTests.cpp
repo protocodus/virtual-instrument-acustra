@@ -65,7 +65,7 @@ struct AcustraEngineTestAccess {
     static void forgetIncoming(AcustraEngine& e, int string) {
         auto& v = e.voices_[static_cast<std::size_t>(string)];
         v.level = 0.0f; v.contactTravel.active = false;
-        v.contactNoiseTravel.active = false; v.tailActive = false;
+        v.tailActive = false;
         v.attackFired = false;
     }
     static std::array<Loop, 2> tails(const AcustraEngine& e, int string) {

@@ -523,11 +523,10 @@ if(BUILD_TESTING)
         add_test(NAME Acustra.PhysicalFitRenderer
                  COMMAND AcustraPhysicalFitRenderer --smoke
                          "${CMAKE_CURRENT_BINARY_DIR}/physical-fit-smoke"
-                         1 1 1 0 .03
-                         1 1 1 1 1 1 0
-                         1 1 .0061 -.030 1.3 .001 1000 .02 0 80 .0008
-                         0 2 0 .0001162109375 .035 .002334375
-                         0 0 1 4000 8000 .0207 0 0)
+                         1 1 1 0 1 1
+                         1 1 1 1 0 1
+                         1 .0061 -.030 1.3 .001 1000
+                         .02 0 2 .0001162109375 .035 .002334375)
         set_tests_properties(Acustra.PhysicalFitRenderer PROPERTIES TIMEOUT 120)
 
         add_test(NAME Acustra.BridgeProbe
@@ -674,11 +673,6 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditBridgeSpatialMap.py"
                                  --self-test)
                 set_tests_properties(Acustra.AuditBridgeSpatialMap PROPERTIES TIMEOUT 60)
-                add_test(NAME Acustra.PrototypePlectrumContact
-                         COMMAND "${Python3_EXECUTABLE}"
-                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/PrototypePlectrumContact.py"
-                                 --self-test)
-                set_tests_properties(Acustra.PrototypePlectrumContact PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.FitCaptureVoicing
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FitCaptureVoicing.py"

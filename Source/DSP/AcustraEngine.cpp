@@ -1191,25 +1191,6 @@ constexpr float saddleLeverArm(int stringIndex) noexcept
     return 0.5f * (static_cast<float>(stringIndex) - 2.5f);
 }
 
-bool includeMeasuredBridgeMode(const detail::MeasuredBridgeMode& mode) noexcept
-{
-#if defined(ACUSTRA_ANALYSIS_EXCLUDE_MEASURED_OPEN_STRINGS)
-    // Analysis only, and applied to whichever bank the material selects: the
-    // archive's setup photographs show installed strings.  Of the retained
-    // candidates only the steel bank's 82.764 Hz lies within 25 cents of the
-    // one open string this surrogate names (E2, 82.407 Hz).  Do not ship it: the measurement string's impedance
-    // metadata is unavailable, and the generator's own open-string screen
-    // already gates every retained mode near a standard open string on its
-    // resolved Q.
-    constexpr float openLowE = 82.406889f;
-    const float cents = 1200.0f * std::log2(mode.frequency / openLowE);
-    return exact::abs(cents) >= 25.0f;
-#else
-    (void) mode;
-    return true;
-#endif
-}
-
 // The plate conductance floor is one over-damped positive-real section. An
 // over-damped s/(s^2+2ds+w0^2) has real poles at w0^2/(2d) and 2d, so its
 // conductance is flat between them; centre sqrt(f_low*f_high) with
@@ -2420,8 +2401,6 @@ void AcustraEngine::restartRandomDraws() noexcept
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 1));
         voice.repeatPluckState = 0xa511e9b3u
             ^ (0x63d83595u * static_cast<std::uint32_t>(string + 1));
-        voice.contactNoiseState = 0x2545f491u
-            ^ (0x9e3779b9u * static_cast<std::uint32_t>(string + 1));
         voice.releaseNoiseState = 0x68e31da4u
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 7));
         voice.legatoFrictionState = 0xd1b54a35u
@@ -2530,8 +2509,6 @@ PhysicalCalibration AcustraEngine::sanitise(
                 fittedPhysicalCalibration.bridgeMobilityScale),
         bounded(source.residueTiltDbPerOctave, -6.0f, 6.0f,
                 fittedPhysicalCalibration.residueTiltDbPerOctave),
-        bounded(source.directGain, 0.0f, 0.12f,
-                fittedPhysicalCalibration.directGain),
         material(source.steel, fittedPhysicalCalibration.steel),
         bounded(source.apertureRegisterExponent, -1.0f, 1.0f,
                 fittedPhysicalCalibration.apertureRegisterExponent),
@@ -2549,40 +2526,16 @@ PhysicalCalibration AcustraEngine::sanitise(
                 fittedPhysicalCalibration.bridgeConductanceCornerHz),
         bounded(source.bridgeTailLengthMetres, 0.00325f, 0.060f,
                 fittedPhysicalCalibration.bridgeTailLengthMetres),
-        bounded(source.longitudinalGain, 0.0f, 0.5f,
-                fittedPhysicalCalibration.longitudinalGain),
-        bounded(source.longitudinalQ, 10.0f, 400.0f,
-                fittedPhysicalCalibration.longitudinalQ),
-        bounded(source.polarisationEndCorrectionMetres, 0.0f, 0.82e-3f,
-                fittedPhysicalCalibration.polarisationEndCorrectionMetres),
         bounded(source.pickReleaseVelocityShare, 0.0f, 2.0f,
                 fittedPhysicalCalibration.pickReleaseVelocityShare),
         bounded(source.pickReleaseVelocityExponent, 0.0f, 4.0f,
                 fittedPhysicalCalibration.pickReleaseVelocityExponent),
-        bounded(source.pickTransientGain, 0.0f, 8.0f,
-                fittedPhysicalCalibration.pickTransientGain),
         bounded(source.pickEdgeRadiusMetres, 0.0f, 1.0e-3f,
                 fittedPhysicalCalibration.pickEdgeRadiusMetres),
         bounded(source.steelWoundBendingLoss, 0.0f, 2.0f,
                 fittedPhysicalCalibration.steelWoundBendingLoss),
         bounded(source.steelPlainBendingLoss, 0.0f, 2.0f,
-                fittedPhysicalCalibration.steelPlainBendingLoss),
-        bounded(source.contactNoiseFinger, 0.0f, 4.0f,
-                fittedPhysicalCalibration.contactNoiseFinger),
-        bounded(source.contactNoisePick, 0.0f, 4.0f,
-                fittedPhysicalCalibration.contactNoisePick),
-        bounded(source.contactNoiseVelocityExponent, 0.0f, 4.0f,
-                fittedPhysicalCalibration.contactNoiseVelocityExponent),
-        bounded(source.contactNoiseCornerHz, 100.0f, 20000.0f,
-                fittedPhysicalCalibration.contactNoiseCornerHz),
-        bounded(source.pickContactNoiseCornerHz, 100.0f, 20000.0f,
-                fittedPhysicalCalibration.pickContactNoiseCornerHz),
-        bounded(source.contactNoiseDecaySeconds, 0.0005f, 0.05f,
-                fittedPhysicalCalibration.contactNoiseDecaySeconds),
-        bounded(source.contactClickFinger, 0.0f, 64.0f,
-                fittedPhysicalCalibration.contactClickFinger),
-        bounded(source.contactClickPick, 0.0f, 64.0f,
-                fittedPhysicalCalibration.contactClickPick)
+                fittedPhysicalCalibration.steelPlainBendingLoss)
     };
 }
 
@@ -3380,7 +3333,6 @@ void AcustraEngine::prepare(double sampleRate, int)
         voice.tailLoop.delay.prepareSize(active);
         voice.tailParallelLoop.delay.prepareSize(active);
         for (auto* travel : { &voice.contactTravel, &voice.tailContactTravel,
-                &voice.contactNoiseTravel, &voice.tailContactNoiseTravel,
                 &voice.legatoContactTravel, &voice.tailLegatoContactTravel,
                 &voice.releaseNoiseTravel })
             travel->history.prepareSize(active);
@@ -3616,7 +3568,6 @@ void AcustraEngine::resetSoundState() noexcept
     lastBridgeReactionForce_ = 0.0f;
     lastBridgeBodyForce_ = 0.0f;
     lastBridgeTailForce_ = 0.0f;
-    lastLongitudinalForce_ = 0.0f;
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
     lastBridgeTailPower_ = 0.0f;
@@ -4491,13 +4442,12 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
             bridgeShapeT1UpperHz_, anchor, morph,
             steelJointMorph(anchor, parameters_.shape), wood,
             physicalCalibration_,
-            [&] (const detail::MeasuredBridgeMode& source,
+            [&] (const detail::MeasuredBridgeMode&,
                  const detail::MeasuredBridgeMode& measured, float level, bool)
             {
-                const bool include = includeMeasuredBridgeMode(source);
-                const float heave = include ? measured.heave * scale : 0.0f;
-                const float cross = include ? measured.cross * scale : 0.0f;
-                const float rock = include ? measured.rock * scale : 0.0f;
+                const float heave = measured.heave * scale;
+                const float cross = measured.cross * scale;
+                const float rock = measured.rock * scale;
                 configure(slot++, measured.frequency, measured.q,
                           heave * level, cross * level, rock * level);
             });
@@ -4514,7 +4464,6 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
                 configure(index, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
                 continue;
             }
-            const bool include = includeMeasuredBridgeMode(bank[index]);
             auto measured = shapeBridgeMode(bank[index], bridgeShapeA0_,
                 bridgeShapeT1_, bridgeShapePlate_, bridgeShapeT1UpperHz_);
             const auto pole = bellidoBridgePole(index, bank[index], measured,
@@ -4522,9 +4471,9 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
             measured.frequency = pole.frequency;
             measured.q = pole.q;
             configure(index, measured.frequency, measured.q,
-                      include ? measured.heave * scale : 0.0f,
-                      include ? measured.cross * scale : 0.0f,
-                      include ? measured.rock * scale : 0.0f);
+                      measured.heave * scale,
+                      measured.cross * scale,
+                      measured.rock * scale);
         }
     }
 
@@ -4662,11 +4611,9 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         targetBodyFor(configuredBridgeModel_, configuredBridgeShape_));
     table.count = 0;
     // One mode's terms; `level` multiplies its residues relative to scale.
-    const auto add = [&] (const detail::MeasuredBridgeMode& source,
-                          const detail::MeasuredBridgeMode& measured, float level)
+    const auto add = [&] (const detail::MeasuredBridgeMode& measured, float level)
     {
-        if (measured.frequency >= 0.45f * rate
-            || !includeMeasuredBridgeMode(source))
+        if (measured.frequency >= 0.45f * rate)
             return;
         auto& mode = table.modes[static_cast<std::size_t>(table.count++)];
         mode.omega = bilinear * std::tan(
@@ -4684,10 +4631,10 @@ AcustraEngine::bridgeMobilityTable() const noexcept
             bridgeShapeT1UpperHz_, anchor, morph,
             steelJointMorph(anchor, configuredBridgeShape_), wood,
             physicalCalibration_,
-            [&] (const detail::MeasuredBridgeMode& source,
+            [&] (const detail::MeasuredBridgeMode&,
                  const detail::MeasuredBridgeMode& measured, float level, bool own)
             {
-                add(source, measured, level);
+                add(measured, level);
                 // B's own modes come first and keep their evaluation.
                 if (own)
                     table.ordered = table.count;
@@ -4703,7 +4650,7 @@ AcustraEngine::bridgeMobilityTable() const noexcept
                 anchor, morph, wood, physicalCalibration_);
             measured.frequency = pole.frequency;
             measured.q = pole.q;
-            add(source, measured, 1.0f);
+            add(measured, 1.0f);
         }
         table.ordered = table.count;
     }
@@ -4876,7 +4823,7 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
 // rocking was not measured.
 float AcustraEngine::coupledPolarisationDetune(
     const PortMobility& port, float impedance, float bentImpedance,
-    float frequency, float parallelExtraDelay, float normalGain,
+    float frequency, float normalGain,
     float parallelGain) const noexcept
 {
     if (!port.valid || port.transfer == std::complex<float>{})
@@ -4900,15 +4847,12 @@ float AcustraEngine::coupledPolarisationDetune(
     const Complex r10 = (-transfer * b11 - c11 * transfer) * inverseDeterminant;
     const Complex r11 = (transfer * transfer + c11 * b00) * inverseDeterminant;
     // The normal loop's delay cancels its own uncoupled reflection's phase at
-    // the request; the parallel loop shares that bare length plus its end
-    // correction.
+    // the request; the parallel loop shares that bare length.
     const double ownPhase = std::arg(Complex((unbentAdmittance - normal)
                                              / (unbentAdmittance + normal)));
-    const double digitalOmega = 2.0 * piDouble
-        * static_cast<double>(frequency) / sampleRate_;
     const Complex gainNormal = std::polar(static_cast<double>(normalGain), -ownPhase);
     const Complex gainParallel = std::polar(static_cast<double>(parallelGain),
-        -ownPhase - digitalOmega * static_cast<double>(parallelExtraDelay));
+        -ownPhase - 0.0);
     const Complex a00 = gainNormal * r00;
     const Complex a01 = gainNormal * r01;
     const Complex a10 = gainParallel * r10;
@@ -5004,8 +4948,6 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     {
         voice.contactTravelEnabled = false;
         voice.contactTravel.active = false;
-        voice.contactNoiseTravel.active = false;
-        voice.contactNoiseSamples = 0;
         voice.legatoContactTravel.active = false;
         voice.legatoContactSamples = 0;
     }
@@ -5036,8 +4978,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // slope energy; its delay target slews on the existing 6 ms time constant.
         // A conventional wheel or MPE manager slides the fretting point; its
         // interval therefore shortens the same physical string that the delay
-        // retunes. B = pi^2 EI/(T L^2), the axial modes and the end correction
-        // must all follow that length. A member's lateral bend changes tension
+        // retunes. B = pi^2 EI/(T L^2) and the bridge-port geometry must
+        // follow that length. A member's lateral bend changes tension
         // at its fixed fret and contributes no shortening. Keep the exact fret
         // geometry at zero slide, and bound extreme wheels by the same band as
         // the finite waveguide before taking a physical reciprocal.
@@ -5114,7 +5056,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                                 std::exp2(tensionSemitones / 12.0f))
             : tension;
         geometry.value = { unbentFrequency, soundingLength, speakingFret,
-            contactPeriodSamples, frequency, lossDesignFrequency, linearMass,
+            contactPeriodSamples, frequency, lossDesignFrequency,
             tension, tensionSemitones, bentTension };
         geometry.key = pitchKey;
         geometry.valid = true;
@@ -5124,7 +5066,6 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float soundingLength = pitch.soundingLength;
     const float frequency = pitch.frequency;
     const float lossDesignFrequency = pitch.lossDesignFrequency;
-    const float linearMass = pitch.linearMass;
     const float tension = pitch.tension;
     const float tensionSemitones = pitch.tensionSemitones;
     const float bentTension = pitch.bentTension;
@@ -5432,45 +5373,6 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     }
     else
         voice.appliedBridgeTailStiffness = bridgeTailStiffness;
-    // The longitudinal wave speed is sqrt(E*A/mu) for a wound string, whose
-    // axial load the core carries while the whole construction supplies the
-    // mass; plain strings use the same expression with their own diameter.
-    // Both come from the tables the transverse model already uses.
-    {
-        // The wound basses' axial load is carried by their published core.
-        const float axialArea = 0.25f * pi * bendingDiameter * bendingDiameter;
-        const float longitudinalSpeed = exact::sqrt(std::max(
-            steelYoungsModulus * axialArea / std::max(linearMass, 1.0e-9f), 1.0f));
-        const float longitudinal = clamp(
-            longitudinalSpeed / (2.0f * soundingLength), 100.0f,
-            0.45f * static_cast<float>(sampleRate_));
-        for (int mode = 0; mode < Voice::longitudinalModeCount; ++mode)
-        {
-            const int harmonic = 2 * mode + 1;
-            const float modeFrequency = std::min(
-                longitudinal * static_cast<float>(harmonic),
-                0.45f * static_cast<float>(sampleRate_));
-            const float omegaLong = twoPi * modeFrequency * inverseSampleRate_;
-            const float radius = std::exp(-omegaLong
-                / (2.0f * std::max(physicalCalibration_.longitudinalQ, 1.0f)));
-            voice.longitudinalA1[mode]
-                = 2.0f * radius * std::cos(omegaLong);
-            voice.longitudinalA2[mode] = -radius * radius;
-            // Constant peak gain. Projecting the integrated extension drive
-            // onto sin(n*pi*x/L) gives L*(1-(-1)^n)/(n*pi): even modes cancel
-            // and the observable odd modes carry the fixed-fixed string's
-            // 1/n participation. No modal weighting is fitted here.
-            voice.longitudinalB0[mode] = (1.0f - radius * radius)
-                * std::sin(omegaLong) / static_cast<float>(harmonic);
-        }
-        // DAFx-26's tension increase, in newtons, from the same displacement
-        // scale the attack-pitch surrogate is calibrated with.
-        const float displacement
-            = physicalCalibration_.steelDisplacementScaleMetres;
-        voice.longitudinalDrive = steelYoungsModulus * axialArea
-            * displacement * displacement
-            / (2.0f * soundingLength * soundingLength);
-    }
     const auto bridgePort = bridgePortMobility(frequency, stringIndex);
     const float measuredBridgeDelay = bridgePhaseDelay(bridgePort, frequency,
                                                        stringIndex);
@@ -5481,8 +5383,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         bridgePort, unbentImpedance, unbentImpedance
             * exact::sqrt((bentTension / tension) / (1.0f
                 + (bentTension - tension) / std::max(axialRigidity, 1.0f))),
-        frequency, (rawDelay - measuredBridgeDelay)
-            * physicalCalibration_.polarisationEndCorrectionMetres / soundingLength,
+        frequency,
         desiredPeriodGain * 0.9995f, desiredPeriodGain * 0.9988f);
     voice.polarisationDetune = coupledDetune;
     const float lossOmega = static_cast<float>(referenceLossOmega(omega, sampleRate_));
@@ -5496,38 +5397,12 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     for (int polarisation = 0; polarisation < 2; ++polarisation)
     {
         auto& loop = voice.loops[static_cast<std::size_t>(polarisation)];
-        // The pair is split by an end correction, not by the body: see
-        // polarisationEndCorrectionMetres in FittedPhysicalData.h for the
-        // measurement and its bound. The whole difference lengthens the
-        // parallel loop, so the normal one is the higher member as Woodhouse
-        // measures it, and the normal loop keeps exactly the sounding length
-        // that the tuning, the fret compensation and the bridge phase delay
-        // are all built on. The previous split was an authored -0.32 / +0.41
-        // cents with the opposite sign and a third of the measured size.
-        const float endCorrection = polarisation == 0 ? 0.0f
-            : physicalCalibration_.polarisationEndCorrectionMetres;
-        // Both polarisations are one string, one length and one tension. The
-        // normal loop is tuned so that, loaded by the bridge, it sounds the
-        // requested pitch - a player tunes the note that radiates - and the
-        // parallel one shares that bare length, lengthened by the end
-        // correction; how far the bridge pulls the normal member away from
-        // it is the doublet's width, which therefore varies note to note as
-        // the bridge's phase does.
-#if defined(ACUSTRA_ANALYSIS_BENDING_LOSS_NORMAL_ONLY)
-        // The analysis-only parallel loop carries no section, so it is tuned
-        // without the section's lag.
-        const float planeDelay = polarisation == 0 ? rawDelay
-            : static_cast<float>(tunedLoopDelay(frequency, sampleRate_,
-                broadLossCoefficient, broadLoss, lowpassCoefficient,
-                mutedHighLoss, dispersion));
-#else
         const float planeDelay = rawDelay;
-#endif
         const float polarisationDelay = coupledDetune != 0.0f
             ? (planeDelay - measuredBridgeDelay) * (1.0f + coupledDetune)
             : planeDelay - measuredBridgeDelay;
         loop.targetDelay = clamp(
-            polarisationDelay * (1.0f + endCorrection / soundingLength),
+            polarisationDelay,
             3.0f, static_cast<float>(activeDelaySamples() - 3));
         if (clearDelay)
             loop.currentDelay = loop.targetDelay;
@@ -5539,7 +5414,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                 ? (referenceRawDelay - referenceBridgeDelay) * (1.0f + coupledDetune)
                 : referenceRawDelay - referenceBridgeDelay;
             voice.referencePickDelay[static_cast<std::size_t>(polarisation)] = clamp(
-                referenceDelay * (1.0f + endCorrection / soundingLength),
+                referenceDelay,
                 3.0f, static_cast<float>(activeDelaySamples() - 3));
         }
         else if (clearDelay && !usePickReference)
@@ -5574,12 +5449,6 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // samples and click (StringLoop::advance).
         if (loop.bendingLossActive && !wasBending)
             loop.bendingLossSeed = true;
-#if defined(ACUSTRA_ANALYSIS_BENDING_LOSS_NORMAL_ONLY)
-        // Analysis only: the same loss confined to the plane normal to the
-        // top, as a bridge-side loss would be. Not the intrinsic mechanism.
-        if (polarisation != 0)
-            loop.bendingLossActive = false;
-#endif
         if (clearDelay || !performanceRealism_.retuneContinuity)
             loop.intrinsicCoefficientSamples = 0;
         loop.setIntrinsicCoefficients({ voice.bendingLossGain,
@@ -6040,8 +5909,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     const float amplitude = 0.24f
         * std::pow(v, velocityExponent) * (0.92f + 0.08f * touch)
         * strumLevelGain * voice.repeatedPluckGain;
-    // The contact noise below follows the force; the shape it leaves, the
-    // displacement.
+    // The released shape follows this displacement.
     const float releasedAmplitude = amplitude * releaseScale;
     // The share of the pluck's energy released normal to the soundboard. A
     // steel-string player's finger stroke and pick both cross the strings
@@ -6143,9 +6011,6 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         voice.releaseReferencePole = fullSoftSlip ? 0.0 : unslipPole;
     }
 
-    // The finger's contact width over the tool's, for the contact noise's
-    // corner below (a thumb's broader pad slides off more slowly).
-    float contactWidthRatio = 1.0f;
     // The caller has already retained any preceding wave. This full-period
     // triangle initializes a fresh pluck, but its time origin is not the
     // zero-velocity release: before smoothing it is phase-equivalent
@@ -6219,10 +6084,6 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         }
         const float currentReferenceLength = loop.targetDelay * 48000.0f
             / static_cast<float>(sampleRate_);
-#if defined(ACUSTRA_ANALYSIS_APERTURE_MILLISECONDS)
-        const float apertureSamples
-            = ACUSTRA_ANALYSIS_APERTURE_MILLISECONDS * 48.0f;
-#else
         // Authored terms, fitted with the rest of the pluck
         // (Docs/decisions.md): Touch narrows the contact; the three lowest
         // strings take a sample more (a nylon-era grouping of the wound
@@ -6238,7 +6099,6 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             (voice.speakingFret - 13.0f) / 6.0f, 0.0f, 1.0f);
         const float apertureSamples = 0.70f + 3.60f * (1.0f - touch)
             + woundContact + upperContact;
-#endif
         const int modes = std::max(voice.harmonic, 1);
         // A thumb's soft pad retains a finite contact footprint even at hard
         // velocities. Convolving the velocity-dependent Gaussian with that
@@ -6255,8 +6115,6 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             contactSamples, physical.apertureScale, apertureReferenceDelay,
             currentReferenceLength,
             physicalCalibration_.apertureRegisterExponent);
-        if (polarisation == 0)
-            contactWidthRatio = apertureSamples / std::max(contactSamples, 1.0e-3f);
         if (releaseShare > 0.0f)
         {
             writePickRelease(loop, length, releasedAmplitude * polarisationGain,
@@ -6593,24 +6451,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     updateAttackPitch(voice, stringIndex);
 
     voice.velocity = v;
-    voice.excitationWhite = pick && physicalCalibration_.pickTransientGain > 0.0f;
-    if (voice.excitationWhite)
-    {
-        // One speed law for the plectrum: the release share above goes as
-        // the tip's speed squared, so that speed goes as v^(exponent/2), and
-        // an impact's transient amplitude goes as the speed itself rather
-        // than as the note it starts. Referenced to the Finger law's own
-        // full-velocity burst, so a gain of one meets it there and the
-        // fitted gain says how much louder a pick's click is.
-        const float speedRatio = std::pow(
-            v, 0.5f * physicalCalibration_.pickReleaseVelocityExponent);
-        voice.excitationEnvelope = physicalCalibration_.pickTransientGain
-            * 0.24f * 0.017f * physical.transientScale
-            * speedRatio * strumLevelGain * voice.repeatedPluckGain;
-    }
-    else
-        voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
-            * physical.transientScale;
+    voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
+        * physical.transientScale;
     voice.excitationEnvelope *= voice.repluckForceGain;
     if (freshEnergyGain != 1.0f)
         voice.excitationEnvelope *= freshEnergyGain;
@@ -6681,8 +6523,6 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         mixed ^= mixed >> 16;
         voice.randomState = mixed == 0u ? 0x6d2b79f5u : mixed;
     }
-    initialiseContactNoise(voice, v, position, heldDistance,
-                           releasedAmplitude * voice.repluckForceGain, contactWidthRatio);
     voice.level = std::max(voice.level, 0.02f * v);
     voice.releaseDamping = 1.0f;
     voice.releaseSeconds = 0.0f;
@@ -6720,9 +6560,6 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.excitationEnvelope = 0.0f;
     voice.contactTravelEnabled = false;
     voice.contactTravel.active = false;
-    voice.contactNoiseSamples = 0;
-    voice.contactNoiseTravel.active = false;
-    voice.tailContactNoiseTravel.active = false;
     voice.releaseVelocity = -1.0f;
     voice.peakLevel = 0.0f;
     // A string handed back after its release keeps the key-up's sound running
@@ -6744,8 +6581,6 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.frozenMemberPitchBendSemitones = 0.0f;
     voice.attackSlopeEnergy = 0.0f;
     voice.observedSlopeEnergy = 0.0f;
-    voice.longitudinalY1.fill(0.0f);
-    voice.longitudinalY2.fill(0.0f);
     voice.harmonic = 1;
     voice.releaseDamping = 1.0f;
     voice.releaseSeconds = 0.0f;
@@ -7013,7 +6848,7 @@ void AcustraEngine::retainRepluckArrivals(Voice& voice) noexcept
     // within that bound. Overflow is an asserted invariant, never hidden.
     int offset = 0;
     while ((voice.contactTravelEnabled && voice.contactTravel.active)
-        || voice.contactNoiseTravel.active || voice.legatoContactTravel.active
+        || voice.legatoContactTravel.active
         || voice.legatoContactSamples > 0)
     {
         if (offset >= static_cast<int>(voice.repluckArrivals.wave[0].size()))
@@ -7031,13 +6866,6 @@ void AcustraEngine::retainRepluckArrivals(Voice& voice) noexcept
             const float local = split * (paths[0] - paths[1]);
             normal += 0.76f * local;
             parallel += voice.excitationParallelGain * local;
-        }
-        if (voice.contactNoiseTravel.active)
-        {
-            const auto paths = voice.contactNoiseTravel.process(0.0f);
-            const float local = paths[0] - paths[1];
-            normal += voice.contactNoiseNormal * local;
-            parallel += voice.contactNoiseParallel * local;
         }
         if (voice.legatoContactSamples > 0 || voice.legatoContactTravel.active)
         {
@@ -7069,7 +6897,6 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     // has damped; the existing reaction-force threshold decides retirement.
     if (!(voice.level > 2.0e-7f)
         && !(voice.contactTravelEnabled && voice.contactTravel.active)
-        && !voice.contactNoiseTravel.active
         && !voice.legatoContactTravel.active && voice.legatoContactSamples == 0
         && voice.repluckArrivals.remaining == 0
         && !(voice.loops[0].gestureContact.active
@@ -7080,7 +6907,6 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
         voice.tailActive = false;
         voice.tailRetiring = false;
         voice.tailContactTravel.active = false;
-        voice.tailContactNoiseTravel.active = false;
         voice.tailLegatoContactTravel.active = false;
         voice.tailLegatoContactSamples = 0;
         voice.tailCharacteristicImpedance = 0.0f;
@@ -7114,19 +6940,6 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
         voice.tailContactTravel = voice.contactTravel;
     else
         voice.tailContactTravel.active = false;
-    // So is the contact noise in flight: the old contact stops making it
-    // (and its click, still in the air, with it), and what it already
-    // launched travels on to the bridge and the nut in the tail's two planes.
-    if (voice.contactNoiseTravel.active)
-    {
-        voice.tailContactNoiseTravel = voice.contactNoiseTravel;
-        voice.tailContactNoiseNormal = voice.contactNoiseNormal;
-        voice.tailContactNoiseParallel = voice.contactNoiseParallel;
-    }
-    else
-        voice.tailContactNoiseTravel.active = false;
-    voice.contactNoiseTravel.active = false;
-    voice.contactNoiseSamples = 0;
     voice.tailCharacteristicImpedance = voice.characteristicImpedance
         * voice.appliedBendImpedanceScale;
     constexpr float tailT60Seconds = 0.010f;
@@ -7297,7 +7110,6 @@ void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
     // remain in transit and receive the same hand loss on arrival.
     if (voice.contactTravelEnabled)
         voice.excitationEnvelope = 0.0f;
-    voice.contactNoiseAmplitude = 0.0f;
     const float nominalReleaseSeconds = voice.fret == 0 ? 1.25f : 0.16f;
     // An explicit fast key-up represents a firm damping contact; a slow
     // one a gentler contact. This is a bounded performance map, not a fit
@@ -8525,7 +8337,6 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     voice.attackPitchDecay = 1.0f;
     // Stop only future picking input. Already emitted waves keep travelling.
     voice.excitationEnvelope = 0.0f;
-    voice.contactNoiseAmplitude = 0.0f;
     voice.strumming = false;
     configureVoice(voice, string, targetMidiNote, false);
     rememberFinger(string);
@@ -8547,7 +8358,6 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     // the new pluck is released from rest.
     const bool retainedWave = voice.level > 2.0e-7f
         || (voice.contactTravelEnabled && voice.contactTravel.active)
-        || voice.contactNoiseTravel.active
         || voice.legatoContactTravel.active || voice.legatoContactSamples > 0
         || voice.repluckArrivals.remaining > 0
         || (voice.loops[0].gestureContact.active
@@ -9018,7 +8828,6 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
         }
         else if (voice.level > 2.0e-7f
             || (voice.contactTravelEnabled && voice.contactTravel.active)
-            || voice.contactNoiseTravel.active
             || voice.legatoContactTravel.active || voice.legatoContactSamples > 0
             || voice.repluckArrivals.remaining > 0)
         {
@@ -9377,7 +9186,6 @@ void AcustraEngine::setBridgeCouplingEnabled(bool enabled) noexcept
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
     lastBridgeBodyForce_ = 0.0f;
     lastBridgeTailForce_ = 0.0f;
-    lastLongitudinalForce_ = 0.0f;
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
     lastBridgeTailPower_ = 0.0f;
@@ -9498,267 +9306,15 @@ std::array<float, 2> AcustraEngine::ContactTravel::process(float source) noexcep
     return result;
 }
 
-namespace
-{
-// The variance of the first difference of three one-pole low-passes - two
-// with coefficient a, then one with b - driven by unit white noise: states
-// (y1, y2, d) after each update, x' = A x + B w, force = C x + D w.
-double contactNoiseForceVariance(double a, double b) noexcept
-{
-    const double r = 1.0 - a;
-    const double q = 1.0 - b;
-    const double A[3][3] { { r, 0.0, 0.0 }, { a * r, r, 0.0 },
-                           { b * a * r, b * r, q } };
-    const double B[3] { a, a * a, b * a * a };
-    const double C[3] { b * a * r, b * r, q - 1.0 };
-    const double D = b * a * a;
-    // (I - A (x) A) vec(P) = vec(B B'), nine unknowns by elimination.
-    double M[9][10] {};
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-        {
-            const int row = 3 * i + j;
-            for (int k = 0; k < 3; ++k)
-                for (int l = 0; l < 3; ++l)
-                    M[row][3 * k + l] = (row == 3 * k + l ? 1.0 : 0.0)
-                        - A[i][k] * A[j][l];
-            M[row][9] = B[i] * B[j];
-        }
-    for (int column = 0; column < 9; ++column)
-    {
-        int pivot = column;
-        for (int row = column + 1; row < 9; ++row)
-            if (std::abs(M[row][column]) > std::abs(M[pivot][column]))
-                pivot = row;
-        for (int k = 0; k < 10; ++k)
-            std::swap(M[column][k], M[pivot][k]);
-        const double diagonal = M[column][column];
-        if (!(std::abs(diagonal) > 0.0))
-            return 1.0;
-        for (int row = 0; row < 9; ++row)
-        {
-            if (row == column)
-                continue;
-            const double factor = M[row][column] / diagonal;
-            for (int k = column; k < 10; ++k)
-                M[row][k] -= factor * M[column][k];
-        }
-    }
-    double variance = D * D;
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-            variance += C[i] * C[j] * M[3 * i + j][9] / M[3 * i + j][3 * i + j];
-    return variance > 0.0 ? variance : 1.0;
-}
-} // namespace
-
-// The noise the contact makes as a finger, nail or plectrum leaves the string
-// (PhysicalCalibration's contactNoise and contactClick fields say what was
-// measured and fitted). One force per pluck, from the release, along the
-// stroke: renderContactNoise returns the displacement it launches into the
-// string each way at the contact point, which the per-sample loop carries to
-// the bridge directly and by the nut exactly as the string's own first
-// arrivals travel, and leaves the click - the force's rate of change - for
-// finishVoice's direct path, which the string and body never see.
-void AcustraEngine::initialiseContactNoise(Voice& voice, float v,
-                                          float position,
-                                          float contactDistance,
-                                          float releasedAmplitude,
-                                          float contactWidthRatio) noexcept
-{
-    const auto technique = parameters_.picking;
-    const bool pick = technique == PickingTechnique::Pick;
-    // A natural harmonic's touching finger damps every mode its node does not
-    // share, the contact's own noise with the rest (see the burst in
-    // initialisePluck), so a harmonic launches none.
-    const bool touched = voice.harmonic > 1;
-    const float level = touched ? 0.0f
-        : pick ? physicalCalibration_.contactNoisePick
-               : physicalCalibration_.contactNoiseFinger;
-    const float click = touched ? 0.0f
-        : pick ? physicalCalibration_.contactClickPick
-               : physicalCalibration_.contactClickFinger;
-    voice.contactNoiseSamples = 0;
-    voice.contactNoiseAmplitude = 0.0f;
-    voice.contactNoiseDecay = 0.0f;
-    voice.contactNoiseString = level;
-    voice.contactNoiseClick = click;
-    voice.contactNoiseLaunched = voice.contactNoiseForce = 0.0f;
-    voice.contactNoiseAir = 0.0f;
-    if (!(level > 0.0f || click > 0.0f)
-        || !(voice.contactPeriodSamples > 0.0f))
-        return;
-    const float rate = static_cast<float>(sampleRate_);
-    // The corner above which the contact smooths its own noise moves with
-    // the sliding speed, the stroke's velocity, and a thumb's is lower by
-    // its broader pad.
-    float corner = (pick ? physicalCalibration_.pickContactNoiseCornerHz
-                         : physicalCalibration_.contactNoiseCornerHz)
-        * std::max(v, 0.05f);
-    if (technique == PickingTechnique::Thumb)
-        corner *= contactWidthRatio;
-    corner = clamp(corner, 20.0f, 0.45f * rate);
-    // The force is white between the string's fundamental and that corner:
-    // slower changes than a period are the release itself, which the
-    // pluck's shape already is, and faster ones than the corner are smoothed
-    // by the contact. It is a first-order high-pass at f0 and a critically
-    // damped second-order low-pass at the corner on white noise, so the
-    // displacement it launches, its integral, is three one-pole low-passes:
-    // one at f0 and two at the corner. The gain makes the force - the
-    // launched displacement's first difference - unit RMS for the uniform
-    // draw on [-1, 1] (variance 1/3): the force's variance for unit white
-    // input is C P C' + D^2 with the state covariance P solving the discrete
-    // Lyapunov equation P = A P A' + B B' of the three stages.
-    const float fundamental = rate / voice.contactPeriodSamples;
-    const double a = 1.0 - std::exp(-2.0 * static_cast<double>(pi)
-        * static_cast<double>(corner) / static_cast<double>(rate));
-    const double low = 1.0 - std::exp(-2.0 * static_cast<double>(pi)
-        * static_cast<double>(std::min(fundamental, 0.5f * corner))
-        / static_cast<double>(rate));
-    const double sum = contactNoiseForceVariance(a, low);
-    voice.contactNoiseCoefficient = static_cast<float>(a);
-    voice.contactNoiseLowCoefficient = static_cast<float>(low);
-    voice.contactNoiseGain = static_cast<float>(1.0 / std::sqrt(sum / 3.0));
-    voice.contactNoiseStage1 = 0.0f;
-    voice.contactNoiseStage2 = 0.0f;
-    voice.contactNoiseStage3 = 0.0f;
-    // A held string's force F0 = T y (1/a + 1/(L - a)) leaves as velocity
-    // waves F0 / (2Z) each way; on the loop's triangle that is the apex's
-    // slope step, y (1/p + 1/(1 - p)) / D per sample. The noise force is a
-    // fraction of it, launched each way as the same per-sample step.
-    const float p = clamp(position, 0.02f, 0.98f);
-    const float held = releasedAmplitude * (1.0f / p + 1.0f / (1.0f - p))
-        / voice.contactPeriodSamples;
-    const float take = contactNoiseTakeSpreadDb
-        * xorshiftNoise(voice.contactNoiseState);
-    voice.contactNoiseAmplitude
-        = std::pow(v, physicalCalibration_.contactNoiseVelocityExponent)
-        * held * std::pow(10.0f, take / 20.0f);
-    // The click's force-rate derivative, per 48 kHz reference sample. A
-    // source radiates as a dipole, its pressure following dF/dt, only while
-    // it is small against the wavelength; above c / (2 pi r) its pressure
-    // follows F. The radiator is the contact region - a plectrum's tip, a
-    // nail's edge - taken as r = 3 mm, which puts that corner at 18 kHz.
-    const float perReference = rate / 48000.0f;
-    voice.contactNoiseAirScale = perReference * perReference;
-    constexpr float speedOfSound = 343.0f;
-    constexpr float radiatorRadius = 0.003f;
-    const float radiationCorner = std::min(
-        speedOfSound / (2.0f * pi * radiatorRadius), 0.45f * rate);
-    voice.contactNoiseAirCoefficient = 1.0f - std::exp(
-        -2.0f * pi * radiationCorner / rate);
-    voice.contactNoiseAirLowpass = 0.0f;
-    // And it reaches the microphones through the air: from the contact, a
-    // distance a from the bridge along the string, to the Stereo pair's
-    // treble-bridge microphone 10 cm over the bridge (the body's measured
-    // responses already carry their own path from the bridge).
-    constexpr float microphoneHeight = 0.10f;
-    const float airPath = exact::sqrt(microphoneHeight * microphoneHeight
-        + contactDistance * contactDistance);
-    voice.contactNoiseAirDelay = std::clamp(
-        static_cast<int>(std::lround(airPath / speedOfSound * rate)), 1,
-        static_cast<int>(voice.contactNoiseAirLine.size()) - 1);
-    voice.contactNoiseAirLine.fill(0.0f);
-    voice.contactNoiseAirWrite = 0;
-    const float decaySeconds = physicalCalibration_.contactNoiseDecaySeconds;
-    voice.contactNoiseDecay = std::exp(-1.0f / (decaySeconds * rate));
-    // Twelve time constants, -104 dB, the stages' own ring-down, and the
-    // click's flight to the microphone.
-    voice.contactNoiseSamples = static_cast<int>(std::ceil(
-        12.0f * decaySeconds * rate + 24.0f / static_cast<float>(a)
-        + 12.0f / static_cast<float>(low))) + voice.contactNoiseAirDelay;
-    // The force is along the stroke: its normal and parallel parts are the
-    // pluck's own.
-    voice.contactNoiseNormal = exact::sqrt(voice.polarisationMix);
-    voice.contactNoiseParallel = voice.pluckParallelSign
-        * exact::sqrt(1.0f - voice.polarisationMix);
-    voice.contactNoiseTravel.reset(0.5f * p * voice.contactPeriodSamples,
-        (1.0f - 0.5f * p) * voice.contactPeriodSamples);
-}
-
-float AcustraEngine::renderContactNoise(Voice& voice) noexcept
-{
-    if (voice.contactNoiseSamples <= 0)
-        return 0.0f;
-    if (--voice.contactNoiseSamples == 0)
-    {
-        voice.contactNoiseStage1 = voice.contactNoiseStage2
-            = voice.contactNoiseStage3 = 0.0f;
-        voice.contactNoiseLaunched = voice.contactNoiseForce = 0.0f;
-        voice.contactNoiseAir = 0.0f;
-        return 0.0f;
-    }
-    const float white = xorshiftNoise(voice.contactNoiseState)
-        * voice.contactNoiseAmplitude;
-    voice.contactNoiseAmplitude *= voice.contactNoiseDecay;
-    const float a = voice.contactNoiseCoefficient;
-    voice.contactNoiseStage1 += a * (white - voice.contactNoiseStage1);
-    voice.contactNoiseStage2 += a * (voice.contactNoiseStage1
-                                     - voice.contactNoiseStage2);
-    voice.contactNoiseStage3 += voice.contactNoiseLowCoefficient
-        * (voice.contactNoiseStage2 - voice.contactNoiseStage3);
-    // The launched displacement at unit level; its first difference is the
-    // force, and the force's own difference what a small source radiates.
-    const float launched = voice.contactNoiseStage3 * voice.contactNoiseGain;
-    const float force = launched - voice.contactNoiseLaunched;
-    voice.contactNoiseAirLowpass += voice.contactNoiseAirCoefficient
-        * ((force - voice.contactNoiseForce) * voice.contactNoiseAirScale
-           - voice.contactNoiseAirLowpass);
-    auto& line = voice.contactNoiseAirLine;
-    const int size = static_cast<int>(line.size());
-    line[static_cast<std::size_t>(voice.contactNoiseAirWrite)]
-        = voice.contactNoiseAirLowpass;
-    int read = voice.contactNoiseAirWrite - voice.contactNoiseAirDelay;
-    if (read < 0)
-        read += size;
-    voice.contactNoiseAir = line[static_cast<std::size_t>(read)];
-    voice.contactNoiseAirWrite = voice.contactNoiseAirWrite + 1 < size
-        ? voice.contactNoiseAirWrite + 1 : 0;
-    voice.contactNoiseLaunched = launched;
-    voice.contactNoiseForce = force;
-    return launched * voice.contactNoiseString;
-}
-
-ACUSTRA_NOINLINE void AcustraEngine::addContactNoise(
-    Voice& voice, float& verticalIncident, float& horizontalIncident) noexcept
-{
-    const float noise = renderContactNoise(voice);
-    if (voice.contactNoiseTravel.active || noise != 0.0f)
-    {
-        const auto paths = voice.contactNoiseTravel.process(noise);
-        const float local = paths[0] - paths[1];
-        const float vertical = voice.contactNoiseNormal * local;
-        const float horizontal = voice.contactNoiseParallel * local;
-        verticalIncident += voice.loops[0].appliedReleaseGain == 1.0f
-            ? vertical
-            : vertical * voice.loops[0].appliedReleaseGain;
-        horizontalIncident += voice.loops[1].appliedReleaseGain == 1.0f
-            ? horizontal
-            : horizontal * voice.loops[1].appliedReleaseGain;
-    }
-}
-
-ACUSTRA_NOINLINE void AcustraEngine::addTailContactNoise(
-    Voice& voice, float& tailIncident, float& tailParallelIncident) noexcept
-{
-    const auto paths = voice.tailContactNoiseTravel.process(0.0f);
-    const float local = paths[0] - paths[1];
-    tailIncident += voice.tailContactNoiseNormal * local
-        * voice.tailLoop.appliedReleaseGain;
-    tailParallelIncident += voice.tailContactNoiseParallel * local
-        * voice.tailParallelLoop.appliedReleaseGain;
-}
-
 // The key-up's own sound (EngineParameters::releaseNoise). Lifting a key is
 // the hand damping the string, and a hand does not damp a vibrating string
 // silently: skin lands on a string still moving under it, and the friction
 // of that landing is a small random force at the contact (Akay, "Acoustics
 // of friction", JASA 111 (2002)), in proportion to how fast the string moves
 // there, so to how much of the note is left. It is launched into the string
-// from the damping point both ways, exactly as the contact noise is
-// (renderContactNoise), so it reaches the bridge and body as the string's
-// own arrivals do and is damped with them by the hand's loss; nothing of it
-// goes through the air. Where the hand lands is the one geometric choice:
+// from the damping point both ways, so it reaches the bridge and body as
+// the string's own arrivals do and is damped with them by the hand's loss;
+// none of it goes through the air. Where the hand lands is the one geometric choice:
 // a fretted note is damped by the fretting finger as it relaxes, its pad
 // lying against the fret side of the speaking length, so the touch sits a
 // finger's width from the fret and, that close to the loop's end, excites
@@ -9909,7 +9465,7 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
     voice.releaseNoiseBrushFall = voice.releaseNoiseBrushRise = 1.0f;
     // What a period's worth of force does is the string's own motion; the
     // launched displacement leaks at the fundamental (or half the corner),
-    // which keeps it bounded as the contact noise's third stage does.
+    // which keeps it bounded.
     const double low = 1.0 - std::exp(-2.0 * static_cast<double>(pi)
         * static_cast<double>(std::min(fundamental, 0.5f * corner))
         / static_cast<double>(rate));
@@ -9997,25 +9553,20 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
         const float rateRatio = static_cast<float>(sampleRate_) / 48000.0f;
         const float noise = xorshiftNoise(voice.excitationNoiseState)
             * exact::sqrt(rateRatio);
-        if (voice.excitationWhite)
-            excitation = noise * voice.excitationEnvelope;
-        else
+        const float excitationCoefficient = voice.excitationReleaseCoefficient;
+        voice.excitationLowpass += excitationCoefficient
+            * (noise - voice.excitationLowpass);
+        if (voice.excitationSoft)
         {
-            const float excitationCoefficient = voice.excitationReleaseCoefficient;
-            voice.excitationLowpass += excitationCoefficient
-                * (noise - voice.excitationLowpass);
-            if (voice.excitationSoft)
-            {
-                voice.excitationLowpass2 += excitationCoefficient
-                    * (voice.excitationLowpass - voice.excitationLowpass2);
-                excitation = voice.excitationLowpass2 * voice.excitationEnvelope;
-            }
-            else
-                excitation = (voice.excitationLowpass
-                    + 0.16f * voice.excitationColour
-                        * (noise - voice.excitationLowpass))
-                    * voice.excitationEnvelope;
+            voice.excitationLowpass2 += excitationCoefficient
+                * (voice.excitationLowpass - voice.excitationLowpass2);
+            excitation = voice.excitationLowpass2 * voice.excitationEnvelope;
         }
+        else
+            excitation = (voice.excitationLowpass
+                + 0.16f * voice.excitationColour
+                    * (noise - voice.excitationLowpass))
+                * voice.excitationEnvelope;
         voice.excitationEnvelope *= voice.excitationDecay;
     }
     return excitation;
@@ -10028,10 +9579,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                                 float tailParallelIncident,
                                 float bridgeDisplacement,
                                 float bridgeVelocity,
-                                float horizontalBridgeDisplacement,
-                                float& directLeft,
-                                float& directRight,
-                                float& longitudinalForce) noexcept
+                                float horizontalBridgeDisplacement) noexcept
 {
     // A rigid bridge and nut each invert a displacement wave, so the collapsed
     // full-round-trip loop writes +incident.  A moving bridge has reflected
@@ -10063,35 +9611,6 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
         verticalIncident, sampleRateRatio);
     const float horizontalVelocity = voice.loops[1].bridgeVelocity(
         horizontalIncident, sampleRateRatio);
-    // The squared slope is the same quantity for both materials; only the
-    // pitch surrogate above it is steel-only.
-    const float referenceRate48 = 48000.0f / static_cast<float>(sampleRate_);
-    const float slopeV = voice.loops[0].currentDelay
-                       * referenceRate48 * verticalVelocity;
-    const float slopeH = voice.loops[1].currentDelay
-                       * referenceRate48 * horizontalVelocity;
-    const float slopeEnergy = slopeV * slopeV + slopeH * slopeH;
-    if (physicalCalibration_.longitudinalGain > 0.0f && voice.played)
-    {
-        // Stretching the string adds tension, and that tension is a
-        // longitudinal wave with the string's own axial resonances. The drive
-        // is a square, so it carries the products of transverse partials: what
-        // comes out are the sum and difference phantom partials rather than an
-        // added tone.
-        for (int mode = 0; mode < Voice::longitudinalModeCount; ++mode)
-        {
-            const float modeDrive = voice.longitudinalB0[mode]
-                * voice.longitudinalDrive * slopeEnergy;
-            const float output = modeDrive
-                + voice.longitudinalA1[mode] * voice.longitudinalY1[mode]
-                + voice.longitudinalA2[mode] * voice.longitudinalY2[mode];
-            voice.longitudinalY2[mode] = voice.longitudinalY1[mode];
-            voice.longitudinalY1[mode]
-                = exact::isfinite(output) ? output : 0.0f;
-            longitudinalForce += physicalCalibration_.longitudinalGain
-                * voice.longitudinalY1[mode];
-        }
-    }
     if (voice.played)
     {
         const float referenceRate = 48000.0f / static_cast<float>(sampleRate_);
@@ -10146,7 +9665,6 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             voice.tailQuietSamples = 0;
         if (voice.tailQuietSamples > static_cast<int>(0.08 * sampleRate_)
             && !voice.tailContactTravel.active
-            && !voice.tailContactNoiseTravel.active
             && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0
             && voice.tailRepluckArrivals.remaining == 0)
             voice.tailRetiring = true;
@@ -10161,7 +9679,6 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             voice.tailCharacteristicImpedance
                 -= delaySmoothing_ * voice.tailCharacteristicImpedance;
         if (voice.tailRetiring && !voice.tailContactTravel.active
-            && !voice.tailContactNoiseTravel.active
             && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0
             && voice.tailRepluckArrivals.remaining == 0
             && !(voice.tailCharacteristicImpedance
@@ -10170,7 +9687,6 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             voice.tailActive = false;
             voice.tailRetiring = false;
             voice.tailContactTravel.active = false;
-            voice.tailContactNoiseTravel.active = false;
             voice.tailLegatoContactTravel.active = false;
             voice.tailLegatoContactSamples = 0;
             voice.tailCharacteristicImpedance = 0.0f;
@@ -10183,29 +9699,6 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
     }
     const float localReactionForce = impedance
         * (2.0f * verticalVelocity - bridgeVelocity);
-    const float directForce = localReactionForce * voice.polarisationMix
-        + 0.44f * impedance * horizontalVelocity
-            * (1.0f - voice.polarisationMix);
-
-    const float pan = (static_cast<float>(stringIndex) - 2.5f) / 2.5f;
-    // The measured force-to-pressure bank is the acoustic source. Retain only
-    // a very quiet bridge-local component; the previous amplified contact
-    // residual exposed the periodic string waveform as a harpsichord cue.
-    // The tool's own click reaches the microphones through the air, not
-    // through the string or the body: a small source at the contact whose
-    // pressure follows its force's rate of change (renderContactNoise).
-    // Without a click the sum is the product alone (adding zero changes at
-    // most the sign of a zero, which the stereo sums below absorb).
-    float direct = physicalCalibration_.directGain * directForce;
-    if (voice.contactNoiseSamples > 0)
-    {
-        const float click = voice.contactNoiseClick * 2.0f * impedance
-                          * voice.contactNoiseAir;
-        direct = physicalCalibration_.directGain * directForce + click;
-    }
-    directLeft += direct * (1.0f - 0.18f * pan);
-    directRight += direct * (1.0f + 0.18f * pan);
-
     const float magnitude = exact::abs(localReactionForce);
     voice.level += levelSmoothing_ * (magnitude - voice.level);
     voice.peakLevel = std::max(voice.peakLevel, voice.level);
@@ -11028,15 +10521,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 verticalIncident[static_cast<std::size_t>(string)]
                     += local * voice.loops[0].appliedReleaseGain;
             }
-            // The contact's noise force, launched both ways from the contact
-            // point along the stroke; the nut inverts what reaches it. Out of
-            // line and behind the two fields it would read first: at zero
-            // levels neither is ever set, and inlined it cost the voice loop
-            // about a tenth of the engine's time.
-            if (voice.contactNoiseSamples > 0 || voice.contactNoiseTravel.active)
-                addContactNoise(voice,
-                    verticalIncident[static_cast<std::size_t>(string)],
-                    horizontalIncident[static_cast<std::size_t>(string)]);
             if (voice.releaseNoiseSamples > 0 || voice.releaseNoiseTravel.active)
                 addReleaseNoise(voice,
                     verticalIncident[static_cast<std::size_t>(string)],
@@ -11091,10 +10575,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                         += voice.tailExcitationParallelGain * localContact
                             * voice.tailParallelLoop.appliedReleaseGain;
                 }
-                if (voice.tailContactNoiseTravel.active)
-                    addTailContactNoise(voice,
-                        tailIncident[static_cast<std::size_t>(string)],
-                        tailParallelIncident[static_cast<std::size_t>(string)]);
             }
             // Every string is anchored behind the saddle whether or not it
             // is being played, so the anchor the junction sees is a constant
@@ -11357,9 +10837,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                                  + portRates[1] * portRates[7];
         }
 
-        float directLeft = 0.0f;
-        float directRight = 0.0f;
-        float longitudinalForce = 0.0f;
         for (int string = 0; string < stringCount; ++string)
         {
             const float arm = saddleLeverArm(string);
@@ -11371,36 +10848,13 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 tailParallelIncident[static_cast<std::size_t>(string)],
                 bridgeDisplacement + arm * bridgeRotation,
                 lastBridgeVelocity_ + arm * bridgeRotationRate,
-                -saddleHeight * bridgeRotation,
-                directLeft, directRight, longitudinalForce);
+                -saddleHeight * bridgeRotation);
         }
 
-        // The load entering the body compliance drives measured radiation.
-        // Idle-string reactions already enter that load through the shared
-        // junction. Axial radiation is still an additional one-way force
-        // surrogate. The microphone bank itself does not feed back into the
-        // junction.
-        lastLongitudinalForce_ = longitudinalForce;
-        // Same rigid-saddle basis as the paired measurement: F=Fb+Ft and
-        // normalized moment T=M/a=Ft-Fb. Both inputs retain their measured
-        // complex microphone phase. No extra stereo delay or gain is added.
-        // The + 0.0f is where a separate sympathetic force, always zero, was
-        // summed: it turns a -0.0 bridge force into +0.0 before the axial
-        // force is added, so the body hears the same bits as it did.
-        const BodyOutput body = renderBody(lastBridgeBodyForce_
-            + 0.0f + lastLongitudinalForce_, bodyMomentRate);
-
-        // Strings themselves radiate poorly. Keep the small bridge-local path
-        // separate from the measurement-derived, author-transformed soundboard
-        // response, and apply
-        // Width to both paths so zero is genuinely mono.
-        const float directMono = 0.5f * (directLeft + directRight);
-        const float spreadDirectLeft = directMono
-            + width_ * (directLeft - directMono);
-        const float spreadDirectRight = directMono
-            + width_ * (directRight - directMono);
+        // Idle-string reactions enter the measured body through the shared
+        // junction. Preserve the previous force's zero-sign normalization.
+        const BodyOutput body = renderBody(lastBridgeBodyForce_ + 0.0f, bodyMomentRate);
         const float bodyScale = 0.68f + 0.72f * bodyAmount_;
-        const float directScale = 0.10f + 0.10f * (1.0f - bodyAmount_);
         const float monoBody = 0.5f * (body.left + body.right);
         const float spreadLeft = monoBody + width_ * (body.left - monoBody);
         const float spreadRight = monoBody + width_ * (body.right - monoBody);
@@ -11414,8 +10868,9 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         monoReference_ += parameterSmoothing_
             * (monoReferenceFor(parameters_) - monoReference_);
         const float reference = radiationReferenceGain * outputReference_;
-        const float dryLeft = bodyScale * spreadLeft + directScale * spreadDirectLeft;
-        const float dryRight = bodyScale * spreadRight + directScale * spreadDirectRight;
+        // Preserve the output sum's signed-zero normalization.
+        const float dryLeft = bodyScale * spreadLeft + 0.0f;
+        const float dryRight = bodyScale * spreadRight + 0.0f;
         float outputLeft = reference * outputGain_
             * dryLeft;
         float outputRight = reference * outputGain_
@@ -11426,13 +10881,10 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // Keep the default stereo path bit-for-bit, including its width law.
         // Advance the whole piezo chain even while unheard, so selecting it
         // crossfades to the voltage of the already-ringing instrument. The
-        // axial force presses on the saddle through the strings' break angle
-        // (zero while longitudinalGain ships at 0).
-        const float loadedPiezo = renderPiezo(
-            lastPiezoForce_ + PiezoDesign::axialShare * lastLongitudinalForce_);
+        // piezo force keeps the original zero-sign normalization.
+        const float loadedPiezo = renderPiezo(lastPiezoForce_ + 0.0f);
         const float idlePeak = std::max({ exact::abs(body.left),
             exact::abs(body.right), exact::abs(body.upper),
-            exact::abs(directLeft), exact::abs(directRight),
             exact::abs(loadedPiezo) });
         if (piezo != nullptr)
         {
@@ -11451,7 +10903,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // instrument moved them, at every sample rate. Main is seven samples
         // later than the strings for every Capture.
         float monoMic = radiationReferenceGain * monoReference_ * outputGain_
-            * (bodyScale * body.upper + directScale * directMono);
+            * (bodyScale * body.upper + 0.0f);
         // The room around the microphones (RoomAmbience): fed the pair's mid
         // signal through the send, its field spread by Width as the pair is,
         // and heard by the mono microphone at that one's own reference. It
@@ -11859,8 +11311,8 @@ void AcustraEngine::processIdleFlush(float samplePeak) noexcept
     // The residue is a string-bridge equilibrium kept up by rounding: each
     // loop holds a quasi-DC value near 1e-13 and the bridge a matching
     // static displacement, so flushing any one state alone does not hold.
-    // Every instrument signal before the output gain (body, direct path and
-    // piezo) under 1e-11, about 190 dB under a played note, for 80 ms with
+    // Every instrument signal before the output gain (body and piezo)
+    // under 1e-11, about 190 dB under a played note, for 80 ms with
     // no string played, held, sounding a tail or about to be plucked, is
     // that residue: clear the whole instrument once, as All Sound Off does
     // when nothing is playing, and again only after it has sounded.
@@ -11881,9 +11333,7 @@ void AcustraEngine::processIdleFlush(float samplePeak) noexcept
         idle = idle && !voice.played && !voice.keyDown && !voice.pedalHeld
             && !voice.tailActive && voice.pluckDelay == 0
             && !voice.repluckPending && !voice.contactTravel.active
-            && !voice.contactNoiseTravel.active && voice.contactNoiseSamples == 0
             && !voice.tailContactTravel.active
-            && !voice.tailContactNoiseTravel.active
             && voice.repluckArrivals.remaining == 0
             && voice.tailRepluckArrivals.remaining == 0
             && !voice.legatoContactTravel.active && voice.legatoContactSamples == 0
@@ -11958,11 +11408,6 @@ float AcustraEngine::getLastBridgeBodyForce() const noexcept
 float AcustraEngine::getLastBridgeTailForce() const noexcept
 {
     return lastBridgeTailForce_;
-}
-
-float AcustraEngine::getLastLongitudinalForce() const noexcept
-{
-    return lastLongitudinalForce_;
 }
 
 float AcustraEngine::getLastPiezoVoltage() const noexcept

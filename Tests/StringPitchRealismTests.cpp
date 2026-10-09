@@ -16,7 +16,7 @@ struct AcustraEngineTestAccess
     {
         double inharmonicity;
         double tension;
-        double axialFrequency;
+        double speakingLength;
         double attackCents;
         double fundamentalDecay;
         double retainedIntrinsicDecay;
@@ -26,7 +26,6 @@ struct AcustraEngineTestAccess
     {
         double length, position, amplitude, slipPole, bendSpeed;
         double referencePole, upperContactFret;
-        int airDelay;
         bool finite;
         std::array<double, 2> waveEnergy;
     };
@@ -36,7 +35,6 @@ struct AcustraEngineTestAccess
         double position, releaseRise, slipPole, referencePole;
         std::array<float, 2> shapePosition;
         std::array<double, 2> waveEnergy;
-        int airDelay;
         bool fired;
     };
 
@@ -161,7 +159,6 @@ struct AcustraEngineTestAccess
         DelayedAttack result { voice.pluckPoint, voice.releaseStepRise,
                                voice.releaseSlipPole, voice.releaseReferencePole,
                                voice.releaseShapePosition, {},
-                               voice.contactNoiseAirDelay,
                                voice.attackFired && voice.pluckDelay == 0 };
         for (int plane = 0; plane < 2; ++plane)
         {
@@ -214,7 +211,7 @@ struct AcustraEngineTestAccess
         Attack result { voice.speakingLengthMetres, voice.pluckPoint, amplitude,
                         voice.releaseSlipPole, voice.bendImpedanceScale,
                         voice.releaseReferencePole, voice.speakingFret,
-                        voice.contactNoiseAirDelay, true, {} };
+                        true, {} };
         for (int plane = 0; plane < 2; ++plane)
         {
             const auto& loop = voice.loops[static_cast<std::size_t>(plane)];
@@ -255,9 +252,6 @@ struct AcustraEngineTestAccess
         // a pluck's random shape or a bridge mode obscuring the comparison.
         v.attackSlopeEnergy = 0.001f;
         e->updateAttackPitch(v, string);
-        const double radius = std::sqrt(-v.longitudinalA2[0]);
-        const double angle = std::acos(std::clamp(
-            v.longitudinalA1[0] / (2.0 * radius), -1.0, 1.0));
         const double fundamental = 440.0 * std::exp2(
             (v.midiNote + slide + member - 69.0) / 12.0);
         const double omega = 2.0 * std::acos(-1.0) * fundamental / rate;
@@ -282,7 +276,7 @@ struct AcustraEngineTestAccess
         v.level = 0.001f;
         e->captureTail(v);
         return { v.dispersionDesignInharmonicity, v.tensionNewtons,
-                 angle * rate / (2.0 * std::acos(-1.0)), v.attackPitchCents,
+                 v.speakingLengthMetres, v.attackPitchCents,
                  decay, v.tailHandIntrinsicT60 };
     }
 };
@@ -303,12 +297,12 @@ void expect(bool condition, const char* message)
 void testSlideAndFretHaveTheSamePhysicalString()
 {
     // Jarvelainen & Karjalainen (Acta Acustica 92, 2006): the same string's
-    // B grows as 1/L^2. Moving the fret up an octave halves L, quadruples B,
-    // and doubles the fixed-fixed axial frequency. A manager pitch wheel is
-    // documented as that same slide, so these observables must agree with
+    // B grows as 1/L^2. Moving the fret up an octave halves L and quadruples B.
+    // A manager pitch wheel is documented as that same slide, so these
+    // observables must agree with
     // stopping the string twelve frets further up, at unchanged tension.
     double worstB = 0.0;
-    double worstAxial = 0.0;
+    double worstLength = 0.0;
     double worstDecay = 0.0;
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
         for (const int string : { 0, 1, 4, 5 })
@@ -322,12 +316,12 @@ void testSlideAndFretHaveTheSamePhysicalString()
                     std::abs(slid.inharmonicity / stopped.inharmonicity - 1.0));
                 expect(std::abs(slid.inharmonicity / held.inharmonicity - 4.0) < 0.01,
                        "octave slide did not quadruple the string's inharmonicity");
+                expect(std::abs(slid.speakingLength / held.speakingLength - 0.5) < 0.002,
+                       "octave slide did not halve the physical speaking length");
                 expect(slid.tension == held.tension,
                        "a slide changed the string's tension");
-                // Above the host's modelled band the axial mode is clamped;
-                // equivalence with the physical fret remains the invariant.
-                worstAxial = std::max(worstAxial,
-                    std::abs(slid.axialFrequency / stopped.axialFrequency - 1.0));
+                worstLength = std::max(worstLength,
+                    std::abs(slid.speakingLength / stopped.speakingLength - 1.0));
                 expect(std::abs(slid.attackCents / stopped.attackCents - 1.0) < 0.01,
                        "attack settling retained the pre-slide speaking length");
                 // Read the actual normal-loop transfer at the fundamental,
@@ -340,9 +334,9 @@ void testSlideAndFretHaveTheSamePhysicalString()
                        "retained tail forgot the slide's intrinsic fret decay");
             }
     std::cout << "Slide vs physical fret: B error " << 100.0 * worstB
-              << "%, axial mode error " << 100.0 * worstAxial << "%\n";
+              << "%, speaking length error " << 100.0 * worstLength << "%\n";
     expect(worstB < 0.002, "slide and fret disagreed on stiff-string dispersion");
-    expect(worstAxial < 0.002, "slide and fret disagreed on axial resonances");
+    expect(worstLength < 0.002, "slide and fret disagreed on physical speaking length");
     std::cout << "Slide vs physical fret: fundamental decay error "
               << 100.0 * worstDecay << "%\n";
     expect(worstDecay < 0.002, "slide and fret disagreed on fundamental decay");
@@ -357,7 +351,7 @@ void testBendingRaisesTensionWithoutShorteningTheFret()
         const auto bent = Access::stringState(string, 5, 48000.0, 0.0f, 2.0f);
         expect(bent.tension > held.tension,
                "the member's lateral bend did not raise tension");
-        expect(std::abs(bent.axialFrequency / held.axialFrequency - 1.0) < 0.002,
+        expect(std::abs(bent.speakingLength / held.speakingLength - 1.0) < 0.002,
                "a tension bend moved the physical fret");
         // The same transverse extension makes a smaller relative tension
         // increment on an already bent string (Kirchhoff-Carrier law).
@@ -389,8 +383,6 @@ void testSlideAttackMatchesItsPhysicalFret()
                         worstEnergy = std::max(worstEnergy, std::abs(
                             slid.waveEnergy[static_cast<std::size_t>(plane)]
                             / stopped.waveEnergy[static_cast<std::size_t>(plane)] - 1.0));
-                    expect(slid.airDelay == stopped.airDelay,
-                           "slid attack used the old physical contact-to-microphone path");
                     expect(slid.finite && stopped.finite, "slide/fret attack was nonfinite");
                 }
     std::cout << "Slide attack vs physical fret: position error " << worstPosition
@@ -485,8 +477,6 @@ void testScheduledFreshAttackReadsCurrentControllers()
                 expect(queued.slipPole == direct.slipPole
                     && queued.referencePole == direct.referencePole,
                        "scheduled fresh attack initialized the old member release speed");
-                expect(queued.airDelay == direct.airDelay,
-                       "scheduled fresh attack initialized the old airborne contact path");
                 for (int plane = 0; plane < 2; ++plane)
                     worstEnergy = std::max(worstEnergy, std::abs(
                         queued.waveEnergy[static_cast<std::size_t>(plane)]

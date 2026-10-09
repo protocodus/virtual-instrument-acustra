@@ -74,10 +74,7 @@ enum ParameterSlot
     slotBodyAmount,
     slotStereoWidth,
     slotOutput,
-    slotCapture,
     slotPicking,
-    slotUpperMic,
-    slotPiezoLoading,
     slotCaptureMode,
     slotGuitarModel,
     slotGatherChords,
@@ -87,7 +84,7 @@ enum ParameterSlot
     slotCount
 };
 
-static_assert (static_cast<int> (slotCount) == ids::parameterCount);
+static_assert (static_cast<int> (slotCount) == ids::activeParameterCount);
 
 constexpr std::array<const char*, slotCount> parameterIds {
     ids::shape,
@@ -99,10 +96,7 @@ constexpr std::array<const char*, slotCount> parameterIds {
     ids::bodyAmount,
     ids::stereoWidth,
     ids::output,
-    ids::capture,
     ids::picking,
-    ids::upperMic,
-    ids::piezoLoading,
     ids::captureMode,
     ids::guitarModel,
     ids::gatherChords,
