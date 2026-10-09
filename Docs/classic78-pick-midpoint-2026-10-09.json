@@ -1,0 +1,104 @@
+{
+  "schema": "AcustraFocusedPickMidpointListeningV1",
+  "status": "Frozen matched-initial-energy Pick midpoint fairness comparison accepted by the user as Natural guitar attack. Isolated production review and calibration are underway; no canonical release-law change yet. Frozen audio and hashes remain immutable.",
+  "player": "http://127.0.0.1:18789/attack-midpoint-review.html",
+  "default": "Classic78/Auditorium/Mahogany/Pick/stereo_mic/upper",
+  "variant": "pick_velocity_half: Classic calibrated kinetic release share multipliedby0.5, internaltarget matched to the unmodified baseline stored fresh wave energy.",
+  "renderer": {
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-midpoint-review/provenance/AttackRender",
+    "sha256": "55357a13e3a2fdd49d9e18d52f64ddd4aa943309cb8b96b67a57630fdaa631e0"
+  },
+  "producer_manifest_sha256": "37c46fc972964fda8b6d15d559f603951bb4cd48fbd8effb6083e8333d7401ae",
+  "before": {
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review/manifest.json",
+    "sha256": "b1c5ecadf1888d57752e91c6b18cf1ea8409881df6b52a888ea14ca13c6941e0"
+  },
+  "gain": 2.3694243635979895,
+  "gain_db": 7.492856995493708,
+  "gain_scope": "Identical frozen Before WAV paths and identical shared gain from the auditioned zero experiment. No pernote audio normalization.",
+  "validation": {
+    "baseline_native8_controls_exact_old_before": 12,
+    "candidate_native8_files_hashed_finite_frames": 12,
+    "new_PCM16_and_AB_files_decoded_hashed_exact": 36,
+    "frozen_Before_WAV_paths_and_sha_reused": 18,
+    "all54_HTML_audio_paths_exist": true,
+    "JS_syntax_valid": true,
+    "all_ABs_exact_one_second_zero_gaps": true,
+    "maximum_initial_energy_relative_error": 9.854726834568339e-08,
+    "gain_exact_prior_review": true,
+    "old_zero_Thumb_and_string_pages_manifests_preserved": true,
+    "html_sha256": "12af890b3c3dde99ed6382c2684970b78580b16ab04062d7d30a55d1f66b6db7",
+    "manifest_sha256": "be3d58e4438e3cd7ce9f41eee8b0abea710698b2591e5935e4feb6f9302cf5df"
+  },
+  "maximum_scaled_candidate_peak": 0.5339968623691036,
+  "full_manifest": {
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-midpoint-review/manifest.json",
+    "sha256": "be3d58e4438e3cd7ce9f41eee8b0abea710698b2591e5935e4feb6f9302cf5df"
+  },
+  "upper_AB": {
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-midpoint-review/auditorium-mahogany-pick-stereo_mic/upper-AB.wav",
+    "sha256": "d4506ca76767e900d649ab6c840c236fca13be06c5ad70019d2c458a94975190",
+    "seconds": 25,
+    "order": "12sec exact frozen Before,1sec zero gap,12sec midpoint"
+  },
+  "scope": [
+    "Two microphone captures,6independent fresh notes: E2/lowE,G4/D,G4/A4/B4/E5/highE. Upper/anchor/all6phrases and each individual note available.",
+    "All12 native baseline rerenders were byte-exact to auditioned Before; those control scratch files were removed after hashing. All18 BeforeWAV paths and waveform hashes reused unchanged.",
+    "Post-NoteOn uniformstored-energy fairness normalization precedes firstsample. No retained/repluck/harmonic-path or production integration claim.",
+    "OnlyPick is changed in this comparison. Thumb full-slip remains on the separate frozen attack-review page."
+  ],
+  "previous_human_feedback": {
+    "Pick_zero": "Too dull",
+    "Thumb_full_slip": "Less banjo-like; unresolved",
+    "frozen_evidence": "Docs/classic78-attack-experiment-2026-10-09.json"
+  },
+  "preserved_players": {
+    "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/index.html": "ca904dc93d21411c6c88ffdf35fda2d6f46ea00f52ce16f5e8addd1298b1fada",
+    "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/string-review.html": "e7198c8b64c84334cc0c5102aa1c70280e06eb884c5df62dbe3600411161d2c9",
+    "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/string-review/manifest.json": "f3ae694b5d5abd599c57c0d5392820a4cde5926ca84fce2b7480719f8070f9db",
+    "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review.html": "bc61bce1bda5310d41e2f41e85a65e06da24f0a4cd093320c186af77976f0846",
+    "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-review/manifest.json": "b1c5ecadf1888d57752e91c6b18cf1ea8409881df6b52a888ea14ca13c6941e0"
+  },
+  "independent_descriptor_screen": {
+    "status": "Independent focused ordering and all12-construction fresh-note screen completed; descriptive evidence only, not production or retained/repluck coverage.",
+    "focused_before_midpoint_zero_early_contrast_ordered": 12,
+    "construction_pairs": 168,
+    "construction_before_native_hashes_exact": 168,
+    "construction_midpoint_early_contrast_lower_than_before": 168,
+    "maximum_fresh_initial_energy_relative_error": 2.136e-07,
+    "highE_A4_median_early_contrast_change_db": {
+      "stereo_mic": -1.436,
+      "mono_mic": -1.453
+    },
+    "highE_E5_median_early_contrast_change_db": {
+      "stereo_mic": -1.671,
+      "mono_mic": -1.682
+    },
+    "tradeoffs": {
+      "max_held_rms_rise_db": 1.197,
+      "max_held_rms_case": "lowE E3 Auditorium/Mahogany stereo_mic",
+      "max_early_peak_rise_db": 0.814,
+      "max_early_peak_case": "lowE E2 Parlor/Spruce mono_mic",
+      "max_held_peak_rise_db": 1.617,
+      "max_held_peak_case": "B-string E5 Auditorium/Spruce mono_mic"
+    },
+    "reports": [
+      {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/midpoint-pick-producer/anchor-score.json",
+        "sha256": "31978d4e7aed64c97b1609e8ae2b5d3e5a901038c82062a1be0192850741881e"
+      },
+      {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/midpoint-pick-producer/construction-screen.json",
+        "sha256": "dccd1468d9eb08e211832fad3dd4f2d369babeedf694dc0f17fda6b200e0ef76"
+      }
+    ]
+  },
+  "human_focused_feedback": {
+    "human_feedback": "Natural guitar attack",
+    "decision": "Accepted Pick midpoint; stop new tone variants and review/calibrate the isolated production source.",
+    "scope": "Focused Classic78/Auditorium/Mahogany stereo high-E G4/A4/B4/E5 25sec A/B; human response relayed by the parent agent.",
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/attack-midpoint-review/auditorium-mahogany-pick-stereo_mic/upper-AB.wav",
+    "sha256": "d4506ca76767e900d649ab6c840c236fca13be06c5ad70019d2c458a94975190",
+    "fairness_scope": "The heard comparison matches initial stored fresh wave energy. The production proposal intentionally has different release-work semantics and needs separate validation before canonical application."
+  }
+}

@@ -1,4 +1,7 @@
 #include "AcustraEngine.h"
+#include "PluckPolarisationData.h"
+#include "ReleasePolicyData.h"
+#include "SustainPolicyData.h"
 #include "GaussianApertureData.h"
 #include "MeasuredBodyData.h"
 #if defined(ACUSTRA_MEASURED_BRIDGE_DATA_HEADER)
@@ -11,6 +14,7 @@
 #include "GuitarModelData.h"
 #include "ConstructionLoudnessData.h"
 #include "CaptureVoicingData.h"
+#include "MicrophoneBalanceData.h"
 #include "ModelConvergenceData.h"
 #include "PlayerBodyLoading.h"
 #include "PiezoBlampTable.h"
@@ -3947,8 +3951,9 @@ std::array<float, 4> AcustraEngine::bodyWoodFactors(
 float AcustraEngine::captureVoicingGain(float frequency) noexcept
 {
     double power = 1.0;
-    for (const auto& section : detail::captureVoicingSections)
+    for (const auto& fitted : detail::captureVoicingSections)
     {
+        const auto section = detail::balancedOriginalCaptureSection(fitted);
         const double a = std::pow(10.0, static_cast<double>(section.gainDb) / 40.0);
         const double w = static_cast<double>(frequency)
             / static_cast<double>(section.frequencyHz);
@@ -3975,7 +3980,8 @@ float AcustraEngine::captureVoicingGain(float frequency) noexcept
         power *= numerator / denominator;
     }
     return static_cast<float>(std::sqrt(power)
-        * std::pow(10.0, static_cast<double>(detail::captureVoicingLevelDb) / 20.0));
+        * std::pow(10.0, (static_cast<double>(detail::captureVoicingLevelDb)
+            + detail::originalCaptureLevelAdjustmentDb) / 20.0));
 }
 
 void AcustraEngine::configureBody() noexcept
@@ -5133,12 +5139,15 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // has settled below a float step of its pitch - keeps what it has. Only
     // the two assignments that depend on arguments outside the key remain.
     // clearDelay always runs: it also resets the loops.
+    const float broadLossCornerScale = detail::broadLossCornerScaleForModel(
+        configuredBridgeModel_ == GuitarModel::Bellido1978);
     const VoiceConfigurationKey configurationKey {
         voiceConfigurationGeneration_, stoppedMidi, voice.openMidi,
         exact::bits(frequency), exact::bits(tensionSemitones),
         exact::bits(soundingLength), exact::bits(pitch.speakingFret),
         exact::bits(lossDesignFrequency),
-        exact::bits(parameters_.stringAge), exact::bits(palmMute_) };
+        exact::bits(parameters_.stringAge), exact::bits(palmMute_),
+        exact::bits(broadLossCornerScale) };
     const bool usePickReference = (clearDelay || refreshPickReference)
         && sampleRate_ != 48000.0 && parameters_.picking == PickingTechnique::Pick;
     const bool referenceTuning = usePickReference
@@ -5210,7 +5219,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float viscousLoss = 1.65e-4f * (1.0f + 1.35f * age);
     const float broadLoss = clamp(72.0f * viscousLoss
         * physical.frequencyLossScale, 0.0f, 0.95f);
-    const float broadLossCutoff = 14.3f * frequency;
+    const float broadLossCutoff = (14.3f * broadLossCornerScale) * frequency;
     const float broadLossCoefficient = std::exp(-twoPi
         * clamp(broadLossCutoff, 500.0f,
                 0.44f * 48000.0f)
@@ -5228,7 +5237,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float dispersionFitFrequency = std::min(lossDesignFrequency,
                                                    highestFitFrequency);
     const float designBroadLossCoefficient = std::exp(-twoPi
-        * clamp(14.3f * dispersionFitFrequency, 500.0f,
+        * clamp((14.3f * broadLossCornerScale) * dispersionFitFrequency, 500.0f,
                 0.44f * 48000.0f)
         * (1.0f / 48000.0f));
     // Inside that supported band dispersion includes the bending section's
@@ -5254,7 +5263,9 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                > std::max(1.0e-9f, 0.002f * inharmonicity)
         || exact::abs(voice.dispersionDesignAge - age) > 1.0e-5f
         || exact::abs(voice.dispersionDesignFrequencyLossScale
-                    - physical.frequencyLossScale) > 1.0e-5f;
+                    - physical.frequencyLossScale) > 1.0e-5f
+        || exact::bits(voice.dispersionDesignBroadLossCornerScale)
+                    != exact::bits(broadLossCornerScale);
     // The string's own bending loss (bendingLossSection), for the physical
     // frequency and tension the dispersion is designed for. The four basses are the wound constructions
     // (steelBendingDiameter above says so).
@@ -5329,6 +5340,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         voice.dispersionDesignAge = age;
         voice.dispersionDesignFrequencyLossScale
             = physical.frequencyLossScale;
+        voice.dispersionDesignBroadLossCornerScale = broadLossCornerScale;
     }
     const float omega = twoPi * frequency * inverseSampleRate_;
     DispersionSections dispersion;
@@ -5858,12 +5870,17 @@ void AcustraEngine::beginStrum(int strokeSpanSamples,
 }
 
 void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
-                                    float velocity, bool merge) noexcept
+                                    float velocity, bool merge,
+                                    bool applyPluckDirection) noexcept
 {
     const float v = clamp(velocity, 0.001f, 1.0f);
     voice.repluckForceGain = 1.0f;
     voice.excitationParallelGain = 0.51f * voice.pluckParallelSign;
     const auto& physical = physicalCalibration_.steel;
+    const bool classicRelease = configuredBridgeModel_ == GuitarModel::Bellido1978;
+    const bool fullSoftSlip = detail::fullSoftContactSlip(
+        parameters_.picking == PickingTechnique::Finger,
+        parameters_.picking == PickingTechnique::Thumb, classicRelease);
     const float touch = effectiveTouch(voice.velocity);
     if (!voice.strumming)
         voice.pluckGesture = nextPickingGesture();
@@ -6043,15 +6060,21 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     const bool pressureOwned = voice.mpeMember && mpePressureFor(voice) >= 0.0f;
     const float randomAngle = 0.025f * (gesture.active && !pressureOwned
         ? 0.65f * gesture.pressure + 0.35f * angleDraw : angleDraw);
-    voice.polarisationMix = pluckNormalShare(touch, randomAngle);
+    const float legacyPolarisationMix = pluckNormalShare(touch, randomAngle);
+    voice.polarisationMix = detail::pluckNormalShareForModel(legacyPolarisationMix,
+        applyPluckDirection && classicRelease,
+        stringIndex);
     // The shared register law pivots at one fixed 48 kHz MIDI-61 period,
     // independent of material, string choice and host sample rate.
     const float apertureReferenceDelay = 48000.0f / midiFrequency(61);
     // The Pick technique's release velocity (FittedPhysicalData.h). Finger
-    // and Thumb, and a pick at a zero share, take the legacy shape below.
+    // and Thumb, and a pick at a zero share, take the displacement shape below.
     const bool pick = parameters_.picking == PickingTechnique::Pick;
+    // Classic uses half the authored steel kinetic share; its periodic geometry
+    // and fitted calibration remain the same. Original keeps the full share.
     const float releaseShare = pick
-        ? physicalCalibration_.pickReleaseVelocityShare
+        ? detail::pickedVelocityShareForModel(physicalCalibration_.pickReleaseVelocityShare,
+                                                classicRelease)
             * std::pow(v, physicalCalibration_.pickReleaseVelocityExponent)
         : 0.0f;
     // Touch is how fast the hand lets go: a firm touch releases the string
@@ -6070,8 +6093,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // its nominal slip made sustained H5-H12/H1-H4 7-10 dB brighter than
     // the identified Eastman Finger recordings. Full slip brings that balance
     // about 2.3 dB closer on both measured-body presets, with a documented
-    // Martin spectral tradeoff (Docs/decisions.md, 2026-10-07). Thumb retains
-    // its selected ratio to the full-velocity slip. Both keep the released
+    // Martin spectral tradeoff (Docs/decisions.md, 2026-10-07). Classic Thumb
+    // also takes full slip, selected after controlled attack auditions on
+    // 2026-10-09; Original Thumb retains its full-velocity reference ratio.
+    // Both keep the released
     // line's spread about its mean, preserving the displacement-to-level law.
     // The existing 0.2 mm effective radius is authored, not a newly measured
     // fingertip dimension. The nominal contact still bounds a firm Touch to
@@ -6108,15 +6133,14 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                                         referenceTau / releaseBoostLimit);
             const double bounded = std::exp(-1.0 / tau);
             if (bounded != referencePole
-                || parameters_.picking == PickingTechnique::Finger)
+                || fullSoftSlip)
             {
                 slipPole = bounded;
                 unslipPole = referencePole;
             }
         }
         voice.releaseSlipPole = unslipPole > 0.0 ? slipPole : 0.0;
-        voice.releaseReferencePole = parameters_.picking == PickingTechnique::Finger
-            ? 0.0 : unslipPole;
+        voice.releaseReferencePole = fullSoftSlip ? 0.0 : unslipPole;
     }
 
     // The finger's contact width over the tool's, for the contact noise's
@@ -6415,9 +6439,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             };
             const double before = spread();
             applyPlectrumSlip(loop, length, slipPole);
-            if (parameters_.picking != PickingTechnique::Finger)
+            if (!fullSoftSlip)
             {
-                // Thumb retains its reference slip's periodic inverse,
+                // Original Thumb retains its reference slip's periodic inverse,
                 // re-zeroed at the bridge sample as the slip itself is.
                 const double b = unslipPole;
                 double previous = lineAt(length - 1);
@@ -6442,6 +6466,63 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         }
         else
             applyPlectrumSlip(loop, length, slipPole);
+    }
+
+    // The two release locations have different combs. Changing their energy
+    // shares alone would change the fresh stroke's total slope energy too,
+    // especially for a natural harmonic. Restore the energy the legacy share
+    // would supply to this same geometry before adding any preceding wave.
+    float freshEnergyGain = 1.0f;
+    if (voice.polarisationMix != legacyPolarisationMix)
+    {
+        const auto freshPlaneEnergy = [&] (int plane)
+        {
+            const auto& loop = voice.loops[static_cast<std::size_t>(plane)];
+            // A repluck's energy bound is measured after fractional alignment
+            // to the retained period. Match that fresh work before the merge.
+            if (merge)
+                return repluckIncrementWork(loop,
+                    repluckOldLoops_[static_cast<std::size_t>(plane)])[0];
+            const int length = std::clamp(
+                static_cast<int>(std::round(loop.targetDelay)), 8,
+                activeDelaySamples() - 3);
+            const auto at = [&] (int sample)
+            {
+                return loop.delay[static_cast<std::size_t>(wrapDelayIndex(
+                    loop.writeIndex - sample))];
+            };
+            float previous = at(length);
+            double squaredDifferences = 0.0;
+            for (int sample = 1; sample <= length; ++sample)
+            {
+                const float current = at(sample);
+                const double difference = static_cast<double>(current - previous);
+                squaredDifferences += difference * difference;
+                previous = current;
+            }
+            return static_cast<double>(length) * squaredDifferences;
+        };
+        const double normalEnergy = freshPlaneEnergy(0);
+        const double parallelEnergy = freshPlaneEnergy(1);
+        const double freshEnergy = normalEnergy + parallelEnergy;
+        const double legacyEnergy = normalEnergy
+                * (static_cast<double>(legacyPolarisationMix) / voice.polarisationMix)
+            + parallelEnergy * ((1.0 - legacyPolarisationMix)
+                / (1.0 - voice.polarisationMix));
+        if (freshEnergy > 0.0 && legacyEnergy > 0.0)
+        {
+            freshEnergyGain = static_cast<float>(std::sqrt(legacyEnergy / freshEnergy));
+            for (auto& loop : voice.loops)
+            {
+                const int length = std::clamp(
+                    static_cast<int>(std::round(loop.targetDelay)), 8,
+                    activeDelaySamples() - 3);
+                for (int sample = 1; sample <= length; ++sample)
+                    loop.delay[static_cast<std::size_t>(wrapDelayIndex(
+                        loop.writeIndex - sample))] *= freshEnergyGain;
+            }
+            voice.releaseStepRise *= freshEnergyGain;
+        }
     }
 
     if (merge)
@@ -6531,6 +6612,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
             * physical.transientScale;
     voice.excitationEnvelope *= voice.repluckForceGain;
+    if (freshEnergyGain != 1.0f)
+        voice.excitationEnvelope *= freshEnergyGain;
     // A natural harmonic's finger is still on the node when the pluck lets
     // go, so the release's broadband burst is filtered by it as every other
     // mode the node does not share is. The burst is written at the bridge,
@@ -10149,14 +10232,13 @@ void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
     activeSections = bellido ? 2 : sections;
     gain = bellido ? 1.0f
         : static_cast<float>(std::pow(10.0,
-            static_cast<double>(detail::captureVoicingLevelDb) / 20.0));
+            (static_cast<double>(detail::captureVoicingLevelDb)
+                + detail::originalCaptureLevelAdjustmentDb) / 20.0));
     // Both authored recording contours act on the summed pressure. Weighting
     // modal residues by a contour instead breaks off-resonance cancellation:
     // the Original's intended 500 Hz cut could become a boost on treble notes.
     // Every mechanical/radiation pole and relative modal residue stays intact.
     // Shape and Wood retain its history; model fades copy it with the bank.
-    constexpr std::array<double, 2> bellidoFrequency { 500.0, 1400.0 };
-    constexpr std::array<double, 2> bellidoGainDb { -6.0, 6.0 };
     constexpr double doublePi = 3.141592653589793238462643383279502884;
     for (int index = 0; index < sections; ++index)
     {
@@ -10166,11 +10248,12 @@ void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
             coefficients[slot] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f };
             continue;
         }
-        const auto& original = detail::captureVoicingSections[slot];
-        const auto kind = bellido ? detail::CaptureVoicingKind::Peak : original.kind;
-        const double frequency = bellido ? bellidoFrequency[slot] : original.frequencyHz;
-        const double gainDb = bellido ? bellidoGainDb[slot] : original.gainDb;
-        const double q = bellido ? 1.2 : original.q;
+        const auto section = bellido ? detail::classicalCaptureVoicingSections[slot]
+            : detail::balancedOriginalCaptureSection(detail::captureVoicingSections[slot]);
+        const auto kind = section.kind;
+        const double frequency = section.frequencyHz;
+        const double gainDb = section.gainDb;
+        const double q = bellido ? 1.2 : section.q;
         const double amplitude = std::pow(10.0, gainDb / 40.0);
         const double omega = 2.0 * doublePi * frequency / sampleRate;
         const double cosine = std::cos(omega);

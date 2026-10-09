@@ -22,7 +22,7 @@ endif()
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.1.2 LANGUAGES C CXX)
+project(Acustra VERSION 1.1.3 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -48,6 +48,10 @@ add_library(AcustraDSP STATIC
     Source/DSP/AcustraEngine.cpp
     Source/DSP/AcustraEngine.h
     Source/DSP/CaptureVoicingData.h
+    Source/DSP/MicrophoneBalanceData.h
+    Source/DSP/PluckPolarisationData.h
+    Source/DSP/ReleasePolicyData.h
+    Source/DSP/SustainPolicyData.h
     Source/DSP/PiezoBlampTable.h
     Source/DSP/AcustraPerformer.cpp
     Source/DSP/AcustraPerformer.h)
@@ -432,6 +436,13 @@ if(BUILD_TESTING)
     set_target_properties(AcustraCaptureVoicingTests PROPERTIES
         CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     acustra_add_suite(Acustra.CaptureVoicing AcustraCaptureVoicingTests)
+
+    add_executable(AcustraMicrophoneBalanceTests Tests/MicrophoneBalanceTests.cpp)
+    target_link_libraries(AcustraMicrophoneBalanceTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraMicrophoneBalanceTests PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    acustra_add_suite(Acustra.MicrophoneBalance AcustraMicrophoneBalanceTests)
+    set_tests_properties(Acustra.MicrophoneBalance PROPERTIES TIMEOUT 50)
 
     # The piezo chain against Tools/PiezoReference.py's circuit simulation,
     # through the fixtures it wrote (Tests/Fixtures).
@@ -903,4 +914,23 @@ if(BUILD_TESTING)
     target_link_libraries(AcustraPitchGeometryCacheTests PRIVATE AcustraDSP)
     set_target_properties(AcustraPitchGeometryCacheTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     acustra_add_suite(Acustra.PitchGeometryCache AcustraPitchGeometryCacheTests)
+endif()
+
+# Native construction-strum measurement and string-release energy checks.
+if(ACUSTRA_BUILD_TOOLS)
+    add_executable(AcustraConstructionStrumLevels Tools/ConstructionStrumLevels.cpp)
+    target_link_libraries(AcustraConstructionStrumLevels PRIVATE AcustraDSP)
+endif()
+if(BUILD_TESTING)
+    add_executable(AcustraPluckPolarisationTests Tests/PluckPolarisationTests.cpp)
+    target_link_libraries(AcustraPluckPolarisationTests PRIVATE AcustraDSP)
+    acustra_add_suite(Acustra.PluckPolarisation AcustraPluckPolarisationTests)
+    add_executable(AcustraReleasePolicyTests Tests/ReleasePolicyTests.cpp)
+    target_link_libraries(AcustraReleasePolicyTests PRIVATE AcustraDSP)
+    acustra_add_suite(Acustra.ReleasePolicy AcustraReleasePolicyTests)
+    add_executable(AcustraSustainPolicyTests Tests/SustainPolicyTests.cpp)
+    target_link_libraries(AcustraSustainPolicyTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraSustainPolicyTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    acustra_add_suite(Acustra.SustainPolicy AcustraSustainPolicyTests)
+    set_tests_properties(Acustra.PluckPolarisation PROPERTIES TIMEOUT 50)
 endif()

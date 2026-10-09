@@ -52,6 +52,12 @@ A microphone-only update can keep the existing absolute pickup level with
 the new microphone reference; float32 rounding can change the product by a
 few ulps. This does not waive any loudness or headroom checks.
 
+For a physical update, `--strum-measurements native.json` uses the output of
+AcustraConstructionStrumLevels to keep all five existing Finger tuning guards
+within 9 dB while staying within the phrase's 1 LU tolerance. It projects each
+capture to the nearest feasible gain; it never changes the default reference.
+Rebuild and rerender both protocols to verify the generated float32 tables.
+
 `--pickings` additionally scopes the written cells to the selected playing
 styles, while retaining every other model/style cell's built gains:
 
@@ -100,6 +106,9 @@ PICKINGS = ("finger", "pick", "thumb")
 CAPTURES = ("stereo_mic", "mono_mic", "piezo")
 DEFAULT = ("original", "dreadnought", "spruce", "finger")
 CELLS = len(MODELS) * len(SHAPES) * len(WOODS) * len(PICKINGS)
+TUNINGS = ("standard", "drop_d", "dadgad", "open_g", "half_step_down")
+STRUM_TOLERANCE_DB = 9.0       # ConstructionMatrixTests' existing guard
+FIT_MARGIN_DB = 0.02          # leave room for float32 table rounding
 
 LIMIT_KNEE = 0.89125094        # safetyLimit's threshold, -1 dBFS
 LIMIT_HEADROOM = 1.0 - LIMIT_KNEE
@@ -333,6 +342,119 @@ def preserve_piezo_level(tables: dict[str, np.ndarray],
         i = index(*cell)
         old_level = to_float32(built["mic"][i]) * to_float32(built["piezo"][i])
         tables["piezo"][i] = old_level / to_float32(tables["mic"][i])
+
+
+def absolute_gain(tables, cell, capture):
+    gain = tables["mic"][cell]
+    if capture != "stereo_mic":
+        gain *= tables["mono" if capture == "mono_mic" else "piezo"][cell]
+    return float(gain)
+
+
+def validate_strum_measurements(saved, built):
+    """Reject incomplete, stale or limited native guard measurements."""
+    if (saved.get("schema") != "AcustraConstructionStrumLevelsV1"
+            or saved.get("rate") != 48000 or saved.get("frames") != 16800
+            or saved.get("picking") != "finger"):
+        raise ValueError("strum measurements must use the native 48 kHz Finger guard protocol")
+    captured = saved.get("built_gains", {})
+    for name in ("mic", "mono", "piezo"):
+        values = np.asarray(captured.get(name, []), dtype=float)
+        if (values.shape != (CELLS,) or not np.isfinite(values).all()
+                or np.any(values <= 0)
+                or not np.array_equal(values.astype(np.float32),
+                                      built[name].astype(np.float32))):
+            raise ValueError(f"strum measurements' built {name} gains differ from the current header")
+    expected = set(itertools.product(constructions(), CAPTURES, TUNINGS))
+    rows = {}
+    references = {}
+    for row in saved.get("rows", []):
+        key = (tuple(row.get("construction", [])), row.get("capture"), row.get("tuning"))
+        if key not in expected or key in rows:
+            raise ValueError(f"invalid or duplicate strum measurement: {key}")
+        values = [row.get(name) for name in
+                  ("weighted_db", "reference_db", "relative_db", "peak", "piezo_peak")]
+        if (row.get("finite") is not True
+                or any(not isinstance(v, (float, int)) or not np.isfinite(v) for v in values)
+                or min(values[3:]) <= 0):
+            raise ValueError(f"non-finite or silent strum measurement: {key}")
+        if row["peak"] >= LIMIT_KNEE or row["piezo_peak"] >= LIMIT_KNEE:
+            raise ValueError(f"limited strum measurement cannot be projected linearly: {key}")
+        if abs(row["weighted_db"] - row["reference_db"] - row["relative_db"]) > 1e-8:
+            raise ValueError(f"inconsistent strum levels: {key}")
+        reference_key = key[1:]
+        if reference_key in references and abs(references[reference_key] - row["reference_db"]) > 1e-8:
+            raise ValueError(f"inconsistent default strum reference: {reference_key}")
+        references[reference_key] = row["reference_db"]
+        rows[key] = row
+    if set(rows) != expected:
+        raise ValueError(f"strum measurements need all {len(expected)} construction/capture/tuning rows")
+    for capture, tuning in itertools.product(CAPTURES, TUNINGS):
+        row = rows[(DEFAULT[:3], capture, tuning)]
+        if abs(row["relative_db"]) > 1e-8:
+            raise ValueError("default strum must equal its capture/tuning reference")
+    return rows
+
+
+def constrain_strum_gains(tables, built, raw, saved, models, pickings):
+    """Choose the nearest phrase fit satisfying every native tuning guard.
+
+    Solve absolute capture gains first; encode mono/piezo as relative trims
+    afterward. The existing default reference is immutable. These predictions
+    require a fresh native rerender after rebuilding: BS.1770 gating and the
+    limiter can make phrase measurements differ from simple scalar arithmetic.
+    """
+    rows = validate_strum_measurements(saved, built)
+    for name in ("mic", "mono", "piezo"):
+        if (tables[name].shape != (CELLS,) or not np.isfinite(tables[name]).all()
+                or np.any(tables[name] <= 0)):
+            raise ValueError(f"invalid fitted {name} gains")
+    for construction, capture in itertools.product(constructions(), CAPTURES):
+        value = raw["lufs"][(construction, "finger", capture)]
+        if not np.isfinite(value):
+            raise ValueError(f"non-finite phrase level: {construction} {capture}")
+    target = raw["lufs"][(DEFAULT[:3], DEFAULT[3], "stereo_mic")]
+    default_cell = index(*DEFAULT)
+    for capture in CAPTURES:
+        if abs(20 * np.log10(absolute_gain(tables, default_cell, capture)
+                            / absolute_gain(built, default_cell, capture))) > 1e-6:
+            raise ValueError("strum constraints require preserving the default reference on every capture")
+    planned = {name: values.copy() for name, values in tables.items()}
+    changes = []
+    for construction in constructions():
+        cell = index(*construction, "finger")
+        selected = construction[0] in models and "finger" in pickings and cell != default_cell
+        levels = {}
+        for capture in CAPTURES:
+            old_db = 20 * np.log10(absolute_gain(built, cell, capture))
+            wanted_db = 20 * np.log10(absolute_gain(tables, cell, capture))
+            exact_db = target - raw["lufs"][(construction, "finger", capture)]
+            low = exact_db - TOLERANCE_LU + FIT_MARGIN_DB
+            high = exact_db + TOLERANCE_LU - FIT_MARGIN_DB
+            for tuning in TUNINGS:
+                row = rows[(construction, capture, tuning)]
+                low = max(low, old_db - STRUM_TOLERANCE_DB + FIT_MARGIN_DB - row["relative_db"])
+                high = min(high, old_db + STRUM_TOLERANCE_DB - FIT_MARGIN_DB - row["relative_db"])
+            if low > high:
+                raise ValueError(f"no gain satisfies phrase and strum limits: {construction} {capture}")
+            fitted_db = float(np.clip(wanted_db, low, high)) if selected else wanted_db
+            if not selected and not low - 1e-6 <= fitted_db <= high + 1e-6:
+                raise ValueError(f"unselected gain violates strum/phrase limits: {construction} {capture}")
+            levels[capture] = 10 ** (fitted_db / 20)
+            if abs(fitted_db - wanted_db) > 1e-6:
+                changes.append({"construction": list(construction), "capture": capture,
+                                "phrase_offset_lu": float(fitted_db - exact_db),
+                                "gain_interval_db": [float(low), float(high)]})
+        if selected:
+            planned["mic"][cell] = levels["stereo_mic"]
+            planned["mono"][cell] = levels["mono_mic"] / levels["stereo_mic"]
+            planned["piezo"][cell] = levels["piezo"] / levels["stereo_mic"]
+    # Commit only after every cell is feasible; failure leaves input untouched.
+    for name in tables:
+        tables[name][:] = planned[name]
+    return {"protocol": saved["schema"], "rows": len(rows),
+            "rounding_margin_db": FIT_MARGIN_DB, "adjusted_captures": changes,
+            "requires_native_rerender": True}
 
 
 def float_literal(value: float) -> str:
@@ -591,6 +713,51 @@ def self_test() -> None:
     bellido = index("bellido1978", "parlor", "maple", "thumb")
     assert abs(20 * np.log10(made["mic"][bellido]) + 3.2) < 1e-9
     assert abs(20 * np.log10(made["mono"][bellido]) + 0.5) < 1e-9
+    # One quiet native tuning needs +0.82 dB, within the phrase tolerance.
+    # Other captures stay at unity, including every Original entry.
+    unity = {name: np.ones(CELLS) for name in ("mic", "mono", "piezo")}
+    flat = {"lufs": {(c, p, k): -30.0 for c in constructions()
+                     for p in PICKINGS for k in CAPTURES}, "peaks": {}}
+    native = {"schema": "AcustraConstructionStrumLevelsV1", "rate": 48000,
+              "frames": 16800, "picking": "finger",
+              "built_gains": {name: values.tolist() for name, values in unity.items()},
+              "rows": []}
+    for c, capture, tuning in itertools.product(constructions(), CAPTURES, TUNINGS):
+        relative = -9.8 if (c == pick and capture == "mono_mic" and tuning == "dadgad") else 0.0
+        native["rows"].append({"construction": list(c), "capture": capture,
+                               "tuning": tuning, "weighted_db": relative,
+                               "reference_db": 0.0, "relative_db": relative,
+                               "peak": 0.01, "piezo_peak": 0.01, "finite": True})
+    projected = {name: values.copy() for name, values in unity.items()}
+    fit_report = constrain_strum_gains(projected, unity, flat, native, ("bellido1978",), PICKINGS)
+    finger_cell = index(*pick, "finger")
+    assert abs(20 * np.log10(projected["mono"][finger_cell]) - 0.82) < 1e-10
+    assert np.array_equal(projected["mic"], unity["mic"])
+    assert np.array_equal(projected["piezo"], unity["piezo"])
+    assert len(fit_report["adjusted_captures"]) == 1
+    # Bad evidence and an empty feasible interval fail before any table write.
+    failures = []
+    duplicate = json.loads(json.dumps(native)); duplicate["rows"].append(duplicate["rows"][0])
+    failures.append(duplicate)
+    missing = json.loads(json.dumps(native)); missing["rows"].pop(); failures.append(missing)
+    stale = json.loads(json.dumps(native)); stale["built_gains"]["mono"][0] = 2.0; failures.append(stale)
+    nonfinite = json.loads(json.dumps(native)); nonfinite["rows"][0]["weighted_db"] = float("nan"); failures.append(nonfinite)
+    limited = json.loads(json.dumps(native)); limited["rows"][0]["peak"] = LIMIT_KNEE; failures.append(limited)
+    inconsistent = json.loads(json.dumps(native)); inconsistent["rows"][0]["relative_db"] = 1.0; failures.append(inconsistent)
+    impossible = json.loads(json.dumps(native))
+    for row in impossible["rows"]:
+        if row["relative_db"] == -9.8:
+            row["relative_db"] = row["weighted_db"] = -10.1
+    failures.append(impossible)
+    for invalid in failures:
+        unchanged = {name: values.copy() for name, values in unity.items()}
+        try:
+            constrain_strum_gains(unchanged, unity, flat, invalid, MODELS, PICKINGS)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid native evidence accepted")
+        assert all(np.array_equal(unchanged[name], unity[name]) for name in unity)
     assert HEADER.exists(), HEADER
     built = built_gains()
     assert built["mic"][index(*DEFAULT)] == 1.0
@@ -614,6 +781,10 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--measurements", type=Path,
                         help="reuse a --json file's measurements instead of rendering"
                              " (they carry the gains built when they were made)")
+    parser.add_argument("--strum-measurements", type=Path,
+                        help="native AcustraConstructionStrumLevels JSON; constrain"
+                             " header writes to phrase and five-tuning limits, or"
+                             " verify every native strum with --check")
     parser.add_argument("--max-headroom-cut", type=float, default=0.9,
                         help="dB a Pick cell may sit under the target to keep its"
                              " hardest case 1 dB under the knee (default 0.9, inside"
@@ -638,6 +809,10 @@ def main() -> int:
     arguments = parser.parse_args()
     if arguments.preserve_piezo_level and not arguments.write_header:
         parser.error("--preserve-piezo-level requires --write-header")
+    if arguments.strum_measurements and not (arguments.write_header or arguments.check):
+        parser.error("--strum-measurements requires --write-header or --check")
+    if arguments.strum_measurements and arguments.preserve_piezo_level:
+        parser.error("--strum-measurements and --preserve-piezo-level cannot both change the capture fit")
     if arguments.self_test:
         self_test()
         return 0
@@ -653,10 +828,12 @@ def main() -> int:
         raw = raw_levels(measured, built_gains())
     target = measured["lufs"][(DEFAULT[:3], DEFAULT[3], "stereo_mic")]
     as_built = report(measured, target)
-    if arguments.json:
-        arguments.json.write_text(json.dumps({
-            "as_rendered": serialise(measured), "without_gains": serialise(raw),
-            "summary": as_built}, indent=1) + "\n")
+    saved_strums = None
+    if arguments.strum_measurements:
+        saved_strums = json.loads(arguments.strum_measurements.read_text())
+        validate_strum_measurements(saved_strums, built_gains())
+    output = {"as_rendered": serialise(measured), "without_gains": serialise(raw),
+              "summary": as_built}
     print_report(as_built, "as rendered")
     print_report(report(raw, target), "without the construction gains")
     if arguments.write_header:
@@ -665,8 +842,13 @@ def main() -> int:
         retain_unselected_gains(tables, built, arguments.models, arguments.pickings)
         if arguments.preserve_piezo_level:
             preserve_piezo_level(tables, built, arguments.models, arguments.pickings)
+        if saved_strums is not None:
+            output["strum_constraints"] = constrain_strum_gains(
+                tables, built, raw, saved_strums, arguments.models, arguments.pickings)
         HEADER.write_text(header_text(tables))
         print(f"wrote {HEADER}")
+    if arguments.json:
+        arguments.json.write_text(json.dumps(output, indent=1, allow_nan=False) + "\n")
     if arguments.check:
         failures = [f"{capture} spans {row['min_lu']:+.2f}..{row['max_lu']:+.2f} LU"
                     for capture, row in as_built["captures"].items()
@@ -680,6 +862,11 @@ def main() -> int:
                      if name.endswith(" pick")
                      for cell in row["short_of_1db"]
                      if cell["lu"] > -arguments.max_headroom_cut + 0.05]
+        if saved_strums is not None:
+            failures += [f"native strum {row['construction']} {row['capture']}"
+                         f" {row['tuning']} is {row['relative_db']:+.2f} dB"
+                         for row in saved_strums["rows"]
+                         if abs(row["relative_db"]) > STRUM_TOLERANCE_DB]
         if failures:
             print("FAILED: " + "; ".join(failures))
             return 1

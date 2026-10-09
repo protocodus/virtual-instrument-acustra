@@ -31,8 +31,11 @@ Protocol (deterministic; no audio is committed or downloaded):
    flat-top and GuitarSet weigh equally. Bands 90 Hz-6 kHz weigh 1, the rest
    of 70 Hz-11 kHz 0.35; outside it nothing is fitted (the recordings' rumble
    below and hiss above are not the guitar's).
-4. Fit. The renders already carry the voicing the build has, read from
-   CaptureVoicingData.h, so the target is that voicing plus the consensus.
+4. Fit. The native renders carry the generated voicing plus the authored
+   refinements in MicrophoneBalanceData.h. Read both headers and add the
+   current balanced contour to the measured consensus when fitting the
+   generated base. The authored refinement remains a separate runtime step;
+   otherwise a later refit would subtract and cancel that refinement.
    The section structure is fixed - a low shelf at 120 Hz (Q 0.7) and peaks
    at 125, 250, 500, 1000 and 1400 Hz (Q 1.2) - and only the gains are
    fitted, bounded to +-6 dB, by least squares on each band's
@@ -74,6 +77,7 @@ import FitPhysicalModel as scorer  # noqa: E402  (the onset rule)
 RATE = 48_000
 HEADER = (Path(__file__).resolve().parent.parent
           / "Source/DSP/CaptureVoicingData.h")
+BALANCE_HEADER = HEADER.with_name("MicrophoneBalanceData.h")
 CENTRES = 1000.0 * 2.0 ** (np.arange(-16, 14) / 3.0)
 FIT_LOW, FIT_HIGH = 70.0, 11_000.0
 FULL_LOW, FULL_HIGH = 90.0, 6_000.0
@@ -144,6 +148,37 @@ def read_header(path: Path | None = None) -> tuple[list, float]:
     if not sections or level is None:
         raise ValueError(f"{path}: no capture voicing table")
     return sections, float(level.group(1))
+
+
+def read_balance(path: Path | None = None) -> dict[str, float]:
+    """Read authored constants; fail instead of guessing missing refinements."""
+    path = BALANCE_HEADER if path is None else path
+    text = path.read_text(encoding="utf-8")
+    adjustments = {}
+    for name in ("originalBassShelfAdjustmentDb", "originalAirPeakAdjustmentDb",
+                 "originalCaptureLevelAdjustmentDb"):
+        matches = re.findall(r"\b" + name + r"\s*=\s*([-+0-9.eE]+)f\s*;", text)
+        if len(matches) != 1 or not math.isfinite(float(matches[0])):
+            raise ValueError(f"{path}: expected one finite numeric {name}")
+        adjustments[name] = float(matches[0])
+    return adjustments
+
+
+def balanced_sections(sections: list, adjustments: dict[str, float]) -> list:
+    """The authored gain offsets on the fixed generated section structure."""
+    result = []
+    matched = {"originalBassShelfAdjustmentDb": 0, "originalAirPeakAdjustmentDb": 0}
+    for kind, frequency, gain, q in sections:
+        name = ("originalBassShelfAdjustmentDb" if kind == "LowShelf" and frequency == 120.0
+                else "originalAirPeakAdjustmentDb" if kind == "Peak" and frequency == 125.0
+                else None)
+        if name is not None:
+            gain += adjustments[name]
+            matched[name] += 1
+        result.append((kind, frequency, gain, q))
+    if any(count != 1 for count in matched.values()):
+        raise ValueError("generated capture structure must contain one 120 Hz shelf and 125 Hz peak")
+    return result
 
 
 def _read(spec: dict, base: Path) -> np.ndarray:
@@ -256,8 +291,14 @@ def write_header(sections: list, level_db: float, path: Path | None = None) -> N
     path.write_text(text, encoding="utf-8")
 
 
-def run(bank: Path, open_dir: Path, guitarset: Path) -> dict:
+def run(bank: Path, open_dir: Path, guitarset: Path, *,
+        balance_header: Path | None = BALANCE_HEADER) -> dict:
     current, level = read_header()
+    # Production renders include this contour. None is an explicit fixture
+    # option for synthetic renders made without the production refinement.
+    adjustments = read_balance(balance_header) if balance_header is not None else None
+    balanced = balanced_sections(current, adjustments) if adjustments is not None else current
+    authored_offset = band_voicing_db(balanced) - band_voicing_db(current)
     differences: dict[str, tuple[np.ndarray, float]] = {}
     counts = {}
     for name, where, manifest, weight in NOTE_SOURCES:
@@ -267,13 +308,23 @@ def run(bank: Path, open_dir: Path, guitarset: Path) -> dict:
     differences["guitarset"], counts["guitarset"] = guitarset_difference(guitarset)
     differences["guitarset"] = (differences["guitarset"], 1.0)
     wanted = consensus(differences)
-    target = band_voicing_db(current) + wanted
+    # The native consensus compares recordings with B+O. Add O back before
+    # fitting B so the later runtime O retains the listening decision. The
+    # global level adjustment cancels when spectra/residuals are centered.
+    target = band_voicing_db(current) + authored_offset + wanted
     sections, fitted = fit(target)
     kept, weight = _weights()
     centred = lambda values: values - np.average(values[kept], weights=weight[kept])  # noqa: E731
     return {
         "tool": "Tools/FitCaptureVoicing.py",
         "header_before": {"sections": current, "level_db": level},
+        "authored_balance": {
+            "header": str(balance_header) if balance_header is not None else None,
+            "adjustments_db": adjustments,
+            "balanced_sections_before": balanced,
+            "band_offset_db": authored_offset.tolist(),
+            "policy": "Fit the generated recording base; retain the authored runtime refinement.",
+        },
         "sections": sections,
         "notes": counts,
         "band_centres_hz": CENTRES.tolist(),
@@ -334,9 +385,55 @@ def self_test() -> None:
         global HEADER
         saved, HEADER = HEADER, header
         try:
-            report = run(root / "bank", root / "open", root / "guitarset")
+            report = run(root / "bank", root / "open", root / "guitarset", balance_header=None)
             write_header(report["sections"], -1.25, header)
             written, level = read_header(header)
+            # A second corpus models a delivered engine with a nonzero base
+            # AND a separate authored balance. Its recordings retain the same
+            # known recording target. Refit must recover that base target,
+            # rather than compensate away the runtime listening refinement.
+            current = [(kind, f0, gain, q) for (kind, f0, q), gain in zip(
+                STRUCTURE, (0.8, 1.2, -0.7, -1.3, 0.5, 1.0))]
+            write_header(current, 0.0, header)
+            balance_header = root / "MicrophoneBalanceData.h"
+            balance_header.write_text(
+                "inline constexpr float originalBassShelfAdjustmentDb = -2.0f;\n"
+                "inline constexpr float originalAirPeakAdjustmentDb = -1.5f;\n"
+                "inline constexpr float originalCaptureLevelAdjustmentDb = 0.75f;\n")
+            adjustments = read_balance(balance_header)
+            assert adjustments == {"originalBassShelfAdjustmentDb": -2.0,
+                                   "originalAirPeakAdjustmentDb": -1.5,
+                                   "originalCaptureLevelAdjustmentDb": 0.75}
+            # Build the fixture independently of balanced_sections/read_balance.
+            # The literal adjustments are the ones written in this fixture's
+            # header, so applying them to the wrong runtime section must fail.
+            rendered_sections = [(kind, f0, gain
+                                  + (-2.0 if kind == "LowShelf" and f0 == 120.0 else
+                                     -1.5 if kind == "Peak" and f0 == 125.0 else 0.0), q)
+                                 for kind, f0, gain, q in current]
+            rendered_gain = np.sqrt(10.0 ** (voicing_db(
+                rendered_sections, np.maximum(frequency, 1.0)) / 10.0))
+            rendered_gain *= 10.0 ** (0.75 / 20.0)
+            model_paths = list(root.rglob("*-model.f32")) + [root / "guitarset" / "00_test.f32"]
+            for model_path in model_paths:
+                raw = np.fromfile(model_path, dtype="<f4").reshape(-1, 2).mean(axis=1)
+                rendered = np.fft.irfft(np.fft.rfft(raw) * rendered_gain, size)
+                np.stack([rendered, rendered], axis=1).astype("<f4").tofile(model_path)
+            balanced_report = run(root / "bank", root / "open", root / "guitarset",
+                                  balance_header=balance_header)
+            cancelled_report = run(root / "bank", root / "open", root / "guitarset",
+                                   balance_header=None)
+            # Missing metadata must fail closed; production may not guess the
+            # offsets or silently treat a refined engine as an unrefined one.
+            invalid_balance = root / "missing-balance-constant.h"
+            invalid_balance.write_text(balance_header.read_text().replace(
+                "originalAirPeakAdjustmentDb", "retiredAirPeakAdjustmentDb"))
+            try:
+                read_balance(invalid_balance)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("missing authored balance was silently accepted")
         finally:
             HEADER = saved
     kept, weight = _weights()
@@ -347,13 +444,23 @@ def self_test() -> None:
     assert report["residual_rms_db"] < 0.3, report["residual_rms_db"]
     assert len(written) == len(STRUCTURE) and abs(level + 1.25) < 1e-6
     assert all(abs(a[2] - b[2]) < 0.006 for a, b in zip(written, report["sections"]))
+    balanced_error = np.abs(np.asarray(balanced_report["fitted_voicing_db"]) - expected)[kept]
+    cancelled_error = np.abs(np.asarray(cancelled_report["fitted_voicing_db"]) - expected)[kept]
+    assert float(balanced_error.max()) < 0.8, (
+        f"authored-balance refit off by {balanced_error.max():.2f} dB")
+    assert float(cancelled_error.max()) > 0.8, (
+        "negative control did not expose cancellation of the authored balance")
+    assert balanced_report["authored_balance"]["adjustments_db"] == adjustments
+    assert np.max(np.abs(balanced_report["authored_balance"]["band_offset_db"])) > 1.0
     # The engine's formula: a +6 dB peak reads +6 dB at its centre and a
     # shelf its gain far past its corner.
     peak = voicing_db([("Peak", 500.0, 6.0, 1.2)], np.array([500.0]))[0]
     shelf = voicing_db([("LowShelf", 120.0, 3.0, 0.7)], np.array([5.0, 20_000.0]))
     assert abs(peak - 6.0) < 1e-9 and abs(shelf[0] - 3.0) < 0.01 and abs(shelf[1]) < 0.01
     print(f"self-test passed: worst band {error.max():.2f} dB, "
-          f"residual {report['residual_rms_db']:.3f} dB rms")
+          f"residual {report['residual_rms_db']:.3f} dB rms; "
+          f"authored-balance refit {balanced_error.max():.2f} dB, "
+          f"old-math negative control {cancelled_error.max():.2f} dB")
 
 
 def main() -> int:

@@ -1,0 +1,558 @@
+{
+  "schema": "AcustraAcceptedReleasePolicyIntegrationV1",
+  "date": "2026-10-09",
+  "status": "Accepted release policy applied in canonical working source; all75 isolated suites and9 affected canonical suites pass,200 source files and renderers exact. Newly authorized sustain exploration remains separate and incomplete.",
+  "human_selection": {
+    "Pick": "Natural guitar attack for half authored calibrated kinetic share at matched fresh energy. Zero had been rejected as too dull.",
+    "Thumb": "Sounds better, keep for now as is for full nominal slip.",
+    "scope": "Focused Auditorium/Mahogany high-E G4/A4/B4/E5 A/B, relayed by parent; stop further tone tuning."
+  },
+  "authored_policy": {
+    "model": "Classic78 / Bellido1978 only, chosen from the active configuredBridgeModel_.",
+    "Pick": "Scale the calibrated kinetic share by0.5 after selection, retaining the positive periodic release branch and contact geometry. Public fitted calibration remains intact.",
+    "Thumb": "Use full authored0.2mm slip including bounded-pole/reference-pole equality. Original Thumb retains the nominal periodic inverse.",
+    "preserved": "Original/Finger branch arithmetic, measured body/mobility and steel properties, normal-direction profile, boom/capture contours and shared contact burst.",
+    "energy_contract": "The production law intentionally removes source kinetic work. Existing normal-direction rotation preserves the new-law fresh stored cyclic slope energy before retained-wave alignment/merge; existing repluck work bound and final pitch-cache ordering remain unchanged. No extra initialization, RNG draw or old-work restoration.",
+    "private_test_oracle": "initialisePluck has a default-true private direction-only argument. Independent TestAccess can bypass direction while keeping the active release law, avoiding the old configured-model spoof that would confound both policies.",
+    "runtime_cost": "No new voice state or per-sample branch. A few stroke-start policy selections; Pick retains its existing periodic velocity calculation, while Classic Thumb skips the nominal inverse. This is source review, not a CPU benchmark."
+  },
+  "half_diagnostic_screen": {
+    "pairs": 168,
+    "renders": 336,
+    "failures": 0,
+    "max_initial_energy_error": 2.1357468149574288e-07,
+    "independent_before_native8_exact": 168,
+    "matched_target_exact": 168,
+    "normal_share_exact": 168,
+    "early_contrast_reduced": 168,
+    "maximum_held_rms_rise": {
+      "key": "auditorium-mahogany-pick-0-lowE_E3",
+      "delta_db": 1.196764989303441
+    },
+    "maximum_early_peak_rise": {
+      "key": "parlor-spruce-pick-7-lowE_E2",
+      "delta_db": 0.8136702857080779
+    },
+    "maximum_held_peak_rise": {
+      "key": "auditorium-spruce-pick-7-B_E5",
+      "delta_db": 1.6167150502708159
+    }
+  },
+  "production_vs_heard_precalibration": {
+    "changed_pairs": 28,
+    "exact_Original_ClassicFinger_native_controls": 48,
+    "summary": {
+      "pick": {
+        "fresh_energy_ratio": {
+          "min": 0.8392020331082817,
+          "median": 0.8392022427910235,
+          "max": 0.8392024388409199
+        },
+        "fresh_energy_db": {
+          "min": -0.7613347266168841,
+          "median": -0.7613336414902666,
+          "max": -0.7613326269150676
+        },
+        "cached_attack_pitch_delta_cents": {
+          "min": -3.067026138305664,
+          "median": -1.7799854278564453,
+          "max": -1.0212101936340332
+        },
+        "production_vs_heard_5_80ms_contrast_delta_db": {
+          "min": -0.5972649297050587,
+          "median": -0.09294840262825499,
+          "max": 0.1522155840127315
+        },
+        "production_vs_heard_5_80ms_total_band_delta_db": {
+          "min": -0.7601037312962675,
+          "median": -0.7221759367999848,
+          "max": -0.40853383364441437
+        },
+        "production_vs_heard_held_rms_delta_db": {
+          "min": -1.5182773601009458,
+          "median": -0.8214979729932634,
+          "max": -0.3449702095636409
+        },
+        "production_vs_heard_held_piezo_near_h1_pitch_cents": {
+          "min": -0.5861351974846052,
+          "median": -0.25763795649444593,
+          "max": 0.42080037526246444
+        }
+      },
+      "thumb": {
+        "fresh_energy_ratio": {
+          "min": 0.944404501460232,
+          "median": 0.9506463296175564,
+          "max": 0.9643828509536054
+        },
+        "fresh_energy_db": {
+          "min": -0.2484195154388224,
+          "median": -0.21981024243915723,
+          "max": -0.15750521026269965
+        },
+        "cached_attack_pitch_delta_cents": {
+          "min": -0.4658546447753906,
+          "median": -0.22875738143920898,
+          "max": -0.09524357318878174
+        },
+        "production_vs_heard_5_80ms_contrast_delta_db": {
+          "min": -0.09619268517218771,
+          "median": -0.003025977748837505,
+          "max": 0.052641071518721105
+        },
+        "production_vs_heard_5_80ms_total_band_delta_db": {
+          "min": -0.2443438960608825,
+          "median": -0.2081587671253215,
+          "max": -0.15165950577197945
+        },
+        "production_vs_heard_held_rms_delta_db": {
+          "min": -0.26622629510715445,
+          "median": -0.204231458047349,
+          "max": -0.014247215367765768
+        },
+        "production_vs_heard_held_piezo_near_h1_pitch_cents": {
+          "min": -0.10485957242493202,
+          "median": -0.03610863405706043,
+          "max": -0.007849333593949726
+        }
+      }
+    },
+    "interpretation": "Early source spectral balance remains close to the accepted matched-energy controls; current-table level and attack-hardening changes are explicitly quantified. Subsequent calibration is a scalar construction/capture/style correction, separate from source spectral balance.",
+    "pitch_limit": "Held near-H1 dominant FFT peak is an observer descriptor, not a complete tuning verdict. Native pitch/state tests remain required."
+  },
+  "validation": {
+    "strict_Cxx17": "Passed, build.log.",
+    "direction_energy_state": "Passed: fresh216/exact324/identity360/repluck36/refret36/bounds360; max fresh relative error3.66925e-7; max share error4.47035e-8; repluck workratio<=1.",
+    "release_source_queued_fullvelocity_suite": "Passed: Pick27 native half-Original source oracles, Thumb27 independent Fourier full-slip source oracles, Finger27 exact source fields, queued36 with geometry/pole/cache guards, continuity18, bounds162.",
+    "calibration": "Passed216/216 phrase levels, existing Pick headroom policy,360 native Finger rows exact; Original108 and ClassicFinger36 table entries exact.",
+    "full_suite": "75/75 passed in153.10s, required Python3.11, default+extended strict C++17 build pass.",
+    "negative_controls": {
+      "Pick_scale_one": 27,
+      "Thumb_nominal_inverse": 153,
+      "requested_future_model_scope": 99
+    },
+    "canonical": "200 reviewed source files exact (generated Python bytecode excluded); canonical PerformanceRenderer64ce04e1\u2026 and strum helper5e20373c\u2026 exact;9 affected suites pass in20.05s+1.80s."
+  },
+  "reports": {
+    "production_vs_heard": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/production-vs-heard.json",
+      "sha256": "43b821d8654cfef1d3aff210dfc0a98964d4d8147207eeeab18924f5b860ddca"
+    },
+    "half_anchors": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/midpoint-pick-producer/anchor-score.json",
+      "sha256": "31978d4e7aed64c97b1609e8ae2b5d3e5a901038c82062a1be0192850741881e"
+    },
+    "half_construction_screen": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/midpoint-pick-producer/construction-screen.json",
+      "sha256": "dccd1468d9eb08e211832fad3dd4f2d369babeedf694dc0f17fda6b200e0ef76"
+    },
+    "compiled_prefit": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/compiled-freeze.json",
+      "sha256": "1cf83ec0c66943ceec69aafc541ddb7c140f00a0dcb1f4b3a550c71f2f628351"
+    },
+    "initial_source_manifest": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/initial-source-manifest.json",
+      "sha256": "19872d966cf20d69ab4af35cb24d1be6ff485b93e7a1ee2e7b75288c616ba2c9"
+    },
+    "direction_tests": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/direction-tests.log",
+      "sha256": "3b318a23c9c736d215a92c373d8e5c4f12ec7c895099e9bc462df42226404cbc"
+    },
+    "calibration_review": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/calibration-review.json",
+      "sha256": "d43cce6f0ed3b7f32de4d6e9a9c4f9442afd066c12b73992826b29248f8cadb2"
+    },
+    "native_scalar_controls": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/production-vs-heard-postfit-scalar.json",
+      "sha256": "4b8401551cc8d04fd4daba5be337c36b1c2c23cb9cbacca86cdc2c199ffc4e35"
+    },
+    "final_manifest": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/final-source-manifest.json",
+      "sha256": "ea257c15b76cf417d8ded3a46c09ee2013e980480ff85db40b29bbb8ff73e9f9"
+    },
+    "final_patch": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/accepted-release-policy.diff",
+      "sha256": "11f4c57d463a079eb35f5ae031231098f16bf3c75025eabfe55391579f13ff35"
+    },
+    "negative_controls": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/negative-controls/report.json",
+      "sha256": "4143b4097a263f60382bc5557a5578f6229b1926536c9ca504d9fa7bde74e070"
+    },
+    "canonical_verification": {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/canonical-verification.json",
+      "sha256": "a3c5e7a6e64d5728044fc944942f95173787ad1f7987a26d577867f9a21eecba"
+    }
+  },
+  "isolated_project": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/validation/attack/accepted-release-review/project",
+  "limits": [
+    "No fresh-note diagnostic fairness scaler is installed in production source.",
+    "The current policy is authored from controlled hearing, not a new measured contact radius, material or bridge qualification.",
+    "Seven-anchor diagnostic breadth does not prove absence of all chromatic resonances. Existing all-construction routing/finite/headroom/state checks must pass before integration."
+  ],
+  "postfit_native_scalar_controls": {
+    "status": "Analytic output-gain projection validated by eight paired native high-E A4/E5/2styles/2mics controls. All initial telemetry exact; max relative L2 scalar error below2e-6.",
+    "rows": [
+      {
+        "key": "pick-0-highE_A4",
+        "absolute_gain_ratio": 1.0533315155117045,
+        "absolute_gain_delta_db": 0.4513015680270352,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.299903717173258,
+        "postfit_5_80ms_balance_vs_heard_db": 0.00503501782260507,
+        "predicted_postfit_held_rms_vs_heard_db": -0.2985744062710341
+      },
+      {
+        "key": "pick-0-highE_E5",
+        "absolute_gain_ratio": 1.0533315155117045,
+        "absolute_gain_delta_db": 0.4513015680270352,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.22696366928035822,
+        "postfit_5_80ms_balance_vs_heard_db": -0.16114795372694335,
+        "predicted_postfit_held_rms_vs_heard_db": -0.0880179900215064
+      },
+      {
+        "key": "pick-0-B_E5",
+        "absolute_gain_ratio": 1.0533315155117045,
+        "absolute_gain_delta_db": 0.4513015680270352,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": 0.042767734382620826,
+        "postfit_5_80ms_balance_vs_heard_db": -0.5972649297050587,
+        "predicted_postfit_held_rms_vs_heard_db": -0.48392769686864595
+      },
+      {
+        "key": "pick-0-lowE_E2",
+        "absolute_gain_ratio": 1.0533315155117045,
+        "absolute_gain_delta_db": 0.4513015680270352,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.25258514963882855,
+        "postfit_5_80ms_balance_vs_heard_db": -0.08826799223526649,
+        "predicted_postfit_held_rms_vs_heard_db": -0.5770427936215026
+      },
+      {
+        "key": "pick-0-lowE_E3",
+        "absolute_gain_ratio": 1.0533315155117045,
+        "absolute_gain_delta_db": 0.4513015680270352,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.2001696425169434,
+        "postfit_5_80ms_balance_vs_heard_db": -0.11466501402813734,
+        "predicted_postfit_held_rms_vs_heard_db": -1.0669757920739107
+      },
+      {
+        "key": "pick-0-D_G4",
+        "absolute_gain_ratio": 1.0533315155117045,
+        "absolute_gain_delta_db": 0.4513015680270352,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.2772852646444131,
+        "postfit_5_80ms_balance_vs_heard_db": 0.1522155840127315,
+        "predicted_postfit_held_rms_vs_heard_db": 0.10633135846339431
+      },
+      {
+        "key": "pick-0-G_G4",
+        "absolute_gain_ratio": 1.0533315155117045,
+        "absolute_gain_delta_db": 0.4513015680270352,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.26795132459348897,
+        "postfit_5_80ms_balance_vs_heard_db": -0.10194837221546393,
+        "predicted_postfit_held_rms_vs_heard_db": -0.45845768295867456
+      },
+      {
+        "key": "pick-7-highE_A4",
+        "absolute_gain_ratio": 1.0851463546458944,
+        "absolute_gain_delta_db": 0.7097663162929024,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.022594348895461636,
+        "postfit_5_80ms_balance_vs_heard_db": 0.014218954222831037,
+        "predicted_postfit_held_rms_vs_heard_db": -0.01677931620701456
+      },
+      {
+        "key": "pick-7-highE_E5",
+        "absolute_gain_ratio": 1.0851463546458944,
+        "absolute_gain_delta_db": 0.7097663162929024,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.05033741500336508,
+        "postfit_5_80ms_balance_vs_heard_db": -0.09762881302124349,
+        "predicted_postfit_held_rms_vs_heard_db": 0.06605536275938229
+      },
+      {
+        "key": "pick-7-B_E5",
+        "absolute_gain_ratio": 1.0851463546458944,
+        "absolute_gain_delta_db": 0.7097663162929024,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": 0.09826479358494189,
+        "postfit_5_80ms_balance_vs_heard_db": -0.3779130248003586,
+        "predicted_postfit_held_rms_vs_heard_db": -0.02649234790057653
+      },
+      {
+        "key": "pick-7-lowE_E2",
+        "absolute_gain_ratio": 1.0851463546458944,
+        "absolute_gain_delta_db": 0.7097663162929024,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.01533266468654304,
+        "postfit_5_80ms_balance_vs_heard_db": -0.054957788425893384,
+        "predicted_postfit_held_rms_vs_heard_db": -0.23868226190479014
+      },
+      {
+        "key": "pick-7-lowE_E3",
+        "absolute_gain_ratio": 1.0851463546458944,
+        "absolute_gain_delta_db": 0.7097663162929024,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": 0.009661644877737685,
+        "postfit_5_80ms_balance_vs_heard_db": -0.018563005978307956,
+        "predicted_postfit_held_rms_vs_heard_db": -0.6965196221019478
+      },
+      {
+        "key": "pick-7-D_G4",
+        "absolute_gain_ratio": 1.0851463546458944,
+        "absolute_gain_delta_db": 0.7097663162929024,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.04204676934300533,
+        "postfit_5_80ms_balance_vs_heard_db": 0.07442755543382695,
+        "predicted_postfit_held_rms_vs_heard_db": 0.24956537404608437
+      },
+      {
+        "key": "pick-7-G_G4",
+        "absolute_gain_ratio": 1.0851463546458944,
+        "absolute_gain_delta_db": 0.7097663162929024,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.027965594856143916,
+        "postfit_5_80ms_balance_vs_heard_db": -0.11411890314978024,
+        "predicted_postfit_held_rms_vs_heard_db": -0.18335365539555504
+      },
+      {
+        "key": "thumb-0-highE_A4",
+        "absolute_gain_ratio": 1.018103222901828,
+        "absolute_gain_delta_db": 0.15583624496640938,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.06255009820798266,
+        "postfit_5_80ms_balance_vs_heard_db": -0.00023607837597339199,
+        "predicted_postfit_held_rms_vs_heard_db": -0.05890505408086785
+      },
+      {
+        "key": "thumb-0-highE_E5",
+        "absolute_gain_ratio": 1.018103222901828,
+        "absolute_gain_delta_db": 0.15583624496640938,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.059492530075329036,
+        "postfit_5_80ms_balance_vs_heard_db": -0.023998632217939075,
+        "predicted_postfit_held_rms_vs_heard_db": -0.05111219923170918
+      },
+      {
+        "key": "thumb-0-B_E5",
+        "absolute_gain_ratio": 1.018103222901828,
+        "absolute_gain_delta_db": 0.15583624496640938,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.0014081347644814834,
+        "postfit_5_80ms_balance_vs_heard_db": -0.09619268517218771,
+        "predicted_postfit_held_rms_vs_heard_db": 0.1415890295986436
+      },
+      {
+        "key": "thumb-0-lowE_E2",
+        "absolute_gain_ratio": 1.018103222901828,
+        "absolute_gain_delta_db": 0.15583624496640938,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": 0.004176739194429929,
+        "postfit_5_80ms_balance_vs_heard_db": -0.010765061805303233,
+        "predicted_postfit_held_rms_vs_heard_db": -0.0035471704453924613
+      },
+      {
+        "key": "thumb-0-lowE_E3",
+        "absolute_gain_ratio": 1.018103222901828,
+        "absolute_gain_delta_db": 0.15583624496640938,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.04530441424898626,
+        "postfit_5_80ms_balance_vs_heard_db": 0.005732092460828397,
+        "predicted_postfit_held_rms_vs_heard_db": -0.10471073667125
+      },
+      {
+        "key": "thumb-0-D_G4",
+        "absolute_gain_ratio": 1.018103222901828,
+        "absolute_gain_delta_db": 0.15583624496640938,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.048685860808618864,
+        "postfit_5_80ms_balance_vs_heard_db": 0.04244576111261722,
+        "predicted_postfit_held_rms_vs_heard_db": 0.028774608286775333
+      },
+      {
+        "key": "thumb-0-G_G4",
+        "absolute_gain_ratio": 1.018103222901828,
+        "absolute_gain_delta_db": 0.15583624496640938,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.08553634259838422,
+        "postfit_5_80ms_balance_vs_heard_db": -0.0038070437300739,
+        "predicted_postfit_held_rms_vs_heard_db": -0.11039005014074507
+      },
+      {
+        "key": "thumb-7-highE_A4",
+        "absolute_gain_ratio": 1.0175741942115366,
+        "absolute_gain_delta_db": 0.1513216938061341,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.0629259536993865,
+        "postfit_5_80ms_balance_vs_heard_db": -0.0005764247875603701,
+        "predicted_postfit_held_rms_vs_heard_db": -0.05019277809044534
+      },
+      {
+        "key": "thumb-7-highE_E5",
+        "absolute_gain_ratio": 1.0175741942115366,
+        "absolute_gain_delta_db": 0.1513216938061341,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.07741883449098869,
+        "postfit_5_80ms_balance_vs_heard_db": -0.009182250417143933,
+        "predicted_postfit_held_rms_vs_heard_db": -0.07344755096593747
+      },
+      {
+        "key": "thumb-7-B_E5",
+        "absolute_gain_ratio": 1.0175741942115366,
+        "absolute_gain_delta_db": 0.1513216938061341,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.043438653520010834,
+        "postfit_5_80ms_balance_vs_heard_db": -0.04173092791632982,
+        "predicted_postfit_held_rms_vs_heard_db": 0.06425733619094044
+      },
+      {
+        "key": "thumb-7-lowE_E2",
+        "absolute_gain_ratio": 1.0175741942115366,
+        "absolute_gain_delta_db": 0.1513216938061341,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.002735400320100251,
+        "postfit_5_80ms_balance_vs_heard_db": -0.00224491176760111,
+        "predicted_postfit_held_rms_vs_heard_db": -0.010565845526032652
+      },
+      {
+        "key": "thumb-7-lowE_E3",
+        "absolute_gain_ratio": 1.0175741942115366,
+        "absolute_gain_delta_db": 0.1513216938061341,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.0568755698170923,
+        "postfit_5_80ms_balance_vs_heard_db": 0.012499078535551433,
+        "predicted_postfit_held_rms_vs_heard_db": -0.08994712304038652
+      },
+      {
+        "key": "thumb-7-D_G4",
+        "absolute_gain_ratio": 1.0175741942115366,
+        "absolute_gain_delta_db": 0.1513216938061341,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.056798576821282476,
+        "postfit_5_80ms_balance_vs_heard_db": 0.052641071518721105,
+        "predicted_postfit_held_rms_vs_heard_db": 0.026922342558612367
+      },
+      {
+        "key": "thumb-7-G_G4",
+        "absolute_gain_ratio": 1.0175741942115366,
+        "absolute_gain_delta_db": 0.1513216938061341,
+        "predicted_postfit_5_80ms_mic_total_band_vs_heard_db": -0.09302220225474839,
+        "postfit_5_80ms_balance_vs_heard_db": -0.006767366753955173,
+        "predicted_postfit_held_rms_vs_heard_db": -0.11464572646345092
+      }
+    ],
+    "native_scalar_controls": [
+      {
+        "key": "pick-0-highE_A4",
+        "initial_telemetry_exact": true,
+        "mic_scalar_ratio": 1.0533315155117045,
+        "max_absolute_error": 3.47189126337355e-08,
+        "relative_L2_error": 1.1690711737855423e-07,
+        "native_hashes": [
+          "f6a5a03288c762f429a75431bf92e02006f6c59fb1474674df5ee9cf540fbf7f",
+          "236d4be476543361878d02af098ce2abf5de97cf4199a20f73ca159d8ecd0b53"
+        ]
+      },
+      {
+        "key": "pick-0-highE_E5",
+        "initial_telemetry_exact": true,
+        "mic_scalar_ratio": 1.0533315155117045,
+        "max_absolute_error": 3.231990194918488e-08,
+        "relative_L2_error": 1.1639717712729997e-07,
+        "native_hashes": [
+          "061e7ac7149dbc22f4504307ac4007dbeeb60e00fbf7e0158190584a32349c8c",
+          "837744f48ca4a083762a7b46c9143f55e18f7679f59015ba442acce2411da4ea"
+        ]
+      },
+      {
+        "key": "pick-7-highE_A4",
+        "initial_telemetry_exact": true,
+        "mic_scalar_ratio": 1.0851463546458944,
+        "max_absolute_error": 1.9568377918055546e-08,
+        "relative_L2_error": 5.336868860433425e-08,
+        "native_hashes": [
+          "82f61528fc729cf12e1dd9d05d603141b714eea24d8bd827001d85dbe07a81b5",
+          "9cdca8fd40867407478b301c732288bb0ecc256292a2ead98bb0f9ef9b23b141"
+        ]
+      },
+      {
+        "key": "pick-7-highE_E5",
+        "initial_telemetry_exact": true,
+        "mic_scalar_ratio": 1.0851463546458944,
+        "max_absolute_error": 2.004656282639239e-08,
+        "relative_L2_error": 5.3709127322464224e-08,
+        "native_hashes": [
+          "3085b2c278d53af1bb8b39ce7eab06f23fc5ac2b23443cacfefe3f9de3f84b72",
+          "13d05569cf14573a78131d94c073fbc0d493438d9ef9f1714465f268e69ff96a"
+        ]
+      },
+      {
+        "key": "thumb-0-highE_A4",
+        "initial_telemetry_exact": true,
+        "mic_scalar_ratio": 1.018103222901828,
+        "max_absolute_error": 1.691747220089468e-08,
+        "relative_L2_error": 4.299174473851165e-08,
+        "native_hashes": [
+          "bc7cd266fb3b215d8a52263c0cef5386bec28bfa6fae6718d6470003ac35a587",
+          "cbfd4244cdb638e8516eb274fdb2d041388997014e02874c9801e6ad14aa24a2"
+        ]
+      },
+      {
+        "key": "thumb-0-highE_E5",
+        "initial_telemetry_exact": true,
+        "mic_scalar_ratio": 1.018103222901828,
+        "max_absolute_error": 1.8005549606847637e-08,
+        "relative_L2_error": 4.2827464789474953e-08,
+        "native_hashes": [
+          "447d3b2d50c641e89eeb2dafc4609d8c50e52f4eda94f26e2e412ecd85c08fd5",
+          "787fb13d261c9a96692ce9dc59f21d9468186be5d928ed7c2e8f1aaf27902f5d"
+        ]
+      },
+      {
+        "key": "thumb-7-highE_A4",
+        "initial_telemetry_exact": true,
+        "mic_scalar_ratio": 1.0175741942115366,
+        "max_absolute_error": 2.1774829744858337e-08,
+        "relative_L2_error": 5.546118696728446e-08,
+        "native_hashes": [
+          "5c764a5e22c09b1f91d8b474e909b615c7aea529e63ebe18afa8a638fef91b50",
+          "203eefe68a45a0df838ebd9e1c38bf9872929ad38944a396fb355c7d5a9e01c7"
+        ]
+      },
+      {
+        "key": "thumb-7-highE_E5",
+        "initial_telemetry_exact": true,
+        "mic_scalar_ratio": 1.0175741942115366,
+        "max_absolute_error": 2.0521826044062053e-08,
+        "relative_L2_error": 5.6733694579639514e-08,
+        "native_hashes": [
+          "55761cd1544821ade8da1b95846c1afd32b7e23aedb83b9dcd52375b128410c8",
+          "5258e1cb76712a71ba13d269f8e3a51a302ed4e94da7125e2be476ac18630a02"
+        ]
+      }
+    ],
+    "max_scalar_L2_error": 1.1690711737855423e-07,
+    "max_scalar_absolute_error": 3.47189126337355e-08,
+    "table_hashes": {
+      "prefit": "4c1e4e098844d31b2ee49bf250ef5552aa26a7c21116b2378acdde5b50c48ce8",
+      "postfit": "9b1f20597a1eff3d3ad58fbfe45659eb943ee1d511c6044412700eb4f327ad73"
+    }
+  },
+  "canonical_after_checks": [
+    {
+      "file": "Source/DSP/AcustraEngine.cpp",
+      "sha256": "6425605f2f22442b6a90011596bb51aa439d20d60672b1a61677a7dc7adc6bcc",
+      "canonical_after_exact": true
+    },
+    {
+      "file": "Source/DSP/AcustraEngine.h",
+      "sha256": "78ff9a3f40b2a9c300a195bd7466f2d7d2448aa43207462ed252d8ac026406ed",
+      "canonical_after_exact": true
+    },
+    {
+      "file": "Source/DSP/ReleasePolicyData.h",
+      "sha256": "8b4ff1beeb3aa4ed3153dcab6eb55f2017813de159e930f4355568439f185c23",
+      "canonical_after_exact": true
+    },
+    {
+      "file": "Source/DSP/ConstructionLoudnessData.h",
+      "sha256": "9b1f20597a1eff3d3ad58fbfe45659eb943ee1d511c6044412700eb4f327ad73",
+      "canonical_after_exact": true
+    },
+    {
+      "file": "Tests/PluckPolarisationTests.cpp",
+      "sha256": "3d10d461ec5855ff203f8ba1f25d21e53d896746e698bf6419aea70dafec42c2",
+      "canonical_after_exact": true
+    },
+    {
+      "file": "Tests/ReleasePolicyTests.cpp",
+      "sha256": "95d5baf9e2e332caa4c4a30420a4eb79b88f51bfce3d7a7d8aaea0e259eba174",
+      "canonical_after_exact": true
+    },
+    {
+      "file": "CMakeLists.txt",
+      "sha256": "3c6e31ca49fa1686ebc5d3434ebcc9290f6dc818a87db69f0fb3805ed8360f09",
+      "canonical_after_exact": true
+    }
+  ],
+  "sustain_followup": {
+    "user_cue": "Tone stays too static as it fades",
+    "scope": "Explore modest intrinsic bending-loss options from accepted attack checkpoint, separately from the retained Thumb attack. No sustain selection or realism verdict yet."
+  }
+}

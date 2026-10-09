@@ -1,0 +1,1786 @@
+{
+  "profile": {
+    "variant": "register-normal-55",
+    "zero_through_midi": 52,
+    "full_from_midi": 57
+  },
+  "controls": {
+    "velocity": 100,
+    "touch": 0.58,
+    "pluck_position": 0.28,
+    "room": 0,
+    "hold_seconds": 1.2,
+    "release_seconds": 0.8
+  },
+  "checks": {
+    "outputs": 4320,
+    "all_finite_nonzero_correct_frames": true,
+    "maximum_microphone_peak": 0.7354080080986023,
+    "maximum_piezo_bus_peak": 0.44359108805656433,
+    "microphone_fullscale_samples": 0,
+    "piezo_bus_fullscale_samples": 0,
+    "initial_energy_pairs": 2160,
+    "initial_energy_pairs_match_CSV_precision": 2094,
+    "low_zero_bias_pairs": 216,
+    "low_zero_bias_exact_native": 216,
+    "low_frozen_before_controls": 216,
+    "low_exact_frozen_before_controls": 216,
+    "high_frozen_user_heard_normal55_controls": 288,
+    "high_exact_frozen_user_heard_normal55_controls": 112,
+    "high_same_clean_source_full_controls": 504,
+    "high_exact_same_clean_source_full_controls": 504,
+    "additional_fresh_clean_full_reference_outputs": 504,
+    "additional_fresh_high_frozen_reference_outputs": 0,
+    "retained_raw_outputs": 352
+  },
+  "references": {
+    "global_report_sha256": "fdf434ed93b30e89419c661522935af747cd7a7286ddfb995a28becffefd5dc3",
+    "earlier_A3_E4_report_sha256": "d1dced303adb29d0123658b5942d3c270a75fb2e3f762c1d9187acff19a82784",
+    "global_renderer_sha256": "0de2962eb02feeb9acaa549f4790b97e7927baf8b7dcc12a6872ad9c1509a6c5",
+    "clean_full_renderer_sha256": "94f4f24febcea93bbbf4580506cd50c6c0f4a5fc6410b510df7075d03496c5b0",
+    "control_scope": "Same pre-calibration table and prototype controls. All<=zero-through pitches compare to frozen legacy Before; every tested>=64 pitch compares to a full +0.30 control from the same clean native initializer. Historical external-target helper comparisons are separate and can differ slightly due to float normalization path."
+  },
+  "native_force_scope": "Public diagnostic heave and moment proxy columns3/4, native raw-unit spectral power and relative phase; these are not isolated microphone pressure components.",
+  "renderer_sha256": "dded80221179f0d66a6badd988fa2efa0a20e4814a96fd1c61ad0e0ceeb1788e",
+  "analysis_sha256": "9eb63749cec4cac1a88f374446f5197b9f8be9d113610c913974bb2a609bb98b",
+  "scorer_sha256": "f986438f858fc4aadd2819cb92645901654f1c78ba8138fd3e30fc7412e9d146",
+  "status": "Diagnostic physical candidate only; no production source, calibration table or audition player changes.",
+  "protocol": "All12 Classic constructions / three styles / two microphones; every D-string MIDI50\u201366 and G-string55\u201365 plus A4/E5 high-E anchors. Fresh native 2second notes, velocity100; simultaneous PiezoBus scored. Same table as Second-EQ. Local prominence is same-string sustain RMS minus adjacent-semitone mean, independent of an overall scalar.",
+  "report": "build-resonance/evidence/construction/normal-register-early-52-57/report.json",
+  "report_sha256": "49a94548c294ef22335e03c3e9e67f1967b7ad7461d336b4caea3b435c4cd919",
+  "summarizer_sha256": "3ab9b916e60fc877f75a0d7247aaf50b79a4ced2555c4da65d7fb254f1522d64",
+  "same_string_neighbor_comparisons": 1728,
+  "all_chromatic_neighbor_change_db": {
+    "count": 1728,
+    "minimum": -5.60081277633855,
+    "median": 0.007025426764633025,
+    "maximum": 6.836631402462288
+  },
+  "targeted_transition_neighbor_change_db": {
+    "count": 504,
+    "minimum": -0.8683711497485191,
+    "median": 0.06184012339108058,
+    "maximum": 1.2264166306079254
+  },
+  "F3_Fsharp3_neighbor_change_db": {
+    "count": 144,
+    "minimum": -0.7987545934462332,
+    "median": -0.11391818064848636,
+    "maximum": 0.4737299842294149
+  },
+  "F3_Fsharp3_prominence_before_db": {
+    "count": 144,
+    "minimum": -3.8996082423580702,
+    "median": 1.1202928991158103,
+    "maximum": 6.532934092354996
+  },
+  "F3_Fsharp3_prominence_after_db": {
+    "count": 144,
+    "minimum": -4.323568673539988,
+    "median": 1.162455525233252,
+    "maximum": 6.163260232157604
+  },
+  "largest_F3_Fsharp3_increases": [
+    {
+      "key": "dreadnought-spruce-thumb-mono_mic",
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "technique": "thumb",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 1.1788587308152216,
+      "profile": 1.6525887150446366,
+      "change_db": 0.4737299842294149,
+      "H1_power_change_db": 2.0637034168754624,
+      "H1_share_change_db": 0.3853054095523776,
+      "H1_decay_change_db": 0.30641927318444573,
+      "H2_power_change_db": 1.725084540363376
+    },
+    {
+      "key": "dreadnought-mahogany-thumb-mono_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "thumb",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 0.9922215752657948,
+      "profile": 1.4167970077989125,
+      "change_db": 0.4245754325331177,
+      "H1_power_change_db": 2.052764082628734,
+      "H1_share_change_db": 0.3474281623653255,
+      "H1_decay_change_db": 0.29087279513358055,
+      "H2_power_change_db": 1.7311373476229477
+    },
+    {
+      "key": "dreadnought-spruce-finger-mono_mic",
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "technique": "finger",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 1.9002440364513902,
+      "profile": 2.2737272601516416,
+      "change_db": 0.37348322370025144,
+      "H1_power_change_db": 2.059751131276556,
+      "H1_share_change_db": 0.4330183880063938,
+      "H1_decay_change_db": 0.307497018634038,
+      "H2_power_change_db": 1.716324639440657
+    },
+    {
+      "key": "dreadnought-mahogany-pick-mono_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 1.55859270041541,
+      "profile": 1.9207332574480986,
+      "change_db": 0.36214055703268855,
+      "H1_power_change_db": 2.0033182163139287,
+      "H1_share_change_db": 0.7294829666604841,
+      "H1_decay_change_db": 0.29287431635555805,
+      "H2_power_change_db": 1.6310539096026062
+    },
+    {
+      "key": "dreadnought-spruce-pick-mono_mic",
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 1.365614166820798,
+      "profile": 1.6441426119164433,
+      "change_db": 0.27852844509564534,
+      "H1_power_change_db": 2.0151029316850355,
+      "H1_share_change_db": 0.7755354920206745,
+      "H1_decay_change_db": 0.30829296611090484,
+      "H2_power_change_db": 1.6255486086822302
+    },
+    {
+      "key": "parlor-spruce-pick-stereo_mic",
+      "shape": "parlor",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 1.5798566297311751,
+      "profile": 1.8368806880205995,
+      "change_db": 0.2570240582894243,
+      "H1_power_change_db": 1.8016906101091408,
+      "H1_share_change_db": 0.49238138091055994,
+      "H1_decay_change_db": -0.2637727842078945,
+      "H2_power_change_db": 1.195412912638993
+    },
+    {
+      "key": "parlor-mahogany-pick-stereo_mic",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 1.0608888809652868,
+      "profile": 1.3129344395210012,
+      "change_db": 0.2520455585557144,
+      "H1_power_change_db": 1.7941757289727747,
+      "H1_share_change_db": 0.4913536182776994,
+      "H1_decay_change_db": -0.2441791029529483,
+      "H2_power_change_db": 1.1404358793739675
+    },
+    {
+      "key": "parlor-spruce-finger-stereo_mic",
+      "shape": "parlor",
+      "wood": "spruce",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 1.044721434871576,
+      "profile": 1.2771482292051033,
+      "change_db": 0.2324267943335272,
+      "H1_power_change_db": 1.8436217819812413,
+      "H1_share_change_db": 0.37257775094987,
+      "H1_decay_change_db": -0.26169054702885575,
+      "H2_power_change_db": 1.287099751164817
+    },
+    {
+      "key": "dreadnought-mahogany-finger-mono_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "finger",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 1.9370849816447802,
+      "profile": 2.1686301611756704,
+      "change_db": 0.23154517953089027,
+      "H1_power_change_db": 2.0487589389315133,
+      "H1_share_change_db": 0.40321305267207563,
+      "H1_decay_change_db": 0.29196706982919807,
+      "H2_power_change_db": 1.7226903201602468
+    },
+    {
+      "key": "parlor-spruce-pick-mono_mic",
+      "shape": "parlor",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 1.2418952637220713,
+      "profile": 1.4686546378249687,
+      "change_db": 0.22675937410289748,
+      "H1_power_change_db": 1.847117424443887,
+      "H1_share_change_db": 0.4539849984780968,
+      "H1_decay_change_db": -0.2319054155927418,
+      "H2_power_change_db": 1.315731862418751
+    },
+    {
+      "key": "dreadnought-mahogany-pick-stereo_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 3.1520504419823396,
+      "profile": 3.3768405266607893,
+      "change_db": 0.22479008467844963,
+      "H1_power_change_db": 2.0032503534678696,
+      "H1_share_change_db": 0.8168055344802987,
+      "H1_decay_change_db": -0.5025680755299007,
+      "H2_power_change_db": 1.3854258365063217
+    },
+    {
+      "key": "parlor-mahogany-finger-stereo_mic",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 0.9288019798363081,
+      "profile": 1.1447857571594326,
+      "change_db": 0.21598377732312457,
+      "H1_power_change_db": 1.8363870882917013,
+      "H1_share_change_db": 0.374220141055126,
+      "H1_decay_change_db": -0.24214064049537853,
+      "H2_power_change_db": 1.2313767321039606
+    }
+  ],
+  "largest_F3_Fsharp3_absolute_peaks": [
+    {
+      "key": "auditorium-spruce-finger-stereo_mic",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 53,
+      "note": "F3_D",
+      "before": 6.532934092354996,
+      "profile": 6.163260232157604,
+      "change_db": -0.36967386019739124,
+      "H1_power_change_db": 0.6604884563692863,
+      "H1_share_change_db": 0.3357856914782875,
+      "H1_decay_change_db": -0.11498654561430754,
+      "H2_power_change_db": 0.26371567196636647
+    },
+    {
+      "key": "auditorium-maple-finger-mono_mic",
+      "shape": "auditorium",
+      "wood": "maple",
+      "technique": "finger",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 53,
+      "note": "F3_D",
+      "before": 5.818643235494044,
+      "profile": 5.4359984009870885,
+      "change_db": -0.3826448345069551,
+      "H1_power_change_db": 0.6795961001871902,
+      "H1_share_change_db": 0.1979112777290286,
+      "H1_decay_change_db": -0.09980111054778007,
+      "H2_power_change_db": 0.4259744174391713
+    },
+    {
+      "key": "dreadnought-maple-finger-mono_mic",
+      "shape": "dreadnought",
+      "wood": "maple",
+      "technique": "finger",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 5.002565653092944,
+      "profile": 5.073275033580497,
+      "change_db": 0.07070938048755337,
+      "H1_power_change_db": 2.028192610811068,
+      "H1_share_change_db": 0.40993672623237387,
+      "H1_decay_change_db": 0.21005859644335345,
+      "H2_power_change_db": 1.6249940981059687
+    },
+    {
+      "key": "auditorium-maple-finger-stereo_mic",
+      "shape": "auditorium",
+      "wood": "maple",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 53,
+      "note": "F3_D",
+      "before": 5.093041114867198,
+      "profile": 4.860288657144849,
+      "change_db": -0.23275245772234854,
+      "H1_power_change_db": 0.6773154044603729,
+      "H1_share_change_db": 0.26126374703112365,
+      "H1_decay_change_db": -0.15787120151721723,
+      "H2_power_change_db": 0.3434559416583056
+    },
+    {
+      "key": "auditorium-mahogany-finger-stereo_mic",
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 53,
+      "note": "F3_D",
+      "before": 5.268515470185143,
+      "profile": 4.783083365105156,
+      "change_db": -0.4854321050799868,
+      "H1_power_change_db": 0.6573059835690884,
+      "H1_share_change_db": 0.3406779410359464,
+      "H1_decay_change_db": -0.10784096216857364,
+      "H2_power_change_db": 0.22564799581272155
+    },
+    {
+      "key": "dreadnought-maple-thumb-mono_mic",
+      "shape": "dreadnought",
+      "wood": "maple",
+      "technique": "thumb",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 54,
+      "note": "Fsharp3_D",
+      "before": 4.586793256828784,
+      "profile": 4.714903640100065,
+      "change_db": 0.12811038327128088,
+      "H1_power_change_db": 2.0318731841045903,
+      "H1_share_change_db": 0.38637104554237034,
+      "H1_decay_change_db": 0.20891579741130784,
+      "H2_power_change_db": 1.6364649519696464
+    },
+    {
+      "key": "auditorium-spruce-thumb-stereo_mic",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "technique": "thumb",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 53,
+      "note": "F3_D",
+      "before": 5.056225186606035,
+      "profile": 4.6517815084854135,
+      "change_db": -0.40444367812062154,
+      "H1_power_change_db": 0.6616592514778858,
+      "H1_share_change_db": 0.30625329404332824,
+      "H1_decay_change_db": -0.11506210479949175,
+      "H2_power_change_db": 0.27177983403649364
+    },
+    {
+      "key": "dreadnought-mahogany-finger-mono_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "finger",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 53,
+      "note": "F3_D",
+      "before": 4.37052504755296,
+      "profile": 4.192690237645209,
+      "change_db": -0.17783480990775047,
+      "H1_power_change_db": 0.6907369004866624,
+      "H1_share_change_db": 0.02215552608393523,
+      "H1_decay_change_db": 0.06421589011718254,
+      "H2_power_change_db": 0.6978091612932111
+    },
+    {
+      "key": "auditorium-maple-pick-mono_mic",
+      "shape": "auditorium",
+      "wood": "maple",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 53,
+      "note": "F3_D",
+      "before": 4.306608404521995,
+      "profile": 4.093985510462616,
+      "change_db": -0.21262289405937906,
+      "H1_power_change_db": 0.6674169112968897,
+      "H1_share_change_db": 0.2667543481387238,
+      "H1_decay_change_db": -0.10007098938674375,
+      "H2_power_change_db": 0.39848623746432565
+    },
+    {
+      "key": "dreadnought-mahogany-thumb-mono_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "thumb",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 53,
+      "note": "F3_D",
+      "before": 4.231887137253395,
+      "profile": 4.026785672416096,
+      "change_db": -0.2051014648372984,
+      "H1_power_change_db": 0.6921427931922821,
+      "H1_share_change_db": 0.028247807469915287,
+      "H1_decay_change_db": 0.06383182761230444,
+      "H2_power_change_db": 0.6974184521143698
+    },
+    {
+      "key": "auditorium-spruce-pick-stereo_mic",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 53,
+      "note": "F3_D",
+      "before": 4.175139033864681,
+      "profile": 4.01585483782776,
+      "change_db": -0.15928419603692134,
+      "H1_power_change_db": 0.6482119655537701,
+      "H1_share_change_db": 0.335177713180407,
+      "H1_decay_change_db": -0.1152727783123666,
+      "H2_power_change_db": 0.23863886923592048
+    },
+    {
+      "key": "dreadnought-spruce-finger-mono_mic",
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "technique": "finger",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 53,
+      "note": "F3_D",
+      "before": 4.09801835808819,
+      "profile": 3.991268795675868,
+      "change_db": -0.10674956241232181,
+      "H1_power_change_db": 0.6775342643964137,
+      "H1_share_change_db": -0.04856492503372323,
+      "H1_decay_change_db": 0.07647051565565022,
+      "H2_power_change_db": 0.7543071417875638
+    }
+  ],
+  "largest_transition_increases": [
+    {
+      "key": "parlor-spruce-pick-stereo_mic",
+      "shape": "parlor",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 57,
+      "note": "A3_D",
+      "before": -0.8383417253168801,
+      "profile": 0.38807490529104527,
+      "change_db": 1.2264166306079254,
+      "H1_power_change_db": 4.1714661086257365,
+      "H1_share_change_db": -0.05193890955051117,
+      "H1_decay_change_db": -1.5867131368237253,
+      "H2_power_change_db": 4.830352817963487
+    },
+    {
+      "key": "parlor-spruce-pick-mono_mic",
+      "shape": "parlor",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 4,
+      "midi": 57,
+      "note": "A3_G",
+      "before": -2.6418034920682416,
+      "profile": -1.4585315559963732,
+      "change_db": 1.1832719360718684,
+      "H1_power_change_db": 4.048835275382693,
+      "H1_share_change_db": 0.36993456227482646,
+      "H1_decay_change_db": -0.506814307605346,
+      "H2_power_change_db": 3.6556780384022005
+    },
+    {
+      "key": "parlor-spruce-pick-stereo_mic",
+      "shape": "parlor",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 4,
+      "midi": 57,
+      "note": "A3_G",
+      "before": -1.6912101455712687,
+      "profile": -0.5094861548130325,
+      "change_db": 1.1817239907582362,
+      "H1_power_change_db": 3.9067226153827406,
+      "H1_share_change_db": -0.07809429324260098,
+      "H1_decay_change_db": -0.7830269881760046,
+      "H2_power_change_db": 4.301618094210795
+    },
+    {
+      "key": "auditorium-maple-pick-stereo_mic",
+      "shape": "auditorium",
+      "wood": "maple",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 56,
+      "note": "Gsharp3_D",
+      "before": 3.7043080699816997,
+      "profile": 4.8778262743538505,
+      "change_db": 1.1735182043721508,
+      "H1_power_change_db": 3.674707150702993,
+      "H1_share_change_db": 0.09417651665210691,
+      "H1_decay_change_db": -1.2645602309803365,
+      "H2_power_change_db": 3.95191655444701
+    },
+    {
+      "key": "auditorium-spruce-pick-stereo_mic",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 55,
+      "note": "G3_D",
+      "before": -1.8523755863674864,
+      "profile": -0.6834637689869183,
+      "change_db": 1.1689118173805682,
+      "H1_power_change_db": 2.9355572992803047,
+      "H1_share_change_db": -0.2134591307143996,
+      "H1_decay_change_db": -1.1498195686454693,
+      "H2_power_change_db": 4.644441212946617
+    },
+    {
+      "key": "parlor-mahogany-pick-stereo_mic",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 57,
+      "note": "A3_D",
+      "before": -0.796671559763233,
+      "profile": 0.361584420987235,
+      "change_db": 1.158255980750468,
+      "H1_power_change_db": 4.185865546455787,
+      "H1_share_change_db": 0.03610124373264689,
+      "H1_decay_change_db": -1.3288731599148562,
+      "H2_power_change_db": 4.682771771371975
+    },
+    {
+      "key": "dreadnought-mahogany-pick-mono_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 4,
+      "midi": 56,
+      "note": "Gsharp3_G",
+      "before": -2.0873227247335606,
+      "profile": -0.9359503798083892,
+      "change_db": 1.1513723449251714,
+      "H1_power_change_db": 3.132866621375001,
+      "H1_share_change_db": 0.294991833581534,
+      "H1_decay_change_db": 0.8106950539058886,
+      "H2_power_change_db": 3.797050920996412
+    },
+    {
+      "key": "auditorium-mahogany-pick-stereo_mic",
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 55,
+      "note": "G3_D",
+      "before": -1.631396198610382,
+      "profile": -0.5475322931635773,
+      "change_db": 1.0838639054468047,
+      "H1_power_change_db": 2.9602172296310627,
+      "H1_share_change_db": -0.09045838854793686,
+      "H1_decay_change_db": -1.093849102382599,
+      "H2_power_change_db": 4.141468296550748
+    },
+    {
+      "key": "dreadnought-spruce-pick-stereo_mic",
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 56,
+      "note": "Gsharp3_D",
+      "before": 2.469617752418081,
+      "profile": 3.55121684432892,
+      "change_db": 1.0815990919108387,
+      "H1_power_change_db": 3.3249886253316845,
+      "H1_share_change_db": 0.029458144318461166,
+      "H1_decay_change_db": -0.6619422301500251,
+      "H2_power_change_db": 4.091605078608055
+    },
+    {
+      "key": "dreadnought-mahogany-thumb-mono_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "thumb",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 56,
+      "note": "Gsharp3_D",
+      "before": -0.275205764692231,
+      "profile": 0.7635324260532457,
+      "change_db": 1.0387381907454767,
+      "H1_power_change_db": 3.3638590899340315,
+      "H1_share_change_db": 0.018574751286680513,
+      "H1_decay_change_db": 0.2917172144962805,
+      "H2_power_change_db": 4.367876339332284
+    },
+    {
+      "key": "auditorium-maple-pick-mono_mic",
+      "shape": "auditorium",
+      "wood": "maple",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 56,
+      "note": "Gsharp3_D",
+      "before": 5.375773168692213,
+      "profile": 6.377710338866912,
+      "change_db": 1.001937170174699,
+      "H1_power_change_db": 3.8875557629325854,
+      "H1_share_change_db": 0.31774520033324904,
+      "H1_decay_change_db": -0.8377071232753082,
+      "H2_power_change_db": 3.759629274227123
+    },
+    {
+      "key": "dreadnought-mahogany-pick-stereo_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 56,
+      "note": "Gsharp3_D",
+      "before": 1.6516101168718436,
+      "profile": 2.6427049524171906,
+      "change_db": 0.991094835545347,
+      "H1_power_change_db": 3.3574327163630073,
+      "H1_share_change_db": 0.06345121238499551,
+      "H1_decay_change_db": -0.7323758573109274,
+      "H2_power_change_db": 4.2190869515250355
+    }
+  ],
+  "largest_all_chromatic_increases": [
+    {
+      "key": "jumbo-spruce-finger-stereo_mic",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": -0.22571839903358537,
+      "profile": 6.610913003428703,
+      "change_db": 6.836631402462288,
+      "H1_power_change_db": 5.13040845757498,
+      "H1_share_change_db": 0.22501312559134673,
+      "H1_decay_change_db": -9.277530651949323,
+      "H2_power_change_db": -0.20064418368235692
+    },
+    {
+      "key": "jumbo-spruce-thumb-stereo_mic",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "technique": "thumb",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": -0.28853626361884466,
+      "profile": 6.425494068950037,
+      "change_db": 6.714030332568882,
+      "H1_power_change_db": 5.131422713613432,
+      "H1_share_change_db": 0.2118235909583028,
+      "H1_decay_change_db": -9.260478853080308,
+      "H2_power_change_db": -0.028538755994837572
+    },
+    {
+      "key": "jumbo-mahogany-finger-stereo_mic",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": 1.3289501306879785,
+      "profile": 7.676356999071388,
+      "change_db": 6.347406868383409,
+      "H1_power_change_db": 4.772659302099022,
+      "H1_share_change_db": 0.05396120837868973,
+      "H1_decay_change_db": -7.912358366822563,
+      "H2_power_change_db": 4.610960016410793
+    },
+    {
+      "key": "jumbo-mahogany-thumb-stereo_mic",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "technique": "thumb",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": 1.3460580425781323,
+      "profile": 7.633906568238231,
+      "change_db": 6.287848525660099,
+      "H1_power_change_db": 4.772175365078816,
+      "H1_share_change_db": 0.06671297120361852,
+      "H1_decay_change_db": -7.900072899437909,
+      "H2_power_change_db": 4.7477146598701125
+    },
+    {
+      "key": "jumbo-spruce-pick-stereo_mic",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": -0.479793497501646,
+      "profile": 4.9591862521462176,
+      "change_db": 5.438979749647864,
+      "H1_power_change_db": 4.933278839329333,
+      "H1_share_change_db": 1.1860733075344383,
+      "H1_decay_change_db": -9.007800899899209,
+      "H2_power_change_db": -0.5314221643865054
+    },
+    {
+      "key": "jumbo-mahogany-pick-stereo_mic",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": 0.5152383842876276,
+      "profile": 5.875685780569913,
+      "change_db": 5.360447396282286,
+      "H1_power_change_db": 4.633788156340117,
+      "H1_share_change_db": 0.3660703099866721,
+      "H1_decay_change_db": -7.7434577339573245,
+      "H2_power_change_db": 4.058364061709902
+    },
+    {
+      "key": "jumbo-maple-thumb-stereo_mic",
+      "shape": "jumbo",
+      "wood": "maple",
+      "technique": "thumb",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": -3.1168406494206167,
+      "profile": 1.8073891418621741,
+      "change_db": 4.924229791282791,
+      "H1_power_change_db": 6.772562852649674,
+      "H1_share_change_db": 0.8767705761256815,
+      "H1_decay_change_db": -8.540695229578134,
+      "H2_power_change_db": 3.0578349248473558
+    },
+    {
+      "key": "jumbo-maple-finger-stereo_mic",
+      "shape": "jumbo",
+      "wood": "maple",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": -3.110502203310105,
+      "profile": 1.772085737072004,
+      "change_db": 4.882587940382109,
+      "H1_power_change_db": 6.769156010394514,
+      "H1_share_change_db": 0.8921917341876134,
+      "H1_decay_change_db": -8.542514365152531,
+      "H2_power_change_db": 3.057943651216391
+    },
+    {
+      "key": "jumbo-spruce-finger-mono_mic",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "technique": "finger",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": 0.7615701250603131,
+      "profile": 5.4388072300740475,
+      "change_db": 4.6772371050137345,
+      "H1_power_change_db": 4.82010303758765,
+      "H1_share_change_db": 0.20756529456919792,
+      "H1_decay_change_db": -7.754862934605942,
+      "H2_power_change_db": -0.7383476092232684
+    },
+    {
+      "key": "jumbo-spruce-thumb-mono_mic",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "technique": "thumb",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": 0.6434601826560638,
+      "profile": 5.27003537072077,
+      "change_db": 4.626575188064706,
+      "H1_power_change_db": 4.818491032945484,
+      "H1_share_change_db": 0.20725086472772367,
+      "H1_decay_change_db": -7.742733236183064,
+      "H2_power_change_db": -0.6862463056029569
+    },
+    {
+      "key": "jumbo-mahogany-finger-mono_mic",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "technique": "finger",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": 2.6064185772379,
+      "profile": 6.8112828687887905,
+      "change_db": 4.204864291550891,
+      "H1_power_change_db": 4.714834150491338,
+      "H1_share_change_db": 0.0570269850704553,
+      "H1_decay_change_db": -6.71383522344426,
+      "H2_power_change_db": -0.6877086812818405
+    },
+    {
+      "key": "jumbo-mahogany-thumb-mono_mic",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "technique": "thumb",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 63,
+      "note": "Dsharp4_D",
+      "before": 2.6261125402780436,
+      "profile": 6.820915687289272,
+      "change_db": 4.194803147011228,
+      "H1_power_change_db": 4.712639941067955,
+      "H1_share_change_db": 0.06520914362329586,
+      "H1_decay_change_db": -6.703642855155845,
+      "H2_power_change_db": -0.630491209089648
+    }
+  ],
+  "newly_positive_transition_peaks": [
+    {
+      "key": "jumbo-mahogany-pick-stereo_mic",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 4,
+      "midi": 56,
+      "note": "Gsharp3_G",
+      "before": -0.14212319206100688,
+      "profile": 0.8458844175701259,
+      "change_db": 0.9880076096311328,
+      "H1_power_change_db": 3.4969431887535336,
+      "H1_share_change_db": 0.24658210447294415,
+      "H1_decay_change_db": -0.44126056248524037,
+      "H2_power_change_db": 3.1828215729116494
+    },
+    {
+      "key": "dreadnought-mahogany-thumb-mono_mic",
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "technique": "thumb",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 56,
+      "note": "Gsharp3_D",
+      "before": -0.275205764692231,
+      "profile": 0.7635324260532457,
+      "change_db": 1.0387381907454767,
+      "H1_power_change_db": 3.3638590899340315,
+      "H1_share_change_db": 0.018574751286680513,
+      "H1_decay_change_db": 0.2917172144962805,
+      "H2_power_change_db": 4.367876339332284
+    },
+    {
+      "key": "dreadnought-spruce-thumb-mono_mic",
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "technique": "thumb",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 56,
+      "note": "Gsharp3_D",
+      "before": -0.048276228237916996,
+      "profile": 0.7300252120387611,
+      "change_db": 0.7783014402766781,
+      "H1_power_change_db": 3.278949628863927,
+      "H1_share_change_db": 0.08535700219287401,
+      "H1_decay_change_db": 0.552980634706671,
+      "H2_power_change_db": 4.526313825673185
+    },
+    {
+      "key": "parlor-mahogany-pick-mono_mic",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 57,
+      "note": "A3_D",
+      "before": -0.04070029187813162,
+      "profile": 0.6290119068805993,
+      "change_db": 0.6697121987587309,
+      "H1_power_change_db": 4.383583163967323,
+      "H1_share_change_db": 0.5135480403275281,
+      "H1_decay_change_db": -1.3040097863546052,
+      "H2_power_change_db": 3.9990805641165537
+    },
+    {
+      "key": "auditorium-mahogany-finger-stereo_mic",
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "technique": "finger",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 55,
+      "note": "G3_D",
+      "before": -0.23201263592090982,
+      "profile": 0.39127291394009944,
+      "change_db": 0.6232855498610093,
+      "H1_power_change_db": 2.8710429905995127,
+      "H1_share_change_db": -0.1341646820223552,
+      "H1_decay_change_db": -1.2113594392911935,
+      "H2_power_change_db": 3.3296168074016634
+    },
+    {
+      "key": "parlor-spruce-pick-stereo_mic",
+      "shape": "parlor",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 57,
+      "note": "A3_D",
+      "before": -0.8383417253168801,
+      "profile": 0.38807490529104527,
+      "change_db": 1.2264166306079254,
+      "H1_power_change_db": 4.1714661086257365,
+      "H1_share_change_db": -0.05193890955051117,
+      "H1_decay_change_db": -1.5867131368237253,
+      "H2_power_change_db": 4.830352817963487
+    },
+    {
+      "key": "parlor-mahogany-pick-stereo_mic",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 57,
+      "note": "A3_D",
+      "before": -0.796671559763233,
+      "profile": 0.361584420987235,
+      "change_db": 1.158255980750468,
+      "H1_power_change_db": 4.185865546455787,
+      "H1_share_change_db": 0.03610124373264689,
+      "H1_decay_change_db": -1.3288731599148562,
+      "H2_power_change_db": 4.682771771371975
+    },
+    {
+      "key": "parlor-maple-thumb-mono_mic",
+      "shape": "parlor",
+      "wood": "maple",
+      "technique": "thumb",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 56,
+      "note": "Gsharp3_D",
+      "before": -0.052103579570065506,
+      "profile": 0.31646078672058664,
+      "change_db": 0.36856436629065215,
+      "H1_power_change_db": 3.8000926302172644,
+      "H1_share_change_db": 0.21525706194508554,
+      "H1_decay_change_db": -0.9268055029343962,
+      "H2_power_change_db": -1.1600386480218958
+    },
+    {
+      "key": "dreadnought-maple-pick-stereo_mic",
+      "shape": "dreadnought",
+      "wood": "maple",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 56,
+      "note": "Gsharp3_D",
+      "before": -0.22159713874562925,
+      "profile": 0.31572298657955145,
+      "change_db": 0.5373201253251807,
+      "H1_power_change_db": 3.4171575355403974,
+      "H1_share_change_db": 0.3788255436329049,
+      "H1_decay_change_db": -0.47226534246466656,
+      "H2_power_change_db": 3.9182589274825617
+    },
+    {
+      "key": "parlor-spruce-pick-mono_mic",
+      "shape": "parlor",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "mono_mic",
+      "channel": 3,
+      "midi": 57,
+      "note": "A3_D",
+      "before": -0.5587987070601912,
+      "profile": 0.2184071576336919,
+      "change_db": 0.7772058646938831,
+      "H1_power_change_db": 4.424845976201063,
+      "H1_share_change_db": 0.5074828024345734,
+      "H1_decay_change_db": -1.6696029208373133,
+      "H2_power_change_db": 4.057587288496492
+    },
+    {
+      "key": "auditorium-mahogany-thumb-stereo_mic",
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "technique": "thumb",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 55,
+      "note": "G3_D",
+      "before": -0.3228932577901844,
+      "profile": 0.16671053669628577,
+      "change_db": 0.4896037944864702,
+      "H1_power_change_db": 2.874278733067804,
+      "H1_share_change_db": -0.08636428910763971,
+      "H1_decay_change_db": -1.2037233396445615,
+      "H2_power_change_db": 3.3225658549704633
+    },
+    {
+      "key": "jumbo-spruce-pick-stereo_mic",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "technique": "pick",
+      "capture": "stereo_mic",
+      "channel": 3,
+      "midi": 55,
+      "note": "G3_D",
+      "before": -0.09066325060017277,
+      "profile": 0.11536017123180642,
+      "change_db": 0.2060234218319792,
+      "H1_power_change_db": 2.654420113487454,
+      "H1_share_change_db": 0.3634186333705536,
+      "H1_decay_change_db": -1.0000645970729494,
+      "H2_power_change_db": 3.3882977525617406
+    }
+  ],
+  "targeted_note_deltas": {
+    "53": {
+      "mic": {
+        "rms_dbfs": {
+          "count": 72,
+          "minimum": 0.31910535389786787,
+          "median": 0.531094602223444,
+          "maximum": 0.9837490589747517
+        },
+        "fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.6136561727858378,
+          "median": 0.6723661578786313,
+          "maximum": 0.8062425691710473
+        },
+        "fundamental_fraction_db": {
+          "count": 72,
+          "minimum": -0.24553704886449523,
+          "median": 0.1745942175887294,
+          "maximum": 0.38920858052418694
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 72,
+          "minimum": -0.4220298426106943,
+          "median": -0.25652521052056376,
+          "maximum": 0.3159863510433034
+        },
+        "H2_power_db": {
+          "count": 72,
+          "minimum": 0.20278373115167625,
+          "median": 0.5109698872631725,
+          "maximum": 1.1072144395630943
+        },
+        "held_decay_db": {
+          "count": 72,
+          "minimum": -0.6189071083774742,
+          "median": -0.0879640392842802,
+          "maximum": 0.06260690226745069
+        },
+        "fundamental_decay_db": {
+          "count": 72,
+          "minimum": -0.339746618122291,
+          "median": -0.07428779039602418,
+          "maximum": 0.12975908390131252
+        }
+      },
+      "piezo_bus": {
+        "rms_dbfs": {
+          "count": 72,
+          "minimum": 0.4990767362395587,
+          "median": 0.543671907816913,
+          "maximum": 0.5545943171949759
+        },
+        "fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 0.531233850189011,
+          "median": 0.5451492939479454,
+          "maximum": 0.5500886495371091
+        },
+        "fundamental_fraction_db": {
+          "count": 72,
+          "minimum": -0.015159315647841787,
+          "median": 0.002395816992284333,
+          "maximum": 0.04146387507380078
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 72,
+          "minimum": -0.22974621001450224,
+          "median": -0.01689968378418072,
+          "maximum": 0.08207507417521676
+        },
+        "H2_power_db": {
+          "count": 72,
+          "minimum": -0.21740283830727236,
+          "median": 0.4946411320891606,
+          "maximum": 0.6692391695895239
+        },
+        "held_decay_db": {
+          "count": 72,
+          "minimum": -0.15276883562052745,
+          "median": -0.04003392716377796,
+          "maximum": -0.020326425847205343
+        },
+        "fundamental_decay_db": {
+          "count": 72,
+          "minimum": -0.04248433436673338,
+          "median": -0.030022781285335753,
+          "maximum": -0.02149396305622986
+        }
+      },
+      "heave_H1_sustain_change_db": {
+        "count": 72,
+        "minimum": 0.6140756607055664,
+        "median": 0.7096385955810547,
+        "maximum": 1.217947006225586
+      },
+      "heave_H1_held_decay_change_db": {
+        "count": 72,
+        "minimum": -0.37047386169433594,
+        "median": -0.10373830795288086,
+        "maximum": 1.0867500305175781
+      },
+      "moment_H1_sustain_change_db": {
+        "count": 72,
+        "minimum": -0.07566452026367188,
+        "median": -0.051081180572509766,
+        "maximum": -0.03418445587158203
+      },
+      "moment_H1_held_decay_change_db": {
+        "count": 72,
+        "minimum": -0.055522918701171875,
+        "median": -0.042366981506347656,
+        "maximum": -0.028624534606933594
+      }
+    },
+    "54": {
+      "mic": {
+        "rms_dbfs": {
+          "count": 72,
+          "minimum": 0.9495597600620016,
+          "median": 1.4688843657100303,
+          "maximum": 1.805842060283382
+        },
+        "fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 1.7644075045000776,
+          "median": 1.9248083530766955,
+          "maximum": 2.0637034168754624
+        },
+        "fundamental_fraction_db": {
+          "count": 72,
+          "minimum": 0.060686028534419734,
+          "median": 0.4337426609033912,
+          "maximum": 1.2561269544524727
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 72,
+          "minimum": -2.001454968543606,
+          "median": -0.6409477007715404,
+          "maximum": -0.186816203167111
+        },
+        "H2_power_db": {
+          "count": 72,
+          "minimum": -1.0022826962601172,
+          "median": 1.4322221274964342,
+          "maximum": 2.232246331803651
+        },
+        "held_decay_db": {
+          "count": 72,
+          "minimum": -1.4873962401245535,
+          "median": -0.05411283608107453,
+          "maximum": 0.4878751910330692
+        },
+        "fundamental_decay_db": {
+          "count": 72,
+          "minimum": -0.685395274704959,
+          "median": -0.28006689004791596,
+          "maximum": 0.5498005790065648
+        }
+      },
+      "piezo_bus": {
+        "rms_dbfs": {
+          "count": 72,
+          "minimum": 1.3596486434627089,
+          "median": 1.5884570310270671,
+          "maximum": 1.6268402090335066
+        },
+        "fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 1.5514788487452122,
+          "median": 1.6029537622315893,
+          "maximum": 1.624861144149289
+        },
+        "fundamental_fraction_db": {
+          "count": 72,
+          "minimum": -0.03475083265820267,
+          "median": 0.006439914419338139,
+          "maximum": 0.2845066443507078
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 72,
+          "minimum": -2.160629934134601,
+          "median": -0.13189077404596805,
+          "maximum": 0.22208773230527257
+        },
+        "H2_power_db": {
+          "count": 72,
+          "minimum": -1.7022621759393175,
+          "median": 1.3054478826292275,
+          "maximum": 1.9119232196168383
+        },
+        "held_decay_db": {
+          "count": 72,
+          "minimum": -0.5031146413585468,
+          "median": -0.14796225706861144,
+          "maximum": -0.09709441099374772
+        },
+        "fundamental_decay_db": {
+          "count": 72,
+          "minimum": -0.1668232861579213,
+          "median": -0.11294944551426056,
+          "maximum": -0.07997429841665493
+        }
+      },
+      "heave_H1_sustain_change_db": {
+        "count": 72,
+        "minimum": 0.8861732482910156,
+        "median": 1.9596648216247559,
+        "maximum": 3.1501197814941406
+      },
+      "heave_H1_held_decay_change_db": {
+        "count": 72,
+        "minimum": -1.1148738861083984,
+        "median": -0.3480195999145508,
+        "maximum": 7.9743194580078125
+      },
+      "moment_H1_sustain_change_db": {
+        "count": 72,
+        "minimum": -0.32738208770751953,
+        "median": -0.2294635772705078,
+        "maximum": -0.16614437103271484
+      },
+      "moment_H1_held_decay_change_db": {
+        "count": 72,
+        "minimum": -0.2348041534423828,
+        "median": -0.1772022247314453,
+        "maximum": -0.12357234954833984
+      }
+    },
+    "55": {
+      "mic": {
+        "rms_dbfs": {
+          "count": 72,
+          "minimum": 1.3707134789898845,
+          "median": 2.35393360680467,
+          "maximum": 3.3179918397712527
+        },
+        "fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 2.5303816957204432,
+          "median": 2.9558839551002585,
+          "maximum": 3.6520657987741103
+        },
+        "fundamental_fraction_db": {
+          "count": 72,
+          "minimum": -0.6026944492353756,
+          "median": 0.5626397297220169,
+          "maximum": 2.0955513013891274
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 72,
+          "minimum": -2.8269277330459963,
+          "median": -1.3131825239426254,
+          "maximum": 0.8764592020377134
+        },
+        "H2_power_db": {
+          "count": 72,
+          "minimum": -1.1447686226424807,
+          "median": 1.870306614009138,
+          "maximum": 4.644441212946617
+        },
+        "held_decay_db": {
+          "count": 72,
+          "minimum": -2.841021958519388,
+          "median": -0.9813028962145367,
+          "maximum": 0.2656673593270824
+        },
+        "fundamental_decay_db": {
+          "count": 72,
+          "minimum": -1.6304281517167567,
+          "median": -0.987556104657564,
+          "maximum": 0.6497642307872553
+        }
+      },
+      "piezo_bus": {
+        "rms_dbfs": {
+          "count": 72,
+          "minimum": 2.3293340112096885,
+          "median": 2.5994986869379044,
+          "maximum": 2.6620047497066537
+        },
+        "fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 2.5936660035132206,
+          "median": 2.616572383453276,
+          "maximum": 2.677010471563591
+        },
+        "fundamental_fraction_db": {
+          "count": 72,
+          "minimum": -0.036280229676321496,
+          "median": 0.021889986987456533,
+          "maximum": 0.30769557114585666
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 72,
+          "minimum": -1.518025428718416,
+          "median": -0.2607493007172689,
+          "maximum": 0.5740627113433234
+        },
+        "H2_power_db": {
+          "count": 72,
+          "minimum": 0.47442951125239574,
+          "median": 2.0106561418722144,
+          "maximum": 3.552842212797586
+        },
+        "held_decay_db": {
+          "count": 72,
+          "minimum": -0.6116175278837481,
+          "median": -0.16963146072561663,
+          "maximum": 0.10804836789239403
+        },
+        "fundamental_decay_db": {
+          "count": 72,
+          "minimum": -0.1676673037532126,
+          "median": -0.06698802990712416,
+          "maximum": 0.6120389550847776
+        }
+      },
+      "heave_H1_sustain_change_db": {
+        "count": 72,
+        "minimum": -0.3098106384277344,
+        "median": 2.3950743675231934,
+        "maximum": 3.3440399169921875
+      },
+      "heave_H1_held_decay_change_db": {
+        "count": 72,
+        "minimum": -6.194944381713867,
+        "median": -2.1648216247558594,
+        "maximum": -0.7022571563720703
+      },
+      "moment_H1_sustain_change_db": {
+        "count": 72,
+        "minimum": -0.0979757308959961,
+        "median": -0.06245136260986328,
+        "maximum": -0.02830028533935547
+      },
+      "moment_H1_held_decay_change_db": {
+        "count": 72,
+        "minimum": 0.3654909133911133,
+        "median": 0.4768085479736328,
+        "maximum": 0.6743144989013672
+      }
+    },
+    "56": {
+      "mic": {
+        "rms_dbfs": {
+          "count": 72,
+          "minimum": 1.703816147159742,
+          "median": 3.251776540935502,
+          "maximum": 3.9684638629478144
+        },
+        "fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 3.1560968377164613,
+          "median": 3.540930629803597,
+          "maximum": 3.9809126783588553
+        },
+        "fundamental_fraction_db": {
+          "count": 72,
+          "minimum": -0.38328918100519793,
+          "median": 0.2590447292954825,
+          "maximum": 1.7252571471083176
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 72,
+          "minimum": -2.8194671231131174,
+          "median": -0.558161508257432,
+          "maximum": 0.7793304253038142
+        },
+        "H2_power_db": {
+          "count": 72,
+          "minimum": -2.754073346398144,
+          "median": 3.7110049008151478,
+          "maximum": 4.526313825673185
+        },
+        "held_decay_db": {
+          "count": 72,
+          "minimum": -1.7156317957915483,
+          "median": -0.4781209785528695,
+          "maximum": 0.9516730222490963
+        },
+        "fundamental_decay_db": {
+          "count": 72,
+          "minimum": -1.4964723041965655,
+          "median": -0.747391624437217,
+          "maximum": 1.0765041224192302
+        }
+      },
+      "piezo_bus": {
+        "rms_dbfs": {
+          "count": 72,
+          "minimum": 2.76469437290676,
+          "median": 3.1725362303143854,
+          "maximum": 3.2521072624450085
+        },
+        "fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 3.0641999221190233,
+          "median": 3.1863232406462902,
+          "maximum": 3.2679144293305953
+        },
+        "fundamental_fraction_db": {
+          "count": 72,
+          "minimum": -0.08939959478501347,
+          "median": -0.008885433175347901,
+          "maximum": 0.5299038684404187
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 72,
+          "minimum": -3.425620607060422,
+          "median": 0.09384764298101889,
+          "maximum": 0.3158528426793521
+        },
+        "H2_power_db": {
+          "count": 72,
+          "minimum": -2.654332969310609,
+          "median": 3.2384201987374794,
+          "maximum": 3.496510938046164
+        },
+        "held_decay_db": {
+          "count": 72,
+          "minimum": -0.6393243398167527,
+          "median": -0.4211601356475434,
+          "maximum": -0.2785243166916338
+        },
+        "fundamental_decay_db": {
+          "count": 72,
+          "minimum": -0.5556151960414084,
+          "median": -0.37016528262045334,
+          "maximum": -0.2598847010888825
+        }
+      },
+      "heave_H1_sustain_change_db": {
+        "count": 72,
+        "minimum": 2.496471405029297,
+        "median": 3.4078574180603027,
+        "maximum": 5.706462860107422
+      },
+      "heave_H1_held_decay_change_db": {
+        "count": 72,
+        "minimum": -2.5667476654052734,
+        "median": 0.09830236434936523,
+        "maximum": 5.076837539672852
+      },
+      "moment_H1_sustain_change_db": {
+        "count": 72,
+        "minimum": -1.1333942413330078,
+        "median": -0.7674551010131836,
+        "maximum": -0.5846643447875977
+      },
+      "moment_H1_held_decay_change_db": {
+        "count": 72,
+        "minimum": -1.2584257125854492,
+        "median": -0.9536123275756836,
+        "maximum": -0.6428194046020508
+      }
+    },
+    "57": {
+      "mic": {
+        "rms_dbfs": {
+          "count": 72,
+          "minimum": 1.9691182220208603,
+          "median": 3.3610199723646517,
+          "maximum": 4.430899519584308
+        },
+        "fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 2.9431855181704805,
+          "median": 3.7613148050541625,
+          "maximum": 4.469683680224605
+        },
+        "fundamental_fraction_db": {
+          "count": 72,
+          "minimum": -0.5589293348949935,
+          "median": 0.28327783284203134,
+          "maximum": 2.163383875163813
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 72,
+          "minimum": -2.5669919555642036,
+          "median": -0.9540189075697878,
+          "maximum": 1.0559053717285318
+        },
+        "H2_power_db": {
+          "count": 72,
+          "minimum": 0.5673892527666098,
+          "median": 4.195767506777166,
+          "maximum": 5.014686012411204
+        },
+        "held_decay_db": {
+          "count": 72,
+          "minimum": -2.8328880414869637,
+          "median": -1.2999762181621755,
+          "maximum": 0.5917234292220215
+        },
+        "fundamental_decay_db": {
+          "count": 72,
+          "minimum": -2.2619632701463566,
+          "median": -0.7475748112073255,
+          "maximum": 1.5355833718815681
+        }
+      },
+      "piezo_bus": {
+        "rms_dbfs": {
+          "count": 72,
+          "minimum": 3.0054110769755695,
+          "median": 3.427563011087525,
+          "maximum": 3.5951146446012316
+        },
+        "fundamental_power_dbfs": {
+          "count": 72,
+          "minimum": 3.219477929339778,
+          "median": 3.464962898225444,
+          "maximum": 3.711176419736468
+        },
+        "fundamental_fraction_db": {
+          "count": 72,
+          "minimum": -0.0920822250565072,
+          "median": 0.01318554903235324,
+          "maximum": 0.7423622144206914
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 72,
+          "minimum": -2.8859445141080826,
+          "median": -0.2892205046851293,
+          "maximum": 0.5307237388301838
+        },
+        "H2_power_db": {
+          "count": 72,
+          "minimum": -0.746718328349786,
+          "median": 2.8480559708073123,
+          "maximum": 3.8699718291783967
+        },
+        "held_decay_db": {
+          "count": 72,
+          "minimum": -1.802842774902441,
+          "median": -0.22798001702999215,
+          "maximum": 0.788853308665658
+        },
+        "fundamental_decay_db": {
+          "count": 72,
+          "minimum": -0.8851007732971787,
+          "median": -0.01309799711336268,
+          "maximum": 2.53003144592212
+        }
+      },
+      "heave_H1_sustain_change_db": {
+        "count": 72,
+        "minimum": 2.6471805572509766,
+        "median": 3.8032913208007812,
+        "maximum": 5.680999755859375
+      },
+      "heave_H1_held_decay_change_db": {
+        "count": 72,
+        "minimum": -7.643718719482422,
+        "median": -1.7078924179077148,
+        "maximum": -0.6185054779052734
+      },
+      "moment_H1_sustain_change_db": {
+        "count": 72,
+        "minimum": -2.85153865814209,
+        "median": -1.8314623832702637,
+        "maximum": -0.6366634368896484
+      },
+      "moment_H1_held_decay_change_db": {
+        "count": 72,
+        "minimum": -0.012655258178710938,
+        "median": 1.4766883850097656,
+        "maximum": 2.483348846435547
+      }
+    }
+  },
+  "historical_full_helper_comparison": {
+    "clips": 288,
+    "byte_exact": 112,
+    "comparison_scope": "Available matching fingerings from the old external-target global/ramp helpers, distinct from the clean full-reference control.",
+    "metric_deltas": {
+      "mic": {
+        "rms_dbfs": {
+          "count": 288,
+          "minimum": -6.559554608287499e-05,
+          "median": 0.0,
+          "maximum": 8.385177306280411e-05
+        },
+        "fundamental_power_dbfs": {
+          "count": 288,
+          "minimum": -2.9623534551603825e-05,
+          "median": 0.0,
+          "maximum": 2.513268087511733e-05
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 288,
+          "minimum": -0.00024172171817227195,
+          "median": 0.0,
+          "maximum": 0.00022627434353950093
+        }
+      },
+      "piezo_bus": {
+        "rms_dbfs": {
+          "count": 288,
+          "minimum": -3.723358777563135e-05,
+          "median": 0.0,
+          "maximum": 3.083519518298772e-05
+        },
+        "fundamental_power_dbfs": {
+          "count": 288,
+          "minimum": -1.6398097400838196e-05,
+          "median": 0.0,
+          "maximum": 3.124678598709352e-05
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 288,
+          "minimum": -0.00012928030354508735,
+          "median": 0.0,
+          "maximum": 0.0001790747518999325
+        }
+      }
+    }
+  },
+  "mode_context": {
+    "producer": "Resonance audit agent, local native pole table",
+    "Jumbo_T1_frequency_Hz": {
+      "spruce": 179.52,
+      "mahogany": 177.91,
+      "maple": 184.01
+    },
+    "Jumbo_T1_Q": {
+      "spruce": 8.52,
+      "mahogany": 7.02,
+      "maple": 9.18
+    },
+    "F3_Hz": 174.61411571650194,
+    "Fsharp3_Hz": 184.9972113558172,
+    "interpretation": "These existing poles lie between F3 and Fsharp3; altered force partition can change their excitation without moving or adding a body pole. H1 level/share/decay and H2 redistribution are recorded alongside local prominence."
+  },
+  "limitations": [
+    "Fixed-source prototype before level-table changes, with velocity100 versus96 in the main matrix.",
+    "Same-clean-source high controls isolate register weighting. Older user-heard external-target helper has a slightly different float normalization path; historical native hashes are compared separately.",
+    "Simultaneous PiezoBus is a native observation and differs from selecting the main Piezo capture.",
+    "Spectral measurements establish no listener preference or realism; human normal55 verdict and final calibrated chord policy remain separate."
+  ],
+  "high_precision_energy_check": {
+    "report": "build-resonance/evidence/construction/normal-register-early-52-57/provenance/high-precision-energy/report.json",
+    "report_sha256": "3debdeada71a350a0139ce428839d89ed1eebef12ef992135beb5b7c71f3ec03",
+    "producer": "Classic audit agent, high-precision observer linked to the same immutable Engine.o",
+    "summary": {
+      "scope": "The66 six-digit printed energy mismatches in the frozen early52..57 sweep,33 unique physical cases after duplicate microphone captures removed. Same frozen Engine.o; only stdout precision17 differs. No engine/profile/state changes.",
+      "printed_mismatch_records": 66,
+      "unique_physical_cases": 33,
+      "max_actual_relative_error": 5.946792382971466e-07
+    }
+  },
+  "additional_selected_native_controls": {
+    "status": "Selected native controls only; no gain, no player changes.",
+    "purpose": "Matched neighbor triplets for F3/Fsharp3 and largest register peaks, plus known protected low D3/Dsharp3/E3 JumboSpruce controls.",
+    "script_sha256": "cdc07acd752a77c85808deafbd6874cf4df2b65eed2124913634f115c12f450d",
+    "native_clips": 168,
+    "created": 144,
+    "reused": 24,
+    "all_reproduced_hashes_exact": true,
+    "manifest": "build-resonance/evidence/construction/normal-register-early-52-57/selected-controls.json",
+    "manifest_sha256": "e9bcbc386c897ad8b1f8f7a3bcf533dafa4f6fef0b8426d5259304098cfae83f"
+  },
+  "viability_status": "Bass transition is protected in this fixed-source audit, but the new D-string Dsharp4 prominence is a material fingering-dependent regression. No pitch-ramp canonical selection or level changes are accepted.",
+  "raw_retention_after_review": {
+    "policy": "Original broad telemetry retention narrowed to the168 targeted native matched triplets and protected low controls recorded in selected-controls.json. Full metric/hash/command report and frozen source/binaries are preserved; discarded raw is reproducible scratch.",
+    "native_raw_retained": 168,
+    "native_raw_removed_after_hash_validation": 328,
+    "bytes_reclaimed": 1007616000,
+    "all_kept_files_match_selected_controls": true,
+    "selected_manifest_sha256": "e9bcbc386c897ad8b1f8f7a3bcf533dafa4f6fef0b8426d5259304098cfae83f",
+    "metadata": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/construction/normal-register-early-52-57/raw-retention.json"
+  }
+}

@@ -5,6 +5,60 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-09 — reduce microphone boom and adopt the selected Classic attack and sustain
+
+Original Auditorium's close/mono contour emphasized the played A2 fundamental,
+rather than a freely ringing body mode. Remove its 125 Hz presence peak and
+lower its low shelf, with a scalar correction for the reference phrase. The
+user confirmed less boom. Classic's revised capture contour alone remained
+banjo-like; retain the measured bridge/body and record that limitation.
+
+The user preferred the fixed physical-string pluck direction and identified
+the remaining cue as a sharp or tinny attack. Removing the Pick kinetic
+release entirely was too dull. The smaller half-share comparison was rated
+"Natural guitar attack"; the full-slip Thumb was described as improved and
+requested to remain as is for now. Adopt those Classic-only release choices
+by ear, preserving Original/Finger arithmetic and measured construction data.
+Production uses the new release's actual work, followed by the existing fresh
+direction-energy and retained-wave merge contracts. Diagnostic energy matching
+is not a new production source of work.
+
+The accepted-attack checkpoint passes all 75 suites, strict default/extended C++17,
+216 phrase checks and the existing Pick level policy. Canonical source and
+renderers match that tested snapshot exactly; nine affected suites pass again.
+Incorrect-source negative controls demonstrate the new release checks. See
+[the investigation](microphone-resonance-2026-10-09.md) and its compact evidence
+for scope and tradeoffs. These checks verify implementation and the selected
+audition's transfer, rather than complete realism across every construction.
+
+The user then authorized sustain exploration and identified the remaining cue
+as "Tone stays too static as it fades". They selected the gentle broad-loss
+corner option (0.75 of the previous value) for both Pick and Thumb. That
+Classic-specific intrinsic profile is now applied, including Finger and
+sympathetic strings, so a held string keeps its loss when the UI technique
+changes. Original keeps its previous profile. Runtime loss, phase fitting,
+configuration keys and completed dispersion-design validity agree on the
+active configured model; existing pitch/B tolerances remain intact.
+
+The current adoption passes all 76 suites and 12 affected canonical checks.
+All 221 reviewed non-Docs source/build/test/tool files and both renderers match
+the frozen tested snapshot. All 216 phrase levels, 360 native strums and the
+existing Pick headroom policy pass with the same guards. The final calibrated
+Pick/Thumb traces reproduce the selected experiment's physical waves and fade;
+output gain changes preserve its harmonic evolution. Finger's broader transfer
+is checked separately and has no inferred listening verdict. See
+[classic78-sustain-integration-2026-10-09.json](classic78-sustain-integration-2026-10-09.json).
+
+The new final sustain construction player covers all 24 guitars, all three
+techniques and both affected microphones: 144 cells and 288 bass/upper phrases
+with the same playback gain. All 144 Original native/PCM phrases remain exact
+to the previous accepted-attack checkpoint. File, score, source-freeze and
+browser checks pass. The focused final sustain player supplies applied
+Pick/Thumb audio alongside the immutable selected experiments. These records
+provide full construction review coverage without claiming a listener has
+accepted every construction. Earlier players and their frozen evidence remain
+preserved as historical checkpoints.
+
 ## 2026-10-08 — reduce ring indexing, retain scalar bridge behavior
 
 Version 1.1.2 replaces delay-index wrapping loops with an unsigned power-of-two

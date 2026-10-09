@@ -1,0 +1,709 @@
+{
+  "schema_version": 1,
+  "purpose": "Attribute the repeated Classical 78 banjo complaint after two microphone-contour auditions to exact force/moment and pressure components. Signal evidence does not establish a listening preference or a measured replacement pluck angle.",
+  "shipping_snapshot": "Second microphone audition: Classical 500 Hz -3 dB Q1.2, 1400 Hz 0 dB; accepted Original bass refinement retained. Bridge/strings unchanged.",
+  "protocol": {
+    "native": "Fresh native engines, Auditorium, Spruce and Mahogany, Finger/Pick/Thumb, MIDI100/127, G4/A4/B4/E5 highE channel6, room0,48kHz,2s held notes.17float32 columns. Separate copies of the actual deployed BodyBank recurrence and capture filter are fed exact F/T arguments delivered to renderBody; no production DSP edits.",
+    "columns": [
+      "native_left",
+      "native_right",
+      "dedicated_piezo",
+      "renderBody_F",
+      "renderBody_T",
+      "body_left",
+      "body_right",
+      "direct_left",
+      "direct_right",
+      "heave_pressure_left",
+      "heave_pressure_right",
+      "moment_pressure_left",
+      "moment_pressure_right",
+      "measured_pressure_left",
+      "measured_pressure_right",
+      "continuation_pressure_left",
+      "continuation_pressure_right"
+    ],
+    "decay": "0.2s Hann FFT windows starting0.2..1.6s,0.1s hop; power in +/-max(10Hz,1% harmonicHz) around nominal equal-tempered H10; ordinary least-squares10log10(power) versus window center. These are driven held-string partial decays, not free radiator T60s.",
+    "raw_pressure": "Verified Mores archive, authorsSI calibration and H1 extraction in AuditBridgeSpatialMap; g35 causal24000sample taper and g2112000. Heave=(treble+bass)/2,moment=(treble-bass)/2. Band values are10log10(mean moment |H|2 /mean heave |H|2). Fitted comparison decodes134g35 source modes before authored runtime transformations.",
+    "raw_admittance": "Normalized two-point heave=(tt+bb+2cross)/4,rock=(tt+bb-2cross)/4,cross average of two opposite measurements. Sensors are offset from hammer impacts, so this is an approximation, not verified collocated reciprocal mobility. Negative-real summaries include both the raw response and the documented2sample instrumentation phase advance used by the bridge generator; after that advance the sampled g35 rocking bands are positive-real.",
+    "scope": "Original auxiliary measured/continuation split is excluded because its extra joint-pole body also occupies slots beyond ordered. The force/moment pressure split is valid for both models."
+  },
+  "native_component_validation": {
+    "max_abs_body_minus_heave_minus_moment": 3.6903657019138336e-08,
+    "periodic_direct_gain": 0.0,
+    "A4_classic_sustain_harmonic_band_energy_percent_range": [
+      96.36680673757492,
+      99.39817507924944
+    ]
+  },
+  "A4_H10_native_decay_attribution": [
+    {
+      "model": "classic",
+      "style": "finger",
+      "wood": "mahogany",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -18.857976288233928,
+        "piezo": -35.80766443899499,
+        "body_force": -35.794657052022544,
+        "body_moment": -16.58944081653345,
+        "body_pressure": -18.934720888192892,
+        "heave_pressure": -35.73870595917394,
+        "moment_pressure": -16.6036852951012,
+        "measured_pressure": -18.93157489797005,
+        "continuation_pressure": -18.37356823368657
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 99.79237210777599
+    },
+    {
+      "model": "classic",
+      "style": "finger",
+      "wood": "spruce",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -19.131177960028193,
+        "piezo": -36.94618180772932,
+        "body_force": -36.931521564041425,
+        "body_moment": -15.511234491660868,
+        "body_pressure": -19.192398726012534,
+        "heave_pressure": -36.97056201454557,
+        "moment_pressure": -15.471874870632554,
+        "measured_pressure": -19.22770308822639,
+        "continuation_pressure": -17.588148284348797
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 99.61424343233386
+    },
+    {
+      "model": "classic",
+      "style": "pick",
+      "wood": "mahogany",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -17.126767871965654,
+        "piezo": -33.08379408855703,
+        "body_force": -33.06818203503563,
+        "body_moment": -16.682723250822406,
+        "body_pressure": -17.172007001690663,
+        "heave_pressure": -32.97016093226654,
+        "moment_pressure": -16.72392282753196,
+        "measured_pressure": -17.189328052311367,
+        "continuation_pressure": -17.140409562662533
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 99.85267964200958
+    },
+    {
+      "model": "classic",
+      "style": "pick",
+      "wood": "spruce",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -17.48091235154526,
+        "piezo": -33.220432979853854,
+        "body_force": -33.20793197896536,
+        "body_moment": -16.997209942710477,
+        "body_pressure": -17.387427634407192,
+        "heave_pressure": -33.21480395480908,
+        "moment_pressure": -16.85773820027045,
+        "measured_pressure": -17.41660508784566,
+        "continuation_pressure": -17.409247637508077
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 99.70811531004257
+    },
+    {
+      "model": "classic",
+      "style": "thumb",
+      "wood": "mahogany",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -11.92161971281611,
+        "piezo": -37.77356135989551,
+        "body_force": -37.75347050133971,
+        "body_moment": -11.85074722152645,
+        "body_pressure": -12.717331545337244,
+        "heave_pressure": -37.6941404625456,
+        "moment_pressure": -11.892160265966218,
+        "measured_pressure": -12.771779101247358,
+        "continuation_pressure": -12.261718431813275
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 99.86533242284558
+    },
+    {
+      "model": "classic",
+      "style": "thumb",
+      "wood": "spruce",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -14.20756679707164,
+        "piezo": -37.81871660970972,
+        "body_force": -37.80022888545945,
+        "body_moment": -11.105583466090158,
+        "body_pressure": -14.408673606069671,
+        "heave_pressure": -37.85509064498633,
+        "moment_pressure": -10.96648715421751,
+        "measured_pressure": -14.48573793440013,
+        "continuation_pressure": -13.000355059908298
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 99.72046766710447
+    },
+    {
+      "model": "original",
+      "style": "finger",
+      "wood": "mahogany",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -31.692966994981916,
+        "piezo": -34.06160383899716,
+        "body_force": -34.05396121358295,
+        "body_moment": -17.95112740107037,
+        "body_pressure": -31.597567305769125,
+        "heave_pressure": -34.08072966883279,
+        "moment_pressure": -17.65723960436784
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 54.28121660291469
+    },
+    {
+      "model": "original",
+      "style": "finger",
+      "wood": "spruce",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -24.841310503790172,
+        "piezo": -34.069157195893524,
+        "body_force": -34.06225796466307,
+        "body_moment": -17.95209069302096,
+        "body_pressure": -25.66901274707338,
+        "heave_pressure": -33.92763312677371,
+        "moment_pressure": -17.84805856743631
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 92.00392995776777
+    },
+    {
+      "model": "original",
+      "style": "pick",
+      "wood": "mahogany",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -26.297164679672857,
+        "piezo": -33.082675578254175,
+        "body_force": -33.070124691133906,
+        "body_moment": -15.527221918874266,
+        "body_pressure": -27.658768815696035,
+        "heave_pressure": -33.1307662734135,
+        "moment_pressure": -14.84426991492529
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 76.53000176954004
+    },
+    {
+      "model": "original",
+      "style": "pick",
+      "wood": "spruce",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -17.52355834322858,
+        "piezo": -33.10980073976618,
+        "body_force": -33.09743547043384,
+        "body_moment": -15.558365108155085,
+        "body_pressure": -18.489133755072046,
+        "heave_pressure": -32.826386758497875,
+        "moment_pressure": -15.176491082874845
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 96.95574385563752
+    },
+    {
+      "model": "original",
+      "style": "thumb",
+      "wood": "mahogany",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -33.437400824114846,
+        "piezo": -34.62734129621609,
+        "body_force": -34.617052170549194,
+        "body_moment": -10.771859754939475,
+        "body_pressure": -32.821088746262966,
+        "heave_pressure": -34.643198646604034,
+        "moment_pressure": -10.606257519027048
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 53.95179247992081
+    },
+    {
+      "model": "original",
+      "style": "thumb",
+      "wood": "spruce",
+      "note": 69,
+      "harmonic": 10,
+      "slopes_db_per_second": {
+        "mic": -24.655001931302227,
+        "piezo": -34.68061507843242,
+        "body_force": -34.67076986686465,
+        "body_moment": -10.794449517043851,
+        "body_pressure": -26.040674633377527,
+        "heave_pressure": -34.53785790240507,
+        "moment_pressure": -10.800637071378652
+      },
+      "late_1p4_1p6_moment_pressure_component_fraction_percent": 91.94039575931913
+    }
+  ],
+  "raw_three_microphone_pressure_projection": [
+    {
+      "guitar": 21,
+      "microphone": "upper",
+      "band_hz": [
+        400,
+        500
+      ],
+      "raw_moment_over_heave_power_db": -25.333488444677844
+    },
+    {
+      "guitar": 21,
+      "microphone": "upper",
+      "band_hz": [
+        800,
+        950
+      ],
+      "raw_moment_over_heave_power_db": 5.588314759556422
+    },
+    {
+      "guitar": 21,
+      "microphone": "upper",
+      "band_hz": [
+        1250,
+        1400
+      ],
+      "raw_moment_over_heave_power_db": -4.201121566139147
+    },
+    {
+      "guitar": 21,
+      "microphone": "upper",
+      "band_hz": [
+        4000,
+        4800
+      ],
+      "raw_moment_over_heave_power_db": -0.009853385534683705
+    },
+    {
+      "guitar": 21,
+      "microphone": "upper",
+      "band_hz": [
+        6000,
+        8000
+      ],
+      "raw_moment_over_heave_power_db": 6.957672163004402
+    },
+    {
+      "guitar": 21,
+      "microphone": "treble",
+      "band_hz": [
+        400,
+        500
+      ],
+      "raw_moment_over_heave_power_db": -19.635623563871206
+    },
+    {
+      "guitar": 21,
+      "microphone": "treble",
+      "band_hz": [
+        800,
+        950
+      ],
+      "raw_moment_over_heave_power_db": 2.363930390203988
+    },
+    {
+      "guitar": 21,
+      "microphone": "treble",
+      "band_hz": [
+        1250,
+        1400
+      ],
+      "raw_moment_over_heave_power_db": 2.0283756836486093
+    },
+    {
+      "guitar": 21,
+      "microphone": "treble",
+      "band_hz": [
+        4000,
+        4800
+      ],
+      "raw_moment_over_heave_power_db": 3.762311101961516
+    },
+    {
+      "guitar": 21,
+      "microphone": "treble",
+      "band_hz": [
+        6000,
+        8000
+      ],
+      "raw_moment_over_heave_power_db": 8.341409172509971
+    },
+    {
+      "guitar": 21,
+      "microphone": "bass",
+      "band_hz": [
+        400,
+        500
+      ],
+      "raw_moment_over_heave_power_db": -19.17549039157359
+    },
+    {
+      "guitar": 21,
+      "microphone": "bass",
+      "band_hz": [
+        800,
+        950
+      ],
+      "raw_moment_over_heave_power_db": 2.1315939620383335
+    },
+    {
+      "guitar": 21,
+      "microphone": "bass",
+      "band_hz": [
+        1250,
+        1400
+      ],
+      "raw_moment_over_heave_power_db": 2.421990675132272
+    },
+    {
+      "guitar": 21,
+      "microphone": "bass",
+      "band_hz": [
+        4000,
+        4800
+      ],
+      "raw_moment_over_heave_power_db": 0.5799791622535145
+    },
+    {
+      "guitar": 21,
+      "microphone": "bass",
+      "band_hz": [
+        6000,
+        8000
+      ],
+      "raw_moment_over_heave_power_db": 6.796763941006805
+    },
+    {
+      "guitar": 35,
+      "microphone": "upper",
+      "band_hz": [
+        400,
+        500
+      ],
+      "raw_moment_over_heave_power_db": -21.70628344573933,
+      "fitted_moment_over_heave_power_db": -24.35218492510223,
+      "moment_fit_complex_relative_l2": 0.6444312120185978
+    },
+    {
+      "guitar": 35,
+      "microphone": "upper",
+      "band_hz": [
+        800,
+        950
+      ],
+      "raw_moment_over_heave_power_db": -2.071225348667513,
+      "fitted_moment_over_heave_power_db": -1.556958073428807,
+      "moment_fit_complex_relative_l2": 0.10843650518610813
+    },
+    {
+      "guitar": 35,
+      "microphone": "upper",
+      "band_hz": [
+        1250,
+        1400
+      ],
+      "raw_moment_over_heave_power_db": -4.351617450577795,
+      "fitted_moment_over_heave_power_db": -4.993308682216608,
+      "moment_fit_complex_relative_l2": 0.26652660922748544
+    },
+    {
+      "guitar": 35,
+      "microphone": "upper",
+      "band_hz": [
+        4000,
+        4800
+      ],
+      "raw_moment_over_heave_power_db": 3.0852452339209373,
+      "fitted_moment_over_heave_power_db": 3.1461490334659374,
+      "moment_fit_complex_relative_l2": 0.14217628957639922
+    },
+    {
+      "guitar": 35,
+      "microphone": "upper",
+      "band_hz": [
+        6000,
+        8000
+      ],
+      "raw_moment_over_heave_power_db": 10.221487425143074,
+      "fitted_moment_over_heave_power_db": 10.479787257907526,
+      "moment_fit_complex_relative_l2": 0.1721874665004314
+    },
+    {
+      "guitar": 35,
+      "microphone": "treble",
+      "band_hz": [
+        400,
+        500
+      ],
+      "raw_moment_over_heave_power_db": -13.248332769816766,
+      "fitted_moment_over_heave_power_db": -13.832707143581791,
+      "moment_fit_complex_relative_l2": 0.29125088443348707
+    },
+    {
+      "guitar": 35,
+      "microphone": "treble",
+      "band_hz": [
+        800,
+        950
+      ],
+      "raw_moment_over_heave_power_db": -6.166913172116518,
+      "fitted_moment_over_heave_power_db": -6.3219649583931,
+      "moment_fit_complex_relative_l2": 0.17974453596146323
+    },
+    {
+      "guitar": 35,
+      "microphone": "treble",
+      "band_hz": [
+        1250,
+        1400
+      ],
+      "raw_moment_over_heave_power_db": -4.135230542490841,
+      "fitted_moment_over_heave_power_db": -4.2919937840208515,
+      "moment_fit_complex_relative_l2": 0.31489040942174185
+    },
+    {
+      "guitar": 35,
+      "microphone": "treble",
+      "band_hz": [
+        4000,
+        4800
+      ],
+      "raw_moment_over_heave_power_db": 4.788166321877397,
+      "fitted_moment_over_heave_power_db": 4.893915704871911,
+      "moment_fit_complex_relative_l2": 0.13597006889116378
+    },
+    {
+      "guitar": 35,
+      "microphone": "treble",
+      "band_hz": [
+        6000,
+        8000
+      ],
+      "raw_moment_over_heave_power_db": 7.146057079200872,
+      "fitted_moment_over_heave_power_db": 7.206127878120609,
+      "moment_fit_complex_relative_l2": 0.21916909530552134
+    },
+    {
+      "guitar": 35,
+      "microphone": "bass",
+      "band_hz": [
+        400,
+        500
+      ],
+      "raw_moment_over_heave_power_db": -10.140923764378481,
+      "fitted_moment_over_heave_power_db": -10.434124253632199,
+      "moment_fit_complex_relative_l2": 0.2613391756020389
+    },
+    {
+      "guitar": 35,
+      "microphone": "bass",
+      "band_hz": [
+        800,
+        950
+      ],
+      "raw_moment_over_heave_power_db": -5.585630454602903,
+      "fitted_moment_over_heave_power_db": -7.549568243231674,
+      "moment_fit_complex_relative_l2": 0.46614871985572165
+    },
+    {
+      "guitar": 35,
+      "microphone": "bass",
+      "band_hz": [
+        1250,
+        1400
+      ],
+      "raw_moment_over_heave_power_db": 0.8539553475353173,
+      "fitted_moment_over_heave_power_db": 0.9377033996861923,
+      "moment_fit_complex_relative_l2": 0.2880715570986802
+    },
+    {
+      "guitar": 35,
+      "microphone": "bass",
+      "band_hz": [
+        4000,
+        4800
+      ],
+      "raw_moment_over_heave_power_db": -0.7632741868038467,
+      "fitted_moment_over_heave_power_db": -0.6511307685165779,
+      "moment_fit_complex_relative_l2": 0.13944631262231097
+    },
+    {
+      "guitar": 35,
+      "microphone": "bass",
+      "band_hz": [
+        6000,
+        8000
+      ],
+      "raw_moment_over_heave_power_db": 2.49070487140089,
+      "fitted_moment_over_heave_power_db": 2.564611382414481,
+      "moment_fit_complex_relative_l2": 0.13678074463441778
+    }
+  ],
+  "raw_admittance_validity_diagnostics": [
+    {
+      "guitar": 21,
+      "band_hz": [
+        400,
+        500
+      ],
+      "raw_rock_over_heave_magnitude_db": -23.85460427350628,
+      "cross_side_disagreement": 0.050034928698107405,
+      "rock_negative_real_fraction": 0.19117647058823528,
+      "rock_negative_real_fraction_after_2sample_phase_advance": 0.22058823529411764
+    },
+    {
+      "guitar": 21,
+      "band_hz": [
+        800,
+        950
+      ],
+      "raw_rock_over_heave_magnitude_db": -2.597028552799063,
+      "cross_side_disagreement": 0.3355002412935488,
+      "rock_negative_real_fraction": 0.0,
+      "rock_negative_real_fraction_after_2sample_phase_advance": 0.0
+    },
+    {
+      "guitar": 21,
+      "band_hz": [
+        1250,
+        1400
+      ],
+      "raw_rock_over_heave_magnitude_db": 13.600115178515612,
+      "cross_side_disagreement": 0.2521367314944284,
+      "rock_negative_real_fraction": 0.0,
+      "rock_negative_real_fraction_after_2sample_phase_advance": 0.05365853658536585
+    },
+    {
+      "guitar": 21,
+      "band_hz": [
+        4000,
+        4800
+      ],
+      "raw_rock_over_heave_magnitude_db": 9.018319253562517,
+      "cross_side_disagreement": 1.5282966464686218,
+      "rock_negative_real_fraction": 0.5357142857142857,
+      "rock_negative_real_fraction_after_2sample_phase_advance": 0.0
+    },
+    {
+      "guitar": 21,
+      "band_hz": [
+        6000,
+        8000
+      ],
+      "raw_rock_over_heave_magnitude_db": 4.084653997283789,
+      "cross_side_disagreement": 0.47683954896150543,
+      "rock_negative_real_fraction": 1.0,
+      "rock_negative_real_fraction_after_2sample_phase_advance": 0.0
+    },
+    {
+      "guitar": 35,
+      "band_hz": [
+        400,
+        500
+      ],
+      "raw_rock_over_heave_magnitude_db": -14.711140814645127,
+      "cross_side_disagreement": 0.09364159745262847,
+      "rock_negative_real_fraction": 0.0,
+      "rock_negative_real_fraction_after_2sample_phase_advance": 0.0
+    },
+    {
+      "guitar": 35,
+      "band_hz": [
+        800,
+        950
+      ],
+      "raw_rock_over_heave_magnitude_db": -2.651985641629655,
+      "cross_side_disagreement": 0.3066506204114736,
+      "rock_negative_real_fraction": 0.0,
+      "rock_negative_real_fraction_after_2sample_phase_advance": 0.0
+    },
+    {
+      "guitar": 35,
+      "band_hz": [
+        1250,
+        1400
+      ],
+      "raw_rock_over_heave_magnitude_db": -6.225689905975598,
+      "cross_side_disagreement": 0.388248493559988,
+      "rock_negative_real_fraction": 0.0,
+      "rock_negative_real_fraction_after_2sample_phase_advance": 0.0
+    },
+    {
+      "guitar": 35,
+      "band_hz": [
+        4000,
+        4800
+      ],
+      "raw_rock_over_heave_magnitude_db": 5.228785360176065,
+      "cross_side_disagreement": 0.9411123054675817,
+      "rock_negative_real_fraction": 0.45146520146520147,
+      "rock_negative_real_fraction_after_2sample_phase_advance": 0.0
+    },
+    {
+      "guitar": 35,
+      "band_hz": [
+        6000,
+        8000
+      ],
+      "raw_rock_over_heave_magnitude_db": 5.314309940920593,
+      "cross_side_disagreement": 0.6103127564478603,
+      "rock_negative_real_fraction": 1.0,
+      "rock_negative_real_fraction_after_2sample_phase_advance": 0.0
+    }
+  ],
+  "findings": [
+    "The generator/runtime microphone order, F/T normalization, residue conjugate recurrence and horizontal-force lever sign are internally consistent; no projection polarity or units bug was established.",
+    "A sustained upper partial remains in the body-moment drive and its microphone projection after the heave-force/piezo partial drains. This is a continuing string tail, not an independent body-mode ring or direct periodic radiation.",
+    "Slow moment tails occur in Original too. Classical strongly projects them into the microphones, so the evidence does not identify a Classical-only mechanical-loss omission.",
+    "The strong g35 high-band moment projection is present in raw pressure measurements and closely retained by the fitted source bank; it is not created by the capture contour or a fit field-order error.",
+    "The raw high-band differential admittance, after the documented phase advance, is positive-real in the sampled bands. Sensor/impact noncollocation and cross-side disagreement prevent it from uniquely identifying the parallel-polarization load or an exact rocking-floor factor. The existing fit deliberately suppresses rocking above its1781.8Hz spatial-validity corner.",
+    "A higher Classical normal-pluck energy share is an authored performance candidate for listening, not a measured change to the instrument body or its microphone response."
+  ],
+  "provenance": {
+    "raw_md5": "733cb10baf5ce36d8bf333610ffbb260",
+    "raw_sha256": "8a016fab0b3f086a49b2e740c2588fc61938fd09251aab5314413ea4bab72fb6",
+    "pre_instrumentation_engine_sha256": "d22287affd1d52e94ebb25b760c05fb723e6e2198495bd7e86832e135e0d05f0",
+    "instrumented_engine_sha256": "5619453708941811353bb5e6ed88650f0fb886101ad18b173acf5455c79a6303",
+    "capture_header_sha256": "f550503719c73fe0022f9662b27820a7c100cbf3bb452679874671a89b43687e",
+    "calibration_header_sha256": "cf7f14611a177d4a7304c9cf00def77192faf73a723eb7a2fcd5d16d1b9e9073",
+    "probe_renderer_sha256": "27450a58b6774876c015f26468aa6f2429fe025309096e78ced9b17d84227354",
+    "probe_binary_sha256": "6720d7b1f19c13522c4db806608a54ac20bb267a669b7afe46d93f0cfacd1430",
+    "native_decay_analysis_sha256": "36537b13414cff5d4a00cf5c4b2213b99357c8c28a5ee87b7ae47f002c6cde24",
+    "raw_analysis_sha256": "a3fea18a1395402ad0a0552879b397a89cbb7dd864ca4c513dfa1b5642af6606",
+    "native_metrics_sha256": "ae5067350a5b0861156e868ccb9a177877f8393d3053d7184e87ca7a0a8b962e",
+    "native_decays_sha256": "cf10eaa3c035f629da596ec40f05c7b1f50eaca3afe1fef46501739035c64e15",
+    "raw_projection_sha256": "9bbeb0625c1e703a2532f0c1adbfc71ce01e6a4f478987c734cd359518fb228f",
+    "raw_audio_sha256": {
+      "classic-finger-baseline.f32": "2cd0ce96cd995e868e45c0e5e08baa0a2b999216a4d64403191f632819ae4929",
+      "classic-finger-spruce.f32": "fb6f4b589f4c722a17e8ef1cad24e22b3e0c3e774b15af038be0f384f419364a",
+      "classic-pick-baseline.f32": "53c2324d5e01e108d0fd6e21516589a4aa129b7f297fa9f52255c80700a501e2",
+      "classic-pick-spruce.f32": "1dec3314f11d35a3edd3c1de10f2c67610fb756de57474c526b2bafced3848dc",
+      "classic-thumb-baseline.f32": "51b626fff94f2e59fd3847f5b61edf4fd6eefb6767d1a84e5ba8c98b26410c9a",
+      "classic-thumb-spruce.f32": "300efe5c22379ca69a415d72591e56a982f3904902dafe1d619e94da7d6d8d90",
+      "original-finger-baseline.f32": "fd198c300a025d79ec1429e2df7ecc9dae073d995f2a11ab41f4618da480bee1",
+      "original-finger-spruce.f32": "2670f9d53e4468487efc7bbc5b22cc89a6855e445a042b68cd58fdd4e72460ed",
+      "original-pick-baseline.f32": "3184ac056e5216162789d1d88b4e963286bf91f5b570328d6fe65829e9a6412a",
+      "original-pick-spruce.f32": "0a5191d6008fa2c4490c0350b58266cfc1c29fc25130df5dcc224cda66b0fc9c",
+      "original-thumb-baseline.f32": "37e47a0648cbf2b2eab232ab5403ab56471bae28031e12d4ab02d8282610fd2d",
+      "original-thumb-spruce.f32": "fa7b8daaceb6f401245cdc90d6b7e451433d9254efd08f177418cbec6e1c6aab"
+    }
+  },
+  "local_artifacts": "/tmp/acustra-projection-components-20261009"
+}

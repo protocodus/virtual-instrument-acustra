@@ -1,0 +1,784 @@
+{
+  "baseline_renderer_sha256": "84b1f038ded99b902c90bef19a5b51f8faf44598ea232281995dfbb13b22c9f8",
+  "candidate_renderer_sha256": "989f2c151d776c1edb0e568a594bb2b1aad3b30a30b832807a072e2e639c7b20",
+  "original_A2": {
+    "stereo_mic": {
+      "auditorium": {
+        "rms_dbfs": {
+          "count": 9,
+          "minimum": -3.1062764396660967,
+          "median": -2.6597897414202905,
+          "maximum": -2.464656418837418
+        },
+        "fundamental_power_dbfs": {
+          "count": 9,
+          "minimum": -3.780552983776417,
+          "median": -2.803031735368979,
+          "maximum": -2.5114026454416916
+        },
+        "fundamental_fraction_db": {
+          "count": 9,
+          "minimum": -0.6152589658000974,
+          "median": -0.11457349331728062,
+          "maximum": -0.027213729714126722
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 9,
+          "minimum": 3.2177485475317518,
+          "median": 3.5207362273117937,
+          "maximum": 4.019549921882552
+        },
+        "bass_fraction_db": {
+          "count": 9,
+          "minimum": -0.615436165539396,
+          "median": -0.11476119117896699,
+          "maximum": -0.02770693056499754
+        },
+        "A2_neighbor_excess_db": {
+          "count": 9,
+          "minimum": -0.5835920199076767,
+          "median": -0.2447569063753683,
+          "maximum": -0.12767846022220297
+        },
+        "A2_same_string_neighbor_excess_db": {
+          "count": 9,
+          "minimum": -0.6985487015538006,
+          "median": -0.16406325390746446,
+          "maximum": -0.0971480747358271
+        }
+      },
+      "all_shapes": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -3.1062764396660967,
+          "median": -1.1977469252807662,
+          "maximum": 0.16654297619432157
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -3.9059736423039695,
+          "median": -3.056750026646018,
+          "maximum": -0.3646363362168614
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": -3.610322925972236,
+          "median": -0.9949899543267727,
+          "maximum": -0.027213729714126722
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": 3.1573105574889992,
+          "median": 3.2983258079943942,
+          "maximum": 4.019549921882552
+        },
+        "bass_fraction_db": {
+          "count": 36,
+          "minimum": -3.6066255398699063,
+          "median": -0.9951073126897856,
+          "maximum": -0.02770693056499754
+        },
+        "A2_neighbor_excess_db": {
+          "count": 36,
+          "minimum": -0.5835920199076767,
+          "median": 0.2074248903862177,
+          "maximum": 0.5881758808936333
+        },
+        "A2_same_string_neighbor_excess_db": {
+          "count": 36,
+          "minimum": -0.6985487015538006,
+          "median": -0.005705778027344621,
+          "maximum": 0.4742573000616055
+        }
+      }
+    },
+    "mono_mic": {
+      "auditorium": {
+        "rms_dbfs": {
+          "count": 9,
+          "minimum": -3.201514245617684,
+          "median": -2.664398290376507,
+          "maximum": -2.3956715464651097
+        },
+        "fundamental_power_dbfs": {
+          "count": 9,
+          "minimum": -3.7689727793416132,
+          "median": -2.755018665029759,
+          "maximum": -2.4526161825192077
+        },
+        "fundamental_fraction_db": {
+          "count": 9,
+          "minimum": -0.5092823977330826,
+          "median": -0.08043161688396488,
+          "maximum": -0.019994727100385995
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 9,
+          "minimum": 3.2560257379223003,
+          "median": 3.646519817207249,
+          "maximum": 4.041971398382975
+        },
+        "bass_fraction_db": {
+          "count": 9,
+          "minimum": -0.5098229101560222,
+          "median": -0.08061929731834569,
+          "maximum": -0.020495421268087538
+        },
+        "A2_neighbor_excess_db": {
+          "count": 9,
+          "minimum": -0.7413279004819984,
+          "median": -0.24997651448645186,
+          "maximum": -0.1438558402539627
+        },
+        "A2_same_string_neighbor_excess_db": {
+          "count": 9,
+          "minimum": -0.7144405055020826,
+          "median": -0.16663446045689767,
+          "maximum": -0.10907035803448295
+        }
+      },
+      "all_shapes": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -3.201514245617684,
+          "median": -1.6087597211327491,
+          "maximum": 0.12082259899878522
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -4.132228820457499,
+          "median": -3.0675017803765385,
+          "maximum": -0.4629075455160603
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": -3.570086088450349,
+          "median": -0.8818662972186428,
+          "maximum": -0.019994727100385995
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": 3.1325536733621906,
+          "median": 3.2818951865902015,
+          "maximum": 4.041971398382975
+        },
+        "bass_fraction_db": {
+          "count": 36,
+          "minimum": -3.567537501713929,
+          "median": -0.8819775620857617,
+          "maximum": -0.020495421268087538
+        },
+        "A2_neighbor_excess_db": {
+          "count": 36,
+          "minimum": -0.7413279004819984,
+          "median": 0.15850220934391857,
+          "maximum": 0.9248222555140799
+        },
+        "A2_same_string_neighbor_excess_db": {
+          "count": 36,
+          "minimum": -0.7144405055020826,
+          "median": -0.05688389532529037,
+          "maximum": 0.7413838770361494
+        }
+      }
+    },
+    "piezo": {
+      "auditorium": {
+        "rms_dbfs": {
+          "count": 9,
+          "minimum": -6.209612024576927e-07,
+          "median": 0.0,
+          "maximum": 6.325389350081423e-07
+        },
+        "fundamental_power_dbfs": {
+          "count": 9,
+          "minimum": -6.276437218843967e-07,
+          "median": 0.0,
+          "maximum": 6.280073563402766e-07
+        },
+        "fundamental_fraction_db": {
+          "count": 9,
+          "minimum": -5.476961106865019e-09,
+          "median": 0.0,
+          "maximum": 7.618874420245447e-10
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 9,
+          "minimum": -2.2070096861170896e-09,
+          "median": 0.0,
+          "maximum": 5.904704281078921e-09
+        },
+        "bass_fraction_db": {
+          "count": 9,
+          "minimum": -6.213436876123524e-09,
+          "median": 0.0,
+          "maximum": 5.373743672265618e-10
+        },
+        "A2_neighbor_excess_db": {
+          "count": 9,
+          "minimum": -1.089151169253455e-08,
+          "median": 0.0,
+          "maximum": 5.550326420689089e-09
+        },
+        "A2_same_string_neighbor_excess_db": {
+          "count": 9,
+          "minimum": -1.189874154761128e-08,
+          "median": 0.0,
+          "maximum": 7.691653536312515e-09
+        }
+      },
+      "all_shapes": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.1120156457877783e-06,
+          "median": 0.0,
+          "maximum": 6.328891544171711e-07
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -1.111996922986691e-06,
+          "median": 0.0,
+          "maximum": 6.348633547759164e-07
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": -5.476961106865019e-09,
+          "median": 0.0,
+          "maximum": 7.05028302405708e-09
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -1.001593386007471e-08,
+          "median": 0.0,
+          "maximum": 8.381926264178219e-09
+        },
+        "bass_fraction_db": {
+          "count": 36,
+          "minimum": -6.213436876123524e-09,
+          "median": 0.0,
+          "maximum": 6.799975693638771e-09
+        },
+        "A2_neighbor_excess_db": {
+          "count": 36,
+          "minimum": -1.089151169253455e-08,
+          "median": 0.0,
+          "maximum": 5.550326420689089e-09
+        },
+        "A2_same_string_neighbor_excess_db": {
+          "count": 36,
+          "minimum": -1.189874154761128e-08,
+          "median": 0.0,
+          "maximum": 9.733966521707771e-09
+        }
+      }
+    }
+  },
+  "source_base": "8bd0a2f",
+  "main_cases_per_version": 216,
+  "main_clips_per_version": 3960,
+  "supplementary_E5_pairs": 216,
+  "sample_rate": 48000,
+  "shared_audition_gain_db": 3.406223714452863,
+  "validation": {
+    "full_suites_passed": 73,
+    "loudness_cells_passed": 216,
+    "default_lufs": -24.051308128239192
+  },
+  "artifacts": "build-resonance/evidence/construction/",
+  "classic78_treble": {
+    "stereo_mic": {
+      "E4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -0.9374204674913784,
+          "median": 0.012188670714227356,
+          "maximum": 0.630340077514596
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": 0.2652012160543009,
+          "median": 0.6190324830029041,
+          "maximum": 1.1025113000996214
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -2.4308356676611207,
+          "median": -1.3587614189594186,
+          "maximum": -0.5897965802619254
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": 0.07345077483941265,
+          "median": 0.6607090823589674,
+          "maximum": 1.9724221384851717
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -0.5405330315723553,
+          "median": 0.11270302804089471,
+          "maximum": 1.524850949987826
+        }
+      },
+      "G4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -0.9144185028567406,
+          "median": -0.17449747266952542,
+          "maximum": 0.22249979896852778
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": 0.20293606262755048,
+          "median": 0.5575165494956487,
+          "maximum": 1.0408083860954847
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -2.3080780151982907,
+          "median": -1.2481735717827267,
+          "maximum": -0.8513270361376151
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": 0.22207262098660574,
+          "median": 0.7600743667276055,
+          "maximum": 2.0869976204110614
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -0.22733752505597593,
+          "median": 0.4697234738408502,
+          "maximum": 1.5684479487683625
+        }
+      },
+      "B4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.1414683931223593,
+          "median": -0.3279497714441604,
+          "maximum": 0.37539834262180705
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": 0.0719990080853492,
+          "median": 0.4249592118832588,
+          "maximum": 0.9081497579023008
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -2.20713558413448,
+          "median": -1.333878103859936,
+          "maximum": -0.8994782407251356
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": 0.06732171456246183,
+          "median": 0.8075547504719314,
+          "maximum": 1.8229955330855514
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -0.38134950624816,
+          "median": 0.48379411835239683,
+          "maximum": 1.5396645707144216
+        }
+      },
+      "A4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.2338973977035792,
+          "median": -0.3120947141263244,
+          "maximum": 0.3097572102108259
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": 0.1480822589012405,
+          "median": 0.5002585246418754,
+          "maximum": 0.9833001122951899
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -2.266978166394523,
+          "median": -1.2899894158530922,
+          "maximum": -1.0600800932986285
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": 0.39975784803962755,
+          "median": 0.908721673994185,
+          "maximum": 2.0451219309357445
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -0.2017202784662544,
+          "median": 0.4543183737721259,
+          "maximum": 1.2590521534330446
+        }
+      },
+      "E5": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.4982397655090551,
+          "median": -0.4787513581803715,
+          "maximum": 0.12373934617771454
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -0.2399401057586843,
+          "median": 0.1125260844564373,
+          "maximum": 0.5953711652569282
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -2.2225166981999225,
+          "median": -1.6080150205569388,
+          "maximum": -0.7910558454966292
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": 0.017337567624253224,
+          "median": 0.4494604397144354,
+          "maximum": 1.9831780547082793
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -0.027597011152902695,
+          "median": 0.5334143170115127,
+          "maximum": 2.227780551519176
+        }
+      }
+    },
+    "mono_mic": {
+      "E4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.481288597694828,
+          "median": -0.04464423383771532,
+          "maximum": 0.7781910136172812
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": 0.07183121599155129,
+          "median": 0.731967570822615,
+          "maximum": 1.142277170013152
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -2.5570379460931347,
+          "median": -1.6761681688257293,
+          "maximum": -0.6107706678581688
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": 0.07482430197588555,
+          "median": 0.6724524953866036,
+          "maximum": 1.9585262206193992
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -0.4995169329411304,
+          "median": 0.1597770960702114,
+          "maximum": 1.4967910662851427
+        }
+      },
+      "G4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.2002164176044658,
+          "median": -0.29138227506032166,
+          "maximum": 0.4698826425973408
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": 0.00889966134587894,
+          "median": 0.6703719402171338,
+          "maximum": 1.0787569539790596
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -2.3470425696188393,
+          "median": -1.59160405518905,
+          "maximum": -0.9084066756462055
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": 0.20902732414788716,
+          "median": 1.065507091609656,
+          "maximum": 2.1686345922069883
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -0.12919033427346704,
+          "median": 0.7438252886902816,
+          "maximum": 1.8287647750923899
+        }
+      },
+      "B4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.0611392125861911,
+          "median": -0.3987105339969901,
+          "maximum": 0.329361989727623
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -0.1218220471784619,
+          "median": 0.5376733529930426,
+          "maximum": 0.9476448424018642
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -1.9295713259996745,
+          "median": -1.27149266613285,
+          "maximum": -0.7376309242708372
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": 0.16492185662887426,
+          "median": 0.8956803444265273,
+          "maximum": 1.803257758733615
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -0.27373819560514256,
+          "median": 0.5768379661794287,
+          "maximum": 1.471919432732058
+        }
+      },
+      "A4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.5027451548993582,
+          "median": -0.298231568732124,
+          "maximum": 0.08469563535776814
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -0.048373124381342336,
+          "median": 0.6129089780409096,
+          "maximum": 1.0231149259348058
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -2.242117782597834,
+          "median": -1.3725330065688857,
+          "maximum": -1.0607176189001883
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": 0.15877673465939446,
+          "median": 0.9838398583560739,
+          "maximum": 1.8741875991499803
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -0.5580709902282859,
+          "median": 0.5768379142109694,
+          "maximum": 1.4237181422215466
+        }
+      },
+      "E5": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.9156464510784943,
+          "median": -0.5559057113842911,
+          "maximum": 0.03254975968951612
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -0.4341526193189651,
+          "median": 0.22479035256303703,
+          "maximum": 0.634270156018232
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -2.2122124131602288,
+          "median": -1.7236904296494986,
+          "maximum": -0.8400282988223235
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": 0.07393237805941447,
+          "median": 0.8137210042520704,
+          "maximum": 1.981658549682905
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": 0.11270101142597966,
+          "median": 1.0159134459548995,
+          "maximum": 2.3150118277210794
+        }
+      }
+    },
+    "piezo": {
+      "E4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.155517779238835e-06,
+          "median": 0.0,
+          "maximum": 1.5922650646871261e-06
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -1.1544808344865487e-06,
+          "median": 0.0,
+          "maximum": 1.5924154439517224e-06
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -9.751865981399988e-09,
+          "median": 0.0,
+          "maximum": 2.985822433743124e-08
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": -3.004627302516383e-08,
+          "median": 0.0,
+          "maximum": 5.981867445825628e-09
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -3.592192143742068e-08,
+          "median": 0.0,
+          "maximum": 1.1599617266710993e-08
+        }
+      },
+      "G4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.1605015757254478e-06,
+          "median": 0.0,
+          "maximum": 1.5905465460264168e-06
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -1.1567090751896103e-06,
+          "median": 0.0,
+          "maximum": 1.5934448782672916e-06
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -1.1783658493413895e-08,
+          "median": 0.0,
+          "maximum": 1.0379967108065102e-08
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": -1.0444434650480616e-08,
+          "median": 0.0,
+          "maximum": 1.226212731353371e-08
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -2.5432274952663647e-08,
+          "median": 0.0,
+          "maximum": 1.9599195155706184e-08
+        }
+      },
+      "B4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.1583217442989735e-06,
+          "median": 0.0,
+          "maximum": 1.5861545676898459e-06
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -1.1515730449218609e-06,
+          "median": 0.0,
+          "maximum": 1.587529254720721e-06
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -8.850416399752703e-09,
+          "median": 0.0,
+          "maximum": 9.223981578543317e-09
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": -8.706118492796122e-09,
+          "median": 0.0,
+          "maximum": 7.069888674493541e-09
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -2.404710741643612e-08,
+          "median": 0.0,
+          "maximum": 1.1666569932344828e-08
+        }
+      },
+      "A4": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.163356458278031e-06,
+          "median": 0.0,
+          "maximum": 1.5877183301427067e-06
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -1.1694312220811298e-06,
+          "median": 0.0,
+          "maximum": 1.5878012007419784e-06
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -1.8525208034247953e-08,
+          "median": 0.0,
+          "maximum": 9.707651571488896e-09
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": -8.783826999092526e-09,
+          "median": 0.0,
+          "maximum": 1.6530227853195356e-08
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -3.266250914180091e-08,
+          "median": 0.0,
+          "maximum": 2.0174669046468807e-08
+        }
+      },
+      "E5": {
+        "rms_dbfs": {
+          "count": 36,
+          "minimum": -1.1589928874400357e-06,
+          "median": 0.0,
+          "maximum": 1.5888584883327894e-06
+        },
+        "fundamental_power_dbfs": {
+          "count": 36,
+          "minimum": -1.1562908071027778e-06,
+          "median": 0.0,
+          "maximum": 1.5887294750882575e-06
+        },
+        "upper_partial_to_fundamental_db": {
+          "count": 36,
+          "minimum": -1.176925223944636e-08,
+          "median": 0.0,
+          "maximum": 1.784604286569902e-08
+        },
+        "fundamental_fraction_db": {
+          "count": 36,
+          "minimum": -2.1678130401880935e-09,
+          "median": 0.0,
+          "maximum": 3.869170317472026e-09
+        },
+        "treble_fraction_db": {
+          "count": 36,
+          "minimum": -1.6997256935269434e-08,
+          "median": 0.0,
+          "maximum": 6.663035989618038e-08
+        }
+      }
+    }
+  },
+  "piezo": {
+    "clips": 1152,
+    "byte_identical_clips": 608,
+    "changed_samples": 90784936,
+    "maximum_absolute_sample_delta": 8.940696716308594e-08,
+    "maximum_float32_ulp_distance": 4,
+    "difference_energy_relative_to_baseline_db": -143.05272223158937
+  }
+}

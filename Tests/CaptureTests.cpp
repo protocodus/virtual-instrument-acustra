@@ -1383,8 +1383,8 @@ void testCaptureVoicingIsSmoothAndBounded()
 std::complex<double> bellidoMicrophoneTransfer(double frequency, double rate)
 {
     std::complex<double> response = 1.0;
-    for (const auto section : { std::array<double, 2> { 500.0, -6.0 },
-                                std::array<double, 2> { 1400.0, 6.0 } })
+    for (const auto section : { std::array<double, 2> { 500.0, -3.0 },
+                                std::array<double, 2> { 1400.0, 0.0 } })
     {
         const double a = std::pow(10.0, section[1] / 40.0);
         const std::complex<double> s(0.0,

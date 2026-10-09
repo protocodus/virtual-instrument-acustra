@@ -1,0 +1,3720 @@
+{
+  "renderer_sha256": "bf2e92bb065ab5294a58dd1e5c00976e19c1d8d29d673cd422924026a92158f0",
+  "source_renderer_sha256": "2cf448fe916fd110e83fb02abc72eb716dd46733b106bd49738d30b92b84670f",
+  "temporary_engine_sha256": "940c78a299e04d58d341323e5c8514d5afa8ef022b745f5ab4da534258e53365",
+  "analysis_sha256": "005f8ba278718dec3ec77749edf9794db18f62426fa6e8b18482c0a5b0bbf2b9",
+  "scorer_sha256": "f986438f858fc4aadd2819cb92645901654f1c78ba8138fd3e30fc7412e9d146",
+  "checks": {
+    "outputs": 5760,
+    "all_finite_correct_frames_nonzero": true,
+    "max_microphone_peak": 0.6318079233169556,
+    "max_piezo_bus_peak": 0.41869819164276123,
+    "microphone_fullscale_samples": 0,
+    "piezo_bus_fullscale_samples": 0,
+    "low_zero_bias_outputs": 1224,
+    "low_exact_current_before": 1224,
+    "low_exact_frozen_global_before": 1224,
+    "high_same_fingering_compared_to_global55": 576,
+    "high_exact_global55": 576,
+    "new_before_compared_to_frozen_before": 2016,
+    "new_before_exact_frozen_before": 2016,
+    "initial_energy_pairs": 2880,
+    "initial_energy_pairs_match_CSV_precision": 2880,
+    "retained_raw_outputs": 288,
+    "exact_control_scope": "All exact native hash controls refer to fixed-source diagnostic prototypes BEFORE production level-table recalibration. They do not claim final calibrated microphone outputs are byte-identical belowA3."
+  },
+  "status": "Diagnostic prototypes only; no pluck direction change is being shipped. Classic audit agent restored the exact passing pre-pluck Second-EQ source and level table. The three-version audition player remains current.",
+  "controls": {
+    "model": "Classic78",
+    "construction_cases": 12,
+    "styles": [
+      "finger",
+      "thumb",
+      "pick"
+    ],
+    "captures": [
+      "stereo_mic",
+      "mono_mic"
+    ],
+    "simultaneous_piezo_bus": true,
+    "sample_rate": 48000,
+    "velocity": 100,
+    "touch": 0.58,
+    "pluck_position": 0.28,
+    "room": 0,
+    "hold_seconds": 1.2,
+    "release_seconds": 0.8,
+    "fresh_engine_per_note": true,
+    "note_fingerings": [
+      [
+        "G#2",
+        44,
+        1
+      ],
+      [
+        "A2_lowE",
+        45,
+        1
+      ],
+      [
+        "A2",
+        45,
+        2
+      ],
+      [
+        "A#2",
+        46,
+        2
+      ],
+      [
+        "A3",
+        57,
+        4
+      ],
+      [
+        "E4",
+        64,
+        6
+      ],
+      [
+        "G4",
+        67,
+        6
+      ],
+      [
+        "A4",
+        69,
+        6
+      ],
+      [
+        "B4",
+        71,
+        6
+      ],
+      [
+        "E5",
+        76,
+        6
+      ],
+      [
+        "E2",
+        40,
+        1
+      ],
+      [
+        "F2",
+        41,
+        1
+      ],
+      [
+        "F#2",
+        42,
+        1
+      ],
+      [
+        "G2",
+        43,
+        1
+      ],
+      [
+        "B2",
+        47,
+        2
+      ],
+      [
+        "C3",
+        48,
+        2
+      ],
+      [
+        "C#3",
+        49,
+        2
+      ],
+      [
+        "D3",
+        50,
+        3
+      ],
+      [
+        "D#3",
+        51,
+        3
+      ],
+      [
+        "E3",
+        52,
+        3
+      ],
+      [
+        "G3",
+        55,
+        4
+      ],
+      [
+        "Gsharp3",
+        56,
+        4
+      ],
+      [
+        "Asharp3",
+        58,
+        4
+      ],
+      [
+        "B3",
+        59,
+        5
+      ],
+      [
+        "D4",
+        62,
+        5
+      ],
+      [
+        "Gsharp4",
+        68,
+        6
+      ],
+      [
+        "Asharp4",
+        70,
+        6
+      ],
+      [
+        "C5",
+        72,
+        6
+      ],
+      [
+        "B3_G",
+        59,
+        4
+      ],
+      [
+        "C4_G",
+        60,
+        4
+      ],
+      [
+        "Csharp4_G",
+        61,
+        4
+      ],
+      [
+        "D4_G",
+        62,
+        4
+      ],
+      [
+        "Dsharp4_G",
+        63,
+        4
+      ],
+      [
+        "E4_G",
+        64,
+        4
+      ],
+      [
+        "F4_G",
+        65,
+        4
+      ],
+      [
+        "E4_B",
+        64,
+        5
+      ],
+      [
+        "G4_B",
+        67,
+        5
+      ],
+      [
+        "A4_B",
+        69,
+        5
+      ],
+      [
+        "B4_B",
+        71,
+        5
+      ],
+      [
+        "E5_B",
+        76,
+        5
+      ]
+    ]
+  },
+  "profile": "Add0.30normalenergysharebias with cubic smoothstep in pitchMIDI57\u201364; exactzero<=A3; full>=E4. Bias preservesTouch/draw and legacy initial slope energy; actualshare is not a fixed55%.",
+  "normal_share_deltas_on_G_string": {
+    "56": {
+      "count": 72,
+      "minimum": 0.0,
+      "median": 0.0,
+      "maximum": 0.0
+    },
+    "57": {
+      "count": 72,
+      "minimum": 0.0,
+      "median": 0.0,
+      "maximum": 0.0
+    },
+    "58": {
+      "count": 72,
+      "minimum": 0.01661800000000002,
+      "median": 0.01661800000000002,
+      "maximum": 0.01661800000000002
+    },
+    "59": {
+      "count": 72,
+      "minimum": 0.059475,
+      "median": 0.059475,
+      "maximum": 0.059475
+    },
+    "60": {
+      "count": 72,
+      "minimum": 0.11807600000000001,
+      "median": 0.11807600000000001,
+      "maximum": 0.11807600000000001
+    },
+    "61": {
+      "count": 72,
+      "minimum": 0.18192399999999997,
+      "median": 0.18192399999999997,
+      "maximum": 0.18192399999999997
+    },
+    "62": {
+      "count": 72,
+      "minimum": 0.240525,
+      "median": 0.240525,
+      "maximum": 0.240525
+    },
+    "63": {
+      "count": 72,
+      "minimum": 0.28338199999999997,
+      "median": 0.28338199999999997,
+      "maximum": 0.28338199999999997
+    },
+    "64": {
+      "count": 72,
+      "minimum": 0.3,
+      "median": 0.3,
+      "maximum": 0.3
+    },
+    "65": {
+      "count": 72,
+      "minimum": 0.3,
+      "median": 0.3,
+      "maximum": 0.3
+    }
+  },
+  "same_pitch_fingering_checks": {
+    "64": {
+      "channels": [
+        4,
+        5,
+        6
+      ],
+      "normal_share_delta": {
+        "count": 216,
+        "minimum": 0.3,
+        "median": 0.30000000000000004,
+        "maximum": 0.3000010000000001
+      },
+      "initial_energy_pairs": 216,
+      "initial_energy_matches": 216
+    },
+    "67": {
+      "channels": [
+        5,
+        6
+      ],
+      "normal_share_delta": {
+        "count": 144,
+        "minimum": 0.30000000000000004,
+        "median": 0.30000050000000006,
+        "maximum": 0.3000010000000001
+      },
+      "initial_energy_pairs": 144,
+      "initial_energy_matches": 144
+    },
+    "69": {
+      "channels": [
+        5,
+        6
+      ],
+      "normal_share_delta": {
+        "count": 144,
+        "minimum": 0.30000000000000004,
+        "median": 0.30000050000000006,
+        "maximum": 0.3000010000000001
+      },
+      "initial_energy_pairs": 144,
+      "initial_energy_matches": 144
+    },
+    "71": {
+      "channels": [
+        5,
+        6
+      ],
+      "normal_share_delta": {
+        "count": 144,
+        "minimum": 0.30000000000000004,
+        "median": 0.30000050000000006,
+        "maximum": 0.3000010000000001
+      },
+      "initial_energy_pairs": 144,
+      "initial_energy_matches": 144
+    },
+    "76": {
+      "channels": [
+        5,
+        6
+      ],
+      "normal_share_delta": {
+        "count": 144,
+        "minimum": 0.30000000000000004,
+        "median": 0.30000050000000006,
+        "maximum": 0.3000010000000001
+      },
+      "initial_energy_pairs": 144,
+      "initial_energy_matches": 144
+    }
+  },
+  "same_G_string_chromatic_neighbor_changes": {
+    "57": {
+      "change_db": {
+        "count": 72,
+        "minimum": -0.15407438644089666,
+        "median": -0.13218662623971866,
+        "maximum": -0.05023107921564218
+      },
+      "largest_increases": [
+        {
+          "key": "dreadnought-maple-pick-mono_mic",
+          "shape": "dreadnought",
+          "wood": "maple",
+          "technique": "pick",
+          "capture": "mono_mic",
+          "midi": 57,
+          "note": "A3",
+          "before": -2.095400000165604,
+          "register_55": -2.1456310793812463,
+          "change_db": -0.05023107921564218
+        },
+        {
+          "key": "dreadnought-spruce-pick-mono_mic",
+          "shape": "dreadnought",
+          "wood": "spruce",
+          "technique": "pick",
+          "capture": "mono_mic",
+          "midi": 57,
+          "note": "A3",
+          "before": -2.4221772486475217,
+          "register_55": -2.474888787234626,
+          "change_db": -0.0527115385871042
+        },
+        {
+          "key": "dreadnought-mahogany-pick-mono_mic",
+          "shape": "dreadnought",
+          "wood": "mahogany",
+          "technique": "pick",
+          "capture": "mono_mic",
+          "midi": 57,
+          "note": "A3",
+          "before": 0.5384083427581459,
+          "register_55": 0.463745772037484,
+          "change_db": -0.07466257072066185
+        }
+      ]
+    },
+    "58": {
+      "change_db": {
+        "count": 72,
+        "minimum": -0.24732670670098145,
+        "median": -0.14522384427277757,
+        "maximum": -0.013367203747350231
+      },
+      "largest_increases": [
+        {
+          "key": "jumbo-maple-pick-mono_mic",
+          "shape": "jumbo",
+          "wood": "maple",
+          "technique": "pick",
+          "capture": "mono_mic",
+          "midi": 58,
+          "note": "Asharp3",
+          "before": 2.0989424403479617,
+          "register_55": 2.0855752366006115,
+          "change_db": -0.013367203747350231
+        },
+        {
+          "key": "dreadnought-maple-pick-stereo_mic",
+          "shape": "dreadnought",
+          "wood": "maple",
+          "technique": "pick",
+          "capture": "stereo_mic",
+          "midi": 58,
+          "note": "Asharp3",
+          "before": 0.9418847845659499,
+          "register_55": 0.9238884834532755,
+          "change_db": -0.017996301112674473
+        },
+        {
+          "key": "dreadnought-spruce-finger-stereo_mic",
+          "shape": "dreadnought",
+          "wood": "spruce",
+          "technique": "finger",
+          "capture": "stereo_mic",
+          "midi": 58,
+          "note": "Asharp3",
+          "before": 2.200096337365899,
+          "register_55": 2.1467487976745474,
+          "change_db": -0.05334753969135164
+        }
+      ]
+    },
+    "59": {
+      "change_db": {
+        "count": 72,
+        "minimum": -0.3359353843942188,
+        "median": -0.08443103851144151,
+        "maximum": 0.08549509166379465
+      },
+      "largest_increases": [
+        {
+          "key": "auditorium-spruce-pick-mono_mic",
+          "shape": "auditorium",
+          "wood": "spruce",
+          "technique": "pick",
+          "capture": "mono_mic",
+          "midi": 59,
+          "note": "B3_G",
+          "before": -2.5555025000741907,
+          "register_55": -2.470007408410396,
+          "change_db": 0.08549509166379465
+        },
+        {
+          "key": "dreadnought-spruce-pick-mono_mic",
+          "shape": "dreadnought",
+          "wood": "spruce",
+          "technique": "pick",
+          "capture": "mono_mic",
+          "midi": 59,
+          "note": "B3_G",
+          "before": -0.27414894741444584,
+          "register_55": -0.22496325380595295,
+          "change_db": 0.0491856936084929
+        },
+        {
+          "key": "parlor-spruce-pick-mono_mic",
+          "shape": "parlor",
+          "wood": "spruce",
+          "technique": "pick",
+          "capture": "mono_mic",
+          "midi": 59,
+          "note": "B3_G",
+          "before": -1.2549425363972233,
+          "register_55": -1.2264673148681098,
+          "change_db": 0.028475221529113526
+        }
+      ]
+    },
+    "60": {
+      "change_db": {
+        "count": 72,
+        "minimum": -0.3013569298293177,
+        "median": 0.08490746664877769,
+        "maximum": 0.4751917101524086
+      },
+      "largest_increases": [
+        {
+          "key": "jumbo-maple-pick-mono_mic",
+          "shape": "jumbo",
+          "wood": "maple",
+          "technique": "pick",
+          "capture": "mono_mic",
+          "midi": 60,
+          "note": "C4_G",
+          "before": 0.4378565792612221,
+          "register_55": 0.9130482894136307,
+          "change_db": 0.4751917101524086
+        },
+        {
+          "key": "jumbo-mahogany-thumb-stereo_mic",
+          "shape": "jumbo",
+          "wood": "mahogany",
+          "technique": "thumb",
+          "capture": "stereo_mic",
+          "midi": 60,
+          "note": "C4_G",
+          "before": 3.2903843040391116,
+          "register_55": 3.697087821091255,
+          "change_db": 0.4067035170521436
+        },
+        {
+          "key": "jumbo-spruce-thumb-stereo_mic",
+          "shape": "jumbo",
+          "wood": "spruce",
+          "technique": "thumb",
+          "capture": "stereo_mic",
+          "midi": 60,
+          "note": "C4_G",
+          "before": 3.6207119322478682,
+          "register_55": 4.026194588696093,
+          "change_db": 0.4054826564482248
+        }
+      ]
+    },
+    "61": {
+      "change_db": {
+        "count": 72,
+        "minimum": -0.4202196493427657,
+        "median": 0.14920506318314608,
+        "maximum": 0.6936933188586885
+      },
+      "largest_increases": [
+        {
+          "key": "dreadnought-mahogany-pick-mono_mic",
+          "shape": "dreadnought",
+          "wood": "mahogany",
+          "technique": "pick",
+          "capture": "mono_mic",
+          "midi": 61,
+          "note": "Csharp4_G",
+          "before": 1.591465621174443,
+          "register_55": 2.2851589400331314,
+          "change_db": 0.6936933188586885
+        },
+        {
+          "key": "dreadnought-spruce-pick-stereo_mic",
+          "shape": "dreadnought",
+          "wood": "spruce",
+          "technique": "pick",
+          "capture": "stereo_mic",
+          "midi": 61,
+          "note": "Csharp4_G",
+          "before": 4.8279463363395045,
+          "register_55": 5.453509408748275,
+          "change_db": 0.6255630724087702
+        },
+        {
+          "key": "parlor-spruce-pick-mono_mic",
+          "shape": "parlor",
+          "wood": "spruce",
+          "technique": "pick",
+          "capture": "mono_mic",
+          "midi": 61,
+          "note": "Csharp4_G",
+          "before": -0.14156698857632932,
+          "register_55": 0.4533602160267378,
+          "change_db": 0.5949272046030671
+        }
+      ]
+    },
+    "62": {
+      "change_db": {
+        "count": 72,
+        "minimum": -1.0907773790750497,
+        "median": 0.081006727827317,
+        "maximum": 0.5191957772875888
+      },
+      "largest_increases": [
+        {
+          "key": "dreadnought-maple-finger-stereo_mic",
+          "shape": "dreadnought",
+          "wood": "maple",
+          "technique": "finger",
+          "capture": "stereo_mic",
+          "midi": 62,
+          "note": "D4_G",
+          "before": -3.240240554311576,
+          "register_55": -2.7210447770239874,
+          "change_db": 0.5191957772875888
+        },
+        {
+          "key": "dreadnought-maple-thumb-stereo_mic",
+          "shape": "dreadnought",
+          "wood": "maple",
+          "technique": "thumb",
+          "capture": "stereo_mic",
+          "midi": 62,
+          "note": "D4_G",
+          "before": -3.408048019157466,
+          "register_55": -2.8968501391212342,
+          "change_db": 0.5111978800362316
+        },
+        {
+          "key": "dreadnought-maple-finger-mono_mic",
+          "shape": "dreadnought",
+          "wood": "maple",
+          "technique": "finger",
+          "capture": "mono_mic",
+          "midi": 62,
+          "note": "D4_G",
+          "before": -1.806697602003048,
+          "register_55": -1.3459726002037335,
+          "change_db": 0.4607250017993145
+        }
+      ]
+    },
+    "63": {
+      "change_db": {
+        "count": 72,
+        "minimum": -1.3652954294756192,
+        "median": 0.2800081267846135,
+        "maximum": 1.285745883496169
+      },
+      "largest_increases": [
+        {
+          "key": "jumbo-maple-thumb-stereo_mic",
+          "shape": "jumbo",
+          "wood": "maple",
+          "technique": "thumb",
+          "capture": "stereo_mic",
+          "midi": 63,
+          "note": "Dsharp4_G",
+          "before": 5.920319652321531,
+          "register_55": 7.2060655358177,
+          "change_db": 1.285745883496169
+        },
+        {
+          "key": "jumbo-maple-finger-stereo_mic",
+          "shape": "jumbo",
+          "wood": "maple",
+          "technique": "finger",
+          "capture": "stereo_mic",
+          "midi": 63,
+          "note": "Dsharp4_G",
+          "before": 5.493808860760954,
+          "register_55": 6.752952685841898,
+          "change_db": 1.259143825080944
+        },
+        {
+          "key": "jumbo-spruce-pick-stereo_mic",
+          "shape": "jumbo",
+          "wood": "spruce",
+          "technique": "pick",
+          "capture": "stereo_mic",
+          "midi": 63,
+          "note": "Dsharp4_G",
+          "before": 5.071988203395168,
+          "register_55": 6.144890414743955,
+          "change_db": 1.0729022113487865
+        }
+      ]
+    },
+    "64": {
+      "change_db": {
+        "count": 72,
+        "minimum": -1.0822323517924808,
+        "median": -0.09035403790403684,
+        "maximum": 0.9483519026235463
+      },
+      "largest_increases": [
+        {
+          "key": "auditorium-mahogany-thumb-stereo_mic",
+          "shape": "auditorium",
+          "wood": "mahogany",
+          "technique": "thumb",
+          "capture": "stereo_mic",
+          "midi": 64,
+          "note": "E4_G",
+          "before": -4.259834316054718,
+          "register_55": -3.311482413431172,
+          "change_db": 0.9483519026235463
+        },
+        {
+          "key": "auditorium-mahogany-finger-stereo_mic",
+          "shape": "auditorium",
+          "wood": "mahogany",
+          "technique": "finger",
+          "capture": "stereo_mic",
+          "midi": 64,
+          "note": "E4_G",
+          "before": -4.024609900177136,
+          "register_55": -3.1139734886979866,
+          "change_db": 0.9106364114791496
+        },
+        {
+          "key": "dreadnought-maple-thumb-stereo_mic",
+          "shape": "dreadnought",
+          "wood": "maple",
+          "technique": "thumb",
+          "capture": "stereo_mic",
+          "midi": 64,
+          "note": "E4_G",
+          "before": -8.023747654085568,
+          "register_55": -7.1175968095330795,
+          "change_db": 0.9061508445524886
+        }
+      ]
+    }
+  },
+  "selected_treble_note_deltas": {
+    "stereo_mic-finger": {
+      "E4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.45988583279793,
+            "median": 4.0466916236010935,
+            "maximum": 4.704104072662631
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.4131694554177017,
+            "median": 5.061061520594226,
+            "maximum": 5.509053642101669
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.3517423140584204,
+            "median": -0.5707029813832876,
+            "maximum": 0.9718339899550479
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -1.3583746087616504,
+            "median": -0.37989307081088697,
+            "maximum": 0.26190972428653225
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -4.541777890992456,
+            "median": -0.01940643837920142,
+            "maximum": 0.7969491851249195
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.263598077534411,
+            "median": -0.29655325776869645,
+            "maximum": 5.3368775616720185
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.557639546923646,
+            "median": 3.7172499433716695,
+            "maximum": 4.584101842602678
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.903306332119435,
+            "median": 5.127477821214367,
+            "maximum": 5.737948036303813
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.2123096439609142,
+            "median": -1.2773336015113483,
+            "maximum": -0.395667700358008
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.9218510576400263,
+            "median": -0.24199568175389174,
+            "maximum": 0.0200412606518654
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -1.6382994966395756,
+            "median": -0.38407305774544653,
+            "maximum": 0.5747691190323465
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -4.579344515778814,
+            "median": -1.514342727806108,
+            "maximum": 3.531963423537988
+          }
+        }
+      },
+      "G4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.3527922101338703,
+            "median": 3.880946050275435,
+            "maximum": 4.6232695801778405
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -1.0881381106438752,
+            "median": 2.3063653341880013,
+            "maximum": 4.448177505696506
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.7846391217795707,
+            "median": 2.117454306388723,
+            "maximum": 6.251482781194779
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.9216217445891175,
+            "median": 0.2901949282507701,
+            "maximum": 2.51013083762588
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.085534057127756,
+            "median": -0.8638101490857508,
+            "maximum": 0.5695400914578208
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -3.8043037625071108,
+            "median": 0.13847845147935978,
+            "maximum": 3.1362902201538034
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.625440917834787,
+            "median": 3.166121951786714,
+            "maximum": 3.769468308750298
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.7563851640055859,
+            "median": 2.7472341743392157,
+            "maximum": 3.8399252128517603
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -0.5876706582488733,
+            "median": 0.5161548598126786,
+            "maximum": 3.0183965418232255
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.22919172931342047,
+            "median": 0.4568946878284663,
+            "maximum": 1.2070440312617734
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.0943158753185926,
+            "median": -0.5944230621302786,
+            "maximum": 0.0204789079802552
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.038168813512385,
+            "median": -1.3928529663734537,
+            "maximum": 5.498510860985398
+          }
+        }
+      },
+      "A4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.9132505997978981,
+            "median": 4.128408845554567,
+            "maximum": 4.716816855705083
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -0.03435009385396626,
+            "median": 4.509858247784223,
+            "maximum": 5.552637144151049
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.9275319268904,
+            "median": -0.7578699155403379,
+            "maximum": 2.1936761138961014
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -1.0181175240636122,
+            "median": -0.25550460184307866,
+            "maximum": 2.33876601330536
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.653058188081857,
+            "median": -1.8116125801670986,
+            "maximum": 0.43774330440422204
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -10.584173565634728,
+            "median": -0.8195756942953878,
+            "maximum": 5.602663837981581
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.9982525233708444,
+            "median": 3.3433615600481232,
+            "maximum": 4.107633218631435
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.7267546177441275,
+            "median": 3.267645887826255,
+            "maximum": 6.029048089740421
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.3581242622723146,
+            "median": -0.489103792795311,
+            "maximum": 1.6302409325767684
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.48270364356189077,
+            "median": 0.2538525580264164,
+            "maximum": 0.8701245082717222
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.223087545089406,
+            "median": -0.9675697990119758,
+            "maximum": -0.3263421576108101
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.821562791669187,
+            "median": -0.6966371719747251,
+            "maximum": 1.062041749909831
+          }
+        }
+      },
+      "B4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.1526485513408957,
+            "median": 3.7110649230174086,
+            "maximum": 4.645523360265052
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -0.1452192761774569,
+            "median": 3.4626720134288185,
+            "maximum": 4.263148866865535
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.395170589821646,
+            "median": 0.724563719246925,
+            "maximum": 4.005142653488905
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.9504362849271644,
+            "median": 0.25916719076597516,
+            "maximum": 3.26431230781818
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -6.987507750479256,
+            "median": -0.6258451590291898,
+            "maximum": 1.5652687935601186
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.824419767625415,
+            "median": 0.005124325427107834,
+            "maximum": 5.070301725468319
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.215996857196295,
+            "median": 2.9250971955412535,
+            "maximum": 3.5767152316097963
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.0295545710588812,
+            "median": 2.9154509356791465,
+            "maximum": 4.455749405167808
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.537209772347813,
+            "median": 0.07634387760273653,
+            "maximum": 2.029952238550236
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": 0.05730044831977921,
+            "median": 0.7534338022454818,
+            "maximum": 1.7645297709236942
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.36953846477158,
+            "median": -0.34319132178356604,
+            "maximum": 0.2873197078349605
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -2.4940900806377755,
+            "median": -0.3491820555953389,
+            "maximum": 0.5512281736379094
+          }
+        }
+      },
+      "E5": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.8681630727656469,
+            "median": 4.113125380804016,
+            "maximum": 5.279721045238496
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.20642277911934315,
+            "median": 4.265795688011824,
+            "maximum": 6.404014529225272
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.51464784354012,
+            "median": -2.373529301509392,
+            "maximum": 2.1521588069639037
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -1.5519636452408818,
+            "median": -0.29301740276186194,
+            "maximum": 2.968062392120629
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -9.715540447727452,
+            "median": -3.4865446638350903,
+            "maximum": 0.34905117938398433
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -12.638371761298245,
+            "median": -3.353742563992263,
+            "maximum": 1.313853157800267
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.3731035634722346,
+            "median": 3.491108758514553,
+            "maximum": 3.9439213791421963
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.2592109999179968,
+            "median": 3.4632953330176193,
+            "maximum": 4.10927436714767
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.506676432286744,
+            "median": -0.7222241314587095,
+            "maximum": 1.6146007986255713
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.2807137276128202,
+            "median": 0.22626455239542054,
+            "maximum": 2.100148610050198
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -7.159861206745838,
+            "median": -1.9372337149279577,
+            "maximum": -0.09181522985258894
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -8.186576594516655,
+            "median": -1.8309159703006888,
+            "maximum": 0.030793747197982668
+          }
+        }
+      }
+    },
+    "stereo_mic-pick": {
+      "E4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.4123284233295763,
+            "median": 3.7277549455569954,
+            "maximum": 3.991746219760273
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.345944598079754,
+            "median": 4.792262443841235,
+            "maximum": 5.07905418500787
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.064555454345861,
+            "median": -0.7755934554276671,
+            "maximum": 1.082767554721336
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.6524393332136498,
+            "median": -0.07378732554077772,
+            "maximum": 0.3319413050020614
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.594774818740941,
+            "median": -0.8273323944809068,
+            "maximum": -0.4676825549490893
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.04176783704505,
+            "median": 0.19492718835673628,
+            "maximum": 8.971034881076093
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.242479828733103,
+            "median": 3.361940630143849,
+            "maximum": 3.798223035062101
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.7915354189788033,
+            "median": 5.068950093473045,
+            "maximum": 5.529551524535535
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.4256741257150765,
+            "median": -1.8129150912758378,
+            "maximum": -0.663242983176465
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.2229856626071367,
+            "median": 0.1814481028439765,
+            "maximum": 0.3533432032794934
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -1.595769901232618,
+            "median": -0.8516189076861753,
+            "maximum": -0.2901470263558181
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -4.795605467565466,
+            "median": -2.310396693833777,
+            "maximum": 3.0556003044221853
+          }
+        }
+      },
+      "G4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.4147204564853624,
+            "median": 3.609231454572388,
+            "maximum": 4.446412502048947
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -1.4451696065499249,
+            "median": 2.249429244614795,
+            "maximum": 4.311588901235659
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -0.9524506995553486,
+            "median": 1.6638591480595275,
+            "maximum": 5.918016954944936
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.8920820139049752,
+            "median": 0.17924907623332054,
+            "maximum": 1.3338523482447897
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.6709849628778777,
+            "median": -1.4590457543259365,
+            "maximum": -0.38622137812103574
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.429495336092899,
+            "median": -0.21979999795732752,
+            "maximum": 2.2674831827861723
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.0141140499173744,
+            "median": 3.2115266564724934,
+            "maximum": 3.4925255979785845
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.2486397168590031,
+            "median": 2.277304533770444,
+            "maximum": 4.992006700224444
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.7374418096409165,
+            "median": 1.0654133358028854,
+            "maximum": 3.1089870912721143
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.00901262715738227,
+            "median": 0.3573277366279939,
+            "maximum": 0.6608213843821105
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -2.3320552890884763,
+            "median": -1.0119449646327752,
+            "maximum": 0.3891463189371578
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.882659091254894,
+            "median": -2.130346333242411,
+            "maximum": 10.246889409066
+          }
+        }
+      },
+      "A4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.722286054474246,
+            "median": 3.689079830966749,
+            "maximum": 4.182837735363783
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.0137765457602725,
+            "median": 4.455680778699559,
+            "maximum": 5.64043150115679
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.8478395906859824,
+            "median": -0.7938885335269847,
+            "maximum": 1.855279872254183
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.5097292960437372,
+            "median": 0.09445761106050199,
+            "maximum": 1.152588163223946
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -4.888873248701415,
+            "median": -3.8046246702357553,
+            "maximum": -0.7195124557018602
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -17.61941477807447,
+            "median": -1.3275839791735393,
+            "maximum": 3.2861957915047455
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.936068748718924,
+            "median": 3.284448555284552,
+            "maximum": 3.5499884312243637
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.7849402336604712,
+            "median": 3.365804654185524,
+            "maximum": 6.978159953284013
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.440390945840811,
+            "median": -0.5097021936619353,
+            "maximum": 1.4784426544681448
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": 0.012007632869845963,
+            "median": 0.36496933390676745,
+            "maximum": 0.9657305507494556
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.918061435956897,
+            "median": -1.7864163723647408,
+            "maximum": -0.07821931801291626
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -25.44139331568868,
+            "median": -1.0381534681933289,
+            "maximum": 1.9070618751120563
+          }
+        }
+      },
+      "B4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.932911937025132,
+            "median": 3.5803134953607163,
+            "maximum": 4.476444429082434
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -0.658223763154119,
+            "median": 3.4460401405926255,
+            "maximum": 4.237783289143778
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.1559898039239895,
+            "median": 0.26487610349684054,
+            "maximum": 3.6914783082047045
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.8457622110817695,
+            "median": 0.31976233767161943,
+            "maximum": 2.394899517242301
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -6.4190397920944555,
+            "median": -2.0219376168039656,
+            "maximum": -0.7579190284392539
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -11.366115963593664,
+            "median": -0.7848691522381586,
+            "maximum": 2.108205982117802
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.7003976844990234,
+            "median": 3.095080161101425,
+            "maximum": 3.596494688647695
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.24638016681606,
+            "median": 2.946494633579224,
+            "maximum": 3.8858825127916816
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.917794961875213,
+            "median": -0.07564755244954946,
+            "maximum": 1.7891844060543818
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.030682880750298125,
+            "median": 0.6999437205159076,
+            "maximum": 1.3881022004619439
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.4383685812585867,
+            "median": -1.3278373462500959,
+            "maximum": 0.14499087793114285
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -3.0351912015789964,
+            "median": -0.7315004547863673,
+            "maximum": 4.215041733413756
+          }
+        }
+      },
+      "E5": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.5421632055852896,
+            "median": 3.4615274790797024,
+            "maximum": 4.213509861917224
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.2971179751924211,
+            "median": 4.328737046564754,
+            "maximum": 6.165854405528179
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.490181915786712,
+            "median": -2.3417449064470217,
+            "maximum": 1.7228996298130212
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.38387816133000996,
+            "median": 0.44766301384797913,
+            "maximum": 2.327855588394371
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -8.475431577202407,
+            "median": -4.369830301421324,
+            "maximum": -0.6006150786254381
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -15.875930846072848,
+            "median": -3.0599417082718006,
+            "maximum": 0.6160282424258838
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.8996728220895847,
+            "median": 3.3741305950950675,
+            "maximum": 3.6267305975723687
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.5949034499143053,
+            "median": 3.4898788865412875,
+            "maximum": 4.319903109980743
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.0147381415962937,
+            "median": -0.8054178327874939,
+            "maximum": 1.2954240795132939
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.0429703890674773,
+            "median": 0.33848932259207487,
+            "maximum": 1.2476216868415904
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -6.102397938662811,
+            "median": -2.829240439818026,
+            "maximum": -0.9818989243106664
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -8.796514654696018,
+            "median": -2.3081056147642194,
+            "maximum": -0.7831643010337999
+          }
+        }
+      }
+    },
+    "stereo_mic-thumb": {
+      "E4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.5559927933834103,
+            "median": 4.128634198528138,
+            "maximum": 4.619867822834998
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.4430962160659533,
+            "median": 5.107923840270816,
+            "maximum": 5.547931942521664
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.3103622636544996,
+            "median": -0.998581992041222,
+            "maximum": 0.9707916413192823
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -1.3859097898457833,
+            "median": -0.7150323685713111,
+            "maximum": 0.25866037187027047
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -4.920231933709019,
+            "median": 0.10725813629687231,
+            "maximum": 1.3086121543505058
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.291295696391703,
+            "median": -0.30133264071741195,
+            "maximum": 4.885288072143851
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.6441086451967593,
+            "median": 3.8097504835591884,
+            "maximum": 4.640260051344022
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.932858559688711,
+            "median": 5.166854536338597,
+            "maximum": 5.770599154771723
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.2462175888799294,
+            "median": -1.6277947878901644,
+            "maximum": -0.5812038694440331
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.9983483883255317,
+            "median": -0.4277777249152557,
+            "maximum": -0.12867429572465028
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -2.1695492736794257,
+            "median": -0.22728777890471186,
+            "maximum": 0.8091539549190401
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -4.5837610867596865,
+            "median": -1.5419336775359334,
+            "maximum": 3.583863368570711
+          }
+        }
+      },
+      "G4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 0.9853353905912385,
+            "median": 3.8321106958579136,
+            "maximum": 4.532878486305467
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -1.002573809003195,
+            "median": 2.341755963060251,
+            "maximum": 4.466876453932599
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.4388350877169493,
+            "median": 1.9403225642726776,
+            "maximum": 5.1478148591480055
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.815951902625045,
+            "median": 0.5229643935392936,
+            "maximum": 2.9718310702819295
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -2.7891836339295963,
+            "median": -0.6877322523992007,
+            "maximum": 0.7667682162437792
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -3.665445116743278,
+            "median": 0.16067857193845647,
+            "maximum": 3.1064804174089673
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.4454488349340764,
+            "median": 3.1028176474562166,
+            "maximum": 3.633243938275271
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.7672520968670327,
+            "median": 2.756317746662937,
+            "maximum": 3.821997599683023
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -0.6743591837405134,
+            "median": 0.43717948594525824,
+            "maximum": 2.8608989874889827
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.10948061924329977,
+            "median": 0.4840266998331657,
+            "maximum": 1.4057150038817525
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.391927953562721,
+            "median": -0.7748776396189783,
+            "maximum": 0.16993006967767244
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.042789774369396,
+            "median": -1.4722587609087832,
+            "maximum": 5.196484001616355
+          }
+        }
+      },
+      "A4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.0459666041451996,
+            "median": 4.2337211260274294,
+            "maximum": 4.712644821424462
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -0.05404164723731952,
+            "median": 4.527256530072037,
+            "maximum": 5.542797889494821
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.777311178627385,
+            "median": -0.6403879691091402,
+            "maximum": 2.4800712862931125
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.9513264679340523,
+            "median": -0.4190375214051514,
+            "maximum": 2.3146266974091176
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -6.352560213810229,
+            "median": -1.959325155311335,
+            "maximum": 0.6516801079770396
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -10.60557402359641,
+            "median": -0.8008220124805483,
+            "maximum": 5.525600531461137
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.014376597624107,
+            "median": 3.357833903228581,
+            "maximum": 4.20491912415897
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.7221824308097098,
+            "median": 3.2769180593555056,
+            "maximum": 6.003958875217904
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.207466942820128,
+            "median": -0.40556734576123477,
+            "maximum": 1.6659118644740403
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.5966568850455616,
+            "median": 0.24302050816378795,
+            "maximum": 0.7168994299062703
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.383403649911301,
+            "median": -0.9346606513532905,
+            "maximum": -0.12660958900516306
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.475909854590199,
+            "median": -0.698281771220973,
+            "maximum": 1.116797579937952
+          }
+        }
+      },
+      "B4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.2353638072393736,
+            "median": 3.670795612580253,
+            "maximum": 4.562097720945186
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -0.13395928327689433,
+            "median": 3.4715974902808817,
+            "maximum": 4.269467770226363
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.5278445243488026,
+            "median": 0.26761735469199666,
+            "maximum": 3.9077452093060216
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.8658173476793536,
+            "median": 0.2851202904118857,
+            "maximum": 3.1711537926391102
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -6.826903030481777,
+            "median": -0.5863869194459763,
+            "maximum": 1.711276864930415
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.741950871966772,
+            "median": 0.015149974272524958,
+            "maximum": 5.139692370916055
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.2139732901487434,
+            "median": 3.035275729951481,
+            "maximum": 3.5646973637960784
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.032263074880035,
+            "median": 2.9228756487341094,
+            "maximum": 4.443786565477751
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.1663173779424674,
+            "median": 0.08411025400003669,
+            "maximum": 2.004852971496172
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": 0.08980170530205811,
+            "median": 0.6886343792628189,
+            "maximum": 1.7663846807053218
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.3337979773571114,
+            "median": -0.36379959193549816,
+            "maximum": 0.28906089188662065
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -2.502150687626475,
+            "median": -0.3045783170690797,
+            "maximum": 0.49027353403891993
+          }
+        }
+      },
+      "E5": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.8298612110855785,
+            "median": 4.085114084183759,
+            "maximum": 5.19429938547961
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.20571112301917793,
+            "median": 4.270537531012252,
+            "maximum": 6.408746861834878
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.777174460147428,
+            "median": -2.5684965700561095,
+            "maximum": 2.0630760640732078
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -1.4872791182885052,
+            "median": -0.20076483626333186,
+            "maximum": 3.0042164229888684
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -9.566173197984202,
+            "median": -3.5059443700055883,
+            "maximum": 0.4970017623860059
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -12.578138680418864,
+            "median": -3.3590977373482236,
+            "maximum": 1.331017341071984
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.3939811440618968,
+            "median": 3.490270485385061,
+            "maximum": 3.96039777455319
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.2584611761096482,
+            "median": 3.4662844019540504,
+            "maximum": 4.113387256793729
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.057557139813893,
+            "median": -0.63072760153206,
+            "maximum": 1.757576355476055
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.307673469911542,
+            "median": 0.21250692915030456,
+            "maximum": 2.0469281669415835
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -7.221439587753395,
+            "median": -1.9133715131893947,
+            "maximum": -0.05943812994610553
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -8.173385363434804,
+            "median": -1.830352564333209,
+            "maximum": 0.05178568247605142
+          }
+        }
+      }
+    },
+    "mono_mic-finger": {
+      "E4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.2900583279158866,
+            "median": 3.821758644138054,
+            "maximum": 4.468641308245122
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.425758364581011,
+            "median": 4.933256677167243,
+            "maximum": 5.470954927295082
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.953067417880331,
+            "median": -1.2661041603304408,
+            "maximum": 0.563114479440916
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -1.356456150496264,
+            "median": -0.04530867807461192,
+            "maximum": 0.31321430897650515
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.1546763906624165,
+            "median": -0.47594101113670995,
+            "maximum": 0.9543406447263791
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.16463941713522,
+            "median": -0.3938962147041245,
+            "maximum": 4.208917020028068
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.557639546923646,
+            "median": 3.7172499433716695,
+            "maximum": 4.584101842602678
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.903306332119435,
+            "median": 5.127477821214367,
+            "maximum": 5.737948036303813
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.2123096439609142,
+            "median": -1.2773336015113483,
+            "maximum": -0.395667700358008
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.9218510576400263,
+            "median": -0.24199568175389174,
+            "maximum": 0.0200412606518654
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -1.6382994966395756,
+            "median": -0.38407305774544653,
+            "maximum": 0.5747691190323465
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -4.579344515778814,
+            "median": -1.514342727806108,
+            "maximum": 3.531963423537988
+          }
+        }
+      },
+      "G4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.70605289659769,
+            "median": 3.237334271242016,
+            "maximum": 4.953765503500911
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -1.3583008465402102,
+            "median": 1.1678238527422948,
+            "maximum": 5.089517541604941
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.2781889572757401,
+            "median": 2.63694784279848,
+            "maximum": 6.533841533573556
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -1.2184111817276673,
+            "median": 1.4664086204913822,
+            "maximum": 2.0770402148359324
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.135466490211947,
+            "median": -1.5422382981965885,
+            "maximum": 0.051500887255990335
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -4.713840220347372,
+            "median": 0.6354744166685826,
+            "maximum": 2.3040851316384945
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.625440917834787,
+            "median": 3.166121951786714,
+            "maximum": 3.769468308750298
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.7563851640055859,
+            "median": 2.7472341743392157,
+            "maximum": 3.8399252128517603
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -0.5876706582488733,
+            "median": 0.5161548598126786,
+            "maximum": 3.0183965418232255
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.22919172931342047,
+            "median": 0.4568946878284663,
+            "maximum": 1.2070440312617734
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.0943158753185926,
+            "median": -0.5944230621302786,
+            "maximum": 0.0204789079802552
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.038168813512385,
+            "median": -1.3928529663734537,
+            "maximum": 5.498510860985398
+          }
+        }
+      },
+      "A4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.298541473994291,
+            "median": 4.0046463382458874,
+            "maximum": 4.611867414099336
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.3512075009786102,
+            "median": 3.8608690417463087,
+            "maximum": 5.254973026502931
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.413563136672055,
+            "median": 0.11553607901884355,
+            "maximum": 4.159846171958772
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.9272757473787294,
+            "median": -0.06496769365846689,
+            "maximum": 2.6448679760221765
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -6.484424077262865,
+            "median": -2.055510195417275,
+            "maximum": -0.13182417496274823
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.6929802365056545,
+            "median": -1.410296002044305,
+            "maximum": 7.723330791181766
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.9982525233708444,
+            "median": 3.3433615600481232,
+            "maximum": 4.107633218631435
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.7267546177441275,
+            "median": 3.267645887826255,
+            "maximum": 6.029048089740421
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.3581242622723146,
+            "median": -0.489103792795311,
+            "maximum": 1.6302409325767684
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.48270364356189077,
+            "median": 0.2538525580264164,
+            "maximum": 0.8701245082717222
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.223087545089406,
+            "median": -0.9675697990119758,
+            "maximum": -0.3263421576108101
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.821562791669187,
+            "median": -0.6966371719747251,
+            "maximum": 1.062041749909831
+          }
+        }
+      },
+      "B4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 0.990908266024654,
+            "median": 3.3256727096525225,
+            "maximum": 5.2112389349236565
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -0.19218913246184854,
+            "median": 2.952210840123577,
+            "maximum": 4.508290831858503
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.2554681506142427,
+            "median": 0.7617115489057056,
+            "maximum": 1.7106062885069204
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -1.5138578538569973,
+            "median": 0.7765190883444006,
+            "maximum": 3.391255855548067
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.625527700233626,
+            "median": -0.9668500211005782,
+            "maximum": 2.207240424248077
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.755702659610208,
+            "median": -0.15813907123104087,
+            "maximum": 14.417717303055944
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.215996857196295,
+            "median": 2.9250971955412535,
+            "maximum": 3.5767152316097963
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.0295545710588812,
+            "median": 2.9154509356791465,
+            "maximum": 4.455749405167808
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.537209772347813,
+            "median": 0.07634387760273653,
+            "maximum": 2.029952238550236
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": 0.05730044831977921,
+            "median": 0.7534338022454818,
+            "maximum": 1.7645297709236942
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.36953846477158,
+            "median": -0.34319132178356604,
+            "maximum": 0.2873197078349605
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -2.4940900806377755,
+            "median": -0.3491820555953389,
+            "maximum": 0.5512281736379094
+          }
+        }
+      },
+      "E5": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.1912881031242435,
+            "median": 3.187221858475036,
+            "maximum": 4.45028669074906
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.6848313342791315,
+            "median": 3.0550674679059817,
+            "maximum": 7.694963454243158
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -5.598005505267487,
+            "median": -1.954620386183169,
+            "maximum": 2.6003943213246643
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.609276079905122,
+            "median": 0.7247948030521805,
+            "maximum": 3.329258350874124
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -8.057515484778293,
+            "median": -3.64091743765532,
+            "maximum": -0.4222370923615131
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -10.918079374583836,
+            "median": -3.4720128115802407,
+            "maximum": 0.9156342129530444
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.3731035634722346,
+            "median": 3.491108758514553,
+            "maximum": 3.9439213791421963
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.2592109999179968,
+            "median": 3.4632953330176193,
+            "maximum": 4.10927436714767
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.506676432286744,
+            "median": -0.7222241314587095,
+            "maximum": 1.6146007986255713
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.2807137276128202,
+            "median": 0.22626455239542054,
+            "maximum": 2.100148610050198
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -7.159861206745838,
+            "median": -1.9372337149279577,
+            "maximum": -0.09181522985258894
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -8.186576594516655,
+            "median": -1.8309159703006888,
+            "maximum": 0.030793747197982668
+          }
+        }
+      }
+    },
+    "mono_mic-pick": {
+      "E4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.5433816895568313,
+            "median": 3.350163199393908,
+            "maximum": 3.6935260559009464
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.3438302094894325,
+            "median": 4.6482550037489005,
+            "maximum": 5.296819070416902
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.1915994523195366,
+            "median": -1.1121986322016615,
+            "maximum": 0.9161367805719025
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.0896253536760625,
+            "median": 0.21209596160189648,
+            "maximum": 1.1587064539985512
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.67798292733994,
+            "median": -1.0523629796319387,
+            "maximum": -0.2303799912322546
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -4.854861818941792,
+            "median": 0.07289107549896201,
+            "maximum": 6.898378770236889
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.242479828733103,
+            "median": 3.361940630143849,
+            "maximum": 3.798223035062101
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.7915354189788033,
+            "median": 5.068950093473045,
+            "maximum": 5.529551524535535
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.4256741257150765,
+            "median": -1.8129150912758378,
+            "maximum": -0.663242983176465
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.2229856626071367,
+            "median": 0.1814481028439765,
+            "maximum": 0.3533432032794934
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -1.595769901232618,
+            "median": -0.8516189076861753,
+            "maximum": -0.2901470263558181
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -4.795605467565466,
+            "median": -2.310396693833777,
+            "maximum": 3.0556003044221853
+          }
+        }
+      },
+      "G4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.04279021854412,
+            "median": 2.8067535455454973,
+            "maximum": 4.086629996323289
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -2.1745366045788543,
+            "median": 1.1113729019440868,
+            "maximum": 4.819003627567234
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.0580600941905463,
+            "median": 1.598573185905725,
+            "maximum": 5.576698479557193
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.49138566202378087,
+            "median": 1.1465215279869287,
+            "maximum": 1.722032959886981
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -4.993885960966274,
+            "median": -2.6592338117458283,
+            "maximum": -0.18887575421337743
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -9.082164287960197,
+            "median": -0.1886853564554194,
+            "maximum": 2.2732235032938064
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.0141140499173744,
+            "median": 3.2115266564724934,
+            "maximum": 3.4925255979785845
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.2486397168590031,
+            "median": 2.277304533770444,
+            "maximum": 4.992006700224444
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.7374418096409165,
+            "median": 1.0654133358028854,
+            "maximum": 3.1089870912721143
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.00901262715738227,
+            "median": 0.3573277366279939,
+            "maximum": 0.6608213843821105
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -2.3320552890884763,
+            "median": -1.0119449646327752,
+            "maximum": 0.3891463189371578
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.882659091254894,
+            "median": -2.130346333242411,
+            "maximum": 10.246889409066
+          }
+        }
+      },
+      "A4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.235787173719963,
+            "median": 3.129850438092003,
+            "maximum": 3.778963845154678
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.1108023069891928,
+            "median": 3.778676369168405,
+            "maximum": 5.048917989830848
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.9082463101991376,
+            "median": -0.8606827845330662,
+            "maximum": 3.565020846547135
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.1802437169950366,
+            "median": 0.7904053506560889,
+            "maximum": 1.6867087109186443
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.584570433524654,
+            "median": -3.2322382703893293,
+            "maximum": -0.8166137095824482
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -22.61662448454777,
+            "median": -1.1659009878899482,
+            "maximum": 6.02921476427975
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.936068748718924,
+            "median": 3.284448555284552,
+            "maximum": 3.5499884312243637
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.7849402336604712,
+            "median": 3.365804654185524,
+            "maximum": 6.978159953284013
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.440390945840811,
+            "median": -0.5097021936619353,
+            "maximum": 1.4784426544681448
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": 0.012007632869845963,
+            "median": 0.36496933390676745,
+            "maximum": 0.9657305507494556
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.918061435956897,
+            "median": -1.7864163723647408,
+            "maximum": -0.07821931801291626
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -25.44139331568868,
+            "median": -1.0381534681933289,
+            "maximum": 1.9070618751120563
+          }
+        }
+      },
+      "B4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.3655567834597662,
+            "median": 3.1580653963931695,
+            "maximum": 4.069381215243006
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -0.12399742876088027,
+            "median": 2.8608597270237084,
+            "maximum": 4.426978672625118
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -0.982943185756664,
+            "median": 0.048712316228061825,
+            "maximum": 2.231683029247419
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.396314943359819,
+            "median": 0.968350128178729,
+            "maximum": 3.228527198166695
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -4.4353059170751195,
+            "median": -2.592138524327755,
+            "maximum": -1.4525330953353333
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.029385143166429,
+            "median": -0.45177625592167203,
+            "maximum": 6.706504613028365
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.7003976844990234,
+            "median": 3.095080161101425,
+            "maximum": 3.596494688647695
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.24638016681606,
+            "median": 2.946494633579224,
+            "maximum": 3.8858825127916816
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.917794961875213,
+            "median": -0.07564755244954946,
+            "maximum": 1.7891844060543818
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.030682880750298125,
+            "median": 0.6999437205159076,
+            "maximum": 1.3881022004619439
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.4383685812585867,
+            "median": -1.3278373462500959,
+            "maximum": 0.14499087793114285
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -3.0351912015789964,
+            "median": -0.7315004547863673,
+            "maximum": 4.215041733413756
+          }
+        }
+      },
+      "E5": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.4437955842737438,
+            "median": 3.0060061753749068,
+            "maximum": 3.4189396875264
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.9769636493066258,
+            "median": 3.2382752424078802,
+            "maximum": 6.461222870025516
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -4.546466264664109,
+            "median": -1.8828906227210842,
+            "maximum": 0.8310298116680972
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": 0.6087380782922196,
+            "median": 1.0605511492357547,
+            "maximum": 3.2496860826780356
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -7.671394261342904,
+            "median": -4.059569358169366,
+            "maximum": -1.4107613959386
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -10.502264948234469,
+            "median": -3.4947282799097508,
+            "maximum": 1.1306444566300726
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.8996728220895847,
+            "median": 3.3741305950950675,
+            "maximum": 3.6267305975723687
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.5949034499143053,
+            "median": 3.4898788865412875,
+            "maximum": 4.319903109980743
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.0147381415962937,
+            "median": -0.8054178327874939,
+            "maximum": 1.2954240795132939
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.0429703890674773,
+            "median": 0.33848932259207487,
+            "maximum": 1.2476216868415904
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -6.102397938662811,
+            "median": -2.829240439818026,
+            "maximum": -0.9818989243106664
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -8.796514654696018,
+            "median": -2.3081056147642194,
+            "maximum": -0.7831643010337999
+          }
+        }
+      }
+    },
+    "mono_mic-thumb": {
+      "E4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.2107166871023765,
+            "median": 3.887112742830439,
+            "maximum": 4.497139680449084
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.4559313604221913,
+            "median": 4.960682124033241,
+            "maximum": 5.505724660356563
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.219047447567916,
+            "median": -1.7195211333377245,
+            "maximum": 0.7270653221322334
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -1.400107104324782,
+            "median": -0.33880211510091485,
+            "maximum": 0.31848316929681886
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.154084107039942,
+            "median": -0.7088232137391444,
+            "maximum": 1.4893919488959924
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.202517502143564,
+            "median": -0.38771012812163974,
+            "maximum": 4.224252531154015
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.6441086451967593,
+            "median": 3.8097504835591884,
+            "maximum": 4.640260051344022
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 3.932858559688711,
+            "median": 5.166854536338597,
+            "maximum": 5.770599154771723
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.2462175888799294,
+            "median": -1.6277947878901644,
+            "maximum": -0.5812038694440331
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.9983483883255317,
+            "median": -0.4277777249152557,
+            "maximum": -0.12867429572465028
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -2.1695492736794257,
+            "median": -0.22728777890471186,
+            "maximum": 0.8091539549190401
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -4.5837610867596865,
+            "median": -1.5419336775359334,
+            "maximum": 3.583863368570711
+          }
+        }
+      },
+      "G4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.3463317556407048,
+            "median": 3.113606282964078,
+            "maximum": 4.735379022992909
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -1.2913414074466871,
+            "median": 1.2046107876248513,
+            "maximum": 5.110404491441116
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -1.169236051908511,
+            "median": 2.2274735998540263,
+            "maximum": 4.900464257013277
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.9843080677574747,
+            "median": 1.6827574092634414,
+            "maximum": 2.3919561712732076
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -4.3572405524398405,
+            "median": -1.3520835470205306,
+            "maximum": 0.18863123832873185
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -4.529728124379176,
+            "median": 0.6315409670011256,
+            "maximum": 2.3004482811285243
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.4454488349340764,
+            "median": 3.1028176474562166,
+            "maximum": 3.633243938275271
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.7672520968670327,
+            "median": 2.756317746662937,
+            "maximum": 3.821997599683023
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -0.6743591837405134,
+            "median": 0.43717948594525824,
+            "maximum": 2.8608989874889827
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.10948061924329977,
+            "median": 0.4840266998331657,
+            "maximum": 1.4057150038817525
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.391927953562721,
+            "median": -0.7748776396189783,
+            "maximum": 0.16993006967767244
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -5.042789774369396,
+            "median": -1.4722587609087832,
+            "maximum": 5.196484001616355
+          }
+        }
+      },
+      "A4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.582313236023765,
+            "median": 4.071259749288917,
+            "maximum": 4.545658546646763
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.3857286502517425,
+            "median": 3.8812461954951303,
+            "maximum": 5.266845054597738
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -3.1822186573699476,
+            "median": -0.4339184947988812,
+            "maximum": 4.099345886395674
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.8418977697841967,
+            "median": 0.022553883637575822,
+            "maximum": 2.5462426414860886
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -6.216153114228476,
+            "median": -2.2719235412853536,
+            "maximum": 0.0654767805949028
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.631105415176641,
+            "median": -1.4233055204437957,
+            "maximum": 7.532241615013945
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 3.014376597624107,
+            "median": 3.357833903228581,
+            "maximum": 4.20491912415897
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.7221824308097098,
+            "median": 3.2769180593555056,
+            "maximum": 6.003958875217904
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.207466942820128,
+            "median": -0.40556734576123477,
+            "maximum": 1.6659118644740403
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.5966568850455616,
+            "median": 0.24302050816378795,
+            "maximum": 0.7168994299062703
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.383403649911301,
+            "median": -0.9346606513532905,
+            "maximum": -0.12660958900516306
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.475909854590199,
+            "median": -0.698281771220973,
+            "maximum": 1.116797579937952
+          }
+        }
+      },
+      "B4": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.0782922499925789,
+            "median": 3.2853312973177218,
+            "maximum": 4.882974355148669
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": -0.1861557670102485,
+            "median": 2.9609950741111213,
+            "maximum": 4.5148760094972715
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -0.9865206434638589,
+            "median": 0.29106344018776875,
+            "maximum": 2.0330502706103
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -1.212407608540559,
+            "median": 0.8682807660331804,
+            "maximum": 3.281819936674964
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -5.920624245819987,
+            "median": -0.8012724424191706,
+            "maximum": 2.8820079974339237
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -7.741074062032013,
+            "median": -0.14071874617169122,
+            "maximum": 14.586125229618055
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.2139732901487434,
+            "median": 3.035275729951481,
+            "maximum": 3.5646973637960784
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.032263074880035,
+            "median": 2.9228756487341094,
+            "maximum": 4.443786565477751
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.1663173779424674,
+            "median": 0.08411025400003669,
+            "maximum": 2.004852971496172
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": 0.08980170530205811,
+            "median": 0.6886343792628189,
+            "maximum": 1.7663846807053218
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -3.3337979773571114,
+            "median": -0.36379959193549816,
+            "maximum": 0.28906089188662065
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -2.502150687626475,
+            "median": -0.3045783170690797,
+            "maximum": 0.49027353403891993
+          }
+        }
+      },
+      "E5": {
+        "mic": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 1.3540248949697329,
+            "median": 3.093098154045908,
+            "maximum": 4.53473665992464
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 0.6840074194844021,
+            "median": 3.05640329358644,
+            "maximum": 7.707505550118746
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -5.50710251425158,
+            "median": -2.0406420331663933,
+            "maximum": 1.5716467039680353
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.6919798287428591,
+            "median": 0.7373755892787699,
+            "maximum": 3.1945792891491394
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -8.17877118790566,
+            "median": -3.680800471642941,
+            "maximum": -0.4738904482822903
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -10.941541457465384,
+            "median": -3.4718118408714957,
+            "maximum": 0.9179726727495279
+          }
+        },
+        "piezo_bus": {
+          "rms_dbfs": {
+            "count": 12,
+            "minimum": 2.3939811440618968,
+            "median": 3.490270485385061,
+            "maximum": 3.96039777455319
+          },
+          "fundamental_power_dbfs": {
+            "count": 12,
+            "minimum": 1.2584611761096482,
+            "median": 3.4662844019540504,
+            "maximum": 4.113387256793729
+          },
+          "upper_partial_to_fundamental_db": {
+            "count": 12,
+            "minimum": -2.057557139813893,
+            "median": -0.63072760153206,
+            "maximum": 1.757576355476055
+          },
+          "bass_fraction_db": {
+            "count": 12,
+            "minimum": -0.307673469911542,
+            "median": 0.21250692915030456,
+            "maximum": 2.0469281669415835
+          },
+          "held_decay_db": {
+            "count": 12,
+            "minimum": -7.221439587753395,
+            "median": -1.9133715131893947,
+            "maximum": -0.05943812994610553
+          },
+          "fundamental_decay_db": {
+            "count": 12,
+            "minimum": -8.173385363434804,
+            "median": -1.830352564333209,
+            "maximum": 0.05178568247605142
+          }
+        }
+      }
+    }
+  },
+  "known_existing_resonance": "Jumbo/Mahogany Thumb Dsharp4Gstring has8.1712dBneighborprominenceBefore,9.0385After; ramp adds.8673dB. Thisexistingpeak is distinct from eliminatedglobal55Dsharp3regression. No listener-preference conclusion is inferred.",
+  "full_report": "normal-register-ramp/report.json",
+  "larger_summary": "normal-register-ramp/summary.json",
+  "protocol": "Fixed-source native comparison of global +0.30 normal-share bias with the same bias limited by cubic smoothstep MIDI57\u201364. This is diagnostic candidate evidence, prior to production calibration.",
+  "profile_definition": {
+    "model": "Classic78 only, configured bridge model",
+    "before": "Original authored steel polarisation share, preserving Touch and take draw",
+    "global_normal55": "Add0.30to normal energy-share at all pitches; not a fixed55percent target",
+    "register_normal55": "Add0.30*smoothstep(clamp((MIDI_pitch-57)/7,0,1)); exactzero<=A3, full>=E4",
+    "same_pitch_across_strings": "The profile uses pitch rather than string or fret, with each fingering preserving its own legacy initial slope energy."
+  },
+  "prototype_frozen_paths": {
+    "global_binary": "build-resonance/evidence/construction/normal-direction-register/MechanicsRender",
+    "register_binary": "build-resonance/evidence/construction/normal-register-ramp/RegisterRender",
+    "provenance": "Each prototype directory retains renderer source,18DSP source/header snapshots and hashes."
+  },
+  "global_normal55_comparison": {
+    "renderer_sha256": "0de2962eb02feeb9acaa549f4790b97e7927baf8b7dcc12a6872ad9c1509a6c5",
+    "source_renderer_sha256": "bd8ac3af894552f417a171acc845433a5e1a2b0a3d56754bb1a271f5d7c97050",
+    "temporary_engine_sha256": "fe58aa5d78316fa02849f1284abddc3129ffab405dbb41343b569bf23d217fc2",
+    "coverage": {
+      "pitches_and_fingerings": 28,
+      "constructions": 12,
+      "styles": 3,
+      "microphone_captures": 2,
+      "variants": [
+        "before",
+        "normal55",
+        "normal85"
+      ],
+      "native_outputs": 6048
+    },
+    "checks": {
+      "native_outputs": 6048,
+      "finite_and_correct_frames": 6048,
+      "maximum_microphone_peak": 0.5381757020950317,
+      "maximum_piezo_bus_peak": 0.5830073952674866,
+      "retained_raw_outputs": 72,
+      "nonzero_audio_outputs": 6048,
+      "total_mic_samples_at_or_above_full_scale": 0,
+      "total_piezo_bus_samples_at_or_above_full_scale": 0,
+      "exact_initial_energy_matches_at_rendered_CSV_precision": 4032,
+      "compared_initial_energy_pairs": 4032
+    },
+    "global55_pooled_RMS_match_gain_db": -3.4947515432372747,
+    "low_regression": {
+      "construction": "JumboSpruce",
+      "note": "Dsharp3 MIDI51 Dstringchannel3",
+      "same_string_neighbors": "D3MIDI50/E3MIDI52 on sameDstring",
+      "stereo_thumb_neighbor_prominence_db": {
+        "before": 1.596619413826174,
+        "global55": 6.692486583387959
+      },
+      "stereo_finger_neighbor_prominence_db": {
+        "before": 1.222354796570758,
+        "global55": 6.07013171201504
+      },
+      "stereo_pick_neighbor_prominence_db": {
+        "before": 0.33716405581816744,
+        "global55": 3.5505412442865203
+      },
+      "mono_thumb_neighbor_prominence_db": {
+        "before": 1.370521323447375,
+        "global55": 5.03189454124141
+      },
+      "register55": "Exactsame native bytes as Before for this note and both neighbors acrossall12constructions/styles/bothmics."
+    }
+  },
+  "global_dsharp3_values_precision": "Values reproduced from frozen native metrics; printed comparisons rounded in main prose.",
+  "analysis": {
+    "scorer": "Tools/CompareConstructionResonance.py, frozenSHA in this document",
+    "windows_seconds": {
+      "attack": [
+        0.005,
+        0.08
+      ],
+      "sustain": [
+        0.08,
+        1.15
+      ],
+      "early": [
+        0.1,
+        0.3
+      ],
+      "late": [
+        0.95,
+        1.15
+      ],
+      "release": [
+        1.25,
+        1.9
+      ]
+    },
+    "sustain_spectral_method": "Welch Hann<=16384,50percentoverlap, meanLRpower; H1\u2013H8 bands \u00b1max(binwidth,1.5percentpartialfrequency)",
+    "neighbor_method": "SustainRMSdBFS minus arithmetic mean of adjacent semitoneRMS; chromatic57\u201364 group and Dsharp3 regression use one explicit string. No pernote normalization.",
+    "initial_energy_check_precision": "Prototype renderer prints six significant decimal digits in CSV. These4032global/2880register comparisons establish equality at that printedprecision. Exactnative hashes independently establish identicallowcutoff and fullhighcontrols."
+  },
+  "limitations": [
+    "Prototype hasvelocity100; mainmatrixuses96. Prototype doesnoteditEQorleveltables; finalcalibration canchange microphone output level even when low physical excitation is identical.",
+    "SimultaneousPiezoBus is scored as an observation; it is distinct from selecting the mainPiezo capture. A direction change alsochangespickupforce; it doesnotretainmic-onlycontrol invariance of earlierEQpasses.",
+    "Signal measurements establish no listener preference or realism. UserrejectedSecondEQforremainingThumb/Pickbanjo; acceptance of a production direction candidate is outside this evidence file.",
+    "JumboDsharp4Gstring alreadyhasstronglocalprominence; limitedcurve raises it byup to1.286dB among576chromatic comparisons. This remains a documented tradeoff."
+  ],
+  "local_reports": {
+    "global": "build-resonance/evidence/construction/normal-direction-register/report.json",
+    "register": "build-resonance/evidence/construction/normal-register-ramp/report.json",
+    "pressure_projection": "Docs/classical78-projection-attribution-2026-10-09.json",
+    "partial_decay": "build-resonance/evidence/construction/banjo-analysis/partial-decay.json",
+    "selected_low_note_auditions": "build-resonance/evidence/construction/normal-direction-register/jumbo-spruce-neighbor-audition",
+    "user_heard_high_note_auditions": "build-resonance/evidence/banjo-listening"
+  },
+  "reproduction": [
+    "python3 build-resonance/evidence/construction/ProbeNormalRegister.py",
+    "python3 build-resonance/evidence/construction/ProbeRegisterDirection.py",
+    "Frozenhelper argv: OUTPUT.f32 STYLE VARIANT SHAPE0to3 WOOD0to2 CAPTURE0or7 MIDI CHANNEL HOLD RELEASE; rate48000 andvelocity100. Each fullreport records everyexactcommand, outputSHA and native metrics. Scratchtelemetry is intentionally discarded except selectedauditionclips."
+  ],
+  "interrupted_production_recalibration_diagnostic": {
+    "status": "Rejected for chord-level regression; fourth-version player was not generated or published.",
+    "reported_validation_failure": "Parent reported fullCTest failures for Classic/Jumbo/Maple MonoMic: DADGAD at -10.84dB and OpenG at -9.18dB relative to default, against a 9dB quietness guard.",
+    "validation_failure_source": "Parent agent; this diagnostic does not claim an independent rerun of those chord tests.",
+    "renderer_sha256": "f6b538c31d5e976dc134bfeac8bb8f47a4ddbd6216cf9a720d25409397233e49",
+    "checks": {
+      "cases_scored": 166,
+      "native_clips_scored": 3210,
+      "maximum_native_peak": 0.5840064883232117,
+      "fullscale_samples": 0,
+      "scored_outputs_finite_nonzero_correct_frames": true
+    },
+    "original_second_pass_comparison": {
+      "clips": 1575,
+      "exact_native": 1575
+    },
+    "classic_second_pass_native_level_deltas_db": {
+      "stereo_mic-finger": {
+        "A2": {
+          "minimum": -2.6837816327747106,
+          "median": -2.0197478785249743,
+          "maximum": -1.0704315054288642
+        },
+        "A3": {
+          "minimum": -2.6837816344340553,
+          "median": -2.019747873859476,
+          "maximum": -1.0704315074522128
+        },
+        "G4": {
+          "minimum": -0.019567936010986386,
+          "median": 1.7151488998865112,
+          "maximum": 2.1307229125882117
+        },
+        "A4": {
+          "minimum": -0.384079775494115,
+          "median": 1.930068152809696,
+          "maximum": 3.5791070823430715
+        },
+        "B4": {
+          "minimum": -1.2735537261297907,
+          "median": 1.671786087884822,
+          "maximum": 3.130845989482303
+        },
+        "phrase": {
+          "minimum": -1.1138126923079668,
+          "median": -0.6782624043650056,
+          "maximum": -0.3019184251417002
+        }
+      },
+      "stereo_mic-pick": {
+        "A2": {
+          "minimum": -1.8501229930074317,
+          "median": -1.2630989322122623,
+          "maximum": -1.0627895286314128
+        },
+        "A3": {
+          "minimum": -1.8501229936917554,
+          "median": -1.2630989311221263,
+          "maximum": -1.0627895328182717
+        },
+        "G4": {
+          "minimum": 1.2603648068748399,
+          "median": 2.229128171500964,
+          "maximum": 3.0603469398937264
+        },
+        "A4": {
+          "minimum": 0.862679515442295,
+          "median": 2.3989745440577863,
+          "maximum": 3.0810431992467997
+        },
+        "B4": {
+          "minimum": 0.7433672689939854,
+          "median": 2.182649007569168,
+          "maximum": 2.993728494766202
+        },
+        "phrase": {
+          "minimum": -0.9349328096944376,
+          "median": -0.5706510047179734,
+          "maximum": -0.1120639372781227
+        }
+      },
+      "stereo_mic-thumb": {
+        "A2": {
+          "minimum": -3.037715626501935,
+          "median": -2.2989376912010258,
+          "maximum": -1.1755690465133668
+        },
+        "A3": {
+          "minimum": -3.037715624795517,
+          "median": -2.2989376923919735,
+          "maximum": -1.1755690482850696
+        },
+        "G4": {
+          "minimum": -0.432857848143513,
+          "median": 1.2867610327073038,
+          "maximum": 1.7995903400683346
+        },
+        "A4": {
+          "minimum": -0.5557175125596743,
+          "median": 1.7231828192675671,
+          "maximum": 3.4446126777143604
+        },
+        "B4": {
+          "minimum": -1.56132513795702,
+          "median": 1.4824780113004348,
+          "maximum": 2.978247677806536
+        },
+        "phrase": {
+          "minimum": -1.18610692045349,
+          "median": -0.6119043389332361,
+          "maximum": -0.23250543725252015
+        }
+      },
+      "mono_mic-finger": {
+        "A2": {
+          "minimum": -2.8832619016985106,
+          "median": -1.7738666525762685,
+          "maximum": -0.8172709376876313
+        },
+        "A3": {
+          "minimum": -2.8832619020780257,
+          "median": -1.7738666498643703,
+          "maximum": -0.8172709479228857
+        },
+        "G4": {
+          "minimum": 0.599230834598373,
+          "median": 1.5050142435944096,
+          "maximum": 2.0500713966088355
+        },
+        "A4": {
+          "minimum": -0.9006831894970588,
+          "median": 2.2288128564927874,
+          "maximum": 3.468603589559912
+        },
+        "B4": {
+          "minimum": -1.3978395576317126,
+          "median": 1.6212004532228868,
+          "maximum": 4.035179759178234
+        },
+        "phrase": {
+          "minimum": -1.6263895862874875,
+          "median": -0.5364431186063481,
+          "maximum": -0.2691828408347199
+        }
+      },
+      "mono_mic-pick": {
+        "A2": {
+          "minimum": -1.9002987523367239,
+          "median": -1.2231837944960624,
+          "maximum": -0.9052514090613144
+        },
+        "A3": {
+          "minimum": -1.9002987511393172,
+          "median": -1.223183796405145,
+          "maximum": -0.9052514088499493
+        },
+        "G4": {
+          "minimum": 0.9757776692990632,
+          "median": 1.4768080410126387,
+          "maximum": 2.9344859589145216
+        },
+        "A4": {
+          "minimum": 0.3523618725218114,
+          "median": 1.9452724856921542,
+          "maximum": 2.5776227045004134
+        },
+        "B4": {
+          "minimum": 0.4411838379882198,
+          "median": 2.025208067409057,
+          "maximum": 3.000165586650141
+        },
+        "phrase": {
+          "minimum": -0.8340487034326216,
+          "median": -0.5494117428643435,
+          "maximum": 0.2770784027794093
+        }
+      },
+      "mono_mic-thumb": {
+        "A2": {
+          "minimum": -2.9667860934018577,
+          "median": -2.0126851798243344,
+          "maximum": -0.8470717049744607
+        },
+        "A3": {
+          "minimum": -2.9667860873662377,
+          "median": -2.0126851834065747,
+          "maximum": -0.8470717023603598
+        },
+        "G4": {
+          "minimum": 0.21337057055565367,
+          "median": 1.2474678141428903,
+          "maximum": 1.7498100031319268
+        },
+        "A4": {
+          "minimum": -0.8841893034986867,
+          "median": 2.0606475629866274,
+          "maximum": 3.2732235981869096
+        },
+        "B4": {
+          "minimum": -1.5294957018575985,
+          "median": 1.332132581871118,
+          "maximum": 3.5780334694942226
+        },
+        "phrase": {
+          "minimum": -1.67799123217333,
+          "median": -0.5459915539699463,
+          "maximum": 0.0068827684812653445
+        }
+      }
+    },
+    "interpretation": "At pitches<=A3, fixed-source excitation controls were exact before calibration. This recalibrated diagnostic changed microphone level by a common scalar for A2 and A3 within each case; it therefore does not preserve the final low-note byte hashes.",
+    "evidence_directory": "build-resonance/evidence/construction/diagnostics/pluck-pre-chord-fix",
+    "manifest_sha256": "b63c0d3abd550f639b1707b17185c48f6f0bd7f4f7e58194639397197fea3ebd",
+    "partial_summary_sha256": "84cca27ac818bd223b9dcb3349727c1bdabead286352f11bb93f7ea28e381ee4",
+    "native_retention": "80 selected native controls retained; 3210 scored hashes/metrics and frozen binary retained. Discarded scratch telemetry can be rendered again.",
+    "reproduction": {
+      "command": "python3 Tools/CompareConstructionResonance.py --renderer pre_chord_fix=build-resonance/evidence/construction/diagnostics/pluck-pre-chord-fix/AcustraPerformanceRenderer --output build-resonance/evidence/reproduce-pre-chord-fix --jobs 2 --no-wav",
+      "notes": "This reruns the complete216-case diagnostic with the frozen failed renderer under a new label/output. It does not regenerate or publish the main player. Historical commands in manifest.json used the former pluck_candidate directory."
+    }
+  },
+  "earlier_curve_feasibility": {
+    "status": "Read-only bounded diagnostic; no earlier curve or capture offset applied or accepted. Broad chromatic probing and fourth-version publication were stopped.",
+    "construction": "Classic78 / Jumbo / Maple / Finger",
+    "report_sha256": "c4b5f7c0e9551754a4aad39030c80fcfd117152c9d440e1e677f7d7600a7d28e",
+    "report": "build-resonance/evidence/construction/diagnostics/earlier-ramp-feasibility/report.json",
+    "producer": "Classic audit agent; report copied and hash-verified by matrix agent.",
+    "phrase_normalization": "Actual exact Tools/CalibrateConstructionLoudness.py phrase score and integrated BS.1770 meter. One independently measured scalar per capture brings the candidate phrase to the unchanged Original defaultStereo phrase LU. No per-note level changes. All native rendered peaks verified below limiter knee, so scalar addition in dB is linear.",
+    "guard_protocol": "Actual ConstructionMatrixTests play routine: open6strings,0.8velocity,12msstrumspacing,.35sec,K-weighted channelmeanpower. Samecapture/tuning defaultOriginal relative reference.",
+    "default_reference_phrase_lufs": -24.051308128239192,
+    "diagnostic_hashes": {
+      "AcustraEngine.cpp": "0cd5eda8dd1e3960acbcf9a1b248bf3db372273aed443f683e62e82245fbb99b",
+      "PluckPolarisationData.h": "d380fbb4a132a3b9158c59194861ceff10b42ab07e8952778ccfdb8f23095eb6",
+      "ConstructionLoudnessData.h": "740eb66c6aa3e4ce8a648cceff76ef187902eba007689390a03efc42dec352f0",
+      "ChordProbe": "893c230c6c0d574e70fd3dd0b94c7afdbdb729a171c9d73c14a2d59fabf2fba6",
+      "PerformanceRenderer": "e40766f51c79a220532a86b74e5c9942aa8a2e10d190126322bbe2d6c71313b6",
+      "phrases.txt": "4eadb7218ff6a860aaede9bf7914c8ba94f60469c5f633eae6b0b40776545818"
+    },
+    "curves": [
+      {
+        "start_midi": 57,
+        "end_midi": 64,
+        "phrase_additional_scalar_after_recalibration_db": {
+          "stereo_mic": 1.6538589164838413e-08,
+          "mono_mic": 8.112684213301691e-08
+        },
+        "phrase_normalized_chord_relative_db": [
+          {
+            "capture": "stereo_mic",
+            "tuning": "Standard",
+            "relative_db": -4.409078707343404
+          },
+          {
+            "capture": "stereo_mic",
+            "tuning": "DADGAD",
+            "relative_db": -7.347885463919267
+          },
+          {
+            "capture": "stereo_mic",
+            "tuning": "OpenG",
+            "relative_db": -5.914886665474807
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "Standard",
+            "relative_db": -5.732107391447375
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "DADGAD",
+            "relative_db": -10.84037095910951
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "OpenG",
+            "relative_db": -9.184375855330469
+          }
+        ],
+        "profile_kind": "Pitch-limited smoothstep +0.30 normal-share ramp"
+      },
+      {
+        "start_midi": 52,
+        "end_midi": 57,
+        "phrase_additional_scalar_after_recalibration_db": {
+          "stereo_mic": -0.8462444212397706,
+          "mono_mic": -0.4521683436921933
+        },
+        "phrase_normalized_chord_relative_db": [
+          {
+            "capture": "stereo_mic",
+            "tuning": "Standard",
+            "relative_db": -3.635833586047209
+          },
+          {
+            "capture": "stereo_mic",
+            "tuning": "DADGAD",
+            "relative_db": -5.706116865129379
+          },
+          {
+            "capture": "stereo_mic",
+            "tuning": "OpenG",
+            "relative_db": -4.306345214925212
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "Standard",
+            "relative_db": -5.5798305154976795
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "DADGAD",
+            "relative_db": -9.830899964242256
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "OpenG",
+            "relative_db": -8.299646991508226
+          }
+        ],
+        "profile_kind": "Pitch-limited smoothstep +0.30 normal-share ramp"
+      },
+      {
+        "start_midi": 52,
+        "end_midi": 64,
+        "phrase_additional_scalar_after_recalibration_db": {
+          "stereo_mic": -0.4335847617492625,
+          "mono_mic": -0.21046574471975532
+        },
+        "phrase_normalized_chord_relative_db": [
+          {
+            "capture": "stereo_mic",
+            "tuning": "Standard",
+            "relative_db": -4.373324584559104
+          },
+          {
+            "capture": "stereo_mic",
+            "tuning": "DADGAD",
+            "relative_db": -7.025345656898873
+          },
+          {
+            "capture": "stereo_mic",
+            "tuning": "OpenG",
+            "relative_db": -5.5749335958296165
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "Standard",
+            "relative_db": -5.766549940368908
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "DADGAD",
+            "relative_db": -10.61155001144381
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "OpenG",
+            "relative_db": -8.967170944280856
+          }
+        ],
+        "profile_kind": "Pitch-limited smoothstep +0.30 normal-share ramp"
+      },
+      {
+        "start_midi": 53,
+        "end_midi": 59,
+        "phrase_additional_scalar_after_recalibration_db": {
+          "stereo_mic": -0.7238371592520707,
+          "mono_mic": -0.4062697344042583
+        },
+        "phrase_normalized_chord_relative_db": [
+          {
+            "capture": "stereo_mic",
+            "tuning": "Standard",
+            "relative_db": -4.3698627309720095
+          },
+          {
+            "capture": "stereo_mic",
+            "tuning": "DADGAD",
+            "relative_db": -6.872962852149575
+          },
+          {
+            "capture": "stereo_mic",
+            "tuning": "OpenG",
+            "relative_db": -5.402197576118535
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "Standard",
+            "relative_db": -5.844239471292305
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "DADGAD",
+            "relative_db": -10.535144153393954
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "OpenG",
+            "relative_db": -8.886829203262977
+          }
+        ],
+        "profile_kind": "Pitch-limited smoothstep +0.30 normal-share ramp"
+      },
+      {
+        "start_midi": -1,
+        "end_midi": 64,
+        "phrase_additional_scalar_after_recalibration_db": {
+          "stereo_mic": -0.9712530070162053,
+          "mono_mic": -0.7853354859698207
+        },
+        "phrase_normalized_chord_relative_db": [
+          {
+            "capture": "stereo_mic",
+            "tuning": "Standard",
+            "relative_db": -2.9551625044053793
+          },
+          {
+            "capture": "stereo_mic",
+            "tuning": "DADGAD",
+            "relative_db": -4.571070379037431
+          },
+          {
+            "capture": "stereo_mic",
+            "tuning": "OpenG",
+            "relative_db": -3.2089438279171
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "Standard",
+            "relative_db": -5.459782603831304
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "DADGAD",
+            "relative_db": -8.60210540172341
+          },
+          {
+            "capture": "mono_mic",
+            "tuning": "OpenG",
+            "relative_db": -6.965511347642639
+          }
+        ],
+        "profile_kind": "Global +0.30 normal-share control; excluded by its measured low D#3 regression"
+      }
+    ],
+    "closest_curve_tradeoff": {
+      "start_midi": 52,
+      "end_midi": 57,
+      "exact_phrase_normalized_mono_DADGAD_relative_db": -9.830899964242256,
+      "minimum_positive_capture_offset_for_9dB_guard_db": 0.8308999642422563,
+      "illustrative_capture_offset_db": 0.84,
+      "resulting_mono_DADGAD_relative_db": -8.990899964242256,
+      "resulting_phrase_level_offset_LU": 0.84,
+      "remaining_margin_to_plus1LU_tolerance_LU": 0.16,
+      "status": "Intentional +0.84dB mono capture offset was considered but not applied. It would abandon the exact equal-capture target to fit the alternate-chord guard."
+    },
+    "protected_ramp_result": "None of the four tested pitch-limited curves meets the 9dB mono DADGAD guard after exact per-capture phrase normalization. The global control passes that chord guard but is excluded by the separately measured new low D#3 prominence.",
+    "full_frozen_archive": "build-resonance/evidence/validation/pluck/chord-feasibility",
+    "archive_contents": "Frozen DSP/header snapshot, diagnostic renderer source and binaries, exact calibration phrase score, native six-chord CSVs, report.json and summary.json."
+  },
+  "prepared_unrun_tools": {
+    "full_earlier_curve_sweep": {
+      "script": "build-resonance/evidence/construction/ProbeRegisterEarly.py",
+      "script_sha256": "1ca03d595096f5906f5f155aeaf5e570878147b0fbdb7e109390e78ba1f3f4b9",
+      "coverage": "Prepared full D-string MIDI50\u201366, G-string55\u201365, A4/E5 high-E anchors; all12 constructions / three styles / two mics plus simultaneous PiezoBus, 4320 outputs. Not run."
+    },
+    "independent_four_version_player": {
+      "script": "build-resonance/evidence/construction/CreatePluckAudition.py",
+      "script_sha256": "9bd1c036868d465a818487f52ea94d7cbe3582736c8c81e351db50f038e78431",
+      "status": "Prepared; never invoked. Would preserve current player/PCM16 paths and use a separate pluck.html page."
+    },
+    "four_version_aggregate": {
+      "script": "build-resonance/evidence/construction/AggregatePluck.py",
+      "script_sha256": "04b55612bdb5829ed457195924e5e9c050fdd267374387d45c579799b66f6004",
+      "status": "Prepared; not invoked because the calibrated physical candidate failed regression tests."
+    }
+  },
+  "current_audition_player": {
+    "current_player": "/Users/vojta/Dev/virtual-instrument-acustra-resonance-20261009/build-resonance/evidence/index.html",
+    "versions": [
+      "Before",
+      "First pass",
+      "Second pass"
+    ],
+    "PCM16_files_verified": 12528,
+    "all_WAV_hashes_match_existing_manifest": true,
+    "all_WAV_stereo_PCM16_48k_expected_frames": true,
+    "existing_shared_gain_db": 3.4062228629951843,
+    "html_sha256": "ca904dc93d21411c6c88ffdf35fda2d6f46ea00f52ce16f5e8addd1298b1fada",
+    "audition_manifest_sha256": "6f79d7de7cd09c53908b4f23ad8102f7470b14b6772510800889466941f0f74f",
+    "fourth_version_player_exists": false,
+    "new_variant_renders_stopped": true
+  },
+  "canonical_restore_provenance": "build-resonance/evidence/validation/pluck/candidate-freeze-20261009"
+}

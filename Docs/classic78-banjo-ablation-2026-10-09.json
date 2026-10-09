@@ -1,0 +1,212 @@
+{
+  "schema": "acustra_classic78_causal_banjo_ablation_v1",
+  "date": "2026-10-09",
+  "scope": "Diagnostic ablations; no physical bridge/strings shipping changes and no listener verdict inferred. User auditioned the first presence-only candidate and reported Classic banjo remained.",
+  "baseline": {
+    "source_commit": "8bd0a2fffd2ef9414f08898c619d798366727b99",
+    "frozen_dsp_library_sha256": "a68e7983210981d91de3059c3c209257d9cdcf77c8627b072d73b0e08a65425c",
+    "diagnostic_source_sha256": "bff5e55536781f1f2eda733f0777c4bd9842af810ae02ad6e8b3011c3376814d",
+    "diagnostic_binary_sha256": "38c8ae4912fe51b4c750f7ec30029a629c73dbc41ae77e968806f25f0854ed03",
+    "source_provenance_limit": "The frozen static library was copied from build-resonance after the first-pass capture refinement and before the later -3/0 microphone refinement. Its physical coefficients were unchanged. Diagnostics explicitly retain the first-pass -6/3 contour; source commit alone does not represent that dirty capture/table state. Archived diagnostic source and binary plus frozen library provide the exact executable reference.",
+    "renderer_build": "AppleClang21, nativearm64,c++ -std=c++17 -O3 -DNDEBUG; frozen DSP library was AppleClangRelease universalarm64/x86_64."
+  },
+  "protocol": {
+    "sample_rate_hz": 48000,
+    "shape": "auditorium",
+    "wood": "mahogany",
+    "model": "bellido1978",
+    "velocity_midi": 100,
+    "touch": 0.58,
+    "pluck_position": 0.28,
+    "room": 0.0,
+    "capture": "stereo microphones plus independent dedicated piezo",
+    "reset": "fresh engine before every note, matched random initial state",
+    "notes": [
+      {
+        "name": "A2",
+        "midi": 45,
+        "channel": 2
+      },
+      {
+        "name": "A3",
+        "midi": 57,
+        "channel": 4
+      },
+      {
+        "name": "A4",
+        "midi": 69,
+        "channel": 6
+      },
+      {
+        "name": "E5",
+        "midi": 76,
+        "channel": 6
+      }
+    ],
+    "note_on_seconds": 0,
+    "note_off_seconds": 2.25,
+    "seconds_per_note": 3,
+    "columns": [
+      "mic_left",
+      "mic_right",
+      "piezo",
+      "body_heave_force",
+      "body_moment_force",
+      "reaction_heave",
+      "bridge_velocity",
+      "piezo_force"
+    ],
+    "analysis": "Hann250ms windows,\u00b1max(8Hz,0.8%harmonic) bands capped to25%f0;6 harmonics; stereo energies summed; leastsquaresdB/s overcenters0.25\u20132.05sec (held until2.25s).",
+    "decay_caution": "Reported force/moment/microphone decay is a band-energy regression of a coupled held note, not a free body-mode T60 or an isolated plane/string parameter."
+  },
+  "ablations": {
+    "baseline": "First-pass microphone contour -6dB500HzQ1.2/+3dB1400HzQ1.2. All measured mechanics retained.",
+    "half-mobility": "Physical bridgeMobilityScale halved 0.754677154->0.377338577; measured modal frequencies/Q and broadband conductance floor retained. This affects both normal and rocking residue matrices, coupled string motion and dedicated pickup.",
+    "no-plate-floor": "Remove bridge conductance-floor calibration only; a diagnostic of high-band drainage, not adoption candidate.",
+    "no-burst": "steel.transientScale=0, retaining string initial displacement/release.",
+    "no-convergence": "Divide configured microphone complex residues by existing -0.4375dB/octave convergence weighting; mechanical/pickup trajectories exact.",
+    "no-pick-velocity": "pickReleaseVelocityShare=0 for Pick only; same release slip/aperture.",
+    "original-control": "Same steel-string controls on Original/Auditorium/Mahogany. Model and own capture changed together; not a one-variable ablation.",
+    "narrow-mic": "Native post-sum -6dB notch at decoded Classic body pole3 (410Hz family), Q3;1400gain0.",
+    "half-mobility-narrow": "Combine preceding native narrow capture and half-mobility. Same frozen baseline library."
+  },
+  "mobility_qualification": {
+    "conclusion": "Intentional model adaptation; no demonstrated gain-unit or factor-of-two calibration bug.",
+    "original": "g21 flamenca bridge is reduced by measured steelTopMobilityRatio0.274 (FyldeFalstaff/g21 geometric mean |Y| over80Hz\u20134kHz), together with shared fitted bridgeMobilityScale0.754677154.",
+    "classic": "Bellido uses its own absolute qualified measured classical mobility at unit relative gain for the shipped calibration, explicitly leaving the0.274 proxy correction with Original. Both play the same steel strings.",
+    "accepted_decision": "Docs/decisions.md F18 (2026-09-29) explicitly retains Bellido full mobility. AcustraEngine.cpp configureBridge also documents approximately1.8times Original target and faster E4 drainage.",
+    "limits": "Halving mobility is a reversible authored timbre experiment. These output/force data show a coupled decay contribution, but do not establish that a real Bellido strung with steel requires exactly half the measured classical mobility."
+  },
+  "findings": {
+    "A4_pick": "First-pass body-moment H1 decays13.1dB/s and H3 only6.1; Original control H1 7.1/H3 12.6. Half mobility yields H1 7.6/H3 7.0 and reduces microphone H3/H1 approximately5.2dB.",
+    "isolations": "Removing microphone convergence retains exact force/piezo samples and slightly increases A4H3/H1 (~0.5dB). Removing Pick release velocity yields only~0.8dB reduction. Removing attack burst changes held A4H3/H1 by only~0.2dB. Removing bridge floor worsens it~9.7dB.",
+    "partial_tradeoff": "Half mobility raises native level and changes pitch/decay and pickup. It improves A4Pick H3 contrast much more than Finger/Thumb H2 dominance (~1dB). It is kept separate from mic-only candidate for audition.",
+    "no_subjective_claim": "No listening preference is inferred from these descriptors. The user must audition focused variants."
+  },
+  "focused_listening": {
+    "score": "G4,A4,B4,E5 (MIDI67/69/71/76, all string6), fresh engine per note, held2.25seconds with0.75secondrelease.",
+    "path": "build-resonance/evidence/banjo-listening",
+    "normalization": "One candidate gain per experiment from the complete combined three-technique phrase; one shared final gain for all listening files. No per-note/per-technique matching. Dedicated pickup files use the shared gain only.",
+    "renderer_source_sha256": "bfdf64b6e93c71ae2dd58b6ff29a355434173f2c4187f59d6d648f157e6b0b91",
+    "renderer_binary_sha256": "deff6956e09bfef230abd430e3be8794df54f56697ad385441f9abb323d96224",
+    "shared_gain_and_proof": {
+      "controls": "Classic78 AuditoriumMahogany, velocity100, Touch0.58, Pluck0.28, Room0. Each pitch uses a fresh engine and fixed channel: G4/string6,A4/string6,B4/string6,E5/string6. Notes hold2.25sec, with0.75sec release persegment.",
+      "variants": {
+        "baseline": "First candidate retained by user: -6dB500HzQ1.2,+3dB1400HzQ1.2; full measured mobility.",
+        "broad-mic-only": "Only summed microphone capture changes: -3dB500HzQ1.2, no1400Hzpresenceboost.",
+        "half-mobility": "Only physical bridge calibration changes: bridgeMobilityScale0.754677154->0.377338577; microphone contour unchanged. Additional broad plate floor unchanged."
+      },
+      "normalization": "One candidate gain per variant measured once over all three complete native microphone phrases, then applied to every note and all techniques. One final listening gain shared by baseline/candidates. Native floats and telemetry retained. No per-note or per-technique normalization.",
+      "sample_rate": 48000,
+      "gains": {
+        "broad-mic-only": {
+          "candidate_phrase_gain": 0.8713904745614456,
+          "candidate_phrase_gain_db": -1.1957438356300942,
+          "common_listening_gain_db": 12.53180177414669
+        },
+        "half-mobility": {
+          "candidate_phrase_gain": 0.8467064425337368,
+          "candidate_phrase_gain_db": -1.4453427139514232,
+          "common_listening_gain_db": 12.53180177414669
+        }
+      },
+      "proof": {
+        "finger-broad-mic-only": {
+          "body_force_moment_reaction_velocity_exact": true,
+          "native_piezo_exact": true,
+          "baseline_native_peak": 0.18668769299983978,
+          "candidate_native_peak": 0.21888519823551178,
+          "wav": "build-resonance/evidence/banjo-listening/focus-finger-broad-mic-only-mic-phrase-match-AB.wav",
+          "wav_sha256": "047611cbd6cc536efdf7811e02602c7b9fdca2a80aef234c8e634779f8f5f9ac"
+        },
+        "pick-broad-mic-only": {
+          "body_force_moment_reaction_velocity_exact": true,
+          "native_piezo_exact": true,
+          "baseline_native_peak": 0.18082943558692932,
+          "candidate_native_peak": 0.1911466419696808,
+          "wav": "build-resonance/evidence/banjo-listening/focus-pick-broad-mic-only-mic-phrase-match-AB.wav",
+          "wav_sha256": "bd099f3b373515276b3b72f94c6cdb534ce6b3d8279b6724a8208b943abb9cb9"
+        },
+        "thumb-broad-mic-only": {
+          "body_force_moment_reaction_velocity_exact": true,
+          "native_piezo_exact": true,
+          "baseline_native_peak": 0.20469754934310913,
+          "candidate_native_peak": 0.24165573716163635,
+          "wav": "build-resonance/evidence/banjo-listening/focus-thumb-broad-mic-only-mic-phrase-match-AB.wav",
+          "wav_sha256": "ea43a03d132af0af42db12aa6fb495948025819e05a23f883d7e89813826653c"
+        },
+        "finger-half-mobility": {
+          "body_force_moment_reaction_velocity_exact": false,
+          "native_piezo_exact": false,
+          "baseline_native_peak": 0.18668769299983978,
+          "candidate_native_peak": 0.15553103387355804,
+          "wav": "build-resonance/evidence/banjo-listening/focus-finger-half-mobility-mic-phrase-match-AB.wav",
+          "wav_sha256": "8ca89430e94a367ed5689505a22062bdd4fe44e4dd15664ba3f6db9942f52b6a"
+        },
+        "pick-half-mobility": {
+          "body_force_moment_reaction_velocity_exact": false,
+          "native_piezo_exact": false,
+          "baseline_native_peak": 0.18082943558692932,
+          "candidate_native_peak": 0.18849556148052216,
+          "wav": "build-resonance/evidence/banjo-listening/focus-pick-half-mobility-mic-phrase-match-AB.wav",
+          "wav_sha256": "2b8320c4899285665ae2a5508fff79119597920cbc7ac9589d3f0b493381370c"
+        },
+        "thumb-half-mobility": {
+          "body_force_moment_reaction_velocity_exact": false,
+          "native_piezo_exact": false,
+          "baseline_native_peak": 0.20469754934310913,
+          "candidate_native_peak": 0.18227560818195343,
+          "wav": "build-resonance/evidence/banjo-listening/focus-thumb-half-mobility-mic-phrase-match-AB.wav",
+          "wav_sha256": "9597468fc9fce435131608bc4fd236e52d9f763e0ac08d6b5426acbc6049daae"
+        }
+      }
+    },
+    "http_base": "http://127.0.0.1:18789/banjo-listening/",
+    "data": "Native8-columnf32, WAVs, diagnosticrenderer source/binary and frozen DSP library all copied under the listening path.",
+    "measurements": [
+      {"technique":"finger","variant":"baseline","native_f32_sha256":"f4866cea1aa5988c29705c4a2c8b324d647fa5e73a62265729e943a15f5d4502","notes":{"G4":{"mic":[-7.8677,-15.7936,83.5919,-8.7341,-16.3235],"piezo":[-9.8912,-19.6234,43.5298,0.7246,-15.5712],"body_heave_force":[-8.6671,-19.245,58.9207,-1.9216,-18.5131],"body_moment_force":[-13.5829,-8.0915,80.2797,-6.5359,-24.0132],"reaction_heave_force":[-9.8049,-19.5057,43.0837,0.8588,-15.7711]},"A4":{"mic":[-10.289,-13.7525,18.5474,6.1539,-13.9355],"piezo":[-11.9488,-18.7106,45.382,0.4276,-14.8664],"body_heave_force":[-9.2553,-19.1403,62.4087,-2.5499,-18.5538],"body_moment_force":[-13.5527,-8.8956,98.6257,-20.4959,-33.9532],"reaction_heave_force":[-11.6538,-18.7553,32.6158,2.8139,-12.7097]},"B4":{"mic":[-14.4215,-20.244,54.7368,-2.2028,-14.4337],"piezo":[-18.2177,-20.6458,63.9901,-3.0712,-21.1589],"body_heave_force":[-16.4724,-20.9375,82.5024,-7.3299,-24.2754],"body_moment_force":[-3.5592,-18.7352,81.1555,-8.9988,-19.4884],"reaction_heave_force":[-17.9965,-20.6464,70.3027,-4.2566,-22.2835]},"E5":{"mic":[-14.6951,-13.7854,96.5451,-16.4009,-24.5822],"piezo":[-16.3368,-14.551,94.2362,-12.75,-25.9139],"body_heave_force":[-16.343,-14.6176,93.9451,-12.5206,-25.2691],"body_moment_force":[-7.3759,-12.7694,81.8291,-7.5979,-20.8429],"reaction_heave_force":[-16.2187,-14.6164,94.5255,-12.8271,-26.6197]}}},
+      {"technique":"finger","variant":"broad-mic-only","native_f32_sha256":"112b0ff6b9da537f56c2400e98cf332f37245d936bb311de978bb323a80647d6","notes":{"G4":{"mic":[-7.8661,-15.7921,89.3614,-10.3305,-20.3522],"piezo":[-9.8912,-19.6234,43.5298,0.7246,-15.5712],"body_heave_force":[-8.6671,-19.245,58.9207,-1.9216,-18.5131],"body_moment_force":[-13.5829,-8.0915,80.2797,-6.5359,-24.0132],"reaction_heave_force":[-9.8049,-19.5057,43.0837,0.8588,-15.7711]},"A4":{"mic":[-10.2882,-13.7502,30.3672,3.4067,-18.9699],"piezo":[-11.9488,-18.7106,45.382,0.4276,-14.8664],"body_heave_force":[-9.2553,-19.1403,62.4087,-2.5499,-18.5538],"body_moment_force":[-13.5527,-8.8956,98.6257,-20.4959,-33.9532],"reaction_heave_force":[-11.6538,-18.7553,32.6158,2.8139,-12.7097]},"B4":{"mic":[-14.4209,-20.2444,74.4057,-5.8568,-19.7736],"piezo":[-18.2177,-20.6458,63.9901,-3.0712,-21.1589],"body_heave_force":[-16.4724,-20.9375,82.5024,-7.3299,-24.2754],"body_moment_force":[-3.5592,-18.7352,81.1555,-8.9988,-19.4884],"reaction_heave_force":[-17.9965,-20.6464,70.3027,-4.2566,-22.2835]},"E5":{"mic":[-14.6936,-13.7866,98.3569,-20.3716,-27.5747],"piezo":[-16.3368,-14.551,94.2362,-12.75,-25.9139],"body_heave_force":[-16.343,-14.6176,93.9451,-12.5206,-25.2691],"body_moment_force":[-7.3759,-12.7694,81.8291,-7.5979,-20.8429],"reaction_heave_force":[-16.2187,-14.6164,94.5255,-12.8271,-26.6197]}}},
+      {"technique":"finger","variant":"half-mobility","native_f32_sha256":"9be1a099b2193d7ca627117561c6186d787398a9a83ce3847b862ff282ff1315","notes":{"G4":{"mic":[-15.3176,-15.8663,79.6654,-7.2916,-14.4364],"piezo":[-17.1459,-19.2977,33.4468,2.577,-10.9683],"body_heave_force":[-17.8242,-19.0992,48.5014,-0.1089,-14.1163],"body_moment_force":[-5.7557,-10.4545,56.9633,-1.6191,-19.5329],"reaction_heave_force":[-17.5297,-19.2372,36.2997,2.0874,-12.0322]},"A4":{"mic":[-12.4913,-15.5188,22.8259,5.173,-17.1649],"piezo":[-16.3102,-18.4203,59.2653,-1.9363,-17.033],"body_heave_force":[-15.1157,-18.5577,82.125,-6.8957,-22.5135],"body_moment_force":[-8.1827,-12.1526,97.3072,-17.732,-26.8115],"reaction_heave_force":[-16.3043,-18.4302,62.4993,-2.4939,-17.8371]},"B4":{"mic":[-9.9011,-17.1732,67.5547,-4.3541,-16.5489],"piezo":[-9.5451,-18.3746,78.6209,-6.1164,-24.1154],"body_heave_force":[-9.8137,-18.3499,86.0086,-8.3305,-25.8673],"body_moment_force":[-7.1826,-15.1797,74.2239,-5.9393,-17.8541],"reaction_heave_force":[-9.8267,-18.3746,81.7876,-6.928,-25.003]},"E5":{"mic":[-14.4399,-14.3506,98.1414,-18.8904,-28.0262],"piezo":[-16.1851,-16.4137,93.6377,-12.0859,-29.8657],"body_heave_force":[-16.7259,-16.4732,93.918,-12.231,-30.3516],"body_moment_force":[-4.8685,-12.587,55.1621,-2.2293,-13.6177],"reaction_heave_force":[-16.183,-16.4686,94.1745,-12.3778,-30.9188]}}},
+      {"technique":"pick","variant":"baseline","native_f32_sha256":"4a639bb5615387b1a2f90827a4fa57ba1232a6621f4e00396b1835da0569edcc","notes":{"G4":{"mic":[-7.9428,-14.7669,39.6185,-5.8396,-1.0858],"piezo":[-9.7134,-18.8024,14.4407,4.7876,0.6924],"body_heave_force":[-8.5483,-18.3894,26.3631,1.815,-2.877],"body_moment_force":[-12.8649,-6.8024,42.405,-2.1296,-6.2217],"reaction_heave_force":[-9.7041,-18.6619,15.1607,4.826,0.1626]},"A4":{"mic":[-8.6328,-12.1004,4.1456,11.8147,5.6709],"piezo":[-12.1688,-16.6817,11.7019,6.0094,2.6834],"body_heave_force":[-8.4462,-16.8685,23.0718,2.6613,-1.5246],"body_moment_force":[-13.129,-6.0831,86.1846,-14.3249,-11.3175],"reaction_heave_force":[-11.8123,-16.6092,7.4716,8.321,4.7782]},"B4":{"mic":[-12.8601,-18.5568,8.4859,4.4384,7.8751],"piezo":[-15.135,-18.2023,18.2071,3.4864,2.3039],"body_heave_force":[-14.4337,-18.5773,35.4203,-0.8081,-1.1393],"body_moment_force":[-4.4033,-8.9789,45.5562,-3.4187,-5.9785],"reaction_heave_force":[-15.4507,-18.1853,23.226,2.2278,0.9584]},"E5":{"mic":[-14.2972,-14.0301,74.0711,-10.4831,-6.2549],"piezo":[-16.4813,-16.2517,70.4497,-6.9014,-6.9984],"body_heave_force":[-16.8945,-16.3826,69.9095,-7.1993,-6.423],"body_moment_force":[-9.2204,-9.6864,57.0599,-3.2759,-6.6606],"reaction_heave_force":[-16.395,-16.3814,72.2266,-7.1756,-7.3442]}}},
+      {"technique":"pick","variant":"broad-mic-only","native_f32_sha256":"7c6351d7ba3b4959a1cc2dbbaf7ed2d647ae77f106a96ce2e543fd6fb3eef9a9","notes":{"G4":{"mic":[-7.9451,-14.7641,59.0716,-7.4382,-5.1169],"piezo":[-9.7134,-18.8024,14.4407,4.7876,0.6924],"body_heave_force":[-8.5483,-18.3894,26.3631,1.815,-2.877],"body_moment_force":[-12.8649,-6.8024,42.405,-2.1296,-6.2217],"reaction_heave_force":[-9.7041,-18.6619,15.1607,4.826,0.1626]},"A4":{"mic":[-8.631,-12.0982,8.4215,9.0648,0.6382],"piezo":[-12.1688,-16.6817,11.7019,6.0094,2.6834],"body_heave_force":[-8.4462,-16.8685,23.0718,2.6613,-1.5246],"body_moment_force":[-13.129,-6.0831,86.1846,-14.3249,-11.3175],"reaction_heave_force":[-11.8123,-16.6092,7.4716,8.321,4.7782]},"B4":{"mic":[-12.8597,-18.557,21.2295,0.782,2.5358],"piezo":[-15.135,-18.2023,18.2071,3.4864,2.3039],"body_heave_force":[-14.4337,-18.5773,35.4203,-0.8081,-1.1393],"body_moment_force":[-4.4033,-8.9789,45.5562,-3.4187,-5.9785],"reaction_heave_force":[-15.4507,-18.1853,23.226,2.2278,0.9584]},"E5":{"mic":[-14.2942,-14.0321,85.4605,-14.4483,-9.2438],"piezo":[-16.4813,-16.2517,70.4497,-6.9014,-6.9984],"body_heave_force":[-16.8945,-16.3826,69.9095,-7.1993,-6.423],"body_moment_force":[-9.2204,-9.6864,57.0599,-3.2759,-6.6606],"reaction_heave_force":[-16.395,-16.3814,72.2266,-7.1756,-7.3442]}}},
+      {"technique":"pick","variant":"half-mobility","native_f32_sha256":"6ce85d8d76a1d0db9aad98c0cb721a31a96374e4f1198e1e8c5b780209b690ae","notes":{"G4":{"mic":[-14.1527,-14.4231,33.727,-3.7326,0.1891],"piezo":[-15.5255,-18.0169,9.4362,6.7308,3.9924],"body_heave_force":[-17.2037,-17.8738,17.2117,3.9494,0.7442],"body_moment_force":[-5.5951,-7.5736,23.9729,1.9389,-4.8043],"reaction_heave_force":[-16.2662,-18.0127,11.228,6.1727,2.8743]},"A4":{"mic":[-11.9596,-12.6687,6.1798,10.8144,0.4609],"piezo":[-15.8447,-17.2126,18.7001,3.7455,0.1776],"body_heave_force":[-14.4971,-17.2777,42.6553,-1.1352,-5.2434],"body_moment_force":[-7.6281,-6.9932,79.1882,-14.0366,-10.3248],"reaction_heave_force":[-15.7076,-17.1502,21.2932,3.223,-0.5691]},"B4":{"mic":[-9.2155,-15.7446,15.9374,1.1343,4.7729],"piezo":[-8.8089,-17.7512,36.7981,-0.7157,-2.0176],"body_heave_force":[-9.1563,-17.7708,49.1195,-2.9542,-4.0343],"body_moment_force":[-7.1858,-10.0262,27.4855,0.3974,-0.5728],"reaction_heave_force":[-9.1742,-17.7215,42.3206,-1.5312,-3.0947]},"E5":{"mic":[-14.1748,-14.7751,83.7863,-13.3718,-8.656],"piezo":[-16.3427,-17.6451,74.2464,-6.7988,-9.0941],"body_heave_force":[-16.9704,-17.9114,75.3049,-7.034,-9.2271],"body_moment_force":[-7.2567,-10.0218,20.7554,2.8687,1.8645],"reaction_heave_force":[-16.3329,-17.9068,76.4322,-7.1361,-9.7277]}}},
+      {"technique":"thumb","variant":"baseline","native_f32_sha256":"6c5f85297a46d9f3bdde6d7388454e464ac38c3392e16e3c55dbb1717d2d8bc5","notes":{"G4":{"mic":[-7.8779,-12.6195,88.3548,-10.709,-25.1527],"piezo":[-9.8926,-14.2574,54.72,-1.4897,-28.1824],"body_heave_force":[-8.6769,-14.0969,69.329,-4.1392,-30.7681],"body_moment_force":[-13.5188,-10.5402,84.9884,-8.5702,-24.4645],"reaction_heave_force":[-9.8055,-14.1891,54.3845,-1.3527,-28.311]},"A4":{"mic":[-10.3445,-10.9572,24.3369,4.3447,-14.1317],"piezo":[-11.944,-13.3252,53.8382,-1.4558,-20.3784],"body_heave_force":[-9.2885,-13.3356,70.0149,-4.425,-24.6641],"body_moment_force":[-13.5423,-9.6825,98.6958,-22.679,-28.3003],"reaction_heave_force":[-11.6422,-13.3467,40.686,0.93,-18.2617]},"B4":{"mic":[-14.4832,-16.8381,56.4706,-3.7366,-16.0109],"piezo":[-18.3329,-16.4621,68.3048,-4.586,-21.7326],"body_heave_force":[-16.5514,-16.8414,85.0222,-8.828,-25.2335],"body_moment_force":[-3.5713,-8.5145,82.1562,-10.4516,-21.363],"reaction_heave_force":[-18.0925,-16.4398,74.358,-5.7656,-22.8232]},"E5":{"mic":[-14.6963,-12.4011,95.6226,-17.3375,-19.5538],"piezo":[-16.3332,-14.3213,94.1831,-13.628,-19.5508],"body_heave_force":[-16.3398,-14.3364,93.8113,-13.3864,-19.0719],"body_moment_force":[-7.3504,-10.1378,81.548,-8.5275,-16.9084],"reaction_heave_force":[-16.2158,-14.3296,94.6342,-13.7034,-20.4362]}}},
+      {"technique":"thumb","variant":"broad-mic-only","native_f32_sha256":"db59fae359c137e12921604d6b96ff7c9427d6688ea2041167f4ccf1aa7a8aa8","notes":{"G4":{"mic":[-7.8761,-12.6183,92.7526,-12.3053,-29.1808],"piezo":[-9.8926,-14.2574,54.72,-1.4897,-28.1824],"body_heave_force":[-8.6769,-14.0969,69.329,-4.1392,-30.7681],"body_moment_force":[-13.5188,-10.5402,84.9884,-8.5702,-24.4645],"reaction_heave_force":[-9.8055,-14.1891,54.3845,-1.3527,-28.311]},"A4":{"mic":[-10.3438,-10.9564,38.6303,1.5975,-19.1638],"piezo":[-11.944,-13.3252,53.8382,-1.4558,-20.3784],"body_heave_force":[-9.2885,-13.3356,70.0149,-4.425,-24.6641],"body_moment_force":[-13.5423,-9.6825,98.6958,-22.679,-28.3003],"reaction_heave_force":[-11.6422,-13.3467,40.686,0.93,-18.2617]},"B4":{"mic":[-14.4826,-16.8382,76.1729,-7.3905,-21.3506],"piezo":[-18.3329,-16.4621,68.3048,-4.586,-21.7326],"body_heave_force":[-16.5514,-16.8414,85.0222,-8.828,-25.2335],"body_moment_force":[-3.5713,-8.5145,82.1562,-10.4516,-21.363],"reaction_heave_force":[-18.0925,-16.4398,74.358,-5.7656,-22.8232]},"E5":{"mic":[-14.6949,-12.4021,97.7559,-21.3083,-22.5464],"piezo":[-16.3332,-14.3213,94.1831,-13.628,-19.5508],"body_heave_force":[-16.3398,-14.3364,93.8113,-13.3864,-19.0719],"body_moment_force":[-7.3504,-10.1378,81.548,-8.5275,-16.9084],"reaction_heave_force":[-16.2158,-14.3296,94.6342,-13.7034,-20.4362]}}},
+      {"technique":"thumb","variant":"half-mobility","native_f32_sha256":"be89bd07aae20cd83faa2d39c0520f46e3a2fcb20d97693a9b6c884217dedf64","notes":{"G4":{"mic":[-15.3957,-12.5868,86.4654,-9.3585,-25.5517],"piezo":[-17.1592,-15.1131,44.9269,0.3435,-26.0613],"body_heave_force":[-17.8788,-14.9377,60.4423,-2.3421,-28.9461],"body_moment_force":[-5.7775,-9.9139,64.9352,-3.6088,-22.0139],"reaction_heave_force":[-17.5391,-15.056,48.0351,-0.1409,-27.0078]},"A4":{"mic":[-12.5127,-10.4395,30.1521,3.3901,-21.1525],"piezo":[-16.3398,-14.1513,67.6877,-3.7861,-25.0382],"body_heave_force":[-15.1409,-14.1688,86.9189,-8.7377,-30.8135],"body_moment_force":[-8.1988,-8.4841,97.3751,-19.1047,-27.1316],"reaction_heave_force":[-16.3304,-14.1619,70.7264,-4.341,-25.8513]},"B4":{"mic":[-9.9293,-14.6768,69.3216,-5.837,-17.8593],"piezo":[-9.5755,-17.201,82.0945,-7.5758,-25.4778],"body_heave_force":[-9.8403,-17.3041,88.4665,-9.7794,-27.3833],"body_moment_force":[-7.1973,-8.5893,76.5399,-7.29,-20.3637],"reaction_heave_force":[-9.8531,-17.1806,84.963,-8.3837,-26.3374]},"E5":{"mic":[-14.4389,-13.2371,97.7194,-19.7899,-22.8359],"piezo":[-16.1784,-16.7001,94.0521,-12.9434,-22.95],"body_heave_force":[-16.7182,-16.6913,94.3634,-13.0827,-23.5495],"body_moment_force":[-4.8905,-9.8931,53.9539,-3.1838,-9.9992],"reaction_heave_force":[-16.1765,-16.6853,94.669,-13.2327,-24.1231]}}}
+    ]
+  },
+  "measurement_columns": [
+    "h1_decay_db_per_s",
+    "h3_decay_db_per_s",
+    "h1_share_h1_h6_pct",
+    "h2_h1_db",
+    "h3_h1_db"
+  ],
+  "measurements": [
+    {"technique":"finger","ablation":"baseline","force_trajectory_exact":true,"piezo_exact":true,"native_max_mic_or_piezo_peak":0.14931577444076538,"notes":{"A4":{"mic":[-10.289,-13.7525,18.5474,6.1539,-13.9355],"piezo":[-11.9488,-18.7106,45.382,0.4276,-14.8664],"body_heave":[-9.2553,-19.1403,62.4087,-2.5499,-18.5538],"body_moment":[-13.5527,-8.8956,98.6257,-20.4959,-33.9532],"reaction":[-11.6538,-18.7553,32.6158,2.8139,-12.7097]}}},
+    {"technique":"finger","ablation":"half-mobility","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.2384042590856552,"notes":{"A4":{"mic":[-12.4913,-15.5188,22.8259,5.173,-17.1649],"piezo":[-16.3102,-18.4203,59.2653,-1.9363,-17.033],"body_heave":[-15.1157,-18.5577,82.125,-6.8957,-22.5135],"body_moment":[-8.1827,-12.1526,97.3072,-17.732,-26.8115],"reaction":[-16.3043,-18.4302,62.4993,-2.4939,-17.8371]}}},
+    {"technique":"finger","ablation":"no-plate-floor","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.1739523559808731,"notes":{"A4":{"mic":[-7.4102,-15.7002,3.6886,14.0002,-4.8349],"piezo":[-13.5027,-21.0227,30.9797,3.0327,-13.8198],"body_heave":[-11.8459,-22.1703,12.981,7.8335,-9.2228],"body_moment":[-8.0134,-10.3327,88.1671,-8.8049,-30.4721],"reaction":[-10.5793,-21.0936,9.8706,9.1868,-7.6464]}}},
+    {"technique":"finger","ablation":"no-burst","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.14944593608379364,"notes":{"A4":{"mic":[-10.2783,-13.8133,20.4896,5.5281,-14.3768],"piezo":[-11.9566,-18.752,46.7412,0.0563,-15.301],"body_heave":[-9.2696,-19.1749,63.9217,-2.9651,-18.9997],"body_moment":[-13.5353,-9.3348,98.6208,-20.2013,-33.8345],"reaction":[-11.6677,-18.7953,33.8992,2.4523,-13.1349]}}},
+    {"technique":"finger","ablation":"no-convergence","force_trajectory_exact":true,"piezo_exact":true,"native_max_mic_or_piezo_peak":0.1484193056821823,"notes":{"A4":{"mic":[-10.2673,-13.8317,17.9523,6.2893,-13.2957],"piezo":[-11.9488,-18.7106,45.382,0.4276,-14.8664],"body_heave":[-9.2553,-19.1403,62.4087,-2.5499,-18.5538],"body_moment":[-13.5527,-8.8956,98.6257,-20.4959,-33.9532],"reaction":[-11.6538,-18.7553,32.6158,2.8139,-12.7097]}}},
+    {"technique":"finger","ablation":"original-control","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.23850256204605103,"notes":{"A4":{"mic":[-10.9822,-13.9775,35.7655,2.0891,-10.2007],"piezo":[-10.3768,-16.2758,74.9103,-4.9679,-23.1333],"body_heave":[-10.419,-16.3007,77.6415,-5.6169,-23.7321],"body_moment":[-7.3647,-16.4738,92.5051,-12.1043,-25.7523],"reaction":[-10.4333,-16.2749,77.1514,-5.4876,-23.6849]}}},
+    {"technique":"finger","ablation":"narrow-mic","force_trajectory_exact":true,"piezo_exact":true,"native_max_mic_or_piezo_peak":0.1787898987531662,"notes":{"A4":{"mic":[-10.3021,-13.7501,17.1009,6.6832,-16.1556],"piezo":[-11.9488,-18.7106,45.382,0.4276,-14.8664],"body_heave":[-9.2553,-19.1403,62.4087,-2.5499,-18.5538],"body_moment":[-13.5527,-8.8956,98.6257,-20.4959,-33.9532],"reaction":[-11.6538,-18.7553,32.6158,2.8139,-12.7097]}}},
+    {"technique":"finger","ablation":"half-mobility-narrow","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.252821683883667,"notes":{"A4":{"mic":[-12.4864,-15.5168,20.8806,5.7134,-19.3721],"piezo":[-16.3102,-18.4203,59.2653,-1.9363,-17.033],"body_heave":[-15.1157,-18.5577,82.125,-6.8957,-22.5135],"body_moment":[-8.1827,-12.1526,97.3072,-17.732,-26.8115],"reaction":[-16.3043,-18.4302,62.4993,-2.4939,-17.8371]}}},
+    {"technique":"pick","ablation":"baseline","force_trajectory_exact":true,"piezo_exact":true,"native_max_mic_or_piezo_peak":0.3025832176208496,"notes":{"A4":{"mic":[-8.6328,-12.1004,4.1456,11.8147,5.6709],"piezo":[-12.1688,-16.6817,11.7019,6.0094,2.6834],"body_heave":[-8.4462,-16.8685,23.0718,2.6613,-1.5246],"body_moment":[-13.129,-6.0831,86.1846,-14.3249,-11.3175],"reaction":[-11.8123,-16.6092,7.4716,8.321,4.7782]}}},
+    {"technique":"pick","ablation":"half-mobility","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.3091302216053009,"notes":{"A4":{"mic":[-11.9596,-12.6687,6.1798,10.8144,0.4609],"piezo":[-15.8447,-17.2126,18.7001,3.7455,0.1776],"body_heave":[-14.4971,-17.2777,42.6553,-1.1352,-5.2434],"body_moment":[-7.6281,-6.9932,79.1882,-14.0366,-10.3248],"reaction":[-15.7076,-17.1502,21.2932,3.223,-0.5691]}}},
+    {"technique":"pick","ablation":"no-plate-floor","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.30600300431251526,"notes":{"A4":{"mic":[-7.4809,-13.5665,0.7946,17.9547,15.4036],"piezo":[-12.0816,-17.512,6.8685,7.2848,4.8832],"body_heave":[-10.2042,-18.3684,1.3389,14.7979,11.8293],"body_moment":[-6.5261,-7.7204,54.1399,-2.7001,-7.6447],"reaction":[-6.8427,-17.5398,1.2479,15.1721,12.4643]}}},
+    {"technique":"pick","ablation":"no-burst","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.31167542934417725,"notes":{"A4":{"mic":[-8.6812,-12.1847,4.4254,11.4454,5.859],"piezo":[-12.1604,-16.8153,12.2144,5.6778,3.0033],"body_heave":[-8.4725,-17.0154,23.9561,2.351,-1.1683],"body_moment":[-13.1406,-5.9832,86.4538,-14.4351,-11.4162],"reaction":[-11.8095,-16.7462,7.7863,8.005,5.107]}}},
+    {"technique":"pick","ablation":"no-convergence","force_trajectory_exact":true,"piezo_exact":true,"native_max_mic_or_piezo_peak":0.3025832176208496,"notes":{"A4":{"mic":[-8.6376,-12.172,3.8915,11.9103,6.236],"piezo":[-12.1688,-16.6817,11.7019,6.0094,2.6834],"body_heave":[-8.4462,-16.8685,23.0718,2.6613,-1.5246],"body_moment":[-13.129,-6.0831,86.1846,-14.3249,-11.3175],"reaction":[-11.8123,-16.6092,7.4716,8.321,4.7782]}}},
+    {"technique":"pick","ablation":"original-control","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.26905542612075806,"notes":{"A4":{"mic":[-11.1127,-12.5233,6.4881,6.8319,8.6947],"piezo":[-10.7669,-14.5677,36.9597,-0.0076,-4.8839],"body_heave":[-10.6681,-14.5512,41.2475,-0.7785,-5.501],"body_moment":[-7.0976,-12.6016,63.7003,-8.0556,-10.0702],"reaction":[-10.6879,-14.5271,40.8673,-0.6485,-5.4526]}}},
+    {"technique":"pick","ablation":"narrow-mic","force_trajectory_exact":true,"piezo_exact":true,"native_max_mic_or_piezo_peak":0.3025832176208496,"notes":{"A4":{"mic":[-8.6525,-12.0979,4.2765,12.3373,3.4492],"piezo":[-12.1688,-16.6817,11.7019,6.0094,2.6834],"body_heave":[-8.4462,-16.8685,23.0718,2.6613,-1.5246],"body_moment":[-13.129,-6.0831,86.1846,-14.3249,-11.3175],"reaction":[-11.8123,-16.6092,7.4716,8.321,4.7782]}}},
+    {"technique":"pick","ablation":"half-mobility-narrow","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.3091302216053009,"notes":{"A4":{"mic":[-11.9616,-12.6665,5.9778,11.3473,-1.7503],"piezo":[-15.8447,-17.2126,18.7001,3.7455,0.1776],"body_heave":[-14.4971,-17.2777,42.6553,-1.1352,-5.2434],"body_moment":[-7.6281,-6.9932,79.1882,-14.0366,-10.3248],"reaction":[-15.7076,-17.1502,21.2932,3.223,-0.5691]}}},
+    {"technique":"thumb","ablation":"baseline","force_trajectory_exact":true,"piezo_exact":true,"native_max_mic_or_piezo_peak":0.1638484001159668,"notes":{"A4":{"mic":[-10.3445,-10.9572,24.3369,4.3447,-14.1317],"piezo":[-11.944,-13.3252,53.8382,-1.4558,-20.3784],"body_heave":[-9.2885,-13.3356,70.0149,-4.425,-24.6641],"body_moment":[-13.5423,-9.6825,98.6958,-22.679,-28.3003],"reaction":[-11.6422,-13.3467,40.686,0.93,-18.2617]}}},
+    {"technique":"thumb","ablation":"half-mobility","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.2587510347366333,"notes":{"A4":{"mic":[-12.5127,-10.4395,30.1521,3.3901,-21.1525],"piezo":[-16.3398,-14.1513,67.6877,-3.7861,-25.0382],"body_heave":[-15.1409,-14.1688,86.9189,-8.7377,-30.8135],"body_moment":[-8.1988,-8.4841,97.3751,-19.1047,-27.1316],"reaction":[-16.3304,-14.1619,70.7264,-4.341,-25.8513]}}},
+    {"technique":"thumb","ablation":"no-plate-floor","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.17680810391902924,"notes":{"A4":{"mic":[-7.4409,-11.7457,5.2617,12.2427,-6.0608],"piezo":[-13.5287,-14.3143,37.8321,1.1287,-18.5112],"body_heave":[-12.0091,-14.7084,17.0999,5.8634,-14.7864],"body_moment":[-8.0623,-8.4241,91.8159,-10.7423,-25.8459],"reaction":[-10.6949,-14.3249,13.1109,7.2345,-12.4325]}}},
+    {"technique":"thumb","ablation":"no-burst","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.15260763466358185,"notes":{"A4":{"mic":[-10.3331,-11.0029,26.5653,3.6863,-14.2292],"piezo":[-11.9529,-13.4405,54.8808,-1.8458,-20.3535],"body_heave":[-9.3047,-13.4655,71.1241,-4.8639,-24.6265],"body_moment":[-13.5249,-9.8097,98.6843,-22.3561,-28.3194],"reaction":[-11.6585,-13.4618,41.803,0.5503,-18.2249]}}},
+    {"technique":"thumb","ablation":"no-convergence","force_trajectory_exact":true,"piezo_exact":true,"native_max_mic_or_piezo_peak":0.16587495803833008,"notes":{"A4":{"mic":[-10.3226,-10.9897,23.4695,4.482,-13.5888],"piezo":[-11.944,-13.3252,53.8382,-1.4558,-20.3784],"body_heave":[-9.2885,-13.3356,70.0149,-4.425,-24.6641],"body_moment":[-13.5423,-9.6825,98.6958,-22.679,-28.3003],"reaction":[-11.6422,-13.3467,40.686,0.93,-18.2617]}}},
+    {"technique":"thumb","ablation":"original-control","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.23517459630966187,"notes":{"A4":{"mic":[-10.9659,-11.7484,42.2745,0.371,-10.6883],"piezo":[-10.3514,-12.3376,80.9974,-6.8441,-26.0847],"body_heave":[-10.4001,-12.3254,83.2332,-7.4894,-26.6879],"body_moment":[-7.3834,-11.0316,93.3886,-13.7052,-30.8621],"reaction":[-10.4141,-12.3162,82.8718,-7.3595,-26.6293]}}},
+    {"technique":"thumb","ablation":"narrow-mic","force_trajectory_exact":true,"piezo_exact":true,"native_max_mic_or_piezo_peak":0.20086486637592316,"notes":{"A4":{"mic":[-10.3574,-10.9563,23.0494,4.8741,-16.3494],"piezo":[-11.944,-13.3252,53.8382,-1.4558,-20.3784],"body_heave":[-9.2885,-13.3356,70.0149,-4.425,-24.6641],"body_moment":[-13.5423,-9.6825,98.6958,-22.679,-28.3003],"reaction":[-11.6422,-13.3467,40.686,0.93,-18.2617]}}},
+    {"technique":"thumb","ablation":"half-mobility-narrow","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.267633855342865,"notes":{"A4":{"mic":[-12.5076,-10.4384,28.0693,3.9307,-23.3582],"piezo":[-16.3398,-14.1513,67.6877,-3.7861,-25.0382],"body_heave":[-15.1409,-14.1688,86.9189,-8.7377,-30.8135],"body_moment":[-8.1988,-8.4841,97.3751,-19.1047,-27.1316],"reaction":[-16.3304,-14.1619,70.7264,-4.341,-25.8513]}}},
+    {"technique":"pick","ablation":"no-pick-velocity","force_trajectory_exact":false,"piezo_exact":false,"native_max_mic_or_piezo_peak":0.22160445153713226,"notes":{"A4":{"mic":[-9.1816,-11.9497,5.087,10.9431,4.8602],"piezo":[-12.0613,-16.4909,13.8752,5.2652,1.8123],"body_heave":[-8.6581,-16.7205,25.6978,2.164,-2.1709],"body_moment":[-13.382,-6.1258,88.7556,-14.6873,-12.3816],"reaction":[-11.7461,-16.4704,8.8801,7.6196,3.9353]}}}
+  ]
+}

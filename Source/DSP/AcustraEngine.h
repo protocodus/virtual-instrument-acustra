@@ -968,6 +968,7 @@ private:
         std::uint32_t lossDesignFrequency { 0 };
         std::uint32_t age { 0 };
         std::uint32_t palmMute { 0 };
+        std::uint32_t broadLossCornerScale { 0 };
 
         bool operator==(const VoiceConfigurationKey& other) const noexcept
         {
@@ -979,7 +980,8 @@ private:
                 && soundingLength == other.soundingLength
                 && speakingFret == other.speakingFret
                 && lossDesignFrequency == other.lossDesignFrequency
-                && age == other.age && palmMute == other.palmMute;
+                && age == other.age && palmMute == other.palmMute
+                && broadLossCornerScale == other.broadLossCornerScale;
         }
     };
 
@@ -1273,6 +1275,10 @@ private:
         float dispersionDesignInharmonicity { -1.0f };
         float dispersionDesignAge { -1.0f };
         float dispersionDesignFrequencyLossScale { -1.0f };
+        // The active model's intrinsic broad-loss profile is independent of
+        // technique. Its exact value belongs to the completed phase design,
+        // even when a construction changes at the same pitch and loss scale.
+        float dispersionDesignBroadLossCornerScale { -1.0f };
         // Exact arguments of the last completed dispersion solve. Its fit
         // frequency is bounded beyond the playable fretboard plus the
         // documented 12-semitone panel/Reason bend range; above that the
@@ -1588,8 +1594,10 @@ private:
     [[nodiscard]] float mpePressureFor(const Voice& voice) const noexcept;
     [[nodiscard]] float vibratoSemitones(const Voice& voice,
                                          int fret) const noexcept;
+    // Private per-stroke direction bypass for independent TestAccess oracles.
+    // No observer state or public control; the configured release policy remains active.
     void initialisePluck(Voice& voice, int stringIndex, float velocity,
-                         bool merge = false) noexcept;
+                         bool merge = false, bool applyPluckDirection = true) noexcept;
     // Scale every state a string's two loops store of the travelling wave -
     // the delay line and each filter's memory - by gain.
     static void scaleStoredWaves(Voice& voice, float gain) noexcept;

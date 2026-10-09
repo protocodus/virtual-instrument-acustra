@@ -51,10 +51,18 @@ Complex target(double frequency, double rate)
 {
     // Evaluate the analog prototypes at the bilinear frequency. This uses
     // neither runtime digital coefficients nor the runtime gain helper.
-    Complex response = std::pow(10.0, double(acustra::detail::captureVoicingLevelDb) / 20.0);
+    Complex response = std::pow(10.0,
+        (double(acustra::detail::captureVoicingLevelDb) + double(1.2172f)) / 20.0);
     for (const auto& section : acustra::detail::captureVoicingSections)
     {
-        const double a = std::pow(10.0, double(section.gainDb) / 40.0);
+        // Independent authored capture refinement; keep the prototype
+        // separate from the production coefficient/helper implementation.
+        const double gainDb = double(section.gainDb)
+            - (section.kind == acustra::detail::CaptureVoicingKind::LowShelf
+               && section.frequencyHz == 120.0f ? 3.0 : 0.0)
+            - (section.kind == acustra::detail::CaptureVoicingKind::Peak
+               && section.frequencyHz == 125.0f ? 2.75 : 0.0);
+        const double a = std::pow(10.0, gainDb / 40.0);
         const Complex s(0.0, std::tan(pi * frequency / rate)
             / std::tan(pi * double(section.frequencyHz) / rate));
         const auto s2 = s * s;
@@ -194,7 +202,11 @@ void testLowMidCancellationRegression()
     const auto desired = target(frequency, 48000.0);
     const double oldDb = 20.0 * std::log10(std::abs(old / raw));
     const double targetDb = 20.0 * std::log10(std::abs(desired));
-    expect(oldDb > 2.0 && targetDb < -1.0,
+    // The authored scalar restores phrase loudness; assess the tonal cut
+    // relative to that scalar, so releveling cannot obscure its sign.
+    const double referenceDb = double(acustra::detail::captureVoicingLevelDb)
+        + double(1.2172f);
+    expect(oldDb - referenceDb > 0.0 && targetDb - referenceDb < -1.0,
            "regression no longer exposes the old cut-to-boost cancellation error");
     std::vector<float> actual(48000), reference(actual.size());
     for (int n = 0; n < 48000; ++n)
