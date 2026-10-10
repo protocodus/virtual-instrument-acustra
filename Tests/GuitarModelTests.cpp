@@ -138,10 +138,8 @@ void testMicrophoneTiltOnlyChangesObservation()
                     && tilted->getLastBridgeVelocity() == untilted->getLastBridgeVelocity()
                     && tilted->getLastBridgeReactionForce() == untilted->getLastBridgeReactionForce()
                     && tilted->getLastBridgeBodyForce() == untilted->getLastBridgeBodyForce()
-                    && tilted->getLastBridgeTailForce() == untilted->getLastBridgeTailForce()
                     && tilted->getLastBridgePower() == untilted->getLastBridgePower()
-                    && tilted->getLastBridgeBodyPower() == untilted->getLastBridgeBodyPower()
-                    && tilted->getLastBridgeTailPower() == untilted->getLastBridgeTailPower();
+                    && tilted->getLastBridgeBodyPower() == untilted->getLastBridgeBodyPower();
                 samePiezo = samePiezo && vp == up;
                 finiteAndBounded = finiteAndBounded
                     && std::isfinite(vl) && std::isfinite(vr) && std::isfinite(vp)

@@ -46,7 +46,7 @@ struct AcustraEngineTestAccess
         const auto& voice = engine.voices_[0];
         const int length = static_cast<int>(std::round(voice.loops[0].currentDelay));
         return voice.releaseStepRise * voice.releaseShapePosition[0] * length
-            / (0.8 * std::sqrt(voice.polarisationMix));
+            / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix));
     }
     static void forgetOldWave(AcustraEngine& engine)
     {
@@ -722,7 +722,14 @@ void testAgeAutomationPreservesTheMergedString()
                 std::abs(leftStep - referenceLeftStep),
                 std::abs(rightStep - referenceRightStep) });
         }
-        expect(peak > 1.0e-4 && stepDifference <= 2.0e-4 * peak,
+        // 2.7e-4 of the steady string's peak is the 2.0-2.2e-5 of full scale
+        // that 2e-4 of its peak allowed before 2026-10-10, when that peak
+        // was 0.101-0.109. The strings now end on the bridge and this G2
+        // sits 0.7 semitone over the Dreadnought's A0 (94.2 Hz), into which
+        // it drains, so its peak here reads 0.078-0.080 while the step
+        // itself, 1.6-2.0e-5 of full scale, stays within the 1.3-2.0e-5 it
+        // read (Docs/saddle-termination-2026-10-10.md).
+        expect(peak > 1.0e-4 && stepDifference <= 2.7e-4 * peak,
                "a small Age step introduced a large adjacent-sample transient after a same-pitch merge");
         std::cout << "Merged Age delay=" << delay
                   << " step difference/peak=" << stepDifference / peak << '\n';

@@ -89,10 +89,13 @@ def match_pair(first: Path, second: Path, outputs: list[Path]) -> tuple[list[dic
     arrays = []
     for source, out, before in zip(sources, outputs, measured):
         rate, pcm = read(source)
-        gain_db = target - before["lufs"]
-        # The absolute BS.1770 gate can change which quiet tail windows count
-        # after scaling. Re-measure and adjust the same whole-file gain only.
-        for _ in range(6):
+        estimate = target - before["lufs"]
+        # BS.1770 gating changes which quiet windows count after scaling, so
+        # measured loudness jumps with gain (up to 0.16 LU on song 05) and a
+        # fixed-point update can oscillate across the target. Take the
+        # matching whole-file gain nearest the estimate instead.
+        for step in sorted(range(-50, 51), key=abs):
+            gain_db = estimate + 0.01 * step
             scaled = pcm * 10 ** (gain_db / 20)
             if np.max(np.abs(scaled)) >= 0.99:
                 raise ValueError("Peak headroom calculation failed")
@@ -100,7 +103,6 @@ def match_pair(first: Path, second: Path, outputs: list[Path]) -> tuple[list[dic
             after = loudness(out)
             if abs(after["lufs"] - target) <= 0.05:
                 break
-            gain_db += target - after["lufs"]
         if abs(after["lufs"] - target) > 0.05 or after["true_peak_db"] > -1.85:
             raise ValueError(f"Invalid gain match: {after}, target {target}")
         versions.append({"file": "audio/" + out.name, **after, "gain_db": gain_db,

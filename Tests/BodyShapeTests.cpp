@@ -26,14 +26,8 @@ struct AcustraEngineTestAccess
         target.pickingGestureSeen_ = source.pickingGestureSeen_;
         target.sampleClock_ = source.sampleClock_;
     }
-    struct AnchorState { float target, applied, period; int remaining; };
-    static AnchorState anchor(const AcustraEngine& e, int string)
-    {
-        const auto& v = e.voices_[static_cast<std::size_t>(string)];
-        return { v.bridgeTailStiffness, v.appliedBridgeTailStiffness,
-                 v.loops[0].currentDelay, v.bridgeTailStiffnessSamples };
-    }
     static auto bridge(const AcustraEngine& e) { return e.bridgeLoad_; }
+    static auto bridgeTable(const AcustraEngine& e) { return e.bridgeMobilityTable(); }
     static const auto& voices(const AcustraEngine& e) { return e.voices_; }
     static float phase(const AcustraEngine& e, float f, int string)
     { return e.bridgePhaseDelay(f, string); }
@@ -42,6 +36,13 @@ struct AcustraEngineTestAccess
     static bool bodySettled(const AcustraEngine& e, BodyShape shape)
     { return e.configuredBodyShape_ == shape && e.bodyModelFade_ == 1.0f; }
     static float saddle(const AcustraEngine& e) { return e.saddleHeightRatio(); }
+    // Empty every string's parallel-plane loop, so the normal plane alone
+    // is read.
+    static void silenceParallel(AcustraEngine& e)
+    {
+        for (auto& voice : e.voices_)
+            voice.loops[1].reset();
+    }
     static const PhysicalCalibration& calibration(const AcustraEngine& e)
     { return e.physicalCalibration_; }
     static std::array<float, 2> radiationPole(const EngineParameters& p,
@@ -67,7 +68,7 @@ struct AcustraEngineTestAccess
                                                double(e.bodyBank_.poleImaginary[std::size_t(i)])));
         return worst;
     }
-    // The normal port a string drains into: bridge and anchors in parallel.
+    // The normal port a string drains into: the bridge at its lever arm.
     static std::complex<float> port(const AcustraEngine& e, float f, int string)
     { return e.bridgePortMobility(f, string).normal; }
     // The frequencies of the tuning table's first `ordered` modes: steel's
@@ -120,7 +121,16 @@ constexpr double pi = std::numbers::pi;
 // The A0 extension belongs to the Original's 90.8 Hz radiation mode and
 // its 90.3 Hz joint-body companion. Read their actual digital decay, rather
 // than reimplementing the frequency-selection rule, and keep the 83.5 Hz
-// joint mode and plate modes on their recorded damping.
+// joint mode and plate modes on their recorded damping. The anchor places
+// that mode at 94.18 Hz (wideSteelAnchorTransform); with Q 23.5 its free
+// T60, Q ln(1000) / (pi f), is 0.549 s. Until 2026-10-10 it sat at 84.68 Hz,
+// where the same Q gave the 0.610 s the extension was selected at. Its
+// rendered transient, read the same way before and after (idle strings off,
+// MIDI 60-68), went from 0.50 s at 99.1 Hz, where the saddle's spring to
+// ground had moved it, to 0.55 s at 94.3 Hz, among the 0.51-0.65 s medians
+// of the Eastman and Martin air transients
+// (Docs/realism-consolidation-2026-10-02.md,
+// Docs/saddle-termination-2026-10-10.md).
 void testOriginalAirDecayIsLocalized()
 {
     namespace d = acustra::detail;
@@ -141,10 +151,10 @@ void testOriginalAirDecayIsLocalized()
         engine->prepare(rate, 64);
         const auto& calibration = Access::calibration(*engine);
         const auto air = digitalDecay(*engine, 0, rate);
-        expect(air[0] > 84.6 && air[0] < 84.8,
+        expect(air[0] > 94.1 && air[0] < 94.3,
                "the air decay extension moved the Original's A0 frequency");
-        expect(air[2] > 0.60 && air[2] < 0.62,
-               "the Original's configured A0 free T60 left the 0.60-0.62 s bracket");
+        expect(air[2] > 0.54 && air[2] < 0.56,
+               "the Original's configured A0 free T60 left the 0.54-0.56 s bracket");
         expect(std::abs(Access::radiationPole(original, calibration, 0)[1] - 23.5f)
                    < 2e-5f,
                "the Original's air pole does not have the selected Q of 23.5");
@@ -198,28 +208,12 @@ Matrix mobility(const auto& bridge, double frequency, double rate)
 
 double expectedPhase(const Engine& e, double frequency, int string, double rate)
 {
+    // A unit force at this string moves the saddle there by the bridge's own
+    // mobility at its lever arm: nothing else holds the saddle (the segment
+    // behind it ends on the same bridge).
     const auto y = mobility(Access::bridge(e), frequency, rate);
-    const Complex s(0, 2*rate*std::tan(pi*frequency/rate));
-    std::array<double, 3> stiffness {};
-    // The anchor stubs also hold the saddle crown sideways, which the
-    // parallel polarisation's rocking port adds as (h/a)^2 of each stub.
-    const double eta = Access::saddle(e);
-    for (int i = 0; i < 6; ++i)
-    {
-        const double u = (i-2.5)/2;
-        const double k = Access::voices(e)[i].bridgeTailStiffness;
-        stiffness[0] += k; stiffness[1] += u*k; stiffness[2] += (u*u+eta*eta)*k;
-    }
-    // Apply a unit force at this string and solve (I+Y*K/s)*motion=Y*[1,u].
-    // This direct solve works for both rank-one and rocking banks, without
-    // the engine's determinant-of-Y reduction or scalar special case.
     const double u = (string-2.5)/2;
-    const Complex a = 1.0+(y[0]*stiffness[0]+y[1]*stiffness[1])/s;
-    const Complex b = (y[0]*stiffness[1]+y[1]*stiffness[2])/s;
-    const Complex c = (y[1]*stiffness[0]+y[2]*stiffness[1])/s;
-    const Complex d = 1.0+(y[1]*stiffness[1]+y[2]*stiffness[2])/s;
-    const Complex r0 = y[0]+u*y[1], r1 = y[1]+u*y[2];
-    const Complex effective = ((d*r0-b*r1)+u*(a*r1-c*r0))/(a*d-b*c);
+    const Complex effective = y[0]+2*u*y[1]+u*u*y[2];
     const double port = 1.0/Access::voices(e)[string].characteristicImpedance;
     return -std::arg((port-effective)/(port+effective))/(2*pi*frequency/rate);
 }
@@ -292,6 +286,166 @@ void testPhaseAndPassivity()
     // current worst case is 0.492829 cents. Keep a sub-cent reconstruction
     // budget; the separate end-to-end note-tuning gates are unchanged.
     expect(worstCents < 1.0, "shape tuning differs from its actual digital bridge");
+}
+
+// A0 and T1 of the measured bank as the Shape morph reads them: the
+// strongest radiating mode below 150 Hz, and between 150 and 260 Hz.
+std::array<int, 2> measuredA0AndT1()
+{
+    const auto& bank = acustra::detail::measuredSteelBodyModes;
+    const auto weight = [] (const acustra::detail::MeasuredBodyMode& m)
+    {
+        return std::hypot(m.leftReal, m.leftImaginary)
+             + std::hypot(m.rightReal, m.rightImaginary)
+             + std::hypot(m.upperReal, m.upperImaginary);
+    };
+    std::array<int, 2> index { -1, -1 };
+    for (int i = 0; i < static_cast<int>(bank.size()); ++i)
+    {
+        const auto& mode = bank[std::size_t(i)];
+        const int group = mode.frequency < 150.0f ? 0 : mode.frequency < 260.0f ? 1 : -1;
+        if (group >= 0 && (index[std::size_t(group)] < 0
+                || weight(mode) > weight(bank[std::size_t(index[std::size_t(group)])])))
+            index[std::size_t(group)] = i;
+    }
+    return index;
+}
+
+// The strings end on the bridge. The short segment from the saddle crown to
+// the pin has both ends on the bridge, so it holds the saddle against
+// nothing; until 2026-10-10 it was a spring T/L from the saddle to ground,
+// which resonated with the body's mass above each body mode, so the strings'
+// conductance peaked at 6 to 34 times the bridge's own 2-5 semitones above
+// A0 and T1 (Docs/saddle-termination-2026-10-10.md). The port the strings
+// are tuned against must stay within 3 times the bridge's own conductance -
+// the bound Docs/decisions.md set for any termination on 2026-09-02 - read
+// from the configured digital sections at the string's lever arm (mobility
+// above), over 60 Hz-3 kHz and from A0 and T1 to 1.6 times them, for every
+// Shape at 44.1, 48 and 96 kHz.
+void testTheStringsDrainIntoTheBridgeAlone()
+{
+    const auto [a0, t1] = measuredA0AndT1();
+    double worst = 0.0, worstNear = 0.0;
+    std::string worstCase;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (int shape = 0; shape < 4; ++shape)
+        {
+            acustra::EngineParameters p;
+            p.shape = static_cast<acustra::BodyShape>(shape);
+            auto e = std::make_unique<Engine>();
+            e->setParameters(p);
+            e->prepare(rate, 64);
+            const auto bridge = Access::bridge(*e);
+            const auto& calibration = Access::calibration(*e);
+            const double fa0 = Access::radiationPole(p, calibration, a0)[0];
+            const double ft1 = Access::radiationPole(p, calibration, t1)[0];
+            for (int k = 0; k < 600; ++k)
+            {
+                const double f = 60.0 * std::pow(3000.0 / 60.0, k / 599.0);
+                const auto y = mobility(bridge, f, rate);
+                for (int s = 0; s < 6; ++s)
+                {
+                    const double u = (s - 2.5) / 2;
+                    const Complex bare = y[0] + 2.0 * u * y[1] + u * u * y[2];
+                    // Where the bridge barely conducts (between modes, a
+                    // conductance far under its own reactance) a ratio
+                    // reads rounding, not a drain.
+                    if (!(bare.real() > 5.0e-5 && bare.real() > 0.02 * std::abs(bare)))
+                        continue;
+                    const double ratio
+                        = Access::port(*e, static_cast<float>(f), s).real() / bare.real();
+                    if (ratio > worst)
+                    {
+                        worst = ratio;
+                        worstCase = "shape " + std::to_string(shape) + " at "
+                            + std::to_string(rate) + " Hz, string " + std::to_string(s)
+                            + ", " + std::to_string(f) + " Hz";
+                    }
+                    if ((f >= fa0 && f <= 1.6 * fa0) || (f >= ft1 && f <= 1.6 * ft1))
+                        worstNear = std::max(worstNear, ratio);
+                }
+            }
+        }
+    std::cout << "string port over the bridge's own conductance: worst " << worst
+              << " (" << worstCase << "), above A0 and T1 " << worstNear << '\n';
+    expect(worst < 3.0 && worstNear < 3.0,
+           "a string drains into more than its bridge: a termination in parallel "
+           "with the body resonates with it");
+}
+
+// The same in the running junction: a note where the spring's false drain
+// sat, about 2.5 semitones above A0, loses through the bridge what the
+// bridge's own conductance predicts. Per round trip a string of impedance Z
+// on a port of conductance G keeps |R|^2 = 1 - 4 Z G of its energy, so its
+// fundamental decays 10 log10(e) 4 Z G f0 dB/s faster coupled than on a
+// rigid end. The parallel plane and the idle strings are left out, so the
+// normal plane's own drain is what is read. With the spring, the Dreadnought's
+// G2 lost 5-6 times that.
+void testAPartialDrainsAsItsBridgePredicts()
+{
+    const auto [a0, t1] = measuredA0AndT1();
+    (void) t1;
+    constexpr double rate = 48000.0;
+    acustra::EngineParameters p;
+    const double fa0 = Access::radiationPole(p, acustra::fittedPhysicalCalibration, a0)[0];
+    const int note = static_cast<int>(std::lround(69.0 + 12.0 * std::log2(fa0 / 440.0) + 2.5));
+    const auto decay = [&] (bool coupled, double& f0, double& predicted)
+    {
+        auto e = std::make_unique<Engine>();
+        e->setParameters(p);
+        e->prepare(rate, 64);
+        e->setSympatheticStringsEnabled(false);
+        e->setBridgeCouplingEnabled(coupled);
+        e->noteOn(note, 0.72f);
+        const int string = std::max(0, e->heldString(note));
+        Access::silenceParallel(*e);
+        f0 = 440.0 * std::exp2((note - 69) / 12.0);
+        const double u = (string - 2.5) / 2;
+        const auto y = mobility(Access::bridge(*e), f0, rate);
+        const double z = Access::voices(*e)[std::size_t(string)].characteristicImpedance;
+        predicted = 10.0 * std::log10(std::exp(1.0)) * 4.0 * z
+            * (y[0] + 2.0 * u * y[1] + u * u * y[2]).real() * f0;
+        std::vector<double> force;
+        for (int n = 0; n < static_cast<int>(1.6 * rate); ++n)
+        {
+            float l = 0.0f, r = 0.0f;
+            e->process(&l, &r, 1);
+            force.push_back(e->getLastBridgeReactionForce());
+        }
+        // The fundamental's level in 100 ms Hann frames every 20 ms, and its
+        // slope over 0.3-1.5 s.
+        const int frame = static_cast<int>(0.1 * rate);
+        std::vector<double> t, level;
+        for (int start = static_cast<int>(0.25 * rate); start + frame <= static_cast<int>(force.size());
+             start += static_cast<int>(0.02 * rate))
+        {
+            Complex sum {};
+            for (int n = 0; n < frame; ++n)
+            {
+                const double w = 0.5 - 0.5 * std::cos(2.0 * pi * n / (frame - 1));
+                sum += w * force[std::size_t(start + n)]
+                     * std::polar(1.0, -2.0 * pi * f0 * (start + n) / rate);
+            }
+            t.push_back((start + 0.5 * frame) / rate);
+            level.push_back(20.0 * std::log10(std::abs(sum) + 1.0e-30));
+        }
+        double st = 0, sl = 0, stt = 0, stl = 0;
+        for (std::size_t i = 0; i < t.size(); ++i)
+        {
+            st += t[i]; sl += level[i]; stt += t[i] * t[i]; stl += t[i] * level[i];
+        }
+        const double n = static_cast<double>(t.size());
+        return -(n * stl - st * sl) / (n * stt - st * st);
+    };
+    double f0 = 0.0, predicted = 0.0, unused = 0.0;
+    const double coupled = decay(true, f0, predicted);
+    const double rigid = decay(false, f0, unused);
+    const double drain = coupled - rigid;
+    std::cout << "MIDI " << note << " (" << f0 << " Hz, A0 " << fa0 << " Hz): drain "
+              << drain << " dB/s through the junction, " << predicted
+              << " dB/s from the bridge's own conductance\n";
+    expect(drain < 2.0 * predicted + 1.0 && drain > 0.5 * predicted - 1.0,
+           "a partial's bridge drain is not the bridge's own conductance");
 }
 
 void process(Engine& e, int frames, double* energy = nullptr, float* peak = nullptr);
@@ -497,13 +651,15 @@ void testSteelBlend()
     expect(worstLevel < 1e-5, "a blended bridge part is not at its share");
     expect(worstDefinite >= -1e-6, "a blended bridge section is not positive semidefinite");
 
-    // A passive part in parallel is not a linear share at the string: the
-    // string drains into the port, (Y^-1 + K/s)^-1 with the anchors' K, whose
-    // peaks sit at the summed Y's zeros, so a part ringing at other
-    // frequencies moves them. At each of B's aligned poles the port must keep
-    // at least that mode's share of the conductance B's modes alone give it
-    // (another guitar's measured bridge, unaligned, blended in at 0.3 left
-    // 0.26-0.49 of it at 100 and 178-190 Hz; Docs/decisions.md).
+    // At each of B's aligned poles the port must keep at least that mode's
+    // share of the conductance B's modes alone give it. The string drains
+    // into the bridge itself, so the port is linear in the blend and a
+    // passive part in parallel only adds conductance. While a spring to
+    // ground stood in parallel (until 2026-10-10) the port was (Y^-1 +
+    // K/s)^-1, whose peaks sat at the summed Y's zeros, and another guitar's
+    // measured bridge, unaligned, blended in at 0.3 left 0.26-0.49 of it at
+    // 100 and 178-190 Hz (Docs/decisions.md); this keeps any termination
+    // that is not linear in the bridge from doing that again.
     {
         std::vector<float> shares;
         for (const auto& mode : d::measuredSteelBridgeModes)
@@ -931,59 +1087,6 @@ void testConstructionSwitchesDoNotTick()
               << " dB (" << worstName << ")\n";
 }
 
-void testLiveTuningPreservesAnchorForceAndReachesItsTarget()
-{
-    for (const int rate : { 44100, 48000, 96000 })
-    {
-        auto e = std::make_unique<Engine>();
-        acustra::EngineParameters p;
-        e->setParameters(p); e->prepare(rate, 1);
-        e->setStringPerChannelMode(true);
-        e->noteOn(47, 0.8f, 1);
-        float left {}, right {};
-        for (int sample = 0; sample < rate / 10; ++sample)
-            e->process(&left, &right, 1);
-        const auto before = Access::anchor(*e, 0);
-        p.tuning = acustra::Tuning::Dadgad;
-        e->setParameters(p);
-        const auto retuned = Access::anchor(*e, 0);
-        expect(retuned.target != before.target && retuned.applied == before.applied
-                   && retuned.remaining > 1,
-               "live tuning stepped the retained anchor spring to its new force");
-        for (int sample = 0; sample < retuned.remaining - 1; ++sample)
-        {
-            e->process(&left, &right, 1);
-            const auto active = Access::anchor(*e, 0);
-            expect(active.applied >= std::min(before.applied, retuned.target)
-                       && active.applied <= std::max(before.applied, retuned.target),
-                   "a retuning anchor spring left its physical endpoint interval");
-        }
-        const auto nearDeadline = Access::anchor(*e, 0);
-        p.tuning = acustra::Tuning::Standard;
-        e->setParameters(p);
-        const auto reversed = Access::anchor(*e, 0);
-        expect(reversed.applied == nearDeadline.applied
-                   && reversed.remaining > 1,
-               "a second tuning near the old deadline stepped the anchor force");
-        // A fresh wave belongs to the same physical anchor; attacking it
-        // during the retune must not finish the instrument's transition.
-        e->noteOn(48, 0.8f, 1);
-        expect(Access::anchor(*e, 0).applied == reversed.applied,
-               "a fresh attack snapped an anchor retune to its target");
-        const int remaining = Access::anchor(*e, 0).remaining;
-        for (int sample = 0; sample < remaining; ++sample)
-            e->process(&left, &right, 1);
-        const auto settled = Access::anchor(*e, 0);
-        expect(settled.remaining == 0 && settled.applied == settled.target
-                   && settled.target == before.target,
-               "the anchor retune did not reach its exact physical target");
-        e->reset();
-        const auto reset = Access::anchor(*e, 0);
-        expect(reset.remaining == 0 && reset.applied == reset.target,
-               "reset retained an in-flight anchor retune");
-    }
-}
-
 // A note near a strong, lossy low bridge or body mode is pulled a few cents
 // from its request (README, Known gaps; audit F15): the loop is tuned to
 // the bridge's reflection phase at the note, not to the damped pole. Keep
@@ -1255,8 +1358,64 @@ void testRadiationContinuesAboveTheFittedBand()
            "the body's radiation at 16 kHz is not continued from its fitted band");
 }
 
+// Shape moves a plate mode by the equal-thickness law: its frequency goes as
+// 1/A and its modal mass as A, so its peak bridge mobility (heave residue over
+// frequency) does not depend on the box, nor do its moment and cross terms
+// (rock over f^2, cross over f^1.5). Kept residues, the law before
+// 2026-10-10, raised the Jumbo's plate-mode mobility peaks by A and lowered
+// the Parlor's. The A0 and T1 groups (below 400 Hz here) keep theirs.
+void testPlateModesKeepTheirPeakMobilityAcrossShapes()
+{
+    const auto table = [] (acustra::BodyShape shape)
+    {
+        acustra::EngineParameters p;
+        p.shape = shape;
+        auto e = std::make_unique<Engine>();
+        e->setParameters(p);
+        e->prepare(48000, 64);
+        return Access::bridgeTable(*e);
+    };
+    const auto anchor = table(acustra::BodyShape::Dreadnought);
+    double worst = 0.0;
+    int checked = 0;
+    for (const auto shape : { acustra::BodyShape::Parlor, acustra::BodyShape::Auditorium,
+                              acustra::BodyShape::Jumbo })
+    {
+        const auto shaped = table(shape);
+        expect(shaped.count == anchor.count, "a Shape changed the bridge's mode count");
+        for (int i = 0; i < std::min(anchor.count, shaped.count); ++i)
+        {
+            const auto& a = anchor.modes[std::size_t(i)];
+            const auto& b = shaped.modes[std::size_t(i)];
+            // The table holds each section's prewarped design frequency.
+            const auto analog = [] (float omega)
+            { return 48000.0 / pi * std::atan(omega / (2.0 * 48000.0)); };
+            if (analog(a.omega) < 400.0)
+                continue;
+            const double ratio = analog(b.omega) / analog(a.omega);
+            const auto check = [&] (double shapedResidue, double anchorResidue, double power)
+            {
+                if (shapedResidue == 0.0 && anchorResidue == 0.0)
+                    return;
+                worst = std::max(worst, std::abs(shapedResidue / std::pow(ratio, power)
+                                                 / anchorResidue - 1.0));
+                ++checked;
+            };
+            check(b.heave, a.heave, 1.0);
+            check(b.cross, a.cross, 1.5);
+            check(b.rock, a.rock, 2.0);
+
+        }
+    }
+    std::cout << "plate-mode peak mobility across Shapes: " << checked
+              << " residues, worst relative change " << worst << '\n';
+    expect(checked > 100 && worst < 1.0e-4,
+           "a plate mode's peak bridge mobility depends on the Shape");
+}
+
 int main()
 {
+    testPlateModesKeepTheirPeakMobilityAcrossShapes();
     testOriginalAirDecayIsLocalized();
     testRadiationContinuesAboveTheFittedBand();
     testSteelOwnBridgeSharesTheRadiationPoles();
@@ -1264,10 +1423,11 @@ int main()
     testSteelBlend();
     testSteelBlendJointBridgeRingsOnItsRadiation();
     testPhaseAndPassivity();
+    testTheStringsDrainIntoTheBridgeAlone();
+    testAPartialDrainsAsItsBridgePredicts();
     testRetuneAndTailOwnership();
     testStaticWorkAndRapidChanges();
     testConstructionSwitchesDoNotTick();
-    testLiveTuningPreservesAnchorForceAndReachesItsTarget();
     testCoupledPitchPullIsBounded();
     testNoteToNoteLevelSpreadIsBounded();
     std::cout << "Body shape failures=" << failures << '\n';

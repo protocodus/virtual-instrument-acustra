@@ -38,8 +38,10 @@ struct AcustraEngineTestAccess
             engine->setParameters(parameters);
             engine->prepare(rate, 64);
 
-            float stiffness0, stiffness1, stiffness2;
-            engine->bridgeAnchorMoments(stiffness0, stiffness1, stiffness2);
+            // The saddle-to-pin segment holds the bridge against nothing
+            // since 2026-10-10 (bridgePortMobility): its stiffness matrix is
+            // exported as zero so the prototype's layout is unchanged.
+            constexpr float stiffness0 = 0.0f, stiffness1 = 0.0f, stiffness2 = 0.0f;
             std::cout << "{\"kind\":\"configuration\",\"rate\":" << rate
                       << ",\"variant\":" << variant << ",\"K\":["
                       << stiffness0 << ',' << stiffness1 << ',' << stiffness2
@@ -98,7 +100,6 @@ struct AcustraEngineTestAccess
             }
 
             // Only the low-E normal polarization speaks in this reference.
-            // bridgeAnchorMoments above still includes all six fixed tails.
             const auto& voice = engine->voices_[0];
             const auto& loop = voice.loops[0];
             const double length = double(0.648f);

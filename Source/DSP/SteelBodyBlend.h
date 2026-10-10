@@ -24,13 +24,14 @@
 //
 // Each weight blends a passive part with a passive part, so the result stays
 // passive: a non-negative sum of positive-real driving-point admittances is
-// positive real, and a radiation sum only adds outputs. Passive is not
-// linear, though. The strings do not drain into the bridge admittance Y but
-// into the port it makes with the anchors, (Y^-1 + K/s)^-1, whose peaks sit
-// at the summed Y's zeros. A part in parallel that rings at other
-// frequencies moves those peaks, so w of a bridge is not w of what the string
-// hears. testSteelBlend (Tests/BodyShapeTests.cpp) checks that at each of B's
-// aligned poles the port keeps at least B's share of B's own conductance.
+// positive real, and a radiation sum only adds outputs. The strings drain
+// into the bridge admittance Y itself, so w of a bridge is w of what a
+// string hears. Until 2026-10-10 they drained into the port Y made with a
+// spring to ground at the saddle, (Y^-1 + K/s)^-1, whose peaks sat at the
+// summed Y's zeros, so a part in parallel ringing at other frequencies moved
+// them; the history below was measured on that port. testSteelBlend
+// (Tests/BodyShapeTests.cpp) checks that at each of B's aligned poles the
+// port keeps at least B's share of B's own conductance.
 //
 //   B                              The steel bridge is B's aligned bridge
 //                                  (g21's own, on its radiation's poles, at

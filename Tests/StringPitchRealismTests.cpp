@@ -207,7 +207,7 @@ struct AcustraEngineTestAccess
             voice.loops[0].currentDelay)), 8, AcustraEngine::maximumDelaySamples - 3);
         const double amplitude = voice.releaseStepRise
             * voice.releaseShapePosition[0] * samples
-            / (0.8 * std::sqrt(voice.polarisationMix));
+            / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix));
         Attack result { voice.speakingLengthMetres, voice.pluckPoint, amplitude,
                         voice.releaseSlipPole, voice.bendImpedanceScale,
                         voice.releaseReferencePole, voice.speakingFret,

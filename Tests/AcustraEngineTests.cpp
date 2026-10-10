@@ -23,6 +23,11 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    // Body, Width, Output and Piezo Mix as the audio loop glides them.
+    static std::array<float, 4> smoothedControls(const AcustraEngine& engine)
+    {
+        return { engine.bodyAmount_, engine.width_, engine.outputGain_, engine.piezoMix_ };
+    }
     // Empties every string's parallel-polarisation loop, as if the pluck had
     // put nothing in that plane.
     static void silenceParallelPolarisation(AcustraEngine& engine)
@@ -197,6 +202,11 @@ struct AcustraEngineTestAccess
         bool secondDispersionActive { false };
         double secondDispersionA1 { 0.0 };
         double secondDispersionA2 { 0.0 };
+        // The bridge's reflection lag, in samples, at the pitch the loop is
+        // tuned to: the loop is shortened by it (bridgePhaseDelay) and the
+        // bridge gives it back, so with it the loop resolves where the
+        // string sounds. Zero reads the loop alone.
+        double bridgeDelay { 0.0 };
     };
 
     // Completes a snapshot with the loop's sections that the positional
@@ -345,7 +355,7 @@ struct AcustraEngineTestAccess
     struct RetunedStringSnapshot
     {
         double impedance;
-        double tailStiffness;
+        double tension;
         double inharmonicity;
     };
 
@@ -658,13 +668,18 @@ struct AcustraEngineTestAccess
             if (selected == engine.voices_.end())
                 break;
             const auto& loop = selected->loops[0];
-            trace.push_back(withBendingLoss({ loop.currentDelay,
+            auto snapshot = withBendingLoss({ loop.currentDelay,
                               loop.loopGain,
                               loop.broadLossCoefficient, loop.broadLossMix,
                               loop.lowpassCoefficient, loop.highLossMix,
                               loop.dispersionA1, loop.dispersionA2,
                               selected->dispersionDesignInharmonicity, rate },
-                              loop));
+                              loop);
+            const int string = static_cast<int>(selected - engine.voices_.begin());
+            const float frequency = selected->pitchGeometry.value.frequency;
+            snapshot.bridgeDelay = engine.bridgePhaseDelay(
+                engine.bridgePortMobility(frequency, string), frequency, string);
+            trace.push_back(snapshot);
         }
         return trace;
     }
@@ -976,7 +991,7 @@ struct AcustraEngineTestAccess
         engine.setParameters(parameters);
         engine.prepare(48000.0, 64);
         const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
-        return { voice.characteristicImpedance, voice.bridgeTailStiffness,
+        return { voice.characteristicImpedance, voice.tensionNewtons,
                  voice.dispersionDesignInharmonicity };
     }
 
@@ -1352,13 +1367,12 @@ struct AcustraEngineTestAccess
         return { before, forced, landed, leaked, after };
     }
 
-    static std::array<float, 8> bridgePortWaves(const AcustraEngine& engine)
+    static std::array<float, 6> bridgePortWaves(const AcustraEngine& engine)
     {
         const auto& bridge = engine.bridgeLoad_;
         return { bridge.displacement, bridge.rotation,
                  bridge.mainIntegratedForce, bridge.mainIntegratedMoment,
-                 bridge.bodyIntegratedForce, bridge.bodyIntegratedMoment,
-                 bridge.tailIntegratedForce, bridge.tailIntegratedMoment };
+                 bridge.bodyIntegratedForce, bridge.bodyIntegratedMoment };
     }
 
     // The normal-polarisation line a fresh note writes, newest sample first,
@@ -1443,8 +1457,7 @@ struct AcustraEngineTestAccess
         for (const auto* derivative : {
                  &engine.bridgeVelocityDerivative_, &engine.bridgeRotationDerivative_,
                  &engine.bridgeForceDerivative_, &engine.bridgeForceMomentDerivative_,
-                 &engine.bridgeBodyForceDerivative_, &engine.bridgeBodyMomentDerivative_,
-                 &engine.bridgeTailForceDerivative_, &engine.bridgeTailMomentDerivative_ })
+                 &engine.bridgeBodyForceDerivative_, &engine.bridgeBodyMomentDerivative_ })
         {
             state.insert(state.end(), derivative->history.begin(), derivative->history.end());
             state.push_back(static_cast<float>(derivative->index));
@@ -2172,7 +2185,7 @@ void testSteelRetuningPreservesStringMass()
             expect(std::abs(moved.impedance / standard.impedance - frequencyRatio)
                        < 2.0e-5,
                    name + ": steel impedance did not preserve linear mass");
-            expect(std::abs(moved.tailStiffness / standard.tailStiffness
+            expect(std::abs(moved.tension / standard.tension
                             - frequencyRatio * frequencyRatio) < 2.0e-5,
                    name + ": steel tension did not follow the retuned frequency");
             expect(std::abs(moved.inharmonicity / standard.inharmonicity
@@ -2558,11 +2571,8 @@ void testPassiveBridgeBranchesBalance()
 
     double totalWork = 0.0;
     double bodyWork = 0.0;
-    double tailWork = 0.0;
     double minimumTotalWork = 0.0;
     double minimumBodyWork = 0.0;
-    double minimumTailWork = 0.0;
-    double maximumTailWork = 0.0;
     double maximumForce = 0.0;
     double maximumBalanceError = 0.0;
     for (int sample = 0; sample < static_cast<int>(4.0 * sampleRate);
@@ -2573,14 +2583,12 @@ void testPassiveBridgeBranchesBalance()
         engine.process(&left, &right, 1);
         totalWork += engine.getLastBridgePower() / sampleRate;
         bodyWork += engine.getLastBridgeBodyPower() / sampleRate;
-        tailWork += engine.getLastBridgeTailPower() / sampleRate;
         minimumTotalWork = std::min(minimumTotalWork, totalWork);
         minimumBodyWork = std::min(minimumBodyWork, bodyWork);
-        minimumTailWork = std::min(minimumTailWork, tailWork);
-        maximumTailWork = std::max(maximumTailWork, tailWork);
+        // Nothing but the body holds the saddle (bridgePortMobility), so
+        // the strings' whole force is the body's.
         const double totalForce = engine.getLastBridgeReactionForce();
-        const double branchForce = engine.getLastBridgeBodyForce()
-                                 + engine.getLastBridgeTailForce();
+        const double branchForce = engine.getLastBridgeBodyForce();
         maximumForce = std::max(maximumForce, std::abs(totalForce));
         maximumBalanceError = std::max(maximumBalanceError,
             std::abs(totalForce - branchForce));
@@ -2590,10 +2598,8 @@ void testPassiveBridgeBranchesBalance()
            "bridge termination generated cumulative work");
     expect(minimumBodyWork >= -1.0e-14,
            "measured body branch generated cumulative work");
-    expect(minimumTailWork >= -1.0e-4 * maximumTailWork - 1.0e-15,
-           "xi_b tail acquired negative stored energy");
     expect(maximumBalanceError < 1.0e-4 * maximumForce + 1.0e-10,
-           "bridge/body/tail force balance did not close");
+           "bridge/body force balance did not close");
 }
 
 // Measure the solver's actual zero-state port trajectories independently of
@@ -2609,7 +2615,7 @@ void testPowerObserversKeepInitialAndRepeatedPluckWork()
         parameters.touch = 0.72f;
         engine.setParameters(parameters);
         engine.prepare(rate, 1);
-        std::vector<std::array<float, 8>> trajectory;
+        std::vector<std::array<float, 6>> trajectory;
         const int frames = static_cast<int>(0.05 * rate);
         trajectory.reserve(static_cast<std::size_t>(frames));
         bool agrees = true;
@@ -2626,7 +2632,7 @@ void testPowerObserversKeepInitialAndRepeatedPluckWork()
             const double delayedAt = static_cast<double>(sample) - rate / 48000.0;
             const int before = static_cast<int>(std::floor(delayedAt));
             const double fraction = delayedAt - before;
-            std::array<double, 8> rates {}, rateErrorBounds {};
+            std::array<double, 6> rates {}, rateErrorBounds {};
             for (std::size_t coordinate = 0; coordinate < rates.size(); ++coordinate)
             {
                 const auto valueAt = [&] (int at)
@@ -2645,9 +2651,8 @@ void testPowerObserversKeepInitialAndRepeatedPluckWork()
                     * (std::abs(trajectory.back()[coordinate])
                        + std::abs(valueAt(before)) + std::abs(valueAt(before + 1)));
             }
-            const std::array<double, 3> observed {
-                engine.getLastBridgePower(), engine.getLastBridgeBodyPower(),
-                engine.getLastBridgeTailPower()
+            const std::array<double, 2> observed {
+                engine.getLastBridgePower(), engine.getLastBridgeBodyPower()
             };
             for (std::size_t branch = 0; branch < observed.size(); ++branch)
             {
@@ -3059,7 +3064,8 @@ double loopPhase(const acustra::AcustraEngineTestAccess::StringLoopSnapshot& loo
         + mixedPolePhase(loop.broadCoefficient, loop.broadMix)
         + mixedPolePhase(loop.highCoefficient, loop.highMix)
         + bendingLag
-        + allpassPhase;
+        + allpassPhase
+        + omega * loop.bridgeDelay;
 }
 
 // The bracket is widened by the caller when the resonance can sit further
@@ -3265,11 +3271,13 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         const int block = 64;
-        const auto bent = [&] (bool bend)
+        const auto bent = [&] (bool bend, acustra::CaptureType capture
+                                              = acustra::CaptureType::StereoMic)
         {
             auto engineOwner = std::make_unique<acustra::AcustraEngine>();
             auto& engine = *engineOwner;
             acustra::EngineParameters parameters;
+            parameters.capture = capture;
             engine.setParameters(parameters);
             engine.prepare(rate, block);
             engine.setBridgeCouplingEnabled(false);
@@ -3291,8 +3299,19 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
             return audio;
         };
         // 200 cents over a second: about eighteen tap moves on this string.
-        const auto slewing = bent(true);
-        const auto still = bent(false);
+        // Read at the saddle piezo, on the string's own force before the
+        // body (the bridge is held still here). The body is a linear filter
+        // and adds no click, but a bend that crosses one of its resonances
+        // blooms the note's fundamental, and in a 5 ms frame the Hann
+        // window's leakage of that fundamental is the top band's floor.
+        // Since 2026-10-10 the Dreadnought's T1 sits at 176 Hz, inside this
+        // E3's 165-185 Hz sweep, and the stereo microphones read 1.64 and
+        // 1.69 at 44.1 and 48 kHz with their loudest frame where the bend
+        // crosses T1 (under 1.5 before); the saddle reads 1.048, 1.048
+        // and 1.067 at 44.1, 48 and 96 kHz, before that change and after it
+        // (Docs/saddle-termination-2026-10-10.md).
+        const auto slewing = bent(true, acustra::CaptureType::Piezo);
+        const auto still = bent(false, acustra::CaptureType::Piezo);
         const auto frames = [&] (const Audio& audio, double begin, double end)
         {
             std::vector<double> result;
@@ -4243,10 +4262,11 @@ void testStringPerChannelModeIsOptInAndBypassesTheAllocator()
 // What the wheel does when it is not zero, against what the sources measured.
 // The gesture those sources describe is a fundamental-frequency modulation
 // (Erkut: the string is repeatedly stretched to fluctuate the fundamental),
-// so this measures a frequency: each block's loop is resolved for the pitch
-// it is sounding, and the same note rendered with the wheel down is resolved
-// beside it, so what is compared is the vibrato itself and not the note's own
-// tuning residual or its attack glide.
+// so this measures a frequency: each block's loop is resolved, with the
+// bridge's reflection lag it is tuned against, for the pitch it is sounding,
+// and the same note rendered with the wheel down is resolved beside it, so
+// what is compared is the vibrato itself and not the note's own tuning
+// residual or its attack glide.
 void testTheVibratoWheelStaysInsideItsPublishedBounds()
 {
     const auto trace = [] (float wheel, double rate, int block, int midiNote)
@@ -4305,11 +4325,15 @@ void testTheVibratoWheelStaysInsideItsPublishedBounds()
             // The wheel's full-scale depth is the authored 20 cents, and
             // what the string sounds is that interval plus the loop's own
             // tuning residual, which is not quite the same at the top of the
-            // excursion as at the bottom: 0.50% of the interval at 44.1 kHz,
-            // 0.46% at 48 and 0.23% at 96, as the printed depths show. Unlike
-            // the dip above, this is unchanged when the dispersion design is
-            // re-solved on every change instead of every 0.2% of B, so it is
-            // the tuning solve and not the stale design. One percent is the
+            // excursion as at the bottom: read with the bridge's lag, 20.005,
+            // 19.995 and 19.943 cents at 44.1, 48 and 96 kHz, as the printed
+            // depths show. The loop alone carries more: it is retuned for the
+            // bridge's lag at each pitch of the excursion, which the bridge
+            // gives back. That change was +0.14 cents over the 20 at E3 while
+            // a spring to ground stood at the saddle, when the loop alone read
+            // 20.16, 20.15 and 20.10; with the strings ending on the bridge
+            // (2026-10-10) it is +0.56 there, near T1, and the loop alone
+            // read 20.57 where the string sounds 20.0. One percent is the
             // bound.
             expect(deepest > 1.0 && deepest <= 20.2,
                    "the wheel's vibrato reached " + std::to_string(deepest)
@@ -4586,8 +4610,7 @@ void testHostilePhysicalCalibrationIsSanitised()
             }
             expect(std::isfinite(engine.getLastBridgeVelocity())
                        && std::isfinite(engine.getLastBridgeReactionForce())
-                       && std::isfinite(engine.getLastBridgeBodyForce())
-                       && std::isfinite(engine.getLastBridgeTailForce()),
+                       && std::isfinite(engine.getLastBridgeBodyForce()),
                    "bounded physical calibration poisoned bridge telemetry");
         }
         expect(maximum > 1.0e-7 && maximum <= 1.0,
@@ -7768,9 +7791,10 @@ void testAPickReleaseKeepsItsHumpAcrossRates()
 
 // A Shape is the measured body's A0 and T1 re-coupled through Christensen and
 // Vistisen's two-oscillator model for a published box, with the plate modes
-// above T1 on the equal-thickness plate law. The anchor - the wide
-// Dreadnought chosen by ear - must not move; the other shapes must land where
-// an independent evaluation of the same model puts them.
+// above T1 on the equal-thickness plate law. The anchor - the Dreadnought,
+// the wide box chosen by ear with its A0 and T1 where steel-strung guitars
+// ring - must not move; the other shapes must land where an independent
+// evaluation of the same model puts them.
 void testBodyShapesFollowTheCoupledTopAndCavity()
 {
     using Access = acustra::AcustraEngineTestAccess;
@@ -7782,23 +7806,30 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
     };
 
     // The anchor is the Dreadnought: the flamenca's bank, resolved over
-    // 250 ms, under the wide transform, A0 at 90.82 * 98/107 * (1 + 0.018)
-    // and T1, the bank's second mode, at 178.53 * 0.900 * (1 - 0.018 / sqrt(2)).
+    // 250 ms, under the anchor transform, A0 at 90.82 * 109/107 * (1 + 0.018)
+    // = 94.18 Hz, where the recorded dreadnoughts ring, and T1, the bank's
+    // second mode, at its measured 178.53 * (1 - 0.018 / sqrt(2)) = 176.26 Hz.
+    // Until 2026-10-10 the wide box also lowered these, to 98/107 and 0.900
+    // (84.68 and 158.63 Hz), while a spring to ground at the saddle kept the
+    // strings from feeling them (Docs/saddle-termination-2026-10-10.md).
     const auto steelDread0 = body(BodyShape::Dreadnought, 0);
     const auto steelDread1 = body(BodyShape::Dreadnought, 1);
-    expect(std::abs(steelDread0.frequency - 90.8203125 * (98.0 / 107.0) * 1.018) < 0.01,
+    expect(std::abs(steelDread0.frequency - 90.8203125 * (109.0 / 107.0) * 1.018) < 0.01,
            "the steel Dreadnought anchor moved its A0");
     expect(std::abs(steelDread1.frequency
-                    - 178.532211 * 0.900 * (1.0 - 0.018 / std::sqrt(2.0))) < 0.01,
+                    - 178.532211 * (1.0 - 0.018 / std::sqrt(2.0))) < 0.01,
            "the steel Dreadnought anchor moved its T1");
 
     // Independently evaluated (Tools-free, in double precision from the same
     // published boxes) the coupled pair puts the steel shapes here; the
     // engine's single-precision path must agree within a fraction of a hertz.
+    // The same evaluation from the earlier anchor (84.68/158.63 Hz) gives the
+    // rows this test held until 2026-10-10 (Parlor 111.34/183.71, Auditorium
+    // 95.72/171.18, Jumbo 76.09/145.57), so only the anchor moved them.
     struct Expected { BodyShape shape; double a0, t1; };
-    for (const auto& row : { Expected { BodyShape::Parlor, 111.34, 183.71 },
-                             Expected { BodyShape::Auditorium, 95.72, 171.18 },
-                             Expected { BodyShape::Jumbo, 76.09, 145.57 } })
+    for (const auto& row : { Expected { BodyShape::Parlor, 121.49, 208.06 },
+                             Expected { BodyShape::Auditorium, 106.12, 190.83 },
+                             Expected { BodyShape::Jumbo, 84.42, 162.13 } })
     {
         const auto a0 = body(row.shape, 0);
         const auto t1 = body(row.shape, 1);
@@ -7831,13 +7862,23 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
            "a shape changed a body mode's measured Q");
 
     // The small box radiates its A0 more strongly per unit force (the piston
-    // is smaller, so the same force is more cavity pressure) while its plate
-    // modes radiate from less area; the large box the other way round. The
-    // capture voicing now filters the summed microphone pressure, so these
-    // configured residues already describe the box before that correction.
+    // is smaller, so the same force is more cavity pressure); the large box
+    // the other way round. A plate mode's peak (residue times Q over
+    // frequency) is the same from any box: its modal mass and its radiating
+    // volume velocity both go as the top's area, so the residue goes as the
+    // frequency (bodyShapeMorph). Until 2026-10-10 the residue went as the
+    // area instead, which put the Parlor's plate peaks 4.7 dB under the
+    // Dreadnought's. Only the anchor's bass tilt, which fades with frequency,
+    // differs where each box puts the mode. The capture voicing filters the
+    // summed microphone pressure, so these configured residues describe the
+    // box before that correction.
     const auto radiated = [] (const auto& mode)
     {
         return mode.residue;
+    };
+    const auto peak = [] (const auto& mode)
+    {
+        return mode.residue * mode.q / mode.frequency;
     };
     const auto steelParlor0 = body(BodyShape::Parlor, 0);
     const auto steelJumbo0 = body(BodyShape::Jumbo, 0);
@@ -7847,9 +7888,12 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
     expect(radiated(steelParlor0) > radiated(steelDread0)
                && radiated(steelJumbo0) < radiated(steelDread0),
            "A0 radiation did not follow the coupled model's residues");
-    expect(radiated(steelParlor9) < radiated(steelDread9)
-               && radiated(steelJumbo9) > radiated(steelDread9),
-           "plate radiation did not scale with the plate area");
+    std::cout << "Acustra plate mode 9 peak, Parlor/Jumbo over Dreadnought: "
+              << peak(steelParlor9) / peak(steelDread9) << ' '
+              << peak(steelJumbo9) / peak(steelDread9) << '\n';
+    expect(std::abs(peak(steelParlor9) / peak(steelDread9) - 1.0) < 0.05
+               && std::abs(peak(steelJumbo9) / peak(steelDread9) - 1.0) < 0.05,
+           "a plate mode's peak radiation depends on the box");
 }
 
 // Woodhouse (Acta Acustica 90 (2004) 945-965, Sec. 4.3) measures the two
@@ -8729,8 +8773,39 @@ void testEachReleaseGivesBackTheForceItHeld()
 
 } // namespace
 
+// A control glided to zero lands on zero exactly. Body, Width and Output
+// used to stall on a subnormal near 7e-43, where each step is under half an
+// ulp, and subnormal arithmetic is slow wherever the host does not flush it.
+void testControlGlidesSettleExactly()
+{
+    for (const double rate : { 44100.0, 192000.0 })
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        acustra::EngineParameters parameters;
+        parameters.bodyAmount = 0.9f;
+        parameters.stereoWidth = 0.8f;
+        parameters.outputGain = 1.5f;
+        parameters.piezoMix = 0.5f;
+        engine->setParameters(parameters);
+        engine->prepare(rate, 64);
+        parameters.bodyAmount = 0.0f;
+        parameters.stereoWidth = 0.0f;
+        parameters.outputGain = 0.0f;
+        parameters.piezoMix = 0.0f;
+        engine->setParameters(parameters);
+        std::vector<float> left(64), right(64);
+        for (int done = 0; done < static_cast<int>(rate); done += 64)
+            engine->process(left.data(), right.data(), 64);
+        expect(acustra::AcustraEngineTestAccess::smoothedControls(*engine)
+                   == std::array<float, 4> {},
+               "a control glided to zero did not land on zero at "
+                   + std::to_string(rate) + " Hz");
+    }
+}
+
 int main()
 {
+    testControlGlidesSettleExactly();
     testThePluckKinkLandsAtThePluckPoint();
     testPluckPositionChangesEveryFret();
     testAFingerBrightensWithVelocity();

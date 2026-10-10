@@ -126,8 +126,6 @@ int main(int argc, char** argv)
     double negativeWork = 0.0;
     double bodyWork = 0.0;
     double minimumBodyWork = 0.0;
-    double tailWork = 0.0;
-    double minimumTailWork = 0.0;
     double maximumForceBalanceError = 0.0;
     double maximumVelocity = 0.0;
     double maximumForce = 0.0;
@@ -142,8 +140,9 @@ int main(int argc, char** argv)
             = engine.getLastBridgeReactionForce();
         telemetry[static_cast<std::size_t>(5 * sample + 1)]
             = engine.getLastBridgeBodyForce();
-        telemetry[static_cast<std::size_t>(5 * sample + 2)]
-            = engine.getLastBridgeTailForce();
+        // Column 3 held the saddle anchor's force, which was retired with the
+        // anchor on 2026-10-10; it stays, zero, as column 5 does.
+        telemetry[static_cast<std::size_t>(5 * sample + 2)] = 0.0f;
         telemetry[static_cast<std::size_t>(5 * sample + 3)]
             = engine.getLastBridgeVelocity();
         // Column 5 held the engine's separate sympathetic force, which was
@@ -159,12 +158,9 @@ int main(int argc, char** argv)
             negativeWork -= power / rate;
         bodyWork += engine.getLastBridgeBodyPower() / rate;
         minimumBodyWork = std::min(minimumBodyWork, bodyWork);
-        tailWork += engine.getLastBridgeTailPower() / rate;
-        minimumTailWork = std::min(minimumTailWork, tailWork);
         maximumForceBalanceError = std::max(maximumForceBalanceError,
             static_cast<double>(std::abs(engine.getLastBridgeReactionForce()
-                - engine.getLastBridgeBodyForce()
-                - engine.getLastBridgeTailForce())));
+                - engine.getLastBridgeBodyForce())));
         maximumVelocity = std::max(maximumVelocity,
             static_cast<double>(std::abs(engine.getLastBridgeVelocity())));
         maximumForce = std::max(maximumForce,
@@ -195,8 +191,6 @@ int main(int argc, char** argv)
               << " negative=" << negativeWork
               << " body=" << bodyWork
               << " body_min=" << minimumBodyWork
-              << " tail=" << tailWork
-              << " tail_min=" << minimumTailWork
               << " balance_max=" << maximumForceBalanceError
               << " vmax=" << maximumVelocity
               << " fmax=" << maximumForce << '\n';

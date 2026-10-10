@@ -30,6 +30,17 @@ GuitarSet strum statistics informed the engine, so this is a different-instrumen
 performance evaluation, not a completely untouched holdout. The renderer
 replays annotated timing, so this does not evaluate automatic MIDI strumming.
 
+Observation (--observation; the report records it). Both references are one
+signal (a single microphone, or the pickups' mono mix), so ``matched``, the
+default since 2026-10-10, scores the model's Mono mic: a mono_mic or piezo
+render as rendered, and a Stereo mic render through its upper-bout
+microphone, which the engine's Width law (each output is mid +/- Width x
+side, Width 0.62 here) gives back exactly when Room is 0. ``mid`` scores the
+L/R average, as every report before 2026-10-10 did; the pair is two
+near-field omnis 20 cm apart whose average cancels (-8.5 dB at 1.25 kHz on a
+strummed chord; Docs/capture-observation-2026-10-10.md). The paired audition
+WAVs carry the scored signal.
+
 Score at 48 kHz after one whole-clip RMS match. Reuse the dry-note scorer's six
 prime STFT lengths for mean log-magnitude error (dB) and spectral convergence;
 also report chroma cosine distance from a separate 4096-point spectrum. A shared
@@ -49,6 +60,7 @@ Usage (NumPy and SciPy, no JAMS/MIDI dependency):
   python3 Tools/BenchmarkPerformances.py --dataset /tmp/acustra-guitarset \
       --renderer /path/to/AcustraPerformanceRenderer --output /tmp/pickup-audit \
       --reference-capture magnetic_pickup --capture piezo
+  python3 Tools/BenchmarkPerformances.py ... --observation mid   # earlier reports
   python3 Tools/BenchmarkPerformances.py --self-test --renderer /path/to/renderer
 """
 from __future__ import annotations
@@ -59,17 +71,21 @@ import io
 import json
 import math
 import subprocess
+import sys
 import tempfile
 import zipfile
 from pathlib import Path
 
 import numpy as np
 import scipy
-import FitPhysicalModel
 from scipy.io import wavfile
 from scipy.signal import stft
 
-from FitPhysicalModel import MULTISCALE_WINDOWS, _resample
+# Import the sibling scorer by path, as the other tools do, so the tool also
+# runs isolated (python3 -I), the way tools that read downloads are run.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import FitPhysicalModel  # noqa: E402
+from FitPhysicalModel import MULTISCALE_WINDOWS, _resample  # noqa: E402
 
 RATE = 48_000
 SECONDS = 12
@@ -81,6 +97,18 @@ TRACKS = tuple(f"{player:02d}_BN1-129-Eb_{'comp' if player % 2 == 0 else 'solo'}
 ARCHIVES = {"annotation.zip": "b39b78e63d3446f2e54ddb7a54df9b10",
             "audio_mono-mic.zip": "275966d6610ac34999b58426beb119c3",
             "audio_mono-pickup_mix.zip": "aecce79f425a44e2055e46f680e10f6a"}
+# The renderer's Width: the engine default (EngineParameters::stereoWidth).
+RENDER_WIDTH = 0.62
+
+
+def observe(stereo: np.ndarray, observation: str, room: float | None) -> tuple[np.ndarray, str]:
+    """The model signal compared with a one-signal reference (module docstring)."""
+    FitPhysicalModel._check_observation(observation)
+    if observation == "mid":
+        return stereo.mean(axis=1), "L/R average"
+    controls = {"capture": "stereo_mic", "stereo_width": RENDER_WIDTH,
+                "room": 0.0 if room is None else float(room)}
+    return FitPhysicalModel.observe_model(stereo, 1, controls)
 
 
 def digest(path: Path, algorithm: str = "sha256") -> str:
@@ -203,9 +231,14 @@ def archive_entry(archive: zipfile.ZipFile, filename: str) -> bytes:
 
 
 def benchmark(dataset: Path, renderer: Path, output: Path, capture: str, picking: str,
-              reference_capture: str = "microphone", room: float | None = None) -> dict:
+              reference_capture: str = "microphone", room: float | None = None,
+              observation: str = FitPhysicalModel.DEFAULT_OBSERVATION) -> dict:
     if reference_capture not in ("microphone", "magnetic_pickup"):
         raise ValueError("unknown reference capture")
+    FitPhysicalModel._check_observation(observation)
+    if observation == "matched" and capture == "stereo_mic" and room:
+        raise ValueError("the matched observation recovers the Mono mic from a dry Stereo "
+                         "mic render; render --capture mono_mic to score with Room")
     archive_name = "audio_mono-mic.zip" if reference_capture == "microphone" else "audio_mono-pickup_mix.zip"
     audio_suffix = "_mic.wav" if reference_capture == "microphone" else "_mix.wav"
     archives = {name: ARCHIVES[name] for name in ("annotation.zip", archive_name)}
@@ -231,7 +264,12 @@ def benchmark(dataset: Path, renderer: Path, output: Path, capture: str, picking
             if np.issubdtype(target.dtype, np.integer):
                 target = target.astype(float) / max(abs(np.iinfo(target.dtype).min), np.iinfo(target.dtype).max)
             target = _resample(target[:source_rate * SECONDS], source_rate, RATE)
-            model = np.fromfile(model_path, dtype="<f4").reshape(-1, 2).mean(axis=1).astype(float)
+            stereo = np.fromfile(model_path, dtype="<f4").reshape(-1, 2)
+            if observation == "mid":
+                # The arithmetic of every earlier report, kept exactly.
+                model, observed = stereo.mean(axis=1).astype(float), "L/R average"
+            else:
+                model, observed = observe(stereo.astype(np.float64), observation, room)
             metrics = score(target, model)
             normal_target, normal_model = target / rms(target), model / rms(model)
             audition_rms = min(0.1, 0.95 / max(np.max(np.abs(normal_target)), np.max(np.abs(normal_model))))
@@ -242,6 +280,7 @@ def benchmark(dataset: Path, renderer: Path, output: Path, capture: str, picking
                          "source_audio_sha256": hashlib.sha256(recording_bytes).hexdigest(),
                          "annotation_sha256": hashlib.sha256(annotation_bytes).hexdigest(),
                          "events_sha256": digest(event_path), "model_sha256": digest(model_path),
+                         "model_observed_as": observed,
                          "reference_audition_trim_db": 20 * math.log10(audition_rms / rms(target)),
                          "model_audition_trim_db": 20 * math.log10(audition_rms / rms(model)),
                          "metrics": metrics})
@@ -256,6 +295,10 @@ def benchmark(dataset: Path, renderer: Path, output: Path, capture: str, picking
         "analysis_rate": RATE, "start_seconds": 0, "duration_seconds": SECONDS,
         "velocity": VELOCITY, "capture": capture, "picking": picking,
         "room": 0.0 if room is None else float(room),
+        "observation": {"name": observation,
+                        "version": FitPhysicalModel.OBSERVATIONS[observation],
+                        "stereo_width": RENDER_WIDTH,
+                        "model": sorted({row["model_observed_as"] for row in rows})},
         "reference_capture": reference_capture,
         "reference_transducer": ("Neumann U87 condenser, about 30 cm from the 18th fret"
                                  if reference_capture == "microphone" else
@@ -293,6 +336,26 @@ def self_test(renderer: Path | None) -> None:
         pass
     else:
         raise AssertionError("unobserved edge impulse must not yield a NaN score")
+    # A spaced pair whose L/R average cancels 640-1280 Hz must not read as a
+    # hole there against a single microphone (the octave a voicing fit would
+    # then boost); the legacy average, the negative control, still does.
+    note, band = FitPhysicalModel.cancelling_pair(RATE, seconds=3.0, band=(640.0, 1280.0))
+    bridge = note - 2.0 * band
+    mid, side = 0.5 * (bridge + note), 0.5 * (bridge - note)
+    pair = np.stack([mid + RENDER_WIDTH * side, mid - RENDER_WIDTH * side],
+                    axis=1).astype("<f4").astype(np.float64)
+    cancelled = {}
+    for observation in ("matched", "mid"):
+        model, _ = observe(pair, observation, None)
+        cancelled[observation] = score(note, model)["octave_bands"][3]["model_minus_reference_db"]
+    assert abs(cancelled["matched"]) < 0.5, cancelled
+    assert cancelled["mid"] is None or cancelled["mid"] < -10.0, cancelled
+    try:
+        observe(pair, "matched", 0.5)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("recovered a Mono mic from a render with Room")
     annotations = [{"namespace": "note_midi", "annotation_metadata": {"data_source": str(string)},
                     "data": []} for string in range(6)]
     annotations[0]["data"] = [
@@ -391,8 +454,31 @@ def self_test(renderer: Path | None) -> None:
                 rejected = subprocess.run([str(renderer), str(event_path), str(root / "bad.f32")],
                                           capture_output=True)
                 assert rejected.returncode != 0 and not (root / "bad.f32").exists()
+            # The matched observation's premise, against the engine itself:
+            # the Mono mic is the Stereo mic render's upper-bout microphone
+            # through the Width law. A capture change that breaks it fails here.
+            write_events(event_path, [(0, 1, 40, VELOCITY, 0.0), (RATE // 4, 3, 52, VELOCITY, 0.0),
+                                      (RATE // 2, 6, 69, VELOCITY, 0.0)], RATE)
+            renders = {}
+            for capture in ("stereo_mic", "mono_mic"):
+                subprocess.run([str(renderer), str(event_path), str(root / f"{capture}.f32"),
+                                capture, "finger", "--body-shape", "auditorium"], check=True)
+                renders[capture] = np.fromfile(root / f"{capture}.f32", dtype="<f4").reshape(
+                    -1, 2).astype(np.float64)
+            recovered, how = observe(renders["stereo_mic"], "matched", None)
+            direct, _ = observe(renders["mono_mic"], "matched", None)
+            # Up to the Mono capture's construction level trim (1 only on the
+            # default construction); every score here is level-normalised.
+            trim = float(np.dot(direct, recovered) / np.dot(recovered, recovered))
+            error = float(np.sum((trim * recovered - direct) ** 2) / np.sum(direct ** 2))
+            assert how.startswith("Mono mic recovered") and error < 1.0e-10, (how, trim, error)
+            recovery = f"; Mono mic recovered from Stereo mic to {10 * math.log10(max(error, 1e-30)):.0f} dB"
     print("performance benchmark self-test passed: level invariance, pitch/timbre contrast, note scheduling"
-          + (" and deterministic rendering" if renderer is not None else ""))
+          + (" and deterministic rendering" if renderer is not None else "")
+          + "; cancelling pair 640-1280 Hz matched/legacy "
+          + f"{cancelled['matched']:+.2f}/"
+          + (f"{cancelled['mid']:+.2f}" if cancelled["mid"] is not None else "empty") + " dB"
+          + (recovery if renderer is not None else ""))
 
 
 def main() -> None:
@@ -405,6 +491,10 @@ def main() -> None:
     parser.add_argument("--picking", default="finger", choices=("finger", "pick", "thumb"))
     parser.add_argument("--room", type=float, metavar="0..1",
                         help="render with this Room (default 0, the dry engine)")
+    parser.add_argument("--observation", choices=sorted(FitPhysicalModel.OBSERVATIONS),
+                        default=FitPhysicalModel.DEFAULT_OBSERVATION,
+                        help="matched (default: the Mono mic against the one-signal "
+                             "reference) or mid (the L/R average of earlier reports)")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -413,7 +503,8 @@ def main() -> None:
         if args.dataset is None or args.renderer is None or args.output is None:
             parser.error("--dataset, --renderer and --output are required")
         report = benchmark(args.dataset, args.renderer.resolve(), args.output,
-                           args.capture, args.picking, args.reference_capture, args.room)
+                           args.capture, args.picking, args.reference_capture, args.room,
+                           args.observation)
         (args.output / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8")
 
 

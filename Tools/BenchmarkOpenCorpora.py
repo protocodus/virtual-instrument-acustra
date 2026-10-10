@@ -53,9 +53,21 @@ with --picking-default (finger unless given); --picking-override plays every
 row with one tool. A render that comes back silent (the engine cannot place
 that note on a string) is dropped, reported, and never scored as silence.
 
+Observation (--observation, recorded in every manifest and summary.json):
+``matched`` (the default since 2026-10-10) compares each target with the
+model capture it corresponds to - a two-channel target (the Eastman's
+coincident pair) as per-channel power against the model's two output
+channels, a one-channel target (the Martin, a single file of undocumented
+capture, read as one microphone) against the Mono mic, recovered exactly
+from the dry Stereo mic render. ``mid`` is the L/R average of target and
+model that every score before 2026-10-10 read; it reproduces them. The
+model's microphones are a spaced pair whose average cancels (FitPhysicalModel
+and Docs/capture-observation-2026-10-10.md). --compare scores both runs with
+this run's observation.
+
 Scoring: one FitPhysicalModel manifest per (corpus, split), named
 CORPUS.SPLIT.json, with absolute target paths and the rows' material,
-round_robin and dynamic_group, scored by the unchanged
+round_robin and dynamic_group, scored by
 FitPhysicalModel.PreparedManifest: onset detection; attack 0-100 ms;
 harmonics 80-250 and 400-900 ms; settled tuning 400-1200 ms; decay
 120 ms-4.0 s; body bands 80-900 ms; dynamics only inside a dynamic group that
@@ -95,7 +107,7 @@ Usage:
       [--picking-default finger|pick|thumb] [--picking-override finger|pick|thumb] \
       [--values V1 ... V24 | --set INDEX_OR_NAME=VALUE ...] \
       [--splits SPLIT_OR_CORPUS.SPLIT,...] [--keep] [--compare BASEDIR] \
-      [--jobs N] [--lenient] [--allow-unfaded]
+      [--observation matched|mid] [--jobs N] [--lenient] [--allow-unfaded]
   python3 Tools/BenchmarkOpenCorpora.py --smoke \
       --renderer BUILD/AcustraExternalCorpusRenderer
 
@@ -399,8 +411,9 @@ def _huber(values: np.ndarray) -> np.ndarray:
 
 
 def score_split(key: str, manifest: Path, output: Path,
-                members: list[dict[str, Any]]) -> dict[str, Any]:
-    prepared = fit.PreparedManifest(manifest)
+                members: list[dict[str, Any]],
+                observation: str | None = None) -> dict[str, Any]:
+    prepared = fit.PreparedManifest(manifest, observation)
     report = prepared.score()
     (output / f"{key}-score.json").write_text(
         json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
@@ -409,20 +422,26 @@ def score_split(key: str, manifest: Path, output: Path,
     by_material = {material: prepared.score(material=material)["score"]
                    for material in materials}
 
-    # Diagnostics the total already contains; see the protocol above.
+    # Diagnostics the total already contains; see the protocol above. They
+    # read the model as the score does.
     model_features: dict[str, dict[str, Any]] = {}
+    observed: dict[tuple[Any, ...], tuple[dict[str, Any], str]] = {}
     latency_target, latency_model, f0_target, f0_model = [], [], [], []
     seconds = [row["target_checked"]["seconds"] for row in members]
     for example in prepared.examples:
-        spec = example["model_spec"]
-        cache = f"{spec['path']}@{example['midi']}"
-        if cache not in model_features:
-            audio = np.fromfile(manifest.parent / spec["path"], dtype="<f4")
-            model_features[cache] = fit.extract_features(
-                audio.reshape(-1, MODEL_CHANNELS).mean(axis=1).astype(np.float64),
-                MODEL_RATE, example["midi"])
+        if prepared.observation == "mid":
+            # The arithmetic every earlier summary used, kept exactly.
+            spec = example["model_spec"]
+            cache = f"{spec['path']}@{example['midi']}"
+            if cache not in model_features:
+                audio = np.fromfile(manifest.parent / spec["path"], dtype="<f4")
+                model_features[cache] = fit.extract_features(
+                    audio.reshape(-1, MODEL_CHANNELS).mean(axis=1).astype(np.float64),
+                    MODEL_RATE, example["midi"])
+            model = model_features[cache]
+        else:
+            model, _ = prepared.model_features(example, observed)
         target = example["target_features"]
-        model = model_features[cache]
         latency_target.append(target["latency_seconds"])
         latency_model.append(model["latency_seconds"])
         f0_target.append(float(target["tuning"][0]))
@@ -437,6 +456,7 @@ def score_split(key: str, manifest: Path, output: Path,
 
     return {
         "manifest": str(manifest),
+        "observation": report["observation"],
         "example_count": report["example_count"],
         "unique_model_count": report["unique_model_count"],
         "score": report["score"],
@@ -456,10 +476,14 @@ def score_split(key: str, manifest: Path, output: Path,
     }
 
 
-def compare_split(key: str, candidate: Path, baseline: Path) -> dict[str, Any]:
+def compare_split(key: str, candidate: Path, baseline: Path,
+                  observation: str = fit.DEFAULT_OBSERVATION) -> dict[str, Any]:
+    # Both runs are read with this run's observation, so an earlier output
+    # (which may declare none) pairs on the same signal.
     result = subprocess.run(
         [sys.executable, str(HERE / "FitPhysicalModel.py"), str(candidate),
-         "--compare", str(baseline)], capture_output=True, text=True)
+         "--compare", str(baseline), "--observation", observation],
+        capture_output=True, text=True)
     if result.returncode != 0:
         return {"error": (result.stderr or result.stdout).strip().splitlines()[-1:]}
     return json.loads(result.stdout)
@@ -495,6 +519,54 @@ def _synthetic_target(path: Path, midi: int, velocity: int, rate: int,
     audio.astype("<f4").tofile(path)
 
 
+def _cancelling_pair_check(root: Path) -> dict[str, float]:
+    """The regression for the spaced pair: score_split on a model whose L/R
+    average cancels 1.0-1.6 kHz against single-microphone and coincident
+    targets. The matched observation must not read a hole there (a fit would
+    boost it); the legacy L/R average must still show one."""
+    note, band = fit.cancelling_pair(MODEL_RATE, seconds=1.6)
+    width = 0.62
+    (root / "pair").mkdir()
+    # Against one microphone: the model's upper-bout microphone is the note
+    # and its bridge one has the band inverted, spread by Width as the engine
+    # spreads them. Against a coincident pair: each output channel carries
+    # the band, in antiphase between the two.
+    bridge = note - 2.0 * band
+    mid, side = 0.5 * (bridge + note), 0.5 * (bridge - note)
+    np.stack([mid + width * side, mid - width * side], axis=1).astype("<f4").tofile(
+        root / "pair" / "model-spaced.f32")
+    np.stack([note, note - 2.0 * band], axis=1).astype("<f4").tofile(
+        root / "pair" / "model-antiphase.f32")
+    note.astype("<f4").tofile(root / "pair" / "mono.f32")
+    np.stack([note, note], axis=1).astype("<f4").tofile(root / "pair" / "stereo.f32")
+    inside = [index for index, (low, high) in enumerate(zip(fit.BODY_BANDS[:-1],
+                                                          fit.BODY_BANDS[1:]))
+              if low >= 1050.0 and high <= 1500.0]
+    result = {}
+    for channels, target, model in ((1, "mono.f32", "model-spaced.f32"),
+                                    (2, "stereo.f32", "model-antiphase.f32")):
+        manifest = root / "pair" / f"pair-{channels}.json"
+        manifest.write_text(json.dumps({
+            "analysis_sample_rate": MODEL_RATE,
+            "model_controls": {"capture": "stereo_mic", "stereo_width": width, "room": 0},
+            "examples": [{"id": f"pair-{channels}", "material": "steel", "midi": 57,
+                          "velocity": 91, "round_robin": 0, "dynamic_group": None,
+                          "target": {"path": str(root / "pair" / target),
+                                     "sample_rate": MODEL_RATE, "channels": channels},
+                          "model": {"path": model, "sample_rate": MODEL_RATE,
+                                    "channels": MODEL_CHANNELS}}]}), encoding="utf-8")
+        member = [{"target_checked": {"seconds": 1.6}}]
+        for observation in fit.OBSERVATIONS:
+            split = score_split(f"pair-{channels}-{observation}", manifest, root / "pair",
+                                member, observation)
+            prepared = fit.PreparedManifest(manifest, observation)
+            model, _ = prepared.model_features(prepared.examples[0])
+            residual = model["body"] - prepared.examples[0]["target_features"]["body"]
+            result[f"{channels}ch_{observation}"] = float(np.mean(residual[inside]))
+            assert split["observation"]["name"] == observation
+    return result
+
+
 def smoke(renderer: Path) -> int:
     with tempfile.TemporaryDirectory(prefix="acustra-open-corpora-smoke-") as temporary:
         root = Path(temporary)
@@ -511,12 +583,19 @@ def smoke(renderer: Path) -> int:
             identifier = f"smoke-{index}"
             _synthetic_target(corpus / "targets" / f"{identifier}.f32", midi,
                               velocity, rate, seconds)
+            channels = 1
+            if index == 2:
+                # One coincident-pair target: read as per-channel power.
+                mono = np.fromfile(corpus / "targets" / f"{identifier}.f32", dtype="<f4")
+                np.stack([mono, 0.9 * mono], axis=1).astype("<f4").tofile(
+                    corpus / "targets" / f"{identifier}.f32")
+                channels = 2
             rows.append({
                 "id": identifier, "split": "test", "material": material,
                 "picking": picking, "midi": midi, "velocity": velocity,
                 "round_robin": 0, "dynamic_group": group, "dynamic_marking": None,
                 "target": {"path": f"targets/{identifier}.f32",
-                           "sample_rate": rate, "channels": 1},
+                           "sample_rate": rate, "channels": channels},
                 "onset_seconds_in_source": 0.0,
                 # The last row breaks the protocol, so --lenient must drop it.
                 "isolation_db": 10.0 if index == len(notes) - 1 else 60.0,
@@ -550,14 +629,37 @@ def smoke(renderer: Path) -> int:
                 problems.append(f"a score is not finite: {split}")
             if split["terms"]["dynamics"] is None:
                 problems.append("the two-velocity group was not scored for dynamics")
+            # The matched observation reaches the manifest, the score and both
+            # views: the mono targets hear the Mono mic, the stereo one both
+            # output channels.
+            views = split.get("observation", {}).get("model")
+            if (summary.get("observation", {}).get("name") != "matched"
+                    or views != ["Mono mic recovered from the Stereo mic render",
+                                 "per-channel power"]):
+                problems.append(f"matched observation not applied: {summary.get('observation')}, "
+                                f"{views}")
+            written = json.loads((output / "smoke.test.json").read_text(encoding="utf-8"))
+            if written.get("observation") != "matched":
+                problems.append("the manifest does not declare its observation")
         if list(output.glob("model-*.f32")):
             problems.append("model renders were kept without --keep")
+        pair = _cancelling_pair_check(root)
+        for channels in (1, 2):
+            if abs(pair[f"{channels}ch_matched"]) > 1.0:
+                problems.append(f"{channels}-channel target: the matched observation reads "
+                                f"{pair[f'{channels}ch_matched']:+.2f} dB in the band the "
+                                "pair's L/R average cancels")
+            if pair[f"{channels}ch_mid"] > -6.0:
+                problems.append(f"{channels}-channel target: the legacy L/R average no "
+                                "longer exposes the cancelled band (negative control)")
         for problem in problems:
             print(f"FAIL: {problem}", file=sys.stderr)
         if problems:
             return 1
     print(f"BenchmarkOpenCorpora smoke passed: {split['example_count']} rows, "
-          f"score {split['score']:.4f}")
+          f"score {split['score']:.4f}; cancelling pair 1.05-1.5 kHz, matched/legacy: "
+          f"mono target {pair['1ch_matched']:+.2f}/{pair['1ch_mid']:+.2f} dB, "
+          f"stereo target {pair['2ch_matched']:+.2f}/{pair['2ch_mid']:+.2f} dB")
     return 0
 
 
@@ -594,6 +696,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="drop rows that violate the protocol instead of stopping")
     parser.add_argument("--allow-unfaded", action="store_true",
                         help="accept targets without the terminal fade (bank exports)")
+    parser.add_argument("--observation", choices=sorted(fit.OBSERVATIONS),
+                        default=fit.DEFAULT_OBSERVATION,
+                        help="matched (default: each target against its matching "
+                             "capture) or mid (the L/R average of earlier runs)")
     arguments = parser.parse_args(argv)
 
     renderer = arguments.renderer.resolve()
@@ -680,6 +786,7 @@ def run(arguments: argparse.Namespace, output: Path, renderer: Path,
         manifest = {
             "analysis_sample_rate": MODEL_RATE,
             "model_render_complete": True,
+            "observation": arguments.observation,
             "calibration_order": list(NAMES),
             "calibration_values": echo["calibration_values"],
             "model_controls": {**echo["model_controls"],
@@ -720,7 +827,8 @@ def run(arguments: argparse.Namespace, output: Path, renderer: Path,
 
     with ThreadPoolExecutor(min(arguments.jobs, len(manifests))) as executor:
         scored = dict(zip(manifests, executor.map(
-            lambda item: score_split(item[0], item[1], output, splits[item[0]]),
+            lambda item: score_split(item[0], item[1], output, splits[item[0]],
+                                     arguments.observation),
             manifests.items())))
 
     title = output.name
@@ -743,7 +851,8 @@ def run(arguments: argparse.Namespace, output: Path, renderer: Path,
                 print(f"  {key}: no baseline manifest in {base}")
         with ThreadPoolExecutor(max(1, min(arguments.jobs, len(pairs)))) as executor:
             reports = dict(zip(pairs, executor.map(
-                lambda item: compare_split(item[0], manifests[item[0]], item[1]),
+                lambda item: compare_split(item[0], manifests[item[0]], item[1],
+                                           arguments.observation),
                 pairs.items())))
         for key, report in reports.items():
             (output / f"{key}-compare.json").write_text(
@@ -773,6 +882,8 @@ def run(arguments: argparse.Namespace, output: Path, renderer: Path,
 
     summary = {
         "tool": "Tools/BenchmarkOpenCorpora.py",
+        "observation": {"name": arguments.observation,
+                        "version": fit.OBSERVATIONS[arguments.observation]},
         "renderer": {"path": str(renderer), "sha256": renderer_sha,
                      "options": options, "command": command[:len(options) + 1]
                      + ["JOBFILE", str(output)] + command[len(options) + 3:],

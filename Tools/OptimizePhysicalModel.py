@@ -36,7 +36,7 @@ from typing import Any
 
 import numpy as np
 
-from FitPhysicalModel import PreparedManifest
+from FitPhysicalModel import OBSERVATIONS, PreparedManifest
 
 
 NAMES = (
@@ -118,10 +118,15 @@ def _free(*names: str) -> np.ndarray:
                        if NAMES.index(name) not in FROZEN], dtype=int)
 
 
+# Values the engine no longer reads keep their slot in the vector, so saved
+# calibrations keep their layout, but no stage searches them.
+# bridgeTailLengthMetres: the saddle-to-pin segment is no spring to ground
+# (Docs/saddle-termination-2026-10-10.md).
+RETIRED = ("bridgeTailLengthMetres",)
 GLOBAL = _free("bodyFrequencyScale", "bodyQScale", "bridgeMobilityScale",
                "residueTiltDbPerOctave", "apertureRegisterExponent",
                "lowBodyModeGain", "highLossCutoffScale", "bridgeConductanceFloor",
-               "bridgeConductanceCornerHz", "bridgeTailLengthMetres")
+               "bridgeConductanceCornerHz")
 STEEL = _free(*(name for name in NAMES if name.startswith("steel.")),
               "steelDisplacementScaleMetres", "steelFretT60Slope")
 # Pick-only stages had no searchable coordinates after the rejected impact
@@ -199,13 +204,14 @@ _WORKER = _WorkerState()
 
 
 def _worker_setup(renderer: Path, directories: Any,
-                  protocols: list[list[str]]) -> None:
+                  protocols: list[list[str]], observation: str | None = None) -> None:
     # One corpus per protocol (the renderer options it is rendered with);
-    # a single protocol is the ordinary search.
+    # a single protocol is the ordinary search. The observation travels in
+    # the arguments: a spawned worker does not share this module's state.
     corpora = [Path(directory) for directory in directories.get()]
     _WORKER["renderer"] = renderer
     _WORKER["corpora"] = [
-        (options, directory, PreparedManifest(directory / "train.json"))
+        (options, directory, PreparedManifest(directory / "train.json", observation))
         for options, directory in zip(protocols, corpora)]
     RENDER_OPTIONS[:] = protocols[0]
 
@@ -446,6 +452,12 @@ def main() -> int:
              "of their training scores, so values the tools share (a "
              "string's loss) are fitted once for all of them",
     )
+    parser.add_argument(
+        "--observation", choices=sorted(OBSERVATIONS),
+        help="FitPhysicalModel's observation: matched (the default since "
+             "2026-10-10: the archtop's single microphone against the Mono "
+             "mic) or mid (the L/R average every earlier fit scored)",
+    )
     arguments = parser.parse_args()
     if arguments.evaluations < 1:
         parser.error("--evaluations must be positive")
@@ -571,7 +583,7 @@ def main() -> int:
         _run_renderer(renderer, directory, values, arguments.resume,
                       None, options)
 
-    trains = [PreparedManifest(directory / "train.json")
+    trains = [PreparedManifest(directory / "train.json", arguments.observation)
               for _, directory in corpora]
     baselines = [train.score() for train in trains]
     for (options, _), report in zip(corpora, baselines):
@@ -588,7 +600,8 @@ def main() -> int:
     with (ThreadPoolExecutor if arguments.threads else ProcessPoolExecutor)(
         max_workers=arguments.jobs,
         initializer=_worker_setup,
-        initargs=(renderer, queue, [options for options, _ in corpora]),
+        initargs=(renderer, queue, [options for options, _ in corpora],
+                  arguments.observation),
     ) as executor:
         for name in stage_names:
             values, stage = _fit_stage(
@@ -617,12 +630,14 @@ def main() -> int:
         _run_renderer(renderer, directory, values, True, None, options)
         finals.append(train.score())
         validations.append(
-            PreparedManifest(directory / "validation.json").score())
+            PreparedManifest(directory / "validation.json",
+                             arguments.observation).score())
     final_train = {"score": float(np.mean([r["score"] for r in finals]))}
     validation = {"score": float(np.mean([r["score"] for r in validations]))}
     result = {
         "parameter_order": NAMES,
         "values": values.tolist(),
+        "observation": trains[0].observation_report(),
         "start": start,
         "resumed": arguments.resume,
         "render_options": list(RENDER_OPTIONS),

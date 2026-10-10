@@ -10,6 +10,12 @@ analysis. The optional bounded search reads only training scores. Validation
 is evaluated once after its winner is selected; it never selects a replacement.
 This is exploratory because source capture, velocity and fingering are unknown.
 No recording or candidate audio is committed. See Docs/realism-work.md.
+
+The recordings are single mono files, so since 2026-10-10 (--observation
+matched, the default) the model is rendered and scored through its Mono mic;
+--observation mid renders the Stereo mics and scores their L/R average, as
+every earlier run did, which cancels where the two spaced microphones are in
+antiphase (Docs/capture-observation-2026-10-10.md).
 """
 from pathlib import Path
 import concurrent.futures as cf
@@ -29,6 +35,10 @@ SOURCE_BYTES = {path.name: path.read_bytes() for path in (
     ROOT / 'Tools/OptimizePhysicalModel.py', ROOT / 'Tools/BenchmarkPerformances.py')}
 
 OUT = RENDERER = ARCHIVE = None
+OBSERVATION = features.DEFAULT_OBSERVATION
+# The model capture each observation scores, and how its two outputs are read.
+CAPTURES = {'matched': ('mono_mic', 'the Mono mic (both outputs carry it)'),
+            'mid': ('stereo_mic', 'arithmetic mean of left and right')}
 TRAIN = (40,45,50,55,59,64,69,74,79)
 VALID = (42,47,52,57,62,67,72,77,80)
 # Source timing, exact tuning and dynamics are unknown. Fit only normalized
@@ -55,7 +65,7 @@ def evaluate(job):
         event = directory/f'{midi}.events'
         model = directory/f'{midi}.f32'
         data.write_events(event, [(0,fingering['channel'],midi,91,0.)], 96000)
-        subprocess.run([str(RENDERER),str(event),str(model),'stereo_mic','finger',
+        subprocess.run([str(RENDERER),str(event),str(model),CAPTURES[OBSERVATION][0],'finger',
                         '--tuning',fingering['tuning'],
                         '--body-shape','auditorium','--body-material','mahogany',
                         '--calibration',str(calibration)],check=True,capture_output=True)
@@ -67,13 +77,14 @@ def evaluate(job):
             terms.append(loss(target,model_features))
     average = {key:float(np.mean([term[key] for term in terms])) for key in WEIGHTS}
     result = {'candidate':name,'split':split,'values':values,
-              'score':sum(WEIGHTS[key]*average[key] for key in WEIGHTS),'terms':average}
+              'score':sum(WEIGHTS[key]*average[key] for key in WEIGHTS),'terms':average,
+              'observation':OBSERVATION}
     (directory/'score.json').write_text(json.dumps(result,indent=2)+'\n')
     print(name,split,round(result['score'],6),flush=True)
     return result
 
 def main():
-    global OUT, RENDERER, ARCHIVE, BASE
+    global OUT, RENDERER, ARCHIVE, BASE, OBSERVATION
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--renderer', type=Path, required=True)
     parser.add_argument('--archive', type=Path, required=True)
@@ -82,9 +93,13 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--fit', action='store_true', help='run bounded training-only search')
     parser.add_argument('--jobs', type=int, default=4)
+    parser.add_argument('--observation', choices=sorted(CAPTURES), default=OBSERVATION,
+                        help='matched (default: the Mono mic against the mono recordings) or '
+                             'mid (the Stereo mics averaged, as every run before 2026-10-10)')
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error('--jobs must be positive')
+    OBSERVATION = args.observation
     OUT, RENDERER, ARCHIVE = (p.resolve() for p in (args.output,args.renderer,args.archive))
     BASE = json.loads(args.initial_calibration.read_text())
     if set(BASE) != set(NAMES) or any(not isinstance(BASE[k],(float,int))
@@ -160,9 +175,10 @@ def main():
             'fitting_enabled':args.fit,'source':data.SOURCE,'archive_sha256':data.ARCHIVE_SHA256,
             **provenance,
             'instrument':'Walden G551E grand auditorium, mahogany top',
+            'observation':{'name':OBSERVATION,'version':features.OBSERVATIONS[OBSERVATION]},
             'render_controls':{'sample_rate':48000,'frames':96000,'velocity':91,
-                               'picking':'finger','capture':'stereo_mic',
-                               'analysis_mix':'arithmetic mean of left and right',
+                               'picking':'finger','capture':CAPTURES[OBSERVATION][0],
+                               'analysis_mix':CAPTURES[OBSERVATION][1],
                                'body_shape':'auditorium','body_material':'mahogany',
                                'bend_semitones':0,'note_off':False,
                                'fingering':{str(midi):data.fingering(midi) for midi in TRAIN+VALID},

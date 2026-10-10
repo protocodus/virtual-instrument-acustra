@@ -132,14 +132,14 @@ struct AcustraEngineTestAccess
         {
             const auto& x = a.voices_[index];
             const auto& y = b.voices_[index];
-            const std::array<float, 9> sx { x.speakingLengthMetres, x.speakingFret,
+            const std::array<float, 8> sx { x.speakingLengthMetres, x.speakingFret,
                 x.contactPeriodSamples, x.tensionNewtons, x.releaseDamping,
                 x.appliedBendImpedanceScale, x.attackPitchCents,
-                x.observedSlopeEnergy, x.appliedBridgeTailStiffness };
-            const std::array<float, 9> sy { y.speakingLengthMetres, y.speakingFret,
+                x.observedSlopeEnergy };
+            const std::array<float, 8> sy { y.speakingLengthMetres, y.speakingFret,
                 y.contactPeriodSamples, y.tensionNewtons, y.releaseDamping,
                 y.appliedBendImpedanceScale, y.attackPitchCents,
-                y.observedSlopeEnergy, y.appliedBridgeTailStiffness };
+                y.observedSlopeEnergy };
             if (!same(sx, sy) || !same(x.referencePickDelay, y.referencePickDelay)
                 || !same(x.dispersionDesignFrequency, y.dispersionDesignFrequency)
                 || !same(x.dispersionDesignInharmonicity, y.dispersionDesignInharmonicity)

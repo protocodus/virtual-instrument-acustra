@@ -245,22 +245,46 @@ static_assert(detail::measuredSteelBridgeModes.size()
 struct AnchorTransform
 {
     // A ratio written in Hz, not the air mode itself: the measured bank's
-    // modes between 85 and 145 Hz move by airHz / 107 (107 is the identity),
-    // so the wide anchor's 98 lowers them by 8%.
+    // modes between 85 and 145 Hz move by airHz / 107 (107 is the identity).
     float airHz;
+    // The plate modes above T1.
     float modeScale;
     float bass;
     float volume;
     float asymmetry;
+    // T1's group: the modes from 150 Hz up to T1.
+    float t1Scale;
 };
 
-// Steel's Dreadnought anchor is the wider box the local line authored: a
-// lower air mode, the plate modes lower and more bass. The benchmark split on
-// it (steel training -0.5%, the never-fitted flat-top rows -5.2%,
-// development validation +3.2%) and a blind listener chose it on all four
-// steel pairs (Docs/decisions.md, 2026-09-24), so it is chosen by ear.
-constexpr AnchorTransform wideSteelAnchorTransform { 98.0f, 0.900f, 1.28f,
-                                                     0.93f, 0.018f };
+// The factor the anchor moves a measured mode by: the air group by
+// airHz / 107, T1's group by t1Scale and the plate modes above it by
+// modeScale.
+float anchorModeFactor(const AnchorTransform& anchor, float measuredFrequency,
+                       bool t1Group) noexcept
+{
+    if (measuredFrequency > 85.0f && measuredFrequency < 145.0f)
+        return anchor.airHz / 107.0f;
+    return t1Group ? anchor.t1Scale : anchor.modeScale;
+}
+
+// Steel's Dreadnought anchor is the wider box the local line authored: the
+// plate modes lower and more bass. The benchmark split on it (steel training
+// -0.5%, the never-fitted flat-top rows -5.2%, development validation +3.2%)
+// and a blind listener chose it on all four steel pairs (Docs/decisions.md,
+// 2026-09-24), so those are chosen by ear. That box also lowered A0 to
+// 84.7 Hz (airHz 98) and T1 to 158.6 Hz (modeScale) while a spring to ground
+// at the saddle stood between the strings and the body's low modes; it
+// moved the air transient the listener heard to 99 Hz. Once the strings end
+// on the bridge (bridgePortMobility), A0 at 84.7 Hz sounds there, 47 cents
+// above the open low E, which it splits (+7.1 cents late) and drains at
+// 24 dB/s, past twice its recordings' 4.5-8.6, and T1 under E3 pulls it 3.9
+// cents flat. So A0 and T1 are placed where steel-strung guitars ring
+// rather than by that box: A0 at 94.2 Hz (airHz 109), where both recorded
+// dreadnoughts ring at 93-95 Hz (Docs/decisions.md, 2026-10-01), and T1's
+// group unscaled (t1Scale 1), at g21's measured 178.5 Hz less the
+// alternating detune, 176.3 Hz. Docs/saddle-termination-2026-10-10.md.
+constexpr AnchorTransform wideSteelAnchorTransform { 109.0f, 0.900f, 1.28f,
+                                                     0.93f, 0.018f, 1.0f };
 
 // Body outline and cavity, in metres: lower-bout width, body length, mean
 // depth, soundhole diameter, and the fraction of the width-by-length
@@ -441,8 +465,8 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     {
         const auto& mode = bank[static_cast<std::size_t>(index)];
         const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
-        const bool lowBodyMode = mode.frequency > 85.0f && mode.frequency < 145.0f;
-        return mode.frequency * (lowBodyMode ? anchor.airHz / 107.0f : anchor.modeScale)
+        return mode.frequency * anchorModeFactor(anchor, mode.frequency,
+                                                 index == morph.t1Index)
             * (1.0f + alternating * anchor.asymmetry
                / exact::sqrt(static_cast<float>(index + 1)));
     };
@@ -476,7 +500,13 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     morph.a0Level = target.a0Weight / reference.a0Weight;
     morph.t1Level = target.t1Weight / reference.t1Weight;
     morph.plateFrequency = 1.0f / areaRatio;
-    morph.plateLevel = areaRatio;
+    // A plate mode's peak pressure per unit bridge force is the same at any
+    // size: its modal mass and its radiating volume velocity both go as A_p.
+    // A mode keeps its continuous residue when its pole moves (configureBody),
+    // and its peak goes as residue over frequency, so the residue goes as the
+    // frequency, 1/A_p. Scaling it by A_p put the peaks at A_p^2: plate
+    // modes 4.7 dB too quiet on the Parlor and 1.6 dB too loud on the Jumbo.
+    morph.plateLevel = 1.0f / areaRatio;
     return morph;
 }
 
@@ -558,10 +588,8 @@ ModalPole radiationPole(const detail::MeasuredBodyMode& measured, int index,
                         const PhysicalCalibration& calibration) noexcept
 {
     const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
-    const bool lowBodyMode = measured.frequency > 85.0f
-        && measured.frequency < 145.0f;
-    const float lowModeMorph = lowBodyMode
-        ? anchor.airHz / 107.0f : anchor.modeScale;
+    const float lowModeMorph = anchorModeFactor(anchor, measured.frequency,
+        measured.frequency >= lowBodyGroupUpperHz && index <= morph.t1Index);
     // The A0 group, T1 and the plate modes above it each take their own
     // factor from the coupled pair; the anchor shape's are exactly 1.
     const float shapeFrequency = measured.frequency < lowBodyGroupUpperHz
@@ -745,18 +773,40 @@ float piezoReferenceFor(const EngineParameters& parameters) noexcept
         * detail::constructionPiezoTrim[constructionLoudnessCell(parameters)];
 }
 
+// A plate mode's bridge residues on a top of plateFrequency (1/A_p) times the
+// anchor's area. Its modal mass goes as A_p and its lengths as sqrt(A_p), so
+// the driving-point residue phi^2/m goes as 1/A_p, the moment residue
+// (dphi/dx)^2/m as 1/A_p^2 and the cross term as A_p^-1.5: one congruence,
+// diag(A_p^-1/2, A_p^-1), so the residue matrix stays positive semidefinite.
+// Each mode's peak mobility is then independent of size, as its peak
+// pressure is (bodyShapeMorph).
+void scalePlateBridgeResidues(detail::MeasuredBridgeMode& mode,
+                              float plateFrequency) noexcept
+{
+    mode.heave *= plateFrequency;
+    mode.cross *= plateFrequency * exact::sqrt(plateFrequency);
+    mode.rock *= plateFrequency * plateFrequency;
+}
+
 // The same coupled-model factors the radiation takes, applied to a bridge
 // bank: its A0 group, its modes up to T1, and the plate modes above follow
-// the body they belong to. Only modal stiffness moves: each residue matrix,
-// and with it the positive-semidefinite heave/rock coupling, and each Q are
+// the body they belong to. The A0 and T1 groups keep their residue matrices;
+// the plate modes take the top's mass (scalePlateBridgeResidues). Each Q is
 // retained, so a fixed shape keeps the passive modal construction. At the
 // anchor every factor is exactly 1.
 detail::MeasuredBridgeMode shapeBridgeMode(
     detail::MeasuredBridgeMode mode, float a0Frequency, float t1Frequency,
     float plateFrequency, float t1UpperHz) noexcept
 {
-    mode.frequency *= mode.frequency < lowBodyGroupUpperHz ? a0Frequency
-        : mode.frequency <= t1UpperHz ? t1Frequency : plateFrequency;
+    if (mode.frequency < lowBodyGroupUpperHz)
+        mode.frequency *= a0Frequency;
+    else if (mode.frequency <= t1UpperHz)
+        mode.frequency *= t1Frequency;
+    else
+    {
+        mode.frequency *= plateFrequency;
+        scalePlateBridgeResidues(mode, plateFrequency);
+    }
     return mode;
 }
 
@@ -791,10 +841,9 @@ ModalPole steelOwnBridgePole(std::size_t index,
     if (twin >= 0)
         return radiationPole(detail::measuredSteelBodyModes, twin, anchor,
                              morph, wood, calibration);
-    const bool lowBodyMode = source.frequency > 85.0f
-        && source.frequency < 145.0f;
-    const float lowModeMorph = lowBodyMode
-        ? anchor.airHz / 107.0f : anchor.modeScale;
+    const float lowModeMorph = anchorModeFactor(anchor, source.frequency,
+        source.frequency >= lowBodyGroupUpperHz
+            && source.frequency <= morph.t1UpperHz);
     return { shaped.frequency * lowModeMorph * wood.frequency
                  * calibration.bodyFrequencyScale,
              source.q * detail::steelBridgeUnpairedQRatio[index] * wood.q
@@ -1014,6 +1063,12 @@ void visitSteelBlendBridge(float a0, float t1, float plate, float t1UpperHz,
             auto placed = steelJointBridgeModes[index];
             placed.frequency = pole.frequency;
             placed.q = pole.q;
+            // The class radiationPole gave the twin; a plate mode takes the
+            // top's mass as B's do (shapeBridgeMode).
+            if (steelJointRadiationModes[static_cast<std::size_t>(source)].frequency
+                    >= lowBodyGroupUpperHz
+                && source > jointMorph.t1Index)
+                scalePlateBridgeResidues(placed, jointMorph.plateFrequency);
             visit(steelJointBridgeModes[index], placed, level, false);
         }
     }
@@ -2215,13 +2270,11 @@ AcustraEngine::AcustraEngine() noexcept
     restartRandomDraws();
 }
 
-// Every random draw starts again from the constructor's seeds, and every
-// bridge anchor from its constructed value, so a prepared engine plays as a
-// new one does, whatever it played before or at whichever rate. The anchors
-// belong here because reset() settles the open strings' delays from every
-// string's anchor at that moment (see bridgePortMobility). reset() alone
-// does not restart the draws: a panic is not a new performance, and the
-// strums after it keep varying as repeated real strums do.
+// Every random draw starts again from the constructor's seeds, so a
+// prepared engine plays as a new one does, whatever it played before or at
+// whichever rate. reset() alone does not restart the draws: a panic is not a
+// new performance, and the strums after it keep varying as repeated real
+// strums do.
 void AcustraEngine::restartRandomDraws() noexcept
 {
     strumRandomState_ = 0x9e3779b9u;
@@ -2239,10 +2292,6 @@ void AcustraEngine::restartRandomDraws() noexcept
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 7));
         voice.legatoFrictionState = 0xd1b54a35u
             ^ (0x9e3779b9u * static_cast<std::uint32_t>(string + 1));
-        voice.bridgeTailStiffness = initialBridgeTailStiffness;
-        voice.appliedBridgeTailStiffness = initialBridgeTailStiffness;
-        voice.bridgeTailStiffnessStep = 0.0f;
-        voice.bridgeTailStiffnessSamples = 0;
     }
 }
 
@@ -2962,10 +3011,6 @@ void AcustraEngine::BridgeLoad::reset() noexcept
 {
     pastHeave = 0.0f;
     pastRock = 0.0f;
-    tailIntegratedForce = 0.0f;
-    tailIntegratedMoment = 0.0f;
-    previousDisplacement = 0.0f;
-    previousRotation = 0.0f;
     displacement = 0.0f;
     rotation = 0.0f;
     mainIntegratedForce = 0.0f;
@@ -3036,13 +3081,12 @@ void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
 }
 
 void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
-                                        float samplePeriod,
                                         BridgeLoad& fading,
                                         float weight) noexcept
 {
     // One junction with the two mode sets' mobilities mixed: modal
     // mobilities add as positive-real sums, so each share is passive. The
-    // anchor stubs and the junction's own state are this load's.
+    // junction's own state is this load's.
     const float keep = 1.0f - weight;
     const float heave = immediateHeave, cross = immediateCross,
                 rock = immediateRock, pastH = pastHeave, pastR = pastRock;
@@ -3051,7 +3095,7 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     immediateRock = weight * rock + keep * fading.immediateRock;
     pastHeave = weight * pastH + keep * fading.pastHeave;
     pastRock = weight * pastR + keep * fading.pastRock;
-    process(drive, samplePeriod);
+    process(drive);
     // process advanced this load's modes on the body force; advance the
     // fading ones on the same, and restore this load's own immediates.
     immediateHeave = heave;
@@ -3060,8 +3104,7 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     fading.advanceModes(bodyIntegratedForce, bodyIntegratedMoment);
 }
 
-void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
-                                        float samplePeriod) noexcept
+void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive) noexcept
 {
     // The saddle is approximated by heave and normalized rock. The archive's
     // accelerometers sit behind the saddle rather than at the hammer points;
@@ -3070,31 +3113,17 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     // legacy name for linear r=a*physical_angle, not an angle in radians.
     // A string at lever arm u ends on x_u = x + u*theta and
     // pushes F_u = Z(2a_u - x_u) there, so the strings contribute the force
-    // sum and its first moment, and the same for the anchor stubs, each of
-    // which sits at its own string's u. Solving
-    //     [x; theta] = Y (b - G [x; theta]),  G = string + anchor moments,
+    // sum and its first moment. Solving
+    //     [x; theta] = Y (b - G [x; theta]),  G = the strings' moments,
     // is one 2x2 per sample and stays algebraic-loop-free because Y here is
-    // only the immediate part of the modal bank.
-    //
-    // DAFx-26 attaches the measured body a short distance from the string's
-    // end, leaving a fixed-end tail. Below its first resonance that segment
-    // is the passive spring K=T/L_t; trapezoidal integration gives its
-    // current-step impedance K*dt/2. Its three moments are the anchor's
-    // stiffness matrix in the same two coordinates.
-    const float half = 0.5f * samplePeriod;
-    const float c0 = half * drive.stiffness0;
-    const float c1 = half * drive.stiffness1;
-    const float c2 = half * drive.stiffness2;
-    const float historyForce = tailIntegratedForce
-        + c0 * previousDisplacement + c1 * previousRotation;
-    const float historyMoment = tailIntegratedMoment
-        + c1 * previousDisplacement + c2 * previousRotation;
-
-    const float g00 = drive.impedance0 + c0;
-    const float g01 = drive.impedance1 + c1;
-    const float g11 = drive.impedance2 + c2;
-    const float b0 = drive.incidentHeave - historyForce;
-    const float b1 = drive.incidentRock - historyMoment;
+    // only the immediate part of the modal bank. Nothing else holds the
+    // saddle: the string behind it ends on the same bridge
+    // (bridgePortMobility), and the body takes the whole string force.
+    const float g00 = drive.impedance0;
+    const float g01 = drive.impedance1;
+    const float g11 = drive.impedance2;
+    const float b0 = drive.incidentHeave;
+    const float b1 = drive.incidentRock;
 
     // (I + Y G) [x; theta] = Y b + past
     const float m00 = 1.0f + immediateHeave * g00 + immediateCross * g01;
@@ -3121,23 +3150,14 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     displacement = nextDisplacement;
     rotation = nextRotation;
 
-    const float nextTailForce = historyForce
-        + c0 * displacement + c1 * rotation;
-    const float nextTailMoment = historyMoment
-        + c1 * displacement + c2 * rotation;
-    // The string force less what the anchor takes, in both coordinates.
+    // The strings' force on the saddle, in both coordinates: all of it
+    // drives the body.
     const float bodyForce = b0 - g00 * displacement - g01 * rotation;
     const float bodyMoment = b1 - g01 * displacement - g11 * rotation;
 
     advanceModes(bodyForce, bodyMoment);
-    previousDisplacement = displacement;
-    previousRotation = rotation;
-    tailIntegratedForce = nextTailForce;
-    tailIntegratedMoment = nextTailMoment;
-    mainIntegratedForce = drive.incidentHeave
-        - drive.impedance0 * displacement - drive.impedance1 * rotation;
-    mainIntegratedMoment = drive.incidentRock
-        - drive.impedance1 * displacement - drive.impedance2 * rotation;
+    mainIntegratedForce = bodyForce;
+    mainIntegratedMoment = bodyMoment;
     bodyIntegratedForce = bodyForce;
     bodyIntegratedMoment = bodyMoment;
 }
@@ -3350,7 +3370,6 @@ void AcustraEngine::reset() noexcept
         voice.pedalHeld = false;
         voice.level = 0.0f;
         voice.returnSamples = 0;
-        voice.bridgeTailStiffnessSamples = 0;
         returnToOpenString(voice, string, true);
     }
     // Initialise every reciprocal open-string loop. The second pass settles
@@ -3391,15 +3410,11 @@ void AcustraEngine::resetSoundState() noexcept
     bridgeForceMomentDerivative_.reset();
     bridgeBodyForceDerivative_.reset();
     bridgeBodyMomentDerivative_.reset();
-    bridgeTailForceDerivative_.reset();
-    bridgeTailMomentDerivative_.reset();
     lastBridgeVelocity_ = 0.0f;
     lastBridgeReactionForce_ = 0.0f;
     lastBridgeBodyForce_ = 0.0f;
-    lastBridgeTailForce_ = 0.0f;
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
-    lastBridgeTailPower_ = 0.0f;
     bridgeDerivativesNeedPriming_ = true;
     bridgeDerivativesCrossRelease_ = false;
     bridgeDerivativesCrossConfigure_ = false;
@@ -4272,7 +4287,7 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
     const auto notes = openNotes(parameters_.tuning);
     const float impedance = stringImpedance(
         stringIndex, notes[static_cast<std::size_t>(stringIndex)]);
-    // This estimates one string's return phase from the body and anchors.
+    // This estimates one string's return phase from the body.
     // Other strings' frequency-dependent loopback impedances are omitted here,
     // although the runtime junction includes their returning waves. It is an
     // isolated-port tuning approximation, not the coupled instrument's poles:
@@ -4284,8 +4299,8 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
     // it is not applied.
     const float characteristicAdmittance = 1.0f / impedance;
     // This is the folded full-round-trip multiplier -b/a.  Its phase is the
-    // phase contributed by both measured body motion and the saddle anchor; the
-    // speaking-string delay is shortened by exactly that amount when tuned.
+    // phase the measured body motion contributes; the speaking-string delay
+    // is shortened by exactly that amount when tuned.
     const std::complex<float> selfReflection
         = (characteristicAdmittance - port.normal)
         / (characteristicAdmittance + port.normal);
@@ -4437,56 +4452,31 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
             sSquared + 2.0f * damping * s + omega * omega);
     }
 
-    // Body and anchor are in parallel at the saddle, but on a bridge with two
-    // degrees of freedom that parallel has to be taken as matrices and only
-    // then read at this string's own point: the anchor a string finds is
-    // softer at the ends, where it can rock the bridge against the others,
-    // than in the middle.
-    float stiffness0 = 0.0f;
-    float stiffness1 = 0.0f;
-    float stiffness2 = 0.0f;
-    bridgeAnchorMoments(stiffness0, stiffness1, stiffness2);
-    // (Y^-1 + K/s)^-1 = det(Y) * (adj(Y) + det(Y) K/s)^-1, which needs no
-    // division by a determinant that goes to zero wherever the bank has no
-    // rocking residue.
-    const std::complex<float> determinant
-        = mobilityHeave * mobilityRock - mobilityCross * mobilityCross;
-    const std::complex<float> ratio = determinant / s;
-    const std::complex<float> a00 = mobilityRock + ratio * stiffness0;
-    const std::complex<float> a01 = -mobilityCross + ratio * stiffness1;
-    const std::complex<float> a11 = mobilityHeave + ratio * stiffness2;
-    const std::complex<float> inner = a00 * a11 - a01 * a01;
-    std::complex<float> effectiveMobility {};
-    if (std::abs(inner) > 0.0f)
+    // The string ends on the measured bridge, read at its own point on the
+    // saddle: heave + 2u cross + u^2 rock, with nothing in parallel. A pin
+    // bridge carries both ends of the short segment from the saddle crown to
+    // the pin, so when the bridge heaves or rocks that segment goes with it:
+    // its tension acts along the line through two points of one rigid body
+    // and puts no net force or moment on it, whatever that body's motion.
+    // The archive measured the bridge strung (strings damped), so the
+    // strings' static load is already in the mobility. Until 2026-10-10 the
+    // segment was DAFx-26's fixed-end tail, a spring T/L from the saddle to
+    // ground: that counted the geometry twice, and above each body resonance,
+    // where the body is mass-like, it resonated with the body, so the
+    // strings' conductance peaked 2-3 semitones above A0 and 3-5 above T1 at
+    // 6 to 34 times the bridge's own (Docs/saddle-termination-2026-10-10.md).
+    result.normal = mobilityHeave + 2.0f * arm * mobilityCross
+                  + arm * arm * mobilityRock;
+    // The parallel polarisation's port is (h/a) times the rocking
+    // (saddleHeightRatio): its own mobility and its transfer mobility to
+    // this string's normal port. Both are zero where no rocking residue was
+    // measured.
+    const float eta = saddleHeightRatio();
+    if (eta != 0.0f)
     {
-        effectiveMobility = determinant
-            * (a11 - 2.0f * arm * a01 + arm * arm * a00) / inner;
-        // The same parallel read at the parallel polarisation's port, which
-        // is (h/a) times the rocking (saddleHeightRatio): its own mobility
-        // and its transfer mobility to this string's normal port.
-        const float eta = saddleHeightRatio();
-        if (eta != 0.0f)
-        {
-            const std::complex<float> rockRock = determinant * a00 / inner;
-            const std::complex<float> heaveRock = -determinant * a01 / inner;
-            result.transfer = -eta * (heaveRock + arm * rockRock);
-            result.parallel = eta * eta * rockRock;
-        }
+        result.transfer = -eta * (mobilityCross + arm * mobilityRock);
+        result.parallel = eta * eta * mobilityRock;
     }
-    else
-    {
-        // A bank with no rocking residue anywhere leaves the determinant, and
-        // with it the whole adjugate above, exactly zero.  The rocking
-        // coordinate is then immovable, every string sees the same heave port
-        // with the anchor springs in parallel, and the load is the scalar
-        // (1/Yhh + k0/s)^-1; no unmeasured rocking response is added to it.
-        const std::complex<float> denominator
-            = s + stiffness0 * mobilityHeave;
-        if (!(std::abs(denominator) > 0.0f))
-            return result;
-        effectiveMobility = mobilityHeave * s / denominator;
-    }
-    result.normal = effectiveMobility;
     result.valid = true;
     return result;
 }
@@ -4600,30 +4590,6 @@ float AcustraEngine::saddleHeightRatio() const noexcept
 {
     constexpr float impactHalfSpacing = 0.0232f;
     return 0.0081f / impactHalfSpacing;
-}
-
-void AcustraEngine::bridgeAnchorMoments(float& stiffness0,
-                                        float& stiffness1,
-                                        float& stiffness2) const noexcept
-{
-    // Every string is anchored behind the saddle whether or not it is being
-    // played, but each stub stands at its own point on it, so the six springs
-    // are one stiffness matrix rather than one sum. The stub holds the crown
-    // sideways as well as down, so it also stiffens the rocking the parallel
-    // polarisation drives, by (h/a)^2 of its own stiffness.
-    const float eta = saddleHeightRatio();
-    stiffness0 = stiffness1 = stiffness2 = 0.0f;
-    for (int string = 0; string < stringCount; ++string)
-    {
-        const float arm = saddleLeverArm(string);
-        const float stiffness
-            = voices_[static_cast<std::size_t>(string)].bridgeTailStiffness;
-        stiffness0 += stiffness;
-        stiffness1 += arm * stiffness;
-        stiffness2 += arm * arm * stiffness;
-        if (eta != 0.0f)
-            stiffness2 += eta * eta * stiffness;
-    }
 }
 
 void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
@@ -5032,30 +4998,6 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             lowpassCoefficient, mutedHighLoss, referenceDispersion,
             bendingA1, bendingA2));
     }
-    // The segment between saddle and anchor does not move when a string is
-    // fretted and does not change tension, so its spring T/L is a constant of
-    // the string rather than a fraction of the speaking length.
-    const float bridgeTailStiffness = tension / std::max(
-        physicalCalibration_.bridgeTailLengthMetres, 1.0e-5f);
-    // Every string's port mobility reads all six anchors.
-    const bool anchorTargetChanged = exact::bits(bridgeTailStiffness)
-        != exact::bits(voice.bridgeTailStiffness);
-    if (anchorTargetChanged)
-        ++voiceConfigurationGeneration_;
-    if (transitionRetune
-        && anchorTargetChanged
-        && bridgeTailStiffness != voice.appliedBridgeTailStiffness)
-        voice.bridgeTailStiffnessSamples = std::max(1, static_cast<int>(
-            std::ceil(voice.loops[0].currentDelay)));
-    voice.bridgeTailStiffness = bridgeTailStiffness;
-    if (voice.bridgeTailStiffnessSamples > 0)
-    {
-        if (anchorTargetChanged)
-            voice.bridgeTailStiffnessStep = (bridgeTailStiffness
-                - voice.appliedBridgeTailStiffness) / voice.bridgeTailStiffnessSamples;
-    }
-    else
-        voice.appliedBridgeTailStiffness = bridgeTailStiffness;
     const auto bridgePort = bridgePortMobility(frequency, stringIndex);
     const float measuredBridgeDelay = bridgePhaseDelay(bridgePort, frequency,
                                                        stringIndex);
@@ -5729,9 +5671,17 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // parallel plane's acts along it. A natural harmonic is held aside
         // by the picking hand as any note is - the finger on its node damps
         // what the node does not share only once the string is let go - so
-        // its saddle sheds the same force. The step is given back at 0.8 of
-        // that force: a listener liked the thump and chose it at 80% of the
-        // full release (Docs/decisions.md, 2026-10-01), chosen by ear. A
+        // its saddle sheds the same force. A listener liked the thump and
+        // chose it at 80% of the full release (Docs/decisions.md,
+        // 2026-10-01), by ear, through a junction whose saddle anchors took
+        // their share of it (applied past them, that entry measured, the step
+        // rang 8-9 dB over the recordings). With the anchors retired
+        // (2026-10-10) the same 0.8 reached the body 5.0 dB stronger: the
+        // step's own part of the 60-180 Hz band over the first 300 ms of E4
+        // and A4, Dreadnought, Finger at velocity 0.6, 4.8-5.1 dB for every
+        // Picking. So the step is given back at 0.45 of the force, 0.8 x
+        // 10^(-5.0/20), the thump that was heard (releaseStepShare;
+        // Docs/saddle-termination-2026-10-10.md). A
         // re-pluck adds its step to what an earlier one has still to give
         // back rather than cutting it off: cut, the earlier step's net
         // impulse is no longer zero and the bridge keeps a low kick. Two
@@ -5741,7 +5691,6 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // again in no time put back the force it had let go, so the rise
         // still waiting is replaced, not added to. Added, a doubled note
         // thumped 6 dB harder than the one pluck it sounds as.
-        constexpr float releaseStepShare = 0.8f;
         if (polarisation == 0 && releaseStepEnabled_)
         {
             const float rise = releaseStepShare * releasedAmplitude
@@ -8790,17 +8739,13 @@ void AcustraEngine::setBridgeCouplingEnabled(bool enabled) noexcept
     bridgeForceMomentDerivative_.reset();
     bridgeBodyForceDerivative_.reset();
     bridgeBodyMomentDerivative_.reset();
-    bridgeTailForceDerivative_.reset();
-    bridgeTailMomentDerivative_.reset();
     piezoForceDerivative_.reset();
     lastBridgeVelocity_ = 0.0f;
     lastBridgeReactionForce_ = 0.0f;
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
     lastBridgeBodyForce_ = 0.0f;
-    lastBridgeTailForce_ = 0.0f;
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
-    lastBridgeTailPower_ = 0.0f;
     bridgeDerivativesNeedPriming_ = true;
     bridgeDerivativesCrossRelease_ = false;
     bridgeDerivativesCrossConfigure_ = false;
@@ -8825,12 +8770,8 @@ void AcustraEngine::setPortObserversEnabled(bool enabled) noexcept
     for (auto& derivative : bridgePowerDerivatives_)
         derivative.reset();
     bridgeForceMomentDerivative_.reset();
-    bridgeTailForceDerivative_.reset();
-    bridgeTailMomentDerivative_.reset();
-    lastBridgeTailForce_ = 0.0f;
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
-    lastBridgeTailPower_ = 0.0f;
 }
 
 void AcustraEngine::setSympatheticStringsEnabled(bool enabled) noexcept
@@ -9983,22 +9924,22 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             updateControlState();
         }
 
-        bodyAmount_ += parameterSmoothing_
-            * (targetParameters_.bodyAmount - bodyAmount_);
-        width_ += parameterSmoothing_
-            * (targetParameters_.stereoWidth - width_);
-        outputGain_ += parameterSmoothing_
-            * (targetParameters_.outputGain - outputGain_);
+        // Each glide settles onto its target exactly, so a mix returned to
+        // zero leaves Main bit for bit as it was without one, and a glide to
+        // zero never ends on subnormals (it stalls near 7e-43, where the step
+        // is under half an ulp), which are slow without FTZ/DAZ. A glide that
+        // stops moving snaps too: at 192 kHz a step near 1 is below half an
+        // ulp before the 1e-4 test is reached.
+        const auto glide = [this] (float value, float target)
         {
-            // Settles onto its target exactly, so a mix returned to zero
-            // leaves Main bit for bit as it was without one.
-            // A glide that stops moving snaps too: at 192 kHz a step near 1
-            // is below half an ulp before the 1e-4 test is reached.
-            const float target = clamp(targetParameters_.piezoMix, 0.0f, 1.0f);
-            const float next = piezoMix_ + parameterSmoothing_ * (target - piezoMix_);
-            piezoMix_ = next == piezoMix_ || exact::abs(target - next) < 1.0e-4f
+            const float next = value + parameterSmoothing_ * (target - value);
+            return next == value || exact::abs(target - next) < 1.0e-4f
                 ? target : next;
-        }
+        };
+        bodyAmount_ = glide(bodyAmount_, targetParameters_.bodyAmount);
+        width_ = glide(width_, targetParameters_.stereoWidth);
+        outputGain_ = glide(outputGain_, targetParameters_.outputGain);
+        piezoMix_ = glide(piezoMix_, clamp(targetParameters_.piezoMix, 0.0f, 1.0f));
 
         std::array<float, stringCount> verticalIncident {};
         std::array<float, stringCount> horizontalIncident {};
@@ -10038,17 +9979,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             voice.appliedBendImpedanceScale += delaySmoothing_
                 * (voice.bendImpedanceScale
                    - voice.appliedBendImpedanceScale);
-            if (voice.bridgeTailStiffnessSamples > 0)
-            {
-                if (--voice.bridgeTailStiffnessSamples == 0)
-                    voice.appliedBridgeTailStiffness = voice.bridgeTailStiffness;
-                else
-                    voice.appliedBridgeTailStiffness = voice.bridgeTailStiffnessStep > 0.0f
-                        ? std::min(voice.bridgeTailStiffness,
-                            voice.appliedBridgeTailStiffness + voice.bridgeTailStiffnessStep)
-                        : std::max(voice.bridgeTailStiffness,
-                            voice.appliedBridgeTailStiffness + voice.bridgeTailStiffnessStep);
-            }
             excitation[static_cast<std::size_t>(string)]
                 = renderExcitation(voice);
             verticalIncident[static_cast<std::size_t>(string)]
@@ -10151,20 +10081,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                             * voice.tailParallelLoop.appliedReleaseGain;
                 }
             }
-            // Every string is anchored behind the saddle whether or not it
-            // is being played, so the anchor the junction sees is a constant
-            // of the instrument. Summing only the played ones made it stiffen
-            // with each voice held, which more than doubled a note's sustain
-            // inside a chord. Each stub stands at its own string's point on
-            // the saddle, so the six enter as the three moments of a
-            // stiffness matrix rather than as one sum.
             const float arm = saddleLeverArm(string);
-            drive.stiffness0 += voice.appliedBridgeTailStiffness;
-            drive.stiffness1 += arm * voice.appliedBridgeTailStiffness;
-            drive.stiffness2 += arm * arm * voice.appliedBridgeTailStiffness;
-            if (saddleHeight != 0.0f)
-                drive.stiffness2 += saddleHeight * saddleHeight
-                                  * voice.appliedBridgeTailStiffness;
             // Every string on the bridge is a member of the junction, played
             // or not: an idle string on a moving bridge carries a wave, and
             // at its resonance it presents thousands of times its
@@ -10175,7 +10092,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             // separate loop and receives its own full bridge return, so it
             // also supplies a port. Counting its incident wave without its
             // impedance breaks the wave-norm balance by Z_tail*x_string^2.
-            // The six physical anchor stubs above are unchanged.
             if (voice.played || sympatheticStringsEnabled_)
             {
                 const float port = voice.characteristicImpedance
@@ -10294,29 +10210,24 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         float reactionMoment = portIsLoaded ? drive.incidentRock : 0.0f;
         float bodyForceWave = reactionWave;
         float bodyMomentWave = reactionMoment;
-        float tailForceWave = 0.0f;
-        float tailMomentWave = 0.0f;
         if (bridgeCouplingEnabled_ && portIsLoaded)
         {
             if (bridgeLoadFade_ < 1.0f)
             {
-                bridgeLoad_.process(drive, inverseSampleRate_,
-                                    fadingBridgeLoad_, bridgeLoadFade_);
+                bridgeLoad_.process(drive, fadingBridgeLoad_, bridgeLoadFade_);
                 bridgeLoadFade_ = std::min(1.0f,
                     bridgeLoadFade_ + bridgeLoadFadeStep_);
                 if (bridgeLoadFade_ >= 1.0f && bridgeUpdatePending_)
                     applyPendingBridge(true);
             }
             else
-                bridgeLoad_.process(drive, inverseSampleRate_);
+                bridgeLoad_.process(drive);
             bridgeDisplacement = bridgeLoad_.displacement;
             bridgeRotation = bridgeLoad_.rotation;
             reactionWave = bridgeLoad_.mainIntegratedForce;
             reactionMoment = bridgeLoad_.mainIntegratedMoment;
             bodyForceWave = bridgeLoad_.bodyIntegratedForce;
             bodyMomentWave = bridgeLoad_.bodyIntegratedMoment;
-            tailForceWave = bridgeLoad_.tailIntegratedForce;
-            tailMomentWave = bridgeLoad_.tailIntegratedMoment;
         }
         // Each string's saddle force is its incident force less its port
         // moving with the saddle, F_i = inc_i - Z_i (x + u_i r); the piezo
@@ -10338,8 +10249,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             bridgeForceMomentDerivative_.reset(reactionMoment);
             bridgeBodyForceDerivative_.reset(bodyForceWave);
             bridgeBodyMomentDerivative_.reset(bodyMomentWave);
-            bridgeTailForceDerivative_.reset(tailForceWave);
-            bridgeTailMomentDerivative_.reset(tailMomentWave);
             for (int string = 0; string < stringCount; ++string)
             {
                 auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -10379,28 +10288,25 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         lastBridgeBodyForce_ = motion(bridgeBodyForceDerivative_, bodyForceWave);
         const float bodyMomentRate
             = motion(bridgeBodyMomentDerivative_, bodyMomentWave);
-        // Everything from here to the voices is observation only - the tail
-        // force, the total and tail moments and the port-power ledger feed
-        // getters, never the output - so it runs only while observed.
+        // Everything from here to the voices is observation only - the total
+        // moment and the port-power ledger feed getters, never the output -
+        // so it runs only while observed.
         if (portObserversEnabled_)
         {
-            lastBridgeTailForce_ = motion(bridgeTailForceDerivative_, tailForceWave);
             // Power crosses the saddle in both coordinates, so each branch's is
-            // the heave product plus the rocking one; reading only the first
-            // would let the tail spring look like it stored negative energy.
+            // the heave product plus the rocking one.
             motion(bridgeForceMomentDerivative_, reactionMoment);
-            motion(bridgeTailMomentDerivative_, tailMomentWave);
             // Account for the complete zero-state trajectory of the passive load.
             // Audio priming suppresses the displacement shape's initial boundary
             // step; using that primed derivative in the work ledger drops its
             // positive input work but still counts the following elastic return.
             // The independent histories keep that initial work, without changing
             // the derivatives that drive radiation or the string pitch observer.
-            const std::array<float, 8> portWaves {
+            const std::array<float, 6> portWaves {
                 bridgeDisplacement, bridgeRotation, reactionWave, reactionMoment,
-                bodyForceWave, bodyMomentWave, tailForceWave, tailMomentWave
+                bodyForceWave, bodyMomentWave
             };
-            std::array<float, 8> portRates {};
+            std::array<float, 6> portRates {};
             for (std::size_t index = 0; index < portWaves.size(); ++index)
                 portRates[index] = bridgePowerDerivatives_[index].process(
                     portWaves[index], sampleRateRatio);
@@ -10408,8 +10314,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                              + portRates[1] * portRates[3];
             lastBridgeBodyPower_ = portRates[0] * portRates[4]
                                  + portRates[1] * portRates[5];
-            lastBridgeTailPower_ = portRates[0] * portRates[6]
-                                 + portRates[1] * portRates[7];
         }
 
         for (int string = 0; string < stringCount; ++string)
@@ -10479,11 +10383,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // later than the strings for every Capture.
         float monoMic = radiationReferenceGain * monoReference_ * outputGain_
             * (bodyScale * body.upper + 0.0f);
-        // The room around the microphones (RoomAmbience): fed the pair's mid
-        // signal through the send, its field spread by Width as the pair is,
-        // and heard by the mono microphone at that one's own reference. It
-        // never reaches the piezo. Zero sends nothing and, once the room has
-        // rung out, costs nothing and changes no bit.
+        // The room around the microphones (RoomAmbience): fed both of the
+        // pair's microphones as measured (before Width) through the send, its
+        // field spread by Width as the pair is, and heard by the mono
+        // microphone, the pair's right one, at its own position and
+        // reference. It never reaches the piezo. Zero sends nothing and, once
+        // the room has rung out, costs nothing and changes no bit.
         float roomPeak = 0.0f;
         {
             const float target = clamp(targetParameters_.room, 0.0f, 1.0f);
@@ -10505,14 +10410,14 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 // Keep the room warm before that gain and scale its return
                 // with the dry microphones, so automation preserves their
                 // balance and a mute also silences an existing room tail.
-                room_.process(roomSend_ * 0.5f
-                                  * (reference * dryLeft + reference * dryRight),
+                room_.process(roomSend_ * reference * (bodyScale * body.left),
+                              roomSend_ * reference * (bodyScale * body.right),
                               wetLeft, wetRight);
                 const float wetMid = 0.5f * (wetLeft + wetRight);
                 const float wetSide = 0.5f * width_ * (wetLeft - wetRight);
                 outputLeft += outputGain_ * (wetMid + wetSide);
                 outputRight += outputGain_ * (wetMid - wetSide);
-                monoMic += 1.41421356f * wetMid * monoReference_
+                monoMic += wetRight * monoReference_
                     / std::max(outputReference_, 1.0e-6f) * outputGain_;
                 roomPeak = std::max(exact::abs(wetLeft), exact::abs(wetRight));
             }
@@ -10575,54 +10480,104 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
 }
 
 // The room (EngineParameters::room): a small studio, 5.2 x 4.1 x 2.7 m, the
-// guitar 0.95 m over the floor with the microphones 0.32 m in front of it.
+// guitar 0.95 m over the floor, 2.3 m from the left wall and 1.5 m from the
+// wall behind the player, with the microphones 0.32 m in front of it. The
+// room hears both microphones as measured, not their sum: a mode whose two
+// microphones are in antiphase cancels in the pair's mid, yet it radiates
+// into the room (Docs/room-2026-10-10.md).
+//
 // The early reflections are its image sources within two bounces, the ten
 // strongest, at their delays after the direct sound and their spherical
 // spreading times the surfaces' pressure reflection (wood floor 0.88, treated
-// ceiling 0.62, walls 0.75-0.80), panned by the arrival's side across the
-// pair (softened to 0.7: neither microphone is a point). The late field is
-// an eight-line feedback delay network (Jot and Chaigne, AES 90 (1991)
-// preprint 3030) with a Hadamard mix, its lines 17-41 ms, each damped by a
-// one-pole so the field decays in 0.45 s up to 1 kHz, 0.36 s at 4 kHz and
-// 0.26 s at 8 kHz, as a treated room's does; it starts 8 ms after the direct
-// sound, through four allpasses that make its echoes dense within 20 ms, as
-// a small room's mixing time does. What goes in is filtered by a 9 kHz
-// one-pole and the reflections by a 6.5 kHz one; the room carries no detail
-// above them.
+// ceiling 0.62, walls 0.75-0.80). Floor, ceiling, front and back lie across
+// the pair's axis: their reflection reaches both microphones at once and
+// carries what the guitar sends that way, the pair's mid. A side wall's
+// reflection carries what the guitar sends towards it, the nearer
+// microphone's signal, and reaches the farther microphone later by the
+// spacing's projection on its direction (0.20 m, 0.53-0.58 ms): time, not
+// level, places it, as for any spaced omnidirectional pair.
+//
+// The late field is a sixteen-line feedback delay network (Jot and Chaigne,
+// AES 90 (1991) preprint 3030) with a Hadamard mix, its lines 17-43 ms (0.47 s
+// in all, so its modes overlap about twice over at the field's 0.45 s low
+// decay and no single one booms on a note), each damped by a one-pole
+// designed at the room's own rate so the field decays in 0.45 s at low
+// frequencies, 0.35 s at 4 kHz and 0.26 s at 8 kHz (octave bands) at every
+// rate. The pair's mid and side enter it 8 ms after the direct sound, each
+// through four allpasses of its own that make the echoes dense and on its own
+// orthogonal sign pattern, so each microphone enters on an orthogonal vector
+// with half the energy and the field hears all the guitar radiates, not only
+// what the mid keeps. It is heard a fraction of the way along each line
+// (whose end only feeds the mix), so its first pass arrives from 9 ms, about
+// a 58 m^3 room's mixing time (Polack: sqrt(V) ms), and it builds up under
+// the strongest reflections and decays from there, with no gap after them.
+// Its two outputs are decorrelated; a first-order split gives them a 20 cm
+// pair's diffuse-field coherence (sin(kd)/kd: 0.97, 0.87, 0.53 at 125, 250,
+// 500 Hz) as 1 / (1 + (f / 555 Hz)^2), with their power unchanged at every
+// frequency. What goes in is filtered by a 9 kHz one-pole and the
+// reflections by a 6.5 kHz one; the room carries no detail above them.
 namespace
 {
+enum class RoomSide { Both, Left, Right };
 struct RoomTap
 {
     float milliseconds;
-    float left;
-    float right;
+    float level;
+    RoomSide side;
+    // How much later a side wall's reflection reaches the farther microphone.
+    float lagMilliseconds;
 };
 constexpr std::size_t roomTapTotal = 10;
-constexpr std::size_t roomLineTotal = 8;
+constexpr std::size_t roomLineTotal = 16;
+constexpr std::size_t roomDiffuserTotal = 8;
+// The side walls' levels are the energy mean of the two levels they were
+// once panned with, so each reflection keeps its energy.
 constexpr std::array<RoomTap, roomTapTotal> roomTaps { {
-    { 4.97f, 0.0973f, 0.0973f },  // floor
-    { 8.70f, 0.0542f, 0.0542f },  // wall behind the player
-    { 9.03f, 0.0406f, 0.0406f },  // ceiling
-    { 10.33f, 0.0408f, 0.0408f }, // floor, then the wall behind
-    { 12.52f, 0.0510f, 0.0207f }, // left wall
-    { 13.37f, 0.0342f, 0.0342f }, // wall behind the microphones
-    { 13.73f, 0.0395f, 0.0198f }, // floor, then the left wall
-    { 14.51f, 0.0279f, 0.0279f }, // floor, then the wall behind them
-    { 16.01f, 0.0165f, 0.0405f }, // right wall
-    { 16.99f, 0.0154f, 0.0335f }, // floor, then the right wall
+    { 4.97f, 0.0973f, RoomSide::Both, 0.0f },     // floor
+    { 8.70f, 0.0542f, RoomSide::Both, 0.0f },     // wall behind the player
+    { 9.03f, 0.0406f, RoomSide::Both, 0.0f },     // ceiling
+    { 10.33f, 0.0408f, RoomSide::Both, 0.0f },    // floor, then the wall behind
+    { 12.52f, 0.0389f, RoomSide::Left, 0.582f },  // left wall
+    { 13.37f, 0.0342f, RoomSide::Both, 0.0f },    // wall behind the microphones
+    { 13.73f, 0.0312f, RoomSide::Left, 0.534f },  // floor, then the left wall
+    { 14.51f, 0.0279f, RoomSide::Both, 0.0f },    // floor, then the wall behind them
+    { 16.01f, 0.0309f, RoomSide::Right, 0.582f }, // right wall
+    { 16.99f, 0.0261f, RoomSide::Right, 0.551f }, // floor, then the right wall
 } };
+// The lines, 17.3-43.4 ms, each length on a scrambled index of the mix (see
+// roomOutputX).
 constexpr std::array<float, roomLineTotal> roomLineMilliseconds {
-    17.3f, 19.7f, 23.1f, 26.3f, 29.9f, 33.7f, 37.1f, 41.3f
+    24.6f, 37.1f, 17.3f, 31.6f, 41.3f, 21.3f, 28.1f, 33.7f,
+    18.5f, 43.4f, 26.3f, 35.3f, 19.7f, 39.0f, 23.1f, 29.9f
 };
-// The late field's input passes four allpasses (Schroeder, JAES 10 (1962)
-// 219-223) at 0.65, so its echoes are dense from their start.
-constexpr std::array<float, 4> roomDiffuserMilliseconds { 5.3f, 3.7f, 2.3f, 1.3f };
+// Where each line is heard: so long after a write that, with the late
+// field's own 8 ms, its first pass arrives at 9-25 ms, a line every
+// millisecond, before any line's end has fed the mix back.
+constexpr std::array<float, roomLineTotal> roomReadMilliseconds {
+    9.4f, 4.1f, 1.0f, 12.5f, 13.6f, 8.3f, 5.3f, 16.6f,
+    15.7f, 2.0f, 3.1f, 10.4f, 11.3f, 14.6f, 7.1f, 6.2f
+};
+// The mid's (0-3) and the side's (4-7) four allpasses (Schroeder, JAES 10
+// (1962) 219-223) at 0.65, so the late field's echoes are dense from their
+// start.
+constexpr std::array<float, roomDiffuserTotal> roomDiffuserMilliseconds {
+    5.3f, 3.7f, 2.3f, 1.3f, 4.7f, 3.1f, 1.9f, 1.1f
+};
 constexpr float roomDiffusion = 0.65f;
-constexpr float roomLowSeconds = 0.45f;
-constexpr float roomNyquistSeconds = 0.15f;
+// The field's decay: 0.45 s at low frequencies and 0.238 s at 8 kHz, the
+// mean of the lines the 48 kHz room had when it was chosen by ear (each
+// one-pole then reached a fixed T60 at Nyquist, which moved its 8 kHz
+// decay with the rate); over the 8 kHz octave this reads 0.26 s. Between
+// them the loss rises with the square of frequency (a one-pole's own law).
+constexpr double roomLowSeconds = 0.45;
+constexpr double roomHighSeconds = 0.238;
+constexpr double roomHighHertz = 8000.0;
 constexpr float roomLateMilliseconds = 8.0f;
 // The late field's energy over the reflections' at the microphones.
 constexpr float roomLateShare = 1.5f;
+// The late field's coherence corner: 1 / (1 + (f / corner)^2) fitted to a
+// 0.20 m pair's sin(kd)/kd at 125-500 Hz (c = 343 m/s).
+constexpr double roomCoherenceHertz = 555.0;
 constexpr double roomMaximumRate = 64000.0;
 
 bool roomPrime(int value) noexcept
@@ -10635,7 +10590,35 @@ bool roomPrime(int value) noexcept
     return true;
 }
 
-// The eight lines' Hadamard mix, in place, normalised to stay lossless.
+// Row `row` of the sixteen-point Sylvester-Hadamard matrix, as signs: rows
+// are mutually orthogonal patterns.
+constexpr std::array<float, roomLineTotal> roomSigns(unsigned row) noexcept
+{
+    std::array<float, roomLineTotal> signs {};
+    for (std::size_t line = 0; line < signs.size(); ++line)
+    {
+        unsigned bits = row & static_cast<unsigned>(line);
+        bits ^= bits >> 2u;
+        bits ^= bits >> 1u;
+        signs[line] = (bits & 1u) == 0u ? 1.0f : -1.0f;
+    }
+    return signs;
+}
+// The two outputs' patterns, then the mid's and the side's entries (each
+// scaled to unit energy over the sixteen lines where it is used). A pattern
+// equal to a row of the mix reads one line back through it wherever the
+// lines' readings fall within a period of each other, so the outputs' two
+// spectra need not match: these rows, with the lengths scrambled over the
+// indices, were chosen among 51 combinations as the ones whose two outputs
+// keep the equal power and low correlation the coherence split assumes
+// (third octaves 100 Hz-2 kHz at 48 kHz: power ratio 1.8 dB rms, |r| at most
+// 0.25; Docs/room-2026-10-10.md).
+constexpr auto roomOutputX = roomSigns(1u);
+constexpr auto roomOutputY = roomSigns(14u);
+constexpr auto roomEntryMid = roomSigns(13u);
+constexpr auto roomEntrySide = roomSigns(2u);
+
+// The sixteen lines' Hadamard mix, in place, normalised to stay lossless.
 void roomHadamard(std::array<float, roomLineTotal>& values) noexcept
 {
     for (std::size_t span = 1; span < values.size(); span *= 2)
@@ -10648,14 +10631,19 @@ void roomHadamard(std::array<float, roomLineTotal>& values) noexcept
                 values[index + span] = a - b;
             }
     for (auto& value : values)
-        value *= 0.35355339f;
+        value *= 0.25f;
 }
 } // namespace
 
 void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
 {
     static_assert(roomTapTotal == static_cast<std::size_t>(tapCount)
-                  && roomLineTotal == static_cast<std::size_t>(lineCount));
+                  && roomLineTotal == static_cast<std::size_t>(lineCount)
+                  && roomDiffuserTotal == static_cast<std::size_t>(diffuserCount));
+    static_assert((lineCapacity & (lineCapacity - 1)) == 0
+                  && (earlyCapacity & (earlyCapacity - 1)) == 0
+                  && (diffuserCapacity & (diffuserCapacity - 1)) == 0,
+                  "the room's stores wrap by masking");
     decimation = std::max(1, static_cast<int>(std::ceil(hostRate / roomMaximumRate)));
     inverseDecimation = 1.0f / static_cast<float>(decimation);
     const double rate = hostRate / decimation;
@@ -10666,22 +10654,36 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
     };
     for (std::size_t tap = 0; tap < roomTaps.size(); ++tap)
     {
-        tapDelays[tap] = std::clamp(samples(roomTaps[tap].milliseconds), 1,
-                                    earlyCapacity - 1);
-        tapLeft[tap] = roomTaps[tap].left;
-        tapRight[tap] = roomTaps[tap].right;
+        const RoomTap& reflection = roomTaps[tap];
+        const int nearer = std::clamp(samples(reflection.milliseconds), 1,
+                                      earlyCapacity - 1);
+        const int farther = std::clamp(samples(reflection.milliseconds
+                                               + reflection.lagMilliseconds),
+                                       1, earlyCapacity - 1);
+        tapDelayLeft[tap] = reflection.side == RoomSide::Right ? farther : nearer;
+        tapDelayRight[tap] = reflection.side == RoomSide::Left ? farther : nearer;
+        tapGains[tap] = reflection.level;
     }
     lateDelay = std::clamp(samples(roomLateMilliseconds), 1, earlyCapacity - 1);
-    longest = lateDelay;
+    std::array<int, 2> diffused {};
     for (std::size_t diffuser = 0; diffuser < diffuserLengths.size(); ++diffuser)
     {
-        int length = std::clamp(samples(roomDiffuserMilliseconds[diffuser]), 2,
-                                diffuserCapacity - 1);
+        int length = std::clamp(samples(roomDiffuserMilliseconds[diffuser]),
+                                2, diffuserCapacity - 1);
         while (!roomPrime(length) && length < diffuserCapacity - 1)
             ++length;
         diffuserLengths[diffuser] = length;
-        longest += length;
+        diffused[diffuser / 4] += length;
     }
+    longest = lateDelay + std::max(diffused[0], diffused[1]);
+    // The decay at the reference frequency, which falls to the room's
+    // own quarter-rate below 32 kHz.
+    const double reference = std::min(roomHighHertz, 0.25 * rate);
+    const double lowLoss = 1.0 / roomLowSeconds;
+    const double referenceLoss = lowLoss + (1.0 / roomHighSeconds - lowLoss)
+        * (reference / roomHighHertz) * (reference / roomHighHertz);
+    const double cosine = std::cos(2.0 * piDouble * reference / rate);
+    int longestLine = 0;
     for (std::size_t line = 0; line < lengths.size(); ++line)
     {
         // Each line a prime number of samples, so no two share a period.
@@ -10690,23 +10692,40 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
         while (!roomPrime(length) && length < lineCapacity - 1)
             ++length;
         lengths[line] = length;
-        longest = std::max(longest, length + lateDelay + diffuserLengths[0]
-                           + diffuserLengths[1] + diffuserLengths[2] + diffuserLengths[3]);
-        const double perLow = std::pow(10.0, -3.0 * length / (roomLowSeconds * rate));
-        const double perHigh = std::pow(10.0, -3.0 * length / (roomNyquistSeconds * rate));
-        const double pole = (perLow - perHigh) / (perLow + perHigh);
+        readDelays[line] = std::clamp(samples(roomReadMilliseconds[line]),
+                                      1, length - 1);
+        longestLine = std::max(longestLine, length);
+        // A one-pole whose loss over the line is the field's decay at DC and
+        // at the reference frequency, wherever the rate puts its Nyquist:
+        // (1 - p)^2 / (1 - 2 p cos w + p^2) = r, the smaller root.
+        const double perLow = std::pow(10.0, -3.0 * length * lowLoss / rate);
+        const double perReference = std::pow(10.0, -3.0 * length * referenceLoss / rate);
+        const double ratio = (perReference / perLow) * (perReference / perLow);
+        const double offset = 1.0 - ratio * cosine;
+        const double pole = (1.0 - ratio)
+            / (offset + std::sqrt(std::max(offset * offset
+                                            - (1.0 - ratio) * (1.0 - ratio), 0.0)));
         absorptionPole[line] = static_cast<float>(pole);
         absorptionGain[line] = static_cast<float>(perLow * (1.0 - pole));
+    }
+    longest += longestLine;
+    // The coherence split's first-order high-pass, its corner prewarped.
+    {
+        const double corner = 2.0 * piDouble * roomCoherenceHertz;
+        const double warped = corner / std::tan(corner / (2.0 * rate));
+        coherenceGain = static_cast<float>(warped / (warped + corner));
+        coherencePole = static_cast<float>((warped - corner) / (warped + corner));
     }
     inputCoefficient = static_cast<float>(-std::expm1(-2.0 * piDouble * 9000.0 / hostRate));
     earlyCoefficient = static_cast<float>(-std::expm1(-2.0 * piDouble
                                                       * std::min(6500.0, 0.4 * rate) / rate));
     // Normalise: the reflections and the late field at their share, then
     // the whole room to unit energy gain for a signal weighted as a guitar's
-    // is, its power falling above 1 kHz (a one-pole's): the room keeps its
-    // longest decay where that power is, so a white signal's gain would read
-    // the room 6 dB quieter than a guitar hears it. The gain is a ratio of
-    // energies at the room's own rate, which a host-rate signal keeps too.
+    // is, its power falling above 1 kHz (a one-pole's), the same at both
+    // microphones: the room keeps its longest decay where that power is, so
+    // a white signal's gain would read the room 6 dB quieter than a guitar
+    // hears it. The gain is a ratio of energies at the room's own rate,
+    // which a host-rate signal keeps too.
     outputScale = 1.0f;
     const int length = static_cast<int>(1.4 * rate);
     const double weighting = -std::expm1(-2.0 * piDouble * 1000.0 / rate);
@@ -10727,25 +10746,20 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
         double drive = weighting;
         // Pass 0 measures the reflections alone (no late input), pass 1 the
         // late field alone.
-        const auto savedLeft = tapLeft;
-        const auto savedRight = tapRight;
+        const auto savedGains = tapGains;
         if (pass == 1)
-        {
-            tapLeft.fill(0.0f);
-            tapRight.fill(0.0f);
-        }
+            tapGains.fill(0.0f);
         lateInput = pass == 1 ? 1.0f : 0.0f;
         for (int index = 0; index < length; ++index)
         {
-            step(static_cast<float>(drive));
+            step(static_cast<float>(drive), static_cast<float>(drive));
             drive *= 1.0 - weighting;
             if (drive < 1.0e-12)
                 drive = 0.0;
             energy += 0.5 * (static_cast<double>(currentLeft) * currentLeft
                              + static_cast<double>(currentRight) * currentRight);
         }
-        tapLeft = savedLeft;
-        tapRight = savedRight;
+        tapGains = savedGains;
         (pass == 0 ? earlyEnergy : lateEnergy) = energy;
     }
     lateInput = static_cast<float>(std::sqrt(roomLateShare * earlyEnergy
@@ -10757,94 +10771,145 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
 
 void AcustraEngine::RoomAmbience::reset() noexcept
 {
-    for (auto& line : lines)
-        line.fill(0.0f);
-    heads.fill(0);
+    for (auto& row : lines)
+        row.fill(0.0f);
+    lineWrite = 0;
     absorptionState.fill(0.0f);
-    early.fill(0.0f);
-    earlyHead = 0;
-    for (auto& diffuser : diffusers)
-        diffuser.fill(0.0f);
-    diffuserHeads.fill(0);
-    inputState = 0.0f;
+    for (auto& row : early)
+        row.fill(0.0f);
+    earlyWrite = 0;
+    for (auto& row : diffusers)
+        row.fill(0.0f);
+    diffuserWrite = 0;
+    inputLeftState = inputRightState = 0.0f;
     earlyLeft = earlyRight = 0.0f;
+    coherenceInputs.fill(0.0f);
+    coherenceStates.fill(0.0f);
     phase = 0;
-    accumulator = 0.0f;
+    accumulatorLeft = accumulatorRight = 0.0f;
     previousLeft = previousRight = 0.0f;
     currentLeft = currentRight = 0.0f;
     quietSamples = 0;
     active = false;
 }
 
-void AcustraEngine::RoomAmbience::step(float input) noexcept
+void AcustraEngine::RoomAmbience::step(float inputLeft, float inputRight) noexcept
 {
-    early[static_cast<std::size_t>(earlyHead)] = input;
-    const auto delayed = [this] (int delay)
+    constexpr int earlyMask = earlyCapacity - 1;
+    constexpr int diffuserMask = diffuserCapacity - 1;
+    constexpr int lineMask = lineCapacity - 1;
+    early[static_cast<std::size_t>(earlyWrite)] = { inputLeft, inputRight };
+    const auto delayed = [this] (int delay) -> const std::array<float, 2>&
     {
-        int index = earlyHead - delay;
-        if (index < 0)
-            index += earlyCapacity;
-        return early[static_cast<std::size_t>(index)];
+        return early[static_cast<std::size_t>((earlyWrite - delay) & earlyMask)];
     };
     float reflectedLeft = 0.0f;
     float reflectedRight = 0.0f;
-    for (std::size_t tap = 0; tap < tapDelays.size(); ++tap)
+    for (std::size_t tap = 0; tap < tapGains.size(); ++tap)
     {
-        const float value = delayed(tapDelays[tap]);
-        reflectedLeft += tapLeft[tap] * value;
-        reflectedRight += tapRight[tap] * value;
+        const float gain = tapGains[tap];
+        const RoomSide side = roomTaps[tap].side;
+        if (side == RoomSide::Both)
+        {
+            // Across the pair's axis: the mid, at both at once.
+            const auto& pair = delayed(tapDelayLeft[tap]);
+            const float value = gain * 0.5f * (pair[0] + pair[1]);
+            reflectedLeft += value;
+            reflectedRight += value;
+        }
+        else
+        {
+            const std::size_t nearer = side == RoomSide::Left ? 0u : 1u;
+            reflectedLeft += gain * delayed(tapDelayLeft[tap])[nearer];
+            reflectedRight += gain * delayed(tapDelayRight[tap])[nearer];
+        }
     }
-    float late = lateInput * delayed(lateDelay);
-    earlyHead = earlyHead + 1 == earlyCapacity ? 0 : earlyHead + 1;
+    // The late field's two inputs: the pair's mid and side.
+    const auto& entering = delayed(lateDelay);
+    std::array<float, 2> late { lateInput * 0.5f * (entering[0] + entering[1]),
+                                lateInput * 0.5f * (entering[0] - entering[1]) };
+    earlyWrite = (earlyWrite + 1) & earlyMask;
     earlyLeft += earlyCoefficient * (reflectedLeft - earlyLeft);
     earlyRight += earlyCoefficient * (reflectedRight - earlyRight);
 
-    for (std::size_t diffuser = 0; diffuser < diffusers.size(); ++diffuser)
+    // Each input's four allpasses in series; every allpass reads what it
+    // stored its own length ago and stores this step's value at the shared
+    // write position.
     {
-        auto& line = diffusers[diffuser];
-        int& head = diffuserHeads[diffuser];
-        const float stored = line[static_cast<std::size_t>(head)];
-        float written = late + roomDiffusion * stored;
-        if (exact::abs(written) < 1.0e-20f)
-            written = 0.0f;
-        line[static_cast<std::size_t>(head)] = written;
-        head = head + 1 == diffuserLengths[diffuser] ? 0 : head + 1;
-        late = stored - roomDiffusion * written;
+        std::array<float, roomDiffuserTotal> stored {};
+        for (std::size_t diffuser = 0; diffuser < stored.size(); ++diffuser)
+            stored[diffuser] = diffusers[static_cast<std::size_t>(
+                (diffuserWrite - diffuserLengths[diffuser]) & diffuserMask)][diffuser];
+        auto& row = diffusers[static_cast<std::size_t>(diffuserWrite)];
+        for (std::size_t diffuser = 0; diffuser < stored.size(); ++diffuser)
+        {
+            float& value = late[diffuser / 4];
+            float written = value + roomDiffusion * stored[diffuser];
+            if (exact::abs(written) < 1.0e-20f)
+                written = 0.0f;
+            row[diffuser] = written;
+            value = stored[diffuser] - roomDiffusion * written;
+        }
+        diffuserWrite = (diffuserWrite + 1) & diffuserMask;
     }
+
+    // The lines: their ends feed the mix, a reading partway along each is
+    // heard. The field at the two outputs is two orthogonal sign patterns
+    // of those readings, so they decorrelate.
     std::array<float, roomLineTotal> outputs {};
-    float lateLeft = 0.0f;
-    float lateRight = 0.0f;
-    bool silent = input == 0.0f && late == 0.0f;
+    std::array<float, 2> field {};
+    bool silent = inputLeft == 0.0f && inputRight == 0.0f
+        && late[0] == 0.0f && late[1] == 0.0f;
     for (std::size_t line = 0; line < outputs.size(); ++line)
     {
-        const float stored = lines[line][static_cast<std::size_t>(heads[line])];
+        const float stored = lines[static_cast<std::size_t>(
+            (lineWrite - lengths[line]) & lineMask)][line];
+        const float heard = lines[static_cast<std::size_t>(
+            (lineWrite - readDelays[line]) & lineMask)][line];
+        outputs[line] = stored;
         silent = silent && stored == 0.0f;
-        float& state = absorptionState[line];
-        state = absorptionGain[line] * stored + absorptionPole[line] * state;
-        if (exact::abs(state) < 1.0e-20f)
-            state = 0.0f;
-        outputs[line] = state;
-        // Two orthogonal sign patterns, so left and right decorrelate.
-        lateLeft += line < 4 ? state : -state;
-        lateRight += (line & 1u) == 0u ? state : -state;
+        field[0] += roomOutputX[line] * heard;
+        field[1] += roomOutputY[line] * heard;
     }
     roomHadamard(outputs);
+    auto& written = lines[static_cast<std::size_t>(lineWrite)];
     for (std::size_t line = 0; line < outputs.size(); ++line)
     {
-        // The input enters every line with its own sign (a third pattern).
-        const float sign = ((line >> 1u) & 1u) == 0u ? 1.0f : -1.0f;
-        float written = outputs[line] + sign * 0.35355339f * late;
-        if (exact::abs(written) < 1.0e-20f)
-            written = 0.0f;
-        lines[line][static_cast<std::size_t>(heads[line])] = written;
-        heads[line] = heads[line] + 1 == lengths[line] ? 0 : heads[line] + 1;
+        // The mid and the side enter every line with their own signs, two
+        // more orthogonal patterns: each microphone on its own orthogonal
+        // vector, with half its energy.
+        const float entry = outputs[line]
+            + 0.25f * (roomEntryMid[line] * late[0] + roomEntrySide[line] * late[1]);
+        float state = absorptionGain[line] * entry
+            + absorptionPole[line] * absorptionState[line];
+        state = exact::abs(state) < 1.0e-20f ? 0.0f : state;
+        absorptionState[line] = state;
+        written[line] = state;
     }
+    lineWrite = (lineWrite + 1) & lineMask;
+    // The coherence split: each output's high-passed part, so the left and
+    // right sum (mid) keeps the field's low frequencies and their
+    // difference (side) only rises above the corner.
+    std::array<float, 2> high {};
+    for (std::size_t output = 0; output < field.size(); ++output)
+    {
+        float& state = coherenceStates[output];
+        state = coherenceGain * (field[output] - coherenceInputs[output])
+            + coherencePole * state;
+        if (exact::abs(state) < 1.0e-20f)
+            state = 0.0f;
+        coherenceInputs[output] = field[output];
+        high[output] = state;
+        silent = silent && state == 0.0f && field[output] == 0.0f;
+    }
+    const float lateMid = field[0] - 0.29289322f * high[0];
+    const float lateSide = 0.70710678f * high[1];
     if (exact::abs(earlyLeft) < 1.0e-20f)
         earlyLeft = 0.0f;
     if (exact::abs(earlyRight) < 1.0e-20f)
         earlyRight = 0.0f;
-    currentLeft = outputScale * (earlyLeft + 0.35355339f * lateLeft);
-    currentRight = outputScale * (earlyRight + 0.35355339f * lateRight);
+    currentLeft = outputScale * (earlyLeft + 0.25f * (lateMid + lateSide));
+    currentRight = outputScale * (earlyRight + 0.25f * (lateMid - lateSide));
     silent = silent && earlyLeft == 0.0f && earlyRight == 0.0f;
     quietSamples = silent ? quietSamples + 1 : 0;
     // Past the longest path with nothing in or out, every state is zero.
@@ -10852,28 +10917,32 @@ void AcustraEngine::RoomAmbience::step(float input) noexcept
         active = false;
 }
 
-void AcustraEngine::RoomAmbience::process(float input, float& left,
-                                          float& right) noexcept
+void AcustraEngine::RoomAmbience::process(float inputLeft, float inputRight,
+                                          float& left, float& right) noexcept
 {
     // A room that has rung out holds exact zeros everywhere, so silence in
     // is silence out without running it.
-    if (!active && input == 0.0f)
+    if (!active && inputLeft == 0.0f && inputRight == 0.0f)
     {
         left = right = 0.0f;
         return;
     }
     active = true;
-    inputState += inputCoefficient * (input - inputState);
-    if (exact::abs(inputState) < 1.0e-20f)
-        inputState = 0.0f;
-    accumulator += inputState;
+    inputLeftState += inputCoefficient * (inputLeft - inputLeftState);
+    if (exact::abs(inputLeftState) < 1.0e-20f)
+        inputLeftState = 0.0f;
+    inputRightState += inputCoefficient * (inputRight - inputRightState);
+    if (exact::abs(inputRightState) < 1.0e-20f)
+        inputRightState = 0.0f;
+    accumulatorLeft += inputLeftState;
+    accumulatorRight += inputRightState;
     if (++phase >= decimation)
     {
         phase = 0;
         previousLeft = currentLeft;
         previousRight = currentRight;
-        step(accumulator * inverseDecimation);
-        accumulator = 0.0f;
+        step(accumulatorLeft * inverseDecimation, accumulatorRight * inverseDecimation);
+        accumulatorLeft = accumulatorRight = 0.0f;
     }
     // Across a decimated step the output moves linearly to the new sample.
     const float share = static_cast<float>(phase + 1) * inverseDecimation;
@@ -10980,11 +11049,6 @@ float AcustraEngine::getLastBridgeBodyForce() const noexcept
     return lastBridgeBodyForce_;
 }
 
-float AcustraEngine::getLastBridgeTailForce() const noexcept
-{
-    return lastBridgeTailForce_;
-}
-
 float AcustraEngine::getLastPiezoVoltage() const noexcept
 {
     return lastPiezoVoltage_;
@@ -11008,11 +11072,6 @@ float AcustraEngine::getLastBridgePower() const noexcept
 float AcustraEngine::getLastBridgeBodyPower() const noexcept
 {
     return lastBridgeBodyPower_;
-}
-
-float AcustraEngine::getLastBridgeTailPower() const noexcept
-{
-    return lastBridgeTailPower_;
 }
 
 } // namespace acustra

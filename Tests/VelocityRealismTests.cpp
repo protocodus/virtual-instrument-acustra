@@ -39,7 +39,7 @@ struct AcustraEngineTestAccess
         // recover its held displacement using the triangle's steep flank.
         const double displacement = voice.releaseStepRise
             * voice.releaseShapePosition[0] * length
-            / (0.8 * std::sqrt(voice.polarisationMix));
+            / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix));
         // Independently predict the default-Touch 0.2 mm contact's r/u
         // release from observed held force and string geometry, rather than
         // consulting plectrumSlipPole or the initializer's pole metadata.
