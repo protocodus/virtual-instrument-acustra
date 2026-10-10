@@ -34,7 +34,10 @@ struct AcustraEngineTestAccess
             * std::exp2((v.openMidi - 69.0) / 12.0) * v.bendImpedanceScale;
         const double speed = 0.5 * c * held
             * (1.0 / a + 1.0 / (v.speakingLengthMetres - a));
-        const double radius = 0.2e-3 * std::exp2(2.0 * (0.58 - engine.parameters_.touch));
+        // Independently apply Finger's authored radius response to observed
+        // MIDI velocity, while recovering actual held force above.
+        const double radius = 0.2e-3 * std::exp2(2.0 * (0.58 - engine.parameters_.touch))
+            * std::pow(double(v.velocity), 1.233125);
         return { std::exp(-speed / (radius * engine.sampleRate_)),
                  v.excitationCoefficient, v.excitationReleaseCoefficient,
                  v.excitationColour, v.excitationEnvelope, v.excitationDecay,

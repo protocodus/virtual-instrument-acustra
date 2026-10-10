@@ -22,7 +22,7 @@ endif()
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.1.3 LANGUAGES C CXX)
+project(Acustra VERSION 1.1.4 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -478,6 +478,15 @@ if(BUILD_TESTING)
     endif()
     acustra_add_suite(Acustra.ConstructionMatrix AcustraConstructionMatrixTests)
     set_tests_properties(Acustra.ConstructionMatrix PROPERTIES TIMEOUT 300)
+
+    add_executable(AcustraConstructionHistoryTests Tests/ConstructionHistoryTests.cpp)
+    target_link_libraries(AcustraConstructionHistoryTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraConstructionHistoryTests PRIVATE cxx_std_20)
+    if(NOT MSVC)
+        target_compile_options(AcustraConstructionHistoryTests PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+    acustra_add_suite(Acustra.ConstructionHistory AcustraConstructionHistoryTests)
+    set_tests_properties(Acustra.ConstructionHistory PROPERTIES TIMEOUT 300)
 
     find_package(Threads REQUIRED)
     add_executable(AcustraConstructionLoudnessTests Tests/ConstructionLoudnessTests.cpp)

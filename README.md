@@ -41,6 +41,12 @@ directly playable, without added input latency or new controls. See the
 The subsequent [CPU optimization](Docs/cpu-optimization-2026-10-07.md) preserves
 the rendered audio while reducing redundant pitch and pluck calculations.
 
+Version 1.1.4 expands the MIDI velocity range: soft strokes apply much less
+force to the string and its physical release contact. Wood and Shape now
+settle to exact construction references and string delays, so returning to a
+settled selection recovers the same sound with the same playing gesture.
+See [velocity and construction tests](Docs/dynamics-construction-2026-10-10.md).
+
 Guitar construction, Shape, Material, Tuning, Picking and Capture use
 directly visible radio switches; the continuous sound controls remain knobs.
 The 1.1.0 interface pairs a satin walnut chassis with honey spruce inlays,
@@ -109,7 +115,7 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
 locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
-it with the project version (currently `1.1.3`) and the source revision. Changing that identity rebuilds
+it with the project version (currently `1.1.4`) and the source revision. Changing that identity rebuilds
 the wrappers; each linked format receives its frozen identity record, and macOS
 bundles embed the build number. Packaging rejects a cache
 that disagrees with those records or macOS bundle metadata. Assign a new build

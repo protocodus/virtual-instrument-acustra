@@ -170,6 +170,11 @@ public:
     static constexpr int radiationContinuationSlots = 19;
     void reset() noexcept;
     void setParameters(const EngineParameters& parameters) noexcept;
+    // A host that suspended rendering after inaudible sleep can adopt its
+    // final construction without a fade that would resume on the next strike.
+    // Call only while rendering is suspended. Active/planned performances
+    // are rejected; clocks, controllers, RNG and retained waves are preserved.
+    void settleSuspendedParameters() noexcept;
     // Host tempo in quarter-note beats per minute. Until supplied, or for
     // a nonfinite/nonpositive value, 120 BPM is used. Ordinary key-ups wait
     // at most a 1/32 note before damping: ceil(0.125 beat in samples), with

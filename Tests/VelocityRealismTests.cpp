@@ -52,8 +52,15 @@ struct AcustraEngineTestAccess
             * engine.physicalCalibration_.steelDisplacementScaleMetres;
         const double releaseSpeed = 0.5 * waveSpeed * heldMetres
             * (1.0 / a + 1.0 / (speakingLength - a));
+        // Finger's authored effective release edge shrinks with nominal
+        // playing force; it stays independent of same-velocity force draws.
+        // Use observed MIDI velocity and independently reconstructed held
+        // displacement, rather than the initializer's computed slip pole.
+        const double radius = 0.2e-3
+            * (engine.parameters_.picking == PickingTechnique::Finger
+                ? std::pow(double(voice.velocity), 1.233125) : 1.0);
         const double absolutePole = std::exp(-releaseSpeed
-            / (0.2e-3 * engine.sampleRate_));
+            / (radius * engine.sampleRate_));
         return { voice.releaseSlipPole, voice.releaseReferencePole,
                  voice.pluckPoint, displacement,
                  length * length * slopes / std::max(variance, 1.0e-30),
@@ -95,7 +102,11 @@ void testContactLawAndForceSensitiveBrightness()
                 auto engine = fresh(rate, technique);
                 Access::seed(*engine, 0x6d2b79f5u * take);
                 engine->beginStrum();
-                engine->noteOn(40, 0.12f, 1, 0, true);
+                // Observe the same moderate held-force region as the former
+                // v=.12 sublinear curve. Under the wider v² response v=.445
+                // supplies that force; the lowest new layers approach the
+                // slow-contact spectral limit and cannot define this margin.
+                engine->noteOn(40, 0.445f, 1, 0, true);
                 const auto state = Access::inspect(*engine);
                 const bool finger = technique == acustra::PickingTechnique::Finger;
                 if (finger)
@@ -154,11 +165,78 @@ void testFullVelocityFingerStillSlipsAndThumbKeepsItsShape()
     expect(acustra::AcustraEngine::outputLatencySamples() == 7,
            "release correction changed output latency");
 }
+
+double renderedLevel(acustra::PickingTechnique technique,
+                     acustra::CaptureType capture, int midi, int velocity, double rate)
+{
+    auto engine = std::make_unique<acustra::AcustraEngine>();
+    acustra::EngineParameters parameters;
+    parameters.picking = technique;
+    parameters.capture = capture;
+    engine->setParameters(parameters);
+    engine->prepare(rate, 128);
+    engine->setStringPerChannelMode(true);
+    const int string = midi == 40 ? 1 : 6;
+    engine->noteOn(midi, float(velocity) / 127.0f, string);
+    std::array<float, 128> left {}, right {};
+    double energy = 0.0;
+    int samples = 0;
+    const int duration = int(0.3 * rate);
+    for (int start = 0; start < duration; start += 128)
+    {
+        const int count = std::min(128, duration - start);
+        engine->process(left.data(), right.data(), count);
+        for (int n = 0; n < count; ++n)
+        {
+            const double l = left[std::size_t(n)], r = right[std::size_t(n)];
+            expect(std::isfinite(l) && std::isfinite(r), "velocity layer produced non-finite audio");
+            energy += 0.5 * (l * l + r * r);
+        }
+        samples += count;
+    }
+    expect(energy > 1.0e-18, "a playable velocity layer lost its string signal");
+    return 10.0 * std::log10(std::max(energy / samples, 1.0e-30));
+}
+
+void testWideAudibleVelocityRange()
+{
+    // Emitted audio, not the initializer's formula: soft layers retain a
+    // playable signal, rise monotonically and stay far below the hard stroke
+    // through every technique/sensor on both wound and plain strings.
+    constexpr std::array<int, 5> velocities { 16, 32, 64, 96, 127 };
+    int cases = 0;
+    for (double rate : { 44100.0, 96000.0 })
+        for (auto technique : { acustra::PickingTechnique::Finger,
+                                acustra::PickingTechnique::Pick,
+                                acustra::PickingTechnique::Thumb })
+            for (auto capture : { acustra::CaptureType::StereoMic,
+                                  acustra::CaptureType::MonoMic,
+                                  acustra::CaptureType::Piezo })
+                for (int midi : { 40, 64 })
+                {
+                    std::array<double, velocities.size()> levels {};
+                    for (std::size_t v = 0; v < velocities.size(); ++v)
+                        levels[v] = renderedLevel(technique, capture, midi, velocities[v], rate);
+                    for (std::size_t v = 1; v < levels.size(); ++v)
+                        expect(levels[v] > levels[v - 1] + 1.0,
+                               "velocity layers do not rise monotonically in emitted audio");
+                    expect(levels.back() - levels[0] > 30.0,
+                           "velocity 16 is not delicate enough against the hard stroke");
+                    expect(levels.back() - levels[1] > 20.0,
+                           "velocity 32 retains a compressed dynamic range");
+                    expect(levels.back() - levels[2] > 9.0,
+                           "middle velocity is still nearly as loud as the hard stroke");
+                    ++cases;
+                }
+    std::cout << "Wide emitted velocity range: " << cases << " paths x "
+              << velocities.size() << " layers; soft/middle signal and monotonicity\n";
+}
 }
 
 int main()
 {
     testContactLawAndForceSensitiveBrightness();
     testFullVelocityFingerStillSlipsAndThumbKeepsItsShape();
+    testWideAudibleVelocityRange();
     return failures == 0 ? 0 : 1;
 }

@@ -395,6 +395,7 @@ struct AcustraEngineTestAccess
         double peakDisplacement;
         double noiseEnvelope;
         double pluckPoint;
+        double heldDisplacement;
     };
 
     struct PreparedLossSnapshot
@@ -1067,7 +1068,9 @@ struct AcustraEngineTestAccess
             static_cast<double>(peakSample) / length,
             peakValue,
             voice.excitationEnvelope,
-            voice.pluckPoint
+            voice.pluckPoint,
+            voice.releaseStepRise * voice.releaseShapePosition[0] * length
+                / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix))
         };
     }
 
@@ -5189,8 +5192,12 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
         const auto thumb = AcustraEngineTestAccess::pluck(
             acustra::fittedPhysicalCalibration, velocity,
             52, PickingTechnique::Thumb);
-        expect(pick.peakDisplacement > thumb.peakDisplacement,
-               "pick/thumb did not reach the released shape");
+        // Compare what the hand held, before the different release contacts
+        // redistribute the line. A weak Pick's slow slip can lower its line
+        // peak below Thumb even though its held displacement is greater.
+        expect(pick.heldDisplacement > thumb.heldDisplacement
+                   && pick.peakDisplacement > 0.0 && thumb.peakDisplacement > 0.0,
+               "pick/thumb did not retain their held force and released waves");
         // Picking styles share the existing contact-burst amplitude law.
         const double expectedPick = finger.noiseEnvelope;
         expect(std::abs(pick.noiseEnvelope - expectedPick)
@@ -5405,10 +5412,17 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
         fixedResponse, 0.8f);
     expect(responsiveHigh.touch - responsiveLow.touch > 0.70,
            "velocity brightness did not reach effective pluck touch");
-    expect(responsiveLow.peakDisplacement / responsiveHigh.peakDisplacement
-               > 1.8 * fixedLow.peakDisplacement
-                    / fixedHigh.peakDisplacement,
-           "velocity response did not change the pluck-amplitude exponent");
+    // Brightness may change contact shape and the small Touch force factor;
+    // it must not boost low MIDI velocities by changing the force curve.
+    const auto forceRatio = [] (const auto& low, const auto& high)
+    {
+        return (low.heldDisplacement / (0.92 + 0.08 * low.touch))
+            / (high.heldDisplacement / (0.92 + 0.08 * high.touch));
+    };
+    expect(std::abs(forceRatio(responsiveLow, responsiveHigh)
+                       - forceRatio(fixedLow, fixedHigh)) < 1.0e-6
+               && forceRatio(responsiveLow, responsiveHigh) < 0.08,
+           "brightness calibration compressed the authored velocity-force range");
 
 
 }

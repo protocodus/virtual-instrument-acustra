@@ -769,6 +769,16 @@ std::size_t constructionLoudnessCell(const EngineParameters& parameters) noexcep
 }
 static_assert(detail::constructionMicReference.size() == 4 * 3 * 3);
 
+// A float follower otherwise stops one rounding cell short of its target;
+// the cell depends on its approach direction. Every settled control and
+// construction reference must recover the same exact final value.
+float settlingGlide(float value, float target, float smoothing) noexcept
+{
+    const float next = value + smoothing * (target - value);
+    return next == value || exact::abs(target - next) < 1.0e-4f
+        ? target : next;
+}
+
 // The output reference: the strings', times the construction's level
 // (exactly 1 for the default construction, which renders unchanged).
 float outputReferenceFor(const EngineParameters& parameters) noexcept
@@ -3210,7 +3220,7 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
                     : std::max(target, std::min(*applied[index], next));
         }
     }
-    currentDelay += delaySmoothing * (targetDelay - currentDelay);
+    currentDelay = settlingGlide(currentDelay, targetDelay, delaySmoothing);
     float delayed = readDelay(currentDelay);
     if (secondDispersionActive)
         delayed = secondDispersion.process(delayed, secondDispersionA1,
@@ -3820,6 +3830,59 @@ void AcustraEngine::setParameters(const EngineParameters& parameters) noexcept
     targetParameters_ = sanitise(parameters);
     if (prepared_)
         applyDiscreteParameters(false);
+}
+
+void AcustraEngine::settleSuspendedParameters() noexcept
+{
+    if (!prepared_)
+        return;
+    // A plan belongs only to its sample. The inventory remains cached after
+    // noteOn consumes its entries, so a stale/consumed plan is no queued work.
+    if (plannedSample_ == sampleClock_)
+        for (int index = 0; index < plannedCount_; ++index)
+            if (plannedNotes_[static_cast<std::size_t>(index)] >= 0)
+                return;
+    for (const auto& voice : voices_)
+        if (voice.played || voice.keyDown || voice.pedalHeld
+            || voice.pluckDelay != 0 || voice.repluckPending)
+            return;
+
+    // A suspended host advances no samples, so neither a construction fade
+    // nor a level/delay follower can finish. Rebuild the final banks without
+    // exchanging their retained modal/filter states or resetting a clock.
+    const bool rebuildBody = !bodyConfigured_ || bodyUpdatePending_ || bodyModelFade_ != 1.0f
+        || configuredBodyShape_ != parameters_.shape
+        || configuredBodyMaterial_ != parameters_.bodyMaterial;
+    const bool rebuildBridge = bridgeUpdatePending_ || bridgeLoadFade_ != 1.0f
+        || configuredBridgeShape_ != parameters_.shape
+        || configuredBridgeMaterial_ != parameters_.bodyMaterial;
+    if (rebuildBody)
+    {
+        bodyConfigured_ = false;
+        bodyUpdatePending_ = false;
+        configureBody();
+    }
+    if (rebuildBridge)
+    {
+        configureBridge(true);
+        bridgeUpdatePending_ = false;
+        bridgeLoadFade_ = 1.0f;
+    }
+    outputReference_ = outputReferenceFor(parameters_);
+    monoReference_ = monoReferenceFor(parameters_);
+    piezoTrim_ = PiezoDesign::trim * piezoReferenceFor(parameters_);
+    // Match the ordinary construction update's reciprocal-port refinement.
+    // Only the delay endpoint moves; delay/filter waves and contact memory
+    // stay intact, as do controller and performance histories.
+    for (int pass = 0; pass < 2; ++pass)
+        for (int string = 0; string < stringCount; ++string)
+        {
+            auto& voice = voices_[static_cast<std::size_t>(string)];
+            if (rebuildBody || rebuildBridge)
+                configureVoice(voice, string, voice.midiNote, false, false);
+            for (auto& loop : voice.loops)
+                loop.currentDelay = loop.targetDelay;
+        }
 }
 
 void AcustraEngine::setTempoBpm(double bpm) noexcept
@@ -5919,11 +5982,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     if (voice.contactTravelEnabled)
         voice.contactTravel.reset(0.5f * position * voice.contactPeriodSamples,
             (1.0f - 0.5f * position) * voice.contactPeriodSamples);
-    // Velocity response has two bounded parts: touch brightens with velocity,
-    // while the displacement exponent moves from the legacy 1.32 toward the
-    // reference-response 0.82 as the same fitted depth rises.
-    const float velocityExponent = 1.32f
-        - 0.50f * physical.velocityBrightnessDepth;
+    // MIDI velocity is an authored playing-force response, independent of
+    // the fitted brightness depth. The old sublinear exponent boosted soft
+    // strokes and compressed the usable dynamics. A quadratic force curve
+    // keeps the full-velocity reference and gives half velocity a quarter of
+    // its force; the actual lower force also slows the physical contact's
+    // release below, rather than attenuating an otherwise hard pluck.
+    const float velocityForce = v * v;
     // A strummed string's own level varies stroke to stroke too, at the
     // one nominal velocity a strum's mean gives every string: GuitarSet's
     // comping tracks put the pooled deviation of a repeated string's own
@@ -5988,7 +6053,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             / clamp(1.0f - heldDistance / scaleLength, 0.05f, 1.0f)
         : 1.0f;
     const float amplitude = 0.24f
-        * std::pow(v, velocityExponent) * (0.92f + 0.08f * touch)
+        * velocityForce * (0.92f + 0.08f * touch)
         * strumLevelGain * voice.repeatedPluckGain;
     // The released shape follows this displacement.
     const float releasedAmplitude = amplitude * releaseScale;
@@ -6044,7 +6109,15 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // three times its release speed; no velocity law is fitted to Finger
     // recordings with unknown dynamics.
     constexpr float fingerReleaseRadius = 0.2e-3f;
-    constexpr float releaseReferenceVelocity = 1.0f;
+    // Playing force and release gesture have independent authored responses.
+    // Retain Finger's established contact-time response as the force curve
+    // widens: r/u then follows v^-0.766875 instead of v^-2. A fixed radius
+    // at the new tiny forces over-slows the release past a string period
+    // and reverses emitted soft/hard articulation on some notes. This
+    // effective-radius response preserves that articulation and the full
+    // force reference; it is not a measured fingertip-area law or a runtime
+    // dependency on fitted brightness depth. Thumb keeps its reference.
+    constexpr float fingerContactForceExponent = 0.6165625f;
     constexpr double releaseBoostLimit = 3.0;
     double unslipPole = 0.0;
     voice.releaseSlipPole = 0.0;
@@ -6062,11 +6135,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // their different actual slips. A non-strummed pluck divides by one.
         const double referencePole = plectrumSlipPole(voice, releasedAmplitude
                 / (strumLevelGain * voice.repeatedPluckGain)
-                * std::pow(releaseReferenceVelocity / v, velocityExponent),
+                / velocityForce,
             heldDistance, soundingLength, scaleLength, fingerReleaseRadius);
         const double pole = plectrumSlipPole(voice, releasedAmplitude,
             heldDistance, soundingLength, scaleLength,
-            fingerReleaseRadius * releaseTouch * gestureCompliance);
+            fingerReleaseRadius * releaseTouch * gestureCompliance
+                * (fullSoftSlip
+                    ? std::pow(velocityForce, fingerContactForceExponent) : 1.0f));
         if (referencePole > 0.0 && pole > 0.0)
         {
             const double referenceTau = -1.0 / std::log(referencePole);
@@ -10343,8 +10418,8 @@ float AcustraEngine::renderPiezo(float force) noexcept
     // (ConstructionLoudnessData.h). It is smoothed as one value, like the
     // microphones' reference, so a change glides along one curve and never
     // overshoots where the two factors move apart.
-    piezoTrim_ += parameterSmoothing_
-        * (PiezoDesign::trim * piezoReferenceFor(parameters_) - piezoTrim_);
+    piezoTrim_ = settlingGlide(piezoTrim_,
+        PiezoDesign::trim * piezoReferenceFor(parameters_), parameterSmoothing_);
     const auto result = static_cast<float>(
         static_cast<double>(piezoTrim_) * piezoOutputScale_ * piezoOutputVolts_);
     if (!exact::isfinite(result))
@@ -10392,9 +10467,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // ulp before the 1e-4 test is reached.
         const auto glide = [this] (float value, float target)
         {
-            const float next = value + parameterSmoothing_ * (target - value);
-            return next == value || exact::abs(target - next) < 1.0e-4f
-                ? target : next;
+            return settlingGlide(value, target, parameterSmoothing_);
         };
         bodyAmount_ = glide(bodyAmount_, targetParameters_.bodyAmount);
         width_ = glide(width_, targetParameters_.stereoWidth);
@@ -10802,10 +10875,8 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // ringing instrument; the mono microphone's own reference glides
         // beside it.
         const float outputReference = outputReferenceFor(parameters_);
-        outputReference_ += parameterSmoothing_
-            * (outputReference - outputReference_);
-        monoReference_ += parameterSmoothing_
-            * (monoReferenceFor(parameters_) - monoReference_);
+        outputReference_ = settlingGlide(outputReference_, outputReference, parameterSmoothing_);
+        monoReference_ = settlingGlide(monoReference_, monoReferenceFor(parameters_), parameterSmoothing_);
         const float reference = radiationReferenceGain * outputReference_;
         // Preserve the output sum's signed-zero normalization.
         const float dryLeft = bodyScale * spreadLeft + 0.0f;

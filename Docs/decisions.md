@@ -5,6 +5,32 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-10 — quiet strokes and repeatable construction selections
+
+The user asked for more dynamic range, genuinely quiet low velocities, and a
+check that Wood/Shape round trips recover the same construction. The fitted
+brightness depth had also changed the pluck-force exponent to 0.766875,
+boosting soft strokes. Playing force now follows normalized MIDI velocity
+squared, independently of brightness calibration. The physical contact sees
+that lower force; this is an authored response, not a fitted guitar velocity
+law or an output attenuator. Full velocity keeps its force reference.
+Finger's effective edge follows an independent fixed nominal-force response
+to retain the established release timing and soft-to-hard colour. Holding
+that edge constant at the much smaller force failed valid articulation
+checks; the accepted response passes all eight original per-note gates.
+Its exponent is authored to preserve that response, not a measured skin law.
+
+The audit also found direction-dependent floating-point endpoints in the
+construction level references and string delay follower. They now use the
+existing control-glide completion rule and reach the exact target. Body and
+bridge coefficients themselves did not accumulate changes. Silent round
+trips and cleared-wave tests are sample-exact; a guitar still ringing retains
+its physical waves and natural performance variation remains intentional.
+
+[The measurements and regression scope](dynamics-construction-2026-10-10.md)
+record the quieter layers, pitch/timbre limits, and the construction witness.
+No listening preference has been established for this new velocity response.
+
 ## 2026-10-10 — picked wound strings keep their top end short: heard and approved
 
 The user heard the blend (winding friction 4.5e-4) blind against main
