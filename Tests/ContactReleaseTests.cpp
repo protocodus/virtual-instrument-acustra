@@ -26,7 +26,7 @@ struct AcustraEngineTestAccess
         // Recover the held displacement from its independently stored
         // saddle-force step, then calculate F/(2Z)=c*y*(1/a+1/(L-a))/2.
         const double displacement = v.releaseStepRise * v.releaseShapePosition[0]
-            * period / (0.8 * std::sqrt(v.polarisationMix));
+            * period / (AcustraEngine::releaseStepShare * std::sqrt(v.polarisationMix));
         const double held = displacement
             * engine.physicalCalibration_.steelDisplacementScaleMetres;
         const double a = v.pluckPoint * v.speakingLengthMetres;

@@ -46,7 +46,7 @@ struct AcustraEngineTestAccess
         const auto& voice = engine.voices_[0];
         const int length = static_cast<int>(std::round(voice.loops[0].currentDelay));
         return voice.releaseStepRise * voice.releaseShapePosition[0] * length
-            / (0.8 * std::sqrt(voice.polarisationMix));
+            / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix));
     }
     static void forgetOldWave(AcustraEngine& engine)
     {

@@ -5671,9 +5671,17 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // parallel plane's acts along it. A natural harmonic is held aside
         // by the picking hand as any note is - the finger on its node damps
         // what the node does not share only once the string is let go - so
-        // its saddle sheds the same force. The step is given back at 0.8 of
-        // that force: a listener liked the thump and chose it at 80% of the
-        // full release (Docs/decisions.md, 2026-10-01), chosen by ear. A
+        // its saddle sheds the same force. A listener liked the thump and
+        // chose it at 80% of the full release (Docs/decisions.md,
+        // 2026-10-01), by ear, through a junction whose saddle anchors took
+        // their share of it (applied past them, that entry measured, the step
+        // rang 8-9 dB over the recordings). With the anchors retired
+        // (2026-10-10) the same 0.8 reached the body 5.0 dB stronger: the
+        // step's own part of the 60-180 Hz band over the first 300 ms of E4
+        // and A4, Dreadnought, Finger at velocity 0.6, 4.8-5.1 dB for every
+        // Picking. So the step is given back at 0.45 of the force, 0.8 x
+        // 10^(-5.0/20), the thump that was heard (releaseStepShare;
+        // Docs/saddle-termination-2026-10-10.md). A
         // re-pluck adds its step to what an earlier one has still to give
         // back rather than cutting it off: cut, the earlier step's net
         // impulse is no longer zero and the bridge keeps a low kick. Two
@@ -5683,7 +5691,6 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // again in no time put back the force it had let go, so the rise
         // still waiting is replaced, not added to. Added, a doubled note
         // thumped 6 dB harder than the one pluck it sounds as.
-        constexpr float releaseStepShare = 0.8f;
         if (polarisation == 0 && releaseStepEnabled_)
         {
             const float rise = releaseStepShare * releasedAmplitude
