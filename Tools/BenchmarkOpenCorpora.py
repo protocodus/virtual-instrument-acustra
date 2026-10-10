@@ -41,10 +41,9 @@ Model side: Tools/ExternalCorpusRenderer.cpp (CMake target
 AcustraExternalCorpusRenderer), which is PhysicalFitRenderer's renderModel and
 calibration mapping with the schedule read from a job file: a fresh
 AcustraEngine per unique (picking, midi, velocity), 48 kHz, 127-sample blocks,
-4.2 s of stereo from a note-on at frame zero, default public controls, the
-named guitar model, and the default Dreadnought unless --shape is given; the
-wood is Spruce unless --body-material is given. Model selection alone does
-not select a preset's shape or wood: Bellido's preset is Auditorium/Mahogany.
+4.2 s of stereo from a note-on at frame zero, default public controls, and
+the default Dreadnought unless --shape is given; the wood is Spruce unless
+--body-material is given.
 Room is the engine's default, off, unless --room is given (the plug-in starts
 at 0.5). Round robins and dynamic groups
 share one render, as in the bank benchmark. The calibration is the shipping
@@ -93,7 +92,6 @@ Usage:
       --renderer BUILD/AcustraExternalCorpusRenderer --output NEWDIR \
       [--shape parlor|auditorium|dreadnought|jumbo] \
       [--body-material spruce|mahogany|maple] \
-      [--guitar-model original|bellido1978] \
       [--picking-default finger|pick|thumb] [--picking-override finger|pick|thumb] \
       [--values V1 ... V24 | --set INDEX_OR_NAME=VALUE ...] \
       [--splits SPLIT_OR_CORPUS.SPLIT,...] [--keep] [--compare BASEDIR] \
@@ -336,8 +334,6 @@ def render_options(arguments: argparse.Namespace) -> list[str]:
         options += ["--shape", arguments.shape]
     if arguments.body_material:
         options += ["--body-material", arguments.body_material]
-    if arguments.guitar_model:
-        options += ["--guitar-model", arguments.guitar_model]
     if arguments.room is not None:
         options += ["--room", repr(float(arguments.room))]
     return options
@@ -575,8 +571,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="run the pipeline on a tiny synthetic corpus and check it")
     parser.add_argument("--shape", choices=("parlor", "auditorium", "dreadnought", "jumbo"))
     parser.add_argument("--body-material", choices=("spruce", "mahogany", "maple"),
-                        help="explicit wood; default remains Spruce, even for Bellido")
-    parser.add_argument("--guitar-model", choices=("original", "bellido1978"))
+                        help="explicit wood; default remains Spruce")
     parser.add_argument("--room", type=float, metavar="0..1",
                         help="render with this Room (default 0, the dry engine)")
     parser.add_argument("--picking-default", choices=PICKINGS, default="finger",

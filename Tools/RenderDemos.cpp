@@ -33,7 +33,6 @@ using acustra::AcustraEngine;
 using acustra::BodyMaterial;
 using acustra::BodyShape;
 using acustra::EngineParameters;
-using acustra::GuitarModel;
 using acustra::Tuning;
 
 constexpr double demoSampleRate = 44100.0;
@@ -401,11 +400,10 @@ Audio recuerdosDeLaAlhambra()
     // middle and index fingers repeat one melody note on one string, about ten
     // strokes a second. Every stroke lands on a string that is still ringing
     // from the last, which is what the two-way junction and the take-to-take
-    // pluck point are for. Played on the Bellido 1978, the measured
-    // classical guitar, strung with steel as the instrument's only strings;
-    // Auditorium and Mahogany are its preset's.
+    // pluck point are for. Played on an Auditorium in Mahogany, the
+    // construction these two Tarrega demos kept when the second guitar model
+    // they were written for was removed on 2026-10-10.
     auto parameters = baseParameters();
-    parameters.guitarModel = GuitarModel::Bellido1978;
     parameters.shape = BodyShape::Auditorium;
     parameters.bodyMaterial = BodyMaterial::Mahogany;
     parameters.stringAge = 0.10f;
@@ -425,7 +423,6 @@ Audio lagrima()
     // sustain and the beating between coupled strings carry the piece rather
     // than the attack.
     auto parameters = baseParameters();
-    parameters.guitarModel = GuitarModel::Bellido1978;
     parameters.shape = BodyShape::Auditorium;
     parameters.bodyMaterial = BodyMaterial::Mahogany;
     parameters.stringAge = 0.06f;
@@ -507,11 +504,11 @@ constexpr std::array<Demo, 10> demos {{
       strummedChords },
     { "09-recuerdos-de-la-alhambra.wav",
       "Tarrega, Recuerdos de la Alhambra, bars 1-12: a tremolo over a thumb "
-      "arpeggio on the steel-strung Bellido 1978",
+      "arpeggio on an Auditorium in Mahogany",
       recuerdosDeLaAlhambra },
     { "10-lagrima.wav",
-      "Tarrega, Lagrima, bars 1-8: a sung melody over held bass on the "
-      "steel-strung Bellido 1978",
+      "Tarrega, Lagrima, bars 1-8: a sung melody over held bass on an "
+      "Auditorium in Mahogany",
       lagrima },
     { "11-picking-techniques.wav",
       "Finger, pick and thumb on the same notes and velocity",

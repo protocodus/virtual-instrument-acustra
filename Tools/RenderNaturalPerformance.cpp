@@ -42,15 +42,17 @@ struct Passage
     acustra::PickingTechnique picking;
     std::vector<Event> events;
 };
-struct Variant { const char* name; bool contact, hand, damping, body, continuity; };
-constexpr std::array<Variant, 7> variants {{
-    { "baseline", false, false, false, false, false },
-    { "contact", true, false, false, false, false },
-    { "hand", false, true, false, false, false },
-    { "damping", false, false, true, false, false },
-    { "body", false, false, false, true, false },
-    { "continuity", false, false, false, false, true },
-    { "combined", true, true, true, true, true }
+// Manifest schema 3: the "body" variant (playerBodyLoading) left with the
+// second guitar model on 2026-10-10 (PackageNaturalPerformance.py still
+// reads schemas 1 and 2).
+struct Variant { const char* name; bool contact, hand, damping, continuity; };
+constexpr std::array<Variant, 6> variants {{
+    { "baseline", false, false, false, false },
+    { "contact", true, false, false, false },
+    { "hand", false, true, false, false },
+    { "damping", false, false, true, false },
+    { "continuity", false, false, false, true },
+    { "combined", true, true, true, true }
 }};
 int frame(double seconds, int rate) { return static_cast<int>(std::lround(seconds * rate)); }
 void midi(Passage& p, int rate, double seconds, int status, int a, int b, int channel = 1)
@@ -201,22 +203,25 @@ void writeAudio(const std::filesystem::path& path, const std::vector<float>& aud
     word(wav, rate * 8, 4); word(wav, 8, 2); word(wav, 32, 2);
     wav.write("data", 4); word(wav, bytes, 4); samples(wav, audio);
 }
-void render(const Passage& p, const Variant& variant, acustra::GuitarModel model,
+void render(const Passage& p, const Variant& variant,
             const std::filesystem::path& output, int rate, int block, std::ofstream& manifest,
             bool& first)
 {
-    const std::string modelName = model == acustra::GuitarModel::Original ? "original" : "classical78";
-    const std::string name = p.name + "-" + modelName;
+    // The case name's suffix and the "model" parameter keep the spelling they
+    // had beside the retired second model, so the Original's renders stay
+    // comparable with directories made before its removal.
+    const std::string name = p.name + "-original";
     auto player = std::make_unique<acustra::Performer>();
 #ifndef ACUSTRA_NATURAL_BASELINE
-    player->engine().setPerformanceRealism({ variant.contact, variant.hand, variant.damping,
-                                            variant.body, variant.continuity });
+    acustra::PerformanceRealism realism;
+    realism.contactRelease = variant.contact;
+    realism.coherentHand = variant.hand;
+    realism.gestureDamping = variant.damping;
+    realism.retuneContinuity = variant.continuity;
+    player->engine().setPerformanceRealism(realism);
 #endif
     acustra::EngineParameters parameters;
     parameters.picking = p.picking;
-    parameters.guitarModel = model;
-    if (model == acustra::GuitarModel::Bellido1978)
-    { parameters.shape = acustra::BodyShape::Auditorium; parameters.bodyMaterial = acustra::BodyMaterial::Mahogany; }
     player->setParameters(parameters);
     player->setTempoBpm(120.0);
     player->setGatherChords(false);
@@ -299,8 +304,8 @@ void render(const Passage& p, const Variant& variant, acustra::GuitarModel model
         << ",\"allocations\":\"" << variant.name << '/' << name << ".allocations.tsv\""
         << ",\"switches\":{\"contactRelease\":" << variant.contact
         << ",\"coherentHand\":" << variant.hand << ",\"gestureDamping\":" << variant.damping
-        << ",\"playerBodyLoading\":" << variant.body << ",\"retuneContinuity\":" << variant.continuity << "}"
-        << ",\"parameters\":{\"model\":\"" << modelName << "\",\"shape\":" << static_cast<int>(parameters.shape)
+        << ",\"retuneContinuity\":" << variant.continuity << "}"
+        << ",\"parameters\":{\"model\":\"original\",\"shape\":" << static_cast<int>(parameters.shape)
         << ",\"bodyMaterial\":" << static_cast<int>(parameters.bodyMaterial)
         << ",\"capture\":" << static_cast<int>(parameters.capture)
         << ",\"tuning\":" << static_cast<int>(parameters.tuning)
@@ -343,7 +348,7 @@ int main(int argc, char** argv)
         std::filesystem::create_directories(output / "scores");
         std::ofstream manifest(output / "manifest.json");
         manifest << std::setprecision(12) << std::boolalpha
-            << "{\n  \"schema\":2,\"sample_rate\":" << rate << ",\"channels\":2,\"block_size\":" << block
+            << "{\n  \"schema\":3,\"sample_rate\":" << rate << ",\"channels\":2,\"block_size\":" << block
             << ",\"format\":\"little-endian IEEE float32 interleaved stereo\",\"tempo_bpm\":120"
             << ",\"gather_chords\":false,\"post_gain\":1,\"latency_samples\":"
             << acustra::AcustraEngine::outputLatencySamples()
@@ -360,9 +365,8 @@ int main(int argc, char** argv)
             for (const auto& e : p.events)
                 events << e.frame << '\t' << e.channel << '\t' << e.status << '\t' << e.data1 << '\t' << e.data2 << '\n';
             if (!events) throw std::runtime_error("score write failed");
-            for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
-                for (const auto& v : variants)
-                    if (selected == "all" || selected == v.name) render(p, v, model, output, rate, block, manifest, first);
+            for (const auto& v : variants)
+                if (selected == "all" || selected == v.name) render(p, v, output, rate, block, manifest, first);
         }
         if (first) throw std::runtime_error("case filter matched no passages");
         manifest << "\n  ]\n}\n";

@@ -4,7 +4,7 @@
 // Tools/CalibrateConstructionLoudness.py).
 //
 // This plays its own phrase - not the calibration's - on every construction
-// that sounds different (Model x Shape x Wood) with every Picking, measures ITU-R BS.1770-4 integrated
+// that sounds different (Shape x Wood) with every Picking, measures ITU-R BS.1770-4 integrated
 // loudness, and requires each within a few LU of the default construction:
 // before the gains the same phrase spread over about 15 LU. The mono
 // microphone and the piezo are held to the same target on a spread of
@@ -178,8 +178,7 @@ std::string describe(const acustra::EngineParameters& p)
     static const char* shapes[] { "Parlor", "Auditorium", "Dreadnought", "Jumbo" };
     static const char* woods[] { "Spruce", "Mahogany", "Maple" };
     static const char* pickings[] { "Finger", "Pick", "Thumb" };
-    std::string text = p.guitarModel == acustra::GuitarModel::Original ? "Original " : "Bellido ";
-    text += shapes[static_cast<int>(p.shape)];
+    std::string text = shapes[static_cast<int>(p.shape)];
     text += ' ';
     text += woods[static_cast<int>(p.bodyMaterial)];
     text += ' ';
@@ -194,16 +193,14 @@ std::string describe(const acustra::EngineParameters& p)
 std::vector<acustra::EngineParameters> constructions()
 {
     std::vector<acustra::EngineParameters> result;
-    for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
-        for (int shape = 0; shape < 4; ++shape)
-            for (int wood = 0; wood < 3; ++wood)
-            {
-                acustra::EngineParameters p;
-                p.guitarModel = model;
-                p.shape = static_cast<acustra::BodyShape>(shape);
-                p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
-                result.push_back(p);
-            }
+    for (int shape = 0; shape < 4; ++shape)
+        for (int wood = 0; wood < 3; ++wood)
+        {
+            acustra::EngineParameters p;
+            p.shape = static_cast<acustra::BodyShape>(shape);
+            p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+            result.push_back(p);
+        }
     return result;
 }
 
@@ -214,20 +211,19 @@ std::vector<acustra::EngineParameters> constructions()
 void testTheTableLeavesTheDefault()
 {
     using namespace acustra;
-    const auto cell = [] (int model, int shape, int wood, int picking)
+    const auto cell = [] (int shape, int wood, int picking)
     {
-        return static_cast<std::size_t>(((model * 4 + shape) * 3 + wood) * 3 + picking);
+        return static_cast<std::size_t>((shape * 3 + wood) * 3 + picking);
     };
-    static_assert(detail::constructionMicReference.size() == 2 * 4 * 3 * 3
-                      && detail::constructionMonoTrim.size() == 2 * 4 * 3 * 3
-                      && detail::constructionPiezoTrim.size() == 2 * 4 * 3 * 3,
-                  "the construction tables are not one cell per Model, Shape, Wood and Picking");
+    static_assert(detail::constructionMicReference.size() == 4 * 3 * 3
+                      && detail::constructionMonoTrim.size() == 4 * 3 * 3
+                      && detail::constructionPiezoTrim.size() == 4 * 3 * 3,
+                  "the construction tables are not one cell per Shape, Wood and Picking");
     EngineParameters defaultParameters;
-    const auto defaults = cell(static_cast<int>(defaultParameters.guitarModel),
-                               static_cast<int>(defaultParameters.shape),
+    const auto defaults = cell(static_cast<int>(defaultParameters.shape),
                                static_cast<int>(defaultParameters.bodyMaterial),
                                static_cast<int>(defaultParameters.picking));
-    expect(defaults == cell(0, 2, 0, 0), "the default construction moved");
+    expect(defaults == cell(2, 0, 0), "the default construction moved");
     expect(detail::constructionMicReference[defaults] == 1.0f
                && detail::constructionMonoTrim[defaults] == 1.0f,
            "the default construction's microphone levels are not exactly 1");

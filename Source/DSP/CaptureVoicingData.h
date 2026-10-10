@@ -20,7 +20,7 @@
 // modal tails. Per-mode magnitude weighting does not implement this response
 // and can turn the intended low-mid cuts into boosts. The contour reaches
 // only the microphones: the piezo reads the saddle force, which no microphone
-// position changes. The named Bellido keeps its separate capture contour.
+// position changes.
 //
 // Each section is the analog prototype of an RBJ cookbook filter, implemented
 // with a frequency-prewarped bilinear transform at the host rate; levelDb is

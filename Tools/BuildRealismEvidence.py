@@ -23,7 +23,7 @@ INTERPRETATION = (
     "It is not a perceptual realism score, listening preference, or approval."
 )
 LIMITATIONS = [
-    "These are transfers between different guitars and capture chains, not exact recordings of either modeled guitar.",
+    "These are transfers between different guitars and capture chains, not exact recordings of the modeled guitar.",
     "Eastman and Martin velocities are assumed to be 91; Martin's picking tool is unknown and rendered as Finger.",
     "These recordings have informed previous development and are not an untouched final test set.",
     "Reference pre-roll, source tuning offsets, and unequal clean durations contribute to descriptor losses.",
@@ -234,8 +234,9 @@ class Evidence:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("baseline-original", "candidate-original", "baseline-bellido",
-                 "candidate-bellido", "regression-log-dir", "out"):
+    # The Original's option and report names are kept from when a second
+    # measured model was paired beside it.
+    for name in ("baseline-original", "candidate-original", "regression-log-dir", "out"):
         parser.add_argument(f"--{name}", type=Path, required=True)
     parser.add_argument("--repeat-report", type=Path,
                         help="optional measured Eastman repeat-level-summary.json")
@@ -254,7 +255,6 @@ def main() -> int:
         evidence = Evidence()
         models = {
             "original": evidence.pair(args.baseline_original, args.candidate_original),
-            "bellido1978": evidence.pair(args.baseline_bellido, args.candidate_bellido),
         }
         regressions = evidence.regressions(args.regression_log_dir)
         repeat_path = args.repeat_report

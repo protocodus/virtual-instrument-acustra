@@ -28,11 +28,10 @@ struct AcustraEngineTestAccess
     static void restorePreviousCapture(AcustraEngine& engine, Designer designer)
     {
         auto& filter = engine.bodyBank_.captureFilter;
-        const bool classical = filter.bellidoModel;
-        for (int index = 0; index < filter.activeSections; ++index)
+        for (int index = 0; index < filter.sections; ++index)
             filter.coefficients[static_cast<std::size_t>(index)]
-                = designer(index, engine.sampleRate_, classical);
-        filter.gain = classical ? 1.0f : static_cast<float>(std::pow(10.0, 4.12 / 20.0));
+                = designer(index, engine.sampleRate_);
+        filter.gain = static_cast<float>(std::pow(10.0, 4.12 / 20.0));
         filter.reset();
     }
     static bool samePhysicalBody(const AcustraEngine& a, const AcustraEngine& b)
@@ -69,7 +68,7 @@ void expect(bool pass, const std::string& message)
 }
 
 struct Section { bool shelf; double frequency, gain, q; };
-Section sectionAt(int index, bool classical, bool previous)
+Section sectionAt(int index, bool previous)
 {
     // Independent authored contracts: no production section refinement helper
     // or production digital coefficient calculation is used by this fixture.
@@ -78,23 +77,20 @@ Section sectionAt(int index, bool classical, bool previous)
         { false, 250.0, -6.0, 1.2 }, { false, 500.0, -6.0, 1.2 },
         { false, 1000.0, 3.28, 1.2 }, { false, 1400.0, 6.0, 1.2 }
     }};
-    if (classical)
-        return index == 0 ? Section { false, 500.0, previous ? -6.0 : -3.0, 1.2 }
-            : Section { false, 1400.0, previous ? 6.0 : 0.0, 1.2 };
     auto section = original[static_cast<std::size_t>(index)];
     if (!previous && index == 0) section.gain = -2.42;
     if (!previous && index == 1) section.gain = 0.0;
     return section;
 }
 
-Complex prototype(double frequency, double rate, bool classical, bool previous)
+Complex prototype(double frequency, double rate, bool previous)
 {
-    const double level = classical ? 0.0 : 4.12
+    const double level = 4.12
         + (previous ? 0.0 : acustra::detail::originalCaptureLevelAdjustmentDb);
     Complex result = std::pow(10.0, level / 20.0);
-    for (int index = 0; index < (classical ? 2 : 6); ++index)
+    for (int index = 0; index < 6; ++index)
     {
-        const auto section = sectionAt(index, classical, previous);
+        const auto section = sectionAt(index, previous);
         const double a = std::pow(10.0, section.gain / 40.0);
         const Complex s(0.0, std::tan(pi * frequency / rate)
             / std::tan(pi * section.frequency / rate));
@@ -108,9 +104,9 @@ Complex prototype(double frequency, double rate, bool classical, bool previous)
     return result;
 }
 
-std::array<double, 5> previousCoefficients(int index, double rate, bool classical)
+std::array<double, 5> previousCoefficients(int index, double rate)
 {
-    const auto section = sectionAt(index, classical, true);
+    const auto section = sectionAt(index, true);
     const double a = std::pow(10.0, section.gain / 40.0);
     // Bilinear substitution into the continuous numerator/denominator
     // polynomials, independent of the runtime trigonometric RBJ equations.
@@ -128,12 +124,9 @@ std::array<double, 5> previousCoefficients(int index, double rate, bool classica
     const auto denominator = section.shelf
         ? transform(a, std::sqrt(a) / section.q, 1.0)
         : transform(1.0, 1.0 / (a * section.q), 1.0);
-    std::array<double, 5> result { numerator[0] / denominator[0],
+    return { numerator[0] / denominator[0],
         numerator[1] / denominator[0], numerator[2] / denominator[0],
         denominator[1] / denominator[0], denominator[2] / denominator[0] };
-    if (classical)
-        for (auto& value : result) value = static_cast<float>(value);
-    return result;
 }
 
 Complex transform(const std::vector<float>& samples, double frequency, double rate)
@@ -144,13 +137,9 @@ Complex transform(const std::vector<float>& samples, double frequency, double ra
     return result;
 }
 
-void testActualFilter(double rate, bool classical)
+void testActualFilter(double rate)
 {
     auto engine = std::make_unique<Engine>();
-    acustra::EngineParameters parameters;
-    parameters.guitarModel = classical ? acustra::GuitarModel::Bellido1978
-        : acustra::GuitarModel::Original;
-    engine->setParameters(parameters);
     engine->prepare(rate, 64);
     if (previousCaptureNegativeControl)
         Access::restorePreviousCapture(*engine, previousCoefficients);
@@ -162,13 +151,13 @@ void testActualFilter(double rate, bool classical)
     for (double frequency : { 55.0, 110.0, 125.0, 220.0, 440.0, 659.255,
                               880.0, 1320.0, 1400.0, 2500.0, 5000.0 })
     {
-        const auto expected = prototype(frequency, rate, classical, false);
+        const auto expected = prototype(frequency, rate, false);
         worst = std::max(worst, std::abs(transform(impulse, frequency, rate) / .25
             - expected) / std::abs(expected));
     }
-    expect(worst < (classical ? 8e-5 : 1e-5),
+    expect(worst < 1e-5,
            "deployed balanced microphone filter misses independent complex prototype");
-    std::cout << (classical ? "Classical" : "Original") << " capture " << rate
+    std::cout << "Original capture " << rate
               << " Hz relative complex error " << worst << '\n';
 }
 
@@ -194,12 +183,9 @@ void testNativeNote(double rate, acustra::BodyMaterial wood,
                     acustra::PickingTechnique style, acustra::CaptureType capture,
                     int note, int channel)
 {
-    const bool classical = note != 45;
     auto current = std::make_unique<Engine>();
     auto previous = std::make_unique<Engine>();
     acustra::EngineParameters parameters;
-    parameters.guitarModel = classical ? acustra::GuitarModel::Bellido1978
-        : acustra::GuitarModel::Original;
     parameters.shape = acustra::BodyShape::Auditorium;
     parameters.bodyMaterial = wood;
     parameters.picking = style;
@@ -244,11 +230,10 @@ void testNativeNote(double rate, acustra::BodyMaterial wood,
     expect(finite && peak < .89125094f,
            "native balance fixture must remain finite and below the limiter knee");
     const double f0 = 440.0 * std::exp2(double(note - 69) / 12.0);
-    // Original A2: bass H1 relative to H2. Classical A4/E5: the presence-band
-    // H3/H2 relative to H1. These compare native channel energies, without
-    // per-note normalization or an output trim influencing the ratio.
-    const int numerator = classical ? (note == 69 ? 3 : 2) : 1;
-    const int denominator = classical ? 1 : 2;
+    // A2: bass H1 relative to H2. This compares native channel energies,
+    // without per-note normalization or an output trim influencing the ratio.
+    const int numerator = 1;
+    const int denominator = 2;
     const double oldNumerator = harmonicEnergy(oldLeft, oldRight, f0 * numerator, rate);
     const double oldDenominator = harmonicEnergy(oldLeft, oldRight, f0 * denominator, rate);
     const double newNumerator = harmonicEnergy(newLeft, newRight, f0 * numerator, rate);
@@ -258,14 +243,14 @@ void testNativeNote(double rate, acustra::BodyMaterial wood,
     const double delta = 10.0 * std::log10((newNumerator / newDenominator)
         / (oldNumerator / oldDenominator));
     const auto relative = [&] (double frequency)
-    { return prototype(frequency, rate, classical, false)
-        / prototype(frequency, rate, classical, true); };
+    { return prototype(frequency, rate, false)
+        / prototype(frequency, rate, true); };
     const double expected = 20.0 * std::log10(std::abs(relative(f0 * numerator)
         / relative(f0 * denominator)));
-    // The listener rejected the first presence-only refinement. Require
-    // enough native contrast change to exclude its 2-3 dB treble reduction.
-    expect(delta < (classical ? -5.0 : -2.0),
-           "native note retained the previous bass/presence harmonic imbalance");
+    // Require the refinement to reduce the fundamental's dominance natively
+    // by more than 2 dB.
+    expect(delta < -2.0,
+           "native note retained the previous bass harmonic imbalance");
     expect(std::abs(delta - expected) < .30,
            "native note balance disagrees with the independent capture transfer ratio");
     std::cout << "note " << note << " rate " << rate << " wood " << int(wood)
@@ -282,8 +267,7 @@ int main(int argc, char** argv)
         return 2;
     for (double rate : { 44100.0, 48000.0, 96000.0 })
     {
-        testActualFilter(rate, false);
-        testActualFilter(rate, true);
+        testActualFilter(rate);
         for (auto wood : { acustra::BodyMaterial::Spruce, acustra::BodyMaterial::Mahogany,
                            acustra::BodyMaterial::Maple })
             for (auto style : { acustra::PickingTechnique::Finger,
@@ -295,8 +279,6 @@ int main(int argc, char** argv)
                 const auto capture = (int(wood) + int(style)) % 2 == 0
                     ? acustra::CaptureType::StereoMic : acustra::CaptureType::MonoMic;
                 testNativeNote(rate, wood, style, capture, 45, 2);
-                testNativeNote(rate, wood, style, capture, 69, 6);
-                testNativeNote(rate, wood, style, capture, 76, 6);
             }
     }
     return failures == 0 ? 0 : 1;

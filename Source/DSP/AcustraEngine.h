@@ -22,7 +22,7 @@
 // and the joint body's 8. AcustraEngine.cpp static-asserts that every bank fits, so
 // a regenerated header that grows fails to build rather than to sound.
 // Slots past a construction's bank and its continuation cost no CPU, but
-// every instance carries them as memory, the Bellido guitar too.
+// every instance carries them as memory.
 #if !defined(ACUSTRA_BRIDGE_MODE_COUNT)
 #define ACUSTRA_BRIDGE_MODE_COUNT 56
 #endif
@@ -96,15 +96,6 @@ enum class PickingTechnique
     Thumb
 };
 
-// Values 2-4 were the Washburn 1897, Santa Cruz OM 2022 and Martin D18V 2007,
-// fitted from Mark Rau's measurements, which carry no redistribution license.
-// They are retired: sanitisation maps any of those values to Original.
-enum class GuitarModel
-{
-    Original,
-    Bellido1978
-};
-
 struct EngineParameters
 {
     BodyShape shape { BodyShape::Dreadnought };
@@ -112,7 +103,6 @@ struct EngineParameters
     CaptureType capture { CaptureType::StereoMic };
     Tuning tuning { Tuning::Standard };
     PickingTechnique picking { PickingTechnique::Finger };
-    GuitarModel guitarModel { GuitarModel::Original };
     float stringAge { 0.15f };       // 0 fresh, 1 worn/dead
     float pluckPosition { 0.28f };   // 0 bridgeward, 1 neckward
     float touch { 0.58f };           // 0 soft/dark, 1 hard/bright
@@ -171,12 +161,12 @@ public:
         return outputLatency;
     }
     // The slots after a bank (and the steel blend's parts) that continue its
-    // radiation above the fitted band (configureBody). Every construction of
-    // a model at a rate holds the same number, the grid's modes past 18 kHz
-    // or 0.45 fs silent, so a Shape or Wood change keeps each continuation
-    // mode's state in its slot (sameBodyBank) whatever band the construction
-    // in between had. At most 19 sound: the steel Jumbo in Spruce or
-    // Mahogany, whose 8.1 kHz top is 18.4 grid steps under 18 kHz.
+    // radiation above the fitted band (configureBody). Every construction at
+    // a rate holds the same number, the grid's modes past 18 kHz or 0.45 fs
+    // silent, so a Shape or Wood change keeps each continuation mode's state
+    // in its slot whatever band the construction in between had. At most 19
+    // sound: the steel Jumbo in Spruce or Mahogany, whose 8.1 kHz top is 18.4
+    // grid steps under 18 kHz.
     static constexpr int radiationContinuationSlots = 19;
     void reset() noexcept;
     void setParameters(const EngineParameters& parameters) noexcept;
@@ -959,7 +949,6 @@ private:
         std::uint32_t lossDesignFrequency { 0 };
         std::uint32_t age { 0 };
         std::uint32_t palmMute { 0 };
-        std::uint32_t broadLossCornerScale { 0 };
 
         bool operator==(const VoiceConfigurationKey& other) const noexcept
         {
@@ -971,8 +960,7 @@ private:
                 && soundingLength == other.soundingLength
                 && speakingFret == other.speakingFret
                 && lossDesignFrequency == other.lossDesignFrequency
-                && age == other.age && palmMute == other.palmMute
-                && broadLossCornerScale == other.broadLossCornerScale;
+                && age == other.age && palmMute == other.palmMute;
         }
     };
 
@@ -1058,7 +1046,7 @@ private:
         std::array<StringLoop, 2> loops {};
         VoiceConfigurationKey configurationKey {};
         // Key and payload follow whole-voice copies. Waveform resets may retain
-        // these pure values: pitch/rate changes miss the exact key, while model,
+        // these pure values: pitch/rate changes miss the exact key, while
         // calibration and anchor changes still use configurationKey below it.
         PitchGeometryCache pitchGeometry {};
         // A string taken for a new note is still vibrating. This carries that
@@ -1209,10 +1197,6 @@ private:
         float dispersionDesignInharmonicity { -1.0f };
         float dispersionDesignAge { -1.0f };
         float dispersionDesignFrequencyLossScale { -1.0f };
-        // The active model's intrinsic broad-loss profile is independent of
-        // technique. Its exact value belongs to the completed phase design,
-        // even when a construction changes at the same pitch and loss scale.
-        float dispersionDesignBroadLossCornerScale { -1.0f };
         // Exact arguments of the last completed dispersion solve. Its fit
         // frequency is bounded beyond the playable fretboard plus the
         // documented 12-semitone panel/Reason bend range; above that the
@@ -1354,16 +1338,14 @@ private:
         {
             static constexpr int sections = 6;
             // Each section's normalized RBJ coefficients: b0, b1, b2, a1, a2.
-            // Double storage keeps the low-frequency Original sections
-            // accurate up to 384 kHz. Bellido retains its legacy float steps.
+            // Double storage keeps the low-frequency sections accurate up to
+            // 384 kHz.
             std::array<std::array<double, 5>, sections> coefficients {};
             std::array<std::array<double, 2>, sections> stateLeft {}, stateRight {};
-            int activeSections { 0 };
             bool enabled { false };
-            bool bellidoModel { false };
             float gain { 1.0f };
 
-            void configure(double sampleRate, bool bellido) noexcept;
+            void configure(double sampleRate) noexcept;
             void reset() noexcept
             {
                 for (auto& state : stateLeft)
@@ -1389,10 +1371,10 @@ private:
         int ordered { 0 };
         CaptureFilter captureFilter {};
 
-        // The first modeCount modes' coefficients; with resetStates their
-        // states restart from rest. Slots past the bank are zero.
+        // The first modeCount modes' coefficients, their states kept. Slots
+        // past the bank are zero.
         void load(const std::array<BodyMode, bodyModeCount>& modes,
-                  int modeCount, int orderedCount, bool resetStates) noexcept;
+                  int modeCount, int orderedCount) noexcept;
         void reset() noexcept
         {
             real.fill(0.0f);
@@ -1430,16 +1412,14 @@ private:
     // from rest.
     void configureBridge(bool keepModalState = false) noexcept;
     // The frequency and Q configureBody gives radiation mode `index` of the
-    // bank these parameters select, before the host-rate clamp: the pole
-    // steel's own bridge modes share (tests). By default this observes the
-    // fitted/free-body pole; an explicit true includes authored player loss.
+    // measured bank at these parameters, before the host-rate clamp: the pole
+    // steel's own bridge modes share (tests).
     static std::array<float, 2> radiationModePole(
         const EngineParameters& parameters,
-        const PhysicalCalibration& calibration, int index,
-        bool playerBodyLoading = false) noexcept;
+        const PhysicalCalibration& calibration, int index) noexcept;
     // Body Material's factors on frequency, Q, brightness and radiation for
-    // these parameters, relative to the wood the model's measured bank was
-    // built of (tests).
+    // these parameters, relative to the spruce the measured bank was built
+    // of (tests).
     static std::array<float, 4> bodyWoodFactors(
         const EngineParameters& parameters) noexcept;
     // The Original's capture voicing (CaptureVoicingData.h) as an amplitude
@@ -1475,8 +1455,7 @@ private:
             float cross { 0.0f };
             float rock { 0.0f };
         };
-        const void* bank { nullptr };
-        std::array<std::uint32_t, 13> key {};
+        std::array<std::uint32_t, 12> key {};
         bool valid { false };
         int count { 0 };
         // The first `ordered` modes are evaluated as ever; the steel blend's
@@ -1522,10 +1501,8 @@ private:
     [[nodiscard]] float mpePressureFor(const Voice& voice) const noexcept;
     [[nodiscard]] float vibratoSemitones(const Voice& voice,
                                          int fret) const noexcept;
-    // Private per-stroke direction bypass for independent TestAccess oracles.
-    // No observer state or public control; the configured release policy remains active.
     void initialisePluck(Voice& voice, int stringIndex, float velocity,
-                         bool merge = false, bool applyPluckDirection = true) noexcept;
+                         bool merge = false) noexcept;
     // Scale every state a string's two loops store of the travelling wave -
     // the delay line and each filter's memory - by gain.
     static void scaleStoredWaves(Voice& voice, float gain) noexcept;
@@ -1692,8 +1669,6 @@ private:
     // (configureBody); their contribution to every sum is exactly zero, so
     // BodyBank::count stops before them.
     BodyBank bodyBank_ {}, fadingBodyBank_ {};
-    GuitarModel configuredGuitarModel_ { GuitarModel::Original };
-    GuitarModel fadingBodyModel_ { GuitarModel::Original };
     BodyShape fadingBodyShape_ { BodyShape::Dreadnought };
     BodyMaterial fadingBodyMaterial_ { BodyMaterial::Spruce };
     BodyShape configuredBodyShape_ { BodyShape::Dreadnought };
@@ -1932,8 +1907,6 @@ private:
     // body's does (bodyUpdatePending_): restarting the fade from a mix of two
     // banks, or rebuilding under it, stepped the bridge.
     bool bridgeUpdatePending_ { false };
-    GuitarModel configuredBridgeModel_ { GuitarModel::Original };
-    GuitarModel fadingBridgeModel_ { GuitarModel::Original };
     BodyShape fadingBridgeShape_ { BodyShape::Dreadnought };
     BodyMaterial fadingBridgeMaterial_ { BodyMaterial::Spruce };
     BodyShape configuredBridgeShape_ { BodyShape::Dreadnought };

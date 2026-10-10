@@ -228,22 +228,13 @@ the source MAT file, recorded impulses, photographs or documentation from the
 archive. The attribution, source link, licence link and description of changes
 above must accompany distributions containing the coefficient table.
 
-### Additional Bellido body
-
-The Bellido 1978 Model uses Mores g35, a 1978 Manuel Lopez Bellido classical
-guitar (cedar/Rio palisander), under the same CC BY 4.0 archive license above;
-Acustra plays it with steel strings. `Source/DSP/BellidoData.h`
-(`Tools/GenerateBellidoBody.py`) contains 134 fitted force/moment radiation
-modes and 50 positive-semidefinite bridge modes; the modifications include
-calibrated H1 extraction, causal tapering and bounded frequency/Q/residue
-fitting. See [`Docs/body-models-2026-09-08.md`](Docs/body-models-2026-09-08.md)
-and the linked fit reports.
-
-The archive's other records are no longer shipped: g34 (a 1971 Manuel
-Contreras classical, which the nylon strings played until 2026-09-29) and the
-unused g36 candidate were removed with the nylon model. g37, g38, g39, g42 and
-g43 contribute only the plate-Q statistic above; none of their coefficients
-ship.
+The archive's other records are no longer shipped: g35 (a 1978 Manuel Lopez
+Bellido classical, which the Bellido 1978 Model played with steel strings until
+2026-10-10, from `Source/DSP/BellidoData.h`) was removed with that Model; g34
+(a 1971 Manuel Contreras classical, which the nylon strings played until
+2026-09-29) and the unused g36 candidate were removed with the nylon model.
+g37, g38, g39, g42 and g43 contribute only the plate-Q statistic above; none
+of their coefficients ship.
 
 ## Mark Rau guitar measurements: not distributed
 

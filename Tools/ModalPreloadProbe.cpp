@@ -53,18 +53,16 @@ struct AcustraEngineTestAccess
             std::array<float, AcustraEngine::bridgeModeCount + 1> qs {};
             {
                 const auto& configured = engine->parameters_;
-                const auto anchor = anchorTransformFor(configured.guitarModel);
+                const AnchorTransform& anchor = wideSteelAnchorTransform;
                 const auto morph = bodyShapeMorph(
-                    measuredBodyBank(configured.guitarModel), anchor,
-                    anchorBodyFor(configured.guitarModel),
-                    targetBodyFor(configured.guitarModel, configured.shape));
+                    detail::measuredSteelBodyModes, anchor, anchorBody(),
+                    targetBodyFor(configured.shape));
                 std::size_t slot = 0;
                 visitSteelBlendBridge(engine->bridgeShapeA0_,
                     engine->bridgeShapeT1_, engine->bridgeShapePlate_,
                     engine->bridgeShapeT1UpperHz_, anchor, morph,
                     steelJointMorph(anchor, configured.shape),
-                    woodFactorsFor(configured.bodyMaterial,
-                                   configured.guitarModel),
+                    woodFactorsFor(configured.bodyMaterial),
                     engine->physicalCalibration_,
                     [&] (const detail::MeasuredBridgeMode&,
                          const detail::MeasuredBridgeMode& measured, float, bool)

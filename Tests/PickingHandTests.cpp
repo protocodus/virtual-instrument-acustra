@@ -38,7 +38,7 @@ void expect(bool condition, const char* message)
     if (!condition) { ++failures; std::cerr << "FAIL: " << message << '\n'; }
 }
 acustra::PerformanceRealism options(bool hand)
-{ return { false, hand, false, false, false }; }
+{ return { false, hand, false, false }; }
 auto fresh(bool hand = true, double rate = 48000.0)
 {
     auto engine = std::make_unique<AcustraEngine>();

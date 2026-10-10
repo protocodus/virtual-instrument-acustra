@@ -40,7 +40,6 @@ RATE = 48000
 HOLD_SECONDS = 1.2
 NOTE_SECONDS = 2.0
 PHRASE_SECONDS = 4.5
-MODELS = ("original", "bellido1978")
 SHAPES = ("parlor", "auditorium", "dreadnought", "jumbo")
 WOODS = ("spruce", "mahogany", "maple")
 TECHNIQUES = ("finger", "pick", "thumb")
@@ -179,7 +178,7 @@ def render_note(renderer, raw, events, options, duration):
 def summary_row(case):
     notes = case["notes"]
     note = notes["A2"]["metrics"]
-    result = {name: case[name] for name in ("model", "shape", "wood", "technique", "capture")}
+    result = {name: case[name] for name in ("shape", "wood", "technique", "capture")}
     result.update({"A2_rms_dbfs": note["sustain"]["rms_dbfs"],
         "A2_neighbor_excess_db": note["sustain"]["rms_dbfs"] - .5 * (
             notes["G#2"]["metrics"]["sustain"]["rms_dbfs"]
@@ -224,18 +223,19 @@ def version(label, source, directory, scores, jobs):
         for item in [*row["notes"].values(), row["phrase"]]:
             if digest(directory / item["raw_file"]) != item["sha256"]:
                 raise ValueError(f"frozen native render changed: {item['raw_file']}")
-    combinations = list(itertools.product(MODELS, SHAPES, WOODS, TECHNIQUES, CAPTURES))
+    combinations = list(itertools.product(SHAPES, WOODS, TECHNIQUES, CAPTURES))
     # Deliver the affected dry microphone and Auditorium measurements first.
-    combinations.sort(key=lambda item: (CAPTURES.index(item[4]),
-        item[1] != "auditorium", item[0] != "bellido1978", SHAPES.index(item[1]),
-        WOODS.index(item[2]), TECHNIQUES.index(item[3])))
+    combinations.sort(key=lambda item: (CAPTURES.index(item[3]),
+        item[0] != "auditorium", SHAPES.index(item[0]),
+        WOODS.index(item[1]), TECHNIQUES.index(item[2])))
     with ThreadPoolExecutor(max_workers=jobs) as workers:
-        for index, (model, shape, wood, technique, capture) in enumerate(combinations, 1):
-            name = f"{model}-{shape}-{wood}-{technique}-{capture}"
+        for index, (shape, wood, technique, capture) in enumerate(combinations, 1):
+            # The "original-" prefix keeps earlier runs' case names.
+            name = f"original-{shape}-{wood}-{technique}-{capture}"
             if name in manifest["cases"]:
                 continue
             selected = NOTES if capture == "stereo_mic" else [note for note in NOTES if note[0] in FOCUSED]
-            options = [capture, technique, "--guitar-model", model, "--body-shape", shape,
+            options = [capture, technique, "--body-shape", shape,
                 "--body-material", wood, "--touch", "0.58", "--pluck-position", "0.28", "--room", "0"]
             case_directory = destination / name
             case_directory.mkdir(exist_ok=True)
@@ -251,7 +251,7 @@ def version(label, source, directory, scores, jobs):
             notes = dict(workers.map(isolated, selected))
             raw = case_directory / "phrase.f32"
             audio, command = render_note(frozen, raw, scores["phrase"], options, PHRASE_SECONDS)
-            row = {"model": model, "shape": shape, "wood": wood,
+            row = {"shape": shape, "wood": wood,
                 "technique": technique, "capture": capture, "notes": notes,
                 "phrase": {"raw_file": str(raw.relative_to(directory)), "sha256": digest(raw),
                            "command": command, "native": metric(audio)}}
@@ -278,23 +278,23 @@ def markdown_summary(path, manifests, report):
         "treble values average E4/G4/B4. No metric alone establishes boominess or banjo character.", ""]
     for label, manifest in manifests.items():
         lines += [f"## {label}", "", "StereoMic construction table (ranges over Finger/Pick/Thumb):", "",
-            "| Model | Shape | Wood | A2 neighbor excess dB | A2 same string excess dB | A3 same string excess dB | A4 same string excess dB | Treble partial/fundamental dB |",
-            "|---|---|---|---:|---:|---:|---:|---:|"]
-        for model, shape, wood in itertools.product(MODELS, SHAPES, WOODS):
+            "| Shape | Wood | A2 neighbor excess dB | A2 same string excess dB | A3 same string excess dB | A4 same string excess dB | Treble partial/fundamental dB |",
+            "|---|---|---:|---:|---:|---:|---:|"]
+        for shape, wood in itertools.product(SHAPES, WOODS):
             rows = [row["summary"] for row in manifest["cases"].values()
-                if row["model"] == model and row["shape"] == shape and row["wood"] == wood
+                if row["shape"] == shape and row["wood"] == wood
                 and row["capture"] == "stereo_mic"]
             def bounds(field):
                 values = [row[field] for row in rows]
                 return f"{min(values):+.2f} to {max(values):+.2f}"
-            lines += [f"| {model} | {shape} | {wood} | {bounds('A2_neighbor_excess_db')} | "
+            lines += [f"| {shape} | {wood} | {bounds('A2_neighbor_excess_db')} | "
                 f"{bounds('A2_same_string_neighbor_excess_db')} | {bounds('A3_same_string_neighbor_excess_db')} | "
                 f"{bounds('A4_same_string_neighbor_excess_db')} | "
                 f"{bounds('treble_upper_partial_ratio_db')} |"]
         lines += ["", "Largest A2 neighbor excess cases:", ""]
         for row in sorted((case["summary"] for case in manifest["cases"].values()),
                           key=lambda row: row["A2_neighbor_excess_db"], reverse=True)[:8]:
-            lines += [f"- {row['model']} / {row['shape']} / {row['wood']} / {row['technique']} / "
+            lines += [f"- {row['shape']} / {row['wood']} / {row['technique']} / "
                 f"{row['capture']}: {row['A2_neighbor_excess_db']:+.2f} dB; "
                 f"A2 RMS {row['A2_rms_dbfs']:.2f} dBFS."]
         lines += [""]
@@ -366,7 +366,7 @@ def main():
         "scores": {str(path.relative_to(directory)): digest(path) for path in scores.values()},
         "cases_per_renderer": len(next(iter(manifests.values()))["cases"]),
         "renders_per_renderer": len(all_files) // len(manifests),
-        "audio_seconds_per_renderer": 72 * (len(NOTES) * NOTE_SECONDS + PHRASE_SECONDS
+        "audio_seconds_per_renderer": 36 * (len(NOTES) * NOTE_SECONDS + PHRASE_SECONDS
                                              + 2 * (len(FOCUSED) * NOTE_SECONDS + PHRASE_SECONDS)),
         "listening_gain": gain, "listening_gain_db": db(gain * gain),
         "listening_gain_scope": "One shared scalar for every note/phrase/capture/version, peak ceiling0.9; native f32 untouched.",

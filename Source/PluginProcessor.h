@@ -25,15 +25,16 @@ inline constexpr auto upperMic = "upperMic";
 inline constexpr auto piezoLoading = "piezoLoading";
 
 inline constexpr auto captureMode = "captureMode";
+// Retired on 2026-10-10 with the Bellido 1978 guitar; kept for host identity.
 inline constexpr auto guitarModel = "guitarModel";
 inline constexpr auto gatherChords = "gatherChords";
 inline constexpr auto piezoMix = "piezoMix";
 inline constexpr auto releaseNoise = "releaseNoise";
 inline constexpr auto room = "room";
 
-inline constexpr int activeParameterCount = 16;
-// Three non-automatable host slots remain solely for old session identity.
-inline constexpr int parameterCount = activeParameterCount + 3;
+inline constexpr int activeParameterCount = 15;
+// Four non-automatable host slots remain solely for old session identity.
+inline constexpr int parameterCount = activeParameterCount + 4;
 } // namespace acustra::parameters
 
 class AcustraAudioProcessorEditor;

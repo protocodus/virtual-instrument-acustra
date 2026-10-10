@@ -15,7 +15,9 @@
 // builds this harness against both frozen source trees with matching flags.
 // Defaults preserve the original Pick/v108/two-rate/seven-scenario matrix.
 // Controls-only selects dry 64-frame initial/return/held callbacks; initial-only
-// keeps the full rate/block/model/room grid but measures just the first attack.
+// keeps the full rate/block/room grid but measures just the first attack.
+// Every case plays the default Dreadnought in Spruce; a frozen tree from before
+// the second guitar model was removed on 2026-10-10 defaults to the Original.
 // Transitions-only selects dry 64-frame return-to-open/live-tuning callbacks
 // and their follow-ups after 100 ms of untimed settling.
 // The prepared, fixed-storage player is restored outside timing from a snapshot
@@ -117,18 +119,15 @@ struct CallbackState
     std::array<float, 128> left {}, right {};
     int rate {}, frames {}, scenario {}, velocity {};
     static constexpr std::array chord { 40, 47, 52, 56, 59, 64 };
-    CallbackState(int sampleRate, int blockSize, int guitar, float room, int selectedScenario,
+    CallbackState(int sampleRate, int blockSize, float room, int selectedScenario,
                   int technique, int selectedVelocity, int capture, float touch)
         : rate(sampleRate), frames(blockSize), scenario(selectedScenario), velocity(selectedVelocity)
     {
         acustra::EngineParameters parameters;
         parameters.capture = static_cast<acustra::CaptureType>(capture);
         parameters.picking = static_cast<acustra::PickingTechnique>(technique);
-        parameters.guitarModel = static_cast<acustra::GuitarModel>(guitar);
-        parameters.shape = guitar == 1 ? acustra::BodyShape::Auditorium
-                                      : acustra::BodyShape::Dreadnought;
-        parameters.bodyMaterial = guitar == 1 ? acustra::BodyMaterial::Mahogany
-                                             : acustra::BodyMaterial::Spruce;
+        parameters.shape = acustra::BodyShape::Dreadnought;
+        parameters.bodyMaterial = acustra::BodyMaterial::Spruce;
         parameters.room = room;
         parameters.touch = touch;
         parameters.pluckPosition = 0.28f;
@@ -364,11 +363,11 @@ struct CallbackState
 };
 }
 
-extern "C" void* ACUSTRA_REALISM_SYMBOL(_create)(int rate, int frames, int guitar,
+extern "C" void* ACUSTRA_REALISM_SYMBOL(_create)(int rate, int frames,
                                                   float room, int scenario,
                                                   int technique, int velocity, int capture, float touch)
 {
-    return new CallbackState(rate, frames, guitar, room, scenario, technique, velocity, capture, touch);
+    return new CallbackState(rate, frames, room, scenario, technique, velocity, capture, touch);
 }
 extern "C" void ACUSTRA_REALISM_SYMBOL(_destroy)(void* state)
 {
@@ -402,7 +401,7 @@ extern "C" int ACUSTRA_REALISM_SYMBOL(_intrinsic_ramps)(void* state)
 #else
 
 #define ACUSTRA_REALISM_DECLARE(name) \
-    extern "C" void* ACUSTRA_REALISM_SYMBOL_INNER(name, _create)(int, int, int, float, int, int, int, int, float); \
+    extern "C" void* ACUSTRA_REALISM_SYMBOL_INNER(name, _create)(int, int, float, int, int, int, int, float); \
     extern "C" void ACUSTRA_REALISM_SYMBOL_INNER(name, _destroy)(void*); \
     extern "C" void ACUSTRA_REALISM_SYMBOL_INNER(name, _restore)(void*); \
     extern "C" void ACUSTRA_REALISM_SYMBOL_INNER(name, _run)(void*); \
@@ -436,7 +435,7 @@ struct DenormalMode
 
 struct PlayerApi
 {
-    void* (*create)(int, int, int, float, int, int, int, int, float);
+    void* (*create)(int, int, float, int, int, int, int, float);
     void (*destroy)(void*);
     void (*restore)(void*);
     void (*run)(void*);
@@ -456,9 +455,9 @@ struct PlayerInstance
     bool hasHash {};
     bool requireSingleSlipProof {}, baseline {};
     double slipPole {}, referencePole {};
-    PlayerInstance(PlayerApi selected, int rate, int frames, int guitar, float room, int scenario,
+    PlayerInstance(PlayerApi selected, int rate, int frames, float room, int scenario,
                    int technique, int velocity, int capture, float touch)
-        : api(selected), state(api.create(rate, frames, guitar, room, scenario, technique, velocity, capture, touch)),
+        : api(selected), state(api.create(rate, frames, room, scenario, technique, velocity, capture, touch)),
           requireSingleSlipProof(scenario == 12), baseline(selected.create == realism_baseline_create) {}
     ~PlayerInstance() { api.destroy(state); }
     PlayerInstance(const PlayerInstance&) = delete;
@@ -652,7 +651,6 @@ int main(int argc, char** argv)
                                          "firm_release_contact", "ordinary_key_up", "pedal_release_contact",
                                          "gather_queued_burst_24_events", "held_body_two_seconds", "bridge_hand_contact",
                                          "single_low_e_contact" };
-        constexpr std::array models { "Original", "Bellido1978" };
         const std::vector<int> rates = include44100 ? std::vector<int> { 44100, 48000, 96000 }
                                                    : std::vector<int> { 48000, 96000 };
         const std::vector<int> blockSizes = controlsOnly || transitionsOnly ? std::vector<int> { 64 }
@@ -671,99 +669,95 @@ int main(int argc, char** argv)
         bool first = true;
         for (const int rate : rates)
             for (const int frames : blockSizes)
-                for (int guitar = 0; guitar < 2; ++guitar)
-                    for (const float room : rooms)
-                        for (const int scenario : selectedScenarios)
+                for (const float room : rooms)
+                    for (const int scenario : selectedScenarios)
+                    {
+                        PlayerInstance baseline(ACUSTRA_REALISM_API(baseline), rate, frames, room, scenario, technique, velocity, capture, touch);
+                        PlayerInstance current(ACUSTRA_REALISM_API(current), rate, frames, room, scenario, technique, velocity, capture, touch);
+                        if (untimedCheck)
                         {
-                            PlayerInstance baseline(ACUSTRA_REALISM_API(baseline), rate, frames, guitar, room, scenario, technique, velocity, capture, touch);
-                            PlayerInstance current(ACUSTRA_REALISM_API(current), rate, frames, guitar, room, scenario, technique, velocity, capture, touch);
-                            if (untimedCheck)
+                            for (auto* instance : { &baseline, &current })
                             {
-                                for (auto* instance : { &baseline, &current })
-                                {
-                                    instance->api.restore(instance->state);
-                                    instance->api.run(instance->state);
-                                    const auto firstHash = instance->api.checksum(instance->state);
-                                    instance->api.restore(instance->state);
-                                    instance->api.run(instance->state);
-                                    if (firstHash != instance->api.checksum(instance->state))
-                                        throw std::runtime_error("untimed snapshot reproducibility failure");
-                                    instance->expectedHash = firstHash;
-                                }
-                                output << (first ? "" : ",\n") << "{\"rate\":" << rate
-                                       << ",\"frames\":" << frames << ",\"guitar_model\":\""
-                                       << models[static_cast<std::size_t>(guitar)] << "\",\"room\":" << room
-                                       << ",\"scenario\":\"" << scenarios[static_cast<std::size_t>(scenario)]
-                                       << "\",\"untimed_checks_passed\":true,\"baseline_output_fnv64\":\""
-                                       << baseline.expectedHash << "\",\"current_output_fnv64\":\""
-                                       << current.expectedHash << "\"";
-                                if (scenario >= 8 && scenario <= 11)
-                                    output << ",\"intrinsic_ramp_proof\":{\"baseline_active_sections\":"
-                                           << baseline.api.intrinsicRamps(baseline.state)
-                                           << ",\"current_active_sections\":" << current.api.intrinsicRamps(current.state)
-                                           << ",\"expected_active\":" << ((scenario == 8 || scenario == 10) ? "true" : "false") << '}';
-                                output << '}';
-                                first = false;
-                                std::cout << "Untimed validated: " << rate << '/' << frames << '/' << guitar << '/' << scenario << '\n';
-                                continue;
+                                instance->api.restore(instance->state);
+                                instance->api.run(instance->state);
+                                const auto firstHash = instance->api.checksum(instance->state);
+                                instance->api.restore(instance->state);
+                                instance->api.run(instance->state);
+                                if (firstHash != instance->api.checksum(instance->state))
+                                    throw std::runtime_error("untimed snapshot reproducibility failure");
+                                instance->expectedHash = firstHash;
                             }
-                            std::vector<double> before, after;
-                            before.reserve(static_cast<std::size_t>(repeats));
-                            after.reserve(static_cast<std::size_t>(repeats));
-                            for (int trial = -warmups; trial < repeats; ++trial)
-                            {
-                                double b {}, c {};
-                                if ((trial & 1) == 0)
-                                {
-                                    b = baseline.measure();
-                                    c = current.measure();
-                                }
-                                else
-                                {
-                                    c = current.measure();
-                                    b = baseline.measure();
-                                }
-                                if (trial >= 0)
-                                {
-                                    before.push_back(b);
-                                    after.push_back(c);
-                                }
-                            }
-                            const double deadline = 1.0e6 * frames / rate;
-                            std::vector<double> ratios;
-                            ratios.reserve(before.size());
-                            for (std::size_t index = 0; index < before.size(); ++index)
-                                ratios.push_back(after[index] / before[index]);
                             output << (first ? "" : ",\n") << "{\"rate\":" << rate
-                                   << ",\"frames\":" << frames << ",\"guitar_model\":\""
-                                   << models[static_cast<std::size_t>(guitar)] << "\",\"room\":" << room
+                                   << ",\"frames\":" << frames << ",\"room\":" << room
                                    << ",\"scenario\":\"" << scenarios[static_cast<std::size_t>(scenario)]
-                                   << "\",\"deadline_us\":" << deadline << ",\"baseline\":";
-                            statistics(output, before, deadline, baseline.expectedHash);
-                            output << ",\"current\":";
-                            statistics(output, after, deadline, current.expectedHash);
-                            if (singleLowEOnly)
-                                output << ",\"release_path_proof\":{\"verified\":true,\"baseline_slip_pole\":"
-                                       << baseline.slipPole << ",\"baseline_reference_pole\":" << baseline.referencePole
-                                       << ",\"current_slip_pole\":" << current.slipPole
-                                       << ",\"current_reference_pole\":" << current.referencePole << '}';
+                                   << "\",\"untimed_checks_passed\":true,\"baseline_output_fnv64\":\""
+                                   << baseline.expectedHash << "\",\"current_output_fnv64\":\""
+                                   << current.expectedHash << "\"";
                             if (scenario >= 8 && scenario <= 11)
                                 output << ",\"intrinsic_ramp_proof\":{\"baseline_active_sections\":"
                                        << baseline.api.intrinsicRamps(baseline.state)
                                        << ",\"current_active_sections\":" << current.api.intrinsicRamps(current.state)
                                        << ",\"expected_active\":" << ((scenario == 8 || scenario == 10) ? "true" : "false") << '}';
-                            output << ",\"bit_identical\":"
-                                   << (baseline.expectedHash == current.expectedHash ? "true" : "false")
-                                   << ",\"paired_current_over_baseline_p50\":" << percentile(ratios, 0.5)
-                                   << ",\"paired_current_over_baseline_p95\":" << percentile(ratios, 0.95) << '}';
-                            output.flush();
+                            output << '}';
                             first = false;
-                            std::cout << rate << " Hz / " << frames << " / "
-                                      << models[static_cast<std::size_t>(guitar)] << " / room " << room << " / "
-                                      << scenarios[static_cast<std::size_t>(scenario)]
-                                      << ": baseline/current p95 " << percentile(before, .95)
-                                      << " / " << percentile(after, .95) << " us\n" << std::flush;
+                            std::cout << "Untimed validated: " << rate << '/' << frames << '/' << room << '/' << scenario << '\n';
+                            continue;
                         }
+                        std::vector<double> before, after;
+                        before.reserve(static_cast<std::size_t>(repeats));
+                        after.reserve(static_cast<std::size_t>(repeats));
+                        for (int trial = -warmups; trial < repeats; ++trial)
+                        {
+                            double b {}, c {};
+                            if ((trial & 1) == 0)
+                            {
+                                b = baseline.measure();
+                                c = current.measure();
+                            }
+                            else
+                            {
+                                c = current.measure();
+                                b = baseline.measure();
+                            }
+                            if (trial >= 0)
+                            {
+                                before.push_back(b);
+                                after.push_back(c);
+                            }
+                        }
+                        const double deadline = 1.0e6 * frames / rate;
+                        std::vector<double> ratios;
+                        ratios.reserve(before.size());
+                        for (std::size_t index = 0; index < before.size(); ++index)
+                            ratios.push_back(after[index] / before[index]);
+                        output << (first ? "" : ",\n") << "{\"rate\":" << rate
+                               << ",\"frames\":" << frames << ",\"room\":" << room
+                               << ",\"scenario\":\"" << scenarios[static_cast<std::size_t>(scenario)]
+                               << "\",\"deadline_us\":" << deadline << ",\"baseline\":";
+                        statistics(output, before, deadline, baseline.expectedHash);
+                        output << ",\"current\":";
+                        statistics(output, after, deadline, current.expectedHash);
+                        if (singleLowEOnly)
+                            output << ",\"release_path_proof\":{\"verified\":true,\"baseline_slip_pole\":"
+                                   << baseline.slipPole << ",\"baseline_reference_pole\":" << baseline.referencePole
+                                   << ",\"current_slip_pole\":" << current.slipPole
+                                   << ",\"current_reference_pole\":" << current.referencePole << '}';
+                        if (scenario >= 8 && scenario <= 11)
+                            output << ",\"intrinsic_ramp_proof\":{\"baseline_active_sections\":"
+                                   << baseline.api.intrinsicRamps(baseline.state)
+                                   << ",\"current_active_sections\":" << current.api.intrinsicRamps(current.state)
+                                   << ",\"expected_active\":" << ((scenario == 8 || scenario == 10) ? "true" : "false") << '}';
+                        output << ",\"bit_identical\":"
+                               << (baseline.expectedHash == current.expectedHash ? "true" : "false")
+                               << ",\"paired_current_over_baseline_p50\":" << percentile(ratios, 0.5)
+                               << ",\"paired_current_over_baseline_p95\":" << percentile(ratios, 0.95) << '}';
+                        output.flush();
+                        first = false;
+                        std::cout << rate << " Hz / " << frames << " / room " << room << " / "
+                                  << scenarios[static_cast<std::size_t>(scenario)]
+                                  << ": baseline/current p95 " << percentile(before, .95)
+                                  << " / " << percentile(after, .95) << " us\n" << std::flush;
+                    }
         output << "\n],\n\"complete\":true\n}\n";
         output.close();
         if (!output)

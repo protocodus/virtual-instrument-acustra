@@ -56,7 +56,7 @@ using acustra::dense::Library;
 using acustra::dense::Sampler;
 using acustra::dense::ZoneView;
 
-// One model per invocation; the selected body shape and guitar model are also
+// One model per invocation; the selected body shape and wood are also
 // written to manifests. Without --shape every row renders the public default
 // Dreadnought, the body steel's calibration was fitted on, in its default
 // wood (Spruce, the wood the measured g21 body was built of).
@@ -68,14 +68,9 @@ constexpr std::array bodyMaterialNames { "spruce", "mahogany", "maple" };
 // that tool; the finger-plucked flat-top rows always render with Finger,
 // which is what was on the string in those recordings.
 acustra::PickingTechnique archtopPicking { acustra::EngineParameters {}.picking };
-// --guitar-model renders every row through one named measured guitar's
-// bridge and radiation instead of Original's, to ask which measured body the
-// recordings sit closest to; it is an evaluation option, not a fit input.
-acustra::GuitarModel renderGuitarModel { acustra::GuitarModel::Original };
 // --room: the Room every model renders with (0, the engine's default, is
 // the dry instrument the calibration was fitted on).
 float renderRoom { 0.0f };
-constexpr std::array guitarModelNames { "original", "bellido1978" };
 constexpr std::array pickingNames { "finger", "pick", "thumb" };
 
 acustra::BodyShape renderShape() noexcept
@@ -419,7 +414,6 @@ std::vector<float> renderModel(Material material, int midi, int velocity,
 {
     AcustraEngine engine;
     EngineParameters parameters;
-    parameters.guitarModel = renderGuitarModel;
     parameters.shape = renderShape();
     parameters.bodyMaterial = renderBodyMaterial;
     parameters.room = renderRoom;
@@ -565,9 +559,10 @@ std::string modelControlsJson()
     text << "{\"shape\": \""
          << shapeNames[static_cast<std::size_t>(renderShape())]
          << "\", \"body_material\": " << static_cast<int>(renderBodyMaterial)
-         << ", \"guitar_model\": \""
-         << guitarModelNames[static_cast<std::size_t>(renderGuitarModel)]
-         << "\""
+         // Fixed at the value every manifest carried while a second
+         // guitar model existed, so model_controls still compare equal to
+         // earlier runs' (BuildRealismEvidence.py pairs runs on them).
+         << ", \"guitar_model\": \"original\""
          << ", \"capture\": \""
          << std::array { "stereo_mic", "mono_mic", "mono_mic",
                                "piezo", "piezo", "mono_mic", "piezo", "mono_mic" }[
@@ -1208,7 +1203,7 @@ void printUsage()
         "[--shape parlor|auditorium|dreadnought|jumbo] "
         "[--body-material spruce|mahogany|maple] "
         "[--archtop-picking finger|pick|thumb] "
-        "[--guitar-model original|bellido1978] [--room 0..1] "
+        "[--room 0..1] "
         "OUTPUT "
         "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT "
         "STEEL_STIFFNESS STEEL_T60 STEEL_FREQUENCY_LOSS STEEL_APERTURE "
@@ -1302,19 +1297,6 @@ int main(int argc, char** argv)
         }
         archtopPicking = static_cast<acustra::PickingTechnique>(
             std::distance(pickingNames.begin(), name));
-        first += 2;
-    }
-    if (argc > first && std::string(argv[first]) == "--guitar-model")
-    {
-        const auto name = std::find(guitarModelNames.begin(), guitarModelNames.end(),
-            argc > first + 1 ? std::string(argv[first + 1]) : std::string());
-        if (name == guitarModelNames.end())
-        {
-            printUsage();
-            return 2;
-        }
-        renderGuitarModel = static_cast<acustra::GuitarModel>(
-            std::distance(guitarModelNames.begin(), name));
         first += 2;
     }
     if (argc > first && std::string(argv[first]) == "--room")

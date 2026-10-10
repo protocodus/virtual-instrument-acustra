@@ -5,6 +5,33 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-10 — remove the Bellido 1978 (Classical 78) guitar model
+
+The user asked to remove the Classical 78 model completely, with the code and
+parameters only it used. Remove the Bellido 1978 Model (Mores archive g35, a
+classical guitar strung with steel): its measured body and bridge banks, their
+bridge-radiation twins and cedar wood reference, its two microphone peaks and
+trim, its pluck-polarisation, release and sustain policies (the 2026-10-09
+Classic choices), the player-contact body loading only it enabled, the
+broad-loss corner scale and fresh-energy matching only it used, and the
+Bellido half of the 2026-10-02 model-convergence voicing. The Original keeps
+the brightness tilt that voicing gave it, now `microphoneTiltGain`, so its
+sound is unchanged.
+
+Compatibility follows the earlier retirements. The desktop `guitarModel`
+parameter keeps its ID, AU version hint, index and two choices as a hidden,
+non-automatable legacy slot beside the three already there, so hosts that
+address parameters by index keep every later one; nothing reads it, and a
+session that chose the Bellido reloads every other setting on the Original.
+The Rack Extension keeps its released `guitar_model` property inactive, as
+Maremba keeps its retired ones. The 2026-10-02 convergence, 2026-10-07
+Classical capture and 2026-10-09 Classic attack/sustain entries below remain
+as history; they no longer describe a shipping guitar.
+
+This is a removal: it adds no listening decision and no CPU claim. Matched
+native renders of every remaining construction and control case are
+byte-identical (see [the removal record](classic78-removal-2026-10-10.md)).
+
 ## 2026-10-09 — remove unavailable feature code and archived experiments
 
 The user requested a project cleanup and explicitly chose removal of archived

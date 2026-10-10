@@ -559,7 +559,7 @@ void contactWithdrawalLifecycle()
             if (action < 3)
             {
                 acustra::EngineParameters parameters;
-                if (action == 0) parameters.guitarModel = acustra::GuitarModel::Bellido1978;
+                if (action == 0) parameters.bodyMaterial = acustra::BodyMaterial::Maple;
                 if (action == 1) parameters.shape = acustra::BodyShape::Parlor;
                 if (action == 2) parameters.tuning = acustra::Tuning::DropD;
                 engine->setParameters(parameters);

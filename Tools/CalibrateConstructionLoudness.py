@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Level every construction and Picking to one loudness, and check headroom.
 
-Every construction (Model x Shape x Wood) and every Picking
+Every construction (Shape x Wood) and every Picking
 is rendered through AcustraPerformanceRenderer (the shipping engine) at the
 default controls and Output, playing one fixed, seeded phrase set: strums
 over a chord progression, single notes low and high on the neck and held
@@ -9,17 +9,16 @@ chords, at velocities from soft to hard. Each render is measured as ITU-R
 BS.1770-4 integrated loudness (Tools/MeasureMaterialLoudness.py's meter),
 on the stereo microphones, the mono microphone and the piezo.
 
-The target is the default construction - the Original model, Dreadnought,
-Spruce, Finger - as it plays on the stereo
-microphones, so the default patch keeps its loudness. For every other cell
-the tool writes the gain that brings its stereo microphones to that target,
-and for the mono microphone and the piezo the factor, relative to that gain,
-that brings each of them to the same target: the three captures stay level
-with each other on every construction. The data header it writes,
-Source/DSP/ConstructionLoudnessData.h, holds those gains keyed by the four
-settings (2 x 4 x 3 x 3 cells); AcustraEngine applies them where it applies
-the strings' output reference, through the same smoothing. A gain changes
-only the level: each construction keeps its tone.
+The target is the default construction - Dreadnought, Spruce, Finger - as it
+plays on the stereo microphones, so the default patch keeps its loudness. For
+every other cell the tool writes the gain that brings its stereo microphones to
+that target, and for the mono microphone and the piezo the factor, relative to
+that gain, that brings each of them to the same target: the three captures
+stay level with each other on every construction. The data header it writes,
+Source/DSP/ConstructionLoudnessData.h, holds those gains keyed by the three
+settings (4 x 3 x 3 cells); AcustraEngine applies them where it applies the
+strings' output reference, through the same smoothing. A gain changes only the
+level: each construction keeps its tone.
 
 It also plays the hardest case - velocity 127 with the Pick at Touch 1 and
 Pluck Position 0: an open E major downstroke with two strings repicked into
@@ -40,11 +39,12 @@ the peaks.
       --renderer ./build-dsp/AcustraPerformanceRenderer --write-header
   python3 Tools/CalibrateConstructionLoudness.py --renderer ... --check
 
-A change that moves one model's level rewrites only that model's cells,
-keeping every other cell's built gain (the target stays the default cell):
+A change that moves only some playing styles' level rewrites only those
+styles' cells, keeping every other cell's built gain (the target stays the
+default cell):
 
   python3 Tools/CalibrateConstructionLoudness.py --renderer ... \\
-      --json m.json --write-header --models bellido1978
+      --json m.json --write-header --pickings pick
   python3 Tools/CalibrateConstructionLoudness.py --self-test
 
 A microphone-only update can keep the existing absolute pickup level with
@@ -58,15 +58,14 @@ within 9 dB while staying within the phrase's 1 LU tolerance. It projects each
 capture to the nearest feasible gain; it never changes the default reference.
 Rebuild and rerender both protocols to verify the generated float32 tables.
 
-`--pickings` additionally scopes the written cells to the selected playing
-styles, while retaining every other model/style cell's built gains:
+The selection combines with the other write options:
 
   python3 Tools/CalibrateConstructionLoudness.py --measurements m.json \\
-      --write-header --models bellido1978 --pickings pick --preserve-piezo-level
+      --write-header --pickings pick --preserve-piezo-level
 
-`--models` and `--pickings` select header writes only. Measurement and `--check`
-still cover every construction, style and capture. `--all-pickings` independently
-adds Finger and Thumb to the hardest-case rendering protocol.
+`--pickings` selects header writes only. Measurement and `--check` still cover
+every construction, style and capture. `--all-pickings` independently adds
+Finger and Thumb to the hardest-case rendering protocol.
 
 The gains already built in (read from the header) are divided out of each
 measurement, so writing the header again from a build that has them gives the
@@ -78,6 +77,8 @@ are required.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import itertools
 import json
 import os
@@ -99,13 +100,13 @@ HEADER = (Path(__file__).resolve().parent.parent
 SEED = 20260929
 
 # The engine's enum orders (AcustraEngine.h) and the renderer's spellings.
-MODELS = ("original", "bellido1978")
 SHAPES = ("parlor", "auditorium", "dreadnought", "jumbo")
 WOODS = ("spruce", "mahogany", "maple")
 PICKINGS = ("finger", "pick", "thumb")
 CAPTURES = ("stereo_mic", "mono_mic", "piezo")
-DEFAULT = ("original", "dreadnought", "spruce", "finger")
-CELLS = len(MODELS) * len(SHAPES) * len(WOODS) * len(PICKINGS)
+DEFAULT = ("dreadnought", "spruce", "finger")
+CELLS = len(SHAPES) * len(WOODS) * len(PICKINGS)
+STRUM_SCHEMA = "AcustraConstructionStrumLevelsV2"  # ConstructionStrumLevels.cpp
 TUNINGS = ("standard", "drop_d", "dadgad", "open_g", "half_step_down")
 STRUM_TOLERANCE_DB = 9.0       # ConstructionMatrixTests' existing guard
 FIT_MARGIN_DB = 0.02          # leave room for float32 table rounding
@@ -116,17 +117,17 @@ TOLERANCE_LU = 1.0
 HEADROOM_DB = 1.0
 
 
-def index(model, shape, wood, picking) -> int:
+def index(shape, wood, picking) -> int:
     """A cell's place in the header's tables (ConstructionLoudnessData.h)."""
-    value = MODELS.index(model)
-    for names, name in ((SHAPES, shape), (WOODS, wood), (PICKINGS, picking)):
+    value = SHAPES.index(shape)
+    for names, name in ((WOODS, wood), (PICKINGS, picking)):
         value = value * len(names) + names.index(name)
     return value
 
 
 def constructions():
-    """Every construction."""
-    yield from itertools.product(MODELS, SHAPES, WOODS)
+    """Every construction: (shape, wood)."""
+    yield from itertools.product(SHAPES, WOODS)
 
 
 # The phrase set: (string 1-6, MIDI note, onset s, release s, velocity) rows.
@@ -221,13 +222,12 @@ def built_gains(path: Path = HEADER) -> dict[str, np.ndarray]:
 
 def render(renderer: str, work: Path, performance: str, construction, picking,
            capture, extra=()) -> np.ndarray:
-    model, shape, wood = construction
+    shape, wood = construction
     tag = "-".join((performance, *construction, picking, capture))
     output = work / f"{tag}.f32"
     subprocess.run(
         [renderer, str(work / f"{performance}.txt"), str(output), capture,
-         picking, "--body-shape", shape, "--body-material", wood,
-         "--guitar-model", model, *extra],
+         picking, "--body-shape", shape, "--body-material", wood, *extra],
         check=True)
     audio = np.fromfile(output, dtype="<f4").reshape(-1, 2)
     output.unlink()
@@ -287,7 +287,7 @@ def gains(raw: dict, max_cut_db: float = 0.9) -> dict[str, np.ndarray]:
     max_cut_db, which stays inside the loudness tolerance: parity comes
     first, and headroom is taken from the tolerance where it can be."""
     lufs, peaks = raw["lufs"], raw.get("peaks", {})
-    target = lufs[(DEFAULT[:3], DEFAULT[3], "stereo_mic")]
+    target = lufs[(DEFAULT[:2], DEFAULT[2], "stereo_mic")]
     # Aimed a hair under the line, so rounding does not leave a cell on it.
     ceiling = 20.0 * np.log10(LIMIT_KNEE) - HEADROOM_DB - 0.02
     tables = {name: np.ones(CELLS) for name in ("mic", "mono", "piezo")}
@@ -319,26 +319,26 @@ def to_float32(value: float) -> float:
 
 
 def retain_unselected_gains(tables: dict[str, np.ndarray],
-                            built: dict[str, np.ndarray], models,
+                            built: dict[str, np.ndarray],
                             pickings=PICKINGS) -> None:
-    """Keep all existing gains outside the selected model/style intersection."""
-    for cell in itertools.product(MODELS, SHAPES, WOODS, PICKINGS):
-        if cell[0] not in models or cell[3] not in pickings:
+    """Keep all existing gains outside the selected styles' cells."""
+    for cell in itertools.product(SHAPES, WOODS, PICKINGS):
+        if cell[2] not in pickings:
             i = index(*cell)
             for name in tables:
                 tables[name][i] = built[name][i]
 
 
 def preserve_piezo_level(tables: dict[str, np.ndarray],
-                         built: dict[str, np.ndarray], models,
+                         built: dict[str, np.ndarray],
                          pickings=PICKINGS) -> None:
-    """Keep the previous mic*piezo gain on only the selected model/style cells.
+    """Keep the previous mic*piezo gain on only the selected styles' cells.
 
     Use the float32 microphone references that the generated C++ will read,
     not the unrounded fit. The runtime also multiplies a common string
     reference, so this preserves level to float rounding, not sample bits.
     """
-    for cell in itertools.product(models, SHAPES, WOODS, pickings):
+    for cell in itertools.product(SHAPES, WOODS, pickings):
         i = index(*cell)
         old_level = to_float32(built["mic"][i]) * to_float32(built["piezo"][i])
         tables["piezo"][i] = old_level / to_float32(tables["mic"][i])
@@ -353,7 +353,7 @@ def absolute_gain(tables, cell, capture):
 
 def validate_strum_measurements(saved, built):
     """Reject incomplete, stale or limited native guard measurements."""
-    if (saved.get("schema") != "AcustraConstructionStrumLevelsV1"
+    if (saved.get("schema") != STRUM_SCHEMA
             or saved.get("rate") != 48000 or saved.get("frames") != 16800
             or saved.get("picking") != "finger"):
         raise ValueError("strum measurements must use the native 48 kHz Finger guard protocol")
@@ -390,13 +390,13 @@ def validate_strum_measurements(saved, built):
     if set(rows) != expected:
         raise ValueError(f"strum measurements need all {len(expected)} construction/capture/tuning rows")
     for capture, tuning in itertools.product(CAPTURES, TUNINGS):
-        row = rows[(DEFAULT[:3], capture, tuning)]
+        row = rows[(DEFAULT[:2], capture, tuning)]
         if abs(row["relative_db"]) > 1e-8:
             raise ValueError("default strum must equal its capture/tuning reference")
     return rows
 
 
-def constrain_strum_gains(tables, built, raw, saved, models, pickings):
+def constrain_strum_gains(tables, built, raw, saved, pickings):
     """Choose the nearest phrase fit satisfying every native tuning guard.
 
     Solve absolute capture gains first; encode mono/piezo as relative trims
@@ -413,7 +413,7 @@ def constrain_strum_gains(tables, built, raw, saved, models, pickings):
         value = raw["lufs"][(construction, "finger", capture)]
         if not np.isfinite(value):
             raise ValueError(f"non-finite phrase level: {construction} {capture}")
-    target = raw["lufs"][(DEFAULT[:3], DEFAULT[3], "stereo_mic")]
+    target = raw["lufs"][(DEFAULT[:2], DEFAULT[2], "stereo_mic")]
     default_cell = index(*DEFAULT)
     for capture in CAPTURES:
         if abs(20 * np.log10(absolute_gain(tables, default_cell, capture)
@@ -423,7 +423,7 @@ def constrain_strum_gains(tables, built, raw, saved, models, pickings):
     changes = []
     for construction in constructions():
         cell = index(*construction, "finger")
-        selected = construction[0] in models and "finger" in pickings and cell != default_cell
+        selected = "finger" in pickings and cell != default_cell
         levels = {}
         for capture in CAPTURES:
             old_db = 20 * np.log10(absolute_gain(built, cell, capture))
@@ -469,11 +469,11 @@ def header_text(tables: dict[str, np.ndarray]) -> str:
     def table(name: str, symbol: str, comment: str) -> str:
         lines = [comment, f"inline constexpr std::array<float, {CELLS}> {symbol} {{{{"]
         values = tables[name]
-        for model, shape in itertools.product(MODELS, SHAPES):
-            start = index(model, shape, WOODS[0], PICKINGS[0])
+        for shape in SHAPES:
+            start = index(shape, WOODS[0], PICKINGS[0])
             chunk = ", ".join(float_literal(v)
                               for v in values[start:start + len(WOODS) * len(PICKINGS)])
-            lines.append(f"    // {model} {shape}: "
+            lines.append(f"    // original {shape}: "
                          f"{', '.join(WOODS)} x {', '.join(PICKINGS)}")
             lines.append(f"    {chunk},")
         lines[-1] = lines[-1].rstrip(",")
@@ -483,11 +483,11 @@ def header_text(tables: dict[str, np.ndarray]) -> str:
     return "\n".join([
         "// Generated by Tools/CalibrateConstructionLoudness.py; do not edit by hand.",
         "// Output level references that bring every construction and Picking to",
-        "// the default construction's integrated loudness (Original model,",
-        "// Dreadnought, Spruce, Finger, on the stereo microphones), each capture on",
-        "// its own (Docs/decisions.md, 2026-09-29, \"Every construction as loud as",
-        "// the default\"). A cell is",
-        "//   ((model * 4 + shape) * 3 + wood) * 3 + picking",
+        "// the default construction's integrated loudness (Dreadnought, Spruce,",
+        "// Finger, on the stereo microphones), each capture on its own",
+        "// (Docs/decisions.md, 2026-09-29, \"Every construction as loud as the",
+        "// default\"). A cell is",
+        "//   (shape * 3 + wood) * 3 + picking",
         "// in the enums' order in AcustraEngine.h.",
         "#pragma once",
         "",
@@ -508,8 +508,8 @@ def header_text(tables: dict[str, np.ndarray]) -> str:
 
 
 def label(construction, picking) -> str:
-    model, shape, wood = construction
-    return f"{model} {shape} {wood} {picking}"
+    shape, wood = construction
+    return f"{shape} {wood} {picking}"
 
 
 def report(levels: dict, target: float) -> dict:
@@ -527,13 +527,12 @@ def report(levels: dict, target: float) -> dict:
             "quietest": label(*low[:2]), "loudest": label(*high[:2]),
             "within_tolerance": int(sum(abs(v) <= TOLERANCE_LU for v in rows.values())),
             "cells": len(rows)}
-    for model in MODELS:
-        for picking in PICKINGS:
-            values = [value - target for (c, p, k), value in levels["lufs"].items()
-                      if c[0] == model and p == picking and k == "stereo_mic"]
-            summary["groups"][f"{model} {picking}"] = {
-                "min_lu": float(min(values)), "median_lu": float(np.median(values)),
-                "max_lu": float(max(values))}
+    for picking in PICKINGS:
+        values = [value - target for (c, p, k), value in levels["lufs"].items()
+                  if p == picking and k == "stereo_mic"]
+        summary["groups"][picking] = {
+            "min_lu": float(min(values)), "median_lu": float(np.median(values)),
+            "max_lu": float(max(values))}
     knee_db = 20.0 * np.log10(LIMIT_KNEE)
     for capture, picking in itertools.product(CAPTURES, PICKINGS):
         rows = {key: value for key, value in levels["peaks"].items()
@@ -563,7 +562,7 @@ def print_report(summary: dict, title: str) -> None:
               f" (median {row['median_lu']:+5.2f}; {row['within_tolerance']}/{row['cells']}"
               f" within +-{TOLERANCE_LU:g}); quietest {row['quietest']},"
               f" loudest {row['loudest']}")
-    print("  stereo mic by model and picking (min / median / max LU):")
+    print("  stereo mic by picking (min / median / max LU):")
     for group, row in summary["groups"].items():
         print(f"    {group:<26} {row['min_lu']:+6.2f} {row['median_lu']:+6.2f}"
               f" {row['max_lu']:+6.2f}")
@@ -582,18 +581,29 @@ def serialise(levels: dict) -> dict:
 
 
 def deserialise(tables: dict) -> dict:
+    known = set(constructions())
+    for rows in tables.values():
+        for row in rows:
+            if tuple(row["construction"]) not in known:
+                raise SystemExit(f"unknown construction {row['construction']}: measurements"
+                                 " made before the second guitar model was removed carry"
+                                 " [model, shape, wood]; measure again")
     return {kind: {(tuple(row["construction"]), row["picking"], row["capture"]):
                    row["value"] for row in rows}
             for kind, rows in tables.items()}
 
 
 def self_test() -> None:
-    assert CELLS == 72
-    assert index(*DEFAULT) == index("original", "dreadnought", "spruce", "finger")
-    seen = {index(*cell) for cell in itertools.product(
-        MODELS, SHAPES, WOODS, PICKINGS)}
+    assert CELLS == 36
+    # The header's documented layout, (shape * 3 + wood) * 3 + picking, which
+    # is AcustraEngine.cpp's constructionLoudnessCell, for every cell.
+    for shape, wood, picking in itertools.product(SHAPES, WOODS, PICKINGS):
+        assert index(shape, wood, picking) == ((SHAPES.index(shape) * 3 + WOODS.index(wood)) * 3
+                                               + PICKINGS.index(picking))
+    assert index(*DEFAULT) == index("dreadnought", "spruce", "finger")
+    seen = {index(*cell) for cell in itertools.product(SHAPES, WOODS, PICKINGS)}
     assert seen == set(range(CELLS))
-    assert len(list(constructions())) == 24
+    assert len(list(constructions())) == 12
     # The phrase set is fixed: the same rows every time, playable, under the
     # renderer's minute, and spanning soft to hard.
     first, second = phrase_set(), phrase_set()
@@ -623,50 +633,49 @@ def self_test() -> None:
         assert np.allclose(read[name], tables[name], rtol=1e-7)
         assert read[name][index(*DEFAULT)] == 1.0
     # Microphone-only calibration must not silently relevel the pickup or
-    # touch unselected models, even when the microphone gain changes widely.
+    # touch unselected styles, even when the microphone gain changes widely.
     old = {name: values.copy() for name, values in tables.items()}
     updated = {name: values.copy() for name, values in tables.items()}
     updated["mic"] *= np.geomspace(0.2, 5.0, CELLS)
-    untouched = updated["piezo"][:CELLS // 2].copy()
-    preserve_piezo_level(updated, old, ("bellido1978",))
+    chosen = ("finger", "thumb")
+    selected = [index(*cell) for cell in itertools.product(SHAPES, WOODS, chosen)]
+    unselected = [index(*cell) for cell in itertools.product(SHAPES, WOODS, ("pick",))]
+    untouched = updated["piezo"][unselected].copy()
+    preserve_piezo_level(updated, old, chosen)
     with tempfile.TemporaryDirectory() as scratch:
         path = Path(scratch) / "preserved.h"
         path.write_text(header_text(updated))
         generated = built_gains(path)
-    assert np.array_equal(updated["piezo"][:CELLS // 2], untouched)
-    selected = slice(CELLS // 2, CELLS)
+    assert np.array_equal(updated["piezo"][unselected], untouched)
     previous = old["mic"][selected].astype(np.float32).astype(float) \
         * old["piezo"][selected].astype(np.float32).astype(float)
     actual = generated["mic"][selected] * generated["piezo"][selected]
     assert np.allclose(previous, actual, rtol=1e-7, atol=0)
-    # Write selectors intersect, rather than render fewer cells. An isolated
-    # Bellido Pick update must preserve every Original, Finger and Thumb entry.
+    # Write selectors restrict the written cells, rather than render fewer.
+    # An isolated Pick update must preserve every Finger and Thumb entry.
     fitted = {name: old[name] * np.linspace(1.1, 1.9, CELLS)
               for name in old}
-    for models, pickings in ((MODELS, PICKINGS),
-                             (("bellido1978",), ("pick",)),
-                             (("original",), ("finger", "thumb")),
-                             (MODELS, ("thumb",))):
+    for pickings in (PICKINGS, ("pick",), ("finger", "thumb"), ("thumb",)):
         scoped = {name: values.copy() for name, values in fitted.items()}
-        retain_unselected_gains(scoped, old, models, pickings)
-        for cell in itertools.product(MODELS, SHAPES, WOODS, PICKINGS):
+        retain_unselected_gains(scoped, old, pickings)
+        for cell in itertools.product(SHAPES, WOODS, PICKINGS):
             i = index(*cell)
-            expected = fitted if cell[0] in models and cell[3] in pickings else old
+            expected = fitted if cell[2] in pickings else old
             for name in scoped:
                 assert scoped[name][i] == expected[name][i], (cell, name)
     scoped = {name: values.copy() for name, values in fitted.items()}
-    retain_unselected_gains(scoped, old, ("bellido1978",), ("pick",))
+    retain_unselected_gains(scoped, old, ("pick",))
     before = {name: values.copy() for name, values in scoped.items()}
-    preserve_piezo_level(scoped, old, ("bellido1978",), ("pick",))
+    preserve_piezo_level(scoped, old, ("pick",))
     assert np.array_equal(scoped["mic"], before["mic"])
     assert np.array_equal(scoped["mono"], before["mono"])
     with tempfile.TemporaryDirectory() as scratch:
         path = Path(scratch) / "pick-scoped.h"
         path.write_text(header_text(scoped))
         generated = built_gains(path)
-    for cell in itertools.product(MODELS, SHAPES, WOODS, PICKINGS):
+    for cell in itertools.product(SHAPES, WOODS, PICKINGS):
         i = index(*cell)
-        if cell[0] == "bellido1978" and cell[3] == "pick":
+        if cell[2] == "pick":
             old_product = np.float32(np.float32(old["mic"][i]) * np.float32(old["piezo"][i]))
             new_product = np.float32(np.float32(generated["mic"][i])
                                      * np.float32(generated["piezo"][i]))
@@ -677,21 +686,27 @@ def self_test() -> None:
             for name in scoped:
                 assert np.float32(generated[name][i]) == np.float32(old[name][i]), (cell, name)
     arguments = argument_parser().parse_args([])
-    assert tuple(arguments.models) == MODELS
     assert tuple(arguments.pickings) == PICKINGS
     selected = argument_parser().parse_args([
-        "--models", "bellido1978", "--pickings", "pick",
-        "--write-header", "--preserve-piezo-level"])
-    assert selected.models == ["bellido1978"] and selected.pickings == ["pick"]
+        "--pickings", "pick", "--write-header", "--preserve-piezo-level"])
+    assert selected.pickings == ["pick"]
     assert selected.write_header and selected.preserve_piezo_level
     assert not selected.all_pickings
+    # The guitar model is no longer a write selector.
+    with contextlib.redirect_stderr(io.StringIO()):
+        try:
+            argument_parser().parse_args(["--models", "original"])
+        except SystemExit:
+            pass
+        else:
+            raise AssertionError("--models is still accepted")
     fake = {"lufs": {}, "peaks": {}}
     for construction in constructions():
         for picking in PICKINGS:
             for offset, capture in enumerate(CAPTURES):
                 fake["lufs"][(construction, picking, capture)] = (
                     -30.0 + 0.5 * offset + 0.1 * PICKINGS.index(picking)
-                    + (3.0 if construction[0] == "bellido1978" else 0.0))
+                    + (3.0 if construction[1] == "maple" else 0.0))
     made = gains(fake)
     assert made["mic"][index(*DEFAULT)] == 1.0
     assert made["mono"][index(*DEFAULT)] == 1.0
@@ -700,7 +715,7 @@ def self_test() -> None:
     # from the tolerance, and no more than that.
     # At the target this Pick cell's stereo microphones would peak 0.4 dB
     # too near the knee, its mono microphone far too near it.
-    pick = ("bellido1978", "jumbo", "maple")
+    pick = ("jumbo", "maple")
     fake["peaks"] = {(pick, "pick", "stereo_mic"): -1.62 + 3.1,
                      (pick, "pick", "mono_mic"): 10.0}
     capped = gains(fake)
@@ -710,15 +725,15 @@ def self_test() -> None:
     # The piezo had no peak to keep under the knee: its level is unchanged.
     assert abs(capped["piezo"][cell] * capped["mic"][cell]
                - made["piezo"][cell] * made["mic"][cell]) < 1e-12
-    bellido = index("bellido1978", "parlor", "maple", "thumb")
-    assert abs(20 * np.log10(made["mic"][bellido]) + 3.2) < 1e-9
-    assert abs(20 * np.log10(made["mono"][bellido]) + 0.5) < 1e-9
+    maple = index("parlor", "maple", "thumb")
+    assert abs(20 * np.log10(made["mic"][maple]) + 3.2) < 1e-9
+    assert abs(20 * np.log10(made["mono"][maple]) + 0.5) < 1e-9
     # One quiet native tuning needs +0.82 dB, within the phrase tolerance.
-    # Other captures stay at unity, including every Original entry.
+    # Every other cell and capture stays at unity.
     unity = {name: np.ones(CELLS) for name in ("mic", "mono", "piezo")}
     flat = {"lufs": {(c, p, k): -30.0 for c in constructions()
                      for p in PICKINGS for k in CAPTURES}, "peaks": {}}
-    native = {"schema": "AcustraConstructionStrumLevelsV1", "rate": 48000,
+    native = {"schema": STRUM_SCHEMA, "rate": 48000,
               "frames": 16800, "picking": "finger",
               "built_gains": {name: values.tolist() for name, values in unity.items()},
               "rows": []}
@@ -729,12 +744,23 @@ def self_test() -> None:
                                "reference_db": 0.0, "relative_db": relative,
                                "peak": 0.01, "piezo_peak": 0.01, "finite": True})
     projected = {name: values.copy() for name, values in unity.items()}
-    fit_report = constrain_strum_gains(projected, unity, flat, native, ("bellido1978",), PICKINGS)
+    fit_report = constrain_strum_gains(projected, unity, flat, native, PICKINGS)
     finger_cell = index(*pick, "finger")
     assert abs(20 * np.log10(projected["mono"][finger_cell]) - 0.82) < 1e-10
+    assert np.array_equal(np.delete(projected["mono"], finger_cell), np.ones(CELLS - 1))
     assert np.array_equal(projected["mic"], unity["mic"])
     assert np.array_equal(projected["piezo"], unity["piezo"])
     assert len(fit_report["adjusted_captures"]) == 1
+    # With Finger outside the written styles that cell may not move, so the
+    # same evidence fails before any table write.
+    unchanged = {name: values.copy() for name, values in unity.items()}
+    try:
+        constrain_strum_gains(unchanged, unity, flat, native, ("pick", "thumb"))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an unselected Finger cell was moved")
+    assert all(np.array_equal(unchanged[name], unity[name]) for name in unity)
     # Bad evidence and an empty feasible interval fail before any table write.
     failures = []
     duplicate = json.loads(json.dumps(native)); duplicate["rows"].append(duplicate["rows"][0])
@@ -744,6 +770,12 @@ def self_test() -> None:
     nonfinite = json.loads(json.dumps(native)); nonfinite["rows"][0]["weighted_db"] = float("nan"); failures.append(nonfinite)
     limited = json.loads(json.dumps(native)); limited["rows"][0]["peak"] = LIMIT_KNEE; failures.append(limited)
     inconsistent = json.loads(json.dumps(native)); inconsistent["rows"][0]["relative_db"] = 1.0; failures.append(inconsistent)
+    # Rows from before the guitar model was removed name [model, shape, wood].
+    retired = json.loads(json.dumps(native))
+    retired["schema"] = "AcustraConstructionStrumLevelsV1"
+    failures.append(retired)
+    legacy = json.loads(json.dumps(native)); legacy["rows"][0]["construction"].insert(0, "original")
+    failures.append(legacy)
     impossible = json.loads(json.dumps(native))
     for row in impossible["rows"]:
         if row["relative_db"] == -9.8:
@@ -752,12 +784,22 @@ def self_test() -> None:
     for invalid in failures:
         unchanged = {name: values.copy() for name, values in unity.items()}
         try:
-            constrain_strum_gains(unchanged, unity, flat, invalid, MODELS, PICKINGS)
+            constrain_strum_gains(unchanged, unity, flat, invalid, PICKINGS)
         except ValueError:
             pass
         else:
             raise AssertionError("invalid native evidence accepted")
         assert all(np.array_equal(unchanged[name], unity[name]) for name in unity)
+    # Measurements serialise and read back; a pre-removal construction does not.
+    assert deserialise(serialise(fake)) == fake
+    try:
+        deserialise({"lufs": [{"construction": ["original", "dreadnought", "spruce"],
+                               "picking": "finger", "capture": "stereo_mic",
+                               "value": -30.0}]})
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("a [model, shape, wood] measurement was accepted")
     assert HEADER.exists(), HEADER
     built = built_gains()
     assert built["mic"][index(*DEFAULT)] == 1.0
@@ -773,7 +815,7 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--write-header", action="store_true",
                         help=f"write the gains to {HEADER.name}")
     parser.add_argument("--preserve-piezo-level", action="store_true",
-                        help="with --write-header, keep the selected model/style cells' existing"
+                        help="with --write-header, keep the selected styles' cells' existing"
                              " absolute pickup level during a microphone-only update")
     parser.add_argument("--check", action="store_true",
                         help="fail unless the built gains hold every cell within"
@@ -791,15 +833,12 @@ def argument_parser() -> argparse.ArgumentParser:
                              " the tolerance; a large value puts headroom first)")
     parser.add_argument("--all-pickings", action="store_true",
                         help="also play the hardest case with Finger and Thumb")
-    parser.add_argument("--models", nargs="+", choices=MODELS, default=MODELS,
-                        help="with --write-header, rewrite only these models' cells"
-                             " and keep the other cells' built gains (a change that"
-                             " moved one model's level; the target is the default"
-                             " cell's either way)")
     parser.add_argument("--pickings", nargs="+", choices=PICKINGS, default=PICKINGS,
-                        help="with --write-header, rewrite only these styles within"
-                             " --models; preserve every other cell's built gains"
-                             " (does not restrict measurements or --check)")
+                        help="with --write-header, rewrite only these styles' cells"
+                             " and keep every other cell's built gains (a change that"
+                             " moved one style's level; the target is the default"
+                             " cell's either way; does not restrict measurements or"
+                             " --check)")
     parser.add_argument("--self-test", action="store_true")
     return parser
 
@@ -826,7 +865,7 @@ def main() -> int:
         measured = measure(arguments.renderer, max(1, arguments.jobs),
                            PICKINGS if arguments.all_pickings else ("pick",))
         raw = raw_levels(measured, built_gains())
-    target = measured["lufs"][(DEFAULT[:3], DEFAULT[3], "stereo_mic")]
+    target = measured["lufs"][(DEFAULT[:2], DEFAULT[2], "stereo_mic")]
     as_built = report(measured, target)
     saved_strums = None
     if arguments.strum_measurements:
@@ -839,12 +878,12 @@ def main() -> int:
     if arguments.write_header:
         tables = gains(raw, arguments.max_headroom_cut)
         built = built_gains()
-        retain_unselected_gains(tables, built, arguments.models, arguments.pickings)
+        retain_unselected_gains(tables, built, arguments.pickings)
         if arguments.preserve_piezo_level:
-            preserve_piezo_level(tables, built, arguments.models, arguments.pickings)
+            preserve_piezo_level(tables, built, arguments.pickings)
         if saved_strums is not None:
             output["strum_constraints"] = constrain_strum_gains(
-                tables, built, raw, saved_strums, arguments.models, arguments.pickings)
+                tables, built, raw, saved_strums, arguments.pickings)
         HEADER.write_text(header_text(tables))
         print(f"wrote {HEADER}")
     if arguments.json:

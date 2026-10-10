@@ -28,8 +28,21 @@ from scipy.io import wavfile
 from scipy.signal import resample_poly
 
 
+# Each native render schema's variants and ablation switches. Schema 3 is
+# current. Schemas 1 and 2 remain readable for render directories made before
+# playerBodyLoading, the "body" variant, was removed on 2026-10-10.
+VARIANTS = ("baseline", "contact", "hand", "damping", "continuity", "combined")
+SCHEMA2_VARIANTS = ("baseline", "contact", "hand", "damping", "body", "continuity", "combined")
 LEGACY_VARIANTS = ("baseline", "contact", "hand", "damping", "body", "combined")
-VARIANTS = ("baseline", "contact", "hand", "damping", "body", "continuity", "combined")
+SCHEMA_VARIANTS = {1: LEGACY_VARIANTS, 2: SCHEMA2_VARIANTS, 3: VARIANTS}
+SCHEMA_SWITCHES = {
+    1: ("contactRelease", "coherentHand", "gestureDamping", "playerBodyLoading"),
+    2: ("contactRelease", "coherentHand", "gestureDamping", "playerBodyLoading", "retuneContinuity"),
+    3: ("contactRelease", "coherentHand", "gestureDamping", "retuneContinuity"),
+}
+# The one switch each single-mechanism variant enables.
+VARIANT_SWITCH = {"contact": "contactRelease", "hand": "coherentHand", "damping": "gestureDamping",
+                  "body": "playerBodyLoading", "continuity": "retuneContinuity"}
 METER_SPEC = importlib.util.spec_from_file_location(
     "acustra_natural_loudness_meter", Path(__file__).with_name("MeasureMaterialLoudness.py"))
 assert METER_SPEC is not None and METER_SPEC.loader is not None
@@ -38,7 +51,7 @@ METER_SPEC.loader.exec_module(METER)
 
 
 def variant_order(manifest: dict) -> tuple[str, ...]:
-    return VARIANTS if manifest["schema"] == 2 else LEGACY_VARIANTS
+    return SCHEMA_VARIANTS[manifest["schema"]]
 
 
 def sha256(path: Path) -> str:
@@ -119,22 +132,18 @@ def collect_sources(source: Path, build: Path, binary: Path, output: Path) -> di
 
 def inspect_renders(root: Path, require_baseline: bool = True) -> tuple[dict, dict[str, dict[str, dict]], list[dict]]:
     manifest = json.loads((root / "manifest.json").read_text())
-    if manifest["schema"] not in (1, 2) or manifest["channels"] != 2 or manifest["post_gain"] != 1:
+    if manifest["schema"] not in SCHEMA_VARIANTS or manifest["channels"] != 2 or manifest["post_gain"] != 1:
         raise ValueError("unsupported native render schema")
-    if manifest["schema"] == 2 and manifest.get("explicit_string_mode_cc126_value") != 6:
+    if manifest["schema"] >= 2 and manifest.get("explicit_string_mode_cc126_value") != 6:
         raise ValueError("physical-string fixture must use CC126 value 6")
     groups: dict[str, dict[str, dict]] = {}
     reports = []
+    switch_names = SCHEMA_SWITCHES[manifest["schema"]]
     for render in manifest["renders"]:
-        switch_names = ("contactRelease", "coherentHand", "gestureDamping", "playerBodyLoading")
-        single = {"contact": 0, "hand": 1, "damping": 2, "body": 3}
-        if manifest["schema"] == 2:
-            switch_names += ("retuneContinuity",)
-            single["continuity"] = 4
         if render["variant"] not in variant_order(manifest):
             raise ValueError("unknown render variant")
-        expected = {name: render["variant"] == "combined" or single.get(render["variant"]) == index
-                    for index, name in enumerate(switch_names)}
+        expected = {name: render["variant"] == "combined" or VARIANT_SWITCH.get(render["variant"]) == name
+                    for name in switch_names}
         if render["switches"] != expected:
             raise ValueError(f"variant switches do not match label: {render['case']}: {render['variant']}")
         raw_path, wav_path = root / render["raw"], root / render["wav"]
@@ -156,7 +165,7 @@ def inspect_renders(root: Path, require_baseline: bool = True) -> tuple[dict, di
             raise ValueError(f"duplicate case and variant: {raw_path}")
         record = dict(render, raw_sha256=sha256(raw_path), wav_sha256=sha256(wav_path),
                       score_sha256=sha256(root / render["score"]))
-        if manifest["schema"] == 2:
+        if manifest["schema"] >= 2:
             validate_allocations(root, render)
             record["allocation_sha256"] = sha256(root / render["allocations"])
         records[render["variant"]] = record

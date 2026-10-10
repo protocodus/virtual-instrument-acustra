@@ -5,7 +5,7 @@
 //        [--rounding nearest|up|down|zero]
 // Comparator checks: --negative-control or --negative-state-control must exit 1.
 // --quick runs 8 authored cases and 8 alternate partitions; the default runs
-// 192 cases and 80 alternate partitions. Inherited FTZ/DAZ is retained unless
+// 96 cases and 40 alternate partitions. Inherited FTZ/DAZ is retained unless
 // explicitly enabled; rounding defaults to nearest and is recorded in JSON.
 // No clock reads or timing claims. Samples and serialized public state are
 // compared directly, not merely by hash. Hashes are additional evidence only.
@@ -29,7 +29,7 @@
 
 struct Configuration
 {
-    int scenario {}, rate {48000}, block {64}, model {}, technique {}, capture {}, shape {2}, wood {};
+    int scenario {}, rate {48000}, block {64}, technique {}, capture {}, shape {2}, wood {};
     bool gather {}, observers {true}, auxiliary {true};
     float room {}, age {0.15f}, touch {0.58f};
 };
@@ -130,7 +130,6 @@ void apply(Performer& performer, EngineParameters& p, const Control& c)
         case Kind::Output: p.outputGain = std::pow(10.0f, 0.05f * c.value); break;
         case Kind::Shape: p.shape = static_cast<BodyShape>(index); break;
         case Kind::Wood: p.bodyMaterial = static_cast<BodyMaterial>(index); break;
-        case Kind::Model: p.guitarModel = static_cast<GuitarModel>(index); break;
         case Kind::Width: p.stereoWidth = 0.01f * c.value; break;
         case Kind::Age: p.stringAge = 0.01f * c.value; break;
         case Kind::Pluck: p.pluckPosition = 0.01f * c.value; break;
@@ -194,7 +193,6 @@ Rendered JOIN(parity_, ACUSTRA_PARITY_ADAPTER)(const Configuration& c)
     const auto& scenario = battery.at(static_cast<std::size_t>(c.scenario));
     auto player = std::make_unique<Performer>();
     EngineParameters p;
-    p.guitarModel = static_cast<GuitarModel>(c.model);
     p.shape = static_cast<BodyShape>(c.shape);
     p.bodyMaterial = static_cast<BodyMaterial>(c.wood);
     p.picking = static_cast<PickingTechnique>(c.technique);
@@ -357,38 +355,36 @@ int main(int argc, char** argv)
         std::vector<Configuration> configurations;
         if (quick)
             for (const int s : {0, 6, 9, 16, 17, 18, 19, 20})
-            {Configuration c; c.scenario=s; c.model=s%2; c.gather=s%3==0; c.block=0; c.technique=s%3; c.capture=(s+1)%3; configurations.push_back(c);}
+            {Configuration c; c.scenario=s; c.gather=s%3==0; c.block=0; c.technique=s%3; c.capture=(s+1)%3; configurations.push_back(c);}
         else
         {
             for (int s = 0; s < static_cast<int>(names.size()); ++s)
-                for (int model = 0; model < 2; ++model)
-                    for (int gather = 0; gather < 2; ++gather)
-                    {
-                        Configuration c; c.scenario=s; c.model=model; c.gather=gather!=0;
-                        c.block=0; c.technique=(s+model+gather)%3; c.capture=(s+2*model+gather)%3;
-                        c.room=gather ? 0.5f : 0; c.observers=(s+model)%2==0; c.auxiliary=(s+gather)%3!=0;
-                        configurations.push_back(c);
-                    }
+                for (int gather = 0; gather < 2; ++gather)
+                {
+                    Configuration c; c.scenario=s; c.gather=gather!=0;
+                    c.block=0; c.technique=(s+gather)%3; c.capture=(s+gather)%3;
+                    c.room=gather ? 0.5f : 0; c.observers=s%2==0; c.auxiliary=(s+gather)%3!=0;
+                    configurations.push_back(c);
+                }
             for (const int rate : {8000,44100,48000,96000,192000,384000})
                 for (const int s : {0,6,8,9,10,17,18,19,20})
-                    for (int model=0; model<2; ++model)
-                    {
-                        Configuration c; c.scenario=s; c.model=model; c.rate=rate;
-                        c.block=rate<48000 ? 31 : rate==48000 ? 32 : rate==96000 ? 33 : 127;
-                        c.gather=(s+model)%2==0; c.technique=(s+model)%3; c.capture=(s+2*model)%3;
-                        c.age=model ? 1.0f : 0.0f; c.touch=(s%3)*0.5f; c.room=s%2==0 ? 1.0f : 0.0f;
-                        configurations.push_back(c);
-                    }
+                {
+                    Configuration c; c.scenario=s; c.rate=rate;
+                    c.block=rate<48000 ? 31 : rate==48000 ? 32 : rate==96000 ? 33 : 127;
+                    c.gather=s%2==0; c.technique=s%3; c.capture=s%3;
+                    c.age=0.0f; c.touch=(s%3)*0.5f; c.room=s%2==0 ? 1.0f : 0.0f;
+                    configurations.push_back(c);
+                }
         }
         for (auto c : configurations)
         {
-            c.shape = (c.scenario + c.model) % 4;
+            c.shape = c.scenario % 4;
             c.wood = (c.scenario + static_cast<int>(c.gather)) % 3;
             const auto a = parity_baseline(c);
             auto b = parity_current(c);
             if (negative && count==0) b.left.at(b.left.size()/2) = std::nextafter(b.left.at(b.left.size()/2), INFINITY);
             if (negativeState && count==0) b.states.at(8) ^= UINT64_C(1);
-            const auto label = std::string(names[static_cast<std::size_t>(c.scenario)]) + " rate=" + std::to_string(c.rate) + " model=" + std::to_string(c.model);
+            const auto label = std::string(names[static_cast<std::size_t>(c.scenario)]) + " rate=" + std::to_string(c.rate);
             valid(a,c.scenario); valid(b,c.scenario); same(a,b,label);
             // Every base matrix's valid MIDI performance also compares fixed
             // one-sample or 511-frame partition against its irregular rendering.
@@ -405,7 +401,7 @@ int main(int argc, char** argv)
             }
             if (count++) report << ",\n";
             report << "    {\"scenario\":\"" << names[static_cast<std::size_t>(c.scenario)] << "\",\"rate\":" << c.rate
-                   << ",\"block\":" << c.block << ",\"model\":" << c.model << ",\"technique\":" << c.technique
+                   << ",\"block\":" << c.block << ",\"technique\":" << c.technique
                    << ",\"capture\":" << c.capture << ",\"shape\":" << c.shape << ",\"wood\":" << c.wood << ",\"gather\":" << c.gather << ",\"room\":" << c.room
                    << ",\"age\":" << c.age << ",\"touch\":" << c.touch << ",\"observers\":" << c.observers
                    << ",\"auxiliary\":" << c.auxiliary << ",\"frames\":" << a.left.size() << ",\"events\":" << a.events

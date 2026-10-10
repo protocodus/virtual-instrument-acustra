@@ -78,15 +78,11 @@ void expect(bool condition, const char* message)
     if (!condition) { ++failures; std::cerr << "FAIL: " << message << '\n'; }
 }
 auto fresh(double rate = 48000.0,
-           acustra::PickingTechnique picking = acustra::PickingTechnique::Pick,
-           acustra::GuitarModel model = acustra::GuitarModel::Original)
+           acustra::PickingTechnique picking = acustra::PickingTechnique::Pick)
 {
     auto e = std::make_unique<acustra::AcustraEngine>();
     acustra::EngineParameters p;
     p.picking = picking;
-    p.guitarModel = model;
-    if (model == acustra::GuitarModel::Bellido1978)
-    { p.shape = acustra::BodyShape::Auditorium; p.bodyMaterial = acustra::BodyMaterial::Mahogany; }
     e->setParameters(p);
     e->prepare(rate, 127);
     e->setStringPerChannelMode(true);
@@ -134,8 +130,8 @@ void testFreshReleaseAndDefaultPaths()
                                    acustra::PickingTechnique::Pick,
                                    acustra::PickingTechnique::Thumb })
         {
-            auto down = fresh(rate, picking, acustra::GuitarModel::Original);
-            auto up = fresh(rate, picking, acustra::GuitarModel::Original);
+            auto down = fresh(rate, picking);
+            auto up = fresh(rate, picking);
             down->beginStrum(0, 0, false); up->beginStrum(0, 0, true);
             down->noteOn(47, 0.7f, 1, 0, true); up->noteOn(47, 0.7f, 1, 0, true);
             const auto a = Access::source(*down), b = Access::source(*up);
@@ -179,8 +175,7 @@ void testScheduledDirectionsAndRetainedSources()
     expect(Access::source(*e).sign == -1.0f && Access::gain(*e) == -0.51f,
            "later gesture changed an earlier scheduled string's release direction");
 
-    auto continuing = fresh(48000.0, acustra::PickingTechnique::Pick,
-                             acustra::GuitarModel::Original);
+    auto continuing = fresh(48000.0, acustra::PickingTechnique::Pick);
     continuing->beginStrum(0, 0, true);
     continuing->noteOn(47, 0.7f, 1, 0, true);
     advance(*continuing, 11);
@@ -209,8 +204,7 @@ void testScheduledDirectionsAndRetainedSources()
     expect(Access::gain(*scheduled) == 0.51f,
            "scheduled opposite stroke did not adopt direction at release");
 
-    auto refret = fresh(48000.0, acustra::PickingTechnique::Pick,
-                        acustra::GuitarModel::Original);
+    auto refret = fresh(48000.0, acustra::PickingTechnique::Pick);
     refret->beginStrum(0, 0, true); refret->noteOn(47, 0.7f, 1, 0, true);
     advance(*refret, 11);
     const auto old = Access::source(*refret);
@@ -254,15 +248,12 @@ void testPerformerAlternationRestAndReset()
     chord(*p); check(-1.0f); advance(*p, 96001);
     chord(*p); check(1.0f);
 }
-std::vector<float> phrase(double rate, int block, acustra::GuitarModel model)
+std::vector<float> phrase(double rate, int block)
 {
     auto p = std::make_unique<acustra::Performer>();
     acustra::EngineParameters parameters;
     parameters.picking = acustra::PickingTechnique::Pick;
-    parameters.guitarModel = model;
     parameters.room = 0.5f;
-    if (model == acustra::GuitarModel::Bellido1978)
-    { parameters.shape = acustra::BodyShape::Auditorium; parameters.bodyMaterial = acustra::BodyMaterial::Mahogany; }
     p->setParameters(parameters); p->prepare(rate, block); p->setGatherChords(false);
     const int interval = static_cast<int>(std::lround(0.09 * rate));
     const int samples = 8 * interval + static_cast<int>(0.08 * rate);
@@ -298,12 +289,11 @@ int main()
     testScheduledDirectionsAndRetainedSources();
     testPerformerAlternationRestAndReset();
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
-        for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
-        {
-            const auto reference = phrase(rate, 17, model);
-            expect(phrase(rate, 127, model) == reference,
-                   "alternating stroke audio changed with host block partition");
-        }
+    {
+        const auto reference = phrase(rate, 17);
+        expect(phrase(rate, 127) == reference,
+               "alternating stroke audio changed with host block partition");
+    }
     if (failures == 0)
         std::cout << "Strum direction: fresh energy, scheduled releases, retained arrivals/tails, wrist reset and block invariance passed\n";
     return failures == 0 ? 0 : 1;

@@ -16,6 +16,8 @@ struct AcustraEngineTestAccess
     { return engine.bridgeUpdatePending_; }
     static float bridgeFade(const AcustraEngine& engine)
     { return engine.bridgeLoadFade_; }
+    static float bodyFade(const AcustraEngine& engine)
+    { return engine.bodyModelFade_; }
     static std::uint64_t generation(const AcustraEngine& engine)
     { return engine.voiceConfigurationGeneration_; }
     static bool voicesObservedBridge(const AcustraEngine& engine)
@@ -113,7 +115,7 @@ void expect(bool pass, const std::string& message)
 {
     if (!pass) { ++failures; std::cerr << "FAIL: " << message << '\n'; }
 }
-void testCancelledModelKeepsBodyTail(double rate)
+void testCancelledConstructionKeepsBodyTail(double rate)
 {
     using Access = acustra::AcustraEngineTestAccess;
     acustra::EngineParameters original;
@@ -126,9 +128,15 @@ void testCancelledModelKeepsBodyTail(double rate)
             Access::body(*engine, n == 0 ? 0.2f : 0.0f);
     }
     auto other = original;
-    other.guitarModel = acustra::GuitarModel::Bellido1978;
+    other.shape = acustra::BodyShape::Jumbo;
+    other.bodyMaterial = acustra::BodyMaterial::Maple;
     changed->setParameters(other);
     changed->setParameters(original); // neither replacement has emitted audio
+    // A Shape or Wood request keeps the modes' states, so the tail alone
+    // cannot show a needless fade: the cancellation must not start one.
+    expect(Access::bodyFade(*changed) == 1.0f,
+           "same-sample construction cancellation left a body fade running at "
+               + std::to_string(rate));
     bool same = true;
     double tailEnergy = 0.0;
     for (int n = 0; n < static_cast<int>(0.1 * rate); ++n)
@@ -139,10 +147,10 @@ void testCancelledModelKeepsBodyTail(double rate)
         tailEnergy += double(expected[0]) * expected[0];
     }
     expect(tailEnergy > 1.0e-10, "body probe had no sounding tail");
-    expect(same, "same-sample model cancellation erased the measured body's tail at "
+    expect(same, "same-sample construction cancellation erased the measured body's tail at "
                     + std::to_string(rate));
 }
-void testCancelledModelKeepsBridgeTail(double rate)
+void testCancelledConstructionKeepsBridgeTail(double rate)
 {
     using Access = acustra::AcustraEngineTestAccess;
     acustra::EngineParameters original;
@@ -155,9 +163,13 @@ void testCancelledModelKeepsBridgeTail(double rate)
             Access::bridge(*engine, n == 0 ? 0.2f : 0.0f);
     }
     auto other = original;
-    other.guitarModel = acustra::GuitarModel::Bellido1978;
+    other.shape = acustra::BodyShape::Jumbo;
+    other.bodyMaterial = acustra::BodyMaterial::Maple;
     changed->setParameters(other);
     changed->setParameters(original);
+    expect(Access::bridgeFade(*changed) == 1.0f && !Access::bridgePending(*changed),
+           "same-sample construction cancellation left a bridge fade running at "
+               + std::to_string(rate));
     bool same = true;
     double tailEnergy = 0.0;
     for (int n = 0; n < static_cast<int>(0.1 * rate); ++n)
@@ -168,7 +180,7 @@ void testCancelledModelKeepsBridgeTail(double rate)
         tailEnergy += double(expected) * expected;
     }
     expect(tailEnergy > 1.0e-15, "bridge probe had no sounding tail");
-    expect(same, "same-sample model cancellation erased the bridge's tail at "
+    expect(same, "same-sample construction cancellation erased the bridge's tail at "
                     + std::to_string(rate));
 }
 void testOnlyFinalConstructionReachesBridge(double rate)
@@ -240,80 +252,74 @@ void testQueuedConstructionKeepsItsTuningObserver(double rate)
             samples -= count;
         }
     };
-    // Cover each independently queued construction field, plus exchanges in
-    // both model directions. The measured matrix comparison catches a hybrid
-    // table even where a selected note happens to be far from its bad poles.
-    for (const auto model : { acustra::GuitarModel::Original,
-                              acustra::GuitarModel::Bellido1978 })
-        for (int change = 0; change < 3; ++change)
+    // Cover each independently queued construction field, plus both at
+    // once. The measured matrix comparison catches a hybrid table even where
+    // a selected note happens to be far from its bad poles.
+    for (int change = 0; change < 3; ++change)
+    {
+        acustra::EngineParameters initial;
+        auto sounding = initial;
+        sounding.shape = acustra::BodyShape::Parlor;
+        auto queued = sounding;
+        if (change == 0)
+            queued.shape = acustra::BodyShape::Jumbo;
+        else if (change == 1)
+            queued.bodyMaterial = acustra::BodyMaterial::Maple;
+        else
         {
-            acustra::EngineParameters initial;
-            initial.guitarModel = model;
-            auto sounding = initial;
-            sounding.shape = acustra::BodyShape::Parlor;
-            auto queued = sounding;
-            if (change == 0)
-                queued.shape = acustra::BodyShape::Jumbo;
-            else if (change == 1)
-                queued.bodyMaterial = acustra::BodyMaterial::Maple;
-            else
-            {
-                queued.guitarModel = model == acustra::GuitarModel::Original
-                    ? acustra::GuitarModel::Bellido1978 : acustra::GuitarModel::Original;
-                queued.shape = acustra::BodyShape::Jumbo;
-                queued.bodyMaterial = acustra::BodyMaterial::Mahogany;
-            }
-            auto engine = std::make_unique<Engine>();
-            engine->setParameters(initial);
-            engine->prepare(rate, 64);
-            engine->noteOn(55, 0.8f);
-            process(*engine, int(0.1 * rate));
-            const auto check = [&] (const char* phase)
-            {
-                expect(Access::bridgeObservationError(*engine) <= 1.0,
-                    std::string("tuning observer differs from configured bridge ") + phase
-                    + " at " + std::to_string(rate) + ", model "
-                    + std::to_string(int(model)) + ", change " + std::to_string(change));
-            };
-            check("before automation");
-            engine->setParameters(sounding);
-            process(*engine, int(0.005 * rate));
-            check("during first fade");
-            engine->setParameters(queued);
-            expect(Access::bridgePending(*engine), "construction probe did not queue its request");
-            check("with queued request");
-            process(*engine, 65); // include at least one voice control update
-            check("after queued voice update");
-            engine->setParameters(sounding);
-            expect(!Access::bridgePending(*engine), "returning to current target did not cancel queue");
-            check("after cancellation");
-            engine->setParameters(queued);
-            const auto generation = Access::generation(*engine);
-            int waited = 0;
-            while (Access::bridgePending(*engine) && waited++ < int(0.021 * rate))
-                process(*engine, 1);
-            expect(!Access::bridgePending(*engine) && Access::bridgeFade(*engine) == 0.0f,
-                   "queued construction did not start at the preceding bridge fade boundary");
-            expect(Access::generation(*engine) > generation,
-                   "applying queued bridge did not invalidate cached string tuning");
-            check("at queued apply boundary");
-            process(*engine, 65);
-            expect(Access::voicesObservedBridge(*engine),
-                   "strings retained the preceding bridge's cached tuning after apply");
-            check("after apply voice update");
-            process(*engine, int(0.05 * rate));
-            check("after settling");
-            engine->reset();
-            check("after reset");
+            queued.shape = acustra::BodyShape::Jumbo;
+            queued.bodyMaterial = acustra::BodyMaterial::Mahogany;
         }
+        auto engine = std::make_unique<Engine>();
+        engine->setParameters(initial);
+        engine->prepare(rate, 64);
+        engine->noteOn(55, 0.8f);
+        process(*engine, int(0.1 * rate));
+        const auto check = [&] (const char* phase)
+        {
+            expect(Access::bridgeObservationError(*engine) <= 1.0,
+                std::string("tuning observer differs from configured bridge ") + phase
+                + " at " + std::to_string(rate) + ", change " + std::to_string(change));
+        };
+        check("before automation");
+        engine->setParameters(sounding);
+        process(*engine, int(0.005 * rate));
+        check("during first fade");
+        engine->setParameters(queued);
+        expect(Access::bridgePending(*engine), "construction probe did not queue its request");
+        check("with queued request");
+        process(*engine, 65); // include at least one voice control update
+        check("after queued voice update");
+        engine->setParameters(sounding);
+        expect(!Access::bridgePending(*engine), "returning to current target did not cancel queue");
+        check("after cancellation");
+        engine->setParameters(queued);
+        const auto generation = Access::generation(*engine);
+        int waited = 0;
+        while (Access::bridgePending(*engine) && waited++ < int(0.021 * rate))
+            process(*engine, 1);
+        expect(!Access::bridgePending(*engine) && Access::bridgeFade(*engine) == 0.0f,
+               "queued construction did not start at the preceding bridge fade boundary");
+        expect(Access::generation(*engine) > generation,
+               "applying queued bridge did not invalidate cached string tuning");
+        check("at queued apply boundary");
+        process(*engine, 65);
+        expect(Access::voicesObservedBridge(*engine),
+               "strings retained the preceding bridge's cached tuning after apply");
+        check("after apply voice update");
+        process(*engine, int(0.05 * rate));
+        check("after settling");
+        engine->reset();
+        check("after reset");
+    }
 }
 }
 int main()
 {
     for (double rate : { 44100.0, 48000.0, 96000.0 })
     {
-        testCancelledModelKeepsBodyTail(rate);
-        testCancelledModelKeepsBridgeTail(rate);
+        testCancelledConstructionKeepsBodyTail(rate);
+        testCancelledConstructionKeepsBridgeTail(rate);
         testOnlyFinalConstructionReachesBridge(rate);
         testCancelledPendingConstructionLeavesNoLaterDip(rate);
         testQueuedConstructionKeepsItsTuningObserver(rate);

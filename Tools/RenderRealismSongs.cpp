@@ -134,9 +134,7 @@ std::vector<Song> songs()
     event(resonance,1.2,0xf0,0,1); // Standard -> Drop D while the instrument rings.
     event(resonance,2.0,0xf0,0,0);
     note(resonance,3.5,4.0,64,91);
-    // A UI/controller may supersede a model before any sample is rendered.
-    event(resonance,4.1,0xf0,1,1); // Bellido requested.
-    event(resonance,4.1,0xf0,1,0); // Original wins at that same sample.
+    // A UI/controller may supersede a Shape before any sample is rendered.
     event(resonance,5.2,0xf0,2,0); // Parlor requested.
     event(resonance,5.2,0xf0,2,3); // Jumbo is the final choice.
     event(resonance,6.1,0xf0,2,2); // Return to Dreadnought.
@@ -190,7 +188,6 @@ void render(Song song, const std::filesystem::path& output, float room)
             if (e.kind==0xf0)
             {
                 if (e.a==0) parameters.tuning=static_cast<acustra::Tuning>(e.b);
-                else if (e.a==1) parameters.guitarModel=static_cast<acustra::GuitarModel>(e.b);
                 else if (e.a==2) parameters.shape=static_cast<acustra::BodyShape>(e.b);
                 player->setParameters(parameters);
                 continue;

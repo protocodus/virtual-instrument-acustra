@@ -115,7 +115,7 @@ def main():
                         raise RuntimeError(f"incomplete trial count: {name}")
             if not equal:
                 raise RuntimeError(f"CPU optimization changed output: {name}, "
-                    f"{row['rate']}/{row['frames']}/{row['guitar_model']}/{row['scenario']}")
+                    f"{row['rate']}/{row['frames']}/{row['room']}/{row['scenario']}")
             if name.endswith("-transitions"):
                 proof = row["intrinsic_ramp_proof"]
                 for version in ("baseline", "current"):
@@ -128,7 +128,8 @@ def main():
             "sha256": digest(output), "equal_output_hashes": True})
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
         print(f"Finished {name}: {len(result['results'])} exact-output cases", flush=True)
-    if cases != 1030:
+    # One guitar since the second model was removed on 2026-10-10 (1030 before).
+    if cases != 515:
         raise RuntimeError(f"unexpected matrix size: {cases}")
     if digest(binary) != manifest["binary_sha256"]:
         raise RuntimeError("benchmark binary changed during execution")

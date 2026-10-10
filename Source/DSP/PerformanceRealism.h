@@ -13,7 +13,6 @@ struct PerformanceRealism
     bool contactRelease { true };
     bool coherentHand { true };
     bool gestureDamping { true };
-    bool playerBodyLoading { true };
     // The quieter contacts expose intrinsic-filter retuning discontinuities.
     // Keep their continuity repair independently ablatable as well.
     bool retuneContinuity { true };

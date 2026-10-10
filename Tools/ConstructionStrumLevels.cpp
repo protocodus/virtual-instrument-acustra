@@ -22,7 +22,6 @@ constexpr int frames = 16800;
 constexpr std::array<CaptureType, 3> captures {
     CaptureType::StereoMic, CaptureType::MonoMic, CaptureType::Piezo };
 constexpr std::array<const char*, 3> captureNames { "stereo_mic", "mono_mic", "piezo" };
-constexpr std::array<const char*, 2> modelNames { "original", "bellido1978" };
 constexpr std::array<const char*, 4> shapeNames { "parlor", "auditorium", "dreadnought", "jumbo" };
 constexpr std::array<const char*, 3> woodNames { "spruce", "mahogany", "maple" };
 constexpr std::array<const char*, 5> tuningNames { "standard", "drop_d", "dadgad", "open_g", "half_step_down" };
@@ -85,9 +84,9 @@ template<std::size_t N> void printArray(const std::array<float,N>& values) {
 
 int main(int argc,char**) {
     if(argc!=1) { std::cerr<<"Usage: AcustraConstructionStrumLevels (JSON on stdout)\n"; return 2; }
-    static_assert(acustra::detail::constructionMicReference.size()==72);
-    static_assert(acustra::detail::constructionMonoTrim.size()==72);
-    static_assert(acustra::detail::constructionPiezoTrim.size()==72);
+    static_assert(acustra::detail::constructionMicReference.size()==36);
+    static_assert(acustra::detail::constructionMonoTrim.size()==36);
+    static_assert(acustra::detail::constructionPiezoTrim.size()==36);
     std::array<std::array<double,5>,3> reference {};
     for(std::size_t capture=0;capture<captures.size();++capture)
         for(std::size_t tuning=0;tuning<tuningNames.size();++tuning) {
@@ -98,25 +97,23 @@ int main(int argc,char**) {
             reference[capture][tuning]=level.weightedDb;
         }
     std::cout<<std::setprecision(std::numeric_limits<double>::max_digits10)<<std::boolalpha;
-    std::cout<<"{\"schema\":\"AcustraConstructionStrumLevelsV1\",\"rate\":48000,\"frames\":16800,\"picking\":\"finger\",\"built_gains\":{\"mic\":";
+    std::cout<<"{\"schema\":\"AcustraConstructionStrumLevelsV2\",\"rate\":48000,\"frames\":16800,\"picking\":\"finger\",\"built_gains\":{\"mic\":";
     printArray(acustra::detail::constructionMicReference);
     std::cout<<",\"mono\":"; printArray(acustra::detail::constructionMonoTrim);
     std::cout<<",\"piezo\":"; printArray(acustra::detail::constructionPiezoTrim);
     std::cout<<"},\"rows\":["; bool first=true; bool finite=true;
-    for(std::size_t model=0;model<modelNames.size();++model)
-        for(std::size_t shape=0;shape<shapeNames.size();++shape)
-            for(std::size_t wood=0;wood<woodNames.size();++wood)
-                for(std::size_t capture=0;capture<captures.size();++capture)
-                    for(std::size_t tuning=0;tuning<tuningNames.size();++tuning) {
-                        EngineParameters parameters;
-                        parameters.guitarModel=static_cast<acustra::GuitarModel>(model);
-                        parameters.shape=static_cast<acustra::BodyShape>(shape);
-                        parameters.bodyMaterial=static_cast<acustra::BodyMaterial>(wood);
-                        parameters.capture=captures[capture];
-                        parameters.tuning=static_cast<acustra::Tuning>(tuning);
-                        const auto level=play(parameters); finite=finite&&level.finite;
-                        if(!first)std::cout<<','; first=false;
-                        std::cout<<"{\"construction\":[\""<<modelNames[model]<<"\",\""<<shapeNames[shape]<<"\",\""<<woodNames[wood]<<"\"],\"capture\":\""<<captureNames[capture]<<"\",\"tuning\":\""<<tuningNames[tuning]<<"\",\"weighted_db\":"<<level.weightedDb<<",\"reference_db\":"<<reference[capture][tuning]<<",\"relative_db\":"<<level.weightedDb-reference[capture][tuning]<<",\"peak\":"<<level.peak<<",\"piezo_peak\":"<<level.piezoPeak<<",\"finite\":"<<level.finite<<'}';
-                    }
+    for(std::size_t shape=0;shape<shapeNames.size();++shape)
+        for(std::size_t wood=0;wood<woodNames.size();++wood)
+            for(std::size_t capture=0;capture<captures.size();++capture)
+                for(std::size_t tuning=0;tuning<tuningNames.size();++tuning) {
+                    EngineParameters parameters;
+                    parameters.shape=static_cast<acustra::BodyShape>(shape);
+                    parameters.bodyMaterial=static_cast<acustra::BodyMaterial>(wood);
+                    parameters.capture=captures[capture];
+                    parameters.tuning=static_cast<acustra::Tuning>(tuning);
+                    const auto level=play(parameters); finite=finite&&level.finite;
+                    if(!first)std::cout<<','; first=false;
+                    std::cout<<"{\"construction\":[\""<<shapeNames[shape]<<"\",\""<<woodNames[wood]<<"\"],\"capture\":\""<<captureNames[capture]<<"\",\"tuning\":\""<<tuningNames[tuning]<<"\",\"weighted_db\":"<<level.weightedDb<<",\"reference_db\":"<<reference[capture][tuning]<<",\"relative_db\":"<<level.weightedDb-reference[capture][tuning]<<",\"peak\":"<<level.peak<<",\"piezo_peak\":"<<level.piezoPeak<<",\"finite\":"<<level.finite<<'}';
+                }
     std::cout<<"]}\n"; return finite?0:1;
 }

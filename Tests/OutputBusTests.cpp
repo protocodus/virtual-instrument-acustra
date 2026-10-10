@@ -107,9 +107,6 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
         case Kind::Wood:
             parameters.bodyMaterial = static_cast<acustra::BodyMaterial>(index);
             break;
-        case Kind::Model:
-            parameters.guitarModel = static_cast<acustra::GuitarModel>(index);
-            break;
         case Kind::Width: parameters.stereoWidth = 0.01f * control.value; break;
         case Kind::Age: parameters.stringAge = 0.01f * control.value; break;
         case Kind::Pluck: parameters.pluckPosition = 0.01f * control.value; break;
@@ -339,13 +336,11 @@ void testPiezoIsARequest()
 // silence never heard end.
 void testRungOutInstrumentReachesExactSilence()
 {
-    struct Case { const char* name; acustra::GuitarModel model; double rate; };
-    for (const auto& c : { Case { "the Original at 96 kHz", acustra::GuitarModel::Original, 96000.0 },
-                           Case { "the Original at 44.1 kHz", acustra::GuitarModel::Original, 44100.0 },
-                           Case { "the Bellido at 96 kHz", acustra::GuitarModel::Bellido1978, 96000.0 } })
+    struct Case { const char* name; double rate; };
+    for (const auto& c : { Case { "the Original at 96 kHz", 96000.0 },
+                           Case { "the Original at 44.1 kHz", 44100.0 } })
     {
         EngineParameters parameters;
-        parameters.guitarModel = c.model;
         auto engine = std::make_unique<AcustraEngine>();
         engine->setParameters(parameters);
         engine->prepare(c.rate, 512);
@@ -554,14 +549,13 @@ void forwardFft(std::vector<std::complex<double>>& data)
     }
 }
 
-BlendBands blendBands(double rate, acustra::GuitarModel model, float mix)
+BlendBands blendBands(double rate, float mix)
 {
     std::vector<float> mic, piezo, blend;
     for (const bool mixed : { false, true })
     {
         auto engine = std::make_unique<AcustraEngine>();
         EngineParameters parameters;
-        parameters.guitarModel = model;
         parameters.outputGain = 0.3f;
         parameters.piezoMix = mixed ? mix : 0.0f;
         auto calibration = acustra::fittedPhysicalCalibration;
@@ -640,46 +634,45 @@ void testPiezoMixBlendsOnOneTimeBase()
 {
     expect(AcustraEngine::outputLatencySamples() == 7,
            "the engine's output latency is not the piezo chain's seven samples");
-    for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
-        for (const float mix : { 0.5f, 1.0f })
+    for (const float mix : { 0.5f, 1.0f })
+    {
+        const auto low = blendBands(48000.0, mix);
+        const auto high = blendBands(96000.0, mix);
+        double deviation = 0.0;
+        for (std::size_t k = 0; k < low.centre.size(); ++k)
         {
-            const auto low = blendBands(48000.0, model, mix);
-            const auto high = blendBands(96000.0, model, mix);
-            double deviation = 0.0;
-            for (std::size_t k = 0; k < low.centre.size(); ++k)
+            const auto excess = [mix] (const BlendBands& bands, std::size_t band)
             {
-                const auto excess = [mix] (const BlendBands& bands, std::size_t band)
-                {
-                    return 10.0 * std::log10(bands.blend[band]
-                        / (bands.mic[band] + double(mix) * mix * bands.piezo[band]));
-                };
-                deviation += std::abs(excess(low, k) - excess(high, k)) / double(low.centre.size());
-            }
-            // The lag between the rates that best lines up their cross-spectra.
-            double lag = 0.0, best = -1e300;
-            for (double tau = -200e-6; tau <= 200e-6; tau += 1e-6)
-            {
-                double score = 0.0;
-                for (std::size_t k = 0; k < low.centre.size(); ++k)
-                    if (low.centre[k] > 300.0 && low.centre[k] < 10000.0)
-                    {
-                        const auto ratio = low.cross[k] * std::conj(high.cross[k]);
-                        score += std::real(ratio / std::abs(ratio)
-                            * std::polar(1.0, -2.0 * 3.14159265358979323846 * low.centre[k] * tau));
-                    }
-                if (score > best)
-                {
-                    best = score;
-                    lag = tau;
-                }
-            }
-            std::cout << "Piezo Mix " << mix << ", model " << static_cast<int>(model)
-                      << ": 48 vs 96 kHz blend over power sum differs " << deviation
-                      << " dB on average; mic/piezo timing differs " << lag * 1e6 << " us\n";
-            expect(deviation < 0.5, "Piezo Mix's blend moves with the sample rate (a comb)");
-            expect(std::abs(lag) < 20e-6,
-                   "the microphones and the piezo are summed on different time bases");
+                return 10.0 * std::log10(bands.blend[band]
+                    / (bands.mic[band] + double(mix) * mix * bands.piezo[band]));
+            };
+            deviation += std::abs(excess(low, k) - excess(high, k)) / double(low.centre.size());
         }
+        // The lag between the rates that best lines up their cross-spectra.
+        double lag = 0.0, best = -1e300;
+        for (double tau = -200e-6; tau <= 200e-6; tau += 1e-6)
+        {
+            double score = 0.0;
+            for (std::size_t k = 0; k < low.centre.size(); ++k)
+                if (low.centre[k] > 300.0 && low.centre[k] < 10000.0)
+                {
+                    const auto ratio = low.cross[k] * std::conj(high.cross[k]);
+                    score += std::real(ratio / std::abs(ratio)
+                        * std::polar(1.0, -2.0 * 3.14159265358979323846 * low.centre[k] * tau));
+                }
+            if (score > best)
+            {
+                best = score;
+                lag = tau;
+            }
+        }
+        std::cout << "Piezo Mix " << mix
+                  << ": 48 vs 96 kHz blend over power sum differs " << deviation
+                  << " dB on average; mic/piezo timing differs " << lag * 1e6 << " us\n";
+        expect(deviation < 0.5, "Piezo Mix's blend moves with the sample rate (a comb)");
+        expect(std::abs(lag) < 20e-6,
+               "the microphones and the piezo are summed on different time bases");
+    }
 }
 
 // A Capture or Piezo Mix glide reaches its target exactly at every rate. At
