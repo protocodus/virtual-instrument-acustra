@@ -345,9 +345,8 @@ AcustraAudioProcessor::createParameterLayout()
     result.push_back (makePercentParameter (ids::releaseNoise, "Release Noise",
                                             70.0f, 10));
     // The room around the microphones (acustra::EngineParameters::room): 0%
-    // the dry, close-miked instrument, 100% the most of a small studio's
-    // sound at the pair (its level, not the microphones' distance). On for a
-    // new instance at 50%, where the room sits 10-13 dB
+    // the dry, close-miked instrument, 100% a microphone well out in a small
+    // studio. On for a new instance at 50%, where the room sits 10-12.5 dB
     // under the guitar, the amount the open recordings measured best against
     // (Docs/decisions.md, 2026-10-01); a session saved before it existed
     // loads it at zero (setStateInformation) and so sounds as it did. The

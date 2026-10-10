@@ -11,7 +11,6 @@
 #include <array>
 #include <cmath>
 #include <complex>
-#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -78,56 +77,19 @@ struct AcustraEngineTestAccess
         return state;
     }
     // The room's own impulse response at the engine's rate, left and right
-    // interleaved, from a cleared room that is cleared again afterwards. The
-    // impulse enters both microphones' inputs, scaled by `left` and `right`
-    // (1, 1: coherent; 1, -1: in antiphase, which a mid would cancel).
-    // `part` 1 keeps only the reflections, 2 only the late field.
-    static std::vector<float> roomImpulse(AcustraEngine& engine, int samples,
-                                          float left = 1.0f, float right = 1.0f,
-                                          int part = 0)
+    // interleaved, from a cleared room that is cleared again afterwards.
+    static std::vector<float> roomImpulse(AcustraEngine& engine, int samples)
     {
         auto& room = engine.room_;
         room.reset();
-        const auto gains = room.tapGains;
-        const float late = room.lateInput;
-        if (part == 1)
-            room.lateInput = 0.0f;
-        else if (part == 2)
-            room.tapGains.fill(0.0f);
         std::vector<float> out(2 * static_cast<std::size_t>(samples));
         for (int index = 0; index < samples; ++index)
         {
-            float outLeft = 0.0f, outRight = 0.0f;
-            room.process(index == 0 ? left : 0.0f, index == 0 ? right : 0.0f,
-                         outLeft, outRight);
-            out[2 * static_cast<std::size_t>(index)] = outLeft;
-            out[2 * static_cast<std::size_t>(index) + 1] = outRight;
+            float left = 0.0f, right = 0.0f;
+            room.process(index == 0 ? 1.0f : 0.0f, left, right);
+            out[2 * static_cast<std::size_t>(index)] = left;
+            out[2 * static_cast<std::size_t>(index) + 1] = right;
         }
-        room.tapGains = gains;
-        room.lateInput = late;
-        room.reset();
-        return out;
-    }
-    // The room's response to a deterministic noise on both inputs alike.
-    static std::vector<float> roomNoise(AcustraEngine& engine, int samples, int part)
-    {
-        auto& room = engine.room_;
-        room.reset();
-        const auto gains = room.tapGains;
-        if (part == 2)
-            room.tapGains.fill(0.0f);
-        std::vector<float> out(2 * static_cast<std::size_t>(samples));
-        std::uint32_t state = 22222u;
-        for (int index = 0; index < samples; ++index)
-        {
-            state = state * 1664525u + 1013904223u;
-            const float noise = static_cast<float>(state >> 8) / 8388608.0f - 1.0f;
-            float outLeft = 0.0f, outRight = 0.0f;
-            room.process(noise, noise, outLeft, outRight);
-            out[2 * static_cast<std::size_t>(index)] = outLeft;
-            out[2 * static_cast<std::size_t>(index) + 1] = outRight;
-        }
-        room.tapGains = gains;
         room.reset();
         return out;
     }
@@ -1347,16 +1309,11 @@ void testRoomBlocksWidthAndReturn()
 }
 
 // 13b. The room rings out to exact silence: a released chord reaches exact
-// zero on Main at most 3 s after the same chord without a room does, and all
-// the room adds after that is inaudible. The room is fed the bridge
-// microphones' residue, which keeps decaying at about 10 dB/s near -200 dBFS
-// after Main's dry path has flushed, so the gap is housekeeping set by that
-// residue and by the room's own flush, not a tail anyone hears: 3 s is what
-// its slowest designed decay (0.45 s) takes to fall the 400 dB from full scale
-// to its 1e-20 flush.
+// zero on Main at most 2.5 s after the same chord without a room does (the
+// strings' own residue takes longer than the room's tail).
 void testRoomRingsOutToSilence()
 {
-    const auto render = [] (float room)
+    const auto lastSound = [] (float room)
     {
         acustra::EngineParameters parameters;
         parameters.room = room;
@@ -1364,8 +1321,7 @@ void testRoomRingsOutToSilence()
         engine->setParameters(parameters);
         engine->prepare(48000, 256);
         std::array<float, 256> left {}, right {};
-        std::vector<float> peaks;
-        peaks.reserve(48000 * 30);
+        long last = -1;
         for (long block = 0; block < 48000L * 30 / 256; ++block)
         {
             if (block == 0)
@@ -1376,375 +1332,18 @@ void testRoomRingsOutToSilence()
                     engine->noteOff(note);
             engine->process(left.data(), right.data(), 256);
             for (std::size_t index = 0; index < left.size(); ++index)
-                peaks.push_back(std::max(std::abs(left[index]), std::abs(right[index])));
+                if (left[index] != 0.0f || right[index] != 0.0f)
+                    last = block * 256 + static_cast<long>(index);
         }
-        return peaks;
+        return static_cast<double>(last + 1) / 48000.0;
     };
-    const auto lastSound = [] (const std::vector<float>& peaks)
-    {
-        long last = -1;
-        for (std::size_t index = 0; index < peaks.size(); ++index)
-            if (peaks[index] != 0.0f)
-                last = static_cast<long>(index);
-        return last + 1;
-    };
-    const auto dryPeaks = render(0.0f);
-    const auto roomyPeaks = render(0.6f);
-    const long drySamples = lastSound(dryPeaks);
-    const double dry = static_cast<double>(drySamples) / 48000.0;
-    const double roomy = static_cast<double>(lastSound(roomyPeaks)) / 48000.0;
-    const float after = *std::max_element(
-        roomyPeaks.begin() + std::min<std::ptrdiff_t>(drySamples, static_cast<std::ptrdiff_t>(roomyPeaks.size())),
-        roomyPeaks.end());
-    const double afterDb = after > 0.0f ? 20.0 * std::log10(after) : -999.0;
+    const double dry = lastSound(0.0f);
+    const double roomy = lastSound(0.6f);
     std::cout << "Exact silence after a released chord: " << dry << " s dry, " << roomy
-              << " s with the room at 0.6, peaking at " << afterDb << " dBFS after the dry\n";
+              << " s with the room at 0.6\n";
     expect(dry < 29.0 && roomy < 29.0, "the instrument did not reach exact silence");
-    expect(roomy >= dry && roomy - dry < 3.0,
+    expect(roomy >= dry && roomy - dry < 2.5,
            "the room's tail outlasted the instrument by " + std::to_string(roomy - dry) + " s");
-    expect(afterDb < -160.0,
-           "the room was audible after the dry chord's silence: " + std::to_string(afterDb) + " dBFS");
-}
-
-// The room's measures (Docs/room-2026-10-10.md). An octave band-pass: two
-// RBJ band-pass biquads (0 dB at the centre, an octave wide), forward, in
-// double, as an octave filter of ISO 3382 is causal.
-std::vector<double> octaveBand(const std::vector<double>& input, double rate, double centre)
-{
-    const double w = 2.0 * pi * centre / rate;
-    const double q = 1.0 / (2.0 * std::sinh(0.5 * std::log(2.0) * w / std::sin(w)));
-    const double alpha = std::sin(w) / (2.0 * q);
-    const double a0 = 1.0 + alpha;
-    const double b0 = alpha / a0, b2 = -alpha / a0;
-    const double a1 = -2.0 * std::cos(w) / a0, a2 = (1.0 - alpha) / a0;
-    std::vector<double> output(input);
-    for (int pass = 0; pass < 2; ++pass)
-    {
-        double x1 = 0.0, x2 = 0.0, y1 = 0.0, y2 = 0.0;
-        for (double& value : output)
-        {
-            const double y = b0 * value + b2 * x2 - a1 * y1 - a2 * y2;
-            x2 = x1;
-            x1 = value;
-            y2 = y1;
-            y1 = y;
-            value = y;
-        }
-    }
-    return output;
-}
-
-// One channel (0 left, 1 right) of an interleaved pair, as double.
-std::vector<double> channel(const std::vector<float>& pair, std::size_t which)
-{
-    std::vector<double> result(pair.size() / 2);
-    for (std::size_t index = 0; index < result.size(); ++index)
-        result[index] = pair[2 * index + which];
-    return result;
-}
-
-// T30 of the two channels' summed energy: Schroeder's backward integral and
-// a least-squares line through it from -5 to -35 dB.
-double reverberationTime(const std::vector<double>& left, const std::vector<double>& right,
-                         double rate)
-{
-    std::vector<double> remaining(left.size());
-    double sum = 0.0;
-    for (std::size_t index = left.size(); index-- > 0;)
-    {
-        sum += left[index] * left[index] + right[index] * right[index];
-        remaining[index] = sum;
-    }
-    double count = 0.0, sumTime = 0.0, sumLevel = 0.0, sumTime2 = 0.0, sumProduct = 0.0;
-    for (std::size_t index = 0; index < remaining.size(); ++index)
-    {
-        const double level = 10.0 * std::log10(remaining[index] / remaining[0] + 1.0e-300);
-        if (level > -5.0)
-            continue;
-        if (level < -35.0)
-            break;
-        const double time = static_cast<double>(index) / rate;
-        count += 1.0;
-        sumTime += time;
-        sumLevel += level;
-        sumTime2 += time * time;
-        sumProduct += time * level;
-    }
-    const double slope = (count * sumProduct - sumTime * sumLevel)
-        / (count * sumTime2 - sumTime * sumTime);
-    return -60.0 / slope;
-}
-
-// 13c. The late field builds up under the strongest reflections and decays
-// from there: no 2 ms window from 9 to 60 ms after the direct sound falls
-// more than 6 dB under the room's own exponential decay (fitted over 30-90
-// ms), and the late field alone sounds by 10 ms, a 58 m^3 room's mixing
-// time. Until 2026-10-10 it was read only at its lines' ends, 8 ms after the
-// input, so it began at 25 ms and left 18-24 ms empty after the reflections
-// ended at 17 ms (the evaluation's finding 13).
-void testRoomLateFieldHasNoGap()
-{
-    for (const int rate : { 44100, 48000, 96000, 192000 })
-    {
-        auto engine = std::make_unique<acustra::AcustraEngine>();
-        engine->prepare(rate, 64);
-        const auto impulse = Access::roomImpulse(*engine, rate / 8);
-        const auto window = static_cast<std::size_t>(rate / 500);
-        std::vector<double> levels;
-        for (std::size_t start = 0; start + window <= impulse.size() / 2; start += window)
-        {
-            double sum = 0.0;
-            for (std::size_t index = start; index < start + window; ++index)
-                sum += static_cast<double>(impulse[2 * index]) * impulse[2 * index]
-                    + static_cast<double>(impulse[2 * index + 1]) * impulse[2 * index + 1];
-            levels.push_back(10.0 * std::log10(sum + 1.0e-300));
-        }
-        // Window w spans 2w to 2w + 2 ms.
-        double count = 0.0, sumTime = 0.0, sumLevel = 0.0, sumTime2 = 0.0, sumProduct = 0.0;
-        for (std::size_t w = 15; w < 45; ++w)
-        {
-            const double time = 2.0 * static_cast<double>(w) + 1.0;
-            count += 1.0;
-            sumTime += time;
-            sumLevel += levels[w];
-            sumTime2 += time * time;
-            sumProduct += time * levels[w];
-        }
-        const double slope = (count * sumProduct - sumTime * sumLevel)
-            / (count * sumTime2 - sumTime * sumTime);
-        const double intercept = (sumLevel - slope * sumTime) / count;
-        double deepest = 0.0;
-        for (std::size_t w = 5; w < 30; ++w)
-            deepest = std::min(deepest, levels[w] - (slope * (2.0 * static_cast<double>(w) + 1.0)
-                                                     + intercept));
-        const auto late = Access::roomImpulse(*engine, rate / 20, 1.0f, 1.0f, 2);
-        std::size_t first = late.size();
-        for (std::size_t index = 0; index < late.size(); ++index)
-            if (late[index] != 0.0f)
-            {
-                first = index / 2;
-                break;
-            }
-        const double onset = 1.0e3 * static_cast<double>(first) / rate;
-        std::cout << "Room at " << rate << " Hz: late field from " << onset
-                  << " ms, deepest 2 ms window " << deepest
-                  << " dB under its decay from 9 to 60 ms\n";
-        expect(onset <= 10.0, "the room's late field began at " + std::to_string(onset)
-                                  + " ms at " + std::to_string(rate));
-        expect(deepest > -6.0, "the room's response fell " + std::to_string(-deepest)
-                                   + " dB under its own decay at " + std::to_string(rate));
-    }
-}
-
-// 13d. The room hears both microphones, not their mid (2026-10-10): an
-// impulse at the two in antiphase, which their mid cancels exactly, still
-// fills the room within 3 dB of a coherent one, and its late field as much
-// (each microphone enters on an orthogonal vector), and one microphone alone
-// gives the late field half the energy. In the engine, the near-field pair's
-// antiphase partial (B3's fifth, 1.23 kHz, 23 dB down in the dry mid) keeps
-// a level in the room near its neighbours', where the mid's room held it
-// 22-25 dB under them.
-void testRoomHearsBothMicrophones()
-{
-    const auto energyOf = [] (const std::vector<float>& pair)
-    {
-        double sum = 0.0;
-        for (float value : pair)
-            sum += static_cast<double>(value) * value;
-        return sum;
-    };
-    {
-        auto engine = std::make_unique<acustra::AcustraEngine>();
-        engine->prepare(48000, 64);
-        const int samples = 48000;
-        const double coherent = energyOf(Access::roomImpulse(*engine, samples));
-        const double antiphase = energyOf(Access::roomImpulse(*engine, samples, 1.0f, -1.0f));
-        const double lateCoherent = energyOf(Access::roomImpulse(*engine, samples, 1.0f, 1.0f, 2));
-        const double lateAntiphase = energyOf(Access::roomImpulse(*engine, samples, 1.0f, -1.0f, 2));
-        const double lateOne = energyOf(Access::roomImpulse(*engine, samples, 1.0f, 0.0f, 2));
-        const double whole = 10.0 * std::log10(antiphase / coherent);
-        const double field = 10.0 * std::log10(lateAntiphase / lateCoherent);
-        const double one = 10.0 * std::log10(lateOne / lateCoherent);
-        std::cout << "Room against a coherent impulse: antiphase " << whole
-                  << " dB (late field " << field << " dB), one microphone's late field "
-                  << one << " dB\n";
-        expect(whole > -3.0, "the room cancelled an antiphase pair: " + std::to_string(whole) + " dB");
-        expect(std::abs(field) < 1.5, "the late field heard an antiphase pair at "
-                                          + std::to_string(field) + " dB");
-        expect(std::abs(one + 3.0103) < 0.75, "one microphone gave the late field "
-                                                  + std::to_string(one) + " dB");
-    }
-    const auto render = [] (float room)
-    {
-        acustra::EngineParameters parameters;
-        parameters.room = room;
-        auto engine = std::make_unique<acustra::AcustraEngine>();
-        engine->setParameters(parameters);
-        engine->prepare(48000, 64);
-        engine->noteOn(59, 0.8f);
-        Audio audio { std::vector<float>(3 * 48000), std::vector<float>(3 * 48000) };
-        for (int i = 0; i < 3 * 48000; i += 64)
-            engine->process(audio.left.data() + i, audio.right.data() + i, 64);
-        return audio;
-    };
-    const auto dry = render(0.0f);
-    const auto roomy = render(0.5f);
-    // Partials 2-8 of B3 over 0.15-2.9 s, Hann-windowed: the largest bin
-    // within 1.5% of each harmonic.
-    const auto partials = [] (const std::vector<double>& signal)
-    {
-        const auto from = static_cast<std::size_t>(0.15 * 48000);
-        const auto to = static_cast<std::size_t>(2.9 * 48000);
-        std::vector<std::complex<double>> data(262144);
-        for (std::size_t index = from; index < to; ++index)
-        {
-            const double hann = 0.5 - 0.5 * std::cos(2.0 * pi * static_cast<double>(index - from)
-                                                     / static_cast<double>(to - from));
-            data[index - from] = signal[index] * hann;
-        }
-        fft(data, -1);
-        std::vector<double> levels;
-        for (int harmonic = 2; harmonic <= 8; ++harmonic)
-        {
-            const double frequency = 246.94 * harmonic;
-            double peak = 0.0;
-            for (auto bin = static_cast<std::size_t>(frequency * 0.985 * 262144 / 48000);
-                 bin <= static_cast<std::size_t>(frequency * 1.015 * 262144 / 48000); ++bin)
-                peak = std::max(peak, std::abs(data[bin]));
-            levels.push_back(decibels(peak + 1.0e-30));
-        }
-        return levels;
-    };
-    for (int side = 0; side < 2; ++side)
-    {
-        const auto& d = side == 0 ? dry.left : dry.right;
-        const auto& w = side == 0 ? roomy.left : roomy.right;
-        std::vector<double> drySignal(d.begin(), d.end()), wetSignal(w.size());
-        for (std::size_t index = 0; index < w.size(); ++index)
-            wetSignal[index] = static_cast<double>(w[index]) - d[index];
-        const auto dryLevels = partials(drySignal);
-        const auto wetLevels = partials(wetSignal);
-        std::vector<double> others;
-        double fifth = 0.0;
-        for (std::size_t index = 0; index < dryLevels.size(); ++index)
-        {
-            const double gain = wetLevels[index] - dryLevels[index];
-            if (index == 3)
-                fifth = gain;
-            else
-                others.push_back(gain);
-        }
-        std::sort(others.begin(), others.end());
-        const double median = 0.5 * (others[2] + others[3]);
-        std::cout << "B3 in the room at 0.5, " << (side == 0 ? "left" : "right")
-                  << ": fifth partial " << fifth << " dB against the dry, partials 2-8 median "
-                  << median << " dB\n";
-        expect(fifth > median - 15.0, "the room lost B3's antiphase fifth partial: "
-                                          + std::to_string(fifth) + " dB against a median of "
-                                          + std::to_string(median));
-    }
-}
-
-// 13e. A side wall's reflection reaches the nearer microphone first and the
-// farther one 0.53-0.58 ms later at the same level, as a 0.20 m spaced pair
-// hears it, where it was once panned by level (up to 7.8 dB) at one time.
-// The left microphone's impulse less the right's leaves only the side
-// walls' reflections; 12-15 ms holds the left wall's two.
-void testRoomSideReflectionsArriveInTime()
-{
-    auto engine = std::make_unique<acustra::AcustraEngine>();
-    engine->prepare(48000, 64);
-    const auto fromLeft = Access::roomImpulse(*engine, 2400, 1.0f, 0.0f, 1);
-    const auto fromRight = Access::roomImpulse(*engine, 2400, 0.0f, 1.0f, 1);
-    double energy[2] = { 0.0, 0.0 }, moment[2] = { 0.0, 0.0 };
-    for (std::size_t index = 576; index < 720; ++index)
-        for (std::size_t side = 0; side < 2; ++side)
-        {
-            const double value = static_cast<double>(fromLeft[2 * index + side])
-                - fromRight[2 * index + side];
-            energy[side] += value * value;
-            moment[side] += value * value * static_cast<double>(index);
-        }
-    const double lag = 1.0e3 * (moment[1] / energy[1] - moment[0] / energy[0]) / 48000.0;
-    const double difference = 10.0 * std::log10(energy[0] / energy[1]);
-    std::cout << "Room's left-wall reflections: right microphone " << lag
-              << " ms later, " << difference << " dB level difference\n";
-    expect(lag > 0.45 && lag < 0.65, "the left wall reached the right microphone "
-                                         + std::to_string(lag) + " ms after the left one");
-    expect(std::abs(difference) < 0.5, "the left wall's reflections differed by "
-                                           + std::to_string(difference) + " dB between microphones");
-}
-
-// 13f. The late field's left/right coherence follows a 0.20 m pair's in a
-// diffuse field (sin(kd)/kd: 0.97, 0.87 and 0.53 at 125, 250 and 500 Hz,
-// about 0 from 1 kHz up), where it was about 0 in every band: coherent
-// noise into the late field alone, octave by octave.
-void testRoomLateCoherenceFollowsTheSpacing()
-{
-    auto engine = std::make_unique<acustra::AcustraEngine>();
-    engine->prepare(48000, 64);
-    const auto field = Access::roomNoise(*engine, 6 * 48000, 2);
-    const auto left = channel(field, 0), right = channel(field, 1);
-    const std::array<double, 4> centres { 125.0, 250.0, 500.0, 2000.0 };
-    std::array<double, 4> coherence {};
-    for (std::size_t band = 0; band < centres.size(); ++band)
-    {
-        const auto a = octaveBand(left, 48000.0, centres[band]);
-        const auto b = octaveBand(right, 48000.0, centres[band]);
-        double ab = 0.0, aa = 0.0, bb = 0.0;
-        for (std::size_t index = 24000; index < a.size(); ++index)
-        {
-            ab += a[index] * b[index];
-            aa += a[index] * a[index];
-            bb += b[index] * b[index];
-        }
-        coherence[band] = ab / std::sqrt(aa * bb);
-    }
-    std::cout << "Room's late-field coherence at 125/250/500/2000 Hz: " << coherence[0]
-              << " " << coherence[1] << " " << coherence[2] << " " << coherence[3] << '\n';
-    expect(coherence[0] > 0.85, "the late field's 125 Hz coherence was " + std::to_string(coherence[0]));
-    expect(coherence[1] > 0.6, "the late field's 250 Hz coherence was " + std::to_string(coherence[1]));
-    expect(coherence[2] > 0.3 && coherence[2] < 0.85,
-           "the late field's 500 Hz coherence was " + std::to_string(coherence[2]));
-    expect(std::abs(coherence[3]) < 0.3, "the late field's 2 kHz coherence was "
-                                             + std::to_string(coherence[3]));
-}
-
-// 13g. The room decays alike at every rate: each octave's T30, 500 Hz to
-// 8 kHz, within 5% of its 48 kHz value from 44.1 to 384 kHz, its absorption
-// designed at the room's own rate. Until 2026-10-10 each one-pole reached a
-// fixed decay at the room's Nyquist, so the 8 kHz octave took 0.246 s at
-// 44.1 kHz and 0.296 s at 192 kHz (14% over 48 kHz's 0.260 s).
-void testRoomDecayIsTheSameAtEveryRate()
-{
-    const std::array<double, 5> centres { 500.0, 1000.0, 2000.0, 4000.0, 8000.0 };
-    std::array<double, 5> reference {};
-    for (const int rate : { 48000, 44100, 96000, 192000, 384000 })
-    {
-        auto engine = std::make_unique<acustra::AcustraEngine>();
-        engine->prepare(rate, 64);
-        const auto impulse = Access::roomImpulse(*engine, static_cast<int>(1.4 * rate));
-        const auto left = channel(impulse, 0), right = channel(impulse, 1);
-        std::cout << "Room's octave T30 at " << rate << " Hz:";
-        for (std::size_t band = 0; band < centres.size(); ++band)
-        {
-            const double t30 = reverberationTime(octaveBand(left, rate, centres[band]),
-                                                 octaveBand(right, rate, centres[band]), rate);
-            std::cout << ' ' << t30;
-            if (rate == 48000)
-                reference[band] = t30;
-            else
-                expect(std::abs(t30 / reference[band] - 1.0) < 0.05,
-                       "the room's " + std::to_string(static_cast<int>(centres[band]))
-                           + " Hz octave decayed in " + std::to_string(t30) + " s at "
-                           + std::to_string(rate) + ", " + std::to_string(reference[band])
-                           + " s at 48 kHz");
-        }
-        std::cout << " s\n";
-    }
-    expect(reference[1] > 0.38 && reference[1] < 0.52 && reference[3] > 0.29
-               && reference[3] < 0.41 && reference[4] > 0.2 && reference[4] < 0.32,
-           "the room's decay left 0.45/0.35/0.26 s at 1/4/8 kHz");
 }
 
 // 14. The Original's capture voicing (CaptureVoicingData.h) is one smooth
@@ -2031,11 +1630,6 @@ int main()
     testRoomLevelAndDecayAcrossRates();
     testRoomBlocksWidthAndReturn();
     testRoomRingsOutToSilence();
-    testRoomLateFieldHasNoGap();
-    testRoomHearsBothMicrophones();
-    testRoomSideReflectionsArriveInTime();
-    testRoomLateCoherenceFollowsTheSpacing();
-    testRoomDecayIsTheSameAtEveryRate();
     testCaptureVoicingIsSmoothAndBounded();
     testMicrophoneFilterBypassAndLifecycle();
     testMicrophoneFilterConstructionTransitions();
