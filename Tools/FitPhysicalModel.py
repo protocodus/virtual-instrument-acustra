@@ -27,9 +27,35 @@ Manifest format (paths are relative to the manifest):
 WAV metadata is read from the file. Headerless little-endian float32 files need
 ``sample_rate`` and ``channels`` either globally or in their file object.
 
+Observation (which signal of each file the descriptors are read from):
+
+- ``matched`` (version 2, the default since 2026-10-10): each recording is
+  compared with the model capture it corresponds to. A two-channel target is
+  a stereo recording (the Eastman takes and the bank's flat-top are a
+  coincident pair), read as per-channel power: every power spectrum, energy
+  and level is the mean of its channels' powers, and the model's two output
+  channels are read the same way, at the Width they were rendered with. A
+  one-channel target is a single microphone (the archtop bank, the Martin
+  HD28, GuitarSet's U87) and is compared with the model's Mono mic capture:
+  a render made with that capture as it is, and a dry Stereo mic render
+  through its upper-bout microphone, which the Width law (each output is
+  mid +/- Width x side) gives back exactly; the manifest's ``model_controls``
+  (capture, stereo_width, room) say which, and the recovery refuses a render
+  with Room, no Width or a limited peak. The model's microphones are two
+  near-field omnis 20 cm apart whose L/R average cancels (-8.5 dB at 1.25
+  kHz on a strummed chord), which no coincident pair or single microphone
+  does; see Docs/capture-observation-2026-10-10.md.
+- ``mid`` (version 1): the L/R average of target and model alike, as every
+  score before 2026-10-10 was read. Reproduce those with ``--observation
+  mid`` (or ``"observation": "mid"`` in the manifest).
+
+A manifest may name its observation (``"observation"``); ``--observation``
+overrides it, and a manifest without one is read ``matched``. Mono files read
+identically under both. Paired comparisons require one observation.
+
 Usage:
 
-    python3 Tools/FitPhysicalModel.py fit-manifest.json
+    python3 Tools/FitPhysicalModel.py fit-manifest.json [--observation matched|mid]
     python3 Tools/FitPhysicalModel.py candidate.json --compare baseline.json
     python3 Tools/FitPhysicalModel.py --floor fit-manifest.json \
         [--control sample-manifest.json]
@@ -88,6 +114,13 @@ MAX_HARMONIC = 12
 # separately constrained below; the spectral loss is not asked to discover
 # either one.
 MULTISCALE_WINDOWS = (67, 127, 257, 509, 1021, 2053)
+# The observation protocols (module docstring), each with its version number.
+OBSERVATIONS = {"matched": 2, "mid": 1}
+DEFAULT_OBSERVATION = "matched"
+# The engine's safetyLimit is exactly linear below this knee (-1 dBFS).
+LIMITER_KNEE = 0.89125094
+# Below this Width the pair's side signal is too small to recover a microphone.
+MIN_RECOVERY_WIDTH = 0.05
 
 
 def _log_edges(low: float, high: float, count: int) -> np.ndarray:
@@ -112,7 +145,11 @@ def _read_audio(
     base: Path,
     default_rate: int | None,
     default_channels: int | None,
+    *,
+    keep_channels: bool = False,
 ) -> tuple[int, np.ndarray]:
+    """Return (rate, audio): the L/R average, as ever, or with keep_channels a
+    stereo file as (frames, 2) and a mono one as a vector."""
     spec = _as_file_spec(value)
     path = Path(spec["path"])
     if not path.is_absolute():
@@ -142,8 +179,11 @@ def _read_audio(
     if data.ndim == 2:
         if data.shape[1] not in (1, 2):
             raise ValueError(f"{path}: expected mono or stereo audio")
-        data = data.mean(axis=1)
-    if data.ndim != 1 or data.size < 64:
+        if keep_channels:
+            data = data[:, 0] if data.shape[1] == 1 else data
+        else:
+            data = data.mean(axis=1)
+    if data.ndim not in (1, 2) or data.shape[0] < 64:
         raise ValueError(f"{path}: audio is empty or malformed")
     if not np.all(np.isfinite(data)):
         raise ValueError(f"{path}: audio contains non-finite samples")
@@ -151,17 +191,74 @@ def _read_audio(
 
 
 def _resample(signal: np.ndarray, source_rate: int, target_rate: int) -> np.ndarray:
+    # resample_poly's axis 0 is time for a (frames, channels) observation too.
     if source_rate == target_rate:
         return signal
     divisor = math.gcd(source_rate, target_rate)
     return resample_poly(signal, target_rate // divisor, source_rate // divisor)
 
 
+def _check_observation(observation: str) -> str:
+    if observation not in OBSERVATIONS:
+        raise ValueError(f"observation must be one of {sorted(OBSERVATIONS)}, "
+                         f"not {observation!r}")
+    return observation
+
+
+def mono_mic_from_stereo(audio: np.ndarray, width: float) -> np.ndarray:
+    """The Mono mic from a dry Stereo mic render: its upper-bout microphone.
+
+    The engine writes each output as mid +/- Width x side of its two
+    microphones (treble bridge left, upper bout right) and plays the Mono
+    capture from the upper-bout one alone (AcustraEngine::process, BodyBank::
+    render), so with no Room and no Piezo Mix that microphone is exactly
+    ((1 + w) R - (1 - w) L) / (2 w), up to the Mono capture's level trim.
+    """
+    w = float(np.float32(width))
+    if not w >= MIN_RECOVERY_WIDTH:
+        raise ValueError(f"cannot recover a microphone from Width {width}")
+    left, right = audio[:, 0], audio[:, 1]
+    return ((1.0 + w) * right - (1.0 - w) * left) / (2.0 * w)
+
+
+def observe_model(audio: np.ndarray, target_channels: int,
+                  controls: dict[str, Any] | None) -> tuple[np.ndarray, str]:
+    """The matched observation of a model render for a target with this many
+    channels: per-channel power for a stereo target, the Mono mic for a mono
+    one. Returns the signal and how it was observed."""
+    if audio.ndim == 1:
+        return audio, "mono render"
+    if np.array_equal(audio[:, 0], audio[:, 1]):
+        # A mono capture (Mono mic or piezo) writes the same sample to both.
+        return audio[:, 0].copy(), "mono capture"
+    if target_channels == 2:
+        return audio, "per-channel power"
+    controls = controls or {}
+    capture = controls.get("capture")
+    width = controls.get("stereo_width")
+    room = controls.get("room")
+    if capture != "stereo_mic" or not isinstance(width, (int, float)) \
+            or not isinstance(room, (int, float)):
+        raise ValueError(
+            "a single-microphone target needs the model's Mono mic: render with "
+            "the mono_mic capture, or give model_controls with capture "
+            "stereo_mic, stereo_width and room for a dry Stereo mic render")
+    if room != 0:
+        raise ValueError(f"cannot recover the Mono mic from a render with Room {room}: "
+                         "the room reaches it as the pair's mid alone")
+    if float(np.max(np.abs(audio))) >= LIMITER_KNEE:
+        raise ValueError("cannot recover the Mono mic: the output reached the "
+                         "safety limiter's knee")
+    return mono_mic_from_stereo(audio, width), "Mono mic recovered from the Stereo mic render"
+
+
 def _onset(signal: np.ndarray, rate: int) -> int:
     # A 1 ms energy follower is stable on both pick noise and soft notes.
+    # A (frames, channels) observation follows its per-channel power.
     width = max(1, round(0.001 * rate))
-    energy = np.convolve(signal * signal, np.ones(width) / width, mode="same")
-    limit = min(signal.size, round(0.250 * rate))
+    squared = signal * signal if signal.ndim == 1 else np.mean(signal * signal, axis=1)
+    energy = np.convolve(squared, np.ones(width) / width, mode="same")
+    limit = min(squared.size, round(0.250 * rate))
     peak = float(np.max(energy[:limit]))
     if peak <= 1.0e-20:
         return 0
@@ -173,10 +270,19 @@ def _spectrum(
     signal: np.ndarray, rate: int, onset: int, begin: float, end: float
 ) -> tuple[np.ndarray, np.ndarray]:
     first = max(0, onset + round(begin * rate))
-    last = min(signal.size, onset + round(end * rate))
+    last = min(signal.shape[0], onset + round(end * rate))
     if last - first < 32:
         return np.empty(0), np.empty(0)
     segment = signal[first:last].astype(np.float64, copy=True)
+    if segment.ndim == 2:
+        # Per-channel power: each channel's spectrum, its powers averaged.
+        segment -= np.mean(segment, axis=0)
+        taper = windows.hann(segment.shape[0], sym=False)
+        nfft = 1 << max(8, int(math.ceil(math.log2(segment.shape[0] * 4))))
+        transformed = np.fft.rfft(segment * taper[:, None], nfft, axis=0)
+        power = (np.mean(np.abs(transformed) ** 2, axis=1)
+                 / max(float(np.sum(taper * taper)), 1.0e-30))
+        return np.fft.rfftfreq(nfft, 1.0 / rate), power
     segment -= np.mean(segment)
     taper = windows.hann(segment.size, sym=False)
     nfft = 1 << max(8, int(math.ceil(math.log2(segment.size * 4))))
@@ -209,15 +315,15 @@ def _multiscale_log_magnitude(
     signal: np.ndarray, rate: int, onset: int
 ) -> np.ndarray:
     length = round(0.900 * rate)
-    segment = np.zeros(length)
-    available = min(length, signal.size - onset)
+    segment = np.zeros((length,) + signal.shape[1:])
+    available = min(length, signal.shape[0] - onset)
     if available > 0:
         segment[:available] = signal[onset : onset + available]
     centres = np.sqrt(ATTACK_BANDS[:-1] * ATTACK_BANDS[1:])
     features: list[np.ndarray] = []
     for size in MULTISCALE_WINDOWS:
         frequency, _, spectrum = stft(
-            segment,
+            segment if segment.ndim == 1 else segment.T,
             fs=rate,
             window="hann",
             nperseg=size,
@@ -226,7 +332,9 @@ def _multiscale_log_magnitude(
             boundary=None,
             padded=False,
         )
-        magnitude = np.abs(spectrum)
+        # Per-channel power: the RMS magnitude across channels.
+        magnitude = (np.abs(spectrum) if segment.ndim == 1
+                     else np.sqrt(np.mean(np.abs(spectrum) ** 2, axis=0)))
         floor = max(float(np.max(magnitude)) * 1.0e-6, 1.0e-12)
         # Mean log magnitude retains quiet decay frames instead of allowing a
         # single loud attack frame to own the full 900 ms descriptor.
@@ -420,13 +528,13 @@ def _decay_features(
     onset: int,
     partial_frequencies: np.ndarray,
 ) -> np.ndarray:
-    tail = signal[onset : min(signal.size, onset + round(4.2 * rate))]
-    if tail.size < 1024:
+    tail = signal[onset : min(signal.shape[0], onset + round(4.2 * rate))]
+    if tail.shape[0] < 1024:
         return np.full(MAX_HARMONIC + DECAY_BANDS.size - 1, np.nan)
-    window = min(8192, 1 << int(math.floor(math.log2(tail.size))))
+    window = min(8192, 1 << int(math.floor(math.log2(tail.shape[0]))))
     window = max(512, window)
     frequency, times, spectrum = stft(
-        tail,
+        tail if tail.ndim == 1 else tail.T,
         fs=rate,
         window="hann",
         nperseg=window,
@@ -435,7 +543,8 @@ def _decay_features(
         boundary=None,
         padded=False,
     )
-    power = np.abs(spectrum) ** 2
+    power = (np.abs(spectrum) ** 2 if tail.ndim == 1
+             else np.mean(np.abs(spectrum) ** 2, axis=0))
     selected_time = (times >= 0.12) & (times <= 4.0)
     times = times[selected_time]
     power = power[:, selected_time]
@@ -458,6 +567,10 @@ def _decay_features(
 
 
 def extract_features(signal: np.ndarray, rate: int, midi: int) -> dict[str, Any]:
+    """Descriptors of a mono signal, or of a (frames, channels) observation
+    read as per-channel power (every power and level averaged over channels)."""
+    if signal.ndim not in (1, 2):
+        raise ValueError("expected a mono signal or a (frames, channels) array")
     onset = _onset(signal, rate)
     attack = np.concatenate([
         _band_levels(signal, rate, onset, begin, end, ATTACK_BANDS)
@@ -475,8 +588,8 @@ def extract_features(signal: np.ndarray, rate: int, midi: int) -> dict[str, Any]
     body = _normalise_levels(
         _band_levels(signal, rate, onset, 0.080, 0.900, BODY_BANDS)
     )
-    begin = min(signal.size, onset + round(0.020 * rate))
-    end = min(signal.size, onset + round(0.500 * rate))
+    begin = min(signal.shape[0], onset + round(0.020 * rate))
+    end = min(signal.shape[0], onset + round(0.500 * rate))
     level = math.nan
     if end > begin:
         level = 20.0 * math.log10(max(
@@ -623,9 +736,12 @@ class PreparedManifest:
     The physical renderer overwrites only model files during fitting. Keeping
     target features here avoids decoding the reference bank and running the
     six STFT scales on unchanged audio for every optimizer evaluation.
+
+    ``observation`` (module docstring) overrides the manifest's own; without
+    either the manifest is read ``matched``.
     """
 
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, observation: str | None = None):
         self.path = path
         with path.open("r", encoding="utf-8") as stream:
             manifest = json.load(stream)
@@ -642,12 +758,20 @@ class PreparedManifest:
             raise ValueError(
                 "analysis_sample_rate must be an integer from 8000 to 192000"
             )
+        declared = manifest.get("observation")
+        if declared is not None:
+            _check_observation(declared)
+        self.declared_observation = declared
+        self.observation = _check_observation(
+            observation or declared or DEFAULT_OBSERVATION)
+        controls = manifest.get("model_controls")
+        self.model_controls = controls if isinstance(controls, dict) else None
         self.analysis_rate = analysis_rate
         self.default_rate = manifest.get("sample_rate")
         self.default_channels = manifest.get("channels")
         self.examples: list[dict[str, Any]] = []
 
-        target_cache: dict[tuple[Any, ...], dict[str, Any]] = {}
+        target_cache: dict[tuple[Any, ...], tuple[dict[str, Any], int]] = {}
         identifiers: set[str] = set()
         for row, source in enumerate(manifest["examples"], 1):
             if not isinstance(source, dict):
@@ -672,10 +796,11 @@ class PreparedManifest:
                 raise ValueError(f"{identifier}: target and model are required")
 
             target_key = self._feature_key(source["target"], midi)
-            target = target_cache.get(target_key)
-            if target is None:
-                target = self._read_features(source["target"], midi)
-                target_cache[target_key] = target
+            cached = target_cache.get(target_key)
+            if cached is None:
+                cached = self._read_target(source["target"], midi)
+                target_cache[target_key] = cached
+            target, target_channels = cached
             self.examples.append({
                 "id": identifier,
                 "material": source.get("material"),
@@ -688,6 +813,7 @@ class PreparedManifest:
                     "playback_trim"),
                 "dynamic_group": source.get("dynamic_group"),
                 "target_features": target,
+                "target_channels": target_channels,
                 "model_spec": source["model"],
             })
 
@@ -703,13 +829,62 @@ class PreparedManifest:
             midi,
         )
 
-    def _read_features(self, value: Any, midi: int) -> dict[str, Any]:
+    def _read_target(self, value: Any, midi: int) -> tuple[dict[str, Any], int]:
+        """A recording's descriptors and its channel count."""
         rate, audio = _read_audio(
-            value, self.path.parent, self.default_rate, self.default_channels
+            value, self.path.parent, self.default_rate, self.default_channels,
+            keep_channels=True,
         )
+        channels = 1 if audio.ndim == 1 else audio.shape[1]
+        if self.observation == "mid" and audio.ndim == 2:
+            audio = audio.mean(axis=1)  # the arithmetic _read_audio always did
         return extract_features(
             _resample(audio, rate, self.analysis_rate), self.analysis_rate, midi
-        )
+        ), channels
+
+    def _model_view(self, source: dict[str, Any]) -> str:
+        if self.observation == "mid":
+            return "mid"
+        return "per-channel" if source["target_channels"] == 2 else "mono"
+
+    def _read_model(self, source: dict[str, Any]) -> tuple[dict[str, Any], str]:
+        """A model render's descriptors as this manifest's observation sees
+        them for this example's target, and how it was observed."""
+        value, midi = source["model_spec"], source["midi"]
+        if self.observation == "mid":
+            rate, audio = _read_audio(
+                value, self.path.parent, self.default_rate, self.default_channels)
+            how = "L/R average"
+        else:
+            rate, audio = _read_audio(
+                value, self.path.parent, self.default_rate, self.default_channels,
+                keep_channels=True)
+            spec = _as_file_spec(value)
+            controls = {**(self.model_controls or {}),
+                        **{key: spec[key] for key in ("capture", "stereo_width", "room")
+                           if key in spec}}
+            audio, how = observe_model(audio, source["target_channels"], controls)
+        return extract_features(
+            _resample(audio, rate, self.analysis_rate), self.analysis_rate, midi
+        ), how
+
+    def model_features(self, source: dict[str, Any],
+                       cache: dict[tuple[Any, ...], tuple[dict[str, Any], str]]
+                       | None = None) -> tuple[dict[str, Any], str]:
+        """One example's model descriptors (cached by render and view)."""
+        key = self._feature_key(source["model_spec"], source["midi"]) + (
+            self._model_view(source),)
+        if cache is not None and key in cache:
+            return cache[key]
+        result = self._read_model(source)
+        if cache is not None:
+            cache[key] = result
+        return result
+
+    def observation_report(self, views: set[str] | None = None) -> dict[str, Any]:
+        return {"name": self.observation, "version": OBSERVATIONS[self.observation],
+                "manifest_declared": self.declared_observation,
+                "model": sorted(views) if views is not None else None}
 
     def score(
         self,
@@ -729,15 +904,11 @@ class PreparedManifest:
 
         # Round robins intentionally share one deterministic model render.
         # Extract its descriptors once per score call and compare each target
-        # repetition against that same physical note.
-        model_cache: dict[tuple[Any, ...], dict[str, Any]] = {}
+        # repetition against that same physical note (per observed view).
+        model_cache: dict[tuple[Any, ...], tuple[dict[str, Any], str]] = {}
         examples: list[dict[str, Any]] = []
         for source in selected:
-            model_key = self._feature_key(source["model_spec"], source["midi"])
-            model = model_cache.get(model_key)
-            if model is None:
-                model = self._read_features(source["model_spec"], source["midi"])
-                model_cache[model_key] = model
+            model, _ = self.model_features(source, model_cache)
             examples.append({
                 **source,
                 # The floor undoes the export's per-zone playback trim on the
@@ -752,19 +923,27 @@ class PreparedManifest:
         report = score_examples(examples, self.analysis_rate)
         report["analysis_sample_rate"] = self.analysis_rate
         report["example_count"] = len(examples)
-        report["unique_model_count"] = len(model_cache)
+        report["unique_model_count"] = len({key[:-1] for key in model_cache})
+        report["observation"] = self.observation_report(
+            {how for _, how in model_cache.values()})
         return report
 
 
-def score_manifest(path: Path) -> dict[str, Any]:
-    return PreparedManifest(path).score()
+def score_manifest(path: Path, observation: str | None = None) -> dict[str, Any]:
+    return PreparedManifest(path, observation).score()
 
 
-def compare_manifests(baseline_path: Path, candidate_path: Path) -> dict[str, Any]:
-    prepared = [PreparedManifest(path) for path in (baseline_path, candidate_path)]
+def compare_manifests(baseline_path: Path, candidate_path: Path,
+                      observation: str | None = None) -> dict[str, Any]:
+    prepared = [PreparedManifest(path, observation)
+                for path in (baseline_path, candidate_path)]
     baseline, candidate = prepared
     if baseline.analysis_rate != candidate.analysis_rate:
         raise ValueError("paired comparison requires identical analysis sample rates")
+    if baseline.observation != candidate.observation:
+        # A scorer change would otherwise read as a model change.
+        raise ValueError("paired comparison requires one observation: "
+                         f"{baseline.observation} against {candidate.observation}")
     originals = [json.loads(path.read_text(encoding="utf-8"))
                  for path in (baseline_path, candidate_path)]
     rows = [{row["id"]: row for row in manifest.examples} for manifest in prepared]
@@ -829,6 +1008,7 @@ def compare_manifests(baseline_path: Path, candidate_path: Path) -> dict[str, An
         raise ValueError("paired material labels must be strings or null")
     return {
         "analysis_sample_rate": baseline.analysis_rate,
+        "observation": baseline.observation_report(),
         "target_verification": "identical SHA-256 content, format and example metadata",
         "interpretation": "negative changes mean closer descriptors on these same "
                           "recordings; no listening preference or market ranking is inferred",
@@ -931,6 +1111,7 @@ def floor_report(
     out: dict[str, Any] = {
         "manifest": str(prepared.path),
         "analysis_sample_rate": prepared.analysis_rate,
+        "observation": prepared.observation_report(),
         "materials": {},
     }
     for material in materials:
@@ -1046,10 +1227,126 @@ def _synthetic_note(
     return (velocity ** velocity_exponent) * attack * signal
 
 
+def cancelling_pair(rate: int, seconds: float = 2.4, band: tuple[float, float] = (
+        1000.0, 1600.0), seed: int = 20261010) -> tuple[np.ndarray, np.ndarray]:
+    """A decaying broadband note and its band-limited part: the regression
+    fixture for a spaced pair whose channels cancel in one band."""
+    rng = np.random.default_rng(seed)
+    frames = round(seconds * rate)
+    onset = round(0.02 * rate)
+    time = np.arange(frames - onset) / rate
+    note = np.concatenate((np.zeros(onset), rng.standard_normal(frames - onset)
+                           * np.exp(-time / 0.6) * (1.0 - np.exp(-time / 0.002))))
+    note *= 0.25 / float(np.max(np.abs(note)))
+    spectrum = np.fft.rfft(note)
+    frequency = np.fft.rfftfreq(frames, 1.0 / rate)
+    in_band = (frequency >= band[0]) & (frequency < band[1])
+    return note, np.fft.irfft(np.where(in_band, spectrum, 0.0), frames)
+
+
+def _observation_self_test(root: Path, rate: int) -> dict[str, float]:
+    """A spaced pair whose L/R average cancels in 1.0-1.6 kHz must not read as
+    a hole there (which a fit would boost) under the matched observation,
+    while the legacy L/R average still shows it (the negative control)."""
+    note, band = cancelling_pair(rate)
+    width = 0.62
+    inside = [index for index, (low, high) in enumerate(zip(BODY_BANDS[:-1], BODY_BANDS[1:]))
+              if low >= 1050.0 and high <= 1500.0]
+    # Mono target (a single microphone): the model's microphones are the
+    # note itself (upper bout) and the note with the band inverted (bridge);
+    # Width spreads them as the engine does, so the mid loses the band.
+    upper, bridge = note, note - 2.0 * band
+    mid, side = 0.5 * (bridge + upper), 0.5 * (bridge - upper)
+    spaced = np.stack([mid + width * side, mid - width * side], axis=1)
+    # Stereo target (a coincident pair): each model channel holds the band,
+    # in antiphase between them.
+    rest = note - band
+    antiphase = np.stack([rest + band, rest - band], axis=1)
+    note.astype("<f4").tofile(root / "pair-target-mono.f32")
+    np.stack([note, note], axis=1).astype("<f4").tofile(root / "pair-target-stereo.f32")
+    spaced.astype("<f4").tofile(root / "pair-model-spaced.f32")
+    antiphase.astype("<f4").tofile(root / "pair-model-antiphase.f32")
+
+    def manifest(name: str, target: str, channels: int, model: str,
+                 controls: dict[str, Any] | None) -> Path:
+        path = root / name
+        document: dict[str, Any] = {"examples": [{
+            "id": "pair", "midi": 57, "velocity": 91,
+            "target": {"path": target, "sample_rate": rate, "channels": channels},
+            "model": {"path": model, "sample_rate": rate, "channels": 2}}]}
+        if controls is not None:
+            document["model_controls"] = controls
+        path.write_text(json.dumps(document), encoding="utf-8")
+        return path
+
+    dry = {"capture": "stereo_mic", "stereo_width": width, "room": 0}
+    cases = {
+        "mono": manifest("pair-mono.json", "pair-target-mono.f32", 1,
+                         "pair-model-spaced.f32", dry),
+        "stereo": manifest("pair-stereo.json", "pair-target-stereo.f32", 2,
+                           "pair-model-antiphase.f32", dry),
+    }
+    result: dict[str, float] = {}
+    for name, path in cases.items():
+        for observation in OBSERVATIONS:
+            prepared = PreparedManifest(path, observation)
+            target = prepared.examples[0]["target_features"]["body"]
+            model, _ = prepared.model_features(prepared.examples[0])
+            residual = (model["body"] - target)[inside]
+            # Body levels are each normalised to their own mean; compare the
+            # band against the rest of the spectrum it was cut from.
+            result[f"{name}_{observation}"] = float(np.mean(residual))
+    for name in cases:
+        matched, legacy = result[f"{name}_matched"], result[f"{name}_mid"]
+        if abs(matched) > 1.0:
+            raise AssertionError(f"{name} target: the matched observation reads a "
+                                 f"{matched:+.2f} dB hole the pair's channels do not have")
+        if legacy > -6.0:
+            raise AssertionError(f"{name} target: the legacy L/R average no longer "
+                                 f"exposes the cancelling band ({legacy:+.2f} dB)")
+    # A single-microphone target cannot be matched without knowing the render.
+    for name, controls in (("pair-no-controls.json", None),
+                           ("pair-room.json", {**dry, "room": 0.5}),
+                           ("pair-no-width.json", {**dry, "stereo_width": 0.0})):
+        prepared = PreparedManifest(
+            manifest(name, "pair-target-mono.f32", 1, "pair-model-spaced.f32", controls))
+        try:
+            prepared.score()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{name}: recovered a Mono mic without a dry, known Width")
+    # The recovery is the inverse of the Width law, sample for sample.
+    recovered = mono_mic_from_stereo(
+        np.fromfile(root / "pair-model-spaced.f32", dtype="<f4").astype(
+            np.float64).reshape(-1, 2), width)
+    if float(np.max(np.abs(recovered - note))) > 1.0e-6:
+        raise AssertionError("the Mono mic recovery does not invert the Width law")
+    # Paired comparisons never mix observations, and the legacy observation
+    # stays the L/R average of target and model alike.
+    declared = json.loads(cases["mono"].read_text())
+    declared["observation"] = "mid"
+    mixed = root / "pair-mono-mid.json"
+    mixed.write_text(json.dumps(declared), encoding="utf-8")
+    try:
+        compare_manifests(cases["mono"], mixed)
+    except ValueError as error:
+        assert "observation" in str(error)
+    else:
+        raise AssertionError("paired comparison mixed two observations")
+    legacy = PreparedManifest(mixed)
+    assert legacy.observation == "mid"
+    expected = extract_features(spaced.astype("<f4").astype(np.float64).mean(axis=1), rate, 57)
+    actual, how = legacy.model_features(legacy.examples[0])
+    assert how == "L/R average" and np.array_equal(actual["body"], expected["body"])
+    return result
+
+
 def self_test() -> None:
     rate = 48_000
     with tempfile.TemporaryDirectory(prefix="acustra-fit-self-test-") as directory:
         root = Path(directory)
+        pair = _observation_self_test(root, rate)
         close_examples = []
         far_examples = []
         for velocity in (0.25, 0.90):
@@ -1264,7 +1561,10 @@ def self_test() -> None:
                     f"{value} vs {other}")
         print(
             "self-test passed: closer damped-harmonic model scored "
-            f"{close_report['score']:.6f} < {far_report['score']:.6f}"
+            f"{close_report['score']:.6f} < {far_report['score']:.6f}; "
+            "cancelling spaced pair 1.05-1.5 kHz body residual, matched/legacy: "
+            f"mono target {pair['mono_matched']:+.2f}/{pair['mono_mid']:+.2f} dB, "
+            f"stereo target {pair['stereo_matched']:+.2f}/{pair['stereo_mid']:+.2f} dB"
         )
 
 
@@ -1283,28 +1583,36 @@ def main() -> int:
         help="a manifest whose model side is the sample player, scored on the "
              "same examples for comparison with the floor",
     )
+    parser.add_argument(
+        "--observation", choices=sorted(OBSERVATIONS),
+        help="matched (version 2, the default) or mid (version 1, the L/R "
+             "average every score before 2026-10-10 read); overrides the manifest's",
+    )
     arguments = parser.parse_args()
     if arguments.self_test:
         self_test()
         return 0
     if arguments.manifest is None:
         parser.error("manifest is required unless --self-test is used")
+    observation = arguments.observation
     if arguments.compare is not None:
         if arguments.floor or arguments.control is not None:
             parser.error("--compare cannot be combined with --floor or --control")
-        print(json.dumps(compare_manifests(arguments.compare, arguments.manifest),
+        print(json.dumps(compare_manifests(arguments.compare, arguments.manifest,
+                                           observation),
                          indent=2, sort_keys=True))
         return 0
     if arguments.floor:
-        control = (PreparedManifest(arguments.control)
+        control = (PreparedManifest(arguments.control, observation)
                    if arguments.control is not None else None)
         print(json.dumps(
-            floor_report(PreparedManifest(arguments.manifest), control),
+            floor_report(PreparedManifest(arguments.manifest, observation), control),
             indent=2, sort_keys=True))
         return 0
     if arguments.control is not None:
         parser.error("--control is only meaningful with --floor")
-    print(json.dumps(score_manifest(arguments.manifest), indent=2, sort_keys=True))
+    print(json.dumps(score_manifest(arguments.manifest, observation),
+                     indent=2, sort_keys=True))
     return 0
 
 
