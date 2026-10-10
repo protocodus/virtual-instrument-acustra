@@ -1323,21 +1323,22 @@ void testRoomBlocksWidthAndReturn()
 }
 
 // 13b. The room rings out to exact silence: a released chord reaches exact
-// zero on Main at most 3 s after the same chord without a room does (the
-// strings' own residue takes longer than the room's tail). The dry end is
-// the instrument's idle flush, which waits for the body and the piezo, under
-// its construction trim, to fall below 1e-11 (processIdleFlush); the room's
-// end waits for the room. So the margin moves with the default construction's
-// piezo trim as well as with the room: on a6f1ad8 the room added 2.24 s; on
-// 2026-10-10 the strings' high-frequency loss moved the room's end 0.24 s
-// later, and the loudness tables regenerated for it lowered the default
-// construction's piezo trim 0.9 dB (its piezo now stands that much higher
-// against its microphones), which moves the dry end 0.23 s earlier and the
-// room's not at all: 2.67 s (Docs/string-hf-loss-2026-10-10.md). Until then
-// the bound was 2.5 s.
+// zero on Main at most 3 s after the same chord without a room does, and all
+// the room adds after that is inaudible. The dry end is the instrument's idle
+// flush, which waits for the body and the piezo, under its construction trim,
+// to fall below 1e-11 (processIdleFlush); the room's end waits for the room,
+// which still hears the microphones' residue near -200 dBFS. So the margin
+// moves with the default construction's piezo trim as well as with the room:
+// on a6f1ad8 the room added 2.24 s; on 2026-10-10 the strings' high-frequency
+// loss moved the room's end 0.24 s later, and the loudness tables regenerated
+// for it lowered the default construction's piezo trim 0.9 dB, which moves
+// the dry end 0.23 s earlier and the room's not at all: 2.67 s
+// (Docs/string-hf-loss-2026-10-10.md). Until then the bound was 2.5 s. 3 s is
+// what the room's slowest designed decay (0.45 s) takes to fall the 400 dB
+// from full scale to its 1e-20 flush.
 void testRoomRingsOutToSilence()
 {
-    const auto lastSound = [] (float room)
+    const auto render = [] (float room)
     {
         acustra::EngineParameters parameters;
         parameters.room = room;
@@ -1345,7 +1346,8 @@ void testRoomRingsOutToSilence()
         engine->setParameters(parameters);
         engine->prepare(48000, 256);
         std::array<float, 256> left {}, right {};
-        long last = -1;
+        std::vector<float> peaks;
+        peaks.reserve(48000 * 30);
         for (long block = 0; block < 48000L * 30 / 256; ++block)
         {
             if (block == 0)
@@ -1356,18 +1358,34 @@ void testRoomRingsOutToSilence()
                     engine->noteOff(note);
             engine->process(left.data(), right.data(), 256);
             for (std::size_t index = 0; index < left.size(); ++index)
-                if (left[index] != 0.0f || right[index] != 0.0f)
-                    last = block * 256 + static_cast<long>(index);
+                peaks.push_back(std::max(std::abs(left[index]), std::abs(right[index])));
         }
-        return static_cast<double>(last + 1) / 48000.0;
+        return peaks;
     };
-    const double dry = lastSound(0.0f);
-    const double roomy = lastSound(0.6f);
+    const auto lastSound = [] (const std::vector<float>& peaks)
+    {
+        long last = -1;
+        for (std::size_t index = 0; index < peaks.size(); ++index)
+            if (peaks[index] != 0.0f)
+                last = static_cast<long>(index);
+        return last + 1;
+    };
+    const auto dryPeaks = render(0.0f);
+    const auto roomyPeaks = render(0.6f);
+    const long drySamples = lastSound(dryPeaks);
+    const double dry = static_cast<double>(drySamples) / 48000.0;
+    const double roomy = static_cast<double>(lastSound(roomyPeaks)) / 48000.0;
+    const float after = *std::max_element(
+        roomyPeaks.begin() + std::min<std::ptrdiff_t>(drySamples, static_cast<std::ptrdiff_t>(roomyPeaks.size())),
+        roomyPeaks.end());
+    const double afterDb = after > 0.0f ? 20.0 * std::log10(after) : -999.0;
     std::cout << "Exact silence after a released chord: " << dry << " s dry, " << roomy
-              << " s with the room at 0.6\n";
+              << " s with the room at 0.6, peaking at " << afterDb << " dBFS after the dry\n";
     expect(dry < 29.0 && roomy < 29.0, "the instrument did not reach exact silence");
     expect(roomy >= dry && roomy - dry < 3.0,
            "the room's tail outlasted the instrument by " + std::to_string(roomy - dry) + " s");
+    expect(afterDb < -160.0,
+           "the room was audible after the dry chord's silence: " + std::to_string(afterDb) + " dBFS");
 }
 
 // 14. The Original's capture voicing (CaptureVoicingData.h) is one smooth
