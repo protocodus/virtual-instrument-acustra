@@ -77,7 +77,11 @@ Protocol (deterministic; no audio is committed or downloaded):
    Mono mic relative to the per-channel Stereo output on the same renders
    (level removed); and the fixed structure fitted to every source against
    each capture alone (``capture_contours``: what a Stereo-only and a
-   Mono-only contour would be, today one contour serves both).
+   Mono-only contour would be, today one contour serves both), with each
+   capture's residual under the shared contour. ``mono_contour_test``
+   indicates a separate Mono contour when the Mono-only fit reads at least
+   MONO_CONTOUR_GAIN_DB (0.25 dB rms) closer to the consensus than the
+   shared one; on the 2026-10-10 baseline it read 0.013 dB closer.
 
 Usage:
 
@@ -141,6 +145,11 @@ GUITARSET_WIDTH = 0.62
 # A direct Mono mic render must match the recovered one to this (relative
 # residual energy after the Mono capture's level trim).
 MONO_CHECK = 1.0e-10
+# A separate Mono contour is indicated when the structure fitted to the Mono
+# capture alone reads this much closer (weighted dB rms) to the consensus of
+# every source than the shared contour does (declared 2026-10-10, after the
+# baseline dry run: Docs/capture-observation-2026-10-10.md).
+MONO_CONTOUR_GAIN_DB = 0.25
 OBSERVATIONS = scorer.OBSERVATIONS
 DEFAULT_OBSERVATION = scorer.DEFAULT_OBSERVATION
 
@@ -562,11 +571,22 @@ def run(bank: Path, open_dir: Path, guitarset: Path, *,
         **_fit_report(differences, current, authored_offset),
     }
     if observation == "matched":
-        report["diagnostics"] = diagnostics(sources, current, authored_offset)
+        report["diagnostics"] = diagnostics(sources, current, authored_offset,
+                                            report["sections"])
     return report
 
 
-def diagnostics(sources: list[Spectra], current: list, authored_offset: np.ndarray) -> dict:
+def _capture_residual(sections: list, differences: dict, current: list,
+                      authored_offset: np.ndarray) -> float:
+    """Weighted rms of a contour against one capture's consensus target."""
+    target = band_voicing_db(current) + authored_offset + consensus(differences)
+    kept, weight = _weights()
+    difference = _centred(band_voicing_db(sections)) - _centred(target)
+    return float(np.sqrt(np.average(difference[kept] ** 2, weights=weight[kept])))
+
+
+def diagnostics(sources: list[Spectra], current: list, authored_offset: np.ndarray,
+                shared: list) -> dict:
     """Reported beside the fit, never fitted (protocol step 6)."""
     retention = {"model": {}, "recording": {}}
     offsets = {}
@@ -590,18 +610,37 @@ def diagnostics(sources: list[Spectra], current: list, authored_offset: np.ndarr
                        for spectra in (paired if view == "stereo" else sources)
                        if spectra.difference("channels", view) is not None}
         contours[view] = ({"sources": sorted(differences),
-                           **_fit_report(differences, current, authored_offset)}
+                           **_fit_report(differences, current, authored_offset),
+                           "residual_rms_with_shared_db": _capture_residual(
+                               shared, differences, current, authored_offset)}
                           if differences else None)
+    mono_test = None
+    if contours["stereo"] is not None and contours["mono"] is not None:
+        gains = {view: [gain for _, _, gain, _ in contours[view]["sections"]]
+                 for view in contours}
+        improvement = {view: contours[view]["residual_rms_with_shared_db"]
+                       - contours[view]["residual_rms_db"] for view in contours}
+        mono_test = {
+            "rms_improvement_db": improvement,
+            "mono_minus_stereo_section_gain_db": [b - a for a, b in zip(
+                gains["stereo"], gains["mono"])],
+            "threshold_db": MONO_CONTOUR_GAIN_DB,
+            "separate_mono_contour_indicated": bool(
+                improvement["mono"] >= MONO_CONTOUR_GAIN_DB),
+        }
     return {
         "mono_sum_retention_db": retention,
         "mono_minus_stereo_db": {
             "sources": {name: value.tolist() for name, (value, _) in offsets.items()},
             "consensus": None if consensus_offset is None else consensus_offset.tolist()},
         "capture_contours": contours,
+        "mono_contour_test": mono_test,
         "note": "Diagnostics only. Retention is L/R-average power over per-channel power "
                 "(an equal-loudness note sum); mono_minus_stereo is the Mono mic over the "
                 "per-channel Stereo output, level removed; capture_contours fit every "
-                "source against one capture alone.",
+                "source against one capture alone, with each capture's residual under "
+                "the shared contour beside its own; a separate Mono contour is indicated "
+                "when its own fits the Mono capture threshold_db rms better.",
     }
 
 
@@ -705,6 +744,12 @@ def _cancelling_pair_self_test(truth: list, header: Path) -> dict:
     assert worst < -10.0 and outside < 0.5, (worst, outside)
     assert reports["matched"]["observation"]["sources"]["martin-hd28"]["model"] == [
         "Mono mic recovered from the Stereo mic render"]
+    test = reports["matched"]["diagnostics"]["mono_contour_test"]
+    contours = reports["matched"]["diagnostics"]["capture_contours"]
+    for view in ("stereo", "mono"):
+        assert all(math.isfinite(contours[view][key]) for key in (
+            "residual_rms_db", "residual_rms_with_shared_db")), (view, contours[view])
+    assert isinstance(test["separate_mono_contour_indicated"], bool)
     return {"matched_error": matched_error, "legacy_boost": legacy_boost,
             "retention_in_band": worst}
 
@@ -892,7 +937,14 @@ def main() -> int:
                 continue
             print(f"{view} capture alone: " + ", ".join(
                 f"{f0:g} Hz {gain:+.2f}" for _, f0, gain, _ in contours[view]["sections"])
-                + f" ({len(contours[view]['sources'])} sources)")
+                + f" ({len(contours[view]['sources'])} sources); rms "
+                f"{contours[view]['residual_rms_with_shared_db']:.3f} dB with the shared "
+                f"contour, {contours[view]['residual_rms_db']:.3f} dB with its own")
+        test = report["diagnostics"]["mono_contour_test"]
+        if test is not None:
+            print(f"separate Mono contour indicated: {test['separate_mono_contour_indicated']} "
+                  f"(its own fits {test['rms_improvement_db']['mono']:+.3f} dB rms better; "
+                  f"threshold {test['threshold_db']:.2f} dB)")
     if arguments.json:
         arguments.json.write_text(json.dumps(report, indent=1), encoding="utf-8")
     if arguments.write_header:
