@@ -70,9 +70,15 @@ struct AcustraEngineTestAccess
                 observed[1] += double(mode.cross) * response;
                 observed[2] += double(mode.rock) * response;
             }
+            // The plate floor has a heave residue and, since 2026-10-10, a
+            // rocking residue equal to it (plateConductanceMode), no cross.
             if (table.plate)
+            {
                 observed[0] += double(table.plateWeight)
                     * section(table.plateOmega, table.plateDamping);
+                observed[2] += double(table.plateRock)
+                    * section(table.plateOmega, table.plateDamping);
+            }
             for (std::size_t part = 0; part < deployed.size(); ++part)
                 worst = std::max(worst, std::abs(deployed[part] - observed[part])
                     / (2e-4 * std::abs(observed[part]) + 2e-8));

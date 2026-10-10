@@ -517,7 +517,7 @@ if(BUILD_TESTING)
                          1 1 1 0 1 1
                          1 1 1 1 0 1
                          1 .0061 -.030 1.3 .001 1000
-                         .02 0 2 .0001162109375 .035 .002334375)
+                         .02 0 2 .0001162109375 .00013 .002334375)
         set_tests_properties(Acustra.PhysicalFitRenderer PROPERTIES TIMEOUT 120)
 
         add_test(NAME Acustra.BridgeProbe

@@ -945,6 +945,17 @@ void testPiezoHeadroom()
 // the release's slip now follows Touch itself (a firm Touch lets the string
 // go over a smaller edge, 0.56 of it at Touch 1), so the brighter Touch 1
 // strum is read beside it and held to the same -60 dB at every drive.
+// Since 2026-10-10 the wound strings keep their upper partials through the
+// first round trips (their winding friction's loss angle in place of the
+// cube-law bending factor, FittedPhysicalData.h), and the strum's corners
+// sum differently: at Touch 1 its deepest swing into U1B is 0.90 of what it
+// was (-2.94 V against -3.28 V at 44.1 kHz, unit weights) and broader, at
+// the default Touch 1.07 of it. At the old drives the Touch 1 strum no longer
+// reached U1B's swing at 1.25 and 1.30; it is driven from where it first
+// does, 1.35, in steps that take it 0-4 host samples past the swing at
+// 44.1 kHz and 0-6 at 48 kHz, as the default Touch's 2-4 (it read 1-2 here
+// before). Driven 1.15 times as hard as before, 2-9 samples past, its
+// deepest clips read -58 to -60 dB.
 void testPiezoClipAliasing()
 {
     for (const float touch : { 0.58f, 1.0f })
@@ -952,7 +963,10 @@ void testPiezoClipAliasing()
     {
     double chainSum = 0.0, bareSum = 0.0;
     int drives = 0;
-    for (const float overdrive : { 1.25f, 1.30f, 1.35f, 1.40f, 1.45f })
+    const std::array<float, 5> overdrives = touch == 1.0f
+        ? std::array<float, 5> { 1.35f, 1.39f, 1.43f, 1.47f, 1.51f }
+        : std::array<float, 5> { 1.25f, 1.30f, 1.35f, 1.40f, 1.45f };
+    for (const float overdrive : overdrives)
     {
         auto strum = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
                                1.0, 0, 0.0f, overdrive);
@@ -1309,8 +1323,18 @@ void testRoomBlocksWidthAndReturn()
 }
 
 // 13b. The room rings out to exact silence: a released chord reaches exact
-// zero on Main at most 2.5 s after the same chord without a room does (the
-// strings' own residue takes longer than the room's tail).
+// zero on Main at most 3 s after the same chord without a room does (the
+// strings' own residue takes longer than the room's tail). The dry end is
+// the instrument's idle flush, which waits for the body and the piezo, under
+// its construction trim, to fall below 1e-11 (processIdleFlush); the room's
+// end waits for the room. So the margin moves with the default construction's
+// piezo trim as well as with the room: on a6f1ad8 the room added 2.24 s; on
+// 2026-10-10 the strings' high-frequency loss moved the room's end 0.24 s
+// later, and the loudness tables regenerated for it lowered the default
+// construction's piezo trim 0.9 dB (its piezo now stands that much higher
+// against its microphones), which moves the dry end 0.23 s earlier and the
+// room's not at all: 2.67 s (Docs/string-hf-loss-2026-10-10.md). Until then
+// the bound was 2.5 s.
 void testRoomRingsOutToSilence()
 {
     const auto lastSound = [] (float room)
@@ -1342,7 +1366,7 @@ void testRoomRingsOutToSilence()
     std::cout << "Exact silence after a released chord: " << dry << " s dry, " << roomy
               << " s with the room at 0.6\n";
     expect(dry < 29.0 && roomy < 29.0, "the instrument did not reach exact silence");
-    expect(roomy >= dry && roomy - dry < 2.5,
+    expect(roomy >= dry && roomy - dry < 3.0,
            "the room's tail outlasted the instrument by " + std::to_string(roomy - dry) + " s");
 }
 
