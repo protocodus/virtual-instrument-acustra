@@ -326,15 +326,14 @@ public:
     void allSoundOff(int midiChannel = 1) noexcept;
     void setBridgeCouplingEnabled(bool enabled) noexcept;
     // Offline/test isolation only; omits idle-string ports from the junction.
-    // Their delay lines still receive its return, and all six anchor springs
-    // remain present. This changes bridge loading and the resulting motion.
+    // Their delay lines still receive its return. This changes bridge
+    // loading and the resulting motion.
     void setSympatheticStringsEnabled(bool enabled) noexcept;
-    // The port observers - getLastBridgeTailForce and the three
-    // getLastBridge*Power ledgers - and the moment histories behind them
-    // cost a tenth of a held chord and never reach the output. A host that
-    // does not read them (the plug-in, the Rack Extension) can turn them
-    // off; the audio is bit-identical either way. On by default, for the
-    // tests and tools that read them; switching restarts them from rest.
+    // The port observers - the two getLastBridge*Power ledgers - and the
+    // moment history behind them never reach the output. A host that does
+    // not read them (the plug-in, the Rack Extension) can turn them off; the
+    // audio is bit-identical either way. On by default, for the tests and
+    // tools that read them; switching restarts them from rest.
     void setPortObserversEnabled(bool enabled) noexcept;
 
     // The separate output a host can take alongside Main. The pointer
@@ -384,7 +383,6 @@ public:
     [[nodiscard]] float getLastBridgeVelocity() const noexcept;
     [[nodiscard]] float getLastBridgeReactionForce() const noexcept;
     [[nodiscard]] float getLastBridgeBodyForce() const noexcept;
-    [[nodiscard]] float getLastBridgeTailForce() const noexcept;
     // The under-saddle piezo's voltage at the jack, where it enters the
     // preamp: the element's charge on its own capacitance, the cable's and
     // the preamp's input network (renderPiezo). Read by
@@ -414,7 +412,6 @@ public:
     // they cannot account for that initial state in a passivity ledger.
     [[nodiscard]] float getLastBridgePower() const noexcept;
     [[nodiscard]] float getLastBridgeBodyPower() const noexcept;
-    [[nodiscard]] float getLastBridgeTailPower() const noexcept;
 
 private:
     friend struct AcustraEngineTestAccess;
@@ -825,10 +822,11 @@ private:
         }
     };
 
-    // What the six strings and their anchors present to the saddle, in the
-    // two coordinates the archive measures: sum over strings of Z*2a and of
-    // u*Z*2a, of Z, u*Z and u^2*Z, and the same three moments of the anchor
-    // stiffness. u is saddleLeverArm(string).
+    // What the six strings present to the saddle, in the two coordinates the
+    // archive measures: sum over strings of Z*2a and of u*Z*2a, and of Z, u*Z
+    // and u^2*Z. u is saddleLeverArm(string). The short segment from the
+    // saddle crown to the bridge pin presents nothing: both its ends are on
+    // the bridge (bridgePortMobility).
     struct BridgeDrive
     {
         float incidentHeave { 0.0f };
@@ -836,9 +834,6 @@ private:
         float impedance0 { 0.0f };
         float impedance1 { 0.0f };
         float impedance2 { 0.0f };
-        float stiffness0 { 0.0f };
-        float stiffness1 { 0.0f };
-        float stiffness2 { 0.0f };
     };
 
     struct BridgeLoad
@@ -875,10 +870,6 @@ private:
         float immediateRock { 0.0f };
         float pastHeave { 0.0f };
         float pastRock { 0.0f };
-        float tailIntegratedForce { 0.0f };
-        float tailIntegratedMoment { 0.0f };
-        float previousDisplacement { 0.0f };
-        float previousRotation { 0.0f };
         float displacement { 0.0f };
         float rotation { 0.0f };
         float mainIntegratedForce { 0.0f };
@@ -887,13 +878,13 @@ private:
         float bodyIntegratedMoment { 0.0f };
 
         void reset() noexcept;
-        void process(const BridgeDrive& drive, float samplePeriod) noexcept;
+        void process(const BridgeDrive& drive) noexcept;
         // The same, with the mobility crossfading from `fading`'s modes to
         // this load's: weight is this load's share of the immediate and past
         // mobility, 1 - weight fading's. Both mode sets are driven by the
-        // same body force, the anchor stubs are this load's alone.
-        void process(const BridgeDrive& drive, float samplePeriod,
-                     BridgeLoad& fading, float weight) noexcept;
+        // same body force.
+        void process(const BridgeDrive& drive, BridgeLoad& fading,
+                     float weight) noexcept;
         // Advance the modes by one sample of body force and moment, leaving
         // their past mobility response in pastHeave and pastRock.
         void advanceModes(float bodyForce, float bodyMoment) noexcept;
@@ -935,9 +926,9 @@ private:
 
     // Everything configureVoice's result depends on, reduced to what it is
     // computed from: the engine-wide state configureVoice reads (calibration,
-    // host rate, construction, tuning, bridge bank, every string's anchor
-    // stiffness) enters as one generation count that changes whenever any of
-    // it does; the voice's own pitch, geometry, tension, age and hand enter as
+    // host rate, construction, tuning, bridge bank) enters as one generation
+    // count that changes whenever any of it does; the voice's own pitch,
+    // geometry, tension, age and hand enter as
     // their exact bits. A bounded final pitch does not identify the physical
     // length, fret or pre-attack loss pitch. Equal keys produce equal values, so
     // an equal key lets it keep what it already wrote.
@@ -1012,10 +1003,6 @@ private:
         bool valid { false };
     };
 
-    // What a string's bridge anchor holds before configureVoice first sets
-    // it; prepare() restores it (see restartRandomDraws).
-    static constexpr float initialBridgeTailStiffness = 10000.0f;
-
     // Old contact packets feed the continuing string, without another port.
     // One maximum transport history plus its bounded fractional IIR drain.
     struct RepluckArrivals
@@ -1051,7 +1038,7 @@ private:
         VoiceConfigurationKey configurationKey {};
         // Key and payload follow whole-voice copies. Waveform resets may retain
         // these pure values: pitch/rate changes miss the exact key, while
-        // calibration and anchor changes still use configurationKey below it.
+        // calibration and bridge changes still use configurationKey below it.
         PitchGeometryCache pitchGeometry {};
         // A string taken for a new note is still vibrating. This carries that
         // vibration on under the hand damping the model already uses for a
@@ -1178,13 +1165,6 @@ private:
         // remain within its measured/playable fret range; a tension bend
         // keeps this position. Zero slide retains the exact MIDI fret.
         float speakingFret { 0.0f };
-        float bridgeTailStiffness { initialBridgeTailStiffness };
-        // The target spring still tunes the physical port. During a live
-        // retune the junction reaches it over one string round trip, so its
-        // retained displacement does not see a one-sample force step.
-        float appliedBridgeTailStiffness { initialBridgeTailStiffness };
-        float bridgeTailStiffnessStep { 0.0f };
-        int bridgeTailStiffnessSamples { 0 };
         float attackPitchCents { 0.0f };
         float attackPitchDecay { 1.0f };
         float frozenMemberPitchBendSemitones { 0.0f };
@@ -1431,10 +1411,10 @@ private:
     // the summed microphone pressure takes its causal digital filter.
     static float captureVoicingGain(float frequency) noexcept;
     float bridgePhaseDelay(float frequency, int stringIndex) const noexcept;
-    // The saddle's mobility at one string's two ports, bridge and anchors in
-    // parallel, at a frequency: the normal port at its lever arm, the
-    // parallel port on the rocking (see saddleHeightRatio), and the transfer
-    // between them. The last two are zero wherever rocking was not measured.
+    // The saddle's mobility at one string's two ports, at a frequency: the
+    // measured bridge read at the normal port's lever arm, the parallel port
+    // on the rocking (see saddleHeightRatio), and the transfer between them.
+    // The last two are zero wherever rocking was not measured.
     struct PortMobility
     {
         std::complex<float> normal {};
@@ -1489,10 +1469,6 @@ private:
     // string's horizontal (soundboard-parallel) force onto the rocking
     // moment, and the rocking displacement back onto its horizontal motion.
     [[nodiscard]] float saddleHeightRatio() const noexcept;
-    // The six anchor stubs as the three moments of one stiffness matrix in
-    // the saddle's two coordinates: sum K, sum uK, sum u^2 K.
-    void bridgeAnchorMoments(float& stiffness0, float& stiffness1,
-                             float& stiffness2) const noexcept;
     void configureVoice(Voice& voice, int stringIndex, int midiNote,
                         bool clearDelay, bool refreshPickReference = false,
                         bool transitionRetune = false) noexcept;
@@ -1711,9 +1687,9 @@ private:
     float bridgeShapePlate_ { 1.0f };
     float bridgeShapeT1UpperHz_ { 0.0f };
     BridgeLoad bridgeLoad_ {};
-    // Motion plus total/body/tail loads, each in heave and normalized rock.
+    // Motion plus total/body loads, each in heave and normalized rock.
     // Unlike acoustic histories these never re-prime at a note boundary.
-    std::array<FixedDerivative, 8> bridgePowerDerivatives_ {};
+    std::array<FixedDerivative, 6> bridgePowerDerivatives_ {};
     FixedDerivative bridgeVelocityDerivative_ {};
     std::array<float, 8> captureMix_ { 1.0f };
     // The piezo chain (renderPiezo). Each string presses on its own stretch
@@ -1784,10 +1760,8 @@ private:
     // are differenced alongside the forces; the passivity tests read it.
     FixedDerivative bridgeForceMomentDerivative_ {};
     FixedDerivative bridgeBodyMomentDerivative_ {};
-    FixedDerivative bridgeTailMomentDerivative_ {};
     FixedDerivative bridgeForceDerivative_ {};
     FixedDerivative bridgeBodyForceDerivative_ {};
-    FixedDerivative bridgeTailForceDerivative_ {};
     double sampleRate_ { 48000.0 };
     float inverseSampleRate_ { 1.0f / 48000.0f };
     // The released static force's high-pass, a double pole at 10 ms, and
@@ -1804,10 +1778,8 @@ private:
     float lastBridgeVelocity_ { 0.0f };
     float lastBridgeReactionForce_ { 0.0f };
     float lastBridgeBodyForce_ { 0.0f };
-    float lastBridgeTailForce_ { 0.0f };
     float lastBridgePower_ { 0.0f };
     float lastBridgeBodyPower_ { 0.0f };
-    float lastBridgeTailPower_ { 0.0f };
     float bodyAmount_ { 0.82f };
     float width_ { 0.62f };
     float outputGain_ { 0.42f };

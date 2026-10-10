@@ -350,7 +350,7 @@ struct AcustraEngineTestAccess
     struct RetunedStringSnapshot
     {
         double impedance;
-        double tailStiffness;
+        double tension;
         double inharmonicity;
     };
 
@@ -981,7 +981,7 @@ struct AcustraEngineTestAccess
         engine.setParameters(parameters);
         engine.prepare(48000.0, 64);
         const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
-        return { voice.characteristicImpedance, voice.bridgeTailStiffness,
+        return { voice.characteristicImpedance, voice.tensionNewtons,
                  voice.dispersionDesignInharmonicity };
     }
 
@@ -1357,13 +1357,12 @@ struct AcustraEngineTestAccess
         return { before, forced, landed, leaked, after };
     }
 
-    static std::array<float, 8> bridgePortWaves(const AcustraEngine& engine)
+    static std::array<float, 6> bridgePortWaves(const AcustraEngine& engine)
     {
         const auto& bridge = engine.bridgeLoad_;
         return { bridge.displacement, bridge.rotation,
                  bridge.mainIntegratedForce, bridge.mainIntegratedMoment,
-                 bridge.bodyIntegratedForce, bridge.bodyIntegratedMoment,
-                 bridge.tailIntegratedForce, bridge.tailIntegratedMoment };
+                 bridge.bodyIntegratedForce, bridge.bodyIntegratedMoment };
     }
 
     // The normal-polarisation line a fresh note writes, newest sample first,
@@ -1448,8 +1447,7 @@ struct AcustraEngineTestAccess
         for (const auto* derivative : {
                  &engine.bridgeVelocityDerivative_, &engine.bridgeRotationDerivative_,
                  &engine.bridgeForceDerivative_, &engine.bridgeForceMomentDerivative_,
-                 &engine.bridgeBodyForceDerivative_, &engine.bridgeBodyMomentDerivative_,
-                 &engine.bridgeTailForceDerivative_, &engine.bridgeTailMomentDerivative_ })
+                 &engine.bridgeBodyForceDerivative_, &engine.bridgeBodyMomentDerivative_ })
         {
             state.insert(state.end(), derivative->history.begin(), derivative->history.end());
             state.push_back(static_cast<float>(derivative->index));
@@ -2177,7 +2175,7 @@ void testSteelRetuningPreservesStringMass()
             expect(std::abs(moved.impedance / standard.impedance - frequencyRatio)
                        < 2.0e-5,
                    name + ": steel impedance did not preserve linear mass");
-            expect(std::abs(moved.tailStiffness / standard.tailStiffness
+            expect(std::abs(moved.tension / standard.tension
                             - frequencyRatio * frequencyRatio) < 2.0e-5,
                    name + ": steel tension did not follow the retuned frequency");
             expect(std::abs(moved.inharmonicity / standard.inharmonicity
@@ -2563,11 +2561,8 @@ void testPassiveBridgeBranchesBalance()
 
     double totalWork = 0.0;
     double bodyWork = 0.0;
-    double tailWork = 0.0;
     double minimumTotalWork = 0.0;
     double minimumBodyWork = 0.0;
-    double minimumTailWork = 0.0;
-    double maximumTailWork = 0.0;
     double maximumForce = 0.0;
     double maximumBalanceError = 0.0;
     for (int sample = 0; sample < static_cast<int>(4.0 * sampleRate);
@@ -2578,14 +2573,12 @@ void testPassiveBridgeBranchesBalance()
         engine.process(&left, &right, 1);
         totalWork += engine.getLastBridgePower() / sampleRate;
         bodyWork += engine.getLastBridgeBodyPower() / sampleRate;
-        tailWork += engine.getLastBridgeTailPower() / sampleRate;
         minimumTotalWork = std::min(minimumTotalWork, totalWork);
         minimumBodyWork = std::min(minimumBodyWork, bodyWork);
-        minimumTailWork = std::min(minimumTailWork, tailWork);
-        maximumTailWork = std::max(maximumTailWork, tailWork);
+        // Nothing but the body holds the saddle (bridgePortMobility), so
+        // the strings' whole force is the body's.
         const double totalForce = engine.getLastBridgeReactionForce();
-        const double branchForce = engine.getLastBridgeBodyForce()
-                                 + engine.getLastBridgeTailForce();
+        const double branchForce = engine.getLastBridgeBodyForce();
         maximumForce = std::max(maximumForce, std::abs(totalForce));
         maximumBalanceError = std::max(maximumBalanceError,
             std::abs(totalForce - branchForce));
@@ -2595,10 +2588,8 @@ void testPassiveBridgeBranchesBalance()
            "bridge termination generated cumulative work");
     expect(minimumBodyWork >= -1.0e-14,
            "measured body branch generated cumulative work");
-    expect(minimumTailWork >= -1.0e-4 * maximumTailWork - 1.0e-15,
-           "xi_b tail acquired negative stored energy");
     expect(maximumBalanceError < 1.0e-4 * maximumForce + 1.0e-10,
-           "bridge/body/tail force balance did not close");
+           "bridge/body force balance did not close");
 }
 
 // Measure the solver's actual zero-state port trajectories independently of
@@ -2614,7 +2605,7 @@ void testPowerObserversKeepInitialAndRepeatedPluckWork()
         parameters.touch = 0.72f;
         engine.setParameters(parameters);
         engine.prepare(rate, 1);
-        std::vector<std::array<float, 8>> trajectory;
+        std::vector<std::array<float, 6>> trajectory;
         const int frames = static_cast<int>(0.05 * rate);
         trajectory.reserve(static_cast<std::size_t>(frames));
         bool agrees = true;
@@ -2631,7 +2622,7 @@ void testPowerObserversKeepInitialAndRepeatedPluckWork()
             const double delayedAt = static_cast<double>(sample) - rate / 48000.0;
             const int before = static_cast<int>(std::floor(delayedAt));
             const double fraction = delayedAt - before;
-            std::array<double, 8> rates {}, rateErrorBounds {};
+            std::array<double, 6> rates {}, rateErrorBounds {};
             for (std::size_t coordinate = 0; coordinate < rates.size(); ++coordinate)
             {
                 const auto valueAt = [&] (int at)
@@ -2650,9 +2641,8 @@ void testPowerObserversKeepInitialAndRepeatedPluckWork()
                     * (std::abs(trajectory.back()[coordinate])
                        + std::abs(valueAt(before)) + std::abs(valueAt(before + 1)));
             }
-            const std::array<double, 3> observed {
-                engine.getLastBridgePower(), engine.getLastBridgeBodyPower(),
-                engine.getLastBridgeTailPower()
+            const std::array<double, 2> observed {
+                engine.getLastBridgePower(), engine.getLastBridgeBodyPower()
             };
             for (std::size_t branch = 0; branch < observed.size(); ++branch)
             {
@@ -4591,8 +4581,7 @@ void testHostilePhysicalCalibrationIsSanitised()
             }
             expect(std::isfinite(engine.getLastBridgeVelocity())
                        && std::isfinite(engine.getLastBridgeReactionForce())
-                       && std::isfinite(engine.getLastBridgeBodyForce())
-                       && std::isfinite(engine.getLastBridgeTailForce()),
+                       && std::isfinite(engine.getLastBridgeBodyForce()),
                    "bounded physical calibration poisoned bridge telemetry");
         }
         expect(maximum > 1.0e-7 && maximum <= 1.0,

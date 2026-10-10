@@ -90,19 +90,17 @@ struct AcustraEngineTestAccess
         drive.incidentHeave = force;
         drive.impedance0 = 0.1f;
         drive.impedance2 = 0.05f;
-        drive.stiffness0 = 100.0f;
-        drive.stiffness2 = 50.0f;
         if (engine.bridgeLoadFade_ < 1.0f)
         {
-            engine.bridgeLoad_.process(drive, engine.inverseSampleRate_,
-                                      engine.fadingBridgeLoad_, engine.bridgeLoadFade_);
+            engine.bridgeLoad_.process(drive, engine.fadingBridgeLoad_,
+                                      engine.bridgeLoadFade_);
             engine.bridgeLoadFade_ = std::min(1.0f,
                 engine.bridgeLoadFade_ + engine.bridgeLoadFadeStep_);
             if (engine.bridgeLoadFade_ == 1.0f && engine.bridgeUpdatePending_)
                 engine.applyPendingBridge(true);
         }
         else
-            engine.bridgeLoad_.process(drive, engine.inverseSampleRate_);
+            engine.bridgeLoad_.process(drive);
         return engine.bridgeLoad_.displacement;
     }
 };

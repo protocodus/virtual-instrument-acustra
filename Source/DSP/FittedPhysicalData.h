@@ -39,32 +39,18 @@ struct PhysicalCalibration
     // junction active.
     float bridgeConductanceFloor { 0.0f };
     float bridgeConductanceCornerHz { 1000.0f };
-    // Length of string between the saddle and its anchor, which sets the
-    // stiffness T/L of the spring each string presents to the bridge node.
-    // DAFx-26 attaches the body at xi_b=0.995 and leaves whatever stub that
-    // fraction implies; a real bridge anchors the string at a fixed distance
-    // behind the saddle instead - roughly 12-16 mm at a steel-string's pins,
-    // further at a classical's tie block - and the distance is not part of
-    // the g21 measurement, so it is bounded and fitted rather than assumed.
-    // Swept on the classical bridge then shipping, over E, G, Am, D and C
-    // chords. Worst separable note's pull early/late in
-    // cents: 1.4/3.8 at the 3.25 mm stub, 2.1/2.4 at 8 mm, 2.9/3.2 at
-    // 17.2 mm, 25.8/98.2 with no anchor at all. The coincident pairs of the
-    // same sweep - a played fundamental landing on a lower played note's
-    // partial, where the tracker reads the beat between them and not a pull -
-    // run the other way: 58.1/12.4 at 3.25 mm, 28.2/10.2 at 8 mm, 14.1/26.7
-    // at 17.2 mm. So the sweep settles that an anchor is needed and not which
-    // length: 3.25 mm loses the late window to 8 mm and loses the coincident
-    // column outright. It shipped at 3.25 mm - the bound's floor and DAFx-26's
-    // own attachment, xi_b = 0.995 on a 650 mm scale, the only published
-    // dimension among the candidates - until the 2026-09-04 refit, which took
-    // it to 59.1 mm against a 60 mm ceiling and improved the tuning term on
-    // all three splits (3.459 -> 2.869 training, 3.378 -> 3.304 development
-    // validation, 2.429 -> 1.717 flat top). That is longer than the 12-16 mm
-    // a steel string's pins give and longer than any candidate the chord
-    // sweep covered, so the two measurements now disagree about this value:
-    // the corpus wants a softer termination than the pull sweep does, and
-    // nothing here has measured the pull at 59 mm.
+    // Retired on 2026-10-10 (Docs/saddle-termination-2026-10-10.md): the
+    // engine reads nothing from it. It was the length of string between the
+    // saddle and its anchor, whose stiffness T/L each string presented to
+    // ground at the saddle (DAFx-26's fixed-end tail, shipped at its 3.25 mm
+    // stub). On a pin bridge both ends of that segment are on the bridge, so
+    // it holds the bridge against nothing; as a spring to ground it
+    // resonated with the body's mass above each body mode and drained the
+    // strings at 6 to 34 times the bridge's own conductance 2-5 semitones
+    // above A0 and T1. The slot, its bounds and its place in the calibration
+    // vector stay, so saved calibration files and the fitting tools keep
+    // their layout; Docs/decisions.md (2026-09-02, 2026-09-04) records how
+    // its values were swept and chosen while it was live.
     float bridgeTailLengthMetres { 0.020f };
     // The Pick technique only; Finger and Thumb never read these. A string
     // does not leave a plectrum's tip from rest: the contact region is
@@ -163,6 +149,7 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // and A#2 stand 11-13 dB stronger against their 2nd and 3rd harmonics
     // than the engine rendered them through the bridge microphones.
     -0.0706290118f, 4.0f, 0.00773577847f, -0.0597851562f, 2.28586032f,
+    // bridgeTailLengthMetres, retired (above): 3.25 mm, inert.
     0.011f, 2187.76023f, 0.00325f,
     // The plectrum, first fitted 2026-09-10 by the pick-release stage of
     // Tools/OptimizePhysicalModel.py on the picked archtop training rows

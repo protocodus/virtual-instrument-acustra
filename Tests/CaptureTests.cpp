@@ -1972,10 +1972,8 @@ void testMicrophoneFilterOnlyChangesObservation()
                     && filtered->getLastBridgeVelocity() == bypass->getLastBridgeVelocity()
                     && filtered->getLastBridgeReactionForce() == bypass->getLastBridgeReactionForce()
                     && filtered->getLastBridgeBodyForce() == bypass->getLastBridgeBodyForce()
-                    && filtered->getLastBridgeTailForce() == bypass->getLastBridgeTailForce()
                     && filtered->getLastBridgePower() == bypass->getLastBridgePower()
-                    && filtered->getLastBridgeBodyPower() == bypass->getLastBridgeBodyPower()
-                    && filtered->getLastBridgeTailPower() == bypass->getLastBridgeTailPower();
+                    && filtered->getLastBridgeBodyPower() == bypass->getLastBridgeBodyPower();
                 piezoSame = piezoSame && fp == bp;
                 piezoMainSame = piezoMainSame && fl == bl && fr == br;
                 difference += (double(fl) - bl) * (double(fl) - bl)

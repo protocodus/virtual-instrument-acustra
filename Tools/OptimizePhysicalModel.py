@@ -118,10 +118,15 @@ def _free(*names: str) -> np.ndarray:
                        if NAMES.index(name) not in FROZEN], dtype=int)
 
 
+# Values the engine no longer reads keep their slot in the vector, so saved
+# calibrations keep their layout, but no stage searches them.
+# bridgeTailLengthMetres: the saddle-to-pin segment is no spring to ground
+# (Docs/saddle-termination-2026-10-10.md).
+RETIRED = ("bridgeTailLengthMetres",)
 GLOBAL = _free("bodyFrequencyScale", "bodyQScale", "bridgeMobilityScale",
                "residueTiltDbPerOctave", "apertureRegisterExponent",
                "lowBodyModeGain", "highLossCutoffScale", "bridgeConductanceFloor",
-               "bridgeConductanceCornerHz", "bridgeTailLengthMetres")
+               "bridgeConductanceCornerHz")
 STEEL = _free(*(name for name in NAMES if name.startswith("steel.")),
               "steelDisplacementScaleMetres", "steelFretT60Slope")
 # Pick-only stages had no searchable coordinates after the rejected impact

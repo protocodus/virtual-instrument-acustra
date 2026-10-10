@@ -164,10 +164,9 @@ void observe(const Performer& performer, Rendered& output, int frame)
         integer(s.keyDown); integer(s.played); integer(s.pedalHeld); scalar(s.level);
     }
     scalar(engine.getLastBridgeVelocity()); scalar(engine.getLastBridgeReactionForce());
-    scalar(engine.getLastBridgeBodyForce()); scalar(engine.getLastBridgeTailForce());
+    scalar(engine.getLastBridgeBodyForce());
     scalar(engine.getLastPiezoVoltage());
     scalar(engine.getLastBridgePower()); scalar(engine.getLastBridgeBodyPower());
-    scalar(engine.getLastBridgeTailPower());
     const auto probe = engine.getLastPiezoProbe();
     scalar(probe.openCircuit); scalar(probe.jack); scalar(probe.bufferInput); scalar(probe.gainStageDrive);
     constexpr std::array<int, 18> notes {20,28,38,40,43,45,47,50,52,55,57,59,62,64,67,71,76,84};

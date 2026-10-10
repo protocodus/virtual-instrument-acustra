@@ -89,7 +89,7 @@ struct AcustraEngineTestAccess
     {
         std::vector<std::string> result {"bridge_velocity", "bridge_body_force",
             "bridge_reaction_force", "bridge_power",
-            "body_power", "tail_power", "junction_impedance"};
+            "body_power", "junction_impedance"};
         for (int i = 0; i < 6; ++i)
             for (const char* field : {"normal_quarter", "parallel_quarter",
                                      "normal_midpoint", "outgoing_wave"})
@@ -105,7 +105,7 @@ struct AcustraEngineTestAccess
     {
         result.insert(result.end(), {e.lastBridgeVelocity_, e.lastBridgeBodyForce_,
             e.lastBridgeReactionForce_, e.lastBridgePower_,
-            e.lastBridgeBodyPower_, e.lastBridgeTailPower_, e.lastImpedanceSum_});
+            e.lastBridgeBodyPower_, e.lastImpedanceSum_});
         for (const auto& v : e.voices_)
         {
             result.push_back(v.loops[0].displacementAt(0.25f));
@@ -140,7 +140,6 @@ struct AcustraEngineTestAccess
               << ",\"key_down\":" << (v.keyDown ? "true" : "false")
               << ",\"pedal_held\":" << (v.pedalHeld ? "true" : "false")
               << ",\"impedance\":" << v.characteristicImpedance
-              << ",\"anchor_stiffness\":" << v.bridgeTailStiffness
               << ",\"delay\":" << v.loops[0].currentDelay
               << ",\"loop_gain\":" << v.loops[0].loopGain
               << ",\"release_gain\":" << v.releaseDamping
@@ -237,7 +236,7 @@ void capture(std::ostream& manifest, const std::filesystem::path& dir,
     std::ostringstream states;
     states << std::setprecision(10) << '[';
     Access::state(*engine, states, 0);
-    std::array<double, 3> work {}, minimum {}, maximum {}, positive {};
+    std::array<double, 2> work {}, minimum {}, positive {};
     float maximumAudio = 0.0f;
     const int length = selfTest ? 12000 : frames;
     for (int sample = 0; sample < length; ++sample)
@@ -254,14 +253,13 @@ void capture(std::ostream& manifest, const std::filesystem::path& dir,
         maximumAudio = std::max({maximumAudio, std::abs(left), std::abs(right)});
         audio.insert(audio.end(), {left, right});
         Access::observe(*engine, modes, trace);
-        const std::array<float, 3> powers {engine->getLastBridgePower(),
-            engine->getLastBridgeBodyPower(), engine->getLastBridgeTailPower()};
-        for (int i = 0; i < 3; ++i)
+        const std::array<float, 2> powers {engine->getLastBridgePower(),
+            engine->getLastBridgeBodyPower()};
+        for (int i = 0; i < 2; ++i)
         {
             work[i] += powers[i] / rate;
             positive[i] += std::max(powers[i], 0.0f) / rate;
             minimum[i] = std::min(minimum[i], work[i]);
-            maximum[i] = std::max(maximum[i], work[i]);
         }
         if ((sample + 1) % 4800 == 0)
         {
@@ -275,11 +273,9 @@ void capture(std::ostream& manifest, const std::filesystem::path& dir,
         throw std::runtime_error("ports, body bank or diagnostic loss changed during capture");
     if (!(maximumAudio > 0.0f) || !std::isfinite(maximumAudio))
         throw std::runtime_error("silent or non-finite probe");
-    for (int i = 0; i < 3; ++i)
-        // Same roundoff bounds as AcustraEngineTests' stationary ledger:
-        // the conservative spring's tiny return is less well conditioned.
-        if (!std::isfinite(work[i]) || minimum[i]
-            < (i == 2 ? -1.0e-4 * maximum[i] - 1.0e-15 : -1.0e-14))
+    for (int i = 0; i < 2; ++i)
+        // Same roundoff bound as AcustraEngineTests' stationary ledger.
+        if (!std::isfinite(work[i]) || minimum[i] < -1.0e-14)
         {
             std::ostringstream error;
             error << "negative cumulative bridge supplied work: " << key
@@ -311,9 +307,9 @@ void capture(std::ostream& manifest, const std::filesystem::path& dir,
                  << ",\"frequency\":" << Access::poleHz(*engine, mode)
                  << ",\"intrinsic_t60\":" << Access::poleT60(*engine, mode) << '}';
     }
-    manifest << "],\"cumulative_work\":[" << work[0] << ',' << work[1] << ',' << work[2]
-             << "],\"minimum_work\":[" << minimum[0] << ',' << minimum[1] << ',' << minimum[2]
-             << "],\"positive_work\":[" << positive[0] << ',' << positive[1] << ',' << positive[2]
+    manifest << "],\"cumulative_work\":[" << work[0] << ',' << work[1]
+             << "],\"minimum_work\":[" << minimum[0] << ',' << minimum[1]
+             << "],\"positive_work\":[" << positive[0] << ',' << positive[1]
              << "],\"states\":" << states.str() << '}';
 }
 } // namespace

@@ -2249,13 +2249,11 @@ AcustraEngine::AcustraEngine() noexcept
     restartRandomDraws();
 }
 
-// Every random draw starts again from the constructor's seeds, and every
-// bridge anchor from its constructed value, so a prepared engine plays as a
-// new one does, whatever it played before or at whichever rate. The anchors
-// belong here because reset() settles the open strings' delays from every
-// string's anchor at that moment (see bridgePortMobility). reset() alone
-// does not restart the draws: a panic is not a new performance, and the
-// strums after it keep varying as repeated real strums do.
+// Every random draw starts again from the constructor's seeds, so a
+// prepared engine plays as a new one does, whatever it played before or at
+// whichever rate. reset() alone does not restart the draws: a panic is not a
+// new performance, and the strums after it keep varying as repeated real
+// strums do.
 void AcustraEngine::restartRandomDraws() noexcept
 {
     strumRandomState_ = 0x9e3779b9u;
@@ -2273,10 +2271,6 @@ void AcustraEngine::restartRandomDraws() noexcept
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 7));
         voice.legatoFrictionState = 0xd1b54a35u
             ^ (0x9e3779b9u * static_cast<std::uint32_t>(string + 1));
-        voice.bridgeTailStiffness = initialBridgeTailStiffness;
-        voice.appliedBridgeTailStiffness = initialBridgeTailStiffness;
-        voice.bridgeTailStiffnessStep = 0.0f;
-        voice.bridgeTailStiffnessSamples = 0;
     }
 }
 
@@ -2996,10 +2990,6 @@ void AcustraEngine::BridgeLoad::reset() noexcept
 {
     pastHeave = 0.0f;
     pastRock = 0.0f;
-    tailIntegratedForce = 0.0f;
-    tailIntegratedMoment = 0.0f;
-    previousDisplacement = 0.0f;
-    previousRotation = 0.0f;
     displacement = 0.0f;
     rotation = 0.0f;
     mainIntegratedForce = 0.0f;
@@ -3070,13 +3060,12 @@ void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
 }
 
 void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
-                                        float samplePeriod,
                                         BridgeLoad& fading,
                                         float weight) noexcept
 {
     // One junction with the two mode sets' mobilities mixed: modal
     // mobilities add as positive-real sums, so each share is passive. The
-    // anchor stubs and the junction's own state are this load's.
+    // junction's own state is this load's.
     const float keep = 1.0f - weight;
     const float heave = immediateHeave, cross = immediateCross,
                 rock = immediateRock, pastH = pastHeave, pastR = pastRock;
@@ -3085,7 +3074,7 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     immediateRock = weight * rock + keep * fading.immediateRock;
     pastHeave = weight * pastH + keep * fading.pastHeave;
     pastRock = weight * pastR + keep * fading.pastRock;
-    process(drive, samplePeriod);
+    process(drive);
     // process advanced this load's modes on the body force; advance the
     // fading ones on the same, and restore this load's own immediates.
     immediateHeave = heave;
@@ -3094,8 +3083,7 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     fading.advanceModes(bodyIntegratedForce, bodyIntegratedMoment);
 }
 
-void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
-                                        float samplePeriod) noexcept
+void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive) noexcept
 {
     // The saddle is approximated by heave and normalized rock. The archive's
     // accelerometers sit behind the saddle rather than at the hammer points;
@@ -3104,31 +3092,17 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     // legacy name for linear r=a*physical_angle, not an angle in radians.
     // A string at lever arm u ends on x_u = x + u*theta and
     // pushes F_u = Z(2a_u - x_u) there, so the strings contribute the force
-    // sum and its first moment, and the same for the anchor stubs, each of
-    // which sits at its own string's u. Solving
-    //     [x; theta] = Y (b - G [x; theta]),  G = string + anchor moments,
+    // sum and its first moment. Solving
+    //     [x; theta] = Y (b - G [x; theta]),  G = the strings' moments,
     // is one 2x2 per sample and stays algebraic-loop-free because Y here is
-    // only the immediate part of the modal bank.
-    //
-    // DAFx-26 attaches the measured body a short distance from the string's
-    // end, leaving a fixed-end tail. Below its first resonance that segment
-    // is the passive spring K=T/L_t; trapezoidal integration gives its
-    // current-step impedance K*dt/2. Its three moments are the anchor's
-    // stiffness matrix in the same two coordinates.
-    const float half = 0.5f * samplePeriod;
-    const float c0 = half * drive.stiffness0;
-    const float c1 = half * drive.stiffness1;
-    const float c2 = half * drive.stiffness2;
-    const float historyForce = tailIntegratedForce
-        + c0 * previousDisplacement + c1 * previousRotation;
-    const float historyMoment = tailIntegratedMoment
-        + c1 * previousDisplacement + c2 * previousRotation;
-
-    const float g00 = drive.impedance0 + c0;
-    const float g01 = drive.impedance1 + c1;
-    const float g11 = drive.impedance2 + c2;
-    const float b0 = drive.incidentHeave - historyForce;
-    const float b1 = drive.incidentRock - historyMoment;
+    // only the immediate part of the modal bank. Nothing else holds the
+    // saddle: the string behind it ends on the same bridge
+    // (bridgePortMobility), and the body takes the whole string force.
+    const float g00 = drive.impedance0;
+    const float g01 = drive.impedance1;
+    const float g11 = drive.impedance2;
+    const float b0 = drive.incidentHeave;
+    const float b1 = drive.incidentRock;
 
     // (I + Y G) [x; theta] = Y b + past
     const float m00 = 1.0f + immediateHeave * g00 + immediateCross * g01;
@@ -3155,23 +3129,14 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive,
     displacement = nextDisplacement;
     rotation = nextRotation;
 
-    const float nextTailForce = historyForce
-        + c0 * displacement + c1 * rotation;
-    const float nextTailMoment = historyMoment
-        + c1 * displacement + c2 * rotation;
-    // The string force less what the anchor takes, in both coordinates.
+    // The strings' force on the saddle, in both coordinates: all of it
+    // drives the body.
     const float bodyForce = b0 - g00 * displacement - g01 * rotation;
     const float bodyMoment = b1 - g01 * displacement - g11 * rotation;
 
     advanceModes(bodyForce, bodyMoment);
-    previousDisplacement = displacement;
-    previousRotation = rotation;
-    tailIntegratedForce = nextTailForce;
-    tailIntegratedMoment = nextTailMoment;
-    mainIntegratedForce = drive.incidentHeave
-        - drive.impedance0 * displacement - drive.impedance1 * rotation;
-    mainIntegratedMoment = drive.incidentRock
-        - drive.impedance1 * displacement - drive.impedance2 * rotation;
+    mainIntegratedForce = bodyForce;
+    mainIntegratedMoment = bodyMoment;
     bodyIntegratedForce = bodyForce;
     bodyIntegratedMoment = bodyMoment;
 }
@@ -3384,7 +3349,6 @@ void AcustraEngine::reset() noexcept
         voice.pedalHeld = false;
         voice.level = 0.0f;
         voice.returnSamples = 0;
-        voice.bridgeTailStiffnessSamples = 0;
         returnToOpenString(voice, string, true);
     }
     // Initialise every reciprocal open-string loop. The second pass settles
@@ -3425,15 +3389,11 @@ void AcustraEngine::resetSoundState() noexcept
     bridgeForceMomentDerivative_.reset();
     bridgeBodyForceDerivative_.reset();
     bridgeBodyMomentDerivative_.reset();
-    bridgeTailForceDerivative_.reset();
-    bridgeTailMomentDerivative_.reset();
     lastBridgeVelocity_ = 0.0f;
     lastBridgeReactionForce_ = 0.0f;
     lastBridgeBodyForce_ = 0.0f;
-    lastBridgeTailForce_ = 0.0f;
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
-    lastBridgeTailPower_ = 0.0f;
     bridgeDerivativesNeedPriming_ = true;
     bridgeDerivativesCrossRelease_ = false;
     bridgeDerivativesCrossConfigure_ = false;
@@ -4306,7 +4266,7 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
     const auto notes = openNotes(parameters_.tuning);
     const float impedance = stringImpedance(
         stringIndex, notes[static_cast<std::size_t>(stringIndex)]);
-    // This estimates one string's return phase from the body and anchors.
+    // This estimates one string's return phase from the body.
     // Other strings' frequency-dependent loopback impedances are omitted here,
     // although the runtime junction includes their returning waves. It is an
     // isolated-port tuning approximation, not the coupled instrument's poles:
@@ -4318,8 +4278,8 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
     // it is not applied.
     const float characteristicAdmittance = 1.0f / impedance;
     // This is the folded full-round-trip multiplier -b/a.  Its phase is the
-    // phase contributed by both measured body motion and the saddle anchor; the
-    // speaking-string delay is shortened by exactly that amount when tuned.
+    // phase the measured body motion contributes; the speaking-string delay
+    // is shortened by exactly that amount when tuned.
     const std::complex<float> selfReflection
         = (characteristicAdmittance - port.normal)
         / (characteristicAdmittance + port.normal);
@@ -4471,56 +4431,31 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
             sSquared + 2.0f * damping * s + omega * omega);
     }
 
-    // Body and anchor are in parallel at the saddle, but on a bridge with two
-    // degrees of freedom that parallel has to be taken as matrices and only
-    // then read at this string's own point: the anchor a string finds is
-    // softer at the ends, where it can rock the bridge against the others,
-    // than in the middle.
-    float stiffness0 = 0.0f;
-    float stiffness1 = 0.0f;
-    float stiffness2 = 0.0f;
-    bridgeAnchorMoments(stiffness0, stiffness1, stiffness2);
-    // (Y^-1 + K/s)^-1 = det(Y) * (adj(Y) + det(Y) K/s)^-1, which needs no
-    // division by a determinant that goes to zero wherever the bank has no
-    // rocking residue.
-    const std::complex<float> determinant
-        = mobilityHeave * mobilityRock - mobilityCross * mobilityCross;
-    const std::complex<float> ratio = determinant / s;
-    const std::complex<float> a00 = mobilityRock + ratio * stiffness0;
-    const std::complex<float> a01 = -mobilityCross + ratio * stiffness1;
-    const std::complex<float> a11 = mobilityHeave + ratio * stiffness2;
-    const std::complex<float> inner = a00 * a11 - a01 * a01;
-    std::complex<float> effectiveMobility {};
-    if (std::abs(inner) > 0.0f)
+    // The string ends on the measured bridge, read at its own point on the
+    // saddle: heave + 2u cross + u^2 rock, with nothing in parallel. A pin
+    // bridge carries both ends of the short segment from the saddle crown to
+    // the pin, so when the bridge heaves or rocks that segment goes with it:
+    // its tension acts along the line through two points of one rigid body
+    // and puts no net force or moment on it, whatever that body's motion.
+    // The archive measured the bridge strung (strings damped), so the
+    // strings' static load is already in the mobility. Until 2026-10-10 the
+    // segment was DAFx-26's fixed-end tail, a spring T/L from the saddle to
+    // ground: that counted the geometry twice, and above each body resonance,
+    // where the body is mass-like, it resonated with the body, so the
+    // strings' conductance peaked 2-3 semitones above A0 and 3-5 above T1 at
+    // 6 to 34 times the bridge's own (Docs/saddle-termination-2026-10-10.md).
+    result.normal = mobilityHeave + 2.0f * arm * mobilityCross
+                  + arm * arm * mobilityRock;
+    // The parallel polarisation's port is (h/a) times the rocking
+    // (saddleHeightRatio): its own mobility and its transfer mobility to
+    // this string's normal port. Both are zero where no rocking residue was
+    // measured.
+    const float eta = saddleHeightRatio();
+    if (eta != 0.0f)
     {
-        effectiveMobility = determinant
-            * (a11 - 2.0f * arm * a01 + arm * arm * a00) / inner;
-        // The same parallel read at the parallel polarisation's port, which
-        // is (h/a) times the rocking (saddleHeightRatio): its own mobility
-        // and its transfer mobility to this string's normal port.
-        const float eta = saddleHeightRatio();
-        if (eta != 0.0f)
-        {
-            const std::complex<float> rockRock = determinant * a00 / inner;
-            const std::complex<float> heaveRock = -determinant * a01 / inner;
-            result.transfer = -eta * (heaveRock + arm * rockRock);
-            result.parallel = eta * eta * rockRock;
-        }
+        result.transfer = -eta * (mobilityCross + arm * mobilityRock);
+        result.parallel = eta * eta * mobilityRock;
     }
-    else
-    {
-        // A bank with no rocking residue anywhere leaves the determinant, and
-        // with it the whole adjugate above, exactly zero.  The rocking
-        // coordinate is then immovable, every string sees the same heave port
-        // with the anchor springs in parallel, and the load is the scalar
-        // (1/Yhh + k0/s)^-1; no unmeasured rocking response is added to it.
-        const std::complex<float> denominator
-            = s + stiffness0 * mobilityHeave;
-        if (!(std::abs(denominator) > 0.0f))
-            return result;
-        effectiveMobility = mobilityHeave * s / denominator;
-    }
-    result.normal = effectiveMobility;
     result.valid = true;
     return result;
 }
@@ -4634,30 +4569,6 @@ float AcustraEngine::saddleHeightRatio() const noexcept
 {
     constexpr float impactHalfSpacing = 0.0232f;
     return 0.0081f / impactHalfSpacing;
-}
-
-void AcustraEngine::bridgeAnchorMoments(float& stiffness0,
-                                        float& stiffness1,
-                                        float& stiffness2) const noexcept
-{
-    // Every string is anchored behind the saddle whether or not it is being
-    // played, but each stub stands at its own point on it, so the six springs
-    // are one stiffness matrix rather than one sum. The stub holds the crown
-    // sideways as well as down, so it also stiffens the rocking the parallel
-    // polarisation drives, by (h/a)^2 of its own stiffness.
-    const float eta = saddleHeightRatio();
-    stiffness0 = stiffness1 = stiffness2 = 0.0f;
-    for (int string = 0; string < stringCount; ++string)
-    {
-        const float arm = saddleLeverArm(string);
-        const float stiffness
-            = voices_[static_cast<std::size_t>(string)].bridgeTailStiffness;
-        stiffness0 += stiffness;
-        stiffness1 += arm * stiffness;
-        stiffness2 += arm * arm * stiffness;
-        if (eta != 0.0f)
-            stiffness2 += eta * eta * stiffness;
-    }
 }
 
 void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
@@ -5066,30 +4977,6 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             lowpassCoefficient, mutedHighLoss, referenceDispersion,
             bendingA1, bendingA2));
     }
-    // The segment between saddle and anchor does not move when a string is
-    // fretted and does not change tension, so its spring T/L is a constant of
-    // the string rather than a fraction of the speaking length.
-    const float bridgeTailStiffness = tension / std::max(
-        physicalCalibration_.bridgeTailLengthMetres, 1.0e-5f);
-    // Every string's port mobility reads all six anchors.
-    const bool anchorTargetChanged = exact::bits(bridgeTailStiffness)
-        != exact::bits(voice.bridgeTailStiffness);
-    if (anchorTargetChanged)
-        ++voiceConfigurationGeneration_;
-    if (transitionRetune
-        && anchorTargetChanged
-        && bridgeTailStiffness != voice.appliedBridgeTailStiffness)
-        voice.bridgeTailStiffnessSamples = std::max(1, static_cast<int>(
-            std::ceil(voice.loops[0].currentDelay)));
-    voice.bridgeTailStiffness = bridgeTailStiffness;
-    if (voice.bridgeTailStiffnessSamples > 0)
-    {
-        if (anchorTargetChanged)
-            voice.bridgeTailStiffnessStep = (bridgeTailStiffness
-                - voice.appliedBridgeTailStiffness) / voice.bridgeTailStiffnessSamples;
-    }
-    else
-        voice.appliedBridgeTailStiffness = bridgeTailStiffness;
     const auto bridgePort = bridgePortMobility(frequency, stringIndex);
     const float measuredBridgeDelay = bridgePhaseDelay(bridgePort, frequency,
                                                        stringIndex);
@@ -8824,17 +8711,13 @@ void AcustraEngine::setBridgeCouplingEnabled(bool enabled) noexcept
     bridgeForceMomentDerivative_.reset();
     bridgeBodyForceDerivative_.reset();
     bridgeBodyMomentDerivative_.reset();
-    bridgeTailForceDerivative_.reset();
-    bridgeTailMomentDerivative_.reset();
     piezoForceDerivative_.reset();
     lastBridgeVelocity_ = 0.0f;
     lastBridgeReactionForce_ = 0.0f;
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
     lastBridgeBodyForce_ = 0.0f;
-    lastBridgeTailForce_ = 0.0f;
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
-    lastBridgeTailPower_ = 0.0f;
     bridgeDerivativesNeedPriming_ = true;
     bridgeDerivativesCrossRelease_ = false;
     bridgeDerivativesCrossConfigure_ = false;
@@ -8859,12 +8742,8 @@ void AcustraEngine::setPortObserversEnabled(bool enabled) noexcept
     for (auto& derivative : bridgePowerDerivatives_)
         derivative.reset();
     bridgeForceMomentDerivative_.reset();
-    bridgeTailForceDerivative_.reset();
-    bridgeTailMomentDerivative_.reset();
-    lastBridgeTailForce_ = 0.0f;
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
-    lastBridgeTailPower_ = 0.0f;
 }
 
 void AcustraEngine::setSympatheticStringsEnabled(bool enabled) noexcept
@@ -10072,17 +9951,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             voice.appliedBendImpedanceScale += delaySmoothing_
                 * (voice.bendImpedanceScale
                    - voice.appliedBendImpedanceScale);
-            if (voice.bridgeTailStiffnessSamples > 0)
-            {
-                if (--voice.bridgeTailStiffnessSamples == 0)
-                    voice.appliedBridgeTailStiffness = voice.bridgeTailStiffness;
-                else
-                    voice.appliedBridgeTailStiffness = voice.bridgeTailStiffnessStep > 0.0f
-                        ? std::min(voice.bridgeTailStiffness,
-                            voice.appliedBridgeTailStiffness + voice.bridgeTailStiffnessStep)
-                        : std::max(voice.bridgeTailStiffness,
-                            voice.appliedBridgeTailStiffness + voice.bridgeTailStiffnessStep);
-            }
             excitation[static_cast<std::size_t>(string)]
                 = renderExcitation(voice);
             verticalIncident[static_cast<std::size_t>(string)]
@@ -10185,20 +10053,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                             * voice.tailParallelLoop.appliedReleaseGain;
                 }
             }
-            // Every string is anchored behind the saddle whether or not it
-            // is being played, so the anchor the junction sees is a constant
-            // of the instrument. Summing only the played ones made it stiffen
-            // with each voice held, which more than doubled a note's sustain
-            // inside a chord. Each stub stands at its own string's point on
-            // the saddle, so the six enter as the three moments of a
-            // stiffness matrix rather than as one sum.
             const float arm = saddleLeverArm(string);
-            drive.stiffness0 += voice.appliedBridgeTailStiffness;
-            drive.stiffness1 += arm * voice.appliedBridgeTailStiffness;
-            drive.stiffness2 += arm * arm * voice.appliedBridgeTailStiffness;
-            if (saddleHeight != 0.0f)
-                drive.stiffness2 += saddleHeight * saddleHeight
-                                  * voice.appliedBridgeTailStiffness;
             // Every string on the bridge is a member of the junction, played
             // or not: an idle string on a moving bridge carries a wave, and
             // at its resonance it presents thousands of times its
@@ -10209,7 +10064,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             // separate loop and receives its own full bridge return, so it
             // also supplies a port. Counting its incident wave without its
             // impedance breaks the wave-norm balance by Z_tail*x_string^2.
-            // The six physical anchor stubs above are unchanged.
             if (voice.played || sympatheticStringsEnabled_)
             {
                 const float port = voice.characteristicImpedance
@@ -10328,29 +10182,24 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         float reactionMoment = portIsLoaded ? drive.incidentRock : 0.0f;
         float bodyForceWave = reactionWave;
         float bodyMomentWave = reactionMoment;
-        float tailForceWave = 0.0f;
-        float tailMomentWave = 0.0f;
         if (bridgeCouplingEnabled_ && portIsLoaded)
         {
             if (bridgeLoadFade_ < 1.0f)
             {
-                bridgeLoad_.process(drive, inverseSampleRate_,
-                                    fadingBridgeLoad_, bridgeLoadFade_);
+                bridgeLoad_.process(drive, fadingBridgeLoad_, bridgeLoadFade_);
                 bridgeLoadFade_ = std::min(1.0f,
                     bridgeLoadFade_ + bridgeLoadFadeStep_);
                 if (bridgeLoadFade_ >= 1.0f && bridgeUpdatePending_)
                     applyPendingBridge(true);
             }
             else
-                bridgeLoad_.process(drive, inverseSampleRate_);
+                bridgeLoad_.process(drive);
             bridgeDisplacement = bridgeLoad_.displacement;
             bridgeRotation = bridgeLoad_.rotation;
             reactionWave = bridgeLoad_.mainIntegratedForce;
             reactionMoment = bridgeLoad_.mainIntegratedMoment;
             bodyForceWave = bridgeLoad_.bodyIntegratedForce;
             bodyMomentWave = bridgeLoad_.bodyIntegratedMoment;
-            tailForceWave = bridgeLoad_.tailIntegratedForce;
-            tailMomentWave = bridgeLoad_.tailIntegratedMoment;
         }
         // Each string's saddle force is its incident force less its port
         // moving with the saddle, F_i = inc_i - Z_i (x + u_i r); the piezo
@@ -10372,8 +10221,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             bridgeForceMomentDerivative_.reset(reactionMoment);
             bridgeBodyForceDerivative_.reset(bodyForceWave);
             bridgeBodyMomentDerivative_.reset(bodyMomentWave);
-            bridgeTailForceDerivative_.reset(tailForceWave);
-            bridgeTailMomentDerivative_.reset(tailMomentWave);
             for (int string = 0; string < stringCount; ++string)
             {
                 auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -10413,28 +10260,25 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         lastBridgeBodyForce_ = motion(bridgeBodyForceDerivative_, bodyForceWave);
         const float bodyMomentRate
             = motion(bridgeBodyMomentDerivative_, bodyMomentWave);
-        // Everything from here to the voices is observation only - the tail
-        // force, the total and tail moments and the port-power ledger feed
-        // getters, never the output - so it runs only while observed.
+        // Everything from here to the voices is observation only - the total
+        // moment and the port-power ledger feed getters, never the output -
+        // so it runs only while observed.
         if (portObserversEnabled_)
         {
-            lastBridgeTailForce_ = motion(bridgeTailForceDerivative_, tailForceWave);
             // Power crosses the saddle in both coordinates, so each branch's is
-            // the heave product plus the rocking one; reading only the first
-            // would let the tail spring look like it stored negative energy.
+            // the heave product plus the rocking one.
             motion(bridgeForceMomentDerivative_, reactionMoment);
-            motion(bridgeTailMomentDerivative_, tailMomentWave);
             // Account for the complete zero-state trajectory of the passive load.
             // Audio priming suppresses the displacement shape's initial boundary
             // step; using that primed derivative in the work ledger drops its
             // positive input work but still counts the following elastic return.
             // The independent histories keep that initial work, without changing
             // the derivatives that drive radiation or the string pitch observer.
-            const std::array<float, 8> portWaves {
+            const std::array<float, 6> portWaves {
                 bridgeDisplacement, bridgeRotation, reactionWave, reactionMoment,
-                bodyForceWave, bodyMomentWave, tailForceWave, tailMomentWave
+                bodyForceWave, bodyMomentWave
             };
-            std::array<float, 8> portRates {};
+            std::array<float, 6> portRates {};
             for (std::size_t index = 0; index < portWaves.size(); ++index)
                 portRates[index] = bridgePowerDerivatives_[index].process(
                     portWaves[index], sampleRateRatio);
@@ -10442,8 +10286,6 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                              + portRates[1] * portRates[3];
             lastBridgeBodyPower_ = portRates[0] * portRates[4]
                                  + portRates[1] * portRates[5];
-            lastBridgeTailPower_ = portRates[0] * portRates[6]
-                                 + portRates[1] * portRates[7];
         }
 
         for (int string = 0; string < stringCount; ++string)
@@ -11179,11 +11021,6 @@ float AcustraEngine::getLastBridgeBodyForce() const noexcept
     return lastBridgeBodyForce_;
 }
 
-float AcustraEngine::getLastBridgeTailForce() const noexcept
-{
-    return lastBridgeTailForce_;
-}
-
 float AcustraEngine::getLastPiezoVoltage() const noexcept
 {
     return lastPiezoVoltage_;
@@ -11207,11 +11044,6 @@ float AcustraEngine::getLastBridgePower() const noexcept
 float AcustraEngine::getLastBridgeBodyPower() const noexcept
 {
     return lastBridgeBodyPower_;
-}
-
-float AcustraEngine::getLastBridgeTailPower() const noexcept
-{
-    return lastBridgeTailPower_;
 }
 
 } // namespace acustra
