@@ -1,0 +1,1292 @@
+{
+ "record": "Docs/capture-observation-2026-10-10.md",
+ "scope": "Capture-voicing fit observation (evaluation finding 11): per-channel power for stereo references, the Mono mic for single-signal references; dry run on e51f6a9. Tools only; no engine, header or audio change; no listening.",
+ "provenance": {
+  "source_commit": "e51f6a9bd5c027d00e7e02cf9e3c58a35b8caa38",
+  "tools_commit_for_evidence": "5e5973e (FitCaptureVoicing.py's docstring changed afterwards)",
+  "tool_sha256_for_evidence": {
+   "FitCaptureVoicing.py": "a62f3d6580c18f49dfe2063eb5724c858d9180d414a0dbadf074c2a9f308b183",
+   "FitPhysicalModel.py": "3c53d89dc4256f9ba6fdf9df81bc662c2163cbd3a741128e4ff94b8316911789",
+   "BenchmarkOpenCorpora.py": "5ca45acfe421c6d6b2c2f67f0607af4af0b3e7d2f58ba31f60d1f9ef5bdd0b6c",
+   "BenchmarkPerformances.py": "242cf30b65868cc408032d3b979c4b7291058795da2646c5e8284f9452f228c5",
+   "OptimizePhysicalModel.py": "9da6c02e246656bcad93204ff187b3eeb28c742c4379fbcdc32a3049ab06f6e4",
+   "CalibrateRecordedGuitars.py": "82dbe790343ebf63fcfa8364da303adb5cdbb0621a34faa1d1282540730a9d34",
+   "CaptureVoicingData.h": "70efbc0194f161237b00e9318f3ecb632e8aeb77899924ded16729a9f6fc036d",
+   "MicrophoneBalanceData.h": "341bdf927a79d28d8bff75606a7e49efb038e6b4b1117236eee5214630d2867d"
+  },
+  "baseline_executables_sha256": {
+   "AcustraPhysicalFitRenderer": "7b9779d2a7d1cde2443b3e76f2b1f66c3479f00c5ed7e00edbe3928a199104ee",
+   "AcustraExternalCorpusRenderer": "e68fc14fbac73dde20a8fc1982b27128389ed3ba70805e60caadd7dac91ac9ea",
+   "AcustraPerformanceRenderer": "95ba40992750082ca29ede5c52525fea136dea3f23fc36b6952e7c8702cd3696"
+  },
+  "compiler": "GCC 13.3.0, Release (-O3 -DNDEBUG), Linux x86-64",
+  "calibration": [
+   1.0,
+   1.0,
+   0.754677154,
+   0.0,
+   0.749355465,
+   1.53,
+   0.52,
+   0.4883279315,
+   2.2130696796,
+   1.8,
+   1.10625,
+   -0.0706290118,
+   4.0,
+   0.00773577847,
+   -0.0597851562,
+   2.28586032,
+   0.011,
+   2187.76023,
+   0.00325,
+   0.58203125,
+   0.85859375,
+   0.0001162109375,
+   0.035,
+   0.002334375
+  ],
+  "controls": {
+   "shape": "dreadnought",
+   "body_material": "spruce",
+   "picking": "finger",
+   "stereo_width": 0.62,
+   "room": 0.0
+  },
+  "python": "3.13.16",
+  "numpy": "2.5.3",
+  "scipy": "1.18.1",
+  "data": {
+   "guitarset": {
+    "annotation.zip_md5": "b39b78e63d3446f2e54ddb7a54df9b10",
+    "annotation.zip_sha256": "8daa02e6417ccca1685feb44b135e95928ad7037e5032ecb326b5791856fda99",
+    "audio_mono-mic.zip_md5": "275966d6610ac34999b58426beb119c3",
+    "audio_mono-mic.zip_sha256": "237cdc58353d25c3c9683f4565a0f1cf2db30a9051abca545a919f8f1296dc28"
+   },
+   "eastman": {
+    "picked.opus_sha256": "35e9e45b42a70f2fada2c9d93bf809d9046562fa3fa40cbac415ef75b92d926d",
+    "plucked.opus_sha256": "16f5a8c7cde555441143243f264a03eff142cb8aafb6924236a82755a0396ce0",
+    "rows.json_sha256": "2cfde2b2efa0cee9aa8c00125fd4b6e1ac95056fce43081cf1be484111013b78",
+    "rows": {
+     "flattop-pick": 49,
+     "flattop-finger-all": 55
+    },
+    "anchors_detected": 16
+   },
+   "martin_hd28": {
+    "commit": "7a9c478fe331f94f246d33332f0adedb25bbbe27",
+    "rows.json_sha256": "e178baf6acb821dd21df33cef784ee160595e5c1d9bfeec7e972039be8258fda",
+    "rows": 11,
+    "rejected": 4,
+    "files_verified": 17
+   }
+  }
+ },
+ "sources": {
+  "eastman-pick": {
+   "recording_channels": [
+    2
+   ],
+   "recording": "per-channel power",
+   "model": [
+    "per-channel power"
+   ]
+  },
+  "eastman-finger": {
+   "recording_channels": [
+    2
+   ],
+   "recording": "per-channel power",
+   "model": [
+    "per-channel power"
+   ]
+  },
+  "martin-hd28": {
+   "recording_channels": [
+    1
+   ],
+   "recording": "per-channel power",
+   "model": [
+    "Mono mic recovered from the Stereo mic render"
+   ]
+  },
+  "bank-flattop": {
+   "recording_channels": [
+    2
+   ],
+   "recording": "per-channel power",
+   "model": [
+    "per-channel power"
+   ]
+  },
+  "guitarset": {
+   "recording_channels": [
+    1
+   ],
+   "recording": "per-channel power",
+   "model": [
+    "Mono mic render"
+   ]
+  }
+ },
+ "guitarset_mono_check": {
+  "00_BN1-129-Eb_comp": {
+   "mono_trim": 1.0000000002983342,
+   "relative_residual": 4.800051627511527e-15
+  },
+  "01_BN1-129-Eb_solo": {
+   "mono_trim": 0.9999999998324209,
+   "relative_residual": 4.853963762334322e-15
+  },
+  "02_BN1-129-Eb_comp": {
+   "mono_trim": 0.9999999999851512,
+   "relative_residual": 4.765268755652818e-15
+  },
+  "03_BN1-129-Eb_solo": {
+   "mono_trim": 1.0000000002804494,
+   "relative_residual": 4.9033962249649405e-15
+  },
+  "04_BN1-129-Eb_comp": {
+   "mono_trim": 1.0000000003358396,
+   "relative_residual": 4.651449503944293e-15
+  },
+  "05_BN1-129-Eb_solo": {
+   "mono_trim": 0.999999999986619,
+   "relative_residual": 4.987775352624281e-15
+  }
+ },
+ "structure": [
+  [
+   "LowShelf",
+   120.0,
+   0.7
+  ],
+  [
+   "Peak",
+   125.0,
+   1.2
+  ],
+  [
+   "Peak",
+   250.0,
+   1.2
+  ],
+  [
+   "Peak",
+   500.0,
+   1.2
+  ],
+  [
+   "Peak",
+   1000.0,
+   1.2
+  ],
+  [
+   "Peak",
+   1400.0,
+   1.2
+  ]
+ ],
+ "section_gains_db": {
+  "shipped_header": [
+   0.58,
+   2.75,
+   -6.0,
+   -6.0,
+   3.28,
+   6.0
+  ],
+  "mid_pass1": [
+   -1.187,
+   1.2,
+   -6.0,
+   -6.0,
+   2.615,
+   6.0
+  ],
+  "matched_pass1": [
+   -1.266,
+   -1.19,
+   -6.0,
+   -6.0,
+   -0.765,
+   6.0
+  ],
+  "mid_settled": [
+   -2.125,
+   0.458,
+   -6.0,
+   -6.0,
+   2.572,
+   6.0
+  ],
+  "matched_settled": [
+   -2.263,
+   -1.549,
+   -6.0,
+   -6.0,
+   -0.988,
+   6.0
+  ],
+  "residual_rms_db": {
+   "mid_pass1": 1.978,
+   "matched_pass1": 2.323,
+   "mid_settled": 2.059,
+   "matched_settled": 2.345
+  }
+ },
+ "simulated_passes": {
+  "method": "baseline renders filtered by the engine's RBJ sections, H(new)/H(old) at 48 kHz, both outputs; fitted each pass",
+  "matched": [
+   [
+    -1.27,
+    -1.19,
+    -6.0,
+    -6.0,
+    -0.76,
+    6.0
+   ],
+   [
+    -1.97,
+    -1.45,
+    -6.0,
+    -6.0,
+    -0.98,
+    6.0
+   ],
+   [
+    -2.18,
+    -1.51,
+    -6.0,
+    -6.0,
+    -0.99,
+    6.0
+   ],
+   [
+    -2.24,
+    -1.54,
+    -6.0,
+    -6.0,
+    -0.99,
+    6.0
+   ],
+   [
+    -2.26,
+    -1.55,
+    -6.0,
+    -6.0,
+    -0.99,
+    6.0
+   ]
+  ],
+  "mid": [
+   [
+    -1.19,
+    1.2,
+    -6.0,
+    -6.0,
+    2.61,
+    6.0
+   ],
+   [
+    -1.81,
+    0.74,
+    -6.0,
+    -6.0,
+    2.58,
+    6.0
+   ],
+   [
+    -2.02,
+    0.55,
+    -6.0,
+    -6.0,
+    2.57,
+    6.0
+   ],
+   [
+    -2.1,
+    0.48,
+    -6.0,
+    -6.0,
+    2.57,
+    6.0
+   ],
+   [
+    -2.12,
+    0.46,
+    -6.0,
+    -6.0,
+    2.57,
+    6.0
+   ]
+  ]
+ },
+ "bands_hz": [
+  79.0,
+  99.0,
+  125.0,
+  157.0,
+  198.0,
+  250.0,
+  315.0,
+  397.0,
+  500.0,
+  630.0,
+  794.0,
+  1000.0,
+  1260.0,
+  1587.0,
+  2000.0,
+  2520.0,
+  3175.0,
+  4000.0,
+  5040.0,
+  6350.0,
+  8000.0,
+  10079.0
+ ],
+ "consensus_residual_db": {
+  "mid": [
+   -2.34,
+   1.1,
+   4.21,
+   -1.34,
+   1.73,
+   -0.73,
+   -0.82,
+   -1.42,
+   -2.46,
+   -3.75,
+   -0.57,
+   -0.66,
+   1.05,
+   0.83,
+   -0.04,
+   2.97,
+   -2.72,
+   1.03,
+   2.36,
+   3.12,
+   -3.7,
+   0.68
+  ],
+  "matched": [
+   -1.66,
+   0.59,
+   3.19,
+   -2.23,
+   2.36,
+   -0.36,
+   -0.36,
+   -2.72,
+   -2.07,
+   -2.03,
+   1.4,
+   -3.74,
+   -4.63,
+   2.09,
+   1.19,
+   4.84,
+   0.1,
+   2.82,
+   2.08,
+   -0.41,
+   -4.23,
+   -0.92
+  ]
+ },
+ "fitted_voicing_db": {
+  "mid": [
+   -0.45,
+   -0.27,
+   -0.48,
+   -1.78,
+   -4.14,
+   -6.19,
+   -5.95,
+   -5.7,
+   -5.32,
+   -2.28,
+   1.65,
+   5.06,
+   7.08,
+   6.56,
+   4.34,
+   2.68,
+   1.78,
+   1.29,
+   1.02,
+   0.86,
+   0.77,
+   0.71
+  ],
+  "matched": [
+   -0.32,
+   -0.91,
+   -1.63,
+   -2.45,
+   -4.07,
+   -5.69,
+   -5.3,
+   -5.1,
+   -5.01,
+   -2.64,
+   0.22,
+   3.0,
+   5.79,
+   6.3,
+   4.75,
+   3.46,
+   2.76,
+   2.38,
+   2.17,
+   2.05,
+   1.98,
+   1.94
+  ]
+ },
+ "target_voicing_db": {
+  "mid": [
+   -4.14,
+   -0.72,
+   2.19,
+   -4.17,
+   -2.9,
+   -7.05,
+   -6.72,
+   -6.95,
+   -7.48,
+   -5.56,
+   1.77,
+   5.23,
+   8.82,
+   7.88,
+   4.66,
+   5.94,
+   -0.69,
+   2.55,
+   3.59,
+   4.19,
+   -2.73,
+   1.59
+  ],
+  "matched": [
+   -3.46,
+   -1.23,
+   1.18,
+   -5.06,
+   -2.27,
+   -6.68,
+   -6.26,
+   -8.24,
+   -7.09,
+   -3.84,
+   3.75,
+   2.15,
+   3.13,
+   9.14,
+   5.88,
+   7.8,
+   2.13,
+   4.34,
+   3.31,
+   0.66,
+   -3.26,
+   -0.02
+  ]
+ },
+ "mono_sum_retention_db": {
+  "model": {
+   "eastman-pick": [
+    -0.18,
+    -0.05,
+    -0.25,
+    -0.06,
+    -0.02,
+    -0.03,
+    -0.02,
+    -0.68,
+    -0.42,
+    -0.86,
+    -0.55,
+    -1.82,
+    -8.02,
+    -2.93,
+    -0.77,
+    -2.76,
+    -0.29,
+    -0.89,
+    -3.24,
+    -4.0,
+    -1.42,
+    -1.99
+   ],
+   "eastman-finger": [
+    -0.13,
+    -0.06,
+    -0.24,
+    -0.07,
+    -0.05,
+    -0.03,
+    -0.02,
+    -0.86,
+    -0.57,
+    -0.93,
+    -0.44,
+    -1.97,
+    -8.35,
+    -2.22,
+    -0.64,
+    -1.04,
+    -0.29,
+    -1.05,
+    -4.45,
+    -3.49,
+    -1.86,
+    -1.72
+   ],
+   "martin-hd28": [
+    -0.18,
+    -0.02,
+    -0.23,
+    -0.07,
+    -0.14,
+    -0.03,
+    -0.01,
+    -1.07,
+    -0.16,
+    -1.45,
+    -0.75,
+    -1.78,
+    -7.56,
+    -1.46,
+    -0.96,
+    -0.82,
+    -0.69,
+    -0.8,
+    -1.86,
+    -3.92,
+    -1.71,
+    -2.18
+   ],
+   "bank-flattop": [
+    -0.18,
+    -0.04,
+    -0.2,
+    -0.07,
+    -0.04,
+    -0.01,
+    -0.01,
+    -1.25,
+    -0.08,
+    -1.46,
+    -1.77,
+    -1.71,
+    -9.22,
+    -1.85,
+    -0.85,
+    -0.93,
+    -0.21,
+    -1.25,
+    -2.59,
+    -3.92,
+    -1.88,
+    -2.2
+   ],
+   "guitarset": [
+    -0.12,
+    -0.08,
+    -0.15,
+    -0.11,
+    -0.03,
+    -0.02,
+    -0.02,
+    -1.16,
+    -0.17,
+    -0.62,
+    -0.36,
+    -1.59,
+    -5.27,
+    -1.98,
+    -1.23,
+    -3.03,
+    -0.21,
+    -0.68,
+    -2.26,
+    -4.17,
+    -1.76,
+    -1.6
+   ]
+  },
+  "recording": {
+   "eastman-pick": [
+    -0.08,
+    -0.06,
+    -0.09,
+    -0.05,
+    -0.07,
+    -0.09,
+    -0.12,
+    -0.41,
+    -0.58,
+    -0.4,
+    -0.38,
+    -0.78,
+    -0.72,
+    -1.73,
+    -2.67,
+    -2.51,
+    -5.03,
+    -6.04,
+    -4.56,
+    -3.93,
+    -2.8,
+    -2.59
+   ],
+   "eastman-finger": [
+    -0.08,
+    -0.05,
+    -0.08,
+    -0.05,
+    -0.06,
+    -0.06,
+    -0.11,
+    -0.2,
+    -0.34,
+    -0.52,
+    -0.46,
+    -1.31,
+    -1.11,
+    -2.31,
+    -2.09,
+    -3.15,
+    -5.31,
+    -5.35,
+    -4.75,
+    -2.75,
+    -2.48,
+    -2.86
+   ],
+   "bank-flattop": [
+    -0.09,
+    -0.09,
+    -0.09,
+    -0.03,
+    -0.07,
+    -0.06,
+    -0.13,
+    -0.19,
+    -0.31,
+    -1.24,
+    -0.39,
+    -0.3,
+    -1.47,
+    -2.67,
+    -2.82,
+    -2.92,
+    -5.33,
+    -5.94,
+    -7.92,
+    -3.45,
+    -3.46,
+    -1.55
+   ]
+  }
+ },
+ "mono_minus_stereo_db": {
+  "consensus": [
+   -2.58,
+   0.19,
+   1.12,
+   0.88,
+   -1.23,
+   -1.18,
+   -1.31,
+   0.6,
+   -1.42,
+   -1.83,
+   -4.15,
+   2.3,
+   1.78,
+   -4.46,
+   -0.78,
+   1.28,
+   -0.14,
+   3.58,
+   2.34,
+   3.91,
+   2.48,
+   3.13
+  ],
+  "sources": {
+   "eastman-pick": [
+    -3.26,
+    0.58,
+    1.73,
+    0.15,
+    -1.0,
+    -2.21,
+    -1.95,
+    -0.3,
+    -1.68,
+    -3.08,
+    -2.51,
+    1.8,
+    1.87,
+    -3.04,
+    -1.34,
+    2.39,
+    -0.49,
+    5.2,
+    2.49,
+    3.07,
+    1.95,
+    2.24
+   ],
+   "eastman-finger": [
+    -2.54,
+    -0.21,
+    0.62,
+    0.7,
+    -1.41,
+    -1.61,
+    -1.52,
+    -1.05,
+    -0.82,
+    -2.33,
+    -0.95,
+    0.68,
+    2.05,
+    -2.47,
+    -3.16,
+    1.7,
+    0.16,
+    5.1,
+    2.02,
+    4.24,
+    1.48,
+    3.96
+   ],
+   "martin-hd28": [
+    -3.08,
+    -0.31,
+    0.91,
+    0.77,
+    -2.12,
+    -0.92,
+    -1.65,
+    0.54,
+    -1.45,
+    -1.05,
+    -5.95,
+    3.14,
+    1.16,
+    -7.2,
+    1.03,
+    -0.15,
+    0.89,
+    4.96,
+    3.57,
+    5.21,
+    3.96,
+    4.85
+   ],
+   "bank-flattop": [
+    -1.99,
+    0.61,
+    1.75,
+    1.86,
+    -0.57,
+    0.21,
+    -0.55,
+    2.36,
+    -0.68,
+    0.15,
+    -4.0,
+    1.43,
+    1.25,
+    -6.15,
+    -0.23,
+    1.04,
+    -2.02,
+    1.47,
+    0.32,
+    2.92,
+    1.99,
+    2.05
+   ],
+   "guitarset": [
+    -2.35,
+    0.26,
+    0.67,
+    0.45,
+    -1.03,
+    -2.09,
+    -1.3,
+    0.19,
+    -2.32,
+    -3.72,
+    -4.92,
+    3.4,
+    2.74,
+    -1.74,
+    -1.68,
+    2.18,
+    0.74,
+    2.75,
+    3.21,
+    3.84,
+    2.26,
+    2.51
+   ]
+  }
+ },
+ "capture_contours": {
+  "stereo": {
+   "gains_db": [
+    -1.078,
+    -1.667,
+    -6.0,
+    -6.0,
+    -1.664,
+    6.0
+   ],
+   "residual_rms_db": 2.383,
+   "residual_rms_with_shared_db": 2.387,
+   "consensus_residual_db": [
+    -3.02,
+    0.58,
+    3.59,
+    -1.93,
+    1.57,
+    -1.11,
+    -1.1,
+    -2.53,
+    -3.01,
+    -3.22,
+    -1.32,
+    -2.11,
+    -3.66,
+    -0.14,
+    1.02,
+    5.34,
+    0.51,
+    4.75,
+    3.77,
+    1.85,
+    -2.67,
+    0.92
+   ]
+  },
+  "mono": {
+   "gains_db": [
+    -1.111,
+    -1.573,
+    -6.0,
+    -6.0,
+    -0.223,
+    6.0
+   ],
+   "residual_rms_db": 2.655,
+   "residual_rms_with_shared_db": 2.668,
+   "consensus_residual_db": [
+    -0.44,
+    0.39,
+    2.47,
+    -2.8,
+    2.8,
+    0.07,
+    0.21,
+    -3.14,
+    -1.58,
+    -1.39,
+    2.84,
+    -4.41,
+    -5.44,
+    4.32,
+    1.81,
+    4.06,
+    0.65,
+    1.17,
+    1.43,
+    -2.06,
+    -5.15,
+    -2.21
+   ]
+  }
+ },
+ "mono_contour_test": {
+  "rms_improvement_db": {
+   "stereo": 0.004,
+   "mono": 0.013
+  },
+  "mono_minus_stereo_section_gain_db": [
+   -0.033,
+   0.094,
+   0.0,
+   0.0,
+   1.441,
+   0.0
+  ],
+  "threshold_db": 0.25,
+  "separate_mono_contour_indicated": false
+ },
+ "leave_one_source_out": {
+  "mid": {
+   "gains_db": {
+    "eastman-pick": [
+     -0.515,
+     0.278,
+     -6.0,
+     -6.0,
+     2.51,
+     6.0
+    ],
+    "eastman-finger": [
+     -0.998,
+     0.56,
+     -6.0,
+     -6.0,
+     1.805,
+     6.0
+    ],
+    "martin-hd28": [
+     1.089,
+     2.837,
+     -6.0,
+     -6.0,
+     3.646,
+     6.0
+    ],
+    "bank-flattop": [
+     -3.879,
+     0.859,
+     -6.0,
+     -6.0,
+     1.145,
+     6.0
+    ],
+    "guitarset": [
+     -1.19,
+     1.251,
+     -5.202,
+     -6.0,
+     4.334,
+     6.0
+    ]
+   },
+   "range_db": [
+    4.968,
+    2.559,
+    0.798,
+    0.0,
+    3.189,
+    0.0
+   ],
+   "without_bank_flattop": [
+    -3.879,
+    0.859,
+    -6.0,
+    -6.0,
+    1.145,
+    6.0
+   ]
+  },
+  "matched": {
+   "gains_db": {
+    "eastman-pick": [
+     -0.522,
+     -1.902,
+     -6.0,
+     -6.0,
+     -0.596,
+     6.0
+    ],
+    "eastman-finger": [
+     -1.125,
+     -1.609,
+     -6.0,
+     -6.0,
+     -1.387,
+     6.0
+    ],
+    "martin-hd28": [
+     0.972,
+     0.034,
+     -6.0,
+     -6.0,
+     -0.589,
+     6.0
+    ],
+    "bank-flattop": [
+     -4.379,
+     -0.113,
+     -6.0,
+     -6.0,
+     -0.861,
+     5.88
+    ],
+    "guitarset": [
+     -1.45,
+     -2.205,
+     -6.0,
+     -6.0,
+     -0.249,
+     6.0
+    ]
+   },
+   "range_db": [
+    5.351,
+    2.239,
+    0.0,
+    0.0,
+    1.138,
+    0.12
+   ],
+   "without_bank_flattop": [
+    -4.379,
+    -0.113,
+    -6.0,
+    -6.0,
+    -0.861,
+    5.88
+   ]
+  }
+ },
+ "mono_contour_leave_one_out_section_difference_db": {
+  "eastman-pick": [
+   0.09,
+   0.043,
+   0.0,
+   0.0,
+   1.496,
+   0.0
+  ],
+  "eastman-finger": [
+   -0.024,
+   0.028,
+   0.0,
+   0.0,
+   1.52,
+   0.0
+  ],
+  "martin-hd28": [
+   -0.1,
+   -0.22,
+   0.0,
+   0.0,
+   1.016,
+   -0.0
+  ],
+  "bank-flattop": [
+   -0.367,
+   0.772,
+   0.0,
+   0.0,
+   1.536,
+   -0.022
+  ],
+  "guitarset": [
+   0.25,
+   -0.156,
+   0.0,
+   0.0,
+   1.63,
+   0.0
+  ]
+ },
+ "top_peak_centre_sensitivity_matched": {
+  "1400.0": {
+   "gains": [
+    -1.266,
+    -1.19,
+    -6.0,
+    -6.0,
+    -0.765,
+    6.0
+   ],
+   "residual_rms_db": 2.322961245333141
+  },
+  "1600.0": {
+   "gains": [
+    -1.36,
+    -0.568,
+    -6.0,
+    -6.0,
+    0.545,
+    6.0
+   ],
+   "residual_rms_db": 2.130763230987069
+  },
+  "1800.0": {
+   "gains": [
+    -1.418,
+    -0.042,
+    -6.0,
+    -6.0,
+    1.717,
+    6.0
+   ],
+   "residual_rms_db": 2.014743318388005
+  }
+ },
+ "runtime_contour_db": {
+  "shipped": [
+   -1.8,
+   -1.82,
+   -2.02,
+   -2.83,
+   -4.63,
+   -6.33,
+   -5.89,
+   -5.53,
+   -5.02,
+   -1.82,
+   2.34,
+   5.89,
+   7.77,
+   7.05,
+   4.69,
+   2.97,
+   2.03,
+   1.52,
+   1.23,
+   1.07,
+   0.97,
+   0.91
+  ],
+  "mid_settled": [
+   -4.17,
+   -4.5,
+   -4.64,
+   -4.45,
+   -5.18,
+   -6.21,
+   -5.46,
+   -4.97,
+   -4.45,
+   -1.34,
+   2.62,
+   6.05,
+   8.09,
+   7.59,
+   5.38,
+   3.73,
+   2.84,
+   2.35,
+   2.08,
+   1.92,
+   1.83,
+   1.77
+  ],
+  "matched_settled": [
+   -3.95,
+   -4.89,
+   -5.47,
+   -4.84,
+   -4.97,
+   -5.66,
+   -4.81,
+   -4.4,
+   -4.2,
+   -1.8,
+   1.02,
+   3.78,
+   6.64,
+   7.22,
+   5.72,
+   4.46,
+   3.77,
+   3.41,
+   3.2,
+   3.09,
+   3.02,
+   2.97
+  ]
+ },
+ "scores_same_renders": {
+  "physical_scorer": {
+   "flattop.json": {
+    "mid": 6.5853,
+    "matched": 6.2147,
+    "mid_identical_to_e51f6a9": true
+   },
+   "validation.json": {
+    "mid": 6.5775,
+    "matched": 6.4755,
+    "mid_identical_to_e51f6a9": true
+   },
+   "train.json": {
+    "mid": 6.863,
+    "matched": 6.6863,
+    "mid_identical_to_e51f6a9": true
+   },
+   "eastman.flattop-pick.json": {
+    "mid": 5.5814,
+    "matched": 5.4754,
+    "mid_identical_to_e51f6a9": true
+   },
+   "eastman.flattop-finger-all.json": {
+    "mid": 6.2741,
+    "matched": 5.9635,
+    "mid_identical_to_e51f6a9": true
+   },
+   "martin-hd28.martin-hd28.json": {
+    "mid": 6.9128,
+    "matched": 6.7117,
+    "mid_identical_to_e51f6a9": true
+   }
+  },
+  "guitarset": {
+   "mid_stereo_average": {
+    "log_magnitude_mae_db": 13.99,
+    "spectral_convergence": 0.821,
+    "chroma_cosine_distance": 0.23,
+    "octave_bands_db": [
+     -4.28,
+     0.17,
+     1.23,
+     3.13,
+     -1.79,
+     -3.93,
+     -7.87
+    ]
+   },
+   "matched_mono_mic": {
+    "log_magnitude_mae_db": 14.046,
+    "spectral_convergence": 0.842,
+    "chroma_cosine_distance": 0.27,
+    "octave_bands_db": [
+     -3.76,
+     -1.25,
+     1.05,
+     8.39,
+     1.85,
+     -1.99,
+     -1.74
+    ]
+   },
+   "octave_edges_hz": [
+    80,
+    160,
+    320,
+    640,
+    1280,
+    2560,
+    5120,
+    10000
+   ]
+  }
+ },
+ "parity": {
+  "legacy-fit-parity": "REPRODUCED EXACTLY (balance header content identical, path differs)",
+  "physical-scorer-parity": "ALL LEGACY SCORES REPRODUCED",
+  "open-corpora-parity": "OPEN-CORPORA LEGACY REPRODUCED",
+  "guitarset-parity": [
+   "renders identical to the earlier Stereo mic run: [True, True, True, True, True, True]",
+   "--observation mid reproduces the earlier Stereo mic report exactly: True {'name': 'mid', 'version': 1, 'stereo_width': 0.62, 'model': ['L/R average']}",
+   "matched (Stereo mic render, Mono mic recovered) vs Mono mic render: largest metric difference 9.72e-07 {'name': 'matched', 'version': 2, 'stereo_width': 0.62, 'model': ['Mono mic recovered from the Stereo mic render']}"
+  ]
+ }
+}

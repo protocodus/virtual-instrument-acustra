@@ -91,8 +91,11 @@ Usage:
     python3 Tools/FitCaptureVoicing.py --self-test
 
 Rerun after a change that moves the Original's radiation: render the three
-sources with the new build, fit, rebuild, and repeat until the gains settle
-(they move by under 0.1 dB from the second pass).
+sources with the new build, fit, rebuild, and repeat until every gain moves
+under 0.1 dB between passes. From the 2026-10-10 baseline that took four
+passes (the shelf moved 0.70, 0.21 and 0.06 dB), since the fit models the
+contour by its analog band means and note spectra weight a band by their
+partials. Docs/capture-observation-2026-10-10.md lists the full sequence.
 """
 
 from __future__ import annotations
