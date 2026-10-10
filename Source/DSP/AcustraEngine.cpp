@@ -245,22 +245,46 @@ static_assert(detail::measuredSteelBridgeModes.size()
 struct AnchorTransform
 {
     // A ratio written in Hz, not the air mode itself: the measured bank's
-    // modes between 85 and 145 Hz move by airHz / 107 (107 is the identity),
-    // so the wide anchor's 98 lowers them by 8%.
+    // modes between 85 and 145 Hz move by airHz / 107 (107 is the identity).
     float airHz;
+    // The plate modes above T1.
     float modeScale;
     float bass;
     float volume;
     float asymmetry;
+    // T1's group: the modes from 150 Hz up to T1.
+    float t1Scale;
 };
 
-// Steel's Dreadnought anchor is the wider box the local line authored: a
-// lower air mode, the plate modes lower and more bass. The benchmark split on
-// it (steel training -0.5%, the never-fitted flat-top rows -5.2%,
-// development validation +3.2%) and a blind listener chose it on all four
-// steel pairs (Docs/decisions.md, 2026-09-24), so it is chosen by ear.
-constexpr AnchorTransform wideSteelAnchorTransform { 98.0f, 0.900f, 1.28f,
-                                                     0.93f, 0.018f };
+// The factor the anchor moves a measured mode by: the air group by
+// airHz / 107, T1's group by t1Scale and the plate modes above it by
+// modeScale.
+float anchorModeFactor(const AnchorTransform& anchor, float measuredFrequency,
+                       bool t1Group) noexcept
+{
+    if (measuredFrequency > 85.0f && measuredFrequency < 145.0f)
+        return anchor.airHz / 107.0f;
+    return t1Group ? anchor.t1Scale : anchor.modeScale;
+}
+
+// Steel's Dreadnought anchor is the wider box the local line authored: the
+// plate modes lower and more bass. The benchmark split on it (steel training
+// -0.5%, the never-fitted flat-top rows -5.2%, development validation +3.2%)
+// and a blind listener chose it on all four steel pairs (Docs/decisions.md,
+// 2026-09-24), so those are chosen by ear. That box also lowered A0 to
+// 84.7 Hz (airHz 98) and T1 to 158.6 Hz (modeScale) while a spring to ground
+// at the saddle stood between the strings and the body's low modes; it
+// moved the air transient the listener heard to 99 Hz. Once the strings end
+// on the bridge (bridgePortMobility), A0 at 84.7 Hz sounds there, 47 cents
+// above the open low E, which it splits (+7.1 cents late) and drains at
+// 24 dB/s, past twice its recordings' 4.5-8.6, and T1 under E3 pulls it 3.9
+// cents flat. So A0 and T1 are placed where steel-strung guitars ring
+// rather than by that box: A0 at 94.2 Hz (airHz 109), where both recorded
+// dreadnoughts ring at 93-95 Hz (Docs/decisions.md, 2026-10-01), and T1's
+// group unscaled (t1Scale 1), at g21's measured 178.5 Hz less the
+// alternating detune, 176.3 Hz. Docs/saddle-termination-2026-10-10.md.
+constexpr AnchorTransform wideSteelAnchorTransform { 109.0f, 0.900f, 1.28f,
+                                                     0.93f, 0.018f, 1.0f };
 
 // Body outline and cavity, in metres: lower-bout width, body length, mean
 // depth, soundhole diameter, and the fraction of the width-by-length
@@ -441,8 +465,8 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     {
         const auto& mode = bank[static_cast<std::size_t>(index)];
         const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
-        const bool lowBodyMode = mode.frequency > 85.0f && mode.frequency < 145.0f;
-        return mode.frequency * (lowBodyMode ? anchor.airHz / 107.0f : anchor.modeScale)
+        return mode.frequency * anchorModeFactor(anchor, mode.frequency,
+                                                 index == morph.t1Index)
             * (1.0f + alternating * anchor.asymmetry
                / exact::sqrt(static_cast<float>(index + 1)));
     };
@@ -564,10 +588,8 @@ ModalPole radiationPole(const detail::MeasuredBodyMode& measured, int index,
                         const PhysicalCalibration& calibration) noexcept
 {
     const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
-    const bool lowBodyMode = measured.frequency > 85.0f
-        && measured.frequency < 145.0f;
-    const float lowModeMorph = lowBodyMode
-        ? anchor.airHz / 107.0f : anchor.modeScale;
+    const float lowModeMorph = anchorModeFactor(anchor, measured.frequency,
+        measured.frequency >= lowBodyGroupUpperHz && index <= morph.t1Index);
     // The A0 group, T1 and the plate modes above it each take their own
     // factor from the coupled pair; the anchor shape's are exactly 1.
     const float shapeFrequency = measured.frequency < lowBodyGroupUpperHz
@@ -819,10 +841,9 @@ ModalPole steelOwnBridgePole(std::size_t index,
     if (twin >= 0)
         return radiationPole(detail::measuredSteelBodyModes, twin, anchor,
                              morph, wood, calibration);
-    const bool lowBodyMode = source.frequency > 85.0f
-        && source.frequency < 145.0f;
-    const float lowModeMorph = lowBodyMode
-        ? anchor.airHz / 107.0f : anchor.modeScale;
+    const float lowModeMorph = anchorModeFactor(anchor, source.frequency,
+        source.frequency >= lowBodyGroupUpperHz
+            && source.frequency <= morph.t1UpperHz);
     return { shaped.frequency * lowModeMorph * wood.frequency
                  * calibration.bodyFrequencyScale,
              source.q * detail::steelBridgeUnpairedQRatio[index] * wood.q

@@ -121,7 +121,16 @@ constexpr double pi = std::numbers::pi;
 // The A0 extension belongs to the Original's 90.8 Hz radiation mode and
 // its 90.3 Hz joint-body companion. Read their actual digital decay, rather
 // than reimplementing the frequency-selection rule, and keep the 83.5 Hz
-// joint mode and plate modes on their recorded damping.
+// joint mode and plate modes on their recorded damping. The anchor places
+// that mode at 94.18 Hz (wideSteelAnchorTransform); with Q 23.5 its free
+// T60, Q ln(1000) / (pi f), is 0.549 s. Until 2026-10-10 it sat at 84.68 Hz,
+// where the same Q gave the 0.610 s the extension was selected at. Its
+// rendered transient, read the same way before and after (idle strings off,
+// MIDI 60-68), went from 0.50 s at 99.1 Hz, where the saddle's spring to
+// ground had moved it, to 0.55 s at 94.3 Hz, among the 0.51-0.65 s medians
+// of the Eastman and Martin air transients
+// (Docs/realism-consolidation-2026-10-02.md,
+// Docs/saddle-termination-2026-10-10.md).
 void testOriginalAirDecayIsLocalized()
 {
     namespace d = acustra::detail;
@@ -142,10 +151,10 @@ void testOriginalAirDecayIsLocalized()
         engine->prepare(rate, 64);
         const auto& calibration = Access::calibration(*engine);
         const auto air = digitalDecay(*engine, 0, rate);
-        expect(air[0] > 84.6 && air[0] < 84.8,
+        expect(air[0] > 94.1 && air[0] < 94.3,
                "the air decay extension moved the Original's A0 frequency");
-        expect(air[2] > 0.60 && air[2] < 0.62,
-               "the Original's configured A0 free T60 left the 0.60-0.62 s bracket");
+        expect(air[2] > 0.54 && air[2] < 0.56,
+               "the Original's configured A0 free T60 left the 0.54-0.56 s bracket");
         expect(std::abs(Access::radiationPole(original, calibration, 0)[1] - 23.5f)
                    < 2e-5f,
                "the Original's air pole does not have the selected Q of 23.5");
