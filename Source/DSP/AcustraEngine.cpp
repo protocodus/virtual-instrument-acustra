@@ -9983,22 +9983,22 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             updateControlState();
         }
 
-        bodyAmount_ += parameterSmoothing_
-            * (targetParameters_.bodyAmount - bodyAmount_);
-        width_ += parameterSmoothing_
-            * (targetParameters_.stereoWidth - width_);
-        outputGain_ += parameterSmoothing_
-            * (targetParameters_.outputGain - outputGain_);
+        // Each glide settles onto its target exactly, so a mix returned to
+        // zero leaves Main bit for bit as it was without one, and a glide to
+        // zero never ends on subnormals (it stalls near 7e-43, where the step
+        // is under half an ulp), which are slow without FTZ/DAZ. A glide that
+        // stops moving snaps too: at 192 kHz a step near 1 is below half an
+        // ulp before the 1e-4 test is reached.
+        const auto glide = [this] (float value, float target)
         {
-            // Settles onto its target exactly, so a mix returned to zero
-            // leaves Main bit for bit as it was without one.
-            // A glide that stops moving snaps too: at 192 kHz a step near 1
-            // is below half an ulp before the 1e-4 test is reached.
-            const float target = clamp(targetParameters_.piezoMix, 0.0f, 1.0f);
-            const float next = piezoMix_ + parameterSmoothing_ * (target - piezoMix_);
-            piezoMix_ = next == piezoMix_ || exact::abs(target - next) < 1.0e-4f
+            const float next = value + parameterSmoothing_ * (target - value);
+            return next == value || exact::abs(target - next) < 1.0e-4f
                 ? target : next;
-        }
+        };
+        bodyAmount_ = glide(bodyAmount_, targetParameters_.bodyAmount);
+        width_ = glide(width_, targetParameters_.stereoWidth);
+        outputGain_ = glide(outputGain_, targetParameters_.outputGain);
+        piezoMix_ = glide(piezoMix_, clamp(targetParameters_.piezoMix, 0.0f, 1.0f));
 
         std::array<float, stringCount> verticalIncident {};
         std::array<float, stringCount> horizontalIncident {};

@@ -23,6 +23,11 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    // Body, Width, Output and Piezo Mix as the audio loop glides them.
+    static std::array<float, 4> smoothedControls(const AcustraEngine& engine)
+    {
+        return { engine.bodyAmount_, engine.width_, engine.outputGain_, engine.piezoMix_ };
+    }
     // Empties every string's parallel-polarisation loop, as if the pluck had
     // put nothing in that plane.
     static void silenceParallelPolarisation(AcustraEngine& engine)
@@ -8729,8 +8734,39 @@ void testEachReleaseGivesBackTheForceItHeld()
 
 } // namespace
 
+// A control glided to zero lands on zero exactly. Body, Width and Output
+// used to stall on a subnormal near 7e-43, where each step is under half an
+// ulp, and subnormal arithmetic is slow wherever the host does not flush it.
+void testControlGlidesSettleExactly()
+{
+    for (const double rate : { 44100.0, 192000.0 })
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        acustra::EngineParameters parameters;
+        parameters.bodyAmount = 0.9f;
+        parameters.stereoWidth = 0.8f;
+        parameters.outputGain = 1.5f;
+        parameters.piezoMix = 0.5f;
+        engine->setParameters(parameters);
+        engine->prepare(rate, 64);
+        parameters.bodyAmount = 0.0f;
+        parameters.stereoWidth = 0.0f;
+        parameters.outputGain = 0.0f;
+        parameters.piezoMix = 0.0f;
+        engine->setParameters(parameters);
+        std::vector<float> left(64), right(64);
+        for (int done = 0; done < static_cast<int>(rate); done += 64)
+            engine->process(left.data(), right.data(), 64);
+        expect(acustra::AcustraEngineTestAccess::smoothedControls(*engine)
+                   == std::array<float, 4> {},
+               "a control glided to zero did not land on zero at "
+                   + std::to_string(rate) + " Hz");
+    }
+}
+
 int main()
 {
+    testControlGlidesSettleExactly();
     testThePluckKinkLandsAtThePluckPoint();
     testPluckPositionChangesEveryFret();
     testAFingerBrightensWithVelocity();
