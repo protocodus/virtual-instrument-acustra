@@ -2877,6 +2877,14 @@ set without it.
 
 ## Release history
 
+### 2026-10-10 — bridge-hand damping follows slides and bends
+
+- **Bridge-hand damping follows slides and bends.** CC2 pressure now keeps
+  the hand's decay rate consistent as the speaking string changes pitch,
+  including vibration retained when pressure changes mid-note. Unmuted
+  renders are unchanged. The correction is shared by the plug-in and its
+  Reason adapter; it adds no controls or changes to stored parameter values.
+
 ### 2026-10-10 — Bellido 1978 (Classical 78) removed
 
 At the user's request the second guitar model, the steel-strung Bellido 1978

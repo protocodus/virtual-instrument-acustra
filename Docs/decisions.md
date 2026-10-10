@@ -5,6 +5,23 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-10 — bridge-hand damping keeps its time scale under pitch movement
+
+The hand's high-frequency loss was applied once per vibrating-string round
+trip but calculated at the original MIDI pitch. A raised slide or tension
+bend therefore shortened the hand's decay time beyond its existing mapping.
+Both the main string and retained-wave CC2 path now calculate that loss at
+their own current/captured frequency. No calibration or control changes.
+
+Across 324 slide-versus-equivalent-fret comparisons, the maximum mismatch in
+added hand decay falls from 51.0249 to 0.00194243 dB/s; the hand-rate variation
+under pitch changes falls from 127.101% to 0.000480667%, on the 2026-10-06
+baseline and again on main `844cf2f`, where it was rebased. Renders without
+hand pressure stay byte-identical. This is a
+physical consistency correction, not a listening verdict or a new recording
+fit. Local before/after phrases and the Rack integration workflow are documented in
+[the evidence note](palm-mute-pitch-2026-10-06.md).
+
 ## 2026-10-10 — remove the Bellido 1978 (Classical 78) guitar model
 
 The user asked to remove the Classical 78 model completely, with the code and

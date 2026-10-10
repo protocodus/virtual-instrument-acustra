@@ -985,7 +985,6 @@ private:
 
     struct PitchGeometry
     {
-        float unbentFrequency { 0.0f };
         float soundingLength { 0.0f };
         float speakingFret { 0.0f };
         float contactPeriodSamples { 0.0f };
@@ -1058,7 +1057,6 @@ private:
         // Intrinsic loss and pitch belong to the captured string. The bridge
         // hand remains live CC2 expression while that old wave is retained.
         float tailHandFrequency { 1.0f };
-        float tailHandUnbentFrequency { 1.0f };
         float tailHandIntrinsicT60 { 1.0f };
         float tailHandIntrinsicHighLoss { 0.0f };
         float tailHandPressure { 0.0f };

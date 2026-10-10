@@ -4710,14 +4710,13 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             ? bentStringTension(tension, axialRigidity,
                                 std::exp2(tensionSemitones / 12.0f))
             : tension;
-        geometry.value = { unbentFrequency, soundingLength, speakingFret,
+        geometry.value = { soundingLength, speakingFret,
             contactPeriodSamples, frequency, lossDesignFrequency,
             tension, tensionSemitones, bentTension };
         geometry.key = pitchKey;
         geometry.valid = true;
     }
     const auto& pitch = geometry.value;
-    const float unbentFrequency = pitch.unbentFrequency;
     const float soundingLength = pitch.soundingLength;
     const float frequency = pitch.frequency;
     const float lossDesignFrequency = pitch.lossDesignFrequency;
@@ -4798,10 +4797,13 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // the extra per-round-trip loss that a 0.62 high-to-fundamental T60 ratio
     // implies keeps the shelf's shape and leaves it untouched at zero pressure.
     // handRate is a 1/T60 rate, so a round trip of 1/f decays by 0.001^(R/f).
+    // Use the current loop pitch, including slides, tension bends and attack
+    // settling. Using the original MIDI pitch applies this loss too often
+    // on a raised note, changing the hand's time scale with the wheel.
     const float mutedHighLoss = handRate > 0.0f
         ? clamp(1.0f - (1.0f - highLoss) * std::pow(0.001f,
               (1.0f / 0.62f - 1.0f) * handRate
-              / std::max(unbentFrequency, 1.0f)), 0.0f, 0.95f)
+              / std::max(frequency, 1.0f)), 0.0f, 0.95f)
         : highLoss;
 
     // This broad one-pole loss slope and its 72x scale are authored and
@@ -6514,13 +6516,11 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     const int stringIndex = static_cast<int>(&voice - voices_.data());
     const auto& physical = physicalCalibration_.steel;
     const float age = parameters_.stringAge;
-    const int stoppedMidi = voice.harmonic > 1 ? voice.openMidi : voice.midiNote;
     const float fretT60Factor = clamp(1.0f
         - physicalCalibration_.steelFretT60Slope * voice.speakingFret,
         0.10f, 2.0f);
     voice.tailHandFrequency = static_cast<float>(sampleRate_)
                             / voice.contactPeriodSamples;
-    voice.tailHandUnbentFrequency = midiFrequency(stoppedMidi);
     voice.tailHandIntrinsicT60 = 5.4f * (1.0f - 0.12f * age)
                               * fretT60Factor * physical.fundamentalT60Scale;
     voice.tailHandIntrinsicHighLoss = clamp((0.035f + 0.42f * age
@@ -6566,7 +6566,7 @@ void AcustraEngine::updateTailHandLoss(Voice& voice) noexcept
     const float mutedHighLoss = handRate > 0.0f
         ? clamp(1.0f - (1.0f - highLoss) * std::pow(0.001f,
               (1.0f / 0.62f - 1.0f) * handRate
-              / std::max(voice.tailHandUnbentFrequency, 1.0f)), 0.0f, 0.95f)
+              / std::max(voice.tailHandFrequency, 1.0f)), 0.0f, 0.95f)
         : highLoss;
     float fundamentalT60 = voice.tailHandIntrinsicT60;
     if (handRate > 0.0f)
