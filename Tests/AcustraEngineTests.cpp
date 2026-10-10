@@ -2024,8 +2024,26 @@ double spectralPeakFrequency(const Audio& audio, double expectedHz,
         return real * real + imaginary * imaginary;
     };
 
-    double lower = expectedHz * std::exp2(-searchCents / 1200.0);
-    double upper = expectedHz * std::exp2(searchCents / 1200.0);
+    // The band holds the window's sidelobes as well as the partial's main
+    // lobe, so it is not unimodal: late in a fast-decaying partial, golden
+    // section's first probes compare sidelobes near the numerical floor, and
+    // a near-tie (FMA contraction flips it) discarded the main lobe 73 dB
+    // above them. Scan first at half a cent, inside the main lobe at every
+    // frequency these tests read, then refine around the strongest point.
+    constexpr double scanCents = 0.5;
+    double bestCents = 0.0;
+    double bestPower = -1.0;
+    for (double cents = -searchCents; cents <= searchCents; cents += scanCents)
+    {
+        const double power = powerAt(expectedHz * std::exp2(cents / 1200.0));
+        if (power > bestPower)
+        {
+            bestPower = power;
+            bestCents = cents;
+        }
+    }
+    double lower = expectedHz * std::exp2((bestCents - scanCents) / 1200.0);
+    double upper = expectedHz * std::exp2((bestCents + scanCents) / 1200.0);
     constexpr double golden = 0.6180339887498948482;
     double left = upper - golden * (upper - lower);
     double right = lower + golden * (upper - lower);
