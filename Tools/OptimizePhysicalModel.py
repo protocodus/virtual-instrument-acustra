@@ -64,24 +64,28 @@ NAMES = (
     "pickEdgeRadiusMetres",
     "steelWoundFrictionLoss",
     "steelPlainBendingLoss",
+    "steelWoundBendingLoss",
 )
 LOWER = np.asarray((
     0.96, 0.05, 0.25, -6.0, 0.25, 0.4,
     0.35, 0.35, 0.0, 0.7, 0.0, -1.0,
     0.25, 0.0, -0.06, 0.5, 0.0, 100.0,
     0.00325, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0,
 ))
 UPPER = np.asarray((
     1.04, 1.8, 4.0, 6.0, 4.0, 2.0,
     3.0, 2.5, 3.0, 3.0, 1.2, 1.0,
     32.0, 0.04, 0.05, 4.0, 0.02, 8000.0,
     0.06, 2.0, 4.0, 0.0005, 0.002, 0.05,
+    0.25,
 ))
 INITIAL = np.asarray((
     1.0, 1.0, 1.0, 0.0, 1.0, 1.0,
     1.0, 1.0, 1.0, 1.0, 0.0, 1.0,
     1.0, 0.0061, -0.03, 1.3, 0.0, 1000.0,
     0.02, 0.0, 2.0, 0.0, 0.0, 0.0,
+    0.0,
 ))
 # The shipping vector, mirroring fittedPhysicalCalibration in
 # Source/DSP/FittedPhysicalData.h, for --start shipping: a stage that fits a
@@ -91,7 +95,8 @@ SHIPPING = np.asarray((
     1.0, 1.0, 0.754677154, 0.0, 0.749355465, 1.53,
     0.52, 0.4883279315, 2.2130696796, 1.8, 1.10625, -0.0706290118,
     4.0, 0.00773577847, -0.0597851562, 2.28586032, 0.011, 2187.76023,
-    0.00325, 0.58203125, 0.85859375, 0.0001162109375, 0.00045, 0.002334375,
+    0.00325, 0.58203125, 0.85859375, 0.0001162109375, 0.000225, 0.002334375,
+    0.0175,
 ))
 # Values selected by listening remain fixed during every fitting stage.
 BY_EAR = (
@@ -107,11 +112,11 @@ BY_EAR = (
     "pickReleaseVelocityShare",
     "pickReleaseVelocityExponent",
     "pickEdgeRadiusMetres",
-    # The wound strings' winding friction replaced their by-ear bending
-    # factor on 2026-10-10 (FittedPhysicalData.h); it stays out of every
-    # stage until a listener has heard it against its alternative.
+    # The wound strings' winding friction and bending loss, chosen together
+    # by a listener on 2026-10-10 (FittedPhysicalData.h).
     "steelWoundFrictionLoss",
     "steelPlainBendingLoss",
+    "steelWoundBendingLoss",
 )
 FROZEN = frozenset(NAMES.index(name) for name in BY_EAR)
 

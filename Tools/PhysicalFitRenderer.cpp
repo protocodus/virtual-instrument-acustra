@@ -16,7 +16,7 @@
 // nylon strings: a nylon recording has no model to compare with now. Steel
 // rows render exactly as they did before, sample for sample.
 //
-// The calibration vector is the 24 values of calibrationOrderJson, in that
+// The calibration vector is the 25 values of calibrationOrderJson, in that
 // order (OptimizePhysicalModel.NAMES); earlier 37- and 48-value schemas
 // are not accepted.
 
@@ -81,7 +81,7 @@ acustra::BodyShape renderShape() noexcept
 constexpr int modelSampleRate = 48000;
 constexpr int renderBlockSize = 127;
 constexpr double renderSeconds = 4.2;
-constexpr std::size_t calibrationValueCount = 24;
+constexpr std::size_t calibrationValueCount = 25;
 constexpr float int16Scale = 1.0f / 32768.0f;
 
 enum class Material
@@ -142,6 +142,7 @@ constexpr CalibrationValues calibrationMinimums {{
     0.35f, 0.35f, 0.0f, 0.7f, 0.0f, -1.0f,
     0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f,
     0.00325f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f,
 }};
 
 constexpr CalibrationValues calibrationMaximums {{
@@ -149,6 +150,7 @@ constexpr CalibrationValues calibrationMaximums {{
     3.0f, 2.5f, 3.0f, 3.0f, 1.2f, 1.0f,
     32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f,
     0.060f, 2.0f, 4.0f, 1.0e-3f, 0.01f, 2.0f,
+    2.0f,
 }};
 
 const char* materialName(Material material) noexcept
@@ -406,6 +408,7 @@ PhysicalCalibration makeCalibration(const CalibrationValues& values)
     calibration.pickEdgeRadiusMetres = values[21];
     calibration.steelWoundFrictionLoss = values[22];
     calibration.steelPlainBendingLoss = values[23];
+    calibration.steelWoundBendingLoss = values[24];
     return calibration;
 }
 
@@ -535,7 +538,8 @@ std::string calibrationOrderJson()
            "\"pickReleaseVelocityExponent\", "
            "\"pickEdgeRadiusMetres\", "
            "\"steelWoundFrictionLoss\", "
-           "\"steelPlainBendingLoss\"]";
+           "\"steelPlainBendingLoss\", "
+           "\"steelWoundBendingLoss\"]";
 }
 
 std::string calibrationJson(const CalibrationValues& values)
@@ -1214,8 +1218,9 @@ void printUsage()
         "BRIDGE_CONDUCTANCE_CORNER_HZ BRIDGE_TAIL_LENGTH_METRES "
         "PICK_RELEASE_VELOCITY_SHARE PICK_RELEASE_VELOCITY_EXPONENT "
         "PICK_EDGE_RADIUS_METRES "
-        "STEEL_WOUND_FRICTION_LOSS STEEL_PLAIN_BENDING_LOSS\n"
-        "Give all 24 calibration values (OptimizePhysicalModel.NAMES).\n");
+        "STEEL_WOUND_FRICTION_LOSS STEEL_PLAIN_BENDING_LOSS "
+        "STEEL_WOUND_BENDING_LOSS\n"
+        "Give all 25 calibration values (OptimizePhysicalModel.NAMES).\n");
 }
 } // namespace
 
