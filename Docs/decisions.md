@@ -22,6 +22,92 @@ physical consistency correction, not a listening verdict or a new recording
 fit. Local before/after phrases and the Rack integration workflow are documented in
 [the evidence note](palm-mute-pitch-2026-10-06.md).
 
+## 2026-10-10 — the strings end on the bridge: heard and approved
+
+The user asked to develop the physical-model evaluation's proposals: no new
+parameters, existing ones refined, and audible improvements and important
+missing phenomena first. Finding 1 was that the strings ended on a spring to
+ground, DAFx-26's fixed-end saddle-to-pin tail at a 3.25 mm stub. Above each
+body mode it resonated with the body's mass and drained the strings at 6 to 34
+times the bridge's own conductance. On a pin bridge both ends of that segment
+are on the bridge, so it now presents nothing, and the strings drain into the
+measured bridge alone ([the report](saddle-termination-2026-10-10.md)).
+
+Two by-ear choices had been heard through that spring, and both were carried
+forward to the level that was heard:
+- **The release thump.** The 2026-10-01 spring-back share of 0.8 now reaches
+  the body 4.8-5.1 dB louder, so the share falls to 0.45.
+- **The Dreadnought anchor's air ratio.** It was chosen at 98 on 2026-09-24,
+  when the listener heard the air transient at 99 Hz. It is now 109, which
+  puts A0 at 94.2 Hz, where both recorded dreadnoughts ring, the 94 Hz
+  experiment the 2026-10-02 entry had held back because the spring kept the
+  transient off the pole. T1 sits at g21's measured 178.5 Hz under the same
+  detune, 176.3 Hz.
+- The anchor's other by-ear values are unchanged.
+
+The listener heard main against the change in a blind, level-matched A/B
+built by `Tools/BuildRealismListeningTest.py`. It covered the five realism
+songs dry, plus low notes on the Dreadnought, Parlor and Jumbo, held chords,
+the release thump with Finger and Pick, and the Auditorium on its mono
+microphone. The listener preferred the change on 9 of 12 passages and
+recorded "approve candidate".
+- **Preferred for main:** open-road strumming (naturalness 6 against 4) and
+  the body-transition study (5 against 4).
+- **Comments:** the Parlor's old version was "very boomy", both were
+  "maybe too boomy in certain frequencies", and the pick thump would be best
+  "between A/B but closer to B", the change.
+- **Blindness:** ten votes were cast blind. Two, the repeated-note groove
+  and the mono Auditorium, were saved again after the reveal, and both favour
+  the change.
+
+The strummed chords measure 3-5 dB more at 63-160 Hz than main. That is
+re-checked after the capture voicing's refit, which is predicted to take
+3.1-3.5 dB from 100-125 Hz, before anything by ear is changed.
+
+## 2026-10-10 — a two-microphone Room: heard and not adopted
+
+A room fed both microphones of the spaced pair was tried: a gap-free late
+field from 9 ms, side reflections placed by time, a spaced pair's
+diffuse-field coherence, and absorption designed at the room's own rate
+([the report](room-2026-10-10.md)). The listener heard it against the
+earlier room in a blind, level-matched A/B of the five realism songs at
+Room 0.5:
+- evening fingerpicking: the earlier room, naturalness 6 against 4;
+- connected melody and repeated-note groove: the earlier room, with equal
+  scores;
+- open-road strumming: no preference.
+
+All four votes were blind, and the listener's decision was to keep the
+baseline. The room merged with the bridge work before that verdict was
+applied, and was reverted afterwards. The report remains the record.
+
+## 2026-10-10 — physical-model corrections from the evaluation
+
+These are numerical corrections. Only the bridge work above was heard.
+- **Glides settle exactly.** Body, Width and Output used to stall on a
+  subnormal near 7e-43, slowly wherever the host does not flush subnormals.
+  They now snap to their target like Piezo Mix.
+- **Shape's plate modes take the top's mass.** A plate mode keeps its
+  continuous residue when its pole moves, so its peak goes as residue x Q / f.
+  The old law scaled the residue with the area, putting plate peaks at A^2.
+  The residues now follow 1/A, and at the bridge heave 1/A, cross A^-1.5 and
+  rock A^-2. The Dreadnought is bit-identical; the other Shapes move as the
+  README's release history says. Not heard on its own.
+- **Constructions re-levelled.** `ConstructionLoudnessData.h` was rewritten
+  by its tool for the bridge and the plate law. Every construction and
+  Picking is within +-1 LU and every native strum within its 9 dB guard. The
+  default construction plays 1.28 LU quieter until the capture voicing's
+  refit restores its level.
+- **Calibration tools compare like with like.** Each recording is now scored
+  against the capture it matches, not the L/R average of the spaced pair,
+  which cancels a band neither microphone lacks
+  ([the record](capture-observation-2026-10-10.md)). No shipped voicing
+  changed. The refit is planned after the string-loss work and will be heard
+  against the voicing approved on 2026-10-09.
+- **The listening builder matches across gating jumps.** It now finds a
+  whole-file gain inside the unchanged 0.05 LU tolerance on quiet passages,
+  where it used to oscillate.
+
 ## 2026-10-10 — remove the Bellido 1978 (Classical 78) guitar model
 
 The user asked to remove the Classical 78 model completely, with the code and

@@ -719,7 +719,6 @@ key-up - its port leaves the junction on the delay's 6 ms time constant rather
 than in one sample: cut at once, the impedance step moved the bridge under
 everything else sounding, a faint tick 240 ms after a fretted key-up (1.33 s
 after an open one) about 30 dB over the local high-frequency floor.
-The six physical saddle-to-anchor springs are still counted once each.
 Measured on a chord change 0.6 seconds after the first chord, the strings
 still hold 25% of their initial energy and an earlier build discarded all of
 it. A held note
@@ -989,9 +988,8 @@ top, and a sideways force there is a moment about the string's own axis - the
 rocking the archive's two bridge-end impacts measure. In the model's
 normalized rocking coordinate `r = a*theta` that moment is `h/a` times the
 horizontal force and the crown moves `h/a` times the rocking, so the parallel
-polarisation's port is `(h/a)^2` times the measured rocking mobility, the
-anchor stubs hold it with `(h/a)^2` of their stiffness, and its load reaches
-the microphones through the measured moment-to-pressure paths. `h` is the
+polarisation's port is `(h/a)^2` times the measured rocking mobility, and
+its load reaches the microphones through the measured moment-to-pressure paths. `h` is the
 published height of the strings over the top at the bridge, to their lower
 bound (R. Mores, *List of guitars measured*, 2021, HSaT): 8.1 mm on g21;
 `a` is the 23.2 mm impact half-spacing the saddle lever arms already assume. Nothing is fitted. Both polarisations are one string: the normal
@@ -1111,9 +1109,8 @@ over 80 Hz-4 kHz at the Fylde's measurement point, g21's bass side; 0.23-0.30
 over other bands and conductance), so the residues are scaled by that ratio
 under the unchanged fitted mobility scale, and every residue matrix and so
 passivity is kept; the plate conductance floor is not scaled. Without the
-ratio the 3.25 mm anchor stub takes the low strings' force from the softer
-top and a picked E2's fundamental falls 13 dB against its 2nd and 3rd
-harmonics. With it, the radiation/conductance prominence correlation is
+ratio, measured while the strings still ended on a 3.25 mm anchor stub, a
+picked E2's fundamental fell 13 dB against its 2nd and 3rd harmonics. With it, the radiation/conductance prominence correlation is
 +0.41/+0.46/+0.41 at zero offset, and on picked notes the partials that stand
 out at onset fade 2.1 dB against their neighbours by the late window (the recordings 0.8-1.8). Wood now moves this bridge with the
 radiation, exchanging the load as Shape does.
@@ -1154,25 +1151,17 @@ B+D (Docs/decisions.md, 2026-09-29). It has not been heard against the
 midpoint. With B at 1, D at 1 and E at 0 the engine is the unblended B+D
 bit for bit. The benchmark readings quoted above are B+D's.
 
-The model represents each short segment behind the saddle as a spring between
-the bridge and ground. All six are there whether or not
-anyone is playing them, and springs in parallel add, so the anchor the
-junction sees is one constant of the instrument rather than a function of how
-many notes are held — but because each stub now stands at its own string's
-point on the saddle, it is a 2x2 stiffness matrix
-`[[sum K, sum uK], [sum uK, sum u^2 K]]` rather than one scalar sum: a string
-near the middle of the saddle finds nearly the whole set, one at the end
-finds it softer, since it can rock the bridge against the others. The
-saddle-to-anchor length is DAFx-26's own attachment, the 3.25 mm stub that
-`xi_b = 0.995` leaves on a 650 mm scale, bounded from there to 60 mm.
-Summing only the played strings instead made the port stiffen with every
-voice, and a note inside a chord then rang 2.15 times longer than the same
-note alone. A chord-pull sweep over five chords was re-run on the two-point
-bridge and settles only that an anchor is needed, not which length: 3.25 mm
-loses the late window to an 8 mm stub (3.8 against 2.4 cents) and loses the
-exactly-coincident-partial column outright (58.1 against 28.2 cents); the
-3.25 mm stub ships because it is DAFx-26's own published dimension and the
-bound's floor, not because a tracker reading picked it.
+The strings end on the bridge. The short segment from the saddle crown to the
+bridge pin has both its ends on the bridge, so it holds the bridge against
+nothing and presents no port of its own (`bridgePortMobility`): each string
+drains into the measured bridge admittance alone, at its own point on the
+saddle. Until 2026-10-10 the model stood each segment as a spring from the
+bridge to ground, DAFx-26's fixed-end tail at a 3.25 mm stub. Above each body
+mode that spring resonated with the body's mass and drained the strings at 6
+to 34 times the bridge's own conductance, 2-5 semitones above A0 and T1.
+[The saddle-termination report](Docs/saddle-termination-2026-10-10.md) has
+the measurements, and the decision log (2026-09-02, 2026-09-04) how the stub
+was chosen while it was live.
 
 The junction turns those displacement waves into bridge velocity and force
 with finite differences, so anything that moves a wave without the bridge
@@ -1334,20 +1323,26 @@ different box re-couples the same top into a different pair. The boxes are
 published set-up dimensions: Martin's Size 0 for Parlor (the class the PS-220E
 belongs to), the Martin 000 "Auditorium", the D-28 for Dreadnought and Gibson's
 SJ-200 for Jumbo, each with the 4-inch soundhole a flat-top carries; the plate
-modes above T1 follow the equal-thickness plate law f ∝ 1/A_top with their
-radiation scaled by the area they radiate from, and the A0/T1 radiation ratios
-come from the same model's eigenvectors. On steel that puts A0/T1 at 111/184 Hz
-for the Parlor, 96/171 for the Auditorium, 85/159 for the Dreadnought and
-76/146 for the Jumbo. The measured body has an anchor the other shapes are
-placed relative to: the Dreadnought, under the wider box the local line
-authored (air 98 Hz, modes x0.900, bass x1.28),
-chosen by ear on 2026-09-24 on all four blind pairs over the fitted transform
-(101 Hz, x0.972, x1.08). The benchmark split on it - steel training -0.5%,
-the never-fitted Eastman E1D flat-top rows, a real dreadnought, -5.2%, but
-development validation +3.2% - and it sits further below the roughly 100 and
-190 Hz that published dreadnought measurements report (Fletcher and Rossing,
-*The Physics of Musical Instruments*, ch. 9) than the fitted one did, because
-both darken a classical-size body whose A0 was already low. The outline's fraction of its width-by-length
+modes above T1 follow the equal-thickness plate law f ∝ 1/A_top, and their
+residues follow the top's mass, 1/A_top. So a plate mode keeps its peak
+mobility and radiation as it moves. At the bridge that is heave 1/A, cross
+A^-1.5 and rock A^-2, one congruence that keeps each residue matrix positive
+semidefinite. The A0/T1 radiation ratios come from the same model's
+eigenvectors. On steel that puts A0/T1 at 121/208 Hz for the Parlor, 106/191
+for the Auditorium, 94/176 for the Dreadnought and 84/162 for the Jumbo. The
+measured body has an anchor the other shapes are placed relative to: the
+Dreadnought, under the wider box the local line authored (modes x0.900 above
+T1, bass x1.28), chosen by ear on 2026-09-24 on all four blind pairs over the
+fitted transform (101 Hz, x0.972, x1.08). Its air ratio was 98 then, and the
+listener heard the air transient at 99 Hz through the anchor spring the
+strings then ended on. With the strings ending on the bridge (2026-10-10) the
+ratio is 109. That puts A0 at 94.2 Hz, where both recorded dreadnoughts ring,
+and T1 at g21's measured 178.5 Hz under the same detune, 176.3 Hz; a blind
+listener approved the change. On 2026-09-24 the benchmark split on the anchor:
+steel training -0.5%, the never-fitted Eastman E1D flat-top rows (a real
+dreadnought) -5.2%, but development validation +3.2%. Published dreadnought
+measurements report roughly 100 and 190 Hz (Fletcher and Rossing, *The
+Physics of Musical Instruments*, ch. 9). The outline's fraction of its width-by-length
 rectangle (0.72, and 0.75 for the dreadnought's shoulders) is read off the
 plantillas, and the plate law assumes tops of one thickness; both are model
 assumptions, not measurements of those instruments.
@@ -1550,9 +1545,13 @@ engine now reads the force from the line it wrote - 2Z times its steep
 flank's rise per sample, the normal plane's share - and gives it back to
 the junction as an external force on the saddle at the string's point: a
 step high-passed at 16 Hz by a double pole at 10 ms, with no net impulse.
-Its size is the force's own, given back at 0.8 of it: a listener liked the
-thump and chose it at 80% of the full release (2026-10-01), by ear. In the
-first 100 ms the low band reads within 0.5 dB of the Eastman's picked take,
+Its size is the force's own, given back at 0.45 of it. A listener liked the
+thump and chose it at 80% of the full release (2026-10-01), by ear, through
+the anchor spring the strings then ended on, which took part of the step.
+With the strings ending on the bridge (2026-10-10) the step reaches the body
+4.8-5.1 dB louder, and 0.45 = 0.8 x 10^(-4.95/20) keeps it where it was heard,
+within +0.5 to +1.4 dB on every Picking. Before that change, in the first
+100 ms the low band read within 0.5 dB of the Eastman's picked take,
 1.3-2.1 dB under its finger take and 5.3-5.5 under the Martin; after it the
 model's air mode still rings shorter than theirs (Known gaps). It follows
 the playing as the force does: on E4 and A4 its 60-180 Hz power over the
@@ -1812,7 +1811,8 @@ unread, and chose it by ear, which is what licensed the direction. It did not
 license the vector: the search had run two values onto bounds that contradict
 what this repository has measured, and both are pinned back in what ships —
 `bridgeMobilityScale` to the archive's own measured mobility, and the
-saddle-to-anchor length to DAFx-26's published 3.25 mm stub. That pinning is
+saddle-to-anchor length to DAFx-26's published 3.25 mm stub (retired on
+2026-10-10, when the strings came to end on the bridge). That pinning is
 what the two columns differ by, and it costs 7.9% on training, 3.0% on
 development validation and 16.8% on the eight flat-top rows. The five values
 an earlier listener moved off the fit's answer on 2026-08-31 — the body's
@@ -2460,9 +2460,11 @@ engine.
   split for stopped strings would settle it.
 - The top's spring-back (The top's spring-back) excites the low body modes.
   The earlier 85-105 Hz envelope comparison did not establish matched air
-  decay: it cuts through the model's intrinsic 84.7 Hz radiation pole and
-  mixes adjacent components. A broad-filter, source-domain audit now
-  separates that pole from the dominant rendered transient near 99 Hz.
+  decay: it cut through the model's then intrinsic 84.7 Hz radiation pole
+  and mixed adjacent components. A broad-filter, source-domain audit
+  separated that pole from the dominant rendered transient near 99 Hz, which
+  was the anchor spring's. Since 2026-10-10 the air mode sits at 94.2 Hz, and
+  its transient sounds at 94.3 Hz with a T60 of 0.55 s.
   With the modest Original air-Q extension, its fitted output T60 rises
   from about 0.45 to 0.50 s, against screened medians of 0.65 s for Eastman
   picked, 0.51 s for Eastman finger and 0.55 s for Martin. Those recording
@@ -2630,14 +2632,18 @@ set without it.
   saddle-height prototype tuned each
   plane against its own port, which is what left its open B 19.6 cents from
   the mode that sustained.
-- The two-way junction and the stub anchor are calibrated around a
-  one-way, 17 mm-spring engine. The open-string partials now sit 21 to 25 dB
-  under a played fundamental against the recordings' 25 to 40, and the
-  played strings' own damping, which the idle halo used to fill in, shows: on
-  the finger-played flat-top rows the fundamental decays at about 15 dB/s
-  against the recordings' 6, and the benchmark reads 6.111540, 6.072344 and
-  8.073304 against the previous engine's 6.835, 6.824 and 5.655, better on
-  the picked splits and worse on those eight rows. A staged refit around the
+- The two-way junction is calibrated around a one-way, 17 mm-spring engine,
+  and since 2026-10-10 the strings end on the bridge with no anchor at all;
+  no refit has followed either change. With the stub anchor, the open-string
+  partials sat 21 to 25 dB under a played fundamental against the
+  recordings' 25 to 40. The played strings' own damping, which the idle halo
+  used to fill in, showed: on the finger-played flat-top rows the fundamental
+  decayed at about 15 dB/s against the recordings' 6. The benchmark read
+  6.111540, 6.072344 and 8.073304 against the previous engine's 6.835, 6.824
+  and 5.655, better on the picked splits and worse on those eight rows.
+  Without the anchor it reads 6.9190, 6.8121 and 6.5366 (training,
+  development validation, flat-top) against the stub's last 6.8630, 6.5775
+  and 6.5853. A staged refit around the
   new termination was run twice. The first, with a one-sided-derivative
   solver, was rejected on a held-out miss. The second, with a bounded compass
   search, converged and beat the shipping calibration on all four splits, but
@@ -2673,8 +2679,9 @@ set without it.
   recordings' do, but ring gain (3.8/4.5 dB against the recordings' 6.9-8.5),
   late flatness and beating do not follow them, finger-played
   notes' early decay residual does not improve, and the flamenca's full
-  mobility, which drains far more, thins the low E through the 3.25 mm anchor
-  stub. The one-second chord pull reads 8.6 cents (G3 in a G chord; above).
+  mobility, which drains far more, thinned the low E through the 3.25 mm
+  anchor stub the strings then ended on. The one-second chord pull read 8.6
+  cents then (G3 in a G chord; above).
   g21's damping is
   read against five anechoic flamencas by one octave-median rule: its
   208.7 Hz rocking mode keeps Q 27.4 where the population's rocking modes
@@ -2705,8 +2712,9 @@ set without it.
 - The decay audit moved with it. Steel now decays 6.4 dB/s too fast at
   80--120 Hz and 8.7 dB/s too fast at 180--270 Hz against the archtop, but
   4.4 and 4.6 dB/s too slowly over 270--600 Hz. The 80--120 and 180--270 Hz excesses
-  are the fitted anchor spring; the rest are g21's own modes, and only those
-  need a matched measurement or an invented conductance.
+  were the fitted anchor spring, retired on 2026-10-10. The rest are g21's own
+  modes, and only those need a matched measurement or an invented
+  conductance.
 - The steel calibration corpus is a miked archtop, which limits how literally
   the current fit can describe a flat-top steel guitar. None of the 280 real-note
   regions was recorded from the g21 guitar that supplied the measured bridge
@@ -2742,13 +2750,15 @@ set without it.
   10 kHz ceiling, string-side high-frequency loss, or radiation, are the
   candidates). A bridge mobility measurement of the modelled instruments, or
   an accounting of that missing loss, would close it.
-- The remaining damping error is at the low end. Steel still decays about
-  7.8 dB/s too fast at 80--120 Hz and 10.1 dB/s too fast at 180--270 Hz. The
-  two steel bands are the fitted anchor spring's resonances at 102 and 233 Hz (the
-  bullet above); the rest are g21's own modes - the bridge's 412 Hz Q 38
-  beside the body's 406 Hz, and its 591 Hz Q 75 and 656 Hz Q 65 - so those
-  cannot be corrected without either a matched measurement
-  or an invented conductance.
+- The remaining damping error is at the low end. With the strings ending on
+  the bridge (2026-10-10) the steel median early decay reads 11.4, 10.8, 8.7
+  and 13.9 dB/s over 80-120, 120-180, 180-270 and 270-400 Hz, against the
+  recordings' 5.1, 9.6, 12.0 and 15.0 (`Tools/AuditDampingCurve.py`). So it is
+  too fast at the bottom and too slow above 180 Hz. The anchor spring's
+  resonances at 102 and 233 Hz, which made the earlier excesses, are gone.
+  The rest are g21's own modes: the bridge's 412 Hz Q 38 beside the body's
+  406 Hz, and its 591 Hz Q 75 and 656 Hz Q 65. Those cannot be corrected
+  without either a matched measurement or an invented conductance.
 - The gated loss and the damping audit used to disagree about the upper band,
   and no longer do. Re-run at three cutoffs, every band the audit will report
   prefers the fitted 2.170 except steel's 2000--3000 Hz, which prefers 1.2 by
@@ -2837,27 +2847,21 @@ set without it.
   member CC74 (per-note pluck point) and member channel pressure (vibrato-depth
   bias only), all scoped to the zone's member channels. Upper-zone MPE, and
   per-note aftertouch beyond that one bias, remain absent.
-- A note held in a chord no longer rings longer than the same note alone, but
-  what closed it was a magnitude, not the derivation. The lumped anchor is
-  summed over all six strings, as the derivation always said it should be, and
-  its stiffness now comes from a fitted saddle-to-anchor length rather than
-  from the 3.2 mm stub `xi_b = 0.995` happens to leave. The earlier attempt
-  kept the stub and so made the anchor six times stiffer than any single note
-  had seen, which is what the corpus rejected. The audit's verifier then
-  showed the fitted spring is a corpus-fitted low-frequency shield wearing a
-  bridge dimension's name: its series resonance with the body's inter-modal
-  reactance gives the strings 78 times the bridge's conductance at 233 Hz and
-  10 times at 102 Hz, which is where every doublet the audit listed came
-  from (sympathy off, early decay of the named partial, dB/s, recording |
-  shipping | no spring | 3.25 mm stub: flat-top A#2 H2 8.0 | 79 with a ±40 c
-  split | 14 | 8.2; flat-top A#3 H1 17.8 | 78 | 15 | 8.3; steel A3 H1 8.1 | 30 | 29 |
-  8.3; and the low E, where no spring exposes the flamenco body's own 83 and
-  91 Hz modes, 4.5--8.6 | 10 | 68 with a split | 7.8). The halo of the
-  then-one-way idle strings masked most of it in that audit; idle strings
-  now participate reciprocally in the junction. Scores: no spring 6.8723,
-  6.8800 and 5.8989; the stub 6.4921, 6.4762 and 6.5464 - 5% better on the
-  picked splits and 16% worse on the flat-top rows. The chord-tuning
-  measurement then decided it (decision log): the stub ships.
+- A note held in a chord no longer rings longer than the same note alone.
+  Until 2026-10-10 a fitted saddle-to-anchor spring closed that gap as a
+  corpus-fitted low-frequency shield rather than a bridge dimension: its
+  resonance with the body's mass between modes drained the strings at 6 to
+  34 times the bridge's conductance above A0 and T1. With the strings ending
+  on the bridge, what the coupling does near A0 and T1 shows instead
+  ([the saddle-termination report](Docs/saddle-termination-2026-10-10.md)):
+  - The worst separable note in E, G, Am, D and C chords reads 10.3 cents
+    early and 2.1 late on the Dreadnought (E3 in Am and C, against the idle
+    low E's second partial), 8.2/1.5 on the Parlor and 3.2/7.0 on the Jumbo.
+  - Each Shape has a note on its A0 that drains fast and splits: the
+    Dreadnought's F#2, the Jumbo's E2 at 23.5 dB/s, and the Parlor's G2/B2.
+  - On notes near A0 and T1 the late pitch drifts by up to about 10 cents as
+    the parallel plane takes over, since it shares the normal loop's
+    compensated length.
 - Starting a note while the instrument is sounding no longer clicks, and the
   port impedance was not the reason it did. That step is real but small: with
   the bridge's immediate admittance at 0.00305 and a string impedance of
@@ -2884,6 +2888,34 @@ set without it.
   including vibration retained when pressure changes mid-note. Unmuted
   renders are unchanged. The correction is shared by the plug-in and its
   Reason adapter; it adds no controls or changes to stored parameter values.
+
+### 2026-10-10 — the strings end on the bridge
+
+- **The strings end on the bridge.** The model stood the short segment behind
+  each saddle as a spring to ground, which drained the strings at 6-34 times
+  the bridge's conductance above the body's lowest modes. It is gone, and the
+  strings drain into the measured bridge alone. The Dreadnought's air mode
+  moves to 94 Hz and its first top mode to 176 Hz, where recorded
+  dreadnoughts ring. The release thump keeps the level a listener chose. In a
+  blind A/B the listener preferred it on 9 of 12 passages and approved it;
+  strumming with the Pick went the other way. See
+  [the report](Docs/saddle-termination-2026-10-10.md).
+- **Shape's plate modes keep their level.** Plate modes above T1 take the
+  top's mass as they move. Against the old law, before the re-levelling, the
+  Parlor's 315 Hz-10 kHz bands rise 4.4-5.1 dB, the Auditorium's 1.8-2.4 dB,
+  and the Jumbo's fall 1.3-1.7 dB. Not heard on its own.
+- **The constructions are re-levelled** for both changes, by
+  `Tools/CalibrateConstructionLoudness.py`. The default construction plays
+  1.28 LU quieter until the capture voicing is refitted.
+- **Body, Width and Output settle exactly** at their targets instead of
+  stalling on a subnormal.
+- **The calibration tools compare like with like.** Each recording is
+  scored against the capture it matches, not against the cancelling L/R
+  average of the spaced pair
+  ([the capture-observation record](Docs/capture-observation-2026-10-10.md)).
+  No shipped voicing has changed yet.
+- **A two-microphone Room was heard and not adopted**
+  ([the room report](Docs/room-2026-10-10.md)).
 
 ### 2026-10-10 — Bellido 1978 (Classical 78) removed
 
