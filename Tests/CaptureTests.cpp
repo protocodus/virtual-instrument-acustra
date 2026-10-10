@@ -945,6 +945,17 @@ void testPiezoHeadroom()
 // the release's slip now follows Touch itself (a firm Touch lets the string
 // go over a smaller edge, 0.56 of it at Touch 1), so the brighter Touch 1
 // strum is read beside it and held to the same -60 dB at every drive.
+// Since 2026-10-10 the wound strings lose their upper partials through a
+// winding friction loss angle in place of the cube-law bending factor
+// (FittedPhysicalData.h), and the strum's corners sum differently. At unit
+// weights its deepest swing into U1B, as a share of the swing, is 0.84 at
+// Touch 1 (0.77 before) and 0.78 at 44.1 kHz and 0.72 at 48 kHz at the
+// default Touch (0.96 and 0.95 before): the default Touch first reaches the
+// swing driven 1.28 and 1.39 times as hard. Each Touch's drives start where
+// both rates clip: the Touch 1 strum's run 2 host samples past the swing at
+// 44.1 kHz and 2-4 at 48 kHz, the default Touch's 3-7 and 1-9 (1.40 at
+// 48 kHz is 0.7% past it). Driven deeper, the default Touch at 1.70 is
+// 12 samples past at 44.1 kHz and its clip reads -60.0 dB.
 void testPiezoClipAliasing()
 {
     for (const float touch : { 0.58f, 1.0f })
@@ -952,7 +963,10 @@ void testPiezoClipAliasing()
     {
     double chainSum = 0.0, bareSum = 0.0;
     int drives = 0;
-    for (const float overdrive : { 1.25f, 1.30f, 1.35f, 1.40f, 1.45f })
+    const std::array<float, 5> overdrives = touch == 1.0f
+        ? std::array<float, 5> { 1.35f, 1.39f, 1.43f, 1.47f, 1.51f }
+        : std::array<float, 5> { 1.40f, 1.45f, 1.50f, 1.55f, 1.60f };
+    for (const float overdrive : overdrives)
     {
         auto strum = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
                                1.0, 0, 0.0f, overdrive);
@@ -1309,11 +1323,22 @@ void testRoomBlocksWidthAndReturn()
 }
 
 // 13b. The room rings out to exact silence: a released chord reaches exact
-// zero on Main at most 2.5 s after the same chord without a room does (the
-// strings' own residue takes longer than the room's tail).
+// zero on Main at most 3 s after the same chord without a room does, and all
+// the room adds after that is inaudible. The dry end is the instrument's idle
+// flush, which waits for the body and the piezo, under its construction trim,
+// to fall below 1e-11 (processIdleFlush); the room's end waits for the room,
+// which still hears the microphones' residue near -200 dBFS. So the margin
+// moves with the default construction's piezo trim as well as with the room:
+// on a6f1ad8 the room added 2.24 s; on 2026-10-10 the strings' high-frequency
+// loss moved the room's end 0.24 s later, and the loudness tables regenerated
+// for it lowered the default construction's piezo trim 0.9 dB, which moves
+// the dry end 0.23 s earlier and the room's not at all: 2.67 s
+// (Docs/string-hf-loss-2026-10-10.md). Until then the bound was 2.5 s. 3 s is
+// what the room's slowest designed decay (0.45 s) takes to fall the 400 dB
+// from full scale to its 1e-20 flush.
 void testRoomRingsOutToSilence()
 {
-    const auto lastSound = [] (float room)
+    const auto render = [] (float room)
     {
         acustra::EngineParameters parameters;
         parameters.room = room;
@@ -1321,7 +1346,8 @@ void testRoomRingsOutToSilence()
         engine->setParameters(parameters);
         engine->prepare(48000, 256);
         std::array<float, 256> left {}, right {};
-        long last = -1;
+        std::vector<float> peaks;
+        peaks.reserve(48000 * 30);
         for (long block = 0; block < 48000L * 30 / 256; ++block)
         {
             if (block == 0)
@@ -1332,18 +1358,34 @@ void testRoomRingsOutToSilence()
                     engine->noteOff(note);
             engine->process(left.data(), right.data(), 256);
             for (std::size_t index = 0; index < left.size(); ++index)
-                if (left[index] != 0.0f || right[index] != 0.0f)
-                    last = block * 256 + static_cast<long>(index);
+                peaks.push_back(std::max(std::abs(left[index]), std::abs(right[index])));
         }
-        return static_cast<double>(last + 1) / 48000.0;
+        return peaks;
     };
-    const double dry = lastSound(0.0f);
-    const double roomy = lastSound(0.6f);
+    const auto lastSound = [] (const std::vector<float>& peaks)
+    {
+        long last = -1;
+        for (std::size_t index = 0; index < peaks.size(); ++index)
+            if (peaks[index] != 0.0f)
+                last = static_cast<long>(index);
+        return last + 1;
+    };
+    const auto dryPeaks = render(0.0f);
+    const auto roomyPeaks = render(0.6f);
+    const long drySamples = lastSound(dryPeaks);
+    const double dry = static_cast<double>(drySamples) / 48000.0;
+    const double roomy = static_cast<double>(lastSound(roomyPeaks)) / 48000.0;
+    const float after = *std::max_element(
+        roomyPeaks.begin() + std::min<std::ptrdiff_t>(drySamples, static_cast<std::ptrdiff_t>(roomyPeaks.size())),
+        roomyPeaks.end());
+    const double afterDb = after > 0.0f ? 20.0 * std::log10(after) : -999.0;
     std::cout << "Exact silence after a released chord: " << dry << " s dry, " << roomy
-              << " s with the room at 0.6\n";
+              << " s with the room at 0.6, peaking at " << afterDb << " dBFS after the dry\n";
     expect(dry < 29.0 && roomy < 29.0, "the instrument did not reach exact silence");
-    expect(roomy >= dry && roomy - dry < 2.5,
+    expect(roomy >= dry && roomy - dry < 3.0,
            "the room's tail outlasted the instrument by " + std::to_string(roomy - dry) + " s");
+    expect(afterDb < -160.0,
+           "the room was audible after the dry chord's silence: " + std::to_string(afterDb) + " dBFS");
 }
 
 // 14. The Original's capture voicing (CaptureVoicingData.h) is one smooth

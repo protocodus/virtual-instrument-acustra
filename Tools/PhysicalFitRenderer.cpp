@@ -148,7 +148,7 @@ constexpr CalibrationValues calibrationMaximums {{
     1.04f, 1.8f, 4.0f, 6.0f, 4.0f, 2.0f,
     3.0f, 2.5f, 3.0f, 3.0f, 1.2f, 1.0f,
     32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f,
-    0.060f, 2.0f, 4.0f, 1.0e-3f, 2.0f, 2.0f,
+    0.060f, 2.0f, 4.0f, 1.0e-3f, 0.01f, 2.0f,
 }};
 
 const char* materialName(Material material) noexcept
@@ -404,7 +404,7 @@ PhysicalCalibration makeCalibration(const CalibrationValues& values)
     calibration.pickReleaseVelocityShare = values[19];
     calibration.pickReleaseVelocityExponent = values[20];
     calibration.pickEdgeRadiusMetres = values[21];
-    calibration.steelWoundBendingLoss = values[22];
+    calibration.steelWoundFrictionLoss = values[22];
     calibration.steelPlainBendingLoss = values[23];
     return calibration;
 }
@@ -534,7 +534,7 @@ std::string calibrationOrderJson()
            "\"pickReleaseVelocityShare\", "
            "\"pickReleaseVelocityExponent\", "
            "\"pickEdgeRadiusMetres\", "
-           "\"steelWoundBendingLoss\", "
+           "\"steelWoundFrictionLoss\", "
            "\"steelPlainBendingLoss\"]";
 }
 
@@ -1214,7 +1214,7 @@ void printUsage()
         "BRIDGE_CONDUCTANCE_CORNER_HZ BRIDGE_TAIL_LENGTH_METRES "
         "PICK_RELEASE_VELOCITY_SHARE PICK_RELEASE_VELOCITY_EXPONENT "
         "PICK_EDGE_RADIUS_METRES "
-        "STEEL_WOUND_BENDING_LOSS STEEL_PLAIN_BENDING_LOSS\n"
+        "STEEL_WOUND_FRICTION_LOSS STEEL_PLAIN_BENDING_LOSS\n"
         "Give all 24 calibration values (OptimizePhysicalModel.NAMES).\n");
 }
 } // namespace

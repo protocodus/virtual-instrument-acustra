@@ -93,6 +93,10 @@ void testAlignedIncrementScratchPreservesWorkAndCompleteState()
             = static_cast<float>(0.07 * std::cos(0.053 * i));
     }
     oldWave->bendingLossY1 = 0.0123f;
+    oldWave->bendingLossX1 = -0.0211f;
+    oldWave->constantLossX1 = 0.0456f;
+    oldWave->constantLossX2 = -0.0078f;
+    oldWave->constantLossY1 = 0.0031f;
     oldWave->secondDispersion.y2 = -0.0432f;
     oldWave->intrinsicCoefficientSamples = 23;
     oldWave->gestureContact.active = true;
@@ -368,11 +372,14 @@ double slopeEnergy(const Access::Loop& loop)
     return sum;
 }
 
-std::array<float, 18> filterMemory(const Access::Loop& loop)
+std::array<float, 24> filterMemory(const Access::Loop& loop)
 {
     return { loop.allpassY1, loop.allpassY2, loop.thiranFraction,
         loop.thiranFirst, loop.thiranSecond, loop.bendingLossY1,
-        loop.bendingLossY2, loop.broadLossFilter.state,
+        loop.bendingLossY2, loop.bendingLossX1, loop.bendingLossX2,
+        loop.constantLossX1, loop.constantLossX2,
+        loop.constantLossY1, loop.constantLossY2,
+        loop.broadLossFilter.state,
         loop.broadLossFilter.previousInput, loop.lossFilter.state,
         loop.lossFilter.previousInput, loop.dispersion.x1, loop.dispersion.x2,
         loop.dispersion.y1, loop.dispersion.y2, loop.secondDispersion.x1,
@@ -401,6 +408,9 @@ void testRingingContactIsPassiveAtTheActualFractionalPoint()
                     }
                     original.allpassY1 = 0.23f; original.allpassY2 = -0.19f;
                     original.bendingLossY1 = -0.11f; original.bendingLossY2 = 0.31f;
+                    original.bendingLossX1 = 0.17f; original.bendingLossX2 = -0.07f;
+                    original.constantLossX1 = 0.29f; original.constantLossX2 = -0.05f;
+                    original.constantLossY1 = 0.02f; original.constantLossY2 = -0.03f;
                     original.broadLossFilter.state = 0.13f;
                     original.lossFilter.previousInput = -0.27f;
                     original.dispersion.x1 = 0.41f; original.dispersion.y2 = -0.39f;
@@ -726,9 +736,12 @@ void testAgeAutomationPreservesTheMergedString()
         // that 2e-4 of its peak allowed before 2026-10-10, when that peak
         // was 0.101-0.109. The strings now end on the bridge and this G2
         // sits 0.7 semitone over the Dreadnought's A0 (94.2 Hz), into which
-        // it drains, so its peak here reads 0.078-0.080 while the step
-        // itself, 1.6-2.0e-5 of full scale, stays within the 1.3-2.0e-5 it
-        // read (Docs/saddle-termination-2026-10-10.md).
+        // it drains, so its peak here reads 0.078-0.080
+        // (Docs/saddle-termination-2026-10-10.md). With the wound strings'
+        // winding friction (FittedPhysicalData.h) a jump of their loss
+        // section to the new Age read 2.4-2.8e-5 of full scale, so an Age
+        // change glides over a round trip instead, and the step reads about
+        // 8e-6 (Docs/string-hf-loss-2026-10-10.md, section 11).
         expect(peak > 1.0e-4 && stepDifference <= 2.7e-4 * peak,
                "a small Age step introduced a large adjacent-sample transient after a same-pitch merge");
         std::cout << "Merged Age delay=" << delay
@@ -739,6 +752,85 @@ void testAgeAutomationPreservesTheMergedString()
         expect(actualEnergy > 0.99 * referenceEnergy && actualEnergy < 1.01 * referenceEnergy,
                "a small Age step erased or increased the merged string's stored wave");
     }
+}
+
+// Hosts automate String Age every block. Its loss and sections glide over
+// a round trip from where they are, and a revision during a glide moves its
+// target within the deadline already set: a stream of revisions never
+// postpones the glide, which ends exactly on the last target.
+void testAgeAutomationKeepsItsGlideDeadline()
+{
+    const auto exactlyOnTarget = [] (const Access::Loop& loop)
+    {
+        const std::array<float, Access::Loop::intrinsicCoefficientCount> applied {
+            loop.bendingLossGain, loop.bendingLossA1, loop.bendingLossA2,
+            loop.dispersionA1, loop.dispersionA2, loop.secondDispersionA1,
+            loop.secondDispersionA2, loop.constantLossGain, loop.constantLossA1,
+            loop.constantLossA2, loop.constantLossN1, loop.constantLossN2 };
+        return std::memcmp(applied.data(), loop.intrinsicCoefficientTarget.data(),
+                           sizeof(applied)) == 0
+            && std::memcmp(&loop.loopGain, &loop.targetLoopGain, sizeof(float)) == 0;
+    };
+    auto engine = fresh();
+    engine->noteOn(43, 0.6f, 1);
+    advance(*engine, 12000);
+    engine->noteOn(43, 0.6f, 1);
+    advance(*engine, 64);
+    acustra::EngineParameters parameters;
+    int glides = 0, revisions = 0;
+    bool kept = true, started = true;
+    // 0.0003 a 64-sample block at 48 kHz sweeps the whole range in 4.4 s.
+    for (int block = 0; block < 48; ++block)
+    {
+        const auto before = Access::sounding(*engine);
+        parameters.stringAge += 0.0003f;
+        engine->setParameters(parameters);
+        const auto after = Access::sounding(*engine);
+        for (int plane = 0; plane < 2; ++plane)
+        {
+            const int roundTrip = std::max(1, static_cast<int>(
+                std::ceil(after[plane].currentDelay)));
+            const std::array<std::array<int, 2>, 2> counters {{
+                { before[plane].intrinsicCoefficientSamples,
+                  after[plane].intrinsicCoefficientSamples },
+                { before[plane].loopGainTransitionSamples,
+                  after[plane].loopGainTransitionSamples } }};
+            for (const auto& [was, is] : counters)
+            {
+                if (was > 0)
+                {
+                    revisions += plane == 0;
+                    kept = kept && is == was;
+                }
+                else
+                {
+                    glides += plane == 0 && is > 0;
+                    started = started && (is == 0 || is == roundTrip);
+                }
+            }
+        }
+        advance(*engine, 64);
+    }
+    expect(glides > 0 && revisions > 0,
+           "per-block Age automation exercised neither a new glide nor a revision");
+    expect(kept, "an Age revision moved its running glide's deadline");
+    expect(started, "an Age change began a glide other than one round trip long");
+    const auto last = Access::sounding(*engine);
+    int remaining = 0;
+    for (const auto& loop : last)
+        remaining = std::max({ remaining, loop.intrinsicCoefficientSamples,
+                               loop.loopGainTransitionSamples });
+    // The last revision came one 64-sample block ago.
+    expect(remaining + 64 <= std::ceil(last[0].currentDelay),
+           "an Age glide outlasted one round trip after the last revision");
+    advance(*engine, remaining);
+    const auto settled = Access::sounding(*engine);
+    for (const auto& loop : settled)
+        expect(loop.intrinsicCoefficientSamples == 0 && loop.loopGainTransitionSamples == 0
+                   && exactlyOnTarget(loop),
+               "an Age glide did not end exactly on the last revision's target");
+    std::cout << "Age automation: " << glides << " glides, " << revisions
+              << " revisions within their deadline\n";
 }
 
 void testRapidTremoloAudioRemainsBoundedAndBlockExact()
@@ -818,10 +910,20 @@ void testRapidTremoloAudioRemainsBoundedAndBlockExact()
             // forcing can feed resonant body modes above an isolated note's
             // level, so passivity is checked on stored string slopes above;
             // this audio fixture checks rails and the settled train instead.
+            // A new attack lands on a string still ringing, and the two
+            // superpose: by the triangle inequality the onset can step by the
+            // isolated attack's step plus the ringing train's own, with no
+            // contact artefact. Until 2026-10-10 this compared with the larger
+            // of the two, which held while a wound string's upper partials
+            // died within one 30 ms stroke (the train's steps a third of the
+            // attack's). With the winding-friction law they ring on as the
+            // flat-top recordings' do (3.3-5 kHz, MIDI 40-58: 38 dB/s against
+            // the recordings' 31, the bending law's 61), so the train's own
+            // steps reach the attack's (Docs/string-hf-loss-2026-10-10.md).
             for (int stroke = 1; stroke < 32; ++stroke)
             {
-                expect(onsetSteps[stroke] < 3.0 * std::max(
-                           onsetSteps[0], backgroundSteps[stroke - 1]),
+                expect(onsetSteps[stroke] < 3.0
+                           * (onsetSteps[0] + backgroundSteps[stroke - 1]),
                        "ringing contact introduced a large latency-aligned onset step");
             }
             double settledEnergy = 0.0, lateEnergy = 0.0;
@@ -859,6 +961,7 @@ int main()
     testMergedWaveContainsTheOldMotionAndItsBudgetedNewRelease();
     testLongPhaseLockedTremoloDoesNotAccumulateNearNodeEnergy();
     testAgeAutomationPreservesTheMergedString();
+    testAgeAutomationKeepsItsGlideDeadline();
     testRapidTremoloAudioRemainsBoundedAndBlockExact();
     return failures == 0 ? 0 : 1;
 }

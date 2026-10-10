@@ -123,6 +123,9 @@ struct AcustraEngineTestAccess
             const auto& loop = actualVoice.loops[static_cast<std::size_t>(plane)];
             result.wavePreserved &= loop.delay == old.delay && loop.writeIndex == old.writeIndex
                 && loop.bendingLossY1 == old.bendingLossY1 && loop.bendingLossY2 == old.bendingLossY2
+                && loop.bendingLossX1 == old.bendingLossX1 && loop.bendingLossX2 == old.bendingLossX2
+                && loop.constantLossX1 == old.constantLossX1 && loop.constantLossX2 == old.constantLossX2
+                && loop.constantLossY1 == old.constantLossY1 && loop.constantLossY2 == old.constantLossY2
                 && loop.dispersion.x1 == old.dispersion.x1 && loop.dispersion.x2 == old.dispersion.x2
                 && loop.dispersion.y1 == old.dispersion.y1 && loop.dispersion.y2 == old.dispersion.y2;
         }
@@ -264,10 +267,18 @@ struct AcustraEngineTestAccess
                 / (1.0 - coefficient * std::polar(1.0, -lossOmega));
             return std::abs((1.0 - mix) + mix * low);
         };
+        // The bending section, g / A(z), and the constant-loss section as
+        // the loop runs it (StringLoop::advance), 1 - (1 - z^-1)(g0 + g1
+        // z^-1)/A(z), g0 = 1 - g, g1 = n2 - a2.
         const auto z = std::polar(1.0, -omega);
         const double bendingMagnitude = loop.bendingLossGain / std::abs(
             1.0 + static_cast<double>(loop.bendingLossA1) * z
-                + static_cast<double>(loop.bendingLossA2) * z * z);
+                + static_cast<double>(loop.bendingLossA2) * z * z)
+            * std::abs(1.0 - (1.0 - z)
+                * (static_cast<double>(1.0f - loop.constantLossGain)
+                   + static_cast<double>(loop.constantLossN2 - loop.constantLossA2) * z)
+                / (1.0 + static_cast<double>(loop.constantLossA1) * z
+                    + static_cast<double>(loop.constantLossA2) * z * z));
         const double gainPerTrip = loop.loopGain
             * shelfMagnitude(loop.broadLossCoefficient, loop.broadLossMix)
             * shelfMagnitude(loop.lowpassCoefficient, loop.highLossMix)

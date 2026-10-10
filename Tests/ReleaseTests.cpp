@@ -600,9 +600,20 @@ void testReleaseNoise()
 // difference is a high pass steep enough to leave the strings' own partials
 // under a step's. Its peak across the hand-back is measured against its
 // median over the 70 ms before, where a peak of noise alone sits 11 to 16 dB
-// up and the cut port reached 30 dB at 44.1 and 48 kHz and 40 dB at 96 kHz.
-// The fretted-to-open reconfiguration itself still leaves up to 21 dB at
-// 96 kHz (15 dB at 48 kHz), which the bound sits above.
+// up and the cut port reached 30 dB at 44.1 and 48 kHz and 40 dB at 96 kHz
+// when this was written; cut in one sample on today's bridge it reads 69 dB
+// at 44.1 and 48 kHz and 76 dB at 96 kHz.
+// The fretted-to-open reconfiguration itself leaves a step of its own: the
+// second dispersion section switched out and the delay's 6 ms slew under the
+// damped wave, steps a fret change under a sounding wave is allowed to make
+// (switchSecondDispersion). Until 2026-10-10 it read 15-21 dB here, but only
+// because this low E's former bending factor (0.035, FittedPhysicalData.h)
+// took 10-30 dB a round trip off the top band, where both steps sit: in the
+// same performance on a6f1ad8 the D string read 25-27 dB and the high E
+// 26-29 dB at 44.1 and 48 kHz. With the winding friction's loss angle the low
+// E passes them as the plain strings did, 31-39 dB (the D 28-37, the high E
+// 24-27), so the bound sits between that and the cut port.
+// (Docs/string-hf-loss-2026-10-10.md.)
 void lowpass20k(std::vector<float>& x, double rate)
 {
     for (const double q : { 0.5411961001461970, 1.3065629648763764 })
@@ -698,7 +709,7 @@ void testHandBackIsSilent()
         }
         std::cout << "Acustra hand-back step at " << rate << " Hz: " << worst
                   << " dB over the median of the preceding 70 ms\n";
-        expect(worst < 25.0, "the hand-back to the open string stepped "
+        expect(worst < 50.0, "the hand-back to the open string stepped "
                    + std::to_string(worst) + " dB over the floor at "
                    + std::to_string(static_cast<int>(rate)) + " Hz");
     }
