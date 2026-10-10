@@ -5622,8 +5622,9 @@ void testConstantLossFollowsItsLaw()
     const auto shipped = acustra::fittedPhysicalCalibration;
     auto plainSteel = shipped;
     plainSteel.steelWoundFrictionLoss = 0.0f;
-    // An eight-times friction: the most the wound strings' section carries
-    // at the default age in any configuration tried here.
+    // Friction 1e-3, over twice the shipped 4.5e-4: the most the wound
+    // strings' section carries at the default age in any configuration
+    // tried here.
     auto rubbed = shipped;
     rubbed.steelWoundFrictionLoss = 1.0e-3f;
     struct Calibration
@@ -5634,7 +5635,7 @@ void testConstantLossFollowsItsLaw()
     const Calibration calibrations[] {
         { &plainSteel, "dislocation alone" },
         { &shipped, "shipped" },
-        { &rubbed, "eight-times friction" },
+        { &rubbed, "1e-3 friction" },
     };
     const std::vector<int> notes { 40, 45, 51, 55, 59, 64, 72, 84 };
     constexpr double decibelsPerNeper = 8.685889638065035;
@@ -5642,8 +5643,10 @@ void testConstantLossFollowsItsLaw()
     double worstBand = 0.0;
     double worstBelow = 0.0;
     int checkedBand = 0;
+    // The middle ages widen the wound strings' band the most short of 1; the
+    // old corner set missed the law by 24% at Age 0.4 and 0.6 there.
     for (const double rate : { 44100.0, 48000.0, 96000.0, 192000.0 })
-        for (const double age : { 0.0, defaultAge, 1.0 })
+        for (const double age : { 0.0, defaultAge, 0.3, 0.45, 0.6, 1.0 })
             for (const auto& calibration : calibrations)
             {
                 const auto configured = Access::bendingSectionsFor(notes, rate,

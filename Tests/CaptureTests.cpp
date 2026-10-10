@@ -945,17 +945,17 @@ void testPiezoHeadroom()
 // the release's slip now follows Touch itself (a firm Touch lets the string
 // go over a smaller edge, 0.56 of it at Touch 1), so the brighter Touch 1
 // strum is read beside it and held to the same -60 dB at every drive.
-// Since 2026-10-10 the wound strings keep their upper partials through the
-// first round trips (their winding friction's loss angle in place of the
-// cube-law bending factor, FittedPhysicalData.h), and the strum's corners
-// sum differently: at Touch 1 its deepest swing into U1B is 0.90 of what it
-// was (-2.94 V against -3.28 V at 44.1 kHz, unit weights) and broader, at
-// the default Touch 1.07 of it. At the old drives the Touch 1 strum no longer
-// reached U1B's swing at 1.25 and 1.30; it is driven from where it first
-// does, 1.35, in steps that take it 0-4 host samples past the swing at
-// 44.1 kHz and 0-6 at 48 kHz, as the default Touch's 2-4 (it read 1-2 here
-// before). Driven 1.15 times as hard as before, 2-9 samples past, its
-// deepest clips read -58 to -60 dB.
+// Since 2026-10-10 the wound strings lose their upper partials through a
+// winding friction loss angle in place of the cube-law bending factor
+// (FittedPhysicalData.h), and the strum's corners sum differently. At unit
+// weights its deepest swing into U1B, as a share of the swing, is 0.84 at
+// Touch 1 (0.77 before) and 0.78 at 44.1 kHz and 0.72 at 48 kHz at the
+// default Touch (0.96 and 0.95 before): the default Touch first reaches the
+// swing driven 1.28 and 1.39 times as hard. Each Touch's drives start where
+// both rates clip: the Touch 1 strum's run 2 host samples past the swing at
+// 44.1 kHz and 2-4 at 48 kHz, the default Touch's 3-7 and 1-9 (1.40 at
+// 48 kHz is 0.7% past it). Driven deeper, the default Touch at 1.70 is
+// 12 samples past at 44.1 kHz and its clip reads -60.0 dB.
 void testPiezoClipAliasing()
 {
     for (const float touch : { 0.58f, 1.0f })
@@ -965,7 +965,7 @@ void testPiezoClipAliasing()
     int drives = 0;
     const std::array<float, 5> overdrives = touch == 1.0f
         ? std::array<float, 5> { 1.35f, 1.39f, 1.43f, 1.47f, 1.51f }
-        : std::array<float, 5> { 1.25f, 1.30f, 1.35f, 1.40f, 1.45f };
+        : std::array<float, 5> { 1.40f, 1.45f, 1.50f, 1.55f, 1.60f };
     for (const float overdrive : overdrives)
     {
         auto strum = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,

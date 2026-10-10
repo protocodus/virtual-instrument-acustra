@@ -1403,7 +1403,7 @@ BendingLossSection bendingLossSection(double factor, double inharmonicity,
 // a section with two poles and two zeros. Whatever its corners u1, u2 > 0 it
 // is passive (|H| <= 1) and minimum phase at every frequency when a >= 0 and
 // a + 4b >= 0, so it is designed in that form and needs no fallback. The
-// corners are tried from a small set spread over the band, a and b fitted for
+// corners are tried from a small set over the band, a and b fitted for
 // each by weighted least squares in relative error on partials from where
 // the law adds 3 dB/s (the 2nd at the lowest) to where it adds 300 dB/s, with
 // a lightly weighted tail on to 20 kHz or 0.45 of the host rate, and the pair
@@ -1519,9 +1519,12 @@ ConstantLossSection constantLossSection(double delta, double inharmonicity,
     const double last = u[bandCount - 1];
     if (!(first > 0.0) || !(last > first))
         return section;
-    // Corners as fractions of the band's extent in log u.
-    constexpr double lowerCorners[] { -0.25, 0.0, 0.15, 0.3 };
-    constexpr double upperCorners[] { 0.85, 1.0, 1.25, 1.5, 2.0 };
+    // Corners as fractions of the band's extent in log u. Spread wider, the
+    // set missed the law by up to 25% on bands of two decades, the wound
+    // strings' at higher friction or String Age; this one keeps every Age
+    // within 20% at the shipped friction (Docs/string-hf-loss-2026-10-10.md).
+    constexpr double lowerCorners[] { -0.25, 0.10, 0.15, 0.20 };
+    constexpr double upperCorners[] { 0.90, 0.95, 1.00, 1.05, 1.50 };
     double bestError = std::numeric_limits<double>::infinity();
     double bestU1 = 0.0, bestU2 = 0.0, bestA = 0.0, bestB = 0.0;
     for (const double lowerCorner : lowerCorners)
@@ -3957,7 +3960,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             returnToOpenString(voice, string, force);
         else if (tuningChanged || ageChanged || shapeChanged)
             configureVoice(voice, string, voice.midiNote, false, false,
-                           tuningChanged && !force);
+                           tuningChanged && !force, ageChanged && !force);
     }
     // Switching the tuning under a ringing chord changes every string's
     // impedance at once, so the junction's wave variables step with the
@@ -4000,7 +4003,8 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             for (int string = 0; string < stringCount; ++string)
                 configureVoice(voices_[static_cast<std::size_t>(string)], string,
                                voices_[static_cast<std::size_t>(string)].midiNote,
-                               false, false, tuningChanged && !force);
+                               false, false, tuningChanged && !force,
+                               ageChanged && !force);
 
     if (tuningChanged && !force)
         for (int string = 0; string < stringCount; ++string)
@@ -4988,7 +4992,8 @@ float AcustraEngine::saddleHeightRatio() const noexcept
 void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                                     int midiNote, bool clearDelay,
                                     bool refreshPickReference,
-                                    bool transitionRetune) noexcept
+                                    bool transitionRetune,
+                                    bool continuousRevision) noexcept
 {
     const auto& physical = physicalCalibration_.steel;
     const auto index = static_cast<std::size_t>(stringIndex);
@@ -5493,7 +5498,9 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         if (clearDelay)
             loop.loopGainTransitionSamples = 0;
         loop.setLoopGain(clamp(loopGain * stringRoundTripGain, 0.70f, 0.999995f),
-            transitionRetune && !clearDelay);
+            (transitionRetune
+                || (continuousRevision && loop.loopGainTransitionSamples == 0))
+            && !clearDelay);
         loop.broadLossMix = broadLoss;
         loop.highLossMix = mutedHighLoss;
         loop.broadLossCoefficient = broadLossCoefficient;
@@ -5525,7 +5532,10 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             static_cast<float>(dispersion.a1[1]), static_cast<float>(dispersion.a2[1]),
             voice.constantLossGain, voice.constantLossA1, voice.constantLossA2,
             voice.constantLossN1, voice.constantLossN2 },
-            performanceRealism_.retuneContinuity && transitionRetune && !clearDelay);
+            performanceRealism_.retuneContinuity
+                && (transitionRetune
+                    || (continuousRevision && loop.intrinsicCoefficientSamples == 0))
+                && !clearDelay);
         if (clearDelay)
             loop.secondDispersionActive = dispersion.used[1];
         else

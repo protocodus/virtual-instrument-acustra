@@ -1495,9 +1495,14 @@ private:
     // string's horizontal (soundboard-parallel) force onto the rocking
     // moment, and the rocking displacement back onto its horizontal motion.
     [[nodiscard]] float saddleHeightRatio() const noexcept;
+    // A transition retune starts a whole round trip from the applied loss and
+    // sections. A continuous revision (String Age, which hosts automate every
+    // block) starts one only where none is running, and otherwise revises the
+    // running one's target within its remaining deadline.
     void configureVoice(Voice& voice, int stringIndex, int midiNote,
                         bool clearDelay, bool refreshPickReference = false,
-                        bool transitionRetune = false) noexcept;
+                        bool transitionRetune = false,
+                        bool continuousRevision = false) noexcept;
     void updateAttackPitch(Voice& voice, int stringIndex) noexcept;
     float effectiveTouch(float velocity) const noexcept;
     // MPE channel pressure for this voice's own member channel, -1 with no

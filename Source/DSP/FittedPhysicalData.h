@@ -228,11 +228,16 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // decays within 2.4 dB/s of the recordings at 1-2.2 kHz and 5.5-7.6 dB/s
     // faster at 2.2-5 kHz, where under the bending law it decayed 1.3 to 2.1
     // times as fast as they do, and the archtop audit's bands from 2 to 9 kHz
-    // come within 2.6 dB/s. 4.5e-4 would keep the 0.035 bending law's
-    // geometric-mean early decay over the wound partials at 0.5-4 kHz at the
-    // default controls instead; it is the labelled listening alternative,
-    // not a listening verdict.
-    1.3e-4f,
+    // come within 2.6 dB/s. A blind listener compared 1.3e-4 with main on
+    // 2026-10-10: preferred main on the open and wound strings, heard
+    // 1.3e-4 as "too much" on the picked open and the wound strings and main
+    // as too bright on the fingered open ones, "better if more blended", and
+    // asked for a blend. 4.5e-4 keeps the 0.035 bending law's geometric-mean
+    // early decay over the wound partials at 0.5-4 kHz at the default
+    // controls. Its 1.5-6 kHz brightness over 0.1-1 kHz sits 0.44-0.59 of
+    // the way from main to 1.3e-4 on open and wound strings, which is the
+    // blend. It awaits that listener's A/B.
+    4.5e-4f,
     // The strings' bending loss, chosen by ear on 2026-09-28
     // (Docs/decisions.md, Set 14). The recordings' 20-300 ms upper-partial
     // decay measures steel plain 0.006. B held half of it, 0.003, with the
