@@ -476,7 +476,13 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     morph.a0Level = target.a0Weight / reference.a0Weight;
     morph.t1Level = target.t1Weight / reference.t1Weight;
     morph.plateFrequency = 1.0f / areaRatio;
-    morph.plateLevel = areaRatio;
+    // A plate mode's peak pressure per unit bridge force is the same at any
+    // size: its modal mass and its radiating volume velocity both go as A_p.
+    // A mode keeps its continuous residue when its pole moves (configureBody),
+    // and its peak goes as residue over frequency, so the residue goes as the
+    // frequency, 1/A_p. Scaling it by A_p put the peaks at A_p^2: plate
+    // modes 4.7 dB too quiet on the Parlor and 1.6 dB too loud on the Jumbo.
+    morph.plateLevel = 1.0f / areaRatio;
     return morph;
 }
 
@@ -745,18 +751,40 @@ float piezoReferenceFor(const EngineParameters& parameters) noexcept
         * detail::constructionPiezoTrim[constructionLoudnessCell(parameters)];
 }
 
+// A plate mode's bridge residues on a top of plateFrequency (1/A_p) times the
+// anchor's area. Its modal mass goes as A_p and its lengths as sqrt(A_p), so
+// the driving-point residue phi^2/m goes as 1/A_p, the moment residue
+// (dphi/dx)^2/m as 1/A_p^2 and the cross term as A_p^-1.5: one congruence,
+// diag(A_p^-1/2, A_p^-1), so the residue matrix stays positive semidefinite.
+// Each mode's peak mobility is then independent of size, as its peak
+// pressure is (bodyShapeMorph).
+void scalePlateBridgeResidues(detail::MeasuredBridgeMode& mode,
+                              float plateFrequency) noexcept
+{
+    mode.heave *= plateFrequency;
+    mode.cross *= plateFrequency * exact::sqrt(plateFrequency);
+    mode.rock *= plateFrequency * plateFrequency;
+}
+
 // The same coupled-model factors the radiation takes, applied to a bridge
 // bank: its A0 group, its modes up to T1, and the plate modes above follow
-// the body they belong to. Only modal stiffness moves: each residue matrix,
-// and with it the positive-semidefinite heave/rock coupling, and each Q are
+// the body they belong to. The A0 and T1 groups keep their residue matrices;
+// the plate modes take the top's mass (scalePlateBridgeResidues). Each Q is
 // retained, so a fixed shape keeps the passive modal construction. At the
 // anchor every factor is exactly 1.
 detail::MeasuredBridgeMode shapeBridgeMode(
     detail::MeasuredBridgeMode mode, float a0Frequency, float t1Frequency,
     float plateFrequency, float t1UpperHz) noexcept
 {
-    mode.frequency *= mode.frequency < lowBodyGroupUpperHz ? a0Frequency
-        : mode.frequency <= t1UpperHz ? t1Frequency : plateFrequency;
+    if (mode.frequency < lowBodyGroupUpperHz)
+        mode.frequency *= a0Frequency;
+    else if (mode.frequency <= t1UpperHz)
+        mode.frequency *= t1Frequency;
+    else
+    {
+        mode.frequency *= plateFrequency;
+        scalePlateBridgeResidues(mode, plateFrequency);
+    }
     return mode;
 }
 
@@ -1014,6 +1042,12 @@ void visitSteelBlendBridge(float a0, float t1, float plate, float t1UpperHz,
             auto placed = steelJointBridgeModes[index];
             placed.frequency = pole.frequency;
             placed.q = pole.q;
+            // The class radiationPole gave the twin; a plate mode takes the
+            // top's mass as B's do (shapeBridgeMode).
+            if (steelJointRadiationModes[static_cast<std::size_t>(source)].frequency
+                    >= lowBodyGroupUpperHz
+                && source > jointMorph.t1Index)
+                scalePlateBridgeResidues(placed, jointMorph.plateFrequency);
             visit(steelJointBridgeModes[index], placed, level, false);
         }
     }

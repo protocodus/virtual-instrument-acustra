@@ -34,6 +34,7 @@ struct AcustraEngineTestAccess
                  v.loops[0].currentDelay, v.bridgeTailStiffnessSamples };
     }
     static auto bridge(const AcustraEngine& e) { return e.bridgeLoad_; }
+    static auto bridgeTable(const AcustraEngine& e) { return e.bridgeMobilityTable(); }
     static const auto& voices(const AcustraEngine& e) { return e.voices_; }
     static float phase(const AcustraEngine& e, float f, int string)
     { return e.bridgePhaseDelay(f, string); }
@@ -1255,8 +1256,64 @@ void testRadiationContinuesAboveTheFittedBand()
            "the body's radiation at 16 kHz is not continued from its fitted band");
 }
 
+// Shape moves a plate mode by the equal-thickness law: its frequency goes as
+// 1/A and its modal mass as A, so its peak bridge mobility (heave residue over
+// frequency) does not depend on the box, nor do its moment and cross terms
+// (rock over f^2, cross over f^1.5). Kept residues, the law before
+// 2026-10-10, raised the Jumbo's plate-mode mobility peaks by A and lowered
+// the Parlor's. The A0 and T1 groups (below 400 Hz here) keep theirs.
+void testPlateModesKeepTheirPeakMobilityAcrossShapes()
+{
+    const auto table = [] (acustra::BodyShape shape)
+    {
+        acustra::EngineParameters p;
+        p.shape = shape;
+        auto e = std::make_unique<Engine>();
+        e->setParameters(p);
+        e->prepare(48000, 64);
+        return Access::bridgeTable(*e);
+    };
+    const auto anchor = table(acustra::BodyShape::Dreadnought);
+    double worst = 0.0;
+    int checked = 0;
+    for (const auto shape : { acustra::BodyShape::Parlor, acustra::BodyShape::Auditorium,
+                              acustra::BodyShape::Jumbo })
+    {
+        const auto shaped = table(shape);
+        expect(shaped.count == anchor.count, "a Shape changed the bridge's mode count");
+        for (int i = 0; i < std::min(anchor.count, shaped.count); ++i)
+        {
+            const auto& a = anchor.modes[std::size_t(i)];
+            const auto& b = shaped.modes[std::size_t(i)];
+            // The table holds each section's prewarped design frequency.
+            const auto analog = [] (float omega)
+            { return 48000.0 / pi * std::atan(omega / (2.0 * 48000.0)); };
+            if (analog(a.omega) < 400.0)
+                continue;
+            const double ratio = analog(b.omega) / analog(a.omega);
+            const auto check = [&] (double shapedResidue, double anchorResidue, double power)
+            {
+                if (shapedResidue == 0.0 && anchorResidue == 0.0)
+                    return;
+                worst = std::max(worst, std::abs(shapedResidue / std::pow(ratio, power)
+                                                 / anchorResidue - 1.0));
+                ++checked;
+            };
+            check(b.heave, a.heave, 1.0);
+            check(b.cross, a.cross, 1.5);
+            check(b.rock, a.rock, 2.0);
+
+        }
+    }
+    std::cout << "plate-mode peak mobility across Shapes: " << checked
+              << " residues, worst relative change " << worst << '\n';
+    expect(checked > 100 && worst < 1.0e-4,
+           "a plate mode's peak bridge mobility depends on the Shape");
+}
+
 int main()
 {
+    testPlateModesKeepTheirPeakMobilityAcrossShapes();
     testOriginalAirDecayIsLocalized();
     testRadiationContinuesAboveTheFittedBand();
     testSteelOwnBridgeSharesTheRadiationPoles();

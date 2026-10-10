@@ -7836,13 +7836,23 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
            "a shape changed a body mode's measured Q");
 
     // The small box radiates its A0 more strongly per unit force (the piston
-    // is smaller, so the same force is more cavity pressure) while its plate
-    // modes radiate from less area; the large box the other way round. The
-    // capture voicing now filters the summed microphone pressure, so these
-    // configured residues already describe the box before that correction.
+    // is smaller, so the same force is more cavity pressure); the large box
+    // the other way round. A plate mode's peak (residue times Q over
+    // frequency) is the same from any box: its modal mass and its radiating
+    // volume velocity both go as the top's area, so the residue goes as the
+    // frequency (bodyShapeMorph). Until 2026-10-10 the residue went as the
+    // area instead, which put the Parlor's plate peaks 4.7 dB under the
+    // Dreadnought's. Only the anchor's bass tilt, which fades with frequency,
+    // differs where each box puts the mode. The capture voicing filters the
+    // summed microphone pressure, so these configured residues describe the
+    // box before that correction.
     const auto radiated = [] (const auto& mode)
     {
         return mode.residue;
+    };
+    const auto peak = [] (const auto& mode)
+    {
+        return mode.residue * mode.q / mode.frequency;
     };
     const auto steelParlor0 = body(BodyShape::Parlor, 0);
     const auto steelJumbo0 = body(BodyShape::Jumbo, 0);
@@ -7852,9 +7862,12 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
     expect(radiated(steelParlor0) > radiated(steelDread0)
                && radiated(steelJumbo0) < radiated(steelDread0),
            "A0 radiation did not follow the coupled model's residues");
-    expect(radiated(steelParlor9) < radiated(steelDread9)
-               && radiated(steelJumbo9) > radiated(steelDread9),
-           "plate radiation did not scale with the plate area");
+    std::cout << "Acustra plate mode 9 peak, Parlor/Jumbo over Dreadnought: "
+              << peak(steelParlor9) / peak(steelDread9) << ' '
+              << peak(steelJumbo9) / peak(steelDread9) << '\n';
+    expect(std::abs(peak(steelParlor9) / peak(steelDread9) - 1.0) < 0.05
+               && std::abs(peak(steelJumbo9) / peak(steelDread9) - 1.0) < 0.05,
+           "a plate mode's peak radiation depends on the box");
 }
 
 // Woodhouse (Acta Acustica 90 (2004) 945-965, Sec. 4.3) measures the two
