@@ -85,9 +85,13 @@ struct PhysicalCalibration
     float steelWoundFrictionLoss { 0.0f };
     // The loss factor eta of a steel string's visco- and thermo-elastic
     // bending stiffness, EI(1 + i eta): Valette's and Woodhouse's bending loss
-    // 1/Q_n = eta B n^2 / (1 + B n^2). Every string's, a wound one's on its
-    // plain steel core.
+    // 1/Q_n = eta B n^2 / (1 + B n^2). The plain strings'.
     float steelPlainBendingLoss { 0.0f };
+    // The wound strings' bending loss factor eta: their core's, and their
+    // turns sliding on one another as the string flexes. It acts beside the
+    // winding friction above and in place of steelPlainBendingLoss, and
+    // String Age scales it as it scales the friction.
+    float steelWoundBendingLoss { 0.0f };
 };
 
 // Refit on 2026-09-04 around the two-way junction and the saddle anchor, by a
@@ -216,36 +220,36 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     0.1162109375e-3f,
     // The wound strings' winding friction, 2026-10-10
     // (Docs/string-hf-loss-2026-10-10.md). Until then the wound strings lost
-    // their grime and friction through the bending law at a by-ear 0.035
-    // (Set 14, 70% of the way from C's 0 toward B's 0.05), which rises as the
-    // cube of frequency and spread 8:1 across the four wound strings at
-    // 2.8 kHz; winding friction acts on the tension instead and gives a
-    // constant loss angle. With the dislocation loss every string carries
-    // (constantLossSection), swept on its own: the fitted splits are flat
-    // within 0.1% from 1.3e-4 to 1.8e-4 and 0.3-0.4% worse at 0.6e-4, which
-    // the flat-top rows prefer by 0.7%. At 1.3e-4 the never-fitted flat-top
-    // rows' wound register (MIDI 40-58, 0.15-1.2 s per-partial decay)
-    // decays within 2.4 dB/s of the recordings at 1-2.2 kHz and 5.5-7.6 dB/s
-    // faster at 2.2-5 kHz, where under the bending law it decayed 1.3 to 2.1
-    // times as fast as they do, and the archtop audit's bands from 2 to 9 kHz
-    // come within 2.6 dB/s. A blind listener compared 1.3e-4 with main on
-    // 2026-10-10: preferred main on the open and wound strings, heard
-    // 1.3e-4 as "too much" on the picked open and the wound strings and main
-    // as too bright on the fingered open ones, "better if more blended", and
-    // asked for a blend. 4.5e-4 keeps the 0.035 bending law's geometric-mean
-    // early decay over the wound partials at 0.5-4 kHz at the default
-    // controls. Its 1.5-6 kHz brightness over 0.1-1 kHz sits 0.44-0.59 of
-    // the way from main to 1.3e-4 on open and wound strings, which is the
-    // blend. It awaits that listener's A/B.
-    4.5e-4f,
+    // their grime and friction through the bending law alone, at a by-ear
+    // 0.035 (Set 14). Winding friction acts on the tension instead, and its
+    // loss angle is constant. The fitted splits are flat within 0.1% from
+    // 1.3e-4 to 1.8e-4, and the never-fitted flat-top rows' wound register
+    // decays within 2.4 dB/s of the recordings at 1-2.2 kHz at 1.3e-4. A
+    // blind listener heard 1.3e-4, then a blend at 4.5e-4, against main on
+    // 2026-10-10. The blend came close on fingered notes, but on picked
+    // notes it was "absolutely not": the friction's loss grows only with
+    // frequency, so the pick's 4-16 kHz on the wound strings rang 16-27 dB
+    // over main's for 0.4 s. The listener asked for a sound between main and
+    // the blend that keeps main's picked notes. Half the blend's friction,
+    // beside half main's bending loss (steelWoundBendingLoss below), keeps
+    // the picked wound strings' 4-16 kHz at main's level and puts fingered
+    // brightness halfway between main and the blend (section 12).
+    2.25e-4f,
     // The strings' bending loss, chosen by ear on 2026-09-28
     // (Docs/decisions.md, Set 14). The recordings' 20-300 ms upper-partial
     // decay measures steel plain 0.006. B held half of it, 0.003, with the
     // pluck refitted around it; C, the joint refit's optimum, took it to
     // 0.00078125. Steel ships 70% of the way from C toward B, 0.002334375; it
-    // is not refit, and since 2026-10-10 it is every string's (a wound
-    // string's on its core).
-    0.002334375f
+    // is not refit.
+    0.002334375f,
+    // The wound strings' bending loss, by ear. The recordings' 20-300 ms
+    // upper-partial decay measures 0.10, and Set 14 shipped 0.035 (70% of
+    // the way from C's 0 toward B's 0.05). The friction above replaced it
+    // on 2026-10-10. Restored at half Set 14's value beside half the blend's
+    // friction, it gives the picked wound strings' highest partials main's
+    // fast decay again: their 4-16 kHz over 0.05-0.4 s reads within 0.1 dB
+    // of main's (Docs/string-hf-loss-2026-10-10.md, section 12).
+    0.0175f
 };
 
 } // namespace acustra

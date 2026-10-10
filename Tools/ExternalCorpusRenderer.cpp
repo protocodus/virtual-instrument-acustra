@@ -12,7 +12,7 @@
 //
 // This is PhysicalFitRenderer's model half with the schedule read from a file
 // instead of the embedded bank, so a score on an external corpus is a score of
-// the same renders: the options, the 24-value calibration vector, its bounds
+// the same renders: the options, the 25-value calibration vector, its bounds
 // and makeCalibration, and renderModel (a fresh engine per note, 48 kHz,
 // 127-sample blocks, default public controls, the default Dreadnought unless
 // --shape is given) are copied from Tools/PhysicalFitRenderer.cpp and must be
@@ -74,7 +74,7 @@ acustra::BodyShape renderShape() noexcept
 constexpr int modelSampleRate = 48000;
 constexpr int renderBlockSize = 127;
 constexpr double renderSeconds = 4.2;
-constexpr std::size_t calibrationValueCount = 24;
+constexpr std::size_t calibrationValueCount = 25;
 
 using CalibrationValues = std::array<float, calibrationValueCount>;
 
@@ -86,6 +86,7 @@ constexpr CalibrationValues calibrationMinimums {{
     0.35f, 0.35f, 0.0f, 0.7f, 0.0f, -1.0f,
     0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f,
     0.00325f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f,
 }};
 
 constexpr CalibrationValues calibrationMaximums {{
@@ -93,6 +94,7 @@ constexpr CalibrationValues calibrationMaximums {{
     3.0f, 2.5f, 3.0f, 3.0f, 1.2f, 1.0f,
     32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f,
     0.060f, 2.0f, 4.0f, 1.0e-3f, 0.01f, 2.0f,
+    2.0f,
 }};
 
 struct Job
@@ -176,6 +178,7 @@ PhysicalCalibration makeCalibration(const CalibrationValues& values)
     calibration.pickEdgeRadiusMetres = values[21];
     calibration.steelWoundFrictionLoss = values[22];
     calibration.steelPlainBendingLoss = values[23];
+    calibration.steelWoundBendingLoss = values[24];
     return calibration;
 }
 
@@ -410,8 +413,9 @@ void printUsage()
         "BRIDGE_CONDUCTANCE_CORNER_HZ BRIDGE_TAIL_LENGTH_METRES "
         "PICK_RELEASE_VELOCITY_SHARE PICK_RELEASE_VELOCITY_EXPONENT "
         "PICK_EDGE_RADIUS_METRES "
-        "STEEL_WOUND_FRICTION_LOSS STEEL_PLAIN_BENDING_LOSS\n"
-        "Give all 24 calibration values (OptimizePhysicalModel.NAMES).\n"
+        "STEEL_WOUND_FRICTION_LOSS STEEL_PLAIN_BENDING_LOSS "
+        "STEEL_WOUND_BENDING_LOSS\n"
+        "Give all 25 calibration values (OptimizePhysicalModel.NAMES).\n"
         "JOBFILE lines: KEY finger|pick|thumb MIDI VELOCITY (steel strings); "
         "writes OUTDIR/model-KEY.f32 (48 kHz stereo float32, 4.2 s)\n");
 }

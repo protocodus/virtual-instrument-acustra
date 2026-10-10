@@ -3478,6 +3478,7 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
         // former 0.035 and no friction, as the band was before.
         auto quietTop = acustra::fittedPhysicalCalibration;
         quietTop.steelPlainBendingLoss = 0.035f;
+        quietTop.steelWoundBendingLoss = 0.035f;
         quietTop.steelWoundFrictionLoss = 0.0f;
         const auto slewing = bent(true, acustra::CaptureType::Piezo, quietTop);
         const auto still = bent(false, acustra::CaptureType::Piezo, quietTop);
@@ -4690,6 +4691,7 @@ void testHostilePhysicalCalibrationIsSanitised()
         result.pickEdgeRadiusMetres = value;
         result.steelWoundFrictionLoss = value;
         result.steelPlainBendingLoss = value;
+        result.steelWoundBendingLoss = value;
         return result;
     };
     const auto values = [] (const acustra::PhysicalCalibration& calibration)
@@ -4718,7 +4720,8 @@ void testHostilePhysicalCalibrationIsSanitised()
             calibration.pickReleaseVelocityExponent,
             calibration.pickEdgeRadiusMetres,
             calibration.steelWoundFrictionLoss,
-            calibration.steelPlainBendingLoss
+            calibration.steelPlainBendingLoss,
+            calibration.steelWoundBendingLoss
         };
     };
     const auto sanitised = [] (acustra::PhysicalCalibration source)
@@ -4734,12 +4737,14 @@ void testHostilePhysicalCalibrationIsSanitised()
         0.35f, 0.35f, 0.0f, 0.7f, 0.0f, -1.0f,
         0.25f, 0.0f, -0.06f, 0.5f, 0.0f, 100.0f,
         0.00325f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f,
     }, "low physical calibration bounds were not enforced");
     expect(values(high) == std::array {
         1.04f, 1.8f, 4.0f, 6.0f, 4.0f, 2.0f,
         3.0f, 2.5f, 3.0f, 3.0f, 1.2f, 1.0f,
         32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f,
         0.060f, 2.0f, 4.0f, 1.0e-3f, 0.01f, 2.0f,
+        2.0f,
     }, "high physical calibration bounds were not enforced");
     const auto fallback = sanitised(uniformCalibration(
         std::numeric_limits<float>::quiet_NaN()));
@@ -5473,25 +5478,28 @@ void testHighLossCutoffScaleChangesOnlyUpperLoss()
 }
 
 // The string's own bending loss (bendingLossSection in AcustraEngine.cpp).
-// With the bending factor at zero and no friction no bending section enters
-// the loop. With it on, the section each loop carries adds, per round trip
+// With the bending factors at zero and no friction, no bending section enters
+// the loop. With them on, the section each loop carries adds, per round trip
 // of the fundamental period, Valette's and Woodhouse's loss
 // pi (f_n / f0) eta' B n^2 / (1 + B n^2) to within 12% wherever that loss
-// adds 20 to 160 dB/s below 0.3 of the host rate - the band the section is
-// designed to follow - at 44.1, 48 and 96 kHz alike, where eta' is the plain
-// steel's eta on every string less, on a wound string, the winding friction
-// its tension takes over (constantLossSection); both polarisations carry the
-// same section, since the loss is the string's; and the fundamental keeps
+// adds 20 to 160 dB/s below 0.3 of the host rate (the band the section is
+// designed to follow), at 44.1, 48 and 96 kHz alike. Here eta' is a plain
+// string's steelPlainBendingLoss, and a wound string's steelWoundBendingLoss
+// less the winding friction its tension takes over (constantLossSection);
+// the wound value is the recordings' measured 0.10. Both polarisations carry
+// the same section, since the loss is the string's, and the fundamental keeps
 // the decay the loop gain asks for and the pitch the tuning asks for.
 void testBendingLossFollowsItsLaw()
 {
     using Access = acustra::AcustraEngineTestAccess;
     auto off = acustra::fittedPhysicalCalibration;
-    off.steelWoundFrictionLoss = off.steelPlainBendingLoss = 0.0f;
+    off.steelWoundFrictionLoss = off.steelPlainBendingLoss
+        = off.steelWoundBendingLoss = 0.0f;
     auto on = acustra::fittedPhysicalCalibration;
     on.steelWoundFrictionLoss = 0.0f;
     on.steelPlainBendingLoss = 0.006f;
-    // A wound string's core: eta less its friction at the default age.
+    on.steelWoundBendingLoss = 0.1f;
+    // A wound string: its eta less its friction at the default age.
     auto rubbed = on;
     rubbed.steelWoundFrictionLoss = 1.0e-3f;
 
@@ -5503,12 +5511,12 @@ void testBendingLossFollowsItsLaw()
         const char* name;
     };
     const Case cases[] {
-        { 40, &on, 0.006, "steel E2" },
-        { 51, &on, 0.006, "steel D#3" },
+        { 40, &on, 0.1, "steel E2" },
+        { 51, &on, 0.1, "steel D#3" },
         { 64, &on, 0.006, "steel E4" },
         { 72, &on, 0.006, "steel C5" },
-        { 40, &rubbed, 0.005, "steel E2 with winding friction" },
-        { 51, &rubbed, 0.005, "steel D#3 with winding friction" },
+        { 40, &rubbed, 0.099, "steel E2 with winding friction" },
+        { 51, &rubbed, 0.099, "steel D#3 with winding friction" },
     };
     const auto sectionLoss = [] (const Access::StringLoopSnapshot& loop,
                                  double omega)

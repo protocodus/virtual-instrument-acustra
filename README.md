@@ -966,7 +966,13 @@ over Finger and Pick keeps wound 0 and plain 0.00078. What ships was chosen
 by ear on 2026-09-28 (Docs/decisions.md): steel wound 0.035 and plain
 0.0023, 70% of the way from that optimum toward half the measured loss (0.05,
 0.003), with the pluck moved the same way (above). What the benchmark
-says of it is in Known gaps. A second,
+says of it is in Known gaps. Since 2026-10-10 every string also carries a
+constant loss angle, and the wound strings a second one, the winding
+friction on their tension ([the report](Docs/string-hf-loss-2026-10-10.md)).
+A listener heard the friction alone let a pick's highest partials ring
+on. So the wound strings keep half their former bending loss, 0.0175,
+beside friction 2.25e-4, and a picked wound string's top end dies as fast
+as it did before. A second,
 orthogonal polarisation loop can be detuned from the first by an end
 correction at the string terminations: Woodhouse (Acta Acustica 90 (2004)
 945-965, Sec. 4.3) measured the polarisation parallel to the soundboard as
@@ -1764,7 +1770,7 @@ does to a note is a level difference and after t seconds that difference is
 exactly the rate error times t; the relative form scored the same 1.4x error
 identically whether it meant 25 dB or 3 dB after one second. The trajectory
 term measures common H1--H8 pitch movement over 20--100, 80--200 and
-180--400 ms relative to settled partials. The calibration stores 24 bounded
+180--400 ms relative to settled partials. The calibration stores 25 bounded
 values, in the order of `NAMES` in
 [`OptimizePhysicalModel.py`](Tools/OptimizePhysicalModel.py). Only the supported
 shared-body, steel-string and shared-body-refine stages remain; `BY_EAR` records
@@ -2881,6 +2887,25 @@ set without it.
 
 ## Release history
 
+### 2026-10-10 — the strings' loss angles
+
+- **Constant loss angles.** Every string carries a dislocation loss angle in
+  place of the authored broad shelf. The wound strings add winding friction,
+  a constant loss angle on their tension. Both planes lose alike, and the
+  plate floor meets the bridge at steel level. See
+  [the report](Docs/string-hf-loss-2026-10-10.md).
+- **Picked wound strings keep their top end short.** Heard blind, friction
+  alone let a pick's 4-16 kHz on the wound strings ring 16-27 dB over the
+  previous engine for 0.4 s; the listener said "absolutely not" on the picked
+  open strings. The wound strings now keep half their former bending loss
+  beside half the blend's friction. Picked, their 4-16 kHz matches the
+  previous engine. Fingered, their brightness sits halfway between it and
+  the blend. A blind A/B approved it.
+- **String Age glides** instead of stepping, and keeps a fixed deadline under
+  per-block automation.
+- **The constructions are re-levelled** by
+  `Tools/CalibrateConstructionLoudness.py`.
+
 ### 2026-10-10 — bridge-hand damping follows slides and bends
 
 - **Bridge-hand damping follows slides and bends.** CC2 pressure now keeps
@@ -3702,7 +3727,7 @@ microphone recording cannot validate a pickup's response.
 checks the scoring, string scheduling and renderer without downloading audio.
 For dry-note comparisons, `AcustraPhysicalFitRenderer` takes the optional
 `--models-only`/`--smoke` mode, then `--shape`, `--body-material` and
-`--archtop-picking`, the output directory and the 24 calibration arguments in
+`--archtop-picking`, the output directory and the 25 calibration arguments in
 `OptimizePhysicalModel.NAMES` order (the obsolete 37-value and nylon-era
 48-value vectors are refused). The selected shape, wood and archtop picking
 tool are recorded in each model manifest, with `guitar_model` fixed at

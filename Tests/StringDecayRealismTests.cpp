@@ -35,10 +35,11 @@ struct AcustraEngineTestAccess
     {
         auto e = std::make_unique<AcustraEngine>();
         auto calibration = fittedPhysicalCalibration;
-        // Every string's bending section at the plain factor: no winding
-        // friction to take from a wound string's.
+        // Every string's bending section at one factor, wound and plain, with
+        // no winding friction to take from a wound string's.
         calibration.steelWoundFrictionLoss = 0.0f;
         calibration.steelPlainBendingLoss = 0.006f;
+        calibration.steelWoundBendingLoss = 0.006f;
         e->setPhysicalCalibration(calibration);
         e->prepare(rate, 64);
         e->setLowerZoneMemberCount(15);

@@ -5,6 +5,30 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-10 — picked wound strings keep their top end short: heard and approved
+
+The user heard the blend (winding friction 4.5e-4) blind against main
+([the report](string-hf-loss-2026-10-10.md), section 12). They would take
+the blend except on picked notes: "B absolutely not" on the picked open
+strings, rated 3 against main's 6. The rest was close. They asked for
+something between the two that keeps main's picked notes.
+
+The picked wound strings' 4-16 kHz rang 16-27 dB over main's for 0.4 s.
+Friction's loss grows linearly with frequency, while the bending loss it
+replaced grows as the cube. So the wound strings keep both:
+- half the blend's friction, 2.25e-4;
+- half main's former bending loss, 0.0175, in place of the plain steel's.
+
+Picked, their 4-16 kHz over 0.05-0.4 s matches main within 0.1 dB.
+Fingered, brightness sits halfway between main and the blend. No loss law
+depends on what plucked the string.
+
+Heard blind against main (`3a86286` against `0adcfd2`, on the strumming song
+and the open, picked and wound passages), the listener approved it. They
+preferred it on the picked open strings and on the wound strings, and had
+no preference on the fingered open strings or the strumming. Every track was
+rated 5 against 5.
+
 ## 2026-10-10 — string loss angles: heard, and a blend asked for
 
 Work package A gives the strings constant loss angles in place of the wound

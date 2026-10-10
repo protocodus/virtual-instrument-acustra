@@ -1215,10 +1215,11 @@ double mixedOnePolePhase(double coefficient, double mix,
 // law over-damped 3-6.8 kHz (Docs/decisions.md, 2026-09-04). Its
 // decay rate sigma_n = omega_n / (2 Q_n) grows as the cube of frequency until
 // B n^2 nears one, which is how a string's highest partials die in tens of
-// milliseconds while its first dozen ring for seconds. Every string bends on
-// steel, a wound one on its core, so eta is the plain steel's
-// (steelPlainBendingLoss); on a wound string the section carries eta less
-// the winding friction the tension takes over there (constantLossSection).
+// milliseconds while its first dozen ring for seconds. A plain string's eta
+// is the plain steel's (steelPlainBendingLoss). A wound string's is its own
+// (steelWoundBendingLoss): its core's loss and its turns sliding as it
+// flexes. On a wound string the section carries eta less the winding
+// friction the tension takes over there (constantLossSection).
 //
 // Per round trip of the loop, one fundamental period, partial n therefore
 // loses L_n = sigma_n / f0 = pi (f_n / f0) eta B n^2 / (1 + B n^2) nepers.
@@ -2742,7 +2743,9 @@ PhysicalCalibration AcustraEngine::sanitise(
         bounded(source.steelWoundFrictionLoss, 0.0f, 0.01f,
                 fittedPhysicalCalibration.steelWoundFrictionLoss),
         bounded(source.steelPlainBendingLoss, 0.0f, 2.0f,
-                fittedPhysicalCalibration.steelPlainBendingLoss)
+                fittedPhysicalCalibration.steelPlainBendingLoss),
+        bounded(source.steelWoundBendingLoss, 0.0f, 2.0f,
+                fittedPhysicalCalibration.steelWoundBendingLoss)
     };
 }
 
@@ -5273,16 +5276,18 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float frictionLoss = wound
         ? physicalCalibration_.steelWoundFrictionLoss * woundAgeing : 0.0f;
     // Both constant loss angles in one section (constantLossSection), and
-    // every string's visco- and thermo-elastic bending loss in the other: a
-    // wound string bends on its plain steel core (the effective diameter its
-    // B is computed from), less the friction its tension takes over there,
-    // since (delta_W + eta B n^2) / (1 + B n^2) = delta_W + (eta - delta_W)
-    // B n^2 / (1 + B n^2). Where an aged string's friction outgrows its
-    // core's bending loss the bending section is left out and its top
-    // partials keep the friction's full angle.
+    // every string's bending loss in the other. A wound string's, aged as its
+    // friction is, carries the loss its turns add as it flexes, less the
+    // friction its tension takes over there, since
+    // (delta_W + eta B n^2) / (1 + B n^2) = delta_W + (eta - delta_W)
+    // B n^2 / (1 + B n^2). Where a string's friction outgrows its bending
+    // loss, the bending section is left out and its top partials keep the
+    // friction's full angle.
     const float constantLoss = dislocationLoss + frictionLoss;
-    const float bendingFactor = std::max(0.0f,
-        physicalCalibration_.steelPlainBendingLoss - frictionLoss);
+    const float bendingFactor = wound
+        ? std::max(0.0f, physicalCalibration_.steelWoundBendingLoss * woundAgeing
+                             - frictionLoss)
+        : physicalCalibration_.steelPlainBendingLoss;
     // A dispersion design for these complete arguments, from the solves
     // already made when one matches exactly, otherwise solved and kept.
     const auto solvedDispersion = [this] (const std::array<double, 13>& arguments)
