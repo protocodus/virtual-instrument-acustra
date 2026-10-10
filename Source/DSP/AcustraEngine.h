@@ -122,14 +122,18 @@ struct EngineParameters
     // string's winding (startReleaseNoise in AcustraEngine.cpp). 0.5 is the
     // nominal level. Read once at each key-up; zero is an exact no-op.
     float releaseNoise { 0.0f };
-    // The room around the microphones, 0 none to 1 a microphone well out in
-    // it: a small studio's early reflections and its 0.45 s reverberation
-    // (RoomAmbience in AcustraEngine.cpp), on the microphone captures only.
-    // At 0.5 the room's sound sits about 12.5 dB under a held chord's and
-    // 10 dB under a released phrase's (whose own sound stops before its
-    // room's), at the default controls, and 10 dB lower at each halving (its
-    // send is 0.794 room^1.66). Zero is an exact no-op; a change lets the
-    // sounding room ring out.
+    // The room around the microphones, 0 none to 1 the most: a small
+    // studio's early reflections and its 0.45 s reverberation as the pair's
+    // own two positions hear them (RoomAmbience in AcustraEngine.cpp), on
+    // the microphone captures only. It is the room's level under the
+    // near-field pair, as a send would set it, not the microphones'
+    // distance: the direct sound and the reflections' timing stay those of
+    // the pair 0.32 m from the guitar at every setting. At 0.5 the room's
+    // sound sits about 13 dB under a held chord's and 10 dB under a released
+    // phrase's (whose own sound stops before its room's), at the default
+    // controls, and 10 dB lower at each halving (its send is 0.794
+    // room^1.66). Zero is an exact no-op; a change lets the sounding room
+    // ring out.
     float room { 0.0f };
 };
 
@@ -1809,48 +1813,72 @@ private:
     float outputGain_ { 0.42f };
     float piezoMix_ { 0.0f };
     // A small room's sound at the microphones (EngineParameters::room): its
-    // early reflections from a tapped line and its late field from an
-    // eight-line feedback delay network, run at the host rate divided by the
-    // whole factor that brings it to 64 kHz or under, so its memory does not
-    // grow with the rate. The input is the microphones' mid signal; the
-    // output a stereo pair, energy-normalised at prepare so its
-    // direct-to-reverberant ratio is the same at every rate.
+    // early reflections from a tapped line and its late field from a
+    // sixteen-line feedback delay network, run at the host rate divided by
+    // the whole factor that brings it to 64 kHz or under, so its memory does
+    // not grow with the rate. The inputs are the pair's two microphones as
+    // measured (before Width); the output is the room at the same two
+    // positions, energy-normalised at prepare so its direct-to-reverberant
+    // ratio is the same at every rate. Every delay shares one write position
+    // per store and is read a whole number of samples behind it.
     struct RoomAmbience
     {
-        static constexpr int lineCount = 8;
+        static constexpr int lineCount = 16;
         static constexpr int lineCapacity = 4096;
         static constexpr int earlyCapacity = 2048;
         static constexpr int tapCount = 10;
-        std::array<std::array<float, lineCapacity>, lineCount> lines {};
+        static constexpr int diffuserCount = 8;
+        static constexpr int diffuserCapacity = 512;
+        // The lines, time-major: row n holds every line's sample written at
+        // position n.
+        std::array<std::array<float, lineCount>, lineCapacity> lines {};
+        int lineWrite { 0 };
         std::array<int, lineCount> lengths {};
-        std::array<int, lineCount> heads {};
+        // Each line is heard this many samples after a write (its end only
+        // feeds the mix), so the field's first pass arrives from about 9 ms,
+        // the room's mixing time.
+        std::array<int, lineCount> readDelays {};
+        // Each line's one-pole absorption, on what is written into it.
         std::array<float, lineCount> absorptionState {};
         std::array<float, lineCount> absorptionGain {};
         std::array<float, lineCount> absorptionPole {};
-        std::array<float, earlyCapacity> early {};
-        int earlyHead { 0 };
-        // Four Schroeder allpasses diffusing what enters the late field.
-        static constexpr int diffuserCapacity = 512;
-        std::array<std::array<float, diffuserCapacity>, 4> diffusers {};
-        std::array<int, 4> diffuserLengths {};
-        std::array<int, 4> diffuserHeads {};
-        std::array<int, tapCount> tapDelays {};
-        std::array<float, tapCount> tapLeft {};
-        std::array<float, tapCount> tapRight {};
+        // The two microphones' signals (left, right), for the reflections
+        // and the late field's pre-delay.
+        std::array<std::array<float, 2>, earlyCapacity> early {};
+        int earlyWrite { 0 };
+        // Four Schroeder allpasses each for the pair's mid (0-3) and side
+        // (4-7), diffusing what enters the late field.
+        std::array<std::array<float, diffuserCount>, diffuserCapacity> diffusers {};
+        int diffuserWrite { 0 };
+        std::array<int, diffuserCount> diffuserLengths {};
+        // Each reflection's arrival at the left and right microphones (a
+        // side wall's reaches the nearer one first) and its level.
+        std::array<int, tapCount> tapDelayLeft {};
+        std::array<int, tapCount> tapDelayRight {};
+        std::array<float, tapCount> tapGains {};
         int lateDelay { 1 };
         // The late field's input gain, set at prepare to its share.
         float lateInput { 1.0f };
         int longest { 1 };
         float inputCoefficient { 1.0f };
-        float inputState { 0.0f };
+        float inputLeftState { 0.0f };
+        float inputRightState { 0.0f };
         float earlyCoefficient { 1.0f };
         float earlyLeft { 0.0f };
         float earlyRight { 0.0f };
+        // The late field's two decorrelated outputs pass one first-order
+        // high-pass each (coherenceStates), which set its left/right
+        // coherence to a spaced pair's in a diffuse field.
+        float coherenceGain { 0.0f };
+        float coherencePole { 0.0f };
+        std::array<float, 2> coherenceInputs {};
+        std::array<float, 2> coherenceStates {};
         float outputScale { 1.0f };
         int decimation { 1 };
         float inverseDecimation { 1.0f };
         int phase { 0 };
-        float accumulator { 0.0f };
+        float accumulatorLeft { 0.0f };
+        float accumulatorRight { 0.0f };
         float previousLeft { 0.0f };
         float previousRight { 0.0f };
         float currentLeft { 0.0f };
@@ -1862,10 +1890,11 @@ private:
 
         void prepare(double hostRate) noexcept;
         void reset() noexcept;
-        // One host sample of the mid signal in (already scaled by the send),
-        // the room's left and right out.
-        void process(float input, float& left, float& right) noexcept;
-        void step(float input) noexcept;
+        // One host sample of the two microphones in (already scaled by the
+        // send), the room's left and right out.
+        void process(float inputLeft, float inputRight, float& left,
+                     float& right) noexcept;
+        void step(float inputLeft, float inputRight) noexcept;
     };
     RoomAmbience room_ {};
     float roomAmount_ { 0.0f };
