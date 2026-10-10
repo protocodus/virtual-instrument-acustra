@@ -10739,7 +10739,7 @@ constexpr std::array<float, roomLineTotal> roomSigns(unsigned row) noexcept
 // equal to a row of the mix reads one line back through it wherever the
 // lines' readings fall within a period of each other, so the outputs' two
 // spectra need not match: these rows, with the lengths scrambled over the
-// indices, were chosen among 70 combinations as the ones whose two outputs
+// indices, were chosen among 51 combinations as the ones whose two outputs
 // keep the equal power and low correlation the coherence split assumes
 // (third octaves 100 Hz-2 kHz at 48 kHz: power ratio 1.8 dB rms, |r| at most
 // 0.25; Docs/room-2026-10-10.md).
