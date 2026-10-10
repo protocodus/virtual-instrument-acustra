@@ -75,3 +75,30 @@ the Rack tree. The Rack checkout and its validation record identify the
 integrated revision separately from this DSP baseline comparison. No package
 publication is part of this verification. JUCE plugin and licensed Reason
 host builds are outside the local DSP checks reported above.
+
+## Re-validation on main `844cf2f` (2026-10-10)
+
+The change was rebased onto `844cf2f`, after the Bellido's removal and the
+bridge termination work. There `configureVoice` reads its pitch geometry from
+`PitchGeometryCache`, and the hand's shelf had been the cached unbent
+frequency's last reader, so the cache drops that field. Nothing else in the
+correction changed.
+
+- **The test against main.** `Acustra.PalmMutePitch`, compiled against
+  `844cf2f`'s own DSP, fails with the same figures as on `3d37a38`: 51.0249
+  dB/s over the 324 slide/fret comparisons and a 127.101% hand-rate change.
+- **The test against the rebased change.** It passes with 0.00194243 dB/s
+  and 0.000480667%. The retained/held difference stays 4.42318e-05 dB/s.
+- **Renders without hand pressure are unchanged.** The five
+  `Tools/RenderRealismSongs.cpp` passages were rendered dry with each tree.
+  The three with no CC2 (01, 03, 05) are byte-identical. The two that press
+  the hand (02, 04) first differ 8 and 3 ms after their first nonzero CC2.
+  Their difference sits 133.8 and 84.6 dB under the signal, because their
+  pitches move only through attack settling.
+- **Tests and builds.** The JUCE-free Release build passes the full CTest
+  suite, 71 of 71, with the Python tool tests required. `AcustraEngine.cpp`,
+  `AcustraPerformer.cpp` and the new test compile as C++17 with `-Wall
+  -Wextra -Wshadow -Wpedantic -Werror` under GCC 13 and Clang 18.
+
+Nobody has listened to the change. The scratch listening files and Bellido
+renders described above belong to the `3d37a38` review and were not rebuilt.
