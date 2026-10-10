@@ -1,5 +1,5 @@
-// Every construction a player can choose, played. Model x Shape x Wood x
-// Tuning x Capture is 360 settings; each one strums its
+// Every construction a player can choose, played. Shape x Wood x Tuning x
+// Capture is 180 settings; each one strums its
 // tuning's six open strings at 48 kHz, with the Piezo output requested, and
 // must stay finite, under full scale and audible, at a level near the
 // default's. Between cells the routes and choices must agree:
@@ -12,8 +12,7 @@
 //
 // Before this, the construction's own controls were tested one or two at a
 // time from the default (audit F28): Open G and Half-step down were played
-// by no test, and no test crossed Model, Tuning and Capture with
-// Shape and Wood.
+// by no test, and no test crossed Tuning and Capture with Shape and Wood.
 #include "DSP/AcustraEngine.h"
 
 #include <algorithm>
@@ -34,7 +33,6 @@ using acustra::BodyMaterial;
 using acustra::BodyShape;
 using acustra::CaptureType;
 using acustra::EngineParameters;
-using acustra::GuitarModel;
 using acustra::Tuning;
 
 int failures = 0;
@@ -58,8 +56,7 @@ std::string name(const EngineParameters& p)
                                       "Half-step down" };
     const char* capture = p.capture == CaptureType::StereoMic ? "stereo mic"
         : p.capture == CaptureType::MonoMic ? "mono mic" : "piezo";
-    return std::string(p.guitarModel == GuitarModel::Original ? "Original" : "Bellido")
-        + " " + shapes[static_cast<int>(p.shape)] + " "
+    return std::string(shapes[static_cast<int>(p.shape)]) + " "
         + woods[static_cast<int>(p.bodyMaterial)] + ", "
         + tunings[static_cast<int>(p.tuning)] + ", " + capture;
 }
@@ -232,13 +229,11 @@ void testEveryConstruction()
 
     double lowest = 1.0e9, highest = -1.0e9, loudestPeak = 0.0;
     int cells = 0;
-    for (int model = 0; model < 2; ++model)
     for (int shape = 0; shape < 4; ++shape)
     for (int wood = 0; wood < 3; ++wood)
     for (int tuning = 0; tuning < 5; ++tuning)
     {
         EngineParameters p;
-        p.guitarModel = static_cast<GuitarModel>(model);
         p.shape = static_cast<BodyShape>(shape);
         p.bodyMaterial = static_cast<BodyMaterial>(wood);
         p.tuning = static_cast<Tuning>(tuning);
@@ -260,7 +255,7 @@ void testEveryConstruction()
             expect(played[c].piezo == played[0].piezo,
                    label + ": the Piezo output depends on what Capture selects");
         // Main without the Piezo output, once per construction.
-        if ((shape + wood + model) % 5 == tuning)
+        if ((shape + wood) % 5 == tuning)
             expect(play(p, rate, false).main == played[0].main,
                    label + ": requesting the Piezo output changed Main");
     }
@@ -278,7 +273,6 @@ void testOtherRates()
         for (int index = 0; index < 20; ++index)
         {
             EngineParameters p;
-            p.guitarModel = static_cast<GuitarModel>((index / 2) % 2);
             p.shape = static_cast<BodyShape>(index % 4);
             p.bodyMaterial = static_cast<BodyMaterial>((index / 4 + index) % 3);
             p.tuning = static_cast<Tuning>(index % 5);

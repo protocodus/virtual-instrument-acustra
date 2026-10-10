@@ -49,9 +49,6 @@ add_library(AcustraDSP STATIC
     Source/DSP/AcustraEngine.h
     Source/DSP/CaptureVoicingData.h
     Source/DSP/MicrophoneBalanceData.h
-    Source/DSP/PluckPolarisationData.h
-    Source/DSP/ReleasePolicyData.h
-    Source/DSP/SustainPolicyData.h
     Source/DSP/PiezoBlampTable.h
     Source/DSP/AcustraPerformer.cpp
     Source/DSP/AcustraPerformer.h)
@@ -461,12 +458,6 @@ if(BUILD_TESTING)
     add_executable(AcustraGuitarModelTests Tests/GuitarModelTests.cpp)
     target_link_libraries(AcustraGuitarModelTests PRIVATE AcustraDSP)
     acustra_add_suite(Acustra.GuitarModels AcustraGuitarModelTests)
-
-    add_executable(AcustraPlayerBodyLoadingTests Tests/PlayerBodyLoadingTests.cpp)
-    target_link_libraries(AcustraPlayerBodyLoadingTests PRIVATE AcustraDSP)
-    set_target_properties(AcustraPlayerBodyLoadingTests PROPERTIES
-        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
-    acustra_add_suite(Acustra.PlayerBodyLoading AcustraPlayerBodyLoadingTests)
     set_tests_properties(Acustra.GuitarModels PROPERTIES TIMEOUT 180)
 
     add_executable(AcustraBodyShapeTests Tests/BodyShapeTests.cpp)
@@ -678,11 +669,6 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FitCaptureVoicing.py"
                                  --self-test)
                 set_tests_properties(Acustra.FitCaptureVoicing PROPERTIES TIMEOUT 60)
-                add_test(NAME Acustra.FitModelConvergence
-                         COMMAND "${Python3_EXECUTABLE}"
-                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/FitModelConvergence.py"
-                                 --self-test)
-                set_tests_properties(Acustra.FitModelConvergence PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.ValidateCapture
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/ValidateCapture.py"
@@ -914,17 +900,4 @@ endif()
 if(ACUSTRA_BUILD_TOOLS)
     add_executable(AcustraConstructionStrumLevels Tools/ConstructionStrumLevels.cpp)
     target_link_libraries(AcustraConstructionStrumLevels PRIVATE AcustraDSP)
-endif()
-if(BUILD_TESTING)
-    add_executable(AcustraPluckPolarisationTests Tests/PluckPolarisationTests.cpp)
-    target_link_libraries(AcustraPluckPolarisationTests PRIVATE AcustraDSP)
-    acustra_add_suite(Acustra.PluckPolarisation AcustraPluckPolarisationTests)
-    add_executable(AcustraReleasePolicyTests Tests/ReleasePolicyTests.cpp)
-    target_link_libraries(AcustraReleasePolicyTests PRIVATE AcustraDSP)
-    acustra_add_suite(Acustra.ReleasePolicy AcustraReleasePolicyTests)
-    add_executable(AcustraSustainPolicyTests Tests/SustainPolicyTests.cpp)
-    target_link_libraries(AcustraSustainPolicyTests PRIVATE AcustraDSP)
-    set_target_properties(AcustraSustainPolicyTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
-    acustra_add_suite(Acustra.SustainPolicy AcustraSustainPolicyTests)
-    set_tests_properties(Acustra.PluckPolarisation PROPERTIES TIMEOUT 50)
 endif()

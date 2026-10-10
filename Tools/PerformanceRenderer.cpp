@@ -4,7 +4,7 @@
 // Channels 1-6 fix the played string (lowest to highest); simultaneous note-offs
 // precede note-ons. Output is headerless little-endian float32 stereo.
 // Optional flags follow the capture/picking positionals; omitting them
-// renders the defaults (Standard tuning, Dreadnought, Spruce, Original).
+// renders the defaults (Standard tuning, Dreadnought, Spruce).
 // --observe writes, instead of the output, what the under-saddle piezo's
 // chain sees at a stage (getLastPiezoProbe), in volts: piezo_voltage, on both
 // channels, the jack where the preamp takes it; piezo_levels the element's
@@ -79,7 +79,6 @@ int main(int argc, char** argv)
                      "[--tuning standard|drop_d|dadgad|open_g|half_step_down] "
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
                      "[--body-material spruce|mahogany|maple] "
-                     "[--guitar-model original|bellido1978] "
                      "[--touch 0..1] [--pluck-position 0..1] [--room 0..1] "
                      "[--calibration FILE] "
                      "[--observe piezo_voltage|piezo_levels|piezo_stages]\n";
@@ -115,7 +114,7 @@ int main(int argc, char** argv)
             parameters.picking = static_cast<acustra::PickingTechnique>(technique - techniques.begin());
         }
         bool tuningSeen = false;
-        bool shapeSeen = false, woodSeen = false, calibrationSeen = false, guitarSeen = false;
+        bool shapeSeen = false, woodSeen = false, calibrationSeen = false;
         bool observeSeen = false, touchSeen = false, pluckSeen = false, roomSeen = false;
         // 0: the output; 1: piezo_voltage; 2: piezo_levels; 3: piezo_stages.
         int observation = 0;
@@ -152,15 +151,6 @@ int main(int argc, char** argv)
                     throw std::runtime_error("unknown body material");
                 parameters.bodyMaterial = static_cast<acustra::BodyMaterial>(found - choices.begin());
                 woodSeen = true;
-            }
-            else if (option == "--guitar-model" && !guitarSeen)
-            {
-                const std::array choices { "original", "bellido1978" };
-                const auto found = std::find(choices.begin(), choices.end(), value);
-                if (found == choices.end())
-                    throw std::runtime_error("unknown guitar model");
-                parameters.guitarModel = static_cast<acustra::GuitarModel>(found - choices.begin());
-                guitarSeen = true;
             }
             else if (option == "--observe" && !observeSeen)
             {

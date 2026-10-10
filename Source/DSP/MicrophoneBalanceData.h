@@ -6,6 +6,9 @@
 
 #include "CaptureVoicingData.h"
 
+#include <algorithm>
+#include <cmath>
+
 namespace acustra::detail
 {
 
@@ -28,12 +31,29 @@ constexpr CaptureVoicingSection balancedOriginalCaptureSection(
     return section;
 }
 
-inline constexpr CaptureVoicingSection classicalCaptureVoicingSections[] {
-    // The broad -6 dB cut deepened the measured A4/B4 fundamental dips.
-    // Retain a gentler body-band correction without lifting their upper
-    // harmonics. The first +3 dB presence refinement still sounded banjo-like.
-    { CaptureVoicingKind::Peak, 500.0f, -3.0f, 1.2f },
-    { CaptureVoicingKind::Peak, 1400.0f, 0.0f, 1.2f },
-};
+// A small brightening of both microphones: 0.4375 dB/octave about 1 kHz,
+// bounded to 60 Hz-10 kHz. On 2026-10-02 the listener asked each of the two
+// guitar models then shipping to come about 25% closer to the other's
+// brightness: this is a quarter of the 1.75 dB/octave gap measured between
+// their matched note spectra (Docs/decisions.md, 2026-10-02). The second
+// model was removed on 2026-10-10; the Original keeps the voicing chosen
+// then. This is an artistic balance, not a refit of the measured guitar.
+//
+// configureBody applies this once, after building the radiation
+// continuation, to both microphones' complex force/moment residues at each
+// mode's frequency. The physical bridge, string calibration, poles and mode
+// counts stay intact; the piezo pickup response is unaffected. Construction
+// level trims are calibrated separately, and no processing is added to the
+// audio loop.
+inline constexpr float microphoneTiltDbPerOctave = 0.25f * 1.75f;
+inline constexpr float microphoneTiltPivotHz = 1000.0f;
+
+inline float microphoneTiltGain(float frequency) noexcept
+{
+    const float boundedFrequency = std::clamp(frequency, 60.0f, 10000.0f);
+    const float db = microphoneTiltDbPerOctave
+        * std::log2(boundedFrequency / microphoneTiltPivotHz);
+    return std::pow(10.0f, db / 20.0f);
+}
 
 } // namespace acustra::detail

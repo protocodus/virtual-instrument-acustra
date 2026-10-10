@@ -123,10 +123,10 @@ SOURCES = {
 }
 
 # The engine's velocity is 0-1 (its own map starts at 0.1). Measured on the
-# Bellido at the default Output, a single note's early RMS rises about 15 dB
-# from 0.12 to 0.96, flattening above 0.8 while the tone keeps brightening,
-# so the levels are spaced for roughly even loudness steps, and pp to ff
-# spans about 80% of the scale.
+# second guitar model (removed on 2026-10-10) at the default Output, a single
+# note's early RMS rises about 15 dB from 0.12 to 0.96, flattening above 0.8
+# while the tone keeps brightening, so the levels are spaced for roughly even
+# loudness steps, and pp to ff spans about 80% of the scale.
 LEVELS = {"ppp": 0.14, "pp": 0.20, "p": 0.29, "mp": 0.40, "mf": 0.52,
           "f": 0.66, "ff": 0.80, "fff": 0.92}
 VELOCITY_FLOOR, VELOCITY_CEILING = 0.12, 0.96
@@ -233,7 +233,6 @@ def load_source(name: str, directory: Path, download: bool) -> bytes:
 @dataclass
 class Guitar:
     """One player's instrument and where it sits; see RenderRepertoire.cpp."""
-    model: str = "original"
     shape: str = "auditorium"
     material: str = "spruce"
     tuning: str = "standard"
@@ -257,7 +256,7 @@ class Guitar:
     level: float | None = None
 
     def line(self, name: str) -> str:
-        return (f"part {name} model={self.model} shape={self.shape} "
+        return (f"part {name} shape={self.shape} "
                 f"material={self.material} tuning={self.tuning} "
                 f"picking={self.picking} age={self.age:g} pluck={self.pluck:g} "
                 f"touch={self.touch:g} body={self.body:g} width={self.width:g} "
@@ -361,11 +360,13 @@ def ensemble(*specs) -> dict:
     return {name: guitar for name, guitar in specs}
 
 
-# Instruments. The Bellido 1978 is the measured classical body (strung with
-# steel, the instrument's only strings); the others are the constructed
-# flat-tops, whose shapes and woods differ in size, air resonance and colour.
-def bellido(**kw):
-    base = dict(model="bellido1978", shape="auditorium", material="mahogany",
+# Instruments: constructions whose shapes and woods differ in size, air
+# resonance and colour. The solo pieces and the leading ensemble voices play an
+# Auditorium in Mahogany with fresh strings, a soft touch and the pluck towards
+# the neck: the construction and controls they were written for on the second
+# guitar model, which was removed on 2026-10-10.
+def auditorium_mahogany(**kw):
+    base = dict(shape="auditorium", material="mahogany",
                 age=0.08, pluck=0.40, touch=0.14, body=0.90, width=0.55)
     base.update(kw)
     return Guitar(**base)
@@ -378,7 +379,7 @@ PIECES.append(Piece(
     name="01-tarrega-lagrima",
     title="Francisco Tarrega - Lagrima (preludio), A A B B A",
     source="lagrima-duo.mid", tracks=None, bpm=58, style=ROMANTIC,
-    guitars={"guitar": bellido(pluck=0.44, touch=0.10)},
+    guitars={"guitar": auditorium_mahogany(pluck=0.44, touch=0.10)},
     form=[
         Segment((1, 8), dyn=[(0, "mp"), (4, "mf"), (6, "mp"), (8, "p")],
                 tone=(0.42, 0.12), close="section"),
@@ -405,7 +406,7 @@ PIECES.append(Piece(
     source="adelita.mid", tracks=None, bpm=66,
     style=Style(**{**ROMANTIC.__dict__, "beat_lean": (0.0, 0.0, 0.06),
                    "metric": (0.02, 0.035, -0.01)}),
-    guitars={"guitar": bellido(pluck=0.42, touch=0.12)},
+    guitars={"guitar": auditorium_mahogany(pluck=0.42, touch=0.12)},
     form=[
         Segment((1, 8), dyn=[(0, "p"), (2, "mp"), (3, "mf"), (4, "p"),
                              (6, "mp"), (7, "mf"), (8, "p")],
@@ -437,7 +438,7 @@ PIECES.append(Piece(
                    "vibrato": 0.3, "tempo_arch": 0.10,
                    "tremolo_cycle": ((0.02, 0.004), (-0.05, -0.003),
                                      (-0.01, 0.002))}),
-    guitars={"guitar": bellido(pluck=0.38, touch=0.10)},
+    guitars={"guitar": auditorium_mahogany(pluck=0.38, touch=0.10)},
     form=[
         # A minor: bars 1-20.
         Segment((1, 20), dyn=[(0, "p"), (4, "mp"), (8, "mf"), (10, "f"),
@@ -464,7 +465,7 @@ PIECES.append(Piece(
     title="Francisco Tarrega - Capricho arabe (serenata), in Drop D",
     source="capricho-arabe.mid", tracks=None, bpm=84,
     style=Style(**{**ROMANTIC.__dict__, "vibrato": 0.5, "roll": 0.055}),
-    guitars={"guitar": bellido(tuning="drop_d", pluck=0.40, touch=0.14)},
+    guitars={"guitar": auditorium_mahogany(tuning="drop_d", pluck=0.40, touch=0.14)},
     form=[
         # Introduction, 3/4: free, recitative-like.
         Segment((1, 12), dyn=[(0, "p"), (2, "mp"), (4, "mf"), (6, "f"),
@@ -563,7 +564,7 @@ PIECES.append(Piece(
     source="Bach_Prelude_BWV999.mid", tracks=None, bpm=84,
     style=Style(**{**BAROQUE.__dict__, "metric": (0.05, 0.0, -0.02),
                    "lift": 1.0, "ring": "bar"}),
-    guitars={"guitar": bellido(pluck=0.34, touch=0.18)},
+    guitars={"guitar": auditorium_mahogany(pluck=0.34, touch=0.18)},
     form=[
         Segment((1, 16), dyn=[(0, "mp"), (4, "mf"), (8, "mp"), (12, "mf"),
                               (16, "mp")],
@@ -641,7 +642,8 @@ PIECES.append(Piece(
 PIECES.append(Piece(
     name="11-dowland-come-again-guitar-quartet",
     title="John Dowland - Come again, sweet love doth now invite "
-          "(4 guitars: Bellido, Parlor maple, Auditorium mahogany, Jumbo spruce)",
+          "(4 guitars: Dreadnought maple, Parlor maple, Auditorium mahogany, "
+          "Jumbo spruce)",
     source="ComeAgain.mid", tracks={1: "cantus", 3: "altus", 5: "tenor",
                                     7: "bassus"},
     bpm=132, style=Style(**{**RENAISSANCE.__dict__, "bass_ring": False,
@@ -649,8 +651,11 @@ PIECES.append(Piece(
                             "rest_ring": 0.8}),
     phrase_bars=2,
     guitars=ensemble(
-        ("cantus", bellido(pan=-0.10, level=0.0, balance=0.07, lead=-0.006, pluck=0.40,
-                           touch=0.16)),
+        # The cantus keeps the solo voice's strings, touch and placement on a
+        # construction no other part of the quartet plays.
+        ("cantus", Guitar(shape="dreadnought", material="maple", age=0.08, body=0.90,
+                          width=0.55, pan=-0.10, level=0.0, balance=0.07, lead=-0.006,
+                          pluck=0.40, touch=0.16)),
         ("altus", Guitar(shape="parlor", material="maple", pan=-0.55, level=-3.0,
                          balance=-0.04, pluck=0.30, touch=0.30, age=0.20)),
         ("tenor", Guitar(shape="auditorium", material="mahogany", pan=0.50, level=-3.0,
@@ -703,8 +708,8 @@ PIECES.append(Piece(
         ("superius", Guitar(shape="auditorium", material="maple", pan=0.12, level=0.0,
                             balance=0.06, lead=-0.005, pluck=0.32,
                             touch=0.28)),
-        ("contratenor", bellido(pan=-0.50, level=-3.5, balance=-0.03, pluck=0.42,
-                                touch=0.14)),
+        ("contratenor", auditorium_mahogany(pan=-0.50, level=-3.5, balance=-0.03,
+                                            pluck=0.42, touch=0.14)),
         ("tenor", Guitar(shape="parlor", material="mahogany", pan=0.55, level=-3.5,
                          balance=-0.04, pluck=0.30, touch=0.26, age=0.28)),
         ("bassus", Guitar(shape="dreadnought", material="spruce",
@@ -739,8 +744,8 @@ PIECES.append(Piece(
                    "final_rit": (0.50, 2.0, 2.5), "ring": None}),
     phrase_bars=2, period_phrases=4,
     guitars=ensemble(
-        ("first", bellido(pan=-0.55, level=0.0, pluck=0.40, touch=0.16, balance=0.02,
-                          lead=-0.004)),
+        ("first", auditorium_mahogany(pan=-0.55, level=0.0, pluck=0.40, touch=0.16,
+                                      balance=0.02, lead=-0.004)),
         ("second", Guitar(shape="auditorium", material="maple", pan=0.55, level=0.0,
                           pluck=0.30, touch=0.30, age=0.10)),
         ("third", Guitar(shape="parlor", material="spruce", pan=0.0, level=0.0,
@@ -769,8 +774,8 @@ PIECES.append(Piece(
                    "beat_lean": (0.0, 0.0, 0.04), "vibrato": 0.2,
                    "lift": 0.96, "ring": None}),
     guitars=ensemble(
-        ("treble", bellido(pan=-0.45, level=0.0, pluck=0.44, touch=0.12, balance=0.06,
-                           lead=-0.005)),
+        ("treble", auditorium_mahogany(pan=-0.45, level=0.0, pluck=0.44, touch=0.12,
+                                       balance=0.06, lead=-0.005)),
         ("middle", Guitar(shape="auditorium", material="spruce", pan=0.45, level=-3.0,
                           pluck=0.36, touch=0.22, balance=-0.04)),
         ("bass", Guitar(shape="dreadnought", material="mahogany",
@@ -796,8 +801,8 @@ PIECES.append(Piece(
                    "roll": 0.035, "lift": 1.0, "bass_ring": True,
                    "ring": None}),
     guitars=ensemble(
-        ("melody", bellido(pan=-0.35, level=0.0, pluck=0.46, touch=0.12, balance=0.08,
-                           lead=-0.006)),
+        ("melody", auditorium_mahogany(pan=-0.35, level=0.0, pluck=0.46, touch=0.12,
+                                       balance=0.08, lead=-0.006)),
         ("continuo", Guitar(shape="jumbo", material="spruce", pan=0.40, level=-2.5,
                             pluck=0.40, touch=0.18, age=0.18,
                             balance=-0.03))),

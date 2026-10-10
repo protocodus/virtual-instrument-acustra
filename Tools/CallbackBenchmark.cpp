@@ -4,13 +4,11 @@
 // -Dacustra=acustra_baseline/acustra_current. Compile each AcustraEngine.cpp
 // with the same namespace definition and include its own Source directory.
 // Link the five objects into one executable. No LTO or fast-math is required.
-// Compile each adapter that supports named guitars with
-// -DACUSTRA_CALLBACK_GUITAR_MODELS. An adapter without that definition keeps
-// Original with the requested shape/wood. Report the actual selection.
 // Every case plays steel strings, the engine's only strings since nylon was
 // retired on 2026-09-29 (a frozen tree from before then defaults to steel
-// too); the Bellido plays Mahogany, the plug-in's "Bellido 1978" preset.
-// Usage: AcustraCallbackBenchmark OUTPUT.json [pairs=256] [warmup=16] [--guitar-models]
+// too), on the default Dreadnought in Spruce; a tree from before the second
+// guitar model was removed on 2026-10-10 defaults to the Original as well.
+// Usage: AcustraCallbackBenchmark OUTPUT.json [pairs=256] [warmup=16]
 // Output contains every timed observation; construction, preparation, scenario
 // pre-roll and result checking are outside the interval. Each pair alternates order.
 
@@ -48,20 +46,14 @@ struct CallbackState
     int rate {}, frames {};
     static constexpr std::array chord { 40, 47, 52, 56, 59, 64 };
 
-    CallbackState(int sampleRate, int blockSize, int guitar)
+    CallbackState(int sampleRate, int blockSize)
         : rate(sampleRate), frames(blockSize)
     {
         acustra::EngineParameters parameters;
         parameters.capture = acustra::CaptureType::StereoMic;
         parameters.picking = acustra::PickingTechnique::Finger;
-        parameters.shape = guitar == 2 ? acustra::BodyShape::Parlor
-            : guitar == 1 || guitar == 3 ? acustra::BodyShape::Auditorium
-            : acustra::BodyShape::Dreadnought;
-        parameters.bodyMaterial = guitar == 1
-            ? acustra::BodyMaterial::Mahogany : acustra::BodyMaterial::Spruce;
-#if defined(ACUSTRA_CALLBACK_GUITAR_MODELS)
-        parameters.guitarModel = static_cast<acustra::GuitarModel>(guitar);
-#endif
+        parameters.shape = acustra::BodyShape::Dreadnought;
+        parameters.bodyMaterial = acustra::BodyMaterial::Spruce;
         parameters.touch = 0.58f;
         parameters.pluckPosition = 0.28f;
         engine.setParameters(parameters);
@@ -135,9 +127,9 @@ struct CallbackState
 };
 }
 
-extern "C" void* ACUSTRA_SYMBOL(_create)(int rate, int frames, int guitar)
+extern "C" void* ACUSTRA_SYMBOL(_create)(int rate, int frames)
 {
-    return new CallbackState(rate, frames, guitar);
+    return new CallbackState(rate, frames);
 }
 extern "C" void ACUSTRA_SYMBOL(_destroy)(void* state)
 {
@@ -159,25 +151,16 @@ extern "C" int ACUSTRA_SYMBOL(_active)(void* state)
 {
     return static_cast<CallbackState*>(state)->engine.getActiveVoiceCount();
 }
-extern "C" bool ACUSTRA_SYMBOL(_has_guitar_models)()
-{
-#if defined(ACUSTRA_CALLBACK_GUITAR_MODELS)
-    return true;
-#else
-    return false;
-#endif
-}
 
 #else
 
 #define ACUSTRA_DECLARE(name) \
-    extern "C" void* ACUSTRA_SYMBOL_INNER(name, _create)(int, int, int); \
+    extern "C" void* ACUSTRA_SYMBOL_INNER(name, _create)(int, int); \
     extern "C" void ACUSTRA_SYMBOL_INNER(name, _destroy)(void*); \
     extern "C" void ACUSTRA_SYMBOL_INNER(name, _setup)(void*, int); \
     extern "C" void ACUSTRA_SYMBOL_INNER(name, _run)(void*, int); \
     extern "C" std::uint64_t ACUSTRA_SYMBOL_INNER(name, _checksum)(void*); \
-    extern "C" int ACUSTRA_SYMBOL_INNER(name, _active)(void*); \
-    extern "C" bool ACUSTRA_SYMBOL_INNER(name, _has_guitar_models)();
+    extern "C" int ACUSTRA_SYMBOL_INNER(name, _active)(void*);
 ACUSTRA_DECLARE(baseline)
 ACUSTRA_DECLARE(current)
 
@@ -188,7 +171,7 @@ static_assert(Clock::is_steady);
 
 struct EngineApi
 {
-    void* (*create)(int, int, int);
+    void* (*create)(int, int);
     void (*destroy)(void*);
     void (*setup)(void*, int);
     void (*run)(void*, int);
@@ -203,11 +186,11 @@ struct EngineInstance
 {
     EngineApi api;
     void* state;
-    int rate {}, frames {}, guitar {};
+    int rate {}, frames {};
     std::uint64_t expectedHash {};
     bool hasHash {};
-    explicit EngineInstance(EngineApi selected, int rate, int frames, int guitar)
-        : api(selected), state(nullptr), rate(rate), frames(frames), guitar(guitar) {}
+    explicit EngineInstance(EngineApi selected, int rate, int frames)
+        : api(selected), state(nullptr), rate(rate), frames(frames) {}
     ~EngineInstance() { api.destroy(state); }
     EngineInstance(const EngineInstance&) = delete;
     EngineInstance& operator=(const EngineInstance&) = delete;
@@ -218,7 +201,7 @@ struct EngineInstance
         // one trial changing the initial state of the next. All of this setup
         // is outside the timed audio callback.
         api.destroy(state);
-        state = api.create(rate, frames, guitar);
+        state = api.create(rate, frames);
         api.setup(state, scenario);
         const auto start = Clock::now();
         api.run(state, scenario);
@@ -282,17 +265,10 @@ int main(int argc, char** argv)
 {
     try
     {
-        if (argc < 2 || argc > 5)
-            throw std::runtime_error("usage: AcustraCallbackBenchmark OUTPUT.json [pairs=256] [warmup=16] [--guitar-models]");
+        if (argc < 2 || argc > 4)
+            throw std::runtime_error("usage: AcustraCallbackBenchmark OUTPUT.json [pairs=256] [warmup=16]");
         const int repeats = argc >= 3 ? positiveInteger(argv[2]) : 256;
         const int warmups = argc >= 4 ? positiveInteger(argv[3]) : 16;
-        const bool namedGuitars = argc == 5 && std::string(argv[4]) == "--guitar-models";
-        const bool baselineHasGuitarModels = callback_baseline_has_guitar_models();
-        const bool currentHasGuitarModels = callback_current_has_guitar_models();
-        if (argc == 5 && !namedGuitars)
-            throw std::runtime_error("unknown final option");
-        if (namedGuitars && !currentHasGuitarModels)
-            throw std::runtime_error("current adapter was compiled without named-guitar support");
         if (std::filesystem::exists(argv[1]))
             throw std::runtime_error("output already exists");
         std::ofstream output(argv[1]);
@@ -310,80 +286,61 @@ int main(int argc, char** argv)
                   "\n\"capture\":\"stereo_mic\",\n\"picking\":\"finger\","
                   "\n\"chord_midi\":[40,47,52,56,59,64],\n\"harmonic_midi\":100,"
                   "\n\"rolled_chord_midi\":[60,64,67],\n\"rolled_chord_spacing_seconds\":0.01,"
-               << "\n\"baseline_has_guitar_models\":" << (baselineHasGuitarModels ? "true" : "false")
-               << ",\n\"current_has_guitar_models\":" << (currentHasGuitarModels ? "true" : "false")
-               << ",\n\"named_model_comparison\":\""
-               << (!namedGuitars ? "Original on both adapters"
-                   : baselineHasGuitarModels ? "matching named models on both adapters"
-                   : "current named model versus baseline Original with matching shape and wood")
-               << "\",\n\"results\":[\n";
+                  "\n\"results\":[\n";
         constexpr std::array scenarios { "six_string_initial", "six_string_repick", "eighth_harmonic",
                                          "live_rolled_chord_join" };
-        struct ModelCase { int guitar; const char* name; const char* shape; const char* wood; };
-        std::vector<ModelCase> cases {
-            { 0, "Original", "dreadnought", "spruce" }
-        };
-        if (namedGuitars)
-        {
-            cases.push_back({ 1, "Bellido1978", "auditorium", "mahogany" });
-        }
         bool first = true;
         for (const int rate : { 48000, 96000 })
             for (const int frames : { 32, 64, 128 })
-                for (const auto& model : cases)
-                    for (int scenario = 0; scenario < static_cast<int>(scenarios.size()); ++scenario)
+                for (int scenario = 0; scenario < static_cast<int>(scenarios.size()); ++scenario)
+                {
+                    EngineInstance baseline(ACUSTRA_API(baseline), rate, frames);
+                    EngineInstance current(ACUSTRA_API(current), rate, frames);
+                    std::vector<double> before, after;
+                    before.reserve(static_cast<std::size_t>(repeats));
+                    after.reserve(static_cast<std::size_t>(repeats));
+                    for (int trial = -warmups; trial < repeats; ++trial)
                     {
-                        EngineInstance baseline(ACUSTRA_API(baseline), rate, frames, model.guitar);
-                        EngineInstance current(ACUSTRA_API(current), rate, frames, model.guitar);
-                        std::vector<double> before, after;
-                        before.reserve(static_cast<std::size_t>(repeats));
-                        after.reserve(static_cast<std::size_t>(repeats));
-                        for (int trial = -warmups; trial < repeats; ++trial)
+                        double b {}, c {};
+                        if ((trial & 1) == 0)
                         {
-                            double b {}, c {};
-                            if ((trial & 1) == 0)
-                            {
-                                b = baseline.measure(scenario);
-                                c = current.measure(scenario);
-                            }
-                            else
-                            {
-                                c = current.measure(scenario);
-                                b = baseline.measure(scenario);
-                            }
-                            if (trial >= 0)
-                            {
-                                before.push_back(b);
-                                after.push_back(c);
-                            }
+                            b = baseline.measure(scenario);
+                            c = current.measure(scenario);
                         }
-                        const double deadline = 1.0e6 * frames / rate;
-                        std::vector<double> ratios;
-                        ratios.reserve(before.size());
-                        for (std::size_t index = 0; index < before.size(); ++index)
-                            ratios.push_back(after[index] / before[index]);
-                        output << (first ? "" : ",\n") << "{\"rate\":" << rate
-                               << ",\"frames\":" << frames
-                               << ",\"material\":\"steel\",\"current_guitar_model\":\"" << model.name
-                               << "\",\"baseline_guitar_model\":\""
-                               << (baselineHasGuitarModels ? model.name : "Original")
-                               << "\",\"body_shape\":\"" << model.shape
-                               << "\",\"body_material\":\"" << model.wood
-                               << "\",\"scenario\":\"" << scenarios[static_cast<std::size_t>(scenario)]
-                               << "\",\"deadline_us\":" << deadline << ",\"baseline\":";
-                        statistics(output, before, deadline, baseline.expectedHash);
-                        output << ",\"current\":";
-                        statistics(output, after, deadline, current.expectedHash);
-                        output << ",\"paired_current_over_baseline_p50\":" << percentile(ratios, 0.5)
-                               << ",\"paired_current_over_baseline_p95\":" << percentile(ratios, 0.95) << '}';
-                        output.flush();
-                        first = false;
-                        std::cout << rate << " Hz / " << frames << " / "
-                                  << model.name << " / "
-                                  << scenarios[static_cast<std::size_t>(scenario)]
-                                  << ": baseline/current p95 " << percentile(before, .95)
-                                  << " / " << percentile(after, .95) << " us\n" << std::flush;
+                        else
+                        {
+                            c = current.measure(scenario);
+                            b = baseline.measure(scenario);
+                        }
+                        if (trial >= 0)
+                        {
+                            before.push_back(b);
+                            after.push_back(c);
+                        }
                     }
+                    const double deadline = 1.0e6 * frames / rate;
+                    std::vector<double> ratios;
+                    ratios.reserve(before.size());
+                    for (std::size_t index = 0; index < before.size(); ++index)
+                        ratios.push_back(after[index] / before[index]);
+                    output << (first ? "" : ",\n") << "{\"rate\":" << rate
+                           << ",\"frames\":" << frames
+                           << ",\"material\":\"steel\",\"body_shape\":\"dreadnought\""
+                           << ",\"body_material\":\"spruce\""
+                           << ",\"scenario\":\"" << scenarios[static_cast<std::size_t>(scenario)]
+                           << "\",\"deadline_us\":" << deadline << ",\"baseline\":";
+                    statistics(output, before, deadline, baseline.expectedHash);
+                    output << ",\"current\":";
+                    statistics(output, after, deadline, current.expectedHash);
+                    output << ",\"paired_current_over_baseline_p50\":" << percentile(ratios, 0.5)
+                           << ",\"paired_current_over_baseline_p95\":" << percentile(ratios, 0.95) << '}';
+                    output.flush();
+                    first = false;
+                    std::cout << rate << " Hz / " << frames << " / "
+                              << scenarios[static_cast<std::size_t>(scenario)]
+                              << ": baseline/current p95 " << percentile(before, .95)
+                              << " / " << percentile(after, .95) << " us\n" << std::flush;
+                }
         output << "\n],\n\"complete\":true\n}\n";
         output.close();
         if (!output)

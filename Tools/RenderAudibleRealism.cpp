@@ -98,15 +98,13 @@ void writeWave(const std::filesystem::path& path, const std::vector<float>& samp
     if (!out) throw std::runtime_error("could not write listening wave");
 }
 void render(Passage passage, const std::filesystem::path& output, float room,
-            acustra::GuitarModel model, std::ofstream& manifest)
+            std::ofstream& manifest)
 {
     std::stable_sort(passage.events.begin(), passage.events.end(),
         [](const Event& a, const Event& b) { return a.frame < b.frame; });
     auto player = std::make_unique<acustra::Performer>();
     acustra::EngineParameters parameters;
-    parameters.picking = passage.picking; parameters.room = room; parameters.guitarModel = model;
-    if (model == acustra::GuitarModel::Bellido1978)
-    { parameters.shape = acustra::BodyShape::Auditorium; parameters.bodyMaterial = acustra::BodyMaterial::Mahogany; }
+    parameters.picking = passage.picking; parameters.room = room;
     player->setParameters(parameters); player->prepare(rate, 128); player->setGatherChords(false);
     std::vector<float> audio(static_cast<std::size_t>(2 * duration));
     std::array<float, 128> left {}, right {};
@@ -128,8 +126,9 @@ void render(Passage passage, const std::filesystem::path& output, float room,
           audio[static_cast<std::size_t>(2 * (at + i) + 1)] = right[static_cast<std::size_t>(i)]; }
         at += count;
     }
-    const std::string modelName = model == acustra::GuitarModel::Original ? "original" : "bellido";
-    const std::string name = passage.name + "-" + modelName + (room == 0.0f ? "-dry" : "-room");
+    // "-original" is kept from when a second guitar model rendered beside it,
+    // so the Original's file names stay those of earlier listening packs.
+    const std::string name = passage.name + "-original" + (room == 0.0f ? "-dry" : "-room");
     writeWave(output / (name + ".wav"), audio);
     double sum = 0.0; float peak = 0.0f;
     for (const float value : audio) { sum += static_cast<double>(value) * value; peak = std::max(peak, std::abs(value)); }
@@ -151,11 +150,10 @@ int main(int argc, char** argv)
         std::filesystem::create_directories(output);
         std::ofstream manifest(output / "levels.tsv");
         manifest << std::setprecision(12) << "file\tpeak\trms\n";
-        for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
-            for (const float room : { 0.0f, 0.5f })
-                for (auto passage : passages()) render(std::move(passage), output, room, model, manifest);
+        for (const float room : { 0.0f, 0.5f })
+            for (auto passage : passages()) render(std::move(passage), output, room, manifest);
         if (!manifest) throw std::runtime_error("could not write level manifest");
-        std::cout << "Sixteen matched eight-second float-stereo passages; native relative levels, common unity gain, dry/studio and both models\n";
+        std::cout << "Eight matched eight-second float-stereo passages; native relative levels, common unity gain, dry/studio\n";
         return 0;
     }
     catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }

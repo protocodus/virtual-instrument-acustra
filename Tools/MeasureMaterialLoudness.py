@@ -139,22 +139,20 @@ PERFORMANCES = {
     "arpeggio": arpeggio(), "ringing-chords": ringing_chords(),
 }
 
-# The plug-in's Guitar presets (constructionPresets): shape, wood, model.
+# The plug-in's Guitar presets (constructionPresets): shape, wood.
 PRESETS = {
-    "Dreadnought": ("dreadnought", "spruce", "original"),
-    "Auditorium": ("auditorium", "spruce", "original"),
-    "Parlor": ("parlor", "spruce", "original"),
-    "Bellido 1978": ("auditorium", "mahogany", "bellido1978"),
+    "Dreadnought": ("dreadnought", "spruce"),
+    "Auditorium": ("auditorium", "spruce"),
+    "Parlor": ("parlor", "spruce"),
 }
 
 
 def render_command(renderer: str, events: Path, output: Path, capture: str,
                    picking: str, preset: str, *extra: str) -> list[str]:
     """An AcustraPerformanceRenderer command line for one preset."""
-    shape, wood, model = PRESETS[preset]
+    shape, wood = PRESETS[preset]
     return [renderer, str(events), str(output), capture, picking,
-            "--body-shape", shape, "--body-material", wood,
-            "--guitar-model", model, *extra]
+            "--body-shape", shape, "--body-material", wood, *extra]
 
 
 def write_performance(rows, seconds: float, path: Path) -> None:
@@ -224,9 +222,9 @@ def self_test() -> None:
     summary = summarise(fake)
     assert summary["lufs"]["grid"] == -18.0 and summary["rms_db"]["Parlor"] == -21.0
     command = render_command("r", Path("e.txt"), Path("o.f32"), "stereo_mic", "pick",
-                             "Bellido 1978")
-    assert command[3:] == ["stereo_mic", "pick", "--body-shape", "auditorium",
-                           "--body-material", "mahogany", "--guitar-model", "bellido1978"]
+                             "Auditorium", "--touch", "1")
+    assert command == ["r", "e.txt", "o.f32", "stereo_mic", "pick", "--body-shape",
+                       "auditorium", "--body-material", "spruce", "--touch", "1"]
     print("MeasureMaterialLoudness self-test passed")
 
 

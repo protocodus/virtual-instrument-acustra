@@ -336,7 +336,7 @@ int main(int argc, char** argv)
         const acustra::EngineParameters p;
         manifest << std::setprecision(10) << "{\"schema\":1,\"controls\":{"
                  << "\"capture\":\"StereoMic\",\"shape\":\"Dreadnought\","
-                 << "\"body_material\":\"Spruce\",\"guitar_model\":\"Original\","
+                 << "\"body_material\":\"Spruce\","
                  << "\"room\":0,\"string_age\":" << p.stringAge
                  << ",\"pluck_position\":" << p.pluckPosition << ",\"touch\":" << p.touch
                  << ",\"body_amount\":" << p.bodyAmount << ",\"stereo_width\":" << p.stereoWidth

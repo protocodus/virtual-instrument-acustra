@@ -29,11 +29,6 @@ int main(int argc, char** argv)
         const int blocks = rate <= 192000.0 ? 1200 : 350;
         for (int block = 0; block < blocks; ++block)
         {
-            if (block == 130)
-            {
-                parameters.guitarModel = acustra::GuitarModel::Bellido1978;
-                performer->setParameters(parameters);
-            }
             performer->beginBlock(left.data(), right.data(), { piezo.data() }, 64);
             if (block == 0)
             {

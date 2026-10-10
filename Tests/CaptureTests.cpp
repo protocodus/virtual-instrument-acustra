@@ -147,9 +147,9 @@ struct AcustraEngineTestAccess
     }
     static float bodyFade(const AcustraEngine& engine) { return engine.bodyModelFade_; }
     static bool bodyPending(const AcustraEngine& engine) { return engine.bodyUpdatePending_; }
-    static bool hasBodyModel(const AcustraEngine& engine, GuitarModel model)
+    static bool hasBody(const AcustraEngine& engine, BodyShape shape)
     {
-        return engine.configuredGuitarModel_ == model;
+        return engine.configuredBodyShape_ == shape;
     }
 };
 } // namespace acustra
@@ -1120,71 +1120,68 @@ void testOutputGainScalesTheWholeCapture()
     constexpr int latency = AcustraEngine::outputLatencySamples();
     double worstRelativeError = 0.0;
     for (const int rate : { 44100, 96000 })
-        for (const auto model : { GuitarModel::Original, GuitarModel::Bellido1978 })
-            for (const auto capture : { CaptureType::StereoMic, CaptureType::MonoMic,
-                                        CaptureType::Piezo })
-                for (const bool initiallyMuted : { false, true })
+        for (const auto capture : { CaptureType::StereoMic, CaptureType::MonoMic,
+                                    CaptureType::Piezo })
+            for (const bool initiallyMuted : { false, true })
+            {
+                EngineParameters p;
+                p.capture = capture;
+                p.room = .8f;
+                p.piezoMix = piezoMix;
+                p.outputGain = referenceGain;
+                auto reference = std::make_unique<AcustraEngine>();
+                reference->setParameters(p);
+                reference->prepare(rate, 64);
+                p.outputGain = initiallyMuted ? 0.0f : referenceGain;
+                auto moved = std::make_unique<AcustraEngine>();
+                moved->setParameters(p);
+                moved->prepare(rate, 64);
+                for (auto* engine : { reference.get(), moved.get() })
+                    for (const int note : { 40, 47, 55, 64 })
+                        engine->noteOn(note, .65f);
+                std::array<float, latency + 1> gains;
+                gains.fill(p.outputGain);
+                double peak = 0.0, error = 0.0;
+                for (int n = 0; n < rate / 3; ++n)
                 {
-                    EngineParameters p;
-                    p.guitarModel = model;
-                    p.capture = capture;
-                    p.room = .8f;
-                    p.piezoMix = piezoMix;
-                    p.outputGain = referenceGain;
-                    auto reference = std::make_unique<AcustraEngine>();
-                    reference->setParameters(p);
-                    reference->prepare(rate, 64);
-                    p.outputGain = initiallyMuted ? 0.0f : referenceGain;
-                    auto moved = std::make_unique<AcustraEngine>();
-                    moved->setParameters(p);
-                    moved->prepare(rate, 64);
-                    for (auto* engine : { reference.get(), moved.get() })
-                        for (const int note : { 40, 47, 55, 64 })
-                            engine->noteOn(note, .65f);
-                    std::array<float, latency + 1> gains;
-                    gains.fill(p.outputGain);
-                    double peak = 0.0, error = 0.0;
-                    for (int n = 0; n < rate / 3; ++n)
+                    if (n == rate / 12 || n == rate / 6 || n == rate / 4)
                     {
-                        if (n == rate / 12 || n == rate / 6 || n == rate / 4)
-                        {
-                            p.outputGain = n == rate / 12
-                                ? (initiallyMuted ? .06f : 0.0f)
-                                : n == rate / 6 ? .015f : .04f;
-                            moved->setParameters(p);
-                        }
-                        float rl, rr, rp, ml, mr, mp;
-                        reference->process(&rl, &rr, AcustraEngine::OutputBuses { &rp }, 1);
-                        moved->process(&ml, &mr, AcustraEngine::OutputBuses { &mp }, 1);
-                        gains[static_cast<std::size_t>(n % gains.size())]
-                            = Access::outputGain(*moved);
-                        const double current = double(Access::outputGain(*moved)) / referenceGain;
-                        const int delayed = n >= latency ? n - latency : 0;
-                        const double held = double(gains[static_cast<std::size_t>(
-                            delayed % gains.size())]) / referenceGain;
-                        for (const auto samples : { std::array<double, 2> { rl, ml },
-                                                    std::array<double, 2> { rr, mr } })
-                        {
-                            const double expected = capture == CaptureType::Piezo
-                                ? samples[0] * current
-                                : (samples[0] - piezoMix * double(rp)) * held
-                                    + piezoMix * double(rp) * current;
-                            peak = std::max(peak, std::abs(expected));
-                            error = std::max(error, std::abs(samples[1] - expected));
-                        }
-                        peak = std::max(peak, std::abs(double(rp) * current));
-                        error = std::max(error, std::abs(double(mp) - double(rp) * current));
+                        p.outputGain = n == rate / 12
+                            ? (initiallyMuted ? .06f : 0.0f)
+                            : n == rate / 6 ? .015f : .04f;
+                        moved->setParameters(p);
                     }
-                    expect(peak > 1.0e-6, "Output automation reference was silent");
-                    const double relative = error / std::max(peak, 1.0e-30);
-                    worstRelativeError = std::max(worstRelativeError, relative);
-                    expect(relative < 2.0e-6,
-                           "Output changed the wet/dry balance or misaligned Piezo Mix, model "
-                               + std::to_string(static_cast<int>(model)) + ", capture "
-                               + std::to_string(static_cast<int>(capture)) + ", rate "
-                               + std::to_string(rate) + ", initially muted "
-                               + std::to_string(initiallyMuted));
+                    float rl, rr, rp, ml, mr, mp;
+                    reference->process(&rl, &rr, AcustraEngine::OutputBuses { &rp }, 1);
+                    moved->process(&ml, &mr, AcustraEngine::OutputBuses { &mp }, 1);
+                    gains[static_cast<std::size_t>(n % gains.size())]
+                        = Access::outputGain(*moved);
+                    const double current = double(Access::outputGain(*moved)) / referenceGain;
+                    const int delayed = n >= latency ? n - latency : 0;
+                    const double held = double(gains[static_cast<std::size_t>(
+                        delayed % gains.size())]) / referenceGain;
+                    for (const auto samples : { std::array<double, 2> { rl, ml },
+                                                std::array<double, 2> { rr, mr } })
+                    {
+                        const double expected = capture == CaptureType::Piezo
+                            ? samples[0] * current
+                            : (samples[0] - piezoMix * double(rp)) * held
+                                + piezoMix * double(rp) * current;
+                        peak = std::max(peak, std::abs(expected));
+                        error = std::max(error, std::abs(samples[1] - expected));
+                    }
+                    peak = std::max(peak, std::abs(double(rp) * current));
+                    error = std::max(error, std::abs(double(mp) - double(rp) * current));
                 }
+                expect(peak > 1.0e-6, "Output automation reference was silent");
+                const double relative = error / std::max(peak, 1.0e-30);
+                worstRelativeError = std::max(worstRelativeError, relative);
+                expect(relative < 2.0e-6,
+                       "Output changed the wet/dry balance or misaligned Piezo Mix, capture "
+                           + std::to_string(static_cast<int>(capture)) + ", rate "
+                           + std::to_string(rate) + ", initially muted "
+                           + std::to_string(initiallyMuted));
+            }
     std::cout << "Output automation whole-capture relative peak error: "
               << worstRelativeError << '\n';
 }
@@ -1376,63 +1373,6 @@ void testCaptureVoicingIsSmoothAndBounded()
     expect(worstTop < 1.5, "the capture voicing reaches above 4 kHz");
 }
 
-// Independent analog prototypes, bilinear transformed at each evaluation
-// frequency. Checking complex pressure catches a pole-frequency residue gain
-// substitution even when its modal peaks happen to have the desired levels.
-std::complex<double> bellidoMicrophoneTransfer(double frequency, double rate)
-{
-    std::complex<double> response = 1.0;
-    for (const auto section : { std::array<double, 2> { 500.0, -3.0 },
-                                std::array<double, 2> { 1400.0, 0.0 } })
-    {
-        const double a = std::pow(10.0, section[1] / 40.0);
-        const std::complex<double> s(0.0,
-            std::tan(pi * frequency / rate) / std::tan(pi * section[0] / rate));
-        response *= (s * s + a * s / 1.2 + 1.0)
-            / (s * s + s / (a * 1.2) + 1.0);
-    }
-    return response;
-}
-
-void testMicrophoneFilterDigitalTransfer()
-{
-    using namespace acustra;
-    for (const int rate : { 24000, 44100, 48000, 96000, 192000 })
-    {
-        EngineParameters p;
-        p.guitarModel = GuitarModel::Bellido1978;
-        auto engine = std::make_unique<AcustraEngine>();
-        engine->setParameters(p);
-        engine->prepare(rate, 64);
-        auto filter = Access::captureFilter(*engine);
-        const int length = rate / 20;
-        std::vector<float> left(static_cast<std::size_t>(length));
-        std::vector<float> right(left.size());
-        for (int n = 0; n < length; ++n)
-        {
-            const auto out = Access::filterSample(filter, n == 0 ? .25f : 0.0f,
-                                                  n == 17 ? -.125f : 0.0f);
-            left[static_cast<std::size_t>(n)] = out[0];
-            right[static_cast<std::size_t>(n)] = out[1];
-        }
-        double worst = 0.0;
-        for (const double frequency : { 0.0, 80.0, 200.0, 392.0, 500.0, 800.0,
-                                        1400.0, 2800.0, 5000.0, .45 * rate })
-        {
-            const auto expected = bellidoMicrophoneTransfer(frequency, rate);
-            const auto actualLeft = responseAt(left, frequency, rate) / .25;
-            const auto actualRight = responseAt(right, frequency, rate)
-                / (-.125 * std::polar(1.0, -2.0 * pi * frequency * 17.0 / rate));
-            worst = std::max({ worst, std::abs(actualLeft - expected) / std::abs(expected),
-                                     std::abs(actualRight - expected) / std::abs(expected) });
-        }
-        std::cout << "Bellido microphone digital transfer " << rate
-                  << " Hz: relative complex error " << worst << '\n';
-        expect(worst < .0005,
-               "summed microphone pressure differs from the independent digital peak cascade");
-    }
-}
-
 void testMicrophoneFilterBypassAndLifecycle()
 {
     using namespace acustra;
@@ -1456,19 +1396,18 @@ void testMicrophoneFilterBypassAndLifecycle()
                "Disabled capture filter advanced an unnecessary history");
 
         EngineParameters p;
-        p.guitarModel = GuitarModel::Bellido1978;
         engine->setParameters(p);
         engine->reset();
         auto filter = Access::captureFilter(*engine);
         auto fresh = filter;
-        expect(filter.enabled, "Bellido did not configure its microphone filter");
+        expect(filter.enabled, "reset did not configure the microphone filter");
         for (int n = 0; n < rate / 100; ++n)
             Access::filterSample(filter, static_cast<float>(std::sin(n * .19)),
                                 static_cast<float>(std::cos(n * .071)));
         expect(filter.stateLeft != fresh.stateLeft && filter.stateRight != fresh.stateRight,
                "microphone filter lifecycle probe did not establish both histories");
         const auto hotFilter = filter;
-        filter.configure(rate, true);
+        filter.configure(rate);
         expect(filter.coefficients == hotFilter.coefficients
                    && filter.stateLeft == hotFilter.stateLeft
                    && filter.stateRight == hotFilter.stateRight,
@@ -1514,16 +1453,16 @@ void testMicrophoneFilterBypassAndLifecycle()
     }
 }
 
-// A bank's microphone filter must follow that bank through a model fade.
-// Independent copies of the sounding banks retain their pre-switch histories;
-// the delivered fade must be their blend, including an interrupted request.
-void testMicrophoneFilterModelTransitions()
+// A bank's microphone filter must follow that bank through a construction
+// fade. Independent copies of the sounding banks retain their pre-switch
+// histories; the delivered fade must be their blend, including an
+// interrupted request.
+void testMicrophoneFilterConstructionTransitions()
 {
     using namespace acustra;
     for (const int rate : { 44100, 48000, 96000 })
     {
         EngineParameters p;
-        p.guitarModel = GuitarModel::Bellido1978;
         auto engine = std::make_unique<AcustraEngine>();
         auto held = std::make_unique<AcustraEngine>();
         for (auto* target : { engine.get(), held.get() })
@@ -1534,12 +1473,12 @@ void testMicrophoneFilterModelTransitions()
                 Access::body(*target, static_cast<float>(std::sin(n * .23)), .13f);
         }
         const auto before = Access::captureFilter(*engine);
-        auto original = p;
-        original.guitarModel = GuitarModel::Original;
-        engine->setParameters(original);
+        auto parlor = p;
+        parlor.shape = BodyShape::Parlor;
+        engine->setParameters(parlor);
         expect(Access::fadingFilterStates(*engine)
                    == Access::filterHistory(before),
-               "model fade did not copy the sounding microphone filter history");
+               "construction fade did not copy the sounding microphone filter history");
         engine->setParameters(p); // Cancel before the first target sample.
         bool restored = true;
         for (int n = 0; n < 256; ++n)
@@ -1550,7 +1489,7 @@ void testMicrophoneFilterModelTransitions()
             restored = restored && actual.left == reference.left
                 && actual.right == reference.right && actual.upper == reference.upper;
         }
-        expect(restored, "same-tick model cancellation lost the sounding filter history");
+        expect(restored, "same-tick construction cancellation lost the sounding filter history");
 
         const auto beforeWood = Access::captureFilter(*engine);
         auto maple = p;
@@ -1560,11 +1499,11 @@ void testMicrophoneFilterModelTransitions()
         expect(afterWood.coefficients == beforeWood.coefficients
                    && afterWood.stateLeft == beforeWood.stateLeft
                    && afterWood.stateRight == beforeWood.stateRight,
-               "same-model Wood reconfiguration reset the microphone filter history");
+               "Wood reconfiguration reset the microphone filter history");
         engine->setParameters(p); // Restore the sounding bank before advancing.
 
         auto oldBank = Access::bodyBank(*engine);
-        engine->setParameters(original);
+        engine->setParameters(parlor);
         auto nextBank = Access::bodyBank(*engine);
         bool sameFade = true;
         int samples = 0;
@@ -1586,13 +1525,13 @@ void testMicrophoneFilterModelTransitions()
                 && actual.upper == old.upper + mix * (next.upper - old.upper);
             ++samples;
             if (samples > 17 && !Access::bodyPending(*engine))
-                break; // The first fade ended and the queued Bellido began.
+                break; // The first fade ended and the queued Dreadnought began.
         }
         expect(samples > 17 && samples < rate / 20 && sameFade,
-               "queued model update interrupted a sounding bank's filtered waveform");
-        expect(Access::hasBodyModel(*engine, GuitarModel::Bellido1978)
+               "queued construction update interrupted a sounding bank's filtered waveform");
+        expect(Access::hasBody(*engine, p.shape)
                    && Access::bodyFade(*engine) == 0.0f,
-               "queued filter model did not start at the existing fade boundary");
+               "queued filter construction did not start at the existing fade boundary");
         engine->reset();
         held->reset();
         expect(Access::filterStates(*engine) == decltype(Access::filterStates(*engine)) {},
@@ -1605,7 +1544,7 @@ void testMicrophoneFilterModelTransitions()
             resetMatches = resetMatches && actual.left == reference.left
                 && actual.right == reference.right && actual.upper == reference.upper;
         }
-        expect(resetMatches, "reset after an interrupted model fade retained stale filter output");
+        expect(resetMatches, "reset after an interrupted construction fade retained stale filter output");
     }
 }
 
@@ -1613,11 +1552,9 @@ void testMicrophoneFilterOnlyChangesObservation()
 {
     using namespace acustra;
     for (const int rate : { 44100, 96000 })
-        for (const auto model : { GuitarModel::Original, GuitarModel::Bellido1978 })
         for (const auto capture : { CaptureType::StereoMic, CaptureType::MonoMic, CaptureType::Piezo })
         {
             EngineParameters p;
-            p.guitarModel = model;
             p.capture = capture;
             p.room = 0.0f;
             p.outputGain = .05f;
@@ -1696,9 +1633,8 @@ int main()
     testRoomBlocksWidthAndReturn();
     testRoomRingsOutToSilence();
     testCaptureVoicingIsSmoothAndBounded();
-    testMicrophoneFilterDigitalTransfer();
     testMicrophoneFilterBypassAndLifecycle();
-    testMicrophoneFilterModelTransitions();
+    testMicrophoneFilterConstructionTransitions();
     testMicrophoneFilterOnlyChangesObservation();
     if (failures == 0)
         std::cout << "All Acustra capture tests passed\n";

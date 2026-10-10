@@ -4,7 +4,7 @@
 #include "DSP/AcustraEngine.h"
 #include "DSP/CaptureVoicingData.h"
 #include "DSP/MeasuredBodyData.h"
-#include "DSP/ModelConvergenceData.h"
+#include "DSP/MicrophoneBalanceData.h"
 #include "DSP/SteelBodyBlend.h"
 #include <algorithm>
 #include <array>
@@ -93,8 +93,8 @@ void testDigitalTransferAndReset(double rate)
     auto engine = std::make_unique<Engine>();
     engine->prepare(rate, 64);
     auto filter = Access::filter(*engine);
-    expect(filter.enabled && filter.activeSections == 6,
-           "Original must configure the complete summed-pressure contour");
+    // Every section is rendered; the transfer below checks all six.
+    expect(filter.enabled, "Original must configure its summed-pressure contour");
     const int length = int(rate * .25);
     std::vector<float> left(static_cast<std::size_t>(length)), right(left.size());
     for (int n = 0; n < length; ++n)
@@ -146,7 +146,7 @@ void testMeasuredResiduesAreNotEqualized()
             ? 1.0 - d::steelBlendJointBodyWeight
             : 1.0 - d::steelBlendJointBodyWeight * d::steelBlendHighJointFraction;
         const double scale = .93 * (1.0 + .28 * std::exp(-frequency / 520.0))
-            * share * d::modelConvergenceGain(float(frequency), false);
+            * share * d::microphoneTiltGain(float(frequency));
         const std::array<Complex, 4> expected {{
             scale * Complex(mode.leftReal, mode.leftImaginary),
             scale * Complex(mode.upperReal, mode.upperImaginary),

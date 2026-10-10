@@ -61,11 +61,9 @@ std::optional<acustra::BodyShape> renderShapeOverride;
 constexpr std::array shapeNames { "parlor", "auditorium", "dreadnought", "jumbo" };
 acustra::BodyMaterial renderBodyMaterial { acustra::EngineParameters {}.bodyMaterial };
 constexpr std::array bodyMaterialNames { "spruce", "mahogany", "maple" };
-acustra::GuitarModel renderGuitarModel { acustra::GuitarModel::Original };
 // --room: the Room every model renders with (0, the engine's default, is
 // the dry instrument the calibration was fitted on).
 float renderRoom { 0.0f };
-constexpr std::array guitarModelNames { "original", "bellido1978" };
 constexpr std::array pickingNames { "finger", "pick", "thumb" };
 
 acustra::BodyShape renderShape() noexcept
@@ -189,7 +187,6 @@ std::vector<float> renderModel(acustra::PickingTechnique picking,
 {
     AcustraEngine engine;
     EngineParameters parameters;
-    parameters.guitarModel = renderGuitarModel;
     parameters.shape = renderShape();
     parameters.bodyMaterial = renderBodyMaterial;
     parameters.room = renderRoom;
@@ -240,9 +237,10 @@ std::string modelControlsJson()
     text << "{\"shape\": \""
          << shapeNames[static_cast<std::size_t>(renderShape())]
          << "\", \"body_material\": " << static_cast<int>(renderBodyMaterial)
-         << ", \"guitar_model\": \""
-         << guitarModelNames[static_cast<std::size_t>(renderGuitarModel)]
-         << "\""
+         // Fixed at the value every manifest carried while a second
+         // guitar model existed, so model_controls still compare equal to
+         // earlier runs' (BuildRealismEvidence.py pairs runs on them).
+         << ", \"guitar_model\": \"original\""
          << ", \"capture\": \""
          << std::array { "stereo_mic", "mono_mic", "mono_mic",
                                "piezo", "piezo", "mono_mic", "piezo", "mono_mic" }[
@@ -401,7 +399,7 @@ void printUsage()
         "usage: AcustraExternalCorpusRenderer "
         "[--shape parlor|auditorium|dreadnought|jumbo] "
         "[--body-material spruce|mahogany|maple] "
-        "[--guitar-model original|bellido1978] [--room 0..1] "
+        "[--room 0..1] "
         "JOBFILE|- OUTDIR "
         "BODY_FREQUENCY BODY_Q BRIDGE_MOBILITY RESIDUE_TILT "
         "STEEL_STIFFNESS STEEL_T60 STEEL_FREQUENCY_LOSS STEEL_APERTURE "
@@ -455,19 +453,6 @@ int main(int argc, char** argv)
         }
         renderBodyMaterial = static_cast<acustra::BodyMaterial>(
             std::distance(bodyMaterialNames.begin(), name));
-        first += 2;
-    }
-    if (argc > first && std::string(argv[first]) == "--guitar-model")
-    {
-        const auto name = std::find(guitarModelNames.begin(), guitarModelNames.end(),
-            argc > first + 1 ? std::string(argv[first + 1]) : std::string());
-        if (name == guitarModelNames.end())
-        {
-            printUsage();
-            return 2;
-        }
-        renderGuitarModel = static_cast<acustra::GuitarModel>(
-            std::distance(guitarModelNames.begin(), name));
         first += 2;
     }
     if (argc > first && std::string(argv[first]) == "--room")

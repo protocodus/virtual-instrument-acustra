@@ -6,9 +6,10 @@ Example (the second invocation reuses the frozen baseline):
   CompareBodyCapture.py --renderer baseline=/path/before \
       --renderer candidate=/path/after --output /tmp/body-ab
 
-Two models, three techniques, and dry/Room50 each receive eight isolated notes
-and one overlapping phrase: 24 clips, 169.2 seconds per renderer. Measurements
-describe signal changes; they do not establish listener preference or realism.
+Three techniques, dry and Room50, each receive eight isolated notes and one
+overlapping phrase on the default Dreadnought in Spruce: 12 clips, 84.6 seconds
+per renderer. Measurements describe signal changes; they do not establish
+listener preference or realism.
 """
 from __future__ import annotations
 
@@ -147,21 +148,20 @@ def version(label, source, directory, event_scores):
                 raise ValueError("frozen native render changed")
         return manifest
     manifest = {"renderer_source": str(source), "renderer_sha256": source_hash, "cases": {}}
-    for model, technique, room, study in itertools.product(
-            ("original", "bellido1978"), ("finger", "pick", "thumb"),
-            (0., .5), ("isolated_notes", "phrase")):
-        case = f"{model}-{technique}-room{int(room * 100)}-{study}"
+    for technique, room, study in itertools.product(
+            ("finger", "pick", "thumb"), (0., .5), ("isolated_notes", "phrase")):
+        # The "original-" prefix keeps earlier runs' case and file names.
+        case = f"original-{technique}-room{int(room * 100)}-{study}"
         raw = destination / f"{case}.f32"
-        # Models play their presets' construction; within each model every
-        # renderer receives exactly the same controls and string assignments.
-        options = ["stereo_mic", technique, "--guitar-model", model,
-                   "--body-shape", "dreadnought" if model == "original" else "auditorium",
-                   "--body-material", "spruce" if model == "original" else "mahogany",
+        # Every renderer receives exactly the same controls and string
+        # assignments.
+        options = ["stereo_mic", technique,
+                   "--body-shape", "dreadnought", "--body-material", "spruce",
                    "--touch", "0.58", "--pluck-position", "0.28", "--room", str(room)]
         audio, commands, part_hashes = render_case(
             frozen, raw, event_scores[study], options,
             NOTE_SECONDS if study == "isolated_notes" else PHRASE_SECONDS)
-        row = {"model": model, "technique": technique, "room": room, "study": study,
+        row = {"technique": technique, "room": room, "study": study,
                "raw_file": str(raw.relative_to(directory)), "sha256": digest(raw),
                "part_sha256": part_hashes, "commands": commands, "native": metrics(audio)}
         if study == "isolated_notes":
@@ -199,7 +199,7 @@ def main():
         manifests[label] = version(label, Path(source).resolve(strict=True), directory, event_scores)
     peak = max(row["native"]["peak"] for manifest in manifests.values()
                for row in manifest["cases"].values())
-    # One scalar over every note/model/technique/version. A quieter candidate
+    # One scalar over every note/technique/version. A quieter candidate
     # remains quieter; no per-file or per-version loudness matching hides it.
     gain = .9 / max(peak, 1e-30)
     for label, manifest in manifests.items():
@@ -225,7 +225,7 @@ def main():
                    for paths in event_scores.values() for path in paths},
         "listening_gain": gain, "listening_gain_db": db(gain * gain),
         "listening_gain_scope": "One shared scalar for every render in this report, peak ceiling 0.9. Native .f32 files have no trim.",
-        "audio_seconds_per_renderer": 12 * (8 * NOTE_SECONDS + PHRASE_SECONDS),
+        "audio_seconds_per_renderer": 6 * (8 * NOTE_SECONDS + PHRASE_SECONDS),
         "renderers": manifests,
     }
     if len(manifests) >= 2:

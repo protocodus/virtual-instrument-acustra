@@ -22,24 +22,20 @@ struct ConstructionPreset
     const char* caption;
     acustra::BodyShape shape;
     acustra::BodyMaterial wood;
-    acustra::GuitarModel model { acustra::GuitarModel::Original };
 };
 
 // Construction directions, not measured replicas of manufacturer models.
-// The style presets play the Original body: g21's radiation and its own
+// Every preset plays the one measured body: g21's radiation and its own
 // bridge on the radiation's poles, at a steel-string guitar's measured
 // mobility, so one body loads the string and radiates it (README, How it
-// works). The Bellido preset selects that measured guitar in its own family,
-// in Mahogany, the kept wood nearest the cedar it was built of.
-constexpr std::array<ConstructionPreset, 4> constructionPresets {{
+// works).
+constexpr std::array<ConstructionPreset, 3> constructionPresets {{
     { "Dreadnought / Martin style", "Dreadnought", acustra::BodyShape::Dreadnought,
       acustra::BodyMaterial::Spruce },
     { "Auditorium / Taylor style", "Auditorium", acustra::BodyShape::Auditorium,
       acustra::BodyMaterial::Spruce },
     { "Parlor / Fender style", "Parlor", acustra::BodyShape::Parlor,
-      acustra::BodyMaterial::Spruce },
-    { "Bellido 1978", "Bellido 1978", acustra::BodyShape::Auditorium,
-      acustra::BodyMaterial::Mahogany, acustra::GuitarModel::Bellido1978 }
+      acustra::BodyMaterial::Spruce }
 }};
 
 // Satin walnut, honey spruce, bone inlay and aged brass: a luthier's
@@ -793,13 +789,12 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
 
     configureSetupChoice (
         0, "GUITAR", nullptr,
-        "Set the body model, shape and wood together. "
-        "Style presets use the original body; named years select measured bodies. "
+        "Set the body shape and wood together. "
         "Adjust any construction control below to make your own guitar.");
     for (std::size_t index = 0; index < constructionPresets.size(); ++index)
         setupControls[0]->setChoiceDescription (
             index, juce::String (constructionPresets[index].name) + ". "
-                + "Set the body model, shape and wood together; keep tuning, playing and capture.");
+                + "Set the body shape and wood together; keep tuning, playing and capture.");
     setupControls[0]->onChoice = [this] (int index)
     {
         const auto& preset = constructionPresets[static_cast<std::size_t> (index)];
@@ -815,7 +810,6 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         };
         setChoice (acustra::parameters::shape, preset.shape);
         setChoice (acustra::parameters::bodyMaterial, preset.wood);
-        setChoice (acustra::parameters::guitarModel, preset.model);
         timerCallback();
     };
     configureSetupChoice (
@@ -828,12 +822,6 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         "Stereo body microphones, one mono body microphone, or "
         "an under-saddle piezo through its onboard preamp. Mono mic and piezo "
         "send the same signal to both channels and ignore Stereo Width.", 3);
-    configureSetupChoice (
-        3, "MODEL", acustra::parameters::guitarModel,
-        "Choose the measured guitar body. Original is the "
-        "steel-string voice; Bellido is a measured 1978 classical strung with "
-        "steel, with three microphones. Shape and wood controls remain "
-        "adjustable construction changes.");
 
     configureChoice (
         0, "BODY SHAPE", acustra::parameters::shape,
@@ -943,8 +931,7 @@ void AcustraAudioProcessorEditor::updateConstructionControls()
     for (std::size_t index = 0; index < constructionPresets.size(); ++index)
     {
         const auto& preset = constructionPresets[index];
-        if (state.guitarModel == preset.model
-            && state.shape == preset.shape && state.bodyMaterial == preset.wood)
+        if (state.shape == preset.shape && state.bodyMaterial == preset.wood)
         {
             selected = static_cast<int> (index);
             break;
@@ -1102,19 +1089,18 @@ void AcustraAudioProcessorEditor::resized()
 
     setupLabels[0].setBounds (box (40, 143, 312, 20));
     // All left-hand switches share one exact cell size, even after rounding
-    // at the host's minimum or maximum scale. Odd rows retain the same grid.
+    // at the host's minimum or maximum scale, as tall as the technique and
+    // capture switches. Odd rows retain the same grid.
     const auto leftSwitches = [&] (int y, int rows)
     {
         auto bounds = box (40, y, 312, 1);
-        bounds.setHeight (rows * juce::roundToInt (32.0f * scale)
+        bounds.setHeight (rows * juce::roundToInt (38.0f * scale)
                           + (rows - 1) * juce::roundToInt (4.0f * scale));
         return bounds;
     };
     setupControls[0]->setBounds (leftSwitches (166, 2));
-    setupLabels[3].setBounds (box (40, 246, 312, 20));
-    setupControls[3]->setBounds (leftSwitches (272, 1));
 
-    const std::array<int, 3> choiceY { 316, 424, 532 };
+    const std::array<int, 3> choiceY { 262, 386, 510 };
     const std::array<int, 3> choiceRows { 2, 2, 3 };
     for (std::size_t index = 0; index < choiceControls.size(); ++index)
     {

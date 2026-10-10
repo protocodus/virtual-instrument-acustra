@@ -146,11 +146,10 @@ bool renderFinite(acustra::Performer& performer, int samples, double& energy)
     return finite;
 }
 
-void lowPitchAndStability(double rate, acustra::GuitarModel model)
+void lowPitchAndStability(double rate)
 {
     auto performer = std::make_unique<acustra::Performer>();
     acustra::EngineParameters parameters;
-    parameters.guitarModel = model;
     parameters.tuning = acustra::Tuning::DropD;
     parameters.room = 0.2f;
     parameters.piezoMix = 0.25f;
@@ -245,8 +244,7 @@ int main()
     {
         expect(Access::derivativePreservesReferenceTime(rate), "bridge derivative lost its 48k reference time");
         expect(Access::lossIsPassive(rate), "remapped loss pole left the unit circle");
-        for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
-            lowPitchAndStability(rate, model);
+        lowPitchAndStability(rate);
         controllerAndReprepare(rate);
         fingerDuration(rate, true);
         fingerDuration(rate, false);

@@ -2050,9 +2050,6 @@ void testPrepareRestartsThePerformanceExactly()
     std::vector<Config> configs;
     configs.push_back({ "default", {} });
     {
-        acustra::EngineParameters bellido;
-        bellido.guitarModel = acustra::GuitarModel::Bellido1978;
-        configs.push_back({ "Bellido 1978", bellido });
         acustra::EngineParameters jumbo;
         jumbo.shape = acustra::BodyShape::Jumbo;
         jumbo.bodyMaterial = acustra::BodyMaterial::Maple;
@@ -4385,8 +4382,8 @@ void testBlockPartitionIsDeterministic()
 void testSampleRatesAndAutomationStayBounded()
 {
     // Every control a host can automate moves, the construction's own
-    // (Model, Tuning, Capture) among them, at every rate the engine
-    // models; the Piezo output is requested and held to the same bounds.
+    // (Tuning, Capture) among them, at every rate the engine models; the
+    // Piezo output is requested and held to the same bounds.
     constexpr double rates[] { 8000.0, 44100.0, 48000.0, 88200.0,
                                96000.0, 192000.0, 384000.0 };
     for (const double rate : rates)
@@ -4405,7 +4402,6 @@ void testSampleRatesAndAutomationStayBounded()
         buses.piezo = piezo.data();
         for (int step = 0; step < 180; ++step)
         {
-            parameters.guitarModel = static_cast<acustra::GuitarModel>((step / 29) % 2);
             parameters.tuning = static_cast<acustra::Tuning>((step / 13) % 5);
             constexpr acustra::CaptureType captures[] { acustra::CaptureType::StereoMic,
                 acustra::CaptureType::MonoMic, acustra::CaptureType::Piezo };
@@ -5030,9 +5026,8 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
         {
             const auto cell = [&] (int technique)
             {
-                // Original model, Dreadnought, Spruce
-                return static_cast<std::size_t>(((0 * 4 + 2) * 3 + 0) * 3
-                                                + technique);
+                // Dreadnought, Spruce
+                return static_cast<std::size_t>((2 * 3 + 0) * 3 + technique);
             };
             const float ratio = acustra::detail::constructionMicReference[cell(picking)]
                 / acustra::detail::constructionMicReference[cell(0)];
@@ -5974,8 +5969,7 @@ Audio continueConstructionProbe(acustra::AcustraEngine& engine, int samples)
 // (constructionLoudnessCell).
 std::size_t loudnessCell(const acustra::EngineParameters& p)
 {
-    int cell = static_cast<int>(p.guitarModel);
-    cell = cell * 4 + static_cast<int>(p.shape);
+    int cell = static_cast<int>(p.shape);
     cell = cell * 3 + static_cast<int>(p.bodyMaterial);
     cell = cell * 3 + static_cast<int>(p.picking);
     return static_cast<std::size_t>(cell);
@@ -6291,7 +6285,7 @@ void testStringAgeKeepsARepluckedTail()
     }
 }
 
-void testSwitchingTuningOrModelUnderAChordDoesNotClick()
+void testSwitchingTuningUnderAChordDoesNotClick()
 {
     // Changing the tuning changes every string's impedance at once, so the
     // junction's wave variables step with the port. The strings were
@@ -6342,69 +6336,6 @@ void testSwitchingTuningOrModelUnderAChordDoesNotClick()
         expect(before > 1.0e-6, "the chord under the switch was silent");
         expect(after < 2.0 * before,
                "switching the tuning under a ringing chord produced a transient");
-    }
-
-    // Every direction, measured against the louder of the chord before the
-    // switch and the same chord played on the new construction from the
-    // start, at the same moment - a switch to a louder construction may be
-    // louder, but not more than that. A Model switch hands the chord's
-    // stored energy to another guitar's bridge and body, and the new body's
-    // modes start from rest under it: the Bellido to the Original about twice
-    // (1.998 before the pluck shape was laid over the loop's period on
-    // 2026-09-30, 2.030 after; 2.12 once the finger's release slip and the
-    // radiation above the measured band joined it the same day, as the
-    // Original to the Bellido fell from 3.24 to 3.05; the swell is the
-    // chord's stored energy, so its spectrum moves it), bounded at 2.2. The Original to the Bellido is more, since
-    // every construction plays at one loudness
-    // (ConstructionLoudnessData.h): the Original's chord, drained less by
-    // its stiffer top, pours through the Bellido's mobile one at 4.1 times
-    // the Bellido's own chord at that moment (4.5 before the levels), and
-    // the Bellido no longer sits 5.8 dB under the Original to hide it
-    // behind the louder chord: 3.3 times, bounded at 3.5.
-    const auto against = [&] (acustra::EngineParameters from, acustra::EngineParameters to)
-    {
-        from.outputGain = to.outputGain = 0.04f;
-        auto freshOwner = std::make_unique<acustra::AcustraEngine>();
-        auto& fresh = *freshOwner;
-        fresh.setParameters(to);
-        fresh.prepare(sampleRate, block);
-        std::vector<float> left(static_cast<std::size_t>(block)), right(left);
-        for (const int note : { 40, 47, 52, 56, 59, 64 })
-            fresh.noteOn(note, 0.85f);
-        double reference = 0.0;
-        for (int i = 0; i < static_cast<int>(1.25 * sampleRate); i += block)
-        {
-            fresh.process(left.data(), right.data(), block);
-            if (i >= static_cast<int>(1.2 * sampleRate))
-                for (int k = 0; k < block; ++k)
-                    reference = std::max(reference, static_cast<double>(std::max(
-                        std::abs(left[static_cast<std::size_t>(k)]),
-                        std::abs(right[static_cast<std::size_t>(k)]))));
-        }
-        const auto saved = steel;
-        steel = from;
-        const auto [before, after] = stepPeak(to);
-        steel = saved;
-        return after / std::max(before, reference);
-    };
-    const auto make = [] (acustra::GuitarModel model)
-    {
-        acustra::EngineParameters p;
-        p.guitarModel = model;
-        return p;
-    };
-    using G = acustra::GuitarModel;
-    struct Switch { const char* name; acustra::EngineParameters from, to; double bound; };
-    for (const auto& item : {
-             Switch { "Bellido to Original", make(G::Bellido1978), make(G::Original), 2.2 },
-             Switch { "Original to Bellido", make(G::Original), make(G::Bellido1978), 3.5 } })
-    {
-        const double ratio = against(item.from, item.to);
-        std::cout << "Acustra construction switch under a chord, " << item.name
-                  << ": " << ratio << " x the louder steady chord\n";
-        expect(ratio < item.bound,
-               std::string("switching ") + item.name + " under a ringing chord swelled to "
-                   + std::to_string(ratio) + " times the louder steady chord");
     }
 }
 
@@ -7935,11 +7866,10 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
 // own axis: on a bridge whose rocking and moment radiation were measured it
 // reaches the microphones and forms, with the normal polarisation, the doublet
 // every guitar partial beats with. Where the measurement is scalar nothing
-// can carry it and the plane would stay silent; every shipping bank is not.
+// can carry it and the plane would stay silent; the shipping bank is not.
 void testTheParallelPolarisationRadiatesThroughTheRockingSaddle()
 {
     using acustra::AcustraEngineTestAccess;
-    using acustra::GuitarModel;
     const auto renderNote = [] (acustra::EngineParameters parameters,
                                 int midiNote, bool silenceParallel)
     {
@@ -7967,58 +7897,34 @@ void testTheParallelPolarisationRadiatesThroughTheRockingSaddle()
             sum += static_cast<double>(signal[index]) * signal[index];
         return sum;
     };
-    struct Case
+    acustra::EngineParameters parameters;
+    for (const int midiNote : { 45, 57, 64 })
     {
-        GuitarModel model;
-        bool radiates;
-        const char* name;
-    };
-    for (const Case test : {
-             Case { GuitarModel::Original, true, "Original" },
-             Case { GuitarModel::Bellido1978, true, "Bellido" } })
-    {
-        acustra::EngineParameters parameters;
-        parameters.guitarModel = test.model;
-        for (const int midiNote : { 45, 57, 64 })
-        {
-            const auto [both, eta] = renderNote(parameters, midiNote, false);
-            const auto [normalOnly, unused] = renderNote(parameters, midiNote, true);
-            std::vector<float> parallel(both.left.size());
-            for (std::size_t index = 0; index < parallel.size(); ++index)
-                parallel[index] = both.left[index] - normalOnly.left[index];
-            const auto from = static_cast<std::size_t>(0.1 * sampleRate);
-            const double share = energy(parallel, from)
-                / std::max(energy(both.left, from), 1.0e-30);
-            if (test.radiates)
-            {
-                // The published crown heights over the 23.2 mm half-spacing.
-                expect(eta > 0.34f && eta < 0.45f,
-                       std::string(test.name) + " did not project the crown's "
-                       "published height onto the rocking");
-                // Parallel plucks are markedly quieter (Woodhouse 2004), but a
-                // pluck puts most of its energy in that plane and its share of
-                // what is heard grows as the normal plane, which the bridge
-                // loads harder, decays away from it; the two planes also
-                // interfere, so the difference can exceed the whole.
-                expect(share > 1.0e-4 && std::isfinite(share),
-                       std::string(test.name) + " MIDI "
-                           + std::to_string(midiNote)
-                           + ": the parallel plane's share of the sound was "
-                           + std::to_string(share));
-            }
-            else
-            {
-                expect(eta == 0.0f && share == 0.0,
-                       std::string(test.name)
-                           + ": a scalar measurement carried the parallel "
-                             "plane to the microphones");
-            }
-            if (midiNote == 57)
-                std::cout << "Acustra parallel polarisation " << test.name
-                          << " A3 share of the sound after 0.1 s: "
-                          << 10.0 * std::log10(std::max(share, 1.0e-30))
-                          << " dB\n";
-        }
+        const auto [both, eta] = renderNote(parameters, midiNote, false);
+        const auto [normalOnly, unused] = renderNote(parameters, midiNote, true);
+        std::vector<float> parallel(both.left.size());
+        for (std::size_t index = 0; index < parallel.size(); ++index)
+            parallel[index] = both.left[index] - normalOnly.left[index];
+        const auto from = static_cast<std::size_t>(0.1 * sampleRate);
+        const double share = energy(parallel, from)
+            / std::max(energy(both.left, from), 1.0e-30);
+        // The published crown height over the 23.2 mm half-spacing.
+        expect(eta > 0.34f && eta < 0.45f,
+               "the Original did not project the crown's published height onto the rocking");
+        // Parallel plucks are markedly quieter (Woodhouse 2004), but a
+        // pluck puts most of its energy in that plane and its share of
+        // what is heard grows as the normal plane, which the bridge
+        // loads harder, decays away from it; the two planes also
+        // interfere, so the difference can exceed the whole.
+        expect(share > 1.0e-4 && std::isfinite(share),
+               "Original MIDI " + std::to_string(midiNote)
+                   + ": the parallel plane's share of the sound was "
+                   + std::to_string(share));
+        if (midiNote == 57)
+            std::cout << "Acustra parallel polarisation Original"
+                      << " A3 share of the sound after 0.1 s: "
+                      << 10.0 * std::log10(std::max(share, 1.0e-30))
+                      << " dB\n";
     }
 }
 
@@ -8180,16 +8086,14 @@ void testASecondConstructionChangeDoesNotStepTheBridge()
     steel.outputGain = 0.2f;
     auto parlor = steel;
     parlor.shape = acustra::BodyShape::Parlor;
-    auto bellido = steel;
-    bellido.guitarModel = acustra::GuitarModel::Bellido1978;
-    auto bellidoParlor = parlor;
-    bellidoParlor.guitarModel = acustra::GuitarModel::Bellido1978;
+    auto mapleParlor = parlor;
+    mapleParlor.bodyMaterial = acustra::BodyMaterial::Maple;
     const int rate = 48000;
     const int ms5 = rate / 200;
     struct Case { const char* name; EngineParameters first; int after; EngineParameters second; };
-    for (const auto& change : { Case { "Model then back 15 ms later", bellido, 3 * ms5, steel },
-                                Case { "Model then back 5 ms later", bellido, ms5, steel },
-                                Case { "Shape then Model 5 ms later", parlor, ms5, bellidoParlor } })
+    for (const auto& change : { Case { "Shape then back 15 ms later", parlor, 3 * ms5, steel },
+                                Case { "Shape then back 5 ms later", parlor, ms5, steel },
+                                Case { "Shape then Wood 5 ms later", parlor, ms5, mapleParlor } })
     {
         auto engine = std::make_unique<acustra::AcustraEngine>();
         engine->setParameters(steel);
@@ -8232,34 +8136,30 @@ void testASecondConstructionChangeDoesNotStepTheBridge()
 // at 96 kHz, 0.18 dB too little at 44.1 kHz.
 void testBodyRadiationKeepsItsLevelAcrossRates()
 {
-    for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
+    acustra::EngineParameters parameters;
+    std::vector<std::unique_ptr<acustra::AcustraEngine>> engines;
+    const std::array<double, 3> rates { 48000.0, 44100.0, 96000.0 };
+    for (const double rate : rates)
     {
-        acustra::EngineParameters parameters;
-        parameters.guitarModel = model;
-        std::vector<std::unique_ptr<acustra::AcustraEngine>> engines;
-        const std::array<double, 3> rates { 48000.0, 44100.0, 96000.0 };
-        for (const double rate : rates)
-        {
-            engines.push_back(std::make_unique<acustra::AcustraEngine>());
-            engines.back()->setParameters(parameters);
-            engines.back()->prepare(rate, 64);
-        }
-        double worst = 0.0;
-        for (const double f : { 3000.0, 5000.0, 7000.0, 9000.0 })
-        {
-            // A third-octave comb, so no one mode decides it.
-            std::array<double, 3> power {};
-            for (std::size_t r = 0; r < rates.size(); ++r)
-                for (int k = -3; k <= 3; ++k)
-                    power[r] += std::pow(acustra::AcustraEngineTestAccess::bodyResponse(
-                        *engines[r], f * std::exp2(k / 36.0)), 2.0);
-            for (std::size_t r = 1; r < rates.size(); ++r)
-                worst = std::max(worst, std::abs(10.0 * std::log10(power[r] / power[0])));
-        }
-        std::cout << "Acustra body radiation 3-9 kHz across 44.1/96 kHz, model "
-                  << static_cast<int>(model) << ": worst " << worst << " dB from 48 kHz\n";
-        expect(worst < 0.12, "the body's radiation moved with the sample rate");
+        engines.push_back(std::make_unique<acustra::AcustraEngine>());
+        engines.back()->setParameters(parameters);
+        engines.back()->prepare(rate, 64);
     }
+    double worst = 0.0;
+    for (const double f : { 3000.0, 5000.0, 7000.0, 9000.0 })
+    {
+        // A third-octave comb, so no one mode decides it.
+        std::array<double, 3> power {};
+        for (std::size_t r = 0; r < rates.size(); ++r)
+            for (int k = -3; k <= 3; ++k)
+                power[r] += std::pow(acustra::AcustraEngineTestAccess::bodyResponse(
+                    *engines[r], f * std::exp2(k / 36.0)), 2.0);
+        for (std::size_t r = 1; r < rates.size(); ++r)
+            worst = std::max(worst, std::abs(10.0 * std::log10(power[r] / power[0])));
+    }
+    std::cout << "Acustra body radiation 3-9 kHz across 44.1/96 kHz: worst "
+              << worst << " dB from 48 kHz\n";
+    expect(worst < 0.12, "the body's radiation moved with the sample rate");
 }
 
 // The bridge's plate conductance floor damps a string's upper partials alike
@@ -8907,7 +8807,7 @@ int main()
     testANoteOverASoundingInstrumentDoesNotClick();
     testBodyChangesPreserveTheSoundingStrings();
     testBodyChangesPreserveAnUnfinishedFade();
-    testSwitchingTuningOrModelUnderAChordDoesNotClick();
+    testSwitchingTuningUnderAChordDoesNotClick();
     testStringAgeKeepsARepluckedTail();
     testTodaysMechanismsSurviveEachOther();
     testNoteAfterSilenceDoesNotClick();

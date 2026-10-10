@@ -64,8 +64,8 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
         gatherChordsAttachment;
 
-    std::array<juce::Label, 4> setupLabels;
-    std::array<std::unique_ptr<ChoiceButtonGroup>, 4> setupControls;
+    std::array<juce::Label, 3> setupLabels;
+    std::array<std::unique_ptr<ChoiceButtonGroup>, 3> setupControls;
 
     std::array<juce::Label, 3> choiceLabels;
     std::array<std::unique_ptr<ChoiceButtonGroup>, 3> choiceControls;

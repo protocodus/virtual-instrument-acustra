@@ -7,10 +7,10 @@ hosts. It synthesises every note in real time from six physical string models,
 a passive measured bridge and a measurement-derived guitar body. The plug-in
 contains no sample player and no recorded note audio.
 
-Start with Guitar, Model, Picking and Capture: construction presets and one
-additional measured guitar (Bellido 1978), finger/pick/thumb styles, and stereo mic, mono
-mic or an under-saddle piezo through its onboard preamp, with the piezo also
-available as a separate output or, through Piezo Mix, beneath the microphones.
+Start with Guitar, Picking and Capture: construction presets,
+finger/pick/thumb styles, and stereo mic, mono mic or an under-saddle piezo
+through its onboard preamp, with the piezo also available as a separate
+output or, through Piezo Mix, beneath the microphones.
 The strings are steel. Shape and Material directions, String Age, Tuning,
 Pluck Position, Touch, Body Amount, Stereo Width, Piezo Mix and Output remain
 directly accessible. Bridge-hand damping is a playing gesture
@@ -34,15 +34,14 @@ with real Finger recordings improve, with a tradeoff on brighter Martin
 recordings; see [the recording benchmark](Docs/recording-realism-2026-10-07.md).
 
 Recent strokes now share a gently changing picking-hand posture. Finger bass
-attack noise follows the actual contact release, note endings respond to a
-local damping-hand contact, and Classical 78 includes restrained player-body
-loss. Velocity accents, sustain and the existing note-join window remain
+attack noise follows the actual contact release, and note endings respond to
+a local damping-hand contact. Velocity accents, sustain and the existing note-join window remain
 directly playable, without added input latency or new controls. See the
 [natural-performance changes and comparisons](Docs/natural-performance-2026-10-07.md).
 The subsequent [CPU optimization](Docs/cpu-optimization-2026-10-07.md) preserves
 the rendered audio while reducing redundant pitch and pluck calculations.
 
-Guitar construction, Model, Shape, Material, Tuning, Picking and Capture use
+Guitar construction, Shape, Material, Tuning, Picking and Capture use
 directly visible radio switches; the continuous sound controls remain knobs.
 The 1.1.0 interface pairs a satin walnut chassis with honey spruce inlays,
 bone lettering and aged brass hardware. Construction stays at the left,
@@ -62,6 +61,13 @@ stronger body variations intentionally change their sound. See the
 and [realism work](Docs/realism-work.md) for measurements and limits.
 
 ## Versioned builds and packages
+
+Since 2026-10-10 (after 1.1.3) Acustra plays one guitar body, the Original:
+the Bellido 1978 (Classical 78) Model, its measured g35 body and bridge and
+its classical-only attack, sustain and player-loading policies are removed at
+the user's request. A session that chose it reloads every other setting and
+plays the Original; every Original sound is unchanged to the bit. See the
+[removal record](Docs/classic78-removal-2026-10-10.md).
 
 Version 1.1.3 adopts the October 9 listening choices: reduced close/mono
 Auditorium boom, the fixed physical-string pluck direction, Classic Pick's
@@ -153,8 +159,8 @@ its engine default, off (the plug-in starts at 50%).
   sample swept as alternating strums, then one chord eight times hand-damped,
   no two strokes the same take.
 - **Recuerdos de la Alhambra** —
-  Tárrega's tremolo study, bars 1–12 on the Bellido 1978, a classical guitar
-  here strung with steel: the thumb keeps an arpeggio
+  Tárrega's tremolo study, bars 1–12 on an Auditorium in Mahogany: the
+  thumb keeps an arpeggio
   while three fingers repeat one melody note on one string, ten strokes a
   second, each landing on a string the last stroke left ringing. The fretted
   melody stays held through the thumb slots; its written short note lengths
@@ -179,8 +185,8 @@ its engine default, off (the plug-in starts at 50%).
 | `05-alternate-tunings.wav` | Drop D, DADGAD and Open G chords | 12.3 s | −11.1 dBFS | +8.1 dB |
 | `06-playing-behaviours.wav` | A chord change over a ringing chord, CC2 bridge-hand damping, then two natural harmonics above the fretted range | 10.7 s | −11.6 dBFS | +8.6 dB |
 | `08-strummed-chords.wav` | Same-sample chords swept as alternating strums, then one chord eight times hand-damped, no two strokes the same take | 6.9 s | −4.7 dBFS | +1.7 dB |
-| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a tremolo over a thumb arpeggio on the steel-strung Bellido 1978 | 31.6 s | −11.7 dBFS | +8.7 dB |
-| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung melody over held bass on the steel-strung Bellido 1978 | 26.0 s | −11.0 dBFS | +8.0 dB |
+| `09-recuerdos-de-la-alhambra.wav` | Tarrega, Recuerdos de la Alhambra, bars 1-12: a tremolo over a thumb arpeggio on an Auditorium in Mahogany | 31.6 s | −12.8 dBFS | +9.8 dB |
+| `10-lagrima.wav` | Tarrega, Lagrima, bars 1-8: a sung melody over held bass on an Auditorium in Mahogany | 26.0 s | −11.7 dBFS | +8.7 dB |
 | `11-picking-techniques.wav` | Finger, pick and thumb on the same notes and velocity | 5.3 s | −18.4 dBFS | +15.4 dB |
 | `12-capture-types.wav` | Stereo mic, mono mic, piezo | 7.3 s | −19.1 dBFS | +16.1 dB |
 <!-- peaks-table-end -->
@@ -234,21 +240,21 @@ room, EQ or compression. What is authored, and nowhere enters the model:
 
 | File | What it is | Guitars |
 | --- | --- | --- |
-| `01-tarrega-lagrima.wav` | Tárrega, *Lágrima*, A A B B A | Bellido 1978 |
-| `02-tarrega-adelita.wav` | Tárrega, *Adelita* (mazurka), A A B B A | Bellido 1978 |
-| `03-tarrega-recuerdos-de-la-alhambra.wav` | Tárrega, *Recuerdos de la Alhambra*, complete, second ending | Bellido 1978 |
-| `04-tarrega-capricho-arabe.wav` | Tárrega, *Capricho árabe*, complete, Drop D | Bellido 1978 |
+| `01-tarrega-lagrima.wav` | Tárrega, *Lágrima*, A A B B A | Auditorium, mahogany |
+| `02-tarrega-adelita.wav` | Tárrega, *Adelita* (mazurka), A A B B A | Auditorium, mahogany |
+| `03-tarrega-recuerdos-de-la-alhambra.wav` | Tárrega, *Recuerdos de la Alhambra*, complete, second ending | Auditorium, mahogany |
+| `04-tarrega-capricho-arabe.wav` | Tárrega, *Capricho árabe*, complete, Drop D | Auditorium, mahogany |
 | `05-milan-pavana-ii.wav` | Luis Milán, *Pavana II* (1536), twice through | Parlor, mahogany |
 | `06-galilei-saltarello.wav` | Vincenzo Galilei, *Saltarello*, Drop D | Parlor, maple |
 | `07-sanz-preludio.wav` | Gaspar Sanz, *Preludio* (1674) | Parlor, spruce |
-| `08-bach-prelude-bwv999.wav` | Bach, Prelude in D minor, BWV 999 | Bellido 1978 |
+| `08-bach-prelude-bwv999.wav` | Bach, Prelude in D minor, BWV 999 | Auditorium, mahogany |
 | `09-bach-sarabande-bwv997.wav` | Bach, Sarabande from BWV 997 | Auditorium, mahogany |
 | `10-bach-gavotte-en-rondeau-bwv1006a.wav` | Bach, Gavotte en rondeau from BWV 1006a | Dreadnought, spruce |
-| `11-dowland-come-again-guitar-quartet.wav` | Dowland, *Come again*, two verses | Bellido; Parlor maple; Auditorium mahogany; Jumbo spruce |
-| `12-arbeau-belle-qui-tiens-ma-vie-guitar-quartet.wav` | Arbeau, *Belle qui tiens ma vie*, three times: two voices, then four | Auditorium maple; Bellido; Parlor mahogany; Dreadnought spruce in Drop D |
-| `13-pachelbel-canon-guitar-quartet.wav` | Pachelbel, Canon in D | Bellido; Auditorium maple; Parlor spruce; Jumbo mahogany in Drop D |
-| `14-bach-goldberg-aria-guitar-trio.wav` | Bach, Aria from the Goldberg Variations (arr. Steve Shorter and J. D. Erickson, CC BY-SA 4.0) | Bellido; Auditorium spruce; Dreadnought mahogany in Drop D |
-| `15-bach-air-bwv1068-guitar-duo.wav` | Bach, Air from BWV 1068, with repeats | Bellido; Jumbo spruce |
+| `11-dowland-come-again-guitar-quartet.wav` | Dowland, *Come again*, two verses | Dreadnought maple; Parlor maple; Auditorium mahogany; Jumbo spruce |
+| `12-arbeau-belle-qui-tiens-ma-vie-guitar-quartet.wav` | Arbeau, *Belle qui tiens ma vie*, three times: two voices, then four | Auditorium maple; Auditorium mahogany; Parlor mahogany; Dreadnought spruce in Drop D |
+| `13-pachelbel-canon-guitar-quartet.wav` | Pachelbel, Canon in D | Auditorium mahogany; Auditorium maple; Parlor spruce; Jumbo mahogany in Drop D |
+| `14-bach-goldberg-aria-guitar-trio.wav` | Bach, Aria from the Goldberg Variations (arr. Steve Shorter and J. D. Erickson, CC BY-SA 4.0) | Auditorium mahogany; Auditorium spruce; Dreadnought mahogany in Drop D |
+| `15-bach-air-bwv1068-guitar-duo.wav` | Bach, Air from BWV 1068, with repeats | Auditorium mahogany; Jumbo spruce |
 
 The strings are steel throughout, the instrument's only strings. These are
 authored interpretations, not a claim about how the pieces must go, and like
@@ -987,9 +993,8 @@ polarisation's port is `(h/a)^2` times the measured rocking mobility, the
 anchor stubs hold it with `(h/a)^2` of their stiffness, and its load reaches
 the microphones through the measured moment-to-pressure paths. `h` is the
 published height of the strings over the top at the bridge, to their lower
-bound (R. Mores, *List of guitars measured*, 2021, HSaT): 8.1 mm on g21 and
-8.6 mm on the 1978 Bellido; `a` is the 23.2 mm impact half-spacing the saddle
-lever arms already assume. Nothing is fitted. Both polarisations are one string: the normal
+bound (R. Mores, *List of guitars measured*, 2021, HSaT): 8.1 mm on g21;
+`a` is the 23.2 mm impact half-spacing the saddle lever arms already assume. Nothing is fitted. Both polarisations are one string: the normal
 loop is tuned so that, loaded by the bridge, it sounds the requested pitch,
 and the parallel loop shares that bare length (plus any end correction, zero
 as shipped), so the pair's split - the doublet each partial beats with - is
@@ -1070,8 +1075,7 @@ The full frequency and sensor results are retained in the fit report.
 
 The Original model plays steel's own bridge, g21's, on its radiation's
 poles (the paragraph after this), as part of the steel blend described
-after that; it is the only bridge the Original has, and the Bellido plays its
-own measured bridge. Until 2026-09-29 a second, 44-mode passive bridge fitted
+after that; it is the only bridge. Until 2026-09-29 a second, 44-mode passive bridge fitted
 to a custom Fylde Falstaff measured by [Carcagno et al.](https://doi.org/10.1121/1.5084735)
 (Sitka spruce top, Brazilian rosewood back and sides, normal bridge
 velocity/force with the strings damped, between strings 5 and 6) was
@@ -1142,8 +1146,7 @@ play at 0.925; above it B's bridge is whole and g21's radiation plays at
 is matched. Every part is passive and the sums are too. Each of E's bridge
 modes rings on its own radiation mode's pole, and Shape and Wood move the
 joint body by its own A0 and T1 as the rest of the construction moves, so
-its drains stay on its radiation everywhere (BodyShapeTests). Only steel on
-its Original guitar reads it; the Bellido does not use it.
+its drains stay on its radiation everywhere (BodyShapeTests).
 On Set 21's pieces and a single-note sweep this body keeps 83% / 85% of the
 midpoint's measured move away from B+D (body under the treble notes, 63-80
 Hz, 159/200/317 Hz early, tilt), and costs +2-4% CPU per 64-frame block over
@@ -1191,14 +1194,7 @@ sets how much faster a string's upper partials decay than its fundamental: with
 the bridge disconnected the junction supplies 30.3 dB/s of extra decay over
 400--600 Hz but only 1.1 dB/s over 3000--4500 Hz, and that collapse is why the
 model's upper partials formerly rang about 7 dB/s too long against the
-reference recordings. The Bellido's own modal fit loses the same conductance
-between its overlapping high modes, and since 2026-09-30 it takes the same
-floor (heave alone, unscaled, as on the Original): without it the Bellido's
-strings kept 4-10 kHz partials that a third of the Original's drain would
-leave, and it played 11-15 dB over the recordings at 5-10 kHz against the
-Original's 1-5. Over 5-10 kHz the floor triples the Bellido's port
-conductance (BodyShapeTests), and the Bellido plays about 0.55 LU quieter,
-which the construction loudness table takes back (Construction controls).
+reference recordings.
 
 Every string on the bridge is a member of that junction whether or not it is
 played: F_b = Σ Z_i (2a_i − x_b) and x_b = Y_b F_b, summed over all six. An
@@ -1215,8 +1211,7 @@ still carries as an idle string's wave.
 
 The body's normal force and normalized moment excite measured radiation modes:
 132 shared poles on steel's g21 flamenca blanca, measured in a semi-reverberant
-music room (the Bellido's own bank is described in
-[Measured guitars](Docs/body-models-2026-09-08.md)). The archive
+music room. The archive
 contains normal hammer impacts at both sides of the bridge, observed by three
 microphones. Their raw complex responses retain a common time origin and
 relative phase. For bass and treble forces `Fb` and `Ft`, the inputs are
@@ -1259,8 +1254,8 @@ chose over the bridge's own treble/bass pair on all four pairs of the
 heard. The g21 setup used a floor absorber, with its first room reflections
 12 ms or more away. **Mono mic** uses the upper-bout microphone alone. It
 sends identical samples to both channels; the stereo pair remains the
-default. g21 was measured nylon-strung, as was the Bellido, so
-g21 remains an adaptation for steel, not a measured steel-string body.
+default. g21 was measured nylon-strung, so it remains an adaptation for
+steel, not a measured steel-string body.
 
 The generator fits all six impact-to-microphone paths jointly, then checks
 both those paths and their force/moment combinations against the existing
@@ -1312,8 +1307,8 @@ than 330 Hz, while the upper-bout microphone hears it 2 dB stronger. The Eastman
 dreadnought's picked E2 and A#2 stand 11-13 dB stronger against their 2nd
 and 3rd harmonics than the engine rendered them through the bridge pair.
 With the gain, a picked E2 lands within 1 dB of that recording and equally
-in both channels. The Bellido and the upper-bout microphone hear
-their air modes as measured. Shape and wood
+in both channels. The upper-bout microphone hears the air modes as
+measured. Shape and wood
 still apply their documented construction morphs and the existing Q limits;
 even the default Dreadnought is therefore a transformation of the measurement.
 The rejected bridge-local direct branch has been removed. The existing fixed
@@ -1343,10 +1338,9 @@ modes above T1 follow the equal-thickness plate law f ∝ 1/A_top with their
 radiation scaled by the area they radiate from, and the A0/T1 radiation ratios
 come from the same model's eigenvectors. On steel that puts A0/T1 at 111/184 Hz
 for the Parlor, 96/171 for the Auditorium, 85/159 for the Dreadnought and
-76/146 for the Jumbo. Each measured body has an anchor the other shapes are
-placed relative to: the Bellido's is its own classical box in the Auditorium
-slot; the Original's is the Dreadnought, under
-the wider box the local line authored (air 98 Hz, modes x0.900, bass x1.28),
+76/146 for the Jumbo. The measured body has an anchor the other shapes are
+placed relative to: the Dreadnought, under the wider box the local line
+authored (air 98 Hz, modes x0.900, bass x1.28),
 chosen by ear on 2026-09-24 on all four blind pairs over the fitted transform
 (101 Hz, x0.972, x1.08). The benchmark split on it - steel training -0.5%,
 the never-fitted Eastman E1D flat-top rows, a real dreadnought, -5.2%, but
@@ -1365,30 +1359,26 @@ Auditorium / Taylor style (spruce, the
 [Grand Auditorium family](https://blog.taylorguitars.com/buyers-resources/an-introduction-to-taylor-acoustic-guitar-body-shapes)),
 Parlor / Fender style (spruce, as in the
 [PS-220E](https://www.fender.com/products/ps-220e-parlor)), all three on the
-Original model and its own bridge, and Bellido 1978 (the measured Bellido in
-its own Auditorium slot, in Mahogany, the kept wood nearest the cedar it was
-built of). These reuse the bounded construction directions;
-they are not independently measured models of those manufacturers. Each switch
-changes Shape, Material and Model with host automation gestures,
-leaving tuning and output where the player set them. Other combinations show Custom
-construction.
+Original body and its own bridge. These reuse the bounded construction
+directions; they are not independently measured models of those
+manufacturers. Each switch changes Shape and Material with host automation
+gestures, leaving tuning and output where the player set them. Other
+combinations show Custom construction.
 
-The additional Bellido model is documented in
-[Measured guitars](Docs/body-models-2026-09-08.md); its Guitar preset selects
-the native construction together. Three steel models once beside it, the
-Washburn 1897, Santa Cruz OM 2022 and Martin D18V 2007, were fitted from Mark
-Rau's measurements, which carry no redistribution license, so their
-coefficients are not published with this repository and the models are
-retired. Their unintegrated local fitting generator was removed during the
-2026-10-09 cleanup. The
-`guitarModel` host parameter is appended at version 7 with two choices; old
-saved states default to Original, and a state that chose a retired model
-reloads as Original rather than clamping onto the Bellido. Since
+The Original is the only guitar model. The Bellido 1978, a second measured
+guitar (Mores g35, a classical strung with steel), was removed on 2026-10-10
+at the user's request; three steel models fitted from Mark Rau's
+measurements, which carry no redistribution license, were retired before
+publication. The `guitarModel` host parameter keeps its ID, AU version hint 7,
+index and two-choice range as a non-automatable legacy slot, like the three
+retired capture slots, so a host that addresses parameters by index finds
+every later control where it was; nothing reads it, and a session that chose
+the Bellido reloads every other setting and plays the Original. Since
 2026-09-29 a saved state carries `stateVersion` 2; an older one loads with
 its `stringMaterial` and `bridgeModel` values dropped, so a nylon or Fylde
-session plays steel on the Original bridge (on the Bellido if it chose it),
-and with Cedar as Mahogany. `piezoMix` is appended after every earlier
-parameter and loads at 0 from an older state.
+session plays steel on the Original bridge, and with Cedar as Mahogany.
+`piezoMix` is appended after every earlier parameter and loads at 0 from an
+older state.
 
 Shape moves the bridge's modes by the same coupled-model factors as the
 radiation - its A0 group, its modes up to the body's T1 and the plate modes
@@ -1397,18 +1387,8 @@ interaction with the strings. Only modal stiffness moves: each bridge residue
 matrix and Q is retained, so a fixed shape keeps the passive modal
 construction. Body Material changes the radiation and the bridge that belongs
 to it. Steel's own bridge takes the radiation's poles (Bridge, sympathetic
-strings and body). The Bellido's bridge keeps under every Shape and Wood the
-relation to its radiation it has at its anchor: a bridge mode that is the
-same resonance as a radiation mode (the generator's twin test: inside its
-half-power band and itself resolved; 23 of its 50 modes) moves by exactly
-the factor that radiation mode moves by from the anchor, and the others take
-the same maps by class, so a drain stays on the resonance it drains. Both
-preserve ringing strings and overlapping re-pluck tails. Each anchor leaves
-the radiation exactly as fitted or measured: the Original's Dreadnought and
-the Bellido's own box, a classical. The Bellido's anchor is the identity,
-so at its own box and the cedar it was built of its bridge would be its
-measurement to the bit; Cedar is not a Body Material choice, so every Wood
-moves it relative to that cedar, Mahogany least.
+strings and body), which preserves ringing strings and overlapping re-pluck
+tails. The anchor, the Dreadnought, leaves the radiation exactly as fitted.
 If a body crossfade is already sounding,
 the latest selection waits for its remaining duration (at most 40 ms), then
 uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
@@ -1417,22 +1397,21 @@ way: its mobility crossfades over 20 ms from the modes that were sounding,
 and where Shape or Wood only retune the same measured bank its bridge and
 body modes keep ringing from where they were rather than restarting from
 rest; the bridge's motion is carried across the switch sample. Above 5 kHz a
-Shape, Wood or Model switch now stays within about 2 dB of the
+Shape or Wood switch now stays within about 2 dB of the
 steady sound where it used to tick 12-48 dB over it; a retune ticks 2-9 dB
 over (from 10-30).
 
 Every construction and every Picking plays at one loudness, the default
 construction's (Original, Dreadnought, Spruce, Finger), at the user's
 request: `Source/DSP/ConstructionLoudnessData.h` holds a gain for each of
-the 72 Model x Shape x Wood x Picking cells, measured by [`CalibrateConstructionLoudness.py`](Tools/CalibrateConstructionLoudness.py)
+the 36 Shape x Wood x Picking cells, measured by [`CalibrateConstructionLoudness.py`](Tools/CalibrateConstructionLoudness.py)
 as BS.1770 integrated loudness over a fixed phrase set of strums, single
 notes and held chords from soft to hard, and multiplied into the output
 reference through the same 20 ms smoothing, so a change glides the level
 rather than stepping it. The mono microphone and the piezo have their own
 factor per cell and stay level with the stereo microphones. Every cell and
 capture is within 1 LU of the default, where the same playing spread over
-about 15 LU before (steel on the Bellido a median 4-6 LU under the
-Original with the fingers or thumb). Only the level
+about 15 LU before. Only the level
 moves: each construction's samples are its old ones times its gain, and the
 default construction's microphones are unchanged to the bit. A Pick cell whose hardest playing would come within 1 dB of
 the safety limiter sits up to 0.9 LU under the default (Known gaps). The
@@ -1442,9 +1421,8 @@ resonances meet it (Known gaps).
 
 | Control | Audible behavior |
 | --- | --- |
-| **Model** | Original or Bellido 1978; the named model selects its own measured bridge and radiation. The Bellido is steel on its own classical top at that top's measured mobility, about 1.8 times the steel-string level steel's own bridge is brought to, so it drains the strings a little faster (E4 11.7 dB/s against 10.0), and it takes the Original's plate conductance floor above 2 kHz. The Original has one bridge, steel's own (g21's); there is no bridge choice. |
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
-| **Body Material** | Spruce, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. Each measured body is moved relative to the wood it was built of: the Original's g21 is heard as measured at Spruce; the Bellido was built of cedar, which is not a choice, so every Wood moves it, Mahogany least. A session saved with Cedar loads as Mahogany. |
+| **Body Material** | Spruce, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. The body is moved relative to the wood it was built of: g21 is heard as measured at Spruce. A session saved with Cedar loads as Mahogany. |
 | **Tuning** | Standard, Drop D, DADGAD, Open G or Half-step down: the six open strings and the notes each can reach. A retuned string keeps its gauge (its linear mass), so its tension, impedance and stiffness follow its new pitch, as on a real guitar. |
 | **Picking** | Finger retains the calibrated contact and applies its finite release slip in full, including at maximum velocity, with normalized displacement. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity, retaining its slip ratio to the full-velocity release. Finger and Thumb have a soft double-corner contact burst with no white hiss. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
@@ -1457,7 +1435,7 @@ resonances meet it (Known gaps).
 | **Stereo Width** | Blends the measured stereo pair toward mono; Mono mic and Piezo ignore width and send identical samples to both channels. |
 | **Output** | Final gain, default 0 dB; exactly linear through −1 dBFS, then bounded by a headroom-only safety limiter. |
 
-Original and Bellido Stereo mic use the measured treble-bridge/upper-bout pair. Mono mic uses the
+Stereo mic uses the measured treble-bridge/upper-bout pair. Mono mic uses the
 upper-bout microphone alone; it does not sum two spaced microphone signals and
 therefore avoids their phase cancellation. Piezo observes net saddle force
 before body radiation. These observations never feed back into the instrument.
@@ -1608,8 +1586,7 @@ sections apply this contour to the summed microphone pressure. The previous
 per-mode weighting could disrupt cancellation between modal tails and turn
 an intended low-mid cut into a boost. The correction preserves the physical
 bridge and radiation poles, never reaches the piezo, and keeps separate
-histories for each bank during construction fades. Classical 78 retains its
-own two-section capture contour. See the
+histories for each bank during construction fades. See the
 [body and capture audit](Docs/body-capture-2026-10-08.md).
 Its level keeps the default construction at its loudness, and every
 construction was re-levelled within +-1 LU.
@@ -1617,19 +1594,17 @@ construction was re-levelled within +-1 LU.
 renders of the five sources (twice, the engine in the loop, after any change
 to the Original's radiation).
 
-**Model brightness balance.** Both models also receive a small reciprocal
-tilt, requested by the listener on 2026-10-02 to bring each about 25% toward
-the other's brightness. Original brightens by 0.4375 dB/octave around 1 kHz;
-Bellido warms by the same amount. The tilt stops changing below 60 Hz and
-above 10 kHz. [`Source/DSP/ModelConvergenceData.h`](Source/DSP/ModelConvergenceData.h)
-is applied once to the completed radiation bank, including its high-frequency
-continuation. It keeps each model's poles, mode count, complex residue phases
-and physical bridge/string behavior; the summed microphone phase may move.
-It adds no per-sample processing. The piezo pickup response stays intact,
-and the existing construction level trims are recalibrated separately.
-[`Tools/FitModelConvergence.py`](Tools/FitModelConvergence.py) checks the
-brightness movement from matched before/after renders; a broad voicing
-does not force each note, capture or decay window to move by exactly 25%.
+**Microphone brightness tilt.** The microphones also receive a small
+tilt, 0.4375 dB/octave brighter around 1 kHz, chosen on 2026-10-02 when the
+listener asked the two models then shipping to come about 25% closer to each
+other's brightness; the Original keeps it after the second model's removal.
+The tilt stops changing below 60 Hz and above 10 kHz.
+[`Source/DSP/MicrophoneBalanceData.h`](Source/DSP/MicrophoneBalanceData.h)
+holds it; it is applied once to the completed radiation bank, including its
+high-frequency continuation. It keeps the poles, mode count, complex residue
+phases and physical bridge/string behavior; the summed microphone phase may
+move. It adds no per-sample processing, and the piezo pickup response stays
+intact.
 
 **Room.** `EngineParameters::room`, the plug-in's Room, puts a small studio
 (5.2 x 4.1 x 2.7 m, the microphones 0.32 m from the guitar) around the
@@ -1911,8 +1886,8 @@ The JUCE-free suites cover:
   construction with every Picking, BS.1770, within 3 LU of the default;
   the default's microphone levels exactly 1);
 - every construction a player can choose, crossed
-  (Tests/ConstructionMatrixTests.cpp): all 360 settings of Model x Shape x
-  Wood x Tuning x Capture strum their tuning's open strings at 48 kHz and
+  (Tests/ConstructionMatrixTests.cpp): all 180 settings of Shape x Wood x
+  Tuning x Capture strum their tuning's open strings at 48 kHz and
   stay finite, under full scale, audible and within 9 dB (K-weighted) of the
   default construction on the same tuning and capture; the Piezo output is
   bit-identical whatever Capture selects and equals Main on Piezo, the mono
@@ -1926,7 +1901,7 @@ The JUCE-free suites cover:
   and vibrato sweeps, bend under
   RPN changes, the MPE lower zone, string-per-channel, notes off and panic,
   host edge cases, control changes, and every construction control - Shape,
-  Wood, Model, Width, Age, Pluck Position, Touch and all five
+  Wood, Width, Age, Pluck Position, Touch and all five
   tunings - switched under a ringing chord), with and without Gather Chords: finite,
   repeatable, allocation-free, independent of block size, and identical when
   spelt through the helpers a front end without MIDI uses; plus canonical
@@ -1995,14 +1970,11 @@ The JUCE-free suites cover:
 - the plate conductance floor, proven to shorten the 2--4 kHz tail by more than
   2 dB while leaving the 80--200 Hz tail within 1.5 dB, to be exactly inert at
   a zero plateau whatever its corner, and to leave the measured modal weights
-  scaling exactly with bridge mobility; on the Bellido it at least doubles
-  the 5-10 kHz port conductance for every Shape and Wood;
-- the radiation above each bank's fitted band: for every model, Shape, Wood
-  and three rates, no third octave from 1 to 16 kHz falls more than 8 dB
-  under the one below it, the top band stays within 18 dB of 2-4 kHz, and
-  8-16 kHz agrees across rates within 0.3 dB; an independent recurrence
-  rebuilds the Bellido's continuation from its definition and matches the
-  engine's impulse response to 1e-5;
+  scaling exactly with bridge mobility;
+- the radiation above the bank's fitted band: for every Shape, Wood and
+  three rates, no third octave from 1 to 16 kHz falls more than 8 dB under
+  the one below it, the top band stays within 18 dB of 2-4 kHz, and 8-16 kHz
+  agrees across rates within 0.3 dB;
 - Piezo Mix on one time base: the mic x piezo cross-spectra at 48 and 96 kHz
   line up with no lag (under 20 us; the old seven-sample offset read 74 us)
   and the blend's third-octave excess over the sensors' power sum agrees
@@ -2051,8 +2023,8 @@ The JUCE-free suites cover:
 - audible construction controls, bounded fitted calibration, finite hostile
   inputs and a final limiter that leaves ordinary output linear;
 - finite, bounded Main and Piezo outputs at 8, 44.1, 48, 88.2, 96, 192 and
-  384 kHz while every automatable control moves, Model, Tuning and
-  Capture among them, and a measured six-string runtime ratio of about
+  384 kHz while every automatable control moves, Tuning and Capture
+  among them, and a measured six-string runtime ratio of about
   0.035× realtime (Apple silicon) against a 0.25× gate;
 - the fractional-delay read: a slewing bend never clicks above 14 kHz and its
   per-round-trip loss stays within a factor of 2.5 across the fretboard at
@@ -2161,31 +2133,29 @@ engine.
   Position 0 - reaches the output's soft safety limiter on most
   constructions. Since the top's spring-back (2026-10-01) its peak before
   the limiter is up to +1.59 dBFS on the stereo microphones, past the knee on
-  20 of the 24 constructions (7 before), -0.13 on the mono (5, from 2) and
-  +2.02 on the piezo (all 24, as before); the default construction's reaches
-  -1.20 dBFS on the stereo microphones, 0.2 dB under the knee, where it kept
-  2.1 dB under it. A hand at the bridge holds the most force against its
-  note, and six strings released on one sample add their releases. That
+  20 of the 24 constructions then shipping (7 before), -0.13 on the mono (5,
+  from 2) and +2.02 on the piezo (all 24, as before); the 24 included the
+  Bellido 1978's 12, removed on 2026-10-10. The default construction's
+  reaches -1.20 dBFS on the stereo microphones, 0.2 dB under the knee, where
+  it kept 2.1 dB under it. A hand at the bridge holds the most force against
+  its note, and six strings released on one sample add their releases. That
   one segment is the peak: a chord on one channel is strummed (Performer),
   and the hardest case's strums - 9 ms and 4 ms a string - stay under the
-  knee on 22 of the 24 constructions on the stereo microphones (at least
-  1 dB under on 20; the Bellido Parlor in mahogany and spruce reach -0.04
-  and -0.06 dBFS) and at least 1 dB under on 23 on the mono. Six on one
+  knee on 22 of the 24 on the stereo microphones (at least 1 dB under on 20)
+  and at least 1 dB under on 23 on the mono; the two over the knee were the
+  Bellido's Parlor in mahogany and spruce (-0.04 and -0.06 dBFS), so every
+  remaining construction's strums stay under it. Six on one
   sample reaches the engine from a chord spread over channels (MPE,
   string-per-channel). Keeping it under the knee there on every
   construction at the same parity means lowering every construction, the
   default with it, by 2.6 dB (3.6 for the calibration's 1 dB margin),
   which is the user's to choose.
-  A Model switch under a ringing chord also still swells:
-  steel from the Original to the Bellido reaches 3.3 times the louder
-  steady chord for about 0.3 s, the Original's less-drained strings pouring
-  through the Bellido's mobile top.
 - Loudness is matched over a phrase set, not note by note. Across
-  constructions and tunings one open strum sat -8.0 to +5.5 dB from the
-  default construction's on the same strings (ConstructionMatrixTests,
-  measured while nylon was among them): the low extreme was nylon on the
-  Bellido's Jumbo Maple in DADGAD (mono mic), the high one steel on the Jumbo
-  in Half-step down, whose low E-flat lands on the Jumbo's air mode.
+  constructions and tunings one open strum sits -6.6 to +6.0 dB from the
+  default construction's on the same strings and capture
+  (ConstructionMatrixTests): the low extreme is the Parlor in Spruce in
+  Standard (mono mic), the high one the Jumbo in Spruce in Half-step down
+  (stereo mic), whose low E-flat lands on the Jumbo's air mode.
 
 - Single notes' radiated level is still rougher from note to note than the
   open recordings', though less than it was. Over E2-C6, 1 s RMS at the
@@ -2689,8 +2659,7 @@ set without it.
   and the plate-Q damping, and no correction is derived from them. A bridge
   mobility measured strung on the same body would show whether a real guitar
   pulls as far.
-- Shape and Body Material morph the measured body the Model selects — the
-  g21 flamenca on the Original, the 1978 Bellido's own on the Bellido — and
+- Shape and Body Material morph one measured body, the g21 flamenca, and
   are not separate measurements of four guitar sizes or three woods. Shape
   re-couples the measured A0/T1 pair for a published box and scales the
   plate modes with the top, but the Original's anchor is an authored
@@ -2711,9 +2680,10 @@ set without it.
   208.7 Hz rocking mode keeps Q 27.4 where the population's rocking modes
   in 200-280 Hz measure Q 11-21, because the rule halves an excess that is
   concentrated in one mode; a rule by mode class would bring in a
-  classification and a constant of its own, and is not made. The separate Model
-  menu adds the matched Bellido bridge/radiation bank; the three steel
-  guitars once beside it are retired (Construction controls).
+  classification and a constant of its own, and is not made. No second
+  measured body remains beside it: the Bellido 1978's matched bridge and
+  radiation bank, once a separate Model, was removed on 2026-10-10, and the
+  three steel guitars before it were retired (Construction controls).
 - The band audits now measure a distance the build chose rather than an error
   it is trying to close. With the body moved by ear toward the flat-top rows,
   the model over the first 350 ms carries 4.0 dB more energy than the archtop
@@ -2906,6 +2876,17 @@ set without it.
   assert the behaviour directly.
 
 ## Release history
+
+### 2026-10-10 — Bellido 1978 (Classical 78) removed
+
+At the user's request the second guitar model, the steel-strung Bellido 1978
+(Mores archive g35), is removed with its measured body and bridge banks, its
+microphone contour and its classical-only attack, sustain and player-loading
+policies. The Original is the only guitar body; its sound is unchanged in the
+matched native comparison. The `guitarModel` host parameter remains as a
+hidden, non-automatable legacy slot, so saved sessions and index-addressed
+automation keep working, and a session that chose the Bellido plays the
+Original. See [the removal record](Docs/classic78-removal-2026-10-10.md).
 
 ### 2026-10-09 — project cleanup
 
@@ -3680,19 +3661,16 @@ microphone recording cannot validate a pickup's response.
 `--self-test --renderer ./build-dsp/AcustraPerformanceRenderer`
 checks the scoring, string scheduling and renderer without downloading audio.
 For dry-note comparisons, `AcustraPhysicalFitRenderer` takes the optional
-`--models-only`/`--smoke` mode, then `--shape`, `--body-material`, `--archtop-picking` and
-`--guitar-model`, the output directory and the 24 calibration arguments in
+`--models-only`/`--smoke` mode, then `--shape`, `--body-material` and
+`--archtop-picking`, the output directory and the 24 calibration arguments in
 `OptimizePhysicalModel.NAMES` order (the obsolete 37-value and nylon-era
-48-value vectors are refused). `--guitar-model bellido1978` asks which measured
-body the recordings sit closest to; it measures, it does not choose. The
-selected shape, wood, guitar model and archtop picking tool are recorded in each
-model manifest; without them every row renders at the default Dreadnought and
-the archtop rows with Finger.
-`AcustraExternalCorpusRenderer` accepts the same `--shape`, `--body-material`
-and `--guitar-model` options; `BenchmarkOpenCorpora.py` forwards them and
-records the returned controls. Wood defaults to Spruce even when Bellido is
-selected. To benchmark the Bellido preset explicitly, use
-`--shape auditorium --body-material mahogany --guitar-model bellido1978`.
+48-value vectors are refused). The selected shape, wood and archtop picking
+tool are recorded in each model manifest, with `guitar_model` fixed at
+`original` so new runs still pair with earlier ones; without them every row
+renders at the default Dreadnought and the archtop rows with Finger.
+`AcustraExternalCorpusRenderer` accepts the same `--shape` and
+`--body-material` options; `BenchmarkOpenCorpora.py` forwards them and
+records the returned controls.
 For an explicit performance event file, `AcustraPerformanceRenderer` also
 accepts a trailing `--tuning standard|drop_d|dadgad|open_g|half_step_down`
 option (the plug-in's five tunings). String/fret validation uses the selected
@@ -3783,7 +3761,7 @@ python3 Tools/BenchmarkPerformances.py --dataset /path/to/guitarset \
 python3 Tools/FitCaptureVoicing.py --bank /tmp/bank --open /tmp/open \
   --guitarset /tmp/guitarset --write-header [--level-db DB]
 python3 Tools/CalibrateConstructionLoudness.py \
-  --renderer ./build-dsp/AcustraPerformanceRenderer --write-header --models original
+  --renderer ./build-dsp/AcustraPerformanceRenderer --write-header
 ```
 
 `--level-db` is the level that keeps the default construction's loudness

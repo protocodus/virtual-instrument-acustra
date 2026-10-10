@@ -149,14 +149,12 @@ double tempoNumber(const std::string& text)
     return value;
 }
 
-// part <id> model= shape= material= tuning= picking= capture= age= pluck=
-//      touch= body= width= output= release= piezo= room= pan= gain= level=
+// part <id> shape= material= tuning= picking= capture= age= pluck= touch=
+//      body= width= output= release= piezo= room= pan= gain= level=
+// (model= is refused: there has been one guitar model since 2026-10-10)
 Part readPart(std::istringstream& line)
 {
     using namespace acustra;
-    static const std::map<std::string, GuitarModel> models {
-        { "original", GuitarModel::Original },
-        { "bellido1978", GuitarModel::Bellido1978 } };
     static const std::map<std::string, BodyShape> shapes {
         { "parlor", BodyShape::Parlor }, { "auditorium", BodyShape::Auditorium },
         { "dreadnought", BodyShape::Dreadnought }, { "jumbo", BodyShape::Jumbo } };
@@ -186,8 +184,7 @@ Part readPart(std::istringstream& line)
             throw std::runtime_error("part field without '=': " + field);
         const auto key = field.substr(0, equals);
         const auto value = field.substr(equals + 1);
-        if (key == "model") parameters.guitarModel = lookup(models, value, "model");
-        else if (key == "shape") parameters.shape = lookup(shapes, value, "shape");
+        if (key == "shape") parameters.shape = lookup(shapes, value, "shape");
         else if (key == "material") parameters.bodyMaterial = lookup(materials, value, "material");
         else if (key == "tuning") parameters.tuning = lookup(tunings, value, "tuning");
         else if (key == "picking") parameters.picking = lookup(pickings, value, "picking");
@@ -909,7 +906,7 @@ int smokeTest()
         std::ofstream file(source);
         file << "ACUSTRA_REPERTOIRE_V1\n"
                 "title smoke\nsample_rate 48000\ntail 0.3\n"
-                "part a model=bellido1978 shape=auditorium material=mahogany pan=-0.5\n"
+                "part a shape=auditorium material=mahogany pan=-0.5\n"
                 "part b shape=parlor material=maple tuning=drop_d pan=0.5 level=-3\n"
                 "e 0.000 a chord 45:0.5:0 52:0.45:0.02 57:0.5:0.04 64:0.6:0.06\n"
                 "e 0.000 b on 38 0.6\n"

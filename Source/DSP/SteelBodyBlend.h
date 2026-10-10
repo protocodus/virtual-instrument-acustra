@@ -85,7 +85,6 @@
 // the measured frequency of each g21 or B mode:
 //   bridge = w E_lo + [f < band ? (1-w) : 1] Y_own
 //   body   = w E_lo + [f < band ? (1-w) : 1 - 0.2 w] g21
-// The Bellido reads none of it.
 //
 // To hear E changed, rebuild with its macros, for example
 //   cmake -DCMAKE_CXX_FLAGS='-DACUSTRA_STEEL_BLEND_JOINT_BAND_HZ=20000.0f

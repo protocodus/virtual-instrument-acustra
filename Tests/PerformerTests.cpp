@@ -123,9 +123,6 @@ void applyControl(acustra::EngineParameters& parameters, bool& gather,
         case Kind::Wood:
             parameters.bodyMaterial = static_cast<acustra::BodyMaterial>(index);
             break;
-        case Kind::Model:
-            parameters.guitarModel = static_cast<acustra::GuitarModel>(index);
-            break;
         case Kind::Width: parameters.stereoWidth = 0.01f * control.value; break;
         case Kind::Age: parameters.stringAge = 0.01f * control.value; break;
         case Kind::Pluck: parameters.pluckPosition = 0.01f * control.value; break;

@@ -1,5 +1,4 @@
 #include "DSP/AcustraEngine.h"
-#include "DSP/GuitarModelData.h"
 #include "DSP/MeasuredBodyData.h"
 #include "DSP/MeasuredBridgeData.h"
 #include "DSP/MeasuredJointBodyData.h"
@@ -118,16 +117,10 @@ using Complex = std::complex<double>;
 using Matrix = std::array<Complex, 3>;
 constexpr double pi = std::numbers::pi;
 
-acustra::BodyShape nativeShape(acustra::GuitarModel model)
-{
-    return model == acustra::GuitarModel::Original
-        ? acustra::BodyShape::Dreadnought : acustra::BodyShape::Auditorium;
-}
-
 // The A0 extension belongs to the Original's 90.8 Hz radiation mode and
 // its 90.3 Hz joint-body companion. Read their actual digital decay, rather
 // than reimplementing the frequency-selection rule, and keep the 83.5 Hz
-// joint mode, plate modes and Bellido on their recorded damping.
+// joint mode and plate modes on their recorded damping.
 void testOriginalAirDecayIsLocalized()
 {
     namespace d = acustra::detail;
@@ -178,29 +171,6 @@ void testOriginalAirDecayIsLocalized()
                    "the air decay extension changed the joint T1 damping");
         }
 
-        acustra::EngineParameters bellido;
-        bellido.guitarModel = acustra::GuitarModel::Bellido1978;
-        bellido.shape = nativeShape(bellido.guitarModel);
-        auto named = std::make_unique<Engine>();
-        named->setParameters(bellido);
-        // Isolate the measured/free Q from the authored player-contact loss.
-        // The latter has its own actual-pole and passive-mobility contract.
-        auto realism = named->performanceRealism();
-        realism.playerBodyLoading = false;
-        named->setPerformanceRealism(realism);
-        named->prepare(rate, 64);
-        const auto& namedCalibration = Access::calibration(*named);
-        const float woodQ = Access::woodFactors(bellido)[1];
-        for (const int index : { 0, 1, 5 })
-        {
-            const float measuredQ = d::bellidoBodyModes[static_cast<std::size_t>(index)].q;
-            const float expectedQ = measuredQ * woodQ * namedCalibration.bodyQScale;
-            expect(Access::radiationPole(bellido, namedCalibration, index)[1] == expectedQ,
-                   "the Original's air adjustment changed a Bellido pole's measured Q");
-            const auto actual = digitalDecay(*named, index, rate);
-            expect(std::abs(actual[1] / expectedQ - 1.0) < 0.005,
-                   "a Bellido digital pole no longer carries its measured Q");
-        }
         std::cout << "Original A0 at " << rate << " Hz: " << air[0]
                   << " Hz, free T60 " << air[2] << " s\n";
     }
@@ -257,65 +227,62 @@ double expectedPhase(const Engine& e, double frequency, int string, double rate)
 void testPhaseAndPassivity()
 {
     double worstCents = 0, minimumReal = 0;
-    std::array<int,6> worstCase {};
-    for (int model = 0; model < 2; ++model)
-        for (int rate : { 8000, 24000, 48000, 96000 })
+    std::array<int,5> worstCase {};
+    for (int rate : { 8000, 24000, 48000, 96000 })
+    {
+        acustra::EngineParameters p;
+        auto e = std::make_unique<Engine>();
+        e->setParameters(p); e->prepare(rate, 64);
+        const auto reference = Access::bridge(*e);
+        for (int shape = 0; shape < 4; ++shape)
         {
-            acustra::EngineParameters p;
-            p.guitarModel = static_cast<acustra::GuitarModel>(model);
-            p.shape = nativeShape(p.guitarModel);
-            auto e = std::make_unique<Engine>();
-            e->setParameters(p); e->prepare(rate, 64);
-            const auto reference = Access::bridge(*e);
-            for (int shape = 0; shape < 4; ++shape)
-            {
-                p.shape = static_cast<acustra::BodyShape>(shape);
-                e->setParameters(p);
-                // A change inside the previous one's 20 ms bridge fade waits
-                // for it to end, so let each settle before reading it.
-                std::vector<float> left(64), right(64);
-                for (int done = 0; done < rate / 20; done += 64)
-                    e->process(left.data(), right.data(), 64);
-                const auto actual = Access::bridge(*e);
-                // The authored high-band floor has no measured geometry
-                // map, so even non-native shapes must preserve it exactly.
-                const auto last = actual.heaveModes.size()-1;
-                expect(actual.heaveModes[last].denominator1
-                           == reference.heaveModes[last].denominator1
-                    && actual.heaveModes[last].denominator2
-                           == reference.heaveModes[last].denominator2
-                    && actual.residueHeave[last] == reference.residueHeave[last],
-                    "shape changed the unmapped conductance floor");
-                for (int string = 0; string < 6; ++string)
-                    for (int fret : { 0, 7, 19 })
-                    {
-                        const double f = 440*std::exp2(
-                            (Access::voices(*e)[string].openMidi+fret-69)/12.0);
-                        const double error = std::abs(expectedPhase(*e,f,string,rate)
-                            -Access::phase(*e,static_cast<float>(f),string));
-                        const double cents = 1200/std::log(2.0)*error*f/rate;
-                        if (cents > worstCents)
-                        {
-                            worstCents = cents;
-                            worstCase = {model,rate,shape,string,fret,
-                                         static_cast<int>(std::round(f))};
-                        }
-                    }
-                for (int bin = 0; bin < 60; ++bin)
+            p.shape = static_cast<acustra::BodyShape>(shape);
+            e->setParameters(p);
+            // A change inside the previous one's 20 ms bridge fade waits
+            // for it to end, so let each settle before reading it.
+            std::vector<float> left(64), right(64);
+            for (int done = 0; done < rate / 20; done += 64)
+                e->process(left.data(), right.data(), 64);
+            const auto actual = Access::bridge(*e);
+            // The authored high-band floor has no measured geometry
+            // map, so even non-native shapes must preserve it exactly.
+            const auto last = actual.heaveModes.size()-1;
+            expect(actual.heaveModes[last].denominator1
+                       == reference.heaveModes[last].denominator1
+                && actual.heaveModes[last].denominator2
+                       == reference.heaveModes[last].denominator2
+                && actual.residueHeave[last] == reference.residueHeave[last],
+                "shape changed the unmapped conductance floor");
+            for (int string = 0; string < 6; ++string)
+                for (int fret : { 0, 7, 19 })
                 {
-                    const auto y = mobility(actual,
-                        60*std::pow(std::min(10000.0,.40*rate)/60,bin/59.0),rate);
-                    for (int string = 0; string < 6; ++string)
+                    const double f = 440*std::exp2(
+                        (Access::voices(*e)[string].openMidi+fret-69)/12.0);
+                    const double error = std::abs(expectedPhase(*e,f,string,rate)
+                        -Access::phase(*e,static_cast<float>(f),string));
+                    const double cents = 1200/std::log(2.0)*error*f/rate;
+                    if (cents > worstCents)
                     {
-                        const double u = (string-2.5)/2;
-                        const double real = (y[0]+2*u*y[1]+u*u*y[2]).real();
-                        minimumReal = std::min(minimumReal,real);
-                        expect(real >= -2e-6,
-                               "shaped digital bridge acquired active mobility");
+                        worstCents = cents;
+                        worstCase = {rate,shape,string,fret,
+                                     static_cast<int>(std::round(f))};
                     }
+                }
+            for (int bin = 0; bin < 60; ++bin)
+            {
+                const auto y = mobility(actual,
+                    60*std::pow(std::min(10000.0,.40*rate)/60,bin/59.0),rate);
+                for (int string = 0; string < 6; ++string)
+                {
+                    const double u = (string-2.5)/2;
+                    const double real = (y[0]+2*u*y[1]+u*u*y[2]).real();
+                    minimumReal = std::min(minimumReal,real);
+                    expect(real >= -2e-6,
+                           "shaped digital bridge acquired active mobility");
                 }
             }
         }
+    }
     std::cout << "shape actual-biquad phase error cents=" << worstCents
               << " minimum mobility real=" << minimumReal << " case=";
     for (int field : worstCase) std::cout << field << ',';
@@ -391,80 +358,6 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
     expect(worst < 1e-12, "a twinned bridge mode is not its radiation mode's pole");
 }
 
-// The Bellido's bridge belongs to its radiation's guitar too: it keeps each
-// mode that is the same resonance as a radiation mode at its measured offset
-// from it, under every Shape and Wood (steel's own bridge takes its twin's
-// pole, above). Before, its bridge ignored Wood: a Maple Bellido's drains sat
-// 60-85 cents under their radiation peaks (audit F10). The twins are the
-// generator's test (GenerateMeasuredBridge.py), recomputed here from the banks.
-void testBellidoBridgeKeepsItsDrainsOnItsRadiation()
-{
-    using namespace acustra::detail;
-    const std::vector<MeasuredBridgeMode> bridgeModes(bellidoBridgeModes.begin(), bellidoBridgeModes.end());
-    const std::vector<MeasuredBodyMode> radiation(bellidoBodyModes.begin(), bellidoBodyModes.end());
-    std::vector<int> twins;
-    for (const auto& mode : bridgeModes)
-    {
-        std::size_t k = 0;
-        for (std::size_t j = 1; j < radiation.size(); ++j)
-            if (std::abs(double(radiation[j].frequency)-mode.frequency)
-                < std::abs(double(radiation[k].frequency)-mode.frequency)) k = j;
-        const double below = k > 0 ? double(radiation[k].frequency)-radiation[k-1].frequency : 1e30;
-        const double above = k+1 < radiation.size() ? double(radiation[k+1].frequency)-radiation[k].frequency : 1e30;
-        const double spacing = k > 0 && k+1 < radiation.size() ? .5*(below+above) : std::min(below, above);
-        const bool inside = std::abs(double(mode.frequency)-radiation[k].frequency)
-            < radiation[k].frequency/(2.0*radiation[k].q);
-        twins.push_back(inside && double(mode.frequency)/mode.q < spacing ? int(k) : -1);
-    }
-    int paired = 0;
-    for (int twin : twins) paired += twin >= 0;
-    expect(paired >= 9, "the Bellido's bridge twins too few of its modes");
-    // The measured offsets, which every Shape and Wood keeps.
-    std::vector<double> measuredOffset(twins.size(), 0.0);
-    for (std::size_t i = 0; i < twins.size(); ++i)
-        if (twins[i] >= 0)
-            measuredOffset[i] = 1200*std::log2(double(bridgeModes[i].frequency)
-                                               / radiation[std::size_t(twins[i])].frequency);
-    double worst = 0;
-    for (int shape = 0; shape < 4; ++shape)
-        for (int wood = 0; wood < 3; ++wood)
-        {
-            acustra::EngineParameters p;
-            p.guitarModel = acustra::GuitarModel::Bellido1978;
-            p.shape = static_cast<acustra::BodyShape>(shape);
-            p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
-            auto e = std::make_unique<Engine>();
-            e->setParameters(p); e->prepare(48000, 64);
-            const auto bridge = Access::bridge(*e);
-            double sum = 0;
-            for (std::size_t i = 0; i < twins.size(); ++i)
-            {
-                if (twins[i] < 0) continue;
-                const double engine = 1200*std::log2(sectionFrequency(bridge.heaveModes[i], 48000)
-                    / Access::radiationPole(p, Access::calibration(*e), twins[i])[0]);
-                worst = std::max(worst, std::abs(engine-measuredOffset[i]));
-                sum += std::abs(engine);
-            }
-            if (shape == 1 && (wood == 1 || wood == 2))
-                std::cout << "Bellido" << (wood == 1 ? " Auditorium/Mahogany" : " Auditorium/Maple")
-                          << ": mean |bridge - radiation twin| " << sum/paired << " cents over "
-                          << paired << " pairs\n";
-            // Changing Wood live reaches the bridge as a fresh engine does.
-            auto live = std::make_unique<Engine>();
-            auto first = p; first.bodyMaterial = acustra::BodyMaterial::Spruce;
-            live->setParameters(first); live->prepare(48000, 64);
-            live->setParameters(p); process(*live, 64);
-            const auto liveBridge = Access::bridge(*live);
-            bool same = true;
-            for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
-                same = same && liveBridge.heaveModes[i].denominator1 == bridge.heaveModes[i].denominator1
-                            && liveBridge.heaveModes[i].denominator2 == bridge.heaveModes[i].denominator2;
-            expect(same, "a live Wood change did not move the Bellido's bridge");
-        }
-    std::cout << "Bellido bridge's twin offsets vs its measurement, worst cents=" << worst << '\n';
-    expect(worst < 0.01, "a bridge drain left its radiation twin under Shape or Wood");
-}
-
 // The analog frequency a configured bridge section was designed at, from its
 // prewarped bilinear denominators: 1+d1+d2 = 4w^2/d0 and 1-d1+d2 = 4B^2/d0.
 double sectionFrequency(const auto& mode, double rate)
@@ -477,79 +370,53 @@ double sectionFrequency(const auto& mode, double rate)
 // Shape moves a bridge bank by the same three class factors (A0 group, T1
 // group, plate) as the radiation it belongs to, so each bridge mode must move
 // as the radiation mode beside it does: the nearest one in log frequency, on
-// the same side of the A0 group's 150 Hz limit. The Bellido's bridge T1
-// (216.4 Hz, just over its radiation T1 at 212.2 Hz) took the plate factor
-// instead and landed 0.8-1.2 semitones off it on Parlor, Dreadnought and
-// Jumbo (audit F9).
+// the same side of the A0 group's 150 Hz limit. A bridge T1 fitted just over
+// its radiation T1 once took the plate factor instead and landed 0.8-1.2
+// semitones off it on the other Shapes (audit F9).
 void testBridgeModesMoveWithTheirRadiationNeighbours()
 {
-    struct Bank { acustra::GuitarModel model; const char* name; };
-    const Bank banks[] {
-        { acustra::GuitarModel::Original, "steel own" },
-        { acustra::GuitarModel::Bellido1978, "Bellido" },
-    };
-    const auto bridgeBank = [] (const Bank& b)
-    {
-        using namespace acustra::detail;
-        if (b.model == acustra::GuitarModel::Bellido1978)
-            return std::vector<MeasuredBridgeMode>(bellidoBridgeModes.begin(), bellidoBridgeModes.end());
-        return std::vector<MeasuredBridgeMode>(measuredSteelBridgeModes.begin(), measuredSteelBridgeModes.end());
-    };
-    const auto radiationBank = [] (const Bank& b)
-    {
-        using namespace acustra::detail;
-        std::vector<float> f;
-        if (b.model == acustra::GuitarModel::Bellido1978)
-            for (const auto& m : bellidoBodyModes) f.push_back(m.frequency);
-        else
-            for (const auto& m : measuredSteelBodyModes) f.push_back(m.frequency);
-        return f;
-    };
+    using namespace acustra::detail;
+    const std::vector<MeasuredBridgeMode> bridgeModes(measuredSteelBridgeModes.begin(),
+                                                      measuredSteelBridgeModes.end());
+    std::vector<float> radiation;
+    for (const auto& m : measuredSteelBodyModes) radiation.push_back(m.frequency);
     double worst = 0;
-    const char* worstBank = "";
     int worstShape = -1;
     double worstHz = 0;
-    for (const auto& b : banks)
+    acustra::EngineParameters p;
+    const auto anchorShape = p.shape;
+    auto anchor = std::make_unique<Engine>();
+    anchor->setParameters(p); anchor->prepare(48000, 64);
+    const auto anchorBridge = Access::bridge(*anchor);
+    for (int shape = 0; shape < 4; ++shape)
     {
-        const auto bridgeModes = bridgeBank(b);
-        const auto radiation = radiationBank(b);
-        acustra::EngineParameters p;
-        p.guitarModel = b.model;
-        p.shape = nativeShape(b.model);
-        const auto anchorShape = p.shape;
-        auto anchor = std::make_unique<Engine>();
-        anchor->setParameters(p); anchor->prepare(48000, 64);
-        const auto anchorBridge = Access::bridge(*anchor);
-        for (int shape = 0; shape < 4; ++shape)
+        if (static_cast<acustra::BodyShape>(shape) == anchorShape) continue;
+        auto q = p; q.shape = static_cast<acustra::BodyShape>(shape);
+        auto e = std::make_unique<Engine>();
+        e->setParameters(q); e->prepare(48000, 64);
+        const auto bridge = Access::bridge(*e);
+        for (std::size_t i = 0; i < bridgeModes.size(); ++i)
         {
-            if (static_cast<acustra::BodyShape>(shape) == anchorShape) continue;
-            auto q = p; q.shape = static_cast<acustra::BodyShape>(shape);
-            auto e = std::make_unique<Engine>();
-            e->setParameters(q); e->prepare(48000, 64);
-            const auto bridge = Access::bridge(*e);
-            for (std::size_t i = 0; i < bridgeModes.size(); ++i)
-            {
-                const double measured = bridgeModes[i].frequency;
-                if (measured > 0.4*48000) continue;
-                std::size_t nearest = 0;
-                for (std::size_t j = 1; j < radiation.size(); ++j)
-                    if (std::abs(std::log(radiation[j]/measured))
-                        < std::abs(std::log(radiation[nearest]/measured)))
-                        nearest = j;
-                if ((measured < 150.0) != (radiation[nearest] < 150.0f)) continue;
-                const double bridgeCents = 1200*std::log2(
-                    sectionFrequency(bridge.heaveModes[i], 48000)
-                    / sectionFrequency(anchorBridge.heaveModes[i], 48000));
-                const double radiationCents = 1200*std::log2(
-                    double(Access::radiationPole(q, Access::calibration(*e), int(nearest))[0])
-                    / Access::radiationPole(p, Access::calibration(*anchor), int(nearest))[0]);
-                const double gap = std::abs(bridgeCents-radiationCents);
-                if (gap > worst) { worst = gap; worstBank = b.name; worstShape = shape; worstHz = measured; }
-            }
+            const double measured = bridgeModes[i].frequency;
+            if (measured > 0.4*48000) continue;
+            std::size_t nearest = 0;
+            for (std::size_t j = 1; j < radiation.size(); ++j)
+                if (std::abs(std::log(radiation[j]/measured))
+                    < std::abs(std::log(radiation[nearest]/measured)))
+                    nearest = j;
+            if ((measured < 150.0) != (radiation[nearest] < 150.0f)) continue;
+            const double bridgeCents = 1200*std::log2(
+                sectionFrequency(bridge.heaveModes[i], 48000)
+                / sectionFrequency(anchorBridge.heaveModes[i], 48000));
+            const double radiationCents = 1200*std::log2(
+                double(Access::radiationPole(q, Access::calibration(*e), int(nearest))[0])
+                / Access::radiationPole(p, Access::calibration(*anchor), int(nearest))[0]);
+            const double gap = std::abs(bridgeCents-radiationCents);
+            if (gap > worst) { worst = gap; worstShape = shape; worstHz = measured; }
         }
     }
     std::cout << "bridge vs neighbouring radiation shape move, worst cents=" << worst
-              << " (" << worstBank << ", shape " << worstShape << ", " << worstHz << " Hz)\n";
+              << " (steel own, shape " << worstShape << ", " << worstHz << " Hz)\n";
     expect(worst < 0.5, "Shape moved a bridge mode by another class than its radiation neighbour");
 }
 
@@ -1033,23 +900,14 @@ double highBandPeakDb(const std::vector<float>& x, int rate, double from, double
 void testConstructionSwitchesDoNotTick()
 {
     using acustra::EngineParameters;
-    using acustra::GuitarModel;
     using acustra::BodyShape;
-    const auto make = [] (GuitarModel g, BodyShape s)
-    {
-        EngineParameters p; p.guitarModel = g; p.shape = s;
-        p.outputGain = 0.2f;
-        return p;
-    };
-    const auto steel = make(GuitarModel::Original, BodyShape::Dreadnought);
-    const auto bellido = make(GuitarModel::Bellido1978, BodyShape::Auditorium);
+    EngineParameters steel;
+    steel.shape = BodyShape::Dreadnought;
+    steel.outputGain = 0.2f;
     const auto with = [] (EngineParameters p, auto change) { change(p); return p; };
     const std::vector<SwitchCase> cases {
         { "steel Shape", steel, with(steel, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
         { "steel Wood", steel, with(steel, [] (auto& p) { p.bodyMaterial = acustra::BodyMaterial::Maple; }), 6.0 },
-        { "steel Model", steel, with(steel, [] (auto& p) { p.guitarModel = GuitarModel::Bellido1978; }), 6.0 },
-        { "Bellido Model", bellido, with(bellido, [] (auto& p) { p.guitarModel = GuitarModel::Original; }), 6.0 },
-        { "Bellido Shape", bellido, with(bellido, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
         { "steel Tuning", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 6.0 },
     };
     double worst = -1e9;
@@ -1326,7 +1184,7 @@ void fft(std::vector<Complex>& data)
 // to fall 12-25 dB in one third of an octave, its 16 kHz band 23-39 dB under
 // its 2-4 kHz level. configureBody continues it statistically at the bank's
 // own top-octave density, falling 6 dB per octave (Docs/decisions.md,
-// 2026-09-30). For every model, Shape, Wood and three rates, the body's
+// 2026-09-30). For every Shape, Wood and three rates, the body's
 // radiation to both microphones, in third octaves from 1 kHz to 16 kHz (or
 // the highest whole band under 0.45 fs), falls at most 8 dB from one band to
 // the next, and the top band stays within 18 dB of the 2-4 kHz bands (4.9
@@ -1339,55 +1197,53 @@ void testRadiationContinuesAboveTheFittedBand()
     double worstStep = 0.0, worstTop = 0.0, worstRate = 0.0;
     std::vector<std::vector<double>> at48;
     for (const double rate : { 48000.0, 44100.0, 96000.0 })
-        for (const auto model : { acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978 })
-            for (int shape = 0; shape < 4; ++shape)
-                for (int wood = 0; wood < 3; ++wood)
+        for (int shape = 0; shape < 4; ++shape)
+            for (int wood = 0; wood < 3; ++wood)
+            {
+                acustra::EngineParameters p;
+                p.shape = static_cast<acustra::BodyShape>(shape);
+                p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+                auto e = std::make_unique<Engine>();
+                e->setParameters(p);
+                e->prepare(rate, 64);
+                const std::size_t size = rate > 50000.0 ? 32768 : 16384;
+                std::vector<Complex> left(size), right(size);
+                for (std::size_t n = 0; n < size; ++n)
                 {
-                    acustra::EngineParameters p;
-                    p.guitarModel = model;
-                    p.shape = static_cast<acustra::BodyShape>(shape);
-                    p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
-                    auto e = std::make_unique<Engine>();
-                    e->setParameters(p);
-                    e->prepare(rate, 64);
-                    const std::size_t size = rate > 50000.0 ? 32768 : 16384;
-                    std::vector<Complex> left(size), right(size);
-                    for (std::size_t n = 0; n < size; ++n)
-                    {
-                        const auto out = Access::body(*e, n == 0 ? 1.0f : 0.0f, 0.0f);
-                        left[n] = out.left;
-                        right[n] = out.right;
-                    }
-                    fft(left);
-                    fft(right);
-                    std::vector<double> levels;
-                    const double edge = std::exp2(1.0 / 6.0);
-                    for (int band = 0;; ++band)
-                    {
-                        const double centre = 1000.0 * std::exp2(band / 3.0);
-                        if (centre > 16500.0 || centre * edge > 0.45 * rate)
-                            break;
-                        double power = 0.0;
-                        int bins = 0;
-                        for (auto bin = static_cast<std::size_t>(std::ceil(centre / edge * size / rate));
-                             double(bin) * rate / size < centre * edge; ++bin, ++bins)
-                            power += std::norm(left[bin]) + std::norm(right[bin]);
-                        levels.push_back(10.0 * std::log10(power / std::max(bins, 1) + 1e-30));
-                    }
-                    for (std::size_t band = 1; band < levels.size(); ++band)
-                        worstStep = std::max(worstStep, levels[band - 1] - levels[band]);
-                    const std::size_t construction = std::size_t((int(model) * 4 + shape) * 3 + wood);
-                    if (rate == 48000.0)
-                        at48.push_back(levels);
-                    else
-                        // Bands 9-12 are 8-16 kHz.
-                        for (std::size_t band = 9; band < std::min(levels.size(), at48[construction].size()); ++band)
-                            worstRate = std::max(worstRate,
-                                std::abs(levels[band] - at48[construction][band]));
-                    // Bands 3-6 are 2-4 kHz.
-                    const double reference = (levels[3] + levels[4] + levels[5] + levels[6]) / 4.0;
-                    worstTop = std::max(worstTop, reference - levels.back());
+                    const auto out = Access::body(*e, n == 0 ? 1.0f : 0.0f, 0.0f);
+                    left[n] = out.left;
+                    right[n] = out.right;
                 }
+                fft(left);
+                fft(right);
+                std::vector<double> levels;
+                const double edge = std::exp2(1.0 / 6.0);
+                for (int band = 0;; ++band)
+                {
+                    const double centre = 1000.0 * std::exp2(band / 3.0);
+                    if (centre > 16500.0 || centre * edge > 0.45 * rate)
+                        break;
+                    double power = 0.0;
+                    int bins = 0;
+                    for (auto bin = static_cast<std::size_t>(std::ceil(centre / edge * size / rate));
+                         double(bin) * rate / size < centre * edge; ++bin, ++bins)
+                        power += std::norm(left[bin]) + std::norm(right[bin]);
+                    levels.push_back(10.0 * std::log10(power / std::max(bins, 1) + 1e-30));
+                }
+                for (std::size_t band = 1; band < levels.size(); ++band)
+                    worstStep = std::max(worstStep, levels[band - 1] - levels[band]);
+                const std::size_t construction = std::size_t(shape * 3 + wood);
+                if (rate == 48000.0)
+                    at48.push_back(levels);
+                else
+                    // Bands 9-12 are 8-16 kHz.
+                    for (std::size_t band = 9; band < std::min(levels.size(), at48[construction].size()); ++band)
+                        worstRate = std::max(worstRate,
+                            std::abs(levels[band] - at48[construction][band]));
+                // Bands 3-6 are 2-4 kHz.
+                const double reference = (levels[3] + levels[4] + levels[5] + levels[6]) / 4.0;
+                worstTop = std::max(worstTop, reference - levels.back());
+            }
     std::cout << "radiation above the fitted band: worst third-octave fall " << worstStep
               << " dB, top band under 2-4 kHz by at most " << worstTop
               << " dB, 8-16 kHz at 44.1/96 kHz within " << worstRate << " dB of 48 kHz\n";
@@ -1399,62 +1255,12 @@ void testRadiationContinuesAboveTheFittedBand()
            "the body's radiation at 16 kHz is not continued from its fitted band");
 }
 
-// The plate conductance floor is the dense high-band overlap of a plate's
-// driving-point response, which a modal fit loses between its overlapping
-// modes; the Bellido's fit loses it as g21's does and takes the same floor
-// (Docs/decisions.md, 2026-09-30). Without it its strings kept their 5-10
-// kHz partials, and it played 11-15 dB over the recordings there. For every
-// Shape and Wood at 48 and 96 kHz, the floor adds to the Bellido's string
-// port conductance over 5-10 kHz at least 90% of what it adds to the
-// Original's, and at least doubles the Bellido's own.
-void testTheBellidoKeepsTheHighBandConductance()
-{
-    const auto meanConductance = [] (const acustra::EngineParameters& p, double rate, bool floor)
-    {
-        auto calibration = acustra::fittedPhysicalCalibration;
-        if (!floor)
-            calibration.bridgeConductanceFloor = 0.0f;
-        auto e = std::make_unique<Engine>();
-        e->setPhysicalCalibration(calibration);
-        e->setParameters(p);
-        e->prepare(rate, 64);
-        double sum = 0.0;
-        int count = 0;
-        for (double f = 5000.0; f < 10000.0; f *= std::exp2(1.0 / 48.0), ++count)
-            for (int string = 0; string < 6; ++string)
-                sum += Access::port(*e, float(f), string).real() / 6.0;
-        return sum / count;
-    };
-    double worstShare = 1e9, worstGain = 1e9;
-    for (const double rate : { 48000.0, 96000.0 })
-        for (int shape = 0; shape < 4; ++shape)
-            for (int wood = 0; wood < 3; ++wood)
-            {
-                acustra::EngineParameters p;
-                p.shape = static_cast<acustra::BodyShape>(shape);
-                p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
-                const double originalAdded = meanConductance(p, rate, true)
-                    - meanConductance(p, rate, false);
-                p.guitarModel = acustra::GuitarModel::Bellido1978;
-                const double without = meanConductance(p, rate, false);
-                const double with = meanConductance(p, rate, true);
-                worstShare = std::min(worstShare, (with - without) / originalAdded);
-                worstGain = std::min(worstGain, with / without);
-            }
-    std::cout << "Bellido 5-10 kHz port conductance: floor adds at least " << worstShare
-              << " of the Original's, at least " << worstGain << "x its own\n";
-    expect(worstShare > 0.9 && worstGain > 2.0,
-           "the Bellido lost the plate's high-band conductance floor");
-}
-
 int main()
 {
     testOriginalAirDecayIsLocalized();
     testRadiationContinuesAboveTheFittedBand();
-    testTheBellidoKeepsTheHighBandConductance();
     testSteelOwnBridgeSharesTheRadiationPoles();
     testBridgeModesMoveWithTheirRadiationNeighbours();
-    testBellidoBridgeKeepsItsDrainsOnItsRadiation();
     testSteelBlend();
     testSteelBlendJointBridgeRingsOnItsRadiation();
     testPhaseAndPassivity();

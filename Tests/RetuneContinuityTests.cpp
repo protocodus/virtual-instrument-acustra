@@ -105,11 +105,9 @@ int main() {
     using Access=acustra::AcustraEngineTestAccess;
     if(!Access::transitionContract()) {std::cerr<<"FAIL: intrinsic filter transition endpoint/deadline/stability contract\n";return 1;}
     for(double rate:{44100.0,48000.0,96000.0})
-    for(auto model:{acustra::GuitarModel::Original,acustra::GuitarModel::Bellido1978})
     for(bool enabled:{false,true}) {
         auto cached=std::make_unique<Engine>(), forced=std::make_unique<Engine>();
         acustra::EngineParameters parameters;
-        parameters.guitarModel=model;
         acustra::PerformanceRealism realism;
         realism.retuneContinuity=enabled;
         for(auto* e:{cached.get(),forced.get()}) {

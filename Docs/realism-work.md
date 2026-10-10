@@ -6,6 +6,8 @@ are no longer part of the instrument; the Bellido 1978 remains as a Model,
 strung with steel. Body Material is Spruce, Mahogany or Maple, and the
 optional Fylde bridge is removed. The rest of this document records the
 work as of 2026-09-08 (Docs/decisions.md has the 2026-09-29 entry).
+Update 2026-10-10: the Bellido 1978 Model was removed too, leaving the
+Original as the only guitar body (Docs/decisions.md has that entry).
 
 The requested end state is more realistic steel and nylon guitars, three
 capture choices (stereo microphone, mono microphone, loaded piezo), normal

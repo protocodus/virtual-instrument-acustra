@@ -44,20 +44,14 @@ def main():
         shutil.copy2(source, frozen)
         frozen.chmod(frozen.stat().st_mode | 0o111)
         report['renderers'][version] = {'source': str(source.resolve()), 'sha256': digest(frozen)}
-        cases = [(shape, 'original') for shape in ['parlor', 'auditorium', 'dreadnought', 'jumbo']]
-        if version == 'current':
-            cases += [('auditorium', 'bellido1978')]
         spectra = {}
         audio = {}
-        for shape, model in cases:
-            key = f'{shape}-{model}'
+        for shape in ['parlor', 'auditorium', 'dreadnought', 'jumbo']:
+            # The "-original" suffix keeps earlier runs' file and report names.
+            key = f'{shape}-original'
             raw = args.output / f'{version}-{key}.f32'
-            # The Bellido in Mahogany, as its Guitar preset plays it.
             command = [str(frozen.resolve()), str(events.resolve()), str(raw.resolve()), 'stereo_mic', 'finger',
-                       '--body-shape', shape,
-                       '--body-material', 'mahogany' if model == 'bellido1978' else 'spruce']
-            if model != 'original':
-                command += ['--guitar-model', model]
+                       '--body-shape', shape, '--body-material', 'spruce']
             subprocess.run(command, check=True, capture_output=True)
             signal = np.fromfile(raw, '<f4').reshape(-1, 2)
             assert len(signal) == frames and np.all(np.isfinite(signal))

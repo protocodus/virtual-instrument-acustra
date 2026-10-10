@@ -323,8 +323,7 @@ def self_test(renderer: Path | None) -> None:
             for name, options in (
                 ("legacy-capture", ["stereo_mic", "finger"]),
                 ("explicit-default", ["stereo_mic", "finger", "--tuning", "standard",
-                                      "--body-shape", "dreadnought", "--body-material", "spruce",
-                                      "--guitar-model", "original"]),
+                                      "--body-shape", "dreadnought", "--body-material", "spruce"]),
                 ("flags-only", ["--tuning", "standard", "--body-material", "spruce"]),
             ):
                 output = root / (name + ".f32")
@@ -332,18 +331,20 @@ def self_test(renderer: Path | None) -> None:
                 assert digest(output) == default_hash, "explicit defaults changed existing audio"
             rendered = np.fromfile(root / "a.f32", dtype="<f4")
             assert len(rendered) == RATE * 2 and np.isfinite(rendered).all() and np.max(np.abs(rendered)) > 0
-            alternative = root / "bellido.f32"
+            alternative = root / "jumbo.f32"
             subprocess.run([str(renderer), str(event_path), str(alternative),
-                            "stereo_mic", "finger", "--guitar-model", "bellido1978"], check=True)
+                            "stereo_mic", "finger", "--body-shape", "jumbo"], check=True)
             alternative_audio = np.fromfile(alternative, dtype="<f4")
             assert np.isfinite(alternative_audio).all() and np.max(np.abs(alternative_audio)) > 0
-            assert digest(alternative) != default_hash, "the Bellido did not change the body"
+            assert digest(alternative) != default_hash, "the Jumbo did not change the body"
             # A third positional (the retired bridge model) and the retired
-            # string-material and Cedar options are refused, not ignored.
+            # string-material, Cedar and guitar-model options are refused,
+            # not ignored.
             rejected = subprocess.run([str(renderer), str(event_path), str(root / "invalid.f32"),
                                        "stereo_mic", "finger", "original"], capture_output=True)
             assert rejected.returncode != 0 and not (root / "invalid.f32").exists()
             for options in (["--string-material", "steel"], ["--body-material", "cedar"],
+                            ["--guitar-model", "original"], ["--guitar-model", "bellido1978"],
                             ["--tuning", "open_z"], ["--tuning"], ["--unknown", "steel"],
                             ["--tuning", "standard", "--tuning", "drop_d"],
                             ["--body-material", "spruce", "--body-material", "maple"]):

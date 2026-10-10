@@ -179,13 +179,11 @@ bool clampedSlideConfigurationContract()
     using Engine = acustra::AcustraEngine;
     using Access = acustra::AcustraEngineTestAccess;
     for (const double rate : {44100.0, 48000.0, 96000.0})
-    for (const auto model : {acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978})
     for (const auto picking : {acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick})
     for (const float memberBend : {-48.0f, 96.0f})
     {
         auto cached = std::make_unique<Engine>();
         acustra::EngineParameters parameters;
-        parameters.guitarModel = model;
         parameters.picking = picking;
         parameters.room = 0.0f;
         cached->setParameters(parameters);
@@ -224,8 +222,7 @@ bool clampedSlideConfigurationContract()
                 || std::memcmp(right.data(), forcedRight.data(), sizeof(right)) != 0)
             {
                 std::cerr << "FAIL: clamped-slide configuration parity at " << rate
-                          << " Hz, model " << static_cast<int>(model)
-                          << ", picking " << static_cast<int>(picking)
+                          << " Hz, picking " << static_cast<int>(picking)
                           << ", member bend " << memberBend << ", block " << block << '\n';
                 return false;
             }
@@ -249,13 +246,11 @@ int main()
         return 1;
     std::uint64_t frames = 0;
     for (const double rate : {8000.0, 44100.0, 48000.0, 96000.0, 192000.0, 384000.0})
-    for (const auto model : {acustra::GuitarModel::Original, acustra::GuitarModel::Bellido1978})
     for (const auto picking : {acustra::PickingTechnique::Finger, acustra::PickingTechnique::Pick})
     {
         auto cached = std::make_unique<Engine>();
         auto forced = std::make_unique<Engine>();
         acustra::EngineParameters parameters;
-        parameters.guitarModel = model;
         parameters.picking = picking;
         parameters.room = 0.0f;
         for (auto* engine : {cached.get(), forced.get()})
@@ -319,6 +314,6 @@ int main()
             return 1;
         }
     }
-    std::cout << "Pitch geometry: exact raw-key hits/misses, reset/copy, 24 clamped-slide cases and " << frames
+    std::cout << "Pitch geometry: exact raw-key hits/misses, reset/copy, 12 clamped-slide cases and " << frames
               << " forced-uncached audio/state frames passed\n";
 }

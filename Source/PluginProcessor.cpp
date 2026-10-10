@@ -76,7 +76,6 @@ enum ParameterSlot
     slotOutput,
     slotPicking,
     slotCaptureMode,
-    slotGuitarModel,
     slotGatherChords,
     slotPiezoMix,
     slotReleaseNoise,
@@ -98,7 +97,6 @@ constexpr std::array<const char*, slotCount> parameterIds {
     ids::output,
     ids::picking,
     ids::captureMode,
-    ids::guitarModel,
     ids::gatherChords,
     ids::piezoMix,
     ids::releaseNoise,
@@ -189,7 +187,8 @@ constexpr int currentStateVersion = 2;
 // Model it may hold are dropped (every session now plays steel strings on
 // the Original bridge), and its Body Material, from Spruce, Cedar, Mahogany,
 // Maple, moves to Spruce, Mahogany, Maple, Cedar to Mahogany, the nearest of
-// the three kept directions.
+// the three kept directions. Its Guitar Model needs no migration: the
+// Original is the only guitar.
 void migrateVersionOneState (juce::ValueTree& state)
 {
     static const juce::Identifier parameterType { "PARAM" };
@@ -321,17 +320,15 @@ AcustraAudioProcessor::createParameterLayout()
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::captureMode, 6 }, "Capture",
         juce::StringArray { "Stereo mic", "Mono mic", "Piezo" }, 0));
-    // Its choices 2-4, the Washburn 1897, Santa Cruz OM 2022 and Martin D18V
-    // 2007, were fitted from measurements with no redistribution license and
-    // are retired; setStateInformation moves a state that chose one to Original.
-    // The ID and version stayed when the list went from five choices to two,
-    // so host automation and normalised snapshots from a five-choice build
-    // would read differently; no pushed or packaged build had five (Docs/
-    // decisions.md, 2026-09-25). Every packaged build stores Bellido as
-    // normalised 1.0, so the list must stay exactly these two, in this order.
+    // The retired Guitar Model keeps its ID, version, index and range, as the
+    // legacy slots above do: a host addressing parameters by index still
+    // finds every later control where it was. Nothing reads it; a session
+    // that chose the Bellido 1978 plays the Original guitar (Docs/
+    // decisions.md, 2026-10-10).
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { ids::guitarModel, 7 }, "Guitar Model",
-        juce::StringArray { "Original", "Bellido 1978" }, 0));
+        juce::ParameterID { ids::guitarModel, 7 }, "Legacy guitar model",
+        juce::StringArray { "Original", "Bellido 1978" }, 0,
+        juce::AudioParameterChoiceAttributes().withAutomatable (false)));
     // Off by default: gathering holds every note back (see acustra::Performer), so
     // it changes the plug-in's latency and is not automatable.
     result.push_back (std::make_unique<juce::AudioParameterBool> (
@@ -387,7 +384,6 @@ AcustraAudioProcessor::snapshotEngineParameters() const noexcept
     result.capture = captures[static_cast<std::size_t> (
         std::clamp (static_cast<int> (std::lround (value (slotCaptureMode))), 0, 2))];
     result.picking = choiceValue<acustra::PickingTechnique> (value (slotPicking), 2);
-    result.guitarModel = choiceValue<acustra::GuitarModel> (value (slotGuitarModel), 1);
     return result;
 }
 
@@ -615,13 +611,6 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
             captureState.setProperty ("value", migrated, nullptr);
             restoredState.appendChild (captureState, nullptr);
         }
-        // A retired Guitar Model (2-4) would clamp to Bellido, a classical;
-        // the steel guitars those slots held play Original.
-        for (auto child : restoredState)
-            if (child.hasType ("PARAM")
-                && child.getProperty ("id").toString() == ids::guitarModel
-                && static_cast<float> (child.getProperty ("value")) >= 1.5f)
-                child.setProperty ("value", 0.0f, nullptr);
         // A session saved before Release Noise existed keeps its silent
         // key-ups; addMissingParameterDefaults would give it the new default.
         if (! containsParameterState (restoredState, ids::releaseNoise))
