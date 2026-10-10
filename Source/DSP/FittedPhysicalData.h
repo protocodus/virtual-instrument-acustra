@@ -36,7 +36,9 @@ struct PhysicalCalibration
     // positive-real modal fit cannot represent that dense overlap, so its
     // conductance collapses in the top of the band; this bounded real term
     // restores the floor. Being a positive real admittance it cannot make the
-    // junction active.
+    // junction active. In the measured flamenca's units, like the modal
+    // residues it continues: the bridge scales both to steel level
+    // (plateConductanceMode in AcustraEngine.cpp).
     float bridgeConductanceFloor { 0.0f };
     float bridgeConductanceCornerHz { 1000.0f };
     // Retired on 2026-10-10 (Docs/saddle-termination-2026-10-10.md): the
@@ -72,11 +74,19 @@ struct PhysicalCalibration
     // so it low-passes the pluck at a corner that rises with the stroke's
     // force. Zero is the instant release.
     float pickEdgeRadiusMetres { 0.0f };
-    // The loss factor eta of a string's viscoelastic bending stiffness,
-    // EI(1 + i eta), one per construction: Valette's and Woodhouse's bending
-    // loss 1/Q_n = eta B n^2 / (1 + B n^2) (bendingLossSection in
-    // AcustraEngine.cpp). Zero is an exact no-op.
-    float steelWoundBendingLoss { 0.0f };
+    // The wound strings' winding friction, a constant loss angle delta_W:
+    // dry friction between successive turns acts as a complex tension
+    // T(1 + j delta_W) (Paté, Le Carrou and Fabre, JASA 135 (2014) 3045,
+    // Sec. III.A, after Valette, who add 1/Q_W = delta_W to a flexible
+    // string's loss). On a stiff string tension carries 1/(1 + B n^2) of
+    // partial n's restoring force, so it loses delta_W / (1 + B n^2), as the
+    // bending loss below acts on the rest (constantLossSection in
+    // AcustraEngine.cpp); String Age scales it.
+    float steelWoundFrictionLoss { 0.0f };
+    // The loss factor eta of a steel string's visco- and thermo-elastic
+    // bending stiffness, EI(1 + i eta): Valette's and Woodhouse's bending loss
+    // 1/Q_n = eta B n^2 / (1 + B n^2). Every string's, a wound one's on its
+    // plain steel core.
     float steelPlainBendingLoss { 0.0f };
 };
 
@@ -204,15 +214,33 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // refitted with the pluck around their bending loss on the Fylde
     // bridge's training rows.
     0.1162109375e-3f,
+    // The wound strings' winding friction, 2026-10-10
+    // (Docs/string-hf-loss-2026-10-10.md). Until then the wound strings lost
+    // their grime and friction through the bending law at a by-ear 0.035
+    // (Set 14, 70% of the way from C's 0 toward B's 0.05), which rises as the
+    // cube of frequency and spread 8:1 across the four wound strings at
+    // 2.8 kHz; winding friction acts on the tension instead and gives a
+    // constant loss angle. With the dislocation loss every string carries
+    // (constantLossSection), swept on its own: the fitted splits are flat
+    // within 0.1% from 1.3e-4 to 1.8e-4 and 0.3-0.4% worse at 0.6e-4, which
+    // the flat-top rows prefer by 0.7%. At 1.3e-4 the never-fitted flat-top
+    // rows' wound register (MIDI 40-58, 0.15-1.2 s per-partial decay)
+    // decays within 2.4 dB/s of the recordings at 1-2.2 kHz and 5.5-7.6 dB/s
+    // faster at 2.2-5 kHz, where under the bending law it decayed 1.3 to 2.1
+    // times as fast as they do, and the archtop audit's bands from 2 to 9 kHz
+    // come within 2.6 dB/s. 4.5e-4 would keep the 0.035 bending law's
+    // geometric-mean early decay over the wound partials at 0.5-4 kHz at the
+    // default controls instead; it is the labelled listening alternative,
+    // not a listening verdict.
+    1.3e-4f,
     // The strings' bending loss, chosen by ear on 2026-09-28
     // (Docs/decisions.md, Set 14). The recordings' 20-300 ms upper-partial
-    // decay measures steel wound 0.10 and plain 0.006. B held half of it,
-    // wound 0.05 and plain 0.003, with the pluck refitted around it; C, the
-    // joint refit's optimum, took the wound loss to 0 and the plain to
-    // 0.00078125. Steel ships 70% of the way from C toward B: wound 0.035,
-    // plain 0.002334375, so its upper partials die at about 70% of B's added
-    // rate and 35% of the rate the recordings measure. Neither is refit.
-    0.035f, 0.002334375f
+    // decay measures steel plain 0.006. B held half of it, 0.003, with the
+    // pluck refitted around it; C, the joint refit's optimum, took it to
+    // 0.00078125. Steel ships 70% of the way from C toward B, 0.002334375; it
+    // is not refit, and since 2026-10-10 it is every string's (a wound
+    // string's on its core).
+    0.002334375f
 };
 
 } // namespace acustra

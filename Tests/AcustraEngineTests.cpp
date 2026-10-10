@@ -198,6 +198,13 @@ struct AcustraEngineTestAccess
         double bendingGain { 1.0 };
         double bendingA1 { 0.0 };
         double bendingA2 { 0.0 };
+        // Its constant-loss section (constantLossSection), unit gain at DC:
+        // its gain, poles and numerator taps.
+        double constantGain { 1.0 };
+        double constantA1 { 0.0 };
+        double constantA2 { 0.0 };
+        double constantN1 { 0.0 };
+        double constantN2 { 0.0 };
         // The dispersion's second allpass section, where the loop runs one.
         bool secondDispersionActive { false };
         double secondDispersionA1 { 0.0 };
@@ -224,7 +231,55 @@ struct AcustraEngineTestAccess
             snapshot.bendingA1 = loop.bendingLossA1;
             snapshot.bendingA2 = loop.bendingLossA2;
         }
+        if (loop.constantLossActive)
+        {
+            snapshot.constantGain = loop.constantLossGain;
+            snapshot.constantA1 = loop.constantLossA1;
+            snapshot.constantA2 = loop.constantLossA2;
+            snapshot.constantN1 = loop.constantLossN1;
+            snapshot.constantN2 = loop.constantLossN2;
+        }
         return snapshot;
+    }
+
+    // The loop's bending section as StringLoop::advance runs it,
+    //     H = 1 - (1 - z^-1)(g0 - a2 z^-1) / A(z),  g0 = 1 - g,
+    // g / A(z) with its gain at DC exactly one, at z = e^{j omega}, from the
+    // float coefficients it holds.
+    static std::complex<double> bendingResponse(const StringLoopSnapshot& loop,
+                                                double omega)
+    {
+        const std::complex<double> z1 = std::polar(1.0, -omega);
+        const std::complex<double> denominator
+            = 1.0 + loop.bendingA1 * z1 + loop.bendingA2 * z1 * z1;
+        const double g0 = static_cast<double>(
+            1.0f - static_cast<float>(loop.bendingGain));
+        const double g1 = -static_cast<double>(static_cast<float>(loop.bendingA2));
+        return 1.0 - (1.0 - z1) * (g0 + g1 * z1) / denominator;
+    }
+
+    // The loop's constant-loss section as StringLoop::advance runs it,
+    //     H = 1 - (1 - z^-1)(g0 + g1 z^-1) / A(z),  g0 = 1 - g, g1 = n2 - a2,
+    // at z = e^{j omega}, from the float coefficients it holds: exactly one
+    // at DC.
+    static std::complex<double> constantResponse(const StringLoopSnapshot& loop,
+                                                 double omega)
+    {
+        const std::complex<double> z1 = std::polar(1.0, -omega);
+        const std::complex<double> denominator
+            = 1.0 + loop.constantA1 * z1 + loop.constantA2 * z1 * z1;
+        const double g0 = static_cast<double>(
+            1.0f - static_cast<float>(loop.constantGain));
+        const double g1 = static_cast<double>(static_cast<float>(loop.constantN2)
+                                              - static_cast<float>(loop.constantA2));
+        return 1.0 - (1.0 - z1) * (g0 + g1 * z1) / denominator;
+    }
+
+    // The string's own loss, both sections in cascade.
+    static std::complex<double> lossSectionResponse(
+        const StringLoopSnapshot& loop, double omega)
+    {
+        return bendingResponse(loop, omega) * constantResponse(loop, omega);
     }
 
     struct BodyModeSnapshot
@@ -535,39 +590,117 @@ struct AcustraEngineTestAccess
         return engine.bodyUpdatePending_;
     }
 
-    // The bending-loss section each polarisation carries, and the design
-    // inputs, for one configured note (bridge coupling off).
+    // The loss section each polarisation carries (g, a1, a2, n1, n2) and
+    // the rest of its own loss (loop gain, broad and high shelf mixes and
+    // coefficients), for one configured note.
     struct BendingSections
     {
-        std::array<double, 3> normal;
-        std::array<double, 3> parallel;
+        // The bending section's g, a1, a2, then the constant-loss section's
+        // g, a1, a2, n1, n2.
+        std::array<double, 8> normal;
+        std::array<double, 8> parallel;
+        // The constant-loss section's, and the bending section's.
         bool normalActive;
         bool parallelActive;
+        bool normalBendingActive;
+        bool parallelBendingActive;
+        std::array<float, 5> normalLoss;
+        std::array<float, 5> parallelLoss;
+        StringLoopSnapshot normalLoop;
+        StringLoopSnapshot parallelLoop;
+        int stringIndex;
     };
 
     static BendingSections bendingSections(int midiNote, double rate,
-                                           PhysicalCalibration calibration)
+                                           PhysicalCalibration calibration,
+                                           float stringAge = EngineParameters {}.stringAge,
+                                           bool bridgeCoupling = false)
+    {
+        return bendingSectionsFor({ midiNote }, rate, calibration, stringAge,
+                                  bridgeCoupling).front();
+    }
+
+    // The same for several notes, each configured in turn on one engine.
+    static std::vector<BendingSections> bendingSectionsFor(
+        const std::vector<int>& midiNotes, double rate,
+        PhysicalCalibration calibration,
+        float stringAge = EngineParameters {}.stringAge,
+        bool bridgeCoupling = false)
     {
         auto engineOwner = std::make_unique<AcustraEngine>();
         auto& engine = *engineOwner;
         engine.setPhysicalCalibration(calibration);
         engine.prepare(rate, 64);
-        engine.setBridgeCouplingEnabled(false);
+        engine.setBridgeCouplingEnabled(bridgeCoupling);
         EngineParameters parameters;
+        parameters.stringAge = stringAge;
         engine.setParameters(parameters);
+        std::vector<BendingSections> result;
+        for (const int midiNote : midiNotes)
+            result.push_back(configuredSections(engine, midiNote, rate));
+        return result;
+    }
+
+    static BendingSections configuredSections(AcustraEngine& engine,
+                                              int midiNote, double rate)
+    {
         const int stringIndex = engine.chooseString(midiNote);
+        if (stringIndex < 0)
+        {
+            // Off the fretboard: no section, so a caller's check fails.
+            BendingSections none {};
+            none.stringIndex = -1;
+            return none;
+        }
         auto& voice = engine.voices_[static_cast<std::size_t>(stringIndex)];
         voice.attackPitchCents = 0.0f;
         engine.configureVoice(voice, stringIndex, midiNote, true);
         const auto section = [] (const AcustraEngine::StringLoop& loop)
         {
-            return std::array<double, 3> { loop.bendingLossGain,
+            return std::array<double, 8> { loop.bendingLossGain,
                                            loop.bendingLossA1,
-                                           loop.bendingLossA2 };
+                                           loop.bendingLossA2,
+                                           loop.constantLossGain,
+                                           loop.constantLossA1,
+                                           loop.constantLossA2,
+                                           loop.constantLossN1,
+                                           loop.constantLossN2 };
+        };
+        const auto loss = [] (const AcustraEngine::StringLoop& loop)
+        {
+            return std::array<float, 5> { loop.targetLoopGain,
+                                          loop.broadLossMix, loop.highLossMix,
+                                          loop.broadLossCoefficient,
+                                          loop.lowpassCoefficient };
+        };
+        const auto snapshot = [&] (const AcustraEngine::StringLoop& loop)
+        {
+            return withBendingLoss({ loop.targetDelay, loop.loopGain,
+                loop.broadLossCoefficient, loop.broadLossMix,
+                loop.lowpassCoefficient, loop.highLossMix, loop.dispersionA1,
+                loop.dispersionA2, voice.dispersionDesignInharmonicity, rate },
+                loop);
         };
         return { section(voice.loops[0]), section(voice.loops[1]),
+                 voice.loops[0].constantLossActive,
+                 voice.loops[1].constantLossActive,
                  voice.loops[0].bendingLossActive,
-                 voice.loops[1].bendingLossActive };
+                 voice.loops[1].bendingLossActive,
+                 loss(voice.loops[0]), loss(voice.loops[1]),
+                 snapshot(voice.loops[0]), snapshot(voice.loops[1]),
+                 stringIndex };
+    }
+
+    // A string's two bridge ports at `frequency`: the normal polarisation's
+    // driving-point mobility and the parallel one's, (h/a)^2 times the
+    // rocking (bridgePortMobility).
+    static std::array<std::complex<double>, 2> bridgePorts(
+        const AcustraEngine& engine, double frequency, int string)
+    {
+        const auto port = engine.bridgePortMobility(static_cast<float>(frequency),
+                                                    string);
+        return { std::complex<double>(port.normal.real(), port.normal.imag()),
+                 std::complex<double>(port.parallel.real(), port.parallel.imag()) };
     }
 
     static double playedDelay(PhysicalCalibration calibration)
@@ -3054,11 +3187,12 @@ double loopPhase(const acustra::AcustraEngineTestAccess::StringLoopSnapshot& loo
                ? sectionPhase(loop.secondDispersionA1, loop.secondDispersionA2)
                : 0.0);
 
-    // The bending-loss section is designed at the host rate, so its lag is
-    // read at the host frequency.
-    const double bendingLag = std::atan2(
-        -loop.bendingA1 * sine - loop.bendingA2 * sine2,
-        1.0 + loop.bendingA1 * cosine + loop.bendingA2 * cosine2);
+    // The loss sections are designed at the host rate, so their lag is read
+    // at the host frequency, from the sections as the loop runs them. Their
+    // poles and zeros lie inside the circle, so each lag needs no unwrap.
+    const double bendingLag
+        = -std::arg(acustra::AcustraEngineTestAccess::bendingResponse(loop, omega))
+        - std::arg(acustra::AcustraEngineTestAccess::constantResponse(loop, omega));
 
     return delayPhase
         + mixedPolePhase(loop.broadCoefficient, loop.broadMix)
@@ -3272,10 +3406,13 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
     {
         const int block = 64;
         const auto bent = [&] (bool bend, acustra::CaptureType capture
-                                              = acustra::CaptureType::StereoMic)
+                                              = acustra::CaptureType::StereoMic,
+                               const acustra::PhysicalCalibration& calibration
+                                              = acustra::fittedPhysicalCalibration)
         {
             auto engineOwner = std::make_unique<acustra::AcustraEngine>();
             auto& engine = *engineOwner;
+            engine.setPhysicalCalibration(calibration);
             acustra::EngineParameters parameters;
             parameters.capture = capture;
             engine.setParameters(parameters);
@@ -3310,8 +3447,22 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
         // crosses T1 (under 1.5 before); the saddle reads 1.048, 1.048
         // and 1.067 at 44.1, 48 and 96 kHz, before that change and after it
         // (Docs/saddle-termination-2026-10-10.md).
-        const auto slewing = bent(true, acustra::CaptureType::Piezo);
-        const auto still = bent(false, acustra::CaptureType::Piezo);
+        // A transient shows in this band only where the string has nothing
+        // of its own there. Since 2026-10-10 a wound string's upper partials
+        // decay by its winding friction's constant loss angle rather than
+        // the cube-law bending factor it took before (FittedPhysicalData.h),
+        // as the flat-top recordings' do, and this E3's still stand above
+        // 14 kHz at 0.25 s, where a bend moves them: 1.61 at 44.1 kHz on the
+        // shipped calibration, and no less with the loss sections held at
+        // their unbent design through the bend, so not a redesign's
+        // transient. The comparison is made on a string whose top band has
+        // gone by then, every string's bending factor at the wound strings'
+        // former 0.035 and no friction, as the band was before.
+        auto quietTop = acustra::fittedPhysicalCalibration;
+        quietTop.steelPlainBendingLoss = 0.035f;
+        quietTop.steelWoundFrictionLoss = 0.0f;
+        const auto slewing = bent(true, acustra::CaptureType::Piezo, quietTop);
+        const auto still = bent(false, acustra::CaptureType::Piezo, quietTop);
         const auto frames = [&] (const Audio& audio, double begin, double end)
         {
             std::vector<double> result;
@@ -3327,6 +3478,8 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
         const double reference = *std::max_element(
             stillFrames.begin(), stillFrames.end());
         expect(reference > 0.0, "the unbent reference string was silent");
+        std::cout << "Acustra slewing top band at " << static_cast<int>(rate)
+                  << " Hz: " << loudest / reference << " of the still string's\n";
         expect(loudest < 1.5 * reference,
                "a 200-cent bend at "
                    + std::to_string(static_cast<int>(rate))
@@ -4517,7 +4670,7 @@ void testHostilePhysicalCalibrationIsSanitised()
         result.pickReleaseVelocityShare = value;
         result.pickReleaseVelocityExponent = value;
         result.pickEdgeRadiusMetres = value;
-        result.steelWoundBendingLoss = value;
+        result.steelWoundFrictionLoss = value;
         result.steelPlainBendingLoss = value;
         return result;
     };
@@ -4546,7 +4699,7 @@ void testHostilePhysicalCalibrationIsSanitised()
             calibration.pickReleaseVelocityShare,
             calibration.pickReleaseVelocityExponent,
             calibration.pickEdgeRadiusMetres,
-            calibration.steelWoundBendingLoss,
+            calibration.steelWoundFrictionLoss,
             calibration.steelPlainBendingLoss
         };
     };
@@ -4568,7 +4721,7 @@ void testHostilePhysicalCalibrationIsSanitised()
         1.04f, 1.8f, 4.0f, 6.0f, 4.0f, 2.0f,
         3.0f, 2.5f, 3.0f, 3.0f, 1.2f, 1.0f,
         32.0f, 0.04f, 0.05f, 4.0f, 0.02f, 8000.0f,
-        0.060f, 2.0f, 4.0f, 1.0e-3f, 2.0f, 2.0f,
+        0.060f, 2.0f, 4.0f, 1.0e-3f, 0.01f, 2.0f,
     }, "high physical calibration bounds were not enforced");
     const auto fallback = sanitised(uniformCalibration(
         std::numeric_limits<float>::quiet_NaN()));
@@ -5117,15 +5270,27 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
     expect(longLoop.loopGain > shortLoop.loopGain + 0.02,
            "fundamental T60 calibration did not change loop decay");
 
+    // The strings' frequency loss reaches the high shelf and, since
+    // 2026-10-10, the dislocation's constant loss angle (constantLossSection)
+    // that took over from the retired broad shelf. With no winding friction
+    // beside it both scale with it, the section within the 20% of its law it
+    // keeps where it adds 5 to 250 dB/s (here at 8 kHz on the low E: 14 and
+    // 119 dB/s).
     auto lowLoss = acustra::fittedPhysicalCalibration;
     lowLoss.steel.frequencyLossScale = 0.35f;
-    auto highLoss = acustra::fittedPhysicalCalibration;
+    lowLoss.steelWoundFrictionLoss = 0.0f;
+    auto highLoss = lowLoss;
     highLoss.steel.frequencyLossScale = 3.0f;
     const auto clear = acustra::AcustraEngineTestAccess::configuredLoop(
         40, sampleRate, lowLoss);
     const auto lossy = acustra::AcustraEngineTestAccess::configuredLoop(
         40, sampleRate, highLoss);
-    expect(lossy.broadMix > 8.5 * clear.broadMix
+    const double upperOmega = 2.0 * std::numbers::pi * 8000.0 / sampleRate;
+    const double clearConstantLoss = -std::log(std::abs(
+        acustra::AcustraEngineTestAccess::constantResponse(clear, upperOmega)));
+    const double lossyConstantLoss = -std::log(std::abs(
+        acustra::AcustraEngineTestAccess::constantResponse(lossy, upperOmega)));
+    expect(lossyConstantLoss > 5.5 * clearConstantLoss
                && lossy.highMix > 8.5 * clear.highMix,
            "frequency-loss calibration missed a loss branch");
     const auto preparedLoss
@@ -5251,11 +5416,8 @@ void testHighLossCutoffScaleChangesOnlyUpperLoss()
             return std::hypot((1.0 - mix) + mix * lowReal,
                               mix * lowImaginary);
         };
-        const double bending = loop.bendingGain / std::hypot(
-            1.0 + loop.bendingA1 * std::cos(omega)
-                + loop.bendingA2 * std::cos(2.0 * omega),
-            loop.bendingA1 * std::sin(omega)
-                + loop.bendingA2 * std::sin(2.0 * omega));
+        const double bending = std::abs(
+            acustra::AcustraEngineTestAccess::lossSectionResponse(loop, omega));
         return loop.loopGain
             * mixedPoleMagnitude(loop.broadCoefficient, loop.broadMix)
             * mixedPoleMagnitude(loop.highCoefficient, loop.highMix)
@@ -5293,45 +5455,50 @@ void testHighLossCutoffScaleChangesOnlyUpperLoss()
 }
 
 // The string's own bending loss (bendingLossSection in AcustraEngine.cpp).
-// With every factor at zero no section enters the loop. With them on, the
-// section each loop carries adds, per round trip of the fundamental period,
-// Valette's and Woodhouse's loss pi (f_n / f0) eta B n^2 / (1 + B n^2) to
-// within 12% wherever that loss adds 20 to 160 dB/s below 0.3 of the host
-// rate - the band the section is designed to follow - at 44.1, 48 and 96 kHz
-// alike; both polarisations
-// carry the same section, since the loss is the string's; and the
-// fundamental keeps the decay the loop gain asks for and the pitch the
-// tuning asks for.
+// With the bending factor at zero and no friction no bending section enters
+// the loop. With it on, the section each loop carries adds, per round trip
+// of the fundamental period, Valette's and Woodhouse's loss
+// pi (f_n / f0) eta' B n^2 / (1 + B n^2) to within 12% wherever that loss
+// adds 20 to 160 dB/s below 0.3 of the host rate - the band the section is
+// designed to follow - at 44.1, 48 and 96 kHz alike, where eta' is the plain
+// steel's eta on every string less, on a wound string, the winding friction
+// its tension takes over (constantLossSection); both polarisations carry the
+// same section, since the loss is the string's; and the fundamental keeps
+// the decay the loop gain asks for and the pitch the tuning asks for.
 void testBendingLossFollowsItsLaw()
 {
     using Access = acustra::AcustraEngineTestAccess;
     auto off = acustra::fittedPhysicalCalibration;
-    off.steelWoundBendingLoss = off.steelPlainBendingLoss = 0.0f;
+    off.steelWoundFrictionLoss = off.steelPlainBendingLoss = 0.0f;
     auto on = acustra::fittedPhysicalCalibration;
-    on.steelWoundBendingLoss = 0.1f;
+    on.steelWoundFrictionLoss = 0.0f;
     on.steelPlainBendingLoss = 0.006f;
+    // A wound string's core: eta less its friction at the default age.
+    auto rubbed = on;
+    rubbed.steelWoundFrictionLoss = 1.0e-3f;
 
     struct Case
     {
         int midiNote;
+        const acustra::PhysicalCalibration* calibration;
         double factor;
         const char* name;
     };
     const Case cases[] {
-        { 40, 0.1, "steel E2" },
-        { 51, 0.1, "steel D#3" },
-        { 64, 0.006, "steel E4" },
-        { 72, 0.006, "steel C5" },
+        { 40, &on, 0.006, "steel E2" },
+        { 51, &on, 0.006, "steel D#3" },
+        { 64, &on, 0.006, "steel E4" },
+        { 72, &on, 0.006, "steel C5" },
+        { 40, &rubbed, 0.005, "steel E2 with winding friction" },
+        { 51, &rubbed, 0.005, "steel D#3 with winding friction" },
     };
-    const auto sectionLoss = [] (double gain, double a1, double a2, double omega)
+    const auto sectionLoss = [] (const Access::StringLoopSnapshot& loop,
+                                 double omega)
     {
-        return -std::log(gain / std::hypot(
-            1.0 + a1 * std::cos(omega) + a2 * std::cos(2.0 * omega),
-            a1 * std::sin(omega) + a2 * std::sin(2.0 * omega)));
+        return -std::log(std::abs(Access::bendingResponse(loop, omega)));
     };
-    const auto magnitude = [&] (
-        const acustra::AcustraEngineTestAccess::StringLoopSnapshot& loop,
-        double omega)
+    const auto magnitude = [&] (const Access::StringLoopSnapshot& loop,
+                                double omega)
     {
         const double lossOmega = loop.sampleRate == 48000.0 ? omega
             : 2.0 * std::atan((loop.sampleRate / 48000.0) * std::tan(0.5 * omega));
@@ -5344,24 +5511,22 @@ void testBendingLossFollowsItsLaw()
         return loop.loopGain
             * mixedPoleMagnitude(loop.broadCoefficient, loop.broadMix)
             * mixedPoleMagnitude(loop.highCoefficient, loop.highMix)
-            * std::exp(-sectionLoss(loop.bendingGain, loop.bendingA1,
-                                    loop.bendingA2, omega));
+            * std::abs(Access::lossSectionResponse(loop, omega));
     };
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
         for (const auto& item : cases)
         {
             const std::string name = std::string(item.name) + " at "
                 + std::to_string(static_cast<int>(rate)) + " Hz";
-            const auto clear = Access::configuredLoop(
-                item.midiNote, rate, off);
-            const auto lossy = Access::configuredLoop(
-                item.midiNote, rate, on);
+            const auto clear = Access::configuredLoop(item.midiNote, rate, off);
+            const auto lossy = Access::configuredLoop(item.midiNote, rate,
+                                                      *item.calibration);
             expect(clear.bendingA1 == 0.0 && clear.bendingA2 == 0.0
                        && clear.bendingGain == 1.0,
                    name + ": a zero bending-loss factor left a section");
-            const auto planes = Access::bendingSections(
-                item.midiNote, rate, on);
-            expect(planes.normalActive && planes.parallelActive
+            const auto planes = Access::bendingSections(item.midiNote, rate,
+                                                        *item.calibration);
+            expect(planes.normalBendingActive && planes.parallelBendingActive
                        && planes.normal == planes.parallel,
                    name + ": the polarisations lose the string's bending "
                           "differently");
@@ -5387,8 +5552,7 @@ void testBendingLossFollowsItsLaw()
                 if (lawRate < 20.0 || lawRate > 160.0)
                     continue;
                 const double omega = 2.0 * std::numbers::pi * frequency / rate;
-                const double actual = sectionLoss(lossy.bendingGain,
-                    lossy.bendingA1, lossy.bendingA2, omega);
+                const double actual = sectionLoss(lossy, omega);
                 worst = std::max(worst, std::abs(actual / law - 1.0));
                 ++checked;
             }
@@ -5415,6 +5579,288 @@ void testBendingLossFollowsItsLaw()
         }
 }
 
+// The string's constant loss angles (constantLossSection in
+// AcustraEngine.cpp). With Paté, Le Carrou and Fabre's dislocation in the
+// steel and a wound string's winding friction, a complex tension (JASA 135
+// (2014) 3045, Sec. III.A, after Valette), acting on a stiff string's
+// tension share and its bending loss on the rest, partial n decays at
+//     sigma_n = pi f_n [delta_disl + (delta_W + eta B n^2) / (1 + B n^2)];
+// the engine carries the constant angle
+// delta_disl + delta_W in a section of two relaxations and the rest in the
+// bending section (above). It takes delta_disl = steel.frequencyLossScale /
+// 5500 and delta_W = steelWoundFrictionLoss on the four wound strings, String
+// Age scaling the first by (1 + 1.35 age) / (1 + 1.35 x 0.15) and the second
+// by max(0.2, 1 + 8 (age - 0.15)). Per round trip of the fundamental period
+// the section adds pi (f_n / f0) (delta_disl + delta_W) nepers within 20%
+// wherever that adds 5 to 250 dB/s - two decades of loss, inside the band it
+// is fitted over - and within 0.75 dB/s where it adds less, at 44.1 to
+// 192 kHz and every String Age, with friction or without. The fundamental
+// keeps the decay the loop gain asks for, times the string's common
+// round-trip loss 0.99915, and the pitch the tuning asks for, so the loss is
+// added above it.
+void testConstantLossFollowsItsLaw()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    const auto shipped = acustra::fittedPhysicalCalibration;
+    auto plainSteel = shipped;
+    plainSteel.steelWoundFrictionLoss = 0.0f;
+    // An eight-times friction: the most the wound strings' section carries
+    // at the default age in any configuration tried here.
+    auto rubbed = shipped;
+    rubbed.steelWoundFrictionLoss = 1.0e-3f;
+    struct Calibration
+    {
+        const acustra::PhysicalCalibration* values;
+        const char* name;
+    };
+    const Calibration calibrations[] {
+        { &plainSteel, "dislocation alone" },
+        { &shipped, "shipped" },
+        { &rubbed, "eight-times friction" },
+    };
+    const std::vector<int> notes { 40, 45, 51, 55, 59, 64, 72, 84 };
+    constexpr double decibelsPerNeper = 8.685889638065035;
+    constexpr double defaultAge = 0.15;
+    double worstBand = 0.0;
+    double worstBelow = 0.0;
+    int checkedBand = 0;
+    for (const double rate : { 44100.0, 48000.0, 96000.0, 192000.0 })
+        for (const double age : { 0.0, defaultAge, 1.0 })
+            for (const auto& calibration : calibrations)
+            {
+                const auto configured = Access::bendingSectionsFor(notes, rate,
+                    *calibration.values, static_cast<float>(age));
+                for (std::size_t index = 0; index < notes.size(); ++index)
+                {
+                    const int midiNote = notes[index];
+                    const auto& planes = configured[index];
+                    const std::string name = "MIDI " + std::to_string(midiNote)
+                        + " at " + std::to_string(static_cast<int>(rate))
+                        + " Hz, age " + std::to_string(age) + ", "
+                        + calibration.name;
+                    const auto& loop = planes.normalLoop;
+                    expect(planes.normalActive && planes.parallelActive,
+                           name + ": the constant-loss section was not in its loops");
+                    const bool wound = planes.stringIndex <= 3;
+                    const double dislocation
+                        = calibration.values->steel.frequencyLossScale / 5500.0
+                        * (1.0 + 1.35 * age) / (1.0 + 1.35 * defaultAge);
+                    const double friction = wound
+                        ? calibration.values->steelWoundFrictionLoss
+                            * std::max(0.2, 1.0 + 8.0 * (age - defaultAge))
+                        : 0.0;
+                    const double fundamental = 440.0 * std::exp2(
+                        (static_cast<double>(midiNote) - 69.0) / 12.0);
+                    const double inharmonicity = loop.inharmonicity;
+                    int inBand = 0;
+                    for (int partial = 2;; ++partial)
+                    {
+                        const double n = static_cast<double>(partial);
+                        const double stretched = n * std::sqrt(
+                            (1.0 + inharmonicity * n * n) / (1.0 + inharmonicity));
+                        const double frequency = stretched * fundamental;
+                        if (frequency > std::min(0.45 * rate, 20000.0))
+                            break;
+                        const double law = std::numbers::pi * stretched
+                            * (dislocation + friction);
+                        const double lawRate = decibelsPerNeper * law * fundamental;
+                        const double omega
+                            = 2.0 * std::numbers::pi * frequency / rate;
+                        const double actual = -std::log(std::abs(
+                            Access::constantResponse(loop, omega)));
+                        if (lawRate < 5.0)
+                        {
+                            const double error = decibelsPerNeper * fundamental
+                                * std::abs(actual - law);
+                            worstBelow = std::max(worstBelow, error);
+                            if (error > 0.75)
+                            {
+                                expect(false, name + ": partial " + std::to_string(partial)
+                                    + " missed the constant loss by "
+                                    + std::to_string(error) + " dB/s");
+                                break;
+                            }
+                            continue;
+                        }
+                        if (lawRate > 250.0)
+                            continue;
+                        const double error = std::abs(actual / law - 1.0);
+                        worstBand = std::max(worstBand, error);
+                        ++checkedBand;
+                        ++inBand;
+                        if (error > 0.20)
+                        {
+                            expect(false, name + ": partial " + std::to_string(partial)
+                                + " missed the constant loss angle by "
+                                + std::to_string(100.0 * error) + "%");
+                            break;
+                        }
+                    }
+                    expect(inBand >= 2,
+                           name + ": no partial fell in the section's band");
+                }
+            }
+    std::cout << "Constant loss angle: " << checkedBand
+              << " partials at 5-250 dB/s, worst " << 100.0 * worstBand
+              << "%; below 5 dB/s worst " << worstBelow << " dB/s\n";
+
+    const auto magnitude = [] (const Access::StringLoopSnapshot& loop, double omega)
+    {
+        const double lossOmega = loop.sampleRate == 48000.0 ? omega
+            : 2.0 * std::atan((loop.sampleRate / 48000.0) * std::tan(0.5 * omega));
+        const auto mixedPoleMagnitude = [lossOmega] (double coefficient, double mix)
+        {
+            const std::complex<double> low = (1.0 - coefficient)
+                / (1.0 - coefficient * std::polar(1.0, -lossOmega));
+            return std::abs((1.0 - mix) + mix * low);
+        };
+        return loop.loopGain
+            * mixedPoleMagnitude(loop.broadCoefficient, loop.broadMix)
+            * mixedPoleMagnitude(loop.highCoefficient, loop.highMix)
+            * std::abs(Access::lossSectionResponse(loop, omega));
+    };
+    int openChecked = 0;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const int midiNote : { 40, 45, 50, 55, 59, 64, 72 })
+        {
+            const std::string name = "MIDI " + std::to_string(midiNote) + " at "
+                + std::to_string(static_cast<int>(rate)) + " Hz";
+            const auto clear = Access::configuredLoop(midiNote, rate, plainSteel);
+            const auto lossySections = Access::bendingSections(midiNote, rate, rubbed);
+            const auto& lossy = lossySections.normalLoop;
+            const double fundamental = 440.0 * std::exp2(
+                (static_cast<double>(midiNote) - 69.0) / 12.0);
+            const double fundamentalOmega
+                = 2.0 * std::numbers::pi * fundamental / rate;
+            const double decayChangeDb = 20.0 * std::log10(
+                magnitude(lossy, fundamentalOmega)
+                / magnitude(clear, fundamentalOmega));
+            expect(std::abs(decayChangeDb) < 1.0e-3,
+                   name + ": the string loss moved the fundamental's decay by "
+                       + std::to_string(decayChangeDb) + " dB per pass");
+            const double pitchChangeCents = 1200.0 * std::log2(
+                loopResonance(lossy, 1, fundamentalOmega)
+                / loopResonance(clear, 1, fundamentalOmega));
+            expect(std::abs(pitchChangeCents) < 0.01,
+                   name + ": the string loss retuned the fundamental by "
+                       + std::to_string(pitchChangeCents) + " cents");
+            const auto open = acustra::AcustraEngine::openNotes(
+                acustra::Tuning::Standard);
+            if (open[static_cast<std::size_t>(lossySections.stringIndex)] != midiNote)
+                continue;
+            // An open string: 5.4 s at the default age, times the fitted
+            // scale, per round trip of f0, and the common loss on top.
+            const double t60 = 5.4 * (1.0 - 0.12 * defaultAge)
+                * shipped.steel.fundamentalT60Scale;
+            const double requestedDb = -60.0 / (t60 * fundamental)
+                + 20.0 * std::log10(0.99915);
+            const double realisedDb = 20.0 * std::log10(
+                magnitude(lossy, fundamentalOmega));
+            expect(std::abs(realisedDb - requestedDb) < 1.0e-3,
+                   name + ": the fundamental lost " + std::to_string(realisedDb)
+                       + " dB per pass, not the requested "
+                       + std::to_string(requestedDb));
+            ++openChecked;
+        }
+    expect(openChecked >= 12, "too few open strings checked their fundamental decay");
+}
+
+// Both loss sections each loop carries are passive as the loop runs them,
+// from the float coefficients it holds: their cascade's |H| <= 1 at every
+// frequency, the constant-loss section exactly one at DC (StringLoop::
+// advance's form needs no rounding to agree), and each section's stored
+// taps agree with its unit gain at DC, g = 1 + a1 + a2 for the bending
+// section and g + n1 + n2 = 1 + a1 + a2 for the other, which the tuning's lag
+// reads (constantLossLag). Notes across the fretboard, at every String Age
+// and every host rate the engine accepts, 8 to 384 kHz.
+void testStringLossSectionsArePassiveAtEveryRate()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    const std::vector<int> notes { 40, 43, 45, 47, 50, 52, 55, 57, 59, 62, 64,
+                                   67, 69, 71, 74, 76, 79, 81, 83, 84 };
+    double worstGain = 0.0;
+    double worstIdentity = 0.0;
+    int sections = 0;
+    for (const double rate : { 8000.0, 11025.0, 22050.0, 44100.0, 48000.0,
+                               88200.0, 96000.0, 192000.0, 384000.0 })
+        for (const float age : { 0.0f, 0.15f, 1.0f })
+            for (const auto& planes : Access::bendingSectionsFor(notes, rate,
+                     acustra::fittedPhysicalCalibration, age))
+                for (const auto* loop : { &planes.normalLoop, &planes.parallelLoop })
+                {
+                    if (!(planes.normalActive && planes.parallelActive))
+                        continue;
+                    ++sections;
+                    for (int bin = 1; bin <= 2048; ++bin)
+                    {
+                        const double omega = std::numbers::pi * bin / 2048.0;
+                        worstGain = std::max(worstGain,
+                            std::abs(Access::lossSectionResponse(*loop, omega)));
+                    }
+                    expect(Access::constantResponse(*loop, 0.0) == 1.0,
+                           "a string's constant-loss section did not pass DC exactly");
+                    worstIdentity = std::max(worstIdentity, std::abs(
+                        (loop->constantGain + loop->constantN1 + loop->constantN2)
+                        - (1.0 + loop->constantA1 + loop->constantA2)));
+                    worstIdentity = std::max(worstIdentity, std::abs(
+                        loop->bendingGain - (1.0 + loop->bendingA1 + loop->bendingA2)));
+                }
+    std::cout << "String loss sections: " << sections << " passive to "
+              << worstGain << ", DC identities to " << worstIdentity << '\n';
+    expect(sections > 1000, "too few string loss sections were configured");
+    expect(worstGain <= 1.0 + 1.0e-6,
+           "a string's loss sections amplified a frequency");
+    expect(worstIdentity < 1.0e-6,
+           "a loss section's taps disagree with its unit gain at DC");
+}
+
+// A string's intrinsic loss is the same in both of its planes (Paté et al.,
+// Sec. III.D): both polarisations carry the same loss sections, loop gain and
+// shelves, with the bridge coupled as it plays. Until 2026-10-10 the parallel
+// plane lost an authored 0.9988 per round trip to the normal plane's 0.9995,
+// with 6% and 8% deeper shelves; the planes now differ only where their
+// bridge terminations do. String Age's friction reaches only the wound
+// strings, and both planes alike.
+void testStringLossIsTheSameInBothPlanes()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    const std::vector<int> notes { 40, 45, 50, 55, 59, 64, 69, 76 };
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const float age : { 0.0f, 0.15f, 0.6f, 1.0f })
+        {
+            const auto configured = Access::bendingSectionsFor(notes, rate,
+                acustra::fittedPhysicalCalibration, age, true);
+            for (std::size_t index = 0; index < notes.size(); ++index)
+            {
+                const std::string name = "MIDI " + std::to_string(notes[index])
+                    + " at " + std::to_string(static_cast<int>(rate))
+                    + " Hz, age " + std::to_string(age);
+                expect(configured[index].normal == configured[index].parallel,
+                       name + ": the planes carry different loss sections");
+                expect(configured[index].normalLoss == configured[index].parallelLoss,
+                       name + ": the planes lose different loop gains or shelves");
+            }
+        }
+    // The friction term itself: on a wound string String Age adds loss to
+    // the middle partials it reaches, which on a plain string only the
+    // dislocation's (1 + 1.35 age) does.
+    const auto lossAt = [] (int midiNote, float age, double frequency)
+    {
+        const auto planes = Access::bendingSections(midiNote, 48000.0,
+            acustra::fittedPhysicalCalibration, age);
+        return -std::log(std::abs(Access::lossSectionResponse(planes.normalLoop,
+            2.0 * std::numbers::pi * frequency / 48000.0)));
+    };
+    const double woundRatio = lossAt(40, 1.0f, 2000.0) / lossAt(40, 0.15f, 2000.0);
+    const double plainRatio = lossAt(64, 1.0f, 2000.0) / lossAt(64, 0.15f, 2000.0);
+    std::cout << "String Age 0.15 -> 1 at 2 kHz: wound E2 loss x" << woundRatio
+              << ", plain E4 x" << plainRatio << '\n';
+    expect(woundRatio > 3.0,
+           "String Age did not age the wound strings' winding friction");
+    expect(plainRatio > 1.0 && plainRatio < 2.2,
+           "String Age moved a plain string's loss by more than its dislocation");
+}
+
 // The contact's noise (AcustraEngine::renderContactNoise). With its string
 // and click levels at zero nothing else it reads is heard. The click reaches
 // the microphones without touching the string or the body, so the difference
@@ -5430,13 +5876,19 @@ void testPlateConductanceFloorDampsOnlyTheUpperBand()
     // measured modal fit loses. It must shorten the upper-band tail without
     // touching the low partials the measured modes already dominate, and it
     // must be exactly inert when its plateau is zero.
+    // Its plateau is in the measured flamenca's units and reaches the
+    // strings scaled to steel level as the modes it continues are
+    // (plateConductanceMode); 0.004 / (bridgeMobilityScale *
+    // steelTopMobilityRatio) is the 0.004 s/kg at the heave port this test
+    // was written with before the floor was scaled (2026-10-10).
     auto off = acustra::fittedPhysicalCalibration;
     off.bridgeConductanceFloor = 0.0f;
     off.bridgeConductanceCornerHz = 2400.0f;
     auto offOtherCorner = off;
     offOtherCorner.bridgeConductanceCornerHz = 200.0f;
     auto on = off;
-    on.bridgeConductanceFloor = 0.004f;
+    on.bridgeConductanceFloor = 0.004f
+        / (off.bridgeMobilityScale * acustra::detail::steelTopMobilityRatio);
 
     acustra::EngineParameters parameters;
     const auto quiet = renderCalibrated(parameters, off, 52, 0.85f, 3.0);
@@ -5464,6 +5916,80 @@ void testPlateConductanceFloorDampsOnlyTheUpperBand()
             expect(std::isfinite(audio.left[index])
                        && std::isfinite(audio.right[index]),
                    "a plate-conductance render was not finite");
+}
+
+// The plate floor at both of a string's bridge ports. It is in the measured
+// flamenca's units, so it reaches the strings at steel level with the modes
+// it continues (bridgeMobilityScale * steelTopMobilityRatio); and above the
+// archive's 2.2 kHz corner the bridge's two ends move independently, so it
+// has a rocking residue equal to its heave one. Its section adds G k(f) to
+// the heave and to the normalised rocking mobility alike, k the over-damped
+// section's own shape (plateConductanceMode, near one on its plateau), so a
+// string's normal port at lever arm u gains G k (1 + u^2) and the parallel
+// polarisation's, (h/a)^2 times the rocking, (h/a)^2 G k: the parallel plane
+// meets bridge loss above the measured rocking modes. Unscaled and heave
+// only, the floor added 4.8 times this G k to every normal port, 1.9-4.5
+// times its G k (1 + u^2) now, and nothing to the parallel port.
+void testPlateConductanceFloorReachesBothPorts()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    const auto shipped = acustra::fittedPhysicalCalibration;
+    auto none = shipped;
+    none.bridgeConductanceFloor = 0.0f;
+    const auto build = [] (const acustra::PhysicalCalibration& calibration)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->setPhysicalCalibration(calibration);
+        engine->prepare(48000.0, 64);
+        return engine;
+    };
+    const auto with = build(shipped);
+    const auto without = build(none);
+    const double floor = static_cast<double>(shipped.bridgeConductanceFloor)
+        * shipped.bridgeMobilityScale * acustra::detail::steelTopMobilityRatio;
+    const double eta = Access::saddleHeightRatio(*with);
+    // The section's shape per unit plateau, from its documented design: real
+    // poles at the corner and 16 kHz, its centre prewarped at 48 kHz, its
+    // weight 2 pi 16 kHz, read at this host's s.
+    const double corner = std::clamp(
+        static_cast<double>(shipped.bridgeConductanceCornerHz), 100.0, 8000.0);
+    const double omega0 = 96000.0 * std::tan(std::numbers::pi
+        * std::sqrt(corner * 16000.0) / 48000.0);
+    const double damping = omega0 / (2.0 * std::sqrt(corner / 16000.0));
+    const auto shape = [&] (double frequency)
+    {
+        const std::complex<double> s(0.0, 96000.0
+            * std::tan(std::numbers::pi * frequency / 48000.0));
+        return (2.0 * std::numbers::pi * 16000.0 * s
+                / (s * s + 2.0 * damping * s + omega0 * omega0)).real();
+    };
+    double worstNormal = 0.0, worstParallel = 0.0, lowestShape = 1.0e30;
+    for (const int string : { 0, 2, 3, 5 })
+        for (const double frequency : { 3500.0, 5000.0, 7000.0, 9000.0 })
+        {
+            const auto on = Access::bridgePorts(*with, frequency, string);
+            const auto off = Access::bridgePorts(*without, frequency, string);
+            const double arm = 0.5 * (static_cast<double>(string) - 2.5);
+            const double plateau = floor * shape(frequency);
+            lowestShape = std::min(lowestShape, shape(frequency));
+            const double normal = (on[0].real() - off[0].real())
+                / (plateau * (1.0 + arm * arm));
+            const double parallel = (on[1].real() - off[1].real())
+                / (eta * eta * plateau);
+            worstNormal = std::max(worstNormal, std::abs(normal - 1.0));
+            worstParallel = std::max(worstParallel, std::abs(parallel - 1.0));
+            expect(on[1].real() > 0.0 && on[0].real() > 0.0,
+                   "a bridge port was not passive with the plate floor");
+        }
+    std::cout << "Plate floor at the bridge ports, 3.5-9 kHz: normal within "
+              << 100.0 * worstNormal << "%, parallel within "
+              << 100.0 * worstParallel << "% of G k (1 + u^2) and (h/a)^2 G k"
+              << " (k at least " << lowestShape << ")\n";
+    expect(lowestShape > 0.7, "the plate floor's plateau left 3.5-9 kHz");
+    expect(worstNormal < 0.01,
+           "the plate floor did not reach the normal ports at steel level");
+    expect(worstParallel < 0.01,
+           "the plate floor did not reach the parallel polarisation's port");
 }
 
 void testStolenStringKeepsRingingUnderHandDamping()
@@ -8210,39 +8736,64 @@ void testBodyRadiationKeepsItsLevelAcrossRates()
 // at every host rate. Prewarped at the host rate its over-damped section
 // moved its fitted plateau (5-7% faster bridge decay above 1 kHz at 96 kHz),
 // and below a 13 kHz host it was dropped with the modes above 0.45 fs.
+// Read as the decay the floor adds, the bridge with it against the same
+// bridge without it. Until 2026-10-10 the whole bridge's decay was read: the
+// floor, unscaled, carried most of it above 1 kHz, so the total moved with
+// the rate as the floor did. Scaled to steel level with its modes
+// (plateConductanceMode) it carries less, and the total shows the measured
+// modes' own rate dependence beside it - at 192 kHz the bank keeps modes
+// above 0.45 x 48 kHz that 48 kHz leaves out, about 12% more of the high E's
+// small modal decay at its 20th partial, +2.9% of its total there (+1.9%
+// under the unscaled floor) - which is the modes' and not the floor's.
 void testThePlateFloorDampsAlikeAtEveryRate()
 {
     const std::array<double, 6> rates { 48000.0, 44100.0, 96000.0, 192000.0, 12000.0, 11025.0 };
-    std::vector<std::unique_ptr<acustra::AcustraEngine>> engines;
+    auto bare = acustra::fittedPhysicalCalibration;
+    bare.bridgeConductanceFloor = 0.0f;
+    std::vector<std::unique_ptr<acustra::AcustraEngine>> engines, without;
     for (const double rate : rates)
     {
         engines.push_back(std::make_unique<acustra::AcustraEngine>());
         engines.back()->prepare(rate, 64);
+        without.push_back(std::make_unique<acustra::AcustraEngine>());
+        without.back()->setPhysicalCalibration(bare);
+        without.back()->prepare(rate, 64);
     }
     const auto open = acustra::AcustraEngine::openNotes(acustra::Tuning::Standard);
-    double worstHigh = 0.0, worstLow = 0.0;
+    double worstHigh = 0.0, worstLow = 0.0, worstTotal = 0.0;
     for (const int string : { 0, 2, 5 })
     {
         const double f0 = 440.0 * std::exp2((open[static_cast<std::size_t>(string)] - 69) / 12.0);
         for (const int harmonic : { 3, 5, 8, 12, 20 })
         {
             const double f = harmonic * f0;
-            const double reference = acustra::AcustraEngineTestAccess::bridgeDecay(
+            const auto floorDecay = [&] (std::size_t r)
+            {
+                return acustra::AcustraEngineTestAccess::bridgeDecay(*engines[r], f, f0, string)
+                    - acustra::AcustraEngineTestAccess::bridgeDecay(*without[r], f, f0, string);
+            };
+            const double reference = floorDecay(0);
+            const double referenceTotal = acustra::AcustraEngineTestAccess::bridgeDecay(
                 *engines[0], f, f0, string);
+            expect(reference > 0.0, "the plate floor added no decay at 48 kHz");
             for (std::size_t r = 1; r < rates.size(); ++r)
             {
                 if (f > 0.4 * rates[r])
                     continue;
-                const double relative = std::abs(acustra::AcustraEngineTestAccess::bridgeDecay(
-                    *engines[r], f, f0, string) / reference - 1.0);
+                const double relative = std::abs(floorDecay(r) / reference - 1.0);
                 (rates[r] >= 44100.0 ? worstHigh : worstLow)
                     = std::max(rates[r] >= 44100.0 ? worstHigh : worstLow, relative);
+                if (rates[r] >= 44100.0)
+                    worstTotal = std::max(worstTotal, std::abs(
+                        acustra::AcustraEngineTestAccess::bridgeDecay(*engines[r], f, f0, string)
+                        / referenceTotal - 1.0));
             }
         }
     }
-    std::cout << "Acustra bridge decay against 48 kHz: worst " << 100.0 * worstHigh
-              << "% at 44.1-192 kHz, " << 100.0 * worstLow << "% at 11-12 kHz\n";
-    expect(worstHigh < 0.025, "the bridge's decay of upper partials moved with the rate");
+    std::cout << "Acustra plate floor's decay against 48 kHz: worst " << 100.0 * worstHigh
+              << "% at 44.1-192 kHz, " << 100.0 * worstLow << "% at 11-12 kHz"
+              << " (the whole bridge's " << 100.0 * worstTotal << "% at 44.1-192 kHz)\n";
+    expect(worstHigh < 0.025, "the plate floor's decay of upper partials moved with the rate");
     expect(worstLow < 0.3, "a low host rate lost the bridge's plate conductance floor");
 }
 
@@ -8873,7 +9424,11 @@ int main()
     testPickingStylesChangeMoreThanGainAtEveryVelocity();
     testHighLossCutoffScaleChangesOnlyUpperLoss();
     testBendingLossFollowsItsLaw();
+    testConstantLossFollowsItsLaw();
+    testStringLossSectionsArePassiveAtEveryRate();
+    testStringLossIsTheSameInBothPlanes();
     testPlateConductanceFloorDampsOnlyTheUpperBand();
+    testPlateConductanceFloorReachesBothPorts();
     testStolenStringKeepsRingingUnderHandDamping();
     testBridgeHandPressureShortensAndDarkens();
     testNaturalHarmonicsReachAboveTheFretboard();

@@ -40,7 +40,7 @@ inline PhysicalCalibration readCalibration(const std::string& path)
         std::pair { "pickReleaseVelocityShare", &result.pickReleaseVelocityShare },
         std::pair { "pickReleaseVelocityExponent", &result.pickReleaseVelocityExponent },
         std::pair { "pickEdgeRadiusMetres", &result.pickEdgeRadiusMetres },
-        std::pair { "steelWoundBendingLoss", &result.steelWoundBendingLoss },
+        std::pair { "steelWoundFrictionLoss", &result.steelWoundFrictionLoss },
         std::pair { "steelPlainBendingLoss", &result.steelPlainBendingLoss }
     };
     // Match the engine's accepted domain. Reject an invalid experiment rather
@@ -51,7 +51,7 @@ inline PhysicalCalibration readCalibration(const std::string& path)
         { 0.f, 3.f }, { .7f, 3.f }, { 0.f, 1.2f }, { -1.f, 1.f },
         { .25f, 32.f }, { 0.f, .04f }, { -.06f, .05f }, { .5f, 4.f },
         { 0.f, .02f }, { 100.f, 8000.f }, { .00325f, .060f }, { 0.f, 2.f },
-        { 0.f, 4.f }, { 0.f, .001f }, { 0.f, 2.f }, { 0.f, 2.f }
+        { 0.f, 4.f }, { 0.f, .001f }, { 0.f, .01f }, { 0.f, 2.f }
     }};
     static_assert(fields.size() == limits.size());
     if (!std::filesystem::is_regular_file(path))

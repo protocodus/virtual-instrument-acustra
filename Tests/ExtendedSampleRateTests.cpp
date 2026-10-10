@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <complex>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -107,6 +108,55 @@ struct AcustraEngineTestAccess
             if (!std::isfinite(filter.ratePole) || std::abs(filter.ratePole) >= 1.0f)
                 return false;
         }
+        return true;
+    }
+
+    // Every string's own loss sections, designed at the host rate, are in
+    // both loops and passive as the loop runs them, each as
+    // 1 - (1 - z^-1)(g0 + g1 z^-1)/A(z) (StringLoop::advance) from its float
+    // coefficients, the bending section's g/A(z) and the constant-loss one
+    // (constantLossSection), from 10 Hz to Nyquist: open and at the 7th,
+    // 12th and 19th frets. Their poles close on z = 1 at these rates, where
+    // a direct form's gain at DC would rest on float rounding.
+    static bool stringLossIsPassive(double rate)
+    {
+        auto engine = std::make_unique<AcustraEngine>();
+        engine->prepare(rate, 64);
+        for (int string = 0; string < AcustraEngine::stringCount; ++string)
+            for (const int fret : { 0, 7, 12, 19 })
+            {
+                auto& voice = engine->voices_[static_cast<std::size_t>(string)];
+                voice.attackPitchCents = 0.0f;
+                engine->configureVoice(voice, string, voice.openMidi + fret, true);
+                for (const auto& loop : voice.loops)
+                {
+                    if (!loop.bendingLossActive || !loop.constantLossActive)
+                        return false;
+                    const double g0 = static_cast<double>(1.0f - loop.constantLossGain);
+                    const double g1 = static_cast<double>(loop.constantLossN2
+                                                          - loop.constantLossA2);
+                    for (int point = 0; point <= 2000; ++point)
+                    {
+                        const double frequency = 10.0 * std::pow(
+                            0.5 * rate / 10.0, point / 2000.0);
+                        const double omega = 6.283185307179586 * frequency / rate;
+                        const std::complex<double> z1 = std::polar(1.0, -omega);
+                        // The bending section in the same exact form, its
+                        // numerator tap n2 zero.
+                        const double bendingG0 = static_cast<double>(1.0f - loop.bendingLossGain);
+                        const double bendingG1 = -static_cast<double>(loop.bendingLossA2);
+                        const std::complex<double> response = (1.0 - (1.0 - z1)
+                            * (g0 + g1 * z1)
+                            / (1.0 + static_cast<double>(loop.constantLossA1) * z1
+                               + static_cast<double>(loop.constantLossA2) * z1 * z1))
+                            * (1.0 - (1.0 - z1) * (bendingG0 + bendingG1 * z1)
+                                / (1.0 + static_cast<double>(loop.bendingLossA1) * z1
+                                   + static_cast<double>(loop.bendingLossA2) * z1 * z1));
+                        if (!(std::abs(response) <= 1.0 + 1.0e-6))
+                            return false;
+                    }
+                }
+            }
         return true;
     }
 };
@@ -244,6 +294,8 @@ int main()
     {
         expect(Access::derivativePreservesReferenceTime(rate), "bridge derivative lost its 48k reference time");
         expect(Access::lossIsPassive(rate), "remapped loss pole left the unit circle");
+        expect(Access::stringLossIsPassive(rate),
+               "a string's loss section was missing or active at " + std::to_string(rate));
         lowPitchAndStability(rate);
         controllerAndReprepare(rate);
         fingerDuration(rate, true);

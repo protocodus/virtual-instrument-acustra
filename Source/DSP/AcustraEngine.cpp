@@ -208,6 +208,27 @@ namespace
 {
 constexpr float pi = 3.14159265358979323846f;
 constexpr float twoPi = 2.0f * pi;
+// A string's loss per round trip of its loop at every frequency, on top of
+// the fundamental T60 the loop is designed for, as one gain both
+// polarisations share. A string's intrinsic loss is the same in both planes:
+// measured on a symmetric frame, "the results are similar for both
+// polarizations" (Paté, Le Carrou and Fabre, "Predicting the decay time of
+// solid body electric guitar tones", JASA 135(5) (2014) 3045-3055, Sec.
+// III.D). The planes now differ only where their terminations do, the
+// saddle's heave and rocking ports. Until 2026-10-10 two authored factors
+// split it, 0.9995 normal and 0.9988 parallel, with the parallel plane's
+// broad and high shelves 6% and 8% deeper; this is their geometric mean.
+// With the rest of that day's string loss, the fundamentals' decay at the
+// default construction, the sustain steel.fundamentalT60Scale was chosen by
+// ear against, stays within 1.4 dB/s of what it was from E2 to B4 but A4
+// (3.5 dB/s faster); on the top string's E5 and B5 each plane's stays
+// within 2.8 dB/s, though the two planes' beat reads up to 4.7 dB/s slower
+// (Docs/string-hf-loss-2026-10-10.md). It is still an authored value.
+constexpr float stringRoundTripGain = 0.99915f;
+// The dislocation Q of an isolated plain steel string, constant over the
+// audio band, fitted by Paté et al. (Sec. III.D) to a d'Addario G string's
+// measured partial Qs from 200 Hz to 1 kHz (constantLossSection).
+constexpr double steelDislocationQ = 5500.0;
 constexpr int localMaximumDelaySamples = ACUSTRA_EXTENDED_SAMPLE_RATES ? 32768 : 8192;
 int delayCapacityForRate([[maybe_unused]] double rate) noexcept
 {
@@ -1096,6 +1117,19 @@ constexpr float saddleLeverArm(int stringIndex) noexcept
 // analog poles about 5%, and 48 kHz's bilinear map then draws the upper one
 // toward Nyquist; the plateau was fitted as that 48 kHz design renders, so
 // every host rate keeps the same analog prototype.
+// G is in the measured flamenca's units, like the modal residues it
+// continues, so the bridge brings it to a steel-string guitar's level with
+// the same bridgeMobilityScale * steelTopMobilityRatio (0.207 as shipped):
+// the by-ear 0.011 is 2.3e-3 s/kg at steel level, where unscaled it stood at
+// seven times g21's own missing conductance (Docs/decisions.md, 2026-09-04).
+// It has a rocking residue equal to its heave one. Above the archive's
+// 2.2 kHz corner its two side records disagree: the bridge no longer moves
+// as a body, and two points moving independently with point mobility Y have
+// heave (Y/2) and normalised rocking (Y/2) mobilities and no cross term in
+// these coordinates. A diagonal residue matrix is positive semidefinite, so
+// every string's normal port, G (1 + u^2), and the parallel polarisation's,
+// (h/a)^2 G, stay positive real: without it that plane met no bridge loss
+// above the measured rocking modes' 2.2 kHz (Docs/string-hf-loss-2026-10-10.md).
 constexpr float plateConductanceUpperHz = 16000.0f;
 
 struct PlateConductanceMode
@@ -1174,21 +1208,17 @@ double mixedOnePolePhase(double coefficient, double mix,
 // Mechanics of Musical Instruments, eds. A. Hirschberg, J. Kergomard and G.
 // Weinreich, Springer 1995, pp. 115-183) and the bending-loss term of
 // Woodhouse's (J. Woodhouse, "On the synthesis of guitar plucks", Acta
-// Acustica united with Acustica 90 (2004) 928-944, Sec. 2). Those models'
-// other two terms, air damping and a friction that sets a constant Q, have
-// no separate counterpart here: the loop's fundamental T60 and its broad and
-// high shelves, calibrated as a whole, stand in for them (with two small
-// authored per-plane factors, configureVoice, that act as a constant Q on
-// top of the requested T60), and this section
-// is added to them rather than replacing them (replacing the shelves by
-// Woodhouse's published three-term law over-damped 3-6.8 kHz, see
-// Docs/decisions.md, 2026-09-04). Its
+// Acustica united with Acustica 90 (2004) 928-944, Sec. 2). Of those models'
+// other terms, air damping is left to the loop's fundamental T60 and the
+// constant loss angles have a section of their own (constantLossSection
+// below); replacing the loop's shelves by Woodhouse's published three-term
+// law over-damped 3-6.8 kHz (Docs/decisions.md, 2026-09-04). Its
 // decay rate sigma_n = omega_n / (2 Q_n) grows as the cube of frequency until
 // B n^2 nears one, which is how a string's highest partials die in tens of
-// milliseconds while its first dozen ring for seconds. Wound strings rub
-// wrap on wrap and wrap on core as they bend, so eta is one number per
-// construction (the two bending-loss factors in FittedPhysicalData.h, wound
-// and plain), not a property of the material alone.
+// milliseconds while its first dozen ring for seconds. Every string bends on
+// steel, a wound one on its core, so eta is the plain steel's
+// (steelPlainBendingLoss); on a wound string the section carries eta less
+// the winding friction the tension takes over there (constantLossSection).
 //
 // Per round trip of the loop, one fundamental period, partial n therefore
 // loses L_n = sigma_n / f0 = pi (f_n / f0) eta B n^2 / (1 + B n^2) nepers.
@@ -1343,6 +1373,249 @@ BendingLossSection bendingLossSection(double factor, double inharmonicity,
     return section;
 }
 
+// A string's constant loss angles (Paté, Le Carrou and Fabre, "Predicting
+// the decay time of solid body electric guitar tones", JASA 135(5) (2014)
+// 3045-3055, Sec. III.A, after Valette). Besides air friction and the visco-
+// and thermo-elastic bending loss above, an isolated string loses a constant
+// 1/Q_disl to dislocation in its metal, "constant over the audio frequency
+// range", and a wound string also loses to dry friction between successive
+// turns, which "comes out as a delay between the slope dz/dx and the shear
+// force T(dz/dx) in the string, hence the effect is the same as that of a
+// complex tension T(1 + j delta_W)". A complex tension loses delta_W on the
+// tension's share 1/(1 + B n^2) of a mode's potential energy, as the bending
+// loss loses eta on the rest, so partial n decays at
+//     sigma_n = pi f_n [delta_disl + (delta_W + eta B n^2) / (1 + B n^2)]
+//             = pi f_n [delta_disl + delta_W
+//                       + (eta - delta_W) B n^2 / (1 + B n^2)],
+// a constant Q where the bending share is small. The second form is two
+// sections in cascade, each following a law it can: this one the constant
+// loss angle delta_disl + delta_W, and the bending section above the factor
+// eta - delta_W (configureVoice). Paté et al. measured the isolated string
+// alike in both polarisations (Sec. III.D), so both loops carry both.
+//
+// A constant loss angle is a loss per round trip L_n = sigma_n / f0 that
+// grows as the first power of frequency, which no all-pole section follows:
+// its |H|^-2 = 1 + p u + q u^2 (u = 4 sin^2(omega/2)) rises at least as
+// omega^2. Two relaxations can, as a standard linear solid's spectrum of
+// relaxation times stands in for a constant loss angle over a band in
+// viscoelastic and seismic attenuation models:
+//     |H|^-2 = 1 + G(u),  G = (a u + b u^2) / ((1 + u/u1)(1 + u/u2)),
+// a section with two poles and two zeros. Whatever its corners u1, u2 > 0 it
+// is passive (|H| <= 1) and minimum phase at every frequency when a >= 0 and
+// a + 4b >= 0, so it is designed in that form and needs no fallback. The
+// corners are tried from a small set spread over the band, a and b fitted for
+// each by weighted least squares in relative error on partials from where
+// the law adds 3 dB/s (the 2nd at the lowest) to where it adds 300 dB/s, with
+// a lightly weighted tail on to 20 kHz or 0.45 of the host rate, and the pair
+// that meets the law best at its worst partial is kept. Over two decades of
+// loss two relaxations stay within about 20% of the law, closer over less
+// (Docs/string-hf-loss-2026-10-10.md); below the band, where the law adds
+// under 3 dB/s, the section adds less and the difference stays under 1 dB/s.
+// Its pole-zero pairs sit in the low kilohertz and below, where a direct
+// form's unit gain at DC rests on float rounding of nearly equal
+// coefficients, so the loop runs it as
+//     y = x - (1 - z^-1)(g0 + g1 z^-1) / A(z) x,  g0 = 1 - g,  g1 = n2 - a2,
+// the same section with exactly unit gain at DC in any precision.
+struct ConstantLossSection
+{
+    double gain { 1.0 };
+    double a1 { 0.0 };
+    double a2 { 0.0 };
+    // Numerator taps after the gain, g b1 and g b2.
+    double n1 { 0.0 };
+    double n2 { 0.0 };
+};
+
+// Of the reciprocal pair z + 1/z = 2 - u, the member inside the unit circle.
+std::complex<double> insideRoot(std::complex<double> u) noexcept
+{
+    const std::complex<double> sum = 2.0 - u;
+    const std::complex<double> root = std::sqrt(sum * sum - 4.0);
+    const std::complex<double> first = 0.5 * (sum + root);
+    const std::complex<double> second = 0.5 * (sum - root);
+    return std::abs(first) < std::abs(second) ? first : second;
+}
+
+ConstantLossSection constantLossSection(double delta, double inharmonicity,
+                                        double fundamental,
+                                        double sampleRate) noexcept
+{
+    ConstantLossSection section;
+    if (!(delta > 0.0) || !(inharmonicity >= 0.0) || !(fundamental > 0.0)
+        || !(sampleRate > 0.0))
+        return section;
+    constexpr double decibelsPerNeper = 8.685889638065035;
+    // The highest partial fitted, 20 kHz or 0.45 of the host rate.
+    const double topHz = std::min(0.45 * sampleRate, 20000.0);
+    double below = 1.0;
+    double above = topHz / fundamental + 1.0;
+    if (!(stretchedPartial(2.0, inharmonicity) * fundamental < topHz))
+        return section;
+    for (int iteration = 0; iteration < 48; ++iteration)
+    {
+        const double middle = 0.5 * (below + above);
+        if (stretchedPartial(middle, inharmonicity) * fundamental < topHz)
+            below = middle;
+        else
+            above = middle;
+    }
+    const double top = below;
+    // The law's added decay at partial n, nepers per second.
+    const auto rateAt = [&] (double partial)
+    {
+        return piDouble * fundamental * stretchedPartial(partial, inharmonicity)
+             * delta;
+    };
+    const auto partialAt = [&] (double rate)
+    {
+        double lower = 1.0;
+        double upper = top;
+        if (rateAt(upper) <= rate)
+            return upper;
+        if (rateAt(lower) >= rate)
+            return lower;
+        for (int iteration = 0; iteration < 48; ++iteration)
+        {
+            const double middle = 0.5 * (lower + upper);
+            if (rateAt(middle) < rate)
+                lower = middle;
+            else
+                upper = middle;
+        }
+        return 0.5 * (lower + upper);
+    };
+    double lowest = std::max(2.0, partialAt(3.0 / decibelsPerNeper));
+    if (!(lowest < 0.8 * top))
+        lowest = std::max(2.0, std::min(lowest, 0.25 * top));
+    double highest = std::min(top, partialAt(300.0 / decibelsPerNeper));
+    highest = std::max(highest, std::min(top, 1.5 * lowest));
+    if (!(highest > lowest))
+        return section;
+    // The fitted partials: twelve across the band, four more on the tail.
+    constexpr int bandCount = 12;
+    constexpr int tailCount = 4;
+    const bool tail = top > 1.05 * highest;
+    const int count = bandCount + (tail ? tailCount : 0);
+    double u[bandCount + tailCount] {};
+    double target[bandCount + tailCount] {};
+    double weight[bandCount + tailCount] {};
+    double loss[bandCount + tailCount] {};
+    for (int index = 0; index < count; ++index)
+    {
+        const bool inBand = index < bandCount;
+        const double partial = inBand
+            ? lowest * std::pow(highest / lowest,
+                                static_cast<double>(index) / (bandCount - 1))
+            : highest * std::pow(top / highest,
+                                 static_cast<double>(index - bandCount + 1) / tailCount);
+        const double half = piDouble * fundamental
+            * stretchedPartial(partial, inharmonicity) / sampleRate;
+        u[index] = 4.0 * std::sin(half) * std::sin(half);
+        loss[index] = rateAt(partial) / fundamental;
+        target[index] = std::expm1(2.0 * loss[index]);
+        weight[index] = (inBand ? 1.0 : 0.1) / target[index];
+    }
+    const double first = u[0];
+    const double last = u[bandCount - 1];
+    if (!(first > 0.0) || !(last > first))
+        return section;
+    // Corners as fractions of the band's extent in log u.
+    constexpr double lowerCorners[] { -0.25, 0.0, 0.15, 0.3 };
+    constexpr double upperCorners[] { 0.85, 1.0, 1.25, 1.5, 2.0 };
+    double bestError = std::numeric_limits<double>::infinity();
+    double bestU1 = 0.0, bestU2 = 0.0, bestA = 0.0, bestB = 0.0;
+    for (const double lowerCorner : lowerCorners)
+        for (const double upperCorner : upperCorners)
+        {
+            const double u1 = first * std::pow(last / first, lowerCorner);
+            const double u2 = first * std::pow(last / first, upperCorner);
+            double s11 = 0.0, s12 = 0.0, s22 = 0.0, r1 = 0.0, r2 = 0.0;
+            for (int index = 0; index < count; ++index)
+            {
+                const double denominator = (1.0 + u[index] / u1)
+                                         * (1.0 + u[index] / u2);
+                const double phi1 = weight[index] * u[index] / denominator;
+                const double phi2 = phi1 * u[index];
+                const double y = weight[index] * target[index];
+                s11 += phi1 * phi1;
+                s12 += phi1 * phi2;
+                s22 += phi2 * phi2;
+                r1 += phi1 * y;
+                r2 += phi2 * y;
+            }
+            const double determinant = s11 * s22 - s12 * s12;
+            double a = 0.0, b = 0.0;
+            if (determinant > 1.0e-12 * s11 * s22)
+            {
+                a = (r1 * s22 - r2 * s12) / determinant;
+                b = (r2 * s11 - r1 * s12) / determinant;
+            }
+            // Outside the passive set the one-term fit is taken instead,
+            // which is always inside it.
+            if (!(a >= 0.0) || !(a + 4.0 * b >= 0.0))
+            {
+                a = s11 > 0.0 ? r1 / s11 : 0.0;
+                b = 0.0;
+            }
+            if (!(a > 0.0) || !std::isfinite(a) || !std::isfinite(b))
+                continue;
+            double error = 0.0;
+            for (int index = 0; index < bandCount; ++index)
+            {
+                const double denominator = (1.0 + u[index] / u1)
+                                         * (1.0 + u[index] / u2);
+                const double fitted = 0.5 * std::log1p(
+                    (a * u[index] + b * u[index] * u[index]) / denominator);
+                error = std::max(error, std::abs(fitted / loss[index] - 1.0));
+            }
+            if (error < bestError)
+            {
+                bestError = error;
+                bestU1 = u1;
+                bestU2 = u2;
+                bestA = a;
+                bestB = b;
+            }
+        }
+    if (!(bestError < std::numeric_limits<double>::infinity()))
+        return section;
+    // The zeros are the corners' own: (1 + u/u_k) vanishes at u = -u_k.
+    const double zero1 = insideRoot(std::complex<double>(-bestU1, 0.0)).real();
+    const double zero2 = insideRoot(std::complex<double>(-bestU2, 0.0)).real();
+    const double b1 = -(zero1 + zero2);
+    const double b2 = zero1 * zero2;
+    // The poles: 1 + p u + q u^2 = (1 + u/u1)(1 + u/u2) + a u + b u^2.
+    const double p = 1.0 / bestU1 + 1.0 / bestU2 + bestA;
+    const double q = 1.0 / (bestU1 * bestU2) + bestB;
+    double a1 = 0.0, a2 = 0.0;
+    if (q != 0.0)
+    {
+        const std::complex<double> discriminant
+            = std::sqrt(std::complex<double>(p * p - 4.0 * q, 0.0));
+        const std::complex<double> pole1 = insideRoot((-p + discriminant) / (2.0 * q));
+        const std::complex<double> pole2 = insideRoot((-p - discriminant) / (2.0 * q));
+        a1 = -(pole1 + pole2).real();
+        a2 = (pole1 * pole2).real();
+    }
+    else
+    {
+        a1 = -insideRoot(std::complex<double>(-1.0 / p, 0.0)).real();
+    }
+    const double denominatorSum = 1.0 + a1 + a2;
+    const double numeratorSum = 1.0 + b1 + b2;
+    const double gain = denominatorSum / numeratorSum;
+    if (!std::isfinite(a1) || !std::isfinite(a2) || !std::isfinite(gain)
+        || !(gain > 0.0) || !(std::abs(a2) < 1.0) || !(std::abs(a1) < 1.0 + a2)
+        || !(std::abs(b2) < 1.0) || !(std::abs(b1) < 1.0 + b2))
+        return section;
+    section.gain = gain;
+    section.a1 = a1;
+    section.a2 = a2;
+    section.n1 = gain * b1;
+    section.n2 = gain * b2;
+    return section;
+}
+
 // Phase lag of the bending-loss section: arg A(e^{j omega}). Both poles lie
 // inside the circle, so the lag stays within (-pi, pi) and needs no unwrap.
 double bendingLossLag(double a1, double a2, double omega) noexcept
@@ -1357,6 +1630,39 @@ double bendingLossMagnitude(double gain, double a1, double a2,
     const double real = 1.0 + a1 * std::cos(omega) + a2 * std::cos(2.0 * omega);
     const double imaginary = a1 * std::sin(omega) + a2 * std::sin(2.0 * omega);
     return gain / std::hypot(real, imaginary);
+}
+
+// The loop's realisation of the constant-loss section (StringLoop::advance),
+//     H = 1 - (1 - z^-1)(g0 + g1 z^-1) / A(z),  g0 = 1 - g,  g1 = n2 - a2,
+// at z = e^{j omega}, from the float coefficients the loop holds.
+std::complex<double> constantLossResponse(double gain, double a1, double a2,
+                                          double n2, double omega) noexcept
+{
+    const std::complex<double> z1 = std::polar(1.0, -omega);
+    const std::complex<double> denominator = 1.0 + a1 * z1 + a2 * z1 * z1;
+    const double g0 = static_cast<double>(1.0f - static_cast<float>(gain));
+    const double g1 = static_cast<double>(static_cast<float>(n2)
+                                          - static_cast<float>(a2));
+    return 1.0 - (1.0 - z1) * (g0 + g1 * z1) / denominator;
+}
+
+// Phase lag of the constant-loss section, -arg H, from its poles and
+// numerator taps; its gain is whatever makes the gain at DC one. Its poles
+// and zeros lie inside the circle, so the lag stays within (-pi, pi). An
+// absent section (all four zero) lags nothing.
+double constantLossLag(double a1, double a2, double n1, double n2,
+                       double omega) noexcept
+{
+    if (a1 == 0.0 && a2 == 0.0 && n1 == 0.0 && n2 == 0.0)
+        return 0.0;
+    return -std::arg(constantLossResponse(1.0 + a1 + a2 - n1 - n2, a1, a2, n2,
+                                          omega));
+}
+
+double constantLossMagnitude(double gain, double a1, double a2, double n2,
+                             double omega) noexcept
+{
+    return std::abs(constantLossResponse(gain, a1, a2, n2, omega));
 }
 
 // The loop's fractional delay is a second-order Thiran allpass read from the
@@ -1485,7 +1791,9 @@ double tunedLoopDelay(double fundamental, double sampleRate,
                       double broadCoefficient, double broadMix,
                       double highCoefficient, double highMix,
                       const DispersionSections& dispersion,
-                      double bendingA1 = 0.0, double bendingA2 = 0.0) noexcept
+                      double bendingA1 = 0.0, double bendingA2 = 0.0,
+                      double constantA1 = 0.0, double constantA2 = 0.0,
+                      double constantN1 = 0.0, double constantN2 = 0.0) noexcept
 {
     constexpr double twoPiDouble = 2.0 * 3.14159265358979323846;
     const double omega = twoPiDouble * fundamental / sampleRate;
@@ -1496,6 +1804,8 @@ double tunedLoopDelay(double fundamental, double sampleRate,
         broadCoefficient, broadMix, lossOmega)
         + mixedOnePolePhase(highCoefficient, highMix, lossOmega)
         + bendingLossLag(bendingA1, bendingA2, omega)
+        + constantLossLag(constantA1, constantA2, constantN1,
+                          constantN2, omega)
         + dispersionPhase(dispersion, omega);
     double delay = std::clamp(sampleRate / fundamental - fixedPhase / omega,
                               3.0,
@@ -1576,7 +1886,9 @@ DispersionCalibration collocateDispersion(
     double broadCoefficient, double broadMix,
     double highCoefficient, double highMix,
     double initialDecayRatio, double initialPoleRatio,
-    double bendingA1, double bendingA2) noexcept
+    double bendingA1, double bendingA2,
+    double constantA1 = 0.0, double constantA2 = 0.0,
+    double constantN1 = 0.0, double constantN2 = 0.0) noexcept
 {
     constexpr double twoPiDouble = 2.0 * piDouble;
     const double omega0 = twoPiDouble * fundamental / sampleRate;
@@ -1628,6 +1940,8 @@ DispersionCalibration collocateDispersion(
                                              lossOmega)
             + mixedOnePolePhase(highCoefficient, highMix, lossOmega)
             + bendingLossLag(bendingA1, bendingA2, omega)
+            + constantLossLag(constantA1, constantA2, constantN1,
+                              constantN2, omega)
             - twoPiDouble * anchors[index];
     }
     const auto evaluate = [&] (const double values[3], double residuals[3])
@@ -1735,7 +2049,8 @@ DispersionCalibration collocateDispersion(
             omega0, parameters[1], parameters[2], a1, a2);
         parameters[0] = tunedLoopDelay(
             fundamental, sampleRate, broadCoefficient, broadMix,
-            highCoefficient, highMix, sections(a1, a2), bendingA1, bendingA2);
+            highCoefficient, highMix, sections(a1, a2), bendingA1, bendingA2,
+            constantA1, constantA2, constantN1, constantN2);
     }
     solve(parameters);
 
@@ -1768,7 +2083,8 @@ DispersionCalibration collocateDispersion(
             double candidate[] {
                 tunedLoopDelay(fundamental, sampleRate, broadCoefficient,
                     broadMix, highCoefficient, highMix, sections(a1, a2),
-                    bendingA1, bendingA2),
+                    bendingA1, bendingA2, constantA1, constantA2, constantN1,
+            constantN2),
                 sweepDecayRatio, sweepPoleRatio
             };
             solve(candidate);
@@ -1825,7 +2141,9 @@ DispersionPartials dispersionPartials(
     double inharmonicity, double fundamental, double sampleRate,
     double broadCoefficient, double broadMix,
     double highCoefficient, double highMix,
-    double bendingA1, double bendingA2) noexcept
+    double bendingA1, double bendingA2,
+    double constantA1 = 0.0, double constantA2 = 0.0,
+    double constantN1 = 0.0, double constantN2 = 0.0) noexcept
 {
     DispersionPartials partials;
     partials.maximumDelay = delayCapacityForRate(sampleRate);
@@ -1849,6 +2167,8 @@ DispersionPartials dispersionPartials(
             = mixedOnePolePhase(broadCoefficient, broadMix, lossOmega)
             + mixedOnePolePhase(highCoefficient, highMix, lossOmega)
             + bendingLossLag(bendingA1, bendingA2, omega)
+            + constantLossLag(constantA1, constantA2, constantN1,
+                              constantN2, omega)
             - 2.0 * piDouble * static_cast<double>(partial);
         partials.cosine[index] = std::cos(omega);
         partials.sine[index] = std::sin(omega);
@@ -2124,7 +2444,9 @@ DispersionCalibration calibrateDispersion(
     double inharmonicity, double fundamental, double sampleRate,
     double broadCoefficient, double broadMix,
     double highCoefficient, double highMix,
-    double bendingA1 = 0.0, double bendingA2 = 0.0) noexcept
+    double bendingA1 = 0.0, double bendingA2 = 0.0,
+                      double constantA1 = 0.0, double constantA2 = 0.0,
+                      double constantN1 = 0.0, double constantN2 = 0.0) noexcept
 {
     DispersionCalibration calibration;
     const double omega0 = 2.0 * piDouble * fundamental / sampleRate;
@@ -2144,7 +2466,8 @@ DispersionCalibration calibrateDispersion(
         design.a2 = sections.a2;
         design.delay = tunedLoopDelay(fundamental, sampleRate,
             broadCoefficient, broadMix, highCoefficient, highMix, sections,
-            bendingA1, bendingA2);
+            bendingA1, bendingA2, constantA1, constantA2, constantN1,
+            constantN2);
     };
     if (!(inharmonicity > 1.0e-8) || !(omega0 > 1.0e-7))
     {
@@ -2156,7 +2479,8 @@ DispersionCalibration calibrateDispersion(
 
     const auto partials = dispersionPartials(inharmonicity, fundamental,
         sampleRate, broadCoefficient, broadMix, highCoefficient, highMix,
-        bendingA1, bendingA2);
+        bendingA1, bendingA2, constantA1, constantA2, constantN1,
+            constantN2);
     const double fitted = static_cast<double>(partials.highest);
     const double stiffness = 1.45 / (fitted * exact::sqrt(inharmonicity));
     // The worst integer partial of a design, in cents, with the delay that
@@ -2182,7 +2506,8 @@ DispersionCalibration calibrateDispersion(
     }();
     auto collocated = collocateDispersion(inharmonicity, fundamental,
         sampleRate, broadCoefficient, broadMix, highCoefficient, highMix,
-        10.0, 4.0, bendingA1, bendingA2);
+        10.0, 4.0, bendingA1, bendingA2, constantA1, constantA2, constantN1,
+            constantN2);
     constexpr double tolerance = 3.0;
     const double collocatedWorst = worstOf(collocated);
     if (!(stiffnessShare > 0.0) && collocatedWorst <= tolerance)
@@ -2411,8 +2736,8 @@ PhysicalCalibration AcustraEngine::sanitise(
                 fittedPhysicalCalibration.pickReleaseVelocityExponent),
         bounded(source.pickEdgeRadiusMetres, 0.0f, 1.0e-3f,
                 fittedPhysicalCalibration.pickEdgeRadiusMetres),
-        bounded(source.steelWoundBendingLoss, 0.0f, 2.0f,
-                fittedPhysicalCalibration.steelWoundBendingLoss),
+        bounded(source.steelWoundFrictionLoss, 0.0f, 0.01f,
+                fittedPhysicalCalibration.steelWoundFrictionLoss),
         bounded(source.steelPlainBendingLoss, 0.0f, 2.0f,
                 fittedPhysicalCalibration.steelPlainBendingLoss)
     };
@@ -2523,9 +2848,16 @@ void AcustraEngine::StringLoop::reset() noexcept
     readDelayValid = false;
     broadLossFilter.reset();
     lossFilter.reset();
+    bendingLossX1 = 0.0f;
+    bendingLossX2 = 0.0f;
     bendingLossY1 = 0.0f;
     bendingLossY2 = 0.0f;
     bendingLossSeed = false;
+    constantLossX1 = 0.0f;
+    constantLossX2 = 0.0f;
+    constantLossY1 = 0.0f;
+    constantLossY2 = 0.0f;
+    constantLossSeed = false;
     dispersion.reset();
     secondDispersion.reset();
     bridgeDerivative.reset();
@@ -2542,21 +2874,24 @@ void AcustraEngine::StringLoop::reset() noexcept
     loopGainTransitionSamples = 0;
     if (intrinsicCoefficientSamples > 0)
     {
-        const std::array<float*, 7> applied { &bendingLossGain, &bendingLossA1,
-            &bendingLossA2, &dispersionA1, &dispersionA2,
-            &secondDispersionA1, &secondDispersionA2 };
+        const std::array<float*, intrinsicCoefficientCount> applied {
+            &bendingLossGain, &bendingLossA1, &bendingLossA2, &dispersionA1,
+            &dispersionA2, &secondDispersionA1, &secondDispersionA2,
+            &constantLossGain, &constantLossA1, &constantLossA2,
+            &constantLossN1, &constantLossN2 };
         for (std::size_t index = 0; index < applied.size(); ++index)
             *applied[index] = intrinsicCoefficientTarget[index];
     }
     intrinsicCoefficientTarget = { bendingLossGain, bendingLossA1,
         bendingLossA2, dispersionA1, dispersionA2,
-        secondDispersionA1, secondDispersionA2 };
+        secondDispersionA1, secondDispersionA2, constantLossGain,
+        constantLossA1, constantLossA2, constantLossN1, constantLossN2 };
     intrinsicCoefficientStep.fill(0.0f);
     intrinsicCoefficientSamples = 0;
 }
 
 void AcustraEngine::StringLoop::setIntrinsicCoefficients(
-    const std::array<float, 7>& target, bool transition) noexcept
+    const IntrinsicCoefficients& target, bool transition) noexcept
 {
     // Repeated/forced configuration of the same target must not change its
     // applied values, step bits or remaining deadline.
@@ -2566,9 +2901,11 @@ void AcustraEngine::StringLoop::setIntrinsicCoefficients(
             != exact::bits(intrinsicCoefficientTarget[index]);
     if (intrinsicCoefficientSamples > 0 && !targetChanged)
         return;
-    const std::array<float*, 7> applied { &bendingLossGain, &bendingLossA1,
-        &bendingLossA2, &dispersionA1, &dispersionA2,
-        &secondDispersionA1, &secondDispersionA2 };
+    const std::array<float*, intrinsicCoefficientCount> applied {
+        &bendingLossGain, &bendingLossA1, &bendingLossA2, &dispersionA1,
+        &dispersionA2, &secondDispersionA1, &secondDispersionA2,
+        &constantLossGain, &constantLossA1, &constantLossA2,
+        &constantLossN1, &constantLossN2 };
     bool changed = false;
     for (std::size_t index = 0; index < applied.size(); ++index)
         changed |= *applied[index] != target[index];
@@ -2576,9 +2913,10 @@ void AcustraEngine::StringLoop::setIntrinsicCoefficients(
         intrinsicCoefficientSamples = std::max(1, static_cast<int>(
             std::ceil(currentDelay)));
     // Interpolation stays inside each section's Schur-stable coefficient
-    // triangle. The bending numerator follows its unit-DC denominator.
-    // This is a bounded change of the existing filters, not a claim of
-    // passivity for arbitrary time-varying coefficients.
+    // triangle, and both loss sections run in a form whose gain at DC is
+    // exactly one for any coefficients (StringLoop::advance). This is a
+    // bounded change of the existing filters, not a claim of passivity for
+    // arbitrary time-varying coefficients.
     intrinsicCoefficientTarget = target;
     for (std::size_t index = 0; index < applied.size(); ++index)
     {
@@ -2845,16 +3183,18 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
     }
     if (intrinsicCoefficientSamples > 0)
     {
-        const std::array<float*, 7> applied { &bendingLossGain, &bendingLossA1,
-            &bendingLossA2, &dispersionA1, &dispersionA2,
-            &secondDispersionA1, &secondDispersionA2 };
+        const std::array<float*, intrinsicCoefficientCount> applied {
+            &bendingLossGain, &bendingLossA1, &bendingLossA2, &dispersionA1,
+            &dispersionA2, &secondDispersionA1, &secondDispersionA2,
+            &constantLossGain, &constantLossA1, &constantLossA2,
+            &constantLossN1, &constantLossN2 };
         --intrinsicCoefficientSamples;
         for (std::size_t index = 0; index < applied.size(); ++index)
         {
             const float target = intrinsicCoefficientTarget[index];
             // Evaluate from the target and fixed step instead of accumulating
-            // seven independently rounded additions. In particular, the
-            // bending numerator must keep following the denominator's DC sum.
+            // independently rounded additions, so every coefficient reaches
+            // its target on the same sample.
             const float next = static_cast<float>(static_cast<double>(target)
                 - static_cast<double>(intrinsicCoefficientStep[index])
                     * intrinsicCoefficientSamples);
@@ -2869,24 +3209,64 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
     if (secondDispersionActive)
         delayed = secondDispersion.process(delayed, secondDispersionA1,
                                            secondDispersionA2);
-    const float broad = broadLossFilter.process(
-        delayed, broadLossCoefficient);
-    float reflected = delayed + broadLossMix * (broad - delayed);
+    // The broad shelf is retired (configureVoice): with its mix at zero the
+    // wave passes it exactly and its one-pole is not run.
+    float reflected = delayed;
+    if (broadLossMix != 0.0f)
+    {
+        const float broad = broadLossFilter.process(
+            delayed, broadLossCoefficient);
+        reflected += broadLossMix * (broad - delayed);
+    }
     const float low = lossFilter.process(reflected, lowpassCoefficient);
     reflected += highLossMix * (low - reflected);
     if (bendingLossActive)
     {
         if (bendingLossSeed)
         {
-            // The section's unit-DC rest state for the wave it meets.
-            bendingLossY1 = bendingLossY2 = reflected;
+            // The section's rest state for the wave it meets: a held input,
+            // no difference, nothing taken from it.
+            bendingLossX1 = reflected;
+            bendingLossX2 = bendingLossY1 = bendingLossY2 = 0.0f;
             bendingLossSeed = false;
         }
-        const float bent = bendingLossGain * reflected
+        // g / A(z) as 1 - (1 - z^-1)(g0 - a2 z^-1) / A(z), g0 = 1 - g: the
+        // same section, whose gain at DC is exactly one whatever the float
+        // rounding of g = 1 + a1 + a2. At the highest host rates its poles
+        // close on z = 1 and g falls under 0.01, where rounding the sum alone
+        // put the direct form's gain at DC 4e-6 above one at 768 kHz.
+        const float difference = reflected - bendingLossX1;
+        const float taken = (1.0f - bendingLossGain) * difference
+            - bendingLossA2 * bendingLossX2
             - bendingLossA1 * bendingLossY1 - bendingLossA2 * bendingLossY2;
+        bendingLossX1 = reflected;
+        bendingLossX2 = difference;
         bendingLossY2 = bendingLossY1;
-        bendingLossY1 = bent;
-        reflected = bent;
+        bendingLossY1 = taken;
+        reflected -= taken;
+    }
+    if (constantLossActive)
+    {
+        if (constantLossSeed)
+        {
+            // The section's rest state for the wave it meets: a held input,
+            // no difference, nothing taken from it.
+            constantLossX1 = reflected;
+            constantLossX2 = constantLossY1 = constantLossY2 = 0.0f;
+            constantLossSeed = false;
+        }
+        // H = 1 - (1 - z^-1)(g0 + g1 z^-1) / A(z) (constantLossSection): the
+        // part taken from the wave is driven by its first difference, so the
+        // section passes DC exactly whatever the coefficients' rounding.
+        const float difference = reflected - constantLossX1;
+        const float taken = (1.0f - constantLossGain) * difference
+            + (constantLossN2 - constantLossA2) * constantLossX2
+            - constantLossA1 * constantLossY1 - constantLossA2 * constantLossY2;
+        constantLossX1 = reflected;
+        constantLossX2 = difference;
+        constantLossY2 = constantLossY1;
+        constantLossY1 = taken;
+        reflected -= taken;
     }
     reflected = dispersion.process(reflected, dispersionA1, dispersionA2);
     if (releaseGain != requestedReleaseGain)
@@ -3645,8 +4025,14 @@ void AcustraEngine::scaleStoredWaves(Voice& voice, float gain) noexcept
     {
         for (auto& sample : loop.delay)
             sample *= gain;
+        loop.bendingLossX1 *= gain;
+        loop.bendingLossX2 *= gain;
         loop.bendingLossY1 *= gain;
         loop.bendingLossY2 *= gain;
+        loop.constantLossX1 *= gain;
+        loop.constantLossX2 *= gain;
+        loop.constantLossY1 *= gain;
+        loop.constantLossY2 *= gain;
         loop.allpassY1 *= gain;
         loop.allpassY2 *= gain;
         for (auto* filter : { &loop.broadLossFilter, &loop.lossFilter })
@@ -4197,9 +4583,10 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     // Steel's own bridge is the flamenca's: its top is about 3.6 times as
     // compliant as a steel-string guitar's, so its residues are brought to a
     // measured steel-string guitar's level (steelTopMobilityRatio, the Fylde
-    // Falstaff's) under the same fitted scale. The plate floor below is not
-    // scaled. That ratio corrects a proxy - a flamenca standing in for a
-    // steel-string guitar - and nothing else.
+    // Falstaff's) under the same fitted scale. The plate floor below
+    // continues those modes and takes the same scale. That ratio corrects a
+    // proxy - a flamenca standing in for a steel-string guitar - and nothing
+    // else.
     const float scale = physicalCalibration_.bridgeMobilityScale
         * detail::steelTopMobilityRatio;
     const auto wood = woodFactorsFor(parameters_.bodyMaterial);
@@ -4222,12 +4609,13 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     for (; slot < static_cast<std::size_t>(bridgeModeCount); ++slot)
         configure(slot, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
 
-    // The plate conductance floor is the dense overlap of a plate's own
-    // driving-point response, which the archive never resolves into a
-    // rocking pair, so it enters as heave alone.
+    // The plate conductance floor, the dense overlap of the plate's own
+    // driving-point response (plateConductanceMode), at the steel-string
+    // level of the modes it continues and with its rocking residue.
     const auto plate = plateConductanceMode(physicalCalibration_);
+    const float plateResidue = plate.weight * scale;
     configure(static_cast<std::size_t>(bridgeModeCount), plate.frequency,
-              plate.q, plate.weight, 0.0f, 0.0f);
+              plate.q, plateResidue, 0.0f, plateResidue);
     if (!keepModalState)
     {
         bridgeLoad_.pastHeave = 0.0f;
@@ -4374,7 +4762,10 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         // The floor's 48 kHz prototype, as configureBridge builds it.
         table.plateOmega = 96000.0f * std::tan(pi * plate.frequency / 48000.0f);
         table.plateDamping = table.plateOmega / (2.0f * plate.q);
-        table.plateWeight = plate.weight;
+        // Its heave and rocking residues, at steel level as configureBridge
+        // builds them.
+        table.plateWeight = plate.weight * scale;
+        table.plateRock = table.plateWeight;
     }
     table.key = key;
     table.valid = true;
@@ -4448,8 +4839,10 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
     {
         const float omega = table.plateOmega;
         const float damping = table.plateDamping;
-        mobilityHeave += exact::divide(table.plateWeight * s,
+        const std::complex<float> shape = exact::divide(s,
             sSquared + 2.0f * damping * s + omega * omega);
+        mobilityHeave += table.plateWeight * shape;
+        mobilityRock += table.plateRock * shape;
     }
 
     // The string ends on the measured bridge, read at its own point on the
@@ -4469,8 +4862,8 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
                   + arm * arm * mobilityRock;
     // The parallel polarisation's port is (h/a) times the rocking
     // (saddleHeightRatio): its own mobility and its transfer mobility to
-    // this string's normal port. Both are zero where no rocking residue was
-    // measured.
+    // this string's normal port. Both are zero where neither a measured mode
+    // nor the plate floor (plateConductanceMode) has a rocking residue.
     const float eta = saddleHeightRatio();
     if (eta != 0.0f)
     {
@@ -4806,19 +5199,16 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
               / std::max(frequency, 1.0f)), 0.0f, 0.95f)
         : highLoss;
 
-    // This broad one-pole loss slope and its 72x scale are authored and
-    // calibrated, not a per-string realization of Woodhouse's measured loss
-    // table. DAFx-26 Eq. 25 prints seconds for eta_f, but the coefficient of
-    // its angular-frequency damping term is dimensionless. That printed
-    // unit does not justify treating the constants below as measured times.
-    const float viscousLoss = 1.65e-4f * (1.0f + 1.35f * age);
-    const float broadLoss = clamp(72.0f * viscousLoss
-        * physical.frequencyLossScale, 0.0f, 0.95f);
-    const float broadLossCutoff = 14.3f * frequency;
-    const float broadLossCoefficient = std::exp(-twoPi
-        * clamp(broadLossCutoff, 500.0f,
-                0.44f * 48000.0f)
-        * (1.0f / 48000.0f));
+    // The broad one-pole shelf that stood in for the strings' frequency-
+    // proportional loss - an authored 72 x 1.65e-4 (1 + 1.35 age) x
+    // frequencyLossScale per round trip above 14.3 f0, not a measured law -
+    // is retired: the string's constant-loss section below carries that loss
+    // as the constant loss angle it is (constantLossSection), in both
+    // planes. Its zero mix leaves the loop's broad one-pole out
+    // (StringLoop::advance) and adds no lag to the tuning and dispersion
+    // designs.
+    constexpr float broadLoss = 0.0f;
+    constexpr float broadLossCoefficient = 0.0f;
     // The expensive phase fit is useful across the fretboard and the
     // documented panel/Reason +/-12-semitone bend range. Beyond it, retain
     // a bounded fit and scale its stable allpasses as before, while the
@@ -4831,11 +5221,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             / stretchedPartial(3.0, inharmonicity)));
     const float dispersionFitFrequency = std::min(lossDesignFrequency,
                                                    highestFitFrequency);
-    const float designBroadLossCoefficient = std::exp(-twoPi
-        * clamp(14.3f * dispersionFitFrequency, 500.0f,
-                0.44f * 48000.0f)
-        * (1.0f / 48000.0f));
-    // Inside that supported band dispersion includes the bending section's
+    constexpr float designBroadLossCoefficient = broadLossCoefficient;
+    // Inside that supported band dispersion includes the loss section's
     // phase at the physical playing frequency. A 0.1% pitch change (1.73 cents)
     // invalidates the design at the same rate as the existing 0.2% B bound
     // for a tension bend; the tiny attack excursion still uses the scaled
@@ -4859,24 +5246,41 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         || exact::abs(voice.dispersionDesignAge - age) > 1.0e-5f
         || exact::abs(voice.dispersionDesignFrequencyLossScale
                     - physical.frequencyLossScale) > 1.0e-5f;
-    // The string's own bending loss (bendingLossSection), for the physical
-    // frequency and tension the dispersion is designed for. The four basses are the wound constructions
-    // (steelBendingDiameter above says so).
+    // The string's own loss sections, for the physical frequency and tension
+    // the dispersion is designed for. The four basses are the wound
+    // constructions (steelBendingDiameter above says so).
     const bool wound = stringIndex <= 3;
-    // A wound string goes dead first: grime and corrosion between its
-    // windings are internal friction in its bending (the loss this section
-    // models), where a plain string only dulls. The one-pole cutoff below
-    // String Age acts in absolute frequency, so it reached a low E's
-    // partials only above its 50th and aged a bass by 0.2 dB. The wound loss
-    // now rises with age, pivoted on the default age so the shipped sound is
-    // unchanged there: 0.2 of it on fresh strings, 7.8 times it at age 1.
+    // Dislocation, every string: a constant loss angle, Paté et al.'s plain
+    // steel Q_disl scaled by steel.frequencyLossScale - the by-ear amount of
+    // the strings' frequency-dependent loss (Docs/decisions.md, 2026-08-31)
+    // that scaled the broad shelf this replaces - so the shipped 0.52 is a
+    // Q of about 10600. It grows with String Age as that shelf did,
+    // (1 + 1.35 age), pivoted on the default age, which keeps its value.
+    const float dislocationLoss = physical.frequencyLossScale
+        / static_cast<float>(steelDislocationQ)
+        * (1.0f + 1.35f * age) / (1.0f + 1.35f * 0.15f);
+    // Winding friction, the wound strings: grime and corrosion between the
+    // turns are friction between them, so a wound string goes dead first,
+    // where a plain string only dulls. String Age scales it as it scaled the
+    // wound strings' loss before (by ear, 2026-09-30), pivoted on the
+    // default age: 0.2 of it on fresh strings, 7.8 times it at age 1.
     const float woundAgeing = std::max(0.2f, 1.0f + 8.0f * (age - 0.15f));
-    const float bendingFactor = wound
-        ? physicalCalibration_.steelWoundBendingLoss * woundAgeing
-        : physicalCalibration_.steelPlainBendingLoss;
+    const float frictionLoss = wound
+        ? physicalCalibration_.steelWoundFrictionLoss * woundAgeing : 0.0f;
+    // Both constant loss angles in one section (constantLossSection), and
+    // every string's visco- and thermo-elastic bending loss in the other: a
+    // wound string bends on its plain steel core (the effective diameter its
+    // B is computed from), less the friction its tension takes over there,
+    // since (delta_W + eta B n^2) / (1 + B n^2) = delta_W + (eta - delta_W)
+    // B n^2 / (1 + B n^2). Where an aged string's friction outgrows its
+    // core's bending loss the bending section is left out and its top
+    // partials keep the friction's full angle.
+    const float constantLoss = dislocationLoss + frictionLoss;
+    const float bendingFactor = std::max(0.0f,
+        physicalCalibration_.steelPlainBendingLoss - frictionLoss);
     // A dispersion design for these complete arguments, from the solves
     // already made when one matches exactly, otherwise solved and kept.
-    const auto solvedDispersion = [this] (const std::array<double, 9>& arguments)
+    const auto solvedDispersion = [this] (const std::array<double, 13>& arguments)
     {
         const auto solved = std::find_if(dispersionSolves_.begin(),
             dispersionSolves_.end(), [&arguments] (const DispersionSolve& solve)
@@ -4887,7 +5291,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             return std::pair { solved->decayRatios, solved->poleRatios };
         const auto calibration = calibrateDispersion(
             arguments[0], arguments[1], arguments[2], arguments[3],
-            arguments[4], arguments[5], arguments[6], arguments[7], arguments[8]);
+            arguments[4], arguments[5], arguments[6], arguments[7], arguments[8],
+            arguments[9], arguments[10], arguments[11], arguments[12]);
         auto& slot = dispersionSolves_[static_cast<std::size_t>(nextDispersionSolve_)];
         slot.arguments = arguments;
         for (std::size_t section = 0; section < 2; ++section)
@@ -4900,23 +5305,43 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             % static_cast<int>(dispersionSolves_.size());
         return std::pair { slot.decayRatios, slot.poleRatios };
     };
+    const auto bendingSection = [&] (double fundamental, double rate)
+    {
+        return bendingLossSection(static_cast<double>(bendingFactor),
+            static_cast<double>(inharmonicity), fundamental, rate);
+    };
+    const auto constantSection = [&] (double fundamental, double rate)
+    {
+        return constantLossSection(static_cast<double>(constantLoss),
+            static_cast<double>(inharmonicity), fundamental, rate);
+    };
     if (dispersionDesignChanged)
     {
-        const auto bending = bendingLossSection(
-            static_cast<double>(bendingFactor),
-            static_cast<double>(inharmonicity),
+        const auto bending = bendingSection(
+            static_cast<double>(lossDesignFrequency), sampleRate_);
+        const auto constant = constantSection(
             static_cast<double>(lossDesignFrequency), sampleRate_);
         voice.bendingLossGain = static_cast<float>(bending.gain);
         voice.bendingLossA1 = static_cast<float>(bending.a1);
         voice.bendingLossA2 = static_cast<float>(bending.a2);
-        const auto fitBending = dispersionFitFrequency == lossDesignFrequency
-            ? bending : bendingLossSection(static_cast<double>(bendingFactor),
-                static_cast<double>(inharmonicity),
-                static_cast<double>(dispersionFitFrequency), sampleRate_);
-        const std::array<double, 9> arguments {
+        voice.constantLossGain = static_cast<float>(constant.gain);
+        voice.constantLossA1 = static_cast<float>(constant.a1);
+        voice.constantLossA2 = static_cast<float>(constant.a2);
+        voice.constantLossN1 = static_cast<float>(constant.n1);
+        voice.constantLossN2 = static_cast<float>(constant.n2);
+        const bool fitAtDesign = dispersionFitFrequency == lossDesignFrequency;
+        const auto fitBending = fitAtDesign ? bending
+            : bendingSection(static_cast<double>(dispersionFitFrequency),
+                             sampleRate_);
+        const auto fitConstant = fitAtDesign ? constant
+            : constantSection(static_cast<double>(dispersionFitFrequency),
+                              sampleRate_);
+        const std::array<double, 13> arguments {
             inharmonicity, dispersionFitFrequency, sampleRate_,
             designBroadLossCoefficient, broadLoss, lowpassCoefficient, highLoss,
-            static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2)
+            static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2),
+            static_cast<float>(fitConstant.a1), static_cast<float>(fitConstant.a2),
+            static_cast<float>(fitConstant.n1), static_cast<float>(fitConstant.n2)
         };
         // Resetting a wave does not change an otherwise identical design.
         // Keep the existing request tolerances and metadata updates, while
@@ -4956,7 +5381,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float rawDelay = static_cast<float>(tunedLoopDelay(
         frequency, sampleRate_, broadLossCoefficient, broadLoss,
         lowpassCoefficient, mutedHighLoss, dispersion,
-        voice.bendingLossA1, voice.bendingLossA2));
+        voice.bendingLossA1, voice.bendingLossA2, voice.constantLossA1,
+        voice.constantLossA2, voice.constantLossN1, voice.constantLossN2));
     // The period this note is tuned to at 48 kHz, in 48 kHz samples, for
     // the Pick release's share solve (writePickRelease), which reads its
     // waves on that grid. The dispersion and bending sections are designed
@@ -4973,20 +5399,29 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     if (referenceTuning)
     {
         constexpr double referenceRate = 48000.0;
-        const auto bending = bendingLossSection(
-            static_cast<double>(bendingFactor),
-            static_cast<double>(inharmonicity),
+        const auto bending = bendingSection(
+            static_cast<double>(lossDesignFrequency), referenceRate);
+        const auto constant = constantSection(
             static_cast<double>(lossDesignFrequency), referenceRate);
         const auto bendingA1 = static_cast<float>(bending.a1);
         const auto bendingA2 = static_cast<float>(bending.a2);
-        const auto fitBending = dispersionFitFrequency == lossDesignFrequency
-            ? bending : bendingLossSection(static_cast<double>(bendingFactor),
-                static_cast<double>(inharmonicity),
-                static_cast<double>(dispersionFitFrequency), referenceRate);
+        const auto constantA1 = static_cast<float>(constant.a1);
+        const auto constantA2 = static_cast<float>(constant.a2);
+        const auto constantN1 = static_cast<float>(constant.n1);
+        const auto constantN2 = static_cast<float>(constant.n2);
+        const bool fitAtDesign = dispersionFitFrequency == lossDesignFrequency;
+        const auto fitBending = fitAtDesign ? bending
+            : bendingSection(static_cast<double>(dispersionFitFrequency),
+                             referenceRate);
+        const auto fitConstant = fitAtDesign ? constant
+            : constantSection(static_cast<double>(dispersionFitFrequency),
+                              referenceRate);
         const auto [decayRatios, poleRatios] = solvedDispersion({
             inharmonicity, dispersionFitFrequency, referenceRate,
             designBroadLossCoefficient, broadLoss, lowpassCoefficient, highLoss,
-            static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2) });
+            static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2),
+            static_cast<float>(fitConstant.a1), static_cast<float>(fitConstant.a2),
+            static_cast<float>(fitConstant.n1), static_cast<float>(fitConstant.n2) });
         const float referenceOmega = twoPi * frequency
             * static_cast<float>(1.0 / referenceRate);
         DispersionSections referenceDispersion;
@@ -4998,7 +5433,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         referenceRawDelay = static_cast<float>(tunedLoopDelay(
             frequency, referenceRate, broadLossCoefficient, broadLoss,
             lowpassCoefficient, mutedHighLoss, referenceDispersion,
-            bendingA1, bendingA2));
+            bendingA1, bendingA2, constantA1, constantA2, constantN1,
+            constantN2));
     }
     const auto bridgePort = bridgePortMobility(frequency, stringIndex);
     const float measuredBridgeDelay = bridgePhaseDelay(bridgePort, frequency,
@@ -5011,14 +5447,17 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             * exact::sqrt((bentTension / tension) / (1.0f
                 + (bentTension - tension) / std::max(axialRigidity, 1.0f))),
         frequency,
-        desiredPeriodGain * 0.9995f, desiredPeriodGain * 0.9988f);
+        desiredPeriodGain * stringRoundTripGain,
+        desiredPeriodGain * stringRoundTripGain);
     voice.polarisationDetune = coupledDetune;
     const float lossOmega = static_cast<float>(referenceLossOmega(omega, sampleRate_));
     const float filterGain = magnitudeForOnePoleMix(
         broadLossCoefficient, broadLoss, lossOmega)
         * magnitudeForOnePoleMix(lowpassCoefficient, mutedHighLoss, lossOmega)
         * static_cast<float>(bendingLossMagnitude(voice.bendingLossGain,
-            voice.bendingLossA1, voice.bendingLossA2, omega));
+            voice.bendingLossA1, voice.bendingLossA2, omega)
+            * constantLossMagnitude(voice.constantLossGain, voice.constantLossA1,
+                voice.constantLossA2, voice.constantLossN2, omega));
     const float loopGain = desiredPeriodGain / std::max(filterGain, 0.50f);
 
     for (int polarisation = 0; polarisation < 2; ++polarisation)
@@ -5046,22 +5485,17 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         }
         else if (clearDelay && !usePickReference)
             voice.referencePickDelay[static_cast<std::size_t>(polarisation)] = 0.0f;
-        // Authored per-plane factors on top of the requested fundamental
-        // T60: each round trip loses 0.05% (normal) or 0.12% (parallel) more
-        // at every frequency, and the parallel plane's shelves are 6% and 8%
-        // deeper, so the planes do not decay as one. A loss per round trip is
-        // the constant-Q friction term the string-loss note above sets
-        // aside; on the longest-ringing notes it leaves the realised T60 up
-        // to about half the requested one (audit, 2026-09-30).
+        // Both planes lose the string's own loss alike: the same loss per
+        // round trip (stringRoundTripGain) on top of the requested
+        // fundamental T60, the same shelves and the same loss sections. On
+        // the longest-ringing notes the round-trip loss leaves the realised
+        // T60 well under the requested one (audit, 2026-09-30).
         if (clearDelay)
             loop.loopGainTransitionSamples = 0;
-        loop.setLoopGain(clamp(loopGain
-            * (polarisation == 0 ? 0.9995f : 0.9988f), 0.70f, 0.999995f),
+        loop.setLoopGain(clamp(loopGain * stringRoundTripGain, 0.70f, 0.999995f),
             transitionRetune && !clearDelay);
-        loop.broadLossMix = clamp(broadLoss
-            * (polarisation == 0 ? 1.0f : 1.06f), 0.0f, 1.0f);
-        loop.highLossMix = clamp(mutedHighLoss
-            * (polarisation == 0 ? 1.0f : 1.08f), 0.0f, 1.0f);
+        loop.broadLossMix = broadLoss;
+        loop.highLossMix = mutedHighLoss;
         loop.broadLossCoefficient = broadLossCoefficient;
         loop.lowpassCoefficient = lowpassCoefficient;
         loop.broadLossFilter.configureRate(broadLossCoefficient, sampleRate_);
@@ -5070,18 +5504,27 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         const bool wasBending = loop.bendingLossActive;
         loop.bendingLossActive = voice.bendingLossA1 != 0.0f
                               || voice.bendingLossA2 != 0.0f;
+        const bool wasConstant = loop.constantLossActive;
+        loop.constantLossActive = voice.constantLossA1 != 0.0f
+                               || voice.constantLossA2 != 0.0f
+                               || voice.constantLossN1 != 0.0f
+                               || voice.constantLossN2 != 0.0f;
         // A section switched on under a sounding wave - a string set with a
         // loss exchanged for one without - starts from the wave it meets,
         // not from rest, which would drop the loop's output to g x for a few
         // samples and click (StringLoop::advance).
         if (loop.bendingLossActive && !wasBending)
             loop.bendingLossSeed = true;
+        if (loop.constantLossActive && !wasConstant)
+            loop.constantLossSeed = true;
         if (clearDelay || !performanceRealism_.retuneContinuity)
             loop.intrinsicCoefficientSamples = 0;
         loop.setIntrinsicCoefficients({ voice.bendingLossGain,
             voice.bendingLossA1, voice.bendingLossA2,
             static_cast<float>(dispersion.a1[0]), static_cast<float>(dispersion.a2[0]),
-            static_cast<float>(dispersion.a1[1]), static_cast<float>(dispersion.a2[1]) },
+            static_cast<float>(dispersion.a1[1]), static_cast<float>(dispersion.a2[1]),
+            voice.constantLossGain, voice.constantLossA1, voice.constantLossA2,
+            voice.constantLossN1, voice.constantLossN2 },
             performanceRealism_.retuneContinuity && transitionRetune && !clearDelay);
         if (clearDelay)
             loop.secondDispersionActive = dispersion.used[1];
@@ -6579,14 +7022,16 @@ void AcustraEngine::updateTailHandLoss(Voice& voice) noexcept
         loop.broadLossCoefficient, loop.broadLossMix, lossOmega)
         * magnitudeForOnePoleMix(loop.lowpassCoefficient, mutedHighLoss, lossOmega)
         * static_cast<float>(bendingLossMagnitude(loop.bendingLossGain,
-            loop.bendingLossA1, loop.bendingLossA2, omega));
+            loop.bendingLossA1, loop.bendingLossA2, omega)
+            * constantLossMagnitude(loop.constantLossGain, loop.constantLossA1,
+                loop.constantLossA2, loop.constantLossN2, omega));
     const float loopGain = std::pow(0.001f,
         1.0f / std::max(fundamentalT60 * frequency, 1.0f))
         / std::max(filterGain, 0.50f);
-    voice.tailLoop.setLoopGain(clamp(loopGain * 0.9995f, 0.70f, 0.999995f));
-    voice.tailParallelLoop.setLoopGain(clamp(loopGain * 0.9988f, 0.70f, 0.999995f));
+    voice.tailLoop.setLoopGain(clamp(loopGain * stringRoundTripGain, 0.70f, 0.999995f));
+    voice.tailParallelLoop.setLoopGain(clamp(loopGain * stringRoundTripGain, 0.70f, 0.999995f));
     voice.tailLoop.highLossMix = mutedHighLoss;
-    voice.tailParallelLoop.highLossMix = clamp(mutedHighLoss * 1.08f, 0.0f, 1.0f);
+    voice.tailParallelLoop.highLossMix = mutedHighLoss;
 }
 
 void AcustraEngine::updateReleaseJoinWindow(Voice& voice) noexcept

@@ -17,9 +17,15 @@ struct AcustraEngineTestAccess
     struct State
     {
         double inharmonicity;
+        // The bending section's g, a1, a2.
         double gain;
         double a1;
         double a2;
+        // The constant-loss section's g, a1, a2, n2.
+        double constantGain;
+        double constantA1;
+        double constantA2;
+        double constantN2;
     };
     static int solveCursor(const AcustraEngine& e)
     {
@@ -29,7 +35,9 @@ struct AcustraEngineTestAccess
     {
         auto e = std::make_unique<AcustraEngine>();
         auto calibration = fittedPhysicalCalibration;
-        calibration.steelWoundBendingLoss = 0.1f;
+        // Every string's bending section at the plain factor: no winding
+        // friction to take from a wound string's.
+        calibration.steelWoundFrictionLoss = 0.0f;
         calibration.steelPlainBendingLoss = 0.006f;
         e->setPhysicalCalibration(calibration);
         e->prepare(rate, 64);
@@ -45,7 +53,8 @@ struct AcustraEngineTestAccess
         e->configureVoice(v, string, v.midiNote, false);
         const auto& loop = v.loops[0];
         return { v.dispersionDesignInharmonicity, loop.bendingLossGain,
-                 loop.bendingLossA1, loop.bendingLossA2 };
+                 loop.bendingLossA1, loop.bendingLossA2, loop.constantLossGain,
+                 loop.constantLossA1, loop.constantLossA2, loop.constantLossN2 };
     }
 };
 }
@@ -69,10 +78,20 @@ void testBendingLossFollowsTheSoundingFrequency()
     // the note must still meet that law at the partials now being heard,
     // at every host rate; evaluating the old-frequency filter further up
     // its curve adds a spurious loss to an otherwise unchanged string.
+    // Every string bends on steel at the plain factor since 2026-10-10 (a
+    // wound string on its core; it took a factor of its own, 0.1 here,
+    // before). The constant loss angle beside it (constantLossSection),
+    // dislocation here, 1/Q = steel.frequencyLossScale / 5500, must follow
+    // the sounding frequency too, within the 20% its two relaxations keep
+    // over 5 to 250 dB/s.
     constexpr int openNotes[] { 40, 45, 50, 55, 59, 64 };
     const double pi = std::acos(-1.0);
+    const double dislocation
+        = acustra::fittedPhysicalCalibration.steel.frequencyLossScale / 5500.0;
     double worst = 0.0;
+    double worstConstant = 0.0;
     int checked = 0;
+    int checkedConstant = 0;
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
         for (const int string : { 0, 1, 4, 5 })
             for (const int fret : { 0, 5 })
@@ -82,33 +101,57 @@ void testBendingLossFollowsTheSoundingFrequency()
                         string, fret, rate, bend);
                     const double fundamental = 440.0 * std::exp2(
                         (openNotes[string] + fret + bend - 69.0) / 12.0);
-                    const double factor = string <= 3 ? 0.1 : 0.006;
-                    for (int partial = 1; partial < 200; ++partial)
+                    for (int partial = 1; partial < 400; ++partial)
                     {
                         const double bending = section.inharmonicity * partial * partial;
                         const double partialFrequency = fundamental * partial
                             * std::sqrt((1.0 + bending) / (1.0 + section.inharmonicity));
                         if (partialFrequency > 0.3 * rate)
                             break;
-                        const double lawDbPerSecond = (20.0 / std::log(10.0))
-                            * pi * partialFrequency * factor * bending / (1.0 + bending);
-                        if (lawDbPerSecond < 20.0 || lawDbPerSecond > 160.0)
-                            continue;
                         const double omega = 2.0 * pi * partialFrequency / rate;
                         const std::complex<double> z = std::polar(1.0, -omega);
-                        const double magnitude = section.gain / std::abs(
-                            1.0 + section.a1 * z + section.a2 * z * z);
-                        const double actualDbPerSecond = -20.0 * std::log10(magnitude)
-                            * fundamental;
-                        const double error = std::abs(actualDbPerSecond / lawDbPerSecond - 1.0);
-                        worst = std::max(worst, error);
-                        ++checked;
+                        const double lawDbPerSecond = (20.0 / std::log(10.0))
+                            * pi * partialFrequency * 0.006 * bending / (1.0 + bending);
+                        if (lawDbPerSecond >= 20.0 && lawDbPerSecond <= 160.0)
+                        {
+                            const double magnitude = section.gain / std::abs(
+                                1.0 + section.a1 * z + section.a2 * z * z);
+                            const double actualDbPerSecond = -20.0 * std::log10(magnitude)
+                                * fundamental;
+                            const double error = std::abs(actualDbPerSecond / lawDbPerSecond - 1.0);
+                            worst = std::max(worst, error);
+                            ++checked;
+                        }
+                        const double constantDbPerSecond = (20.0 / std::log(10.0))
+                            * pi * partialFrequency * dislocation;
+                        if (partial >= 2 && constantDbPerSecond >= 5.0
+                            && constantDbPerSecond <= 250.0)
+                        {
+                            // The section as the loop runs it (StringLoop::advance),
+                            // 1 - (1 - z^-1)(g0 + g1 z^-1)/A, g0 = 1 - g, g1 = n2 - a2.
+                            const double g0 = static_cast<double>(
+                                1.0f - static_cast<float>(section.constantGain));
+                            const double g1 = static_cast<double>(
+                                static_cast<float>(section.constantN2)
+                                - static_cast<float>(section.constantA2));
+                            const double magnitude = std::abs(1.0 - (1.0 - z) * (g0 + g1 * z)
+                                / (1.0 + section.constantA1 * z + section.constantA2 * z * z));
+                            const double actualDbPerSecond = -20.0 * std::log10(magnitude)
+                                * fundamental;
+                            worstConstant = std::max(worstConstant,
+                                std::abs(actualDbPerSecond / constantDbPerSecond - 1.0));
+                            ++checkedConstant;
+                        }
                     }
                 }
-    std::cout << "Bent-string partial loss: " << checked << " physical-law comparisons, "
-              << 100.0 * worst << "% worst error\n";
+    std::cout << "Bent-string partial loss: " << checked << " bending-law comparisons, "
+              << 100.0 * worst << "% worst error; " << checkedConstant
+              << " constant-loss comparisons, " << 100.0 * worstConstant
+              << "% worst error\n";
     expect(checked > 200, "insufficient partials reached the meaningful decay band");
     expect(worst < 0.12, "pitch bend added spurious upper-partial loss");
+    expect(checkedConstant > 200, "insufficient partials reached the constant-loss band");
+    expect(worstConstant < 0.20, "pitch bend moved the constant loss off its law");
 }
 
 void testHighSlidesKeepTheExpensiveFitBounded()

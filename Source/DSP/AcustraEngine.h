@@ -696,21 +696,47 @@ private:
         // The string's own bending loss (bendingLossSection in
         // AcustraEngine.cpp): g / (1 + a1 z^-1 + a2 z^-2), unit gain at DC,
         // designed at the host rate from the loss law rather than mapped
-        // from 48 kHz. Inactive leaves the loop exactly as it was.
+        // from 48 kHz. It runs in a form that keeps that gain exact
+        // (StringLoop::advance), which holds the input's last value and
+        // first difference besides the part it took. Inactive leaves the
+        // loop exactly as it was.
         bool bendingLossActive { false };
         bool bendingLossSeed { false };
         float bendingLossGain { 1.0f };
         float bendingLossA1 { 0.0f };
         float bendingLossA2 { 0.0f };
+        float bendingLossX1 { 0.0f };
+        float bendingLossX2 { 0.0f };
         float bendingLossY1 { 0.0f };
         float bendingLossY2 { 0.0f };
+        // Its constant loss angles, dislocation and a wound string's winding
+        // friction (constantLossSection in AcustraEngine.cpp), in cascade:
+        // (g + n1 z^-1 + n2 z^-2) / (1 + a1 z^-1 + a2 z^-2), unit gain at
+        // DC, run in the same exact form. Inactive leaves the loop exactly as
+        // it was.
+        bool constantLossActive { false };
+        bool constantLossSeed { false };
+        float constantLossGain { 1.0f };
+        float constantLossA1 { 0.0f };
+        float constantLossA2 { 0.0f };
+        float constantLossN1 { 0.0f };
+        float constantLossN2 { 0.0f };
+        float constantLossX1 { 0.0f };
+        float constantLossX2 { 0.0f };
+        float constantLossY1 { 0.0f };
+        float constantLossY2 { 0.0f };
         // A discrete refret/retune changes intrinsic sections over the same
         // one-roundtrip physical transition as its feedback loss. Histories
         // stay intact; target revisions retain a finite completion deadline.
-        std::array<float, 7> intrinsicCoefficientTarget {};
-        std::array<float, 7> intrinsicCoefficientStep {};
+        // The order is the bending section's g, a1, a2, the two dispersion
+        // sections' a1, a2, then the constant-loss section's g, a1, a2, n1,
+        // n2.
+        static constexpr std::size_t intrinsicCoefficientCount = 12;
+        using IntrinsicCoefficients = std::array<float, intrinsicCoefficientCount>;
+        IntrinsicCoefficients intrinsicCoefficientTarget {};
+        IntrinsicCoefficients intrinsicCoefficientStep {};
         int intrinsicCoefficientSamples { 0 };
-        void setIntrinsicCoefficients(const std::array<float, 7>& target,
+        void setIntrinsicCoefficients(const IntrinsicCoefficients& target,
                                       bool transition) noexcept;
         OnePole broadLossFilter {};
         OnePole lossFilter {};
@@ -1180,13 +1206,18 @@ private:
         // documented 12-semitone panel/Reason bend range; above that the
         // inexpensive bending section still follows the physical pitch.
         // Frequency is positive, so an all-zero key cannot be a valid hit.
-        std::array<double, 9> dispersionDesignArguments {};
-        // The bending-loss section at the physical playing frequency,
-        // including beyond the bounded phase-fit band above; both
-        // polarisations carry it.
+        std::array<double, 13> dispersionDesignArguments {};
+        // The string's own bending-loss and constant-loss sections at the
+        // physical playing frequency, including beyond the bounded phase-fit
+        // band above; both polarisations carry them.
         float bendingLossGain { 1.0f };
         float bendingLossA1 { 0.0f };
         float bendingLossA2 { 0.0f };
+        float constantLossGain { 1.0f };
+        float constantLossA1 { 0.0f };
+        float constantLossA2 { 0.0f };
+        float constantLossN1 { 0.0f };
+        float constantLossN2 { 0.0f };
         // The fraction both polarisation loops were lengthened by so that the
         // pair of modes they form through a rocking saddle is heard at the
         // requested pitch (coupledPolarisationDetune); zero elsewhere.
@@ -1446,6 +1477,7 @@ private:
         float plateOmega { 0.0f };
         float plateDamping { 0.0f };
         float plateWeight { 0.0f };
+        float plateRock { 0.0f };
     };
     const BridgeMobilityTable& bridgeMobilityTable() const noexcept;
     mutable BridgeMobilityTable bridgeMobilityTable_ {};
@@ -1656,7 +1688,7 @@ private:
     // function of its arguments, so a hit is the same result.
     struct DispersionSolve
     {
-        std::array<double, 9> arguments {};
+        std::array<double, 13> arguments {};
         std::array<float, 2> decayRatios { 0.0f, 0.0f };
         std::array<float, 2> poleRatios { 0.0f, 0.0f };
         bool valid { false };

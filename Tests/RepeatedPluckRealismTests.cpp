@@ -93,6 +93,10 @@ void testAlignedIncrementScratchPreservesWorkAndCompleteState()
             = static_cast<float>(0.07 * std::cos(0.053 * i));
     }
     oldWave->bendingLossY1 = 0.0123f;
+    oldWave->bendingLossX1 = -0.0211f;
+    oldWave->constantLossX1 = 0.0456f;
+    oldWave->constantLossX2 = -0.0078f;
+    oldWave->constantLossY1 = 0.0031f;
     oldWave->secondDispersion.y2 = -0.0432f;
     oldWave->intrinsicCoefficientSamples = 23;
     oldWave->gestureContact.active = true;
@@ -368,11 +372,14 @@ double slopeEnergy(const Access::Loop& loop)
     return sum;
 }
 
-std::array<float, 18> filterMemory(const Access::Loop& loop)
+std::array<float, 24> filterMemory(const Access::Loop& loop)
 {
     return { loop.allpassY1, loop.allpassY2, loop.thiranFraction,
         loop.thiranFirst, loop.thiranSecond, loop.bendingLossY1,
-        loop.bendingLossY2, loop.broadLossFilter.state,
+        loop.bendingLossY2, loop.bendingLossX1, loop.bendingLossX2,
+        loop.constantLossX1, loop.constantLossX2,
+        loop.constantLossY1, loop.constantLossY2,
+        loop.broadLossFilter.state,
         loop.broadLossFilter.previousInput, loop.lossFilter.state,
         loop.lossFilter.previousInput, loop.dispersion.x1, loop.dispersion.x2,
         loop.dispersion.y1, loop.dispersion.y2, loop.secondDispersion.x1,
@@ -401,6 +408,9 @@ void testRingingContactIsPassiveAtTheActualFractionalPoint()
                     }
                     original.allpassY1 = 0.23f; original.allpassY2 = -0.19f;
                     original.bendingLossY1 = -0.11f; original.bendingLossY2 = 0.31f;
+                    original.bendingLossX1 = 0.17f; original.bendingLossX2 = -0.07f;
+                    original.constantLossX1 = 0.29f; original.constantLossX2 = -0.05f;
+                    original.constantLossY1 = 0.02f; original.constantLossY2 = -0.03f;
                     original.broadLossFilter.state = 0.13f;
                     original.lossFilter.previousInput = -0.27f;
                     original.dispersion.x1 = 0.41f; original.dispersion.y2 = -0.39f;
@@ -818,10 +828,20 @@ void testRapidTremoloAudioRemainsBoundedAndBlockExact()
             // forcing can feed resonant body modes above an isolated note's
             // level, so passivity is checked on stored string slopes above;
             // this audio fixture checks rails and the settled train instead.
+            // A new attack lands on a string still ringing, and the two
+            // superpose: by the triangle inequality the onset can step by the
+            // isolated attack's step plus the ringing train's own, with no
+            // contact artefact. Until 2026-10-10 this compared with the larger
+            // of the two, which held while a wound string's upper partials
+            // died within one 30 ms stroke (the train's steps a third of the
+            // attack's). With the winding-friction law they ring on as the
+            // flat-top recordings' do (3.3-5 kHz, MIDI 40-58: 38 dB/s against
+            // the recordings' 31, the bending law's 61), so the train's own
+            // steps reach the attack's (Docs/string-hf-loss-2026-10-10.md).
             for (int stroke = 1; stroke < 32; ++stroke)
             {
-                expect(onsetSteps[stroke] < 3.0 * std::max(
-                           onsetSteps[0], backgroundSteps[stroke - 1]),
+                expect(onsetSteps[stroke] < 3.0
+                           * (onsetSteps[0] + backgroundSteps[stroke - 1]),
                        "ringing contact introduced a large latency-aligned onset step");
             }
             double settledEnergy = 0.0, lateEnergy = 0.0;

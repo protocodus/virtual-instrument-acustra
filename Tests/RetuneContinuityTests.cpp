@@ -8,25 +8,40 @@
 
 namespace acustra {
 struct AcustraEngineTestAccess {
-    using Coefficients = std::array<float, 7>;
+    // The bending section's g, a1, a2, the two dispersion sections' a1, a2,
+    // then the constant-loss section's g, a1, a2, n1, n2 (StringLoop).
+    using Coefficients = AcustraEngine::StringLoop::IntrinsicCoefficients;
     static Coefficients applied(const AcustraEngine::StringLoop& l) {
         return {l.bendingLossGain,l.bendingLossA1,l.bendingLossA2,
-            l.dispersionA1,l.dispersionA2,l.secondDispersionA1,l.secondDispersionA2};
+            l.dispersionA1,l.dispersionA2,l.secondDispersionA1,l.secondDispersionA2,
+            l.constantLossGain,l.constantLossA1,l.constantLossA2,
+            l.constantLossN1,l.constantLossN2};
     }
     static bool sameBits(const Coefficients& a, const Coefficients& b) {
         return std::memcmp(a.data(), b.data(), sizeof(float) * a.size()) == 0;
     }
+    // Every section inside its stability triangle, and both loss sections'
+    // unit gain at DC, g = 1 + a1 + a2 for the bending section and
+    // g + n1 + n2 = 1 + a1 + a2 for the constant-loss one, which a linear
+    // ramp between two sections that have it keeps.
     static bool stable(const Coefficients& c) {
-        for (const int n : {1,3,5})
+        for (const int n : {1,3,5,8})
             if (!(std::abs(c[n+1]) < 1.0f && 1.0f+c[n]+c[n+1] > 0.0f
                   && 1.0f-c[n]+c[n+1] > 0.0f)) return false;
-        return std::abs(c[0]-(1.0f+c[1]+c[2])) < 1.0e-6f;
+        return std::abs(c[0]-(1.0f+c[1]+c[2])) < 1.0e-6f
+            && std::abs((c[7]+c[10]+c[11])-(1.0f+c[8]+c[9])) < 1.0e-6f;
     }
     static bool transitionContract() {
         auto a=std::make_unique<AcustraEngine::StringLoop>();
-        const Coefficients initial {.2f,-1.3f,.5f,-.9f,.4f,-.3f,.1f};
-        const Coefficients target {.35f,-1.1f,.45f,-.8f,.3f,-.2f,.1f};
-        const Coefficients revised {.25f,-1.2f,.45f,-.85f,.35f,-.25f,.12f};
+        // The bending section all-pole and the constant-loss section with
+        // zeros as well as poles, each with unit gain at DC.
+        const Coefficients initial {.2f,-1.3f,.5f,-.9f,.4f,-.3f,.1f,
+            .35f,-1.3f,.5f,-.25f,.1f};
+        const Coefficients target {.35f,-1.1f,.45f,-.8f,.3f,-.2f,.1f,
+            .65f,-1.1f,.45f,-.5f,.2f};
+        const Coefficients revised {.25f,-1.2f,.45f,-.85f,.35f,-.25f,.12f,
+            .5f,-1.2f,.45f,-.4f,.15f};
+        if (!stable(initial) || !stable(target) || !stable(revised)) return false;
         a->currentDelay=a->targetDelay=101.25f;
         a->setIntrinsicCoefficients(initial,false);
         a->reset();
@@ -78,6 +93,14 @@ struct AcustraEngineTestAccess {
         a->setIntrinsicCoefficients(tiny,true);
         for(int n=0;n<102;++n) a->advance(0.0f,1.0f);
         if (!sameBits(applied(*a),tiny) || a->intrinsicCoefficientSamples!=0) return false;
+        // The same for a numerator tap alone.
+        auto tinyZero=tiny;
+        tinyZero[11]=std::nextafter(tinyZero[11],1.0f);
+        a->setIntrinsicCoefficients(tinyZero,true);
+        if (a->intrinsicCoefficientSamples!=102) return false;
+        for(int n=0;n<102;++n) a->advance(0.0f,1.0f);
+        if (!sameBits(applied(*a),tinyZero) || a->intrinsicCoefficientSamples!=0) return false;
+        a->setIntrinsicCoefficients(tiny,false);
         // Reset resolves an in-flight transition without retaining its ramp.
         a->setIntrinsicCoefficients(initial,true);
         a->advance(0.0f,1.0f);
