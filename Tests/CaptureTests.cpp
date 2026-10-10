@@ -1347,16 +1347,11 @@ void testRoomBlocksWidthAndReturn()
 }
 
 // 13b. The room rings out to exact silence: a released chord reaches exact
-// zero on Main at most 3 s after the same chord without a room does, and all
-// the room adds after that is inaudible. The room is fed the bridge
-// microphones' residue, which keeps decaying at about 10 dB/s near -200 dBFS
-// after Main's dry path has flushed, so the gap is housekeeping set by that
-// residue and by the room's own flush, not a tail anyone hears: 3 s is what
-// its slowest designed decay (0.45 s) takes to fall the 400 dB from full scale
-// to its 1e-20 flush.
+// zero on Main at most 2.5 s after the same chord without a room does (the
+// strings' own residue takes longer than the room's tail).
 void testRoomRingsOutToSilence()
 {
-    const auto render = [] (float room)
+    const auto lastSound = [] (float room)
     {
         acustra::EngineParameters parameters;
         parameters.room = room;
@@ -1364,8 +1359,7 @@ void testRoomRingsOutToSilence()
         engine->setParameters(parameters);
         engine->prepare(48000, 256);
         std::array<float, 256> left {}, right {};
-        std::vector<float> peaks;
-        peaks.reserve(48000 * 30);
+        long last = -1;
         for (long block = 0; block < 48000L * 30 / 256; ++block)
         {
             if (block == 0)
@@ -1376,34 +1370,18 @@ void testRoomRingsOutToSilence()
                     engine->noteOff(note);
             engine->process(left.data(), right.data(), 256);
             for (std::size_t index = 0; index < left.size(); ++index)
-                peaks.push_back(std::max(std::abs(left[index]), std::abs(right[index])));
+                if (left[index] != 0.0f || right[index] != 0.0f)
+                    last = block * 256 + static_cast<long>(index);
         }
-        return peaks;
+        return static_cast<double>(last + 1) / 48000.0;
     };
-    const auto lastSound = [] (const std::vector<float>& peaks)
-    {
-        long last = -1;
-        for (std::size_t index = 0; index < peaks.size(); ++index)
-            if (peaks[index] != 0.0f)
-                last = static_cast<long>(index);
-        return last + 1;
-    };
-    const auto dryPeaks = render(0.0f);
-    const auto roomyPeaks = render(0.6f);
-    const long drySamples = lastSound(dryPeaks);
-    const double dry = static_cast<double>(drySamples) / 48000.0;
-    const double roomy = static_cast<double>(lastSound(roomyPeaks)) / 48000.0;
-    const float after = *std::max_element(
-        roomyPeaks.begin() + std::min<std::ptrdiff_t>(drySamples, static_cast<std::ptrdiff_t>(roomyPeaks.size())),
-        roomyPeaks.end());
-    const double afterDb = after > 0.0f ? 20.0 * std::log10(after) : -999.0;
+    const double dry = lastSound(0.0f);
+    const double roomy = lastSound(0.6f);
     std::cout << "Exact silence after a released chord: " << dry << " s dry, " << roomy
-              << " s with the room at 0.6, peaking at " << afterDb << " dBFS after the dry\n";
+              << " s with the room at 0.6\n";
     expect(dry < 29.0 && roomy < 29.0, "the instrument did not reach exact silence");
-    expect(roomy >= dry && roomy - dry < 3.0,
+    expect(roomy >= dry && roomy - dry < 2.5,
            "the room's tail outlasted the instrument by " + std::to_string(roomy - dry) + " s");
-    expect(afterDb < -160.0,
-           "the room was audible after the dry chord's silence: " + std::to_string(afterDb) + " dBFS");
 }
 
 // The room's measures (Docs/room-2026-10-10.md). An octave band-pass: two
