@@ -2900,7 +2900,7 @@ set without it.
   open strings. The wound strings now keep half their former bending loss
   beside half the blend's friction. Picked, their 4-16 kHz matches the
   previous engine. Fingered, their brightness sits halfway between it and
-  the blend.
+  the blend. A blind A/B approved it.
 - **String Age glides** instead of stepping, and keeps a fixed deadline under
   per-block automation.
 - **The constructions are re-levelled** by
