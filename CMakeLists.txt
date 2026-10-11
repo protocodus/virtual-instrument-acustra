@@ -785,6 +785,22 @@ if(BUILD_TESTING)
     endif()
 endif()
 
+# The editor painted off screen to a PNG (Docs/screenshots).
+if(ACUSTRA_BUILD_PLUGIN AND ACUSTRA_BUILD_TOOLS)
+    add_executable(AcustraEditorSnapshot Tools/EditorSnapshot.cpp)
+    target_link_libraries(AcustraEditorSnapshot PRIVATE Acustra)
+    target_include_directories(AcustraEditorSnapshot PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+        "$<TARGET_PROPERTY:Acustra,JUCE_GENERATED_SOURCES_DIRECTORY>"
+        "$<TARGET_PROPERTY:Acustra,INCLUDE_DIRECTORIES>")
+    target_compile_features(AcustraEditorSnapshot PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(AcustraEditorSnapshot PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(AcustraEditorSnapshot PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endif()
+
 # Recording-guided realism regression 1.
 if(BUILD_TESTING)
     add_executable(AcustraVelocityRealismTests Tests/VelocityRealismTests.cpp)

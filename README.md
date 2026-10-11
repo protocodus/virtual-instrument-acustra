@@ -2972,7 +2972,9 @@ set without it.
   only; the Player panel now holds four knobs (String Age, Pluck Position,
   Touch, Release Noise) and Capture & Output five (Body, Stereo, Piezo,
   Room, Output), on the same grid. Parameters, defaults and saved states
-  are unchanged.
+  are unchanged. The screenshot above is painted by the new
+  `AcustraEditorSnapshot` (Tools/EditorSnapshot.cpp), the editor off screen
+  at its design size, so a layout change can be looked at without a host.
 - **Gather Chords no longer loses key-ups or regroups them.** A full
   gathering queue dropped whatever arrived next, a Note Off, pedal-up or
   All Notes Off included, and the string stayed held for ever; it now drops
