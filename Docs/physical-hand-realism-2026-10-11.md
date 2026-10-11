@@ -9,7 +9,9 @@ The five proposals below are implemented without changing any saved parameter,
 default, range, control mapping, layout, host latency, factory patch or body
 coefficient table. The sound of existing performances intentionally changes.
 These are physical consistency improvements and bounded performance models;
-listener preference has not been established.
+the user has now approved the final continuous candidate. This approval is
+separate from the numerical validation and does not establish an independent
+perceptual realism score.
 
 ## Implemented changes
 
@@ -201,7 +203,8 @@ All ten new audio files remain finite and nonsilent, use unity common gain,
 and peak below 0.514. The browser decodes every file as eight seconds without
 media errors. The [new source/audio manifest](physical-hand-continuous-listening-2026-10-11.json)
 is separate from the original pack. This verifies continuity and render safety;
-it does not establish a listening preference for the follow-up.
+it does not itself establish a listening preference. The user subsequently
+approved the final candidate and requested push and merge to main.
 
 The final required-Python Release build and complete CTest run pass **73/73**
 in 332.45 seconds on the frozen follow-up source. No test fixtures were
