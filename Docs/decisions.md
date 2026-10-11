@@ -5,6 +5,23 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — physical-hand feedback and continuous dynamics
+
+The user liked the five physical-hand changes and requested continuous
+dynamics instead of four velocity layers. The four values were listening
+score probes, not synthesis layers; the demo now follows a smooth crescendo
+and diminuendo on one string. The force/contact model remains continuous.
+
+The audit found one real discontinuity in repeated-note variation: its force
+residual switched off whenever velocity differed from the preceding stroke.
+It now fades smoothly with the commanded force difference and elapsed hand
+memory, retaining the existing bounded, mean-one residual and protecting
+deliberate accents. The fade is an authored performance policy, not a fitted
+motor-control law. No parameters or layout changed. The user subsequently
+approved the continuous candidate and explicitly requested that it be pushed
+and merged to main. This is user approval of the candidate, not an independent
+perceptual measurement. See the [implementation and continuity evidence](physical-hand-realism-2026-10-11.md#follow-up-continuous-dynamics).
+
 ## 2026-10-10 — quiet strokes and repeatable construction selections
 
 The user asked for more dynamic range, genuinely quiet low velocities, and a

@@ -1122,7 +1122,8 @@ private:
         bool memberPitchBendFrozen { false };
         std::uint64_t startOrder { 0 };
         std::uint32_t randomState { 1 };
-        // A recent same-note/same-velocity repeat may vary its force a little.
+        // A same-note repeat's small force residual fades continuously with
+        // elapsed hand memory and the change in commanded force.
         // This separate stream never moves the position/angle/noise draws,
         // and is advanced once per repeated pluck, independent of host rate.
         std::uint32_t repeatPluckState { 1 };

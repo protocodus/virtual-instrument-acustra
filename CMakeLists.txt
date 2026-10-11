@@ -912,7 +912,17 @@ if(BUILD_TESTING)
 endif()
 
 # Native construction-strum measurement and string-release energy checks.
+if(BUILD_TESTING)
+    add_executable(AcustraPhysicalHandRealismTests Tests/PhysicalHandRealismTests.cpp)
+    target_link_libraries(AcustraPhysicalHandRealismTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraPhysicalHandRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.PhysicalHandRealism COMMAND AcustraPhysicalHandRealismTests)
+    set_tests_properties(Acustra.PhysicalHandRealism PROPERTIES TIMEOUT 120)
+endif()
+
 if(ACUSTRA_BUILD_TOOLS)
     add_executable(AcustraConstructionStrumLevels Tools/ConstructionStrumLevels.cpp)
     target_link_libraries(AcustraConstructionStrumLevels PRIVATE AcustraDSP)
+    add_executable(AcustraRenderPhysicalHandReview Tools/RenderPhysicalHandReview.cpp)
+    target_link_libraries(AcustraRenderPhysicalHandReview PRIVATE AcustraDSP)
 endif()

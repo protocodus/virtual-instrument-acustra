@@ -41,12 +41,33 @@ struct AcustraEngineTestAccess
     { return engine.voices_[static_cast<std::size_t>(string)].tailActive; }
     static float gain(const AcustraEngine& engine)
     { return engine.voices_[0].repeatedPluckGain; }
+    static std::uint32_t repeatState(const AcustraEngine& engine)
+    { return engine.voices_[0].repeatPluckState; }
+    static void setRepeatState(AcustraEngine& engine, std::uint32_t state)
+    { engine.voices_[0].repeatPluckState = state; }
+    static void moveContactClock(AcustraEngine& engine, std::uint64_t elapsed)
+    {
+        // Isolate event-time force policy without rendering an old wave.
+        // Each probe copies the same initialized history and discards that
+        // wave before moving its contact time; audio tests retain real time.
+        engine.sampleClock_ += elapsed;
+    }
     static double displacement(const AcustraEngine& engine)
     {
         const auto& voice = engine.voices_[0];
         const int length = static_cast<int>(std::round(voice.loops[0].currentDelay));
         return voice.releaseStepRise * voice.releaseShapePosition[0] * length
             / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix));
+    }
+    static double heldForce(const AcustraEngine& engine)
+    {
+        const auto& voice = engine.voices_[0];
+        const double p = voice.pluckPoint;
+        // Static string force F=T*y/[L*p*(1-p)], independently recovered
+        // from actual displacement and configured geometry. The common
+        // metres-per-wave-unit factor cancels in a ratio of repeated forces.
+        return displacement(engine) * voice.tensionNewtons
+            / (voice.speakingLengthMetres * p * (1.0 - p));
     }
     static void forgetOldWave(AcustraEngine& engine)
     {
@@ -216,8 +237,9 @@ void testBoundsMeanAndForceTracking()
     auto engine = fresh();
     engine->noteOn(40, 0.5f, 1);
     expect(Access::gain(*engine) == 1.0f, "first pluck changed its nominal force");
-    const double nominal = Access::displacement(*engine);
+    const double nominal = Access::heldForce(*engine);
     double sum = 0.0, square = 0.0;
+    double worstForceError = 0.0;
     float minimum = 2.0f, maximum = 0.0f;
     for (int n = 0; n < 512; ++n)
     {
@@ -228,10 +250,13 @@ void testBoundsMeanAndForceTracking()
         minimum = std::min(minimum, gain);
         maximum = std::max(maximum, gain);
         sum += gain; square += gain * gain;
-        // This is the physical released displacement, independently read
-        // from the force step, so a cosmetic gain observer cannot pass it.
-        expect(std::abs(Access::displacement(*engine) / nominal - gain) < 3.0e-6,
-               "repeat force did not reach the held string's displacement");
+        // Compare the actual restoring force at each drawn position. The
+        // displacement must also follow its changing point compliance; a
+        // cosmetic force-gain observer alone cannot pass this reconstruction.
+        const double forceError = std::abs(Access::heldForce(*engine) / nominal - gain);
+        expect(forceError < 3.0e-6,
+               "repeat force did not reach the string through its point compliance");
+        worstForceError = std::max(worstForceError, forceError);
         expect(gain > 0.888f && gain < 1.121f,
                "repeat force exceeded its bounded one-dB candidate range");
     }
@@ -242,16 +267,20 @@ void testBoundsMeanAndForceTracking()
     expect(minimum < 0.91f && maximum > 1.10f && sd > 0.04 && sd < 0.08,
            "repeated equal-velocity strokes did not produce modest force variety");
     std::cout << "Repeat force gain mean=" << mean << " SD=" << sd
-              << " range=" << minimum << ".." << maximum << '\n';
+              << " range=" << minimum << ".." << maximum
+              << " force reconstruction error=" << worstForceError << '\n';
 }
 
 void testExplicitPerformanceAndResetBoundaries()
 {
     auto engine = fresh();
     engine->noteOn(40, 0.5f, 1);
+    const auto initialState = Access::repeatState(*engine);
     engine->noteOn(40, 0.5f, 1);
     expect(Access::gain(*engine) == 1.0f,
            "duplicate note-on on one sample acquired a second force draw");
+    expect(Access::repeatState(*engine) == initialState,
+           "duplicate note-on on one sample advanced the force stream");
     advance(*engine, 128);
     engine->noteOn(40, 0.85f, 1);
     expect(Access::gain(*engine) == 1.0f, "explicit accent force changed");
@@ -272,6 +301,91 @@ void testExplicitPerformanceAndResetBoundaries()
     engine->reset();
     engine->noteOn(41, 0.85f, 1);
     expect(Access::gain(*engine) == 1.0f, "reset retained stale pluck history");
+}
+
+void testContinuousCommandForceAndMemory()
+{
+    auto history = fresh();
+    auto calibration = acustra::fittedPhysicalCalibration;
+    calibration.steel.velocityBrightnessDepth = 0.0f;
+    history->setPhysicalCalibration(calibration);
+    history->noteOn(40, 0.5f, 1);
+    // Invert the xorshift recurrence to exercise draws within one float ULP
+    // of both force extremes. No taper implementation is called by the test.
+    constexpr std::array<std::uint32_t, 2> seeds { 0x24d939ceu, 0x7ab5c529u };
+    struct Probe { float gain; double force; std::uint32_t state; };
+    const auto probe = [&] (float velocity, std::uint64_t elapsed, std::uint32_t seed)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>(*history);
+        Access::setRepeatState(*engine, seed);
+        Access::forgetOldWave(*engine);
+        Access::moveContactClock(*engine, elapsed);
+        engine->noteOn(40, velocity, 1);
+        return Probe { Access::gain(*engine), Access::heldForce(*engine),
+                       Access::repeatState(*engine) };
+    };
+    double smallestForceStep = 1.0, worstEndpointError = 0.0;
+    for (const auto seed : seeds)
+    {
+        double previousForce = 0.0;
+        for (int point = 0; point <= 256; ++point)
+        {
+            const float velocity = 0.42f + 0.17f * float(point) / 256.0f;
+            const auto current = probe(velocity, 2400, seed);
+            expect(current.force > previousForce,
+                   "continuous repeat envelope reversed the commanded string force");
+            if (point > 0)
+                smallestForceStep = std::min(smallestForceStep,
+                    current.force / previousForce - 1.0);
+            previousForce = current.force;
+            expect(current.gain > 0.888f && current.gain < 1.121f,
+                   "continuous repeat envelope exceeded existing force bounds");
+        }
+        // With brightness fixed, command force is proportional to v². A
+        // full two-dB force change therefore reaches these velocity ratios.
+        for (const float centre : { 0.5f, 0.5f * float(std::pow(10.0, -1.0 / 20.0)),
+                                          0.5f * float(std::pow(10.0, 1.0 / 20.0)) })
+        {
+            const auto exact = probe(centre, 2400, seed);
+            double broad = 0.0, narrow = 0.0;
+            for (const float sign : { -1.0f, 1.0f })
+            {
+                broad = std::max(broad, std::abs(double(
+                    probe(centre + sign / 256.0f, 2400, seed).gain) - exact.gain));
+                narrow = std::max(narrow, std::abs(double(
+                    probe(centre + sign / 262144.0f, 2400, seed).gain) - exact.gain));
+            }
+            expect(narrow <= std::max(2.0e-7, 0.02 * broad),
+                   "repeat force did not converge at command equality or a fade endpoint");
+            worstEndpointError = std::max(worstEndpointError, narrow);
+        }
+        expect(probe(0.3f, 2400, seed).gain == 1.0f
+                   && probe(0.85f, 2400, seed).gain == 1.0f,
+               "a deliberate large force change retained repeat variation");
+
+        double previousDeviation = 1.0;
+        const auto expectedState = probe(0.5f, 1, seed).state;
+        for (const std::uint64_t elapsed : { 1u, 24000u, 48000u, 72000u,
+                                             95999u, 96000u, 96001u, 192000u })
+        {
+            const auto current = probe(0.5f, elapsed, seed);
+            const double deviation = std::abs(double(current.gain) - 1.0);
+            expect(deviation <= previousDeviation,
+                   "elapsed hand memory increased repeat force variation");
+            previousDeviation = deviation;
+            expect(current.state == expectedState,
+                   "crossing hand-memory expiry switched the repeat random stream");
+            if (elapsed >= 95999)
+                expect(deviation < 2.0e-7,
+                       "repeat force did not converge continuously at memory expiry");
+        }
+        for (const float velocity : { 0.1f, 0.499999f, 0.5f, 0.500001f, 0.85f, 1.0f })
+            expect(probe(velocity, 2400, seed).state == expectedState,
+                   "a changed force command switched the repeat random stream");
+    }
+    std::cout << "Continuous repeat force: minimum relative increasing step="
+              << smallestForceStep << " endpoint gain error=" << worstEndpointError
+              << "; force/time expiry preserve the random stream\n";
 }
 
 void testIndependentRateAndBlockInvariantSequence()
@@ -953,6 +1067,7 @@ int main()
     testGaussianReleaseStepMatchesLibmAtRoundingBoundaries();
     testBoundsMeanAndForceTracking();
     testExplicitPerformanceAndResetBoundaries();
+    testContinuousCommandForceAndMemory();
     testIndependentRateAndBlockInvariantSequence();
     testScheduledEqualVelocityRepeatUsesItsReleaseSample();
     testRingingContactIsPassiveAtTheActualFractionalPoint();
