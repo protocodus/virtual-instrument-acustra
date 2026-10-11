@@ -7202,14 +7202,43 @@ void AcustraEngine::conditionRepluckContact(StringLoop& loop,
         weights[1][static_cast<std::size_t>(tap + 4)]
             = -weights[0][static_cast<std::size_t>(tap)];
     }
-    const auto contactWeight = [&] (int axis, int age)
+    const int axes = stopVelocity ? 2 : 1;
+    // Only the fractional observation taps change the integrated contact
+    // weight. Order their event ages once instead of scanning all twelve
+    // taps at every string sample in both passes. Coincident taps still sum
+    // in their original per-axis order, so the constraint and its rounding
+    // are unchanged even when the contact's two sides overlap.
+    struct ContactEvent
     {
-        double result = 0.0;
-        for (int tap = 0; tap < (axis == 0 ? 4 : 8); ++tap)
-            if (age == ages[static_cast<std::size_t>(axis)][static_cast<std::size_t>(tap)])
-                result += weights[static_cast<std::size_t>(axis)][static_cast<std::size_t>(tap)];
-        return result;
+        int age {};
+        std::array<double, 2> weight {};
     };
+    std::array<ContactEvent, 12> events {};
+    int eventCount = 0;
+    for (int axis = 0; axis < axes; ++axis)
+        for (int tap = 0; tap < (axis == 0 ? 4 : 8); ++tap)
+        {
+            const int age = ages[static_cast<std::size_t>(axis)][static_cast<std::size_t>(tap)];
+            if (age < 0 || age >= length)
+                continue;
+            int event = 0;
+            while (event < eventCount && events[static_cast<std::size_t>(event)].age < age)
+                ++event;
+            if (event < eventCount && events[static_cast<std::size_t>(event)].age == age)
+                continue;
+            for (int next = eventCount; next > event; --next)
+                events[static_cast<std::size_t>(next)] = events[static_cast<std::size_t>(next - 1)];
+            events[static_cast<std::size_t>(event)].age = age;
+            ++eventCount;
+        }
+    for (int event = 0; event < eventCount; ++event)
+        for (int axis = 0; axis < axes; ++axis)
+            for (int tap = 0; tap < (axis == 0 ? 4 : 8); ++tap)
+                if (events[static_cast<std::size_t>(event)].age
+                    == ages[static_cast<std::size_t>(axis)][static_cast<std::size_t>(tap)])
+                    events[static_cast<std::size_t>(event)].weight[static_cast<std::size_t>(axis)]
+                        += weights[static_cast<std::size_t>(axis)][static_cast<std::size_t>(tap)];
+    const std::array<double, 2> noWeight {};
     // The static point-force triangle is the ideal string's Green function.
     // Use its discrete counterpart h: cyclic Laplacian(h) = contactWeight,
     // so <Ds,Dh> = displacementAt(p). Removing its slope-orthogonal component
@@ -7222,7 +7251,6 @@ void AcustraEngine::conditionRepluckContact(StringLoop& loop,
     // and copied filter memories remain outside that physical claim. The
     // ordinary intrinsic string loss still damps uncoupled modes; there is
     // no second string branch or artificial post-release tail on a merge.
-    const int axes = stopVelocity ? 2 : 1;
     std::array<double, 2> firstSlope {}, cross {}, norm {}, cumulativeWeight {},
                           wave {}, waveSum {};
     for (int axis = 0; axis < axes; ++axis)
@@ -7232,6 +7260,7 @@ void AcustraEngine::conditionRepluckContact(StringLoop& loop,
                     * weights[static_cast<std::size_t>(axis)][static_cast<std::size_t>(tap)] / length;
     double mixedNorm = 0.0;
     double previous = at(length - 1);
+    int nextEvent = 0;
     for (int age = 0; age < length; ++age)
     {
         const double current = at(age);
@@ -7246,8 +7275,12 @@ void AcustraEngine::conditionRepluckContact(StringLoop& loop,
         }
         mixedNorm += (firstSlope[0] - cumulativeWeight[0])
                    * (firstSlope[1] - cumulativeWeight[1]);
+        const auto& contactWeight = nextEvent < eventCount
+                && events[static_cast<std::size_t>(nextEvent)].age == age
+            ? events[static_cast<std::size_t>(nextEvent++)].weight : noWeight;
         for (int axis = 0; axis < axes; ++axis)
-            cumulativeWeight[static_cast<std::size_t>(axis)] += contactWeight(axis, age);
+            cumulativeWeight[static_cast<std::size_t>(axis)]
+                += contactWeight[static_cast<std::size_t>(axis)];
         previous = current;
     }
     if (!(norm[0] > 0.0) || !exact::isfinite(cross[0]))
@@ -7263,15 +7296,19 @@ void AcustraEngine::conditionRepluckContact(StringLoop& loop,
         return;
     cumulativeWeight = {};
     wave = {};
+    nextEvent = 0;
     for (int age = 0; age < length; ++age)
     {
+        const auto& contactWeight = nextEvent < eventCount
+                && events[static_cast<std::size_t>(nextEvent)].age == age
+            ? events[static_cast<std::size_t>(nextEvent++)].weight : noWeight;
         double correction = 0.0;
         for (int axis = 0; axis < axes; ++axis)
         {
             const auto a = static_cast<std::size_t>(axis);
             wave[a] += firstSlope[a] - cumulativeWeight[a];
             correction += removed[a] * (wave[a] - waveSum[a] / length);
-            cumulativeWeight[a] += contactWeight(axis, age);
+            cumulativeWeight[a] += contactWeight[a];
         }
         at(age) = static_cast<float>(at(age) - correction);
     }
