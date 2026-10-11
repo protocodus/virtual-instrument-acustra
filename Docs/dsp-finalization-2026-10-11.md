@@ -260,12 +260,12 @@ Logs and a provenance manifest are retained in
 
 ## Native and Rack differences are intentional contracts
 
-The Rack adapter is a separate repository and source pin. The selector audit
-inspected Rack's instrument pin `7516d8c`; it does not include the native
-`6b80170` corrections merely because both consume the same canonical codebase.
-Cross-product integration is pending after the canonical commit: the Rack
-pin update needs its own wrapper/build evidence before these fixes can be
-claimed there.
+The Rack adapter is a separate repository. It now pins canonical
+`1fda1c6fd753e729eb46a1497d8a34e2968df991`, replacing `7516d8c` and including
+both this pass and the preceding `6b80170` audit. The Guitar selector covers
+four shapes; Wood exposes Spruce and Mahogany, preserving stored Maple for
+old patches. The pin was fetched from the local canonical repository; these
+commits have not been published or merged.
 
 | Contract | Native plug-in | Reason Rack adapter |
 | --- | --- | --- |
@@ -277,16 +277,42 @@ claimed there.
 | Latency / quality | Seven engine samples, plus 30 ms when Gather is enabled; no Rack quality banks. | Fixed 49 host samples across 1x/2x/4x wrapper quality paths; every bus is resampled/aligned. |
 | Lifecycle | JUCE prepare, buses, state migration and audio callback. | Preallocated quality banks, Reason reset/idling and batch events require wrapper-specific checks. |
 
-For the eventual Master Tune pin update, Rack's
-`Tests/WrapperHostTest.cpp` currently asserts that its internal pitch-bend
-field contains the master offset. Replace only that obsolete internal-state
-expectation with independent wheel/global-tune assertions; retain the audible
-pitch checks. Add held-open/fretted geometry, tension and no-false-slide-noise
-coverage through all quality banks and reset. The existing −37-cent quality
-comparison applies the same wrong route to both sides, so it does not prove
-physical geometry. `Acustra.cpp` already calls the canonical
-`setMasterTuneCents` API. The wrapper expectation and source-pin updates are
-pending integration work; this native evidence does not validate them.
+Rack's obsolete Master Tune-as-wheel expectation was replaced with
+independent wheel/tuning checks. New open/fretted witnesses verify fixed
+speaking length, the physical tension ratio, no false slide/noise or
+open-string finger vibrato, and first-note adoption after Reset Audio in
+all three quality banks. Existing audible pitch checks remain. The wrapper
+already called the canonical `setMasterTuneCents` API; no alternative tuning
+implementation was added.
+
+All seven Rack contract stages pass, including 48 construction-history
+cases and factory-patch rendering. SDK 5.0 (`JukeboxSDK_500_028`) baseline
+and candidate Deployment ARM64 modules build with static analysis. Both
+retain an analyzer warning on `configureBody`'s lambda reference to
+`wideSteelAnchorTransform`; all six members of that constant are initialized,
+the reference is bound before lambda construction, and calls are synchronous.
+It is not a reachable uninitialized anchor. ACUSTRA's source-ownership/freshness
+check passes; the repository-wide command could not complete because an
+unrelated YouKnow submodule was uninitialized, and that product was left alone.
+
+Rack's separate quiet paired measurement uses 36 fresh-process runs:
+baseline/candidate × six workloads × three repetitions at the shipped
+1x/48 kHz/64-frame setting. Five workloads measure eight seconds after a
+one-second warmup; the tail workload includes startup and measures nine
+seconds. Each module contributes 110,250 measured callbacks, with no thread-CPU
+or wall time exceeding the 1333.33 µs deadline. Candidate worst times are
+1145.167/1146.000 µs; baseline 1184.292/1185.084 µs. Candidate median-run
+means span 33.5–121.2 µs. These are native SDK-module measurements, not
+Reason host performance or an all-quality/all-rate guarantee. The native
+96 kHz/32-frame limits above remain.
+
+The Rack receipt and raw timing summary live in `reason-rack-extensions`,
+under `Examples/Acustra/Docs/validation-dsp-finalization-20261011/`, with the
+integration report `Examples/Acustra/Docs/DSP_FINALIZATION_2026-10-11.md`.
+Rack integration is committed locally as `d816e5a6fbfabc04853b52e691f819c26fbff723`;
+the preceding selector simplification is `d6b6dbf`.
+No installation, universal package, interactive host qualification or
+publication was performed.
 
 ## Required final evidence before closing this pass
 
@@ -305,7 +331,9 @@ pending integration work; this native evidence does not validate them.
 - [x] Reconcile this register with the final source and current README. Historical
   reports remain dated; unavailable acoustic/host evidence remains open.
 
-Rack source-pin and wrapper validation remain pending cross-product
-integration. Host qualification and release publication are separate work;
-this checklist does not claim that every reasonable guitar phenomenon is
-modeled.
+The model/parameter review, verified corrections and Rack integration are
+complete for the existing instrument and supported playing controls. The
+inventory explicitly retains reduced-model and calibration limits; it does
+not turn unsupported playing techniques or unmeasured physical parameters
+into claimed features. Host qualification, controlled listening and release
+publication remain separate from these verified code/model contracts.
