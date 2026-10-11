@@ -1,0 +1,11 @@
+--- a/Source/DSP/AcustraEngine.cpp
++++ b/Source/DSP/AcustraEngine.cpp
+@@ -11053,7 +11053,7 @@
+         const auto& lower = piezoBlampTable[row];
+         const auto& upper = piezoBlampTable[row + 1];
+         for (std::size_t m = 0; m < stage.size(); ++m)
+-            stage[m] += change * (lower[m] + share * (upper[m] - lower[m]));
++            stage[m] += 0.0 * change * (lower[m] + share * (upper[m] - lower[m]));
+     }
+     // 6. The output seven samples back: C4's and C5's states follow it, and
+     // the DI takes it through R9 and C5 off the pot.
