@@ -5,6 +5,23 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — smoothness and boominess measured, no sound change
+
+The user asked for a smooth studio sound without unwanted resonances or
+boominess. Nobody listened in this pass, so it measured instead
+([the report](studio-smoothness-2026-10-11.md), with the new
+`Tools/MeasureNoteEvenness.py`). The sweep's deviations are the air mode's
+low peak (F#2/G2 +4 dB on the Dreadnought, G#2/A2 on the Auditorium) and
+each Shape's ±10 dB mid peak and antiresonance hole from the body's
+400-600 Hz modes under the bridge microphone, a known gap. The room adds
+nothing below 160 Hz. The air-mode gain chosen by ear does not move the
+low peak; halving every body Q evens the sweep but changes the whole
+body's ring, and the real flat-top's own sweep is as uneven as the model's
+on the eight notes available. No lever here is a measured correction
+against a reference the instrument is known to miss, so nothing is
+applied, and the one bounded candidate (`bodyQScale 0.7`) is left for a
+blind A/B.
+
 ## 2026-10-11 — a Sustain switch beside the pedal
 
 The user asked for a sustain mode against the normal one, where a key-up

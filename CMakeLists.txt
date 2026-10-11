@@ -664,6 +664,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditAttackBands.py"
                                  --self-test)
                 set_tests_properties(Acustra.AuditAttackBands PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.MeasureNoteEvenness
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/MeasureNoteEvenness.py"
+                                 --self-test)
+                set_tests_properties(Acustra.MeasureNoteEvenness PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.AuditDampingCurve
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditDampingCurve.py"

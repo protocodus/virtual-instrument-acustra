@@ -1,0 +1,120 @@
+# Note-to-note smoothness and boominess, measured — 2026-10-11
+
+The user asked for a smooth, natural studio sound without unwanted resonances
+or boominess. Nobody listened during this pass, so it records what the
+instrument measures, which of its levers move those measurements, and what
+is left for a listener to choose. No sound change ships from it. The engine
+is `acdb856` (the Sustain switch and the panel knobs change no sample), the
+renderer `AcustraPerformanceRenderer` from a Release GCC 13.3 build, 48 kHz.
+
+## The sweep
+
+`Tools/MeasureNoteEvenness.py` renders E2-E5 one note at a time on the string
+that reaches each at the lowest fret, velocity 96, Finger, held 1.2 s, and
+reads each note's sustained level (0.08-1.15 s, mono sum) against the mean
+of up to three neighbours each side. Room 0. A real flat-top's own sweep
+deviates by about 2 dB RMS (Eastman E1D, README Known gaps), so the
+question is where the deviation is larger than that and why.
+
+| Render | RMS deviation (dB) | Deepest hole | Loudest peak | F#2 | G2 | E2 | A#4 | C#5 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Dreadnought, stereo mic | 3.64 | -10.4 (C#5) | +9.8 (A#4) | +4.2 | +4.0 | -5.4 | +9.8 | -10.4 |
+| Auditorium, stereo mic | 3.64 | -9.8 (D#5) | +9.8 (C5) | -1.8 | +1.8 | -4.5 | -1.5 | +2.4 |
+| Jumbo, stereo mic | 3.54 | -10.4 (B4) | +9.5 (G#4) | +0.8 | -0.5 | +2.2 | -3.5 | -0.4 |
+| Parlor, stereo mic | 2.49 | -6.1 (E5) | +5.7 (D#5) | -1.1 | -2.4 | -1.0 | +3.8 | +0.2 |
+| Dreadnought, mono mic | 3.50 | -8.3 (C#5) | +7.3 (A#4) | +3.4 | +4.1 | -5.4 | +7.3 | -8.3 |
+
+Three features repeat across the Spruce constructions:
+
+- **A low peak at the air mode.** On the Dreadnought F#2 and G2 sit 4 dB over
+  their neighbours with 75-90% of their sustained power in the fundamental
+  (`fund` -1.2 and -0.4 dB) and decay fast (-21 and -17 dB over the window
+  against -8 to -12 elsewhere): the string's fundamental drives the air mode
+  and radiates through it. The Auditorium's air mode is higher, so its peak
+  is G#2 (+5.7) and A2 (+3.3), the A2 emphasis the user already named as
+  boom on 2026-10-09. E2, under the air mode, sits 5 dB under its neighbours
+  on both.
+- **A mid peak and a hole from the body's 400-600 Hz modes.** A#4 on the
+  Dreadnought is 9.8 dB over its neighbours (fundamental 466 Hz, 90% of the
+  power, a 482 Hz Q 29 mode beside it); C5 and C#5 fall 6.6 and 10.4 dB into
+  the same-sign modal pair's antiresonance under the bridge microphone
+  (README Known gaps). Each Shape moves the pair: C5 +9.8 with D5/D#5 -9 on
+  the Auditorium, G#4 +9.5 with B4 -10.4 on the Jumbo.
+- **The Parlor is the smoothest** at 2.5 dB RMS, within reach of the real
+  flat-top's 2 dB.
+
+## What the levers do
+
+Each variant is the same source and renderer with one calibration line in a
+`--calibration` file (Tools/CalibrationFile.h), on the Dreadnought's stereo
+microphones.
+
+| Variant | RMS deviation (dB) | F#2 | G2 | E2 | A#4 | C#5 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| shipping | 3.64 | +4.2 | +4.0 | -5.4 | +9.8 | -10.4 |
+| `bodyQScale 0.7` | 3.22 | +3.4 | +3.4 | -4.9 | +8.4 | -9.9 |
+| `bodyQScale 0.5` | 2.70 | +2.6 | +2.8 | -4.3 | +6.7 | -8.6 |
+| `lowBodyModeGain 2.83` (+9 dB in place of +12) | 3.60 | +3.9 | +3.6 | -4.9 | +9.8 | -10.4 |
+
+- **The air-mode gain is not the low peak's lever.** Taking 3 dB off it moves
+  F#2 and G2 by 0.3-0.4 dB and costs E2 0.5 dB of level and 1.8 dB of its
+  fundamental against its second partial (H2/H1 +1.0 to +2.8 dB), the ratio
+  the gain was chosen by ear to match on the Eastman's E2 (2026-09-25). The
+  peak is the measured body's own A0 radiation at the upper-bout
+  microphone, which the gain does not reach.
+- **Halving every body Q evens the sweep from 3.6 to 2.7 dB** but is a
+  tonal change over the whole body (every mode's ring shortens by half), and
+  the antiresonance hole it cannot fill stays at -8.6 dB. The mode Qs were
+  set against the anechoic flamencas' and kept by a blind verdict
+  (2026-09-27), so this is a listener's choice, not a measured correction.
+
+## The room adds no bass
+
+A strummed phrase (E A D G E, open chords, 100 BPM, Finger, velocity 96,
+released before each strum, then a 1.6 s tail) was rendered at Room 0, 0.5
+and 1, and its third-octave long-term spectrum compared. The room adds
++1.7 and +5.0 dB at 200 Hz and +1.9/+5.3 dB at 504 Hz (0.5/1) and takes
+0.3-1.4 dB off every band below 160 Hz. After the last release the 60-150 Hz
+band falls 6 dB per 100 ms at every Room setting. At the 50% default the
+room is not where boominess would come from.
+
+## Against the real flat-top
+
+The embedded bank's eight finger-plucked flat-top notes (E2, A#2, E3, A#3,
+E4, B4, F5, B5, velocity 91), rendered through `AcustraPhysicalFitRenderer`
+with the shipping calibration and compared per note (sustain 0.08-1.0 s
+after each detected onset, mono sum):
+
+- the real notes' own level profile deviates more than the model's (4.5
+  against 3.0 dB RMS over the eight), with the real A#2 5.4 dB louder than
+  the real E2 where the model's A#2 sits 0.8 dB under its E2: a loud note
+  near the air mode is what the real guitar does too;
+- on the low notes the bass share agrees within 0.5 dB (E2 -0.5 real against
+  -0.2, A#2 -1.5 against -1.6, E3 -3.3 against -2.8), so the model's low
+  notes are not bass-heavier than the recording's;
+- the model's attacks stand 3-7 dB less over their sustain than the real
+  ones (the snap-then-mellow gap in README Known gaps), and above A#3 its
+  second partial sits 3-13 dB higher against the fundamental.
+
+The archtop training and validation rows were not usable for this: their
+targets' spectral peaks sit hundreds of cents from the nominal pitches (the
+legacy sampler zones cover key ranges), so a per-partial comparison reads
+the wrong partials.
+
+## What this leaves
+
+The measured levers that move the sweep (body Q, the capture voicing's 500 Hz
+cut under the C#5 hole, the air mode's loaded Q) each change the body's
+sound broadly, and the one listener-chosen lever (the air-mode gain) does
+not move the low peak. Nothing here is a measured correction with a
+reference the instrument is known to miss, so nothing is applied; the
+Shape-dependent ±10 dB mid peak and hole remain the single-point
+near-field microphone response documented in Known gaps, and a bridge
+microphone fitted as a blend of the archive's measured positions remains
+the way to close them.
+
+To hear the one bounded candidate the measurements favour, render the
+shipping engine and `bodyQScale 0.7` (one line in a calibration file) on
+the sweep and the phrase above with `Tools/MeasureNoteEvenness.py` and
+`AcustraPerformanceRenderer --calibration`, label them A and B, and listen
+blind. The tool's `summary.json` records every number in these tables.
