@@ -43,7 +43,7 @@ struct AcustraEngineTestAccess
     {
         std::vector<double> result { double(engine.sampleClock_), double(engine.noteOrder_),
             double(engine.controlCounter_), double(engine.strumRandomState_),
-            double(engine.pickingGestureRandom_), engine.strumSpeedScale_, engine.strumParallelSign_,
+            double(engine.pickingGestureOriginSample_), engine.strumSpeedScale_, engine.strumParallelSign_,
             engine.palmMute_, engine.targetPalmMute_, engine.vibrato_, engine.vibratoPhase_,
             engine.vibratoOnset_, double(engine.pickingGestureSample_), double(engine.pickingGestureSeen_),
             engine.pickingGesture_.position, engine.pickingGesture_.pressure, double(engine.pickingGesture_.active),

@@ -778,13 +778,17 @@ private:
         // A local soft hand contact scatters travelling-wave increments,
         // not displacement samples. Integrating its two outgoing waves
         // keeps a landing from moving the string instantaneously. Geometry
-        // is frozen on the integer waveguide grid at the actual landing.
+        // is frozen at the actual landing, with fractional gather/scatter
+        // using one power-normalized spatial basis and its adjoint.
         struct GestureContact
         {
             bool active { false };
             bool seeded { false };
             int firstAge { 0 };
             int secondAge { 0 };
+            std::array<float, 4> spatialWeights { 1.0f, 0.0f, 1.0f, 0.0f };
+            float firstFraction { 0.0f };
+            float secondFraction { 0.0f };
             float coupling { 0.0f };
             float memoryGain { 0.0f };
             float offsetScale { 0.0f };
@@ -1050,11 +1054,13 @@ private:
         bool active { false };
     };
 
-    // A slowly moving picking hand, sampled only when a contact/stroke starts.
-    // A queued stroke owns its snapshot; later strokes cannot change it.
+    // A bounded continuous posture in physical time, sampled only when a
+    // contact/stroke starts. A queued stroke owns its snapshot; later strokes
+    // and intervening notes cannot change that trajectory or the snapshot.
     [[nodiscard]] PickingGesture nextPickingGesture() noexcept;
     PickingGesture pickingGesture_ {}, strumGesture_ {};
-    std::uint32_t pickingGestureRandom_ { 0x7f4a7c15u };
+    static constexpr std::uint32_t pickingGestureSeed = 0x7f4a7c15u;
+    std::uint64_t pickingGestureOriginSample_ { 0 };
     std::uint64_t pickingGestureSample_ { 0 };
     bool pickingGestureSeen_ { false };
 
@@ -1517,7 +1523,7 @@ private:
     // sentinel.
     [[nodiscard]] float mpePressureFor(const Voice& voice) const noexcept;
     [[nodiscard]] float vibratoSemitones(const Voice& voice,
-                                         int fret) const noexcept;
+                                         float speakingLength) const noexcept;
     void initialisePluck(Voice& voice, int stringIndex, float velocity,
                          bool merge = false) noexcept;
     // Scale every state a string's two loops store of the travelling wave -
@@ -1526,6 +1532,8 @@ private:
     void returnToOpenString(Voice& voice, int stringIndex,
                             bool clearDelay) noexcept;
     void firePluck(Voice& voice, int stringIndex) noexcept;
+    [[nodiscard]] static float frettingContactWeight(float speakingLength,
+                                                       int harmonic) noexcept;
     void beginRelease(Voice& voice, int stringIndex) noexcept;
     void beginGestureDamping(Voice& voice) noexcept;
     void updateReleaseJoinWindow(Voice& voice) noexcept;

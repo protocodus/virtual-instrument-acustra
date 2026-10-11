@@ -135,7 +135,10 @@ struct AcustraEngineTestAccess
     static std::pair<double, double> kinkOnTheString(const AcustraEngine& engine, int string)
     {
         const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
-        const int length = std::clamp(static_cast<int>(std::round(voice.loops[0].targetDelay)),
+        // The source was written on currentDelay. The attack's tension cue
+        // can already have requested a different target (across an integer
+        // boundary), but no propagation sample has moved the stored shape.
+        const int length = std::clamp(static_cast<int>(std::round(voice.loops[0].currentDelay)),
                                       8, AcustraEngine::maximumDelaySamples - 3);
         return { static_cast<double>(voice.releaseShapePosition[0]) * length
                      / voice.contactPeriodSamples,
@@ -1453,7 +1456,7 @@ struct AcustraEngineTestAccess
         engine.vibratoOnset_ = 1.0f;
         engine.vibratoPhase_ = std::numbers::pi_v<float>;
         return 100.0 * static_cast<double>(
-            engine.vibratoSemitones(*selected, selected->fret));
+            engine.vibratoSemitones(*selected, selected->speakingLengthMetres));
     }
 
     struct StringModeSnapshot
@@ -3730,7 +3733,7 @@ void testDispersionAcrossRatesAndNotes()
         const double soundingLength = scaleLength
             * std::exp2(-static_cast<double>(fret) / 12.0);
         const double inharmonicity
-            = acustra::fittedPhysicalCalibration.steel.stiffnessScale
+            = (bass ? acustra::fittedPhysicalCalibration.steel.stiffnessScale : 1.0)
                 * std::pow(std::numbers::pi, 3.0)
                 * youngsModulus * std::pow(diameter, 4.0)
                 / (64.0 * tension * soundingLength * soundingLength);
@@ -5015,7 +5018,11 @@ void testBroadContactWrapsAndReachesItsUniformLimit()
     // including both sides of its periodic boundary and both polarisations.
     struct Domain { int rate; float bend, exponent; };
     constexpr std::array domains {
-        Domain { 48000, 0.0f, 1.0f }, Domain { 96000, 12.0f, 1.0f },
+        // Include both common host grids: geometric plain-steel stiffness
+        // moves a short line's rounding boundary and can remove a negative
+        // sample witness on one grid. The Fourier/error/count guards stay.
+        Domain { 44100, 0.0f, 1.0f }, Domain { 48000, 0.0f, 1.0f },
+        Domain { 96000, 12.0f, 1.0f },
         Domain { 384000, 24.0f, 1.0f }, Domain { 384000, 96.0f, 1.0f },
         Domain { 8000, -96.0f, -1.0f }
     };
@@ -5345,10 +5352,6 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
     narrowAperture.steel.apertureScale = 0.35f;
     auto broadAperture = acustra::fittedPhysicalCalibration;
     broadAperture.steel.apertureScale = 2.5f;
-    const auto narrow = acustra::AcustraEngineTestAccess::pluck(
-        narrowAperture, 0.8f);
-    const auto broad = acustra::AcustraEngineTestAccess::pluck(
-        broadAperture, 0.8f);
     // The contact's width is a Gaussian smoothing of the written line, so it
     // is read where it acts, on the line's upper partials against its lower:
     // a Finger stroke below full velocity is also released through its slip

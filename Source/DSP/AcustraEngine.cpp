@@ -680,8 +680,9 @@ constexpr std::array<int, AcustraEngine::stringCount> standardOpenMidi {{
 // and Karjalainen (Acta Acustica 92, 2006); shortening the same construction
 // then predicts their seventh-fret values.  G remains an authored effective
 // diameter because that paper does not publish a matching value for it. The
-// shipped fit then scales every B by stiffnessScale (0.749,
-// FittedPhysicalData.h), so the engine's open strings sit at 0.75 of them.
+// shipped fit scales the wound strings' B by stiffnessScale (0.749,
+// FittedPhysicalData.h). Plain B/high E instead use their steel-wire gauge
+// directly: their measured construction needs no effective-core correction.
 constexpr std::array<float, AcustraEngine::stringCount> steelBendingDiameter {{
     0.477159e-3f, 0.437895e-3f, 0.412021e-3f,
     0.38e-3f, 0.406e-3f, 0.305e-3f
@@ -2619,7 +2620,6 @@ void AcustraEngine::restartRandomDraws() noexcept
     strumRandomState_ = 0x9e3779b9u;
     strumSpeedScale_ = 1.0f;
     strumParallelSign_ = 1.0f;
-    pickingGestureRandom_ = 0x7f4a7c15u;
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -3373,23 +3373,56 @@ void AcustraEngine::StringLoop::beginGestureContact(
     float position, float strength, int relaxationSamples) noexcept
 {
     gestureContact = {};
-    const int length = std::clamp(static_cast<int>(std::lround(currentDelay)),
-                                  8, static_cast<int>(delay.size()) - 2);
-    const int first = std::clamp(static_cast<int>(std::lround(
-        0.5f * length * AcustraEngine::clamp(position, 0.02f, 0.98f))),
-        1, length / 2 - 1);
-    gestureContact.firstAge = first;
-    gestureContact.secondAge = length - first;
-    gestureContact.configure(strength, relaxationSamples);
+    const float length = AcustraEngine::clamp(currentDelay,
+        8.0f, static_cast<float>(delay.size()) - 2.0f);
+    const float first = AcustraEngine::clamp(
+        0.5f * length * AcustraEngine::clamp(position, 0.02f, 0.98f),
+        1.0f, 0.5f * length - 1.0f);
+    const float second = length - first;
+    gestureContact.firstAge = static_cast<int>(first);
+    gestureContact.secondAge = static_cast<int>(second);
+    const float a = first - static_cast<float>(gestureContact.firstAge);
+    const float b = second - static_cast<float>(gestureContact.secondAge);
+    gestureContact.firstFraction = a;
+    gestureContact.secondFraction = b;
+    // Interpolate the physical contact and distribute its reaction with
+    // the transpose of the same operator. Normalizing the signed spatial
+    // vector to squared norm 2 retains the two-port velocity-energy proof,
+    // even when the two fractional phases differ. Scale r by the original
+    // mean squared norm so interpolation does not increase contact force.
+    // The two supports remain disjoint at the existing endpoint limits.
+    const float power = 0.5f * ((1.0f - a) * (1.0f - a) + a * a
+                             + (1.0f - b) * (1.0f - b) + b * b);
+    const float scale = 1.0f / std::sqrt(power);
+    gestureContact.spatialWeights = {
+        (1.0f - a) * scale, a * scale,
+        (1.0f - b) * scale, b * scale };
+    gestureContact.configure(AcustraEngine::clamp(strength, 0.0f, 0.22f)
+        * power, relaxationSamples);
 }
 
 void AcustraEngine::StringLoop::applyGestureContact() noexcept
 {
     auto& first = delay[static_cast<std::size_t>(wrapDelayIndex(
         writeIndex - 1 - gestureContact.firstAge))];
+    auto& firstNext = delay[static_cast<std::size_t>(wrapDelayIndex(
+        writeIndex - 2 - gestureContact.firstAge))];
     auto& second = delay[static_cast<std::size_t>(wrapDelayIndex(
         writeIndex - 1 - gestureContact.secondAge))];
-    gestureContact.scatter(first, second);
+    auto& secondNext = delay[static_cast<std::size_t>(wrapDelayIndex(
+        writeIndex - 2 - gestureContact.secondAge))];
+    const auto& w = gestureContact.spatialWeights;
+    float gatheredFirst = w[0] * first + w[1] * firstNext;
+    float gatheredSecond = w[2] * second + w[3] * secondNext;
+    const float incomingFirst = gatheredFirst;
+    const float incomingSecond = gatheredSecond;
+    gestureContact.scatter(gatheredFirst, gatheredSecond);
+    const float changeFirst = gatheredFirst - incomingFirst;
+    const float changeSecond = gatheredSecond - incomingSecond;
+    first += w[0] * changeFirst;
+    firstNext += w[1] * changeFirst;
+    second += w[2] * changeSecond;
+    secondNext += w[3] * changeSecond;
 }
 
 double AcustraEngine::BridgeMode::processPast(double input) noexcept
@@ -3720,6 +3753,7 @@ void AcustraEngine::reset() noexcept
     pickingGesture_ = {};
     strumGesture_ = {};
     pickingGestureSeen_ = false;
+    pickingGestureOriginSample_ = 0;
     pickingGestureSample_ = 0;
     hand_.fill({});
     lastNoteOnSample_.fill(0);
@@ -5080,7 +5114,27 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const auto bend = voiceBend(voice);
     const float performedBend = bend.performed;
     const float memberBendSemitones = bend.member;
-    const float vibratoInterval = vibratoSemitones(voice, fret);
+    float vibratoInterval = 0.0f;
+    if (vibrato_ > 0.0f && voice.played && voice.keyDown && voice.harmonic <= 1)
+    {
+        // Eligibility follows the hand's current stop, not the original MIDI
+        // fret. Compute the requested slide geometry before the pitch key:
+        // the cached speaking length can still belong to the preceding wheel
+        // position. Member tension bends leave this distance unchanged. Keep
+        // the same finite-string bounds as the geometry calculation below;
+        // the wheel at zero does no additional geometry work.
+        const float fretLength = scaleLength * std::exp2(-static_cast<float>(fret) / 12.0f);
+        const float unbentFrequency = midiFrequency(stoppedMidi);
+        const float slideInterval = clamp(performedBend - memberBendSemitones,
+                                           -192.0f, 192.0f);
+        const float slideFrequency = clamp(unbentFrequency
+            * std::exp2(slideInterval / 12.0f),
+            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
+            0.24f * static_cast<float>(sampleRate_));
+        const float length = slideInterval == 0.0f ? fretLength
+            : fretLength * unbentFrequency / slideFrequency;
+        vibratoInterval = vibratoSemitones(voice, length);
+    }
     const float axialRigidity = stringAxialRigidity(stringIndex);
     const float bendingDiameter = steelBendingDiameter[index];
     const PitchGeometryKey pitchKey {
@@ -5216,12 +5270,16 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             voice.releaseDamping = 1.0f;
         return;
     }
-    // The E*I = E*(pi*d^4/64) solid-cylinder model on the fitted effective
-    // bending diameter and stiffnessScale.
+    // A plain steel monofilament has E*I = E*pi*d^4/64 from its gauge.
+    // Wound strings instead need an effective bending stiffness: their wrap
+    // adds mass without behaving like a solid cylinder. Keep the fitted
+    // core correction only on those four constructions (Woodhouse et al.,
+    // Acta Acustica 98 (2012), Eqs. 1-3); do not soften the plain B/high E.
+    const float bendingScale = stringIndex < 4 ? physical.stiffnessScale : 1.0f;
     const float stiffness = pi * pi * pi * steelYoungsModulus
         * bendingDiameter * bendingDiameter
         * bendingDiameter * bendingDiameter / 64.0f;
-    const float inharmonicity = clamp(stiffness * physical.stiffnessScale
+    const float inharmonicity = clamp(stiffness * bendingScale
         / (bentTension * soundingLength * soundingLength), 0.0f, 0.004f);
     const float age = parameters_.stringAge;
     // Preserve the material/age law while allowing one shared fitted cutoff
@@ -5720,8 +5778,12 @@ void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
     const float tensionIncrease = youngsModulus * area
         * displacement * displacement * voice.attackSlopeEnergy
         / (2.0f * lengthSquared);
+    // The attack's tension rise works against the same physical bending
+    // stiffness that sets the partials: fitted effective cores for wound
+    // strings, the gauge's solid-steel section for the two plain strings.
+    const float bendingScale = stringIndex < 4 ? physical.stiffnessScale : 1.0f;
     const float bendingStiffness = pi * pi * youngsModulus * secondMoment
-        * physical.stiffnessScale / lengthSquared;
+        * bendingScale / lengthSquared;
     const float ratio = tensionIncrease / (tension + bendingStiffness);
     const float cents = 1200.0f * std::log2(exact::sqrt(1.0f + ratio));
     voice.attackPitchCents = exact::isfinite(cents)
@@ -5751,11 +5813,18 @@ void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
 // is authored, and set to the same 20 cents the attack-pitch surrogate is
 // bounded at, which keeps a new magnitude out of the model.
 float AcustraEngine::vibratoSemitones(const Voice& voice,
-                                      int fret) const noexcept
+                                      float speakingLength) const noexcept
 {
     if (!(vibrato_ > 0.0f) || !voice.played || !voice.keyDown
-        || voice.harmonic > 1 || fret <= 0)
+        || voice.harmonic > 1)
         return 0.0f;
+    // The same finite stopping contact controls release and vibrato. A
+    // conventional/manager slide can move an initially open string under
+    // the finger, or return a stopped one to the nut. Across the final
+    // 18 mm the contact unloads continuously; every ordinary fret retains
+    // the established depth, and an open string receives exactly none.
+    const float stoppingWeight = frettingContactWeight(speakingLength,
+                                                       voice.harmonic);
     constexpr float fullWheelSemitones = 0.20f;
     // MPE channel pressure biases how deep this one note's vibrato reaches,
     // a firmer grip letting more of the wheel's own travel through; it never
@@ -5767,7 +5836,7 @@ float AcustraEngine::vibratoSemitones(const Voice& voice,
     const float depthBias = pressure >= 0.0f
         ? pressureDepthFloor + (1.0f - pressureDepthFloor) * pressure
         : 1.0f;
-    return fullWheelSemitones * depthBias * vibrato_ * vibratoOnset_
+    return stoppingWeight * fullWheelSemitones * depthBias * vibrato_ * vibratoOnset_
         * 0.5f * (1.0f - std::cos(vibratoPhase_));
 }
 
@@ -5816,42 +5885,69 @@ AcustraEngine::PickingGesture AcustraEngine::nextPickingGesture() noexcept
     if (!performanceRealism_.coherentHand)
         return {};
 
-    const bool rest = !pickingGestureSeen_
-        || sampleClock_ < pickingGestureSample_
-        || sampleClock_ - pickingGestureSample_
-            > static_cast<std::uint64_t>(handMemorySeconds * sampleRate_);
-    if (rest)
+    const bool first = !pickingGestureSeen_ || sampleClock_ < pickingGestureSample_;
+    if (!first && sampleClock_ == pickingGestureSample_)
+        return pickingGesture_;
+    if (sampleClock_ < pickingGestureOriginSample_)
+        pickingGestureOriginSample_ = sampleClock_;
+
+    // A hand has finite movement speed. Sample one continuous posture path,
+    // rather than diffusing once per note: adding an ornament must not move
+    // every following contact, and a two-second rest must not redraw it.
+    // The one-second target interval and the existing displacement/pressure
+    // amplitudes are authored motor variation, not measured physiology.
+    // Hashing physical-time knots gives O(1) work even after a long silence,
+    // without consuming any contact, repeat-force or strum random draws.
+    constexpr double targetIntervalSeconds = 1.0;
+    const double time = static_cast<double>(sampleClock_ - pickingGestureOriginSample_)
+        / (sampleRate_ * targetIntervalSeconds);
+    const auto knot = static_cast<std::int64_t>(time);
+    const double phase = time - static_cast<double>(knot);
+    const auto target = [](std::int64_t index, std::uint32_t axis) noexcept
     {
-        // The first contact keeps the previous model's independent draw.
-        // Establish a hand posture for the following contacts without taking
-        // anything away from the player's first note or explicit accent.
-        pickingGesture_.position = xorshiftNoise(pickingGestureRandom_);
-        pickingGesture_.pressure = xorshiftNoise(pickingGestureRandom_);
-        pickingGesture_.active = false;
-        pickingGestureSeen_ = true;
-    }
-    else if (sampleClock_ != pickingGestureSample_)
+        const auto counter = static_cast<std::uint64_t>(index);
+        std::uint32_t value = pickingGestureSeed ^ axis
+            ^ static_cast<std::uint32_t>(counter)
+            ^ (0x9e3779b9u * static_cast<std::uint32_t>(counter >> 32));
+        value ^= value >> 16;
+        value *= 0x7feb352du;
+        value ^= value >> 15;
+        value *= 0x846ca68bu;
+        value ^= value >> 16;
+        return 2.0 * static_cast<double>(value) / 4294967295.0 - 1.0;
+    };
+    const auto posture = [&](std::uint32_t axis) noexcept
     {
-        // Bounded diffusion with reflection, not a periodic modulation.
-        // Symmetric reflected increments preserve a uniform marginal over
-        // [-1,1]; elapsed seconds set movement, never host block size. The
-        // 0.70/sqrt(s) mobility is an authored small-gesture map, not a
-        // measured universal statistic of a player's hand.
-        const float elapsed = static_cast<float>(
-            static_cast<double>(sampleClock_ - pickingGestureSample_)
-            / sampleRate_);
-        const float step = 0.70f * std::sqrt(std::min(elapsed, 1.0f));
-        const auto reflect = [] (float value) noexcept
+        const double before = target(knot - 1, axis);
+        const double from = target(knot, axis);
+        const double to = target(knot + 1, axis);
+        const double after = target(knot + 2, axis);
+        // Shape-preserving cubic Hermite interpolation: the harmonic mean
+        // of adjacent secants meets each knot with the same velocity from
+        // either side, stopping only at a direction reversal. It never
+        // overshoots its bounded targets and has finite velocity. The clamp
+        // only protects the final float conversion from rounding at +/-1.
+        const auto tangent = [](double left, double right) noexcept
         {
-            return value > 1.0f ? 2.0f - value
-                 : value < -1.0f ? -2.0f - value : value;
+            return left * right > 0.0 ? 2.0 * left * right / (left + right) : 0.0;
         };
-        pickingGesture_.position = reflect(pickingGesture_.position
-            + step * xorshiftNoise(pickingGestureRandom_));
-        pickingGesture_.pressure = reflect(pickingGesture_.pressure
-            + step * xorshiftNoise(pickingGestureRandom_));
-        pickingGesture_.active = true;
-    }
+        const double entry = tangent(from - before, to - from);
+        const double exit = tangent(to - from, after - to);
+        const double square = phase * phase;
+        const double cube = square * phase;
+        return static_cast<float>(std::clamp(
+            (2.0 * cube - 3.0 * square + 1.0) * from
+            + (cube - 2.0 * square + phase) * entry
+            + (-2.0 * cube + 3.0 * square) * to
+            + (cube - square) * exit, -1.0, 1.0));
+    };
+    pickingGesture_.position = posture(0u);
+    pickingGesture_.pressure = posture(0x68e31da4u);
+    // Preserve the calibrated first-contact law and a simultaneous chord's
+    // common snapshot. Once established, the hand remains a continuous
+    // physical posture through rests; allocator memory is a separate model.
+    pickingGesture_.active = !first;
+    pickingGestureSeen_ = true;
     pickingGestureSample_ = sampleClock_;
     return pickingGesture_;
 }
@@ -5934,8 +6030,31 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     const bool hasTimbre = voice.mpeMember && voice.midiChannel >= 1
         && voice.midiChannel <= midiChannelCount
         && mpeTimbre_[channelIndex] >= 0.0f;
-    const float takeOffset = 0.02f * (gesture.active && !hasTimbre
-        ? 0.70f * gesture.position + 0.30f * positionDraw : positionDraw);
+    constexpr float lowestPoint = 0.05f;
+    constexpr float handLimit = 0.36f;
+    float takeOffset = 0.02f * positionDraw;
+    if (gesture.active && !hasTimbre)
+    {
+        // One hand moves the same physical distance across a fretted chord.
+        // Keep the established open-string travel (0.02 * 0.70 * 648 mm),
+        // then express it in each string's actual speaking length. Scaling
+        // that shared motion by the stopped length made an octave-fretted
+        // string's hand move only half as far. The independent take spread
+        // and explicit member position retain their existing maps.
+        float sharedOffset = 0.70f * gesture.position
+            * (scaleLength / soundingLength);
+        // Extreme virtual slides can leave less string than the hand's
+        // travel. Approach the available position band smoothly there,
+        // reserving the independent draw's 0.30 share. Ordinary playable
+        // frets remain below this knee and keep exact physical travel.
+        constexpr float sharedLimit = (handLimit - lowestPoint) / 0.02f - 0.30f;
+        constexpr float sharedKnee = 0.5f * sharedLimit;
+        const float travel = exact::abs(sharedOffset);
+        if (travel > sharedKnee)
+            sharedOffset = std::copysign(sharedLimit
+                - sharedKnee * sharedKnee / travel, sharedOffset);
+        takeOffset = 0.02f * (sharedOffset + 0.30f * positionDraw);
+    }
     float basePosition = hasTimbre
         ? 0.05f + 0.41f * mpeTimbre_[channelIndex]
         : distanceFromBridge / soundingLength;
@@ -5954,9 +6073,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // Thumb at the 20th); the knee beat both, and a hard bound at 0.36, on
     // the benchmark (Docs/decisions.md, 2026-09-30). CC74 still names any
     // point of its published 0.05-0.46 band directly.
-    constexpr float lowestPoint = 0.05f;
     constexpr float kneePoint = 0.25f;
-    constexpr float handLimit = 0.36f;
     if (!hasTimbre && basePosition > kneePoint)
     {
         constexpr float width = handLimit - kneePoint;
@@ -7238,6 +7355,20 @@ void AcustraEngine::processPendingRelease(Voice& voice, int stringIndex) noexcep
         beginRelease(voice, stringIndex);
 }
 
+float AcustraEngine::frettingContactWeight(float speakingLength,
+                                           int harmonic) noexcept
+{
+    // A manager/conventional wheel moves the stopping point; an MPE member
+    // bend changes tension at fixed length. Near the nut, let the existing
+    // authored 18 mm pad take over continuously. This is an effective soft
+    // contact, not two literal hands translating into one another. Natural
+    // harmonics retain the open string's catch rather than a stopped fret.
+    if (harmonic > 1)
+        return 0.0f;
+    const float fraction = clamp((0.648f - speakingLength) / 0.018f, 0.0f, 1.0f);
+    return fraction * fraction * (3.0f - 2.0f * fraction);
+}
+
 void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
 {
     const bool deferredKeyUp = voice.releaseJoinPending;
@@ -7254,7 +7385,14 @@ void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
     // remain in transit and receive the same hand loss on arrival.
     if (voice.contactTravelEnabled)
         voice.excitationEnvelope = 0.0f;
-    const float nominalReleaseSeconds = voice.fret == 0 ? 1.25f : 0.16f;
+    const float fretContact = frettingContactWeight(voice.speakingLengthMetres,
+                                                    voice.harmonic);
+    // Dissipative rates add. Blending T60 itself would give an intermediate
+    // contact less loss than the same weighted open/fretted damping rates.
+    // Explicit endpoints preserve both established unslid gestures exactly.
+    const float nominalReleaseSeconds = fretContact == 0.0f ? 1.25f
+        : fretContact == 1.0f ? 0.16f
+        : 1.0f / ((1.0f - fretContact) / 1.25f + fretContact / 0.16f);
     // An explicit fast key-up represents a firm damping contact; a slow
     // one a gentler contact. This is a bounded performance map, not a fit
     // to recordings (the sustained-note corpora carry no release gesture).
@@ -7286,26 +7424,21 @@ void AcustraEngine::beginGestureDamping(Voice& voice) noexcept
     // while a Pick stroke is stopped by the heel near the saddle. The existing
     // scalar hand T60 remains the fundamental release prescription. This
     // bounded extra loss makes partials respond to that contact's location.
-    float position = voice.pluckPoint;
-    const bool fretContact = voice.fret > 0 && voice.harmonic <= 1;
-    if (fretContact)
-    {
-        // Conventional/manager slides change the physical length beyond
-        // the decay table's 0..20-fret range. speakingFret is clamped for
-        // that table; the pad must use the actual slide geometry instead.
-        const float speakingLength = voice.speakingLengthMetres;
-        position = 1.0f - 0.018f / std::max(speakingLength, 0.05f);
-    }
-    else if (parameters_.picking == PickingTechnique::Pick)
-    {
-        // The same authored 28 mm palm position as the release sound below.
-        // Moving Pluck Position moves the pick, not the heel of the hand.
-        // Use the actual length: a manager slide changes geometry, whereas
-        // a member tension bend leaves this physical contact in place.
-        position = 0.028f / std::max(voice.speakingLengthMetres, 0.05f);
-    }
-    const float strength = clamp((fretContact ? 0.45f : 0.06f)
-                                    * (1.0f - voice.releaseDamping),
+    const float speakingLength = std::max(voice.speakingLengthMetres, 0.05f);
+    const float fretContact = frettingContactWeight(voice.speakingLengthMetres,
+                                                    voice.harmonic);
+    const float openPosition = parameters_.picking == PickingTechnique::Pick
+        ? 0.028f / speakingLength : voice.pluckPoint;
+    const float fretPosition = 1.0f - 0.018f / speakingLength;
+    // The centroid is an authored effective pad during the smooth handover
+    // at the nut. Past it, keep the actual slide geometry even outside the
+    // decay calibration's supported fret range.
+    const float position = fretContact == 0.0f ? openPosition
+        : fretContact == 1.0f ? fretPosition
+        : openPosition + (fretPosition - openPosition) * fretContact;
+    const float contactStrength = fretContact == 0.0f ? 0.06f
+        : fretContact == 1.0f ? 0.45f : 0.06f + (0.45f - 0.06f) * fretContact;
+    const float strength = clamp(contactStrength * (1.0f - voice.releaseDamping),
                                   0.0f, 0.22f);
     // Six milliseconds is an authored soft-contact relaxation time, not
     // a release T60 or a measured guitarist gesture duration.
@@ -9307,6 +9440,8 @@ void AcustraEngine::allSoundOff(int midiChannel) noexcept
         pickingGesture_ = {};
         strumGesture_ = {};
         pickingGestureSeen_ = false;
+        pickingGestureOriginSample_ = sampleClock_;
+        pickingGestureSample_ = sampleClock_;
     }
 }
 
@@ -9499,41 +9634,46 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
         ? clamp(std::pow(std::max(rv, 0.02f) / nominalRelease, 0.75f),
                 0.35f, 1.7f)
         : 1.0f;
+    // A key-up's brush approximates the pad slipping obliquely across a
+    // fixed short length of winding. Use the existing bounded firmness as
+    // its relative slip speed: ridge-crossing frequency follows speed and
+    // traversal duration its inverse (Pakarinen, Penttinen and Bank, 2007,
+    // "Analysis of handling noises on wound strings"). This is an authored
+    // gesture mapping, not a measurement of winding pitch or finger speed.
+    // Missing/nominal release velocity leaves the previous brush exact.
+    const bool wound = stringIndex <= 3;
+    const float brushSpeed = wound ? firmness : 1.0f;
     const bool pick = parameters_.picking == PickingTechnique::Pick;
     const bool thumb = parameters_.picking == PickingTechnique::Thumb;
     const float speakingLength = std::max(voice.speakingLengthMetres, 0.05f);
-    float position = 0.0f;
-    float corner = 0.0f;
-    float fallSeconds = 0.0f;
-    float touchLevel = 0.0f;
-    float brushLevel = 0.0f;
-    if (fretSide)
+    const float fretContact = frettingContactWeight(voice.speakingLengthMetres,
+                                                    voice.harmonic);
+    // Retain the established key identity's draw schedule: Finger/Thumb
+    // open strings historically have no position draw. Reuse their colour
+    // draw for the hypothetical fretted endpoint instead of advancing the
+    // generator when a continuous slide crosses the nut. Thus physical
+    // coefficients follow actual length, while RNG history stays unchanged.
+    const bool positionDrawn = fretSide || pick;
+    float positionDraw = positionDrawn ? draw() : 0.0f;
+    const float cornerDraw = draw();
+    if (!positionDrawn)
+        positionDraw = cornerDraw;
+    const auto blend = [fretContact] (float open, float stopped)
     {
-        const float fromFret = 0.018f + 0.006f * draw();
-        position = 1.0f - fromFret / speakingLength;
-        corner = 1400.0f;
-        fallSeconds = 0.010f;
-        touchLevel = 1.0f;
-        brushLevel = 1.0f;
-    }
-    else if (pick)
-    {
-        position = (0.028f + 0.006f * draw()) / speakingLength;
-        corner = 600.0f;
-        fallSeconds = 0.018f;
-        touchLevel = 0.6f;
-        brushLevel = 0.3f;
-    }
-    else
-    {
-        position = voice.pluckPoint > 0.0f ? voice.pluckPoint : 0.2f;
-        corner = thumb ? 700.0f : 1000.0f;
-        fallSeconds = 0.014f;
-        touchLevel = 0.25f;
-        brushLevel = 0.4f;
-    }
+        return fretContact == 0.0f ? open : fretContact == 1.0f ? stopped
+            : open + (stopped - open) * fretContact;
+    };
+    const float openPosition = pick
+        ? (0.028f + 0.006f * positionDraw) / speakingLength
+        : voice.pluckPoint > 0.0f ? voice.pluckPoint : 0.2f;
+    float position = blend(openPosition,
+        1.0f - (0.018f + 0.006f * positionDraw) / speakingLength);
+    float corner = blend(pick ? 600.0f : thumb ? 700.0f : 1000.0f, 1400.0f);
+    float fallSeconds = blend(pick ? 0.018f : 0.014f, 0.010f);
+    float touchLevel = blend(pick ? 0.6f : 0.25f, 1.0f);
+    float brushLevel = blend(pick ? 0.3f : 0.4f, 1.0f);
     position = clamp(position, 0.02f, 0.98f);
-    corner = clamp(corner * (1.0f + 0.15f * draw()) * std::sqrt(firmness),
+    corner = clamp(corner * (1.0f + 0.15f * cornerDraw) * std::sqrt(firmness),
                    100.0f, 0.2f * rate);
     fallSeconds *= 1.0f + 0.2f * draw();
     touchLevel *= std::pow(10.0f, 1.5f * draw() / 20.0f);
@@ -9551,14 +9691,17 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
     constexpr float touchShare = 0.07f;
     constexpr float brushShare = 0.0005f;
     const float touchRms = touchShare * touchLevel * scale * voice.level;
-    const bool wound = stringIndex <= 3;
     const float brushRms = wound
-        ? brushShare * brushLevel * scale * voice.peakLevel : 0.0f;
+        ? brushShare * brushLevel * scale * voice.peakLevel
+            * std::sqrt(std::min(brushSpeed, 1.0f)) : 0.0f;
     if (!(touchRms > 0.0f || brushRms > 0.0f))
         return;
     // Each part's envelope is the difference of a rise and a fall, zero at
     // the key-up and normalised to peak at one: the landing takes 1.5 ms,
-    // the brush follows the pad's lift at 5 ms.
+    // the nominal brush follows the pad's lift at 5 ms. The existing
+    // firmness already controls force RMS, so do not add another speed
+    // gain. Slower, longer brushes receive sqrt(speed) compensation: the
+    // integrated squared envelope never exceeds the former force budget.
     const auto envelope = [rate] (float riseSeconds, float fallTime,
                                   float& riseDecay, float& fallDecay)
     {
@@ -9571,8 +9714,8 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
     };
     const float touchPeak = envelope(0.0015f, fallSeconds,
         voice.releaseNoiseRiseDecay, voice.releaseNoiseFallDecay);
-    const float brushFall = 0.016f * (1.0f + 0.25f * draw());
-    const float brushPeak = envelope(0.005f, brushFall,
+    const float brushFall = 0.016f * (1.0f + 0.25f * draw()) / brushSpeed;
+    const float brushPeak = envelope(0.005f / brushSpeed, brushFall,
         voice.releaseNoiseBrushRiseDecay, voice.releaseNoiseBrushFallDecay);
     // The touch is white under two one-pole stages at the skin's corner,
     // scaled to unit RMS for the uniform draw (variance 1/3): the pair's
@@ -9592,7 +9735,7 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
                                                   2900.0f, 3500.0f };
     const float centre = std::min(wound
         ? brushCentres[static_cast<std::size_t>(stringIndex)]
-            * (1.0f + 0.15f * draw()) : 2500.0f, 0.3f * rate);
+            * (1.0f + 0.15f * draw()) * brushSpeed : 2500.0f, 0.3f * rate);
     constexpr float q = 2.5f;
     const float g = std::tan(pi * centre / rate);
     const float k = 1.0f / q;
