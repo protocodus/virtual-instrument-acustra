@@ -94,6 +94,17 @@ public:
     // off releases what is held at the start of the next block, in order.
     void setGatherChords(bool gather) noexcept { gatherChords_ = gather; }
     [[nodiscard]] bool isGatheringChords() const noexcept { return gatherChords_; }
+    // Sustain, the panel switch (AcustraEngine::setSustainHold): while on,
+    // every key-up on every channel rings on as under its pedal, until the
+    // switch is turned off; CC64 adds nothing while it is on and keeps its
+    // own notes when it goes off. Call before beginBlock, like
+    // setGatherChords; it takes effect at once and is never held back by
+    // Gather Chords. Off, the default, is an exact no-op.
+    void setSustainHold(bool hold) noexcept { engine_.setSustainHold(hold); }
+    [[nodiscard]] bool isHoldingSustain() const noexcept
+    {
+        return engine_.isSustainHeld();
+    }
     // Everything the host must be told: the engine's own fixed output
     // latency (AcustraEngine::outputLatencySamples) plus, while gathering,
     // the window.

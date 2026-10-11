@@ -613,7 +613,18 @@ a proof of physical energy conservation.
 
 CC64 sustain holds notes released under the pedal until pedal-up, which
 starts damping directly. Pressing the pedal after a key-up does not catch its
-pending release. All Notes Off uses its existing sustain-aware release directly, and
+pending release. The SUSTAIN switch beside CHORDS is the same hold on every
+channel at once (`Performer::setSustainHold`): on, every released note rings
+on, its string still fretted, until the string is taken for another note or
+the switch goes off, which damps the held notes as a pedal-up does. The
+switch and the pedal hold independently: a pedal lifted under the switch,
+or the switch turned off under a channel's pedal, keeps the note, and
+Reset All Controllers lifts only the pedal. Like the pedal, the switch does
+not catch a key-up already in its release window. It is host-automatable,
+so a track can alternate let-ring and damped passages, and it takes effect
+at the start of the block the host changes it in, before that block's MIDI.
+Off, the default, is an exact no-op; a session saved before it existed
+loads it off. All Notes Off uses its existing sustain-aware release directly, and
 All Sound Off/panic clears sound immediately. Queued strums still sound when
 the pick reaches each string; their ordinary release window starts there.
 For longer gaps, holding the note or using sustain keeps it ringing. The
@@ -1442,6 +1453,7 @@ resonances meet it (Known gaps).
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
 | **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% (the default) the output is exactly as without it; with Capture on Piezo it does nothing, since the piezo is already the whole output. |
 | **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. Also controls subtle speed-dependent friction during held wound-string slides. 0-100% (50% nominal, 70% default, chosen by ear), scaled by release velocity and what the string still carries. 0% is exactly silent; a session saved before it existed loads at 0%. Host-automatable, not on the panel. |
+| **Sustain** | On, every released note rings on as under the sustain pedal, on every channel, until its string is taken or the switch goes off, which damps the held notes as a pedal-up does; CC64 keeps working beside it, and each holds independently of the other. Off (the default) damps every key-up as before and is an exact no-op. Host-automatable; the SUSTAIN switch beside CHORDS. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss; on the wound strings it also scales their bending loss (0.2 of the default's on fresh strings, 7.8 times it at 1), so an old set's basses lose their upper partials first. The default age sounds as before. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Past a quarter of a (short, high-fretted) string the point bends smoothly toward 0.36 of it and never reaches it, so the control changes the stroke at every fret for every technique. Explicit MPE position overrides that ratio. |
 | **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. It also sets how fast every technique lets the string go: the release edge scales over two octaves across the control (none at its default), firmer faster and brighter, softer slower and darker, even at velocity 127. |
@@ -2904,6 +2916,18 @@ set without it.
   assert the behaviour directly.
 
 ## Release history
+
+### 2026-10-11 — a Sustain switch
+
+- **Sustain, a host-automatable switch** beside CHORDS and PANIC
+  (`Performer::setSustainHold`): on, every released note rings on exactly as
+  under the CC64 pedal, on every channel, until its string is taken or the
+  switch goes off, which damps the held notes as a pedal-up does. The
+  switch and the pedal hold independently; Reset All Controllers lifts only
+  the pedal, and Panic clears the strings and leaves the switch where it
+  was. Off, the default, is an exact no-op, and a session saved before it
+  existed loads it off. The Rack Extension's Sustain property already
+  spells CC64, so it needs no change.
 
 ### 2026-10-10 — the strings' loss angles
 

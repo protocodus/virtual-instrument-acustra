@@ -5,6 +5,34 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — a Sustain switch beside the pedal
+
+The user asked for a sustain mode against the normal one, where a key-up
+mutes its string, as a switch a host can automate, with the sustain pedal
+doing the same. The engine already had the pedal's hold per channel, so
+the switch is that hold on every channel at once (`setSustainHold`), with
+the pedal and the switch letting go independently: the same `letGoUnlessPedalled`
+path serves a pedal-up and the switch going off, so a channel whose pedal
+is still down keeps its notes either way.
+
+Two readings of "raise the finger" were considered. Lifting the fretting
+finger and letting the string ring at its open pitch is physically what a
+careless release does, but it would turn an arpeggio over a held chord
+into open strings nobody played; a guitarist letting a chord ring keeps the
+shape held. The switch therefore keeps the hand on the fret, exactly as the
+pedal does, and is documented as such. The switch is a playing control, not
+an `EngineParameters` member, and takes effect at the start of the block it
+changes in, before that block's MIDI, so a key-up in that block is held
+when the switch came on with it. Like the pedal it never catches a key-up
+already in its release window.
+
+Verified by bit-exact comparison against the pedal in the Performer suite
+(on, off, under Gather Chords, under an MPE member's pedal, on channel 6,
+and under Reset All Controllers), by the plug-in's parameter contract
+(appended, automatable, off by default, AU version hint 12) and by a
+hold/release sequence through `processBlock`. No sound change: every
+existing suite's output is unchanged, since off is an exact no-op.
+
 ## 2026-10-11 — restrained sliding-finger roughness
 
 The requested moving-finger sound is confined to actual longitudinal contact

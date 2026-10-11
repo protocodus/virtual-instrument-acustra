@@ -60,6 +60,9 @@ private:
     juce::Label subtitleLabel;
     juce::Label statusLabel;
     juce::TextButton panicButton { "PANIC" };
+    juce::TextButton sustainButton { "SUSTAIN" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
+        sustainAttachment;
     juce::TextButton gatherChordsButton { "CHORDS" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
         gatherChordsAttachment;

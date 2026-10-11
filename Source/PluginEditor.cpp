@@ -771,6 +771,22 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     panicButton.onClick = [this] { audioProcessor.requestPanic(); };
     addAndMakeVisible (panicButton);
 
+    const juce::String sustainDescription {
+        "Let every released note ring on, as the sustain pedal does, until "
+        "its string is needed or the switch is turned off. Hosts can automate "
+        "it; MIDI CC64 does the same per channel." };
+    sustainButton.setName ("Sustain");
+    sustainButton.setTitle ("Sustain");
+    sustainButton.setDescription (sustainDescription);
+    sustainButton.setTooltip (sustainDescription);
+    sustainButton.setWantsKeyboardFocus (true);
+    sustainButton.setClickingTogglesState (true);
+    addAndMakeVisible (sustainButton);
+    sustainAttachment = std::make_unique<
+        juce::AudioProcessorValueTreeState::ButtonAttachment> (
+            audioProcessor.parameters, acustra::parameters::sustain,
+            sustainButton);
+
     const juce::String gatherDescription {
         "Gather keys pressed within 30 ms of each other into one chord, "
         "fretted and strummed as a guitarist would. Every note then sounds "
@@ -1072,7 +1088,8 @@ void AcustraAudioProcessorEditor::resized()
     statusLabel.setFont (displayFont (14.0f * scale));
     titleLabel.setBounds (box (80, 10, 440, 44));
     subtitleLabel.setBounds (box (84, 52, 460, 20));
-    statusLabel.setBounds (box (636, 27, 252, 32));
+    statusLabel.setBounds (box (556, 27, 226, 32));
+    sustainButton.setBounds (box (796, 25, 100, 36));
     gatherChordsButton.setBounds (box (908, 25, 94, 36));
     panicButton.setBounds (box (1014, 25, 80, 36));
 

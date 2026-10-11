@@ -98,13 +98,14 @@ void feed(Performer& performer, int offset, const Event& event, Feed how)
 }
 
 void applyControl(acustra::EngineParameters& parameters, bool& gather,
-                  bool& panic, const Control& control)
+                  bool& sustain, bool& panic, const Control& control)
 {
     using Kind = Control::Kind;
     const int index = static_cast<int>(control.value);
     switch (control.kind)
     {
         case Kind::GatherChords: gather = control.value >= 0.5f; break;
+        case Kind::Sustain: sustain = control.value >= 0.5f; break;
         case Kind::Panic: panic = true; break;
         case Kind::CaptureMode:
             parameters.capture = index == 0 ? acustra::CaptureType::StereoMic
@@ -167,6 +168,7 @@ Render render(const Scenario& scenario, double sampleRate, int blockSize,
     block.reserve(scenario.events.size());
 
     const long allocationsBefore = allocationCount.load();
+    bool sustain = false;
     for (int start = 0; start < length; start += blockSize)
     {
         bool panic = false;
@@ -175,7 +177,8 @@ Render render(const Scenario& scenario, double sampleRate, int blockSize,
                 && sampleAt(scenario.controls[index].seconds, sampleRate)
                        < start + blockSize)
             {
-                applyControl(parameters, gather, panic, scenario.controls[index]);
+                applyControl(parameters, gather, sustain, panic,
+                             scenario.controls[index]);
                 applied[index] = true;
             }
         block.clear();
@@ -196,6 +199,7 @@ Render render(const Scenario& scenario, double sampleRate, int blockSize,
         if (panic)
             performer->reset();
         performer->setGatherChords(gather);
+        performer->setSustainHold(sustain);
         result.latency = std::max(result.latency, performer->latencySamples());
         performer->beginBlock(result.left.data() + start,
                               result.right.data() + start, blockSize);
@@ -941,6 +945,73 @@ void testSustainMeetsSameSampleKeyUpsInOrder()
                            + std::to_string(controller));
 }
 
+// Sustain, the panel switch, is the pedal on every channel at once: the
+// same bits as CC64 wherever the two can be compared, and the pedal keeps
+// its own notes when the switch goes off.
+void testSustainHoldIsThePedalOnEveryChannel()
+{
+    const auto on = message(0.0, 0x90, 60, 100);
+    const auto off = message(0.5, 0x80, 60, 64);
+    const auto pedal = [](double seconds, bool down)
+    {
+        return message(seconds, 0xb0, 64, down ? 127 : 0);
+    };
+    const auto hold = [](double seconds, bool held)
+    {
+        return Control { seconds, Control::Kind::Sustain, held ? 1.0f : 0.0f };
+    };
+    const auto play = [](std::vector<Event> events, std::vector<Control> controls = {},
+                         bool gather = false)
+    {
+        auto scenario = custom("hold", 1.5, std::move(events));
+        scenario.controls = std::move(controls);
+        return render(scenario, 48000.0, 64, gather);
+    };
+    const auto released = play({ on, off });
+    const auto pedalled = play({ on, pedal(0.0, true), off });
+    const auto held = play({ on, off }, { hold(0.0, true) });
+    expect(held != released, "Sustain did not hold a released note");
+    expect(held == pedalled, "Sustain on is not the pedal pressed before the note");
+    expect(play({ on, off }, { hold(0.0, true), hold(1.0, false) })
+               == play({ on, pedal(0.0, true), off, pedal(1.0, false) }),
+           "Sustain switched off is not the pedal lifted at the same sample");
+    expect(play({ on, off }, { hold(0.0, true) }, true)
+               == play({ on, pedal(0.0, true), off }, {}, true),
+           "Sustain on under Gather Chords is not the gathered pedal");
+    // The two hold independently: a pedal lifted under the switch, and the
+    // switch lifted under a pedal, both keep the note.
+    expect(play({ on, pedal(0.2, true), off, pedal(1.0, false) }, { hold(0.0, true) })
+               == held,
+           "a pedal lifted under Sustain let the note go");
+    expect(play({ on, pedal(0.2, true), off }, { hold(0.0, true), hold(1.0, false) })
+               == play({ on, pedal(0.2, true), off }),
+           "Sustain switched off under the pedal let the note go");
+    expect(play({ on, off, message(0.6, 0xb0, 121, 0) }, { hold(0.0, true) }) == held,
+           "Reset All Controllers let a note go under Sustain");
+    // Like the pedal, the switch does not catch a key-up already released.
+    expect(play({ on, off }, { hold(0.6, true) }) == released,
+           "Sustain switched on after a key-up caught the note");
+    // Every channel, an MPE member's included.
+    const std::vector<Event> zone { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 6),
+                                    message(0.0, 0xb0, 6, 15) };
+    const auto mpe = [&](std::vector<Event> events, std::vector<Control> controls = {})
+    {
+        auto all = zone;
+        all.insert(all.end(), events.begin(), events.end());
+        return play(std::move(all), std::move(controls));
+    };
+    const auto memberOn = message(0.0, 0x91, 60, 100);
+    const auto memberOff = message(0.5, 0x81, 60, 64);
+    expect(mpe({ memberOn, memberOff }, { hold(0.0, true) })
+               == mpe({ memberOn, message(0.0, 0xb1, 64, 127), memberOff }),
+           "Sustain is not a member channel's own pedal");
+    expect(play({ message(0.0, 0x95, 60, 100), message(0.5, 0x85, 60, 64) },
+                { hold(0.0, true), hold(1.0, false) })
+               == play({ message(0.0, 0x95, 60, 100), message(0.0, 0xb5, 64, 127),
+                         message(0.5, 0x85, 60, 64), message(1.0, 0xb5, 64, 0) }),
+           "Sustain is not channel 6's pedal");
+}
+
 void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
 {
     // 130 Note Ons on one sample: the group holds 128.
@@ -1321,6 +1392,7 @@ int main()
     testMasterTune();
     testResetAllControllersResetsVibratoAndPressure();
     testSustainMeetsSameSampleKeyUpsInOrder();
+    testSustainHoldIsThePedalOnEveryChannel();
     testOverflowIsCountedNotAllocated(battery);
     testShortStrumsSoundEveryString();
     testPlayerKeepsTheEnginesSampleRate();

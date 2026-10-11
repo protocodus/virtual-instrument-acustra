@@ -48,7 +48,8 @@ struct Control
         Age,            // percent
         Pluck,          // percent (Pluck Position)
         Touch,          // percent
-        PiezoMix        // percent
+        PiezoMix,       // percent
+        Sustain         // value 0/1, the panel's hold (Performer::setSustainHold)
     };
     double seconds { 0.0 };
     Kind kind { Kind::Panic };

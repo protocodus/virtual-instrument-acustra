@@ -296,6 +296,16 @@ public:
     // pedal: its own, or, on an MPE lower-zone member, the manager's too.
     [[nodiscard]] bool sustainHolds(int midiChannel) const noexcept;
     void setSustainPedal(bool down, int midiChannel = 1) noexcept;
+    // Sustain, the panel switch: while on, every key-up on every channel is
+    // held exactly as under its pedal (the hand stays on the fret and the
+    // string rings until it is taken or the hold ends), and a pedal adds
+    // nothing. Switching it off lets go what only it held, the hand damping
+    // them as a pedal-up does; a channel whose own pedal is still down keeps
+    // its notes. Like the pedal, switching it on never catches a key-up
+    // already in its release window. Kept across reset and prepare, like the
+    // channel layout; off is an exact no-op.
+    void setSustainHold(bool hold) noexcept;
+    [[nodiscard]] bool isSustainHeld() const noexcept { return sustainHold_; }
     // Continuous bridge-hand damping, 0 open to 1 fully muted. Exposed as a
     // controller rather than a panel control: it is a playing pressure, and
     // zero is an exact no-op.
@@ -1626,6 +1636,9 @@ private:
     [[nodiscard]] bool channelControlsVoice(int midiChannel,
                                             const Voice& voice) const noexcept;
     [[nodiscard]] bool sustainIsDown(const Voice& voice) const noexcept;
+    // A pedal-up's effect on one voice: nothing while another pedal still
+    // holds it, else the hand lets it go.
+    void letGoUnlessPedalled(Voice& voice, int stringIndex) noexcept;
     int chooseString(int midiNote) const noexcept;
     int chooseStringWithoutHand(int midiNote) const noexcept;
     // The fretting hand (see chooseString). Each string remembers the last
@@ -1978,6 +1991,7 @@ private:
     std::array<float, midiChannelCount> mpePressure_ {};
     bool stringPerChannelMode_ { false };
     std::array<bool, midiChannelCount> sustainPedals_ {};
+    bool sustainHold_ { false };
     bool bridgeCouplingEnabled_ { true };
     bool sympatheticStringsEnabled_ { true };
     bool portObserversEnabled_ { true };

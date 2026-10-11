@@ -8133,6 +8133,8 @@ bool AcustraEngine::channelControlsVoice(int midiChannel,
 
 bool AcustraEngine::sustainIsDown(const Voice& voice) const noexcept
 {
+    if (sustainHold_)
+        return true;
     if (voice.midiChannel < 1 || voice.midiChannel > midiChannelCount)
         return false;
     const bool own = sustainPedals_[static_cast<std::size_t>(
@@ -9373,6 +9375,8 @@ void AcustraEngine::noteOffWithVelocity(int midiNote, int midiChannel,
 
 bool AcustraEngine::sustainHolds(int midiChannel) const noexcept
 {
+    if (sustainHold_)
+        return true;
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return false;
     const bool own = sustainPedals_[static_cast<std::size_t>(midiChannel - 1)];
@@ -9469,21 +9473,40 @@ void AcustraEngine::setSustainPedal(bool down, int midiChannel) noexcept
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
-        if (voice.releaseAfterPluck && channelControlsVoice(midiChannel, voice)
-            && !sustainIsDown(voice))
-        {
-            voice.pedalReleasedBeforePluck = voice.pedalReleasedBeforePluck
-                || voice.pedalHeldAtKeyUp;
-            voice.pedalHeldAtKeyUp = false;
-            voice.pedalHeld = false;
-            continue;
-        }
-        if (!voice.pedalHeld || voice.keyDown
-            || !channelControlsVoice(midiChannel, voice)
-            || sustainIsDown(voice))
-            continue;
-        beginRelease(voice, string);
+        if (channelControlsVoice(midiChannel, voice))
+            letGoUnlessPedalled(voice, string);
     }
+}
+
+void AcustraEngine::setSustainHold(bool hold) noexcept
+{
+    if (sustainHold_ == hold)
+        return;
+    sustainHold_ = hold;
+    if (hold)
+        return;
+    for (int string = 0; string < stringCount; ++string)
+        letGoUnlessPedalled(voices_[static_cast<std::size_t>(string)], string);
+}
+
+void AcustraEngine::letGoUnlessPedalled(Voice& voice, int stringIndex) noexcept
+{
+    if (sustainIsDown(voice))
+        return;
+    if (voice.releaseAfterPluck)
+    {
+        // A strum's string the pick has not reached: it is let go when the
+        // pick arrives, with the pedal's immediate contact if a pedal held
+        // its key-up.
+        voice.pedalReleasedBeforePluck = voice.pedalReleasedBeforePluck
+            || voice.pedalHeldAtKeyUp;
+        voice.pedalHeldAtKeyUp = false;
+        voice.pedalHeld = false;
+        return;
+    }
+    if (!voice.pedalHeld || voice.keyDown)
+        return;
+    beginRelease(voice, stringIndex);
 }
 
 void AcustraEngine::setPitchBend(float semitones, int midiChannel) noexcept
