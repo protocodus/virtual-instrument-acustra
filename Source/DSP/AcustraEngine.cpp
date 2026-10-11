@@ -3933,6 +3933,7 @@ void AcustraEngine::prepare(double sampleRate, int)
     bridgeLoadFadeStep_ = 1.0f
         / (0.020f * static_cast<float>(sampleRate_));
     room_.prepare(sampleRate_);
+    prepareBodyConfigurations();
     prepared_ = true;
     restartRandomDraws();
     reset();
@@ -4197,6 +4198,7 @@ void AcustraEngine::setPhysicalCalibration(
     const PhysicalCalibration& calibration) noexcept
 {
     physicalCalibration_ = sanitise(calibration);
+    bodyConfigurationsReady_ = false;
     // The piezo's force unit follows the strings' displacement unit.
     configurePiezoUnit();
     // Steel's own bridge follows the body's frequency and Q calibration,
@@ -4205,6 +4207,7 @@ void AcustraEngine::setPhysicalCalibration(
     ++voiceConfigurationGeneration_;
     if (!prepared_)
         return;
+    prepareBodyConfigurations();
     reset();
 }
 
@@ -4547,11 +4550,43 @@ void AcustraEngine::configureBody() noexcept
         bodyModelFade_ = 1.0f;
     }
 
+    if (!bodyConfigurationsReady_)
+        prepareBodyConfigurations(); // Only possible before the first prepare().
+    const auto& configuration = bodyConfigurations_[
+        3 * static_cast<std::size_t>(parameters_.shape)
+        + static_cast<std::size_t>(parameters_.bodyMaterial)];
+    bodyModes_ = configuration.modes;
+    // g21's own modes are summed in index order, as ever; the parts after
+    // them in vector accumulators (BodyBank::render). Shape and Wood keep
+    // the same modes in the same slots ringing (sameBodyBank, audit F14).
+    bodyBank_.load(bodyModes_, configuration.count, configuration.ordered);
+    bodyBank_.captureFilter.configure(sampleRate_);
+    configuredBodyShape_ = parameters_.shape;
+    configuredBodyMaterial_ = parameters_.bodyMaterial;
+    bodyConfigured_ = true;
+}
+
+void AcustraEngine::prepareBodyConfigurations() noexcept
+{
+    // Construction coefficients depend only on rate and physical calibration.
+    // Evaluate the continuation's frequency-response integral during setup,
+    // never on a prepared instrument's Shape/Wood automation callback.
+    for (int shape = 0; shape < 4; ++shape)
+        for (int material = 0; material < 3; ++material)
+            buildBodyConfiguration(bodyConfigurations_[
+                static_cast<std::size_t>(3 * shape + material)],
+                static_cast<BodyShape>(shape), static_cast<BodyMaterial>(material));
+    bodyConfigurationsReady_ = true;
+}
+
+void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
+    BodyShape shape, BodyMaterial material) const noexcept
+{
     const AnchorTransform& anchor = wideSteelAnchorTransform;
     const auto& bank = detail::measuredSteelBodyModes;
     const auto shapeMorph = bodyConstructionMorph(bank, anchor, anchorBody(),
-        targetBodyFor(parameters_.shape), parameters_.bodyMaterial);
-    const auto woodFactors = woodFactorsFor(parameters_.bodyMaterial);
+        targetBodyFor(shape), material);
+    const auto woodFactors = woodFactorsFor(material);
     // Every bank that ships keeps its measured phase with no observation
     // delay, so renderBody plays the banks as they are.
 
@@ -4562,7 +4597,7 @@ void AcustraEngine::configureBody() noexcept
     const auto place = [&] (const detail::MeasuredBodyMode& measured, int index,
                             const BodyShapeMorph& layerMorph, float share)
     {
-        auto& mode = bodyModes_[static_cast<std::size_t>(slot++)];
+        auto& mode = configuration.modes[static_cast<std::size_t>(slot++)];
         const auto& morph = layerMorph;
         const bool lowBodyMode = measured.frequency > 85.0f
             && measured.frequency < 145.0f;
@@ -4674,8 +4709,8 @@ void AcustraEngine::configureBody() noexcept
               steelBlendG21Share(bank[static_cast<std::size_t>(index)].frequency));
     if (steelBlendJointShare > 0.0f)
     {
-        const auto jointMorph = steelJointMorph(anchor, parameters_.shape,
-                                                parameters_.bodyMaterial);
+        const auto jointMorph = steelJointMorph(anchor, shape,
+                                                material);
         for (const auto index : steelJointKept)
             place(steelJointRadiationModes[index], static_cast<int>(index),
                   jointMorph, steelBlendJointShare);
@@ -4698,7 +4733,7 @@ void AcustraEngine::configureBody() noexcept
         float top = 0.0f;
         for (int index = 0; index < ownCount; ++index)
         {
-            const auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+            const auto& mode = configuration.modes[static_cast<std::size_t>(index)];
             if (mode.poleImaginary == 0.0f)
                 continue;
             top = std::max(top, std::atan2(mode.poleImaginary, mode.poleReal)
@@ -4711,7 +4746,7 @@ void AcustraEngine::configureBody() noexcept
         int referenceCount = 0;
         for (int index = 0; index < ownCount && top > 0.0f; ++index)
         {
-            const auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+            const auto& mode = configuration.modes[static_cast<std::size_t>(index)];
             if (mode.poleImaginary != 0.0f
                 && std::atan2(mode.poleImaginary, mode.poleReal) * rate / twoPi
                     >= 0.5f * top)
@@ -4726,7 +4761,7 @@ void AcustraEngine::configureBody() noexcept
             std::array<std::complex<double>, 4> response {};
             for (int index = 0; index < ownCount; ++index)
             {
-                const auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+                const auto& mode = configuration.modes[static_cast<std::size_t>(index)];
                 if (mode.poleImaginary == 0.0f)
                     continue;
                 const std::complex<double> pole(mode.poleReal, mode.poleImaginary);
@@ -4776,7 +4811,7 @@ void AcustraEngine::configureBody() noexcept
              referenceCount >= 8 && frequency < highest && slot < continuationEnd;
              frequency *= step)
         {
-            auto& mode = bodyModes_[static_cast<std::size_t>(slot++)];
+            auto& mode = configuration.modes[static_cast<std::size_t>(slot++)];
             const float radius = std::exp(-pi * frequency / (q * rate));
             const std::complex<float> pole = std::polar(radius,
                 twoPi * frequency / rate);
@@ -4820,11 +4855,13 @@ void AcustraEngine::configureBody() noexcept
             }
         }
         while (slot < continuationEnd)
-            bodyModes_[static_cast<std::size_t>(slot++)] = {};
+            configuration.modes[static_cast<std::size_t>(slot++)] = {};
     }
     const int count = slot;
+    configuration.count = count;
+    configuration.ordered = ownCount;
     for (; slot < bodyModeCount; ++slot)
-        bodyModes_[static_cast<std::size_t>(slot)] = {};
+        configuration.modes[static_cast<std::size_t>(slot)] = {};
     // The microphones' broad brightness tilt (MicrophoneBalanceData.h).
     // Apply once to the completed bank: the continuation above takes its
     // density from the untilted measured modes, so none of its gain is
@@ -4832,7 +4869,7 @@ void AcustraEngine::configureBody() noexcept
     // and mic balance.
     for (int index = 0; index < count; ++index)
     {
-        auto& mode = bodyModes_[static_cast<std::size_t>(index)];
+        auto& mode = configuration.modes[static_cast<std::size_t>(index)];
         if (mode.poleImaginary == 0.0f)
             continue;
         const float frequency = std::atan2(mode.poleImaginary, mode.poleReal)
@@ -4844,14 +4881,6 @@ void AcustraEngine::configureBody() noexcept
                 &mode.rightMomentReal, &mode.rightMomentImaginary })
             *residue *= gain;
     }
-    // g21's own modes are summed in index order, as ever; the parts after
-    // them in vector accumulators (BodyBank::render). Shape and Wood keep
-    // the same modes in the same slots ringing (sameBodyBank, audit F14).
-    bodyBank_.load(bodyModes_, count, ownCount);
-    bodyBank_.captureFilter.configure(sampleRate_);
-    configuredBodyShape_ = parameters_.shape;
-    configuredBodyMaterial_ = parameters_.bodyMaterial;
-    bodyConfigured_ = true;
 }
 
 void AcustraEngine::configureBridge(bool keepModalState) noexcept

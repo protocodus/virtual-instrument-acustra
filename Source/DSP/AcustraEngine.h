@@ -953,6 +953,15 @@ private:
         float rightMomentReal {}, rightMomentImaginary {};
     };
 
+    // Immutable construction coefficients, prepared for all saved Shape/Wood
+    // values at setup. Sounding states belong exclusively to BodyBank.
+    struct BodyConfiguration
+    {
+        std::array<BodyMode, bodyModeCount> modes {};
+        int count { 0 };
+        int ordered { 0 };
+    };
+
     // Local-contact transport. Each tap is a fixed lossless
     // fractional delay; source samples enter once and the ordinary string
     // loop carries every subsequent round trip.
@@ -1471,6 +1480,8 @@ private:
     void applyDiscreteParameters(bool force) noexcept;
     void updateControlState() noexcept;
     void configureBody() noexcept;
+    void prepareBodyConfigurations() noexcept;
+    void buildBodyConfiguration(BodyConfiguration&, BodyShape, BodyMaterial) const noexcept;
     // keepModalState keeps the sounding modes' state (a live reconfigure
     // of the same measured bank: Shape, Wood); otherwise every mode starts
     // from rest.
@@ -1735,6 +1746,8 @@ private:
     PerformanceRealism performanceRealism_ {};
     std::array<Voice, stringCount> voices_ {};
     std::array<BodyMode, bodyModeCount> bodyModes_ {};
+    std::array<BodyConfiguration, 12> bodyConfigurations_ {};
+    bool bodyConfigurationsReady_ { false };
     // What renderBody runs: the two banks above as BodyBank lanes, with
     // their states. Slots past a bank's own modes are all-zero padding
     // (configureBody); their contribution to every sum is exactly zero, so

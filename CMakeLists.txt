@@ -925,7 +925,7 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.PhysicalHandRealism COMMAND AcustraPhysicalHandRealismTests)
     set_tests_properties(Acustra.PhysicalHandRealism PROPERTIES TIMEOUT 120)
 
-    foreach(contract MaterialStiffness PhysicalHandGeometry ReleaseBrushTrajectory FractionalContact PhysicalStopping PhysicalVibratoStopping WoodMaterial FretMotion MasterTuning RepluckContactParity)
+    foreach(contract MaterialStiffness PhysicalHandGeometry ReleaseBrushTrajectory FractionalContact PhysicalStopping PhysicalVibratoStopping WoodMaterial FretMotion MasterTuning BodyConfigurationCache RepluckContactParity)
         add_executable(Acustra${contract}Tests Tests/${contract}Tests.cpp)
         target_link_libraries(Acustra${contract}Tests PRIVATE AcustraDSP)
         set_target_properties(Acustra${contract}Tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
