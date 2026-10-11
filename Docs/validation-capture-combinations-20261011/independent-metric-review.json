@@ -1,0 +1,140 @@
+{
+  "purpose": "Independent reporting/indexing audit, with direct waveform mixture controls.\n\nReads the completed screen. Never modifies its input matrices, source, or audio.\n",
+  "basis_cases": {
+    "baseline": {
+      "all_case_window_h1_max_db_error": 0.0,
+      "harmonic_balance_max_db_error": 0.0,
+      "rms_max_db_error": 0.0,
+      "neighbor_scalar_vs_previous_scorer_max_db_error": 0.0,
+      "aggregate_metric_max_db_error": 1.4210854715202004e-14,
+      "group_max_db_error": 2.842170943040401e-14
+    },
+    "measured_bridge": {
+      "all_case_window_h1_max_db_error": 2.842170943040401e-14,
+      "harmonic_balance_max_db_error": 3.552713678800501e-14,
+      "rms_max_db_error": 4.263256414560601e-14,
+      "neighbor_scalar_vs_previous_scorer_max_db_error": 1.4210854715202004e-14,
+      "aggregate_metric_max_db_error": 1.0658141036401503e-14,
+      "group_max_db_error": 2.1316282072803006e-14
+    },
+    "neck30_literal264": {
+      "all_case_window_h1_max_db_error": 2.4868995751603507e-14,
+      "harmonic_balance_max_db_error": 4.263256414560601e-14,
+      "rms_max_db_error": 4.618527782440651e-14,
+      "neighbor_scalar_vs_previous_scorer_max_db_error": 1.4210854715202004e-14,
+      "aggregate_metric_max_db_error": 2.4868995751603507e-14,
+      "group_max_db_error": 2.842170943040401e-14
+    },
+    "offhole45_literal264": {
+      "all_case_window_h1_max_db_error": 2.1316282072803006e-14,
+      "harmonic_balance_max_db_error": 4.263256414560601e-14,
+      "rms_max_db_error": 4.973799150320701e-14,
+      "neighbor_scalar_vs_previous_scorer_max_db_error": 1.4210854715202004e-14,
+      "aggregate_metric_max_db_error": 2.1316282072803006e-14,
+      "group_max_db_error": 1.7763568394002505e-14
+    },
+    "free_neck30": {
+      "all_case_window_h1_max_db_error": 2.4868995751603507e-14,
+      "harmonic_balance_max_db_error": 4.263256414560601e-14,
+      "rms_max_db_error": 3.197442310920451e-14,
+      "neighbor_scalar_vs_previous_scorer_max_db_error": 1.4210854715202004e-14,
+      "aggregate_metric_max_db_error": 1.7763568394002505e-14,
+      "group_max_db_error": 2.1316282072803006e-14
+    },
+    "measured_blend": {
+      "all_case_window_h1_max_db_error": 2.842170943040401e-14,
+      "harmonic_balance_max_db_error": 4.263256414560601e-14,
+      "rms_max_db_error": 3.552713678800501e-14,
+      "neighbor_scalar_vs_previous_scorer_max_db_error": 1.4210854715202004e-14,
+      "aggregate_metric_max_db_error": 1.0658141036401503e-14,
+      "group_max_db_error": 2.1316282072803006e-14
+    }
+  },
+  "scalar_neighbor_comparisons": 6912,
+  "matrix_maximum_asymmetry": 0.0,
+  "minimum_eigenvalue": -2.621080931556143e-21,
+  "largest_diagonal_power": 0.009878823712715833,
+  "all_weights_nonnegative_and_sum_one": true,
+  "direct_waveform_cases": [
+    "parlor-spruce-mono_mic-m47-s1",
+    "parlor-spruce-stereo_mic-m47-s1",
+    "parlor-mahogany-mono_mic-m47-s1",
+    "parlor-mahogany-stereo_mic-m47-s1",
+    "auditorium-spruce-mono_mic-m45-s1",
+    "auditorium-spruce-stereo_mic-m45-s1",
+    "auditorium-mahogany-mono_mic-m45-s1",
+    "auditorium-mahogany-stereo_mic-m45-s1",
+    "dreadnought-spruce-mono_mic-m53-s3",
+    "dreadnought-spruce-stereo_mic-m53-s3",
+    "dreadnought-mahogany-mono_mic-m53-s3",
+    "dreadnought-mahogany-stereo_mic-m53-s3",
+    "jumbo-spruce-mono_mic-m41-s1",
+    "jumbo-spruce-stereo_mic-m41-s1",
+    "jumbo-mahogany-mono_mic-m41-s1",
+    "jumbo-mahogany-stereo_mic-m41-s1"
+  ],
+  "direct_controls_per_case": 8,
+  "direct_power_comparisons": 3072,
+  "direct_scipy_vs_gram_max_db_error": 2.842170943040401e-14,
+  "independent_mixture_contraction_checks": [
+    {
+      "name": "grid_2461",
+      "all_aggregate_metrics_maximum_db_error": 0.0,
+      "worst_neighbor_dip": [
+        -1.8796399150761331,
+        "auditorium-mahogany-stereo_mic-m56-s4",
+        "held"
+      ],
+      "worst_neighbor_peak": [
+        2.754010016471195,
+        "auditorium-spruce-mono_mic-m41-s1",
+        "held"
+      ]
+    },
+    {
+      "name": "baseline0.75_bridge",
+      "all_aggregate_metrics_maximum_db_error": 3.552713678800501e-15,
+      "worst_neighbor_dip": [
+        -1.6998653248422748,
+        "jumbo-spruce-mono_mic-m52-s3",
+        "held"
+      ],
+      "worst_neighbor_peak": [
+        2.9258671739329856,
+        "auditorium-mahogany-mono_mic-m41-s1",
+        "held"
+      ]
+    },
+    {
+      "name": "equal_five",
+      "all_aggregate_metrics_maximum_db_error": 1.4210854715202004e-14,
+      "worst_neighbor_dip": [
+        -2.2238538017031146,
+        "jumbo-spruce-stereo_mic-m53-s3",
+        "early"
+      ],
+      "worst_neighbor_peak": [
+        2.123359863997047,
+        "jumbo-spruce-mono_mic-m53-s3",
+        "attack"
+      ]
+    },
+    {
+      "name": "equal_six",
+      "all_aggregate_metrics_maximum_db_error": 7.105427357601002e-15,
+      "worst_neighbor_dip": [
+        -1.9639668524470402,
+        "auditorium-mahogany-stereo_mic-m56-s4",
+        "held"
+      ],
+      "worst_neighbor_peak": [
+        1.8427439894257045,
+        "jumbo-spruce-mono_mic-m53-s3",
+        "attack"
+      ]
+    }
+  ],
+  "script_sha256": "f24dd8ee30078944d1f4071799cd15816ef97ebbf84e274451cf1f57bddeb234",
+  "screen_sha256": "6a1aedcf393b79bbdf201343a4094d490c44bbab49790d360a44d1eb255332b2",
+  "cross_power_sha256": "cb9d21a01e35648b19c1a92e7017a32bde2a42c2736f4d28959611b1c09c23c1"
+}

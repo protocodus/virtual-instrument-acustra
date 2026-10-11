@@ -1,0 +1,1418 @@
+{
+  "balanced_all": {
+    "weights": {
+      "baseline": 0.4,
+      "measured_bridge": 0.2,
+      "neck30_literal264": 0.1,
+      "offhole45_literal264": 0.1,
+      "free_neck30": 0.1,
+      "measured_blend": 0.1
+    },
+    "target_changes": {
+      "parlor": {
+        "attack": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.9561816782827215,
+            "median": -2.364827466275683,
+            "max": -0.8613530769224624
+          },
+          "h1_change_db": {
+            "min": -2.171975374178352,
+            "median": -2.1560943003325814,
+            "max": -2.138153543820806
+          },
+          "rms_change_db": {
+            "min": -2.1646111719348973,
+            "median": -2.136062993424094,
+            "max": -2.1040182966528675
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.10412241661531141,
+            "median": -0.08813691131340384,
+            "max": -0.07298178203212657
+          }
+        },
+        "early": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.341192998818286,
+            "median": -3.0176537240374124,
+            "max": -2.1773465153662954
+          },
+          "h1_change_db": {
+            "min": -2.1234955024578,
+            "median": -2.1006443607468626,
+            "max": -2.069284856205634
+          },
+          "rms_change_db": {
+            "min": -2.1142866565554144,
+            "median": -2.0788508284859937,
+            "max": -2.060178219189197
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.0025879925768172996,
+            "median": 0.022463673676714535,
+            "max": 0.051912991169736245
+          }
+        },
+        "held": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.776335218460396,
+            "median": -3.016676432532787,
+            "max": -2.6826205095468296
+          },
+          "h1_change_db": {
+            "min": -2.2145702762378647,
+            "median": -2.0808819744276548,
+            "max": -1.964217107271537
+          },
+          "rms_change_db": {
+            "min": -2.0869622684236333,
+            "median": -2.0210454056436937,
+            "max": -1.9922718379502484
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.07728234267379719,
+            "median": 0.07265615422074134,
+            "max": 0.18154103268153676
+          }
+        },
+        "late": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.171019534723982,
+            "median": -3.1193682039385635,
+            "max": -2.2975106039101973
+          },
+          "h1_change_db": {
+            "min": -2.6127422952948365,
+            "median": -2.113037219154908,
+            "max": -1.4606790233528244
+          },
+          "rms_change_db": {
+            "min": -2.282830730765326,
+            "median": -0.7888568608214648,
+            "max": 0.5802255869657813
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.6298533779192113,
+            "median": 0.19517938968150972,
+            "max": 0.6564182739176729
+          }
+        }
+      },
+      "auditorium": {
+        "attack": {
+          "h1_vs_h2h3_change_db": {
+            "min": -2.7038672620854918,
+            "median": -2.37385230198184,
+            "max": -1.9215221717813584
+          },
+          "h1_change_db": {
+            "min": -2.071336662034369,
+            "median": -2.0577355233480947,
+            "max": -2.0489779000036528
+          },
+          "rms_change_db": {
+            "min": -2.058419016864555,
+            "median": -2.0036953433559255,
+            "max": -1.9025807738265001
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.06287884862527804,
+            "median": -0.046723426620973285,
+            "max": -0.030090669649531776
+          }
+        },
+        "early": {
+          "h1_vs_h2h3_change_db": {
+            "min": -2.904808440895529,
+            "median": -2.520753266138872,
+            "max": -2.238475195326828
+          },
+          "h1_change_db": {
+            "min": -2.02258394766163,
+            "median": -1.9949638990133813,
+            "max": -1.9540462712851934
+          },
+          "rms_change_db": {
+            "min": -1.8882643581765706,
+            "median": -1.6967025645800966,
+            "max": -1.4640494066195089
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.04707093267912299,
+            "median": 0.09275689551816768,
+            "max": 0.13765627194121777
+          }
+        },
+        "held": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.60689851035918,
+            "median": -2.7235418896197423,
+            "max": -2.4379293246233047
+          },
+          "h1_change_db": {
+            "min": -2.2690285015690392,
+            "median": -1.9929247605320413,
+            "max": -1.89786552722056
+          },
+          "rms_change_db": {
+            "min": -1.7393227055502152,
+            "median": -1.5580496861660968,
+            "max": -1.2819386832357225
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.09543468784028875,
+            "median": -0.040681808158726795,
+            "max": 0.0034427394456812976
+          }
+        },
+        "late": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.985405589990272,
+            "median": -3.1388640742819156,
+            "max": -2.6839004195999223
+          },
+          "h1_change_db": {
+            "min": -2.634579404773824,
+            "median": -2.46101309528326,
+            "max": -2.129308314490686
+          },
+          "rms_change_db": {
+            "min": -1.7422817283000356,
+            "median": -0.6812482211608213,
+            "max": 0.31777221645868536
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.3532183269369824,
+            "median": -0.3164009093800608,
+            "max": -0.2870331731575888
+          }
+        }
+      },
+      "jumbo": {
+        "attack": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.027033335139144,
+            "median": -2.9320830655308363,
+            "max": -2.0400195485362858
+          },
+          "h1_change_db": {
+            "min": -2.314799867111258,
+            "median": -2.185829453491687,
+            "max": -2.1251594595572882
+          },
+          "rms_change_db": {
+            "min": -1.988092553673546,
+            "median": -1.7265383481475034,
+            "max": -1.1619283901315427
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.10706795246481349,
+            "median": -0.08748520318771824,
+            "max": -0.0648570169738214
+          }
+        },
+        "early": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.535688945584468,
+            "median": -3.0085519629897632,
+            "max": -2.5610872467915087
+          },
+          "h1_change_db": {
+            "min": -2.3966232015903017,
+            "median": -2.1916864220594334,
+            "max": -2.0625863487257377
+          },
+          "rms_change_db": {
+            "min": -1.858505311434378,
+            "median": -1.7912228337794769,
+            "max": -1.7197242809681903
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.003780756508596994,
+            "median": 0.01787147247488008,
+            "max": 0.03273935854966936
+          }
+        },
+        "held": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.6083538295338187,
+            "median": -3.162402775091774,
+            "max": -2.6699737147349225
+          },
+          "h1_change_db": {
+            "min": -2.4490490114223533,
+            "median": -2.1770774240865087,
+            "max": -1.9532266088629484
+          },
+          "rms_change_db": {
+            "min": -1.6891192517992764,
+            "median": -1.6057626244276086,
+            "max": -1.53870670490587
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.14480588128815697,
+            "median": 0.18161503466792794,
+            "max": 0.22165230609451925
+          }
+        },
+        "late": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.780972009286927,
+            "median": -3.718742367557077,
+            "max": -3.0628456047812023
+          },
+          "h1_change_db": {
+            "min": -3.584325839601803,
+            "median": -2.7516695072083124,
+            "max": -2.3881635170568387
+          },
+          "rms_change_db": {
+            "min": -0.421143315553266,
+            "median": 0.4356766179508753,
+            "max": 0.9640515385140844
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.1411803240718683,
+            "median": -0.08144173514993014,
+            "max": 0.009088096366909326
+          }
+        }
+      }
+    },
+    "candidate_cases": 600,
+    "piezo_cases": 136,
+    "all_piezo_bit_identical": true,
+    "all_finite": true,
+    "full_scale_samples": 0,
+    "worst_harmonic_losses": {
+      "1": {
+        "key": "auditorium-spruce-mono_mic-m40-s1",
+        "window": "held",
+        "harmonic": 1,
+        "before_dbfs": -71.15368479813178,
+        "after_dbfs": -75.88700821988601,
+        "change_db": -4.7333234217542355
+      },
+      "2": {
+        "key": "auditorium-spruce-mono_mic-m63-s5",
+        "window": "attack",
+        "harmonic": 2,
+        "before_dbfs": -56.197756957818335,
+        "after_dbfs": -65.10857194233215,
+        "change_db": -8.910814984513813
+      },
+      "3": {
+        "key": "auditorium-spruce-mono_mic-m56-s4",
+        "window": "attack",
+        "harmonic": 3,
+        "before_dbfs": -60.82548869031739,
+        "after_dbfs": -69.10835317473173,
+        "change_db": -8.28286448441434
+      }
+    },
+    "largest_harmonic_gains": {
+      "1": {
+        "key": "dreadnought-mahogany-mono_mic-m54-s3",
+        "window": "attack",
+        "harmonic": 1,
+        "before_dbfs": -39.50075665923122,
+        "after_dbfs": -37.572839415880985,
+        "change_db": 1.9279172433502367
+      },
+      "2": {
+        "key": "jumbo-mahogany-mono_mic-m55-s4",
+        "window": "held",
+        "harmonic": 2,
+        "before_dbfs": -70.09510693640503,
+        "after_dbfs": -62.69881934842271,
+        "change_db": 7.3962875879823216
+      },
+      "3": {
+        "key": "jumbo-spruce-mono_mic-m59-s5",
+        "window": "attack",
+        "harmonic": 3,
+        "before_dbfs": -80.57035967524756,
+        "after_dbfs": -57.89246206786142,
+        "change_db": 22.677897607386136
+      }
+    },
+    "worst_added_frf_dip_by_wood": {
+      "spruce": {
+        "shape": "parlor",
+        "wood": "spruce",
+        "moment_to_force": -1.0,
+        "channel": "stereo_mid",
+        "maximum_gain_change": {
+          "hz": 219.4277342987268,
+          "db": 1.1465120240111428
+        },
+        "maximum_loss": {
+          "hz": 254.13204819600068,
+          "db": -15.112669379585178
+        },
+        "worst_local_notch_before": {
+          "hz": 254.13204819600068,
+          "db": -18.830748943809514
+        },
+        "worst_local_notch_after": {
+          "hz": 254.13204819600068,
+          "db": -34.8472653274452
+        },
+        "highest_local_peak_before": {
+          "hz": 121.41649095626668,
+          "db": 14.785767507216574
+        },
+        "highest_local_peak_after": {
+          "hz": 285.2542764572709,
+          "db": 16.502148484314258
+        },
+        "largest_added_local_dip": {
+          "hz": 254.13204819600068,
+          "db": -16.016516383635686
+        },
+        "candidate_response_dynamic_range_db": 49.61690613733141,
+        "maximum_gain_change_after_distance_match": {
+          "hz": 219.4277342987268,
+          "db": 1.1465120240111428
+        },
+        "maximum_loss_after_distance_match": {
+          "hz": 254.13204819600068,
+          "db": -15.112669379585178
+        }
+      },
+      "mahogany": {
+        "shape": "parlor",
+        "wood": "mahogany",
+        "moment_to_force": -1.0,
+        "channel": "stereo_mid",
+        "maximum_gain_change": {
+          "hz": 213.03532181798985,
+          "db": 1.1897455958124095
+        },
+        "maximum_loss": {
+          "hz": 244.71404136056861,
+          "db": -17.30812465590667
+        },
+        "worst_local_notch_before": {
+          "hz": 244.71404136056861,
+          "db": -18.78171725390942
+        },
+        "worst_local_notch_after": {
+          "hz": 244.71404136056861,
+          "db": -37.04309063635584
+        },
+        "highest_local_peak_before": {
+          "hz": 121.59761792019276,
+          "db": 14.757012626188631
+        },
+        "highest_local_peak_after": {
+          "hz": 274.68289537967144,
+          "db": 17.482263772568594
+        },
+        "largest_added_local_dip": {
+          "hz": 244.71404136056861,
+          "db": -18.261373382446422
+        },
+        "candidate_response_dynamic_range_db": 52.721077793498125,
+        "maximum_gain_change_after_distance_match": {
+          "hz": 213.03532181798985,
+          "db": 1.1897455958124095
+        },
+        "maximum_loss_after_distance_match": {
+          "hz": 244.71404136056861,
+          "db": -17.30812465590667
+        }
+      },
+      "maple": {
+        "shape": "auditorium",
+        "wood": "maple",
+        "moment_to_force": -1.0,
+        "channel": "stereo_mid",
+        "maximum_gain_change": {
+          "hz": 195.14772970903564,
+          "db": 1.2128312839054054
+        },
+        "maximum_loss": {
+          "hz": 220.6303643910914,
+          "db": -27.10647416424156
+        },
+        "worst_local_notch_before": {
+          "hz": 220.68518573492753,
+          "db": -19.263458599396944
+        },
+        "worst_local_notch_after": {
+          "hz": 220.6303643910914,
+          "db": -47.34443645476133
+        },
+        "highest_local_peak_before": {
+          "hz": 113.39806246864619,
+          "db": 14.718775477776031
+        },
+        "highest_local_peak_after": {
+          "hz": 196.5588284715404,
+          "db": 23.385815221231667
+        },
+        "largest_added_local_dip": {
+          "hz": 220.6303643910914,
+          "db": -28.11815762095489
+        },
+        "candidate_response_dynamic_range_db": 63.03407074169012,
+        "maximum_gain_change_after_distance_match": {
+          "hz": 195.14772970903564,
+          "db": 1.2128312839054054
+        },
+        "maximum_loss_after_distance_match": {
+          "hz": 220.6303643910914,
+          "db": -27.10647416424156
+        }
+      }
+    },
+    "report_sha256": "744b633deb7971ddf34ac8a3230ac595ed1b9d7bfba8a54e442af02ee9138277",
+    "score_sha256": "fa9af401ed0cadd4ee2a055a042e80bb7117a286a7db640d10a233168f0ba941"
+  },
+  "measured_continuity": {
+    "weights": {
+      "baseline": 0.7,
+      "measured_bridge": 0.2,
+      "neck30_literal264": 0.0,
+      "offhole45_literal264": 0.0,
+      "free_neck30": 0.0,
+      "measured_blend": 0.1
+    },
+    "target_changes": {
+      "parlor": {
+        "attack": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.3835281583497476,
+            "median": -1.912142367575301,
+            "max": -0.7368485779506315
+          },
+          "h1_change_db": {
+            "min": -1.8394542830421443,
+            "median": -1.831823911770936,
+            "max": -1.824702411886019
+          },
+          "rms_change_db": {
+            "min": -1.8386589662006791,
+            "median": -1.820141426963568,
+            "max": -1.7816927516879844
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.04155091600060956,
+            "median": -0.03620511291796724,
+            "max": -0.02982733637016821
+          }
+        },
+        "early": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.299653424668662,
+            "median": -2.195585768101104,
+            "max": -1.9065564545241642
+          },
+          "h1_change_db": {
+            "min": -1.8200197898651993,
+            "median": -1.8129029621181232,
+            "max": -1.8083858200719192
+          },
+          "rms_change_db": {
+            "min": -1.8166043673143442,
+            "median": -1.7983806507716906,
+            "max": -1.7653849069698673
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.0005250811842572034,
+            "median": 0.0054350659290189896,
+            "max": 0.015539123905455199
+          }
+        },
+        "held": {
+          "h1_vs_h2h3_change_db": {
+            "min": -2.9872310965677045,
+            "median": -2.239268800099719,
+            "max": -1.9824486516191726
+          },
+          "h1_change_db": {
+            "min": -1.9909186232943554,
+            "median": -1.7981517247559573,
+            "max": -1.7254893043531183
+          },
+          "rms_change_db": {
+            "min": -1.8055378788015233,
+            "median": -1.7587647268901208,
+            "max": -1.7180557983346034
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.12560236390562096,
+            "median": 0.05226584502815257,
+            "max": 0.11714240581091673
+          }
+        },
+        "late": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.6157885464814825,
+            "median": -2.695497736350184,
+            "max": -2.273601490181278
+          },
+          "h1_change_db": {
+            "min": -2.5249149838023044,
+            "median": -2.1271887822768676,
+            "max": -1.9745844398791377
+          },
+          "rms_change_db": {
+            "min": -2.135187528410299,
+            "median": -1.0476013333113734,
+            "max": 0.028781326975760635
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.8604615185633335,
+            "median": -0.2896088791596618,
+            "max": 0.05756924919774775
+          }
+        }
+      },
+      "auditorium": {
+        "attack": {
+          "h1_vs_h2h3_change_db": {
+            "min": -2.0254390682075254,
+            "median": -1.8945758704014715,
+            "max": -1.6226227878325261
+          },
+          "h1_change_db": {
+            "min": -1.896797619014393,
+            "median": -1.8593918587047717,
+            "max": -1.8268830014353128
+          },
+          "rms_change_db": {
+            "min": -1.9017498298093045,
+            "median": -1.805504431091716,
+            "max": -1.7348740576951975
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.010213646438469226,
+            "median": -0.004684412759484502,
+            "max": 0.0012444785830254546
+          }
+        },
+        "early": {
+          "h1_vs_h2h3_change_db": {
+            "min": -2.2552402801771976,
+            "median": -1.9946062046848958,
+            "max": -1.8586132932198538
+          },
+          "h1_change_db": {
+            "min": -1.8857018473972786,
+            "median": -1.8247163897842285,
+            "max": -1.791502426397841
+          },
+          "rms_change_db": {
+            "min": -1.794067262134746,
+            "median": -1.631760849671302,
+            "max": -1.4399184570654882
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.06736031921957775,
+            "median": 0.08791523831627046,
+            "max": 0.10662023730481707
+          }
+        },
+        "held": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.131133381946185,
+            "median": -2.243133525013377,
+            "max": -1.8441443941999296
+          },
+          "h1_change_db": {
+            "min": -2.2306491804852655,
+            "median": -1.8858532517072035,
+            "max": -1.7085837463855924
+          },
+          "rms_change_db": {
+            "min": -1.672427540915315,
+            "median": -1.5183201289414079,
+            "max": -1.2941651503839964
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.1921236279927072,
+            "median": -0.16881135762169208,
+            "max": -0.14004318037545715
+          }
+        },
+        "late": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.6138554960584557,
+            "median": -2.8564293123033657,
+            "max": -2.3889624016667597
+          },
+          "h1_change_db": {
+            "min": -2.6934808573246585,
+            "median": -2.540623992945843,
+            "max": -2.2126434103842456
+          },
+          "rms_change_db": {
+            "min": -1.9206777022380663,
+            "median": -0.9037637048731391,
+            "max": -0.05581295209473325
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.6823104044745705,
+            "median": -0.5805326053819506,
+            "max": -0.48044300204453805
+          }
+        }
+      },
+      "jumbo": {
+        "attack": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.078657781721894,
+            "median": -2.04542057896926,
+            "max": -1.7031266313128803
+          },
+          "h1_change_db": {
+            "min": -1.9283629126937392,
+            "median": -1.8689509297198885,
+            "max": -1.8047143285021576
+          },
+          "rms_change_db": {
+            "min": -1.8441349772402766,
+            "median": -1.5174079678016152,
+            "max": -1.2022368993799546
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.02563978536500855,
+            "median": -0.014511534104299173,
+            "max": -0.001991860091155928
+          }
+        },
+        "early": {
+          "h1_vs_h2h3_change_db": {
+            "min": -2.545066295960389,
+            "median": -2.0235861622026725,
+            "max": -1.8967753025427214
+          },
+          "h1_change_db": {
+            "min": -1.9500430049311106,
+            "median": -1.8730113649897007,
+            "max": -1.7773547284222317
+          },
+          "rms_change_db": {
+            "min": -1.7655984435266845,
+            "median": -1.5789442503757591,
+            "max": -1.448488371994916
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.016233552166852405,
+            "median": -0.008973605270249152,
+            "max": -0.0016932319754872083
+          }
+        },
+        "held": {
+          "h1_vs_h2h3_change_db": {
+            "min": -2.584098470150394,
+            "median": -2.091092580309013,
+            "max": -1.915013644170216
+          },
+          "h1_change_db": {
+            "min": -1.936761289002888,
+            "median": -1.8452524177547893,
+            "max": -1.7465117564276653
+          },
+          "rms_change_db": {
+            "min": -1.6478174692080216,
+            "median": -1.4778979188880896,
+            "max": -1.338112355813422
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.15661907018600374,
+            "median": 0.1940278610515236,
+            "max": 0.2297093553936307
+          }
+        },
+        "late": {
+          "h1_vs_h2h3_change_db": {
+            "min": -3.897340241019222,
+            "median": -3.01979005259167,
+            "max": -2.4562468342855226
+          },
+          "h1_change_db": {
+            "min": -3.254851344669362,
+            "median": -2.6054686765415482,
+            "max": -2.342165195168633
+          },
+          "rms_change_db": {
+            "min": -0.6523069457348285,
+            "median": -0.08637907741421103,
+            "max": 0.43889191751117096
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.3811702810215962,
+            "median": -0.2825005971487897,
+            "max": -0.09378276678683051
+          }
+        }
+      }
+    },
+    "candidate_cases": 600,
+    "piezo_cases": 136,
+    "all_piezo_bit_identical": true,
+    "all_finite": true,
+    "full_scale_samples": 0,
+    "worst_harmonic_losses": {
+      "1": {
+        "key": "auditorium-spruce-mono_mic-m40-s1",
+        "window": "held",
+        "harmonic": 1,
+        "before_dbfs": -71.15368479813178,
+        "after_dbfs": -74.7007845546826,
+        "change_db": -3.5470997565508213
+      },
+      "2": {
+        "key": "auditorium-spruce-mono_mic-m63-s5",
+        "window": "attack",
+        "harmonic": 2,
+        "before_dbfs": -56.197756957818335,
+        "after_dbfs": -65.70403405140306,
+        "change_db": -9.506277093584721
+      },
+      "3": {
+        "key": "auditorium-spruce-mono_mic-m56-s4",
+        "window": "attack",
+        "harmonic": 3,
+        "before_dbfs": -60.82548869031739,
+        "after_dbfs": -69.29675377685527,
+        "change_db": -8.471265086537876
+      }
+    },
+    "largest_harmonic_gains": {
+      "1": {
+        "key": "dreadnought-mahogany-mono_mic-m53-s3",
+        "window": "held",
+        "harmonic": 1,
+        "before_dbfs": -57.5016965455866,
+        "after_dbfs": -56.23075835273296,
+        "change_db": 1.2709381928536345
+      },
+      "2": {
+        "key": "jumbo-mahogany-mono_mic-m55-s4",
+        "window": "held",
+        "harmonic": 2,
+        "before_dbfs": -70.09510693640503,
+        "after_dbfs": -62.66068721985213,
+        "change_db": 7.4344197165529025
+      },
+      "3": {
+        "key": "jumbo-spruce-mono_mic-m59-s5",
+        "window": "attack",
+        "harmonic": 3,
+        "before_dbfs": -80.57035967524756,
+        "after_dbfs": -57.80934817159452,
+        "change_db": 22.761011503653037
+      }
+    },
+    "worst_added_frf_dip_by_wood": {
+      "spruce": {
+        "shape": "parlor",
+        "wood": "spruce",
+        "moment_to_force": -1.0,
+        "channel": "right_mono",
+        "maximum_gain_change": {
+          "hz": 252.05701659517018,
+          "db": 9.833065347129173
+        },
+        "maximum_loss": {
+          "hz": 252.74680437682719,
+          "db": -29.03618925498448
+        },
+        "worst_local_notch_before": {
+          "hz": 252.18229238070978,
+          "db": -30.48831931829213
+        },
+        "worst_local_notch_after": {
+          "hz": 252.74680437682719,
+          "db": -50.71819859069139
+        },
+        "highest_local_peak_before": {
+          "hz": 283.0657442028491,
+          "db": 15.222140124917646
+        },
+        "highest_local_peak_after": {
+          "hz": 283.69938904279354,
+          "db": 25.031227608659748
+        },
+        "largest_added_local_dip": {
+          "hz": 252.74680437682719,
+          "db": -29.33340383902961
+        },
+        "candidate_response_dynamic_range_db": 66.23981184424025,
+        "maximum_gain_change_after_distance_match": {
+          "hz": 252.05701659517018,
+          "db": 9.833065347129173
+        },
+        "maximum_loss_after_distance_match": {
+          "hz": 252.74680437682719,
+          "db": -29.03618925498448
+        }
+      },
+      "mahogany": {
+        "shape": "parlor",
+        "wood": "mahogany",
+        "moment_to_force": -1.0,
+        "channel": "right_mono",
+        "maximum_gain_change": {
+          "hz": 242.77621846600107,
+          "db": 10.050882954368038
+        },
+        "maximum_loss": {
+          "hz": 243.38013398577638,
+          "db": -27.7900350003895
+        },
+        "worst_local_notch_before": {
+          "hz": 242.83654252241297,
+          "db": -30.735996105885754
+        },
+        "worst_local_notch_after": {
+          "hz": 243.38013398577638,
+          "db": -49.99035359704189
+        },
+        "highest_local_peak_before": {
+          "hz": 272.5754690380143,
+          "db": 15.242470370022076
+        },
+        "highest_local_peak_after": {
+          "hz": 273.18563131652587,
+          "db": 24.59002181246333
+        },
+        "largest_added_local_dip": {
+          "hz": 243.38013398577638,
+          "db": -28.10825919868936
+        },
+        "candidate_response_dynamic_range_db": 66.42503724118379,
+        "maximum_gain_change_after_distance_match": {
+          "hz": 242.77621846600107,
+          "db": 10.050882954368038
+        },
+        "maximum_loss_after_distance_match": {
+          "hz": 243.38013398577638,
+          "db": -27.7900350003895
+        }
+      },
+      "maple": {
+        "shape": "dreadnought",
+        "wood": "maple",
+        "moment_to_force": -1.0,
+        "channel": "stereo_mid",
+        "maximum_gain_change": {
+          "hz": 196.26604227685291,
+          "db": 1.0785487024992761
+        },
+        "maximum_loss": {
+          "hz": 196.8031505857011,
+          "db": -34.189131982620786
+        },
+        "worst_local_notch_before": {
+          "hz": 196.70538531815004,
+          "db": -29.312185037241882
+        },
+        "worst_local_notch_after": {
+          "hz": 196.8031505857011,
+          "db": -62.945690779795115
+        },
+        "highest_local_peak_before": {
+          "hz": 175.24414737239886,
+          "db": 18.15911857811521
+        },
+        "highest_local_peak_after": {
+          "hz": 175.3312461110886,
+          "db": 35.017153839754315
+        },
+        "largest_added_local_dip": {
+          "hz": 196.8031505857011,
+          "db": -34.41546713901942
+        },
+        "candidate_response_dynamic_range_db": 76.63073545135717,
+        "maximum_gain_change_after_distance_match": {
+          "hz": 196.26604227685291,
+          "db": 1.0785487024992761
+        },
+        "maximum_loss_after_distance_match": {
+          "hz": 196.8031505857011,
+          "db": -34.189131982620786
+        }
+      }
+    },
+    "report_sha256": "9128a3a96e291007d96c1218580bf9075db80c638d842cbe4fdcd6108c3b5922",
+    "score_sha256": "bd9e766db3525338d05e8f643dcc98c8508b9d1f2b54be7eb1b7c1187ecfa523"
+  },
+  "equal_five": {
+    "weights": {
+      "baseline": 0.0,
+      "measured_bridge": 0.2,
+      "neck30_literal264": 0.2,
+      "offhole45_literal264": 0.2,
+      "free_neck30": 0.2,
+      "measured_blend": 0.2
+    },
+    "target_changes": {
+      "parlor": {
+        "attack": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.806369529983346,
+            "median": -3.393299862214324,
+            "max": -1.213936380455408
+          },
+          "h1_change_db": {
+            "min": -2.9792947230175315,
+            "median": -2.9391044754521882,
+            "max": -2.8980945882464724
+          },
+          "rms_change_db": {
+            "min": -2.965154139672098,
+            "median": -2.8956336812185217,
+            "max": -2.848528302632939
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.17874925754021476,
+            "median": -0.14622407608813326,
+            "max": -0.11913987347601918
+          }
+        },
+        "early": {
+          "h1_vs_h2h3_change_db": {
+            "min": -6.266737465229788,
+            "median": -4.352352344154799,
+            "max": -2.927705357365909
+          },
+          "h1_change_db": {
+            "min": -2.878823157720305,
+            "median": -2.829057282672782,
+            "max": -2.7605334681506903
+          },
+          "rms_change_db": {
+            "min": -2.870822205437282,
+            "median": -2.8060527602760033,
+            "max": -2.7624664855550733
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.023098187515902424,
+            "median": 0.06687429420038171,
+            "max": 0.11907077228889307
+          }
+        },
+        "held": {
+          "h1_vs_h2h3_change_db": {
+            "min": -5.11770067093083,
+            "median": -4.462415059581264,
+            "max": -3.5251614336967947
+          },
+          "h1_change_db": {
+            "min": -2.9644598913109874,
+            "median": -2.892186221064925,
+            "max": -2.456416945670192
+          },
+          "rms_change_db": {
+            "min": -2.8248281681207743,
+            "median": -2.7052494429914304,
+            "max": -2.646667252160107
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.045610339442099246,
+            "median": 0.04403943930200782,
+            "max": 0.46580454511390457
+          }
+        },
+        "late": {
+          "h1_vs_h2h3_change_db": {
+            "min": -5.337613644195315,
+            "median": -3.949153112383641,
+            "max": -2.237417458168366
+          },
+          "h1_change_db": {
+            "min": -3.274988812114458,
+            "median": -2.510139141391061,
+            "max": -0.9998987536728521
+          },
+          "rms_change_db": {
+            "min": -2.876813706849532,
+            "median": -0.5846009366660603,
+            "max": 1.0704652422037668
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.5109272975373145,
+            "median": 0.6137654849226557,
+            "max": 1.9409658581972948
+          }
+        }
+      },
+      "auditorium": {
+        "attack": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.021099984989782,
+            "median": -3.7273267142052866,
+            "max": -2.7136531163418454
+          },
+          "h1_change_db": {
+            "min": -2.7084103733970792,
+            "median": -2.692834148902822,
+            "max": -2.673666565686105
+          },
+          "rms_change_db": {
+            "min": -2.6533801665350936,
+            "median": -2.579689286473158,
+            "max": -2.4300750621662957
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.11276242124175084,
+            "median": -0.08605306463127427,
+            "max": -0.05842781192665214
+          }
+        },
+        "early": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.147594757153215,
+            "median": -3.6536591788996375,
+            "max": -3.1136941918807324
+          },
+          "h1_change_db": {
+            "min": -2.603228628559485,
+            "median": -2.590892169267814,
+            "max": -2.520656858181816
+          },
+          "rms_change_db": {
+            "min": -2.365478942464165,
+            "median": -2.0783842313184913,
+            "max": -1.7427613650424263
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.034543447063054344,
+            "median": 0.11783301995826889,
+            "max": 0.20008071936319993
+          }
+        },
+        "held": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.41462525974373,
+            "median": -3.6624940318233143,
+            "max": -3.4271758972920026
+          },
+          "h1_change_db": {
+            "min": -2.779610619340268,
+            "median": -2.5304156669469187,
+            "max": -2.4654970440520003
+          },
+          "rms_change_db": {
+            "min": -2.1504696684898406,
+            "median": -1.8830234473631613,
+            "max": -1.4875934727255142
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.05086338733432427,
+            "median": 0.15001206160887648,
+            "max": 0.23789200466386262
+          }
+        },
+        "late": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.687896793707303,
+            "median": -3.8368638467576766,
+            "max": -2.941111629707862
+          },
+          "h1_change_db": {
+            "min": -3.070052726286974,
+            "median": -2.8099740646311417,
+            "max": -2.381056071499202
+          },
+          "rms_change_db": {
+            "min": -1.9419452149510903,
+            "median": -0.6792492346593484,
+            "max": 0.6725978939192387
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.03280646389052322,
+            "median": 0.0630734161405826,
+            "max": 0.15566471570929963
+          }
+        }
+      },
+      "jumbo": {
+        "attack": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.814061223678802,
+            "median": -4.042188737907534,
+            "max": -1.9581713572901407
+          },
+          "h1_change_db": {
+            "min": -3.281760728774131,
+            "median": -2.9779989374216527,
+            "max": -2.8018084749367986
+          },
+          "rms_change_db": {
+            "min": -2.525063271909339,
+            "median": -2.3084402130955013,
+            "max": -1.3115404000606077
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": -0.20967865028932664,
+            "median": -0.17310786587167293,
+            "max": -0.1330670002083032
+          }
+        },
+        "early": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.817279843991642,
+            "median": -4.2513097769198716,
+            "max": -3.8322827198225013
+          },
+          "h1_change_db": {
+            "min": -3.464314117904088,
+            "median": -2.9887430036157454,
+            "max": -2.6520091956648884
+          },
+          "rms_change_db": {
+            "min": -2.6121700282318585,
+            "median": -2.4033538090266333,
+            "max": -2.1319096014232315
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.0253201770084317,
+            "median": 0.05731224679113822,
+            "max": 0.0896323974033777
+          }
+        },
+        "held": {
+          "h1_vs_h2h3_change_db": {
+            "min": -4.990042806014088,
+            "median": -4.405506288069208,
+            "max": -3.627268372680959
+          },
+          "h1_change_db": {
+            "min": -3.5238310345294366,
+            "median": -3.0015805176807646,
+            "max": -2.5704519506897583
+          },
+          "rms_change_db": {
+            "min": -2.300477668020804,
+            "median": -2.1534242934966876,
+            "max": -1.8067593209977133
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.15636178020917413,
+            "median": 0.2058570749790185,
+            "max": 0.2638382569506419
+          }
+        },
+        "late": {
+          "h1_vs_h2h3_change_db": {
+            "min": -6.483412632931177,
+            "median": -4.8736840420659675,
+            "max": -3.6643810896458575
+          },
+          "h1_change_db": {
+            "min": -4.916681691301491,
+            "median": -3.580694236518788,
+            "max": -2.699403045835979
+          },
+          "rms_change_db": {
+            "min": -0.44071461778779053,
+            "median": 0.7664205319162924,
+            "max": 1.2923167381395402
+          },
+          "h1_neighbor_excess_change_db": {
+            "min": 0.12154629465729272,
+            "median": 0.2604906500140629,
+            "max": 0.4243002080980176
+          }
+        }
+      }
+    },
+    "candidate_cases": 600,
+    "piezo_cases": 136,
+    "all_piezo_bit_identical": true,
+    "all_finite": true,
+    "full_scale_samples": 0,
+    "worst_harmonic_losses": {
+      "1": {
+        "key": "parlor-spruce-mono_mic-m40-s1",
+        "window": "held",
+        "harmonic": 1,
+        "before_dbfs": -60.07789803472338,
+        "after_dbfs": -70.12367028616356,
+        "change_db": -10.045772251440177
+      },
+      "2": {
+        "key": "auditorium-spruce-mono_mic-m63-s5",
+        "window": "attack",
+        "harmonic": 2,
+        "before_dbfs": -56.197756957818335,
+        "after_dbfs": -69.06182997964115,
+        "change_db": -12.864073021822811
+      },
+      "3": {
+        "key": "parlor-mahogany-mono_mic-m58-s4",
+        "window": "attack",
+        "harmonic": 3,
+        "before_dbfs": -62.48849741386188,
+        "after_dbfs": -71.5020691815519,
+        "change_db": -9.013571767690024
+      }
+    },
+    "largest_harmonic_gains": {
+      "1": {
+        "key": "dreadnought-mahogany-mono_mic-m54-s3",
+        "window": "attack",
+        "harmonic": 1,
+        "before_dbfs": -39.50075665923122,
+        "after_dbfs": -35.10050200080193,
+        "change_db": 4.40025465842929
+      },
+      "2": {
+        "key": "jumbo-mahogany-mono_mic-m55-s4",
+        "window": "held",
+        "harmonic": 2,
+        "before_dbfs": -70.09510693640503,
+        "after_dbfs": -61.596912771728725,
+        "change_db": 8.498194164676306
+      },
+      "3": {
+        "key": "jumbo-spruce-mono_mic-m59-s5",
+        "window": "attack",
+        "harmonic": 3,
+        "before_dbfs": -80.57035967524756,
+        "after_dbfs": -56.87969481294849,
+        "change_db": 23.690664862299066
+      }
+    },
+    "worst_added_frf_dip_by_wood": {
+      "spruce": {
+        "shape": "parlor",
+        "wood": "spruce",
+        "moment_to_force": -1.0,
+        "channel": "left",
+        "maximum_gain_change": {
+          "hz": 196.217286996107,
+          "db": 2.7514471846565733
+        },
+        "maximum_loss": {
+          "hz": 254.95416734046395,
+          "db": -19.425836263696795
+        },
+        "worst_local_notch_before": {
+          "hz": 255.65188356312498,
+          "db": -17.727621233300955
+        },
+        "worst_local_notch_after": {
+          "hz": 255.01751732453684,
+          "db": -36.65852350652723
+        },
+        "highest_local_peak_before": {
+          "hz": 121.41649095626668,
+          "db": 14.727650194948506
+        },
+        "highest_local_peak_after": {
+          "hz": 227.19422407415337,
+          "db": 17.431003242859205
+        },
+        "largest_added_local_dip": {
+          "hz": 254.95416734046395,
+          "db": -20.957388597493477
+        },
+        "candidate_response_dynamic_range_db": 49.828409056553205,
+        "maximum_gain_change_after_distance_match": {
+          "hz": 196.217286996107,
+          "db": 2.7514471846565733
+        },
+        "maximum_loss_after_distance_match": {
+          "hz": 254.95416734046395,
+          "db": -19.425836263696795
+        }
+      },
+      "mahogany": {
+        "shape": "parlor",
+        "wood": "mahogany",
+        "moment_to_force": -1.0,
+        "channel": "left",
+        "maximum_gain_change": {
+          "hz": 192.83434320016684,
+          "db": 2.6993508557822476
+        },
+        "maximum_loss": {
+          "hz": 245.50569317996582,
+          "db": -17.28766860987892
+        },
+        "worst_local_notch_before": {
+          "hz": 246.23872159389478,
+          "db": -17.548258341448992
+        },
+        "worst_local_notch_after": {
+          "hz": 245.50569317996582,
+          "db": -34.26587406093431
+        },
+        "highest_local_peak_before": {
+          "hz": 121.56741133972177,
+          "db": 14.703137999004806
+        },
+        "highest_local_peak_after": {
+          "hz": 218.72017284532947,
+          "db": 16.155270669709022
+        },
+        "largest_added_local_dip": {
+          "hz": 245.50569317996582,
+          "db": -18.90227746431154
+        },
+        "candidate_response_dynamic_range_db": 48.317436949018656,
+        "maximum_gain_change_after_distance_match": {
+          "hz": 192.83434320016684,
+          "db": 2.6993508557822476
+        },
+        "maximum_loss_after_distance_match": {
+          "hz": 245.50569317996582,
+          "db": -17.28766860987892
+        }
+      },
+      "maple": {
+        "shape": "parlor",
+        "wood": "maple",
+        "moment_to_force": -1.0,
+        "channel": "stereo_mid",
+        "maximum_gain_change": {
+          "hz": 212.61232166315028,
+          "db": 2.3055079952333593
+        },
+        "maximum_loss": {
+          "hz": 258.3334994338735,
+          "db": -19.077098626277724
+        },
+        "worst_local_notch_before": {
+          "hz": 258.7188767583564,
+          "db": -12.208627467920255
+        },
+        "worst_local_notch_after": {
+          "hz": 258.3334994338735,
+          "db": -32.72464931449532
+        },
+        "highest_local_peak_before": {
+          "hz": 128.42888191466628,
+          "db": 14.719684975990763
+        },
+        "highest_local_peak_after": {
+          "hz": 289.97025754441626,
+          "db": 15.994085991758691
+        },
+        "largest_added_local_dip": {
+          "hz": 258.3334994338735,
+          "db": -20.772018904795218
+        },
+        "candidate_response_dynamic_range_db": 50.135993790731746,
+        "maximum_gain_change_after_distance_match": {
+          "hz": 212.61232166315028,
+          "db": 2.3055079952333593
+        },
+        "maximum_loss_after_distance_match": {
+          "hz": 258.3334994338735,
+          "db": -19.077098626277724
+        }
+      }
+    },
+    "report_sha256": "434755508cb5ca3ae20b9de0edbcc8c9f11ce87d6653c65990f7618575d3c18c",
+    "score_sha256": "b2ce442fbb65e4259c855b2599dd5c80a83f4f69837d7cd0184da36ba7c797ee"
+  }
+}

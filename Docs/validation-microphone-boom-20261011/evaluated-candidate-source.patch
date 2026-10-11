@@ -1,0 +1,128 @@
+diff --git a/Source/DSP/AcustraEngine.cpp b/Source/DSP/AcustraEngine.cpp
+index 6bf9e57..f993308 100644
+--- a/Source/DSP/AcustraEngine.cpp
++++ b/Source/DSP/AcustraEngine.cpp
+@@ -4560,7 +4560,7 @@ void AcustraEngine::configureBody() noexcept
+     // them in vector accumulators (BodyBank::render). Shape and Wood keep
+     // the same modes in the same slots ringing (sameBodyBank, audit F14).
+     bodyBank_.load(bodyModes_, configuration.count, configuration.ordered);
+-    bodyBank_.captureFilter.configure(sampleRate_);
++    bodyBank_.captureFilter.configure(sampleRate_, configuration.captureAirFrequencyHz);
+     configuredBodyShape_ = parameters_.shape;
+     configuredBodyMaterial_ = parameters_.bodyMaterial;
+     bodyConfigured_ = true;
+@@ -4587,6 +4587,13 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
+     const auto shapeMorph = bodyConstructionMorph(bank, anchor, anchorBody(),
+         targetBodyFor(shape), material);
+     const auto woodFactors = woodFactorsFor(material);
++    // Keep the accepted Dreadnought capture unchanged. The other bodies'
++    // close microphones reduce the reported boom around their own A0.
++    // Use the intrinsic pole frequency before sample-rate discretization;
++    // physical modes, coupling and pickup observation remain unchanged.
++    configuration.captureAirFrequencyHz = shape == BodyShape::Dreadnought ? 0.0f
++        : radiationPole(bank, 0, anchor, shapeMorph, woodFactors,
++                        physicalCalibration_).frequency;
+     // Every bank that ships keeps its measured phase with no observation
+     // delay, so renderBody plays the banks as they are.
+ 
+@@ -10472,7 +10479,8 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
+ 
+ }
+ 
+-void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate) noexcept
++void AcustraEngine::BodyBank::CaptureFilter::configure(
++    double sampleRate, float airFrequencyHz) noexcept
+ {
+     if (!enabled)
+         reset();
+@@ -10487,13 +10495,16 @@ void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate) noexce
+     // modal residues by a contour instead breaks off-resonance cancellation:
+     // the intended 500 Hz cut could become a boost on treble notes. Every
+     // mechanical/radiation pole and relative modal residue stays intact.
+-    // Shape and Wood retain its history; their fades copy it with the bank.
++    // The fading bank retains its complete history. A changed section starts
++    // clear in the target bank: transposed DF-II state depends on coefficients,
++    // and carrying it into a unity section would inject a spurious low ring.
+     constexpr double doublePi = 3.141592653589793238462643383279502884;
+     for (int index = 0; index < sections; ++index)
+     {
+         const auto slot = static_cast<std::size_t>(index);
++        const auto previous = coefficients[slot];
+         const auto section = detail::balancedOriginalCaptureSection(
+-            detail::captureVoicingSections[slot]);
++            detail::captureVoicingSections[slot], airFrequencyHz);
+         const auto kind = section.kind;
+         const double frequency = section.frequencyHz;
+         const double gainDb = section.gainDb;
+@@ -10529,6 +10540,11 @@ void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate) noexce
+                 (sum + direction * difference * cosine - slope) / a0
+             };
+         }
++        if (coefficients[slot] != previous)
++        {
++            stateLeft[slot].fill(0.0);
++            stateRight[slot].fill(0.0);
++        }
+     }
+ }
+ 
+diff --git a/Source/DSP/AcustraEngine.h b/Source/DSP/AcustraEngine.h
+index dc5d50d..3cebbe0 100644
+--- a/Source/DSP/AcustraEngine.h
++++ b/Source/DSP/AcustraEngine.h
+@@ -960,6 +960,7 @@ private:
+         std::array<BodyMode, bodyModeCount> modes {};
+         int count { 0 };
+         int ordered { 0 };
++        float captureAirFrequencyHz { 0.0f };
+     };
+ 
+     // Local-contact transport. Each tap is a fixed lossless
+@@ -1414,7 +1415,7 @@ private:
+             bool enabled { false };
+             float gain { 1.0f };
+ 
+-            void configure(double sampleRate) noexcept;
++            void configure(double sampleRate, float airFrequencyHz = 0.0f) noexcept;
+             void reset() noexcept
+             {
+                 for (auto& state : stateLeft)
+diff --git a/Source/DSP/MicrophoneBalanceData.h b/Source/DSP/MicrophoneBalanceData.h
+index 1811e67..c1d5966 100644
+--- a/Source/DSP/MicrophoneBalanceData.h
++++ b/Source/DSP/MicrophoneBalanceData.h
+@@ -18,8 +18,15 @@ inline constexpr float originalCaptureLevelAdjustmentDb = 1.2172f;
+ inline constexpr float originalBassShelfAdjustmentDb = -3.0f;
+ inline constexpr float originalAirPeakAdjustmentDb = -2.75f;
+ 
++// Listener-reported low-body boom: Parlor B1, Auditorium A1 and Jumbo
++// E1-F1 in Reason's octave names. Follow each construction's actual A0,
++// including its wood morph, rather than suppressing a fixed played note.
++// This is an authored microphone contour, not extra mechanical damping.
++inline constexpr float microphoneAirCutDb = -6.0f;
++inline constexpr float microphoneAirCutQ = 5.0f;
++
+ constexpr CaptureVoicingSection balancedOriginalCaptureSection(
+-    CaptureVoicingSection section) noexcept
++    CaptureVoicingSection section, float airFrequencyHz = 0.0f) noexcept
+ {
+     // The fitted bass shelf and 125 Hz boost reinforce the close microphone's
+     // already dominant bass fundamental, especially on Auditorium A2.
+@@ -27,7 +34,17 @@ constexpr CaptureVoicingSection balancedOriginalCaptureSection(
+     if (section.kind == CaptureVoicingKind::LowShelf && section.frequencyHz == 120.0f)
+         section.gainDb += originalBassShelfAdjustmentDb;
+     else if (section.kind == CaptureVoicingKind::Peak && section.frequencyHz == 125.0f)
++    {
+         section.gainDb += originalAirPeakAdjustmentDb;
++        // Reuse the previously neutral section: no additional runtime stage.
++        // Zero retains the accepted Dreadnought response exactly.
++        if (airFrequencyHz > 0.0f)
++        {
++            section.frequencyHz = airFrequencyHz;
++            section.gainDb = microphoneAirCutDb;
++            section.q = microphoneAirCutQ;
++        }
++    }
+     return section;
+ }
+ 

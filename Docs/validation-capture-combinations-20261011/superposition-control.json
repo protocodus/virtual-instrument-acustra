@@ -1,0 +1,326 @@
+{
+  "purpose": "Native coefficient mixture versus weighted rendered waveforms",
+  "weights": [
+    0.16666666666666666,
+    0.16666666666666666,
+    0.16666666666666666,
+    0.16666666666666666,
+    0.16666666666666666,
+    0.16666666666666666
+  ],
+  "inputs": [
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/harness/verification/baseline-observer.csv",
+      "sha256": "3b17314b3dcd6e47efa751bd54d2fefa7803a252c9fe0f8f92c82ee7a91f3f01"
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/measured_bridge_coefficients.csv",
+      "sha256": "cb9675b78a2afb4fd726570833afc006dffb1e2b5ccbe5c25520bd49573656a7"
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/measured_blend_coefficients.csv",
+      "sha256": "f7799bd7f399dd03962036bc402e7690b97180bcd5fad3feb44e98920217c3d4"
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/runtime-candidates-v2/neck30_literal264.csv",
+      "sha256": "d29e16587d3a5e6bc3596a756323e31062082d3e261b8167450ab4a8ea42d55d"
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/runtime-candidates-v2/offhole45_literal264.csv",
+      "sha256": "d64c4633d9b514ab73e8398532c8e0c1aada4267638b9e2196f60e3f6455efe4"
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/runtime-free-candidates-v1/free_neck30.csv",
+      "sha256": "dbc0f6c47d4d256cf22f9be0a2923f257429c5e220fd8b40933b92958d2b9045"
+    }
+  ],
+  "mixture": {
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/verification/equal-six/mixture.csv",
+    "sha256": "88d030c63d86fe95fe664fd6af5795ca42e98870952afc2393b60a064458ac76",
+    "mode_rows": 1920,
+    "rows_identical_in_every_input": 57,
+    "those_common_rows_preserved_exactly": true
+  },
+  "renderer": {
+    "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/harness/StudioPerformanceRenderer",
+    "sha256": "688965c157e80057c2f81176e227f30a4dd0b282ffe2b0bc86a0fda7680dc964"
+  },
+  "script_sha256": "53b31a2e392eb248aa5a07cc5bcae03f361d81f8167e4d25c1e3aff9b087b2fa",
+  "limiter_knee": 0.8912509679794312,
+  "constraints": [
+    "Same deterministic events, rate, physical calibration and controls.",
+    "All component and native output samples must stay below limiter knee.",
+    "Floating-point operation order prevents bit identity.",
+    "Shared linear filters/control smoothers preserve superposition.",
+    "Tiny-state flushes/Room activity and final idle reset are nonlinear at silence.",
+    "No per-note gain normalization; powers/dB are computed after mixing."
+  ],
+  "sample_rate": 48000,
+  "frames_per_case": 24000,
+  "score_sha256": "0251c4b710f6e4a022d8bb07f912dc82c2b3a57c2c3ecce3cd2ce7fad804d845",
+  "cases": [
+    {
+      "case": "parlor-spruce-stereo_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.1620766669511795,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.1920928955078125e-07,
+      "rms_difference": 9.19975327723521e-09,
+      "relative_rms_difference": 4.534933895568781e-07,
+      "rms_difference_dbfs": -160.7244763917239,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "parlor-spruce-mono_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.14700978994369507,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.2262413899566393e-07,
+      "rms_difference": 1.0216211496678314e-08,
+      "relative_rms_difference": 5.252921695977243e-07,
+      "rms_difference_dbfs": -159.81420249717638,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "parlor-mahogany-stereo_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.16097532212734222,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.1548399925231934e-07,
+      "rms_difference": 9.255452066485496e-09,
+      "relative_rms_difference": 4.4958864796814596e-07,
+      "rms_difference_dbfs": -160.67204728066275,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "parlor-mahogany-mono_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.15990662574768066,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.2169281642104846e-07,
+      "rms_difference": 1.0468246284628412e-08,
+      "relative_rms_difference": 5.244268858000459e-07,
+      "rms_difference_dbfs": -159.60252136680884,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "auditorium-spruce-stereo_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.1609455645084381,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.3721485932205457e-07,
+      "rms_difference": 9.484433568320146e-09,
+      "relative_rms_difference": 4.935378771640046e-07,
+      "rms_difference_dbfs": -160.4597720208592,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "auditorium-spruce-mono_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.15716984868049622,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.080334186692733e-07,
+      "rms_difference": 1.013095712410281e-08,
+      "relative_rms_difference": 5.69738031788242e-07,
+      "rms_difference_dbfs": -159.88699045295175,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "auditorium-mahogany-stereo_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.14471746981143951,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.161048809594778e-07,
+      "rms_difference": 1.002316019291293e-08,
+      "relative_rms_difference": 4.873819809602995e-07,
+      "rms_difference_dbfs": -159.979906571449,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "auditorium-mahogany-mono_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.13643504679203033,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.1175870895385742e-07,
+      "rms_difference": 1.1021869999759487e-08,
+      "relative_rms_difference": 5.683227141403223e-07,
+      "rms_difference_dbfs": -159.1548943135346,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "dreadnought-spruce-stereo_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.1426432579755783,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.1424223581024684e-07,
+      "rms_difference": 9.283405205457868e-09,
+      "relative_rms_difference": 4.6025602876331053e-07,
+      "rms_difference_dbfs": -160.64585385777906,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "dreadnought-spruce-mono_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.1541609913110733,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.1548399926619712e-07,
+      "rms_difference": 1.1115385305112849e-08,
+      "relative_rms_difference": 5.281994560114234e-07,
+      "rms_difference_dbfs": -159.08150956531142,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "dreadnought-mahogany-stereo_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.16157649457454681,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.3969838619232178e-07,
+      "rms_difference": 1.1471996232859388e-08,
+      "relative_rms_difference": 4.546624506685357e-07,
+      "rms_difference_dbfs": -158.80722008577212,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "dreadnought-mahogany-mono_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.15314103662967682,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.4963249364563502e-07,
+      "rms_difference": 1.258610580568806e-08,
+      "relative_rms_difference": 5.247077347855557e-07,
+      "rms_difference_dbfs": -158.00217243312562,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "jumbo-spruce-stereo_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.1887814700603485,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.4652808506820936e-07,
+      "rms_difference": 1.2513630520305964e-08,
+      "relative_rms_difference": 4.630654446264028e-07,
+      "rms_difference_dbfs": -158.05233344451565,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "jumbo-spruce-mono_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.18274526298046112,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.260389884544244e-07,
+      "rms_difference": 1.3302633072531132e-08,
+      "relative_rms_difference": 5.399062853276653e-07,
+      "rms_difference_dbfs": -157.52124775856748,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "jumbo-mahogany-stereo_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.16098463535308838,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.2510766586593114e-07,
+      "rms_difference": 1.104107432841982e-08,
+      "relative_rms_difference": 4.4715709378286886e-07,
+      "rms_difference_dbfs": -159.1397733288679,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "jumbo-mahogany-mono_mic-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.15327346324920654,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.0989606379074868e-07,
+      "rms_difference": 1.1477078001380473e-08,
+      "relative_rms_difference": 5.282434807709092e-07,
+      "rms_difference_dbfs": -158.80337333528348,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "parlor-spruce-stereo_mic-room0.5",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.16642767190933228,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.18588407829745e-07,
+      "rms_difference": 9.281853150439094e-09,
+      "relative_rms_difference": 4.447457921798941e-07,
+      "rms_difference_dbfs": -160.6473061379874,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "jumbo-mahogany-mono_mic-room0.5",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.14901329576969147,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 1.1300047238205213e-07,
+      "rms_difference": 1.1634589671453605e-08,
+      "relative_rms_difference": 5.455630484580573e-07,
+      "rms_difference_dbfs": -158.68497857597796,
+      "piezo_native_vs_every_input_byte_equal": null,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "parlor-spruce-piezo-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.1543067842721939,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 2.7755575615628914e-17,
+      "rms_difference": 4.085262258492963e-18,
+      "relative_rms_difference": 1.3584349645575402e-16,
+      "rms_difference_dbfs": -347.7756011632416,
+      "piezo_native_vs_every_input_byte_equal": true,
+      "within_float_tolerance": true,
+      "pass": true
+    },
+    {
+      "case": "jumbo-mahogany-piezo-room0",
+      "frames": 24000,
+      "peak_over_all_component_and_native_outputs": 0.14003610610961914,
+      "all_below_limiter_knee": true,
+      "max_absolute_difference": 2.7755575615628914e-17,
+      "rms_difference": 3.801263868477935e-18,
+      "relative_rms_difference": 1.3515705871179914e-16,
+      "rms_difference_dbfs": -348.40143964742015,
+      "piezo_native_vs_every_input_byte_equal": true,
+      "within_float_tolerance": true,
+      "pass": true
+    }
+  ],
+  "all_pass": true,
+  "worst_max_absolute_difference": 1.4963249364563502e-07,
+  "worst_relative_rms_difference": 5.69738031788242e-07
+}

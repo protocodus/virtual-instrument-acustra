@@ -1,0 +1,1158 @@
+{
+  "scope": "In-sample phase-aware tradeoff screen, not physical placement or listening acceptance. All fixed weights sum one after declared nominal gain compensation. Native re-render required.",
+  "basis": [
+    "baseline",
+    "measured_bridge",
+    "neck30_literal264",
+    "offhole45_literal264",
+    "free_neck30",
+    "measured_blend"
+  ],
+  "compensations": [
+    1.0,
+    1.0,
+    3.0,
+    4.5,
+    3.0,
+    1.0
+  ],
+  "grid": "All 3003 six-basis simplex weights in steps of 0.1 plus controls and declared proposals.",
+  "screen_bounds": {
+    "h1_loss_db": 6,
+    "upper_h1_gain_db": 3,
+    "neighbor_change_db": 3,
+    "target_worsening_db": 0.5,
+    "mono_retention_db": -6
+  },
+  "gate_windows": "attack, early, held for collateral changes; attack and early for target aim; late reported only.",
+  "aspirational_target": "At least 2dB median reduction in EACH reported shape/capture group during both attack and early, without excluded tradeoffs.",
+  "count": 3035,
+  "unflagged_count": 181,
+  "cross_power_sha256": "cb9d21a01e35648b19c1a92e7017a32bde2a42c2736f4d28959611b1c09c23c1",
+  "script_sha256": "7b4a457c70e3b1fc12c4f618e05aab174ceb86f016997ae9e6d51c93c19c4c4f",
+  "distinct_weight_vectors": 3023,
+  "selected_and_control_results": [
+    {
+      "name": "grid_2701",
+      "weights": {
+        "baseline": 0.4,
+        "measured_bridge": 0.2,
+        "neck30_literal264": 0.1,
+        "offhole45_literal264": 0.1,
+        "free_neck30": 0.1,
+        "measured_blend": 0.1
+      },
+      "metrics": {
+        "worst_target_attack_early_balance_change_db": -0.8613520102006191,
+        "worst_group_target_attack_early_median_db": -2.3297134200552208,
+        "all_target_attack_early_median_db": -2.6427816049144646,
+        "minimum_h1_change_db": -4.733322006550424,
+        "maximum_upper_h1_change_db": 1.9279163788404219,
+        "worst_neighbor_dip_change_db": -1.3670195946376396,
+        "worst_neighbor_peak_change_db": 1.839555791765278,
+        "minimum_mono_retention_db": -0.8926664136516962,
+        "worst_mono_retention_change_db": -0.010042827118624587,
+        "maximum_rms_loss_db": -2.9421470621161347
+      },
+      "flags": [],
+      "target_groups": {
+        "parlor/stereo_mic": {
+          "attack": {
+            "median": -2.3297134200552208,
+            "min": -2.7070519069328967,
+            "max": -0.8613520102006191
+          },
+          "early": {
+            "median": -2.894127464699448,
+            "min": -3.1088113335580516,
+            "max": -2.1773464570867347
+          },
+          "held": {
+            "median": -2.8562413336967367,
+            "min": -2.9992778433594296,
+            "max": -2.682620378437065
+          },
+          "late": {
+            "median": -2.402545484972201,
+            "min": -2.7230230460196196,
+            "max": -2.297510615947928
+          }
+        },
+        "parlor/mono_mic": {
+          "attack": {
+            "median": -2.9964903514501255,
+            "min": -3.956182098828485,
+            "max": -1.0219409827610164
+          },
+          "early": {
+            "median": -3.343419209641329,
+            "min": -4.341193466439449,
+            "max": -2.579722439596061
+          },
+          "held": {
+            "median": -3.5051794649467887,
+            "min": -3.776335655046772,
+            "max": -3.034074782729043
+          },
+          "late": {
+            "median": -3.70670868430415,
+            "min": -4.171020220137493,
+            "max": -3.5157133368690268
+          }
+        },
+        "auditorium/stereo_mic": {
+          "attack": {
+            "median": -2.3498285457655097,
+            "min": -2.7038672041565057,
+            "max": -1.9215224497014916
+          },
+          "early": {
+            "median": -2.544105565406877,
+            "min": -2.7914866191431003,
+            "max": -2.2384754051604077
+          },
+          "held": {
+            "median": -2.662581720398638,
+            "min": -2.757400883985383,
+            "max": -2.4379293098488404
+          },
+          "late": {
+            "median": -2.8740804585747277,
+            "min": -3.1769685529807177,
+            "max": -2.6839002628185256
+          }
+        },
+        "auditorium/mono_mic": {
+          "attack": {
+            "median": -2.373852498825512,
+            "min": -2.614761641233553,
+            "max": -2.097622626029086
+          },
+          "early": {
+            "median": -2.5021367221099595,
+            "min": -2.9048086270844777,
+            "max": -2.4566519932772195
+          },
+          "held": {
+            "median": -2.9720148727424736,
+            "min": -3.606898448132931,
+            "max": -2.4738486592333686
+          },
+          "late": {
+            "median": -3.629764591949769,
+            "min": -3.985405315750647,
+            "max": -3.1007592366802754
+          }
+        },
+        "jumbo/stereo_mic": {
+          "attack": {
+            "median": -2.6304179983435425,
+            "min": -3.185737098737661,
+            "max": -2.0400192257958274
+          },
+          "early": {
+            "median": -2.891867595405536,
+            "min": -3.0697965632028428,
+            "max": -2.594409540417068
+          },
+          "held": {
+            "median": -2.959011677966874,
+            "min": -3.1852104441492983,
+            "max": -2.6699735717139603
+          },
+          "late": {
+            "median": -3.3261211754392086,
+            "min": -3.9730886095212696,
+            "max": -3.0628455898324347
+          }
+        },
+        "jumbo/mono_mic": {
+          "attack": {
+            "median": -3.6108882768318313,
+            "min": -4.027033416388754,
+            "max": -2.435529277841294
+          },
+          "early": {
+            "median": -3.310714118439467,
+            "min": -3.5356885904219695,
+            "max": -2.561087396444158
+          },
+          "held": {
+            "median": -3.3359677706531983,
+            "min": -3.6083540272615764,
+            "max": -2.8316422694824013
+          },
+          "late": {
+            "median": -3.9822097318863996,
+            "min": -4.78097190546498,
+            "max": -3.598439163331861
+          }
+        }
+      }
+    },
+    {
+      "name": "grid_2977",
+      "weights": {
+        "baseline": 0.7,
+        "measured_bridge": 0.2,
+        "neck30_literal264": 0.0,
+        "offhole45_literal264": 0.0,
+        "free_neck30": 0.0,
+        "measured_blend": 0.1
+      },
+      "metrics": {
+        "worst_target_attack_early_balance_change_db": -0.7368466481397746,
+        "worst_group_target_attack_early_median_db": -1.856345522141888,
+        "all_target_attack_early_median_db": -1.9995315198491213,
+        "minimum_h1_change_db": -3.547099206756684,
+        "maximum_upper_h1_change_db": 1.2709386541027214,
+        "worst_neighbor_dip_change_db": -1.0333089203218542,
+        "worst_neighbor_peak_change_db": 2.8997282893444947,
+        "minimum_mono_retention_db": -1.4278561967509944,
+        "worst_mono_retention_change_db": -0.004257273862712907,
+        "maximum_rms_loss_db": -1.9800652156892937
+      },
+      "flags": [],
+      "target_groups": {
+        "parlor/stereo_mic": {
+          "attack": {
+            "median": -1.9121424977012573,
+            "min": -2.103044593293987,
+            "max": -1.2164710732760113
+          },
+          "early": {
+            "median": -2.0456964204653474,
+            "min": -2.250171973561308,
+            "max": -1.9225778185316145
+          },
+          "held": {
+            "median": -2.086536918475577,
+            "min": -2.172328660642833,
+            "max": -1.9824485442826614
+          },
+          "late": {
+            "median": -2.3172993509567235,
+            "min": -2.4112372890350855,
+            "max": -2.273601736371944
+          }
+        },
+        "parlor/mono_mic": {
+          "attack": {
+            "median": -2.4288022007920897,
+            "min": -3.3835286130076376,
+            "max": -0.7368466481397746
+          },
+          "early": {
+            "median": -2.6593945512704487,
+            "min": -3.2996539995968206,
+            "max": -1.9065563022621816
+          },
+          "held": {
+            "median": -2.741791875741445,
+            "min": -2.9872310480329816,
+            "max": -2.306208911455407
+          },
+          "late": {
+            "median": -3.1103510134360697,
+            "min": -3.615788474201281,
+            "max": -2.979758583795487
+          }
+        },
+        "auditorium/stereo_mic": {
+          "attack": {
+            "median": -1.856345522141888,
+            "min": -1.9843262675425102,
+            "max": -1.681107398262899
+          },
+          "early": {
+            "median": -1.9320900196263864,
+            "min": -1.9963330680510936,
+            "max": -1.858613411414865
+          },
+          "held": {
+            "median": -2.072101673642962,
+            "min": -2.2929536908200134,
+            "max": -1.844144350669211
+          },
+          "late": {
+            "median": -2.685049561564959,
+            "min": -2.882260696245929,
+            "max": -2.3889626724273825
+          }
+        },
+        "auditorium/mono_mic": {
+          "attack": {
+            "median": -1.8945762130069,
+            "min": -2.025439215971101,
+            "max": -1.6226232906149285
+          },
+          "early": {
+            "median": -2.027306243528514,
+            "min": -2.2552405245127716,
+            "max": -1.99287951896369
+          },
+          "held": {
+            "median": -2.445940089427584,
+            "min": -3.131133409450598,
+            "max": -1.9673995624734602
+          },
+          "late": {
+            "median": -3.3834065204714605,
+            "min": -3.613855308081419,
+            "max": -2.743445751307668
+          }
+        },
+        "jumbo/stereo_mic": {
+          "attack": {
+            "median": -1.9873898310817673,
+            "min": -2.060088405690486,
+            "max": -1.7940482925318122
+          },
+          "early": {
+            "median": -2.0116779879516002,
+            "min": -2.0265465788365233,
+            "max": -1.8967750273232866
+          },
+          "held": {
+            "median": -1.9769755243784886,
+            "min": -2.0880123589165223,
+            "max": -1.9150133643741398
+          },
+          "late": {
+            "median": -2.6672994504677803,
+            "min": -2.8444756559407764,
+            "max": -2.4562471739168146
+          }
+        },
+        "jumbo/mono_mic": {
+          "attack": {
+            "median": -2.6705854211854962,
+            "min": -4.078658249179714,
+            "max": -1.7031263018649447
+          },
+          "early": {
+            "median": -2.455377658741437,
+            "min": -2.5450661138616653,
+            "max": -1.9368406321052234
+          },
+          "held": {
+            "median": -2.485341759117979,
+            "min": -2.5840981442741437,
+            "max": -2.094172326577578
+          },
+          "late": {
+            "median": -3.2737463235433495,
+            "min": -3.8973392608163095,
+            "max": -3.195103324017566
+          }
+        }
+      }
+    },
+    {
+      "name": "baseline",
+      "weights": {
+        "baseline": 1.0,
+        "measured_bridge": 0.0,
+        "neck30_literal264": 0.0,
+        "offhole45_literal264": 0.0,
+        "free_neck30": 0.0,
+        "measured_blend": 0.0
+      },
+      "metrics": {
+        "worst_target_attack_early_balance_change_db": 1.4210854715202004e-14,
+        "worst_group_target_attack_early_median_db": 7.105427357601002e-15,
+        "all_target_attack_early_median_db": 0.0,
+        "minimum_h1_change_db": 0.0,
+        "maximum_upper_h1_change_db": 0.0,
+        "worst_neighbor_dip_change_db": 0.0,
+        "worst_neighbor_peak_change_db": 0.0,
+        "minimum_mono_retention_db": -1.7980359494526965,
+        "worst_mono_retention_change_db": 0.0,
+        "maximum_rms_loss_db": 0.0
+      },
+      "flags": [],
+      "target_groups": {
+        "parlor/stereo_mic": {
+          "attack": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "early": {
+            "median": 0.0,
+            "min": -7.105427357601002e-15,
+            "max": 0.0
+          },
+          "held": {
+            "median": 0.0,
+            "min": -1.4210854715202004e-14,
+            "max": 0.0
+          },
+          "late": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 2.842170943040401e-14
+          }
+        },
+        "parlor/mono_mic": {
+          "attack": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "early": {
+            "median": -7.105427357601002e-15,
+            "min": -1.4210854715202004e-14,
+            "max": 0.0
+          },
+          "held": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 1.4210854715202004e-14
+          },
+          "late": {
+            "median": 0.0,
+            "min": -1.4210854715202004e-14,
+            "max": 0.0
+          }
+        },
+        "auditorium/stereo_mic": {
+          "attack": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 1.4210854715202004e-14
+          },
+          "early": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "held": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 7.105427357601002e-15
+          },
+          "late": {
+            "median": 7.105427357601002e-15,
+            "min": -1.4210854715202004e-14,
+            "max": 1.4210854715202004e-14
+          }
+        },
+        "auditorium/mono_mic": {
+          "attack": {
+            "median": 0.0,
+            "min": -7.105427357601002e-15,
+            "max": 0.0
+          },
+          "early": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "held": {
+            "median": 0.0,
+            "min": -1.4210854715202004e-14,
+            "max": 0.0
+          },
+          "late": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        },
+        "jumbo/stereo_mic": {
+          "attack": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 7.105427357601002e-15
+          },
+          "early": {
+            "median": 7.105427357601002e-15,
+            "min": -7.105427357601002e-15,
+            "max": 7.105427357601002e-15
+          },
+          "held": {
+            "median": 3.552713678800501e-15,
+            "min": 0.0,
+            "max": 1.4210854715202004e-14
+          },
+          "late": {
+            "median": -3.552713678800501e-15,
+            "min": -1.4210854715202004e-14,
+            "max": 7.105427357601002e-15
+          }
+        },
+        "jumbo/mono_mic": {
+          "attack": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "early": {
+            "median": 0.0,
+            "min": -7.105427357601002e-15,
+            "max": 0.0
+          },
+          "held": {
+            "median": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "late": {
+            "median": -7.105427357601002e-15,
+            "min": -1.4210854715202004e-14,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    {
+      "name": "equal_five",
+      "weights": {
+        "baseline": 0.0,
+        "measured_bridge": 0.2,
+        "neck30_literal264": 0.2,
+        "offhole45_literal264": 0.2,
+        "free_neck30": 0.2,
+        "measured_blend": 0.2
+      },
+      "metrics": {
+        "worst_target_attack_early_balance_change_db": -1.2139370526656705,
+        "worst_group_target_attack_early_median_db": -3.201819647866122,
+        "all_target_attack_early_median_db": -3.9659205922557668,
+        "minimum_h1_change_db": -10.045769371344655,
+        "maximum_upper_h1_change_db": 4.400254734752828,
+        "worst_neighbor_dip_change_db": -2.2238538017031146,
+        "worst_neighbor_peak_change_db": 2.123359863997047,
+        "minimum_mono_retention_db": -0.5255209042240878,
+        "worst_mono_retention_change_db": -0.05846888819860396,
+        "maximum_rms_loss_db": -4.81618403512649
+      },
+      "flags": [
+        "h1_loss_over6",
+        "upper_h1_gain_over3"
+      ],
+      "target_groups": {
+        "parlor/stereo_mic": {
+          "attack": {
+            "median": -3.201819647866122,
+            "min": -3.557578903595612,
+            "max": -1.2139370526656705
+          },
+          "early": {
+            "median": -4.297402425634246,
+            "min": -4.39266226635322,
+            "max": -2.9277051539195043
+          },
+          "held": {
+            "median": -4.048765544400485,
+            "min": -4.451169883666807,
+            "max": -3.5251618394763966
+          },
+          "late": {
+            "median": -2.7747484161140434,
+            "min": -3.3372671796790314,
+            "max": -2.2374161075449166
+          }
+        },
+        "parlor/mono_mic": {
+          "attack": {
+            "median": -4.061726261167168,
+            "min": -4.806369350664468,
+            "max": -2.6977197815739657
+          },
+          "early": {
+            "median": -4.726711283933941,
+            "min": -6.266737769661731,
+            "max": -4.249794101619202
+          },
+          "held": {
+            "median": -4.881873734145515,
+            "min": -5.117700191421214,
+            "max": -4.473660133040134
+          },
+          "late": {
+            "median": -5.029776244660905,
+            "min": -5.337612433952728,
+            "max": -4.561038794481874
+          }
+        },
+        "auditorium/stereo_mic": {
+          "attack": {
+            "median": -3.4999666475722595,
+            "min": -4.0210999213134,
+            "max": -2.713652765894178
+          },
+          "early": {
+            "median": -3.6655680082692896,
+            "min": -4.033661437278042,
+            "max": -3.113693689776511
+          },
+          "held": {
+            "median": -3.4653484025218155,
+            "min": -3.816710165095863,
+            "max": -3.427175571921886
+          },
+          "late": {
+            "median": -3.4272564723165146,
+            "min": -3.6449589954027104,
+            "max": -2.9411113787733
+          }
+        },
+        "auditorium/mono_mic": {
+          "attack": {
+            "median": -3.727326249392407,
+            "min": -3.9526488387970176,
+            "max": -3.1473064586026176
+          },
+          "early": {
+            "median": -3.619880235720899,
+            "min": -4.147594283443524,
+            "max": -3.505186082909333
+          },
+          "held": {
+            "median": -4.050239165987904,
+            "min": -4.414624817119154,
+            "max": -3.5082769992740737
+          },
+          "late": {
+            "median": -4.209026776679963,
+            "min": -4.687896446752113,
+            "max": -4.028768407087945
+          }
+        },
+        "jumbo/stereo_mic": {
+          "attack": {
+            "median": -3.797054191811773,
+            "min": -4.814061227688541,
+            "max": -1.958171673984186
+          },
+          "early": {
+            "median": -4.082224014038175,
+            "min": -4.450858312286705,
+            "max": -3.8322825448497824
+          },
+          "held": {
+            "median": -4.36079741362548,
+            "min": -4.653086607714435,
+            "max": -3.627268260694038
+          },
+          "late": {
+            "median": -4.421462700264293,
+            "min": -5.693774232203992,
+            "max": -3.664381135489478
+          }
+        },
+        "jumbo/mono_mic": {
+          "attack": {
+            "median": -4.373428134985943,
+            "min": -4.812368985628854,
+            "max": -3.435208169032375
+          },
+          "early": {
+            "median": -4.4442750204382016,
+            "min": -4.817280177961557,
+            "max": -3.8357635904266942
+          },
+          "held": {
+            "median": -4.472873992090715,
+            "min": -4.990042704634298,
+            "max": -4.169682721128744
+          },
+          "late": {
+            "median": -5.1523887080758755,
+            "min": -6.483412926312127,
+            "max": -4.406223519025971
+          }
+        }
+      }
+    },
+    {
+      "name": "equal_six",
+      "weights": {
+        "baseline": 0.16666666666666666,
+        "measured_bridge": 0.16666666666666666,
+        "neck30_literal264": 0.16666666666666666,
+        "offhole45_literal264": 0.16666666666666666,
+        "free_neck30": 0.16666666666666666,
+        "measured_blend": 0.16666666666666666
+      },
+      "metrics": {
+        "worst_target_attack_early_balance_change_db": -0.797618457681736,
+        "worst_group_target_attack_early_median_db": -2.5528381439175742,
+        "all_target_attack_early_median_db": -3.2378440731408826,
+        "minimum_h1_change_db": -7.496482075272915,
+        "maximum_upper_h1_change_db": 3.7933023288894887,
+        "worst_neighbor_dip_change_db": -1.9639668524470402,
+        "worst_neighbor_peak_change_db": 1.8427439894257045,
+        "minimum_mono_retention_db": -0.6463942029003391,
+        "worst_mono_retention_change_db": -0.04868574341963949,
+        "maximum_rms_loss_db": -3.868028660560654
+      },
+      "flags": [
+        "h1_loss_over6",
+        "upper_h1_gain_over3"
+      ],
+      "target_groups": {
+        "parlor/stereo_mic": {
+          "attack": {
+            "median": -2.5528381439175742,
+            "min": -2.8817610566806238,
+            "max": -0.797618457681736
+          },
+          "early": {
+            "median": -3.509170961729712,
+            "min": -3.5600357831023857,
+            "max": -2.318157673503123
+          },
+          "held": {
+            "median": -3.3218147453734694,
+            "min": -3.651090835465837,
+            "max": -2.89435694740623
+          },
+          "late": {
+            "median": -2.3210657367381557,
+            "min": -2.7593803373488015,
+            "max": -1.9084542182648363
+          }
+        },
+        "parlor/mono_mic": {
+          "attack": {
+            "median": -3.2823486932024455,
+            "min": -3.950791234830721,
+            "max": -2.0339770384899865
+          },
+          "early": {
+            "median": -3.883631581217216,
+            "min": -5.20031807678167,
+            "max": -3.439715531328538
+          },
+          "held": {
+            "median": -4.014692935198479,
+            "min": -4.226759053003306,
+            "max": -3.646871962025493
+          },
+          "late": {
+            "median": -4.115359524231511,
+            "min": -4.392158192050843,
+            "max": -3.729598617613348
+          }
+        },
+        "auditorium/stereo_mic": {
+          "attack": {
+            "median": -2.818513836332798,
+            "min": -3.297166070665927,
+            "max": -2.167617328130895
+          },
+          "early": {
+            "median": -3.0023543597704503,
+            "min": -3.310338357206305,
+            "max": -2.5089426032339475
+          },
+          "held": {
+            "median": -2.841641967690265,
+            "min": -3.134038024309959,
+            "max": -2.8131432368491076
+          },
+          "late": {
+            "median": -2.8101629911616754,
+            "min": -2.987997089285848,
+            "max": -2.40424721779803
+          }
+        },
+        "auditorium/mono_mic": {
+          "attack": {
+            "median": -3.0148561290707523,
+            "min": -3.2318487366412825,
+            "max": -2.5286685819233945
+          },
+          "early": {
+            "median": -2.9585400508014637,
+            "min": -3.401244639408212,
+            "max": -2.8381667211714543
+          },
+          "held": {
+            "median": -3.3210200102297414,
+            "min": -3.6297854593545082,
+            "max": -2.869318819667143
+          },
+          "late": {
+            "median": -3.4418896143588213,
+            "min": -3.845109150462484,
+            "max": -3.2907078839871957
+          }
+        },
+        "jumbo/stereo_mic": {
+          "attack": {
+            "median": -3.066985673627798,
+            "min": -3.9374270197111443,
+            "max": -1.5540433638550972
+          },
+          "early": {
+            "median": -3.3277369980598976,
+            "min": -3.614879686489367,
+            "max": -3.123697860868795
+          },
+          "held": {
+            "median": -3.5666812369586083,
+            "min": -3.783159002238257,
+            "max": -2.9782918262087392
+          },
+          "late": {
+            "median": -3.5994596395854046,
+            "min": -4.580488504612873,
+            "max": -2.9927572701768526
+          }
+        },
+        "jumbo/mono_mic": {
+          "attack": {
+            "median": -3.571175373373382,
+            "min": -3.9347117515008208,
+            "max": -2.7258533884439977
+          },
+          "early": {
+            "median": -3.6403264711175005,
+            "min": -3.93773772310756,
+            "max": -3.1254115850700828
+          },
+          "held": {
+            "median": -3.6668182552844826,
+            "min": -4.07628335904171,
+            "max": -3.427405159121406
+          },
+          "late": {
+            "median": -4.1940179891563645,
+            "min": -5.2226652662153725,
+            "max": -3.590168775638645
+          }
+        }
+      }
+    },
+    {
+      "name": "free50_mix50",
+      "weights": {
+        "baseline": 0.0,
+        "measured_bridge": 0.0,
+        "neck30_literal264": 0.0,
+        "offhole45_literal264": 0.0,
+        "free_neck30": 0.5,
+        "measured_blend": 0.5
+      },
+      "metrics": {
+        "worst_target_attack_early_balance_change_db": 1.4986277511494208,
+        "worst_group_target_attack_early_median_db": -1.0937915814385306,
+        "all_target_attack_early_median_db": -2.315940787004866,
+        "minimum_h1_change_db": -4.383409303784717,
+        "maximum_upper_h1_change_db": 6.765017522938521,
+        "worst_neighbor_dip_change_db": -5.102406938783933,
+        "worst_neighbor_peak_change_db": 3.9252090391074788,
+        "minimum_mono_retention_db": -1.3539085610098667,
+        "worst_mono_retention_change_db": -0.7441579577752151,
+        "maximum_rms_loss_db": -2.535035197101813
+      },
+      "flags": [
+        "target_worse_over_0.5",
+        "upper_h1_gain_over3",
+        "neighbor_dip_over3",
+        "neighbor_peak_over3"
+      ],
+      "target_groups": {
+        "parlor/stereo_mic": {
+          "attack": {
+            "median": -1.0937915814385306,
+            "min": -2.348891417535839,
+            "max": 0.11896108278731532
+          },
+          "early": {
+            "median": -1.8767142713972085,
+            "min": -3.395103451325177,
+            "max": -1.3305364775143218
+          },
+          "held": {
+            "median": -1.8613657798260697,
+            "min": -2.618034335466156,
+            "max": -0.9016821583883683
+          },
+          "late": {
+            "median": -0.23472999163514885,
+            "min": -0.39305810485932113,
+            "max": 0.7299007520862517
+          }
+        },
+        "parlor/mono_mic": {
+          "attack": {
+            "median": -2.9015867181412034,
+            "min": -4.69797888591274,
+            "max": 0.20004515519048027
+          },
+          "early": {
+            "median": -4.212431242839205,
+            "min": -6.116589052017844,
+            "max": -2.6920137118998184
+          },
+          "held": {
+            "median": -2.7810654325190676,
+            "min": -3.7966240099074042,
+            "max": -1.9706148826302652
+          },
+          "late": {
+            "median": -2.26380267611734,
+            "min": -3.265872180184985,
+            "max": -1.820334327959472
+          }
+        },
+        "auditorium/stereo_mic": {
+          "attack": {
+            "median": -2.583328543010545,
+            "min": -2.9397653673239716,
+            "max": -0.9487304812936657
+          },
+          "early": {
+            "median": -2.172035013473934,
+            "min": -2.441135813257553,
+            "max": -1.5009911411500596
+          },
+          "held": {
+            "median": -1.6965834500620431,
+            "min": -1.9592461962792882,
+            "max": -0.5960057714798666
+          },
+          "late": {
+            "median": -0.29496365142476577,
+            "min": -1.1195108028260847,
+            "max": 0.3153787609658991
+          }
+        },
+        "auditorium/mono_mic": {
+          "attack": {
+            "median": -3.311946111814084,
+            "min": -4.037950022934975,
+            "max": -2.1786621246359594
+          },
+          "early": {
+            "median": -2.610615353923915,
+            "min": -2.896725083499746,
+            "max": -2.3725451113291314
+          },
+          "held": {
+            "median": -2.261546957740844,
+            "min": -2.4698535990513406,
+            "max": -1.190761167484304
+          },
+          "late": {
+            "median": -1.1991157460209543,
+            "min": -2.225583669000173,
+            "max": -0.6113244543255831
+          }
+        },
+        "jumbo/stereo_mic": {
+          "attack": {
+            "median": -1.4271671596591382,
+            "min": -3.1261205838498434,
+            "max": 1.4986277511494208
+          },
+          "early": {
+            "median": -1.6984456677501534,
+            "min": -2.3789645168299884,
+            "max": -1.1200450467033392
+          },
+          "held": {
+            "median": -1.925772829516415,
+            "min": -2.5235576405720153,
+            "max": -1.2118528588833044
+          },
+          "late": {
+            "median": -1.4515717007675875,
+            "min": -2.7048086374782656,
+            "max": -0.529515407764265
+          }
+        },
+        "jumbo/mono_mic": {
+          "attack": {
+            "median": -1.5454434627041138,
+            "min": -3.773675312304576,
+            "max": -0.24859593340716302
+          },
+          "early": {
+            "median": -1.7856453090440993,
+            "min": -2.96341423395085,
+            "max": -0.35118752420805066
+          },
+          "held": {
+            "median": -1.636010787928118,
+            "min": -2.9944684005411375,
+            "max": -1.0990298769606355
+          },
+          "late": {
+            "median": -2.0750264973549477,
+            "min": -3.4178867089372744,
+            "max": -1.1142350299798665
+          }
+        }
+      }
+    },
+    {
+      "name": "free75_mix25",
+      "weights": {
+        "baseline": 0.0,
+        "measured_bridge": 0.0,
+        "neck30_literal264": 0.0,
+        "offhole45_literal264": 0.0,
+        "free_neck30": 0.75,
+        "measured_blend": 0.25
+      },
+      "metrics": {
+        "worst_target_attack_early_balance_change_db": 1.8246694097564706,
+        "worst_group_target_attack_early_median_db": -0.15588117062639917,
+        "all_target_attack_early_median_db": -1.2331259913554362,
+        "minimum_h1_change_db": -3.223675459155018,
+        "maximum_upper_h1_change_db": 5.560161880118194,
+        "worst_neighbor_dip_change_db": -2.7042391872726785,
+        "worst_neighbor_peak_change_db": 2.740750343437428,
+        "minimum_mono_retention_db": -0.9231490860065037,
+        "worst_mono_retention_change_db": -0.3398854630761221,
+        "maximum_rms_loss_db": -1.4679242195727085
+      },
+      "flags": [
+        "target_worse_over_0.5",
+        "upper_h1_gain_over3"
+      ],
+      "target_groups": {
+        "parlor/stereo_mic": {
+          "attack": {
+            "median": -0.15588117062639917,
+            "min": -0.5873566156136079,
+            "max": 1.0761193297994822
+          },
+          "early": {
+            "median": -1.2494784751924826,
+            "min": -1.742945806370635,
+            "max": -0.018057133047740592
+          },
+          "held": {
+            "median": -1.0041307895375162,
+            "min": -1.6854308720483928,
+            "max": -0.17521722353915692
+          },
+          "late": {
+            "median": 0.9295541749663272,
+            "min": 0.27967994408609087,
+            "max": 1.557732664535095
+          }
+        },
+        "parlor/mono_mic": {
+          "attack": {
+            "median": -1.2135099310494954,
+            "min": -1.4897485005949207,
+            "max": 0.2140711774570221
+          },
+          "early": {
+            "median": -1.9302491248745284,
+            "min": -3.4428794803826435,
+            "max": -1.6356245240287635
+          },
+          "held": {
+            "median": -1.4343339774242168,
+            "min": -2.2345246763061226,
+            "max": -0.7847759895458211
+          },
+          "late": {
+            "median": -1.054901792168419,
+            "min": -1.1667073603714329,
+            "max": -0.527406399191257
+          }
+        },
+        "auditorium/stereo_mic": {
+          "attack": {
+            "median": -1.0147265322375212,
+            "min": -1.5438780592701917,
+            "max": 0.20590764842593146
+          },
+          "early": {
+            "median": -1.1417255297093316,
+            "min": -1.3364985029218772,
+            "max": -0.3386784290768077
+          },
+          "held": {
+            "median": -0.7716065038491458,
+            "min": -1.145241599489161,
+            "max": -0.1887155392792934
+          },
+          "late": {
+            "median": 0.18683092638379506,
+            "min": -0.258240097325924,
+            "max": 0.6309509525815855
+          }
+        },
+        "auditorium/mono_mic": {
+          "attack": {
+            "median": -1.5716398253640982,
+            "min": -1.656414621251443,
+            "max": -0.5051441659438289
+          },
+          "early": {
+            "median": -1.159649407265201,
+            "min": -1.332317203629934,
+            "max": -0.8878173326723058
+          },
+          "held": {
+            "median": -0.9508545620873718,
+            "min": -1.2656348518315,
+            "max": -0.5338969637681714
+          },
+          "late": {
+            "median": -0.4154451654060587,
+            "min": -0.8953704901447423,
+            "max": 0.027091544931622025
+          }
+        },
+        "jumbo/stereo_mic": {
+          "attack": {
+            "median": -0.9833722706526125,
+            "min": -2.0605191342025293,
+            "max": 1.3005184626276574
+          },
+          "early": {
+            "median": -1.224547881915118,
+            "min": -1.357297991127183,
+            "max": -0.9076482048911174
+          },
+          "held": {
+            "median": -1.5694206079839468,
+            "min": -1.6598526954369461,
+            "max": -0.9199216951682914
+          },
+          "late": {
+            "median": -1.0829330009020453,
+            "min": -2.003755127577705,
+            "max": -0.013150925444591621
+          }
+        },
+        "jumbo/mono_mic": {
+          "attack": {
+            "median": -1.1995784506339682,
+            "min": -1.8748307255098418,
+            "max": 1.8246694097564706
+          },
+          "early": {
+            "median": -1.2603046048063646,
+            "min": -1.410814272150617,
+            "max": -0.5163046907511273
+          },
+          "held": {
+            "median": -1.31915857994775,
+            "min": -1.645361452617955,
+            "max": -0.8475494115156366
+          },
+          "late": {
+            "median": -1.321307086336482,
+            "min": -2.1385724324742625,
+            "max": -0.5414331004493391
+          }
+        }
+      }
+    }
+  ],
+  "all_results_local_path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/screen.json",
+  "all_results_sha256": "6a1aedcf393b79bbdf201343a4094d490c44bbab49790d360a44d1eb255332b2"
+}

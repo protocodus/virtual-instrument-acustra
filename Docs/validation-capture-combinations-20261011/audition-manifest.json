@@ -1,0 +1,1268 @@
+{
+  "policy": "One scalar gain per variant across12phrases (3shapes x2woods x2captures), never per-note normalization. Identical20ms audition tail fade; measurement inputs unchanged. No listening acceptance claimed.",
+  "variant_gains_db": {
+    "baseline": 0.0,
+    "balanced_all": 1.223471759742342,
+    "measured_continuity": 1.3461423535394268,
+    "equal_five": 1.2856982974988476
+  },
+  "common_gain_db": 0.0,
+  "sample_rate": 48000,
+  "files": [
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/parlor-spruce-mono_mic-all-combinations.wav",
+      "sha256": "ab7997ade06cf3332d2d78e1a8dbcfdfa1926ef4d50666f8178fbf006e7ac1a8",
+      "shape": "parlor",
+      "wood": "spruce",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -16.837154626846313,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F#1",
+          42,
+          1
+        ],
+        [
+          "B1",
+          47,
+          1
+        ],
+        [
+          "B2",
+          59,
+          5
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/parlor-spruce-mono_mic-current-vs-balanced.wav",
+      "sha256": "edcd4bad2412287545afc2c648ac7425b54dd2254bea15202e4b837afcb56b1b",
+      "shape": "parlor",
+      "wood": "spruce",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -16.837154626846313,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F#1",
+          42,
+          1
+        ],
+        [
+          "B1",
+          47,
+          1
+        ],
+        [
+          "B2",
+          59,
+          5
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/parlor-spruce-stereo_mic-all-combinations.wav",
+      "sha256": "c0bbe80035db061ff67723a1d1bc828b93288e89880196bacbad000f4f6ba6be",
+      "shape": "parlor",
+      "wood": "spruce",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -15.619447231292725,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F#1",
+          42,
+          1
+        ],
+        [
+          "B1",
+          47,
+          1
+        ],
+        [
+          "B2",
+          59,
+          5
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/parlor-spruce-stereo_mic-current-vs-balanced.wav",
+      "sha256": "2ead1897d9ca1a30d7ff1ec784bba29007513da8ec5e6a0300833e2d6c87c059",
+      "shape": "parlor",
+      "wood": "spruce",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -15.619447231292725,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F#1",
+          42,
+          1
+        ],
+        [
+          "B1",
+          47,
+          1
+        ],
+        [
+          "B2",
+          59,
+          5
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/parlor-mahogany-mono_mic-all-combinations.wav",
+      "sha256": "2869d6316bd24814f652e76f255ffdfa97d6c97da4cc37d0d482f7059b82a113",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -17.098196744918823,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F#1",
+          42,
+          1
+        ],
+        [
+          "B1",
+          47,
+          1
+        ],
+        [
+          "B2",
+          59,
+          5
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/parlor-mahogany-mono_mic-current-vs-balanced.wav",
+      "sha256": "538a1f6f21b61cdea1f1ce6166ee81dbf59ec779c0420e0c417152daea875964",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -17.098196744918823,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F#1",
+          42,
+          1
+        ],
+        [
+          "B1",
+          47,
+          1
+        ],
+        [
+          "B2",
+          59,
+          5
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/parlor-mahogany-stereo_mic-all-combinations.wav",
+      "sha256": "901ed218349ccc2999d43370db58c4ddd5d1fe28018f7b6ec6db6e2a4f155d0b",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -16.820486783981323,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F#1",
+          42,
+          1
+        ],
+        [
+          "B1",
+          47,
+          1
+        ],
+        [
+          "B2",
+          59,
+          5
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/parlor-mahogany-stereo_mic-current-vs-balanced.wav",
+      "sha256": "249fa78b84e728080462aabc53dfd21d19b3efcbbf2f72d90006fce6909c34da",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -16.820486783981323,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F#1",
+          42,
+          1
+        ],
+        [
+          "B1",
+          47,
+          1
+        ],
+        [
+          "B2",
+          59,
+          5
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/auditorium-spruce-mono_mic-all-combinations.wav",
+      "sha256": "58bf247d5109081322fe4517b1214db4abaaeedb4e66531d565397c20934c692",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -17.942097187042236,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "A1",
+          45,
+          1
+        ],
+        [
+          "A#1",
+          46,
+          1
+        ],
+        [
+          "G#2",
+          56,
+          4
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/auditorium-spruce-mono_mic-current-vs-balanced.wav",
+      "sha256": "cfc4702edd8c5f3076dfae088ce35a171703e0336b044a58c75da36e995e23eb",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -17.942097187042236,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "A1",
+          45,
+          1
+        ],
+        [
+          "A#1",
+          46,
+          1
+        ],
+        [
+          "G#2",
+          56,
+          4
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/auditorium-spruce-stereo_mic-all-combinations.wav",
+      "sha256": "463a49abbcff22561436719a114283b80572576a1e3d8a417bb72f154b00f1b1",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -17.58788824081421,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "A1",
+          45,
+          1
+        ],
+        [
+          "A#1",
+          46,
+          1
+        ],
+        [
+          "G#2",
+          56,
+          4
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/auditorium-spruce-stereo_mic-current-vs-balanced.wav",
+      "sha256": "d4757f83b0f7db7bfb8a5561582479ccda41394b778fb8db937cd200f7524c47",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -17.58788824081421,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "A1",
+          45,
+          1
+        ],
+        [
+          "A#1",
+          46,
+          1
+        ],
+        [
+          "G#2",
+          56,
+          4
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/auditorium-mahogany-mono_mic-all-combinations.wav",
+      "sha256": "67cd03dfa74856d28df967994f47e6fa1f1d7fad4863d0e22ddb5cc066cd5d0b",
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -16.95785641670227,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "A1",
+          45,
+          1
+        ],
+        [
+          "A#1",
+          46,
+          1
+        ],
+        [
+          "G#2",
+          56,
+          4
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/auditorium-mahogany-mono_mic-current-vs-balanced.wav",
+      "sha256": "7aede6e225aa46546e0d9d5350163c122496238adc9264bb4971eef25bed1230",
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -16.95785641670227,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "A1",
+          45,
+          1
+        ],
+        [
+          "A#1",
+          46,
+          1
+        ],
+        [
+          "G#2",
+          56,
+          4
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/auditorium-mahogany-stereo_mic-all-combinations.wav",
+      "sha256": "e990623dfbc2f3f78273522bea3038594e72f4aaf5057cd4c15ef96bc2ffa418",
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -16.524542570114136,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "A1",
+          45,
+          1
+        ],
+        [
+          "A#1",
+          46,
+          1
+        ],
+        [
+          "G#2",
+          56,
+          4
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/auditorium-mahogany-stereo_mic-current-vs-balanced.wav",
+      "sha256": "b73b4ff1f9eec2c695f8270d4bd9ac8c97c28ed70faca5665974a1d18c4078e1",
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -16.524542570114136,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "A1",
+          45,
+          1
+        ],
+        [
+          "A#1",
+          46,
+          1
+        ],
+        [
+          "G#2",
+          56,
+          4
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/jumbo-spruce-mono_mic-all-combinations.wav",
+      "sha256": "4ddc93b7cfc8bc1edf56380e46845ae8438f2b6578519be9f9d07c7e0e94b83d",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -17.571399211883545,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F1",
+          41,
+          1
+        ],
+        [
+          "D#2",
+          51,
+          3
+        ],
+        [
+          "F2",
+          53,
+          3
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/jumbo-spruce-mono_mic-current-vs-balanced.wav",
+      "sha256": "d563f82d564e0656861f1f1b0a0fb903ef81e1359942e682817071178a0e60bf",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -18.048453330993652,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F1",
+          41,
+          1
+        ],
+        [
+          "D#2",
+          51,
+          3
+        ],
+        [
+          "F2",
+          53,
+          3
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/jumbo-spruce-stereo_mic-all-combinations.wav",
+      "sha256": "f135896873fc17b12edf5a7f7c0c77229f14884d4d39cf2086cf8fc6317617e7",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -17.198450565338135,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F1",
+          41,
+          1
+        ],
+        [
+          "D#2",
+          51,
+          3
+        ],
+        [
+          "F2",
+          53,
+          3
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/jumbo-spruce-stereo_mic-current-vs-balanced.wav",
+      "sha256": "7be5ccb649530d877addef7d2853b0f73d1a50e9e63cc9ebdf77fab943ca9173",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -17.34278678894043,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F1",
+          41,
+          1
+        ],
+        [
+          "D#2",
+          51,
+          3
+        ],
+        [
+          "F2",
+          53,
+          3
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/jumbo-mahogany-mono_mic-all-combinations.wav",
+      "sha256": "df24e43ad5f0cb2f879fcd5dbdc91fddb732b42ce59ae8c41e962ca29e4964f0",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -15.785167217254639,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F1",
+          41,
+          1
+        ],
+        [
+          "D#2",
+          51,
+          3
+        ],
+        [
+          "F2",
+          53,
+          3
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/jumbo-mahogany-mono_mic-current-vs-balanced.wav",
+      "sha256": "571947b95507bfa44471e6cbca854431bb514f1b2b71930955b0a55a462a00a6",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "capture": "mono_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -16.466197967529297,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F1",
+          41,
+          1
+        ],
+        [
+          "D#2",
+          51,
+          3
+        ],
+        [
+          "F2",
+          53,
+          3
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/jumbo-mahogany-stereo_mic-all-combinations.wav",
+      "sha256": "cf1924dee6f69677aae6821a822a3576aa76964a2651d89847652b72146206c1",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all",
+        "measured_continuity",
+        "equal_five"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        },
+        {
+          "variant": "measured_continuity",
+          "starts": 11.44,
+          "ends": 16.16
+        },
+        {
+          "variant": "equal_five",
+          "starts": 17.16,
+          "ends": 21.88
+        }
+      ],
+      "peak_dbfs": -14.947664737701416,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F1",
+          41,
+          1
+        ],
+        [
+          "D#2",
+          51,
+          3
+        ],
+        [
+          "F2",
+          53,
+          3
+        ]
+      ]
+    },
+    {
+      "file": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/presentation/jumbo-mahogany-stereo_mic-current-vs-balanced.wav",
+      "sha256": "784c2eb2c07bca690cbff2849b754c979f8d3ad8b1a1a1bd7238cf7b33d5ddec",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "capture": "stereo_mic",
+      "order": [
+        "baseline",
+        "balanced_all"
+      ],
+      "segments": [
+        {
+          "variant": "baseline",
+          "starts": 0.0,
+          "ends": 4.72
+        },
+        {
+          "variant": "balanced_all",
+          "starts": 5.72,
+          "ends": 10.44
+        }
+      ],
+      "peak_dbfs": -15.687662363052368,
+      "notes": [
+        [
+          "E1",
+          40,
+          1
+        ],
+        [
+          "F1",
+          41,
+          1
+        ],
+        [
+          "D#2",
+          51,
+          3
+        ],
+        [
+          "F2",
+          53,
+          3
+        ]
+      ]
+    }
+  ],
+  "source_reports": {
+    "baseline": "b2f44ac9720bc597c5eccbf2e52295c07650b77f530dc5f3ba3bda87fd71bf17",
+    "balanced_all": "744b633deb7971ddf34ac8a3230ac595ed1b9d7bfba8a54e442af02ee9138277",
+    "measured_continuity": "9128a3a96e291007d96c1218580bf9075db80c638d842cbe4fdcd6108c3b5922",
+    "equal_five": "434755508cb5ca3ae20b9de0edbcc8c9f11ce87d6653c65990f7618575d3c18c"
+  },
+  "script_sha256": "8acb1ebc7b6ae72b4d93606e61f3d0d3c04374551d700951c162066c871cd62f"
+}
