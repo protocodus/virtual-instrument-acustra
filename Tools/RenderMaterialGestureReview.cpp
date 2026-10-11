@@ -102,10 +102,36 @@ int main(int argc, char** argv)
 {
     try
     {
-        if (argc != 2) throw std::runtime_error("give a NEW output directory");
+        const bool woods = argc == 3 && std::string(argv[2]) == "--woods";
+        if (argc != 2 && !woods)
+            throw std::runtime_error("give a NEW output directory [--woods]");
         const std::filesystem::path directory(argv[1]);
         if (std::filesystem::exists(directory)) throw std::runtime_error("output already exists");
         std::filesystem::create_directories(directory);
+        if (woods)
+        {
+            constexpr acustra::CaptureType captures[] { acustra::CaptureType::StereoMic,
+                acustra::CaptureType::MonoMic, acustra::CaptureType::Piezo };
+            constexpr const char* captureNames[] { "stereo", "mono", "piezo" };
+            constexpr const char* woodNames[] { "spruce", "mahogany", "maple" };
+            for (int capture = 0; capture < 3; ++capture)
+                for (int wood = 0; wood < 3; ++wood)
+                {
+                    Score score;
+                    score.name = std::string(captureNames[capture]) + "-" + woodNames[wood];
+                    score.parameters.capture = captures[capture];
+                    score.parameters.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+                    score.note(.2, 1.4, 1, 40, 92);
+                    score.note(1.9, .9, 4, 55, 92);
+                    score.note(3.1, .9, 6, 64, 92);
+                    constexpr int chord[] { 40, 47, 52, 56, 59, 64 };
+                    for (int string = 0; string < 6; ++string)
+                        score.note(4.6 + .025 * string, 2.0, string + 1, chord[string], 92);
+                    render(score, directory);
+                }
+            std::cout << "Nine Wood-model 8-second cases: three woods and three captures.\n";
+            return 0;
+        }
         std::array<Score, 9> scores {};
         auto& unison = scores[0]; unison.name = "01-open-and-fretted-unisons";
         for (int n = 0; n < 9; ++n)

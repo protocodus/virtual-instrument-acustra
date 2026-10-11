@@ -21,6 +21,19 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    struct ReleaseGeometry
+    {
+        float length, seconds, damping;
+        int openNote, harmonic;
+    };
+    static ReleaseGeometry releaseGeometry(const AcustraEngine& engine, int note)
+    {
+        for (const auto& voice : engine.voices_)
+            if (voice.played && voice.midiNote == note)
+                return { voice.speakingLengthMetres, voice.releaseSeconds,
+                         voice.releaseDamping, voice.openMidi, voice.harmonic };
+        return {};
+    }
     struct IntrinsicGainProbe
     {
         std::vector<float> gains;
@@ -493,10 +506,62 @@ void testReleasedHarmonicsAreDampedLikeTheirOpenString()
 // A slid note is damped at the pitch it has slid to: the loop runs there,
 // so the hand's loss per trip round it follows the slide, before key-up or
 // after it (audit F1). Two octaves down redoubles the period; damped per
-// trip as if unslid, it rang four times as long. Measured 50 to 100 ms
-// after damping starts, while the released string still dominates the sound.
+// trip as if unslid, it rang four times as long. A slide before the hand
+// lands can also change its stopping regime; loss-rate-normalize that
+// comparison rather than requiring an open catch to decay like a fret.
+// Measured 50 to 100 ms after damping starts, while the released string
+// still dominates the sound.
 void testSlidNotesAreDampedAtTheirSlidPitch()
 {
+    using Access = acustra::AcustraEngineTestAccess;
+    const auto physicalReleaseTime = [] (double length, int harmonic)
+    {
+        const double distance = std::clamp((double(0.648f) - length)
+            / double(0.018f), 0.0, 1.0);
+        const double weight = harmonic > 1 ? 0.0
+            : distance * distance * (3.0 - 2.0 * distance);
+        return 1.0 / ((1.0 - weight) / double(1.25f) + weight / double(0.16f));
+    };
+    // Independent coefficient check isolates the hand's loss from body
+    // ringing. Include a stopped slide, a near-nut fractional stop, an
+    // over-nut slide and member tension bends with unchanged length.
+    for (double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const auto& gesture : std::array<std::array<float, 3>, 5> {{
+            { 43.0f, -24.0f, 0.0f }, { 43.0f, -2.0f, 0.0f },
+            { 40.0f, 0.24f, 0.0f }, { 43.0f, 7.0f, 1.0f },
+            { 40.0f, 7.0f, 1.0f } }})
+        {
+            auto engine = std::make_unique<acustra::AcustraEngine>();
+            engine->prepare(rate, blockSize);
+            const int note = static_cast<int>(gesture[0]);
+            const bool member = gesture[2] > 0.0f;
+            const int channel = member ? 2 : 1;
+            if (member) engine->setLowerZoneMemberCount(15);
+            else engine->setStringPerChannelMode(true);
+            engine->setPitchBend(gesture[1], channel);
+            engine->noteOn(note, 0.7f, channel);
+            engine->noteOff(note, channel);
+            std::array<float, blockSize> left {}, right {};
+            for (int remaining = releaseDelaySamples(rate) + 2; remaining > 0;)
+            {
+                const int count = std::min(remaining, blockSize);
+                engine->process(left.data(), right.data(), count);
+                remaining -= count;
+            }
+            const auto contact = Access::releaseGeometry(*engine, note);
+            expect(contact.harmonic == 1, "slid loss fixture did not address its stopped/open string");
+            const double length = double(0.648f) * std::exp2(
+                -(note - contact.openNote + (member ? 0.0 : gesture[1])) / 12.0);
+            expect(std::abs(contact.length / length - 1.0) < 2.0e-6,
+                   "slide/member fixture did not retain its independently predicted string length");
+            const double time = physicalReleaseTime(contact.length, contact.harmonic);
+            const double frequency = 440.0 * std::exp2((note - 69.0 + gesture[1]) / 12.0);
+            const double damping = std::pow(0.001, 1.0 / (time * frequency));
+            expect(std::abs(contact.seconds / time - 1.0) < 2.0e-6,
+                   "physical stopping selected the wrong release-loss rate");
+            expect(std::abs(contact.damping - damping) < 2.0e-7,
+                   "release loss per round trip did not use the actual performed pitch");
+        }
     const std::vector<Timed> range24 {
         { 0.0, { 0xb0, 101, 0 } }, { 0.0, { 0xb0, 100, 0 } }, { 0.0, { 0xb0, 6, 24 } },
         { 0.0, { 0xb0, 101, 127 } }, { 0.0, { 0xb0, 100, 127 } } };
@@ -530,7 +595,13 @@ void testSlidNotesAreDampedAtTheirSlidPitch()
         // construction's low modes ring on under the damped string, and how
         // long depends on where Shape and Wood put them, so the gate is a
         // fraction of the unslid drop rather than a fixed number of dB.
-        expect(slid > 0.65 * plain && slidAfter > 0.65 * plain,
+        // This A4 lives on the high E: the -24-semitone pre-slide crosses
+        // the nut and now correctly receives the slower open-hand catch.
+        // Its independently specified rate scales the same .65 guard.
+        // A slide after landing retains that contact's original hand time.
+        const double frettedTime = physicalReleaseTime(0.648 * std::exp2(-5.0 / 12.0), 1);
+        const double slidTime = physicalReleaseTime(0.648 * std::exp2(19.0 / 12.0), 1);
+        expect(slid > 0.65 * plain * frettedTime / slidTime && slidAfter > 0.65 * plain,
                "a slid note was not damped at its slid pitch");
     }
 }

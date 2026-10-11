@@ -1,0 +1,7 @@
+{
+  "python": "3.11.0 (v3.11.0:deaf509e8f, Oct 24 2022, 14:43:23) [Clang 13.0.0 (clang-1300.0.29.30)]",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.5.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "cmake": "cmake version 4.0.0\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).",
+  "machine": "Darwin MacBookPro.home 25.5.0 Darwin Kernel Version 25.5.0: Mon Apr 27 20:38:56 PDT 2026; root:xnu-12377.121.6~2/RELEASE_ARM64_T6000 arm64",
+  "final_header_sha256": "f934d72dd33c4c15cf8938ceb281acdfed279e575b15e576732b238f86bf8510"
+}

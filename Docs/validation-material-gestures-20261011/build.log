@@ -1,0 +1,180 @@
+[  2%] Built target AcustraDSP
+[  3%] Building CXX object CMakeFiles/AcustraDSPCxx17.dir/Source/DSP/AcustraEngine.cpp.o
+[  8%] Built target AcustraReferenceBank
+[  9%] Building CXX object CMakeFiles/AcustraDSPExtendedCxx17.dir/Source/DSP/AcustraEngine.cpp.o
+[  9%] Building CXX object CMakeFiles/AcustraDSPExtendedCxx17.dir/Source/DSP/AcustraPerformer.cpp.o
+[ 10%] Building CXX object CMakeFiles/AcustraRenderDemos.dir/Tools/RenderDemos.cpp.o
+[ 11%] Building CXX object CMakeFiles/AcustraDSPCxx17.dir/Source/DSP/AcustraPerformer.cpp.o
+[ 12%] Linking CXX executable AcustraRenderDemos
+[ 12%] Built target AcustraRenderDemos
+[ 13%] Building CXX object CMakeFiles/AcustraRenderRealismSongs.dir/Tools/RenderRealismSongs.cpp.o
+[ 14%] Building CXX object CMakeFiles/AcustraPhysicalFitRenderer.dir/Tools/PhysicalFitRenderer.cpp.o
+[ 15%] Linking CXX static library libAcustraDSPExtendedCxx17.a
+[ 15%] Built target AcustraDSPCxx17
+[ 15%] Built target AcustraDSPExtendedCxx17
+[ 16%] Building CXX object CMakeFiles/AcustraExternalCorpusRenderer.dir/Tools/ExternalCorpusRenderer.cpp.o
+[ 16%] Building CXX object CMakeFiles/AcustraBridgeProbe.dir/Tools/BridgeProbe.cpp.o
+[ 17%] Linking CXX executable AcustraRenderRealismSongs
+[ 17%] Built target AcustraRenderRealismSongs
+[ 18%] Building CXX object CMakeFiles/AcustraTraceRinging.dir/Tools/TraceRinging.cpp.o
+[ 19%] Linking CXX executable AcustraBridgeProbe
+[ 19%] Built target AcustraBridgeProbe
+[ 20%] Built target AcustraPerformanceRenderer
+[ 20%] Building CXX object CMakeFiles/AcustraRenderAudibleRealism.dir/Tools/RenderAudibleRealism.cpp.o
+[ 20%] Linking CXX executable AcustraExternalCorpusRenderer
+[ 20%] Built target AcustraExternalCorpusRenderer
+[ 21%] Building CXX object CMakeFiles/AcustraRenderNaturalPerformance.dir/Tools/RenderNaturalPerformance.cpp.o
+[ 22%] Linking CXX executable AcustraTraceRinging
+[ 22%] Built target AcustraTraceRinging
+[ 23%] Building CXX object CMakeFiles/AcustraRenderRepertoire.dir/Tools/RenderRepertoire.cpp.o
+[ 23%] Linking CXX executable AcustraPhysicalFitRenderer
+[ 24%] Linking CXX executable AcustraRenderAudibleRealism
+[ 24%] Built target AcustraRenderAudibleRealism
+[ 26%] Built target AcustraSampleBankTests
+[ 27%] Building CXX object CMakeFiles/AcustraEngineTests.dir/Tests/AcustraEngineTests.cpp.o
+[ 28%] Linking CXX executable AcustraRenderNaturalPerformance
+[ 28%] Built target AcustraPhysicalFitRenderer
+[ 28%] Built target AcustraRenderNaturalPerformance
+[ 29%] Building CXX object CMakeFiles/AcustraReleaseJoinTests.dir/Tests/ReleaseJoinTests.cpp.o
+[ 30%] Building CXX object CMakeFiles/AcustraStrumDirectionTests.dir/Tests/StrumDirectionTests.cpp.o
+[ 30%] Linking CXX executable AcustraStrumDirectionTests
+[ 30%] Built target AcustraStrumDirectionTests
+[ 31%] Building CXX object CMakeFiles/AcustraHandAllocatorTests.dir/Tests/HandAllocatorTests.cpp.o
+[ 32%] Linking CXX executable AcustraReleaseJoinTests
+[ 32%] Built target AcustraReleaseJoinTests
+[ 33%] Building CXX object CMakeFiles/AcustraPerformerTests.dir/Tests/PerformerTests.cpp.o
+[ 33%] Linking CXX executable AcustraRenderRepertoire
+[ 33%] Built target AcustraRenderRepertoire
+[ 34%] Building CXX object CMakeFiles/AcustraExtendedSampleRateTests.dir/Tests/ExtendedSampleRateTests.cpp.o
+[ 35%] Linking CXX executable AcustraExtendedSampleRateTests
+[ 35%] Built target AcustraExtendedSampleRateTests
+[ 36%] Building CXX object CMakeFiles/AcustraNormalLayoutParity.dir/Tests/SampleRateLayoutParity.cpp.o
+[ 37%] Linking CXX executable AcustraHandAllocatorTests
+[ 38%] Linking CXX executable AcustraNormalLayoutParity
+[ 38%] Built target AcustraHandAllocatorTests
+[ 38%] Built target AcustraNormalLayoutParity
+[ 39%] Building CXX object CMakeFiles/AcustraExtendedLayoutParity.dir/Tests/SampleRateLayoutParity.cpp.o
+[ 40%] Building CXX object CMakeFiles/AcustraReleaseTests.dir/Tests/ReleaseTests.cpp.o
+[ 40%] Linking CXX executable AcustraExtendedLayoutParity
+[ 40%] Built target AcustraExtendedLayoutParity
+[ 41%] Linking CXX executable AcustraPerformerTests
+[ 41%] Building CXX object CMakeFiles/AcustraContactTravelTests.dir/Tests/ContactTravelTests.cpp.o
+[ 41%] Built target AcustraPerformerTests
+[ 42%] Building CXX object CMakeFiles/AcustraOutputBusTests.dir/Tests/OutputBusTests.cpp.o
+[ 43%] Linking CXX executable AcustraReleaseTests
+[ 43%] Built target AcustraReleaseTests
+[ 44%] Building CXX object CMakeFiles/AcustraCaptureTests.dir/Tests/CaptureTests.cpp.o
+[ 45%] Linking CXX executable AcustraContactTravelTests
+[ 45%] Built target AcustraContactTravelTests
+[ 45%] Building CXX object CMakeFiles/AcustraCaptureVoicingTests.dir/Tests/CaptureVoicingTests.cpp.o
+[ 46%] Linking CXX executable AcustraCaptureVoicingTests
+[ 46%] Built target AcustraCaptureVoicingTests
+[ 47%] Building CXX object CMakeFiles/AcustraMicrophoneBalanceTests.dir/Tests/MicrophoneBalanceTests.cpp.o
+[ 47%] Linking CXX executable AcustraOutputBusTests
+[ 47%] Built target AcustraOutputBusTests
+[ 47%] Building CXX object CMakeFiles/AcustraPiezoCircuitTests.dir/Tests/PiezoCircuitTests.cpp.o
+[ 47%] Linking CXX executable AcustraMicrophoneBalanceTests
+[ 47%] Built target AcustraMicrophoneBalanceTests
+[ 48%] Building CXX object CMakeFiles/AcustraGuitarModelTests.dir/Tests/GuitarModelTests.cpp.o
+[ 49%] Linking CXX executable AcustraCaptureTests
+[ 49%] Built target AcustraCaptureTests
+[ 50%] Building CXX object CMakeFiles/AcustraBodyShapeTests.dir/Tests/BodyShapeTests.cpp.o
+[ 50%] Linking CXX executable AcustraGuitarModelTests
+[ 50%] Built target AcustraGuitarModelTests
+[ 51%] Building CXX object CMakeFiles/AcustraConstructionMatrixTests.dir/Tests/ConstructionMatrixTests.cpp.o
+[ 52%] Linking CXX executable AcustraPiezoCircuitTests
+[ 52%] Built target AcustraPiezoCircuitTests
+[ 53%] Building CXX object CMakeFiles/AcustraConstructionHistoryTests.dir/Tests/ConstructionHistoryTests.cpp.o
+[ 54%] Linking CXX executable AcustraEngineTests
+[ 54%] Built target AcustraEngineTests
+[ 54%] Building CXX object CMakeFiles/AcustraConstructionLoudnessTests.dir/Tests/ConstructionLoudnessTests.cpp.o
+[ 55%] Linking CXX executable AcustraConstructionMatrixTests
+[ 56%] Linking CXX executable AcustraBodyShapeTests
+[ 56%] Built target AcustraConstructionMatrixTests
+[ 56%] Building CXX object CMakeFiles/AcustraRecuerdosArticulationTests.dir/Tests/RecuerdosArticulationTests.cpp.o
+[ 56%] Built target AcustraBodyShapeTests
+[ 57%] Building CXX object CMakeFiles/AcustraVelocityRealismTests.dir/Tests/VelocityRealismTests.cpp.o
+[ 58%] Linking CXX executable AcustraConstructionHistoryTests
+[ 59%] Linking CXX executable AcustraRecuerdosArticulationTests
+[ 59%] Built target AcustraConstructionHistoryTests
+[ 60%] Building CXX object CMakeFiles/AcustraContactReleaseTests.dir/Tests/ContactReleaseTests.cpp.o
+[ 60%] Built target AcustraRecuerdosArticulationTests
+[ 60%] Linking CXX executable AcustraVelocityRealismTests
+[ 61%] Linking CXX executable AcustraConstructionLoudnessTests
+[ 62%] Building CXX object CMakeFiles/AcustraStringPitchRealismTests.dir/Tests/StringPitchRealismTests.cpp.o
+[ 62%] Built target AcustraVelocityRealismTests
+[ 62%] Built target AcustraConstructionLoudnessTests
+[ 63%] Building CXX object CMakeFiles/AcustraPalmMutePitchTests.dir/Tests/PalmMutePitchTests.cpp.o
+[ 64%] Building CXX object CMakeFiles/AcustraStringDecayRealismTests.dir/Tests/StringDecayRealismTests.cpp.o
+[ 65%] Linking CXX executable AcustraContactReleaseTests
+[ 66%] Linking CXX executable AcustraStringPitchRealismTests
+[ 67%] Linking CXX executable AcustraPalmMutePitchTests
+[ 67%] Built target AcustraContactReleaseTests
+[ 67%] Built target AcustraStringPitchRealismTests
+[ 67%] Linking CXX executable AcustraStringDecayRealismTests
+[ 67%] Built target AcustraPalmMutePitchTests
+[ 67%] Building CXX object CMakeFiles/AcustraBodyRealismTests.dir/Tests/BodyRealismTests.cpp.o
+[ 68%] Building CXX object CMakeFiles/AcustraVoicingRealismTests.dir/Tests/VoicingRealismTests.cpp.o
+[ 69%] Building CXX object CMakeFiles/AcustraSympathyRealismTests.dir/Tests/SympathyRealismTests.cpp.o
+[ 69%] Built target AcustraStringDecayRealismTests
+[ 70%] Building CXX object CMakeFiles/AcustraRepeatedPluckRealismTests.dir/Tests/RepeatedPluckRealismTests.cpp.o
+[ 71%] Linking CXX executable AcustraVoicingRealismTests
+[ 71%] Built target AcustraVoicingRealismTests
+[ 71%] Linking CXX executable AcustraSympathyRealismTests
+[ 72%] Linking CXX executable AcustraBodyRealismTests
+[ 73%] Building CXX object CMakeFiles/AcustraPickingHandTests.dir/Tests/PickingHandTests.cpp.o
+[ 73%] Built target AcustraSympathyRealismTests
+[ 73%] Built target AcustraBodyRealismTests
+[ 73%] Building CXX object CMakeFiles/AcustraPickingHandBoundaryTests.dir/Tests/PickingHandBoundaryTests.cpp.o
+[ 74%] Building CXX object CMakeFiles/AcustraStrummingRealismTests.dir/Tests/StrummingRealismTests.cpp.o
+[ 75%] Linking CXX executable AcustraRepeatedPluckRealismTests
+[ 75%] Built target AcustraRepeatedPluckRealismTests
+[ 76%] Linking CXX executable AcustraPickingHandTests
+[ 77%] Building CXX object CMakeFiles/AcustraLegatoRealismTests.dir/Tests/LegatoRealismTests.cpp.o
+[ 77%] Built target AcustraPickingHandTests
+[ 77%] Building CXX object CMakeFiles/AcustraReleaseRealismTests.dir/Tests/ReleaseRealismTests.cpp.o
+[ 78%] Linking CXX executable AcustraStrummingRealismTests
+[ 79%] Linking CXX executable AcustraPickingHandBoundaryTests
+[ 79%] Built target AcustraStrummingRealismTests
+[ 79%] Built target AcustraPickingHandBoundaryTests
+[ 80%] Building CXX object CMakeFiles/AcustraRetuneContinuityTests.dir/Tests/RetuneContinuityTests.cpp.o
+[ 81%] Building CXX object CMakeFiles/AcustraPitchGeometryCacheTests.dir/Tests/PitchGeometryCacheTests.cpp.o
+[ 81%] Linking CXX executable AcustraLegatoRealismTests
+[ 81%] Linking CXX executable AcustraRetuneContinuityTests
+[ 81%] Built target AcustraLegatoRealismTests
+[ 82%] Linking CXX executable AcustraPitchGeometryCacheTests
+[ 83%] Building CXX object CMakeFiles/AcustraPhysicalHandRealismTests.dir/Tests/PhysicalHandRealismTests.cpp.o
+[ 83%] Built target AcustraRetuneContinuityTests
+[ 83%] Built target AcustraPitchGeometryCacheTests
+[ 84%] Building CXX object CMakeFiles/AcustraMaterialStiffnessTests.dir/Tests/MaterialStiffnessTests.cpp.o
+[ 85%] Linking CXX executable AcustraReleaseRealismTests
+[ 86%] Building CXX object CMakeFiles/AcustraPhysicalHandGeometryTests.dir/Tests/PhysicalHandGeometryTests.cpp.o
+[ 86%] Built target AcustraReleaseRealismTests
+[ 86%] Building CXX object CMakeFiles/AcustraReleaseBrushTrajectoryTests.dir/Tests/ReleaseBrushTrajectoryTests.cpp.o
+[ 88%] Linking CXX executable AcustraPhysicalHandRealismTests
+[ 88%] Linking CXX executable AcustraMaterialStiffnessTests
+[ 88%] Built target AcustraMaterialStiffnessTests
+[ 88%] Built target AcustraPhysicalHandRealismTests
+[ 88%] Building CXX object CMakeFiles/AcustraPhysicalStoppingTests.dir/Tests/PhysicalStoppingTests.cpp.o
+[ 89%] Building CXX object CMakeFiles/AcustraFractionalContactTests.dir/Tests/FractionalContactTests.cpp.o
+[ 90%] Linking CXX executable AcustraPhysicalHandGeometryTests
+[ 90%] Built target AcustraPhysicalHandGeometryTests
+[ 91%] Linking CXX executable AcustraReleaseBrushTrajectoryTests
+[ 92%] Building CXX object CMakeFiles/AcustraPhysicalVibratoStoppingTests.dir/Tests/PhysicalVibratoStoppingTests.cpp.o
+[ 92%] Built target AcustraReleaseBrushTrajectoryTests
+[ 93%] Building CXX object CMakeFiles/AcustraWoodMaterialTests.dir/Tests/WoodMaterialTests.cpp.o
+[ 94%] Linking CXX executable AcustraPhysicalStoppingTests
+[ 95%] Linking CXX executable AcustraFractionalContactTests
+[ 95%] Built target AcustraPhysicalStoppingTests
+[ 95%] Built target AcustraFractionalContactTests
+[ 98%] Linking CXX executable AcustraPhysicalVibratoStoppingTests
+[ 98%] Building CXX object CMakeFiles/AcustraRenderPhysicalHandReview.dir/Tools/RenderPhysicalHandReview.cpp.o
+[ 98%] Built target AcustraConstructionStrumLevels
+[ 99%] Building CXX object CMakeFiles/AcustraRenderMaterialGestureReview.dir/Tools/RenderMaterialGestureReview.cpp.o
+[ 99%] Built target AcustraPhysicalVibratoStoppingTests
+[100%] Linking CXX executable AcustraWoodMaterialTests
+[100%] Built target AcustraWoodMaterialTests
+[100%] Linking CXX executable AcustraRenderPhysicalHandReview
+[100%] Built target AcustraRenderPhysicalHandReview
+[100%] Linking CXX executable AcustraRenderMaterialGestureReview
+[100%] Built target AcustraRenderMaterialGestureReview

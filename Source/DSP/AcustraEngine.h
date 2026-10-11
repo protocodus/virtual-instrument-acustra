@@ -96,6 +96,17 @@ enum class PickingTechnique
     Thumb
 };
 
+// Representative clear, quarter-cut top material at 12% moisture content.
+// These are material inputs, not additional instrument parameters.
+struct WoodPhysicalProperties
+{
+    float densityKgPerCubicMetre;
+    float longitudinalYoungModulusPa;
+    float radialYoungModulusPa;
+    float longitudinalRadialShearModulusPa;
+    float longitudinalRadialPoissonRatio;
+};
+
 struct EngineParameters
 {
     BodyShape shape { BodyShape::Dreadnought };
@@ -546,9 +557,11 @@ private:
         // the value of R8 and/or increase the value of R7" for more), and at
         // the strings' fitted unit (item 2) the figure's gain of two put the
         // player's velocity-127 Pick strums 0.8 dB past U1B's negative swing.
-        // 1.62 (E24, 1.83 dB less) leaves them 1.0 dB, about the 1.25 dB
-        // they had at the 6.1 mm unit; U1A's input range, which R7 does not
-        // move, keeps 1.2 dB there (Docs/decisions.md 2026-09-30).
+        // 1.62 (E24, 1.83 dB less) left that reference 1.0 dB, about the
+        // 1.25 dB it had at the 6.1 mm unit; U1A's input range, which R7
+        // does not move, retained 1.2 dB (2026-09-30 measurement). This is
+        // not an all-gesture bound: later physical string/hand models can
+        // briefly saturate at maximum-velocity bridgeward Pick extremes.
         static constexpr double c1 = 4.7e-9;
         static constexpr double r1 = 1.0e6, r2 = 1.0e6, r3 = 1.0e6;
         static constexpr double c2 = 33.0e-6, r4 = 3.9e3;
@@ -1438,9 +1451,10 @@ private:
     static std::array<float, 2> radiationModePole(
         const EngineParameters& parameters,
         const PhysicalCalibration& calibration, int index) noexcept;
-    // Body Material's factors on frequency, Q, brightness and radiation for
-    // these parameters, relative to the spruce the measured bank was built
-    // of (tests).
+    // Top material inputs and higher-plate-mode factors (frequency, Q,
+    // brightness, pressure residue). The coupled A0/T1 modes have their own
+    // mass/stiffness and participation calculation; Q and brightness are 1.
+    static WoodPhysicalProperties bodyWoodProperties(BodyMaterial) noexcept;
     static std::array<float, 4> bodyWoodFactors(
         const EngineParameters& parameters) noexcept;
     // The Original's capture voicing (CaptureVoicingData.h) as an amplitude
@@ -1476,7 +1490,7 @@ private:
             float cross { 0.0f };
             float rock { 0.0f };
         };
-        std::array<std::uint32_t, 12> key {};
+        std::array<std::uint32_t, 13> key {};
         bool valid { false };
         int count { 0 };
         // The first `ordered` modes are evaluated as ever; the steel blend's

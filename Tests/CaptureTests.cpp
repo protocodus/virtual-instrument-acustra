@@ -13,6 +13,7 @@
 #include <complex>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -36,6 +37,8 @@ struct AcustraEngineTestAccess
     // U1B's drive before U1A's input-range/diode knees, the same continuous
     // corner source that renderPiezo retains in its four-sample history.
     static double freeDrive(const AcustraEngine& engine) { return engine.piezoDrive_[3]; }
+    static double inputClamp(const AcustraEngine& engine) { return engine.piezoLastClamp_; }
+    static double follower(const AcustraEngine& engine) { return engine.piezoLastBuffer_; }
     static void setWeights(AcustraEngine& engine,
                            const std::array<float, 6>& weights)
     {
@@ -375,6 +378,9 @@ struct Strum
 {
     std::vector<float> force, open, volts, input, drive;
     std::vector<double> stage, freeDrive;
+    std::size_t inputClampedSamples = 0;
+    double followerPeak = 0.0;
+    bool finiteCircuit = true;
 };
 
 Strum hardStrum(double rate, float velocity, float touch,
@@ -427,6 +433,13 @@ Strum hardStrum(double rate, float velocity, float touch,
         strum.drive.push_back(probe.gainStageDrive);
         strum.stage.push_back(Access::gainStage(*engine));
         strum.freeDrive.push_back(Access::freeDrive(*engine));
+        const double clamp = Access::inputClamp(*engine);
+        const double follower = Access::follower(*engine);
+        strum.inputClampedSamples += clamp != 0.0;
+        strum.followerPeak = std::max(strum.followerPeak, std::abs(follower));
+        strum.finiteCircuit = strum.finiteCircuit && std::isfinite(clamp)
+            && std::isfinite(follower) && std::isfinite(strum.stage.back())
+            && std::isfinite(strum.freeDrive.back()) && std::isfinite(probe.jack);
     }
     return strum;
 }
@@ -927,47 +940,63 @@ void testPiezoHeadroom()
               << least << " dB\n";
 }
 
-// 5b. The clip's aliasing: the Pick at velocity 127 at the bridge (Pluck
-// Position 0), driven beyond U1B's swing through heavier string weights.
-// U1A's input range and diodes also act, entirely inside U1B's saturated
-// interval. The guard below verifies that clipping the free and actual
-// host drives gives identical samples, at the float probe's precision.
-// Interpolate the free drive and clip it 8x oversampled for the reference:
-// interpolating the already kinked U1A output would invent different U1B
-// corners, even though U1B hides those input knees. The independent circuit
-// overload/harmonic tests cover the input section's physical behavior.
-// What differs below 0.45 fs is what the host-rate clip folded back, less
-// what the BLAMP took out, including its kernel's passband error. A bare
-// clip of that same free drive is reported beside it.
-// The strum is taken at the default Touch. At velocity 127 the contact's
-// Touch law saturates, so until 2026-09-30 any Touch from the default up
-// played this strum sample for sample, and the drives below were set on it;
-// the release's slip now follows Touch itself (a firm Touch lets the string
-// go over a smaller edge, 0.56 of it at Touch 1), so the brighter Touch 1
-// strum is read beside it and held to the same -60 dB at every drive.
-// Since 2026-10-10 the wound strings lose their upper partials through a
-// winding friction loss angle in place of the cube-law bending factor
-// (FittedPhysicalData.h), and the strum's corners sum differently. At unit
-// weights its deepest swing into U1B, as a share of the swing, is 0.84 at
-// Touch 1 (0.77 before) and 0.78 at 44.1 kHz and 0.72 at 48 kHz at the
-// default Touch (0.96 and 0.95 before): the default Touch first reaches the
-// swing driven 1.28 and 1.39 times as hard. Each Touch's drives start where
-// both rates clip: the Touch 1 strum's run 2 host samples past the swing at
-// 44.1 kHz and 2-4 at 48 kHz, the default Touch's 3-7 and 1-9 (1.40 at
-// 48 kHz is 0.7% past it). Driven deeper, the default Touch at 1.70 is
-// 12 samples past at 44.1 kHz and its clip reads -60.0 dB.
+// 5b. Separate U1B's band-limited clipping from the whole cascade's overload.
+// The arbitrary historical weight multipliers now reach U1A's input limit
+// and diode conduction. Equal host samples after the final rail clamp do not
+// make their freeDrive a linear input: diode discharge changes the next
+// sample's input state. An FFT-interpolated/free-clipped reference is not an
+// independent oracle for that two-stage nonlinear circuit.
+//
+// Locate U1B's first clip and U1A's first limiting from a verified clean
+// half-weight strum, then sample 10/30/50/70/90% of the physical interval.
+// Every such render must keep U1A completely linear (exactly zero clamp),
+// and the unchanged -60 dB ceiling applies to all five. Near onset the
+// clipping error itself can be smaller than the finite BLAMP's passband and
+// crossing approximation. The 1.5 dB mean improvement guard therefore uses
+// the upper half (50/70/90%) of this new, explicitly isolated domain.
+//
+// Keep all historical multipliers as combined-circuit stress. Report their
+// error against the free-clipped reference, never label it alias-only, and
+// check finite behavior and U1A's physical follower voltage. Independent
+// continuous-circuit harmonic, overload and recovery fixtures remain in
+// PiezoCircuitTests.cpp; they cover the nonlinear input stage itself.
 void testPiezoClipAliasing()
 {
     for (const float touch : { 0.58f, 1.0f })
     for (int rate : { 44100, 48000 })
     {
+    constexpr float calibrationDrive = 0.5f;
+    const auto linear = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
+                                   1.0, 0, 0.0f, calibrationDrive);
+    double railUse = 0.0, inputUse = 0.0;
+    for (std::size_t i = 0; i < linear.drive.size(); ++i)
+    {
+        railUse = std::max(railUse, linear.freeDrive[i]
+            / (linear.freeDrive[i] >= 0.0 ? Design::railHigh : Design::railLow));
+        inputUse = std::max(inputUse, std::abs(double(linear.input[i])) / Design::commonModeLimit);
+    }
+    expect(linear.finiteCircuit && linear.inputClampedSamples == 0 && railUse < 1.0,
+           "the threshold calibration strum is not wholly linear");
+    const double firstClip = calibrationDrive / railUse;
+    const double firstInput = calibrationDrive / inputUse;
+    expect(std::isfinite(firstClip) && firstClip < firstInput,
+           "the strum has no isolated U1B clipping interval");
+    std::cout << "Piezo thresholds at " << rate << ", Touch " << touch
+              << ": U1B " << firstClip << ", U1A " << firstInput << " times shipped weights\n";
+    for (const bool isolated : { true, false })
+    {
     double chainSum = 0.0, bareSum = 0.0;
     int drives = 0;
-    const std::array<float, 5> overdrives = touch == 1.0f
+    std::array<float, 5> overdrives = touch == 1.0f
         ? std::array<float, 5> { 1.35f, 1.39f, 1.43f, 1.47f, 1.51f }
         : std::array<float, 5> { 1.40f, 1.45f, 1.50f, 1.55f, 1.60f };
-    for (const float overdrive : overdrives)
+    if (isolated)
+        for (std::size_t i = 0; i < overdrives.size(); ++i)
+            overdrives[i] = static_cast<float>(firstClip + (firstInput - firstClip)
+                * (static_cast<double>(i) + 0.5) / overdrives.size());
+    for (std::size_t driveIndex = 0; driveIndex < overdrives.size(); ++driveIndex)
     {
+        const float overdrive = overdrives[driveIndex];
         auto strum = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
                                1.0, 0, 0.0f, overdrive);
         bool inputKneesHidden = true;
@@ -1036,32 +1065,78 @@ void testPiezoClipAliasing()
         const double lowDb = 10.0 * std::log10(std::max(lowError, 1.0e-300) / lowSignal);
         const std::string label = "at " + std::to_string(rate) + ", driven " + std::to_string(overdrive)
             + ", Touch " + std::to_string(touch);
-        expect(inputKneesHidden,
-               "U1A input knees are not hidden by U1B's clipped interval, " + label);
+        expect(strum.finiteCircuit && strum.followerPeak <= Design::commonModeLimit,
+               "overdriven piezo has non-finite states or exceeds U1A's physical follower range, " + label);
         expect(clipped > 0, "the Pick at the bridge driven harder does not clip the piezo preamp, "
                                 + label);
-        // Keep the same -60 dB limit at every drive. Improvement over bare
-        // clipping varies with the few samples that cross a rail, so the
-        // separate 1.5 dB improvement guard uses the default-Touch mean.
-        expect(aliasDb < -60.0,
-               "piezo clip aliasing on an overdriven strum is above -60 dB, " + label);
-        chainSum += aliasDb;
-        bareSum += bareDb;
-        ++drives;
-        std::cout << "Piezo clip aliasing, Pick at velocity 127 at the bridge, " << label << ": "
+        if (isolated)
+        {
+            expect(strum.inputClampedSamples == 0 && inputKneesHidden,
+                   "the isolated U1B oracle reached U1A limiting/conduction, " + label);
+            expect(aliasDb < -60.0,
+                   "isolated piezo clip aliasing is above -60 dB, " + label);
+            if (driveIndex >= overdrives.size() / 2)
+            {
+                chainSum += aliasDb;
+                bareSum += bareDb;
+                ++drives;
+            }
+        }
+        std::cout << (isolated ? "Piezo isolated clip aliasing, " : "Piezo combined-circuit/free-clip error, ")
+                  << "Pick at velocity 127 at the bridge, " << label << ": "
                   << aliasDb << " dB, below 0.25 fs " << lowDb << " dB; a bare clip "
-                  << bareDb << " dB (" << clipped / static_cast<long>(factor)
-                  << " host samples past the swing)\n";
+                  << bareDb << " dB (" << double(clipped) / factor
+                  << " host-sample equivalents past the swing, " << strum.inputClampedSamples
+                  << " U1A-limited samples, knees hidden " << inputKneesHidden << ")\n";
     }
-    const double chainMean = chainSum / drives, bareMean = bareSum / drives;
-    std::cout << "Piezo clip aliasing at " << rate << ", Touch " << touch
-              << ", mean over the drives: " << chainMean
-              << " dB, a bare clip " << bareMean << " dB\n";
-    if (touch == 0.58f)
-        expect(chainMean < bareMean - 1.5,
-               "piezo clip aliasing is not 1.5 dB under a bare clip over the drives, at "
-                   + std::to_string(rate));
+    if (isolated)
+    {
+        const double chainMean = chainSum / drives, bareMean = bareSum / drives;
+        std::cout << "Piezo isolated clip aliasing at " << rate << ", Touch " << touch
+                  << ", upper-half mean: " << chainMean
+                  << " dB, a bare clip " << bareMean << " dB\n";
+        if (touch == 0.58f)
+            expect(chainMean < bareMean - 1.5,
+                   "isolated piezo clip aliasing is not 1.5 dB under a bare clip in the upper half, at "
+                       + std::to_string(rate));
     }
+    }
+    }
+}
+
+// Characterize allowed playing at the bridge as well as the central-position
+// headroom fixture. Some default-Touch maximum-velocity Pick attacks just
+// enter the documented physical preamp saturation. Comparing with twice a
+// verified half-drive render measures total nonlinear deviation, not aliasing.
+void testPiezoBridgeExtremes()
+{
+    for (int rate : { 44100, 48000 })
+        for (float touch : { 0.0f, 0.58f, 1.0f })
+        {
+            const auto linear = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
+                                           1.0, 0, 0.0f, 0.5f);
+            const auto normal = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
+                                           1.0, 0, 0.0f);
+            double error = 0.0, energy = 0.0, railUse = 0.0;
+            for (std::size_t i = 0; i < normal.stage.size(); ++i)
+            {
+                const double reference = 2.0 * linear.stage[i];
+                const double difference = normal.stage[i] - reference;
+                energy += reference * reference;
+                error += difference * difference;
+                railUse = std::max(railUse, 2.0 * linear.freeDrive[i]
+                    / (linear.freeDrive[i] >= 0.0 ? Design::railHigh : Design::railLow));
+            }
+            expect(linear.finiteCircuit && linear.inputClampedSamples == 0 && railUse < 2.0,
+                   "bridge-extreme linear reference clips");
+            expect(normal.finiteCircuit && normal.followerPeak <= Design::commonModeLimit,
+                   "normal bridge playing exceeded the physical follower range");
+            std::cout << "Piezo bridge extreme, velocity 127, Touch " << touch << " at " << rate
+                      << ": linear U1B headroom " << -20.0 * std::log10(railUse)
+                      << " dB; total nonlinear deviation "
+                      << (error == 0.0 ? -std::numeric_limits<double>::infinity() : 10.0 * std::log10(error / energy))
+                      << " dB, U1A-limited samples " << normal.inputClampedSamples << "\n";
+        }
 }
 
 
@@ -1660,6 +1735,7 @@ int main()
     testCaptureLifecycle();
     testPiezoStringWeights();
     testPiezoClipAliasing();
+    testPiezoBridgeExtremes();
     testPiezoSilence();
     testPiezoSilentAfterPlaying();
     testLoadedPiezoStaysWarmWhileUnheard();

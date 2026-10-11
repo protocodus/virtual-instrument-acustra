@@ -1,0 +1,118 @@
+{
+  "spruce_audio": [
+    {
+      "shape": 0,
+      "note": 40,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "8b22950a5cfde28d6ea16b11e40d8f5b328a605e79e696ee6a26a6e5dce085ac",
+      "candidate_sha256": "8b22950a5cfde28d6ea16b11e40d8f5b328a605e79e696ee6a26a6e5dce085ac"
+    },
+    {
+      "shape": 0,
+      "note": 55,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "e78094bdb0899b92d7221becd1c7f1f7c6b98a093146d1e9a8c16e1ee565f3f7",
+      "candidate_sha256": "e78094bdb0899b92d7221becd1c7f1f7c6b98a093146d1e9a8c16e1ee565f3f7"
+    },
+    {
+      "shape": 0,
+      "note": 64,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "c0509aeaf15755b7827c28ec1348a74e3995507b2b36f8e81e7467bf226c87fe",
+      "candidate_sha256": "c0509aeaf15755b7827c28ec1348a74e3995507b2b36f8e81e7467bf226c87fe"
+    },
+    {
+      "shape": 1,
+      "note": 40,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "53b01651df7b0972998e7e0d8e0c0bed2c320e212791a263176b4d9a5a9e97c9",
+      "candidate_sha256": "53b01651df7b0972998e7e0d8e0c0bed2c320e212791a263176b4d9a5a9e97c9"
+    },
+    {
+      "shape": 1,
+      "note": 55,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "3fef07855dba24258415476c671b5140fdf3b9c35bb0513011a79a2f57f227e9",
+      "candidate_sha256": "3fef07855dba24258415476c671b5140fdf3b9c35bb0513011a79a2f57f227e9"
+    },
+    {
+      "shape": 1,
+      "note": 64,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "100a4ab959162afab83c9e2f7cfd1a410a77db8c7c71102d4c3e8bd0704642a3",
+      "candidate_sha256": "100a4ab959162afab83c9e2f7cfd1a410a77db8c7c71102d4c3e8bd0704642a3"
+    },
+    {
+      "shape": 2,
+      "note": 40,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "28170e821bc9aa6585027404129660e5a514f4d2076b3059b4c900653626770d",
+      "candidate_sha256": "28170e821bc9aa6585027404129660e5a514f4d2076b3059b4c900653626770d"
+    },
+    {
+      "shape": 2,
+      "note": 55,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "bf88c12117ecf8d8568e57a508119783c5122af53818fc84e9be61af8e95c93c",
+      "candidate_sha256": "bf88c12117ecf8d8568e57a508119783c5122af53818fc84e9be61af8e95c93c"
+    },
+    {
+      "shape": 2,
+      "note": 64,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "73a830f6a013b90816a7890b75ade355e01abed61c975a92674835c192937e43",
+      "candidate_sha256": "73a830f6a013b90816a7890b75ade355e01abed61c975a92674835c192937e43"
+    },
+    {
+      "shape": 3,
+      "note": 40,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "ce1a8a94ef3840de0fd4ecc2088d988efa212872c91173f6532fd5294e7907e8",
+      "candidate_sha256": "ce1a8a94ef3840de0fd4ecc2088d988efa212872c91173f6532fd5294e7907e8"
+    },
+    {
+      "shape": 3,
+      "note": 55,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "2960e6abb9a572d62c3a32ad899cce78e81850717f2086be757ef44c0ec9d0b3",
+      "candidate_sha256": "2960e6abb9a572d62c3a32ad899cce78e81850717f2086be757ef44c0ec9d0b3"
+    },
+    {
+      "shape": 3,
+      "note": 64,
+      "bit_identical": true,
+      "max_abs_error": 0.0,
+      "baseline_sha256": "e77005e9d313f9c2cf19f490c3ab93faff9e9864a76a40f167e42d03a6fc3d2b",
+      "candidate_sha256": "e77005e9d313f9c2cf19f490c3ab93faff9e9864a76a40f167e42d03a6fc3d2b"
+    }
+  ],
+  "spruce_poles_identical": true,
+  "spruce_transfers_identical": true,
+  "source_sha256": {
+    "Source/DSP/MeasuredBodyData.h": "1c54a31e2546db4095d373591a45a188fc21bac3820f9b0a3f72c66c96fd9be0",
+    "Source/DSP/GaussianApertureData.h": "5383edf9778c013587ab9578f262e40ac61ec5d8660a7fbd4348f072a24a834a",
+    "Source/DSP/MicrophoneBalanceData.h": "341bdf927a79d28d8bff75606a7e49efb038e6b4b1117236eee5214630d2867d",
+    "Source/DSP/AcustraPerformer.h": "a231cd41f062c26dce327fc299d979265163327d4f042cc62e9f7b08465c5260",
+    "Source/DSP/PiezoBlampTable.h": "5d4c18901af73d3a8b11e68784af16830f11fa0923647d2da71137e824b91399",
+    "Source/DSP/MeasuredBridgeData.h": "1a6e129e9693b6193d8bd19efccb091dc504d767733582a72263a43565cab085",
+    "Source/DSP/FittedPhysicalData.h": "ab49687de639fa337dab0f0b812658776c84977c3df1bcf33e063704298cf415",
+    "Source/DSP/PerformanceRealism.h": "043a33f1f5ab78accfcf6cda75ca76e84b6514d0308f7258c086a92132368397",
+    "Source/DSP/CaptureVoicingData.h": "70efbc0194f161237b00e9318f3ecb632e8aeb77899924ded16729a9f6fc036d",
+    "Source/DSP/MeasuredJointBodyData.h": "155fd5b0e20a8045ab8db2e97ca7b19a6a689385c953a47a02fa6ee34c251123",
+    "Source/DSP/ConstructionLoudnessData.h": "1ab211ff4cad341ca157778902e687c7a60f08b9ef3aa8c0325d9abbfd1218fc",
+    "Source/DSP/SteelBodyBlend.h": "8f3320861ab768c53aae30802ff680fd52e75f1487ebaf74dad563f3f09384d2",
+    "Source/DSP/AcustraEngine.h": "e027e97cd74c562f53bb266718dccf63282e8e4c3844ad5d11d69eebe0381478",
+    "Source/DSP/AcustraEngine.cpp": "f779d639751fb580d533b5218e147a6248fdb4624db70557049a282901d425cc"
+  }
+}

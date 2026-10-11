@@ -238,8 +238,9 @@ void testSpruceIsAsMeasured()
         EngineParameters p;
         p.bodyMaterial = static_cast<BodyMaterial>(wood);
         const auto factors = AcustraEngineTestAccess::woodFactors(p);
-        // The radiation takes the frequency factor, against the body at
-        // its own wood (the factor's identity).
+        // This higher plate mode takes sqrt(D/m), relative to the Spruce
+        // reference. Coupled A0/T1 poles have separate eigenvalues, checked
+        // independently in WoodMaterialTests.
         auto own = p; own.bodyMaterial = BodyMaterial::Spruce;
         const auto ownFactors = AcustraEngineTestAccess::woodFactors(own);
         const double ratio = double(AcustraEngineTestAccess::radiationPole(p, 3)[0])

@@ -1080,6 +1080,16 @@ struct AcustraEngineTestAccess
         return latest == nullptr ? -1.0 : latest->pluckPoint;
     }
 
+    static double lastPluckLength(const AcustraEngine& engine)
+    {
+        const AcustraEngine::Voice* latest = nullptr;
+        for (const auto& voice : engine.voices_)
+            if (voice.played && (latest == nullptr
+                                 || voice.startOrder > latest->startOrder))
+                latest = &voice;
+        return latest == nullptr ? -1.0 : latest->speakingLengthMetres;
+    }
+
     static PreparedLossSnapshot changePreparedLoss(
         PhysicalCalibration before, PhysicalCalibration after)
     {
@@ -7793,8 +7803,10 @@ void testRepeatedStrumsVaryLikeRepeatedRealStrums()
 
 void testNoTwoPlucksLandInTheSamePlace()
 {
-    // Each pluck draws its own point within the take-to-take spread the
-    // recordings show, and stays inside it - also where the hand's distance
+    // The shared hand travels in metres: 70% of the established 0.02 open
+    // string spread, with the independent 30% remaining relative to the
+    // speaking length. Each pluck stays inside their combined spread, also
+    // where the hand's distance
     // from the bridge reaches the band's mid-string limit (a Finger high on
     // the neck, a Thumb from the low frets up), where the draw used to be
     // clamped away and every pluck landed on exactly the same point.
@@ -7812,10 +7824,16 @@ void testNoTwoPlucksLandInTheSamePlace()
         std::vector<float> left(static_cast<std::size_t>(blockSize));
         std::vector<float> right(static_cast<std::size_t>(blockSize));
         std::vector<double> points;
+        double length = 0.0;
         for (int take = 0; take < 6; ++take)
         {
             engine.noteOn(pluck.note, 0.8f);
             points.push_back(acustra::AcustraEngineTestAccess::lastPluckPoint(engine));
+            const double currentLength
+                = acustra::AcustraEngineTestAccess::lastPluckLength(engine);
+            if (take == 0) length = currentLength;
+            expect(currentLength == length && length > 0.0,
+                   "same-note hand spread changed its speaking length");
             for (int block = 0; block < 40; ++block)
                 engine.process(left.data(), right.data(), blockSize);
             engine.noteOff(pluck.note);
@@ -7824,8 +7842,16 @@ void testNoTwoPlucksLandInTheSamePlace()
         }
         const auto [lowest, highest] = std::minmax_element(points.begin(), points.end());
         const std::string name = "MIDI " + std::to_string(pluck.note);
-        expect(*highest - *lowest <= 0.0401 && *lowest > 0.0 && *highest <= 0.46,
-               "a pluck of " + name + " landed outside the measured take-to-take spread");
+        // Reflection at either position limit cannot increase this span.
+        // Preserve the old 0.0001 normalized rounding allowance in metres.
+        const double spanMetres = (*highest - *lowest) * length;
+        const double maximumSpanMetres = 2.0 * 0.02 * 0.70 * 0.648
+            + (2.0 * 0.02 * 0.30 + 0.0001) * length;
+        expect(spanMetres <= maximumSpanMetres
+                   && *lowest >= 0.05 && *highest <= 0.36,
+               "a pluck of " + name + " landed outside the physical hand spread");
+        std::cout << name << " hand span metres=" << spanMetres
+                  << " bound=" << maximumSpanMetres << '\n';
         expect(*highest - *lowest > 1.0e-4,
                "six plucks of " + name + " all landed in the same place");
     }

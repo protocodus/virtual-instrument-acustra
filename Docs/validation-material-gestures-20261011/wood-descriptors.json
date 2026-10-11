@@ -1,0 +1,2123 @@
+{
+  "git": "26b5cef4dbbed9c8e57495e865dac1d84fc91f89",
+  "note_protocol": "Fresh engine/reset, 48kHz, Finger, velocity0.72, MIDI40/string1,55/string4,64/string6; source defaults incl Width0.62 Body0.82 Output0.42, Room0/PiezoMix0; notes held1.5s; analysis20-800ms stereo-power FFT and RMS; no listening judgment inferred. Mono reconstructed from un-limited stereo pair and its stored trim. rack_blend reconstructs Rack Body.70/PiezoMix.20 keeping Output.42 (common scalar).",
+  "bands_hz": [
+    [
+      70,
+      180
+    ],
+    [
+      180,
+      650
+    ],
+    [
+      650,
+      2000
+    ],
+    [
+      2000,
+      6000
+    ]
+  ],
+  "transfer": [
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "stereo_gain_compensation_db": 0.27424682607864853,
+      "mono_gain_compensation_db": 0.3024129646295376,
+      "piezo_gain_compensation_db": -0.14771828775866452,
+      "bands": [
+        {
+          "hz": [
+            70,
+            180
+          ],
+          "radiation_power_ratio_db": -0.29118096152921874,
+          "bridge_modulus_ratio_db_median": -0.6090805665743655,
+          "bridge_modulus_abs_db_p90": 0.7787968006970245
+        },
+        {
+          "hz": [
+            180,
+            650
+          ],
+          "radiation_power_ratio_db": -1.5449233959775581,
+          "bridge_modulus_ratio_db_median": -2.8735621128854003,
+          "bridge_modulus_abs_db_p90": 8.134069531719739
+        },
+        {
+          "hz": [
+            650,
+            2000
+          ],
+          "radiation_power_ratio_db": -1.626449171714491,
+          "bridge_modulus_ratio_db_median": -1.4323899403362166,
+          "bridge_modulus_abs_db_p90": 9.037255955207836
+        },
+        {
+          "hz": [
+            2000,
+            6000
+          ],
+          "radiation_power_ratio_db": -1.5168924301094187,
+          "bridge_modulus_ratio_db_median": -1.0923198900566238,
+          "bridge_modulus_abs_db_p90": 1.859773100192458
+        }
+      ]
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "stereo_gain_compensation_db": 1.815045956206902,
+      "mono_gain_compensation_db": 2.0170761369372414,
+      "piezo_gain_compensation_db": -0.5614277261258291,
+      "bands": [
+        {
+          "hz": [
+            70,
+            180
+          ],
+          "radiation_power_ratio_db": -0.9745178031071429,
+          "bridge_modulus_ratio_db_median": -4.836026559951502,
+          "bridge_modulus_abs_db_p90": 9.810761266638918
+        },
+        {
+          "hz": [
+            180,
+            650
+          ],
+          "radiation_power_ratio_db": -3.769927028250339,
+          "bridge_modulus_ratio_db_median": -3.7051538704447506,
+          "bridge_modulus_abs_db_p90": 8.16254110922085
+        },
+        {
+          "hz": [
+            650,
+            2000
+          ],
+          "radiation_power_ratio_db": -3.8461038226890376,
+          "bridge_modulus_ratio_db_median": -4.3058467829684135,
+          "bridge_modulus_abs_db_p90": 8.038954411070126
+        },
+        {
+          "hz": [
+            2000,
+            6000
+          ],
+          "radiation_power_ratio_db": -4.011432381340453,
+          "bridge_modulus_ratio_db_median": -4.117336507533912,
+          "bridge_modulus_abs_db_p90": 4.401882256100282
+        }
+      ]
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "stereo_gain_compensation_db": 1.2404243412175815,
+      "mono_gain_compensation_db": 1.198508747059503,
+      "piezo_gain_compensation_db": -0.07096509257912564,
+      "bands": [
+        {
+          "hz": [
+            70,
+            180
+          ],
+          "radiation_power_ratio_db": 0.06862983323346009,
+          "bridge_modulus_ratio_db_median": -0.4476818248949541,
+          "bridge_modulus_abs_db_p90": 0.9272174789015718
+        },
+        {
+          "hz": [
+            180,
+            650
+          ],
+          "radiation_power_ratio_db": -1.8156944834647957,
+          "bridge_modulus_ratio_db_median": -2.9098224145273397,
+          "bridge_modulus_abs_db_p90": 8.717933146158892
+        },
+        {
+          "hz": [
+            650,
+            2000
+          ],
+          "radiation_power_ratio_db": -1.5201867528287965,
+          "bridge_modulus_ratio_db_median": -0.9795439678073153,
+          "bridge_modulus_abs_db_p90": 7.778947938147532
+        },
+        {
+          "hz": [
+            2000,
+            6000
+          ],
+          "radiation_power_ratio_db": -1.6385144267398757,
+          "bridge_modulus_ratio_db_median": -1.105398754746648,
+          "bridge_modulus_abs_db_p90": 1.727969278865705
+        }
+      ]
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "stereo_gain_compensation_db": 1.238483429412242,
+      "mono_gain_compensation_db": 1.558221811577786,
+      "piezo_gain_compensation_db": -0.15245348044320073,
+      "bands": [
+        {
+          "hz": [
+            70,
+            180
+          ],
+          "radiation_power_ratio_db": -0.08659296818892452,
+          "bridge_modulus_ratio_db_median": -2.521684275631164,
+          "bridge_modulus_abs_db_p90": 10.518374432243478
+        },
+        {
+          "hz": [
+            180,
+            650
+          ],
+          "radiation_power_ratio_db": -4.316287725323675,
+          "bridge_modulus_ratio_db_median": -4.069054660658388,
+          "bridge_modulus_abs_db_p90": 8.873488027339008
+        },
+        {
+          "hz": [
+            650,
+            2000
+          ],
+          "radiation_power_ratio_db": -3.8976653002551434,
+          "bridge_modulus_ratio_db_median": -4.331891461263879,
+          "bridge_modulus_abs_db_p90": 7.54258306412383
+        },
+        {
+          "hz": [
+            2000,
+            6000
+          ],
+          "radiation_power_ratio_db": -3.87886808497722,
+          "bridge_modulus_ratio_db_median": -4.102326765523821,
+          "bridge_modulus_abs_db_p90": 4.276784942558292
+        }
+      ]
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "stereo_gain_compensation_db": 1.0053305255797689,
+      "mono_gain_compensation_db": 0.365051462070096,
+      "piezo_gain_compensation_db": -0.05370004533943784,
+      "bands": [
+        {
+          "hz": [
+            70,
+            180
+          ],
+          "radiation_power_ratio_db": -0.32748193298766654,
+          "bridge_modulus_ratio_db_median": -0.31652631704814094,
+          "bridge_modulus_abs_db_p90": 1.8747607536460975
+        },
+        {
+          "hz": [
+            180,
+            650
+          ],
+          "radiation_power_ratio_db": -1.7797294461576219,
+          "bridge_modulus_ratio_db_median": -2.908031278345626,
+          "bridge_modulus_abs_db_p90": 9.764652225702257
+        },
+        {
+          "hz": [
+            650,
+            2000
+          ],
+          "radiation_power_ratio_db": -1.5349873606986737,
+          "bridge_modulus_ratio_db_median": -1.243771235035695,
+          "bridge_modulus_abs_db_p90": 6.472693112431631
+        },
+        {
+          "hz": [
+            2000,
+            6000
+          ],
+          "radiation_power_ratio_db": -1.6657309300091285,
+          "bridge_modulus_ratio_db_median": -1.0306986497489115,
+          "bridge_modulus_abs_db_p90": 1.536084684099662
+        }
+      ]
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "stereo_gain_compensation_db": 2.1744838879302626,
+      "mono_gain_compensation_db": 1.4531775904146664,
+      "piezo_gain_compensation_db": -0.1887318550615502,
+      "bands": [
+        {
+          "hz": [
+            70,
+            180
+          ],
+          "radiation_power_ratio_db": -1.1611516752965132,
+          "bridge_modulus_ratio_db_median": -1.9874212527833364,
+          "bridge_modulus_abs_db_p90": 11.983821855099725
+        },
+        {
+          "hz": [
+            180,
+            650
+          ],
+          "radiation_power_ratio_db": -4.409200076070608,
+          "bridge_modulus_ratio_db_median": -4.292614653213603,
+          "bridge_modulus_abs_db_p90": 8.704215499958549
+        },
+        {
+          "hz": [
+            650,
+            2000
+          ],
+          "radiation_power_ratio_db": -3.789155589822056,
+          "bridge_modulus_ratio_db_median": -4.221308694167776,
+          "bridge_modulus_abs_db_p90": 6.909661131550781
+        },
+        {
+          "hz": [
+            2000,
+            6000
+          ],
+          "radiation_power_ratio_db": -3.982629089030799,
+          "bridge_modulus_ratio_db_median": -4.13565758378941,
+          "bridge_modulus_abs_db_p90": 4.26872082940473
+        }
+      ]
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "stereo_gain_compensation_db": 1.8306406983595567,
+      "mono_gain_compensation_db": 1.6877072706317748,
+      "piezo_gain_compensation_db": -0.16754876713689293,
+      "bands": [
+        {
+          "hz": [
+            70,
+            180
+          ],
+          "radiation_power_ratio_db": -0.7969525161006166,
+          "bridge_modulus_ratio_db_median": -0.17330278751464268,
+          "bridge_modulus_abs_db_p90": 2.6627778001178486
+        },
+        {
+          "hz": [
+            180,
+            650
+          ],
+          "radiation_power_ratio_db": -1.8190420532291942,
+          "bridge_modulus_ratio_db_median": -2.8826908525916908,
+          "bridge_modulus_abs_db_p90": 9.301411945003991
+        },
+        {
+          "hz": [
+            650,
+            2000
+          ],
+          "radiation_power_ratio_db": -1.5766436255733196,
+          "bridge_modulus_ratio_db_median": -1.2773629784627538,
+          "bridge_modulus_abs_db_p90": 6.4320208633110525
+        },
+        {
+          "hz": [
+            2000,
+            6000
+          ],
+          "radiation_power_ratio_db": -1.538264412765906,
+          "bridge_modulus_ratio_db_median": -1.0017619426061126,
+          "bridge_modulus_abs_db_p90": 1.3419034610207439
+        }
+      ]
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "stereo_gain_compensation_db": 2.9172372275925977,
+      "mono_gain_compensation_db": 2.934386107327279,
+      "piezo_gain_compensation_db": -0.4019965254197535,
+      "bands": [
+        {
+          "hz": [
+            70,
+            180
+          ],
+          "radiation_power_ratio_db": -2.1542092768629044,
+          "bridge_modulus_ratio_db_median": -1.7098508032796804,
+          "bridge_modulus_abs_db_p90": 13.054831375964742
+        },
+        {
+          "hz": [
+            180,
+            650
+          ],
+          "radiation_power_ratio_db": -4.026724376488378,
+          "bridge_modulus_ratio_db_median": -4.32758521099432,
+          "bridge_modulus_abs_db_p90": 8.458755664585587
+        },
+        {
+          "hz": [
+            650,
+            2000
+          ],
+          "radiation_power_ratio_db": -3.9121096816563607,
+          "bridge_modulus_ratio_db_median": -4.211415101542866,
+          "bridge_modulus_abs_db_p90": 6.783535862254682
+        },
+        {
+          "hz": [
+            2000,
+            6000
+          ],
+          "radiation_power_ratio_db": -3.9214673094226713,
+          "bridge_modulus_ratio_db_median": -4.147403886255802,
+          "bridge_modulus_abs_db_p90": 4.263532958247617
+        }
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "stereo",
+      "native_rms_db": -0.023845963453824406,
+      "gain_matched_residual_rms": 0.43155087631400396,
+      "gain_matched_correlation": 0.9068819205763077,
+      "power_weighted_spectral_distance_db": 1.0284131552292894,
+      "centroid_ratio": 0.9918976205044366,
+      "band_relative_db": [
+        0.2714289189860976,
+        -0.8330480657192465,
+        -0.4926189709584887,
+        -0.8675795022409338
+      ],
+      "late_to_early_relative_db": -0.01344007443402262
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "mono",
+      "native_rms_db": 0.14113939756992927,
+      "gain_matched_residual_rms": 0.40205419455408703,
+      "gain_matched_correlation": 0.9191762123207321,
+      "power_weighted_spectral_distance_db": 1.2094481820983105,
+      "centroid_ratio": 0.9348836934405308,
+      "band_relative_db": [
+        0.17627919671442266,
+        -1.6523409429825722,
+        -1.6752052499535797,
+        0.31553865218521454
+      ],
+      "late_to_early_relative_db": -0.03880957686924624
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "piezo",
+      "native_rms_db": -0.20673150140820057,
+      "gain_matched_residual_rms": 0.19431610633356697,
+      "gain_matched_correlation": 0.981120625409681,
+      "power_weighted_spectral_distance_db": 0.9081568632735766,
+      "centroid_ratio": 0.9761424599180735,
+      "band_relative_db": [
+        0.03431219578234326,
+        -2.1184746876319287,
+        -1.1715038889471894,
+        0.1954879995295602
+      ],
+      "late_to_early_relative_db": -0.07049485743926809
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "rack_blend",
+      "native_rms_db": 0.13293846108619317,
+      "gain_matched_residual_rms": 0.3953148336418333,
+      "gain_matched_correlation": 0.921863091151365,
+      "power_weighted_spectral_distance_db": 0.9837863736585261,
+      "centroid_ratio": 0.997935714234057,
+      "band_relative_db": [
+        0.12053842945149756,
+        0.581731958789764,
+        -0.5807482873102778,
+        -1.1002839508098776
+      ],
+      "late_to_early_relative_db": -0.18673168279497254
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "stereo",
+      "native_rms_db": 0.8430406485714882,
+      "gain_matched_residual_rms": 0.6415588389753799,
+      "gain_matched_correlation": 0.7942011280662811,
+      "power_weighted_spectral_distance_db": 2.586476517091838,
+      "centroid_ratio": 1.2062057992611097,
+      "band_relative_db": [
+        -1.0551339101558794,
+        -1.9977266715679356,
+        0.674175557806148,
+        -0.8023935147921489
+      ],
+      "late_to_early_relative_db": -4.0659656371976
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "mono",
+      "native_rms_db": 0.9372403875364927,
+      "gain_matched_residual_rms": 0.6243741846686209,
+      "gain_matched_correlation": 0.8050784387596972,
+      "power_weighted_spectral_distance_db": 3.2773015154933796,
+      "centroid_ratio": 1.3219914192330906,
+      "band_relative_db": [
+        -1.069110741374712,
+        -2.2951318960228178,
+        2.322701968068576,
+        1.6530171869105006
+      ],
+      "late_to_early_relative_db": -4.674337425148433
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "piezo",
+      "native_rms_db": -1.1770630649949767,
+      "gain_matched_residual_rms": 0.32096099315891297,
+      "gain_matched_correlation": 0.9484920204352224,
+      "power_weighted_spectral_distance_db": 2.931797702394359,
+      "centroid_ratio": 1.2183285190540354,
+      "band_relative_db": [
+        0.6473441693812587,
+        -0.6107850920909168,
+        1.0783645463423208,
+        1.1020769582328707
+      ],
+      "late_to_early_relative_db": 0.5033012178195282
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "rack_blend",
+      "native_rms_db": 0.5896134229331824,
+      "gain_matched_residual_rms": 0.659808703443382,
+      "gain_matched_correlation": 0.7823262374301816,
+      "power_weighted_spectral_distance_db": 3.033455617341624,
+      "centroid_ratio": 1.3369437711183514,
+      "band_relative_db": [
+        -0.7575468970531656,
+        -1.9416535279181266,
+        1.4116162989125745,
+        0.16671779795383568
+      ],
+      "late_to_early_relative_db": -4.5401097001304365
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "stereo",
+      "native_rms_db": -0.36501347986414184,
+      "gain_matched_residual_rms": 0.49027970321101777,
+      "gain_matched_correlation": 0.8798129063096584,
+      "power_weighted_spectral_distance_db": 1.225108581897599,
+      "centroid_ratio": 1.0356952719280805,
+      "band_relative_db": [
+        0.09320403033206981,
+        -0.43670410507327523,
+        0.8403197502503101,
+        -2.0899431981189207
+      ],
+      "late_to_early_relative_db": -0.12514132270578315
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "mono",
+      "native_rms_db": 0.03576191485562027,
+      "gain_matched_residual_rms": 0.5764849221437414,
+      "gain_matched_correlation": 0.8338325672704624,
+      "power_weighted_spectral_distance_db": 1.978708275731534,
+      "centroid_ratio": 1.1359028083647107,
+      "band_relative_db": [
+        -0.24220245812073857,
+        -0.9254098920897698,
+        0.7193798552218472,
+        -1.5776567157974501
+      ],
+      "late_to_early_relative_db": -0.683008422748026
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "piezo",
+      "native_rms_db": -0.15277485140423047,
+      "gain_matched_residual_rms": 0.13558835986758755,
+      "gain_matched_correlation": 0.9908078983342088,
+      "power_weighted_spectral_distance_db": 0.5359361188997447,
+      "centroid_ratio": 0.992503836426024,
+      "band_relative_db": [
+        -0.6077772767179739,
+        0.17955156575886355,
+        -0.43366126355449236,
+        0.2369286262441015
+      ],
+      "late_to_early_relative_db": 0.05129376887572512
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "rack_blend",
+      "native_rms_db": -0.5446805145901847,
+      "gain_matched_residual_rms": 0.5660804374505068,
+      "gain_matched_correlation": 0.8397764691679214,
+      "power_weighted_spectral_distance_db": 2.111469150392619,
+      "centroid_ratio": 1.0551151782796306,
+      "band_relative_db": [
+        0.29589928791616016,
+        -0.6108610597082726,
+        0.2675766557818281,
+        -1.6158802425330046
+      ],
+      "late_to_early_relative_db": -0.7260904785560278
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 40,
+      "route": "stereo",
+      "native_rms_db": 0.8205545967124633,
+      "gain_matched_residual_rms": 0.3476350477706239,
+      "gain_matched_correlation": 0.9395749367807581,
+      "power_weighted_spectral_distance_db": 1.5133074744300494,
+      "centroid_ratio": 0.9800379911051305,
+      "band_relative_db": [
+        0.20067553588203457,
+        -2.3146539573267506,
+        -1.0817992284733071,
+        -0.18066196592748052
+      ],
+      "late_to_early_relative_db": -0.06229515069383318
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 40,
+      "route": "mono",
+      "native_rms_db": 1.1065877538515663,
+      "gain_matched_residual_rms": 0.36368581063644895,
+      "gain_matched_correlation": 0.9338663155708543,
+      "power_weighted_spectral_distance_db": 1.3314069230005774,
+      "centroid_ratio": 0.9420034152866005,
+      "band_relative_db": [
+        0.12129213361403379,
+        -0.8931014747137281,
+        -2.762262245785966,
+        0.554788130787818
+      ],
+      "late_to_early_relative_db": -0.18795408160228355
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 40,
+      "route": "piezo",
+      "native_rms_db": -0.3736257993572598,
+      "gain_matched_residual_rms": 0.22133979380954544,
+      "gain_matched_correlation": 0.9755043478381739,
+      "power_weighted_spectral_distance_db": 0.8980969755379975,
+      "centroid_ratio": 1.0307012185150934,
+      "band_relative_db": [
+        -0.06986813559633204,
+        2.398102510303233,
+        0.14685781065305864,
+        0.9395591529314814
+      ],
+      "late_to_early_relative_db": -0.0018796913892593636
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 40,
+      "route": "rack_blend",
+      "native_rms_db": 0.9003208803827089,
+      "gain_matched_residual_rms": 0.3821319501289356,
+      "gain_matched_correlation": 0.9269875863453284,
+      "power_weighted_spectral_distance_db": 1.4790252528158654,
+      "centroid_ratio": 0.9697476703728748,
+      "band_relative_db": [
+        0.17457159777912212,
+        -2.5668307154396253,
+        -1.0254133594953765,
+        -0.47759769827549237
+      ],
+      "late_to_early_relative_db": -0.31763313346796984
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 55,
+      "route": "stereo",
+      "native_rms_db": 0.845967921048383,
+      "gain_matched_residual_rms": 0.5338315794990974,
+      "gain_matched_correlation": 0.8575119223647492,
+      "power_weighted_spectral_distance_db": 1.9799256752857086,
+      "centroid_ratio": 0.9288868566445505,
+      "band_relative_db": [
+        -1.8581733474380129,
+        -1.5759973388582005,
+        -2.055644539003214,
+        -3.0678168031131055
+      ],
+      "late_to_early_relative_db": -5.610761650841461
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 55,
+      "route": "mono",
+      "native_rms_db": 1.142581611558807,
+      "gain_matched_residual_rms": 0.5478154474482663,
+      "gain_matched_correlation": 0.8499491177685278,
+      "power_weighted_spectral_distance_db": 2.0255548774982453,
+      "centroid_ratio": 0.9724274908998096,
+      "band_relative_db": [
+        -1.7639541314505736,
+        -1.6462427712029282,
+        -1.1013682018457265,
+        -3.2861056159585504
+      ],
+      "late_to_early_relative_db": -6.491132161404391
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 55,
+      "route": "piezo",
+      "native_rms_db": -1.34323745913872,
+      "gain_matched_residual_rms": 0.45821576162063027,
+      "gain_matched_correlation": 0.895019157901213,
+      "power_weighted_spectral_distance_db": 2.527776933817974,
+      "centroid_ratio": 1.1633573234130665,
+      "band_relative_db": [
+        -3.3381570785462493,
+        -0.5114650044761269,
+        1.0385664346267984,
+        1.3005159030184172
+      ],
+      "late_to_early_relative_db": 0.6092428454927141
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 55,
+      "route": "rack_blend",
+      "native_rms_db": 0.48457933724146723,
+      "gain_matched_residual_rms": 0.5559874505076624,
+      "gain_matched_correlation": 0.8454389774389948,
+      "power_weighted_spectral_distance_db": 1.9066285744567728,
+      "centroid_ratio": 0.9633970031243447,
+      "band_relative_db": [
+        -1.3254785858350189,
+        -1.5948020015582682,
+        -1.3417443111436878,
+        -2.2236913514032652
+      ],
+      "late_to_early_relative_db": -7.149161950941682
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 64,
+      "route": "stereo",
+      "native_rms_db": -1.8440600657748303,
+      "gain_matched_residual_rms": 0.5768161091273607,
+      "gain_matched_correlation": 0.8336415881255863,
+      "power_weighted_spectral_distance_db": 1.5859995338818043,
+      "centroid_ratio": 1.1004768902749942,
+      "band_relative_db": [
+        0.4347666296949335,
+        -0.5113148698138215,
+        1.1575845753233294,
+        -0.6054509157342793
+      ],
+      "late_to_early_relative_db": 0.6241355784195228
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 64,
+      "route": "mono",
+      "native_rms_db": -0.6423733411424186,
+      "gain_matched_residual_rms": 0.7013003726608638,
+      "gain_matched_correlation": 0.754088893652867,
+      "power_weighted_spectral_distance_db": 1.9901871652035004,
+      "centroid_ratio": 1.2281812840798714,
+      "band_relative_db": [
+        -0.38524263775178147,
+        -1.704871207252814,
+        1.424487149948246,
+        -0.8994865468964355
+      ],
+      "late_to_early_relative_db": -0.07182170483488726
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 64,
+      "route": "piezo",
+      "native_rms_db": -0.30390274867097006,
+      "gain_matched_residual_rms": 0.1885537718540537,
+      "gain_matched_correlation": 0.9822237375598046,
+      "power_weighted_spectral_distance_db": 0.5572795254336043,
+      "centroid_ratio": 1.0124566439091507,
+      "band_relative_db": [
+        -6.441547263972661,
+        0.09598106896161207,
+        -0.016075558485628527,
+        0.503795418074003
+      ],
+      "late_to_early_relative_db": 0.519489535924178
+    },
+    {
+      "shape": "Parlor",
+      "wood": "Maple",
+      "note": 64,
+      "route": "rack_blend",
+      "native_rms_db": -1.6733956602601907,
+      "gain_matched_residual_rms": 0.6539448585868435,
+      "gain_matched_correlation": 0.7861780609639164,
+      "power_weighted_spectral_distance_db": 2.4480783782640025,
+      "centroid_ratio": 1.0763987169005378,
+      "band_relative_db": [
+        0.3969941817552063,
+        -2.1190913522876524,
+        0.9842510825421869,
+        -0.767726863152725
+      ],
+      "late_to_early_relative_db": 1.0869319641491497
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "stereo",
+      "native_rms_db": 1.5475653442872055,
+      "gain_matched_residual_rms": 0.36101841520766337,
+      "gain_matched_correlation": 0.9348328519404733,
+      "power_weighted_spectral_distance_db": 1.4446284431124776,
+      "centroid_ratio": 0.9557077860947212,
+      "band_relative_db": [
+        0.20456302448197938,
+        -2.2933227232898457,
+        -1.3011057900144745,
+        -0.9209982420289202
+      ],
+      "late_to_early_relative_db": -0.6295446366119624
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "mono",
+      "native_rms_db": 1.3723842176404282,
+      "gain_matched_residual_rms": 0.4258473789936108,
+      "gain_matched_correlation": 0.9093270049021361,
+      "power_weighted_spectral_distance_db": 1.6084008340784852,
+      "centroid_ratio": 0.9413216314412438,
+      "band_relative_db": [
+        0.21891150053741293,
+        -3.698444811477827,
+        -0.22704208996694009,
+        -1.7809853606339465
+      ],
+      "late_to_early_relative_db": -0.7520284118826499
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "piezo",
+      "native_rms_db": -0.1349326177621609,
+      "gain_matched_residual_rms": 0.15582385662492354,
+      "gain_matched_correlation": 0.9878594628532675,
+      "power_weighted_spectral_distance_db": 0.7217540385177247,
+      "centroid_ratio": 0.9899939878677628,
+      "band_relative_db": [
+        -0.09296357947059838,
+        0.3181241906320893,
+        1.3468429579800212,
+        0.06336337097382377
+      ],
+      "late_to_early_relative_db": -0.9876298602322517
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "rack_blend",
+      "native_rms_db": 1.5077900643004378,
+      "gain_matched_residual_rms": 0.3657638427975299,
+      "gain_matched_correlation": 0.9331084056509921,
+      "power_weighted_spectral_distance_db": 1.3616596738605806,
+      "centroid_ratio": 0.9579311963572434,
+      "band_relative_db": [
+        0.08816408306038981,
+        -2.24818205138594,
+        -1.301588734154966,
+        -0.9429672994954583
+      ],
+      "late_to_early_relative_db": -0.8060249351176996
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "stereo",
+      "native_rms_db": 0.7356587048743211,
+      "gain_matched_residual_rms": 0.5598810747749658,
+      "gain_matched_correlation": 0.8432665910544149,
+      "power_weighted_spectral_distance_db": 2.9085299016058332,
+      "centroid_ratio": 0.9369199506954103,
+      "band_relative_db": [
+        0.13801911597640393,
+        2.474640915637234,
+        -2.382324802999887,
+        -4.084150298080128
+      ],
+      "late_to_early_relative_db": 2.0165302668386076
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "mono",
+      "native_rms_db": 1.0201506824848956,
+      "gain_matched_residual_rms": 0.6328879885677194,
+      "gain_matched_correlation": 0.7997263969633532,
+      "power_weighted_spectral_distance_db": 3.7138699940141087,
+      "centroid_ratio": 0.8162182353440598,
+      "band_relative_db": [
+        -0.16022214649425948,
+        2.6147308937434808,
+        -6.7369871794444895,
+        -1.1595943910488369
+      ],
+      "late_to_early_relative_db": 3.011156028142997
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "piezo",
+      "native_rms_db": 1.305278159861572,
+      "gain_matched_residual_rms": 0.5683838312305417,
+      "gain_matched_correlation": 0.8384699101978457,
+      "power_weighted_spectral_distance_db": 4.508463049188159,
+      "centroid_ratio": 0.7459809403967413,
+      "band_relative_db": [
+        -1.3619497928577127,
+        0.6745527319851563,
+        -1.3724932160031165,
+        -1.4035711810345048
+      ],
+      "late_to_early_relative_db": 0.6913105307035874
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "rack_blend",
+      "native_rms_db": 0.7808489040292855,
+      "gain_matched_residual_rms": 0.6122810477863436,
+      "gain_matched_correlation": 0.8125559592608285,
+      "power_weighted_spectral_distance_db": 3.3059187584255074,
+      "centroid_ratio": 0.9681107824094614,
+      "band_relative_db": [
+        0.05030989440248046,
+        2.6054991799593306,
+        -1.7664758247197696,
+        -3.5762132255785413
+      ],
+      "late_to_early_relative_db": 1.9730575017901124
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "stereo",
+      "native_rms_db": -1.5376567399981718,
+      "gain_matched_residual_rms": 0.7454360196467258,
+      "gain_matched_correlation": 0.7221625703066232,
+      "power_weighted_spectral_distance_db": 3.7801690621805903,
+      "centroid_ratio": 0.9915537392438328,
+      "band_relative_db": [
+        2.222330482284608,
+        1.274832690318447,
+        -0.6878351181307139,
+        -1.72874220796557
+      ],
+      "late_to_early_relative_db": 1.9808951919617712
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "mono",
+      "native_rms_db": 1.656800554514373,
+      "gain_matched_residual_rms": 0.864833086762352,
+      "gain_matched_correlation": 0.6260318660205512,
+      "power_weighted_spectral_distance_db": 5.127969126659001,
+      "centroid_ratio": 1.2562392754786533,
+      "band_relative_db": [
+        -1.0227729305719717,
+        -1.6660489463448669,
+        2.49982031841688,
+        -2.7183658366773784
+      ],
+      "late_to_early_relative_db": -0.8531764392380623
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "piezo",
+      "native_rms_db": 0.0699397233173136,
+      "gain_matched_residual_rms": 0.12170223665087868,
+      "gain_matched_correlation": 0.9925942827970867,
+      "power_weighted_spectral_distance_db": 0.8745316341792839,
+      "centroid_ratio": 1.0221907644847843,
+      "band_relative_db": [
+        -0.29363842104766313,
+        -0.2453544676422212,
+        0.8328926778361597,
+        0.1233437596411455
+      ],
+      "late_to_early_relative_db": 0.3927153639836778
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "rack_blend",
+      "native_rms_db": -1.7221232055688889,
+      "gain_matched_residual_rms": 0.8242594673855859,
+      "gain_matched_correlation": 0.660298165212615,
+      "power_weighted_spectral_distance_db": 3.5978156425041385,
+      "centroid_ratio": 0.9969926930271814,
+      "band_relative_db": [
+        2.370555107989426,
+        1.5390153274437317,
+        0.010741224299979368,
+        -1.2639961484977937
+      ],
+      "late_to_early_relative_db": 2.889525041124223
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 40,
+      "route": "stereo",
+      "native_rms_db": 1.315359584006547,
+      "gain_matched_residual_rms": 0.6941316776888181,
+      "gain_matched_correlation": 0.7590906070144533,
+      "power_weighted_spectral_distance_db": 2.7876143317204933,
+      "centroid_ratio": 0.8529080251452608,
+      "band_relative_db": [
+        0.6353030892532125,
+        -3.1116513678887583,
+        -3.2243141211884003,
+        -3.448552893179804
+      ],
+      "late_to_early_relative_db": -0.17684985490734384
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 40,
+      "route": "mono",
+      "native_rms_db": 1.099672708222654,
+      "gain_matched_residual_rms": 0.7482550760108149,
+      "gain_matched_correlation": 0.7200571706120249,
+      "power_weighted_spectral_distance_db": 2.69961242612059,
+      "centroid_ratio": 0.8801509492665213,
+      "band_relative_db": [
+        0.36158261429243477,
+        -2.9086938342720545,
+        -3.159773821258086,
+        -3.7244671145515245
+      ],
+      "late_to_early_relative_db": -0.8734473885775458
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 40,
+      "route": "piezo",
+      "native_rms_db": 1.6389225233397429,
+      "gain_matched_residual_rms": 0.6447404534533384,
+      "gain_matched_correlation": 0.7921548738403918,
+      "power_weighted_spectral_distance_db": 3.9446636763056295,
+      "centroid_ratio": 0.7570872702422766,
+      "band_relative_db": [
+        1.2871107710658747,
+        -1.76125043549397,
+        -0.9310456520090562,
+        -0.7916924256807245
+      ],
+      "late_to_early_relative_db": 2.4735770180283083
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 40,
+      "route": "rack_blend",
+      "native_rms_db": 1.1234085089467374,
+      "gain_matched_residual_rms": 0.7245878020736454,
+      "gain_matched_correlation": 0.737486258543042,
+      "power_weighted_spectral_distance_db": 2.5759055245414295,
+      "centroid_ratio": 0.8928264689255201,
+      "band_relative_db": [
+        0.3338094839178294,
+        -3.117165800411022,
+        -2.7159550151121707,
+        -2.558395848434629
+      ],
+      "late_to_early_relative_db": -0.9766592767213638
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 55,
+      "route": "stereo",
+      "native_rms_db": -3.4204107776276067,
+      "gain_matched_residual_rms": 0.6697393987050928,
+      "gain_matched_correlation": 0.7757245689110706,
+      "power_weighted_spectral_distance_db": 3.7783659729944024,
+      "centroid_ratio": 0.8383497983128078,
+      "band_relative_db": [
+        3.3350975229098183,
+        2.7358820780834874,
+        1.68204331861409,
+        0.44722739033638437
+      ],
+      "late_to_early_relative_db": 5.375591065422999
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 55,
+      "route": "mono",
+      "native_rms_db": -3.3537368067034357,
+      "gain_matched_residual_rms": 0.7295519807820374,
+      "gain_matched_correlation": 0.7338769536685028,
+      "power_weighted_spectral_distance_db": 3.637271167807875,
+      "centroid_ratio": 0.8738577341871699,
+      "band_relative_db": [
+        3.1771949096919285,
+        2.400297029773645,
+        1.9973480304776996,
+        -0.491321238934622
+      ],
+      "late_to_early_relative_db": 5.5110025947748955
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 55,
+      "route": "piezo",
+      "native_rms_db": 1.9704687013824644,
+      "gain_matched_residual_rms": 0.6318557603759051,
+      "gain_matched_correlation": 0.8003791490398935,
+      "power_weighted_spectral_distance_db": 4.251652054511183,
+      "centroid_ratio": 0.7529328426125489,
+      "band_relative_db": [
+        -4.014717687450503,
+        1.003931351272573,
+        -2.0050600341289266,
+        -1.7336438297064445
+      ],
+      "late_to_early_relative_db": 2.4325875636694914
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 55,
+      "route": "rack_blend",
+      "native_rms_db": -4.342017465843791,
+      "gain_matched_residual_rms": 0.699142165411107,
+      "gain_matched_correlation": 0.7556001162721342,
+      "power_weighted_spectral_distance_db": 3.7328590384243996,
+      "centroid_ratio": 0.8857438632072263,
+      "band_relative_db": [
+        3.8282358035580124,
+        2.7473699908533447,
+        2.684741516252621,
+        1.0951039479795783
+      ],
+      "late_to_early_relative_db": 5.164772278187282
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 64,
+      "route": "stereo",
+      "native_rms_db": -3.4284064410806185,
+      "gain_matched_residual_rms": 0.6394156355525463,
+      "gain_matched_correlation": 0.7955738225054665,
+      "power_weighted_spectral_distance_db": 1.3371872300380747,
+      "centroid_ratio": 1.0980061241014645,
+      "band_relative_db": [
+        2.4179056918383486,
+        0.3848758321197092,
+        0.241330542024214,
+        0.5063514723091327
+      ],
+      "late_to_early_relative_db": 1.0598846573036287
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 64,
+      "route": "mono",
+      "native_rms_db": -2.4321367351458982,
+      "gain_matched_residual_rms": 0.6371252323288323,
+      "gain_matched_correlation": 0.7970357191649657,
+      "power_weighted_spectral_distance_db": 2.8839238534341396,
+      "centroid_ratio": 1.3109985330013236,
+      "band_relative_db": [
+        1.3132067162937882,
+        -0.3806133755286112,
+        0.5360180528413678,
+        0.7936928078518872
+      ],
+      "late_to_early_relative_db": -0.19494644439473596
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 64,
+      "route": "piezo",
+      "native_rms_db": -0.07495698068580445,
+      "gain_matched_residual_rms": 0.09909432990982824,
+      "gain_matched_correlation": 0.995090156889861,
+      "power_weighted_spectral_distance_db": 0.5592971498813554,
+      "centroid_ratio": 1.0647128187047574,
+      "band_relative_db": [
+        -3.475783649436218,
+        -0.2929414423338321,
+        0.7483510876674623,
+        0.6456712885954629
+      ],
+      "late_to_early_relative_db": -0.026903550269414822
+    },
+    {
+      "shape": "Auditorium",
+      "wood": "Maple",
+      "note": 64,
+      "route": "rack_blend",
+      "native_rms_db": -4.604958957613472,
+      "gain_matched_residual_rms": 0.6928985619062623,
+      "gain_matched_correlation": 0.7599457914541166,
+      "power_weighted_spectral_distance_db": 2.0858640950216856,
+      "centroid_ratio": 1.1951593629743578,
+      "band_relative_db": [
+        3.1258769616150444,
+        0.6005676942790235,
+        0.3021581607488555,
+        1.4627197973041337
+      ],
+      "late_to_early_relative_db": 1.7956869113887297
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "stereo",
+      "native_rms_db": 1.265400343466754,
+      "gain_matched_residual_rms": 0.41633021759336336,
+      "gain_matched_correlation": 0.9133345749593311,
+      "power_weighted_spectral_distance_db": 1.1833836860534523,
+      "centroid_ratio": 1.0062384760346932,
+      "band_relative_db": [
+        -0.9204534914068512,
+        -1.2292731592910273,
+        -0.3749114916407106,
+        0.49050738929334226
+      ],
+      "late_to_early_relative_db": -1.5942449447707894
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "mono",
+      "native_rms_db": 0.7135312691335545,
+      "gain_matched_residual_rms": 0.48916807317350486,
+      "gain_matched_correlation": 0.8803572980938599,
+      "power_weighted_spectral_distance_db": 1.862443758085662,
+      "centroid_ratio": 1.1296799273927007,
+      "band_relative_db": [
+        -1.3804263507048513,
+        -1.194154485873793,
+        3.3981471129618637,
+        0.40298115960643055
+      ],
+      "late_to_early_relative_db": -2.6072989480629047
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "piezo",
+      "native_rms_db": -0.4640976969994325,
+      "gain_matched_residual_rms": 0.1745749623757666,
+      "gain_matched_correlation": 0.9847617912557498,
+      "power_weighted_spectral_distance_db": 1.5481683846715761,
+      "centroid_ratio": 0.9489256159873206,
+      "band_relative_db": [
+        -0.1968776828109643,
+        0.32788260344683207,
+        1.1020020653157103,
+        0.4966668819412496
+      ],
+      "late_to_early_relative_db": 0.23751744251452145
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "rack_blend",
+      "native_rms_db": 1.1903255997759492,
+      "gain_matched_residual_rms": 0.45758194970594807,
+      "gain_matched_correlation": 0.8953093796516517,
+      "power_weighted_spectral_distance_db": 1.3406628275254207,
+      "centroid_ratio": 0.9952796653619929,
+      "band_relative_db": [
+        -1.0076797163839848,
+        -1.4354589809527067,
+        -0.4639100128864799,
+        0.6042634904522379
+      ],
+      "late_to_early_relative_db": -1.8651668951766123
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "stereo",
+      "native_rms_db": 2.1537529124583905,
+      "gain_matched_residual_rms": 0.4551269561056653,
+      "gain_matched_correlation": 0.8964297269129958,
+      "power_weighted_spectral_distance_db": 1.8044580634120522,
+      "centroid_ratio": 0.8292633783829819,
+      "band_relative_db": [
+        0.02288537610551966,
+        0.6607566179708928,
+        -3.2811648828280364,
+        -3.5157621919912225
+      ],
+      "late_to_early_relative_db": 2.8495231375751846
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "mono",
+      "native_rms_db": 0.8182090254929085,
+      "gain_matched_residual_rms": 0.5689435738428328,
+      "gain_matched_correlation": 0.8381516048914723,
+      "power_weighted_spectral_distance_db": 3.2444517564615114,
+      "centroid_ratio": 0.7173122761749154,
+      "band_relative_db": [
+        0.4912703948678213,
+        1.09584667590513,
+        -2.98104730012472,
+        -4.133368066671968
+      ],
+      "late_to_early_relative_db": 4.182845039619632
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "piezo",
+      "native_rms_db": 0.5854871470587776,
+      "gain_matched_residual_rms": 0.4977989142326506,
+      "gain_matched_correlation": 0.8760981204943973,
+      "power_weighted_spectral_distance_db": 1.746253831528959,
+      "centroid_ratio": 0.9296545347041238,
+      "band_relative_db": [
+        -1.7943360076968622,
+        0.2657726834167796,
+        -0.3149618282257405,
+        -0.5509592870813373
+      ],
+      "late_to_early_relative_db": 2.6063227445956247
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "rack_blend",
+      "native_rms_db": 1.924038629526552,
+      "gain_matched_residual_rms": 0.5510035643485249,
+      "gain_matched_correlation": 0.8481975360376103,
+      "power_weighted_spectral_distance_db": 2.234061996051653,
+      "centroid_ratio": 0.7842628614243539,
+      "band_relative_db": [
+        0.03421703105142826,
+        0.688996146421798,
+        -3.339159377307965,
+        -2.394199563890885
+      ],
+      "late_to_early_relative_db": 1.8362758983574494
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "stereo",
+      "native_rms_db": -1.2081741461407134,
+      "gain_matched_residual_rms": 0.574524655381616,
+      "gain_matched_correlation": 0.8349607101793176,
+      "power_weighted_spectral_distance_db": 3.8893209151679837,
+      "centroid_ratio": 0.853117897678792,
+      "band_relative_db": [
+        2.4711300583005538,
+        2.2335145005445165,
+        -4.42920940561894,
+        2.2658660861268816
+      ],
+      "late_to_early_relative_db": 0.5120791598058219
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "mono",
+      "native_rms_db": -2.2411851352371475,
+      "gain_matched_residual_rms": 0.5816175367983828,
+      "gain_matched_correlation": 0.8308605204442909,
+      "power_weighted_spectral_distance_db": 4.075154541178019,
+      "centroid_ratio": 0.7745235621285201,
+      "band_relative_db": [
+        2.927774974482515,
+        3.1038644380557803,
+        -3.7777408753768524,
+        2.0891646045915326
+      ],
+      "late_to_early_relative_db": 0.9910449527791432
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "piezo",
+      "native_rms_db": 0.18842980937126189,
+      "gain_matched_residual_rms": 0.14823446751069574,
+      "gain_matched_correlation": 0.9890132713209102,
+      "power_weighted_spectral_distance_db": 0.3377408473470992,
+      "centroid_ratio": 1.0148332955607415,
+      "band_relative_db": [
+        -0.301454120566975,
+        -0.10322497618604659,
+        0.20188414267329072,
+        0.009452454592806109
+      ],
+      "late_to_early_relative_db": 0.3138155757484249
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "rack_blend",
+      "native_rms_db": -1.7486012504643489,
+      "gain_matched_residual_rms": 0.5772834428044799,
+      "gain_matched_correlation": 0.8333719133319035,
+      "power_weighted_spectral_distance_db": 4.007308380112298,
+      "centroid_ratio": 0.8906744333100519,
+      "band_relative_db": [
+        2.9550270780185075,
+        3.074642929765486,
+        -3.4289621648536635,
+        2.6570058159892422
+      ],
+      "late_to_early_relative_db": 0.2897915992721689
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 40,
+      "route": "stereo",
+      "native_rms_db": 0.6566502863259083,
+      "gain_matched_residual_rms": 0.6724313786302029,
+      "gain_matched_correlation": 0.7739180205167424,
+      "power_weighted_spectral_distance_db": 3.5979049639887775,
+      "centroid_ratio": 1.1325372889359764,
+      "band_relative_db": [
+        -2.9115763290533176,
+        -3.5128054158911577,
+        -1.4825907872448587,
+        -0.9797901261282269
+      ],
+      "late_to_early_relative_db": -9.00438966856272
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 40,
+      "route": "mono",
+      "native_rms_db": 0.35135578492847774,
+      "gain_matched_residual_rms": 0.7198386789207423,
+      "gain_matched_correlation": 0.7409161381648202,
+      "power_weighted_spectral_distance_db": 3.6581982291467248,
+      "centroid_ratio": 1.1776636538660095,
+      "band_relative_db": [
+        -3.1775026513899456,
+        -3.730395517335176,
+        1.2237742960698945,
+        -2.2625963004013676
+      ],
+      "late_to_early_relative_db": -9.86919936945458
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 40,
+      "route": "piezo",
+      "native_rms_db": -1.8637979894439205,
+      "gain_matched_residual_rms": 0.4186311824317258,
+      "gain_matched_correlation": 0.9123739665479075,
+      "power_weighted_spectral_distance_db": 2.62769729209197,
+      "centroid_ratio": 1.1081047569999665,
+      "band_relative_db": [
+        -1.6083962547686879,
+        1.7437148525252248,
+        1.9767527180821192,
+        2.8537971643462337
+      ],
+      "late_to_early_relative_db": -4.613345022895247
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 40,
+      "route": "rack_blend",
+      "native_rms_db": 0.68228497069259,
+      "gain_matched_residual_rms": 0.7097349590983122,
+      "gain_matched_correlation": 0.7481381439168586,
+      "power_weighted_spectral_distance_db": 3.626217923992641,
+      "centroid_ratio": 1.1197772627068348,
+      "band_relative_db": [
+        -2.9826322554803992,
+        -3.463413384002456,
+        -1.645988549076978,
+        -0.797495376829144
+      ],
+      "late_to_early_relative_db": -9.165706380149915
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 55,
+      "route": "stereo",
+      "native_rms_db": -5.123754903355916,
+      "gain_matched_residual_rms": 0.6711832930486643,
+      "gain_matched_correlation": 0.7747564935661756,
+      "power_weighted_spectral_distance_db": 3.093705169922754,
+      "centroid_ratio": 1.1873704447208513,
+      "band_relative_db": [
+        8.016417953968242,
+        -0.29308245942613365,
+        0.8039752193099163,
+        6.452947104280549
+      ],
+      "late_to_early_relative_db": 4.203625468711207
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 55,
+      "route": "mono",
+      "native_rms_db": -5.063818537262685,
+      "gain_matched_residual_rms": 0.9066229791029554,
+      "gain_matched_correlation": 0.5890173868812408,
+      "power_weighted_spectral_distance_db": 4.311321641581414,
+      "centroid_ratio": 1.061599566708263,
+      "band_relative_db": [
+        6.765663928557361,
+        0.16582183514326676,
+        -0.25142311261517847,
+        4.639114319190812
+      ],
+      "late_to_early_relative_db": 4.94187935942073
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 55,
+      "route": "piezo",
+      "native_rms_db": 0.6657024287002061,
+      "gain_matched_residual_rms": 0.6262798767960762,
+      "gain_matched_correlation": 0.803886757960146,
+      "power_weighted_spectral_distance_db": 2.2413940703605313,
+      "centroid_ratio": 0.9097755848678064,
+      "band_relative_db": [
+        -2.3794630883541656,
+        0.3420262996086739,
+        -0.42097257391458953,
+        -0.7130253551289703
+      ],
+      "late_to_early_relative_db": 3.595038371000932
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 55,
+      "route": "rack_blend",
+      "native_rms_db": -4.928568308797302,
+      "gain_matched_residual_rms": 0.8834908741691138,
+      "gain_matched_correlation": 0.6097219376299478,
+      "power_weighted_spectral_distance_db": 4.996743200906034,
+      "centroid_ratio": 1.347907797480173,
+      "band_relative_db": [
+        7.502320103394504,
+        -0.44159481093495945,
+        1.02149545699843,
+        7.628918083951685
+      ],
+      "late_to_early_relative_db": 3.8180429878558506
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 64,
+      "route": "stereo",
+      "native_rms_db": -1.3514842627422163,
+      "gain_matched_residual_rms": 0.6828705847617565,
+      "gain_matched_correlation": 0.7668438822335686,
+      "power_weighted_spectral_distance_db": 1.1991884588481205,
+      "centroid_ratio": 1.1162819179285004,
+      "band_relative_db": [
+        3.648969371931295,
+        -0.45129248459037186,
+        0.5605959076527172,
+        1.1404483893168689
+      ],
+      "late_to_early_relative_db": -0.013161502388955526
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 64,
+      "route": "mono",
+      "native_rms_db": -1.0267982487254315,
+      "gain_matched_residual_rms": 0.7417698193839034,
+      "gain_matched_correlation": 0.7248887675255858,
+      "power_weighted_spectral_distance_db": 2.0730130394520168,
+      "centroid_ratio": 1.1688376373637093,
+      "band_relative_db": [
+        2.624563865892613,
+        -1.598512742571008,
+        0.5861075918175409,
+        0.5825883290451266
+      ],
+      "late_to_early_relative_db": -0.8427954668418263
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 64,
+      "route": "piezo",
+      "native_rms_db": 0.5742221740732878,
+      "gain_matched_residual_rms": 0.12202695967323256,
+      "gain_matched_correlation": 0.9925547105564536,
+      "power_weighted_spectral_distance_db": 1.0861408095278262,
+      "centroid_ratio": 1.0229502544707485,
+      "band_relative_db": [
+        0.9701294994610863,
+        -0.18975063745237503,
+        1.2415752421583812,
+        0.028836169991547145
+      ],
+      "late_to_early_relative_db": 0.4230643411070325
+    },
+    {
+      "shape": "Dreadnought",
+      "wood": "Maple",
+      "note": 64,
+      "route": "rack_blend",
+      "native_rms_db": -1.4962171995705698,
+      "gain_matched_residual_rms": 0.6780410748231803,
+      "gain_matched_correlation": 0.7701301504263129,
+      "power_weighted_spectral_distance_db": 1.238376801850448,
+      "centroid_ratio": 1.1149594207182791,
+      "band_relative_db": [
+        3.685835081275938,
+        -0.7925333531926755,
+        0.5137458924747597,
+        1.3559351613692208
+      ],
+      "late_to_early_relative_db": 0.2232611699633722
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "stereo",
+      "native_rms_db": 1.0790709050808782,
+      "gain_matched_residual_rms": 0.5587885403722196,
+      "gain_matched_correlation": 0.8438776835743422,
+      "power_weighted_spectral_distance_db": 1.0953187518422272,
+      "centroid_ratio": 0.9812595169807755,
+      "band_relative_db": [
+        0.9302715042360832,
+        -0.6623576580473377,
+        -0.29396759339734435,
+        0.8974923894340423
+      ],
+      "late_to_early_relative_db": 0.5193903636762371
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "mono",
+      "native_rms_db": 0.693134866193885,
+      "gain_matched_residual_rms": 0.4800303576433927,
+      "gain_matched_correlation": 0.8847854278703783,
+      "power_weighted_spectral_distance_db": 1.312691577504934,
+      "centroid_ratio": 0.957266026950924,
+      "band_relative_db": [
+        1.0079142135070929,
+        -0.5759326361277373,
+        0.24587173720176514,
+        1.6542559172329596
+      ],
+      "late_to_early_relative_db": 0.6715737308209846
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "piezo",
+      "native_rms_db": 0.23066821125995562,
+      "gain_matched_residual_rms": 0.2302944593479897,
+      "gain_matched_correlation": 0.9734822309968085,
+      "power_weighted_spectral_distance_db": 1.5755632696154982,
+      "centroid_ratio": 0.9510424147101785,
+      "band_relative_db": [
+        0.8149814140056868,
+        -0.2525389731136741,
+        -0.13982446066774318,
+        0.6841756552615639
+      ],
+      "late_to_early_relative_db": 1.0369012446314017
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 40,
+      "route": "rack_blend",
+      "native_rms_db": 1.1195918625892356,
+      "gain_matched_residual_rms": 0.5599732970742778,
+      "gain_matched_correlation": 0.8432149532818812,
+      "power_weighted_spectral_distance_db": 1.0508405216392536,
+      "centroid_ratio": 0.9856869930208335,
+      "band_relative_db": [
+        0.8924544678022908,
+        -0.1166989136002603,
+        -0.3728684111854538,
+        1.017913573237535
+      ],
+      "late_to_early_relative_db": 0.32893976100316635
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "stereo",
+      "native_rms_db": -0.8999032013348783,
+      "gain_matched_residual_rms": 0.417357284825417,
+      "gain_matched_correlation": 0.9129064484015779,
+      "power_weighted_spectral_distance_db": 1.3084861130428416,
+      "centroid_ratio": 1.0156432028444273,
+      "band_relative_db": [
+        0.9937992112782941,
+        0.0300369382440423,
+        -2.779964301660256,
+        2.9196368621178594
+      ],
+      "late_to_early_relative_db": 0.7341189495501048
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "mono",
+      "native_rms_db": -1.9435959535138516,
+      "gain_matched_residual_rms": 0.4439914566687,
+      "gain_matched_correlation": 0.901435793202603,
+      "power_weighted_spectral_distance_db": 1.967276251865869,
+      "centroid_ratio": 0.9689568748513493,
+      "band_relative_db": [
+        1.8703740113298264,
+        0.06235818405309379,
+        -0.484690474272504,
+        4.420857995697478
+      ],
+      "late_to_early_relative_db": 1.405668883810982
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "piezo",
+      "native_rms_db": 0.050428632652061184,
+      "gain_matched_residual_rms": 0.34904372269133743,
+      "gain_matched_correlation": 0.9390842398248865,
+      "power_weighted_spectral_distance_db": 1.1566084999665858,
+      "centroid_ratio": 0.9644598406451657,
+      "band_relative_db": [
+        -0.7464721621925501,
+        0.07870199054878813,
+        -0.20347424087258262,
+        -0.1555584381982505
+      ],
+      "late_to_early_relative_db": 1.3696894576962446
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 55,
+      "route": "rack_blend",
+      "native_rms_db": -0.5763005591517565,
+      "gain_matched_residual_rms": 0.4618408380086466,
+      "gain_matched_correlation": 0.8933515201737355,
+      "power_weighted_spectral_distance_db": 1.6747503908549255,
+      "centroid_ratio": 1.0542448607430217,
+      "band_relative_db": [
+        0.7940710287468461,
+        -0.034552812737540406,
+        -2.0590308725251623,
+        0.6762363317195407
+      ],
+      "late_to_early_relative_db": 0.31359282258218535
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "stereo",
+      "native_rms_db": -4.175415683138247,
+      "gain_matched_residual_rms": 1.1576710593269415,
+      "gain_matched_correlation": 0.3298988591984187,
+      "power_weighted_spectral_distance_db": 3.9894973736179318,
+      "centroid_ratio": 1.4425354271928588,
+      "band_relative_db": [
+        5.144128688936126,
+        -2.1822427527340933,
+        8.455161383100263,
+        3.737469776828512
+      ],
+      "late_to_early_relative_db": -0.8317935904391032
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "mono",
+      "native_rms_db": -3.1758570247264157,
+      "gain_matched_residual_rms": 1.206462954890603,
+      "gain_matched_correlation": 0.27222356923831753,
+      "power_weighted_spectral_distance_db": 2.4816827791119773,
+      "centroid_ratio": 1.2308739502114763,
+      "band_relative_db": [
+        3.956848684134728,
+        -1.1446114106600978,
+        4.133390142944741,
+        2.4245591441921643
+      ],
+      "late_to_early_relative_db": -0.27609049375254635
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "piezo",
+      "native_rms_db": -0.28923930403645526,
+      "gain_matched_residual_rms": 0.36584962945618993,
+      "gain_matched_correlation": 0.9330770243133844,
+      "power_weighted_spectral_distance_db": 1.1758885921693536,
+      "centroid_ratio": 1.04264536604955,
+      "band_relative_db": [
+        0.17975477599176226,
+        -0.4668552030901697,
+        0.1732592204998863,
+        0.366763750312608
+      ],
+      "late_to_early_relative_db": -0.23557597386367313
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Mahogany",
+      "note": 64,
+      "route": "rack_blend",
+      "native_rms_db": -2.9357707282619074,
+      "gain_matched_residual_rms": 1.1272776471729609,
+      "gain_matched_correlation": 0.36462255309209646,
+      "power_weighted_spectral_distance_db": 3.610232659036336,
+      "centroid_ratio": 1.3237851619348824,
+      "band_relative_db": [
+        3.9225034171207493,
+        -1.770677749048768,
+        8.189501224238532,
+        2.879595915245462
+      ],
+      "late_to_early_relative_db": -0.6203226629696168
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 40,
+      "route": "stereo",
+      "native_rms_db": -1.7833676999462709,
+      "gain_matched_residual_rms": 0.8453290755046383,
+      "gain_matched_correlation": 0.6427093770532368,
+      "power_weighted_spectral_distance_db": 4.119625613681088,
+      "centroid_ratio": 1.1160143944266447,
+      "band_relative_db": [
+        3.0077350386166732,
+        0.038294952528138415,
+        0.6610529324794845,
+        2.377729373895341
+      ],
+      "late_to_early_relative_db": 9.224827332934613
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 40,
+      "route": "mono",
+      "native_rms_db": -2.9988824201364754,
+      "gain_matched_residual_rms": 0.8846706225854972,
+      "gain_matched_correlation": 0.6086789447670945,
+      "power_weighted_spectral_distance_db": 4.439256087500964,
+      "centroid_ratio": 1.1805211656674666,
+      "band_relative_db": [
+        2.884374688180236,
+        1.107734475458994,
+        2.5965668256444188,
+        2.4534528790663814
+      ],
+      "late_to_early_relative_db": 10.009094990555507
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 40,
+      "route": "piezo",
+      "native_rms_db": 3.568465007987002,
+      "gain_matched_residual_rms": 0.7341533458298805,
+      "gain_matched_correlation": 0.7305094324033959,
+      "power_weighted_spectral_distance_db": 5.616172858335852,
+      "centroid_ratio": 0.626920916150918,
+      "band_relative_db": [
+        4.763847013792019,
+        -3.7771542369326587,
+        -3.4169482245908456,
+        -2.3660991042501953
+      ],
+      "late_to_early_relative_db": 5.104241764894363
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 40,
+      "route": "rack_blend",
+      "native_rms_db": -2.4375919917051365,
+      "gain_matched_residual_rms": 0.8430059020668946,
+      "gain_matched_correlation": 0.6446705245401905,
+      "power_weighted_spectral_distance_db": 4.205009516970632,
+      "centroid_ratio": 1.1316253756263572,
+      "band_relative_db": [
+        3.022626680231916,
+        0.237546039526229,
+        1.4708664230437247,
+        2.5797211005739618
+      ],
+      "late_to_early_relative_db": 9.340423887193442
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 55,
+      "route": "stereo",
+      "native_rms_db": -0.8198340850277103,
+      "gain_matched_residual_rms": 0.4151532238611826,
+      "gain_matched_correlation": 0.9138239003588335,
+      "power_weighted_spectral_distance_db": 1.2937675597149645,
+      "centroid_ratio": 0.9545152811703638,
+      "band_relative_db": [
+        -1.592346731869204,
+        0.24345876740673622,
+        0.6751184164878129,
+        2.009051539357171
+      ],
+      "late_to_early_relative_db": 1.7401364175117937
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 55,
+      "route": "mono",
+      "native_rms_db": -0.5808656169648775,
+      "gain_matched_residual_rms": 0.3847028882641673,
+      "gain_matched_correlation": 0.9260018438806037,
+      "power_weighted_spectral_distance_db": 1.0615385518325593,
+      "centroid_ratio": 0.9582469855053974,
+      "band_relative_db": [
+        -1.7720739298255506,
+        0.19743781664573085,
+        -1.2072961000435893,
+        3.543299925707711
+      ],
+      "late_to_early_relative_db": 1.5951621536987073
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 55,
+      "route": "piezo",
+      "native_rms_db": 0.2529177634297307,
+      "gain_matched_residual_rms": 0.3629246819835715,
+      "gain_matched_correlation": 0.9341428376035619,
+      "power_weighted_spectral_distance_db": 1.2151535596606329,
+      "centroid_ratio": 1.006959278604699,
+      "band_relative_db": [
+        -0.7674915601590863,
+        0.22822951036651895,
+        -0.49454889428364485,
+        -0.20658082090476265
+      ],
+      "late_to_early_relative_db": 2.1028466531057024
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 55,
+      "route": "rack_blend",
+      "native_rms_db": -1.1130135738204123,
+      "gain_matched_residual_rms": 0.4451550982949405,
+      "gain_matched_correlation": 0.9009184692310108,
+      "power_weighted_spectral_distance_db": 1.4561821251579596,
+      "centroid_ratio": 0.9538978657992934,
+      "band_relative_db": [
+        -1.4121578544167706,
+        0.2647882557472889,
+        1.1804780200122127,
+        1.2964347265907192
+      ],
+      "late_to_early_relative_db": 1.855009818710288
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 64,
+      "route": "stereo",
+      "native_rms_db": -2.165626215588894,
+      "gain_matched_residual_rms": 0.4640400349671295,
+      "gain_matched_correlation": 0.8923334229738527,
+      "power_weighted_spectral_distance_db": 1.0067335440990082,
+      "centroid_ratio": 1.1298807686735273,
+      "band_relative_db": [
+        -1.2835124830820965,
+        -0.16731893158679112,
+        1.6481173792473707,
+        3.4611968780234923
+      ],
+      "late_to_early_relative_db": 1.629041833724143
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 64,
+      "route": "mono",
+      "native_rms_db": -2.6243018916118244,
+      "gain_matched_residual_rms": 0.4799735010416509,
+      "gain_matched_correlation": 0.8848127191489104,
+      "power_weighted_spectral_distance_db": 1.3560097104085052,
+      "centroid_ratio": 1.1995880081625936,
+      "band_relative_db": [
+        -0.8030903404203023,
+        -0.3829188360439728,
+        2.6594321608485227,
+        3.8744779592295844
+      ],
+      "late_to_early_relative_db": 1.4878345601410512
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 64,
+      "route": "piezo",
+      "native_rms_db": 0.47065604767098695,
+      "gain_matched_residual_rms": 0.13732486229390853,
+      "gain_matched_correlation": 0.9905709410979796,
+      "power_weighted_spectral_distance_db": 0.6118642642984295,
+      "centroid_ratio": 0.9522669309326064,
+      "band_relative_db": [
+        -1.6300242790502515,
+        0.6123383945006504,
+        -0.3712291164113539,
+        -0.08807489318631334
+      ],
+      "late_to_early_relative_db": 1.4587892656591475
+    },
+    {
+      "shape": "Jumbo",
+      "wood": "Maple",
+      "note": 64,
+      "route": "rack_blend",
+      "native_rms_db": -2.559632103527134,
+      "gain_matched_residual_rms": 0.4550845050509872,
+      "gain_matched_correlation": 0.8964490466312487,
+      "power_weighted_spectral_distance_db": 1.19423628277976,
+      "centroid_ratio": 1.1971694051911717,
+      "band_relative_db": [
+        -1.0535476235508705,
+        -0.27476627148985955,
+        2.8503847938526787,
+        4.97152745891154
+      ],
+      "late_to_early_relative_db": 1.5456276721743496
+    }
+  ],
+  "sha256": {
+    "Source/DSP/AcustraEngine.cpp": "1f27fd43ae16045ccf78b7967c7e89d4a2c360e310c6cbd8dd876e1e01f4cd7a",
+    "Source/DSP/AcustraEngine.h": "dcee9d4068281c53464a06c4701a54d3a44d9db0f22fb748e0a22454dfc3490b",
+    "Source/DSP/ConstructionLoudnessData.h": "f934d72dd33c4c15cf8938ceb281acdfed279e575b15e576732b238f86bf8510",
+    "build-dsp/libAcustraDSP.a": "e6c03dd5778ca37ede9a87c905dba7404854cd42300adbbb585e565ccabdcf25",
+    "build-material-gestures-20261011/wood-audit/final/WoodProbe": "bc6f034969cea42d0a4a8b57ed191d0d09e3cc43fc516776b69a7a0284de2b8f"
+  },
+  "source_state": "26b5cef plus frozen physical Wood and regenerated final construction loudness gains",
+  "build_command": "c++ -std=c++20 -O3 -DNDEBUG -arch arm64 -mmacosx-version-min=11.0 -fPIC -I Source build-material-gestures-20261011/wood-audit/WoodProbe.cpp build-dsp/libAcustraDSP.a -o build-material-gestures-20261011/wood-audit/final/WoodProbe"
+}

@@ -365,6 +365,11 @@ struct LowBodyPair
     // configureBody. Both carry the common 1/(rho c^2) already dropped.
     float a0Weight;
     float t1Weight;
+    // Driving-point mobility residues: the plate component squared after
+    // mass normalisation. Geometry and force-coordinate factors cancel in
+    // a material ratio taken on the same box.
+    float a0BridgeWeight;
+    float t1BridgeWeight;
 };
 
 float helmholtzFrequency(const BodyGeometry& body) noexcept
@@ -392,6 +397,7 @@ LowBodyPair coupledLowBodyPair(float plateFrequency, float cavitySpringFrequency
     LowBodyPair pair {};
     float* frequencies[] { &pair.a0Frequency, &pair.t1Frequency };
     float* weights[] { &pair.a0Weight, &pair.t1Weight };
+    float* bridgeWeights[] { &pair.a0BridgeWeight, &pair.t1BridgeWeight };
     for (int mode = 0; mode < 2; ++mode)
     {
         const double lambda = lambdas[mode];
@@ -408,6 +414,7 @@ LowBodyPair coupledLowBodyPair(float plateFrequency, float cavitySpringFrequency
         const double frequency = exact::sqrt(lambda) / twoPi;
         *frequencies[mode] = static_cast<float>(frequency);
         *weights[mode] = static_cast<float>(exact::abs(residue) * frequency);
+        *bridgeWeights[mode] = static_cast<float>(phiPlate * phiPlate);
     }
     return pair;
 }
@@ -419,6 +426,7 @@ LowBodyPair coupledLowBodyPair(float plateFrequency, float cavitySpringFrequency
 // exactly 1 for the anchor shape, which is what keeps it bit-identical.
 struct BodyShapeMorph
 {
+    int a0Index { -1 };
     int t1Index { -1 };
     // Where a bridge bank's T1 group ends when the same factors are applied
     // to it: half way (on a log scale) from the measured radiation T1 to the
@@ -433,6 +441,10 @@ struct BodyShapeMorph
     float t1Level { 1.0f };
     float plateFrequency { 1.0f };
     float plateLevel { 1.0f };
+    // Material-only changes of the coupled modes' bridge participation.
+    // Existing Shape scaling remains the measured-reference construction.
+    float a0BridgeLevel { 1.0f };
+    float t1BridgeLevel { 1.0f };
 };
 
 constexpr float lowBodyGroupUpperHz = 150.0f;
@@ -467,6 +479,7 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
                 morph.t1Index = index;
         }
     }
+    morph.a0Index = a0Index;
     if (morph.t1Index >= 0)
     {
         const auto t1 = static_cast<std::size_t>(morph.t1Index);
@@ -554,40 +567,134 @@ constexpr float radiationContinuationDbPerOctave = -6.0f;
 
 struct WoodSpec
 {
-    float frequencyScale;
-    float qScale;
-    float brightness;
-    float radiation;
+    WoodPhysicalProperties properties;
+    double effectiveBendingModulusPa;
 };
 
-// Effective plate directions, not species-identification claims.  Density,
-// stiffness and loss do not reduce to a single "tonewood" number; keeping
-// three bounded directions, as far apart as the set allows, is more honest
-// than attaching exact woods to unsupported impulse responses.  The
-// relationship f ~ sqrt(E/rho) and modal loss scaling are the only laws used
-// here.
+// Fixed-thickness, quarter-cut representative tops: Sitka spruce, true
+// Honduras mahogany (Swietenia), and sugar/hard maple. USDA Wood Handbook,
+// FPL-GTR-282 ch.5 Tables 5-1/2/3/5 gives the 12% elastic constants:
+// https://research.fs.usda.gov/download/treesearch/62244.pdf
+// Its bending E is increased by the handbook's approximate 10% axial
+// correction; ER/EL, GLR/EL and nuLR are the tabulated ratios. Domestic
+// specific gravity uses oven-dry mass, so 12% density is SG12 * 1120:
+// .40 -> 448 and .63 -> 705.6 kg/m3. Mahogany's 530 kg/m3 at 12% is the
+// Queensland government American-mahogany (Swietenia spp.) representative:
+// https://www.business.qld.gov.au/industries/farms-fishing-forestry/forests-wood/properties-timbers/american-mahogany
+// It is not the green-volume SG .45 mislabelled as 12% density.
+//
+// Divide the orthotropic bending tensor by its common h^3/12:
+// DL=EL/(1-nuLR^2 ER/EL), DR=ER/(...), D12=nuLR*DR, D66=GLR.
+// D(theta)=DL*cos^4(theta)+2*(D12+2*D66)*sin^2(theta)*cos^2(theta)
+//          +DR*sin^4(theta).
+// Deff = mean_theta(1/sqrt(D(theta)))^-2 preserves modal density, rather
+// than inventing a grain direction for each measured mode. The constants
+// below are a 128-midpoint quadrature over [0,pi/2] (8192 points agree to
+// 1e-13 relative); no quadrature or static initialisation runs in audio.
+// Orthotropic plate equations: https://pmc.ncbi.nlm.nih.gov/articles/PMC5554064/
+// This is a statistical equivalent plate, also the explicit closure for
+// the existing low-frequency piston. Unknown bracing/bridge mass fractions
+// and individual mode shapes cannot be inferred from species averages.
 constexpr std::array<WoodSpec, 3> woodSpecs {{
-    { 1.000f, 1.00f, 1.00f, 1.00f }, // spruce reference
-    { 0.991f, 0.82f, 0.87f, 1.02f }, // mahogany: lossier/warmer direction
-    { 1.025f, 1.08f, 1.08f, 0.96f }  // maple: stiffer/brighter direction
+    { { 448.0f, 11.88e9f, 11.88e9f * 0.078f, 11.88e9f * 0.064f, 0.372f },
+      2965459386.842000 },
+    { { 530.0f, 11.33e9f, 11.33e9f * 0.107f, 11.33e9f * 0.066f, 0.314f },
+      3254308675.304109 },
+    { { 705.6f, 13.86e9f, 13.86e9f * 0.132f, 13.86e9f * 0.111f, 0.424f },
+      4828334941.243270 }
 }};
 
-// What Wood does to a mode's frequency, Q, brightness and radiation,
-// relative to the spruce the measured bank was built of (g21,
-// MeasuredBridgeData.h, is spruce/cypress), so Spruce plays the bank as
-// measured: its factors are exactly 1.
+// Effective top substitution relative to the existing Spruce construction.
+// The measured proxy body and Fylde-based steel mobility calibration do not
+// identify the effective species properties of the assembled instrument;
+// Sitka is the documented material reference, not an identification of all
+// measured components. Spruce's factors are exactly 1. Q and brightness
+// remain identity for every material: only stiffness, mass and their
+// physical pressure/mobility consequences change.
 struct WoodFactors
 {
-    float frequency;
-    float q;
-    float brightness;
-    float radiation;
+    float frequency { 1.0f };
+    float q { 1.0f };
+    float brightness { 1.0f };
+    float radiation { 1.0f };
+    float mass { 1.0f };
+    float inverseMass { 1.0f };
+    float conductance { 1.0f };
 };
 
 WoodFactors woodFactorsFor(BodyMaterial material) noexcept
 {
-    const auto wood = woodSpecs[static_cast<std::size_t>(material)];
-    return { wood.frequencyScale, wood.qScale, wood.brightness, wood.radiation };
+    if (material == BodyMaterial::Spruce)
+        return {};
+    const auto& wood = woodSpecs[static_cast<std::size_t>(material)];
+    const auto& reference = woodSpecs[0];
+    WoodFactors factors;
+    factors.mass = wood.properties.densityKgPerCubicMetre
+        / reference.properties.densityKgPerCubicMetre;
+    const float stiffness = static_cast<float>(wood.effectiveBendingModulusPa
+        / reference.effectiveBendingModulusPa);
+    factors.inverseMass = 1.0f / factors.mass;
+    factors.frequency = exact::sqrt(stiffness / factors.mass);
+    // Pressure is proportional to modal acceleration. Its pole residue
+    // therefore scales as frequency / mass, its resonant peak as 1/mass.
+    factors.radiation = factors.frequency * factors.inverseMass;
+    // Dense plate driving-point mobility: 1 / sqrt(D * rho * h). All
+    // geometry/thickness factors cancel against the reference top.
+    factors.conductance = 1.0f / exact::sqrt(stiffness * factors.mass);
+    // Species-average elastic data contains no modal damping measurement:
+    // preserve the measured body's Q, with no authored brightness EQ.
+    return factors;
+}
+
+BodyShapeMorph bodyConstructionMorph(ConstSpan<detail::MeasuredBodyMode> bank,
+                                     const AnchorTransform& anchor,
+                                     const BodyGeometry& referenceBody,
+                                     const BodyGeometry& body,
+                                     BodyMaterial material) noexcept
+{
+    auto morph = bodyShapeMorph(bank, anchor, referenceBody, body);
+    // Preserve every existing Spruce construction, including its exact
+    // floating-point arithmetic and calibrated Shape response.
+    if (material == BodyMaterial::Spruce || morph.a0Index < 0 || morph.t1Index < 0)
+        return morph;
+    const auto wood = woodFactorsFor(material);
+    const auto anchored = [&] (int index)
+    {
+        const auto& mode = bank[static_cast<std::size_t>(index)];
+        const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
+        return mode.frequency * anchorModeFactor(anchor, mode.frequency,
+                                                 index == morph.t1Index)
+            * (1.0f + alternating * anchor.asymmetry
+               / exact::sqrt(static_cast<float>(index + 1)));
+    };
+    const float a0 = anchored(morph.a0Index);
+    const float t1 = anchored(morph.t1Index);
+    const float referenceHelmholtz = helmholtzFrequency(referenceBody);
+    const float plate = a0 * t1 / referenceHelmholtz;
+    const float springSquared = a0 * a0 + t1 * t1 - plate * plate
+        - referenceHelmholtz * referenceHelmholtz;
+    if (!(springSquared > 0.0f))
+        return morph;
+    const float areaRatio = body.topArea() / referenceBody.topArea();
+    const float shapedPlate = plate / areaRatio;
+    const float shapedSpring = exact::sqrt(springSquared)
+        * exact::sqrt((body.topArea() / body.volume())
+                    / (referenceBody.topArea() / referenceBody.volume()));
+    const float helmholtz = helmholtzFrequency(body);
+    const float depth = body.volume() / body.topArea();
+    const auto reference = coupledLowBodyPair(shapedPlate, shapedSpring,
+                                               helmholtz, depth);
+    // The cavity and soundhole do not change when only top material does.
+    // k_p/m_p changes by stiffness/mass; mu*A_p^2/m_p by inverse mass.
+    const auto target = coupledLowBodyPair(shapedPlate * wood.frequency,
+        shapedSpring / exact::sqrt(wood.mass), helmholtz, depth);
+    morph.a0Frequency *= target.a0Frequency / reference.a0Frequency;
+    morph.t1Frequency *= target.t1Frequency / reference.t1Frequency;
+    morph.a0Level *= target.a0Weight / reference.a0Weight;
+    morph.t1Level *= target.t1Weight / reference.t1Weight;
+    morph.a0BridgeLevel = target.a0BridgeWeight / reference.a0BridgeWeight;
+    morph.t1BridgeLevel = target.t1BridgeWeight / reference.t1BridgeWeight;
+    return morph;
 }
 
 struct ModalPole
@@ -616,8 +723,10 @@ ModalPole radiationPole(const detail::MeasuredBodyMode& measured, int index,
     const float shapeFrequency = measured.frequency < lowBodyGroupUpperHz
         ? morph.a0Frequency
         : index <= morph.t1Index ? morph.t1Frequency : morph.plateFrequency;
+    const float materialFrequency = measured.frequency < lowBodyGroupUpperHz
+        || index <= morph.t1Index ? 1.0f : wood.frequency;
     const float frequency = measured.frequency * lowModeMorph * shapeFrequency
-        * wood.frequency * calibration.bodyFrequencyScale
+        * materialFrequency * calibration.bodyFrequencyScale
         * (1.0f + alternating * anchor.asymmetry
            / exact::sqrt(static_cast<float>(index + 1)));
     // AcustraEngine::clamp: a non-finite Q takes the lower bound.
@@ -876,7 +985,9 @@ ModalPole steelOwnBridgePole(std::size_t index,
     const float lowModeMorph = anchorModeFactor(anchor, source.frequency,
         source.frequency >= lowBodyGroupUpperHz
             && source.frequency <= morph.t1UpperHz);
-    return { shaped.frequency * lowModeMorph * wood.frequency
+    const float materialFrequency = source.frequency <= morph.t1UpperHz
+        ? 1.0f : wood.frequency;
+    return { shaped.frequency * lowModeMorph * materialFrequency
                  * calibration.bodyFrequencyScale,
              source.q * detail::steelBridgeUnpairedQRatio[index] * wood.q
                  * calibration.bodyQScale };
@@ -1052,10 +1163,22 @@ static_assert(detail::measuredSteelT1PlateQWeight == detail::steelBlendT1PlateQW
 
 // The joint-pole body's own Shape morph: its A0 and T1 are its own modes.
 BodyShapeMorph steelJointMorph(const AnchorTransform& anchor,
-                               BodyShape shape) noexcept
+                               BodyShape shape,
+                               BodyMaterial material = BodyMaterial::Spruce) noexcept
 {
-    return bodyShapeMorph(steelJointRadiationModes, anchor, anchorBody(),
-                          targetBodyFor(shape));
+    return bodyConstructionMorph(steelJointRadiationModes, anchor, anchorBody(),
+                                  targetBodyFor(shape), material);
+}
+
+// A material changes modal mass without changing the physical bridge lever
+// arms. Multiplying the complete residue matrix by one positive scalar
+// preserves its positive semidefinite form and both string polarisations.
+void scaleMaterialBridgeResidues(detail::MeasuredBridgeMode& mode,
+                                 float participation) noexcept
+{
+    mode.heave *= participation;
+    mode.cross *= participation;
+    mode.rock *= participation;
 }
 
 // Steel's own bridge in the blend, mode by mode: visit(source, placed, level,
@@ -1081,6 +1204,16 @@ void visitSteelBlendBridge(float a0, float t1, float plate, float t1UpperHz,
                                              morph, wood, calibration);
         placed.frequency = pole.frequency;
         placed.q = pole.q;
+        // A paired mode follows its radiation twin's class even if the
+        // separately fitted bridge pole sits across a group boundary.
+        const int twin = detail::steelBridgeRadiationTwins[index];
+        const float sourceFrequency = twin >= 0
+            ? detail::measuredSteelBodyModes[static_cast<std::size_t>(twin)].frequency
+            : own[index].frequency;
+        const bool t1Group = twin >= 0 ? twin <= morph.t1Index
+            : sourceFrequency <= t1UpperHz;
+        scaleMaterialBridgeResidues(placed, sourceFrequency < lowBodyGroupUpperHz
+            ? morph.a0BridgeLevel : t1Group ? morph.t1BridgeLevel : wood.inverseMass);
         visit(own[index], placed, steelBlendOwnShare(own[index].frequency), true);
     }
     if (steelBlendJointShare > 0.0f)
@@ -1101,6 +1234,11 @@ void visitSteelBlendBridge(float a0, float t1, float plate, float t1UpperHz,
                     >= lowBodyGroupUpperHz
                 && source > jointMorph.t1Index)
                 scalePlateBridgeResidues(placed, jointMorph.plateFrequency);
+            scaleMaterialBridgeResidues(placed,
+                steelJointRadiationModes[static_cast<std::size_t>(source)].frequency
+                    < lowBodyGroupUpperHz ? jointMorph.a0BridgeLevel
+                    : source <= jointMorph.t1Index ? jointMorph.t1BridgeLevel
+                                                   : wood.inverseMass);
             visit(steelJointBridgeModes[index], placed, level, false);
         }
     }
@@ -1151,14 +1289,15 @@ struct PlateConductanceMode
 };
 
 PlateConductanceMode plateConductanceMode(
-    const PhysicalCalibration& calibration) noexcept
+    const PhysicalCalibration& calibration,
+    float materialConductance = 1.0f) noexcept
 {
     const float low = std::clamp(calibration.bridgeConductanceCornerHz,
                                  100.0f, 8000.0f);
     return { exact::sqrt(low * plateConductanceUpperHz),
              exact::sqrt(low / plateConductanceUpperHz),
              calibration.bridgeConductanceFloor * twoPi
-                 * plateConductanceUpperHz };
+                 * plateConductanceUpperHz * materialConductance };
 }
 
 int wrapDelayIndex(int index) noexcept
@@ -4197,11 +4336,16 @@ std::array<float, 2> AcustraEngine::radiationModePole(
     if (index < 0 || static_cast<std::size_t>(index) >= bank.size())
         return { 0.0f, 0.0f };
     const AnchorTransform& anchor = wideSteelAnchorTransform;
-    const auto morph = bodyShapeMorph(bank, anchor, anchorBody(),
-                                      targetBodyFor(parameters.shape));
+    const auto morph = bodyConstructionMorph(bank, anchor, anchorBody(),
+        targetBodyFor(parameters.shape), parameters.bodyMaterial);
     const auto pole = radiationPole(bank, index, anchor, morph,
         woodFactorsFor(parameters.bodyMaterial), calibration);
     return { pole.frequency, pole.q };
+}
+
+WoodPhysicalProperties AcustraEngine::bodyWoodProperties(BodyMaterial material) noexcept
+{
+    return woodSpecs[static_cast<std::size_t>(material)].properties;
 }
 
 std::array<float, 4> AcustraEngine::bodyWoodFactors(
@@ -4297,8 +4441,8 @@ void AcustraEngine::configureBody() noexcept
 
     const AnchorTransform& anchor = wideSteelAnchorTransform;
     const auto& bank = detail::measuredSteelBodyModes;
-    const auto shapeMorph = bodyShapeMorph(bank, anchor, anchorBody(),
-                                           targetBodyFor(parameters_.shape));
+    const auto shapeMorph = bodyConstructionMorph(bank, anchor, anchorBody(),
+        targetBodyFor(parameters_.shape), parameters_.bodyMaterial);
     const auto woodFactors = woodFactorsFor(parameters_.bodyMaterial);
     // Every bank that ships keeps its measured phase with no observation
     // delay, so renderBody plays the banks as they are.
@@ -4341,12 +4485,17 @@ void AcustraEngine::configureBody() noexcept
         const float bassTilt = 1.0f + (anchor.bass - 1.0f)
             * std::exp(-frequency / 520.0f);
         const float brilliance = std::pow(woodFactors.brightness, upper);
+        // Coupled low-mode pressure residues already include the material's
+        // eigenvector and frequency changes. Only higher plate modes use
+        // the statistically averaged frequency/mass residue law.
+        const float materialRadiation = measured.frequency < lowBodyGroupUpperHz
+            || index <= morph.t1Index ? 1.0f : woodFactors.radiation;
         const float residueTilt = std::exp2(
             physicalCalibration_.residueTiltDbPerOctave
             * std::log2(frequency / 1000.0f) / 6.02059991f);
         const float drive = audibleAtThisRate
             ? anchor.volume * shapeLevel
-                * woodFactors.radiation
+                * materialRadiation
                 * bassTilt * brilliance
                 * residueTilt
             : 0.0f;
@@ -4420,7 +4569,8 @@ void AcustraEngine::configureBody() noexcept
               steelBlendG21Share(bank[static_cast<std::size_t>(index)].frequency));
     if (steelBlendJointShare > 0.0f)
     {
-        const auto jointMorph = steelJointMorph(anchor, parameters_.shape);
+        const auto jointMorph = steelJointMorph(anchor, parameters_.shape,
+                                                parameters_.bodyMaterial);
         for (const auto index : steelJointKept)
             place(steelJointRadiationModes[index], static_cast<int>(index),
                   jointMorph, steelBlendJointShare);
@@ -4678,8 +4828,8 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     // The bridge belongs to the same body as the radiation, so Shape moves
     // its modes by the coupled model's factors (see shapeBridgeMode).
     const AnchorTransform& anchor = wideSteelAnchorTransform;
-    const auto morph = bodyShapeMorph(detail::measuredSteelBodyModes, anchor,
-                                      anchorBody(), targetBodyFor(parameters_.shape));
+    const auto morph = bodyConstructionMorph(detail::measuredSteelBodyModes, anchor,
+        anchorBody(), targetBodyFor(parameters_.shape), parameters_.bodyMaterial);
     bridgeShapeA0_ = morph.a0Frequency;
     bridgeShapeT1_ = morph.t1Frequency;
     bridgeShapePlate_ = morph.plateFrequency;
@@ -4699,7 +4849,7 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     std::size_t slot = 0;
     visitSteelBlendBridge(bridgeShapeA0_, bridgeShapeT1_, bridgeShapePlate_,
         bridgeShapeT1UpperHz_, anchor, morph,
-        steelJointMorph(anchor, parameters_.shape), wood,
+        steelJointMorph(anchor, parameters_.shape, parameters_.bodyMaterial), wood,
         physicalCalibration_,
         [&] (const detail::MeasuredBridgeMode&,
              const detail::MeasuredBridgeMode& measured, float level, bool)
@@ -4716,7 +4866,7 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     // The plate conductance floor, the dense overlap of the plate's own
     // driving-point response (plateConductanceMode), at the steel-string
     // level of the modes it continues and with its rocking residue.
-    const auto plate = plateConductanceMode(physicalCalibration_);
+    const auto plate = plateConductanceMode(physicalCalibration_, wood.conductance);
     const float plateResidue = plate.weight * scale;
     configure(static_cast<std::size_t>(bridgeModeCount), plate.frequency,
               plate.q, plateResidue, 0.0f, plateResidue);
@@ -4814,24 +4964,27 @@ AcustraEngine::bridgeMobilityTable() const noexcept
     const float rate = static_cast<float>(sampleRate_);
     const float scale = physicalCalibration_.bridgeMobilityScale
         * detail::steelTopMobilityRatio;
-    const auto plate = plateConductanceMode(physicalCalibration_);
     const auto wood = woodFactorsFor(configuredBridgeMaterial_);
-    const std::array<std::uint32_t, 12> key {
+    const auto plate = plateConductanceMode(physicalCalibration_, wood.conductance);
+    const std::array<std::uint32_t, 13> key {
         exact::bits(rate), exact::bits(bridgeShapeA0_), exact::bits(bridgeShapeT1_),
         exact::bits(bridgeShapePlate_), exact::bits(bridgeShapeT1UpperHz_),
         exact::bits(scale), exact::bits(plate.frequency), exact::bits(plate.q),
         exact::bits(plate.weight),
         exact::bits(wood.frequency), exact::bits(wood.q),
         // The joint-pole body's own Shape morph (visitSteelBlendBridge).
-        static_cast<std::uint32_t>(configuredBridgeShape_) };
+        static_cast<std::uint32_t>(configuredBridgeShape_),
+        // Species now also controls modal participation and mass, which
+        // cannot be recovered from a common pole-frequency factor alone.
+        static_cast<std::uint32_t>(configuredBridgeMaterial_) };
     auto& table = bridgeMobilityTable_;
     if (table.valid && table.key == key)
         return table;
     // The terms as bridgePortMobility computed them in its mode loop.
     const float bilinear = 2.0f * rate;
     const AnchorTransform& anchor = wideSteelAnchorTransform;
-    const auto morph = bodyShapeMorph(detail::measuredSteelBodyModes, anchor,
-        anchorBody(), targetBodyFor(configuredBridgeShape_));
+    const auto morph = bodyConstructionMorph(detail::measuredSteelBodyModes, anchor,
+        anchorBody(), targetBodyFor(configuredBridgeShape_), configuredBridgeMaterial_);
     table.count = 0;
     // One mode's terms; `level` multiplies its residues relative to scale.
     const auto add = [&] (const detail::MeasuredBridgeMode& measured, float level)
@@ -4849,7 +5002,7 @@ AcustraEngine::bridgeMobilityTable() const noexcept
     table.ordered = 0;
     visitSteelBlendBridge(bridgeShapeA0_, bridgeShapeT1_, bridgeShapePlate_,
         bridgeShapeT1UpperHz_, anchor, morph,
-        steelJointMorph(anchor, configuredBridgeShape_), wood,
+        steelJointMorph(anchor, configuredBridgeShape_, configuredBridgeMaterial_), wood,
         physicalCalibration_,
         [&] (const detail::MeasuredBridgeMode&,
              const detail::MeasuredBridgeMode& measured, float level, bool own)
@@ -10482,7 +10635,10 @@ float AcustraEngine::renderPiezo(float force) noexcept
     // shift a hard overload leaves, recovering over the input network's
     // 1 Hz modes. For a sine none of this runs below 1.9 dB over U1B's
     // positive swing or 0.35 dB over its negative one (U1B's gain of 1.62);
-    // no playing reaches it (the player's hardest Pick strums keep 1.2 dB).
+    // The reference strums originally stayed below it. At extreme bridge
+    // position, maximum velocity and softer Touch, coherent string forces
+    // can briefly reach it; retain the modeled circuit's physical overload.
+    // CaptureTests distinguishes this from isolated U1B aliasing.
     const double excess = (bufferInput > 0.0 ? bufferInput : -bufferInput) - D::commonModeLimit;
     if (excess > 0.0)
     {

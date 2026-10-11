@@ -1429,7 +1429,7 @@ resonances meet it (Known gaps).
 | Control | Audible behavior |
 | --- | --- |
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
-| **Body Material** | Spruce, Mahogany or Maple bounded modal frequency, damping, brightness and radiation direction; not wood-species identification. The body is moved relative to the wood it was built of: g21 is heard as measured at Spruce. A session saved with Cedar loads as Mahogany. |
+| **Body Material** | Spruce, Mahogany or Maple effective plate material: representative density and directional stiffness change coupled air/top resonances, radiation and reciprocal bridge loading at fixed geometry and thickness. Spruce retains the reference construction. Measured damping is retained; no species brightness EQ is imposed. This is a material substitution model, not identification of an exact guitar or board. See [wood model and research](Docs/wood-materials-2026-10-11.md). A session saved with Cedar loads as Mahogany. |
 | **Tuning** | Standard, Drop D, DADGAD, Open G or Half-step down: the six open strings and the notes each can reach. A retuned string keeps its gauge (its linear mass), so its tension, impedance and stiffness follow its new pitch, as on a real guitar. |
 | **Picking** | Finger retains the calibrated contact and applies its finite release slip in full, including at maximum velocity, with normalized displacement. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity, retaining its slip ratio to the full-velocity release. Finger and Thumb have a soft double-corner contact burst with no white hiss. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
@@ -1509,11 +1509,16 @@ simulates the same circuit as a stiff ODE system (op-amp macro-models, stray
 capacitance, Shockley diodes) and `Tests/PiezoCircuitTests.cpp` holds the
 engine to its results.
 
-Normal playing never clips it: a Pick strum at velocity 127 leaves 4.9 dB
-to U1B's swing, and the player's own velocity-127 Pick strums 1.0 dB (U1A's
-input range 1.2 dB). (The hottest reference strum measured before 2026-09-29,
-2.12 V on the element with 1.4 dB left, and the one playing that clipped
-it, picked at the saddle, were both on the since-removed nylon strings.)
+The reference headroom measurements are not a guarantee for every gesture.
+Maximum-velocity Pick strums at the bridge with softer Touch can briefly
+reach the modeled 9 V preamp's limits as their string forces sum. The
+circuit retains its physical overload and recovery; construction level
+matching happens after it and cannot remove internal saturation.
+`CaptureTests` separately checks playing extremes, isolated output-stage
+aliasing with an unclipped input stage, and combined-stage stress.
+`PiezoCircuitTests` compares overload, recovery and harmonic behavior with
+the independent continuous-circuit reference. See the
+[candidate validation](Docs/material-gestures-realism-2026-10-11.md).
 
 Its level is matched to the stereo microphones (the median BS.1770 loudness
 difference over the factory constructions, Finger and Pick and typical

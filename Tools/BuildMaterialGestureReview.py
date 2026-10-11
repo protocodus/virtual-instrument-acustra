@@ -27,11 +27,14 @@ def main():
     output.mkdir(parents=True, exist_ok=False)
     renderer = Path(__file__).with_name("RenderMaterialGestureReview.cpp")
     shutil.copy2(renderer, output / renderer.name)
+    shutil.copy2(Path(__file__), output / Path(__file__).name)
     flags = ["-std=c++20", "-O3", "-DNDEBUG", "-fPIC"]
     manifest = {"protocol": "material-gestures-20261011", "sample_rate": 48000,
-                "duration_seconds": 8, "flags": flags,
+                "duration_seconds": 8, "block_frames": 64, "flags": flags,
                 "compiler": subprocess.check_output(["clang++", "--version"], text=True),
-                "renderer_sha256": sha(renderer), "sources": {}, "pairs": []}
+                "renderer_sha256": sha(output / renderer.name),
+                "builder_sha256": sha(output / Path(__file__).name),
+                "sources": {}, "executable_sha256": {}, "pairs": []}
     for label, source in (("before", baseline), ("after", candidate)):
         frozen = output / f"{label}-source"
         shutil.copytree(source / "Source/DSP", frozen / "Source/DSP",
@@ -44,6 +47,7 @@ def main():
                    str(frozen / "Source/DSP/AcustraPerformer.cpp"),
                    "-o", str(output / f"{label}-renderer")]
         subprocess.run(command, check=True)
+        manifest["executable_sha256"][label] = sha(output / f"{label}-renderer")
         subprocess.run([str(output / f"{label}-renderer"), str(output / f"{label}-raw")], check=True)
 
     titles = ["Open and fretted: the same pitch", "Plain steel up the neck",
@@ -61,7 +65,11 @@ def main():
         "The A string alternates an open-note slide up seven semitones and a seventh-fret note slid back to the nut. The current physical stopping point must determine the ending, rather than the original MIDI fret.",
         "The same physical slide comparison with Mod Wheel vibrato held at 110/127. Fretting-hand vibrato engages on the stopped string and withdraws as its stopping point reaches the nut."]
     rows = []
-    for index, before_path in enumerate(sorted((output / "before-raw").glob("*.wav"))):
+    before_paths = sorted((output / "before-raw").glob("*.wav"))
+    after_paths = sorted((output / "after-raw").glob("*.wav"))
+    if len(before_paths) != len(titles) or [p.name for p in before_paths] != [p.name for p in after_paths]:
+        raise ValueError("expected the same nine listening scores in both renders")
+    for index, before_path in enumerate(before_paths):
         after_path = output / "after-raw" / before_path.name
         arrays = [np.frombuffer(p.read_bytes()[44:], dtype="<f4").astype(np.float64)
                   for p in (before_path, after_path)]
