@@ -1,0 +1,34 @@
+{
+  "base_git": "88b8a0f9b330c636105f7899c5f2c359f5a1c8b6",
+  "utc": "2026-10-11T09:40:23.600207+00:00",
+  "build_command": "c++ -std=c++17 -O2 -Wall -Wextra -Wshadow -Werror -I Source Tests/FretMotionTests.cpp Source/DSP/AcustraEngine.cpp Source/DSP/AcustraPerformer.cpp -o build-motion-noise-20261011/FretMotionTests",
+  "build_exit": 0,
+  "test_command": "build-motion-noise-20261011/FretMotionTests",
+  "test_exit": 0,
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.5.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "sha256": {
+    "Source/DSP/AcustraEngine.cpp": "63ae30f9496589edd8e6868fcdaf11d38d443df2420a8a52ce108818b64e0541",
+    "Source/DSP/AcustraEngine.h": "a3812b795d4d179b01a4f978da10cd69e18ac0992409cc5ef56bd051c2c5ed35",
+    "Source/DSP/AcustraPerformer.cpp": "a2381d2f2bebe6f58707d9d619cdba0f3282cab7a89edbb0fb80d233f5f9d927",
+    "Source/DSP/AcustraPerformer.h": "a231cd41f062c26dce327fc299d979265163327d4f042cc62e9f7b08465c5260",
+    "Source/DSP/CaptureVoicingData.h": "70efbc0194f161237b00e9318f3ecb632e8aeb77899924ded16729a9f6fc036d",
+    "Source/DSP/ConstructionLoudnessData.h": "f934d72dd33c4c15cf8938ceb281acdfed279e575b15e576732b238f86bf8510",
+    "Source/DSP/FittedPhysicalData.h": "ab49687de639fa337dab0f0b812658776c84977c3df1bcf33e063704298cf415",
+    "Source/DSP/GaussianApertureData.h": "5383edf9778c013587ab9578f262e40ac61ec5d8660a7fbd4348f072a24a834a",
+    "Source/DSP/MeasuredBodyData.h": "1c54a31e2546db4095d373591a45a188fc21bac3820f9b0a3f72c66c96fd9be0",
+    "Source/DSP/MeasuredBridgeData.h": "1a6e129e9693b6193d8bd19efccb091dc504d767733582a72263a43565cab085",
+    "Source/DSP/MeasuredJointBodyData.h": "155fd5b0e20a8045ab8db2e97ca7b19a6a689385c953a47a02fa6ee34c251123",
+    "Source/DSP/MicrophoneBalanceData.h": "341bdf927a79d28d8bff75606a7e49efb038e6b4b1117236eee5214630d2867d",
+    "Source/DSP/PerformanceRealism.h": "043a33f1f5ab78accfcf6cda75ca76e84b6514d0308f7258c086a92132368397",
+    "Source/DSP/PiezoBlampTable.h": "5d4c18901af73d3a8b11e68784af16830f11fa0923647d2da71137e824b91399",
+    "Source/DSP/SteelBodyBlend.h": "8f3320861ab768c53aae30802ff680fd52e75f1487ebaf74dad563f3f09384d2",
+    "Tests/FretMotionTests.cpp": "c3e74a130d1b81bd628627716a87ce3b79452021ea5a2b26711b7af66eac52fb",
+    "CMakeLists.txt": "3da46d3af026bf8e03efd73cec4d1c3e5ef56c6a1836c9a34edc55a28ceb3cb0",
+    "build-motion-noise-20261011/FretMotionTests": "e9f8380e27ade0ea7a4b3a192daa5b691b8e316f4df6c6a43666bf6e107011e0"
+  },
+  "logs": [
+    "fret-motion-build.log",
+    "fret-motion-test.log"
+  ],
+  "parameters": "releaseNoise=.7 normal Rack value; zero exact source bypass; final authored force reference .00004"
+}

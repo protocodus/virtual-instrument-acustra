@@ -127,11 +127,12 @@ struct EngineParameters
     // microphones. With Capture on Piezo the piezo is already all of Main,
     // so it adds nothing there.
     float piezoMix { 0.0f };
-    // The key-up's own sound, 0 none to 1 twice the nominal level: the
+    // Finger handling sound, 0 none to 1 twice the nominal level: the
     // damping finger or palm landing on the still-vibrating string, launched
     // into it from where it touches, and a faint brush of skin on a wound
     // string's winding (startReleaseNoise in AcustraEngine.cpp). 0.5 is the
-    // nominal level. Read once at each key-up; zero is an exact no-op.
+    // nominal level. Sampled at key-up and live for subtle stopped-wound
+    // sliding contact. Zero bypasses new noise; emitted waves continue.
     float releaseNoise { 0.0f };
     // The room around the microphones, 0 none to 1 a microphone well out in
     // it: a small studio's early reflections and its 0.45 s reverberation
@@ -1079,6 +1080,23 @@ private:
 
     struct Voice
     {
+        // Continuous longitudinal pad motion, independent of pitch/tension
+        // vibrato. Its tiny friction source uses the existing arrival queue;
+        // emitted packets retain their own flight times through re-plucks.
+        struct FretMotion
+        {
+            double length { 0.648 };
+            float speed { 0.0f };
+            float emittedForce { 0.0f };
+            float sourceWave { 0.0f };
+            float forceGain { 0.0f };
+            float lowCoefficient { 0.0f }, highCoefficient { 0.0f };
+            float low { 0.0f }, high { 0.0f };
+            float leak { 0.0f };
+            int remaining { 0 };
+        };
+        FretMotion fretMotion {};
+        std::uint32_t fretMotionNoiseState { 1 };
         std::array<StringLoop, 2> loops {};
         VoiceConfigurationKey configurationKey {};
         // Key and payload follow whole-voice copies. Waveform resets may retain
@@ -1683,6 +1701,8 @@ private:
     // damping contact.
     void startReleaseNoise(Voice& voice, int stringIndex,
                            bool fretSide) noexcept;
+    static void primeFretMotion(Voice& voice) noexcept;
+    void renderFretMotion(Voice& voice, int stringIndex) noexcept;
     float renderReleaseNoise(Voice& voice) noexcept;
     void addReleaseNoise(Voice& voice, float& verticalIncident,
                          float& horizontalIncident) noexcept;

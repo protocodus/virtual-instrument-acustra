@@ -2770,6 +2770,8 @@ void AcustraEngine::restartRandomDraws() noexcept
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 7));
         voice.legatoFrictionState = 0xd1b54a35u
             ^ (0x9e3779b9u * static_cast<std::uint32_t>(string + 1));
+        voice.fretMotionNoiseState = 0x94d049bbu
+            ^ (0x369dea0fu * static_cast<std::uint32_t>(string + 1));
     }
 }
 
@@ -5250,6 +5252,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
 {
     const auto& physical = physicalCalibration_.steel;
     const auto index = static_cast<std::size_t>(stringIndex);
+    const bool tuningChanged = voice.pitchGeometry.valid
+        && voice.pitchGeometry.key.openMidi != voice.openMidi;
     if (clearDelay)
     {
         voice.contactTravelEnabled = false;
@@ -5399,6 +5403,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     voice.speakingLengthMetres = soundingLength;
     voice.speakingFret = pitch.speakingFret;
     voice.contactPeriodSamples = pitch.contactPeriodSamples;
+    if (clearDelay || tuningChanged || !voice.played || voice.harmonic > 1)
+        primeFretMotion(voice);
     // Every value below is a function of this key (VoiceConfigurationKey),
     // and configureVoice is the only writer of what it sets from here on, so
     // an unchanged key - an idle string, or a held one once its attack glide
@@ -8778,6 +8784,9 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     voice.excitationEnvelope = 0.0f;
     voice.strumming = false;
     configureVoice(voice, string, targetMidiNote, false);
+    // A hammer/pull changes which finger stops the string; its finite
+    // contact pulse already owns that articulation. It is not a slide.
+    primeFretMotion(voice);
     rememberFinger(string);
     plannedCount_ = 0;
     return true;
@@ -9925,6 +9934,127 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
                                        (1.0f - 0.5f * position) * period);
 }
 
+void AcustraEngine::primeFretMotion(Voice& voice) noexcept
+{
+    voice.fretMotion = {};
+    voice.fretMotion.length = voice.speakingLengthMetres;
+}
+
+void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
+{
+    auto& motion = voice.fretMotion;
+    const bool touching = stringIndex < 4 && voice.played && voice.keyDown
+        && voice.attackFired && voice.harmonic == 1;
+    const double target = voice.speakingLengthMetres;
+    const double previous = motion.length;
+    // Follow the physical stop at the same 6 ms time scale as string retuning.
+    // Never differentiate pitch: member bends, vibrato and attack tension
+    // change frequency while the finger stays at the same fret. The tiny
+    // terminal snap is a numerical rest condition, not a MIDI motion layer.
+    motion.length = touching
+        ? previous + static_cast<double>(delaySmoothing_) * (target - previous)
+        : (motion.remaining > 0 ? previous : target);
+    if (touching && exact::abs(target - motion.length) < 1.0e-10)
+        motion.length = target;
+    motion.speed = touching
+        ? static_cast<float>((motion.length - previous) * sampleRate_) : 0.0f;
+    motion.emittedForce = 0.0f;
+    const float amount = targetParameters_.releaseNoise;
+    if (!(amount > 0.0f))
+    {
+        // Zero remains a source bypass. Packets already in the string's
+        // arrival queue continue naturally; they cannot be recalled.
+        motion.low = motion.high = motion.sourceWave = 0.0f;
+        motion.remaining = 0;
+        return;
+    }
+    const float speed = exact::abs(motion.speed);
+    const float contact = touching
+        ? frettingContactWeight(static_cast<float>(motion.length), voice.harmonic)
+        : 0.0f;
+    const bool moving = speed > 0.0f && contact > 0.0f;
+    float input = 0.0f;
+    if (moving)
+    {
+        // Pakarinen/Penttinen/Bank (2007), "Analysis of handling noises on
+        // wound strings": ridge-crossing rate and approximately RMS follow
+        // sliding speed. Their normalized measurements do not identify this
+        // string set's winding pitch or absolute noise level. Reuse the
+        // release brush's representative spectral progression at an authored
+        // 0.5 m/s reference; do not infer winding diameter from fitted EI.
+        constexpr std::array<float, 4> referenceCentres { 2000, 2400, 2900, 3500 };
+        const float centre = clamp(referenceCentres[static_cast<std::size_t>(stringIndex)]
+            * speed / 0.5f, 150.0f,
+            std::min(6000.0f, 0.15f * static_cast<float>(sampleRate_)));
+        // Two passive RC lowpasses form a broad roughness band. Exact
+        // discrete impulse energy normalizes its white-noise RMS at each
+        // rate, leaving motion speed to set the force rather than bandwidth.
+        const double lowRate = twoPi * (0.5 * centre) / sampleRate_;
+        const double highRate = twoPi * (2.0 * centre) / sampleRate_;
+        const double a = lowRate / (1.0 + lowRate);
+        const double b = highRate / (1.0 + highRate);
+        const double ra = 1.0 - a, rb = 1.0 - b;
+        const double energy = a * a / (1.0 - ra * ra)
+            + b * b / (1.0 - rb * rb) - 2.0 * a * b / (1.0 - ra * rb);
+        motion.lowCoefficient = static_cast<float>(a);
+        motion.highCoefficient = static_cast<float>(b);
+        // A deliberately faint, authored brush: eight percent of the existing
+        // nominal release-brush force at 0.25 m/s, with a continuous upper
+        // bound of twice that level even for an impossible controller jump.
+        // Finger contact supplies energy, so a held but quiet string may
+        // still scrape; peakLevel is the preceding stroke's bounded scale.
+        const float speedLevel = 2.0f * speed / (speed + 0.25f);
+        const float rms = 0.00004f * voice.peakLevel * (amount / 0.5f)
+            * contact * speedLevel;
+        motion.forceGain = rms * static_cast<float>(exact::sqrt(3.0 / energy));
+        const float leakFrequency = clamp(voice.pitchGeometry.value.lossDesignFrequency, 20.0f, 500.0f);
+        motion.leak = 1.0f / (1.0f + twoPi * leakFrequency * inverseSampleRate_);
+        motion.remaining = static_cast<int>(0.12 * sampleRate_);
+        input = xorshiftNoise(voice.fretMotionNoiseState);
+    }
+    else if (motion.remaining <= 0)
+        return;
+    else if (--motion.remaining == 0)
+    {
+        motion.low = motion.high = motion.sourceWave = 0.0f;
+        return;
+    }
+    // Key-up stops new roughness; the short stored filter/displacement tail
+    // drains. Emitted packets are frozen in the existing re-pluck queue.
+    motion.low += motion.lowCoefficient * (input - motion.low);
+    motion.high += motion.highCoefficient * (input - motion.high);
+    motion.emittedForce = motion.forceGain * (motion.high - motion.low);
+    const float impedance = voice.characteristicImpedance
+        * voice.appliedBendImpedanceScale;
+    if (!(impedance > 0.0f))
+        return;
+    motion.sourceWave = motion.leak * motion.sourceWave
+        + motion.emittedForce * (48000.0f * inverseSampleRate_) / (2.0f * impedance);
+    if (motion.sourceWave == 0.0f)
+        return;
+    const float period = voice.loops[0].currentDelay;
+    const float position = clamp(1.0f - 0.018f
+        / std::max(static_cast<float>(motion.length), 0.05f), 0.02f, 0.98f);
+    const auto emit = [&] (float delay, float sign)
+    {
+        delay = clamp(delay, 0.0f,
+            static_cast<float>(RepluckArrivals::capacity - 2));
+        const int whole = static_cast<int>(delay);
+        const float fraction = delay - static_cast<float>(whole);
+        const float normal = sign * 0.8660254f * motion.sourceWave;
+        const float parallel = sign * 0.5f * motion.sourceWave;
+        voice.repluckArrivals.add(whole, (1.0f - fraction) * normal,
+                                           (1.0f - fraction) * parallel);
+        voice.repluckArrivals.add(whole + 1, fraction * normal, fraction * parallel);
+    };
+    // A reduced transverse contact source: equal force splitting is already
+    // in 1/(2Z), and the stopped-end return inverts displacement. Fractional
+    // arrival weights are convex. This is not a full longitudinal squeak
+    // model (real fingertip handling also excites longitudinal string modes).
+    emit(0.5f * position * period, 1.0f);
+    emit((1.0f - 0.5f * position) * period, -1.0f);
+}
+
 float AcustraEngine::renderReleaseNoise(Voice& voice) noexcept
 {
     if (voice.releaseNoiseSamples <= 0)
@@ -10917,6 +11047,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 addReleaseNoise(voice,
                     verticalIncident[static_cast<std::size_t>(string)],
                     horizontalIncident[static_cast<std::size_t>(string)]);
+            renderFretMotion(voice, string);
             if (voice.repluckArrivals.remaining > 0)
             {
                 const auto arrivals = voice.repluckArrivals.process();

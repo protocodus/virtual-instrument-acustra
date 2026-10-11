@@ -5,6 +5,22 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — restrained sliding-finger roughness
+
+The requested moving-finger sound is confined to actual longitudinal contact
+on held wound strings. It follows continuous speaking-length motion, using
+its own deterministic roughness stream and the existing Release Noise amount.
+Ordinary notes, stationary hands, plain strings and MPE member tension bends
+receive no new noise. Existing hammer/pull and release contacts remain.
+
+The source is an authored, deliberately quiet transverse approximation.
+Handling-noise research supports the speed dependence but does not identify
+our string set's wrap pitch, absolute force, or a full longitudinal mode bank.
+The initial level was reduced a further 8 dB following the user's instruction
+not to overdo it. Parameters, defaults and layout are unchanged. See the
+[model, measurements and validation](fret-motion-2026-10-11.md). This local
+candidate has no new listening approval, push, merge or install.
+
 ## 2026-10-11 — continuous hand geometry and material-driven Wood
 
 The user requested another implementation pass, extending the scope beyond

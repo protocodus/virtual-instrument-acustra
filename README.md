@@ -638,6 +638,13 @@ per damping gesture. A joined stroke cancels this deferred touch. At the
 50% nominal it sits about 35-47 dB under the note's attack;
 at 0 it is an exact no-op.
 
+Release Noise also controls a very faint roughness while a held finger slides
+along a wound string. Its level and broad spectral colour follow continuous
+physical speed, and contact withdraws smoothly near the nut. Stationary fingers,
+plain strings and fixed-fret MPE tension bends add no such roughness. This is
+an authored, reduced contact approximation; see the
+[fret-motion model and checks](Docs/fret-motion-2026-10-11.md).
+
 A chord that arrives on one sample, which is what a sequencer sends and no
 hand can play, is swept as a strum: newly assigned strings are fretted at
 that sample, and each is released when the pick reaches it. An already held
@@ -1434,7 +1441,7 @@ resonances meet it (Known gaps).
 | **Picking** | Finger retains the calibrated contact and applies its finite release slip in full, including at maximum velocity, with normalized displacement. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity, retaining its slip ratio to the full-velocity release. Finger and Thumb have a soft double-corner contact burst with no white hiss. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
 | **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% (the default) the output is exactly as without it; with Capture on Piezo it does nothing, since the piezo is already the whole output. |
-| **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. 0-100% (50% nominal, 70% default, chosen by ear), scaled by release velocity and what the string still carries. 0% is exactly silent; a session saved before it existed loads at 0%. Host-automatable, not on the panel. |
+| **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. Also controls subtle speed-dependent friction during held wound-string slides. 0-100% (50% nominal, 70% default, chosen by ear), scaled by release velocity and what the string still carries. 0% is exactly silent; a session saved before it existed loads at 0%. Host-automatable, not on the panel. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss; on the wound strings it also scales their bending loss (0.2 of the default's on fresh strings, 7.8 times it at 1), so an old set's basses lose their upper partials first. The default age sounds as before. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Past a quarter of a (short, high-fretted) string the point bends smoothly toward 0.36 of it and never reaches it, so the control changes the stroke at every fret for every technique. Explicit MPE position overrides that ratio. |
 | **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. It also sets how fast every technique lets the string go: the release edge scales over two octaves across the control (none at its default), firmer faster and brighter, softer slower and darker, even at velocity 127. |
