@@ -1,5 +1,8 @@
 # Microphone placement and the reported bass boom
 
+Follow-up: the user subsequently approved the balanced combination. See the
+[implemented blend and native A/B](studio-capture-implementation-2026-10-11.md). The evidence below records the earlier research stage.
+
 Research requested before selecting a correction. The reported Reason notes
 are Parlor B1 (123.47 Hz), Auditorium A1 (110 Hz), and Jumbo E1–F1
 (82.41–87.31 Hz). No new microphone correction is accepted or released.

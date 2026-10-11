@@ -1,0 +1,47 @@
+{
+  "result": "PASS",
+  "stage": "final production observer with independent flat Stereo/Mono level compensation",
+  "baseline_reused_without_rerender": true,
+  "baseline_receipt": "../before.json",
+  "baseline_receipt_sha256": "d54974638d62e2ef8bebeb97aae4795e1306c9b3387334236fe2ca402ceeff1e",
+  "before_library_sha256": "9ac3e0b2d92ad626e31951e04b383bb6af764660ef6c7b4919647920344d7278",
+  "after_library_sha256": "282ae53ffe4a0f977bb9c11ec4c06858303dd118aa00a03bc8315e021da7ca00",
+  "after_binary_sha256": "45c3c01ea6bd9b701019edfab68448d306b7bff5361e6b608b6044b56b5fc7b2",
+  "after_engine_source_sha256": "57fa5116658c3e55fcb8aa07af793dba4ff06b4addc6cc253ebde13f946d62a1",
+  "after_engine_header_sha256": "5f1ccc4258254e9b00f6785ec4e2a12ea6fb32f350f23e07ab22c02da2303f6c",
+  "probe_source_sha256": "69344a3f17df39ab9cb1645ab8c38de803d967a73675ccb3ef89f39eaf57c2a2",
+  "trace_helper_sha256": "b682c13fa148124347b41ec53307b519ec2bb9e452cb81ea5b418746a30e39be",
+  "runner_sha256": "3362e23b0b23c02b1d30e6f0e2d247151750f660aa31c20c3567e00d3b6bc09f",
+  "production_observation_injection_used": false,
+  "rates": [
+    44100,
+    48000,
+    96000
+  ],
+  "constructions": 12,
+  "normal_cases": 36,
+  "normal_frames": 564300,
+  "all_per_sample_mechanical_piezo_fields_and_bridge_body_modal_hashes_byte_identical": true,
+  "all_piezo_bus_audio_byte_identical": true,
+  "all_cached_pole_bits_byte_identical": true,
+  "microphone_audio_changed_every_case": true,
+  "complete_bridge_body_modal_state_witness": {
+    "frames": 512,
+    "double_columns": 1965,
+    "byte_identical": true,
+    "sha256": "4821adf332377d0a3f3151cada0078119ac1999207c707a9bd70a7da77c7b30c"
+  },
+  "limits": [
+    "Before/after audit fixture, not a permanent old-version product path.",
+    "Per-sample modal hashes supplemented by exact 512-sample full bridge/body modal-state witness.",
+    "Waveguide delay buffers are not dumped; bridge/reaction/body dynamics and all piezo probe fields are compared every sample.",
+    "Short sounding/release/repluck/chord fixture; very late inaudible idle-reset timing is not asserted."
+  ],
+  "raw_outputs": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/production-verification-normalized",
+  "phase1_retained": "../after.json describes the earlier raw blend without this final flat microphone compensation; it is not the final library.",
+  "commands": [
+    "c++ -O3 -DNDEBUG -std=c++20 -arch arm64 -mmacosx-version-min=11.0 -I<FINAL_MATCHING_SOURCE> -I<EVIDENCE> <EVIDENCE>/ProductionObserverTrace.cpp <FINAL_LIBRARY> -o <AFTER_BINARY>",
+    "python3 <EVIDENCE>/verify_production_isolation.py --stage after --binary <AFTER_BINARY> --library <FINAL_LIBRARY> --headers <FINAL_MATCHING_SOURCE> --output-root <NEW_SCRATCH_ROOT>",
+    "NEW_SCRATCH_ROOT/before is a symlink to the preserved phase1 baseline raw results; no old model was re-rendered."
+  ]
+}

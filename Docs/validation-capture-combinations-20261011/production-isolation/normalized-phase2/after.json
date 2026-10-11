@@ -1,0 +1,803 @@
+{
+  "stage": "after",
+  "binary": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/production-verification-normalized/ProductionObserverTraceNormalized",
+  "binary_sha256": "45c3c01ea6bd9b701019edfab68448d306b7bff5361e6b608b6044b56b5fc7b2",
+  "library": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/production-verification-normalized/libAcustraDSP.a",
+  "library_sha256": "282ae53ffe4a0f977bb9c11ec4c06858303dd118aa00a03bc8315e021da7ca00",
+  "matching_header_root": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/production-verification-normalized/Source",
+  "engine_header_sha256": "5f1ccc4258254e9b00f6785ec4e2a12ea6fb32f350f23e07ab22c02da2303f6c",
+  "probe_source_sha256": "69344a3f17df39ab9cb1645ab8c38de803d967a73675ccb3ef89f39eaf57c2a2",
+  "trace_helper_sha256": "b682c13fa148124347b41ec53307b519ec2bb9e452cb81ea5b418746a30e39be",
+  "runner_sha256": "3362e23b0b23c02b1d30e6f0e2d247151750f660aa31c20c3567e00d3b6bc09f",
+  "cases": [
+    {
+      "key": "44100-s0-w0-n12000",
+      "rate": 44100,
+      "shape": 0,
+      "wood": 0,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "ebfd670097e2149adf130c5f0b470fca756734002fa22908bfdce1b1b7c05fd6",
+        ".piezo.f32": "2f9f2713dc2f4a1e9e2fe06a76082e0cc13578d8fd69715665a800e8492e5b9a",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "bb7872fc464cf8506b5510aeb20e5315d08a12b0e2bf6b5ba9b7d8de799911fa"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s0-w1-n12000",
+      "rate": 44100,
+      "shape": 0,
+      "wood": 1,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "c597ac990fb721d3cd15ffa582d0802bd43f504529c0179360df2a1741f21034",
+        ".piezo.f32": "9739002367b570b390d4de3889947f6378ed7ac68e215cf884a9b8a6eb37d532",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "c94abfcbcc33cd3b78bd72256428c47ff52cb5e66f2efef306a08b83ae542a94"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s0-w2-n12000",
+      "rate": 44100,
+      "shape": 0,
+      "wood": 2,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "57424abc67aedc0c84038717fefc1d7c5882a42ea1bb1b9db2b68898da84075f",
+        ".piezo.f32": "019a2d53d0a3586c820e7aa429394180157ad894b768c4ed63c6d3807548ee89",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "2e70b001c146b6c71f98796d9a7533a24284267cb29471dae261aa82ab855623"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s1-w0-n12000",
+      "rate": 44100,
+      "shape": 1,
+      "wood": 0,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "2cc39d07f73575a2a3fa9eb32283bdf7ccbebb3bcf52e57f27723d47a74a2c8d",
+        ".piezo.f32": "c77e0672f59accf75fc5d5cbb2d03e5859747aae4e3d827134ee25b685d5702f",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "e668c893e41d3b3331f69781ba341ea05355c9cac64d91bba2325c3bf4bf6626"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s1-w1-n12000",
+      "rate": 44100,
+      "shape": 1,
+      "wood": 1,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "1a2e23250381ae2ad645d5ee8e4ca1be71107407ed04d846887b5ab9c3d5b107",
+        ".piezo.f32": "4247dc45f1f15c3393e9ee47ba491dc434ec3ca5466cbef7188ae0f13f461409",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "35c187508bccf024ba5802dd56a93786bd18ad19a05eb45d41316ac096c71d1e"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s1-w2-n12000",
+      "rate": 44100,
+      "shape": 1,
+      "wood": 2,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "835ad571b1199a0ee9f29f105299fe46c22927ba326838c558e3a9c96dff7b9e",
+        ".piezo.f32": "c3404b32bc287dcb43c6d25882fa9ffebb1da5349c089e2d8bd7a6f40aaf09d5",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "c292e9172a4bcaed3efcb042f054002d3d779c6632fc2eff750e402ea5033669"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s2-w0-n12000",
+      "rate": 44100,
+      "shape": 2,
+      "wood": 0,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "076bc7475c856050b57f169113fd73bcea32e17936136a73cb8953903dbc15fc",
+        ".piezo.f32": "f63aefc2d2a62f281348e9c0ecfe7f47ce87691f3b9a6be3af4505e627c4fe18",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "6a73710dc030da5e69898df625d83a3fd4ba12b62eb55147827547090552cf3e"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s2-w1-n12000",
+      "rate": 44100,
+      "shape": 2,
+      "wood": 1,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "798c555acdbab1379bec5fccba4cdb8876aecc487c7c62286b6178cfe90270f0",
+        ".piezo.f32": "0b4764c48605914a9e39f3cf2c03a7faa3e62487102080f6dbf7df396477db6e",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "0eee800528e395e9ce24137db2a8351014a9ebc4fe29d96f4438f1d9246465ab"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s2-w2-n12000",
+      "rate": 44100,
+      "shape": 2,
+      "wood": 2,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "cd609e61d220f49c31a674960f8e64d5210f95718d7527b63638a415d0788705",
+        ".piezo.f32": "04c7a67ac18b0481f926e0fd73ebbeba0187529ddba6aac3196bef2d069982ea",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "484c46405746f823632bfb40f96a4b85db8a0a6d431014810ae0426e9a9d1bab"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s3-w0-n12000",
+      "rate": 44100,
+      "shape": 3,
+      "wood": 0,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "ec1c33e6b1bec9575f225fe21a043d43146035db7dc2777154c9125389d688e0",
+        ".piezo.f32": "984de0f9d0d8667bc0105c7b0dbce2233d97ea19c6fb327523340ca754e4db17",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "a108ab8c5974d98a2d7221443f0fd93ddd868120453d219094d6c24055dd6056"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s3-w1-n12000",
+      "rate": 44100,
+      "shape": 3,
+      "wood": 1,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "e32a721d86659af2e5c50ecef2d57a2a42786ffbf2b214be9f48b41748a3cdd4",
+        ".piezo.f32": "ed6ed2edecff3ba354700302a223321a8143d82fcfbbba8f70a1b7c28a51709c",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "559c1723b7370f6b781f8f31df087bc2f4bb9f0b4f2943f9c3f5b76204b85a34"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "44100-s3-w2-n12000",
+      "rate": 44100,
+      "shape": 3,
+      "wood": 2,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "b8af6912610c80a629ec8a7878001c3369d3c406757a35f63c4951ce898cb3c2",
+        ".piezo.f32": "b02fc8578ee6d5efdf5f52c735617efb71cfb18fac780bd838b9987fce20ca32",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "2196a3ca58c5c45cfe74480101af41fee268bb103e79b01878b46f9281ce7215"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s0-w0-n12000",
+      "rate": 48000,
+      "shape": 0,
+      "wood": 0,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "eabcc9d15b74e14f70017142f14833ebe2fe8ca8b5d45d93ebdfc3d85c4c778d",
+        ".piezo.f32": "d1b9d05d987aa88d13a3dee4e74cf28f756680ea6dbe9fb694ee197ee9b6bccb",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "e373464a33f73c2e917b299be5f437367b16d51ddfd5f194fb52cb4f997fd93d"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s0-w1-n12000",
+      "rate": 48000,
+      "shape": 0,
+      "wood": 1,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "1f4da512799846d6c70c85ac616cc332bbd3ac8cca2dd43f05a9c16a54daa246",
+        ".piezo.f32": "7c2f8592f0e05ac293359c3f93f10c575cb8b76966484edc8149f199e45bb3ed",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "bb1ed5c5137fa6ca5ea415c3275b269272007ad69fa7756ac200e8753ec32ab3"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s0-w2-n12000",
+      "rate": 48000,
+      "shape": 0,
+      "wood": 2,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "31c41f2cafe18f296f4ccced52df73dd68a4b223654ef3d31f6b7729e6c2ffb4",
+        ".piezo.f32": "9479d55be299dba40c987aee7125b183acdbd896899fb6c8816966f421567430",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "0badf1f8956a5f079eada70f2f938e5144d49c82a7a61c64eda8621d4a3e162d"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s1-w0-n12000",
+      "rate": 48000,
+      "shape": 1,
+      "wood": 0,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "2630d2ffe88defb580884eb88209a63ce10a3fdd8421367de7f289a76d623d40",
+        ".piezo.f32": "b771bc70aa269392c2c02c0c47bd5e7d30ae8f6d907c638fb8b425f7fbcffd17",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "44ff4b0e7fb0f035e3b4e47c83bf303c90752f95442f19050170600d4e09b2e7"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s1-w1-n12000",
+      "rate": 48000,
+      "shape": 1,
+      "wood": 1,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "983815a7710655cf8c8bff01569f59cd5505643f37bd8aa28a5246eca9965a3e",
+        ".piezo.f32": "6d2c131bc918b9c4b90e5693f5ecca8b5b5a9f4df4512027fd80ecfcaf062d71",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "e2be9670914106661e3c6404de6dd4c92afded98d11e4fa97298360041eadd92"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s1-w2-n12000",
+      "rate": 48000,
+      "shape": 1,
+      "wood": 2,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "8a39fd542c914d2e7ed201321d1b1e2a0af6ad1898901acc568ad6647b014296",
+        ".piezo.f32": "3b165377b1f10af6ff8e734cf2820341c5c4e0d3bfe356a41a666fc9410bec36",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "82bb562b8fd4d70ded4496e3532278e61198e2f3f104e9df8ab8b4fdeb6a8d2c"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s2-w0-n12000",
+      "rate": 48000,
+      "shape": 2,
+      "wood": 0,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "f43dfeec94fe4c8efbaa46592fd3b6456c260f65cfed2fdc3926e3f427f4a12b",
+        ".piezo.f32": "2a69fa6aa929e428e6a7c54cf386274db97b172761f559a99b140343de6df99b",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "66f1c648e794f32240ef225ca4cc541a13b7a7c0763dc5847dbe8a708d64672c"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s2-w1-n12000",
+      "rate": 48000,
+      "shape": 2,
+      "wood": 1,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "ef42a8d5d7f28b16243e47622fb9e0bffad99f44d451123a3d311644f689e181",
+        ".piezo.f32": "646af4f207e6e651b9d6e0f696496ecc4f6d8b02e1cded3e44f1376a333f216e",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "7d9db7f34836f2d17779c8e723cb1aea459c21a6b1033ba315b7310cb4949c07"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s2-w2-n12000",
+      "rate": 48000,
+      "shape": 2,
+      "wood": 2,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "dcc2feaf5037042d2432308a1fff83c432b1436417c0991432ed54513425cda1",
+        ".piezo.f32": "89b3edf6a3d71cd94599c44888cb478448eeb28d51da6bb448cdd59ff7c72783",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "14458c14299ef873a643640ed10642821a19b2a96ac97fb8afe63fa75c8bd59b"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s3-w0-n12000",
+      "rate": 48000,
+      "shape": 3,
+      "wood": 0,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "1c3cdf8d452acccb1c1e7299e4e27cfb790f1ff79115c339ad89bb34eb68a49a",
+        ".piezo.f32": "de6abe29e04d1b3a1e6c773edcc8ccdcc8228c77a06b6c8e85a700260146d6ea",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "b451a17c153eb062bfdc2a09e8994ff389223b3268b66add05a7c182e0dbbc7d"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s3-w1-n12000",
+      "rate": 48000,
+      "shape": 3,
+      "wood": 1,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "3236acdcb8cd6d7746a323ce595f2334e5b868d9499724db6ff807ccf2ff3b5c",
+        ".piezo.f32": "1924372080ea7d16541bdbd634b775459e2f71c9202723e4c38badb67fce8ce2",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "336e623a1621809adbb65d3634186c2d41c379352394c1238bb81cb842bd1574"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s3-w2-n12000",
+      "rate": 48000,
+      "shape": 3,
+      "wood": 2,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "3e2e25d0a5924e08bfeb6f6472d854950717efb358e13c9d418715dc17cc0dfd",
+        ".piezo.f32": "701afb5e3d94987b793227e8015fae56536cce6521ea3a778b71f90219e6dc13",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "b29281976b1a41de28902d84670dba8b3f9b939da57433ee1d303689699b3e33"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s0-w0-n12000",
+      "rate": 96000,
+      "shape": 0,
+      "wood": 0,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "a0daa17620e84ca74f44d401e1f4cff280561597af5a30b4396745a6c60f598b",
+        ".piezo.f32": "48aa1698c3f95e020ad80f081f761656b73ea50d07a86550369cbc0aaa32a926",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "0c27cf4a402ab837e2b488cc6e9ec367c2ddac7b8baead1065f46cd1968eb82e"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s0-w1-n12000",
+      "rate": 96000,
+      "shape": 0,
+      "wood": 1,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "aa46f634673b2ac407477aec4f8fc396d4b1f3611c59d5cb394270b6e458c853",
+        ".piezo.f32": "a9d14cd0d88c1e8a3ef901f961b5b2f30bce1f728bf33ba3dfb980a8bd22f76b",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "54b280bc40b0ac7b470f498f9c71f8038b4a30de94165e34b231ee275d227c14"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s0-w2-n12000",
+      "rate": 96000,
+      "shape": 0,
+      "wood": 2,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "5fdaf53c7afabef99ac27249e338985957bbbb5e9b4ce0e5e5e20fec7f122d42",
+        ".piezo.f32": "db07780f862d450a13a441a5a1cf4fc21889eb726ffabe8803a41ad296689772",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "d2ef3726ca068b55fae1486f3f6cd6f48010af84dee8395125273a1ea2b86d9a"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s1-w0-n12000",
+      "rate": 96000,
+      "shape": 1,
+      "wood": 0,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "76257db78cc86b98bf07788e184aa72a280d6283086956dfcccb54b97499821d",
+        ".piezo.f32": "475dfea152926e4c34ed936efb40fb56337bf9b11a809bdb9d4e3ed83579d78e",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "c2f27a03d7a45ea0c4023425db65e4fe894727f58bfd1f2157a8202caaa03788"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s1-w1-n12000",
+      "rate": 96000,
+      "shape": 1,
+      "wood": 1,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "0dbd19ff082f728e9fb41134c1502f297dad54f19406d838343e099ff99676e4",
+        ".piezo.f32": "3145df8cc829506fbe28727b402ee1cac50ce316debfb2d0ee62f2d0a5a19df6",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "4f72050ee5e1e12c8041a6396c5c959e5541cc58ffba41d31954352bc9ce07a5"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s1-w2-n12000",
+      "rate": 96000,
+      "shape": 1,
+      "wood": 2,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "6dc53de36ea66277226575c181e526047928cf4ce8acb2d5bcd855b452611be9",
+        ".piezo.f32": "b0730d524abce55caeda9b0da655848e4da3ac89dd0329d6cf10d9f20f62a10f",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "681416bdc2996d5d443f8b775203a83644abbf76234d5956fabc00c9a37bdab9"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s2-w0-n12000",
+      "rate": 96000,
+      "shape": 2,
+      "wood": 0,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "f3ecc9bcca74930fe4796efdb3a081145ebf6885ccc305054e597be5f7ed0075",
+        ".piezo.f32": "54e2a0326d8c10b23f3c39bf4f659481b167c3fea3e3042d470f63f0427cbcfc",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "3b001be148143b736cf129351a3dc500619aaf6fc09bc6a38f9e9cea6bcaeb07"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s2-w1-n12000",
+      "rate": 96000,
+      "shape": 2,
+      "wood": 1,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "94dc9b32d872935512ef0ca8026ce00356ec3a58fd8e75678c25633190fb6298",
+        ".piezo.f32": "5854a3e9e86c6477b1fd9b3311b9e4b8b14c0906038a321da7be3d2fddc2a4aa",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "b19e780dc5a9f54447b26ccd768ea06ca73f07222a8f96eb1a5d44962c6e1f9a"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s2-w2-n12000",
+      "rate": 96000,
+      "shape": 2,
+      "wood": 2,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "7aad741cc91e7c7ac4d870aec01128d7c626c64c393bcbbaf43a4ac7914b4e9e",
+        ".piezo.f32": "590e7dca53e4ac4ac6ec41e502a6a882d7cb855383b2b60c463eda7fceec8e4a",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "11da83f85d43639ca300cb82acdf8941087814640c40580c3d8f49bda0189c4e"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s3-w0-n12000",
+      "rate": 96000,
+      "shape": 3,
+      "wood": 0,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "551e04dc84a89490a309d67bf724402e556b959516e9ccea4295cf4abf22d30d",
+        ".piezo.f32": "808c25bdb775594b5458366696fe1eeb3603ac47bcba267982d75945d39e1e88",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "9679ce166395fd698f6d5a7a2058929176a6a691abddf307df6a2bab4a25e7da"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s3-w1-n12000",
+      "rate": 96000,
+      "shape": 3,
+      "wood": 1,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "2bd50fdb97ab4c9bf1793a822badf78fc95e53aed130f15b238f2265adb5f646",
+        ".piezo.f32": "ba7b6dfe0f4fae1ac91aa7dfa08a89ddb4e4bcbdebe5290297625795675d8126",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "8b9e8bc05cf14a1eb2a266b0d8da40f90370eb6820e1eaa7578c0158d07d61ae"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "96000-s3-w2-n12000",
+      "rate": 96000,
+      "shape": 3,
+      "wood": 2,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "c9ca97a961d30d9ce86ea1f541b1f1d36a727a1fd626f8a366c94af7af4d7cf6",
+        ".piezo.f32": "c56fba7d2d25613779a2829c29bced0280dc23fe3aa2964d71dcfb4d0deeac86",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "e74338a552f642e2a8b540648cb35d4e1c857f9071630c320a532ba7027f2e14"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    },
+    {
+      "key": "48000-s0-w0-n512",
+      "rate": 48000,
+      "shape": 0,
+      "wood": 0,
+      "frames": 512,
+      "sha256": {
+        ".mic.f32": "0f3965b05dfab336cdb1d9d073b73400b1001d0a9b25c1c100662e5dbb423236",
+        ".piezo.f32": "e2894ea14ff9c20db0e06a480e1eb4a40c9f5cedc1f69d52da3a3d73527d209f",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "2356c97e5c1e25fef9deab1d7ed3a025d58656bfc2ccf52e2d38c2500fdf17bc",
+        ".states.f64": "4821adf332377d0a3f3151cada0078119ac1999207c707a9bd70a7da77c7b30c"
+      },
+      "byte_identity_to_before": {
+        ".mic.f32": false,
+        ".piezo.f32": true,
+        ".poles.u32": true,
+        ".trace.csv": true,
+        ".states.f64": true
+      },
+      "pass": true,
+      "microphone_changed": true
+    }
+  ],
+  "ordinary_cases": 36,
+  "full_bridge_body_state_witness_samples": 512,
+  "scope": "Separate old/new production binaries. No observation CSV is loaded or injected. Each engine computes its own native body observation.",
+  "limits": [
+    "Before/after audit fixture, not a permanent old-version product path.",
+    "Per-sample modal hashes supplemented by exact 512-sample full bridge/body modal-state witness.",
+    "Waveguide delay buffers are not dumped; bridge/reaction/body dynamics and all piezo probe fields are compared every sample.",
+    "Short sounding/release/repluck/chord fixture; very late inaudible idle-reset timing is not asserted."
+  ],
+  "all_pass": true
+}

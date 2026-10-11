@@ -1,0 +1,66 @@
+diff --git a/Tests/AcustraEngineTests.cpp b/Tests/AcustraEngineTests.cpp
+index 283c20c..03d1bc2 100644
+--- a/Tests/AcustraEngineTests.cpp
++++ b/Tests/AcustraEngineTests.cpp
+@@ -2,6 +2,7 @@
+ #include "DSP/ConstructionLoudnessData.h"
+ #include "DSP/MeasuredBodyData.h"
+ #include "DSP/MeasuredBridgeData.h"
++#include "DSP/StudioCaptureLoudnessData.h"
+ #include "Fixtures/FixedVelocityObserverData.h"
+ 
+ #include <algorithm>
+@@ -5284,8 +5285,8 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
+         changed.prepare(rate, 64);
+         reference.noteOn(52, 0.6f);
+         changed.noteOn(52, 0.6f);
+-        // Each Picking plays at its own output level (the construction
+-        // loudness table, ConstructionLoudnessData.h), which glides; the
++        // Each Picking plays at its own output level (the legacy construction
++        // reference times the fixed studio microphone level match), which glides; the
+         // string itself is untouched, so the ringing note changes by one
+         // gain, the same in both channels, within the three levels.
+         float lowest = 1.0f, highest = 1.0f;
+@@ -5296,8 +5297,10 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
+                 // Dreadnought, Spruce
+                 return static_cast<std::size_t>((2 * 3 + 0) * 3 + technique);
+             };
+-            const float ratio = acustra::detail::constructionMicReference[cell(picking)]
+-                / acustra::detail::constructionMicReference[cell(0)];
++            const float ratio = (acustra::detail::constructionMicReference[cell(picking)]
++                * acustra::detail::studioStereoLevelMatch[cell(picking)])
++                / (acustra::detail::constructionMicReference[cell(0)]
++                    * acustra::detail::studioStereoLevelMatch[cell(0)]);
+             lowest = std::min(lowest, ratio);
+             highest = std::max(highest, ratio);
+         }
+@@ -6626,7 +6629,7 @@ std::size_t loudnessCell(const acustra::EngineParameters& p)
+ 
+ // Whether `actual` is `expected` times one level per sample, the same in both
+ // channels and moving monotonically from 1 toward `to`: a construction's
+-// output level (ConstructionLoudnessData.h) glided while the waveform stayed
++// complete microphone output reference glided while the waveform stayed
+ // exactly what it was.
+ bool differsOnlyInLevel(const Audio& actual, const Audio& expected, double to)
+ {
+@@ -6765,11 +6768,15 @@ void testBodyChangesPreserveAnUnfinishedFade()
+         actualFade.right.push_back(actual.right[0]);
+         ++remaining;
+     }
+-    // The queued wood's level (ConstructionLoudnessData.h) glides in at once;
+-    // the waveform itself must be the sounding bank's, untouched.
+-    expect(differsOnlyInLevel(actualFade, expectedFade,
+-               double(acustra::detail::constructionMicReference[loudnessCell(latest)])
+-                   / acustra::detail::constructionMicReference[loudnessCell(second)]),
++    // The queued construction's complete microphone reference glides in at
++    // once: both the legacy level and the fixed studio capture level match.
++    // The waveform itself must be the sounding bank's, untouched.
++    const double targetLevelRatio =
++        (double(acustra::detail::constructionMicReference[loudnessCell(latest)])
++            * acustra::detail::studioStereoLevelMatch[loudnessCell(latest)])
++        / (double(acustra::detail::constructionMicReference[loudnessCell(second)])
++            * acustra::detail::studioStereoLevelMatch[loudnessCell(second)]);
++    expect(differsOnlyInLevel(actualFade, expectedFade, targetLevelRatio),
+            "a queued body change interrupted the existing microphone waveform");
+     expect(remaining > 0 && remaining < 2000,
+            "a pending body update exceeded the existing 40 ms fade");

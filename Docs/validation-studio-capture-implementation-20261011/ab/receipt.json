@@ -1,0 +1,215 @@
+{
+  "source_root": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab",
+  "status": "Fixed production A/B evidence; no listening approval.",
+  "render_cases_per_version": 296,
+  "total_renders": 592,
+  "audition_files_retained_ignored": 36,
+  "binary_before_sha256": "1bb8f935a0cde682187d51c5f88c2f1e0b246f8510fbf4685dd882ab5940ab38",
+  "binary_after_sha256": "826739bdf6966963d1202c45429ca5acdde6e44034ce4677378c5eb94630bd50",
+  "untracked_artifacts": "Native libraries/source snapshots, rawfloat32 renders and WAVs remain in source_root.",
+  "source_preparation": "Before sources read from exactd54 Git revision; after copied from root-frozen production tree after exactfinal DSP rebuild. See both build receipts and commands.",
+  "relocation": "Scripts execute under ignored build-audit/<run>/ab; do not execute the archived copies in Docs. See commands.md.",
+  "figure_visually_inspected": true,
+  "audio_format_verified": true,
+  "listened": false,
+  "files": [
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/TunedPerformanceRenderer.cpp",
+      "path": "TunedPerformanceRenderer.cpp",
+      "sha256": "ec5a0d19dda225962d21c426f58987f30bd35a974289840d69ea6d0c3441fed9",
+      "bytes": 15409
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/targeted_ab.py",
+      "path": "targeted_ab.py",
+      "sha256": "058e9a968119f124e0e5ebfdad0b434ed732022240ec46b64a13819bea788d51",
+      "bytes": 8703
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/compare_ab.py",
+      "path": "compare_ab.py",
+      "sha256": "78288f82136b5d0a32e58c868659b93ea7ab5382834b23ac64b4623414607a4d",
+      "bytes": 16238
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/package_centres.py",
+      "path": "package_centres.py",
+      "sha256": "5174d3bcaa12b62ace1aba2db760ff8de08a39b1bb7256e465169f910b1f4079",
+      "bytes": 2290
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/preflight.py",
+      "path": "preflight.py",
+      "sha256": "38b1f8dc853e8e87a3bbb294e04ac3585b353b512c5dbef0caa841dfdd8e0996",
+      "bytes": 2130
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/green_series_review.py",
+      "path": "green_series_review.py",
+      "sha256": "8494521173e61fb414d0b45143e9a0cf81cb63533eecf432e63b4cb3adbad95d",
+      "bytes": 4559
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/package_evidence.py",
+      "path": "package_evidence.py",
+      "sha256": "e5fa3c0b454aa6f0897b6605f13d982d04ca350991be3589976fed323aa0841c",
+      "bytes": 3595
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/MeasureMicrophoneBoom.py",
+      "path": "MeasureMicrophoneBoom.py",
+      "sha256": "1e40e053bcce6617ffa9215fe6eead15c71968e09ecc61af175b9920026b3053",
+      "bytes": 7898
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/plan.json",
+      "path": "plan.json",
+      "sha256": "e103a2dcbb8ba0f01b4b6c2b50cb63c4f5b41c1b90606b1c07a294678848a4c5",
+      "bytes": 159969
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-manifest.json",
+      "path": "before-manifest.json",
+      "sha256": "9f38c1b15dcf86f7b4ad323efa2c447928798e2d4acf5af8c555e015a4b12b95",
+      "bytes": 3579
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-manifest.json",
+      "path": "after-manifest.json",
+      "sha256": "2c7991e5d0ebff94eca364e87517153a72e57e5b8dddf1739b8c79054eb6ecd8",
+      "bytes": 3882
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/green-series-review.json",
+      "path": "green-series-review.json",
+      "sha256": "f745f928e22e0c18dcd386047fd1f7952a62eaae5c789c17333f2f106455195e",
+      "bytes": 4468
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/audio-verification.json",
+      "path": "audio-verification.json",
+      "sha256": "fd4e8a852f11bca38b0adbd8a496e60aa9186c0199e06a3f036f7276c1b21d51",
+      "bytes": 13863
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/commands.md",
+      "path": "commands.md",
+      "sha256": "4694682b2861a462045a323a45b579decb942ba93e72499c37719c83b901062f",
+      "bytes": 4680
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/preflight/receipt.json",
+      "path": "preflight/receipt.json",
+      "sha256": "3d146446dc0d813b38d04dd57da0576406aef4f0585d9b07f4f71d42728c2638",
+      "bytes": 3426
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-build.log",
+      "path": "before-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-build.log",
+      "path": "after-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-render.log",
+      "path": "before-render.log",
+      "sha256": "74a5e688a44c383ed5eae47d9f1dab9e7e65537a083201fd546f8cb215895df8",
+      "bytes": 239
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-render.log",
+      "path": "after-render.log",
+      "sha256": "b905c69044e2ccadb260bd1e21157d7cb07afe627de04c5c22b1eab96dcb5ddc",
+      "bytes": 229
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison.log",
+      "path": "comparison.log",
+      "sha256": "b8786d2dfc8169264c1e8f02db03301bc2a57f794b93bce243a0cb9beb45d5f2",
+      "bytes": 133
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/REPORT.md",
+      "path": "comparison/REPORT.md",
+      "sha256": "ee5518acd0980ffcdf59d9883433b44dd8afcbdb32aa0ae40733c674dbf4c7f4",
+      "bytes": 6567
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/comparison.json",
+      "path": "comparison/comparison.json",
+      "sha256": "944dbfb0df091035f54f734ef66b3ce1a88b04f39c7927059cba1b2e6cbea61c",
+      "bytes": 1688753
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/changes.csv",
+      "path": "comparison/changes.csv",
+      "sha256": "cedb1e00d226947315173ba7e517c70a7ad083d12b27717a4a53d8ec870f30ad",
+      "bytes": 360621
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/fine-pitch-ab.png",
+      "path": "comparison/fine-pitch-ab.png",
+      "sha256": "e4cee107b318154c0cb61b6eff1f2b031a9a3ca560455f98c4c49b374d5524b8",
+      "bytes": 405225
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/manifest.json",
+      "path": "comparison/audition/manifest.json",
+      "sha256": "055f673f313280db06f44a94f867519b6fff238c049999b11248bdce2ccf842d",
+      "bytes": 64090
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/manifest.json",
+      "path": "comparison/audition/centres/manifest.json",
+      "sha256": "2c5b65864e564c7a1b8cc396c11e55a4b5b7739a6d1801707e1642bc977220cf",
+      "bytes": 24121
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before/library-original-provenance.json",
+      "path": "before-library-original-provenance.json",
+      "sha256": "6d652113c0248bdc9b438c8881c1e6135660406638d0dc113e1bd7222a5f3d57",
+      "bytes": 2243
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/prototype_observer.py",
+      "path": "references/prototype_observer.py",
+      "sha256": "6d74c2747f2072ebb855f55ab83550868dc1258375fde18d82de1dda0dda0b2d",
+      "bytes": 15437
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/export_candidates.py",
+      "path": "references/export_candidates.py",
+      "sha256": "ea1715372b1bfc36b53013061296614d97d216651a34c4cf829f6a47c301a3db",
+      "bytes": 8889
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/runtime-free-candidates-v1/manifest.json",
+      "path": "references/free-source-fit-manifest.json",
+      "sha256": "ce472db7a1ee077e60c32997f22dba453275bd112153abaad18c591b7f1dab30",
+      "bytes": 475850
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/report.json",
+      "path": "before-renders/report.json.gz",
+      "sha256": "cb0aa697898111227b601fbd8a4c8b424a57b410191f89c68a9cb65c98168bcb",
+      "bytes": 522728,
+      "encoding": "gzip; deterministicmtime0; exact original JSON bytes",
+      "uncompressed_sha256": "00a9b33111c8aea84d9ede293669bfe6d74fdb10f9b219267836ccc0a8018ee8",
+      "uncompressed_bytes": 4184287
+    },
+    {
+      "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/report.json",
+      "path": "after-renders/report.json.gz",
+      "sha256": "65d0939ab9da4f33bb474ed015632a774f4d670e99ec7433bfa614361dac4377",
+      "bytes": 521003,
+      "encoding": "gzip; deterministicmtime0; exact original JSON bytes",
+      "uncompressed_sha256": "d69c3fa5be3e0950be5734a26258b8d1b6621e6b9e60e1795486120b9d314023",
+      "uncompressed_bytes": 4182916
+    }
+  ]
+}

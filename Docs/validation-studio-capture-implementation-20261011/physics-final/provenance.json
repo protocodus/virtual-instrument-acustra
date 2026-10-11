@@ -1,0 +1,66 @@
+{
+  "scope": "Final gain-normalized source: observation coefficients, poles and capture filters. Output-reference gains deliberately sit after this export and are validated in the separate level-match receipt.",
+  "final_engine_sha256": "57fa5116658c3e55fcb8aa07af793dba4ff06b4addc6cc253ebde13f946d62a1",
+  "final_library_sha256": "282ae53ffe4a0f977bb9c11ec4c06858303dd118aa00a03bc8315e021da7ca00",
+  "export_binary_sha256": "40ae3662362d52d9e76bf85d7e3630fa7b156317c674bea992b9fd7b9e1e22be",
+  "compiler": [
+    "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+    "Target: arm64-apple-darwin25.5.0"
+  ],
+  "inputs": {
+    "Source/DSP/StudioCaptureData.h": "021c98d9654329ede3951926ac752a62ac4c007c16b2c96fca0a5de4520f4e84",
+    "Source/DSP/StudioCaptureLoudnessData.h": "f75754057d03ed88facae11bf13d7ebd2a524ddb6038f9925cfe6c802d1a7973",
+    "Tools/GenerateStudioCapture.py": "ef6e99e07b3f96ab6f6f25c812406243fc304e527f3cf4e09065d6517b01a77a",
+    "Tools/CalibrateConstructionLoudness.py": "a6605ae3f654079bc8640af68d73593fa1772b4d795a4db8e7d310ed5265d692",
+    "Tests/AcustraEngineTests.cpp": "68f2e8d3ae704bbd04b0d5e7390a284d8db32926049f1d6c45de579b777ab06d",
+    "Tests/WoodMaterialTests.cpp": "a476bbf9f1dda414d1df79d881e5ca98ef5f9b52d4c6751cc290c9496871cdb3",
+    "Tests/Fixtures/FixedVelocityObserverData.h": "b6b76d684767488aeae92cccf17cedaee9490a936d1ff8a95ed74523dbadbea5",
+    "Docs/validation-capture-combinations-20261011/balanced_all/observation.csv": "138d8dd032d171c8b36dbca2e9327314bd4ff1cdc8f951d980ab386f435e5e39"
+  },
+  "commands": [
+    [
+      "clang++",
+      "-std=c++17",
+      "-O2",
+      "-ISource",
+      "-c",
+      "build-audit/mic-boom-20261011/physics/export.cpp",
+      "-o",
+      "build-audit/studio-capture-production/export.o"
+    ],
+    [
+      "clang++",
+      "build-audit/studio-capture-production/export.o",
+      "build-audit/libAcustraDSP.a",
+      "-o",
+      "build-audit/studio-capture-production/export-final"
+    ],
+    [
+      "build-audit/studio-capture-production/export-final"
+    ],
+    [
+      "python3",
+      "build-audit/studio-capture-production/compare_all_observations.py"
+    ],
+    [
+      "python3",
+      "Tools/CalibrateConstructionLoudness.py",
+      "--self-test"
+    ]
+  ],
+  "files": {
+    "export.cpp": "320168fe2724a20c2dcc5b4183469d0ad9b96805a3fac81b2042276dbbe61d51",
+    "compare_all_observations.py": "3f415ffdbbed10cead18d3193d13da6d50059d208ba056ee8829e3d5bc36172d",
+    "production-coefficients.csv": "eb75453f12d535a36e5e5637e10a8cd17b1ff03dfdf8b328aa0da793766e6bb9",
+    "baseline-coefficients.csv": "6e9c3fcce4b9ec94ee1000f4df75e7d0bd4233b796916acead3b3ce79722d5cb",
+    "all-observations-review.json": "01e37a268a556899a6ef669cfa4fec8f7527d0880871730b67f7501b3f13afa0",
+    "generator-report.json": "792241eb2ca616757e0e4db735f1a59e15ec7fdaa9027c40e162ae0dee8e4f78",
+    "fixed-velocity-fixture-review.json": "65f5724097e8741301a118978c2b44a91fad32b234933ceb6bd40ef20ab413e5",
+    "focused-engine-contracts.log": "282e6a0eaa17ddce46f0242c27b184a0f599b31e283ac860989edbbcb94932d9",
+    "wood-material.log": "98ccf3541edc280663157a2545d42c011990eab22a17187020dcabd4b143f4ca",
+    "construction-calibration-self-test.log": "dccbc1c0dc68a5d1dfe00f93c0f377c0fab73b501ccccf16736b3fa43428f0fd"
+  },
+  "historical_focused_test_scope": "Engine/Wood focused logs preceded the final flat output-reference normalization. No observation, mechanics or relevant test coefficient changed afterward; final full tests are tracked separately by parent.",
+  "final_pass": true,
+  "max_complex_relative_error": 4.7677364052591404e-07
+}

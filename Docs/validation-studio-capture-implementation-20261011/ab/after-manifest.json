@@ -1,0 +1,42 @@
+{
+  "command": [
+    "/usr/bin/clang++",
+    "-std=c++20",
+    "-O3",
+    "-DNDEBUG",
+    "-I/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after/Source",
+    "-I/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after/Tools",
+    "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/TunedPerformanceRenderer.cpp",
+    "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after/libAcustraDSP.a",
+    "-o",
+    "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after/TunedPerformanceRenderer"
+  ],
+  "revision_base": "49dde231f13c994dbbc1e5fa6d623213af88dab8",
+  "library_source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/libAcustraDSP.a",
+  "source_policy": "Root-declared exact-final frozen canonical sources and rebuilt DSP library copied after build completion; no observation injection.",
+  "git_status": " M CMakeLists.txt\n M Source/DSP/AcustraEngine.cpp\n M Tests/CaptureVoicingTests.cpp\n?? Source/DSP/StudioCaptureData.h\n?? Tests/CaptureObserverBlendTests.cpp\n?? Tests/Fixtures/approved-studio-observer.csv\n?? Tools/GenerateStudioCapture.py\n",
+  "sha256": {
+    "after/libAcustraDSP.a": "ff258ecf3b80ac69fedc96d1b3f3ceed7413fd051e3500b2ae641b089321ba60",
+    "after/TunedPerformanceRenderer": "826739bdf6966963d1202c45429ca5acdde6e44034ce4677378c5eb94630bd50",
+    "after/Tools/GenerateStudioCapture.py": "ef6e99e07b3f96ab6f6f25c812406243fc304e527f3cf4e09065d6517b01a77a",
+    "after/Tools/CalibrationFile.h": "c8d1f75158996658e0f889638160f901dd427fa9082efd2d9c00b868fcce1860",
+    "after/Source/DSP/MeasuredBodyData.h": "1c54a31e2546db4095d373591a45a188fc21bac3820f9b0a3f72c66c96fd9be0",
+    "after/Source/DSP/StudioCaptureData.h": "021c98d9654329ede3951926ac752a62ac4c007c16b2c96fca0a5de4520f4e84",
+    "after/Source/DSP/GaussianApertureData.h": "5383edf9778c013587ab9578f262e40ac61ec5d8660a7fbd4348f072a24a834a",
+    "after/Source/DSP/MicrophoneBalanceData.h": "341bdf927a79d28d8bff75606a7e49efb038e6b4b1117236eee5214630d2867d",
+    "after/Source/DSP/AcustraPerformer.h": "34f9caa77a9700e627e6c57d7ce7bfc6ea77fd58188f91017672c2458e33a21f",
+    "after/Source/DSP/AcustraEngine.cpp": "1237dc1fb7f750b53489e9e076f2a40d935ea3b39a3c35a3b081ba2405c71c07",
+    "after/Source/DSP/PiezoBlampTable.h": "5d4c18901af73d3a8b11e68784af16830f11fa0923647d2da71137e824b91399",
+    "after/Source/DSP/MeasuredBridgeData.h": "1a6e129e9693b6193d8bd19efccb091dc504d767733582a72263a43565cab085",
+    "after/Source/DSP/FittedPhysicalData.h": "ab49687de639fa337dab0f0b812658776c84977c3df1bcf33e063704298cf415",
+    "after/Source/DSP/PerformanceRealism.h": "043a33f1f5ab78accfcf6cda75ca76e84b6514d0308f7258c086a92132368397",
+    "after/Source/DSP/CaptureVoicingData.h": "70efbc0194f161237b00e9318f3ecb632e8aeb77899924ded16729a9f6fc036d",
+    "after/Source/DSP/MeasuredJointBodyData.h": "e8f076bedbc5807a33318adf6b8a16a74a9fd8fcd6db944749d068764064f2c9",
+    "after/Source/DSP/ConstructionLoudnessData.h": "c01f13c3406bb0627f1bf16717f49a584dae48145a10689f1e647d8d21c26f69",
+    "after/Source/DSP/SteelBodyBlend.h": "8f3320861ab768c53aae30802ff680fd52e75f1487ebaf74dad563f3f09384d2",
+    "after/Source/DSP/AcustraEngine.h": "5f1ccc4258254e9b00f6785ec4e2a12ea6fb32f350f23e07ab22c02da2303f6c",
+    "after/Source/DSP/SampleBank/GeneratedBankData.h": "5b0911715138ee40331c25abfc2848372c15d3a0a21c810f9a0aefb490338c40",
+    "after/Source/DSP/SampleBank/EmbeddedGuitarBank.h": "ec049341c78a4b3c7e8ef7eb05d75dcaf69a358acf5ae57f15d87183b5a79485",
+    "TunedPerformanceRenderer.cpp": "ec5a0d19dda225962d21c426f58987f30bd35a974289840d69ea6d0c3441fed9"
+  }
+}

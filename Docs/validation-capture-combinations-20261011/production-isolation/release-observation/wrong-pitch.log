@@ -1,0 +1,4 @@
+Acustra A4 released/held 50-100 ms after damping: unslid -19.8616 dB, slid two octaves down -3.90113 dB, slid down after damping -12.853 dB
+FAIL: a slid note was not damped at its slid pitch
+Acustra wave slope norm A4 released/held 50-100 ms after damping: unslid -26.2619 dB, slid two octaves down -1.45679 dB, slid down after damping -15.2732 dB
+FAIL: a slid note was not damped at its slid pitch

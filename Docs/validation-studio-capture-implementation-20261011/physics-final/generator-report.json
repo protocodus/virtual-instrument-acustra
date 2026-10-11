@@ -1,0 +1,269 @@
+{
+  "inputs": {
+    "Source/DSP/MeasuredBodyData.h": "1c54a31e2546db4095d373591a45a188fc21bac3820f9b0a3f72c66c96fd9be0",
+    "Source/DSP/MeasuredJointBodyData.h": "e8f076bedbc5807a33318adf6b8a16a74a9fd8fcd6db944749d068764064f2c9",
+    "Tools/GenerateStudioCapture.py": "ef6e99e07b3f96ab6f6f25c812406243fc304e527f3cf4e09065d6517b01a77a"
+  },
+  "geometry_reference": {
+    "width": 0.264,
+    "length": 0.49,
+    "depth": 0.091,
+    "hole_radius": 0.042,
+    "hole_y": 0.14,
+    "plate_ry": 0.164,
+    "outline": 0.72
+  },
+  "body_geometry": [
+    [
+      0.343,
+      0.467,
+      0.108,
+      0.1016,
+      0.72
+    ],
+    [
+      0.381,
+      0.492,
+      0.105,
+      0.1016,
+      0.72
+    ],
+    [
+      0.397,
+      0.508,
+      0.111,
+      0.1016,
+      0.75
+    ],
+    [
+      0.432,
+      0.533,
+      0.124,
+      0.1016,
+      0.72
+    ]
+  ],
+  "numpy_version": "1.26.4",
+  "engine_geometry_sha256": "31c3f360b11e4ee88c0a682f6126dc9d97cf2fcc19ae7926780ae8ea9431b267",
+  "source_selection": [
+    [
+      "MeasuredBodyData.h",
+      0
+    ],
+    [
+      "MeasuredBodyData.h",
+      1
+    ],
+    [
+      "MeasuredJointBodyData.h",
+      1
+    ],
+    [
+      "MeasuredJointBodyData.h",
+      2
+    ]
+  ],
+  "fit_diagnostics": [
+    {
+      "source": "MeasuredBodyData.h",
+      "index": 0,
+      "frequency_hz": 90.8203125,
+      "q": 19.3119316,
+      "free_condition": 5.769453310940442,
+      "constrained_relative_error_by_input": [
+        0.19681183247428075,
+        0.39593035608401556
+      ],
+      "free_relative_error_by_input": [
+        0.021068899284083335,
+        0.1975549331489153
+      ]
+    },
+    {
+      "source": "MeasuredBodyData.h",
+      "index": 1,
+      "frequency_hz": 178.532211,
+      "q": 14.3129463,
+      "free_condition": 5.162940558625548,
+      "constrained_relative_error_by_input": [
+        0.0742110684702987,
+        0.26063107804731117
+      ],
+      "free_relative_error_by_input": [
+        0.06490069180742927,
+        0.22266082155208128
+      ]
+    },
+    {
+      "source": "MeasuredJointBodyData.h",
+      "index": 1,
+      "frequency_hz": 90.3425293,
+      "q": 26.2611809,
+      "free_condition": 5.761842723321525,
+      "constrained_relative_error_by_input": [
+        0.23268313160391974,
+        0.458198328970474
+      ],
+      "free_relative_error_by_input": [
+        0.02100865896571523,
+        0.2332005963222779
+      ]
+    },
+    {
+      "source": "MeasuredJointBodyData.h",
+      "index": 2,
+      "frequency_hz": 179.165894,
+      "q": 17.1216717,
+      "free_condition": 5.146198658757637,
+      "constrained_relative_error_by_input": [
+        0.06975674645566597,
+        0.18037261372558772
+      ],
+      "free_relative_error_by_input": [
+        0.06038239898389416,
+        0.15424992365182463
+      ]
+    }
+  ],
+  "series_validation": {
+    "order": 112,
+    "pole_scale": 1000.0,
+    "frequency_domain_hz": [
+      45.0,
+      400.0
+    ],
+    "q_domain": [
+      0.05,
+      150.0
+    ],
+    "max_relative_direct_error": 1.4902741849261156e-15,
+    "max_relative_lr_symmetry_error": 3.49249771123465e-16,
+    "kernels": [
+      {
+        "shape": 0,
+        "placement": 0,
+        "source": 0,
+        "max_argument": 19.848854431284384,
+        "absolute_remainder_bound": 1.8382029953765898e-29
+      },
+      {
+        "shape": 0,
+        "placement": 0,
+        "source": 1,
+        "max_argument": 6.866973804609916,
+        "absolute_remainder_bound": 4.243991824632617e-87
+      },
+      {
+        "shape": 0,
+        "placement": 1,
+        "source": 0,
+        "max_argument": 8.100747627413268,
+        "absolute_remainder_bound": 1.4034272300867084e-78
+      },
+      {
+        "shape": 0,
+        "placement": 1,
+        "source": 1,
+        "max_argument": 3.5849092716926316,
+        "absolute_remainder_bound": 1.5242409403850252e-120
+      },
+      {
+        "shape": 1,
+        "placement": 0,
+        "source": 0,
+        "max_argument": 21.444728619527293,
+        "absolute_remainder_bound": 5.509193843914778e-25
+      },
+      {
+        "shape": 1,
+        "placement": 0,
+        "source": 1,
+        "max_argument": 7.267168924309013,
+        "absolute_remainder_bound": 3.765396569629522e-84
+      },
+      {
+        "shape": 1,
+        "placement": 1,
+        "source": 0,
+        "max_argument": 8.95317751227845,
+        "absolute_remainder_bound": 2.6681395676093722e-73
+      },
+      {
+        "shape": 1,
+        "placement": 1,
+        "source": 1,
+        "max_argument": 3.632048107983522,
+        "absolute_remainder_bound": 6.984986550799046e-120
+      },
+      {
+        "shape": 2,
+        "placement": 0,
+        "source": 0,
+        "max_argument": 22.444418843775065,
+        "absolute_remainder_bound": 2.53503363293868e-22
+      },
+      {
+        "shape": 2,
+        "placement": 0,
+        "source": 1,
+        "max_argument": 7.529108995541412,
+        "absolute_remainder_bound": 2.652725961830839e-82
+      },
+      {
+        "shape": 2,
+        "placement": 1,
+        "source": 0,
+        "max_argument": 9.341595601962714,
+        "absolute_remainder_bound": 4.767761494053677e-71
+      },
+      {
+        "shape": 2,
+        "placement": 1,
+        "source": 1,
+        "max_argument": 3.6631716477890546,
+        "absolute_remainder_bound": 1.888510320533129e-119
+      },
+      {
+        "shape": 3,
+        "placement": 0,
+        "source": 0,
+        "max_argument": 24.067836217559428,
+        "absolute_remainder_bound": 3.3493051609658904e-18
+      },
+      {
+        "shape": 3,
+        "placement": 0,
+        "source": 1,
+        "max_argument": 7.947149765681837,
+        "absolute_remainder_bound": 1.7837342395823988e-79
+      },
+      {
+        "shape": 3,
+        "placement": 1,
+        "source": 0,
+        "max_argument": 10.172305292621845,
+        "absolute_remainder_bound": 1.654096740944531e-66
+      },
+      {
+        "shape": 3,
+        "placement": 1,
+        "source": 1,
+        "max_argument": 3.714240008528742,
+        "absolute_remainder_bound": 9.489387826042445e-119
+      }
+    ]
+  },
+  "weights": {
+    "current": 0.4,
+    "unboosted_treble": 0.2,
+    "constrained_neck_compensated": 0.1,
+    "constrained_offhole_compensated": 0.1,
+    "free_neck_compensated": 0.1,
+    "measured_blend": 0.1
+  },
+  "nominal_distance_compensation": {
+    "neck": 3.0,
+    "offhole": 4.5
+  },
+  "output_sha256": "021c98d9654329ede3951926ac752a62ac4c007c16b2c96fca0a5de4520f4e84"
+}

@@ -1,5 +1,8 @@
 # Fixed combinations of the microphone experiments
 
+Follow-up: the user subsequently approved the balanced combination. See the
+[implemented blend and native A/B](studio-capture-implementation-2026-10-11.md). The evidence below records the earlier research stage.
+
 A weighted combination is more promising than an equal mixture of the five
 previous experiments. The balanced blend consistently reduces the reported
 notes' fundamental prominence in the tested playing conditions, with smaller

@@ -1,5 +1,8 @@
 # Studio microphone capture experiments — 2026-10-11
 
+Follow-up: the user subsequently approved the balanced combination. See the
+[implemented blend and native A/B](studio-capture-implementation-2026-10-11.md). The evidence below records the earlier research stage.
+
 Follow-up: [fixed combinations of these captures](capture-combinations-2026-10-11.md)
 give a better played-note compromise, including a separate excitation check.
 Higher-partial and narrow transfer cancellations remain; no production replacement

@@ -1,0 +1,75 @@
+{
+  "script_sha256": "38b1f8dc853e8e87a3bbb294e04ac3585b353b512c5dbef0caa841dfdd8e0996",
+  "results": [
+    {
+      "key": "parlor-mahogany-mono_mic-m47-s2",
+      "byte_identical": true,
+      "sha256": "bc0f7a47cf5720d33d52cff2008c0442fd0185582fe727db75939bc1f0023246",
+      "commands": [
+        [
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before/OriginalPerformanceRenderer",
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/preflight/parlor-mahogany-mono_mic-m47-s2.events",
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/preflight/parlor-mahogany-mono_mic-m47-s2-original.f32",
+          "mono_mic",
+          "finger",
+          "--body-shape",
+          "parlor",
+          "--body-material",
+          "mahogany",
+          "--room",
+          "0"
+        ],
+        [
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before/TunedPerformanceRenderer",
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/preflight/parlor-mahogany-mono_mic-m47-s2.events",
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/preflight/parlor-mahogany-mono_mic-m47-s2-scratch.f32",
+          "mono_mic",
+          "finger",
+          "--body-shape",
+          "parlor",
+          "--body-material",
+          "mahogany",
+          "--room",
+          "0",
+          "--master-tune-cents",
+          "0"
+        ]
+      ]
+    },
+    {
+      "key": "jumbo-spruce-stereo_mic-m40-s1",
+      "byte_identical": true,
+      "sha256": "c1892da9f820d34a13516fc6c8662c7293fd2fdc276a89a69e9563db45a14f41",
+      "commands": [
+        [
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before/OriginalPerformanceRenderer",
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/preflight/jumbo-spruce-stereo_mic-m40-s1.events",
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/preflight/jumbo-spruce-stereo_mic-m40-s1-original.f32",
+          "stereo_mic",
+          "finger",
+          "--body-shape",
+          "jumbo",
+          "--body-material",
+          "spruce",
+          "--room",
+          "0"
+        ],
+        [
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before/TunedPerformanceRenderer",
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/preflight/jumbo-spruce-stereo_mic-m40-s1.events",
+          "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/preflight/jumbo-spruce-stereo_mic-m40-s1-scratch.f32",
+          "stereo_mic",
+          "finger",
+          "--body-shape",
+          "jumbo",
+          "--body-material",
+          "spruce",
+          "--room",
+          "0",
+          "--master-tune-cents",
+          "0"
+        ]
+      ]
+    }
+  ]
+}

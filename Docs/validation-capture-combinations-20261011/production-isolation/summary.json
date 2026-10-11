@@ -1,0 +1,75 @@
+{
+  "result": "PASS",
+  "production_observation_injection_used": false,
+  "scope": "Two separately linked production libraries with matching headers; same read-only trace source and event sequence.",
+  "before_library_sha256": "9ac3e0b2d92ad626e31951e04b383bb6af764660ef6c7b4919647920344d7278",
+  "after_library_sha256": "ff258ecf3b80ac69fedc96d1b3f3ceed7413fd051e3500b2ae641b089321ba60",
+  "rates": [
+    44100,
+    48000,
+    96000
+  ],
+  "constructions": 12,
+  "normal_cases": 36,
+  "normal_frames": 564300,
+  "all_per_sample_mechanical_piezo_fields_and_bridge_body_modal_hashes_byte_identical": true,
+  "all_piezo_bus_audio_byte_identical": true,
+  "all_cached_pole_bits_byte_identical": true,
+  "microphone_audio_changed_every_case": true,
+  "complete_bridge_body_modal_state_witness": {
+    "frames": 512,
+    "double_columns": 1965,
+    "byte_identical": true,
+    "sha256": "4821adf332377d0a3f3151cada0078119ac1999207c707a9bd70a7da77c7b30c"
+  },
+  "approved_fixture_sha256": "6dfdea5e645afb3e249e65437b1e0be685ef485420cd2b81d2472f6671e5daad",
+  "test_source_sha256": "5999ecc420149084e43192146ea277e5d6c1511467d71ba75ab20894e285ff57",
+  "cxx17_baseline_test_compilation": true,
+  "focused_approved_fixture_complex_residues": 576,
+  "focused_approved_fixture_max_relative_error": 3.38914e-07,
+  "focused_rate_mapping_max_relative_error": 4.40324e-07,
+  "calibration_corner_poles": 768,
+  "observed_frequency_range_hz": [
+    80.6086,
+    216.921
+  ],
+  "observed_q_range": [
+    0.715645,
+    57.542
+  ],
+  "validated_kernel_domain_hz": [
+    45,
+    400
+  ],
+  "validated_kernel_q_domain": [
+    0.05,
+    150
+  ],
+  "limitations": [
+    "Before/after audit fixture, not a permanent old-version product path.",
+    "Per-sample modal hashes supplemented by exact 512-sample full bridge/body modal-state witness.",
+    "Waveguide delay buffers are not dumped; bridge/reaction/body dynamics and all piezo probe fields are compared every sample.",
+    "Short sounding/release/repluck/chord fixture; very late inaudible idle-reset timing is not asserted."
+  ],
+  "raw_traces": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/production-verification",
+  "raw_traces_archived": false,
+  "reusable_runner_note": "Reusable runner only adds explicit --output-root and uses adjacent trace helper. The unchanged executed runner is preserved separately.",
+  "final_negative_control": {
+    "result": "expected failure",
+    "fixture_rows": 144,
+    "complex_residues": 576,
+    "maximum_relative_error": 1.23704,
+    "test_binary_sha256": "27afe86ecc66a78e720be2560731d22534d65e0bbacd8db62665f6d2d3dcdd96",
+    "baseline_library_sha256": "9ac3e0b2d92ad626e31951e04b383bb6af764660ef6c7b4919647920344d7278",
+    "log": "observer-blend-final-negative-control.log"
+  },
+  "controls": {
+    "picking": "Finger",
+    "room": 0,
+    "body": 0.82,
+    "width": 0.62,
+    "output": 0.42,
+    "event_score": "see ProductionObserverTrace.cpp",
+    "reference_frames": 12000
+  }
+}

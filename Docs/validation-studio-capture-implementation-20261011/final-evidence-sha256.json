@@ -1,0 +1,383 @@
+{
+  "scope": "Compact final capture evidence and canonical implementation report. Historical phase1 receipts keep original input hashes; native-validation records final test-only repair. No self-hash or cyclic receipt dependency.",
+  "runtime_revision": "edba92084e36bac4ab6962fdcec1a36f9a0b3b6e",
+  "runtime_library_sha256": "282ae53ffe4a0f977bb9c11ec4c06858303dd118aa00a03bc8315e021da7ca00",
+  "files": {
+    "Docs/validation-studio-capture-implementation-20261011/ab/MeasureMicrophoneBoom.py": {
+      "sha256": "1e40e053bcce6617ffa9215fe6eead15c71968e09ecc61af175b9920026b3053",
+      "bytes": 7898
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/README.md": {
+      "sha256": "ff1e39c078b39ab667d0cf352b0e9f614a552914689fd403522280e040ebd55a",
+      "bytes": 749
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/TunedPerformanceRenderer.cpp": {
+      "sha256": "ec5a0d19dda225962d21c426f58987f30bd35a974289840d69ea6d0c3441fed9",
+      "bytes": 15409
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/after-build.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/after-manifest.json": {
+      "sha256": "2c7991e5d0ebff94eca364e87517153a72e57e5b8dddf1739b8c79054eb6ecd8",
+      "bytes": 3882
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/after-render.log": {
+      "sha256": "b905c69044e2ccadb260bd1e21157d7cb07afe627de04c5c22b1eab96dcb5ddc",
+      "bytes": 229
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/after-renders/report.json.gz": {
+      "sha256": "65d0939ab9da4f33bb474ed015632a774f4d670e99ec7433bfa614361dac4377",
+      "bytes": 521003
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/audio-verification.json": {
+      "sha256": "fd4e8a852f11bca38b0adbd8a496e60aa9186c0199e06a3f036f7276c1b21d51",
+      "bytes": 13863
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/before-build.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/before-library-original-provenance.json": {
+      "sha256": "6d652113c0248bdc9b438c8881c1e6135660406638d0dc113e1bd7222a5f3d57",
+      "bytes": 2243
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/before-manifest.json": {
+      "sha256": "9f38c1b15dcf86f7b4ad323efa2c447928798e2d4acf5af8c555e015a4b12b95",
+      "bytes": 3579
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/before-render.log": {
+      "sha256": "74a5e688a44c383ed5eae47d9f1dab9e7e65537a083201fd546f8cb215895df8",
+      "bytes": 239
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/before-renders/report.json.gz": {
+      "sha256": "cb0aa697898111227b601fbd8a4c8b424a57b410191f89c68a9cb65c98168bcb",
+      "bytes": 522728
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/commands-final.md": {
+      "sha256": "c64875db7617fac1d0f26a6f39199cf5b3c1b7bc5e2c03499e4eefe8d4a1a2bd",
+      "bytes": 3366
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/commands.md": {
+      "sha256": "4694682b2861a462045a323a45b579decb942ba93e72499c37719c83b901062f",
+      "bytes": 4680
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/compare_ab.py": {
+      "sha256": "78288f82136b5d0a32e58c868659b93ea7ab5382834b23ac64b4623414607a4d",
+      "bytes": 16238
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/compare_final_ab.py": {
+      "sha256": "5bee8eaf64fb814a5fa816d6750dc01fcb4f3f7b9f8b8aede7ca177b752b78ba",
+      "bytes": 16522
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison/REPORT.md": {
+      "sha256": "ee5518acd0980ffcdf59d9883433b44dd8afcbdb32aa0ae40733c674dbf4c7f4",
+      "bytes": 6567
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison/audition/centres/manifest.json": {
+      "sha256": "2c5b65864e564c7a1b8cc396c11e55a4b5b7739a6d1801707e1642bc977220cf",
+      "bytes": 24121
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison/audition/manifest.json": {
+      "sha256": "055f673f313280db06f44a94f867519b6fff238c049999b11248bdce2ccf842d",
+      "bytes": 64090
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison/changes.csv": {
+      "sha256": "cedb1e00d226947315173ba7e517c70a7ad083d12b27717a4a53d8ec870f30ad",
+      "bytes": 360621
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison/comparison.json": {
+      "sha256": "944dbfb0df091035f54f734ef66b3ce1a88b04f39c7927059cba1b2e6cbea61c",
+      "bytes": 1688753
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison/fine-pitch-ab.png": {
+      "sha256": "e4cee107b318154c0cb61b6eff1f2b031a9a3ca560455f98c4c49b374d5524b8",
+      "bytes": 405225
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison-final/REPORT.md": {
+      "sha256": "028e2f1daf454a4c6ff3509781c7680a980a545e92c65af5a9d4fd06b8b483f3",
+      "bytes": 6719
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison-final/audition/centres/manifest.json": {
+      "sha256": "15483b712c2cc66a1138c64a391f8d09ee15192e7cba14b646dd2828db104b01",
+      "bytes": 24393
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison-final/audition/manifest.json": {
+      "sha256": "f71472699a862a6e440da32fc7fa20b488027bbcf3ed902e7e44eda621bdeaff",
+      "bytes": 64215
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison-final/changes.csv": {
+      "sha256": "afd161b7ebd320347b2c074b9580008e7ae07c64a348915076d41e9b5b4aa55f",
+      "bytes": 359826
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison-final/comparison.json": {
+      "sha256": "494a07603fad6dc2be966f54a93070b719dc3bd18983a81da07bb56a40e2067e",
+      "bytes": 1688139
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison-final/fine-pitch-ab.png": {
+      "sha256": "e4cee107b318154c0cb61b6eff1f2b031a9a3ca560455f98c4c49b374d5524b8",
+      "bytes": 405225
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/comparison.log": {
+      "sha256": "b8786d2dfc8169264c1e8f02db03301bc2a57f794b93bce243a0cb9beb45d5f2",
+      "bytes": 133
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/final-audio-verification.json": {
+      "sha256": "d6464915f1614b9d8e20eabfdfc0c49bcbe85410b477ec0a0738b565618331a1",
+      "bytes": 16097
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/final-receipt.json": {
+      "sha256": "93032f422cd986bc89d10dc19d49165803c91c62a8f64e36b6462ef343f11376",
+      "bytes": 5769
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/freeze_normalized_after.py": {
+      "sha256": "821d4bba1cbe5d08956691a3344accb32462dd0f40ecdd5db02466d1b5dd3b26",
+      "bytes": 2249
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/green-series-review.json": {
+      "sha256": "f745f928e22e0c18dcd386047fd1f7952a62eaae5c789c17333f2f106455195e",
+      "bytes": 4468
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/green_series_review.py": {
+      "sha256": "8494521173e61fb414d0b45143e9a0cf81cb63533eecf432e63b4cb3adbad95d",
+      "bytes": 4559
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/normalized-after-build.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/normalized-after-manifest.json": {
+      "sha256": "9301d52dc267e21faec281aae5b608d77e39b17221ebbfd7af3f46680bbc3899",
+      "bytes": 5387
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/normalized-after-renders/report.json.gz": {
+      "sha256": "f4ee693c194a58fd08aa2db75bbb0f26268556358567290b4702da50a783557b",
+      "bytes": 521403
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/package_centres.py": {
+      "sha256": "5174d3bcaa12b62ace1aba2db760ff8de08a39b1bb7256e465169f910b1f4079",
+      "bytes": 2290
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/package_evidence.py": {
+      "sha256": "e5fa3c0b454aa6f0897b6605f13d982d04ca350991be3589976fed323aa0841c",
+      "bytes": 3595
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/package_final_centres.py": {
+      "sha256": "7ee4a6492a7ea26b2988299267cf3431b6100c04a91f26e7e829d072668871e6",
+      "bytes": 2348
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/package_final_evidence.py": {
+      "sha256": "8647d8e4fe1488b1db9d7b590d4d3a82f17e08c8bf9abece4194619a63c36175",
+      "bytes": 3255
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/plan.json": {
+      "sha256": "e103a2dcbb8ba0f01b4b6c2b50cb63c4f5b41c1b90606b1c07a294678848a4c5",
+      "bytes": 159969
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/preflight/receipt.json": {
+      "sha256": "3d146446dc0d813b38d04dd57da0576406aef4f0585d9b07f4f71d42728c2638",
+      "bytes": 3426
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/preflight.py": {
+      "sha256": "38b1f8dc853e8e87a3bbb294e04ac3585b353b512c5dbef0caa841dfdd8e0996",
+      "bytes": 2130
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/receipt.json": {
+      "sha256": "255904a1ec4bab193bfa0af6d078e71ff18b973d3564b6e33999c07e403db054",
+      "bytes": 11383
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/references/export_candidates.py": {
+      "sha256": "ea1715372b1bfc36b53013061296614d97d216651a34c4cf829f6a47c301a3db",
+      "bytes": 8889
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/references/free-source-fit-manifest.json": {
+      "sha256": "ce472db7a1ee077e60c32997f22dba453275bd112153abaad18c591b7f1dab30",
+      "bytes": 475850
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/references/prototype_observer.py": {
+      "sha256": "6d74c2747f2072ebb855f55ab83550868dc1258375fde18d82de1dda0dda0b2d",
+      "bytes": 15437
+    },
+    "Docs/validation-studio-capture-implementation-20261011/ab/targeted_ab.py": {
+      "sha256": "058e9a968119f124e0e5ebfdad0b434ed732022240ec46b64a13819bea788d51",
+      "bytes": 8703
+    },
+    "Docs/validation-studio-capture-implementation-20261011/all-observations-review.json": {
+      "sha256": "4ce931af18513996cc980cf35fa498e8050e590e36fa19f5be444167b170167d",
+      "bytes": 2504
+    },
+    "Docs/validation-studio-capture-implementation-20261011/compare_all_observations.py": {
+      "sha256": "daada38ad931abe333430b5457cbfa3b34a78a1b925c641fad6e89b267990ac2",
+      "bytes": 3545
+    },
+    "Docs/validation-studio-capture-implementation-20261011/generator-report.json": {
+      "sha256": "792241eb2ca616757e0e4db735f1a59e15ec7fdaa9027c40e162ae0dee8e4f78",
+      "bytes": 6439
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/CalibrateConstructionLoudness.py": {
+      "sha256": "3efc79889fdc493124147653936f20de3ab57167832b8433f4b34f290eab2b0d",
+      "bytes": 52376
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/CalibrateStudioCaptureLoudness.py": {
+      "sha256": "ed3008a52f62498c6fa4603d39cf8cb76d1f11682e1f4a764327b1ecda5d7932",
+      "bytes": 10883
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/MeasureMaterialLoudness.py": {
+      "sha256": "e8bb6b39f2dc430ab3fdf0d24311bfe0cea4927f0ab4881627863b665fb2e0c9",
+      "bytes": 10836
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/REPORT.md": {
+      "sha256": "0adbdbea23848e73572882aa69519cd19ff73837f3e76d257e2d1981a2cf7e65",
+      "bytes": 4384
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/StudioCaptureLoudnessData.h": {
+      "sha256": "f75754057d03ed88facae11bf13d7ebd2a524ddb6038f9925cfe6c802d1a7973",
+      "bytes": 2200
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/baseline-manifest.json": {
+      "sha256": "9f38c1b15dcf86f7b4ad323efa2c447928798e2d4acf5af8c555e015a4b12b95",
+      "bytes": 3579
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/final-assessment.json": {
+      "sha256": "9c4fe1a65249b75d6facd2d7d86ac4b37fc56d4ef09a4f44811a19974a3908f7",
+      "bytes": 2665
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/final-verification.json": {
+      "sha256": "9c2b333e06f3693df7b981674ead5893f094d8de62b86dd86e505428d43fa081",
+      "bytes": 71693
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/gate-witness.json": {
+      "sha256": "b45806e4915bf5006039dcb9740f66fa12724431d51f2a265ef67d5614b62937",
+      "bytes": 48244
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/gate_witness.py": {
+      "sha256": "7d59f6764c8799701251a5d9de3cc26c5acef7bb13498d13bdd87da641f78f3b",
+      "bytes": 3433
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/hardest.txt": {
+      "sha256": "9095fc14100884c44b3c86a75dda069cd6bc6f3bb3ccd7e2525a30c703bc31a5",
+      "bytes": 904
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/phrase.txt": {
+      "sha256": "4eadb7218ff6a860aaede9bf7914c8ba94f60469c5f633eae6b0b40776545818",
+      "bytes": 6308
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/raw-blend-manifest.json": {
+      "sha256": "2c7991e5d0ebff94eca364e87517153a72e57e5b8dddf1739b8c79054eb6ecd8",
+      "bytes": 3882
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/receipt.json": {
+      "sha256": "7d68dd769701ad5cf34fd2b2d94d5d78752a8842de2702fe47ec3e349cbd6aab",
+      "bytes": 2306
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/report.json": {
+      "sha256": "3a1e6534a598ea0883510c12c3da8d76b065ac337677a289d300cd424659ca95",
+      "bytes": 136226
+    },
+    "Docs/validation-studio-capture-implementation-20261011/level-match/verify_final.py": {
+      "sha256": "44d2ddb16fc6164a96e96a0ef9bdc723d9ce5dae191cbf7ceaf0f48f66786148",
+      "bytes": 4501
+    },
+    "Docs/validation-studio-capture-implementation-20261011/native-validation/README.md": {
+      "sha256": "bfa6016bf71ed3f1674dbc315e89efa3ba02f4458d7cbeddb78e796f69526505",
+      "bytes": 1748
+    },
+    "Docs/validation-studio-capture-implementation-20261011/native-validation/configuration.txt": {
+      "sha256": "cd5e7d31c508cc7b4899b38dbb19cca8473d55722d7d99521fa1ccd74812f790",
+      "bytes": 235
+    },
+    "Docs/validation-studio-capture-implementation-20261011/native-validation/engine-transition-build.log": {
+      "sha256": "cc070a1dad7c0a1edbb96f67fd71a1d4e2dc653cff60730dc4a6de32bb8bd221",
+      "bytes": 211
+    },
+    "Docs/validation-studio-capture-implementation-20261011/native-validation/engine-transition-oracle.patch": {
+      "sha256": "5377d864111b97f52d68e7c1764f2725618bde70b9a5797c665668f2f814b965",
+      "bytes": 3816
+    },
+    "Docs/validation-studio-capture-implementation-20261011/native-validation/engine-transition-tests.log": {
+      "sha256": "40db9c21d4a890e7db4207cab2648a7f355be5f7ac89c872c8cd4350cc77538a",
+      "bytes": 8052
+    },
+    "Docs/validation-studio-capture-implementation-20261011/native-validation/final-build.log": {
+      "sha256": "77725f523338b75bf09c2f8aff674fd0237f3c43c569aca58c386a93c8d75fc9",
+      "bytes": 9134
+    },
+    "Docs/validation-studio-capture-implementation-20261011/native-validation/final-tests.log": {
+      "sha256": "3fd33cf2b6422642a192a0b591520dddacacd71d3d89f798b69784f569cc389f",
+      "bytes": 19206
+    },
+    "Docs/validation-studio-capture-implementation-20261011/native-validation/native-architectures.txt": {
+      "sha256": "41cf6cec0b37746977b65995a48353640a814138872abda6056b9b877b44eb5e",
+      "bytes": 535
+    },
+    "Docs/validation-studio-capture-implementation-20261011/native-validation/receipt.json": {
+      "sha256": "74cbe2f35f51feca625c7b732bca1cdfea10ec5cd8a17d875ca5ba5cde98f238",
+      "bytes": 24244
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/all-observations-review.json": {
+      "sha256": "01e37a268a556899a6ef669cfa4fec8f7527d0880871730b67f7501b3f13afa0",
+      "bytes": 2504
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/baseline-coefficients.csv": {
+      "sha256": "6e9c3fcce4b9ec94ee1000f4df75e7d0bd4233b796916acead3b3ce79722d5cb",
+      "bytes": 436069
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/compare_all_observations.py": {
+      "sha256": "3f415ffdbbed10cead18d3193d13da6d50059d208ba056ee8829e3d5bc36172d",
+      "bytes": 3562
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/construction-calibration-self-test.log": {
+      "sha256": "dccbc1c0dc68a5d1dfe00f93c0f377c0fab73b501ccccf16736b3fa43428f0fd",
+      "bytes": 47
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/engine-transition-build.log": {
+      "sha256": "cc070a1dad7c0a1edbb96f67fd71a1d4e2dc653cff60730dc4a6de32bb8bd221",
+      "bytes": 211
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/engine-transition-review.json": {
+      "sha256": "125bbe845ed48e252102acffda3449692f91ffc6de8c89553b3d8234a881ceb8",
+      "bytes": 1876
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/engine-transition-tests.log": {
+      "sha256": "40db9c21d4a890e7db4207cab2648a7f355be5f7ac89c872c8cd4350cc77538a",
+      "bytes": 8052
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/export.cpp": {
+      "sha256": "320168fe2724a20c2dcc5b4183469d0ad9b96805a3fac81b2042276dbbe61d51",
+      "bytes": 1254
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/fixed-velocity-fixture-review.json": {
+      "sha256": "65f5724097e8741301a118978c2b44a91fad32b234933ceb6bd40ef20ab413e5",
+      "bytes": 416
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/focused-engine-contracts.log": {
+      "sha256": "282e6a0eaa17ddce46f0242c27b184a0f599b31e283ac860989edbbcb94932d9",
+      "bytes": 1334
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/generator-report.json": {
+      "sha256": "792241eb2ca616757e0e4db735f1a59e15ec7fdaa9027c40e162ae0dee8e4f78",
+      "bytes": 6439
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/production-coefficients.csv": {
+      "sha256": "eb75453f12d535a36e5e5637e10a8cd17b1ff03dfdf8b328aa0da793766e6bb9",
+      "bytes": 437047
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/provenance.json": {
+      "sha256": "466e4ff79d8ff4dd781bca3e7bfb6d99e089ebc7f233854c032f9049ec3ce6b9",
+      "bytes": 3602
+    },
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/wood-material.log": {
+      "sha256": "98ccf3541edc280663157a2545d42c011990eab22a17187020dcabd4b143f4ca",
+      "bytes": 479
+    },
+    "Docs/validation-studio-capture-implementation-20261011/refresh_final_evidence.py": {
+      "sha256": "780df0002f9a862432a9063f2b04232b969b9fdab78232724f5daddcbbb443b6",
+      "bytes": 1189
+    },
+    "Docs/studio-capture-implementation-2026-10-11.md": {
+      "sha256": "ef6424c688f7395d46474aeadc650135f9c9816c5de8cace93dccab2085ed712",
+      "bytes": 13047
+    }
+  }
+}

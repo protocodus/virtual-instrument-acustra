@@ -5,6 +5,24 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — adopt the balanced microphone observation blend
+
+After research into studio placement and trials of individual and combined
+observers, the user approved implementing the balanced blend. The mixture
+retains 40% of the preceding capture, 20% unboosted measured treble pressure,
+and 10% each of three low-mode spatial projections and the measured microphone
+mix. It is fixed across constructions and notes. No new EQ, physical damping,
+body/bridge coupling or piezo change is part of this decision. A flat
+microphone-only gain subsequently restores preceding phrase levels, preserving
+the existing independent loudness guard without changing the chosen balance.
+
+The [production implementation and native A/B](studio-capture-implementation-2026-10-11.md)
+reduce fundamental prominence around Parlor B1, Auditorium A1 and Jumbo E1–F1.
+They preserve body/Piezo traces while retaining local resonant note peaks and
+some partial cancellation. The projected geometry is a declared approximation,
+not a new spatial measurement. The user's implementation approval and the
+numerical validation are distinct from a new listening verdict on this build.
+
 ## 2026-10-11 — consistent released-load observation and callback work
 
 The existing instrument's piezo now includes the released crown load already

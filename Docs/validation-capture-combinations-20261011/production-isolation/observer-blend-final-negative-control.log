@@ -1,0 +1,25 @@
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 0, observation 0
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 0, observation 1
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 0, observation 2
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 0, observation 3
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 1, observation 0
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 1, observation 1
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 1, observation 2
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 1, observation 3
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 2, observation 0
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 2, observation 1
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 2, observation 2
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 2, observation 3
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 8, observation 0
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 8, observation 1
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 8, observation 2
+FAIL: approved force/moment microphone mixture differs at construction 0, slot 8, observation 3
+approved observer: 576 complex residues, max relative error 1.23704
+observer rate 8000: 408 complex residues, 18 inactive modes, max relative error 1.23704
+observer rate 24000: 468 complex residues, 3 inactive modes, max relative error 1.23704
+observer rate 44100: 480 complex residues, 0 inactive modes, max relative error 1.23704
+observer rate 96000: 480 complex residues, 0 inactive modes, max relative error 1.23704
+observer rate 192000: 480 complex residues, 0 inactive modes, max relative error 1.23704
+observer rate 384000: 480 complex residues, 0 inactive modes, max relative error 1.23704
+observer rate 48000: 480 complex residues, 0 inactive modes, max relative error 1.23704
+spatial calibration corners: 768 poles, frequency 80.6086..216.921 Hz, Q 0.715645..57.542

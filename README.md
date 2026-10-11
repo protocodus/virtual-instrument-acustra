@@ -15,10 +15,11 @@ The strings are steel. Shape and Material directions, String Age, Tuning,
 Pluck Position, Touch, Release Noise, Body Amount, Stereo Width, Piezo Mix,
 Room and Output remain directly accessible. Bridge-hand damping is a playing gesture
 rather than a setting, so it arrives on CC2 and costs the panel nothing.
-Since 2026-10-01 the Original's microphones are heard as a recording hears
-them, voiced against five sets of real flat-top recordings, and a Room
-parameter (50% for a new instance) puts a small studio around them; see
-[The microphones and the room](#the-microphones-and-the-room).
+The microphone observer uses a fixed blend of measured pressure responses
+and low-mode studio-position projections. It retains the existing recording
+voicing and Room parameter (50% for a new instance). See the
+[studio capture implementation](Docs/studio-capture-implementation-2026-10-11.md)
+and [the microphones and the room](#the-microphones-and-the-room).
 "Top of market"
 remains the goal, not a validated claim; controlled listening against real
 guitars and leading instruments is still required.
@@ -1249,19 +1250,26 @@ the bank's last). Nothing measured is behind the continuation's level beyond
 the bank's own top octave; a microphone response measured past 10 kHz would
 replace it.
 
-Stereo comes from the measured microphone responses, with no added channel
-delay or reverb. The archive's treble and bass microphones were 10 cm above
-the top plate and 20 cm apart, one each side of the bridge, and its third
-microphone 20 cm from the treble one toward the upper bout, also 10 cm above
-the top. Stereo mic pairs the treble-bridge microphone (left) with the
-upper-bout one (right), the bridge/twelfth-fret placement a blind listener
-chose over the bridge's own treble/bass pair on all four pairs of the
-2026-09-25 set, noting more clarity; the bass-bridge microphone is not
-heard. The g21 setup used a floor absorber, with its first room reflections
-12 ms or more away. **Mono mic** uses the upper-bout microphone alone. It
-sends identical samples to both channels; the stereo pair remains the
-default. g21 was measured nylon-strung, so it remains an adaptation for
-steel, not a measured steel-string body.
+Stereo mixes complex measured pressure responses and low-mode projections,
+with no added channel delay or reverb. The archive's treble and bass microphones were 10 cm above
+the top plate and 20 cm apart; its third microphone was 20 cm toward the
+upper bout from the treble microphone, also 10 cm above the top. The g21
+setup used a floor absorber, with first room reflections at least 12 ms away.
+It was measured nylon-strung and remains an adaptation for steel.
+
+The current microphone observation is a fixed weighted pressure mixture:
+40% of the preceding treble/upper capture, 20% unboosted measured treble,
+10% measured microphone averages, and 10% each of constrained neck at 30 cm,
+constrained off-hole at 45 cm, and measured-phase neck at 30 cm. Spatial
+terms receive common distance compensation before weighting. They project
+only the four identified air/top modes; the other modes retain the declared
+measured/continuation mixture. Geometry and radiation profiles are explicit
+model assumptions, not new measurements at these positions.
+
+**Mono mic** uses the blend's right observation and sends identical samples
+to both channels. It is not a sum of the final stereo outputs, but the
+observation mixture can itself cancel partials. The stereo pair remains the
+default. See [implementation and A/B limits](Docs/studio-capture-implementation-2026-10-11.md).
 
 The generator fits all six impact-to-microphone paths jointly, then checks
 both those paths and their force/moment combinations against the existing
@@ -1311,18 +1319,12 @@ natural-frequency discrepancy at broad Q. Unpaired bridge modes retain their
 original prototypes; the [current evidence register](Docs/dsp-finalization-2026-10-11.md)
 records both the mathematical checks and the retained measured-fit limits.
 
-The selected bank uses neutral body calibration factors: frequency and Q scales
-of 1 and residue tilt of 0 dB/octave. One exception was chosen by ear: steel's
-air mode (the g21 modes between 85 and 145 Hz) radiates four times stronger
-(+12 dB) at the treble-bridge microphone. Heard there, 82 Hz is 15 dB weaker
-than 330 Hz, while the upper-bout microphone hears it 2 dB stronger. The Eastman
-dreadnought's picked E2 and A#2 stand 11-13 dB stronger against their 2nd
-and 3rd harmonics than the engine rendered them through the bridge pair.
-With the gain, a picked E2 lands within 1 dB of that recording and equally
-in both channels. The upper-bout microphone hears the air modes as
-measured. Shape and wood
-still apply their documented construction morphs and the existing Q limits;
-even the default Dreadnought is therefore a transformation of the measurement.
+The selected bank uses neutral body calibration factors: frequency and Q
+scales of 1 and residue tilt of 0 dB/octave. The original capture's authored
+fourfold treble-microphone air-mode gain remains inside its 40% contribution;
+unboosted measured and spatial contributions do not inherit it. Shape and
+wood apply their existing construction morphs and Q limits. The fixed blend
+changes observation only, with physical poles and coupling unchanged.
 The rejected bridge-local direct branch has been removed. The existing fixed
 radiation gain remains, with no runtime RMS matching or automatic level trim;
 absolute sound pressure is not calibrated. Body Amount scales measured
@@ -1461,10 +1463,10 @@ resonances meet it (Known gaps).
 | **Stereo Width** | Blends the measured stereo pair toward mono; Mono mic and Piezo ignore width and send identical samples to both channels. |
 | **Output** | Final gain, default 0 dB; exactly linear through −1 dBFS, then bounded by a headroom-only safety limiter. |
 
-Stereo mic uses the measured treble-bridge/upper-bout pair. Mono mic uses the
-upper-bout microphone alone; it does not sum two spaced microphone signals and
-therefore avoids their phase cancellation. Piezo observes net saddle force
-before body radiation. These observations never feed back into the instrument.
+Stereo mic uses the fixed measured/spatial observation blend. Mono mic uses
+its right observation, duplicated to both outputs. Phase cancellation remains
+a possible property of either microphone route. Piezo observes net saddle
+force before body radiation. These observations never feed back into the instrument.
 Capture changes crossfade on the existing parameter smoothing, preserving
 ringing notes.
 
@@ -1605,12 +1607,12 @@ passband error test; the circuit and its gain remain unchanged.
 
 ### The microphones and the room
 
-**Capture voicing.** The Original's radiation is g21's two microphones close
-over a flamenca's bridge and upper bout, morphed to the steel Shapes, and no
-steel-string guitar is recorded from there. Against five sets of real
+**Capture voicing.** The retained contour was fitted before the studio blend,
+using g21's close bridge/upper-bout observations morphed to steel Shapes.
+Those source observations were compared against five sets of real
 flat-top recordings - the Eastman E1D's picked and finger-plucked takes, the
 Martin HD28, the bank's flat-top notes and GuitarSet's six performances -
-that pair heard about 5 dB too little at 125 Hz, 4-6 dB too much at
+that earlier pair heard about 5 dB too little at 125 Hz, 4-6 dB too much at
 250-630 Hz and 2-7.5 dB too little at 0.8-1.6 kHz, every source agreeing,
 and the 1.26 kHz hole did not move with the pluck point, so it was the
 microphones' and not the strings'. [`Source/DSP/CaptureVoicingData.h`](Source/DSP/CaptureVoicingData.h)
@@ -1625,8 +1627,10 @@ an intended low-mid cut into a boost. The correction preserves the physical
 bridge and radiation poles, never reaches the piezo, and keeps separate
 histories for each bank during construction fades. See the
 [body and capture audit](Docs/body-capture-2026-10-08.md).
-Its level keeps the default construction at its loudness, and every
-construction was re-levelled within +-1 LU.
+Its earlier level calibration kept constructions within +-1 LU. The studio
+blend retains those gains and adds flat microphone-only phrase-level
+compensation; its level and spectral changes are measured
+separately in the [implementation report](Docs/studio-capture-implementation-2026-10-11.md).
 [`Tools/FitCaptureVoicing.py`](Tools/FitCaptureVoicing.py) refits it from
 renders of the five sources (twice, the engine in the loop, after any change
 to the Original's radiation).
