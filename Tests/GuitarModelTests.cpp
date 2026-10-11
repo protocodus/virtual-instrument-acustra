@@ -6,7 +6,10 @@
 // it; and Spruce plays the measured bank as measured, while the radiation
 // moves by Body Material's frequency factor.
 #include "DSP/AcustraEngine.h"
+#include "DSP/MeasuredBodyData.h"
+#include "DSP/MeasuredJointBodyData.h"
 #include "DSP/MicrophoneBalanceData.h"
+#include "DSP/SteelBodyBlend.h"
 
 #include <algorithm>
 #include <array>
@@ -24,6 +27,11 @@ struct AcustraEngineTestAccess
     { return AcustraEngine::radiationModePole(p, fittedPhysicalCalibration, index); }
     static bool hasBody(const AcustraEngine& e, BodyShape shape, BodyMaterial wood)
     { return e.configuredBodyShape_ == shape && e.configuredBodyMaterial_ == wood; }
+    static std::array<double, 2> bodyPole(const AcustraEngine& e, int index)
+    { return { e.bodyBank_.poleReal[std::size_t(index)],
+               e.bodyBank_.poleImaginary[std::size_t(index)] }; }
+    static const auto& bridgeTable(const AcustraEngine& e)
+    { return e.bridgeMobilityTable(); }
     // Remove only the microphone tilt from a prepared, silent engine.
     // Reload the configured record so both test engines retain identical
     // poles, states, slot ordering and physical bridge/string coefficients.
@@ -71,6 +79,114 @@ acustra::EngineParameters auditorium()
     acustra::EngineParameters p;
     p.shape = acustra::BodyShape::Auditorium;
     return p;
+}
+
+void testMeasuredModalDampingIsPreserved()
+{
+    using namespace acustra;
+    using Access = AcustraEngineTestAccess;
+    double worstRelativeError = 0.0, minimumBodyWork = 0.0;
+    int checked = 0, broadModes = 0;
+    for (const double rate : { 8000.0, 48000.0, 96000.0 })
+        for (const float qScale : { 0.05f, 1.0f, 1.8f })
+            for (int shape = 0; shape < 4; ++shape)
+                for (int wood = 0; wood < 3; ++wood)
+                {
+                    EngineParameters p;
+                    p.shape = static_cast<BodyShape>(shape);
+                    p.bodyMaterial = static_cast<BodyMaterial>(wood);
+                    p.outputGain = 0.2f;
+                    auto calibration = fittedPhysicalCalibration;
+                    calibration.bodyQScale = qScale;
+                    auto e = std::make_unique<AcustraEngine>();
+                    e->setParameters(p);
+                    e->setPhysicalCalibration(calibration);
+                    e->prepare(rate, 64);
+
+                    // Recover decay from the actual rendered pole, not the
+                    // engine's modal-Q helper. The measured bank is fitted as
+                    // exp((-pi*f/Q + j*2*pi*f)/fs), so this identity remains
+                    // valid for broad modes, including Q below one half.
+                    const auto check = [&](int slot, float sourceFrequency,
+                                            float sourceQ)
+                    {
+                        const auto pole = Access::bodyPole(*e, slot);
+                        if (pole[1] == 0.0)
+                            return; // Above this rate's radiation band.
+                        const double radius = std::hypot(pole[0], pole[1]);
+                        const double angle = std::atan2(pole[1], pole[0]);
+                        const double observedQ = -angle / (2.0 * std::log(radius));
+                        // Keep the separately chosen air-mode extension;
+                        // Shape and Wood do not invent another modal damping.
+                        const double air = sourceFrequency > 85.0f
+                            && sourceFrequency < 105.0f ? 23.5 / 19.311932 : 1.0;
+                        const double expectedQ = std::min(150.0,
+                            double(sourceQ) * qScale * air);
+                        const double error = std::abs(observedQ / expectedQ - 1.0);
+                        expect(radius > 0.0 && radius < 1.0 && std::isfinite(error),
+                               "a measured radiation mode is unstable or nonfinite");
+                        worstRelativeError = std::max(worstRelativeError, error);
+                        ++checked;
+                        if (sourceQ < 4.0f)
+                            ++broadModes;
+                    };
+                    int slot = 0;
+                    for (const auto& mode : detail::measuredSteelBodyModes)
+                        check(slot++, mode.frequency, mode.q);
+                    if (detail::steelBlendJointBodyWeight > 0.0f)
+                    {
+                        const auto& bridge = Access::bridgeTable(*e);
+                        int bridgeSlot = bridge.ordered;
+                        for (const auto& mode : detail::measuredSteelJointBodyModes)
+                        {
+                            if (mode.frequency >= detail::steelBlendJointBandHz)
+                                continue;
+                            check(slot++, mode.frequency, mode.q);
+                            if (!(mode.heave > 0.0f || mode.rock > 0.0f))
+                                continue;
+                            const auto& entry = bridge.modes[std::size_t(bridgeSlot++)];
+                            const double air = mode.frequency > 85.0f
+                                && mode.frequency < 105.0f ? 23.5 / 19.311932 : 1.0;
+                            const double expectedQ = std::min(150.0,
+                                double(mode.q) * qScale * air);
+                            expect(std::abs(entry.omega / (2.0 * entry.damping)
+                                              / expectedQ - 1.0) < 1e-6,
+                                   "the joint bridge changed its measured modal damping");
+                        }
+                    }
+
+                    // The smallest calibrated Q is well below 0.5: exercise
+                    // its actual coupled recurrence, where merely checking
+                    // a metadata value would miss an unstable coefficient.
+                    if (qScale == 0.05f)
+                    {
+                        for (int note : { 40, 47, 52, 55, 59, 64 })
+                            e->noteOn(note, 0.8f);
+                        double work = 0.0, energy = 0.0;
+                        for (int n = 0; n < int(rate / 20.0); ++n)
+                        {
+                            float left, right;
+                            e->process(&left, &right, 1);
+                            work += e->getLastBridgeBodyPower() / rate;
+                            minimumBodyWork = std::min(minimumBodyWork, work);
+                            energy += double(left) * left + double(right) * right;
+                            expect(std::isfinite(left) && std::isfinite(right)
+                                       && std::isfinite(work)
+                                       && std::max(std::abs(left), std::abs(right)) <= 1.0f,
+                                   "broad measured modes produced nonfinite or unbounded audio");
+                        }
+                        expect(energy > 1e-12, "broad measured modes silenced the instrument");
+                    }
+                }
+    std::cout << "measured modal damping: " << checked << " poles, " << broadModes
+              << " broad modes, maximum relative Q error=" << worstRelativeError
+              << ", minimum body work=" << minimumBodyWork << '\n';
+    expect(checked > 1000 && broadModes >= 108,
+           "the damping regression did not exercise both broad measured modes");
+    expect(worstRelativeError < 1e-3,
+           "the radiation changed a measured mode's Q instead of preserving its decay");
+    expect(minimumBodyWork >= -1e-14,
+           "broad measured bridge modes generated energy at the string port");
 }
 
 void testMicrophoneTiltOnlyChangesObservation()
@@ -252,6 +368,7 @@ void testSpruceIsAsMeasured()
 
 int main()
 {
+    testMeasuredModalDampingIsPreserved();
     testMicrophoneTiltOnlyChangesObservation();
     testCoupledBody();
     testSpruceIsAsMeasured();

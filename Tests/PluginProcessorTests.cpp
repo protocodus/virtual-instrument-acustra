@@ -1648,6 +1648,7 @@ void testEditorRendering()
 
     std::vector<juce::Component*> pending { editor.get() };
     std::vector<juce::TextButton*> choiceButtons;
+    std::vector<juce::Slider*> sliders;
     juce::MidiKeyboardComponent* midiKeyboard = nullptr;
     juce::Label* engineStatus = nullptr;
     juce::Component* stringActivity = nullptr;
@@ -1669,12 +1670,39 @@ void testEditorRendering()
             if (auto* button = dynamic_cast<juce::TextButton*> (child);
                 button != nullptr && button->getRadioGroupId() != 0)
                 choiceButtons.push_back (button);
+            if (auto* slider = dynamic_cast<juce::Slider*> (child))
+                sliders.push_back (slider);
             if (auto* candidate = dynamic_cast<juce::MidiKeyboardComponent*> (child))
                 midiKeyboard = candidate;
         }
     }
 
     expect (comboBoxCount == 0, "the editor still hides choices in a combo box");
+    expect (sliders.size() == 9,
+            "the editor does not expose every continuous sound parameter");
+    for (const auto& control : std::array {
+        std::pair { acustra::parameters::releaseNoise, "RELEASE NOISE" },
+        std::pair { acustra::parameters::room, "ROOM" } })
+    {
+        const auto found = std::find_if (sliders.begin(), sliders.end(),
+            [&] (const auto* slider) { return slider->getName() == control.second; });
+        expect (found != sliders.end(), std::string { "missing control: " } + control.second);
+        if (found == sliders.end())
+            continue;
+        auto& slider = **found;
+        const float initial = valueOf (processor, control.first);
+        expect (std::abs (slider.getValue() - initial) < 0.011
+                    && slider.getWantsKeyboardFocus()
+                    && slider.getDescription().isNotEmpty(),
+                std::string { control.second } + " lost its current value or accessibility");
+        setValue (processor, control.first, 0.0f);
+        expect (slider.getValue() == 0.0,
+                std::string { control.second } + " did not follow host automation");
+        slider.setValue (63.2, juce::sendNotificationSync);
+        expect (std::abs (valueOf (processor, control.first) - 63.2f) < 0.011f,
+                std::string { control.second } + " did not update its host parameter");
+        setValue (processor, control.first, initial);
+    }
     expect (stringActivity != nullptr,
             "the six-string activity display is missing");
     const auto refreshDisplayTimer = [&]
@@ -1832,6 +1860,18 @@ void testEditorRendering()
     const auto renderAt = [&] (int width, int height)
     {
         editor->setSize (width, height);
+        for (auto* slider : sliders)
+        {
+            const auto bounds = slider->getBoundsInParent();
+            expect (slider->isVisible() && slider->getWidth() >= 96
+                        && slider->getHeight() >= 140
+                        && editor->getLocalBounds().contains (bounds),
+                    "a sound control is hidden, clipped or too small at a supported size");
+            for (auto* other : sliders)
+                if (other != slider)
+                    expect (! bounds.intersects (other->getBoundsInParent()),
+                            "sound controls overlap");
+        }
         for (auto* button : choiceButtons)
         {
             const auto bounds = button->getBoundsInParent();

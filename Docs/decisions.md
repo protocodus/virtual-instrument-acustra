@@ -5,6 +5,22 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — model and parameter consistency audit
+
+The audit starts from the latest fetched main and remains scoped to ACUSTRA.
+It removes a Q floor that overrode two fitted broad resonances, regenerates
+the affected Pick level trims, preserves playable chord planning in the
+presence of duplicate/unreachable notes, respects queued-strum pedal
+ownership, and recovers from invalid master tuning. Room and Release Noise
+now expose their existing parameters on the custom panel. Parameter IDs,
+defaults, compatibility slots and saved-state migration remain unchanged.
+
+These are model, contract and numerical corrections with no new listening
+verdict. All 83 tests and the full construction calibration pass. The
+existing broad-Q transfer-convention approximation and the 96 kHz/32-frame
+six-string re-pick CPU limit remain explicit in the
+[audit and retained evidence](model-parameter-audit-2026-10-11.md).
+
 ## 2026-10-11 — restrained sliding-finger roughness
 
 The requested moving-finger sound is confined to actual longitudinal contact

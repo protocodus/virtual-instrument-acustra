@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <new>
 #include <string>
@@ -42,6 +43,10 @@ struct AcustraEngineTestAccess
     static int owners(const AcustraEngine& engine, int string)
     {
         return engine.voices_[static_cast<std::size_t>(string)].ownerCount;
+    }
+    static bool pedalHeld(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].pedalHeld;
     }
     static std::array<std::uint32_t, AcustraEngine::stringCount> attackStates(
         const AcustraEngine& engine)
@@ -623,10 +628,22 @@ void testPhysicalStrumPlanningKeepsSpecialNotes()
     expect(unreachable[0] == -1
                && std::equal(ordinary.begin(), ordinary.end(), unreachable.begin() + 1),
            "an unreachable key changed physical string timing");
+    const auto unreachableFlood = delays({ 32, 33, 34, 36, 40, 59, 64 });
+    expect(std::all_of(unreachableFlood.begin(), unreachableFlood.begin() + 4,
+                       [](int delay) { return delay == -1; })
+               && std::equal(ordinary.begin(), ordinary.end(), unreachableFlood.begin() + 4),
+           "more than six MIDI events bypassed a playable chord's physical string plan");
     const auto duplicate = delays({ 40, 59, 64, 59 });
     expect(std::equal(ordinary.begin(), ordinary.end(), duplicate.begin())
                && duplicate[1] == duplicate[3],
            "a duplicated key acquired a second physical string spacing");
+    const auto duplicateFlood = delays({ 40, 59, 64, 40, 64, 40, 64 });
+    expect(std::equal(ordinary.begin(), ordinary.end(), duplicateFlood.begin())
+               && duplicateFlood[0] == duplicateFlood[3]
+               && duplicateFlood[0] == duplicateFlood[5]
+               && duplicateFlood[2] == duplicateFlood[4]
+               && duplicateFlood[2] == duplicateFlood[6],
+           "duplicated MIDI owners bypassed their three-string chord plan");
     const auto harmonic = delays({ 60, 64, 67, 88 });
     expect(harmonic[0] == 0 && harmonic[1] > 0
                && harmonic[2] > harmonic[1] && harmonic[3] > harmonic[2],
@@ -773,6 +790,15 @@ void testMasterTune()
            "100 cents of master tune did not sound as a semitone of bend");
     expect(play(100.0f, resetThenNote) == tunedAfterPause,
            "Reset All Controllers dropped the master tune");
+
+    // Invalid host tuning must fall back to zero without poisoning the
+    // stored offset: later wheel/RPN messages still need to reach the string.
+    const auto bentWithoutTune = play(0.0f, semitoneUp);
+    for (const float invalid : { std::numeric_limits<float>::quiet_NaN(),
+                                 std::numeric_limits<float>::infinity(),
+                                 -std::numeric_limits<float>::infinity() })
+        expect(play(invalid, semitoneUp) == bentWithoutTune,
+               "invalid master tuning disabled subsequent pitch bend");
 
     // An MPE member note already hears the manager's bend, so the tune
     // rides on the manager alone: 100 cents is a member note under a
@@ -1160,6 +1186,37 @@ void testAllNotesOffLeavesReleasedStringsAlone()
     }
 }
 
+// A slow strum can have released MIDI owners before its last picks arrive.
+// All Notes Off must respect the pedal that held those original key-ups,
+// just as it does for strings whose pick has already arrived.
+void testAllNotesOffPreservesQueuedStrumPedalOwnership()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const bool pedalAtKeyUp : { false, true })
+            for (const bool allNotesOff : { false, true })
+            {
+                auto performer = std::make_unique<Performer>();
+                performer->prepare(rate, 256);
+                std::array<float, 256> left {}, right {};
+                performer->beginBlock(left.data(), right.data(), 256);
+                if (pedalAtKeyUp)
+                    performer->controlChange(0, 1, 64, 127);
+                for (const int note : { 40, 45, 50, 55, 59, 64 })
+                    performer->noteOn(0, 1, note, 20);
+                for (const int note : { 40, 45, 50, 55, 59, 64 })
+                    performer->noteOff(48, 1, note);
+                if (!pedalAtKeyUp)
+                    performer->controlChange(96, 1, 64, 127);
+                if (allNotesOff)
+                    performer->controlChange(144, 1, 123, 0);
+                performer->endBlock();
+                for (int string = 0; string < acustra::AcustraEngine::stringCount; ++string)
+                    expect(Access::pedalHeld(performer->engine(), string) == pedalAtKeyUp,
+                           "All Notes Off changed a queued strum's key-up pedal ownership");
+            }
+}
+
 // Reset All Controllers lifts the pedal as CC64 0 does, so after a key-up on
 // its sample a pedal pressed again does not catch the note.
 void testResetAllControllersLiftsThePedalInOrder()
@@ -1326,6 +1383,7 @@ int main()
     testPlayerKeepsTheEnginesSampleRate();
     testResetSilences();
     testAllNotesOffLeavesReleasedStringsAlone();
+    testAllNotesOffPreservesQueuedStrumPedalOwnership();
     testResetAllControllersLiftsThePedalInOrder();
     testUnsoundableNotesMakeNoStrum();
     testMasterTuneSurvivesPrepareAndReset();

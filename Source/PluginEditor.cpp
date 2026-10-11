@@ -828,7 +828,9 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         "Compact to large body: changes resonance and sustain in both microphone and piezo captures");
     configureChoice (
         1, "BODY MATERIAL", acustra::parameters::bodyMaterial,
-        "Bounded high-frequency wood direction, not captured wood identification");
+        "Soundboard wood: its stiffness and density change body resonances, "
+        "string loading and radiation. Models an equal-thickness top; "
+        "does not select back or side woods.");
     configureChoice (
         2, "TUNING", acustra::parameters::tuning,
         "Open-string tuning used by the six-string allocator");
@@ -844,7 +846,8 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         "Softer, darker contact at zero; harder, brighter contact at 100 percent");
     configureSlider (
         3, "BODY", acustra::parameters::bodyAmount,
-        "Strength of the measurement-derived body radiation");
+        "Strength of the body radiation heard by the microphones. "
+        "Zero keeps the body audible; Piezo capture ignores this control.");
     configureSlider (
         4, "STEREO", acustra::parameters::stereoWidth,
         "Width between body microphones. Mono mic and piezo ignore this control.");
@@ -856,6 +859,15 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     configureSlider (
         6, "OUTPUT", acustra::parameters::output,
         "Final output level in decibels", true);
+    configureSlider (
+        7, "RELEASE NOISE", acustra::parameters::releaseNoise,
+        "Damping-hand contact at note endings and subtle handling noise "
+        "during stopped-string slides. Zero adds no new noise; 50 percent "
+        "is the nominal level, and 100 percent doubles it.");
+    configureSlider (
+        8, "ROOM", acustra::parameters::room,
+        "Small-studio reflections around the microphones. Zero is dry "
+        "after the existing room tail fades. Piezo capture ignores this control.");
 
     stringActivityDisplay = std::make_unique<StringActivityDisplay> (audioProcessor, walnutBackground);
     addAndMakeVisible (*stringActivityDisplay);
@@ -1118,17 +1130,21 @@ void AcustraAudioProcessorEditor::resized()
     setupLabels[2].setBounds (box (622, 405, 82, 22));
     setupControls[2]->setBounds (box (704, 398, 376, 38));
 
-    for (std::size_t index = 0; index < 3; ++index)
+    constexpr std::array<std::size_t, 4> playerSliders { 0, 1, 2, 7 };
+    for (std::size_t column = 0; column < playerSliders.size(); ++column)
     {
-        const auto x = 424 + static_cast<int> (index) * 218;
-        sliderLabels[index].setBounds (box (x, 158, 196, 24));
-        sliderControls[index].setBounds (box (x, 187, 196, 182));
+        const auto index = playerSliders[column];
+        const auto x = 400 + static_cast<int> (column) * 170;
+        sliderLabels[index].setBounds (box (x, 158, 170, 24));
+        sliderControls[index].setBounds (box (x + 9, 187, 152, 182));
     }
-    for (std::size_t index = 3; index < sliderControls.size(); ++index)
+    constexpr std::array<std::size_t, 5> captureSliders { 3, 4, 5, 8, 6 };
+    for (std::size_t column = 0; column < captureSliders.size(); ++column)
     {
-        const auto x = 400 + static_cast<int> (index - 3) * 170;
-        sliderLabels[index].setBounds (box (x, 446, 170, 24));
-        sliderControls[index].setBounds (box (x + 9, 475, 152, 182));
+        const auto index = captureSliders[column];
+        const auto x = 400 + static_cast<int> (column) * 136;
+        sliderLabels[index].setBounds (box (x, 446, 136, 24));
+        sliderControls[index].setBounds (box (x + 6, 475, 124, 182));
     }
 
     stringActivityDisplay->setBounds (box (22, 688, 1076, 168));

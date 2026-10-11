@@ -69,8 +69,8 @@ private:
 
     std::array<juce::Label, 3> choiceLabels;
     std::array<std::unique_ptr<ChoiceButtonGroup>, 3> choiceControls;
-    std::array<juce::Label, 7> sliderLabels;
-    std::array<juce::Slider, 7> sliderControls;
+    std::array<juce::Label, 9> sliderLabels;
+    std::array<juce::Slider, 9> sliderControls;
     std::unique_ptr<StringActivityDisplay> stringActivityDisplay;
 
     juce::MidiKeyboardComponent keyboard {
@@ -78,7 +78,7 @@ private:
         juce::MidiKeyboardComponent::horizontalKeyboard
     };
 
-    std::array<std::unique_ptr<SliderAttachment>, 7> sliderAttachments;
+    std::array<std::unique_ptr<SliderAttachment>, 9> sliderAttachments;
 
     juce::Rectangle<int> guitarPanelBounds;
     juce::Rectangle<int> playerPanelBounds;

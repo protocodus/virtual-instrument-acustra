@@ -110,8 +110,8 @@ public:
     // A pitch offset every channel's bend carries on top of its wheel, for a
     // host's global tuning (Reason's master tune); in an MPE lower zone the
     // manager's carries it for its members, whose notes sound the manager's
-    // bend too. Zero, the default, is an exact no-op. Applied at once, from
-    // the next rendered sample.
+    // bend too. Zero, the default, is an exact no-op; nonfinite input uses
+    // zero. Applied at once, from the next rendered sample.
     void setMasterTuneCents(float cents) noexcept;
 
     // Panic: silences the engine and forgets held events, bend wheels and

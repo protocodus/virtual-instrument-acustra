@@ -140,7 +140,9 @@ void Performer::setTempoBpmAt(int sampleOffset, double bpm) noexcept
 
 void Performer::setMasterTuneCents(float cents) noexcept
 {
-    const float semitones = 0.01f * cents;
+    // Sanitize the stored offset, not only the engine's resulting bend:
+    // otherwise one invalid host value also cancels every later wheel move.
+    const float semitones = std::isfinite(cents) ? 0.01f * cents : 0.0f;
     if (semitones == masterTuneSemitones_)
         return;
     masterTuneSemitones_ = semitones;
@@ -317,15 +319,30 @@ void Performer::flushNoteGroup() noexcept
     // Form the shape before timing the stroke: pitch order can cross string
     // order (C4 on G5, G4 on B8, E4 on open E), and a skipped string still
     // takes the pick one spacing to cross.
-    if (pendingNoteOnCount_ >= 2 && oneChannel
-        && pendingNoteOnCount_ <= AcustraEngine::stringCount)
+    if (pendingNoteOnCount_ >= 2 && oneChannel)
     {
         std::array<int, AcustraEngine::stringCount> chord {};
+        int chordCount = 0;
         for (int index = 0; index < pendingNoteOnCount_; ++index)
-            chord[static_cast<std::size_t>(index)]
-                = pendingNoteOns_[static_cast<std::size_t>(index)].note;
-        engine_.planChord(chord.data(), pendingNoteOnCount_,
-                          pendingNoteOns_[0].channel);
+        {
+            const auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
+            // A shape counts physical pitches, not MIDI messages. Extra
+            // owners or unreachable keys must not turn a playable shape
+            // into an oversized group that loses its string assignment.
+            if (!engine_.canSound(note.note, note.channel)
+                || (index > 0 && note.note
+                    == pendingNoteOns_[static_cast<std::size_t>(index - 1)].note))
+                continue;
+            if (chordCount == AcustraEngine::stringCount)
+            {
+                ++chordCount;
+                break;
+            }
+            chord[static_cast<std::size_t>(chordCount++)] = note.note;
+        }
+        if (chordCount >= 2 && chordCount <= AcustraEngine::stringCount)
+            engine_.planChord(chord.data(), chordCount,
+                              pendingNoteOns_[0].channel);
     }
     // Only notes the tuning can sound make a stroke: a note no string
     // reaches neither times it (below) nor turns one or two notes into one.

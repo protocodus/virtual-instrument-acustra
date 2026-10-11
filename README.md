@@ -12,8 +12,8 @@ finger/pick/thumb styles, and stereo mic, mono mic or an under-saddle piezo
 through its onboard preamp, with the piezo also available as a separate
 output or, through Piezo Mix, beneath the microphones.
 The strings are steel. Shape and Material directions, String Age, Tuning,
-Pluck Position, Touch, Body Amount, Stereo Width, Piezo Mix and Output remain
-directly accessible. Bridge-hand damping is a playing gesture
+Pluck Position, Touch, Release Noise, Body Amount, Stereo Width, Piezo Mix,
+Room and Output remain directly accessible. Bridge-hand damping is a playing gesture
 rather than a setting, so it arrives on CC2 and costs the panel nothing.
 Since 2026-10-01 the Original's microphones are heard as a recording hears
 them, voiced against five sets of real flat-top recordings, and a Room
@@ -47,6 +47,11 @@ settle to exact construction references and string delays, so returning to a
 settled selection recovers the same sound with the same playing gesture.
 See [velocity and construction tests](Docs/dynamics-construction-2026-10-10.md).
 
+The [model and parameter audit](Docs/model-parameter-audit-2026-10-11.md)
+restores fitted broad-mode damping, corrects chord and pedal edge cases, and
+exposes Room and Release Noise on the panel. It records the refreshed level
+calibration, regression checks and remaining model and CPU limits.
+
 Guitar construction, Shape, Material, Tuning, Picking and Capture use
 directly visible radio switches; the continuous sound controls remain knobs.
 The 1.1.0 interface pairs a satin walnut chassis with honey spruce inlays,
@@ -57,7 +62,7 @@ focus rings are drawn independently for clear interaction at every supported siz
 A six-string fretboard above the keyboard shows the actual frets being played,
 released notes, and sympathetic vibration on open strings. Its animation shows
 vibration activity rather than an audio-rate waveform. The editor opens at
-1120 × 980, with the existing controls retaining their size.
+1120 × 980, with all nine continuous sound controls visible.
 The Picking tooltip names CC2 as
 the bridge hand. Ordinary Note-off allows a 1/32-note gap before damping,
 so a following stroke can continue the ringing string. Existing
@@ -1441,7 +1446,8 @@ resonances meet it (Known gaps).
 | **Picking** | Finger retains the calibrated contact and applies its finite release slip in full, including at maximum velocity, with normalized displacement. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity, retaining its slip ratio to the full-velocity release. Finger and Thumb have a soft double-corner contact burst with no white hiss. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
 | **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% (the default) the output is exactly as without it; with Capture on Piezo it does nothing, since the piezo is already the whole output. |
-| **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. Also controls subtle speed-dependent friction during held wound-string slides. 0-100% (50% nominal, 70% default, chosen by ear), scaled by release velocity and what the string still carries. 0% is exactly silent; a session saved before it existed loads at 0%. Host-automatable, not on the panel. |
+| **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. Also controls subtle speed-dependent friction during held wound-string slides. 0-100% (50% nominal, 70% default, chosen by ear), scaled by release velocity and what the string still carries. 0% adds no new noise; already emitted waves continue. A session saved before it existed loads at 0%. Available on the Player panel and host-automatable. |
+| **Room** | Small-studio reflections around the microphones, 0-100% with a 50% plug-in default. Zero becomes dry once the existing room tail fades. The piezo remains dry. Available on the Capture panel and host-automatable; a session saved before Room existed loads at 0%. |
 | **String Age** | Lowers the string cutoff and increases frequency-dependent loss; on the wound strings it also scales their bending loss (0.2 of the default's on fresh strings, 7.8 times it at 1), so an old set's basses lose their upper partials first. The default age sounds as before. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Past a quarter of a (short, high-fretted) string the point bends smoothly toward 0.36 of it and never reaches it, so the control changes the stroke at every fret for every technique. Explicit MPE position overrides that ratio. |
 | **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. It also sets how fast every technique lets the string go: the release edge scales over two octaves across the control (none at its default), firmer faster and brighter, softer slower and darker, even at velocity 127. |

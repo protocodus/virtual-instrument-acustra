@@ -742,7 +742,14 @@ ModalPole radiationPole(const detail::MeasuredBodyMode& measured, int index,
     const float decayScale = measured.frequency > 85.0f
         && measured.frequency < 105.0f ? airQScale : 1.0f;
     const float q = measured.q * wood.q * calibration.bodyQScale * decayScale;
-    constexpr float low = 4.0f;
+    // The fitted banks include broad modes below Q=4 (g21's 287 Hz mode
+    // at 2.47 and the joint body's 372 Hz mode at 1.25). A Q=4 floor made
+    // them ring 1.6 and 3.2 times too long, overriding their measured
+    // damping. The radiation uses exp(-pi*f/(Q*fs)), which is stable for
+    // any positive Q; its Q is a decay parameter, not a restriction to
+    // underdamped second-order poles. Keep only a positive safety floor,
+    // below every shipped mode even at the calibration's minimum scale.
+    constexpr float low = 0.05f;
     return { frequency, exact::isfinite(q) ? std::max(low, std::min(150.0f, q))
                                            : low };
 }
@@ -9565,7 +9572,11 @@ void AcustraEngine::allNotesOff(int midiChannel) noexcept
                              && !voice.releaseAfterPluck)
             || !channelControlsVoice(midiChannel, voice))
             continue;
-        const bool alreadyReleased = voice.releaseJoinPending;
+        // A queued strum may already have had its key-up before the pick
+        // arrives. Only a key still down can be caught by the current pedal;
+        // released owners retain the pedal decision made at their key-up.
+        const bool pedalHeld = sustainIsDown(voice)
+            && (voice.keyDown || voice.pedalHeld);
         voice.ownerCount = 0;
         voice.pluckDelay = 0;
         voice.repluckPending = false;
@@ -9576,7 +9587,7 @@ void AcustraEngine::allNotesOff(int midiChannel) noexcept
         voice.keyDown = false;
         // A pedal pressed after this ordinary key-up never recatches it,
         // including when an explicit All Notes Off flushes its grace.
-        voice.pedalHeld = !alreadyReleased && sustainIsDown(voice);
+        voice.pedalHeld = pedalHeld;
         voice.releaseJoinPending = false;
         voice.releaseJoinRemainingBeats = 0.0;
         if (!voice.pedalHeld)
