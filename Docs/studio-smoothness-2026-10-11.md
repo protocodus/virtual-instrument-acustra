@@ -152,6 +152,31 @@ microphone fitted as a blend of the archive's measured positions remains
 the way to close them. The air-mode notes still sit 2-4 dB over their
 neighbours, as the real flat-top's A#2 does.
 
+## The other techniques, and the third microphone
+
+With the change, the Dreadnought's sweep on the stereo microphones reads
+2.16 dB RMS with the Pick (worst D#5 +4.8, deepest hole C5 -4.7) and 3.32
+dB with the Thumb (A#4 +8.7, C#5 -9.8): the Pick's brighter, less
+fundamental-heavy notes sit closer to a real guitar's 2 dB already.
+
+The measured bank holds a third position, the bass-bridge microphone,
+which the stereo pair never uses. Its force-radiation transfer, computed
+from the modal data alone at the Dreadnought anchor, shares the same nulls
+(C#5 -5.9 dB and D#5 -8.5 against the treble-bridge microphone's -7.6 and
+-12.5, relative to each position's mean over G4-E5), so blending it would
+not fill the holes; the mid peak and hole are the single-point near-field
+response at every measured position, and only a microphone response
+measured further from the top would remove them.
+
+## Audio quality probes
+
+The strummed phrase at Room 0.5, velocity 96 and 127, rendered at 44.1,
+48 and 96 kHz: no DC (under -122 dBFS), sub-20 Hz content at -66 to -72
+dBFS, the tail two seconds after the last release at -104 to -108 dBFS,
+no sample within 1 dB of full scale (peaks -7.6 to -13.1 dBFS, so the
+safety limiter is idle), and the 10-16 kHz share within 2.0 dB and the
+16-20 kHz share within 2.7 dB across the three rates.
+
 ## Hearing it
 
 Nobody has listened. To hear the change blind, build the previous engine
