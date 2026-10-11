@@ -41,6 +41,10 @@ directly playable, without added input latency or new controls. See the
 The subsequent [CPU optimization](Docs/cpu-optimization-2026-10-07.md) preserves
 the rendered audio while reducing redundant pitch and pluck calculations.
 
+Version 1.2.0 adds the Sustain switch, puts Release Noise and Room on the
+panel and fixes the Gather Chords defects the MIDI audit found; see
+[Versioned builds and packages](#versioned-builds-and-packages).
+
 Version 1.1.4 expands the MIDI velocity range: soft strokes apply much less
 force to the string and its physical release contact. Wood and Shape now
 settle to exact construction references and string delays, so returning to a
@@ -67,6 +71,16 @@ stronger body variations intentionally change their sound. See the
 and [realism work](Docs/realism-work.md) for measurements and limits.
 
 ## Versioned builds and packages
+
+Version 1.2.0 adds the host-automatable Sustain switch (a new, appended
+parameter, off by default), puts Release Noise and Room on the panel, fixes
+the two Gather Chords defects the 2026-10-11 MIDI audit found (a full queue
+losing key-ups; a gathered note pulled ahead of its key's stray key-up),
+makes the channel-mode messages act as All Notes Off, and ships
+`Tools/MeasureNoteEvenness.py` with the smoothness measurements. Every
+sound is unchanged to the bit with the switch off; parameter IDs, saved
+states and the wooden interface are retained. See the [release history](#release-history)
+and the [smoothness report](Docs/studio-smoothness-2026-10-11.md).
 
 Since 2026-10-10 (after 1.1.3) Acustra plays one guitar body, the Original:
 the Bellido 1978 (Classical 78) Model, its measured g35 body and bridge and
@@ -115,7 +129,7 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
 locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
-it with the project version (currently `1.1.4`) and the source revision. Changing that identity rebuilds
+it with the project version (currently `1.2.0`) and the source revision. Changing that identity rebuilds
 the wrappers; each linked format receives its frozen identity record, and macOS
 bundles embed the build number. Packaging rejects a cache
 that disagrees with those records or macOS bundle metadata. Assign a new build
@@ -703,10 +717,19 @@ shares, while asynchronies played on purpose usually exceed 30 ms
 The cost is 30 ms of latency on every note, which the plug-in reports (on
 top of the engine's own seven samples, Outputs) so a host compensates it on
 playback; a player hears it live. The switch is off by
-default. A key repeated inside the window, or a controller that changes how
-notes are allocated (sound or notes off, reset, mono/poly, the RPNs that lay
-out an MPE zone), ends a chord. String-per-channel controllers already say how
-each note is played, so they are only delayed.
+default. A key repeated inside the window, a key whose key-up the channel
+sent inside it (a later Note On of a released key stays behind that key-up,
+which may be stray, its string already taken by another note), or a
+controller that changes how notes are allocated (sound or notes off, reset,
+the channel-mode messages, the RPNs that lay out an MPE zone), ends a
+chord. String-per-channel controllers and MPE member channels already say
+how each note is played, so their events are only delayed, never regrouped:
+a member's CC74, pressure and bend stay ahead of the note they belong to.
+The window's queue holds 1024 events, the window plus one block. When a
+stream fills it, a continuous gesture (bend, pressure, an ordinary
+controller), whose next value supersedes it, is dropped and counted; a
+message that starts or ends a note, the pedal, a reset or a mode message
+is never lost, the oldest queued continuous event making room for it.
 
 And no two plucks land in the same place: each draws its own point within ±0.02
 of the string length, the take-to-take spread the reference recordings'
@@ -800,7 +823,8 @@ layout such as a hexaphonic pickup or a guitar-to-MIDI converter might send —
 puts each of the six channels onto its own string, bypassing the allocator;
 no control-surface driver on hand is confirmed to transmit CC126 itself, so
 today the mode is reachable through a MIDI editor or a host's own CC tools.
-Upper-zone MPE is not implemented.
+As MIDI 1.0 requires, the four channel-mode messages (CC124-127) also act
+as All Notes Off on their channel. Upper-zone MPE is not implemented.
 
 ### Pluck and strings
 
@@ -2141,6 +2165,21 @@ engine.
 
 ## Known gaps
 
+- Left by the 2026-10-11 MIDI audit, each a limit rather than a stuck note:
+  - The MPE lower zone is not saved with a session: after a reload, a
+    member channel's events are conventional (a ±2 semitone bend range)
+    until the controller sends RPN 6 again, which MPE controllers do on
+    connection and most hosts repeat at transport start.
+  - RPN Data Increment and Decrement (CC96/97) are ignored; only Data
+    Entry (CC6/38) sets a bend range or the zone.
+  - The Sustain switch acts at the start of the block the host changes it
+    in, before that block's MIDI, so an automation point lands up to one
+    block early, and under Gather Chords a key-up sent within the 30 ms
+    before a switch-on is still held, since the switch is not delayed with
+    the notes.
+  - Panic and Reset All Controllers leave the bridge hand (CC2) where it
+    is, as MIDI's reset list does; a controller left at full pressure keeps
+    the strings muted until it moves.
 - Left by the 2026-09-30 defect audit, each a trade in the shipped sound
   rather than a fix:
   - The parallel polarisation shares the normal loop's bridge compensation,
@@ -2934,6 +2973,18 @@ set without it.
   Touch, Release Noise) and Capture & Output five (Body, Stereo, Piezo,
   Room, Output), on the same grid. Parameters, defaults and saved states
   are unchanged.
+- **Gather Chords no longer loses key-ups or regroups them.** A full
+  gathering queue dropped whatever arrived next, a Note Off, pedal-up or
+  All Notes Off included, and the string stayed held for ever; it now drops
+  the oldest queued continuous gesture instead. A gathered Note On was
+  pulled ahead of an earlier key-up of the same key on its channel (stray
+  once another note had taken the key's string), which then released the
+  new note under a held key; a released key now ends the chord. MPE member
+  channels are no longer gathered, so a member's CC74, pressure and bend
+  stay ahead of their note. The channel-mode messages CC124-127 also act
+  as All Notes Off, as MIDI 1.0 requires, and a non-finite master tune is
+  ignored rather than cancelling every channel's bend. Each fix has a
+  Performer test that failed on the previous engine.
 
 ### 2026-10-10 — the strings' loss angles
 

@@ -5,6 +5,39 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — the MIDI layer audited: two Gather Chords defects fixed
+
+A read-only review of the Performer, the plug-in's processBlock and state
+code and the engine's note entry points found direct mode sound and two
+defects under Gather Chords, both reproduced by new Performer tests that
+fail on the previous engine and pass now.
+
+A full gathering queue (1024 events, the window plus one block) dropped
+whatever arrived next, so a Note Off, pedal-up or All Notes Off behind a
+dense controller stream was lost and its string stayed held for ever, with
+the outcome depending on the host's block size. The queue now drops the
+oldest queued continuous gesture (bend, pressure, an ordinary controller)
+to make room for any message that starts or ends a note or sets a mode;
+only when nothing continuous is queued is a message itself dropped. The
+count of lost events is unchanged in meaning.
+
+Gathering pulled a later Note On of the lead's channel ahead of a key-up
+of the same key sent between them. When another note had already taken
+that key's string the key-up was stray and harmless in direct mode, but
+pulled ahead of it the new note was released under a held key. A key
+released inside the window now ends the chord, as a repeated key does.
+MPE member channels are no longer gathered at all: their notes are
+allocated one at a time and their CC74, pressure and bend precede each
+note, which gathering reordered. The window's latency is unchanged.
+
+Two spec gaps closed with them: CC124-127 also act as All Notes Off
+(MIDI 1.0's channel-mode rule), and a non-finite master tune is ignored
+rather than silently cancelling every channel's bend. Four limits the
+audit named are recorded in README Known gaps rather than changed: the
+MPE zone is not saved with a session, CC96/97 are ignored, the Sustain
+switch acts at block starts and is not delayed under Gather Chords, and
+Panic leaves the bridge hand (CC2) where it is.
+
 ## 2026-10-11 — smoothness and boominess measured, no sound change
 
 The user asked for a smooth studio sound without unwanted resonances or

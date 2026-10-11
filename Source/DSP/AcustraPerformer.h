@@ -53,8 +53,12 @@ public:
     // the window plus a 4096-sample block at 44.1 kHz, 123 ms, is about 130
     // events; 1024 leaves eight times that for a host's denser streams. An
     // MPE controller streaming bend and pressure on many member channels at
-    // once can still exceed it: an event that arrives with the queue full is
-    // dropped and counted (droppedEventCount), and nothing ever allocates.
+    // once can still exceed it. A full queue loses a continuous gesture
+    // (bend, pressure, an ordinary controller), whose next value supersedes
+    // it, never a message that starts or ends a note or sets a mode: the
+    // oldest queued continuous event makes room for one of those, so a
+    // key-up is never lost. What is lost is counted (droppedEventCount), and
+    // nothing ever allocates.
     static constexpr int heldEventCapacity = 1024;
     // Note Ons (and, separately, Note Offs) that one sample can group. A
     // 129th Note On on one sample is dropped and counted; a 129th Note Off
@@ -264,6 +268,9 @@ private:
                                                   int targetChannel) const noexcept;
     void queueMessage(int sampleOffset, std::uint8_t status, int data1,
                       int data2, int size) noexcept;
+    // Drops the oldest queued continuous gesture to make room in a full
+    // queue; false when nothing continuous is queued.
+    bool evictContinuousHeldEvent() noexcept;
 
     AcustraEngine engine_;
 

@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <new>
 #include <string>
@@ -1031,6 +1032,145 @@ void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
     expect(flooded.allocations == 0, "a full gathering queue allocated");
 }
 
+// A player after `seconds` of these events (raw bytes, in time order), for
+// a test that reads the engine's state afterwards.
+std::unique_ptr<Performer> playThrough(const std::vector<Event>& events,
+                                       double seconds, int blockSize, bool gather)
+{
+    auto performer = std::make_unique<Performer>();
+    performer->setParameters(acustra::EngineParameters {});
+    performer->prepare(48000.0, blockSize);
+    performer->engine().setPortObserversEnabled(false);
+    performer->setGatherChords(gather);
+    const int length = sampleAt(seconds, 48000.0);
+    std::vector<float> left(static_cast<std::size_t>(blockSize));
+    std::vector<float> right(static_cast<std::size_t>(blockSize));
+    for (int start = 0; start < length; start += blockSize)
+    {
+        performer->beginBlock(left.data(), right.data(), blockSize);
+        for (const auto& event : events)
+        {
+            const int at = sampleAt(event.seconds, 48000.0);
+            if (at >= start && at < start + blockSize)
+                performer->handleMidi(at - start + event.skew,
+                                      event.bytes.data(), event.size);
+        }
+        performer->endBlock();
+    }
+    return performer;
+}
+
+// A full Gather Chords queue loses a continuous controller, never a key-up:
+// a Note Off that arrives behind 1100 CC1 values in one block still lets
+// its string go, and what was lost is still counted.
+void testFullGatherQueueKeepsKeyUps()
+{
+    std::vector<Event> events { message(0.010, 0x90, 45, 100) };
+    for (int index = 0; index < 1100; ++index)
+        events.push_back(message(0.012, 0xb0, 1, index % 128));
+    events.push_back(message(0.014, 0x80, 45, 64));
+    const auto performer = playThrough(events, 2.5, 2048, true);
+    expect(performer->droppedEventCount() == 1100 + 2 - 1024,
+           "the full queue did not count the controllers it lost ("
+               + std::to_string(performer->droppedEventCount()) + ")");
+    expect(performer->engine().heldString(45, 1) < 0
+               && performer->engine().getActiveVoiceCount() == 0,
+           "a key-up that met a full gathering queue was lost and its string stuck");
+    // The pedal-up and All Notes Off are kept the same way.
+    for (const int controller : { 64, 123 })
+    {
+        std::vector<Event> pedalled { message(0.010, 0x90, 45, 100) };
+        if (controller == 64)
+            pedalled.push_back(message(0.011, 0xb0, 64, 127));
+        for (int index = 0; index < 1100; ++index)
+            pedalled.push_back(message(0.012, 0xb0, 1, index % 128));
+        if (controller == 64)
+            pedalled.push_back(message(0.014, 0x80, 45, 64));
+        pedalled.push_back(message(0.015, 0xb0, controller, 0));
+        const auto held = playThrough(pedalled, 2.5, 2048, true);
+        expect(held->engine().getActiveVoiceCount() == 0,
+               "controller " + std::to_string(controller)
+                   + " was lost to a full gathering queue");
+    }
+}
+
+// E2 loses its string to F2 (only the low E reaches F2), so E2's later
+// key-up is stray. Gathered behind A3, a new E2 used to be pulled ahead of
+// that stray key-up, which then released it although its key was down.
+void testGatheringKeepsANoteBehindItsChannelsKeyUps()
+{
+    const std::vector<Event> events {
+        message(0.0, 0x90, 40, 100), message(0.1, 0x90, 41, 100),
+        message(0.5, 0x90, 57, 100), message(0.505, 0x80, 40, 64),
+        message(0.51, 0x90, 40, 100) };
+    for (const bool gather : { false, true })
+    {
+        const auto performer = playThrough(events, 1.0, 256, gather);
+        expect(performer->engine().heldString(40, 1) >= 0,
+               std::string { "a held E2 was released by an earlier stray key-up" }
+                   + (gather ? " under Gather Chords" : ""));
+    }
+    // An MPE member channel's note is never pulled ahead of the CC74 that
+    // precedes it: the second note's pluck point is its own, so the two
+    // renders differ, gathered or not.
+    const std::vector<Event> zone { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 6),
+                                    message(0.0, 0xb0, 6, 1) };
+    const auto member = [&](int timbre)
+    {
+        auto all = zone;
+        all.push_back(message(0.1, 0xb1, 74, 0));
+        all.push_back(message(0.1, 0x91, 52, 100));
+        all.push_back(message(0.1 + 0.002, 0x81, 52, 64));
+        all.push_back(message(0.11, 0xb1, 74, timbre));
+        all.push_back(message(0.11 + 0.001, 0x91, 59, 100));
+        return render(custom("member timbre", 1.0, all), 48000.0, 64, true);
+    };
+    expect(member(0) != member(127),
+           "a gathered MPE member note lost the CC74 sent just before it");
+}
+
+// MIDI 1.0's channel-mode messages (CC124-127) also act as All Notes Off.
+void testChannelModeMessagesAlsoReleaseNotes()
+{
+    for (const int controller : { 124, 125, 126, 127 })
+    {
+        const auto performer = playThrough(
+            { message(0.0, 0x91, 52, 100), message(0.2, 0xb1, controller, 0) },
+            1.0, 256, false);
+        expect(performer->engine().heldString(52, 2) < 0
+                   && performer->engine().getActiveVoiceCount() == 0,
+               "CC" + std::to_string(controller) + " did not release the channel's notes");
+    }
+}
+
+// A non-finite master tune is ignored rather than cancelling every wheel.
+void testNonFiniteMasterTuneIsIgnored()
+{
+    auto performer = std::make_unique<Performer>();
+    performer->setParameters(acustra::EngineParameters {});
+    performer->prepare(48000.0, 64);
+    performer->setMasterTuneCents(50.0f);
+    performer->setMasterTuneCents(std::numeric_limits<float>::quiet_NaN());
+    std::vector<float> left(64), right(64);
+    performer->beginBlock(left.data(), right.data(), 64);
+    performer->noteOn(0, 1, 57, 100);
+    performer->endBlock();
+    expect(performer->engine().heldString(57, 1) >= 0, "the note did not sound");
+    // The 50 cents survive the NaN: the same note under 50 cents alone
+    // renders the same first block.
+    auto again = std::make_unique<Performer>();
+    again->setParameters(acustra::EngineParameters {});
+    again->prepare(48000.0, 64);
+    again->setMasterTuneCents(50.0f);
+    std::vector<float> l2(64), r2(64);
+    again->beginBlock(l2.data(), r2.data(), 64);
+    again->noteOn(0, 1, 57, 100);
+    again->endBlock();
+    expect(std::equal(left.begin(), left.end(), l2.begin())
+               && std::equal(right.begin(), right.end(), r2.begin()),
+           "a NaN master tune changed the tuning");
+}
+
 // The level at one frequency over [from, to) seconds, from both channels.
 double bandLevel(const Render& render, double sampleRate, double frequency,
                  double from, double to)
@@ -1394,6 +1534,10 @@ int main()
     testSustainMeetsSameSampleKeyUpsInOrder();
     testSustainHoldIsThePedalOnEveryChannel();
     testOverflowIsCountedNotAllocated(battery);
+    testFullGatherQueueKeepsKeyUps();
+    testGatheringKeepsANoteBehindItsChannelsKeyUps();
+    testChannelModeMessagesAlsoReleaseNotes();
+    testNonFiniteMasterTuneIsIgnored();
     testShortStrumsSoundEveryString();
     testPlayerKeepsTheEnginesSampleRate();
     testResetSilences();
