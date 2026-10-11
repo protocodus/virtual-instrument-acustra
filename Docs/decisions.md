@@ -5,6 +5,25 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — consistent released-load observation and callback work
+
+The existing instrument's piezo now includes the released crown load already
+applied to its bridge and body, at the same per-string saddle sensitivity.
+The [force-unit and circuit evidence](piezo-release-load-2026-10-11.md) records
+the original overload-test failure, the established passband distinction,
+and a failing antialiasing-bypass negative control. Circuit gain, construction
+trims and the listener-chosen release share are retained. This supersedes the
+direct-force omission in the 2026-10-01 headroom decision; it is not a claim
+that the release envelope has been measured on a physical pickup.
+
+Sparse repeated-contact events and setup-time body coefficient preparation
+remove redundant callback work. Exact parity covers the contact state and
+42 callback/continuation cases, including the accepted 48 kHz wet reference.
+Final combined-model evidence is in the [completion report](project-completion-2026-10-11.md).
+The [moving-stop timing limit](moving-stop-limit-2026-10-11.md) remains explicit;
+a partial delayed-read patch would conflict with local contacts and captured
+tails. No unsupported playing techniques are added.
+
 ## 2026-10-11 — preserve Room absorption across sample rates
 
 The existing eight-line mono-send room remains the accepted design. Each line

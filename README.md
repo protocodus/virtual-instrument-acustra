@@ -1597,9 +1597,11 @@ Thumb, at every velocity, so it grows with the note (about 7 dB from
 velocity 0.3 to 0.9). A re-pluck adds its step to one still running out,
 a bend after the pluck leaves the force already let go alone, and a natural
 harmonic, held aside by the picking hand like any note, sheds its open
-string's force (Known gaps). The piezo's own sum does not take the step,
-only the saddle motion it causes. Docs/decisions.md (2026-10-01) has the
-measurements, the sign check and what was not shipped.
+string's force (Known gaps). The piezo now observes that same released
+crown load at the string's existing saddle sensitivity, as well as the
+saddle motion it causes. The [released-load correction](Docs/piezo-release-load-2026-10-11.md)
+records the force-unit and headroom evidence, including the revised
+passband error test; the circuit and its gain remain unchanged.
 
 ### The microphones and the room
 
@@ -1659,8 +1661,10 @@ before Room existed loads it at 0. It feeds on the microphones' mid signal,
 is spread by Stereo Width like the pair (0 is mono), never reaches the
 piezo or the Piezo output, and is energy-normalised at prepare and run at
 the host rate divided to 64 kHz or under. Broadband level and decay are
-covered across rates, but its frequency-dependent absorption follows the
-internal Nyquist frequency, so high-frequency decay is not rate invariant.
+covered across rates. Each late line now preserves its accepted 48 kHz
+absorption decay at DC and 8 kHz (fs/4 below a 32 kHz internal rate); the
+48 kHz reference coefficients are unchanged. A one-pole mapping cannot
+match the complete continuous-frequency curve at every sample rate.
 The two-microphone, earlier-onset room experiment was rejected by the listener;
 the [room report](Docs/room-2026-10-10.md) records that retained tradeoff.
 It renders the same at any block
@@ -3737,11 +3741,12 @@ three formats:
 ./scripts/sign-and-package-macos.sh
 ```
 
-Rack builds also need the current Rack panel source. The approved spruce and
-rosewood layout is recorded at Rack revision `b28a7bb`
-(`codex/acustra-control-spacing`); its earlier SDK checkout has the old 6U
-cedar panel. The corrected Rack wrapper retains the padded controls and adds
-its own 24 Hz fretboard in a 9U panel. Record the Rack design revision and
+Rack builds also need the current Rack panel source. The current selector
+layout is recorded at Rack revision `d6b6dbf`: one Guitar selector for
+Parlor, Auditorium, Dreadnought and Jumbo, with Spruce and Mahogany as the
+two visible Wood choices. Legacy stored model/construction and Maple values
+remain compatible. The Rack wrapper has its own 24 Hz fretboard in a 9U
+panel. Record the Rack design revision and
 shared DSP snapshot separately, and verify the installed panel images and
 both GUI definitions against the build's manifest before testing in Recon.
 The JUCE editor is not part of a Rack build.
@@ -3871,7 +3876,7 @@ radiation, render the three sources with the new build and fit twice
 (rebuilding between), then re-level the Original's constructions:
 
 ```sh
-./build-dsp/AcustraPhysicalFitRenderer /tmp/bank <24 shipping values>
+./build-dsp/AcustraPhysicalFitRenderer /tmp/bank <25 shipping values>
 python3 Tools/BenchmarkOpenCorpora.py --renderer ./build-dsp/AcustraExternalCorpusRenderer \
   --output /tmp/open --keep eastman/rows.json martin-hd28/rows.json
 python3 Tools/BenchmarkPerformances.py --dataset /path/to/guitarset \

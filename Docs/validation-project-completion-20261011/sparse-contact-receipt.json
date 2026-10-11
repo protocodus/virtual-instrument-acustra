@@ -1,0 +1,21 @@
+{
+  "scope": "Current model contact functional only; no earlier model rendered or compared.",
+  "change": "Ordered sparse contact events replace per-sample tap scans. At most 12 source taps; insertion completes before weight accumulation. Each axis sums coincident tap weights in original order; per-sample reduction, wave, correction and +0 cumulative-weight update order is preserved.",
+  "source_revision": "56d4678458445e7426505dc6e47b024ad41392aa",
+  "sha256": {
+    "stage-diagnostic.cpp": "2ece100582f0c0ee002b8a274d1658540e96d52e4c90284328a76f567073556d",
+    "stage-diagnostic.log": "277f969cacc0567e22110a59112547d0db9eab2bdeb5c1a799030a50304cbf8a",
+    "parity.log": "2a710f845339ae329adc341ccaf849b3d14b5ded999afe3c7a23eb0de69924bf",
+    "conditionRepluckContact.cpp.txt": "a2f334449651ee455f88db5d56afef6228360b1076f2d10a634ea33404545e5e"
+  },
+  "test_sha256": "094dc129b4045336bb5f04263370f26c22527ff2449e9906a6fcf8c82eaa0653",
+  "commands": [
+    "clang++ -O3 -DNDEBUG -std=c++17 -Wall -Wextra -Wshadow -Werror -ISource -c Source/DSP/AcustraEngine.cpp -o /tmp/acustra-sparse-contact-engine.o",
+    "clang++ -O3 -DNDEBUG -std=c++17 -Wall -Wextra -Wshadow -Werror -ISource Tests/RepluckContactParityTests.cpp /tmp/acustra-sparse-contact-engine.o build-audit/libAcustraDSP.a -o /tmp/acustra-repluck-contact-parity",
+    "/tmp/acustra-repluck-contact-parity",
+    "clang++ -O3 -DNDEBUG -std=c++17 -Wall -Wextra -ISource build-audit/project-finalization/sparse-contact/stage-diagnostic.cpp /tmp/acustra-sparse-contact-engine.o build-audit/libAcustraDSP.a -o /tmp/acustra-sparse-contact-stage",
+    "/tmp/acustra-sparse-contact-stage"
+  ],
+  "limitations": "Stage timing is a bounded diagnostic with copies excluded and is not callback deadline or real-host qualification. Final combined build/tests/timing remain owned by root.",
+  "independent_review": "parameter_contracts read-only review found no capacity, tap-order, event sequencing, state or rounding discrepancy."
+}

@@ -1,0 +1,17 @@
+{
+  "source_revision": "56d4678458445e7426505dc6e47b024ad41392aa",
+  "proof": "Exact source-byte equality of original coefficient builder and new extracted builder after only parameter/storage identifier renames and removing the new count/ordered metadata writes. No arithmetic, condition, iteration order, constants, or reductions changed.",
+  "renames": {
+    "parameters_.shape": "shape",
+    "parameters_.bodyMaterial": "material",
+    "bodyModes_": "configuration.modes"
+  },
+  "relocated_metadata": [
+    "configuration.count = count;",
+    "configuration.ordered = ownCount;"
+  ],
+  "normalized_builder_sha256": "94f0f67f76b82340b537378df7c2b9a3d166070cd27ddbeb8f6de235bb6b963c",
+  "lines": 297,
+  "lifecycle_review": "prepare refreshes all 12 cells after establishing rate and before reset; physical calibration invalidates, refreshes if prepared, then resets; pre-prepare calibration defers until prepare; performance realism does not feed builder; reset and suspended settling reuse immutable cells; default value-copy carries cache; all runtime states remain solely in the original BodyBank load/fade path.",
+  "finding": "No actionable correctness discrepancy found."
+}
