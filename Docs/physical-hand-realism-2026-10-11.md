@@ -145,3 +145,67 @@ Generated logs stay under `build-physical-hand-20261011`. The committed
 [listening manifest](physical-hand-listening-2026-10-11.json) records the exact
 source and audio hashes. The Rack repository records its own
 [SDK, wrapper and native CPU evidence](../../Docs/PHYSICAL_HAND_REALISM_2026-10-11.md).
+
+## Follow-up: continuous dynamics
+
+The user liked these changes and requested a continuous playing model rather
+than four velocity layers. The listening page's phrase "Four velocity layers"
+described four selected demonstration velocities; it was misleading. The
+production engine has no sample-layer selector. Its force, contact radius,
+release speed and contact-noise response already take floating-point velocity.
+MIDI 1 supplies 127 nonzero input values, while direct engine callers can use
+values between those steps. The offline recording bank's measured layers are
+reference data, not the sound-generation mechanism.
+
+The audit did find an actual discontinuity: repeated-note force variation was
+enabled only when the current velocity exactly equalled the preceding one.
+An arbitrarily small velocity change removed that variation and also changed
+which random draw a later note received. This equality test has been removed.
+
+The same bounded, mean-one force residual now fades continuously with elapsed
+hand memory and the relative change in commanded force. Both weights use
+`1 - smoothstep(x)`, so the value and slope join the nominal response smoothly.
+The force-change scale is the existing residual's full two-dB span; the time
+scale is the existing hand-memory duration. These are authored performance
+choices that preserve accents, not newly measured physiological constants.
+The residual enters as `1 + weight * (draw - 1)`, preserving its mean and
+headroom bounds. Every eligible repeat consumes one draw even at zero weight,
+so varying velocity does not switch the later random sequence. First notes,
+simultaneous duplicates, separate notes/channels and strums retain their
+existing ownership rules. No control, layout, saved parameter or latency changes.
+
+The Thumb audition now follows one smooth crescendo and diminuendo, sampled at
+each note and rounded only for MIDI 1 transport. It stays on one pitch/string
+so a register change cannot disguise the dynamic response. The original
+listening pack remains intact; the new pack and its source snapshots are in
+`build-physical-hand-20261011/listening-continuous/`.
+
+Continuity validation includes 771 fractional-velocity probes across Finger,
+Pick and Thumb, with maximum independently reconstructed force-law error
+`2.9473e-7`. Around an identical preceding velocity, shrinking the perturbation
+to `2^-20` reduces relative force difference to at most `5.8633e-6` and emitted
+audio difference/RMS to `4.5266e-5`. The previous implementation fails 16 new
+checks and retains differences of 0.106956 in force and 0.0393418 in audio at
+that tiny perturbation. Dense first-stroke checks pass on both implementations,
+isolating the defect to the old repeat gate.
+
+Independent repeat checks recover string force at both extreme residual draws
+and verify that it rises throughout the fade, with a minimum relative step
+of `0.000663332`. Equality and fade-endpoint residual errors are at most
+`1.19209e-7`; memory expiry and changed velocity preserve the random stream.
+The existing force bounds, mean, passivity and scheduling checks still pass.
+The focused Velocity and Repeated suites pass in 10.57 and 5.83 seconds, and
+the strict C++17 target builds.
+
+All ten new audio files remain finite and nonsilent, use unity common gain,
+and peak below 0.514. The browser decodes every file as eight seconds without
+media errors. The [new source/audio manifest](physical-hand-continuous-listening-2026-10-11.json)
+is separate from the original pack. This verifies continuity and render safety;
+it does not establish a listening preference for the follow-up.
+
+The final required-Python Release build and complete CTest run pass **73/73**
+in 332.45 seconds on the frozen follow-up source. No test fixtures were
+changed after that run. The SDK 5 Deployment ARM64 build and Rack wrapper
+contracts also pass; paired default-quality timing for the follow-up is
+recorded with the Rack evidence. The earlier optional 4x deadline failures
+remain a known qualification limit; this follow-up does not requalify 4x.

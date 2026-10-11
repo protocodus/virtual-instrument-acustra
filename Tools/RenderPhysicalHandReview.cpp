@@ -125,10 +125,18 @@ int main(int argc, char** argv)
         }
         auto& thumb = scores[3]; thumb.name = "04-thumb-contact";
         thumb.parameters.picking = acustra::PickingTechnique::Thumb;
-        constexpr std::array<int, 4> dynamics { 45, 65, 90, 115 };
-        for (int n = 0; n < 12; ++n)
-            thumb.note(0.2 + n * 0.48, 0.34, n % 2 + 1, n % 2 ? 45 : 40,
-                       dynamics[static_cast<std::size_t>(n % 4)]);
+        // Sample one smooth crescendo/diminuendo at each contact. These are
+        // MIDI 1 velocities, not sound layers: only the final transport value
+        // is rounded. Keep pitch/string fixed so their tone cannot disguise
+        // the continuously changing force and contact response.
+        for (int n = 0; n < 24; ++n)
+        {
+            const double phase = 3.14159265358979323846 * n / 23.0;
+            const double gesture = std::sin(phase);
+            const int velocity = static_cast<int>(std::lround(
+                24.0 + 96.0 * gesture * gesture));
+            thumb.note(0.2 + n * 0.24, 0.18, 2, 45, velocity);
+        }
         auto& release = scores[4]; release.name = "05-picking-hand-release";
         release.parameters.picking = acustra::PickingTechnique::Pick;
         release.parameters.pluckPosition = 1.0f;

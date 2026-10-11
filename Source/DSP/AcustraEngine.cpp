@@ -6015,24 +6015,44 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // and 1.47 dB (Pick). Their intended force/string/fret is unknown, so
     // +/-1 dB is a conservative authored listening candidate, not a fitted
     // universal law. The strum already has its own measured variation.
-    // A first pluck, a changed MIDI velocity (including explicit accents),
-    // a new note/channel, a duplicate on one sample, or a rest beyond the
-    // existing hand-memory window keeps the exact nominal force. The
-    // independent draw is linear-mean normalised: E[exp(a*U)] = sinh(a)/a.
+    // Nearby force commands belong to the same continuing gesture: exact
+    // equality of MIDI velocities must not switch this residual on or off.
+    // Fade it smoothly with elapsed hand memory and with the commanded
+    // force change, becoming nominal beyond the existing full two-dB
+    // residual span. This is an authored accent-preservation policy, not
+    // measured physiology. First plucks, new notes/channels, simultaneous
+    // duplicates and strums keep their own established force behaviour.
+    // The independent draw is linear-mean normalised: E[exp(a*U)] = sinh(a)/a;
+    // blending it toward one preserves both that mean and its bounds.
     voice.repeatedPluckGain = 1.0f;
-    const bool recentRepeat = !voice.strumming
+    const bool continuingRepeat = !voice.strumming
         && voice.midiNote == voice.lastPluckMidiNote
         && voice.midiChannel == voice.lastPluckMidiChannel
-        && v == voice.lastPluckVelocity
-        && sampleClock_ > voice.lastPluckSample
-        && sampleClock_ - voice.lastPluckSample <= static_cast<std::uint64_t>(
-            handMemorySeconds * sampleRate_);
-    if (recentRepeat)
+        && sampleClock_ > voice.lastPluckSample;
+    if (continuingRepeat)
     {
         constexpr double halfWidth = 0.1151292546497022842; // ln(10)/20: 1 dB
-        voice.repeatedPluckGain = static_cast<float>(std::exp(halfWidth
+        // Consume one draw even when the weight is zero. A changed velocity
+        // or crossing the memory endpoint then cannot switch which random
+        // hand residual a later otherwise identical contact receives.
+        const double drawGain = std::exp(halfWidth
             * xorshiftNoise(voice.repeatPluckState)) * halfWidth
-            / std::sinh(halfWidth));
+            / std::sinh(halfWidth);
+        const auto fade = [] (double distance) noexcept
+        {
+            const double t = std::clamp(distance, 0.0, 1.0);
+            return 1.0 - t * t * (3.0 - 2.0 * t);
+        };
+        const double elapsed = static_cast<double>(sampleClock_ - voice.lastPluckSample)
+            / (static_cast<double>(handMemorySeconds) * sampleRate_);
+        const double nominalForce = static_cast<double>(velocityForce)
+            * (0.92 + 0.08 * touch);
+        const float previousVelocity = voice.lastPluckVelocity;
+        const double previousForce = static_cast<double>(previousVelocity * previousVelocity)
+            * (0.92 + 0.08 * effectiveTouch(voice.lastPluckVelocity));
+        const double forceChange = exact::abs(std::log(nominalForce / previousForce));
+        const double weight = fade(elapsed) * fade(forceChange / (2.0 * halfWidth));
+        voice.repeatedPluckGain = static_cast<float>(1.0 + weight * (drawGain - 1.0));
     }
     voice.lastPluckMidiNote = voice.midiNote;
     voice.lastPluckMidiChannel = voice.midiChannel;

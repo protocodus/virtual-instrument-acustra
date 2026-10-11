@@ -68,6 +68,25 @@ struct AcustraEngineTestAccess
     }
     static void seed(AcustraEngine& engine, std::uint32_t seed)
     { engine.voices_[0].randomState = seed; }
+    struct ContinuousContact
+    {
+        double force, touch, corner;
+    };
+    static ContinuousContact continuousContact(AcustraEngine& engine)
+    {
+        const auto& voice = engine.voices_[0];
+        const auto release = inspect(engine);
+        const double point = voice.pluckPoint;
+        // Infer static force from the independently stored saddle-force
+        // release, then use the actual string geometry. Never read the
+        // initializer's velocity or repeat gain to manufacture the answer.
+        const double force = release.displacement
+            * engine.physicalCalibration_.steelDisplacementScaleMetres
+            * voice.tensionNewtons
+            / (voice.speakingLengthMetres * point * (1.0 - point));
+        return { force, engine.effectiveTouch(voice.velocity),
+                 voice.excitationReleaseCoefficient };
+    }
 };
 }
 
@@ -104,7 +123,7 @@ void testContactLawAndForceSensitiveBrightness()
                 engine->beginStrum();
                 // Observe the same moderate held-force region as the former
                 // v=.12 sublinear curve. Under the wider v² response v=.445
-                // supplies that force; the lowest new layers approach the
+                // supplies that force; the quietest strokes approach the
                 // slow-contact spectral limit and cannot define this margin.
                 engine->noteOn(40, 0.445f, 1, 0, true);
                 const auto state = Access::inspect(*engine);
@@ -190,18 +209,18 @@ double renderedLevel(acustra::PickingTechnique technique,
         for (int n = 0; n < count; ++n)
         {
             const double l = left[std::size_t(n)], r = right[std::size_t(n)];
-            expect(std::isfinite(l) && std::isfinite(r), "velocity layer produced non-finite audio");
+            expect(std::isfinite(l) && std::isfinite(r), "velocity probe produced non-finite audio");
             energy += 0.5 * (l * l + r * r);
         }
         samples += count;
     }
-    expect(energy > 1.0e-18, "a playable velocity layer lost its string signal");
+    expect(energy > 1.0e-18, "a playable velocity lost its string signal");
     return 10.0 * std::log10(std::max(energy / samples, 1.0e-30));
 }
 
 void testWideAudibleVelocityRange()
 {
-    // Emitted audio, not the initializer's formula: soft layers retain a
+    // Emitted audio, not the initializer's formula: soft strokes retain a
     // playable signal, rise monotonically and stay far below the hard stroke
     // through every technique/sensor on both wound and plain strings.
     constexpr std::array<int, 5> velocities { 16, 32, 64, 96, 127 };
@@ -220,7 +239,7 @@ void testWideAudibleVelocityRange()
                         levels[v] = renderedLevel(technique, capture, midi, velocities[v], rate);
                     for (std::size_t v = 1; v < levels.size(); ++v)
                         expect(levels[v] > levels[v - 1] + 1.0,
-                               "velocity layers do not rise monotonically in emitted audio");
+                               "velocity probes do not rise monotonically in emitted audio");
                     expect(levels.back() - levels[0] > 30.0,
                            "velocity 16 is not delicate enough against the hard stroke");
                     expect(levels.back() - levels[1] > 20.0,
@@ -230,7 +249,118 @@ void testWideAudibleVelocityRange()
                     ++cases;
                 }
     std::cout << "Wide emitted velocity range: " << cases << " paths x "
-              << velocities.size() << " layers; soft/middle signal and monotonicity\n";
+              << velocities.size() << " probes; soft/middle signal and monotonicity\n";
+}
+
+void testDenseFloatingVelocityResponse()
+{
+    constexpr int probes = 257;
+    double worstForceError = 0.0;
+    for (const auto technique : { acustra::PickingTechnique::Finger,
+                                  acustra::PickingTechnique::Pick,
+                                  acustra::PickingTechnique::Thumb })
+    {
+        double reference = 0.0, previousForce = 0.0, previousCorner = 0.0;
+        for (int index = 0; index < probes; ++index)
+        {
+            // Finer than MIDI 1.0, passed directly as a float: this would
+            // expose either a handful of dynamics or hidden 7-bit rounding.
+            const float velocity = 0.01f + 0.99f * static_cast<float>(index) / (probes - 1);
+            auto engine = fresh(48000.0, technique);
+            Access::seed(*engine, 0x13579bdu);
+            engine->noteOn(40, velocity, 1);
+            const auto contact = Access::continuousContact(*engine);
+            const double normalized = contact.force
+                / ((0.92 + 0.08 * contact.touch) * double(velocity) * velocity);
+            if (index == 0)
+                reference = normalized;
+            const double error = std::abs(normalized / reference - 1.0);
+            worstForceError = std::max(worstForceError, error);
+            expect(std::isfinite(contact.force) && contact.force > previousForce,
+                   "floating velocity acquired a plateau or reversed the prescribed force");
+            expect(error < 3.0e-6,
+                   "floating velocity departed from the continuous quadratic force law");
+            expect(std::isfinite(contact.corner) && contact.corner > 0.0
+                       && contact.corner >= previousCorner - 2.0e-7,
+                   "increasing floating velocity reversed soft-contact release speed");
+            previousForce = contact.force;
+            previousCorner = contact.corner;
+        }
+    }
+    std::cout << "Continuous float velocity: 3 techniques x " << probes
+              << " probes, worst force-law error=" << worstForceError << '\n';
+}
+
+void testRepeatedContactConvergesAcrossExactVelocity()
+{
+    struct Probe
+    {
+        Access::ContinuousContact contact;
+        std::array<float, 1024> audio;
+    };
+    const auto probe = [](acustra::PickingTechnique technique, float velocity)
+    {
+        auto engine = fresh(48000.0, technique);
+        Access::seed(*engine, 0x13579bdu);
+        engine->noteOn(40, 0.5f, 1);
+        std::array<float, 512> left {}, right {};
+        engine->process(left.data(), right.data(), 512);
+        engine->noteOn(40, velocity, 1);
+        Probe result { Access::continuousContact(*engine), {} };
+        engine->process(result.audio.data(), result.audio.data() + 512, 512);
+        return result;
+    };
+    double worstFineForce = 0.0, worstFineAudio = 0.0;
+    for (const auto technique : { acustra::PickingTechnique::Finger,
+                                  acustra::PickingTechnique::Pick,
+                                  acustra::PickingTechnique::Thumb })
+    {
+        const auto exact = probe(technique, 0.5f);
+        for (const float direction : { -1.0f, 1.0f })
+        {
+            double coarseForce = 0.0, coarseAudio = 0.0, coarseCorner = 0.0;
+            for (const int exponent : { 8, 12, 16, 20 })
+            {
+                const float epsilon = std::ldexp(1.0f, -exponent);
+                const auto nearby = probe(technique, 0.5f + direction * epsilon);
+                const double forceError = std::abs(nearby.contact.force / exact.contact.force - 1.0);
+                const double cornerError = std::abs(nearby.contact.corner - exact.contact.corner);
+                double difference = 0.0, energy = 0.0;
+                for (std::size_t sample = 0; sample < exact.audio.size(); ++sample)
+                {
+                    const double delta = double(nearby.audio[sample]) - exact.audio[sample];
+                    difference += delta * delta;
+                    energy += double(exact.audio[sample]) * exact.audio[sample];
+                }
+                const double audioError = std::sqrt(difference / std::max(energy, 1.0e-30));
+                expect(std::isfinite(forceError) && std::isfinite(cornerError)
+                           && std::isfinite(audioError),
+                       "nearby floating velocity produced nonfinite contact or audio");
+                if (exponent == 8)
+                {
+                    coarseForce = forceError;
+                    coarseCorner = cornerError;
+                    coarseAudio = audioError;
+                }
+                if (exponent == 20)
+                {
+                    // The interval is 4096 times smaller. Permit float and
+                    // waveguide roundoff, but reject a finite jump at the
+                    // exact preceding velocity in force, contact or audio.
+                    expect(forceError < 0.01 * coarseForce + 2.0e-6,
+                           "repeat force jumped at the exact preceding velocity");
+                    expect(cornerError < 0.01 * coarseCorner + 2.0e-7,
+                           "repeat release speed jumped at the exact preceding velocity");
+                    expect(audioError < 0.01 * coarseAudio + 2.0e-5,
+                           "repeat audio jumped at the exact preceding velocity");
+                    worstFineForce = std::max(worstFineForce, forceError);
+                    worstFineAudio = std::max(worstFineAudio, audioError);
+                }
+            }
+        }
+    }
+    std::cout << "Sub-MIDI repeat continuity: fine force error=" << worstFineForce
+              << ", fine audio difference/RMS=" << worstFineAudio << '\n';
 }
 }
 
@@ -239,5 +369,7 @@ int main()
     testContactLawAndForceSensitiveBrightness();
     testFullVelocityFingerStillSlipsAndThumbKeepsItsShape();
     testWideAudibleVelocityRange();
+    testDenseFloatingVelocityResponse();
+    testRepeatedContactConvergesAcrossExactVelocity();
     return failures == 0 ? 0 : 1;
 }

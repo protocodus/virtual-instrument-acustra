@@ -28,7 +28,7 @@ def main():
     renderer = Path(__file__).with_name("RenderPhysicalHandReview.cpp")
     shutil.copy2(renderer, output / renderer.name)
     flags = ["-std=c++20", "-O3", "-DNDEBUG", "-fPIC"]
-    manifest = {"protocol": "physical-hand-20261011", "sample_rate": 48000,
+    manifest = {"protocol": "physical-hand-continuous-20261011", "sample_rate": 48000,
                 "duration_seconds": 8, "flags": flags,
                 "compiler": subprocess.check_output(["clang++", "--version"], text=True),
                 "renderer_sha256": sha(renderer), "sources": {}, "pairs": []}
@@ -51,7 +51,7 @@ def main():
     descriptions = ["Listen to the spacing of notes inside repeated strums.",
                     "Listen to repeated strokes: contact position now changes deflection as well as colour.",
                     "Repeated 0, +2 and +4 semitone pre-bends at the same MIDI velocity.",
-                    "Four velocity layers, preserving the existing Thumb periodic release.",
+                    "A smooth crescendo and diminuendo on one string. Force and contact follow the velocity curve; there are no sound layers.",
                     "Short picked notes and slides; Release Noise is explicitly set to 50% in this example."]
     rows = []
     for index, before_path in enumerate(sorted((output / "before-raw").glob("*.wav"))):
@@ -96,7 +96,10 @@ gap:8px;margin:0 20px 16px 0}audio{max-width:100%}a{color:#d7c295}</style>
 <h1>Acustra · The physical hand</h1><p>Five before/after studies. Same notes, velocities, controls,
 sample rate and renderer. Each pair uses one common gain; no EQ, independent normalization,
 compression or timing alignment. Dry microphone capture. These are development comparisons,
-not evidence of a listening preference. Each study emphasizes one mechanism; each pair compares the complete baseline and candidate.</p>''' + ''.join(rows) + '''
+not evidence of a listening preference. Each study emphasizes one mechanism; each pair compares the complete baseline and candidate.</p>
+<p>Dynamics come from a continuous force and contact model. The fourth study samples a smooth
+playing gesture at each note; MIDI 1 rounds its input to 127 nonzero velocities, without selecting
+sample layers or a small set of timbres.</p>''' + ''.join(rows) + '''
 <p><a href="manifest.json">Source hashes and audio measurements</a>. Raw float WAVs and frozen
 DSP source accompany this page. Stop one player before starting the other.</p></html>''')
     print(json.dumps(manifest["pairs"], indent=2))
