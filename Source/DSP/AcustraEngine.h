@@ -1398,7 +1398,9 @@ private:
         // on the physical modes. Each fading bank keeps its own history.
         struct CaptureFilter
         {
-            static constexpr int sections = 6;
+            // The fitted contour's six sections and, last, the dip at the
+            // construction's air mode (MicrophoneBalanceData.h).
+            static constexpr int sections = 7;
             // Each section's normalized RBJ coefficients: b0, b1, b2, a1, a2.
             // Double storage keeps the low-frequency sections accurate up to
             // 384 kHz.
@@ -1406,8 +1408,10 @@ private:
             std::array<std::array<double, 2>, sections> stateLeft {}, stateRight {};
             bool enabled { false };
             float gain { 1.0f };
+            // The air mode the last section is centred on; 0 leaves it flat.
+            float airModeHz { 0.0f };
 
-            void configure(double sampleRate) noexcept;
+            void configure(double sampleRate, float airModeHz) noexcept;
             void reset() noexcept
             {
                 for (auto& state : stateLeft)

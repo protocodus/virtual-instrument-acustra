@@ -12,11 +12,28 @@
 namespace acustra::detail
 {
 
-// Restore the default phrase's -24.0513 LUFS after its 1.21724 LU loss.
+// Restore the default phrase's loudness after each tonal refinement: 1.2172
+// dB for the 2026-10-09 bass/air refinement's 1.21724 LU loss, and 0.7770
+// dB for the 2026-10-11 air-mode dip and plate damping's 0.7770 LU loss on
+// the default cell's stereo microphones (the calibration phrase set,
+// Tools/CalibrateConstructionLoudness.py, -27.3515 LUFS before and after).
 // This scalar is separate from the tonal refinement and pickup calibration.
-inline constexpr float originalCaptureLevelAdjustmentDb = 1.2172f;
+inline constexpr float originalCaptureLevelAdjustmentDb = 1.2172f + 0.7770f;
 inline constexpr float originalBassShelfAdjustmentDb = -3.0f;
 inline constexpr float originalAirPeakAdjustmentDb = -2.75f;
+
+// A dip on the summed pressure at the construction's own air mode (A0),
+// following each Shape's A0 as the fixed 125 Hz refinement above could not:
+// the note at A0 stood 4-6 dB over its neighbours on every Shape (F#2/G2 on
+// the Dreadnought, G#2/A2 on the Auditorium, whose A2 the user named as
+// boom on 2026-10-09; Docs/studio-smoothness-2026-10-11.md), with the loss
+// shared by both microphones. The dip takes 1-2 dB off that excess (G2
+// +4.0 to +2.4 dB on the Dreadnought) and leaves E2, under the
+// Dreadnought's A0, within 1.2 dB of where it was. An authored capture
+// refinement, like the two above: no listening verdict yet, and the
+// measured instrument is untouched. The piezo never passes through it.
+inline constexpr float originalAirModeDipDb = -4.0f;
+inline constexpr float originalAirModeDipQ = 2.5f;
 
 constexpr CaptureVoicingSection balancedOriginalCaptureSection(
     CaptureVoicingSection section) noexcept

@@ -42,8 +42,9 @@ The subsequent [CPU optimization](Docs/cpu-optimization-2026-10-07.md) preserves
 the rendered audio while reducing redundant pitch and pluck calculations.
 
 Version 1.2.0 adds the Sustain switch, puts Release Noise and Room on the
-panel and fixes the Gather Chords defects the MIDI audit found; see
-[Versioned builds and packages](#versioned-builds-and-packages).
+panel, fixes the Gather Chords defects the MIDI audit found and smooths the
+note-to-note sweep by measurement (an air-mode dip and damped mid plate
+modes); see [Versioned builds and packages](#versioned-builds-and-packages).
 
 Version 1.1.4 expands the MIDI velocity range: soft strokes apply much less
 force to the string and its physical release contact. Wood and Shape now
@@ -76,11 +77,15 @@ Version 1.2.0 adds the host-automatable Sustain switch (a new, appended
 parameter, off by default), puts Release Noise and Room on the panel, fixes
 the two Gather Chords defects the 2026-10-11 MIDI audit found (a full queue
 losing key-ups; a gathered note pulled ahead of its key's stray key-up),
-makes the channel-mode messages act as All Notes Off, and ships
-`Tools/MeasureNoteEvenness.py` with the smoothness measurements. Every
-sound is unchanged to the bit with the switch off; parameter IDs, saved
-states and the wooden interface are retained. See the [release history](#release-history)
-and the [smoothness report](Docs/studio-smoothness-2026-10-11.md).
+makes the channel-mode messages act as All Notes Off, and smooths the
+note-to-note sweep by measurement (`Tools/MeasureNoteEvenness.py`): a dip
+at each construction's air mode on the summed microphone pressure and
+0.7 of the flamenca's Q on the plate modes between 350 and 900 Hz, with
+every construction re-levelled and the piezo within 0.01 LU. The piezo's
+saddle force, the measured body data, parameter IDs, saved states and the
+wooden interface are retained; the sound change is authored and measured,
+not yet heard. See the [release history](#release-history) and the
+[smoothness report](Docs/studio-smoothness-2026-10-11.md).
 
 Since 2026-10-10 (after 1.1.3) Acustra plays one guitar body, the Original:
 the Bellido 1978 (Classical 78) Model, its measured g35 body and bridge and
@@ -2957,8 +2962,23 @@ set without it.
 
 ## Release history
 
-### 2026-10-11 — a Sustain switch
+### 2026-10-11 — a Sustain switch, and the sweep smoothed by measurement
 
+- **An air-mode dip and damped mid plate modes.** Measured with the new
+  `Tools/MeasureNoteEvenness.py`, the note at each Shape's air mode stood
+  4-6 dB over its neighbours (F#2/G2 on the Dreadnought, G#2/A2 on the
+  Auditorium, A#2/B2 on the Parlor) and the body's 400-600 Hz modes put one
+  note 10 dB over its neighbours and the next 10 dB under (A#4 and C#5 on
+  the Dreadnought). The summed microphone pressure now takes a -4 dB, Q 2.5
+  dip at the construction's own air mode, following Shape, and the plate
+  modes between 350 and 900 Hz keep 0.7 of the flamenca's Q, shared with
+  their bridge twins. The sweep's RMS deviation falls 0.3-0.5 dB on every
+  Shape (3.64 to 3.10 dB on the Dreadnought), G2 from +4.0 to +2.4 dB with
+  E2 from -5.4 to -3.5, A#4 from +9.8 to +8.0. The default phrase keeps its
+  loudness through the capture scalar and every construction is
+  re-levelled; the piezo moves by 0.01 LU. Authored and measured, not heard:
+  see the [report](Docs/studio-smoothness-2026-10-11.md) for the before and
+  after tables and the blind A/B recipe.
 - **Sustain, a host-automatable switch** beside CHORDS and PANIC
   (`Performer::setSustainHold`): on, every released note rings on exactly as
   under the CC64 pedal, on every channel, until its string is taken or the

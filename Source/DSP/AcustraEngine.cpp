@@ -741,7 +741,21 @@ ModalPole radiationPole(const detail::MeasuredBodyMode& measured, int index,
     constexpr float airQScale = 23.5f / 19.311932f;
     const float decayScale = measured.frequency > 85.0f
         && measured.frequency < 105.0f ? airQScale : 1.0f;
-    const float q = measured.q * wood.q * calibration.bodyQScale * decayScale;
+    // The plate modes between the T1 group and the top octaves (350-900 Hz
+    // measured) keep 0.7 of the flamenca's Q: a braced steel-string top is
+    // more damped there, and these modes, Q 27-30 against the string's
+    // fundamentals, put one note 10 dB over its neighbours and the next
+    // 10 dB under (A#4 and C#5 on the Dreadnought; the pair moves with
+    // Shape; Docs/studio-smoothness-2026-10-11.md). The listener's own
+    // direction on 2026-09-27 was towards damped plate modes. Shared with
+    // the bridge twins, so the string sees the same resonance it radiates
+    // through. An authored construction choice, not a measurement of the
+    // steel-string's modal damping; no listening verdict yet.
+    constexpr float plateMidQScale = 0.7f;
+    const float plateScale = measured.frequency >= 350.0f
+        && measured.frequency < 900.0f ? plateMidQScale : 1.0f;
+    const float q = measured.q * wood.q * calibration.bodyQScale * decayScale
+        * plateScale;
     constexpr float low = 4.0f;
     return { frequency, exact::isfinite(q) ? std::max(low, std::min(150.0f, q))
                                            : low };
@@ -4745,7 +4759,14 @@ void AcustraEngine::configureBody() noexcept
     // them in vector accumulators (BodyBank::render). Shape and Wood keep
     // the same modes in the same slots ringing (sameBodyBank, audit F14).
     bodyBank_.load(bodyModes_, count, ownCount);
-    bodyBank_.captureFilter.configure(sampleRate_);
+    // The construction's air mode, g21's lowest mode as this Shape places it,
+    // centres the capture dip (CaptureFilter::configure). Read from the
+    // requested pole, not the damped one, so Wood (which moves only the
+    // mode's Q below the T1 group) leaves the filter's coefficients intact.
+    const float airModeHz = radiationPole(detail::measuredSteelBodyModes[0], 0,
+                                          anchor, shapeMorph, woodFactors,
+                                          physicalCalibration_).frequency;
+    bodyBank_.captureFilter.configure(sampleRate_, airModeHz);
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
     bodyConfigured_ = true;
@@ -10304,14 +10325,16 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
 
 }
 
-void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate) noexcept
+void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
+                                                       float airMode) noexcept
 {
     if (!enabled)
         reset();
     enabled = true;
+    airModeHz = exact::isfinite(airMode) && airMode > 0.0f ? airMode : 0.0f;
     static_assert(sizeof(detail::captureVoicingSections)
-                      / sizeof(detail::captureVoicingSections[0]) == sections,
-                  "the capture filter must hold every authored section");
+                      / sizeof(detail::captureVoicingSections[0]) == sections - 1,
+                  "the capture filter must hold every authored section and the air dip");
     gain = static_cast<float>(std::pow(10.0,
         (static_cast<double>(detail::captureVoicingLevelDb)
             + detail::originalCaptureLevelAdjustmentDb) / 20.0));
@@ -10320,12 +10343,24 @@ void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate) noexce
     // the intended 500 Hz cut could become a boost on treble notes. Every
     // mechanical/radiation pole and relative modal residue stays intact.
     // Shape and Wood retain its history; their fades copy it with the bank.
+    // The last section is the dip at this construction's air mode
+    // (MicrophoneBalanceData.h), flat when no air mode is known.
     constexpr double doublePi = 3.141592653589793238462643383279502884;
     for (int index = 0; index < sections; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
-        const auto section = detail::balancedOriginalCaptureSection(
-            detail::captureVoicingSections[slot]);
+        const bool airDip = index == sections - 1;
+        if (airDip && airModeHz == 0.0f)
+        {
+            coefficients[slot] = { 1.0, 0.0, 0.0, 0.0, 0.0 };
+            continue;
+        }
+        const auto section = airDip
+            ? detail::CaptureVoicingSection { detail::CaptureVoicingKind::Peak,
+                                              airModeHz, detail::originalAirModeDipDb,
+                                              detail::originalAirModeDipQ }
+            : detail::balancedOriginalCaptureSection(
+                  detail::captureVoicingSections[slot]);
         const auto kind = section.kind;
         const double frequency = section.frequencyHz;
         const double gainDb = section.gainDb;

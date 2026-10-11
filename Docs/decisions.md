@@ -38,22 +38,43 @@ MPE zone is not saved with a session, CC96/97 are ignored, the Sustain
 switch acts at block starts and is not delayed under Gather Chords, and
 Panic leaves the bridge hand (CC2) where it is.
 
-## 2026-10-11 — smoothness and boominess measured, no sound change
+## 2026-10-11 — an air-mode dip and damped mid plate modes, by measurement
 
 The user asked for a smooth studio sound without unwanted resonances or
-boominess. Nobody listened in this pass, so it measured instead
+boominess. Nobody listened in this pass, so it measured
 ([the report](studio-smoothness-2026-10-11.md), with the new
-`Tools/MeasureNoteEvenness.py`). The sweep's deviations are the air mode's
-low peak (F#2/G2 +4 dB on the Dreadnought, G#2/A2 on the Auditorium) and
+`Tools/MeasureNoteEvenness.py`) and then applied two bounded, authored
+changes in directions the listener had already chosen, each sized by the
+sweep rather than by ear. The sweep's deviations were the air mode's low
+peak (F#2/G2 +4 dB on the Dreadnought, G#2/A2 +5.7/+3.3 on the Auditorium,
+whose A2 the user named as boom on 2026-10-09, A#2/B2 on the Parlor) and
 each Shape's ±10 dB mid peak and antiresonance hole from the body's
-400-600 Hz modes under the bridge microphone, a known gap. The room adds
-nothing below 160 Hz. The air-mode gain chosen by ear does not move the
-low peak; halving every body Q evens the sweep but changes the whole
-body's ring, and the real flat-top's own sweep is as uneven as the model's
-on the eight notes available. No lever here is a measured correction
-against a reference the instrument is known to miss, so nothing is
-applied, and the one bounded candidate (`bodyQScale 0.7`) is left for a
-blind A/B.
+400-600 Hz modes (A#4 and C#5 on the Dreadnought). The room adds nothing
+below 160 Hz; the air-mode gain chosen by ear does not move the low peak;
+the real flat-top's own sweep is as uneven as the model's on the eight
+notes available.
+
+Applied: a -4 dB, Q 2.5 dip on the summed microphone pressure at each
+construction's own air mode (the lowest configured g21 pole, so it follows
+Shape as the fixed 125 Hz refinement of 2026-10-09 could not), and 0.7 of
+the flamenca's Q for the plate modes between 350 and 900 Hz, shared with
+their bridge twins so the string sees the resonance it radiates through.
+The dip is the same kind of capture refinement the user confirmed as "less
+boom" on 2026-10-09; the damping continues the direction of the 2026-09-27
+blind verdict for damped plate modes. Neither touches the measured body
+data, the piezo's saddle force, parameters or layout.
+
+Measured on the sweep (neighbourhood deviation, velocity 96, Finger): RMS
+3.64 to 3.10 dB on the Dreadnought, 3.64 to 3.12 Auditorium, 3.54 to 3.16
+Jumbo, 2.49 to 2.16 Parlor, 3.50 to 3.08 on the mono microphone; the
+Dreadnought's G2 +4.0 to +2.4 and E2 -5.4 to -3.5, the Auditorium's G#2
++5.7 to +4.3, A#4 +9.8 to +8.0, C#5 -10.4 to -9.4. The default cell's
+stereo phrase lost 0.777 LU, taken back by the capture level scalar
+(MicrophoneBalanceData.h), and every construction was re-levelled by
+`Tools/CalibrateConstructionLoudness.py`. The piezo's level moved by 0.01
+LU. This is a measured smoothing, not a listening verdict: the report
+records how to render the previous engine beside it for a blind A/B, and
+the numbers that would show a listener's preference are not these.
 
 ## 2026-10-11 — a Sustain switch beside the pedal
 
