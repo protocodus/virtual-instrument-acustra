@@ -434,6 +434,13 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.CaptureTransition AcustraCaptureTransitionTests)
     set_tests_properties(Acustra.CaptureTransition PROPERTIES TIMEOUT 120)
 
+    add_executable(AcustraCaptureObserverBlendTests Tests/CaptureObserverBlendTests.cpp)
+    target_link_libraries(AcustraCaptureObserverBlendTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraCaptureObserverBlendTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.CaptureObserverBlend AcustraCaptureObserverBlendTests
+        "${CMAKE_CURRENT_SOURCE_DIR}/Tests/Fixtures/approved-studio-observer.csv")
+    set_tests_properties(Acustra.CaptureObserverBlend PROPERTIES TIMEOUT 60)
+
     add_executable(AcustraRoomAbsorptionTests Tests/RoomAbsorptionTests.cpp)
     target_link_libraries(AcustraRoomAbsorptionTests PRIVATE AcustraDSP)
     target_compile_features(AcustraRoomAbsorptionTests PRIVATE cxx_std_17)

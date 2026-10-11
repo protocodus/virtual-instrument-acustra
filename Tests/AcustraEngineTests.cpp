@@ -2,6 +2,7 @@
 #include "DSP/ConstructionLoudnessData.h"
 #include "DSP/MeasuredBodyData.h"
 #include "DSP/MeasuredBridgeData.h"
+#include "Fixtures/FixedVelocityObserverData.h"
 
 #include <algorithm>
 #include <array>
@@ -14,6 +15,7 @@
 #include <memory>
 #include <numbers>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -41,12 +43,18 @@ struct AcustraEngineTestAccess
         engine.voices_[static_cast<std::size_t>(string - 1)].excitationNoiseState = seed;
     }
     // The observation under which the Finger's 3 dB articulation contract
-    // was established: the six pre-2026-10-08 modal-magnitude sections.
-    // Pin the reference here rather than following production microphone EQ.
+    // was established: pre-blend treble/upper residues and the six historical
+    // modal-magnitude sections. Pin both parts: pinning EQ alone still let a
+    // new pressure mixture silently change this supposedly fixed observer.
     // This changes only readout residues, preserving every pole and both
     // force/moment histories; it never changes the reciprocal instrument.
     static void useFixedVelocityObserver(AcustraEngine& engine)
     {
+        if (engine.sampleRate_ != 48000.0 || engine.parameters_.shape != BodyShape::Dreadnought
+            || engine.parameters_.bodyMaterial != BodyMaterial::Spruce
+            || engine.bodyBank_.count != 160)
+            throw std::runtime_error("fixed velocity observer requires its declared 48k construction");
+        const auto before = engine.bodyBank_;
         struct Section { double frequency, gainDb, q; bool lowShelf; };
         constexpr std::array<Section, 6> sections {{
             { 120.0, 0.58, 0.7, true },
@@ -60,6 +68,16 @@ struct AcustraEngineTestAccess
         {
             const auto slot = static_cast<std::size_t>(index);
             auto& bank = engine.bodyBank_;
+            const auto& reference = test::fixedVelocityObserverModes[index];
+            if (std::hypot(bank.poleReal[slot] - reference[0],
+                           bank.poleImaginary[slot] - reference[1]) > 1.0e-6)
+                throw std::runtime_error("fixed velocity observer poles no longer match its fixture");
+            int component = 2;
+            for (auto* residue : { &bank.leftReal, &bank.leftImaginary,
+                    &bank.rightReal, &bank.rightImaginary,
+                    &bank.leftMomentReal, &bank.leftMomentImaginary,
+                    &bank.rightMomentReal, &bank.rightMomentImaginary })
+                (*residue)[slot] = reference[component++];
             if (bank.poleImaginary[slot] == 0.0f)
                 continue;
             const double frequency = std::atan2(double(bank.poleImaginary[slot]),
@@ -84,6 +102,16 @@ struct AcustraEngineTestAccess
                 (*residue)[slot] *= static_cast<float>(gain);
         }
         engine.bodyBank_.captureFilter.enabled = false;
+        const auto& after = engine.bodyBank_;
+        if (before.poleReal != after.poleReal || before.poleImaginary != after.poleImaginary
+            || before.real != after.real || before.imaginary != after.imaginary
+            || before.momentReal != after.momentReal || before.momentImaginary != after.momentImaginary
+            || before.count != after.count || before.ordered != after.ordered
+            || before.captureFilter.coefficients != after.captureFilter.coefficients
+            || before.captureFilter.stateLeft != after.captureFilter.stateLeft
+            || before.captureFilter.stateRight != after.captureFilter.stateRight
+            || before.captureFilter.gain != after.captureFilter.gain)
+            throw std::runtime_error("fixed velocity observer changed poles or dynamic/filter state");
     }
     static float highLossMix(const AcustraEngine& engine, int string)
     {
@@ -290,6 +318,7 @@ struct AcustraEngineTestAccess
         double frequency;
         double q;
         double residue;
+        std::array<std::complex<double>, 4> observation;
     };
 
     struct ReleasedContactSnapshot
@@ -541,7 +570,10 @@ struct AcustraEngineTestAccess
                                * 48000.0 / (2.0 * std::numbers::pi);
         const double q = -std::numbers::pi * frequency
                        / (48000.0 * std::log(radius));
-        return { frequency, q, std::hypot(mode.leftReal, mode.leftImaginary) };
+        return { frequency, q, std::hypot(mode.leftReal, mode.leftImaginary), {{
+            { mode.leftReal, mode.leftImaginary }, { mode.rightReal, mode.rightImaginary },
+            { mode.leftMomentReal, mode.leftMomentImaginary },
+            { mode.rightMomentReal, mode.rightMomentImaginary } }} };
     }
 
     static double bridgeAdmittance(PhysicalCalibration calibration)
@@ -4840,19 +4872,35 @@ void testBodyAndBridgeCalibrationChangePhysicalDescriptors()
     quietLowModes.lowBodyModeGain = 0.25f;
     auto strongLowModes = acustra::fittedPhysicalCalibration;
     strongLowModes.lowBodyModeGain = 32.0f;
-    const double lowModeRatio
-        = acustra::AcustraEngineTestAccess::configuredBody(
-            strongLowModes, 0).residue
-        / acustra::AcustraEngineTestAccess::configuredBody(
-            quietLowModes, 0).residue;
-    const double midModeRatio
-        = acustra::AcustraEngineTestAccess::configuredBody(
-            strongLowModes, 2).residue
-        / acustra::AcustraEngineTestAccess::configuredBody(
-            quietLowModes, 2).residue;
-    expect(std::abs(lowModeRatio - 128.0) < 1.0e-3
-               && std::abs(midModeRatio - 1.0) < 1.0e-6,
-           "low-body calibration changed the wrong measured modes");
+    auto middleLowModes = acustra::fittedPhysicalCalibration;
+    middleLowModes.lowBodyModeGain = .5f * (quietLowModes.lowBodyModeGain + strongLowModes.lowBodyModeGain);
+    // The approved blend retains .4 of the original observation. Only its
+    // low-mode treble contribution takes airGain; scaling the entire summed
+    // pressure by 128 would now incorrectly scale the other microphones.
+    for (int index : { 0, 1, 2, 133, 134 })
+    {
+        const auto quiet = acustra::AcustraEngineTestAccess::configuredBody(quietLowModes, index);
+        const auto middle = acustra::AcustraEngineTestAccess::configuredBody(middleLowModes, index);
+        const auto strong = acustra::AcustraEngineTestAccess::configuredBody(strongLowModes, index);
+        expect(quiet.frequency == strong.frequency && quiet.q == strong.q,
+               "low-body observation calibration changed a physical pole");
+        const bool airMode = index == 0 || index == 133;
+        const auto& reference = acustra::test::fixedVelocityObserverModes[index];
+        for (int path = 0; path < 4; ++path)
+        {
+            const auto difference = strong.observation[path] - quiet.observation[path];
+            const auto expected = airMode && path % 2 == 0
+                ? .4 * (strongLowModes.lowBodyModeGain - quietLowModes.lowBodyModeGain)
+                    / acustra::fittedPhysicalCalibration.lowBodyModeGain
+                    * std::complex<double>(reference[2 + 2 * path], reference[3 + 2 * path])
+                : std::complex<double> {};
+            expect(std::abs(difference - expected) < 2.0e-6 * std::max(std::abs(expected), 1.0e-8),
+                   "low-body calibration did not isolate the original treble air contribution");
+            expect(std::abs(middle.observation[path] - .5 * (quiet.observation[path] + strong.observation[path]))
+                       < 2.0e-6 * std::max(std::abs(strong.observation[path]), 1.0e-8),
+                   "low-body observation calibration is not affine in air gain");
+        }
+    }
 
     // The plate conductance floor extrapolates past the measured band and
     // carries its own level, so the measured weights must be checked with it

@@ -11,6 +11,8 @@
 #include "ConstructionLoudnessData.h"
 #include "CaptureVoicingData.h"
 #include "MicrophoneBalanceData.h"
+#include "StudioCaptureData.h"
+#include "StudioCaptureLoudnessData.h"
 #include "PiezoBlampTable.h"
 
 #include <algorithm>
@@ -677,6 +679,55 @@ WoodFactors woodFactorsFor(BodyMaterial material) noexcept
     return factors;
 }
 
+// The approved fixed capture blend retains measured pressure and adds two
+// constrained plate/hole projections and one free-source projection. Their
+// common distance gains were matched in the audition (.30/.10 and .45/.10).
+// Only four identified A0/T1 modes use these spatial terms. Geometry is a
+// declared prior; this is not a uniquely identified studio microphone field.
+// Evaluate the continuous modal pole, not the angle of a rounded digital pole,
+// so calibration and host rate cannot alter the observation independently.
+std::array<std::complex<float>, 2> studioLowModeObservation(
+    BodyShape shape, int sourceMode, float frequency, float q) noexcept
+{
+    assert(sourceMode >= 0 && sourceMode < 4);
+    assert(frequency >= 45.0f && frequency <= 400.0f && q >= 0.05f && q <= 150.0f);
+    const int shapeIndex = static_cast<int>(shape);
+    const std::complex<double> s(-piDouble * frequency / q,
+                                 2.0 * piDouble * frequency);
+    const auto z = s / detail::studioPoleScale;
+    std::complex<double> green[2][2] {};
+    for (int placement = 0; placement < 2; ++placement)
+        for (int source = 0; source < 2; ++source)
+        {
+            const auto& coefficients = detail::studioGreen[shapeIndex][placement][source];
+            auto value = std::complex<double>(coefficients[detail::studioGreenOrder], 0.0);
+            for (int power = detail::studioGreenOrder - 1; power >= 0; --power)
+                value = value * z + coefficients[power];
+            green[placement][source] = value;
+        }
+    const double ratio = frequency / detail::studioHelmholtzHz[shapeIndex];
+    const double volumeSum = ratio * ratio;
+    const double plateWeight = volumeSum - 1.0;
+    const auto neck = (plateWeight * green[0][0] + green[0][1]) / volumeSum;
+    const auto offHole = (plateWeight * green[1][0] + green[1][1]) / volumeSum;
+    std::array<std::complex<float>, 2> result {};
+    for (int input = 0; input < 2; ++input)
+    {
+        const auto freeNeck = green[0][0] * detail::studioFreeSource[sourceMode][0][input]
+            + green[0][1] * detail::studioFreeSource[sourceMode][1][input];
+        // .1 each constrained neck, constrained off-hole, and free neck,
+        // multiplied by the declared nominal distance compensation.
+        const auto pressure = (0.3 * neck + 0.45 * offHole)
+                * detail::studioConstrainedSource[sourceMode][input]
+            + 0.3 * freeNeck;
+        result[static_cast<std::size_t>(input)] = {
+            static_cast<float>(pressure.real()), static_cast<float>(pressure.imag()) };
+    }
+    // Both virtual microphones are symmetric in x for the even plate/hole
+    // basis; measured asymmetry remains in the other terms of the blend.
+    return result;
+}
+
 BodyShapeMorph bodyConstructionMorph(ConstSpan<detail::MeasuredBodyMode> bank,
                                      const AnchorTransform& anchor,
                                      const BodyGeometry& referenceBody,
@@ -947,28 +998,34 @@ float settlingGlide(float value, float target, float smoothing) noexcept
         ? target : next;
 }
 
-// The output reference: the strings', times the construction's level
-// (exactly 1 for the default construction, which renders unchanged).
-float outputReferenceFor(const EngineParameters& parameters) noexcept
+// Retain the established output scale as the piezo's independent reference.
+// Microphone level matching must never change its circuit drive or output.
+float originalOutputReferenceFor(const EngineParameters& parameters) noexcept
 {
     return stringsReference
         * detail::constructionMicReference[constructionLoudnessCell(parameters)];
 }
 
-// The mono microphone's own reference: the stereo microphones' times its
-// factor over them, so it meets the same target on every construction. It
-// is smoothed as a whole, so a change glides along one curve.
-float monoReferenceFor(const EngineParameters& parameters) noexcept
+// Flat phrase-level compensation for the new microphone observer. These
+// measured constants do not change its spectral/phase balance. The existing
+// reference followers smooth construction and Picking changes as before.
+float outputReferenceFor(const EngineParameters& parameters) noexcept
 {
-    return outputReferenceFor(parameters)
-        * detail::constructionMonoTrim[constructionLoudnessCell(parameters)];
+    return originalOutputReferenceFor(parameters)
+        * detail::studioStereoLevelMatch[constructionLoudnessCell(parameters)];
 }
 
-// The piezo's reference before its trim (PiezoDesign::trim):
-// the stereo microphones' times its factor over them.
+float monoReferenceFor(const EngineParameters& parameters) noexcept
+{
+    return originalOutputReferenceFor(parameters)
+        * detail::constructionMonoTrim[constructionLoudnessCell(parameters)]
+        * detail::studioMonoLevelMatch[constructionLoudnessCell(parameters)];
+}
+
 float piezoReferenceFor(const EngineParameters& parameters) noexcept
 {
-    return outputReferenceFor(parameters)
+    // Identical product and evaluation order to the pre-blend piezo path.
+    return originalOutputReferenceFor(parameters)
         * detail::constructionPiezoTrim[constructionLoudnessCell(parameters)];
 }
 
@@ -4587,15 +4644,19 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
     const auto shapeMorph = bodyConstructionMorph(bank, anchor, anchorBody(),
         targetBodyFor(shape), material);
     const auto woodFactors = woodFactorsFor(material);
-    // Every bank that ships keeps its measured phase with no observation
-    // delay, so renderBody plays the banks as they are.
+    // Observation residues include the approved fixed pressure mixture.
+    // Its spatial terms remove common arrival delay; renderBody adds none.
 
     // One radiation mode into the next slot: `index` is its place in the bank
     // it was fitted in and `layerMorph` that bank's Shape morph; `share` is
     // its part's share of the steel blend (exactly 1 outside it).
     int slot = 0;
+    // Keep the original observations until their high-band statistical
+    // continuation has been generated. The audition mixed completed banks;
+    // regenerating its power density from the blend would be a different model.
+    std::array<std::array<std::complex<float>, 4>, bodyModeCount> captured {};
     const auto place = [&] (const detail::MeasuredBodyMode& measured, int index,
-                            const BodyShapeMorph& layerMorph, float share)
+                            const BodyShapeMorph& layerMorph, float share, int spatialMode)
     {
         auto& mode = configuration.modes[static_cast<std::size_t>(slot++)];
         const auto& morph = layerMorph;
@@ -4669,18 +4730,9 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
             return playedDrive * std::complex<float>(real, imaginary)
                 * residueRateScale;
         };
-        // The Stereo mic pair is the treble-bridge microphone on the left and
-        // the upper-bout one on the right, the bridge/upper-bout placement
-        // a blind listener chose over the bridge's own treble/bass pair
-        // (2026-09-25). The bass-bridge microphone is not heard. The air-mode
-        // gain reaches the bridge microphone alone: at x4, chosen by ear, a
-        // picked E2 then stands against its 2nd and 3rd harmonics within
-        // 1 dB of the Eastman dreadnought recording, and equally in both
-        // channels.
-        // lowBodyModeGain raises the air mode where steel's g21 bank
-        // under-hears it: at the treble-bridge microphone, 10 cm over the
-        // bridge, 82 Hz radiates 15 dB under 330 Hz where the upper-bout one
-        // hears it 2 dB over.
+        // Original treble/upper-bout observation, including the authored
+        // left air gain. This supplies the unchanged continuation reference
+        // and the .4 original component of the approved pressure mixture.
         const float airGain = lowBodyMode
             ? physicalCalibration_.lowBodyModeGain : 1.0f;
         const auto left = airGain * scaledResidue(
@@ -4699,6 +4751,34 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
         mode.leftMomentImaginary = leftMoment.imag();
         mode.rightMomentReal = rightMoment.real();
         mode.rightMomentImaginary = rightMoment.imag();
+        const auto spatial = spatialMode >= 0
+            ? studioLowModeObservation(shape, spatialMode, frequency, q)
+            : std::array<std::complex<float>, 2> {};
+        auto& observation = captured[static_cast<std::size_t>(slot - 1)];
+        for (int input = 0; input < 2; ++input)
+        {
+            const auto treble = input == 0
+                ? std::complex<float>(measured.leftReal, measured.leftImaginary)
+                : std::complex<float>(measured.leftMomentReal, measured.leftMomentImaginary);
+            const auto bass = input == 0
+                ? std::complex<float>(measured.rightReal, measured.rightImaginary)
+                : std::complex<float>(measured.rightMomentReal, measured.rightMomentImaginary);
+            const auto upperBout = input == 0
+                ? std::complex<float>(measured.upperReal, measured.upperImaginary)
+                : std::complex<float>(measured.upperMomentReal, measured.upperMomentImaginary);
+            // .4 original + .2 unboosted treble + .1 measured blend. The
+            // three .1 compensated spatial variants retain the original
+            // observation outside their identified A0/T1 modes.
+            const float originalShare = spatialMode >= 0 ? 0.4f : 0.7f;
+            const auto leftPressure = (originalShare * airGain + 0.25f) * treble
+                + 0.05f * upperBout + spatial[static_cast<std::size_t>(input)];
+            const auto rightPressure = (originalShare + 0.05f) * upperBout
+                + 0.2f * treble + 0.05f * bass + spatial[static_cast<std::size_t>(input)];
+            observation[static_cast<std::size_t>(2 * input)]
+                = scaledResidue(leftPressure.real(), leftPressure.imag());
+            observation[static_cast<std::size_t>(2 * input + 1)]
+                = scaledResidue(rightPressure.real(), rightPressure.imag());
+        }
     };
     // Steel on its Original guitar plays the blend (SteelBodyBlend.h): g21's
     // bank, then the joint-pole body's kept modes on its own morph.
@@ -4706,15 +4786,18 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
         bank.size(), static_cast<std::size_t>(bodyModeCount)));
     for (int index = 0; index < ownCount; ++index)
         place(bank[static_cast<std::size_t>(index)], index, shapeMorph,
-              steelBlendG21Share(bank[static_cast<std::size_t>(index)].frequency));
+              steelBlendG21Share(bank[static_cast<std::size_t>(index)].frequency),
+              index < 2 ? index : -1);
     if (steelBlendJointShare > 0.0f)
     {
         const auto jointMorph = steelJointMorph(anchor, shape,
                                                 material);
         for (const auto index : steelJointKept)
             place(steelJointRadiationModes[index], static_cast<int>(index),
-                  jointMorph, steelBlendJointShare);
+                  jointMorph, steelBlendJointShare,
+                  index == 1 ? 2 : (index == 2 ? 3 : -1));
     }
+    const int measuredCount = slot;
     // The measured banks stop where their fit stopped (10 kHz before the
     // anchor's x0.900 and the Shape's plate factor: 8.1 kHz on the Jumbo,
     // 11.7 on the Parlor), and above their last mode the radiation fell
@@ -4862,6 +4945,36 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
     configuration.ordered = ownCount;
     for (; slot < bodyModeCount; ++slot)
         configuration.modes[static_cast<std::size_t>(slot)] = {};
+    for (int index = 0; index < count; ++index)
+    {
+        auto& mode = configuration.modes[static_cast<std::size_t>(index)];
+        auto observation = captured[static_cast<std::size_t>(index)];
+        if (index >= measuredCount)
+        {
+            // No measured bass tap exists for the statistical continuation;
+            // its research control used treble for that tap. Preserve exactly
+            // the same fixed mixture of the original completed L/R bank.
+            for (int input = 0; input < 2; ++input)
+            {
+                const auto left = input == 0
+                    ? std::complex<float>(mode.leftReal, mode.leftImaginary)
+                    : std::complex<float>(mode.leftMomentReal, mode.leftMomentImaginary);
+                const auto right = input == 0
+                    ? std::complex<float>(mode.rightReal, mode.rightImaginary)
+                    : std::complex<float>(mode.rightMomentReal, mode.rightMomentImaginary);
+                observation[static_cast<std::size_t>(2 * input)] = 0.95f * left + 0.05f * right;
+                observation[static_cast<std::size_t>(2 * input + 1)] = 0.25f * left + 0.75f * right;
+            }
+        }
+        mode.leftReal = observation[0].real();
+        mode.leftImaginary = observation[0].imag();
+        mode.rightReal = observation[1].real();
+        mode.rightImaginary = observation[1].imag();
+        mode.leftMomentReal = observation[2].real();
+        mode.leftMomentImaginary = observation[2].imag();
+        mode.rightMomentReal = observation[3].real();
+        mode.rightMomentImaginary = observation[3].imag();
+    }
     // The microphones' broad brightness tilt (MicrophoneBalanceData.h).
     // Apply once to the completed bank: the continuation above takes its
     // density from the untilted measured modes, so none of its gain is
@@ -11653,8 +11766,8 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                     mix = next == mix || exact::abs(target - next) < 1.0e-4f
                         ? target : next;
                 }
-                // One physical microphone avoids the spaced pair's phase
-                // cancellation; its copies and the piezo ignore width.
+                // Mono uses the right observer directly, without summing
+                // the pair again; its copies and the piezo ignore width.
                 const float mono = captureMix_[7] * heldMono
                     + radiationReferenceGain * outputGain_
                     * (captureMix_[6] * loadedPiezo);
