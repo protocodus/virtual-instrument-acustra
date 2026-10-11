@@ -55,7 +55,9 @@ few ulps. This does not waive any loudness or headroom checks.
 For a physical update, `--strum-measurements native.json` uses the output of
 AcustraConstructionStrumLevels to keep all five existing Finger tuning guards
 within 9 dB while staying within the phrase's 1 LU tolerance. It projects each
-capture to the nearest feasible gain; it never changes the default reference.
+capture to the nearest feasible gain; it never changes the default stereo
+reference. Other captures' relative strum levels follow their recalibrated
+default capture, so the same 9 dB bound applies after every gain change.
 Rebuild and rerender both protocols to verify the generated float32 tables.
 
 The selection combines with the other write options:
@@ -400,7 +402,9 @@ def constrain_strum_gains(tables, built, raw, saved, pickings):
     """Choose the nearest phrase fit satisfying every native tuning guard.
 
     Solve absolute capture gains first; encode mono/piezo as relative trims
-    afterward. The existing default reference is immutable. These predictions
+    afterward. The default stereo reference is immutable. Other captures'
+    default gain changes are included in every relative strum constraint.
+    These predictions
     require a fresh native rerender after rebuilding: BS.1770 gating and the
     limiter can make phrase measurements differ from simple scalar arithmetic.
     """
@@ -415,10 +419,12 @@ def constrain_strum_gains(tables, built, raw, saved, pickings):
             raise ValueError(f"non-finite phrase level: {construction} {capture}")
     target = raw["lufs"][(DEFAULT[:2], DEFAULT[2], "stereo_mic")]
     default_cell = index(*DEFAULT)
-    for capture in CAPTURES:
-        if abs(20 * np.log10(absolute_gain(tables, default_cell, capture)
-                            / absolute_gain(built, default_cell, capture))) > 1e-6:
-            raise ValueError("strum constraints require preserving the default reference on every capture")
+    reference_delta = {
+        capture: 20 * np.log10(absolute_gain(tables, default_cell, capture)
+                               / absolute_gain(built, default_cell, capture))
+        for capture in CAPTURES}
+    if abs(reference_delta["stereo_mic"]) > 1e-6:
+        raise ValueError("strum constraints require preserving the default stereo reference")
     planned = {name: values.copy() for name, values in tables.items()}
     changes = []
     for construction in constructions():
@@ -433,8 +439,11 @@ def constrain_strum_gains(tables, built, raw, saved, pickings):
             high = exact_db + TOLERANCE_LU - FIT_MARGIN_DB
             for tuning in TUNINGS:
                 row = rows[(construction, capture, tuning)]
-                low = max(low, old_db - STRUM_TOLERANCE_DB + FIT_MARGIN_DB - row["relative_db"])
-                high = min(high, old_db + STRUM_TOLERANCE_DB - FIT_MARGIN_DB - row["relative_db"])
+                # final relative = measured relative + cell gain delta
+                #                  - this capture's default gain delta.
+                centre = old_db + reference_delta[capture] - row["relative_db"]
+                low = max(low, centre - STRUM_TOLERANCE_DB + FIT_MARGIN_DB)
+                high = min(high, centre + STRUM_TOLERANCE_DB - FIT_MARGIN_DB)
             if low > high:
                 raise ValueError(f"no gain satisfies phrase and strum limits: {construction} {capture}")
             fitted_db = float(np.clip(wanted_db, low, high)) if selected else wanted_db
@@ -454,6 +463,7 @@ def constrain_strum_gains(tables, built, raw, saved, pickings):
         tables[name][:] = planned[name]
     return {"protocol": saved["schema"], "rows": len(rows),
             "rounding_margin_db": FIT_MARGIN_DB, "adjusted_captures": changes,
+            "default_capture_gain_delta_db": reference_delta,
             "requires_native_rerender": True}
 
 
@@ -692,6 +702,15 @@ def self_test() -> None:
     assert selected.pickings == ["pick"]
     assert selected.write_header and selected.preserve_piezo_level
     assert not selected.all_pickings
+    # A check reads the built renderer's samples. It cannot validate a
+    # header written by the same invocation before a rebuild and rerender.
+    with contextlib.redirect_stderr(io.StringIO()):
+        try:
+            argument_parser().parse_args(["--write-header", "--check"])
+        except SystemExit as error:
+            assert error.code == 2
+        else:
+            raise AssertionError("a header write could claim a same-invocation pass")
     # The guitar model is no longer a write selector.
     with contextlib.redirect_stderr(io.StringIO()):
         try:
@@ -751,6 +770,28 @@ def self_test() -> None:
     assert np.array_equal(projected["mic"], unity["mic"])
     assert np.array_equal(projected["piezo"], unity["piezo"])
     assert len(fit_report["adjusted_captures"]) == 1
+    # A changed default piezo gain moves the denominator of every relative
+    # strum level. At a measured -8.8 dB, a +0.6 dB default shift leaves
+    # -9.4 dB unless this cell gains at least +0.42 dB (9 dB, with margin).
+    # A quieter default moves the opposite boundary the opposite way.
+    for shift_db, measured_db, expected_db in ((0.6, -8.8, 0.42),
+                                               (-0.6, 8.8, -0.42)):
+        shifted = {name: values.copy() for name, values in unity.items()}
+        shifted["piezo"][index(*DEFAULT)] = 10 ** (shift_db / 20)
+        shifted_native = json.loads(json.dumps(native))
+        for row in shifted_native["rows"]:
+            relative = measured_db if (tuple(row["construction"]) == pick
+                                       and row["capture"] == "piezo"
+                                       and row["tuning"] == "dadgad") else 0.0
+            row["relative_db"] = row["weighted_db"] = relative
+        shifted_report = constrain_strum_gains(shifted, unity, flat,
+                                               shifted_native, PICKINGS)
+        gain_db = 20 * np.log10(absolute_gain(shifted, finger_cell, "piezo"))
+        assert abs(gain_db - expected_db) < 1e-10
+        assert abs(measured_db + gain_db - shift_db) <= STRUM_TOLERANCE_DB - FIT_MARGIN_DB + 1e-10
+        assert abs(shifted_report["default_capture_gain_delta_db"]["piezo"] - shift_db) < 1e-10
+        assert shifted["mic"][index(*DEFAULT)] == 1.0
+        assert abs(20 * np.log10(shifted["piezo"][index(*DEFAULT)]) - shift_db) < 1e-10
     # With Finger outside the written styles that cell may not move, so the
     # same evidence fails before any table write.
     unchanged = {name: values.copy() for name, values in unity.items()}
@@ -790,6 +831,35 @@ def self_test() -> None:
         else:
             raise AssertionError("invalid native evidence accepted")
         assert all(np.array_equal(unchanged[name], unity[name]) for name in unity)
+    # A failed constraint check must retain its expensive measurements,
+    # explicitly unvalidated, and must not write even a temporary header.
+    from unittest import mock
+    with tempfile.TemporaryDirectory() as scratch:
+        directory = Path(scratch)
+        measurements = directory / "measured.json"
+        measurements.write_text(json.dumps({"as_rendered": serialise(flat),
+                                             "without_gains": serialise(flat)}))
+        bad_native = directory / "bad-native.json"
+        bad_native.write_text(json.dumps({"schema": "invalid"}))
+        saved_output = directory / "checkpoint.json"
+        header = directory / "header.h"
+        header.write_text("unchanged header\n")
+        argv = ["calibrate", "--measurements", str(measurements),
+                "--strum-measurements", str(bad_native), "--json", str(saved_output),
+                "--write-header"]
+        with mock.patch.dict(globals(), {"HEADER": header}), mock.patch.object(sys, "argv", argv), \
+                contextlib.redirect_stdout(io.StringIO()):
+            try:
+                main()
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("invalid native evidence wrote a header")
+        checkpoint = json.loads(saved_output.read_text())
+        assert checkpoint["validation"] == {"status": "unvalidated_measurements",
+                                             "header_written": False}
+        assert checkpoint["as_rendered"] == serialise(flat)
+        assert header.read_text() == "unchanged header\n"
     # Measurements serialise and read back; a pre-removal construction does not.
     assert deserialise(serialise(fake)) == fake
     try:
@@ -812,12 +882,13 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--renderer", help="AcustraPerformanceRenderer")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
     parser.add_argument("--json", type=Path, help="write every measurement here")
-    parser.add_argument("--write-header", action="store_true",
+    phase = parser.add_mutually_exclusive_group()
+    phase.add_argument("--write-header", action="store_true",
                         help=f"write the gains to {HEADER.name}")
     parser.add_argument("--preserve-piezo-level", action="store_true",
                         help="with --write-header, keep the selected styles' cells' existing"
                              " absolute pickup level during a microphone-only update")
-    parser.add_argument("--check", action="store_true",
+    phase.add_argument("--check", action="store_true",
                         help="fail unless the built gains hold every cell within"
                              f" +-{TOLERANCE_LU:g} LU and {HEADROOM_DB:g} dB under the knee")
     parser.add_argument("--measurements", type=Path,
@@ -867,12 +938,17 @@ def main() -> int:
         raw = raw_levels(measured, built_gains())
     target = measured["lufs"][(DEFAULT[:2], DEFAULT[2], "stereo_mic")]
     as_built = report(measured, target)
+    output = {"as_rendered": serialise(measured), "without_gains": serialise(raw),
+              "summary": as_built, "validation": {"status": "unvalidated_measurements",
+                                                   "header_written": False}}
+    # Preserve the expensive measurements even if constraint evidence or a
+    # feasible gain interval later fails. This is explicitly not a pass.
+    if arguments.json:
+        arguments.json.write_text(json.dumps(output, indent=1, allow_nan=False) + "\n")
     saved_strums = None
     if arguments.strum_measurements:
         saved_strums = json.loads(arguments.strum_measurements.read_text())
         validate_strum_measurements(saved_strums, built_gains())
-    output = {"as_rendered": serialise(measured), "without_gains": serialise(raw),
-              "summary": as_built}
     print_report(as_built, "as rendered")
     print_report(report(raw, target), "without the construction gains")
     if arguments.write_header:
@@ -885,6 +961,8 @@ def main() -> int:
             output["strum_constraints"] = constrain_strum_gains(
                 tables, built, raw, saved_strums, arguments.pickings)
         HEADER.write_text(header_text(tables))
+        output["validation"] = {"status": "header_written_requires_native_rerender",
+                                "header_written": True}
         print(f"wrote {HEADER}")
     if arguments.json:
         arguments.json.write_text(json.dumps(output, indent=1, allow_nan=False) + "\n")
@@ -907,8 +985,15 @@ def main() -> int:
                          for row in saved_strums["rows"]
                          if abs(row["relative_db"]) > STRUM_TOLERANCE_DB]
         if failures:
+            output["validation"] = {"status": "failed", "failures": failures,
+                                    "header_written": arguments.write_header}
+            if arguments.json:
+                arguments.json.write_text(json.dumps(output, indent=1, allow_nan=False) + "\n")
             print("FAILED: " + "; ".join(failures))
             return 1
+        output["validation"] = {"status": "passed", "header_written": arguments.write_header}
+        if arguments.json:
+            arguments.json.write_text(json.dumps(output, indent=1, allow_nan=False) + "\n")
         print(f"every construction and Picking within +-{TOLERANCE_LU:g} LU; every Pick"
               " cell short of the headroom has given up the level the tolerance allows")
     return 0

@@ -1,0 +1,182 @@
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+FAIL: one shared hand moved different millimetres on a fretted string
+Shared hand: worst travel error=0.00310725 metres, force error=2.80649e-07
+Physical vs old octave travel: minimum audio difference/RMS=0.0277129
+FAIL: intervening contacts moved the absolute-time hand trajectory
+FAIL: long silence invalidated a bounded established hand posture
+FAIL: intervening contacts moved the absolute-time hand trajectory
+FAIL: long silence invalidated a bounded established hand posture
+FAIL: intervening contacts moved the absolute-time hand trajectory
+FAIL: long silence invalidated a bounded established hand posture
+FAIL: crossing a two-second rest abruptly replaced the shared hand
+FAIL: rest-neighbour posture change exceeded finite physical velocity
+FAIL: rest-neighbour posture change exceeded finite physical velocity
+FAIL: continuous posture exceeded its finite physical speed bound
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: crossing a two-second rest abruptly replaced the shared hand
+FAIL: rest-neighbour posture change exceeded finite physical velocity
+FAIL: rest-neighbour posture change exceeded finite physical velocity
+FAIL: continuous posture exceeded its finite physical speed bound
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: crossing a two-second rest abruptly replaced the shared hand
+FAIL: rest-neighbour posture change exceeded finite physical velocity
+FAIL: rest-neighbour posture change exceeded finite physical velocity
+FAIL: continuous posture exceeded its finite physical speed bound
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+FAIL: hand trajectory velocity jumped at a target knot
+Continuous posture: rest step=0.549174, maximum speed=22.1579/s, knot velocity mismatch=86.6721/s
+FAIL: reset did not restart the deterministic physical hand path
+FAIL: reset did not restart the deterministic physical hand path
+FAIL: reset did not restart the deterministic physical hand path
+FAIL: reset did not restart the deterministic physical hand path
+FAIL: panic did not restart posture at its new physical-time origin
+FAIL: panic did not restart posture at its new physical-time origin
+FAIL: panic did not restart posture at its new physical-time origin
+FAIL: panic did not restart posture at its new physical-time origin

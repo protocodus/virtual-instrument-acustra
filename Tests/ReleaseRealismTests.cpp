@@ -55,8 +55,9 @@ struct AcustraEngineTestAccess
     {
         const auto& v = e.voices_[static_cast<std::size_t>(string)];
         const auto& contact = v.loops[static_cast<std::size_t>(plane)].gestureContact;
-        return { v.speakingLengthMetres, static_cast<double>(contact.firstAge),
-                 static_cast<double>(contact.firstAge + contact.secondAge) };
+        const double first = contact.firstAge + contact.firstFraction;
+        const double second = contact.secondAge + contact.secondFraction;
+        return { v.speakingLengthMetres, first, first + second };
     }
     static float pluckPoint(const AcustraEngine& e, int string)
     { return e.voices_[static_cast<std::size_t>(string)].pluckPoint; }
@@ -384,8 +385,9 @@ void releasePadFollowsPhysicalSlideLength()
             for (const int fret : { 8, 20 })
             {
                 // The normal +/-12-semitone wheel reaches virtual fret -4
-                // or 32 here. The decay calibration clamps to frets 0..20;
-                // that clamp must not move the physical 18 mm damping pad.
+                // or 32 here. Beyond the nut the picking hand catches the
+                // string; above fret 20 the physical 18 mm pad must not
+                // follow the decay calibration's clamped fret index.
                 // Conventional/manager wheels slide, a member wheel changes
                 // tension at a fixed length and must keep that pad geometry.
                 auto engine = configured(true, rate);
@@ -408,12 +410,12 @@ void releasePadFollowsPhysicalSlideLength()
                            "the release fixture did not retain its physical slide length");
                     const double relativePosition = 2.0 * geometry[1] / geometry[2];
                     const double padInset = expectedLength * (1.0 - relativePosition);
-                    // The contact rounds its half-period tap to the nearest
-                    // cell. One full-period cell in metres is the resulting
-                    // maximum inset error; use it as the geometry tolerance.
-                    const double gridError = expectedLength / geometry[2];
-                    expect(std::abs(padInset - 0.018) <= gridError + 1.0e-7,
-                           "a supported slide moved the 18 mm release pad with the decay clamp");
+                    const double expectedInset = expectedLength >= 0.648
+                        ? expectedLength * (1.0 - Access::pluckPoint(*engine, 1)) : 0.018;
+                    // Fractional gather/scatter retains the physical pad
+                    // position; no whole-cell geometry allowance is needed.
+                    expect(std::abs(padInset - expectedInset) <= 2.0e-7,
+                           "release pad did not follow the actual open/stopped slide geometry");
                 }
             }
 }
@@ -443,11 +445,18 @@ void pickingHandStopsAtItsPhysicalContact()
                 const auto geometry = Access::contactGeometry(*engine, 0, 0);
                 const double actual = 2.0 * geometry[1] / geometry[2];
                 const bool palm = picking == acustra::PickingTechnique::Pick;
-                const double expected = palm ? 0.028 / geometry[0] : pluck;
-                expect(std::abs(actual - expected) <= 1.0 / geometry[2] + 1.0e-7,
-                       "open-string damping did not follow the technique's physical hand");
+                const double expected = slide > 0.0f ? 1.0 - 0.018 / geometry[0]
+                    : palm ? 0.028 / geometry[0] : pluck;
+                expect(std::abs(actual - expected) <= 2.0e-7,
+                       "damping did not follow the technique and actual stopping position");
                 const double noisePosition = Access::releaseNoisePosition(*engine, 0);
-                if (palm)
+                if (slide > 0.0f)
+                {
+                    const double inset = (1.0 - noisePosition) * geometry[0];
+                    expect(inset >= 0.012 - 1.0e-6 && inset <= 0.024 + 1.0e-6,
+                           "an upward-slid open key did not acquire the fretting pad's release sound");
+                }
+                else if (palm)
                 {
                     const double distance = noisePosition * geometry[0];
                     expect(distance >= 0.022 - 1.0e-6 && distance <= 0.034 + 1.0e-6,
@@ -470,9 +479,16 @@ void pickingHandStopsAtItsPhysicalContact()
             engine->noteOff(48, 1);
             advance(*engine, graceSamples(rate) + 2);
             const auto geometry = Access::contactGeometry(*engine, 0, 0);
-            const double inset = (1.0 - Access::releaseNoisePosition(*engine, 0)) * geometry[0];
-            expect(inset >= 0.012 - 1.0e-6 && inset <= 0.024 + 1.0e-6,
-                   "fretting-release sound must stay within the physical 18 mm pad");
+            const double position = Access::releaseNoisePosition(*engine, 0);
+            if (slide < -8.0f)
+                expect(std::abs(position - Access::pluckPoint(*engine, 0)) < 1.0e-6,
+                       "a fretted key slid beyond the nut retained a fictitious fret-release sound");
+            else
+            {
+                const double inset = (1.0 - position) * geometry[0];
+                expect(inset >= 0.012 - 1.0e-6 && inset <= 0.024 + 1.0e-6,
+                       "fretting-release sound must stay within the physical 18 mm pad");
+            }
         }
 }
 

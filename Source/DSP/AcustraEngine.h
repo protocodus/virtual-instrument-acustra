@@ -96,6 +96,17 @@ enum class PickingTechnique
     Thumb
 };
 
+// Representative clear, quarter-cut top material at 12% moisture content.
+// These are material inputs, not additional instrument parameters.
+struct WoodPhysicalProperties
+{
+    float densityKgPerCubicMetre;
+    float longitudinalYoungModulusPa;
+    float radialYoungModulusPa;
+    float longitudinalRadialShearModulusPa;
+    float longitudinalRadialPoissonRatio;
+};
+
 struct EngineParameters
 {
     BodyShape shape { BodyShape::Dreadnought };
@@ -116,11 +127,12 @@ struct EngineParameters
     // microphones. With Capture on Piezo the piezo is already all of Main,
     // so it adds nothing there.
     float piezoMix { 0.0f };
-    // The key-up's own sound, 0 none to 1 twice the nominal level: the
+    // Finger handling sound, 0 none to 1 twice the nominal level: the
     // damping finger or palm landing on the still-vibrating string, launched
     // into it from where it touches, and a faint brush of skin on a wound
     // string's winding (startReleaseNoise in AcustraEngine.cpp). 0.5 is the
-    // nominal level. Read once at each key-up; zero is an exact no-op.
+    // nominal level. Sampled at key-up and live for subtle stopped-wound
+    // sliding contact. Zero bypasses new noise; emitted waves continue.
     float releaseNoise { 0.0f };
     // The room around the microphones, 0 none to 1 a microphone well out in
     // it: a small studio's early reflections and its 0.45 s reverberation
@@ -546,9 +558,11 @@ private:
         // the value of R8 and/or increase the value of R7" for more), and at
         // the strings' fitted unit (item 2) the figure's gain of two put the
         // player's velocity-127 Pick strums 0.8 dB past U1B's negative swing.
-        // 1.62 (E24, 1.83 dB less) leaves them 1.0 dB, about the 1.25 dB
-        // they had at the 6.1 mm unit; U1A's input range, which R7 does not
-        // move, keeps 1.2 dB there (Docs/decisions.md 2026-09-30).
+        // 1.62 (E24, 1.83 dB less) left that reference 1.0 dB, about the
+        // 1.25 dB it had at the 6.1 mm unit; U1A's input range, which R7
+        // does not move, retained 1.2 dB (2026-09-30 measurement). This is
+        // not an all-gesture bound: later physical string/hand models can
+        // briefly saturate at maximum-velocity bridgeward Pick extremes.
         static constexpr double c1 = 4.7e-9;
         static constexpr double r1 = 1.0e6, r2 = 1.0e6, r3 = 1.0e6;
         static constexpr double c2 = 33.0e-6, r4 = 3.9e3;
@@ -778,13 +792,17 @@ private:
         // A local soft hand contact scatters travelling-wave increments,
         // not displacement samples. Integrating its two outgoing waves
         // keeps a landing from moving the string instantaneously. Geometry
-        // is frozen on the integer waveguide grid at the actual landing.
+        // is frozen at the actual landing, with fractional gather/scatter
+        // using one power-normalized spatial basis and its adjoint.
         struct GestureContact
         {
             bool active { false };
             bool seeded { false };
             int firstAge { 0 };
             int secondAge { 0 };
+            std::array<float, 4> spatialWeights { 1.0f, 0.0f, 1.0f, 0.0f };
+            float firstFraction { 0.0f };
+            float secondFraction { 0.0f };
             float coupling { 0.0f };
             float memoryGain { 0.0f };
             float offsetScale { 0.0f };
@@ -1050,16 +1068,35 @@ private:
         bool active { false };
     };
 
-    // A slowly moving picking hand, sampled only when a contact/stroke starts.
-    // A queued stroke owns its snapshot; later strokes cannot change it.
+    // A bounded continuous posture in physical time, sampled only when a
+    // contact/stroke starts. A queued stroke owns its snapshot; later strokes
+    // and intervening notes cannot change that trajectory or the snapshot.
     [[nodiscard]] PickingGesture nextPickingGesture() noexcept;
     PickingGesture pickingGesture_ {}, strumGesture_ {};
-    std::uint32_t pickingGestureRandom_ { 0x7f4a7c15u };
+    static constexpr std::uint32_t pickingGestureSeed = 0x7f4a7c15u;
+    std::uint64_t pickingGestureOriginSample_ { 0 };
     std::uint64_t pickingGestureSample_ { 0 };
     bool pickingGestureSeen_ { false };
 
     struct Voice
     {
+        // Continuous longitudinal pad motion, independent of pitch/tension
+        // vibrato. Its tiny friction source uses the existing arrival queue;
+        // emitted packets retain their own flight times through re-plucks.
+        struct FretMotion
+        {
+            double length { 0.648 };
+            float speed { 0.0f };
+            float emittedForce { 0.0f };
+            float sourceWave { 0.0f };
+            float forceGain { 0.0f };
+            float lowCoefficient { 0.0f }, highCoefficient { 0.0f };
+            float low { 0.0f }, high { 0.0f };
+            float leak { 0.0f };
+            int remaining { 0 };
+        };
+        FretMotion fretMotion {};
+        std::uint32_t fretMotionNoiseState { 1 };
         std::array<StringLoop, 2> loops {};
         VoiceConfigurationKey configurationKey {};
         // Key and payload follow whole-voice copies. Waveform resets may retain
@@ -1432,9 +1469,10 @@ private:
     static std::array<float, 2> radiationModePole(
         const EngineParameters& parameters,
         const PhysicalCalibration& calibration, int index) noexcept;
-    // Body Material's factors on frequency, Q, brightness and radiation for
-    // these parameters, relative to the spruce the measured bank was built
-    // of (tests).
+    // Top material inputs and higher-plate-mode factors (frequency, Q,
+    // brightness, pressure residue). The coupled A0/T1 modes have their own
+    // mass/stiffness and participation calculation; Q and brightness are 1.
+    static WoodPhysicalProperties bodyWoodProperties(BodyMaterial) noexcept;
     static std::array<float, 4> bodyWoodFactors(
         const EngineParameters& parameters) noexcept;
     // The Original's capture voicing (CaptureVoicingData.h) as an amplitude
@@ -1470,7 +1508,7 @@ private:
             float cross { 0.0f };
             float rock { 0.0f };
         };
-        std::array<std::uint32_t, 12> key {};
+        std::array<std::uint32_t, 13> key {};
         bool valid { false };
         int count { 0 };
         // The first `ordered` modes are evaluated as ever; the steel blend's
@@ -1517,7 +1555,7 @@ private:
     // sentinel.
     [[nodiscard]] float mpePressureFor(const Voice& voice) const noexcept;
     [[nodiscard]] float vibratoSemitones(const Voice& voice,
-                                         int fret) const noexcept;
+                                         float speakingLength) const noexcept;
     void initialisePluck(Voice& voice, int stringIndex, float velocity,
                          bool merge = false) noexcept;
     // Scale every state a string's two loops store of the travelling wave -
@@ -1526,6 +1564,8 @@ private:
     void returnToOpenString(Voice& voice, int stringIndex,
                             bool clearDelay) noexcept;
     void firePluck(Voice& voice, int stringIndex) noexcept;
+    [[nodiscard]] static float frettingContactWeight(float speakingLength,
+                                                       int harmonic) noexcept;
     void beginRelease(Voice& voice, int stringIndex) noexcept;
     void beginGestureDamping(Voice& voice) noexcept;
     void updateReleaseJoinWindow(Voice& voice) noexcept;
@@ -1661,6 +1701,8 @@ private:
     // damping contact.
     void startReleaseNoise(Voice& voice, int stringIndex,
                            bool fretSide) noexcept;
+    static void primeFretMotion(Voice& voice) noexcept;
+    void renderFretMotion(Voice& voice, int stringIndex) noexcept;
     float renderReleaseNoise(Voice& voice) noexcept;
     void addReleaseNoise(Voice& voice, float& verticalIncident,
                          float& horizontalIncident) noexcept;

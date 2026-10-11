@@ -135,7 +135,10 @@ struct AcustraEngineTestAccess
     static std::pair<double, double> kinkOnTheString(const AcustraEngine& engine, int string)
     {
         const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
-        const int length = std::clamp(static_cast<int>(std::round(voice.loops[0].targetDelay)),
+        // The source was written on currentDelay. The attack's tension cue
+        // can already have requested a different target (across an integer
+        // boundary), but no propagation sample has moved the stored shape.
+        const int length = std::clamp(static_cast<int>(std::round(voice.loops[0].currentDelay)),
                                       8, AcustraEngine::maximumDelaySamples - 3);
         return { static_cast<double>(voice.releaseShapePosition[0]) * length
                      / voice.contactPeriodSamples,
@@ -1077,6 +1080,16 @@ struct AcustraEngineTestAccess
         return latest == nullptr ? -1.0 : latest->pluckPoint;
     }
 
+    static double lastPluckLength(const AcustraEngine& engine)
+    {
+        const AcustraEngine::Voice* latest = nullptr;
+        for (const auto& voice : engine.voices_)
+            if (voice.played && (latest == nullptr
+                                 || voice.startOrder > latest->startOrder))
+                latest = &voice;
+        return latest == nullptr ? -1.0 : latest->speakingLengthMetres;
+    }
+
     static PreparedLossSnapshot changePreparedLoss(
         PhysicalCalibration before, PhysicalCalibration after)
     {
@@ -1453,7 +1466,7 @@ struct AcustraEngineTestAccess
         engine.vibratoOnset_ = 1.0f;
         engine.vibratoPhase_ = std::numbers::pi_v<float>;
         return 100.0 * static_cast<double>(
-            engine.vibratoSemitones(*selected, selected->fret));
+            engine.vibratoSemitones(*selected, selected->speakingLengthMetres));
     }
 
     struct StringModeSnapshot
@@ -3730,7 +3743,7 @@ void testDispersionAcrossRatesAndNotes()
         const double soundingLength = scaleLength
             * std::exp2(-static_cast<double>(fret) / 12.0);
         const double inharmonicity
-            = acustra::fittedPhysicalCalibration.steel.stiffnessScale
+            = (bass ? acustra::fittedPhysicalCalibration.steel.stiffnessScale : 1.0)
                 * std::pow(std::numbers::pi, 3.0)
                 * youngsModulus * std::pow(diameter, 4.0)
                 / (64.0 * tension * soundingLength * soundingLength);
@@ -5015,7 +5028,11 @@ void testBroadContactWrapsAndReachesItsUniformLimit()
     // including both sides of its periodic boundary and both polarisations.
     struct Domain { int rate; float bend, exponent; };
     constexpr std::array domains {
-        Domain { 48000, 0.0f, 1.0f }, Domain { 96000, 12.0f, 1.0f },
+        // Include both common host grids: geometric plain-steel stiffness
+        // moves a short line's rounding boundary and can remove a negative
+        // sample witness on one grid. The Fourier/error/count guards stay.
+        Domain { 44100, 0.0f, 1.0f }, Domain { 48000, 0.0f, 1.0f },
+        Domain { 96000, 12.0f, 1.0f },
         Domain { 384000, 24.0f, 1.0f }, Domain { 384000, 96.0f, 1.0f },
         Domain { 8000, -96.0f, -1.0f }
     };
@@ -5345,10 +5362,6 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
     narrowAperture.steel.apertureScale = 0.35f;
     auto broadAperture = acustra::fittedPhysicalCalibration;
     broadAperture.steel.apertureScale = 2.5f;
-    const auto narrow = acustra::AcustraEngineTestAccess::pluck(
-        narrowAperture, 0.8f);
-    const auto broad = acustra::AcustraEngineTestAccess::pluck(
-        broadAperture, 0.8f);
     // The contact's width is a Gaussian smoothing of the written line, so it
     // is read where it acts, on the line's upper partials against its lower:
     // a Finger stroke below full velocity is also released through its slip
@@ -7790,8 +7803,10 @@ void testRepeatedStrumsVaryLikeRepeatedRealStrums()
 
 void testNoTwoPlucksLandInTheSamePlace()
 {
-    // Each pluck draws its own point within the take-to-take spread the
-    // recordings show, and stays inside it - also where the hand's distance
+    // The shared hand travels in metres: 70% of the established 0.02 open
+    // string spread, with the independent 30% remaining relative to the
+    // speaking length. Each pluck stays inside their combined spread, also
+    // where the hand's distance
     // from the bridge reaches the band's mid-string limit (a Finger high on
     // the neck, a Thumb from the low frets up), where the draw used to be
     // clamped away and every pluck landed on exactly the same point.
@@ -7809,10 +7824,16 @@ void testNoTwoPlucksLandInTheSamePlace()
         std::vector<float> left(static_cast<std::size_t>(blockSize));
         std::vector<float> right(static_cast<std::size_t>(blockSize));
         std::vector<double> points;
+        double length = 0.0;
         for (int take = 0; take < 6; ++take)
         {
             engine.noteOn(pluck.note, 0.8f);
             points.push_back(acustra::AcustraEngineTestAccess::lastPluckPoint(engine));
+            const double currentLength
+                = acustra::AcustraEngineTestAccess::lastPluckLength(engine);
+            if (take == 0) length = currentLength;
+            expect(currentLength == length && length > 0.0,
+                   "same-note hand spread changed its speaking length");
             for (int block = 0; block < 40; ++block)
                 engine.process(left.data(), right.data(), blockSize);
             engine.noteOff(pluck.note);
@@ -7821,8 +7842,16 @@ void testNoTwoPlucksLandInTheSamePlace()
         }
         const auto [lowest, highest] = std::minmax_element(points.begin(), points.end());
         const std::string name = "MIDI " + std::to_string(pluck.note);
-        expect(*highest - *lowest <= 0.0401 && *lowest > 0.0 && *highest <= 0.46,
-               "a pluck of " + name + " landed outside the measured take-to-take spread");
+        // Reflection at either position limit cannot increase this span.
+        // Preserve the old 0.0001 normalized rounding allowance in metres.
+        const double spanMetres = (*highest - *lowest) * length;
+        const double maximumSpanMetres = 2.0 * 0.02 * 0.70 * 0.648
+            + (2.0 * 0.02 * 0.30 + 0.0001) * length;
+        expect(spanMetres <= maximumSpanMetres
+                   && *lowest >= 0.05 && *highest <= 0.36,
+               "a pluck of " + name + " landed outside the physical hand spread");
+        std::cout << name << " hand span metres=" << spanMetres
+                  << " bound=" << maximumSpanMetres << '\n';
         expect(*highest - *lowest > 1.0e-4,
                "six plucks of " + name + " all landed in the same place");
     }

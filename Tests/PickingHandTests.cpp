@@ -75,7 +75,7 @@ void boundedCoherence()
         {
             const double v = current[axis];
             expect(std::isfinite(v) && std::abs(v) <= 1.0,
-                   "bounded hand diffusion escaped its physical map");
+                   "bounded hand trajectory escaped its physical map");
             sum[axis] += v; square[axis] += v * v;
             product[axis] += v * previous[axis];
             changes[axis] += (v - previous[axis]) * (v - previous[axis]);
@@ -96,8 +96,8 @@ void boundedCoherence()
         std::cout << "Hand axis " << axis << ": mean=" << mean
                   << " variance=" << variance << " correlation=" << correlation << '\n';
     }
-    expect(Access::gesture(*engine, (count + 11ull) * 9600)[2] == 0.0f,
-           "a rest longer than the hand-memory window retained active variation");
+    expect(Access::gesture(*engine, (count + 11ull) * 9600)[2] == 1.0f,
+           "a rest replaced the established continuous hand posture");
     engine->reset();
     expect(Access::gesture(*engine, 0)[2] == 0.0f,
            "reset retained an active picking gesture");

@@ -1,0 +1,259 @@
+{
+  "validation": {
+    "status": "passed",
+    "header_written": false
+  },
+  "captures": {
+    "stereo_mic": {
+      "min_lu": -0.293814311572568,
+      "max_lu": 9.355182370995863e-07,
+      "median_lu": -6.985695222283539e-08,
+      "quietest": "jumbo mahogany pick",
+      "loudest": "dreadnought mahogany pick",
+      "within_tolerance": 36,
+      "cells": 36
+    },
+    "mono_mic": {
+      "min_lu": -0.01570697183338865,
+      "max_lu": 0.7813111436060751,
+      "median_lu": -1.0573896247478842e-07,
+      "quietest": "auditorium mahogany pick",
+      "loudest": "dreadnought spruce finger",
+      "within_tolerance": 36,
+      "cells": 36
+    },
+    "piezo": {
+      "min_lu": -0.9152701714143561,
+      "max_lu": 1.1547107661158407e-06,
+      "median_lu": -7.50586551134802e-07,
+      "quietest": "auditorium spruce pick",
+      "loudest": "jumbo spruce thumb",
+      "within_tolerance": 36,
+      "cells": 36
+    }
+  },
+  "hardest": {
+    "stereo_mic finger": {
+      "peak_dbfs": -2.4394682383937845,
+      "construction": "auditorium spruce finger",
+      "median_peak_dbfs": -3.635984543664588,
+      "headroom_to_knee_db": 1.4394682565817942,
+      "over_knee": 0,
+      "under_1db": 12,
+      "cells": 12,
+      "short_of_1db": []
+    },
+    "stereo_mic pick": {
+      "peak_dbfs": -2.0200006544211986,
+      "construction": "parlor mahogany pick",
+      "median_peak_dbfs": -2.685472554326339,
+      "headroom_to_knee_db": 1.0200006726092083,
+      "over_knee": 0,
+      "under_1db": 12,
+      "cells": 12,
+      "short_of_1db": []
+    },
+    "stereo_mic thumb": {
+      "peak_dbfs": -4.785090604203994,
+      "construction": "auditorium mahogany thumb",
+      "median_peak_dbfs": -6.257414089085318,
+      "headroom_to_knee_db": 3.7850906223920036,
+      "over_knee": 0,
+      "under_1db": 12,
+      "cells": 12,
+      "short_of_1db": []
+    },
+    "mono_mic finger": {
+      "peak_dbfs": -2.6135137946898124,
+      "construction": "jumbo mahogany finger",
+      "median_peak_dbfs": -4.0660377646102805,
+      "headroom_to_knee_db": 1.6135138128778221,
+      "over_knee": 0,
+      "under_1db": 12,
+      "cells": 12,
+      "short_of_1db": []
+    },
+    "mono_mic pick": {
+      "peak_dbfs": -2.196104904939057,
+      "construction": "parlor mahogany pick",
+      "median_peak_dbfs": -3.773105892880357,
+      "headroom_to_knee_db": 1.1961049231270668,
+      "over_knee": 0,
+      "under_1db": 12,
+      "cells": 12,
+      "short_of_1db": []
+    },
+    "mono_mic thumb": {
+      "peak_dbfs": -3.880528889484708,
+      "construction": "auditorium mahogany thumb",
+      "median_peak_dbfs": -6.559563753304417,
+      "headroom_to_knee_db": 2.880528907672718,
+      "over_knee": 0,
+      "under_1db": 12,
+      "cells": 12,
+      "short_of_1db": []
+    },
+    "piezo finger": {
+      "peak_dbfs": -0.0004032583208653346,
+      "construction": "parlor spruce finger",
+      "median_peak_dbfs": -0.6009733370908938,
+      "headroom_to_knee_db": -0.9995967234911249,
+      "over_knee": 12,
+      "under_1db": 0,
+      "cells": 12,
+      "short_of_1db": [
+        {
+          "construction": "parlor spruce finger",
+          "peak_dbfs": -0.0004032583208653346,
+          "lu": 6.316951584039998e-08
+        },
+        {
+          "construction": "jumbo spruce finger",
+          "peak_dbfs": -0.013553170279191095,
+          "lu": -6.985692024841228e-08
+        },
+        {
+          "construction": "jumbo mahogany finger",
+          "peak_dbfs": -0.14087824151376954,
+          "lu": -7.350675090833647e-07
+        },
+        {
+          "construction": "jumbo maple finger",
+          "peak_dbfs": -0.24723960045500964,
+          "lu": -4.163666780243602e-07
+        },
+        {
+          "construction": "parlor maple finger",
+          "peak_dbfs": -0.49868077271638084,
+          "lu": -1.8608820795407155e-07
+        },
+        {
+          "construction": "dreadnought spruce finger",
+          "peak_dbfs": -0.5732290247353368,
+          "lu": -0.013997075233181278
+        },
+        {
+          "construction": "parlor mahogany finger",
+          "peak_dbfs": -0.628717649446451,
+          "lu": 6.442139408591174e-07
+        },
+        {
+          "construction": "dreadnought mahogany finger",
+          "peak_dbfs": -0.6339896166640023,
+          "lu": -3.9124315165395274e-07
+        },
+        {
+          "construction": "dreadnought maple finger",
+          "peak_dbfs": -0.6677923009268093,
+          "lu": 4.543026506098613e-07
+        },
+        {
+          "construction": "auditorium mahogany finger",
+          "peak_dbfs": -0.8492840063931196,
+          "lu": 4.0941884549283714e-08
+        },
+        {
+          "construction": "auditorium spruce finger",
+          "peak_dbfs": -0.8516569846626666,
+          "lu": -9.055766057031178e-07
+        },
+        {
+          "construction": "auditorium maple finger",
+          "peak_dbfs": -0.9342179145330792,
+          "lu": -1.1545263589596289e-07
+        }
+      ]
+    },
+    "piezo pick": {
+      "peak_dbfs": -0.8436822226340247,
+      "construction": "dreadnought spruce pick",
+      "median_peak_dbfs": -1.0462999711153103,
+      "headroom_to_knee_db": -0.15631775917796553,
+      "over_knee": 5,
+      "under_1db": 0,
+      "cells": 12,
+      "short_of_1db": [
+        {
+          "construction": "dreadnought spruce pick",
+          "peak_dbfs": -0.8436822226340247,
+          "lu": -0.8999999098295746
+        },
+        {
+          "construction": "parlor spruce pick",
+          "peak_dbfs": -0.9061152090281255,
+          "lu": -0.9000000907393506
+        },
+        {
+          "construction": "auditorium spruce pick",
+          "peak_dbfs": -0.918341622496527,
+          "lu": -0.9152701714143561
+        },
+        {
+          "construction": "auditorium mahogany pick",
+          "peak_dbfs": -0.9723717118878292,
+          "lu": -0.8999997452812281
+        },
+        {
+          "construction": "parlor mahogany pick",
+          "peak_dbfs": -0.973325071662135,
+          "lu": -0.8999989651601616
+        },
+        {
+          "construction": "dreadnought maple pick",
+          "peak_dbfs": -1.03986580263168,
+          "lu": -0.8999987446932067
+        },
+        {
+          "construction": "dreadnought mahogany pick",
+          "peak_dbfs": -1.0527341395989402,
+          "lu": -0.9000002850407611
+        },
+        {
+          "construction": "parlor maple pick",
+          "peak_dbfs": -1.0597466006524257,
+          "lu": -0.9000002721308107
+        },
+        {
+          "construction": "jumbo spruce pick",
+          "peak_dbfs": -1.105280315232982,
+          "lu": -0.899999708684124
+        },
+        {
+          "construction": "auditorium maple pick",
+          "peak_dbfs": -1.1160110062487547,
+          "lu": -0.8999990768691326
+        },
+        {
+          "construction": "jumbo maple pick",
+          "peak_dbfs": -1.2034342211804698,
+          "lu": -0.9000010059012311
+        },
+        {
+          "construction": "jumbo mahogany pick",
+          "peak_dbfs": -1.2340301940924414,
+          "lu": -0.8999993163230542
+        }
+      ]
+    },
+    "piezo thumb": {
+      "peak_dbfs": -3.0326540440105503,
+      "construction": "parlor spruce thumb",
+      "median_peak_dbfs": -4.0705973396486295,
+      "headroom_to_knee_db": 2.03265406219856,
+      "over_knee": 0,
+      "under_1db": 12,
+      "cells": 12,
+      "short_of_1db": []
+    }
+  },
+  "native": {
+    "rows": 180,
+    "finite": true,
+    "min_relative_db": -4.654438425655435,
+    "max_relative_db": 3.2301577618525066,
+    "peak": 0.344570130109787,
+    "piezo_peak": 0.2774108648300171
+  },
+  "source_files_changed_since_render_started": [],
+  "note": "Hardest piezo Finger/Pick safety-knee crossings are retained in hardest details. Passing means original phrase/native/Pick headroom-budget checks pass, not that every possible maximum-force capture remains linear."
+}

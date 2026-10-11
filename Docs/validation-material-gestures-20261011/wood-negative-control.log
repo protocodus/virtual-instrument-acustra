@@ -1,0 +1,8 @@
+wood 0 mass=1 stiffness=1 frequency=1 floor=1
+wood 1 mass=1.18304 stiffness=1.0974 frequency=0.963129 floor=0.877643
+wood 2 mass=1.575 stiffness=1.62819 frequency=1.01675 floor=0.624463
+orthotropic factor relative error=7.28331e-08
+Wood errors pole=2.1255e-07 trace=1.98244e-07 product=3.23983e-07 radiation=4.22495e-07 bridge=2.93519e-07
+FAIL: dense plate mobility ignores material stiffness or mass
+Wood floor error=0.601375 least real mobility=6.81917e-06 largest pole=0.999917
+isolated Wood minimum gain-independent residual=0.109957

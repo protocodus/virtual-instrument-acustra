@@ -21,7 +21,7 @@ struct AcustraEngineTestAccess
     static void sharePickingContact(const AcustraEngine& source, AcustraEngine& target)
     {
         target.pickingGesture_ = source.pickingGesture_;
-        target.pickingGestureRandom_ = source.pickingGestureRandom_;
+        target.pickingGestureOriginSample_ = source.pickingGestureOriginSample_;
         target.pickingGestureSample_ = source.pickingGestureSample_;
         target.pickingGestureSeen_ = source.pickingGestureSeen_;
         target.sampleClock_ = source.sampleClock_;

@@ -5,6 +5,50 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — restrained sliding-finger roughness
+
+The requested moving-finger sound is confined to actual longitudinal contact
+on held wound strings. It follows continuous speaking-length motion, using
+its own deterministic roughness stream and the existing Release Noise amount.
+Ordinary notes, stationary hands, plain strings and MPE member tension bends
+receive no new noise. Existing hammer/pull and release contacts remain.
+
+The source is an authored, deliberately quiet transverse approximation.
+Handling-noise research supports the speed dependence but does not identify
+our string set's wrap pitch, absolute force, or a full longitudinal mode bank.
+The initial level was reduced a further 8 dB following the user's instruction
+not to overdo it. Parameters, defaults and layout are unchanged. See the
+[model, measurements and validation](fret-motion-2026-10-11.md). This local
+candidate has no new listening approval, push, merge or install.
+
+## 2026-10-11 — continuous hand geometry and material-driven Wood
+
+The user requested another implementation pass, extending the scope beyond
+five changes to open/fretted behavior, remaining limitations and Wood. This
+candidate corrects plain-steel stiffness, expresses shared hand travel in
+metres, follows a continuous posture through rests, makes damping contact
+fractional, and uses actual stopping geometry for release and vibrato.
+Wound-string release brushes follow continuous relative slip speed where
+the front end supplies release velocity. Rack uses the nominal brush.
+
+The Wood audit found authored species factors but no material mass in the
+bridge residues or broadband conductance. Representative density and
+orthotropic elastic constants now drive an effective plate substitution,
+including coupled air/top participation. Unmeasured species damping is not
+invented. The supplied Maple/Mahogany article's numerical claims could not
+be traced to a primary experiment; primary acoustic-guitar studies support
+treating mass, stiffness, instrument geometry and component role separately.
+The [Wood report](wood-materials-2026-10-11.md) records those sources and limits.
+
+These changes are physically motivated and independently checked, not a
+new listening verdict. Parameters and layout stay unchanged. Construction
+levels are recalibrated, and review audio includes native and matched Wood
+comparisons plus the stronger physical piezo-preamp saturation found at
+extreme bridge plucks. The [candidate report](material-gestures-realism-2026-10-11.md)
+records validation, corrected test references and remaining limitations.
+Approval and merge instructions for the preceding candidate are not treated
+as listening approval of this new one.
+
 ## 2026-10-11 — physical-hand feedback and continuous dynamics
 
 The user liked the five physical-hand changes and requested continuous

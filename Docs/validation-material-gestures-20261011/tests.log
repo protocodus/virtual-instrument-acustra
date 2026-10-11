@@ -1,0 +1,165 @@
+Test project /Users/vojta/Dev/reason-rack-extension/rebuild-main-20261006/Examples/Acustra/Instrument/build-dsp
+      Start  2: Acustra.Engine
+      Start  9: Acustra.Release
+      Start 12: Acustra.Capture
+      Start 20: Acustra.ConstructionLoudness
+ 1/80 Test #20: Acustra.ConstructionLoudness ..............   Passed    6.89 sec
+      Start 19: Acustra.ConstructionHistory
+ 2/80 Test  #9: Acustra.Release ...........................   Passed   28.88 sec
+      Start  6: Acustra.Performer
+ 3/80 Test #12: Acustra.Capture ...........................   Passed   30.39 sec
+      Start 11: Acustra.OutputBuses
+ 4/80 Test #11: Acustra.OutputBuses .......................   Passed   34.20 sec
+      Start 46: Acustra.ExtractExcitation
+ 5/80 Test #46: Acustra.ExtractExcitation .................   Passed   31.69 sec
+      Start 17: Acustra.BodyShape
+ 6/80 Test #19: Acustra.ConstructionHistory ...............   Passed  103.80 sec
+      Start 31: Acustra.PhysicalScorer
+ 7/80 Test  #6: Acustra.Performer .........................   Passed   83.82 sec
+      Start 45: Acustra.FyldeBridgeReference
+ 8/80 Test #45: Acustra.FyldeBridgeReference ..............   Passed   10.89 sec
+      Start 36: Acustra.PiezoReference
+ 9/80 Test #31: Acustra.PhysicalScorer ....................   Passed   13.94 sec
+      Start 18: Acustra.ConstructionMatrix
+10/80 Test #17: Acustra.BodyShape .........................   Passed   29.30 sec
+      Start 50: Acustra.FitCaptureVoicing
+11/80 Test #50: Acustra.FitCaptureVoicing .................   Passed    6.90 sec
+      Start 75: Acustra.PhysicalHandGeometry
+12/80 Test #36: Acustra.PiezoReference ....................   Passed    9.89 sec
+      Start 73: Acustra.PhysicalHandRealism
+13/80 Test #18: Acustra.ConstructionMatrix ................   Passed    9.22 sec
+      Start 57: Acustra.VelocityRealism
+14/80 Test #75: Acustra.PhysicalHandGeometry ..............   Passed    2.66 sec
+      Start 25: Acustra.PhysicalFitRenderer
+15/80 Test  #2: Acustra.Engine ............................   Passed  136.63 sec
+      Start 78: Acustra.PhysicalStopping
+16/80 Test #78: Acustra.PhysicalStopping ..................   Passed    1.33 sec
+      Start 56: Acustra.PythonTestsReported
+17/80 Test #73: Acustra.PhysicalHandRealism ...............   Passed    5.96 sec
+      Start 32: Acustra.CalibrationVector
+18/80 Test #25: Acustra.PhysicalFitRenderer ...............   Passed    5.00 sec
+      Start 65: Acustra.RepeatedPluckRealism
+19/80 Test #32: Acustra.CalibrationVector .................   Passed    4.84 sec
+      Start 52: Acustra.OpenCorporaBenchmark
+20/80 Test #56: Acustra.PythonTestsReported ...............   Passed    6.99 sec
+      Start  5: Acustra.HandAllocator
+21/80 Test #57: Acustra.VelocityRealism ...................   Passed   13.14 sec
+      Start 74: Acustra.MaterialStiffness
+22/80 Test #65: Acustra.RepeatedPluckRealism ..............   Passed    8.04 sec
+      Start 70: Acustra.ReleaseRealism
+23/80 Test #52: Acustra.OpenCorporaBenchmark ..............   Passed    4.08 sec
+      Start 14: Acustra.MicrophoneBalance
+24/80 Test #74: Acustra.MaterialStiffness .................   Passed    1.67 sec
+      Start 79: Acustra.PhysicalVibratoStopping
+25/80 Test #79: Acustra.PhysicalVibratoStopping ...........   Passed    1.02 sec
+      Start  3: Acustra.ReleaseJoin
+26/80 Test  #5: Acustra.HandAllocator .....................   Passed    5.65 sec
+      Start 59: Acustra.StringPitchRealism
+27/80 Test #14: Acustra.MicrophoneBalance .................   Passed    4.14 sec
+      Start 60: Acustra.PalmMutePitch
+28/80 Test  #3: Acustra.ReleaseJoin .......................   Passed    4.22 sec
+      Start 39: Acustra.PerformanceBenchmark
+29/80 Test #70: Acustra.ReleaseRealism ....................   Passed    7.16 sec
+      Start 21: Acustra.RecuerdosArticulation
+30/80 Test #59: Acustra.StringPitchRealism ................   Passed    5.75 sec
+      Start 15: Acustra.PiezoCircuit
+31/80 Test #39: Acustra.PerformanceBenchmark ..............   Passed    2.50 sec
+      Start 58: Acustra.ContactRelease
+32/80 Test #60: Acustra.PalmMutePitch .....................   Passed    4.79 sec
+      Start  7: Acustra.ExtendedSampleRates
+33/80 Test #21: Acustra.RecuerdosArticulation .............   Passed    2.69 sec
+      Start  8: Acustra.SampleRateLayoutParity
+34/80 Test #15: Acustra.PiezoCircuit ......................   Passed    2.37 sec
+      Start 53: Acustra.AirModeAudit
+35/80 Test  #7: Acustra.ExtendedSampleRates ...............   Passed    2.38 sec
+      Start 54: Acustra.RingingTraceAnalysis
+36/80 Test #58: Acustra.ContactRelease ....................   Passed    3.65 sec
+      Start 48: Acustra.AuditDampingCurve
+37/80 Test  #8: Acustra.SampleRateLayoutParity ............   Passed    2.52 sec
+      Start 41: Acustra.HammerOnBenchmark
+38/80 Test #53: Acustra.AirModeAudit ......................   Passed    2.15 sec
+      Start 69: Acustra.LegatoRealism
+39/80 Test #48: Acustra.AuditDampingCurve .................   Passed    1.67 sec
+      Start  1: Acustra.SampleBank
+40/80 Test #54: Acustra.RingingTraceAnalysis ..............   Passed    2.63 sec
+      Start 42: Acustra.BodyForcePair
+41/80 Test #41: Acustra.HammerOnBenchmark .................   Passed    2.25 sec
+      Start 43: Acustra.GenerateBodyForcePair
+42/80 Test #42: Acustra.BodyForcePair .....................   Passed    0.95 sec
+      Start 44: Acustra.GenerateJointBody
+43/80 Test #69: Acustra.LegatoRealism .....................   Passed    2.50 sec
+      Start 27: Acustra.TraceRinging
+44/80 Test #43: Acustra.GenerateBodyForcePair .............   Passed    0.75 sec
+      Start 68: Acustra.StrummingRealism
+45/80 Test  #1: Acustra.SampleBank ........................   Passed    2.11 sec
+      Start 61: Acustra.StringDecayRealism
+46/80 Test #44: Acustra.GenerateJointBody .................   Passed    0.80 sec
+      Start 77: Acustra.FractionalContact
+47/80 Test #27: Acustra.TraceRinging ......................   Passed    1.32 sec
+      Start 38: Acustra.ConstructionLoudnessCalibration
+48/80 Test #77: Acustra.FractionalContact .................   Passed    1.45 sec
+      Start 37: Acustra.PiezoCalibration
+49/80 Test #68: Acustra.StrummingRealism ..................   Passed    2.58 sec
+      Start 35: Acustra.MaterialLoudness
+50/80 Test #38: Acustra.ConstructionLoudnessCalibration ...   Passed    1.87 sec
+      Start 72: Acustra.PitchGeometryCache
+51/80 Test #37: Acustra.PiezoCalibration ..................   Passed    1.27 sec
+      Start 40: Acustra.TechniqueBenchmark
+52/80 Test #61: Acustra.StringDecayRealism ................   Passed    3.04 sec
+      Start 76: Acustra.ReleaseBrushTrajectory
+53/80 Test #35: Acustra.MaterialLoudness ..................   Passed    1.09 sec
+      Start 49: Acustra.AuditBridgeSpatialMap
+54/80 Test #76: Acustra.ReleaseBrushTrajectory ............   Passed    0.61 sec
+      Start 10: Acustra.ContactTravel
+55/80 Test #40: Acustra.TechniqueBenchmark ................   Passed    1.04 sec
+      Start 30: Acustra.CalibrationRenderer
+56/80 Test #49: Acustra.AuditBridgeSpatialMap .............   Passed    0.98 sec
+      Start  4: Acustra.StrumDirection
+57/80 Test #72: Acustra.PitchGeometryCache ................   Passed    1.78 sec
+      Start 34: Acustra.NaturalPerformancePackaging
+58/80 Test #30: Acustra.CalibrationRenderer ...............   Passed    0.58 sec
+      Start 16: Acustra.GuitarModels
+59/80 Test #10: Acustra.ContactTravel .....................   Passed    1.34 sec
+      Start 66: Acustra.PickingHand
+60/80 Test #34: Acustra.NaturalPerformancePackaging .......   Passed    0.76 sec
+      Start 62: Acustra.BodyRealism
+61/80 Test  #4: Acustra.StrumDirection ....................   Passed    1.01 sec
+      Start 33: Acustra.OptimizerFreeze
+62/80 Test #16: Acustra.GuitarModels ......................   Passed    1.33 sec
+      Start 23: Acustra.RenderRepertoire
+63/80 Test #66: Acustra.PickingHand .......................   Passed    1.16 sec
+      Start 47: Acustra.AuditAttackBands
+64/80 Test #33: Acustra.OptimizerFreeze ...................   Passed    0.75 sec
+      Start 26: Acustra.BridgeProbe
+65/80 Test #26: Acustra.BridgeProbe .......................   Passed    0.32 sec
+      Start 13: Acustra.CaptureVoicing
+66/80 Test #62: Acustra.BodyRealism .......................   Passed    1.34 sec
+      Start 67: Acustra.PickingHandBoundary
+67/80 Test #47: Acustra.AuditAttackBands ..................   Passed    0.48 sec
+      Start 71: Acustra.RetuneContinuity
+68/80 Test #23: Acustra.RenderRepertoire ..................   Passed    0.96 sec
+      Start 64: Acustra.SympathyRealism
+69/80 Test #13: Acustra.CaptureVoicing ....................   Passed    0.54 sec
+      Start 63: Acustra.VoicingRealism
+70/80 Test #67: Acustra.PickingHandBoundary ...............   Passed    0.92 sec
+      Start 22: Acustra.RenderDemos
+71/80 Test #71: Acustra.RetuneContinuity ..................   Passed    1.40 sec
+      Start 51: Acustra.ValidateCapture
+72/80 Test #51: Acustra.ValidateCapture ...................   Passed    0.17 sec
+      Start 28: Acustra.RepertoireTempo
+73/80 Test #28: Acustra.RepertoireTempo ...................   Passed    0.09 sec
+      Start 55: Acustra.SelfTestRegistry
+74/80 Test #55: Acustra.SelfTestRegistry ..................   Passed    0.04 sec
+      Start 24: Acustra.DemoCount
+75/80 Test #64: Acustra.SympathyRealism ...................   Passed    1.57 sec
+      Start 29: Acustra.GaussianApertureData
+76/80 Test #29: Acustra.GaussianApertureData ..............   Passed    0.04 sec
+      Start 80: Acustra.WoodMaterial
+77/80 Test #63: Acustra.VoicingRealism ....................   Passed    1.75 sec
+78/80 Test #24: Acustra.DemoCount .........................   Passed    0.85 sec
+79/80 Test #22: Acustra.RenderDemos .......................   Passed    1.69 sec
+80/80 Test #80: Acustra.WoodMaterial ......................   Passed    2.44 sec
+
+100% tests passed, 0 tests failed out of 80
+
+Total Test time (real) = 174.74 sec
