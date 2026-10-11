@@ -25,7 +25,7 @@ struct AcustraEngineTestAccess
     struct Attack
     {
         double length, position, amplitude, slipPole, bendSpeed;
-        double referencePole, upperContactFret;
+        double referencePole, upperContactFret, tension;
         bool finite;
         std::array<double, 2> waveEnergy;
     };
@@ -213,7 +213,7 @@ struct AcustraEngineTestAccess
             / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix));
         Attack result { voice.speakingLengthMetres, voice.pluckPoint, amplitude,
                         voice.releaseSlipPole, voice.bendImpedanceScale,
-                        voice.releaseReferencePole, voice.speakingFret,
+                        voice.releaseReferencePole, voice.speakingFret, voice.tensionNewtons,
                         true, {} };
         for (int plane = 0; plane < 2; ++plane)
         {
@@ -407,6 +407,7 @@ void testSlideAttackMatchesItsPhysicalFret()
 void testMemberAttackUsesBentWaveSpeedAtFixedLength()
 {
     using Access = acustra::AcustraEngineTestAccess;
+    double worstForceError = 0.0, worstReleaseError = 0.0;
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
         for (const int string : { 1, 4, 5 })
             for (const float interval : { -2.0f, 2.0f, 12.0f })
@@ -417,16 +418,29 @@ void testMemberAttackUsesBentWaveSpeedAtFixedLength()
                     0.0f, interval, acustra::PickingTechnique::Finger, 1, true);
                 expect(bent.length == held.length && bent.position == held.position,
                        "member attack moved the stopped length or the picking hand");
-                expect(std::abs(bent.amplitude / held.amplitude - 1.0) < 2.0e-5,
-                       "member attack changed the nominal displacement map");
-                // The edge release lasts r/u. At fixed y and contact
-                // position, u follows the bent string's physical wave speed.
+                // At fixed contact geometry the static force is proportional
+                // to T*y. A stiffer pre-bend keeps force, not displacement;
+                // downward virtual bends retain the nominal displacement
+                // ceiling rather than amplifying through the tension floor.
+                const double displacementRatio = bent.amplitude / held.amplitude;
+                const double expectedRatio = std::min(1.0, held.tension / bent.tension);
+                const double forceError = std::abs(displacementRatio / expectedRatio - 1.0);
+                expect(forceError < 2.0e-5,
+                       "member attack ignored force-driven static string compliance");
+                worstForceError = std::max(worstForceError, forceError);
+                // The edge release lasts r/u. At fixed contact position,
+                // u follows both physical wave speed and actual displacement.
                 const double heldTau = -1.0 / std::log(held.slipPole);
                 const double bentTau = -1.0 / std::log(bent.slipPole);
-                expect(std::abs(bentTau / heldTau * bent.bendSpeed - 1.0) < 2.0e-5,
-                       "member attack release time ignored the bent wave speed");
+                const double releaseError = std::abs(bentTau / heldTau
+                    * bent.bendSpeed * displacementRatio - 1.0);
+                expect(releaseError < 2.0e-5,
+                       "member attack release time ignored wave speed or displacement");
+                worstReleaseError = std::max(worstReleaseError, releaseError);
                 expect(bent.finite, "member attack was nonfinite");
             }
+    std::cout << "Member release: force/compliance error " << worstForceError
+              << ", speed/displacement time error " << worstReleaseError << '\n';
 }
 
 void testHarmonicAndExtremeSlideAttackGeometry()

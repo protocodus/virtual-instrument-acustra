@@ -48,6 +48,16 @@ struct AcustraEngineTestAccess
         return voice.releaseStepRise * voice.releaseShapePosition[0] * length
             / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix));
     }
+    static double heldForce(const AcustraEngine& engine)
+    {
+        const auto& voice = engine.voices_[0];
+        const double p = voice.pluckPoint;
+        // Static string force F=T*y/[L*p*(1-p)], independently recovered
+        // from actual displacement and configured geometry. The common
+        // metres-per-wave-unit factor cancels in a ratio of repeated forces.
+        return displacement(engine) * voice.tensionNewtons
+            / (voice.speakingLengthMetres * p * (1.0 - p));
+    }
     static void forgetOldWave(AcustraEngine& engine)
     {
         // Test the new release without the previously played note's tail.
@@ -216,8 +226,9 @@ void testBoundsMeanAndForceTracking()
     auto engine = fresh();
     engine->noteOn(40, 0.5f, 1);
     expect(Access::gain(*engine) == 1.0f, "first pluck changed its nominal force");
-    const double nominal = Access::displacement(*engine);
+    const double nominal = Access::heldForce(*engine);
     double sum = 0.0, square = 0.0;
+    double worstForceError = 0.0;
     float minimum = 2.0f, maximum = 0.0f;
     for (int n = 0; n < 512; ++n)
     {
@@ -228,10 +239,13 @@ void testBoundsMeanAndForceTracking()
         minimum = std::min(minimum, gain);
         maximum = std::max(maximum, gain);
         sum += gain; square += gain * gain;
-        // This is the physical released displacement, independently read
-        // from the force step, so a cosmetic gain observer cannot pass it.
-        expect(std::abs(Access::displacement(*engine) / nominal - gain) < 3.0e-6,
-               "repeat force did not reach the held string's displacement");
+        // Compare the actual restoring force at each drawn position. The
+        // displacement must also follow its changing point compliance; a
+        // cosmetic force-gain observer alone cannot pass this reconstruction.
+        const double forceError = std::abs(Access::heldForce(*engine) / nominal - gain);
+        expect(forceError < 3.0e-6,
+               "repeat force did not reach the string through its point compliance");
+        worstForceError = std::max(worstForceError, forceError);
         expect(gain > 0.888f && gain < 1.121f,
                "repeat force exceeded its bounded one-dB candidate range");
     }
@@ -242,7 +256,8 @@ void testBoundsMeanAndForceTracking()
     expect(minimum < 0.91f && maximum > 1.10f && sd > 0.04 && sd < 0.08,
            "repeated equal-velocity strokes did not produce modest force variety");
     std::cout << "Repeat force gain mean=" << mean << " SD=" << sd
-              << " range=" << minimum << ".." << maximum << '\n';
+              << " range=" << minimum << ".." << maximum
+              << " force reconstruction error=" << worstForceError << '\n';
 }
 
 void testExplicitPerformanceAndResetBoundaries()

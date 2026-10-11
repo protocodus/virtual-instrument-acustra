@@ -114,7 +114,34 @@ against the old implementation as negative controls.
 - The previous uniform strum scheduler fails seven new trajectory assertions;
   existing ownership, skipped-string, rest/reset and fast-repeat checks pass.
 
-Complete-suite and Rack build/performance results are recorded below when
-the final validation finishes. Generated logs stay under
-`build-physical-hand-20261011`; the Rack repository records its own SDK build,
-wrapper, factory-patch and native timing evidence separately.
+The full required-Python Release build, tools and strict C++17 target pass.
+All **73 CTest suites** have passing final evidence: the full serial run
+passed 71/73 in 339.69 seconds; `StringPitchRealism` and
+`RepeatedPluckRealism` exposed their old fixed-displacement assumptions.
+Those two test fixtures now independently reconstruct force from actual
+held displacement and string geometry. Their original tolerances and all
+headroom, passivity, scheduling, merge-energy and extreme-slide checks remain
+unchanged. Independent review approved the corrections. The affected rerun
+passed 2/2 in 9.89 seconds; production DSP did not change.
+
+The corrected member-force error is `1.61181e-7` and the finite release-time
+identity error is `2.3772e-7` (original `2e-5` bound). Repeat-force recovery
+error is `3.32962e-7` (original `3e-6` bound); its gain distribution remains
+mean 1.00221, standard deviation 0.0664329, range 0.889473–1.11881.
+Both revised fixtures fail against the baseline. The original failing full
+run is retained alongside the successful affected rerun; it is not presented
+as a single 73/73 run.
+
+Rack SDK `JukeboxSDK_500_028`, TargetVersion 5.0, builds the shared source as a
+Deployment arm64 module and passes the analyzer/forbidden-global stages.
+It emits the same preexisting `radiationPole(anchor)` analyzer warning as
+the baseline, with no new warning. The complete seven-stage Rack contract
+suite passes, including all eight factory patches at 44.1/48/88.2/96/192 kHz.
+The wrapper, properties, panel, patches and product version are unchanged.
+This is a local implementation and build validation, not an installed-host,
+universal package, portal release or listener-preference claim.
+
+Generated logs stay under `build-physical-hand-20261011`. The committed
+[listening manifest](physical-hand-listening-2026-10-11.json) records the exact
+source and audio hashes. The Rack repository records its own
+[SDK, wrapper and native CPU evidence](../../Docs/PHYSICAL_HAND_REALISM_2026-10-11.md).
