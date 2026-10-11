@@ -131,8 +131,8 @@ struct EngineParameters
     // damping finger or palm landing on the still-vibrating string, launched
     // into it from where it touches, and a faint brush of skin on a wound
     // string's winding (startReleaseNoise in AcustraEngine.cpp). 0.5 is the
-    // nominal level. Sampled at key-up and live for subtle stopped-wound
-    // sliding contact. Zero bypasses new noise; emitted waves continue.
+    // nominal level. Sampled at damping onset (after grace/sustain) and live
+    // for stopped-wound sliding. Zero bypasses new noise; waves continue.
     float releaseNoise { 0.0f };
     // The room send around the microphones, 0 none to 1 its maximum level:
     // a small studio's early reflections and nominal 0.45 s low decay.

@@ -82,7 +82,7 @@ invariant, not realism of an entire guitar or preference by a listener.
 
 | Requirement | Evidence and current boundary | Outstanding evidence |
 | --- | --- | --- |
-| Block partition invariance | Capture/Room, output-bus and Performer fixtures compare different block partitions with common event times. `CaptureTransition` adds a common event score with extreme control changes and release/repick edges. | Baseline and current body/tuning candidate pass the interaction run below; final frozen-source provenance remains to be attached. |
+| Block partition invariance | Capture/Room, output-bus and Performer fixtures compare different block partitions with common event times. `CaptureTransition` adds a common event score with extreme control changes and release/repick edges. | Baseline and current body/tuning candidate pass the interaction run below; final frozen-source provenance is retained in the validation receipt. |
 | Rate behavior | Fresh baseline probe on `6b80170`: nine MIDI 76–84 notes at 44.1/48/96 kHz give H8 decay spread **1.14291–4.83627%**, maximum H1 spread **0.0176261%**. Raw log: `build-audit/dsp-finalization/rate-decay-current.log`. The Engine guards are now 6% H8 and 0.1% H1 and pass on the current candidate. | These are isolated-string partial-decay measurements, not full-instrument rate invariance. Loss, dispersion and sampling approximations remain. Refresh provenance/measurement if the affected DSP changes. |
 | Extended storage/rates | `ExtendedSampleRates` covers bounded state and low bends through 768 kHz; `SampleRateLayoutParity` compares both ABI layouts on the stated shared-rate scores. [Contract](extended-sample-rates.md). | Neither test proves identical sound at different sample rates, general 384 kHz ring-history equivalence, or every 768 kHz capture/control combination. |
 | Reset, reprepare and exact silence | `Capture`, `OutputBuses`, `ExtendedSampleRates`, `ConstructionHistory` cover warm paths, tails, reset and reconstruction. | Held-voice count alone does not establish silence: queued strikes, retained waves, body, piezo and Room histories must be considered. |
@@ -179,8 +179,13 @@ artifacts, not evidence of a listening preference or acoustic improvement.
 The [validation receipt](validation-dsp-finalization-20261011/receipt.json)
 retains the source hashes, build settings, recovery from the stale test object,
 calibration, negative controls, audio manifests and timing. All 194 frozen
-computational files still match after the final runs. The 72 Finger/Thumb
-gain cells are unchanged; only the 36 Pick cells were regenerated.
+computational files matched after the final runs. A later same-line-count
+header comment clarifies that Release Noise is sampled at damping onset;
+[preprocessor parity](validation-dsp-finalization-20261011/comment-only-parity.json)
+proves unchanged Engine/Performer translation units in C++17/C++20 and both
+storage layouts. Both validated and final source manifests are retained.
+The 72 Finger/Thumb gain cells are unchanged; only the 36 Pick cells were
+regenerated.
 
 ### Final native callback timing
 

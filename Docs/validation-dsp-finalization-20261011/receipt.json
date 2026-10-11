@@ -2,7 +2,7 @@
   "scope": "ACUSTRA canonical DSP finalization; Rack integration has a separate receipt",
   "base_main": "a534d774aa85f31acac6e74e6efebc18221ec748",
   "baseline_commit": "6b8017053f7201c2cfdab8dea9ec968591e69fec",
-  "candidate_identity": "source-sha256.json:194 actual Source/Tools/Tests/CMake files, all matched after final tests/renders/timing; documentation excluded",
+  "candidate_identity": "source-sha256.json:194 final computational files. validated-source-sha256.json preserves the actual frozen measurement source; only a same-line-count header comment differs, with exact preprocessor parity for Engine/Performer, C++17/C++20, ordinary/extended layouts.",
   "platform": "macOS-26.5.1-arm64-arm-64bit",
   "hardware": "Apple M1 Max",
   "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
@@ -485,6 +485,7 @@
     "capture-transitions-baseline.log": "8cef4e203aaf246e6d7144a1dadc9b0b56a3879e4b7781dc698dd200ea0a7e18",
     "capture-transitions-manifest.json": "9d2eb73922e8666070d7b9ef1ffe809bb4bcf411ce53ace27b23f3aef11ba237",
     "capture-transitions-negative.log": "b5833f1bb1afdf195a35ee47be600a55122e1f775fdd81eb676a0a84ebd800c3",
+    "comment-only-parity.json": "ea7a389bce95e2966293f34502be5197584bb3e88b9a22795d0ac13ba53abd0e",
     "construction-loudness-before.json": "e14fbd1e973308ffc6d9ff91184ab3fd93b9c838cc61e76fcdb48dae0dbda22c",
     "construction-loudness-final.json": "19a34935e7cd4d34dada968699073efc83cbc4120f9e30884bd316c59aebcaec",
     "extended-rates-final.log": "4e4679bb6772313df85bd5e35742ad597dc51933d7ea4c168db87ca1c2e17188",
@@ -517,6 +518,8 @@
     "native-strums-final.json": "628e0a407a2939260e10cee1fe2c6cf87db8e26b9cfc334df4e5011ec75c3551",
     "rate-decay-current.log": "c1d8b7cefe18ff7753d83e1cb0b6f9188693444d85f6a88f8f49efe60c2e6e8b",
     "rate-decay-probe.patch": "49bb41586a20cec10bf5e3ab7063d6c3184fbbf3e98d824f0eedf6e7b3501523",
-    "source-sha256.json": "37d1a1c9991778f81a5d6d9b70881f8957e1afd93d761dc6ae2e2cad718661b7"
-  }
+    "source-sha256.json": "8f13b2fd42969648e2e77b1b1a7f83eccc4fe1a605bf48490848bc4ec9564eeb",
+    "validated-source-sha256.json": "37d1a1c9991778f81a5d6d9b70881f8957e1afd93d761dc6ae2e2cad718661b7"
+  },
+  "comment_only_followup": "comment-only-parity.json"
 }
