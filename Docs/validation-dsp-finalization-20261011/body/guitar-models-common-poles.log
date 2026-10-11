@@ -1,0 +1,9 @@
+measured modal damping: 12792 poles, 216 broad modes, maximum relative Q error=0.00097149, minimum body work=0
+microphone tilt rate=48000 capture=0 relative difference=0.096991
+microphone tilt rate=48000 capture=7 relative difference=0.105323
+microphone tilt rate=48000 capture=6 relative difference=0
+microphone tilt rate=96000 capture=0 relative difference=0.0972024
+microphone tilt rate=96000 capture=7 relative difference=0.106462
+microphone tilt rate=96000 capture=6 relative difference=0
+coupled body rate=44100 minimum work=0 peak=0.426472
+coupled body rate=96000 minimum work=0 peak=0.432934

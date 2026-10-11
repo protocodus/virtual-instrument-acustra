@@ -946,8 +946,9 @@ every frequency, where the read it replaced lost up to 0.7 dB per round trip
 at a half-sample fraction, so a string's upper partials used to decay at a
 rate set by the accidental fraction of its loop length (a 47:1 range in loss
 per round trip across nine notes); it is now a smooth 1.8:1 rise with the
-partial's own frequency, and no note's H8 partial varies by more than 13%
-across 44.1, 48 and 96 kHz. Frequency-dependent losses make upper partials
+partial's own frequency. On the 2026-10-11 isolated-string probe, H8 decay
+varies by 1.14–4.84% across MIDI 76–84 at 44.1, 48 and 96 kHz; this remains
+an approximation, not exact rate invariance. Frequency-dependent losses make upper partials
 decay faster, and two second-order allpass sections in cascade follow the
 stiff-string inharmonicity law, re-solved at the tap the delay currently
 occupies so a bend or vibrato's slewing fractional part does not stall the
@@ -958,39 +959,31 @@ and H11.5 and the second is bypassed. One collocated section dipped between
 its points on the stiff wound strings high on the neck (E2's H3-H5 16-18
 cents flat at the 20th fret), so as B N^2 rises to 0.05 the second section,
 placed from the stiffness, is switched in smoothly and the first is refitted
-with the delay by least squares over the integer partials H1-H12. String Age
-lowers the high-frequency cutoff and increases loss, and it reaches the
-wound strings' bending loss (below): grime and corrosion between the windings
-are internal friction in their bending, so a wound string goes dead first.
-That loss is scaled by max(0.2, 1 + 8 (age - 0.15)), pivoted on the default
-age so the shipped sound is unchanged there; a low E's H5-H8 now decay
-15 dB/s faster at age 1 than at the default (2.1 before, when only the
-absolute-frequency cutoff, above a bass's 50th partial, aged it), and the
-plain strings' cutoff falls as exp(-0.9 age) instead of exp(-1.25 age). A shared fitted cutoff scale of 2.286 reduces excess
-upper-partial damping found across the reference corpus; a regression proves that it
-does not move the requested fundamental T60 or compensated pitch. Each string
-can also lose its upper partials through its own bending stiffness, the
-viscoelastic term of Valette's string damping model (*Mechanics of Musical
-Instruments*, Springer 1995) and the bending-loss term of Woodhouse's (Acta
-Acustica 90 (2004) 928-944): a stiffness EI(1 + i eta) loses
-1/Q_n = eta B n^2 / (1 + B n^2), with B the inharmonicity the dispersion
-uses, so the added decay grows as the cube of frequency. Both polarisations
-carry it as a unit-DC two-pole section designed at the host rate, with its
-phase in the tuning and dispersion fit and its H1 magnitude in the
-loop gain. A factor of zero is an exact no-op. The recordings' 20-300 ms
-upper-partial decay measures steel wound 0.10 and plain 0.006; the benchmark
-refuses that even with the pluck refitted around it, and its joint optimum
-over Finger and Pick keeps wound 0 and plain 0.00078. What ships was chosen
-by ear on 2026-09-28 (Docs/decisions.md): steel wound 0.035 and plain
-0.0023, 70% of the way from that optimum toward half the measured loss (0.05,
-0.003), with the pluck moved the same way (above). What the benchmark
-says of it is in Known gaps. Since 2026-10-10 every string also carries a
-constant loss angle, and the wound strings a second one, the winding
-friction on their tension ([the report](Docs/string-hf-loss-2026-10-10.md)).
-A listener heard the friction alone let a pick's highest partials ring
-on. So the wound strings keep half their former bending loss, 0.0175,
-beside friction 2.25e-4, and a picked wound string's top end dies as fast
-as it did before. A second,
+with the delay by least squares over the integer partials H1-H12.
+
+Since 2026-10-10 both polarisations carry the same intrinsic string loss:
+the authored round-trip factor 0.99915, equal cutoff sections, a constant
+steel dislocation loss angle, and a bending-loss section. Their bridge
+terminations still differ. The four wound strings also carry winding
+friction as a constant loss angle on tension. For partial n, tension and
+bending contribute in the proportions 1/(1 + B n^2) and B n^2/(1 + B n^2),
+using the same inharmonicity B as the dispersion. The section design includes
+its phase in the tuning and its fundamental magnitude in the loop gain.
+This replaces the earlier unequal per-plane shelves and wound bending-only
+description; the dated comparisons in Known gaps retain those older results.
+
+String Age lowers the high-frequency cutoff and increases dislocation loss.
+It scales both wound friction and wound bending loss by
+max(0.2, 1 + 8 (age - 0.15)), pivoted on the default age; the plain-string
+cutoff falls as exp(-0.9 age). The shared fitted cutoff scale is 2.286.
+The accepted wound-string blend is friction 2.25e-4 plus bending loss 0.0175;
+plain bending loss is 0.0023. The listener preferred keeping some bending
+loss beside friction so a pick's highest partials do not ring too long.
+These are calibrated and authored losses, not an independently measured
+damping law for this exact string set. See the current
+[string-loss model and listening record](Docs/string-hf-loss-2026-10-10.md).
+
+A second,
 orthogonal polarisation loop can be detuned from the first by an end
 correction at the string terminations: Woodhouse (Acta Acustica 90 (2004)
 945-965, Sec. 4.3) measured the polarisation parallel to the soundboard as
@@ -1302,15 +1295,21 @@ Docs/decisions.md) T1 and the rocking modes are under the same rule (in the
 steel blend 0.85 of the way in log Q: 14.3, 28.7, 12.8 and 2.5 for the four
 below): T1 at 178.5 Hz Q 17.5 -> 13.8 (the population's T1s 8.8-15.5), the
 208.7 Hz rocking mode Q 37.3 -> 27.4 (the population's rocking modes in
-200-280 Hz: Q 11-21), 229.0 Hz Q 17.8 -> 12.1, and 286.8 Hz Q 3.7 -> 2.3,
-which the engine's Q >= 4 floor leaves where it was. In the engine's
-Dreadnought anchor those are the 159, 190 and 204 Hz modes; the rocking
+200-280 Hz: Q 11-21), 229.0 Hz Q 17.8 -> 12.1, and 286.8 Hz Q 3.7 -> 2.3.
+The former Q >= 4 runtime floor was removed on 2026-10-11, so these broad
+fitted decays now survive. In the current Dreadnought anchor the first three
+are the 176, 190 and 204 Hz modes; the rocking
 path's 190 Hz ring falls from T60 0.43 to 0.32 s and its peak from 7.8 to
 6.6 dB over its third octave. On steel's own bridge the 178.7 and 208.7 Hz
 bridge modes are twins of T1 and the rocking mode and take these poles, so the
 damping reaches the string's load as well as the radiation; no unpaired bridge
 mode lies between 150 and 300 Hz, so the band's move changes none of the
-bridge's own Q ratios.
+bridge's own Q ratios. Since the 2026-10-11 finalization pass, shared modes
+map the actual radiation pole back through the bilinear transform before
+constructing their passive mobility. This removes the damped-frequency versus
+natural-frequency discrepancy at broad Q. Unpaired bridge modes retain their
+original prototypes; the [current evidence register](Docs/dsp-finalization-2026-10-11.md)
+records both the mathematical checks and the retained measured-fit limits.
 
 The selected bank uses neutral body calibration factors: frequency and Q scales
 of 1 and residue tilt of 0 dB/octave. One exception was chosen by ear: steel's
@@ -1352,8 +1351,12 @@ residues follow the top's mass, 1/A_top. So a plate mode keeps its peak
 mobility and radiation as it moves. At the bridge that is heave 1/A, cross
 A^-1.5 and rock A^-2, one congruence that keeps each residue matrix positive
 semidefinite. The A0/T1 radiation ratios come from the same model's
-eigenvectors. On steel that puts A0/T1 at 121/208 Hz for the Parlor, 106/191
-for the Auditorium, 94/176 for the Dreadnought and 84/162 for the Jumbo. The
+eigenvectors. Their bridge residues also follow the plate participation,
+including the cavity-volume/top-area-squared force-coordinate factor; Wood
+composes with that Shape change. Both fitted banks use one frequency-based
+anchor-detune map, preserving the original g21 map without applying unrelated
+row parity to the joint bank. On steel that puts A0/T1 at 121/208 Hz for the
+Parlor, 106/191 for the Auditorium, 94/176 for the Dreadnought and 84/162 for the Jumbo. The
 measured body has an anchor the other shapes are placed relative to: the
 Dreadnought, under the wider box the local line authored (modes x0.900 above
 T1, bass x1.28), chosen by ear on 2026-09-24 on all four blind pairs over the
@@ -1402,12 +1405,15 @@ older state.
 Shape moves the bridge's modes by the same coupled-model factors as the
 radiation - its A0 group, its modes up to the body's T1 and the plate modes
 above - so it also changes the saddle-force Piezo capture and the body's
-interaction with the strings. Only modal stiffness moves: each bridge residue
-matrix and Q is retained, so a fixed shape keeps the passive modal
-construction. Body Material changes the radiation and the bridge that belongs
-to it. Steel's own bridge takes the radiation's poles (Bridge, sympathetic
+interaction with the strings. Low-mode bridge residues follow the coupled
+plate participation and force coordinates; higher modes follow the top's
+mass and moment coordinates. Q is retained and the residue scaling preserves
+positive semidefiniteness. Body Material changes the radiation and the bridge
+that belongs to it. Steel's own bridge takes the radiation's poles (Bridge, sympathetic
 strings and body), which preserves ringing strings and overlapping re-pluck
-tails. The anchor, the Dreadnought, leaves the radiation exactly as fitted.
+tails. Dreadnought has unity Shape factors relative to the authored anchor;
+the anchor transform and other documented calibration still modify the
+measured radiation.
 If a body crossfade is already sounding,
 the latest selection waits for its remaining duration (at most 40 ms), then
 uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
@@ -1448,7 +1454,7 @@ resonances meet it (Known gaps).
 | **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% (the default) the output is exactly as without it; with Capture on Piezo it does nothing, since the piezo is already the whole output. |
 | **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. Also controls subtle speed-dependent friction during held wound-string slides. 0-100% (50% nominal, 70% default, chosen by ear), scaled by release velocity and what the string still carries. 0% adds no new noise; already emitted waves continue. A session saved before it existed loads at 0%. Available on the Player panel and host-automatable. |
 | **Room** | Small-studio reflections around the microphones, 0-100% with a 50% plug-in default. Zero becomes dry once the existing room tail fades. The piezo remains dry. Available on the Capture panel and host-automatable; a session saved before Room existed loads at 0%. |
-| **String Age** | Lowers the string cutoff and increases frequency-dependent loss; on the wound strings it also scales their bending loss (0.2 of the default's on fresh strings, 7.8 times it at 1), so an old set's basses lose their upper partials first. The default age sounds as before. |
+| **String Age** | Lowers the string cutoff and increases dislocation loss; on the wound strings it also scales winding friction and bending loss (0.2 of the default's on fresh strings, 7.8 times it at 1), so an old set's basses lose their upper partials first. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Past a quarter of a (short, high-fretted) string the point bends smoothly toward 0.36 of it and never reaches it, so the control changes the stroke at every fret for every technique. Explicit MPE position overrides that ratio. |
 | **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. It also sets how fast every technique lets the string go: the release edge scales over two octaves across the control (none at its default), firmer faster and brighter, softer slower and darker, even at velocity 127. |
 | **Body Amount** | Scales microphone radiation; pickup observations have their own signal path. |
@@ -1639,8 +1645,11 @@ intact.
 (5.2 x 4.1 x 2.7 m, the microphones 0.32 m from the guitar) around the
 microphones: its ten strongest early reflections from an image-source model
 within two bounces, panned by side, then an eight-line feedback delay network
-whose field decays in 0.45 s to 1 kHz, 0.36 s at 4 kHz and 0.26 s at 8 kHz,
-dense within 20 ms. Every open recording is made in a room and the model is
+with a nominal 0.45 s low-frequency decay and shorter high-frequency decay.
+Its late output starts around 25 ms, after the last early tap at 17 ms;
+the 8 ms delay is the late network's input delay, not its audible onset.
+Room changes the send level, not microphone distance or reflection geometry.
+Every open recording is made in a room and the model is
 anechoic: between partials the recordings carried 15-25 dB more over a
 note's first 0.3 s, and the scorer's spectral body term, the largest on
 every split, was mostly that. At 50%, the plug-in's default for a new
@@ -1649,8 +1658,12 @@ released phrase, and each halving of Room lowers it 10 dB; a session saved
 before Room existed loads it at 0. It feeds on the microphones' mid signal,
 is spread by Stereo Width like the pair (0 is mono), never reaches the
 piezo or the Piezo output, and is energy-normalised at prepare and run at
-the host rate divided to 64 kHz or under, so its level and decay are the
-same from 44.1 to 192 kHz (within 0.3 dB). It renders the same at any block
+the host rate divided to 64 kHz or under. Broadband level and decay are
+covered across rates, but its frequency-dependent absorption follows the
+internal Nyquist frequency, so high-frequency decay is not rate invariant.
+The two-microphone, earlier-onset room experiment was rejected by the listener;
+the [room report](Docs/room-2026-10-10.md) records that retained tradeoff.
+It renders the same at any block
 size, costs about 4% of the engine's time while it sounds and 148 KB per
 instance, and at 0 is an exact no-op once it has rung out. The engine's own
 default is 0, so the benchmark, the demos and every test that does not ask
@@ -2134,6 +2147,16 @@ engine.
 
 ## Known gaps
 
+The [current DSP completion checklist](Docs/dsp-finalization-2026-10-11.md)
+separates modeled behavior, verified inconsistencies, accepted approximations
+and missing evidence. The measurements below are a historical research ledger:
+many predate the 2026-10-10 saddle termination and string-loss changes or the
+2026-10-11 material, hand and broad-Q corrections. Their numbers are not a
+fresh benchmark of the current build. In particular, unequal intrinsic
+polarisation losses, an unscaled heave-only plate floor, absent slide roughness
+and an unadopted 94.2 Hz air retune no longer describe the current instrument.
+Dated evidence is retained so the earlier decisions remain traceable.
+
 - Left by the 2026-09-30 defect audit, each a trade in the shipped sound
   rather than a fix:
   - The parallel polarisation shares the normal loop's bridge compensation,
@@ -2146,8 +2169,10 @@ engine.
   - Where the pluck shape nearly nulls a partial, the random release burst
     decides its level: MIDI 83's H8 differs by 27 dB between two burst
     noise draws.
-  - The per-plane loss factors (configureVoice) leave a note's realised T60
-    up to about half its requested one; they are authored, not fitted.
+  - Historically, unequal per-plane loss factors left a note's realised T60
+    up to about half its requested one. Since 2026-10-10 both planes use
+    identical intrinsic loss, including the authored 0.99915 round-trip
+    factor; the old T60 measurement has not been repeated here.
 
 - The radiation above each measured bank's fitted band (8-12 kHz up) is a
   statistical continuation of its top octave, not a measurement: its level
@@ -2356,18 +2381,16 @@ engine.
   +1.7%. What would settle it by measurement is a noise-free or
   floor-documented finger-plucked steel corpus and an attack that supplies
   the recordings' transient at a level a listener accepts.
-- The highest steel partials still vary with host rate. The loop-loss filters
-  now map the calibrated 48 kHz transfer to the host rate, preserving the
-  existing 48 kHz sound; bilinear frequency warping leaves H8 decay spread of
-  4.1–12.8% across MIDI 76–84 at 44.1, 48 and 96 kHz. This is improved from
-  18.8–32.9% with the former host-dependent cutoff, but is not rate invariance.
-  The previously reported 1.87–2.78% fundamental spread was a measurement
-  error: the estimator mistook tension-glide detuning for amplitude loss.
-  Following each window's partial peak puts H1 below 0.21% and restores its
-  original 1.5% test bound. The test now disables bridge coupling and observes
-  saddle force, so the microphone filter cannot contaminate the loss estimate.
-  Closing the remaining high-partial
-  gap requires less warping while retaining the calibrated 48 kHz loss curve.
+- The highest steel partials still vary with rate. A fresh 2026-10-11 probe
+  on `6b80170`, following each partial's windowed peak on isolated strings,
+  measures H8 decay spreads of 1.14291–4.83627% across MIDI 76–84 at
+  44.1, 48 and 96 kHz, with maximum H1 spread 0.0176261%. This supersedes
+  the older 4.1–12.8% H8 and 0.21% H1 measurements; the Engine guards are
+  6% and 0.1%, respectively. The fixture disables bridge coupling and
+  observes saddle force, avoiding microphone coloration and mistaking
+  tension-glide detuning for decay. It does not establish full-instrument
+  rate invariance: loss, dispersion and sampling designs remain approximate.
+  See the [current evidence checklist](Docs/dsp-finalization-2026-10-11.md).
 
 - The bridge mobility the corpus wants is not the mobility that was measured.
   The 2026-09-04 pattern search drove `bridgeMobilityScale` to its 0.25 floor,
@@ -2501,10 +2524,11 @@ engine.
   estimates include room and microphone effects. Frequency and spring-back
   level retain the listener's choices. Martin still has an approximately
   4.9 dB air-component onset deficit on matched notes; Eastman does not
-  support a general gain increase. The intrinsic 94.2 Hz retune remains an
-  experiment: raising a bank pole does not necessarily move the loaded
-  transient toward the recordings. See the
-  [2026-10-02 audit](Docs/realism-consolidation-2026-10-02.md).
+  support a general gain increase. The 94.2 Hz retune was subsequently
+  adopted with removal of the false saddle ground spring on 2026-10-10;
+  see the [accepted termination change](Docs/saddle-termination-2026-10-10.md).
+  The [2026-10-02 audit](Docs/realism-consolidation-2026-10-02.md) describes
+  the earlier configuration, not the final retuned instrument.
   The bank's archtop
 and classical rows, whose tops barely ring there, read the step as 13-43 dB
 too much low end in their attacks, and the piezo reads only the saddle
@@ -2560,8 +2584,11 @@ set without it.
   so is an L-effort project of its own, and the measurement was made with an
   offline solver instead. The reference recordings' own excitation still
   leaves the top of the velocity map short of real.
-- Winding-friction squeak on a fretting-hand slide is not modelled, and the
-  data that would license a level for it is not settled: measured against
+- Since 2026-10-11 a restrained roughness source follows the continuous
+  stopping-point motion of an already-held wound string, through Release
+  Noise ([the model and limits](Docs/fret-motion-2026-10-11.md)). Its level
+  and texture are authored; the string set's wrap pitch and absolute friction
+  force are not measured. The earlier evidence remains limited: measured against
   GuitarSet's acoustic (not hex-pickup) stream with a band that excludes the
   note's own harmonics, solo slides on wound strings show a real, moderately
   elevated broadband-excess ratio (about 1.4x, a dozen usable slides), but
@@ -2573,9 +2600,11 @@ set without it.
 - Explicit hammer-on and pull-off gestures now preserve the sounding string,
   but their short contact is an authored approximation rather than a full
   moving-fret scattering boundary. The contact and release paths include
-  authored hand sounds; a physical model of fret/finger friction, the squeak of
-  a hand sliding on a wound string, buzz, artificial and pinch harmonics, body
-  knocks and pick direction are absent. A harmonic's sounding partial runs a few cents sharp of equal
+  authored hand sounds. A complete physical fret/finger-friction boundary,
+  buzz, artificial and pinch harmonics, and body knocks are absent. Sliding
+  roughness is now approximated, and automatic return strokes reverse the
+  sideways release direction; neither is a fully measured hand-contact model.
+  A harmonic's sounding partial runs a few cents sharp of equal
   temperament, which is the stiff string's own inharmonicity plus the model's
   partial-placement residual, and is not corrected. Bridge-hand pressure
   now reaches a tail left by a string taken for a different pitch while its captured

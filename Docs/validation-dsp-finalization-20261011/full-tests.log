@@ -1,0 +1,282 @@
+Test project /Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit
+      Start  2: Acustra.Engine
+      Start 20: Acustra.ConstructionHistory
+      Start  6: Acustra.Performer
+ 1/85 Test  #6: Acustra.Performer .........................   Passed   33.41 sec
+      Start  9: Acustra.Release
+ 2/85 Test #20: Acustra.ConstructionHistory ...............   Passed   49.22 sec
+      Start 12: Acustra.Capture
+ 3/85 Test  #9: Acustra.Release ...........................   Passed   18.98 sec
+      Start 11: Acustra.OutputBuses
+ 4/85 Test  #2: Acustra.Engine ............................   Passed   64.90 sec
+      Start 47: Acustra.ExtractExcitation
+ 5/85 Test #12: Acustra.Capture ...........................   Passed   22.47 sec
+      Start 58: Acustra.PluginProcessor
+ 6/85 Test #11: Acustra.OutputBuses .......................   Passed   22.14 sec
+      Start 60: Acustra.VelocityRealism
+ 7/85 Test #47: Acustra.ExtractExcitation .................   Passed   13.33 sec
+      Start 18: Acustra.BodyShape
+ 8/85 Test #60: Acustra.VelocityRealism ...................   Passed   11.22 sec
+      Start 46: Acustra.FyldeBridgeReference
+ 9/85 Test #58: Acustra.PluginProcessor ...................   Passed   16.89 sec
+      Start 19: Acustra.ConstructionMatrix
+10/85 Test #46: Acustra.FyldeBridgeReference ..............   Passed    3.38 sec
+      Start 37: Acustra.PiezoReference
+11/85 Test #18: Acustra.BodyShape .........................   Passed   11.98 sec
+      Start 51: Acustra.FitCaptureVoicing
+12/85 Test #51: Acustra.FitCaptureVoicing .................   Passed    4.12 sec
+      Start 68: Acustra.RepeatedPluckRealism
+13/85 Test #37: Acustra.PiezoReference ....................   Passed    5.21 sec
+      Start 57: Acustra.PythonTestsReported
+14/85 Test #19: Acustra.ConstructionMatrix ................   Passed    6.58 sec
+      Start 32: Acustra.PhysicalScorer
+15/85 Test #57: Acustra.PythonTestsReported ...............   Passed    3.19 sec
+      Start 73: Acustra.ReleaseRealism
+16/85 Test #32: Acustra.PhysicalScorer ....................   Passed    4.97 sec
+      Start  5: Acustra.HandAllocator
+17/85 Test #68: Acustra.RepeatedPluckRealism ..............   Passed    6.60 sec
+      Start 76: Acustra.PhysicalHandRealism
+18/85 Test #73: Acustra.ReleaseRealism ....................   Passed    5.33 sec
+      Start 62: Acustra.StringPitchRealism
+19/85 Test  #5: Acustra.HandAllocator .....................   Passed    4.59 sec
+      Start 26: Acustra.PhysicalFitRenderer
+20/85 Test #76: Acustra.PhysicalHandRealism ...............   Passed    4.62 sec
+      Start 53: Acustra.OpenCorporaBenchmark
+21/85 Test #62: Acustra.StringPitchRealism ................   Passed    4.29 sec
+      Start 21: Acustra.ConstructionLoudness
+22/85 Test #26: Acustra.PhysicalFitRenderer ...............   Passed    4.11 sec
+      Start  3: Acustra.ReleaseJoin
+23/85 Test #53: Acustra.OpenCorporaBenchmark ..............   Passed    3.88 sec
+      Start 15: Acustra.MicrophoneBalance
+24/85 Test #21: Acustra.ConstructionLoudness ..............   Passed    2.80 sec
+      Start 33: Acustra.CalibrationVector
+25/85 Test  #3: Acustra.ReleaseJoin .......................   Passed    3.56 sec
+      Start 63: Acustra.PalmMutePitch
+26/85 Test #15: Acustra.MicrophoneBalance .................   Passed    3.32 sec
+      Start 61: Acustra.ContactRelease
+27/85 Test #33: Acustra.CalibrationVector .................   Passed    2.90 sec
+      Start 22: Acustra.RecuerdosArticulation
+28/85 Test #61: Acustra.ContactRelease ....................   Passed    2.92 sec
+      Start 13: Acustra.CaptureTransition
+29/85 Test #22: Acustra.RecuerdosArticulation .............   Passed    2.98 sec
+      Start  1: Acustra.SampleBank
+30/85 Test #63: Acustra.PalmMutePitch .....................   Passed    3.54 sec
+      Start 40: Acustra.PerformanceBenchmark
+31/85 Test  #1: Acustra.SampleBank ........................   Passed    1.47 sec
+      Start  7: Acustra.ExtendedSampleRates
+32/85 Test #40: Acustra.PerformanceBenchmark ..............   Passed    1.75 sec
+      Start 59: Acustra.PluginTempoRelease
+33/85 Test  #7: Acustra.ExtendedSampleRates ...............   Passed    1.88 sec
+      Start 78: Acustra.PhysicalHandGeometry
+34/85 Test #59: Acustra.PluginTempoRelease ................   Passed    1.93 sec
+      Start 16: Acustra.PiezoCircuit
+35/85 Test #13: Acustra.CaptureTransition .................   Passed    3.95 sec
+      Start 55: Acustra.RingingTraceAnalysis
+36/85 Test #55: Acustra.RingingTraceAnalysis ..............   Passed    1.88 sec
+      Start 54: Acustra.AirModeAudit
+37/85 Test #78: Acustra.PhysicalHandGeometry ..............   Passed    2.77 sec
+      Start  8: Acustra.SampleRateLayoutParity
+38/85 Test #16: Acustra.PiezoCircuit ......................   Passed    3.04 sec
+      Start 85: Acustra.MasterTuning
+39/85 Test #54: Acustra.AirModeAudit ......................   Passed    1.17 sec
+      Start 72: Acustra.LegatoRealism
+40/85 Test #85: Acustra.MasterTuning ......................***Failed    3.17 sec
+Master tuning: 216 string/fret/rate cases, tension relative error 1.77889e-07, frequency relative error 1.22694e-07
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+FAIL: initial or cleared silence changed the first master-tuned attack
+Rendered master tuning: worst H1 error 0.039428 cents, interval error 0.0060036 cents
+
+      Start 83: Acustra.WoodMaterial
+41/85 Test #72: Acustra.LegatoRealism .....................   Passed    3.63 sec
+      Start 10: Acustra.ContactTravel
+42/85 Test  #8: Acustra.SampleRateLayoutParity ............   Passed    4.50 sec
+      Start 28: Acustra.TraceRinging
+43/85 Test #10: Acustra.ContactTravel .....................   Passed    1.41 sec
+      Start 77: Acustra.MaterialStiffness
+44/85 Test #83: Acustra.WoodMaterial ......................   Passed    2.18 sec
+      Start 75: Acustra.PitchGeometryCache
+45/85 Test #28: Acustra.TraceRinging ......................   Passed    2.18 sec
+      Start 49: Acustra.AuditDampingCurve
+46/85 Test #77: Acustra.MaterialStiffness .................   Passed    1.72 sec
+      Start 42: Acustra.HammerOnBenchmark
+47/85 Test #49: Acustra.AuditDampingCurve .................   Passed    1.01 sec
+      Start 84: Acustra.FretMotion
+48/85 Test #75: Acustra.PitchGeometryCache ................   Passed    1.80 sec
+      Start 17: Acustra.GuitarModels
+49/85 Test #42: Acustra.HammerOnBenchmark .................   Passed    0.93 sec
+      Start 71: Acustra.StrummingRealism
+50/85 Test #84: Acustra.FretMotion ........................   Passed    1.17 sec
+      Start 64: Acustra.StringDecayRealism
+51/85 Test #17: Acustra.GuitarModels ......................   Passed    1.55 sec
+      Start 38: Acustra.PiezoCalibration
+52/85 Test #71: Acustra.StrummingRealism ..................   Passed    1.26 sec
+      Start 69: Acustra.PickingHand
+53/85 Test #38: Acustra.PiezoCalibration ..................   Passed    0.55 sec
+      Start  4: Acustra.StrumDirection
+54/85 Test #64: Acustra.StringDecayRealism ................   Passed    1.26 sec
+      Start 45: Acustra.GenerateJointBody
+55/85 Test #69: Acustra.PickingHand .......................   Passed    0.93 sec
+      Start 50: Acustra.AuditBridgeSpatialMap
+56/85 Test #45: Acustra.GenerateJointBody .................   Passed    0.81 sec
+      Start 43: Acustra.BodyForcePair
+57/85 Test #50: Acustra.AuditBridgeSpatialMap .............   Passed    0.80 sec
+      Start 39: Acustra.ConstructionLoudnessCalibration
+58/85 Test #43: Acustra.BodyForcePair .....................   Passed    0.62 sec
+      Start 35: Acustra.NaturalPerformancePackaging
+59/85 Test  #4: Acustra.StrumDirection ....................   Passed    1.85 sec
+      Start 34: Acustra.OptimizerFreeze
+60/85 Test #39: Acustra.ConstructionLoudnessCalibration ...   Passed    0.84 sec
+      Start 44: Acustra.GenerateBodyForcePair
+61/85 Test #35: Acustra.NaturalPerformancePackaging .......   Passed    0.82 sec
+      Start 36: Acustra.MaterialLoudness
+62/85 Test #34: Acustra.OptimizerFreeze ...................   Passed    0.87 sec
+      Start 27: Acustra.BridgeProbe
+63/85 Test #27: Acustra.BridgeProbe .......................   Passed    0.15 sec
+      Start 81: Acustra.PhysicalStopping
+64/85 Test #44: Acustra.GenerateBodyForcePair .............   Passed    0.74 sec
+      Start 70: Acustra.PickingHandBoundary
+65/85 Test #36: Acustra.MaterialLoudness ..................   Passed    0.65 sec
+      Start 41: Acustra.TechniqueBenchmark
+66/85 Test #41: Acustra.TechniqueBenchmark ................   Passed    0.56 sec
+      Start 48: Acustra.AuditAttackBands
+67/85 Test #81: Acustra.PhysicalStopping ..................   Passed    0.80 sec
+      Start 24: Acustra.RenderRepertoire
+68/85 Test #48: Acustra.AuditAttackBands ..................   Passed    0.36 sec
+      Start 14: Acustra.CaptureVoicing
+69/85 Test #70: Acustra.PickingHandBoundary ...............   Passed    1.11 sec
+      Start 82: Acustra.PhysicalVibratoStopping
+70/85 Test #24: Acustra.RenderRepertoire ..................   Passed    1.00 sec
+      Start 65: Acustra.BodyRealism
+71/85 Test #14: Acustra.CaptureVoicing ....................   Passed    1.17 sec
+      Start 31: Acustra.CalibrationRenderer
+72/85 Test #31: Acustra.CalibrationRenderer ...............   Passed    0.37 sec
+      Start 79: Acustra.ReleaseBrushTrajectory
+73/85 Test #82: Acustra.PhysicalVibratoStopping ...........   Passed    1.67 sec
+      Start 67: Acustra.SympathyRealism
+74/85 Test #65: Acustra.BodyRealism .......................   Passed    1.86 sec
+      Start 80: Acustra.FractionalContact
+75/85 Test #79: Acustra.ReleaseBrushTrajectory ............   Passed    1.19 sec
+      Start 23: Acustra.RenderDemos
+76/85 Test #67: Acustra.SympathyRealism ...................   Passed    1.43 sec
+      Start 74: Acustra.RetuneContinuity
+77/85 Test #80: Acustra.FractionalContact .................   Passed    1.15 sec
+      Start 66: Acustra.VoicingRealism
+78/85 Test #23: Acustra.RenderDemos .......................   Passed    1.50 sec
+      Start 52: Acustra.ValidateCapture
+79/85 Test #52: Acustra.ValidateCapture ...................   Passed    0.16 sec
+      Start 29: Acustra.RepertoireTempo
+80/85 Test #29: Acustra.RepertoireTempo ...................   Passed    0.08 sec
+      Start 56: Acustra.SelfTestRegistry
+81/85 Test #56: Acustra.SelfTestRegistry ..................   Passed    0.03 sec
+      Start 25: Acustra.DemoCount
+82/85 Test #25: Acustra.DemoCount .........................   Passed    0.01 sec
+      Start 30: Acustra.GaussianApertureData
+83/85 Test #30: Acustra.GaussianApertureData ..............   Passed    0.03 sec
+84/85 Test #74: Acustra.RetuneContinuity ..................   Passed    1.76 sec
+85/85 Test #66: Acustra.VoicingRealism ....................   Passed    1.70 sec
+
+99% tests passed, 1 tests failed out of 85
+
+Total Test time (real) = 141.29 sec
+
+The following tests FAILED:
+	 85 - Acustra.MasterTuning (Failed)
+Errors while running CTest

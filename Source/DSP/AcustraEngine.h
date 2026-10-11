@@ -134,9 +134,10 @@ struct EngineParameters
     // nominal level. Sampled at key-up and live for subtle stopped-wound
     // sliding contact. Zero bypasses new noise; emitted waves continue.
     float releaseNoise { 0.0f };
-    // The room around the microphones, 0 none to 1 a microphone well out in
-    // it: a small studio's early reflections and its 0.45 s reverberation
-    // (RoomAmbience in AcustraEngine.cpp), on the microphone captures only.
+    // The room send around the microphones, 0 none to 1 its maximum level:
+    // a small studio's early reflections and nominal 0.45 s low decay.
+    // It does not move the microphones or change the reflection geometry
+    // (RoomAmbience in AcustraEngine.cpp); microphone captures only.
     // At 0.5 the room's sound sits about 12.5 dB under a held chord's and
     // 10 dB under a released phrase's (whose own sound stops before its
     // room's), at the default controls, and 10 dB lower at each halving (its
@@ -301,6 +302,11 @@ public:
     // zero is an exact no-op.
     void setPalmMutePressure(float pressure) noexcept;
     void setPitchBend(float semitones, int midiChannel = 1) noexcept;
+    // Host reference tuning retensions every string at its existing open/
+    // stopped length. It is independent of the player's slide/bend wheels,
+    // survives reset/prepare, clamps to the host's +/-100-cent range, and
+    // uses zero for nonfinite input.
+    void setMasterTuneCents(float cents) noexcept;
     // MIDI's Modulation Wheel, CC1, as the left hand's vibrato. Zero is an
     // exact no-op, which is the default; see the vibrato map in
     // AcustraEngine.cpp for what the wheel is bounded by.
@@ -1018,13 +1024,15 @@ private:
         std::uint32_t memberBend { 0 };
         std::uint32_t vibrato { 0 };
         std::uint32_t attackPitch { 0 };
+        std::uint32_t masterTune { 0 };
 
         bool operator==(const PitchGeometryKey& other) const noexcept
         {
             return stoppedMidi == other.stoppedMidi && openMidi == other.openMidi
                 && stringIndex == other.stringIndex && sampleRate == other.sampleRate
                 && performedBend == other.performedBend && memberBend == other.memberBend
-                && vibrato == other.vibrato && attackPitch == other.attackPitch;
+                && vibrato == other.vibrato && attackPitch == other.attackPitch
+                && masterTune == other.masterTune;
         }
     };
 
@@ -1446,6 +1454,10 @@ private:
     static EngineParameters sanitise(const EngineParameters&) noexcept;
     static PhysicalCalibration sanitise(const PhysicalCalibration&) noexcept;
     static float midiFrequency(int midiNote) noexcept;
+    [[nodiscard]] float tunedMidiFrequency(int midiNote) const noexcept
+    {
+        return midiFrequency(midiNote) * masterTuneRatio_;
+    }
     static float clamp(float value, float low, float high) noexcept;
     static float phaseDelayForOnePoleMix(float coefficient, float mix,
                                          float omega) noexcept;
@@ -1851,6 +1863,8 @@ private:
     float parameterSmoothing_ { 0.002f };
     float levelSmoothing_ { 0.0025f };
     std::array<float, midiChannelCount> pitchBendSemitones_ {};
+    float masterTuneSemitones_ { 0.0f };
+    float masterTuneRatio_ { 1.0f };
     float vibrato_ { 0.0f };
     float vibratoPhase_ { 0.0f };
     float vibratoOnset_ { 0.0f };

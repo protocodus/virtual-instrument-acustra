@@ -107,11 +107,11 @@ public:
         return AcustraEngine::outputLatencySamples() + (gather ? gatherWindow : 0);
     }
 
-    // A pitch offset every channel's bend carries on top of its wheel, for a
-    // host's global tuning (Reason's master tune); in an MPE lower zone the
-    // manager's carries it for its members, whose notes sound the manager's
-    // bend too. Zero, the default, is an exact no-op; nonfinite input uses
-    // zero. Applied at once, from the next rendered sample.
+    // A host's global reference tuning (Reason's master tune). Retensions
+    // every string at its existing fret, independently of conventional/MPE
+    // wheels, and survives prepare/reset. Clamped to +/-100 cents. Zero is an
+    // exact no-op; nonfinite input uses zero. The existing delay/port followers
+    // smooth live changes.
     void setMasterTuneCents(float cents) noexcept;
 
     // Panic: silences the engine and forgets held events, bend wheels and
@@ -247,7 +247,6 @@ private:
                   int delay = 0, bool strumming = false,
                   bool unambiguousTransition = true) noexcept;
     [[nodiscard]] bool isLowerZoneMember(int midiChannel) const noexcept;
-    [[nodiscard]] float tunedBend(int midiChannel, float bend) const noexcept;
     void resetControllerScope(int midiChannel) noexcept;
     [[nodiscard]] bool channelIsInControllerScope(int controllerChannel,
                                                   int targetChannel) const noexcept;
@@ -275,7 +274,6 @@ private:
     int lowerZoneMemberCount_ { 0 };
     // The channel whose CC1 set the wheel's vibrato now; 0 for none.
     int vibratoChannel_ { 0 };
-    float masterTuneSemitones_ { 0.0f };
     std::array<HeldEvent, heldEventCapacity> held_ {};
     int heldCount_ { 0 };
     int gatherWindow_ { 0 };

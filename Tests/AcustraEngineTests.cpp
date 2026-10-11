@@ -3345,10 +3345,11 @@ void testTheFractionalDelayReadIsLossless()
     // Isolate the string loop from bridge loading and sympathetic strings,
     // and observe saddle force: the microphone filter changes partial levels
     // during pitch glides and adds its own decay.
-    // The loss shelves now retain the same calibrated 48 kHz transfer across
-    // hosts, but bilinear warping leaves H8 decay spread at 4.1..12.9% over
-    // these rates and notes. The H1 spread is below 0.20%; neither tolerance
-    // is a claim of perfect sample-rate independence.
+    // The constant-loss model added on 2026-10-10 improves the old shelf-only
+    // result: a fresh 2026-10-11 measurement gives 1.14..4.84% H8 spread and
+    // less than 0.018% H1 spread here. Guard that improvement rather than
+    // retaining the obsolete 15% / 1.5% allowances. The upper-partial bound
+    // still admits the rate-designed filters' finite approximation error.
     struct Reading { double perSecond; double perPass; };
     const auto decay = [] (int midiNote, double rate, int partial)
     {
@@ -3382,6 +3383,7 @@ void testTheFractionalDelayReadIsLossless()
     {
         double lowestPass = 1.0e9;
         double highestPass = 0.0;
+        double worstRateSpread = 0.0;
         for (int midiNote = 76; midiNote <= 84; ++midiNote)
         {
             double lowest = 1.0e9;
@@ -3398,12 +3400,11 @@ void testTheFractionalDelayReadIsLossless()
                 lowestPass = std::min(lowestPass, reading.perPass);
                 highestPass = std::max(highestPass, reading.perPass);
             }
-            // Restore the original 1.5% fundamental bound. The apparent
-            // 1.87/2.78/1.77% spread at MIDI 82/83/84 was detuning in the
-            // fixed-frequency estimator. Tracking alone puts all three below
-            // 0.2%; with the reference loss mapping they remain below 0.21%.
+            // Track each partial before measuring its decay: a fixed-bin
+            // estimator confuses the tension glide with amplitude loss.
             const double spread = 2.0 * (highest - lowest) / (highest + lowest);
-            expect(spread < (partial == 1 ? 0.015 : 0.15),
+            worstRateSpread = std::max(worstRateSpread, spread);
+            expect(spread < (partial == 1 ? 0.001 : 0.06),
                    "steel MIDI " + std::to_string(midiNote) + " H"
                        + std::to_string(partial)
                        + " decayed at rates that differ by "
@@ -3411,9 +3412,11 @@ void testTheFractionalDelayReadIsLossless()
         }
         // Loss per round trip across the nine notes and three rates. It is
         // physical - a higher note's H8 sits at a higher frequency, where the
-        // string loses more. The isolated saddle observer spans 1.40:1 on
-        // H1 and 1.16:1 on H8, not the 47:1 the interpolated read produced
-        // out of loop fractions alone.
+        // string loses more, unlike the 47:1 range the interpolated read
+        // produced out of loop fractions alone.
+        std::cout << "Isolated string H" << partial << " decay: maximum rate spread "
+                  << 100.0 * worstRateSpread << "%, round-trip loss range "
+                  << highestPass / lowestPass << ":1\n";
         expect(highestPass / lowestPass < 2.5,
                "steel H" + std::to_string(partial)
                    + " loss per round trip ranged over a factor of "

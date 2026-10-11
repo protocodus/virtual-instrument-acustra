@@ -1,0 +1,132 @@
+{
+  "sample_rate": 48000,
+  "channels": 2,
+  "format": "float32; no added gain or individual normalization",
+  "listened": false,
+  "baseline": "6b80170",
+  "current_source_manifest": "../source-sha256.json",
+  "renderer_sha256": "e99dfa3e46e4eff98333390eba79ec75ef91226a47badc57a92650f7b79fc6fe",
+  "baseline_renderer_sha256": "d1e4fb10e330c5d4425c1e842f7eac79024f4762711aafe3807d6afaad0f5198",
+  "cases": [
+    {
+      "case": "dreadnought-spruce-stereo_mic",
+      "frames": 240000,
+      "baseline_peak": 0.19025853276252747,
+      "current_peak": 0.1919795125722885,
+      "baseline_rms": 0.025870416891647673,
+      "current_rms": 0.025902758109225592,
+      "relative_rms_difference": 0.02980475127696991
+    },
+    {
+      "case": "dreadnought-spruce-mono_mic",
+      "frames": 240000,
+      "baseline_peak": 0.2107704132795334,
+      "current_peak": 0.21251609921455383,
+      "baseline_rms": 0.028023770086407652,
+      "current_rms": 0.02810597129276957,
+      "relative_rms_difference": 0.029411952942609787
+    },
+    {
+      "case": "dreadnought-spruce-piezo",
+      "frames": 240000,
+      "baseline_peak": 0.25809723138809204,
+      "current_peak": 0.2584807574748993,
+      "baseline_rms": 0.023975205697865324,
+      "current_rms": 0.023968631358223712,
+      "relative_rms_difference": 0.016464320942759514
+    },
+    {
+      "case": "parlor-spruce-stereo_mic",
+      "frames": 240000,
+      "baseline_peak": 0.2255823314189911,
+      "current_peak": 0.22513867914676666,
+      "baseline_rms": 0.026919705455490803,
+      "current_rms": 0.026773742121321605,
+      "relative_rms_difference": 0.13686102628707886
+    },
+    {
+      "case": "parlor-spruce-mono_mic",
+      "frames": 240000,
+      "baseline_peak": 0.21222592890262604,
+      "current_peak": 0.21604691445827484,
+      "baseline_rms": 0.026867076370756204,
+      "current_rms": 0.026593905785338084,
+      "relative_rms_difference": 0.13849161565303802
+    },
+    {
+      "case": "parlor-spruce-piezo",
+      "frames": 240000,
+      "baseline_peak": 0.2617494761943817,
+      "current_peak": 0.2548699676990509,
+      "baseline_rms": 0.026199970704982232,
+      "current_rms": 0.02552940712783165,
+      "relative_rms_difference": 0.20791564881801605
+    },
+    {
+      "case": "jumbo-mahogany-stereo_mic",
+      "frames": 240000,
+      "baseline_peak": 0.31967005133628845,
+      "current_peak": 0.32367420196533203,
+      "baseline_rms": 0.031197842749058135,
+      "current_rms": 0.03363458871392796,
+      "relative_rms_difference": 0.20825208723545074
+    },
+    {
+      "case": "jumbo-mahogany-mono_mic",
+      "frames": 240000,
+      "baseline_peak": 0.29768431186676025,
+      "current_peak": 0.2973044216632843,
+      "baseline_rms": 0.027812663651093084,
+      "current_rms": 0.029346793161133113,
+      "relative_rms_difference": 0.1967824399471283
+    },
+    {
+      "case": "jumbo-mahogany-piezo",
+      "frames": 240000,
+      "baseline_peak": 0.23409271240234375,
+      "current_peak": 0.23438580334186554,
+      "baseline_rms": 0.021858233414788774,
+      "current_rms": 0.022249915127484303,
+      "relative_rms_difference": 0.13276627659797668
+    }
+  ],
+  "sha256": {
+    "baseline-dreadnought-spruce-mono_mic.f32": "8330d5998dcdf7f090bbca70ebe6be32b274e1df3a91c338473c2729d83ccb57",
+    "baseline-dreadnought-spruce-mono_mic.wav": "0255d2b68c8da9cafc849dc97bd4cd109c936d27f6aebb85c7b29ea14be442f5",
+    "baseline-dreadnought-spruce-piezo.f32": "dbc03c6aacc3b759f97b6c99c77e77ede2eff1a1ab2de12293c56084f8b5c2b2",
+    "baseline-dreadnought-spruce-piezo.wav": "3d7b7ab3f41d1cc344ed427d9bab5469fc65e42b33182922591d9045cc4cf77d",
+    "baseline-dreadnought-spruce-stereo_mic.f32": "09c2452fdc332302e1cb1e6f119e71dc96bd736f78f415173bfc78de208563ee",
+    "baseline-dreadnought-spruce-stereo_mic.wav": "acbdf3918525270afbaa3fe3d10572cfb224f99b85a788675c7ba6411ab23137",
+    "baseline-jumbo-mahogany-mono_mic.f32": "0c38f88ec09ae68e1b8074507256792a7ad61e65ef0769f751fde484467af138",
+    "baseline-jumbo-mahogany-mono_mic.wav": "80479008a79f5bbb52ec5c4f6369d46a57751c1d1a0b5e596efd804d240a36da",
+    "baseline-jumbo-mahogany-piezo.f32": "a65343c7d7a1bd9c2a5bab7dc6f58afe2a45886b2e0aa576741daa4a980d9726",
+    "baseline-jumbo-mahogany-piezo.wav": "d4496acdb502c66c37affe50b2c1f34a52956e2d302c18f77449618463b26412",
+    "baseline-jumbo-mahogany-stereo_mic.f32": "7c7f48178736684b6c67a9612bac493a9bc5d1fc3a1ea5db93905098018e445e",
+    "baseline-jumbo-mahogany-stereo_mic.wav": "d636c22856bce2f1e3db58c95c7c5ef32ee9b29a277e4ace114a39ec82601d0f",
+    "baseline-parlor-spruce-mono_mic.f32": "c198615991337192b85d406381e2b8cd9a510dd5b98a33b30d91c85b85d91109",
+    "baseline-parlor-spruce-mono_mic.wav": "d26be35e28caef80cfcbf157e40c5bc252f302f88342ece567f2e2c4bbd6605e",
+    "baseline-parlor-spruce-piezo.f32": "0e8fbce927fc4fa4e0296940bfd048174fe9927389d0bedebee1b5945a7e24ef",
+    "baseline-parlor-spruce-piezo.wav": "154e89a5bc74e0d28645dd333dc64a090b5776e797fa6b8e572cdefe0cd18592",
+    "baseline-parlor-spruce-stereo_mic.f32": "8a967067a3d120cb3d9c85cece04332007488ae6c47a90fcf496596d7a552d2b",
+    "baseline-parlor-spruce-stereo_mic.wav": "e37c82fc9074886c9d1103d612cd40ac1bf96f8fd65757ff3aca271a1f8e917e",
+    "body-phrase.events": "6d532fe4316176e506eb3219c4de35cb53fbbc714e542a4baea7abeef234b7d1",
+    "current-dreadnought-spruce-mono_mic.f32": "33073ffc01218e919e3e1fc6b4941577d6c41aec717a25337871b3310c079e02",
+    "current-dreadnought-spruce-mono_mic.wav": "1bf237cb0f07ac0a25070a235aa8df198f316c86eb0f445deabd660f9d00ae94",
+    "current-dreadnought-spruce-piezo.f32": "48c0190873fd0edd97fdbc19b7b59f246f8f5062316e85b611ba13bad9ff73bb",
+    "current-dreadnought-spruce-piezo.wav": "fdff72e65e6ad00e1a2af9ec0024fb9fab1eef14f1f658ea391c123376cf9bb1",
+    "current-dreadnought-spruce-stereo_mic.f32": "8ee8ec67644a05807965264d0d8cf63751b1d52adc16d919d24eb81c723f6cfc",
+    "current-dreadnought-spruce-stereo_mic.wav": "e025c0e2f162bed17528d8ff29b79b1ba92b3d05abbc093af193d348ee32bcbc",
+    "current-jumbo-mahogany-mono_mic.f32": "466e9f9fd65f03d60b54363c0f0344ac2a482699a30d2b8cae60c1d0dc7c3d6b",
+    "current-jumbo-mahogany-mono_mic.wav": "7ec3e8145a239cc0600eb6df0722a20f0b5cbfe240ea00b8d280503b5d6c57a0",
+    "current-jumbo-mahogany-piezo.f32": "deb11a959e1824356f22d7bede26534b43efe8a5bcd0421544fbddfb0113827a",
+    "current-jumbo-mahogany-piezo.wav": "2baf5d6a9415d0377f7a156a314525939306a186e44208a9506c16b0c9522ce3",
+    "current-jumbo-mahogany-stereo_mic.f32": "173977c4ea357d0d59d89557ee3429dbdb697560cd3e3a96902dbfdcf7cfd3ba",
+    "current-jumbo-mahogany-stereo_mic.wav": "399a25493e9c345d4eea96e2e4e8f6f1ad1badf20f4908039f64cf9632e4104e",
+    "current-parlor-spruce-mono_mic.f32": "cc1a3bae9087d7928385108108b178660d4048c39b00fa5794d2525cc81da7cc",
+    "current-parlor-spruce-mono_mic.wav": "513e124d3d5a319567d1018966f22b841c7f5434c6c60f81f5181ddc73da28d7",
+    "current-parlor-spruce-piezo.f32": "ada17ec79d9f4494d63414b3ce0c0a055665da51c3f3452c30232382cf24ca12",
+    "current-parlor-spruce-piezo.wav": "687b62058c5b81e94d8b78312dc83607bd87980580dbec566f8f7b47b00459b6",
+    "current-parlor-spruce-stereo_mic.f32": "7f42b9fe0e844b94f789dd9f1cad4dfe8fd56bbcda8d71cb3be253100c6e768e",
+    "current-parlor-spruce-stereo_mic.wav": "aa6d812e128d3c0a17c8b74ff2e252f01b9413ccae344b8722f84b6b8c2ce313"
+  }
+}

@@ -1,0 +1,17 @@
+Test project /Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit
+    Start  2: Acustra.Engine
+    Start  6: Acustra.Performer
+    Start 18: Acustra.BodyShape
+1/6 Test #18: Acustra.BodyShape ................   Passed   12.25 sec
+    Start 17: Acustra.GuitarModels
+2/6 Test #17: Acustra.GuitarModels .............   Passed    1.54 sec
+    Start 13: Acustra.CaptureTransition
+3/6 Test #13: Acustra.CaptureTransition ........   Passed    4.05 sec
+    Start 85: Acustra.MasterTuning
+4/6 Test #85: Acustra.MasterTuning .............   Passed    2.34 sec
+5/6 Test  #6: Acustra.Performer ................   Passed   33.91 sec
+6/6 Test  #2: Acustra.Engine ...................   Passed   62.70 sec
+
+100% tests passed, 0 tests failed out of 6
+
+Total Test time (real) =  62.71 sec

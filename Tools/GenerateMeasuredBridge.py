@@ -326,6 +326,22 @@ def candidate_modes(
     return sorted(modes[:candidate_count], key=lambda item: item[0])
 
 
+def mobility_parameters(frequency, q, *, decay_poles: bool = False):
+    """Natural oscillator parameters, or inverse-bilinear radiation poles.
+
+    A radiation f/Q pair describes a damped sinusoid, unlike this generator's
+    original natural-frequency oscillator. Joint fits opt into that precise
+    convention; independent bridge fits retain their measured prototype.
+    """
+    if decay_poles:
+        pole = np.exp(-np.pi * frequency / (q * SAMPLE_RATE)
+                      + 2j * np.pi * frequency / SAMPLE_RATE)
+        analog = 2.0 * SAMPLE_RATE * (pole - 1.0) / (pole + 1.0)
+        return np.abs(analog), -np.real(analog)
+    omega = 2.0 * SAMPLE_RATE * np.tan(np.pi * frequency / SAMPLE_RATE)
+    return omega, omega / (2.0 * q)
+
+
 def positive_semidefinite_fit(
     frequency: np.ndarray,
     treble: np.ndarray,
@@ -333,6 +349,7 @@ def positive_semidefinite_fit(
     cross: np.ndarray,
     corner: float,
     modes: list[tuple[float, float, float]],
+    *, decay_poles: bool = False,
 ) -> tuple[list[tuple[float, float, float, float, float]], int, float, list[float]]:
     """Fit one residue matrix per mode to the six strings' own mobilities.
 
@@ -351,10 +368,7 @@ def positive_semidefinite_fit(
     basis = np.array([
         s_plane / (s_plane * s_plane + 2.0 * damping * s_plane + omega * omega)
         for omega, damping in (
-            (
-                2.0 * SAMPLE_RATE * np.tan(np.pi * mode[0] / SAMPLE_RATE),
-                SAMPLE_RATE * np.tan(np.pi * mode[0] / SAMPLE_RATE) / mode[1],
-            )
+            mobility_parameters(mode[0], mode[1], decay_poles=decay_poles)
             for mode in modes
         )
     ])

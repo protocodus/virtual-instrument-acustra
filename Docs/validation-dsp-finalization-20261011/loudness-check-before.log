@@ -1,0 +1,35 @@
+== as rendered: target -27.52 LUFS
+  stereo_mic  -0.23 ..  +0.36 LU (median +0.02; 36/36 within +-1); quietest parlor maple thumb, loudest jumbo mahogany thumb
+  mono_mic    -0.24 ..  +0.84 LU (median +0.02; 36/36 within +-1); quietest parlor maple thumb, loudest dreadnought spruce finger
+  piezo       -0.94 ..  +0.21 LU (median +0.08; 36/36 within +-1); quietest parlor spruce pick, loudest jumbo maple thumb
+  stereo mic by picking (min / median / max LU):
+    finger                      -0.16  +0.04  +0.28
+    pick                        -0.15  -0.02  +0.07
+    thumb                       -0.23  +0.02  +0.36
+  hardest case, stereo_mic finger peak  -2.83 dBFS before the limiter (auditorium spruce finger), median  -3.85; 0 over the knee, 12/12 at least 1 dB under it
+  hardest case, stereo_mic pick   peak  -1.90 dBFS before the limiter (jumbo mahogany pick), median  -3.07; 0 over the knee, 11/12 at least 1 dB under it
+  hardest case, stereo_mic thumb  peak  -4.86 dBFS before the limiter (auditorium mahogany thumb), median  -6.36; 0 over the knee, 12/12 at least 1 dB under it
+  hardest case, mono_mic finger   peak  -2.76 dBFS before the limiter (dreadnought maple finger), median  -4.40; 0 over the knee, 12/12 at least 1 dB under it
+  hardest case, mono_mic pick     peak  -2.65 dBFS before the limiter (dreadnought maple pick), median  -4.02; 0 over the knee, 12/12 at least 1 dB under it
+  hardest case, mono_mic thumb    peak  -3.98 dBFS before the limiter (auditorium mahogany thumb), median  -6.63; 0 over the knee, 12/12 at least 1 dB under it
+  hardest case, piezo finger      peak  -0.11 dBFS before the limiter (jumbo spruce finger), median  -0.65; 12 over the knee, 0/12 at least 1 dB under it
+  hardest case, piezo pick        peak  -1.05 dBFS before the limiter (dreadnought spruce pick), median  -1.23; 0 over the knee, 0/12 at least 1 dB under it
+  hardest case, piezo thumb       peak  -2.90 dBFS before the limiter (parlor spruce thumb), median  -4.11; 0 over the knee, 12/12 at least 1 dB under it
+== without the construction gains: target -27.52 LUFS
+  stereo_mic  -2.66 ..  +6.29 LU (median +0.33; 9/36 within +-1); quietest jumbo maple thumb, loudest parlor spruce pick
+  mono_mic    -1.91 ..  +8.67 LU (median +1.02; 13/36 within +-1); quietest jumbo maple thumb, loudest auditorium spruce pick
+  piezo       -3.71 ..  +3.54 LU (median -2.59; 0/36 within +-1); quietest parlor spruce thumb, loudest jumbo maple pick
+  stereo mic by picking (min / median / max LU):
+    finger                      -2.36  -0.49  +2.38
+    pick                        +2.61  +4.53  +6.29
+    thumb                       -2.66  -0.93  +2.22
+  hardest case, stereo_mic finger peak  -1.67 dBFS before the limiter (parlor spruce finger), median  -4.48; 0 over the knee, 11/12 at least 1 dB under it
+  hardest case, stereo_mic pick   peak  +3.35 dBFS before the limiter (jumbo spruce pick), median  +2.03; 11 over the knee, 0/12 at least 1 dB under it
+  hardest case, stereo_mic thumb  peak  -4.81 dBFS before the limiter (parlor spruce thumb), median  -7.28; 0 over the knee, 12/12 at least 1 dB under it
+  hardest case, mono_mic finger   peak  -1.98 dBFS before the limiter (parlor spruce finger), median  -3.69; 0 over the knee, 11/12 at least 1 dB under it
+  hardest case, mono_mic pick     peak  +4.56 dBFS before the limiter (jumbo spruce pick), median  +3.32; 12 over the knee, 0/12 at least 1 dB under it
+  hardest case, mono_mic thumb    peak  -4.29 dBFS before the limiter (parlor mahogany thumb), median  -6.81; 0 over the knee, 12/12 at least 1 dB under it
+  hardest case, piezo finger      peak  -2.85 dBFS before the limiter (jumbo maple finger), median  -3.38; 0 over the knee, 12/12 at least 1 dB under it
+  hardest case, piezo pick        peak  +3.15 dBFS before the limiter (dreadnought spruce pick), median  +3.07; 12 over the knee, 0/12 at least 1 dB under it
+  hardest case, piezo thumb       peak  -6.59 dBFS before the limiter (parlor spruce thumb), median  -7.73; 0 over the knee, 12/12 at least 1 dB under it
+FAILED: hardest case on stereo_mic pick: jumbo mahogany pick peaks -1.90 dBFS at -0.07 LU

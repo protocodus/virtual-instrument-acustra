@@ -307,6 +307,28 @@ float anchorModeFactor(const AnchorTransform& anchor, float measuredFrequency,
 constexpr AnchorTransform wideSteelAnchorTransform { 109.0f, 0.900f, 1.28f,
                                                      0.93f, 0.018f, 1.0f };
 
+// The authored detune belongs to g21's reference frequency map, not a row
+// number in whichever fitted bank is visiting it. Applying alternating row
+// parity separately to the joint bank moved its nearby A0 in the opposite
+// direction, widening a measured 9-cent separation to 62 cents. Nearest
+// log-frequency reference modes retain g21 exactly and give every bank the
+// same anchor map, without declaring two nearby fitted modes identical.
+float anchorDetune(const AnchorTransform& anchor, float frequency) noexcept
+{
+    const auto& reference = detail::measuredSteelBodyModes;
+    const auto upper = std::lower_bound(reference.begin(), reference.end(), frequency,
+        [] (const auto& mode, float value) { return mode.frequency < value; });
+    std::size_t nearest = static_cast<std::size_t>(upper - reference.begin());
+    if (nearest == reference.size())
+        --nearest;
+    else if (nearest > 0 && double(frequency) * frequency
+        <= double(reference[nearest - 1].frequency) * reference[nearest].frequency)
+        --nearest;
+    const float alternating = (nearest & 1) == 0 ? 1.0f : -1.0f;
+    return 1.0f + alternating * anchor.asymmetry
+        / exact::sqrt(static_cast<float>(nearest + 1));
+}
+
 // Body outline and cavity, in metres: lower-bout width, body length, mean
 // depth, soundhole diameter, and the fraction of the width-by-length
 // rectangle the outline fills (about 0.72 for a waisted guitar plantilla,
@@ -441,8 +463,8 @@ struct BodyShapeMorph
     float t1Level { 1.0f };
     float plateFrequency { 1.0f };
     float plateLevel { 1.0f };
-    // Material-only changes of the coupled modes' bridge participation.
-    // Existing Shape scaling remains the measured-reference construction.
+    // Coupled driving-point participation, including the box's V/A_p^2
+    // force-coordinate factor and the material's modal mass.
     float a0BridgeLevel { 1.0f };
     float t1BridgeLevel { 1.0f };
 };
@@ -482,10 +504,12 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     morph.a0Index = a0Index;
     if (morph.t1Index >= 0)
     {
-        const auto t1 = static_cast<std::size_t>(morph.t1Index);
-        morph.t1UpperHz = t1 + 1 < bank.size()
-            ? exact::sqrt(bank[t1].frequency * bank[t1 + 1].frequency)
-            : bank[t1].frequency;
+        const float t1 = bank[static_cast<std::size_t>(morph.t1Index)].frequency;
+        float next = std::numeric_limits<float>::infinity();
+        for (const auto& mode : bank)
+            if (mode.frequency > t1)
+                next = std::min(next, mode.frequency);
+        morph.t1UpperHz = exact::isfinite(next) ? exact::sqrt(t1 * next) : t1;
     }
     const bool sameBox = body.width == anchorBody.width
         && body.length == anchorBody.length && body.depth == anchorBody.depth
@@ -498,11 +522,9 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     const auto anchored = [&] (int index)
     {
         const auto& mode = bank[static_cast<std::size_t>(index)];
-        const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
         return mode.frequency * anchorModeFactor(anchor, mode.frequency,
                                                  index == morph.t1Index)
-            * (1.0f + alternating * anchor.asymmetry
-               / exact::sqrt(static_cast<float>(index + 1)));
+            * anchorDetune(anchor, mode.frequency);
     };
     const float a0 = anchored(a0Index);
     const float t1 = anchored(morph.t1Index);
@@ -533,6 +555,15 @@ BodyShapeMorph bodyShapeMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     morph.t1Frequency = target.t1Frequency / reference.t1Frequency;
     morph.a0Level = target.a0Weight / reference.a0Weight;
     morph.t1Level = target.t1Weight / reference.t1Weight;
+    // The force-to-plate-velocity residue in volume coordinates is
+    // phi_plate^2 * V/(rho*c^2*A_p^2). Its geometry factor is depth/area;
+    // omitting it kept the bridge's A0/T1 participation fixed while the
+    // radiation and the same coupled eigenvectors moved with Shape.
+    const float bridgeGeometry = (body.depth / anchorBody.depth) / areaRatio;
+    morph.a0BridgeLevel = bridgeGeometry
+        * target.a0BridgeWeight / reference.a0BridgeWeight;
+    morph.t1BridgeLevel = bridgeGeometry
+        * target.t1BridgeWeight / reference.t1BridgeWeight;
     morph.plateFrequency = 1.0f / areaRatio;
     // A plate mode's peak pressure per unit bridge force is the same at any
     // size: its modal mass and its radiating volume velocity both go as A_p.
@@ -661,11 +692,9 @@ BodyShapeMorph bodyConstructionMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     const auto anchored = [&] (int index)
     {
         const auto& mode = bank[static_cast<std::size_t>(index)];
-        const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
         return mode.frequency * anchorModeFactor(anchor, mode.frequency,
                                                  index == morph.t1Index)
-            * (1.0f + alternating * anchor.asymmetry
-               / exact::sqrt(static_cast<float>(index + 1)));
+            * anchorDetune(anchor, mode.frequency);
     };
     const float a0 = anchored(morph.a0Index);
     const float t1 = anchored(morph.t1Index);
@@ -692,8 +721,8 @@ BodyShapeMorph bodyConstructionMorph(ConstSpan<detail::MeasuredBodyMode> bank,
     morph.t1Frequency *= target.t1Frequency / reference.t1Frequency;
     morph.a0Level *= target.a0Weight / reference.a0Weight;
     morph.t1Level *= target.t1Weight / reference.t1Weight;
-    morph.a0BridgeLevel = target.a0BridgeWeight / reference.a0BridgeWeight;
-    morph.t1BridgeLevel = target.t1BridgeWeight / reference.t1BridgeWeight;
+    morph.a0BridgeLevel *= target.a0BridgeWeight / reference.a0BridgeWeight;
+    morph.t1BridgeLevel *= target.t1BridgeWeight / reference.t1BridgeWeight;
     return morph;
 }
 
@@ -703,32 +732,54 @@ struct ModalPole
     float q;
 };
 
+std::complex<float> radiationDigitalPole(float frequency, float q, float rate) noexcept
+{
+    const float radius = std::exp(-pi * frequency / (q * rate));
+    return std::polar(radius, twoPi * frequency * (1.0f / rate));
+}
+
+struct MobilityPrototype { double omega, damping; };
+
+// The radiation fit's f is the damped oscillation frequency and Q sets its
+// exponential decay. They are not the natural frequency and Q of a spring-
+// mass oscillator. Inverse-bilinear mapping of its actual digital pole
+// supplies a positive-real velocity/force prototype with exactly that pole:
+// a=2fs(p-1)/(p+1), Y=R*s/(s^2-2Re(a)*s+|a|^2). Since |p|<1, Re(a)<0;
+// PSD residue matrices remain passive, with zero mobility at DC and Nyquist.
+MobilityPrototype radiationMobilityPrototype(float frequency, float q,
+                                              float rate) noexcept
+{
+    frequency = std::clamp(frequency, 45.0f, 0.46f * rate);
+    const std::complex<double> pole = radiationDigitalPole(frequency, q, rate);
+    const auto analog = 2.0 * rate * (pole - 1.0) / (pole + 1.0);
+    return { std::abs(analog), -analog.real() };
+}
+
 // One radiation mode's engine pole: the anchor transform, the Shape morph's
 // class factor, Wood and the calibration applied to the measured frequency
 // and Q. configureBody sounds it (clamping the frequency to the host rate);
 // steel's own bridge takes it for each bridge mode that is the same
 // resonance (steelOwnBridgePole below).
-// `index` is the mode's place in the bank it was fitted in, which the
-// anchor's alternating detune and the Shape morph's T1 group read.
+// Mode classes and anchor detune are frequency maps shared by every bank.
 ModalPole radiationPole(const detail::MeasuredBodyMode& measured, int index,
                         const AnchorTransform& anchor,
                         const BodyShapeMorph& morph, WoodFactors wood,
                         const PhysicalCalibration& calibration) noexcept
 {
-    const float alternating = (index & 1) == 0 ? 1.0f : -1.0f;
+    (void) index;
+    const bool t1Group = measured.frequency <= morph.t1UpperHz;
     const float lowModeMorph = anchorModeFactor(anchor, measured.frequency,
-        measured.frequency >= lowBodyGroupUpperHz && index <= morph.t1Index);
+        measured.frequency >= lowBodyGroupUpperHz && t1Group);
     // The A0 group, T1 and the plate modes above it each take their own
     // factor from the coupled pair; the anchor shape's are exactly 1.
     const float shapeFrequency = measured.frequency < lowBodyGroupUpperHz
         ? morph.a0Frequency
-        : index <= morph.t1Index ? morph.t1Frequency : morph.plateFrequency;
+        : t1Group ? morph.t1Frequency : morph.plateFrequency;
     const float materialFrequency = measured.frequency < lowBodyGroupUpperHz
-        || index <= morph.t1Index ? 1.0f : wood.frequency;
+        || t1Group ? 1.0f : wood.frequency;
     const float frequency = measured.frequency * lowModeMorph * shapeFrequency
         * materialFrequency * calibration.bodyFrequencyScale
-        * (1.0f + alternating * anchor.asymmetry
-           / exact::sqrt(static_cast<float>(index + 1)));
+        * anchorDetune(anchor, measured.frequency);
     // AcustraEngine::clamp: a non-finite Q takes the lower bound.
     // A modest A0 decay extension on the Original, shared with its bridge
     // twin below. At the default construction its free radiation T60 rises
@@ -938,8 +989,8 @@ void scalePlateBridgeResidues(detail::MeasuredBridgeMode& mode,
 
 // The same coupled-model factors the radiation takes, applied to a bridge
 // bank: its A0 group, its modes up to T1, and the plate modes above follow
-// the body they belong to. The A0 and T1 groups keep their residue matrices;
-// the plate modes take the top's mass (scalePlateBridgeResidues). Each Q is
+// the body they belong to. Low modes take their coupled participation in
+// visitSteelBlendBridge; plate modes take the top's mass here. Each Q is
 // retained, so a fixed shape keeps the passive modal construction. At the
 // anchor every factor is exactly 1.
 detail::MeasuredBridgeMode shapeBridgeMode(
@@ -1189,10 +1240,11 @@ void scaleMaterialBridgeResidues(detail::MeasuredBridgeMode& mode,
 }
 
 // Steel's own bridge in the blend, mode by mode: visit(source, placed, level,
-// own) with the mode as the bank stores it, the mode with its engine pole, its
+// own, sharedPole) with the mode as the bank stores it, the mode with its engine pole, its
 // residues' factor relative to B's own level (the fitted scale times
 // steelTopMobilityRatio), so that B's modes keep exactly B's arithmetic, and
-// whether it is one of B's modes, which come first.
+// whether it is one of B's modes, which come first, and whether its pole is
+// shared with a radiation mode.
 // B's modes are steelOwnBridgePole's; the joint body's ring on its
 // radiation's poles at its own steel-top level.
 template <typename Visit>
@@ -1217,11 +1269,10 @@ void visitSteelBlendBridge(float a0, float t1, float plate, float t1UpperHz,
         const float sourceFrequency = twin >= 0
             ? detail::measuredSteelBodyModes[static_cast<std::size_t>(twin)].frequency
             : own[index].frequency;
-        const bool t1Group = twin >= 0 ? twin <= morph.t1Index
-            : sourceFrequency <= t1UpperHz;
+        const bool t1Group = sourceFrequency <= t1UpperHz;
         scaleMaterialBridgeResidues(placed, sourceFrequency < lowBodyGroupUpperHz
             ? morph.a0BridgeLevel : t1Group ? morph.t1BridgeLevel : wood.inverseMass);
-        visit(own[index], placed, steelBlendOwnShare(own[index].frequency), true);
+        visit(own[index], placed, steelBlendOwnShare(own[index].frequency), true, twin >= 0);
     }
     if (steelBlendJointShare > 0.0f)
     {
@@ -1239,14 +1290,16 @@ void visitSteelBlendBridge(float a0, float t1, float plate, float t1UpperHz,
             // top's mass as B's do (shapeBridgeMode).
             if (steelJointRadiationModes[static_cast<std::size_t>(source)].frequency
                     >= lowBodyGroupUpperHz
-                && source > jointMorph.t1Index)
+                && steelJointRadiationModes[static_cast<std::size_t>(source)].frequency
+                    > jointMorph.t1UpperHz)
                 scalePlateBridgeResidues(placed, jointMorph.plateFrequency);
             scaleMaterialBridgeResidues(placed,
                 steelJointRadiationModes[static_cast<std::size_t>(source)].frequency
                     < lowBodyGroupUpperHz ? jointMorph.a0BridgeLevel
-                    : source <= jointMorph.t1Index ? jointMorph.t1BridgeLevel
+                    : steelJointRadiationModes[static_cast<std::size_t>(source)].frequency
+                        <= jointMorph.t1UpperHz ? jointMorph.t1BridgeLevel
                                                    : wood.inverseMass);
-            visit(steelJointBridgeModes[index], placed, level, false);
+            visit(steelJointBridgeModes[index], placed, level, false, true);
         }
     }
 }
@@ -4094,6 +4147,52 @@ void AcustraEngine::setTempoBpm(double bpm) noexcept
             updateReleaseJoinWindow(voice);
 }
 
+void AcustraEngine::setMasterTuneCents(float cents) noexcept
+{
+    // The host owns this reference, independently of MIDI controller resets.
+    // Reason supplies +/-100 cents. Bound this retensioning control to that
+    // host range; wide performance gestures belong to the separate wheels.
+    const float semitones = exact::isfinite(cents)
+        ? 0.01f * clamp(cents, -100.0f, 100.0f) : 0.0f;
+    if (semitones == masterTuneSemitones_)
+        return;
+    masterTuneSemitones_ = semitones;
+    masterTuneRatio_ = semitones == 0.0f ? 1.0f : std::exp2(semitones / 12.0f);
+    ++voiceConfigurationGeneration_;
+    if (!prepared_)
+        return;
+
+    // A cleared/silence-flushed instrument has no moving wave to slew,
+    // however many empty callbacks the host has rendered. A released string
+    // can still vibrate sympathetically, so merely having no MIDI owners is
+    // not enough: use the existing sound-state flush marker as well.
+    const bool atRest = idleFlushed_ && std::none_of(voices_.begin(), voices_.end(),
+        [] (const Voice& voice) { return voice.played || voice.tailActive; });
+    for (int string = 0; string < stringCount; ++string)
+    {
+        auto& voice = voices_[static_cast<std::size_t>(string)];
+        const float previousImpedance = voice.characteristicImpedance;
+        configureVoice(voice, string, voice.midiNote, false, false, !atRest);
+        if (atRest)
+        {
+            for (auto& loop : voice.loops)
+                loop.currentDelay = loop.targetDelay;
+            voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
+        }
+        else if (previousImpedance > 0.0f && voice.characteristicImpedance > 0.0f)
+        {
+            // Preserve the junction's current port, then let its existing
+            // 6 ms follower reach the retensioned string with the delay.
+            voice.appliedBendImpedanceScale *= previousImpedance
+                / voice.characteristicImpedance;
+        }
+    }
+    // A captured refret tail keeps its original string and port, as it does
+    // under playing-wheel changes. No contact, emitted packet or random draw
+    // belongs to a reference-tuning notification.
+    bridgeDerivativesCrossConfigure_ = !atRest;
+}
+
 void AcustraEngine::setPhysicalCalibration(
     const PhysicalCalibration& calibration) noexcept
 {
@@ -4472,7 +4571,7 @@ void AcustraEngine::configureBody() noexcept
         float shapeLevel = morph.plateLevel;
         if (measured.frequency < lowBodyGroupUpperHz)
             shapeLevel = morph.a0Level;
-        else if (index <= morph.t1Index)
+        else if (measured.frequency <= morph.t1UpperHz)
             shapeLevel = morph.t1Level;
         const auto engine = radiationPole(measured, index, anchor, morph,
             woodFactors, physicalCalibration_);
@@ -4484,10 +4583,7 @@ void AcustraEngine::configureBody() noexcept
         const float upper = clamp(std::log2(std::max(frequency, 120.0f)
             / 120.0f) / 6.0f, 0.0f, 1.0f);
         const float q = engine.q;
-        const float radius = std::exp(-pi * frequency
-                                      / (q * static_cast<float>(sampleRate_)));
-        const std::complex<float> pole = std::polar(
-            radius, twoPi * frequency * inverseSampleRate_);
+        const auto pole = radiationDigitalPole(frequency, q, static_cast<float>(sampleRate_));
         mode.poleReal = pole.real();
         mode.poleImaginary = audibleAtThisRate ? pole.imag() : 0.0f;
 
@@ -4498,7 +4594,7 @@ void AcustraEngine::configureBody() noexcept
         // eigenvector and frequency changes. Only higher plate modes use
         // the statistically averaged frequency/mass residue law.
         const float materialRadiation = measured.frequency < lowBodyGroupUpperHz
-            || index <= morph.t1Index ? 1.0f : woodFactors.radiation;
+            || measured.frequency <= morph.t1UpperHz ? 1.0f : woodFactors.radiation;
         const float residueTilt = std::exp2(
             physicalCalibration_.residueTiltDbPerOctave
             * std::log2(frequency / 1000.0f) / 6.02059991f);
@@ -4767,11 +4863,12 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     const float rate = static_cast<float>(sampleRate_);
     // Each mode's residue matrix multiplies the continuous mobility
     // s/(s^2 + 2 damping s + omega^2), which is shared by both coordinates.
-    // A per-mode prewarped bilinear transform preserves its measured centre
-    // frequency, and a positive semidefinite residue matrix keeps every
-    // string's own combination of the three positive real.
+    // Shared modes use the radiation's actual digital poles. Unpaired bridge
+    // modes retain their measured natural-frequency prototype. A positive
+    // semidefinite residue matrix keeps every string's port positive real.
     const auto configure = [&] (std::size_t index, float frequency, float q,
-                                float heave, float cross, float rock)
+                                float heave, float cross, float rock,
+                                bool sharedPole = false)
     {
         auto& heaveMode = bridgeLoad_.heaveModes[index];
         auto& rockMode = bridgeLoad_.rockModes[index];
@@ -4784,7 +4881,7 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         // modes above 0.45 fs, which took it away below a 13 kHz host.
         const bool plateFloor = index == static_cast<std::size_t>(bridgeModeCount);
         const bool active = (heave > 0.0f || rock > 0.0f)
-                          && (plateFloor || frequency < 0.45f * rate);
+                          && (plateFloor || frequency < (sharedPole ? 0.46f : 0.45f) * rate);
         if (!active)
         {
             for (auto* mode : { &heaveMode, &rockMode })
@@ -4803,9 +4900,11 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         // rate (prewarped at the host rate its plateau moved +0.2-0.5 dB at
         // 96 kHz, 5-7% faster decay above 1 kHz).
         const double prewarpRate = plateFloor ? 48000.0 : rateD;
-        const double omega = 2.0 * prewarpRate * std::tan(
+        const double naturalOmega = 2.0 * prewarpRate * std::tan(
             static_cast<double>(pi) * frequency / prewarpRate);
-        const double damping = omega / (2.0 * q);
+        const auto prototype = sharedPole ? radiationMobilityPrototype(frequency, q, rate)
+            : MobilityPrototype { naturalOmega, naturalOmega / (2.0 * q) };
+        const double omega = prototype.omega, damping = prototype.damping;
         const double denominator0 = bilinearD * bilinearD
             + 2.0 * damping * bilinearD + omega * omega;
         const double denominator1 = (-2.0 * bilinearD * bilinearD
@@ -4861,13 +4960,13 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         steelJointMorph(anchor, parameters_.shape, parameters_.bodyMaterial), wood,
         physicalCalibration_,
         [&] (const detail::MeasuredBridgeMode&,
-             const detail::MeasuredBridgeMode& measured, float level, bool)
+             const detail::MeasuredBridgeMode& measured, float level, bool, bool sharedPole)
         {
             const float heave = measured.heave * scale;
             const float cross = measured.cross * scale;
             const float rock = measured.rock * scale;
             configure(slot++, measured.frequency, measured.q,
-                      heave * level, cross * level, rock * level);
+                      heave * level, cross * level, rock * level, sharedPole);
         });
     for (; slot < static_cast<std::size_t>(bridgeModeCount); ++slot)
         configure(slot, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
@@ -4937,7 +5036,7 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
         return 0.0f;
     const auto notes = openNotes(parameters_.tuning);
     const float impedance = stringImpedance(
-        stringIndex, notes[static_cast<std::size_t>(stringIndex)]);
+        stringIndex, notes[static_cast<std::size_t>(stringIndex)]) * masterTuneRatio_;
     // This estimates one string's return phase from the body.
     // Other strings' frequency-dependent loopback impedances are omitted here,
     // although the runtime junction includes their returning waves. It is an
@@ -4996,14 +5095,20 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         anchorBody(), targetBodyFor(configuredBridgeShape_), configuredBridgeMaterial_);
     table.count = 0;
     // One mode's terms; `level` multiplies its residues relative to scale.
-    const auto add = [&] (const detail::MeasuredBridgeMode& measured, float level)
+    const auto add = [&] (const detail::MeasuredBridgeMode& measured, float level, bool sharedPole)
     {
-        if (measured.frequency >= 0.45f * rate)
+        if (measured.frequency >= (sharedPole ? 0.46f : 0.45f) * rate)
             return;
         auto& mode = table.modes[static_cast<std::size_t>(table.count++)];
         mode.omega = bilinear * std::tan(
             pi * measured.frequency / rate);
         mode.damping = mode.omega / (2.0f * measured.q);
+        if (sharedPole)
+        {
+            const auto prototype = radiationMobilityPrototype(measured.frequency, measured.q, rate);
+            mode.omega = static_cast<float>(prototype.omega);
+            mode.damping = static_cast<float>(prototype.damping);
+        }
         mode.heave = measured.heave * level;
         mode.cross = measured.cross * level;
         mode.rock = measured.rock * level;
@@ -5014,9 +5119,9 @@ AcustraEngine::bridgeMobilityTable() const noexcept
         steelJointMorph(anchor, configuredBridgeShape_, configuredBridgeMaterial_), wood,
         physicalCalibration_,
         [&] (const detail::MeasuredBridgeMode&,
-             const detail::MeasuredBridgeMode& measured, float level, bool own)
+             const detail::MeasuredBridgeMode& measured, float level, bool own, bool sharedPole)
         {
-            add(measured, level);
+            add(measured, level, sharedPole);
             // B's own modes come first and keep their evaluation.
             if (own)
                 table.ordered = table.count;
@@ -5288,15 +5393,15 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // the same finite-string bounds as the geometry calculation below;
         // the wheel at zero does no additional geometry work.
         const float fretLength = scaleLength * std::exp2(-static_cast<float>(fret) / 12.0f);
-        const float unbentFrequency = midiFrequency(stoppedMidi);
+        const float fretFrequency = midiFrequency(stoppedMidi);
         const float slideInterval = clamp(performedBend - memberBendSemitones,
                                            -192.0f, 192.0f);
-        const float slideFrequency = clamp(unbentFrequency
+        const float slideFrequency = clamp(fretFrequency
             * std::exp2(slideInterval / 12.0f),
-            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
-            0.24f * static_cast<float>(sampleRate_));
+            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f) / masterTuneRatio_,
+            0.24f * static_cast<float>(sampleRate_) / masterTuneRatio_);
         const float length = slideInterval == 0.0f ? fretLength
-            : fretLength * unbentFrequency / slideFrequency;
+            : fretLength * fretFrequency / slideFrequency;
         vibratoInterval = vibratoSemitones(voice, length);
     }
     const float axialRigidity = stringAxialRigidity(stringIndex);
@@ -5305,12 +5410,13 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         stoppedMidi, voice.openMidi, stringIndex,
         exact::bits(static_cast<float>(sampleRate_)), exact::bits(performedBend),
         exact::bits(memberBendSemitones), exact::bits(vibratoInterval),
-        exact::bits(voice.attackPitchCents) };
+        exact::bits(voice.attackPitchCents), exact::bits(masterTuneSemitones_) };
     auto& geometry = voice.pitchGeometry;
     if (!geometry.valid || !(pitchKey == geometry.key))
     {
         const float fretLength = scaleLength * std::exp2(-static_cast<float>(fret) / 12.0f);
-        const float unbentFrequency = midiFrequency(stoppedMidi);
+        const float fretFrequency = midiFrequency(stoppedMidi);
+        const float unbentFrequency = fretFrequency * masterTuneRatio_;
         // The bounded Kirchhoff-Carrier surrogate follows the waveguide's inferred
         // slope energy; its delay target slews on the existing 6 ms time constant.
         // A conventional wheel or MPE manager slides the fretting point; its
@@ -5322,18 +5428,22 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // the finite waveguide before taking a physical reciprocal.
         const float slideInterval = clamp(performedBend - memberBendSemitones,
                                            -192.0f, 192.0f);
-        const float slideFrequency = clamp(unbentFrequency
+        // Use the untuned reference for this ratio: cancelling master tune
+        // after two rounded products could move a held finger by one ulp and
+        // spuriously start its roughness source. Only an actual delay-band
+        // limit can constrain the requested length through reference tuning.
+        const float slideFrequency = clamp(fretFrequency
             * std::exp2(slideInterval / 12.0f),
-            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
-            0.24f * static_cast<float>(sampleRate_));
+            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f) / masterTuneRatio_,
+            0.24f * static_cast<float>(sampleRate_) / masterTuneRatio_);
         const float soundingLength = slideInterval == 0.0f ? fretLength
-            : fretLength * unbentFrequency / slideFrequency;
+            : fretLength * fretFrequency / slideFrequency;
         // Apply the existing fret-decay calibration to the same fretting point,
         // including a fractional slide. Outside the playable fretboard retain
         // its nearest supported target rather than extrapolating the fit.
         const float speakingFret = slideInterval == 0.0f ? static_cast<float>(fret)
             : clamp(static_cast<float>(fret)
-                + 12.0f * std::log2(slideFrequency / unbentFrequency),
+                + 12.0f * std::log2(slideFrequency / fretFrequency),
                 0.0f, static_cast<float>(fretCount));
         // The wheel's vibrato is the fretting hand modulating the string's
         // tension at a fixed length (see vibratoSemitones), and a tension
@@ -5361,13 +5471,13 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
             0.24f * static_cast<float>(sampleRate_));
 
-        const float openFrequency = midiFrequency(voice.openMidi);
+        const float openFrequency = tunedMidiFrequency(voice.openMidi);
         const float openWaveSpeed = 2.0f * scaleLength * openFrequency;
         const float standardWaveSpeed = 2.0f * scaleLength
             * midiFrequency(standardOpenMidi[index]);
         const float linearMass = steelTensionNewtons[index]
             / (standardWaveSpeed * standardWaveSpeed);
-        const float tension = voice.openMidi == standardOpenMidi[index]
+        const float tension = voice.openMidi == standardOpenMidi[index] && masterTuneRatio_ == 1.0f
             ? steelTensionNewtons[index]
             : std::max(linearMass * openWaveSpeed * openWaveSpeed, 1.0f);
         // Slide or bend, settled. A channel's pitch bend is a slide: the fretting
@@ -5511,7 +5621,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // The fit also needs its three collocation partials inside its stated
     // 0.42 fs band (collocateDispersion), at every supported host rate.
     const float highestFitFrequency = std::min(
-        midiFrequency(voice.openMidi + fretCount + 12),
+        tunedMidiFrequency(voice.openMidi + fretCount + 12),
         static_cast<float>(0.42 * sampleRate_
             / stretchedPartial(3.0, inharmonicity)));
     const float dispersionFitFrequency = std::min(lossDesignFrequency,
@@ -5738,7 +5848,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                                                        stringIndex);
     const float desiredPeriodGain = std::pow(0.001f,
         1.0f / std::max(fundamentalT60 * frequency, 1.0f));
-    const float unbentImpedance = stringImpedance(stringIndex, voice.openMidi);
+    const float unbentImpedance = stringImpedance(stringIndex, voice.openMidi) * masterTuneRatio_;
     const float coupledDetune = coupledPolarisationDetune(
         bridgePort, unbentImpedance, unbentImpedance
             * exact::sqrt((bentTension / tension) / (1.0f
@@ -5844,7 +5954,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     voice.midiNote = midiNote;
     voice.fret = fret;
     voice.characteristicImpedance = stringImpedance(
-        stringIndex, voice.openMidi);
+        stringIndex, voice.openMidi) * masterTuneRatio_;
     // Z = sqrt(T*mu) with Grimes' stretched mass per length is Z0 times the
     // frequency ratio the same tension produces - 12.3% for a whole tone -
     // and saturates with the tension where his law stops. The junction reads
@@ -5899,7 +6009,7 @@ AcustraEngine::VoiceBend AcustraEngine::voiceBend(
 // the note's own frequency.
 float AcustraEngine::loopFundamental(const Voice& voice) const noexcept
 {
-    const float unbent = midiFrequency(
+    const float unbent = tunedMidiFrequency(
         voice.harmonic > 1 ? voice.openMidi : voice.midiNote);
     const float bend = voiceBend(voice).performed;
     if (bend == 0.0f)
@@ -5936,7 +6046,7 @@ void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
     const float secondMoment = pi * diameter * diameter * diameter * diameter
                              / 64.0f;
     const float openWaveSpeed = 2.0f * scaleLength
-                              * midiFrequency(voice.openMidi);
+                              * tunedMidiFrequency(voice.openMidi);
     const float tension = voice.tensionNewtons > 0.0f
         ? voice.tensionNewtons : voice.characteristicImpedance * openWaveSpeed;
     const float lengthSquared = soundingLength * soundingLength;
@@ -6371,6 +6481,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // downward MIDI glides represent virtual slack strings and must not
     // amplify a stroke through the model's 5%-tension numerical floor.
     const float nominalTension = voice.pitchGeometry.value.tension;
+    // The calibrated stroke is referenced to the current open-string
+    // tuning, including host master tune. Fixed force here means variation
+    // of that stroke's contact point/member bend, not a measured Newton
+    // level held constant when the player retunes the guitar.
     const float tensionCompliance = voice.tensionNewtons > nominalTension
             && nominalTension > 0.0f
         ? nominalTension / voice.tensionNewtons : 1.0f;
@@ -7660,7 +7774,7 @@ double AcustraEngine::plectrumSlipPole(const Voice& voice,
         return 0.0;
     // c = 2 L0 f0 of the open string: fretting shortens the string, not the
     // wave speed.
-    const float unbentWaveSpeed = 2.0f * scaleLength * midiFrequency(voice.openMidi);
+    const float unbentWaveSpeed = 2.0f * scaleLength * tunedMidiFrequency(voice.openMidi);
     // A member's lateral bend raises wave speed at the same stopped length.
     // This is the same sqrt(T/mu) ratio already used by the junction, with
     // stretched mass included; a slide leaves the ratio exactly one.
@@ -11514,10 +11628,11 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
 // pair (softened to 0.7: neither microphone is a point). The late field is
 // an eight-line feedback delay network (Jot and Chaigne, AES 90 (1991)
 // preprint 3030) with a Hadamard mix, its lines 17-41 ms, each damped by a
-// one-pole so the field decays in 0.45 s up to 1 kHz, 0.36 s at 4 kHz and
-// 0.26 s at 8 kHz, as a treated room's does; it starts 8 ms after the direct
-// sound, through four allpasses that make its echoes dense within 20 ms, as
-// a small room's mixing time does. What goes in is filtered by a 9 kHz
+// one-pole with nominal low-frequency decay of 0.45 s and shorter high
+// decay. Absorption is referenced to the internal Nyquist frequency, so its
+// high-frequency decay varies with rate. An 8 ms input delay and four
+// allpasses feed the lines; their first late output arrives around 25 ms,
+// after the early taps end near 17 ms. What goes in is filtered by a 9 kHz
 // one-pole and the reflections by a 6.5 kHz one; the room carries no detail
 // above them.
 namespace

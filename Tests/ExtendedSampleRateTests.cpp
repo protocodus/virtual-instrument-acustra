@@ -210,7 +210,7 @@ void lowPitchAndStability(double rate)
            "a main/tail/contact/scratch history has the wrong active capacity");
     performer->setMasterTuneCents(-100.0f);
     // A downward octave plus global tuning needs >22000 samples at 768k.
-    performer->engine().setPitchBend(-13.0f);
+    performer->engine().setPitchBend(-12.0f);
     performer->engine().noteOn(38, 0.75f);
     const double expected = 440.0 * std::exp2((38.0 - 13.0 - 69.0) / 12.0);
     const float actual = acustra::AcustraEngineTestAccess::requestedFrequency(performer->engine(), 38);

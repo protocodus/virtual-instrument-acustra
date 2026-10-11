@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <complex>
 #include <iostream>
 #include <memory>
 
@@ -149,8 +150,12 @@ void testMeasuredModalDampingIsPreserved()
                                 && mode.frequency < 105.0f ? 23.5 / 19.311932 : 1.0;
                             const double expectedQ = std::min(150.0,
                                 double(mode.q) * qScale * air);
-                            expect(std::abs(entry.omega / (2.0 * entry.damping)
-                                              / expectedQ - 1.0) < 1e-6,
+                            const std::complex<double> analog(-entry.damping,
+                                std::sqrt(std::max(0.0, double(entry.omega)*entry.omega
+                                    - double(entry.damping)*entry.damping)));
+                            const auto digital = (2.0*rate+analog)/(2.0*rate-analog);
+                            const double decayQ = -std::arg(digital)/(2.0*std::log(std::abs(digital)));
+                            expect(std::abs(decayQ / expectedQ - 1.0) < 2e-3,
                                    "the joint bridge changed its measured modal damping");
                         }
                     }

@@ -36,6 +36,13 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    static float playedFrequency(const AcustraEngine& engine)
+    {
+        for (const auto& voice : engine.voices_)
+            if (voice.played)
+                return voice.pitchGeometry.value.lossDesignFrequency;
+        return 0.0f;
+    }
     static int pluckDelay(const AcustraEngine& engine, int string)
     {
         return engine.voices_[static_cast<std::size_t>(string)].pluckDelay;
@@ -754,8 +761,8 @@ void testHelpersSpellMidi()
            "setPitchBendRange did not set RPN 0");
 }
 
-// Master tune rides on every channel's bend, survives Reset All
-// Controllers, and zero changes nothing.
+// Master tune changes the reference pitch independently of playing wheels,
+// survives Reset All Controllers, and zero changes nothing.
 void testMasterTune()
 {
     const auto play = [](float cents, std::vector<Event> events)
@@ -774,7 +781,8 @@ void testMasterTune()
             performer->endBlock();
         }
         left.insert(left.end(), right.begin(), right.end());
-        return left;
+        return std::make_pair(left,
+            acustra::AcustraEngineTestAccess::playedFrequency(performer->engine()));
     };
     const std::vector<Event> note { message(0.0, 0x90, 45, 100) };
     const std::vector<Event> resetThenNote {
@@ -786,8 +794,10 @@ void testMasterTune()
     expect(play(0.0f, note) == play(0.0f, note) && play(0.0f, note) != play(100.0f, note),
            "master tune did not reach the strings");
     const auto tunedAfterPause = play(100.0f, { message(0.0002, 0x90, 45, 100) });
-    expect(tunedAfterPause == play(0.0f, semitoneUp),
-           "100 cents of master tune did not sound as a semitone of bend");
+    const float semitoneFrequency = 440.0f * std::exp2((46.0f - 69.0f) / 12.0f);
+    expect(std::abs(tunedAfterPause.second / semitoneFrequency - 1.0f) < 1.0e-6f
+               && std::abs(play(0.0f, semitoneUp).second / semitoneFrequency - 1.0f) < 1.0e-6f,
+           "master tune and wheel did not reach the same requested semitone");
     expect(play(100.0f, resetThenNote) == tunedAfterPause,
            "Reset All Controllers dropped the master tune");
 
@@ -800,10 +810,9 @@ void testMasterTune()
         expect(play(invalid, semitoneUp) == bentWithoutTune,
                "invalid master tuning disabled subsequent pitch bend");
 
-    // An MPE member note already hears the manager's bend, so the tune
-    // rides on the manager alone: 100 cents is a member note under a
-    // semitone of manager bend, not two (audit F20). Reset All Controllers
-    // on the member keeps that.
+    // A global reference shift reaches an MPE member once, independently of
+    // its manager's playing wheel (audit F20). Different mechanisms share
+    // a pitch target, not the same string length/tension or audio timbre.
     const std::vector<Event> zone { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 6),
                                     message(0.0, 0xb0, 6, 15) };
     auto memberNote = zone;
@@ -817,7 +826,8 @@ void testMasterTune()
     memberResetThenNote.push_back(message(0.0, 0xb1, 121, 0));
     memberResetThenNote.push_back(message(0.0002, 0x91, 45, 100));
     const auto tunedMember = play(100.0f, memberNote);
-    expect(tunedMember == play(0.0f, memberUnderManagerSemitone),
+    expect(std::abs(tunedMember.second / semitoneFrequency - 1.0f) < 1.0e-6f
+               && std::abs(play(0.0f, memberUnderManagerSemitone).second / semitoneFrequency - 1.0f) < 1.0e-6f,
            "master tune reached an MPE member note twice");
     expect(play(100.0f, memberResetThenNote) == tunedMember,
            "Reset All Controllers on a member put the master tune on it");
@@ -1251,9 +1261,8 @@ void testUnsoundableNotesMakeNoStrum()
            "an unreachable note turned two notes into a strum");
 }
 
-// The master tune rides on every channel's bend, which prepare and reset
-// zero in the engine: it must be put back, as the same tune sent again is
-// ignored.
+// Master tune is host reference state; prepare/reset clear playing wheels
+// while preserving the reference even if the host does not send it again.
 void testMasterTuneSurvivesPrepareAndReset()
 {
     enum class Then { Nothing, Prepare, Reset };
