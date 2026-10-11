@@ -72,8 +72,11 @@ private:
 
     std::array<juce::Label, 3> choiceLabels;
     std::array<std::unique_ptr<ChoiceButtonGroup>, 3> choiceControls;
-    std::array<juce::Label, 7> sliderLabels;
-    std::array<juce::Slider, 7> sliderControls;
+    // Player: String Age, Pluck Position, Touch, Release Noise; Capture &
+    // Output: Body, Stereo, Piezo, Room, Output.
+    static constexpr std::size_t sliderCount = 9;
+    std::array<juce::Label, sliderCount> sliderLabels;
+    std::array<juce::Slider, sliderCount> sliderControls;
     std::unique_ptr<StringActivityDisplay> stringActivityDisplay;
 
     juce::MidiKeyboardComponent keyboard {
@@ -81,7 +84,7 @@ private:
         juce::MidiKeyboardComponent::horizontalKeyboard
     };
 
-    std::array<std::unique_ptr<SliderAttachment>, 7> sliderAttachments;
+    std::array<std::unique_ptr<SliderAttachment>, sliderCount> sliderAttachments;
 
     juce::Rectangle<int> guitarPanelBounds;
     juce::Rectangle<int> playerPanelBounds;

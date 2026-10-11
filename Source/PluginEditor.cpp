@@ -872,6 +872,16 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     configureSlider (
         6, "OUTPUT", acustra::parameters::output,
         "Final output level in decibels", true);
+    configureSlider (
+        7, "RELEASE NOISE", acustra::parameters::releaseNoise,
+        "The damping hand's touch when a released note is stopped, and a "
+        "faint brush while a held finger slides on a wound string. 50 percent "
+        "is the nominal level; zero is silent.");
+    configureSlider (
+        8, "ROOM", acustra::parameters::room,
+        "The room around the microphones: zero is the dry, close-miked "
+        "guitar, 100 percent a microphone well out in a small studio. The "
+        "piezo never hears it.");
 
     stringActivityDisplay = std::make_unique<StringActivityDisplay> (audioProcessor, walnutBackground);
     addAndMakeVisible (*stringActivityDisplay);
@@ -1135,17 +1145,23 @@ void AcustraAudioProcessorEditor::resized()
     setupLabels[2].setBounds (box (622, 405, 82, 22));
     setupControls[2]->setBounds (box (704, 398, 376, 38));
 
-    for (std::size_t index = 0; index < 3; ++index)
+    // Four columns across the Player panel, five across Capture & Output,
+    // each knob centred in its column.
+    constexpr std::array<std::size_t, 4> playerKnobs { 0, 1, 2, 7 };
+    for (std::size_t column = 0; column < playerKnobs.size(); ++column)
     {
-        const auto x = 424 + static_cast<int> (index) * 218;
-        sliderLabels[index].setBounds (box (x, 158, 196, 24));
-        sliderControls[index].setBounds (box (x, 187, 196, 182));
+        const auto index = playerKnobs[column];
+        const auto x = 382 + static_cast<int> (column) * 179;
+        sliderLabels[index].setBounds (box (x, 158, 179, 24));
+        sliderControls[index].setBounds (box (x + 13, 187, 152, 182));
     }
-    for (std::size_t index = 3; index < sliderControls.size(); ++index)
+    constexpr std::array<std::size_t, 5> captureKnobs { 3, 4, 5, 8, 6 };
+    for (std::size_t column = 0; column < captureKnobs.size(); ++column)
     {
-        const auto x = 400 + static_cast<int> (index - 3) * 170;
-        sliderLabels[index].setBounds (box (x, 446, 170, 24));
-        sliderControls[index].setBounds (box (x + 9, 475, 152, 182));
+        const auto index = captureKnobs[column];
+        const auto x = 383 + static_cast<int> (column) * 143;
+        sliderLabels[index].setBounds (box (x, 446, 143, 24));
+        sliderControls[index].setBounds (box (x + 8, 475, 127, 182));
     }
 
     stringActivityDisplay->setBounds (box (22, 688, 1076, 168));

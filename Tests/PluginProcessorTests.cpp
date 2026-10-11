@@ -1739,6 +1739,7 @@ void testEditorRendering()
     juce::Label* engineStatus = nullptr;
     juce::Component* stringActivity = nullptr;
     int comboBoxCount = 0;
+    int sliderCount = 0;
     while (! pending.empty())
     {
         auto* parent = pending.back();
@@ -1750,6 +1751,8 @@ void testEditorRendering()
                 stringActivity = child;
             if (dynamic_cast<juce::ComboBox*> (child) != nullptr)
                 ++comboBoxCount;
+            if (dynamic_cast<juce::Slider*> (child) != nullptr)
+                ++sliderCount;
             if (auto* label = dynamic_cast<juce::Label*> (child);
                 label != nullptr && label->getName() == "Engine status")
                 engineStatus = label;
@@ -1762,6 +1765,9 @@ void testEditorRendering()
     }
 
     expect (comboBoxCount == 0, "the editor still hides choices in a combo box");
+    // Every continuous parameter has a knob: the Player's four and the
+    // Capture & Output panel's five (Release Noise and Room included).
+    expect (sliderCount == 9, "the editor does not show all nine knobs");
     expect (stringActivity != nullptr,
             "the six-string activity display is missing");
     const auto refreshDisplayTimer = [&]
