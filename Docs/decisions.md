@@ -5,6 +5,16 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — lower the new-instance Release Noise default to 10%
+
+At the user's request, Release Noise now starts at 10% instead of 70%. This
+changes the control's default, including the native editor's parameter reset,
+without changing the DSP gain law or its 50% nominal reference. Explicit
+saved values retain their levels; states without the parameter still load at
+0%. The bare engine default remains 0%, preserving offline reference and
+test semantics. This supersedes the new-instance default in the historical
+2026-09-30 listening decision, not that session's saved settings or evidence.
+
 ## 2026-10-11 — adopt the balanced microphone observation blend
 
 After research into studio placement and trials of individual and combined

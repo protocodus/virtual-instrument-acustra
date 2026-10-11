@@ -134,10 +134,10 @@ void testParameterContract()
                    "String Material and Bridge Model are gone; Guitar Model is a "
                    "legacy slot; Piezo Mix, Release Noise and Room are appended");
     // Piezo Mix defaults to 0, so Main is the microphones alone; Release
-    // Noise to 70%, the level a listener chose; Room to 50%.
+    // Noise to the requested 10%; Room to 50%.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 70.0f, 50.0f
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 10.0f, 50.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -240,8 +240,8 @@ void testParameterContract()
                 && releaseNoise->getName (32) == "Release Noise"
                 && releaseNoise->range.start == 0.0f && releaseNoise->range.end == 100.0f,
             "Release Noise must append a 0-100% parameter with AU version hint 10");
-    expect (std::abs (processor.snapshotEngineParameters().releaseNoise - 0.7f) < 0.002f,
-            "a new session's key-ups are not at the chosen 70%");
+    expect (std::abs (processor.snapshotEngineParameters().releaseNoise - 0.1f) < 0.002f,
+            "a new session's key-ups are not at the requested 10%");
     const auto* room = dynamic_cast<const juce::AudioParameterFloat*> (
         processor.parameters.getParameter (ids::room));
     expect (room != nullptr && room->getVersionHint() == 11
@@ -786,7 +786,7 @@ void testReleaseGesturesAndRetiredCc68()
         juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (127)), true, standard);
     expect (touched == touchedSixtyFour && touched == touchedZeroOn,
             "a release without a velocity did not read as the nominal 64");
-    expect (touched != plain, "Release Noise at its default added nothing at key-up");
+    expect (touched != plain, "Release Noise at the configured amount added nothing at key-up");
     expect (touchedFast == touchedFootswitch, "CC68 changed the performance");
     expect (touchedFast != touched,
             "explicit fast key-up did not change damping and optional touch");
@@ -1592,7 +1592,7 @@ void testMalformedStateParameters()
             expect (snapshot.capture == acustra::CaptureType::StereoMic
                         && snapshot.outputGain == 1.0f
                         && std::abs (snapshot.room - 0.5f) < 0.002f
-                        && std::abs (snapshot.releaseNoise - 0.7f) < 0.002f,
+                        && std::abs (snapshot.releaseNoise - 0.1f) < 0.002f,
                     "malformed explicit controls used legacy missing-control defaults");
         };
         check (processor);

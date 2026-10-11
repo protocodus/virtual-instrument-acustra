@@ -339,11 +339,11 @@ AcustraAudioProcessor::createParameterLayout()
     result.push_back (makePercentParameter (ids::piezoMix, "Piezo Mix", 0.0f, 9));
     // The key-up's own sound: the damping hand landing on the string. 50%
     // is its nominal level, 100% twice that, 0% silent and an exact no-op.
-    // On for a new instance at 70%, the level a listener chose on
-    // 2026-09-30 (Docs/decisions.md); a session saved before it existed
-    // loads it at zero (setStateInformation) and so sounds as it did.
+    // A new instance starts at 10%, requested on 2026-10-11. Explicit saved
+    // values retain their levels; a session saved before it existed loads
+    // it at zero (setStateInformation) and so sounds as it did.
     result.push_back (makePercentParameter (ids::releaseNoise, "Release Noise",
-                                            70.0f, 10));
+                                            10.0f, 10));
     // The room around the microphones (acustra::EngineParameters::room): 0%
     // the dry, close-miked instrument, 100% the maximum small-studio send.
     // Microphone distance and reflection geometry stay fixed. On for a new
