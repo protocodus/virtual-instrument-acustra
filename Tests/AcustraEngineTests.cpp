@@ -2149,20 +2149,34 @@ double spectralAmplitudeAt(const Audio& audio, double frequency,
     return std::hypot(real, imaginary);
 }
 
+struct DecayWindows
+{
+    double earlyBegin;
+    double lateBegin;
+    double duration;
+};
+
+constexpr DecayWindows sustainedDecayWindows { 0.20, 1.00, 0.40 };
+constexpr DecayWindows upperPartialDecayWindows { 0.20, 0.60, 0.20 };
+
 double spectralDecayRate(const Audio& audio, double expectedHz,
-                         double searchCents, double rate)
+                         double searchCents, double rate,
+                         DecayWindows windows = sustainedDecayWindows)
 {
     // A tension glide moves the partial between these windows. Measuring
     // both at the early frequency treats detuning as lost amplitude; locate
     // the partial again in the late window before comparing equal-length
-    // Hann-window amplitudes, whose centres are 0.8 s apart.
+    // Hann-window amplitudes, separated by the difference in start times.
+    const double earlyEnd = windows.earlyBegin + windows.duration;
+    const double lateEnd = windows.lateBegin + windows.duration;
     const double earlyHz = spectralPeakFrequency(
-        audio, expectedHz, searchCents, 0.20, 0.60, rate);
+        audio, expectedHz, searchCents, windows.earlyBegin, earlyEnd, rate);
     const double lateHz = spectralPeakFrequency(
-        audio, expectedHz, searchCents, 1.00, 1.40, rate);
+        audio, expectedHz, searchCents, windows.lateBegin, lateEnd, rate);
     return 20.0 * std::log10(
-        spectralAmplitudeAt(audio, earlyHz, 0.20, 0.60, rate)
-        / spectralAmplitudeAt(audio, lateHz, 1.00, 1.40, rate)) / 0.8;
+        spectralAmplitudeAt(audio, earlyHz, windows.earlyBegin, earlyEnd, rate)
+        / spectralAmplitudeAt(audio, lateHz, windows.lateBegin, lateEnd, rate))
+        / (windows.lateBegin - windows.earlyBegin);
 }
 
 void testDecayEstimatorFollowsPitchGlides()
@@ -2188,6 +2202,41 @@ void testDecayEstimatorFollowsPitchGlides()
             expect(std::abs(measured - decayDbPerSecond) < 0.001,
                    "a pitch glide was mistaken for exponential amplitude loss");
         }
+}
+
+void testDecayEstimatorResolvesWeakFastPartials()
+{
+    // A faint upper partial must remain measurable beside a much stronger,
+    // slower fundamental after conversion to the engine's float samples.
+    // The exponential slopes are independent ground truth; the faster case
+    // also guards against moving this observation back into the weak tail.
+    for (double rate : { 44100.0, 48000.0, 96000.0 })
+        for (double decayDbPerSecond : { 55.0, 80.0 })
+            for (double glideHzPerSecond : { 0.0, -10.0 })
+            {
+                const double amplitude = decayDbPerSecond == 55.0 ? 0.003 : 0.0001;
+                const int samples = static_cast<int>(1.6 * rate);
+                Audio audio { std::vector<float>(static_cast<std::size_t>(samples)),
+                              std::vector<float>(static_cast<std::size_t>(samples)) };
+                for (int sample = 0; sample < samples; ++sample)
+                {
+                    const double t = sample / rate;
+                    const double fundamental = 0.1 * std::pow(10.0, -10.0 * t / 20.0)
+                        * std::cos(2.0 * std::numbers::pi * 1046.5 * t);
+                    const double partial = amplitude
+                        * std::pow(10.0, -decayDbPerSecond * t / 20.0)
+                        * std::cos(2.0 * std::numbers::pi
+                            * (8430.0 * t + 0.5 * glideHzPerSecond * t * t));
+                    const float value = static_cast<float>(fundamental + partial);
+                    audio.left[static_cast<std::size_t>(sample)] = value;
+                    audio.right[static_cast<std::size_t>(sample)] = value;
+                }
+                const double measured = spectralDecayRate(
+                    audio, 8430.0, 60.0, rate, upperPartialDecayWindows);
+                const double tolerance = decayDbPerSecond == 55.0 ? 0.001 : 0.01;
+                expect(std::abs(measured - decayDbPerSecond) < tolerance,
+                       "a weak fast partial's known decay was measured inaccurately");
+            }
 }
 
 void testSilenceAndFiniteOutput()
@@ -3379,10 +3428,12 @@ void testTheFractionalDelayReadIsLossless()
     // and observe saddle force: the microphone filter changes partial levels
     // during pitch glides and adds its own decay.
     // The constant-loss model added on 2026-10-10 improves the old shelf-only
-    // result: a fresh 2026-10-11 measurement gives 1.14..4.84% H8 spread and
-    // less than 0.018% H1 spread here. Guard that improvement rather than
-    // retaining the obsolete 15% / 1.5% allowances. The upper-partial bound
-    // still admits the rate-designed filters' finite approximation error.
+    // result. Read H8 in the earlier interval: by 1.0..1.4 s the MIDI 84
+    // partial is about -122..-128 dBFS and its rendered decay is sensitive
+    // to platform arithmetic. The earlier interval follows the same decay
+    // before that weak tail (4.77% macOS / 4.97% Linux maximum rate spread).
+    // Keep the 6% bound and the original H1 observation. This is still a
+    // finite approximation, not perfect sample-rate independence.
     struct Reading { double perSecond; double perPass; };
     const auto decay = [] (int midiNote, double rate, int partial)
     {
@@ -3408,7 +3459,8 @@ void testTheFractionalDelayReadIsLossless()
         // Stiffness stretches H8 and the tension glide moves every partial
         // during the note. Follow its frequency separately in each window.
         const double perSecond = spectralDecayRate(
-            audio, partial * fundamental, 60.0, rate);
+            audio, partial * fundamental, 60.0, rate,
+            partial == 8 ? upperPartialDecayWindows : sustainedDecayWindows);
         return Reading { perSecond, perSecond / fundamental };
     };
 
@@ -9493,6 +9545,7 @@ int main()
     testPluckDrawsIgnoreEarlierBursts();
     testBridgeHandTopLossIsItsT60Ratio();
     testDecayEstimatorFollowsPitchGlides();
+    testDecayEstimatorResolvesWeakFastPartials();
     testLossFiltersPreserveTheReferenceTransfer();
     testSilenceAndFiniteOutput();
     testUnsupportedSampleRatesClampToTheModelledRange();

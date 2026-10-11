@@ -1,0 +1,17 @@
+2026-10-11T21:45:39.2027304Z Acustra sympathetic tail ratios: resonant=1.68951, off-resonant=0.0771085, resonant RMS on/off=0.00676273/0.0115702
+2026-10-11T21:45:39.2029915Z Acustra retained-tail maximum relative wave-norm error: 1.85469e-08
+2026-10-11T21:45:39.2030998Z Isolated string H1 decay: maximum rate spread 0.0180071%, round-trip loss range 1.27506:1
+2026-10-11T21:45:39.2031944Z FAIL: steel MIDI 84 H8 decayed at rates that differ by 6.257539%
+2026-10-11T21:45:39.2032795Z Isolated string H8 decay: maximum rate spread 6.25754%, round-trip loss range 1.29449:1
+2026-10-11T21:45:39.2033771Z Acustra slewing top band at 44100 Hz: 0.663284 of the still string's
+2026-10-11T21:45:39.2034680Z Acustra steel attack glide at 44100 Hz: largest top-band rise 0.566091 over 10 frames
+2026-10-11T21:56:45.7425382Z 86/86 Test #86: Acustra.RepluckContactParity ..............   Passed    0.13 sec
+2026-10-11T21:56:45.7439948Z 
+2026-10-11T21:56:45.7440338Z 99% tests passed, 1 tests failed out of 86
+2026-10-11T21:56:45.7440811Z 
+2026-10-11T21:56:45.7441801Z Total Test time (real) = 825.77 sec
+2026-10-11T21:56:45.7442078Z 
+2026-10-11T21:56:45.7442210Z The following tests FAILED:
+2026-10-11T21:56:45.7443254Z 	  2 - Acustra.Engine (Failed)
+2026-10-11T21:56:45.7450287Z Errors while running CTest
+2026-10-11T21:56:46.2422930Z ##[error]Process completed with exit code 1.
