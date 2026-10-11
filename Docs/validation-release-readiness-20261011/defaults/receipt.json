@@ -1,0 +1,59 @@
+{
+  "commit": "11eafbefb3a7438f3012533c1ad8e45a065d480a",
+  "change": "Native new-instance and editor-reset Release Noise default: 70 percent to 10 percent. No DSP law or physics changes.",
+  "source_sha256": {
+    "Source/PluginProcessor.cpp": "0caf760c652186110f17ea9f1f23ff9c29678f901b0a6e48a5c252f406910ef8",
+    "Tests/PluginProcessorTests.cpp": "c140810b7ede5c3d689cb3275dc39a0f13e5f362bb1289007451bc8a123653ba",
+    "Tools/BuildFretMotionReview.py": "46432948ea85177ea79fb3bdf4b62323447079bf82eb9916d37070c3bbbaa3c3",
+    "README.md": "c6ffa633c4245c5d612f668f754f36ad38b0e28909f3d01c9fdc7f86ac46a850",
+    "Docs/decisions.md": "775a221ac8900e5b3f2c99ec38881f8bb4954819f3eea7efbd608a8ae01fe334"
+  },
+  "checks": {
+    "focused_tests": [
+      "Acustra.PluginProcessor",
+      "Acustra.PluginTempoRelease"
+    ],
+    "passed": 2,
+    "failed": 0,
+    "seconds": 15.66,
+    "actual_formats": [
+      "VST3",
+      "AU",
+      "Standalone"
+    ],
+    "architectures_each": [
+      "arm64",
+      "x86_64"
+    ],
+    "worktree_clean_at_commit": true
+  },
+  "contracts": {
+    "parameter_id": "releaseNoise",
+    "version_hint": 10,
+    "range_percent": [
+      0,
+      100
+    ],
+    "default_percent": 10,
+    "snapshot_value": 0.1,
+    "explicit_saved_values": "preserved",
+    "missing_legacy_parameter": 0,
+    "bare_engine_default": 0,
+    "bare_engine_default_reason": "Explicit 2026-09-30 decision keeps benchmark/reference renders opt-in.",
+    "editor_double_click_reset": "JUCE SliderParameterAttachment reads parameter.getDefaultValue; no separate constant.",
+    "native_construction_presets": "Only change Shape and Wood; preserve Release Noise.",
+    "native_factory_program": "One no-op program slot; no separate initial preset payload.",
+    "historical_70_percent_gesture_fixture": "Preserved; review generator wording now identifies an explicit former-default level."
+  },
+  "builds": {
+    "focused": "cmake --build build-audit --config Release --parallel 2 --target AcustraPluginProcessorTests AcustraPluginTempoReleaseTests",
+    "formats": "cmake --build build-final --config Release --parallel 2 --target Acustra_VST3 Acustra_AU Acustra_Standalone",
+    "note": "Native formats were built from these exact source bytes immediately before the commit; build identity metadata records that pre-commit checkout."
+  },
+  "log_sha256": {
+    "build.log": "dc49de68fd4c2c97ae235a3848a60e140096d4ab35f58fcebc4477f55c3f6f6a",
+    "tests-final.log": "a04b171c0e679e641768c5973ba7ae87a2195d72d0c6a5a56d30b869fa7c2890",
+    "native-formats.log": "ea7f07f354a01a758393d5fb45394a3fb256b3eb3f4ccf41d41cbf13bf409505"
+  },
+  "rack_changes": "Owned by parent; not edited or tested by this native-default task."
+}

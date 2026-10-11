@@ -1,0 +1,126 @@
+[ 13%] Built target AcustraUIAssets
+[ 20%] Built target AcustraDSP
+[ 26%] Building CXX object CMakeFiles/Acustra.dir/Source/PluginProcessor.cpp.o
+[ 26%] Linking CXX static library Acustra_artefacts/Release/libAcustra_SharedCode.a
+[ 93%] Built target Acustra
+[ 93%] Building CXX object CMakeFiles/AcustraPluginProcessorTests.dir/Tests/PluginProcessorTests.cpp.o
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:102:50: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  102 |         && a.picking == b.picking && a.stringAge == b.stringAge
+      |                                      ~~~~~~~~~~~ ^  ~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:103:28: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  103 |         && a.pluckPosition == b.pluckPosition && a.touch == b.touch
+      |            ~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:103:58: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  103 |         && a.pluckPosition == b.pluckPosition && a.touch == b.touch
+      |                                                  ~~~~~~~ ^  ~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:104:25: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  104 |         && a.bodyAmount == b.bodyAmount && a.stereoWidth == b.stereoWidth
+      |            ~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:104:58: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  104 |         && a.bodyAmount == b.bodyAmount && a.stereoWidth == b.stereoWidth
+      |                                            ~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:105:25: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  105 |         && a.outputGain == b.outputGain && a.piezoMix == b.piezoMix
+      |            ~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:105:55: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  105 |         && a.outputGain == b.outputGain && a.piezoMix == b.piezoMix
+      |                                            ~~~~~~~~~~ ^  ~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:106:27: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  106 |         && a.releaseNoise == b.releaseNoise && a.room == b.room;
+      |            ~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:106:55: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  106 |         && a.releaseNoise == b.releaseNoise && a.room == b.room;
+      |                                                ~~~~~~ ^  ~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1391:57: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+ 1391 |                 && valueOf (restored, ids::captureMode) == valueOf (source, ids::captureMode),
+      |                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1502:29: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+ 1501 |             expect (valueOf (restored, ids::bodyMaterial)
+      |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 1502 |                             == migratedWood[static_cast<std::size_t> (oldWood)]
+      |                             ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1529:25: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+ 1528 |             expect (valueOf (*reloadOwner, ids::bodyMaterial)
+      |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 1529 |                         == migratedWood[static_cast<std::size_t> (oldWood)],
+      |                         ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1538:44: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+ 1538 |     expect (valueOf (restored, ids::shape) == shapeBeforeGarbage,
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1625:56: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+ 1625 |         expect (valueOf (processor, ids::bodyMaterial) == (oldWood > 0.0f ? 2.0f : 0.0f),
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1848:66: warning: implicit conversion from 'int' to 'float' may lose precision [-Wimplicit-int-float-conversion]
+ 1848 |             expect (std::abs (valueOf (processor, setup.first) - index) < 0.011f,
+      |                                                                ~ ^~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2029:6: warning: no previous prototype for function 'testMpeTimbreReachesTheEngineOnMemberChannelOnly' [-Wmissing-prototypes]
+ 2029 | void testMpeTimbreReachesTheEngineOnMemberChannelOnly()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2029:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2029 | void testMpeTimbreReachesTheEngineOnMemberChannelOnly()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2068:6: warning: no previous prototype for function 'testMpePressureReachesTheEngineOnMemberChannelOnly' [-Wmissing-prototypes]
+ 2068 | void testMpePressureReachesTheEngineOnMemberChannelOnly()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2068:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2068 | void testMpePressureReachesTheEngineOnMemberChannelOnly()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2118:20: warning: no previous prototype for function 'renderTimeline' [-Wmissing-prototypes]
+ 2118 | std::vector<float> renderTimeline (const std::vector<TimedMidi>& events,
+      |                    ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2118:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2118 | std::vector<float> renderTimeline (const std::vector<TimedMidi>& events,
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2146:6: warning: no previous prototype for function 'testGatheredChordsVoiceLikeSequencedChords' [-Wmissing-prototypes]
+ 2146 | void testGatheredChordsVoiceLikeSequencedChords()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2146:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2146 | void testGatheredChordsVoiceLikeSequencedChords()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2228:6: warning: no previous prototype for function 'testGatheringOnlyDelaysNotesMeantApart' [-Wmissing-prototypes]
+ 2228 | void testGatheringOnlyDelaysNotesMeantApart()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2228:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2228 | void testGatheringOnlyDelaysNotesMeantApart()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2284:6: warning: no previous prototype for function 'testGatherSwitchAndPanicReleaseHeldNotes' [-Wmissing-prototypes]
+ 2284 | void testGatherSwitchAndPanicReleaseHeldNotes()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2284:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2284 | void testGatherSwitchAndPanicReleaseHeldNotes()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2331:6: warning: no previous prototype for function 'testStringPerChannelModeViaMonoModeOn' [-Wmissing-prototypes]
+ 2331 | void testStringPerChannelModeViaMonoModeOn()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2331:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2331 | void testStringPerChannelModeViaMonoModeOn()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2369:6: warning: no previous prototype for function 'testTheAdapterPlaysExactlyThePerformer' [-Wmissing-prototypes]
+ 2369 | void testTheAdapterPlaysExactlyThePerformer()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2369:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2369 | void testTheAdapterPlaysExactlyThePerformer()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2454:6: warning: no previous prototype for function 'testOptionalPiezoOutputBus' [-Wmissing-prototypes]
+ 2454 | void testOptionalPiezoOutputBus()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2454:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2454 | void testOptionalPiezoOutputBus()
+      | ^
+      | static 
+24 warnings generated.
+[100%] Linking CXX executable AcustraPluginProcessorTests
+[100%] Built target AcustraPluginProcessorTests
+[ 13%] Built target AcustraUIAssets
+[ 20%] Built target AcustraDSP
+[ 93%] Built target Acustra
+[100%] Linking CXX executable AcustraPluginTempoReleaseTests
+[100%] Built target AcustraPluginTempoReleaseTests

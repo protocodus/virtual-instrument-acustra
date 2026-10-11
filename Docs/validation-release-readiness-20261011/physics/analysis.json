@@ -1,0 +1,486 @@
+{
+  "scope": "Current production only: bounded static pressure transfer and four actual held low-E input traces; no runtime edits.",
+  "source_hashes": {
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/production-coefficients.csv": "eb75453f12d535a36e5e5637e10a8cd17b1ff03dfdf8b328aa0da793766e6bb9",
+    "Docs/validation-studio-capture-implementation-20261011/physics-final/baseline-coefficients.csv": "6e9c3fcce4b9ec94ee1000f4df75e7d0bd4233b796916acead3b3ce79722d5cb",
+    "Source/DSP/AcustraEngine.cpp": "57fa5116658c3e55fcb8aa07af793dba4ff06b4addc6cc253ebde13f946d62a1",
+    "build-audit/libAcustraDSP.a": "282ae53ffe4a0f977bb9c11ec4c06858303dd118aa00a03bc8315e021da7ca00",
+    "build-audit/release-model-audit-20261011/physics/force_trace.cpp": "f9532553d97635a281ee1af94f7c876f9ed4bbb8c608903de37bdde272bfbcfb",
+    "build-audit/release-model-audit-20261011/physics/analyze.py": "226b080d37734a44bff8403169a14bd9e207972b2059c9d0a1ea41524d7cefca"
+  },
+  "static_local_notches": [
+    {
+      "wood": 0,
+      "normalized_moment": -1.25,
+      "channel": "left",
+      "local_center_hz": 256.9043704971313,
+      "at_search_boundary": false,
+      "local_notch_db": -15.468689234192187,
+      "previous_local_notch_db": -11.545237149501986,
+      "raw_change_db": -3.1007960957216616
+    },
+    {
+      "wood": 0,
+      "normalized_moment": -1.25,
+      "channel": "right_mono",
+      "local_center_hz": 253.46897650544568,
+      "at_search_boundary": false,
+      "local_notch_db": -24.695727748691542,
+      "previous_local_notch_db": -15.42899102126179,
+      "raw_change_db": -8.333307991129224
+    },
+    {
+      "wood": 0,
+      "normalized_moment": -1.25,
+      "channel": "stereo_mid",
+      "local_center_hz": 255.32947320854726,
+      "at_search_boundary": false,
+      "local_notch_db": -17.12667933924957,
+      "previous_local_notch_db": -12.11450254544135,
+      "raw_change_db": -4.098177315680131
+    },
+    {
+      "wood": 0,
+      "normalized_moment": -1.0,
+      "channel": "left",
+      "local_center_hz": 255.30834783098928,
+      "at_search_boundary": false,
+      "local_notch_db": -26.383824039976254,
+      "previous_local_notch_db": -17.07653449064755,
+      "raw_change_db": -8.473794921870995
+    },
+    {
+      "wood": 0,
+      "normalized_moment": -1.0,
+      "channel": "right_mono",
+      "local_center_hz": 252.73427713444235,
+      "at_search_boundary": false,
+      "local_notch_db": -26.212925063409216,
+      "previous_local_notch_db": -21.542386686067545,
+      "raw_change_db": -3.7529970153959855
+    },
+    {
+      "wood": 0,
+      "normalized_moment": -1.0,
+      "channel": "stereo_mid",
+      "local_center_hz": 254.10682785137732,
+      "at_search_boundary": false,
+      "local_notch_db": -35.01023682134529,
+      "previous_local_notch_db": -18.835058696846573,
+      "raw_change_db": -15.271380901356478
+    },
+    {
+      "wood": 0,
+      "normalized_moment": -0.75,
+      "channel": "left",
+      "local_center_hz": 253.7672464946812,
+      "at_search_boundary": false,
+      "local_notch_db": -18.94560922600956,
+      "previous_local_notch_db": -26.025540522075538,
+      "raw_change_db": 7.926720389764331
+    },
+    {
+      "wood": 0,
+      "normalized_moment": -0.75,
+      "channel": "right_mono",
+      "local_center_hz": 252.08017257718564,
+      "at_search_boundary": false,
+      "local_notch_db": -15.370107297290211,
+      "previous_local_notch_db": -18.2206969621907,
+      "raw_change_db": 3.7533078843400007
+    },
+    {
+      "wood": 0,
+      "normalized_moment": -0.75,
+      "channel": "stereo_mid",
+      "local_center_hz": 252.97619857761887,
+      "at_search_boundary": false,
+      "local_notch_db": -17.622233804301047,
+      "previous_local_notch_db": -25.273167972218076,
+      "raw_change_db": 8.545565785473482
+    },
+    {
+      "wood": 0,
+      "normalized_moment": 0.0,
+      "channel": "left",
+      "local_center_hz": 255.6713578912877,
+      "at_search_boundary": false,
+      "local_notch_db": 0.18146662440759798,
+      "previous_local_notch_db": 0.7323673731082305,
+      "raw_change_db": 0.3339317220128937
+    },
+    {
+      "wood": 0,
+      "normalized_moment": 0.0,
+      "channel": "right_mono",
+      "local_center_hz": 249.10637230939335,
+      "at_search_boundary": true,
+      "local_notch_db": -4.739382721703561,
+      "previous_local_notch_db": -5.609842061069639,
+      "raw_change_db": 1.7119135373684786
+    },
+    {
+      "wood": 0,
+      "normalized_moment": 0.0,
+      "channel": "stereo_mid",
+      "local_center_hz": 249.10637230939335,
+      "at_search_boundary": true,
+      "local_notch_db": -3.0752509813471445,
+      "previous_local_notch_db": -3.0355388708759037,
+      "raw_change_db": 0.8250782148068598
+    },
+    {
+      "wood": 1,
+      "normalized_moment": -1.25,
+      "channel": "left",
+      "local_center_hz": 247.3680589045752,
+      "at_search_boundary": false,
+      "local_notch_db": -15.594304892010012,
+      "previous_local_notch_db": -11.400525742327787,
+      "raw_change_db": -3.3150179382021747
+    },
+    {
+      "wood": 1,
+      "normalized_moment": -1.25,
+      "channel": "right_mono",
+      "local_center_hz": 244.08373443506056,
+      "at_search_boundary": false,
+      "local_notch_db": -25.467881593449924,
+      "previous_local_notch_db": -15.533302324912906,
+      "raw_change_db": -8.953537690962834
+    },
+    {
+      "wood": 1,
+      "normalized_moment": -1.25,
+      "channel": "stereo_mid",
+      "local_center_hz": 245.85928140048534,
+      "at_search_boundary": false,
+      "local_notch_db": -17.37390512210111,
+      "previous_local_notch_db": -12.06545595368846,
+      "raw_change_db": -4.3432680170256655
+    },
+    {
+      "wood": 1,
+      "normalized_moment": -1.0,
+      "channel": "left",
+      "local_center_hz": 245.83897827964668,
+      "at_search_boundary": false,
+      "local_notch_db": -26.908826584341053,
+      "previous_local_notch_db": -16.846137745137856,
+      "raw_change_db": -9.174850431748814
+    },
+    {
+      "wood": 1,
+      "normalized_moment": -1.0,
+      "channel": "right_mono",
+      "local_center_hz": 243.3862804480791,
+      "at_search_boundary": false,
+      "local_notch_db": -25.3791716808822,
+      "previous_local_notch_db": -21.798300102234148,
+      "raw_change_db": -2.61748464476271
+    },
+    {
+      "wood": 1,
+      "normalized_moment": -1.0,
+      "channel": "stereo_mid",
+      "local_center_hz": 244.69165983232605,
+      "at_search_boundary": false,
+      "local_notch_db": -37.27178301710657,
+      "previous_local_notch_db": -18.779406708154646,
+      "raw_change_db": -17.53919135068218
+    },
+    {
+      "wood": 1,
+      "normalized_moment": -0.75,
+      "channel": "left",
+      "local_center_hz": 244.37059400942232,
+      "at_search_boundary": false,
+      "local_notch_db": -18.71064152740053,
+      "previous_local_notch_db": -26.200961476643286,
+      "raw_change_db": 8.389552281505274
+    },
+    {
+      "wood": 1,
+      "normalized_moment": -0.75,
+      "channel": "right_mono",
+      "local_center_hz": 242.7689423114225,
+      "at_search_boundary": false,
+      "local_notch_db": -15.13369115341072,
+      "previous_local_notch_db": -18.21001502772011,
+      "raw_change_db": 4.02332050493804
+    },
+    {
+      "wood": 1,
+      "normalized_moment": -0.75,
+      "channel": "stereo_mid",
+      "local_center_hz": 243.61833292412646,
+      "at_search_boundary": false,
+      "local_notch_db": -17.357893568529125,
+      "previous_local_notch_db": -25.34340466099571,
+      "raw_change_db": 8.927859169515902
+    },
+    {
+      "wood": 1,
+      "normalized_moment": 0.0,
+      "channel": "left",
+      "local_center_hz": 246.43264890053604,
+      "at_search_boundary": false,
+      "local_notch_db": 0.2059195443761368,
+      "previous_local_notch_db": 0.7687241591277214,
+      "raw_change_db": 0.37538663945322615
+    },
+    {
+      "wood": 1,
+      "normalized_moment": 0.0,
+      "channel": "right_mono",
+      "local_center_hz": 242.72315984674609,
+      "at_search_boundary": false,
+      "local_notch_db": -3.6804517894809834,
+      "previous_local_notch_db": -4.493615463720794,
+      "raw_change_db": 1.7398570243122506
+    },
+    {
+      "wood": 1,
+      "normalized_moment": 0.0,
+      "channel": "stereo_mid",
+      "local_center_hz": 239.69110328070767,
+      "at_search_boundary": true,
+      "local_notch_db": -3.2132843706340353,
+      "previous_local_notch_db": -3.184014061815393,
+      "raw_change_db": 0.8755170178898446
+    }
+  ],
+  "actual_drive_samples": [
+    {
+      "wood": 0,
+      "picking": 0,
+      "window": "early",
+      "h3_heave_peak_hz": 255.0549833338687,
+      "nominal_h3": 254.10636044698046,
+      "moment_over_force": [
+        -0.011175944481301686,
+        1.0279815708450692
+      ],
+      "moment_magnitude": 1.0280423200102928,
+      "moment_phase_degrees": 90.62288006202151,
+      "responses": {
+        "left": {
+          "current_local_notch_db": 4.0134975558657136,
+          "raw_observer_change_db": -0.1933702200068037
+        },
+        "right_mono": {
+          "current_local_notch_db": 0.30485869574144164,
+          "raw_observer_change_db": 0.8026011161567039
+        },
+        "stereo_mid": {
+          "current_local_notch_db": 2.3650560847940634,
+          "raw_observer_change_db": 0.17892995850738203
+        }
+      },
+      "fold_h3_dbfs": -56.04753241727651
+    },
+    {
+      "wood": 0,
+      "picking": 0,
+      "window": "held",
+      "h3_heave_peak_hz": 254.8836868692017,
+      "nominal_h3": 254.10636044698046,
+      "moment_over_force": [
+        0.10901712217578087,
+        -0.11888562168421025
+      ],
+      "moment_magnitude": 0.16130258513343887,
+      "moment_phase_degrees": -47.47943648372612,
+      "responses": {
+        "left": {
+          "current_local_notch_db": 0.9445777489426099,
+          "raw_observer_change_db": 0.29382566864015836
+        },
+        "right_mono": {
+          "current_local_notch_db": -2.0505394982940235,
+          "raw_observer_change_db": 1.5647411035435037
+        },
+        "stereo_mid": {
+          "current_local_notch_db": -0.39919844674614424,
+          "raw_observer_change_db": 0.8194632659944387
+        }
+      },
+      "fold_h3_dbfs": -84.74151936931534
+    },
+    {
+      "wood": 0,
+      "picking": 1,
+      "window": "early",
+      "h3_heave_peak_hz": 255.54522008477596,
+      "nominal_h3": 254.10636044698046,
+      "moment_over_force": [
+        -0.4166583866214712,
+        0.6561989440640387
+      ],
+      "moment_magnitude": 0.777303843636944,
+      "moment_phase_degrees": 122.41380857241276,
+      "responses": {
+        "left": {
+          "current_local_notch_db": -0.32878277482478957,
+          "raw_observer_change_db": -0.12744004683641297
+        },
+        "right_mono": {
+          "current_local_notch_db": -2.3544011569545216,
+          "raw_observer_change_db": 0.5324098805685766
+        },
+        "stereo_mid": {
+          "current_local_notch_db": -1.3023024932455973,
+          "raw_observer_change_db": 0.14688026682714916
+        }
+      },
+      "fold_h3_dbfs": -47.28047626048553
+    },
+    {
+      "wood": 0,
+      "picking": 1,
+      "window": "held",
+      "h3_heave_peak_hz": 254.89324021926967,
+      "nominal_h3": 254.10636044698046,
+      "moment_over_force": [
+        0.10790764276614624,
+        -0.1194125046590688
+      ],
+      "moment_magnitude": 0.1609453498436608,
+      "moment_phase_degrees": -47.897315002280955,
+      "responses": {
+        "left": {
+          "current_local_notch_db": 0.9349766261563044,
+          "raw_observer_change_db": 0.2947107930213466
+        },
+        "right_mono": {
+          "current_local_notch_db": -2.05518483005517,
+          "raw_observer_change_db": 1.5640647387992566
+        },
+        "stereo_mid": {
+          "current_local_notch_db": -0.4069493052149795,
+          "raw_observer_change_db": 0.8202006323800681
+        }
+      },
+      "fold_h3_dbfs": -73.59941082821595
+    },
+    {
+      "wood": 1,
+      "picking": 0,
+      "window": "early",
+      "h3_heave_peak_hz": 246.27140172513464,
+      "nominal_h3": 244.69109141829477,
+      "moment_over_force": [
+        -0.8310362520445997,
+        2.18189797469223
+      ],
+      "moment_magnitude": 2.334801923970937,
+      "moment_phase_degrees": 110.85072062786978,
+      "responses": {
+        "left": {
+          "current_local_notch_db": 6.783163906786378,
+          "raw_observer_change_db": -0.42957295009395224
+        },
+        "right_mono": {
+          "current_local_notch_db": 2.043408238581992,
+          "raw_observer_change_db": 0.5884391984588611
+        },
+        "stereo_mid": {
+          "current_local_notch_db": 4.7806651820189074,
+          "raw_observer_change_db": -0.05910669330697438
+        }
+      },
+      "fold_h3_dbfs": -58.69583499085966
+    },
+    {
+      "wood": 1,
+      "picking": 0,
+      "window": "held",
+      "h3_heave_peak_hz": 245.29049653110144,
+      "nominal_h3": 244.69109141829477,
+      "moment_over_force": [
+        0.10020632149630879,
+        -0.11358914262902674
+      ],
+      "moment_magnitude": 0.15147211027452867,
+      "moment_phase_degrees": -48.58183476004382,
+      "responses": {
+        "left": {
+          "current_local_notch_db": 0.8272423718195974,
+          "raw_observer_change_db": 0.33681556090569664
+        },
+        "right_mono": {
+          "current_local_notch_db": -2.1686084337389193,
+          "raw_observer_change_db": 1.6311275693771856
+        },
+        "stereo_mid": {
+          "current_local_notch_db": -0.51608442563826,
+          "raw_observer_change_db": 0.8686155366138051
+        }
+      },
+      "fold_h3_dbfs": -85.83227886631315
+    },
+    {
+      "wood": 1,
+      "picking": 1,
+      "window": "early",
+      "h3_heave_peak_hz": 246.09427202658165,
+      "nominal_h3": 244.69109141829477,
+      "moment_over_force": [
+        -0.557961474757922,
+        1.1403058928504317
+      ],
+      "moment_magnitude": 1.2694953865940024,
+      "moment_phase_degrees": 116.07290062889456,
+      "responses": {
+        "left": {
+          "current_local_notch_db": 2.487715854650574,
+          "raw_observer_change_db": -0.36433762656385404
+        },
+        "right_mono": {
+          "current_local_notch_db": -0.9381126565345008,
+          "raw_observer_change_db": 0.464300483262841
+        },
+        "stereo_mid": {
+          "current_local_notch_db": 0.8856482395983969,
+          "raw_observer_change_db": -0.03900327612535559
+        }
+      },
+      "fold_h3_dbfs": -48.26527989288975
+    },
+    {
+      "wood": 1,
+      "picking": 1,
+      "window": "held",
+      "h3_heave_peak_hz": 245.30231163131967,
+      "nominal_h3": 244.69109141829477,
+      "moment_over_force": [
+        0.10042710755733715,
+        -0.11776734254782967
+      ],
+      "moment_magnitude": 0.154773224115513,
+      "moment_phase_degrees": -49.543830373710314,
+      "responses": {
+        "left": {
+          "current_local_notch_db": 0.8293178897901097,
+          "raw_observer_change_db": 0.33757475898249556
+        },
+        "right_mono": {
+          "current_local_notch_db": -2.16837001184264,
+          "raw_observer_change_db": 1.634688777840966
+        },
+        "stereo_mid": {
+          "current_local_notch_db": -0.5148916197780098,
+          "raw_observer_change_db": 0.8707538858997426
+        }
+      },
+      "fold_h3_dbfs": -74.56340553496078
+    }
+  ],
+  "limits": [
+    "Force/moment ratio estimated from windowed Fourier components is not constant in time or frequency.",
+    "Actual-drive FRF values are a stationary observer diagnostic, not replacement audio or complete transient prediction.",
+    "No baseline re-render: historical pressure coefficients are retained only to attribute transfer changes.",
+    "Late weak partial levels may be masked; no listening preference or audibility threshold asserted.",
+    "Static transfer CSV omits flat output gain, which cannot change local notch depth."
+  ]
+}
