@@ -5,6 +5,21 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — preserve Room absorption across sample rates
+
+The existing eight-line mono-send room remains the accepted design. Each line
+now keeps its 48 kHz reference decay at DC and 8 kHz (fs/4 when the internal
+rate is below 32 kHz), accounting for prime-rounded delay lengths. Previously
+its high-frequency target followed Nyquist, so the 8 kHz decay changed with
+the host rate. The original 48 kHz coefficients are unchanged exactly.
+
+This is a rate-consistency correction, not a new listening choice. The separate
+RoomAbsorption contract checks the actual complex transfer functions against
+the original reference: 128 line/rate cases, stable passive coefficients and
+relative decay errors below 2e-6. Full final-model validation is recorded with
+the project completion evidence. The previously rejected two-microphone room
+is not restored; pair-mid cancellation remains an explicit capture limitation.
+
 ## 2026-10-11 — model and parameter consistency audit
 
 The audit starts from the latest fetched main and remains scoped to ACUSTRA.

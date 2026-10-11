@@ -11695,8 +11695,9 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
 // an eight-line feedback delay network (Jot and Chaigne, AES 90 (1991)
 // preprint 3030) with a Hadamard mix, its lines 17-41 ms, each damped by a
 // one-pole with nominal low-frequency decay of 0.45 s and shorter high
-// decay. Absorption is referenced to the internal Nyquist frequency, so its
-// high-frequency decay varies with rate. An 8 ms input delay and four
+// decay. Each line keeps the accepted 48 kHz absorption curve's decay at
+// 8 kHz (or fs/4 below 32 kHz), rather than moving that target with Nyquist.
+// An 8 ms input delay and four
 // allpasses feed the lines; their first late output arrives around 25 ms,
 // after the early taps end near 17 ms. What goes in is filtered by a 9 kHz
 // one-pole and the reflections by a 6.5 kHz one; the room carries no detail
@@ -11732,6 +11733,8 @@ constexpr std::array<float, 4> roomDiffuserMilliseconds { 5.3f, 3.7f, 2.3f, 1.3f
 constexpr float roomDiffusion = 0.65f;
 constexpr float roomLowSeconds = 0.45f;
 constexpr float roomNyquistSeconds = 0.15f;
+constexpr double roomReferenceRate = 48000.0;
+constexpr double roomAbsorptionFrequency = 8000.0;
 constexpr float roomLateMilliseconds = 8.0f;
 // The late field's energy over the reflections' at the microphones.
 constexpr float roomLateShare = 1.5f;
@@ -11805,8 +11808,49 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
         longest = std::max(longest, length + lateDelay + diffuserLengths[0]
                            + diffuserLengths[1] + diffuserLengths[2] + diffuserLengths[3]);
         const double perLow = std::pow(10.0, -3.0 * length / (roomLowSeconds * rate));
-        const double perHigh = std::pow(10.0, -3.0 * length / (roomNyquistSeconds * rate));
-        const double pole = (perLow - perHigh) / (perLow + perHigh);
+        double pole;
+        if (rate == roomReferenceRate)
+        {
+            // Keep the chosen reference room bit for bit, including its
+            // per-line decay spread and the normalisation measured below.
+            const double perHigh = std::pow(10.0,
+                -3.0 * length / (roomNyquistSeconds * rate));
+            pole = (perLow - perHigh) / (perLow + perHigh);
+        }
+        else
+        {
+            int referenceLength = static_cast<int>(std::lround(
+                static_cast<double>(roomLineMilliseconds[line])
+                    * 1.0e-3 * roomReferenceRate));
+            while (!roomPrime(referenceLength))
+                ++referenceLength;
+            const double referenceLow = std::pow(10.0,
+                -3.0 * referenceLength / (roomLowSeconds * roomReferenceRate));
+            const double referenceHigh = std::pow(10.0,
+                -3.0 * referenceLength / (roomNyquistSeconds * roomReferenceRate));
+            const double referencePole = (referenceLow - referenceHigh)
+                                      / (referenceLow + referenceHigh);
+            const double frequency = std::min(roomAbsorptionFrequency, 0.25 * rate);
+            const double referenceCosine = std::cos(2.0 * piDouble
+                * frequency / roomReferenceRate);
+            const double referenceMagnitude = referenceLow * (1.0 - referencePole)
+                / std::sqrt(1.0 - 2.0 * referencePole * referenceCosine
+                            + referencePole * referencePole);
+            // A line's attenuation is accumulated once per delay. Match
+            // its physical decay time, including prime rounding of both
+            // delays, rather than copying a gain per circulation.
+            const double periodRatio = (length / rate)
+                / (referenceLength / roomReferenceRate);
+            const double relativeMagnitude = std::pow(referenceMagnitude, periodRatio)
+                                           / perLow;
+            const double ratio = relativeMagnitude * relativeMagnitude;
+            const double cosine = std::cos(2.0 * piDouble * frequency / rate);
+            // ratio = (1-p)^2 / (1-2p*cos(w)+p^2). The smaller root
+            // below avoids subtracting nearly equal positive numbers.
+            const double a = 1.0 - ratio * cosine;
+            const double b = 1.0 - ratio;
+            pole = b / (a + std::sqrt(std::max(0.0, a * a - b * b)));
+        }
         absorptionPole[line] = static_cast<float>(pole);
         absorptionGain[line] = static_cast<float>(perLow * (1.0 - pole));
     }

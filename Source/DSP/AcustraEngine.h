@@ -1895,8 +1895,9 @@ private:
     // eight-line feedback delay network, run at the host rate divided by the
     // whole factor that brings it to 64 kHz or under, so its memory does not
     // grow with the rate. The input is the microphones' mid signal; the
-    // output a stereo pair, energy-normalised at prepare so its
-    // direct-to-reverberant ratio is the same at every rate.
+    // output a stereo pair, energy-normalised at prepare for approximately
+    // stable direct-to-reverberant level across rates. Its absorption keeps
+    // the 48 kHz reference decay at DC and 8 kHz (fs/4 below 32 kHz).
     struct RoomAmbience
     {
         static constexpr int lineCount = 8;
