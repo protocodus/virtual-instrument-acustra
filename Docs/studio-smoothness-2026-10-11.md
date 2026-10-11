@@ -177,6 +177,24 @@ no sample within 1 dB of full scale (peaks -7.6 to -13.1 dBFS, so the
 safety limiter is idle), and the 10-16 kHz share within 2.0 dB and the
 16-20 kHz share within 2.7 dB across the three rates.
 
+## Against the recordings
+
+The project's descriptor loss (`Tools/FitPhysicalModel.py --compare`, the
+matched observation) on `AcustraPhysicalFitRenderer`'s embedded-bank sets,
+previous engine against this one, same calibration and targets:
+
+| Set | Rows | Before | After | Change | Terms that moved |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Flat-top, Finger | 8 | 7.1850 | 7.2515 | +0.93% | attack +0.23, harmonics +0.08, decay -0.02 |
+| Archtop training, Pick | 54 | 8.9071 | 8.8500 | -0.64% | attack -0.19, body -0.08, harmonics -0.08, dynamics +0.11 |
+| Archtop validation, Pick | 14 | 7.3757 | 7.2977 | -1.06% | attack -0.19, body -0.14, decay -0.06 |
+
+Two of the three sets read closer to their recordings, the finger-plucked
+flat-top slightly further on its attack term. All three moves are within
+about one percent, the size the project has treated as a tradeoff rather
+than a verdict before (Docs/recording-realism-2026-10-07.md); a descriptor
+loss establishes closer measured features, not a listener's preference.
+
 ## Hearing it
 
 Nobody has listened. To hear the change blind, build the previous engine

@@ -72,7 +72,10 @@ Dreadnought's G2 +4.0 to +2.4 and E2 -5.4 to -3.5, the Auditorium's G#2
 stereo phrase lost 0.777 LU, taken back by the capture level scalar
 (MicrophoneBalanceData.h), and every construction was re-levelled by
 `Tools/CalibrateConstructionLoudness.py`. The piezo's level moved by 0.01
-LU. This is a measured smoothing, not a listening verdict: the report
+LU. Against the embedded recordings the descriptor loss moves within one
+percent: the two picked archtop sets closer (-0.6% and -1.1%, attack and
+body terms), the eight finger flat-top notes further (+0.9%, the attack
+term). This is a measured smoothing, not a listening verdict: the report
 records how to render the previous engine beside it for a blind A/B, and
 the numbers that would show a listener's preference are not these.
 
