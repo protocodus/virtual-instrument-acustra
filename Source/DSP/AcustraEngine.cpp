@@ -5967,7 +5967,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // a pluck near the edge still varies from take to take. Clamping the
     // drawn point instead put every such pluck on exactly the edge.
     const float highestPoint = hasTimbre ? 0.46f : handLimit;
-    float position = clamp(basePosition, lowestPoint, highestPoint) + takeOffset;
+    const float nominalPosition = clamp(basePosition, lowestPoint, highestPoint);
+    float position = nominalPosition + takeOffset;
     if (position > highestPoint)
         position = 2.0f * highestPoint - position;
     else if (position < lowestPoint)
@@ -6048,15 +6049,34 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // than its open length. Refer that case to its own open length: the
     // ordinary fixed-force shortening law remains exact, while a hostile
     // wheel cannot turn the minimum contact-position bound into a gain.
+    const float nominalDistance = nominalPosition * soundingLength;
     const float releaseScale = soundingLength <= scaleLength
-        ? (1.0f - position)
-            / clamp(1.0f - heldDistance / scaleLength, 0.05f, 1.0f)
+        ? (1.0f - nominalPosition)
+            / clamp(1.0f - nominalDistance / scaleLength, 0.05f, 1.0f)
         : 1.0f;
+    // The random contact point is a small movement of the same hand force.
+    // A taut string's point compliance is L*p*(1-p)/T: keeping displacement
+    // fixed instead made a bridgeward take silently press harder. Reference
+    // the authored velocity law to the nominal point, then use the actual
+    // point's compliance. No additional force/noise draw is needed.
+    const float pointCompliance = position * (1.0f - position)
+        / (nominalPosition * (1.0f - nominalPosition));
+    // A pre-bent steel string resists the same force more strongly. Its
+    // configured tension already includes the core's E*A and stretch law;
+    // use that tension rather than deriving it from the requested MIDI bend.
+    // Below tuning tension, keep the nominal displacement ceiling: extreme
+    // downward MIDI glides represent virtual slack strings and must not
+    // amplify a stroke through the model's 5%-tension numerical floor.
+    const float nominalTension = voice.pitchGeometry.value.tension;
+    const float tensionCompliance = voice.tensionNewtons > nominalTension
+            && nominalTension > 0.0f
+        ? nominalTension / voice.tensionNewtons : 1.0f;
     const float amplitude = 0.24f
         * velocityForce * (0.92f + 0.08f * touch)
         * strumLevelGain * voice.repeatedPluckGain;
     // The released shape follows this displacement.
-    const float releasedAmplitude = amplitude * releaseScale;
+    const float releasedAmplitude = amplitude * releaseScale
+        * pointCompliance * tensionCompliance;
     // The share of the pluck's energy released normal to the soundboard. A
     // steel-string player's finger stroke and pick both cross the strings
     // moving along the top, pressing in only partly, so most of a steel pluck
@@ -6120,6 +6140,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     constexpr float fingerContactForceExponent = 0.6165625f;
     constexpr double releaseBoostLimit = 3.0;
     double unslipPole = 0.0;
+    double roughnessSlipPole = 0.0;
     voice.releaseSlipPole = 0.0;
     voice.releaseReferencePole = 0.0;
     if (pick)
@@ -6148,6 +6169,11 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             const double tau = std::max(-1.0 / std::log(pole),
                                         referenceTau / releaseBoostLimit);
             const double bounded = std::exp(-1.0 / tau);
+            // The Thumb keeps its approved reference-normalised periodic
+            // wave, but the skin's roughness still cannot unload faster than
+            // this actual contact. Keep the finite time even when the two
+            // waveform poles cancel at the nominal full-force release.
+            roughnessSlipPole = bounded;
             if (bounded != referencePole
                 || fullSoftSlip)
             {
@@ -6576,14 +6602,16 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // floor. The plectrum keeps its law.
     voice.excitationSoft = parameters_.picking != PickingTechnique::Pick;
     // Contact roughness cannot shed force faster than the contact releases
-    // it. Finger's existing two-stage burst therefore has at least the
+    // it. The soft contacts' existing two-stage burst therefore has at least the
     // actual release's sampled mean time. A one-pole at b has mean b/(1-b);
     // two stages at q have mean 2q/(1-q), equal for q=b/(2-b). Apply that
     // corner only when it is slower than the existing colour corner.
     // This is an authored coupling of the existing effective contact model,
     // not a measured fingertip trajectory. Preserve DC gain, noise draws,
     // envelope and all wave/held-force levels; do not normalize away the
-    // resulting native noise-energy change. Pick and Thumb keep their law.
+    // resulting native noise-energy change. Thumb retains its approved
+    // periodic release; this only rounds its independent roughness burst.
+    // Pick keeps its existing impact law.
     // Freeze the corner at actual contact (including scheduled controls),
     // and cache only its force-independent colour part across attacks.
     const float burstRateRatio = static_cast<float>(sampleRate_) / 48000.0f;
@@ -6598,12 +6626,12 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     }
     voice.excitationReleaseCoefficient = voice.excitationCoefficient;
     if (performanceRealism_.contactRelease
-        && parameters_.picking == PickingTechnique::Finger
-        && voice.releaseSlipPole > 0.0)
+        && parameters_.picking != PickingTechnique::Pick
+        && roughnessSlipPole > 0.0)
         voice.excitationReleaseCoefficient = std::min(
             voice.excitationCoefficient,
-            static_cast<float>(2.0 * (1.0 - voice.releaseSlipPole)
-                               / (2.0 - voice.releaseSlipPole)));
+            static_cast<float>(2.0 * (1.0 - roughnessSlipPole)
+                               / (2.0 - roughnessSlipPole)));
     // The burst draws on from where this pluck's draws ended, as it always
     // has, but from its own copy: its length follows velocity, Touch and the
     // rate, so drawn from randomState it moved every later pluck's draws
@@ -7234,7 +7262,8 @@ void AcustraEngine::beginGestureDamping(Voice& voice) noexcept
         return;
     // These are authored contact assumptions, not measured releases. The
     // trailing fretting pad touches 18 mm inside the old speaking length;
-    // an open string is caught where its picking contact was. The existing
+    // an open Finger/Thumb string is caught where its picking contact was,
+    // while a Pick stroke is stopped by the heel near the saddle. The existing
     // scalar hand T60 remains the fundamental release prescription. This
     // bounded extra loss makes partials respond to that contact's location.
     float position = voice.pluckPoint;
@@ -7246,6 +7275,14 @@ void AcustraEngine::beginGestureDamping(Voice& voice) noexcept
         // that table; the pad must use the actual slide geometry instead.
         const float speakingLength = voice.speakingLengthMetres;
         position = 1.0f - 0.018f / std::max(speakingLength, 0.05f);
+    }
+    else if (parameters_.picking == PickingTechnique::Pick)
+    {
+        // The same authored 28 mm palm position as the release sound below.
+        // Moving Pluck Position moves the pick, not the heel of the hand.
+        // Use the actual length: a manager slide changes geometry, whereas
+        // a member tension bend leaves this physical contact in place.
+        position = 0.028f / std::max(voice.speakingLengthMetres, 0.05f);
     }
     const float strength = clamp((fretContact ? 0.45f : 0.06f)
                                     * (1.0f - voice.releaseDamping),
@@ -9444,7 +9481,7 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
         : 1.0f;
     const bool pick = parameters_.picking == PickingTechnique::Pick;
     const bool thumb = parameters_.picking == PickingTechnique::Thumb;
-    constexpr float scaleLength = 0.648f;
+    const float speakingLength = std::max(voice.speakingLengthMetres, 0.05f);
     float position = 0.0f;
     float corner = 0.0f;
     float fallSeconds = 0.0f;
@@ -9452,10 +9489,8 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
     float brushLevel = 0.0f;
     if (fretSide)
     {
-        const float speaking = scaleLength
-            * std::exp2(-static_cast<float>(voice.fret) / 12.0f);
         const float fromFret = 0.018f + 0.006f * draw();
-        position = 1.0f - fromFret / speaking;
+        position = 1.0f - fromFret / speakingLength;
         corner = 1400.0f;
         fallSeconds = 0.010f;
         touchLevel = 1.0f;
@@ -9463,7 +9498,7 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
     }
     else if (pick)
     {
-        position = (0.028f + 0.006f * draw()) / scaleLength;
+        position = (0.028f + 0.006f * draw()) / speakingLength;
         corner = 600.0f;
         fallSeconds = 0.018f;
         touchLevel = 0.6f;

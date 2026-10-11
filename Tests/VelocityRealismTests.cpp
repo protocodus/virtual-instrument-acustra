@@ -117,11 +117,12 @@ void testContactLawAndForceSensitiveBrightness()
                     expect(state.pole > state.reference && state.reference > 0.0,
                            "soft Thumb did not have a slower release than its reference");
                 // tau*y/[p(1-p)] is constant for Finger's actual force;
-                // tau/[p(1-p)] is constant for Thumb's nominal force.
+                // Thumb's nominal reference force is now independent of its
+                // drawn point, so its nominal release time itself is fixed.
                 const double observedPole = finger ? state.pole : state.reference;
                 const double nominal = -1.0 / std::log(observedPole)
-                    / (state.position * (1.0 - state.position))
-                    * (finger ? state.displacement : 1.0);
+                    * (finger ? state.displacement
+                        / (state.position * (1.0 - state.position)) : 1.0);
                 smallestReference = std::min(smallestReference, nominal);
                 largestReference = std::max(largestReference, nominal);
                 releases.push_back(state);

@@ -22,6 +22,10 @@ struct AcustraEngineTestAccess
     {
         return engine.voices_[static_cast<std::size_t>(string)].pluckDelay;
     }
+    static float strokeScale(const AcustraEngine& engine)
+    {
+        return engine.strumSpeedScale_;
+    }
 };
 }
 
@@ -39,6 +43,118 @@ void expect(bool passes, const char* description)
         std::cerr << "FAIL: " << description << '\n';
     }
 }
+
+void testContinuousWristSweep(double rate)
+{
+    auto full = std::make_unique<Performer>();
+    auto sparse = std::make_unique<Performer>();
+    full->prepare(rate, 64);
+    sparse->prepare(rate, 64);
+    std::array<float, 64> left {}, right {};
+    const auto strike = [&](Performer& performer, bool skipMiddle)
+    {
+        performer.beginBlock(left.data(), right.data(), 1);
+        for (std::size_t string = 0; string < open.size(); ++string)
+            if (!skipMiddle || string == 0 || string >= 4)
+                performer.noteOn(0, 1, open[string], 32);
+        performer.endBlock();
+        std::array<int, 6> arrivals {};
+        for (std::size_t string = 0; string < open.size(); ++string)
+        {
+            const int pending = Access::delay(performer.engine(), static_cast<int>(string));
+            // noteOn queues delay + 1 so the first rendered sample consumes
+            // that scheduling guard; what remains is the intended delay.
+            arrivals[string] = pending;
+        }
+        return arrivals;
+    };
+    for (const bool upstroke : { false, true })
+    {
+        const auto arrivals = strike(*full, false);
+        const auto skipped = strike(*sparse, true);
+        const int expectedSpan = static_cast<int>(std::round(
+            full->engine().strumDelaySamples(5, 32.0f / 127.0f)
+                * Access::strokeScale(full->engine())));
+        const std::size_t start = upstroke ? 5 : 0;
+        const std::size_t finish = upstroke ? 0 : 5;
+        expect(arrivals[start] == 0 && arrivals[finish] == expectedSpan,
+               "curved wrist moved the first onset or total traversal");
+        std::array<int, 5> gaps {};
+        for (std::size_t gap = 0; gap < gaps.size(); ++gap)
+            gaps[gap] = std::abs(arrivals[gap + 1] - arrivals[gap]);
+        expect(gaps[0] > gaps[1] && gaps[1] > gaps[2]
+                   && gaps[4] > gaps[3] && gaps[3] > gaps[2],
+               "wrist sweep did not accelerate into and decelerate out of the strings");
+        expect(std::abs(gaps[0] - gaps[4]) <= 2
+                   && std::abs(gaps[1] - gaps[3]) <= 2,
+               "the symmetric wrist path acquired asymmetric independent timing");
+        expect(gaps[0] < 1.2f * gaps[2] && gaps[4] < 1.2f * gaps[2],
+               "curved wrist produced an excessive edge slowdown");
+        for (const std::size_t string : { 0u, 4u, 5u })
+            expect(skipped[string] == arrivals[string],
+                   "skipping strings shortened the wrist's physical travel");
+
+        // A direction change follows the same path in reverse, after the
+        // old stroke has finished. Its independent shared speed may differ.
+        int remaining = static_cast<int>(std::lround(0.2 * rate));
+        while (remaining > 0)
+        {
+            const int count = std::min(remaining, 64);
+            full->process(left.data(), right.data(), count);
+            sparse->process(left.data(), right.data(), count);
+            remaining -= count;
+        }
+    }
+}
+
+void testSweepChangesAudio()
+{
+    auto performer = std::make_unique<Performer>();
+    auto linear = std::make_unique<acustra::AcustraEngine>();
+    constexpr double rate = 48000.0;
+    constexpr int frames = 7200;
+    constexpr float velocity = 32.0f / 127.0f;
+    performer->prepare(rate, frames);
+    linear->prepare(rate, frames);
+    std::array<std::vector<float>, 4> audio;
+    for (auto& channel : audio)
+        channel.resize(frames);
+    performer->beginBlock(audio[0].data(), audio[1].data(), frames);
+    for (const int note : open)
+        performer->noteOn(0, 1, note, 32);
+    performer->endBlock();
+
+    // The old constant-speed scheduler, using the same engine and draw
+    // sequence, is a signal witness for the timing change alone.
+    const std::array<int, 6> descending { 64, 59, 55, 50, 45, 40 };
+    linear->planChord(descending.data(), 6);
+    linear->beginStrum(linear->strumDelaySamples(5, velocity), 0, false);
+    for (std::size_t index = 0; index < descending.size(); ++index)
+    {
+        const int string = 5 - static_cast<int>(index);
+        linear->noteOn(descending[index], velocity, 1,
+                       linear->strumDelaySamples(string, velocity), true);
+    }
+    linear->process(audio[2].data(), audio[3].data(), frames);
+    double referenceEnergy = 0.0;
+    double differenceEnergy = 0.0;
+    for (int frame = 0; frame < frames; ++frame)
+        for (const int channel : { 0, 1 })
+        {
+            const float candidate = audio[static_cast<std::size_t>(channel)][frame];
+            const float reference = audio[static_cast<std::size_t>(channel + 2)][frame];
+            expect(std::isfinite(candidate) && std::abs(candidate) < 2.0f,
+                   "curved wrist rendered nonfinite or unbounded audio");
+            referenceEnergy += reference * reference;
+            const double difference = static_cast<double>(candidate) - reference;
+            differenceEnergy += difference * difference;
+        }
+    expect(referenceEnergy > 1.0e-8 && differenceEnergy > 0.0001 * referenceEnergy,
+           "curved wrist produced no material audio difference from uniform string timing");
+    std::cout << "Curved/linear strum normalized signal difference: "
+              << std::sqrt(differenceEnergy / std::max(referenceEnergy, 1.0e-20)) << '\n';
+}
+
 std::vector<float> rapidPhrase(double rate, int frames, bool reverse, bool gather)
 {
     auto performer = std::make_unique<Performer>();
@@ -73,8 +189,10 @@ std::vector<float> rapidPhrase(double rate, int frames, bool reverse, bool gathe
 
 int main()
 {
+    testSweepChangesAudio();
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
+        testContinuousWristSweep(rate);
         auto performer = std::make_unique<Performer>();
         performer->prepare(rate, 64);
         const int interval = static_cast<int>(std::lround(0.075 * rate));

@@ -258,8 +258,8 @@ void testTechniqueIsolationAndBlockPartition()
         {
             const auto before = render(rate, technique, false, 128);
             const auto after = render(rate, technique, true, 128);
-            expect((before != after) == (technique == acustra::PickingTechnique::Finger),
-                   "coupling changed another technique or made no Finger difference");
+            expect((before != after) == (technique != acustra::PickingTechnique::Pick),
+                   "coupling changed Pick or made no soft-contact difference");
             expect(after == render(rate, technique, true, 7),
                    "contact release changed with process block partition");
             expect(std::all_of(after.begin(), after.end(), [] (float x)

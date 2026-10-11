@@ -316,7 +316,7 @@ struct AcustraEngineTestAccess
         auto engineOwner = std::make_unique<AcustraEngine>();
         auto& engine = *engineOwner;
         auto calibration = options.calibration;
-        // Recover the initializer's amplitude from its envelope metadata,
+        // Recover the initializer's amplitude from its saddle-force step,
         // without duplicating the displacement/velocity law. No audio is
         // advanced, so this probe emits no release noise.
         calibration.steel.transientScale = 1.0f;
@@ -349,27 +349,20 @@ struct AcustraEngineTestAccess
             : options.picking == PickingTechnique::Thumb
                 ? std::sqrt(4.0f * apertureSamples * apertureSamples + 6.25f)
                 : apertureSamples;
-        // The envelope carries the stroke's force; the shape is displaced by
-        // it through the stopped string's compliance at the pluck point,
-        // referred to the open string (initialisePluck).
-        const float scaleLength = 0.648f;
-        // A public wheel slides the physical speaking length before this
-        // release. Recover displacement from that configured geometry;
-        // virtual strings longer than open retain the nominal force map.
-        const float soundingLength = voice.speakingLengthMetres;
-        const double releaseScale = soundingLength <= scaleLength
-            ? (1.0f - voice.pluckPoint)
-                / std::clamp(1.0f - voice.pluckPoint * soundingLength / scaleLength,
-                             0.05f, 1.0f)
-            : 1.0f;
+        // Recover actual displacement independently from the normal plane's
+        // static saddle-force step. The point and tension now change the
+        // string's compliance, while its excitation envelope carries force.
+        const double normalLength = std::round(voice.loops[0].currentDelay);
+        const double displacement = voice.releaseStepRise
+            * voice.releaseShapePosition[0] * normalLength
+            / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix));
         ReleasedContactSnapshot result {
             {}, voice.releaseShapePosition[static_cast<std::size_t>(options.polarisation)],
             registeredAperture(contactSamples,
                 physical.apertureScale,
                 loop.currentDelay * 48000.0f / static_cast<float>(rate),
                 calibration.apertureRegisterExponent),
-            static_cast<double>(voice.excitationEnvelope)
-                / (0.003f + 0.014f * touch) * releaseScale
+            displacement
                 * std::sqrt(options.polarisation == 0
                     ? voice.polarisationMix : 1.0f - voice.polarisationMix),
             voice.releaseSlipPole, voice.releaseReferencePole

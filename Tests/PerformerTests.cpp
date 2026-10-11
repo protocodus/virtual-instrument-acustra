@@ -533,11 +533,13 @@ void testStrumsFollowPhysicalStrings()
             expect(down[0] == 0 && down[1] > 0 && down[2] > down[1],
                    "a downstroke did not traverse low to high physical strings");
             if (sparse)
-                expect(std::abs(5 * down[1] - 4 * down[2]) <= 8,
+                expect(down[1] > 3 * (down[2] - down[1])
+                           && down[1] < 4 * (down[2] - down[1]),
                        "a downstroke did not cross the three skipped strings");
             else
-                expect(std::abs(2 * down[1] - down[2]) <= 3,
-                       "adjacent strings did not retain one shared pick speed");
+                expect(down[1] < down[2] - down[1]
+                           && down[1] > 0.85f * (down[2] - down[1]),
+                       "the wrist did not slow smoothly toward the outside string");
 
             for (int start = 0; start < sampleAt(0.2, sampleRate); start += 64)
                 performer->process(left.data(), right.data(), 64);
@@ -545,11 +547,13 @@ void testStrumsFollowPhysicalStrings()
             expect(up[2] == 0 && up[1] > 0 && up[0] > up[1],
                    "the returning upstroke did not reverse physical string order");
             if (sparse)
-                expect(std::abs(5 * up[1] - up[0]) <= 8,
+                expect(up[0] - up[1] > 3 * up[1]
+                           && up[0] - up[1] < 4 * up[1],
                        "an upstroke did not cross the three skipped strings");
             else
-                expect(std::abs(2 * up[1] - up[0]) <= 3,
-                       "the upstroke lost its shared speed between adjacent strings");
+                expect(up[1] > up[0] - up[1]
+                           && up[0] - up[1] > 0.85f * up[1],
+                       "the returning wrist did not accelerate toward the middle strings");
         }
 
     // Canonical note insertion and block boundaries cannot change either

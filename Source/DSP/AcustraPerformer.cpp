@@ -17,6 +17,39 @@ std::uint8_t statusByte(unsigned kind, int channel) noexcept
     return static_cast<std::uint8_t>(
         kind | static_cast<unsigned>(std::clamp(channel, 1, 16) - 1));
 }
+
+int curvedStrumDelay(int string, int first, int last, bool upstroke,
+                    int spanSamples) noexcept
+{
+    // A wrist sweep is continuous oscillatory motion, not a pick translated
+    // at constant speed. For the projected path x = A sin(theta), evenly
+    // spaced strings meet the hand at theta = asin(x / A): the hand passes
+    // the middle strings faster and slows toward the outside strings.
+    // Freire et al., Sensors 20 (2020), 5722 documents oscillatory guitar
+    // strumming with optical/IMU capture (doi:10.3390/s20195722). The 45 mm
+    // half-sweep used here is bounded authored geometry, not a fit to that
+    // study: the outer strings at +/-27 mm remain well inside the turning
+    // points. Freeze the six angles to avoid trigonometry on the audio thread.
+    // They are asin((string - 2.5) * 10.8 / 45), in radians.
+    constexpr std::array<float, AcustraEngine::stringCount> angles {{
+        -0.643501109f, -0.368267894f, -0.120289882f,
+         0.120289882f,  0.368267894f,  0.643501109f
+    }};
+    const int start = upstroke ? last : first;
+    const int finish = upstroke ? first : last;
+    if (string == start || last <= first)
+        return 0;
+    if (string == finish)
+        return spanSamples;
+    const float progress = (angles[static_cast<std::size_t>(string)]
+                            - angles[static_cast<std::size_t>(start)])
+        / (angles[static_cast<std::size_t>(finish)]
+           - angles[static_cast<std::size_t>(start)]);
+    // Keep the existing measured traversal range and exact endpoints. Only
+    // the interior timing changes; physical gaps, MIDI onset, host latency
+    // and the engine's common stroke-speed/rhythm constraint are retained.
+    return static_cast<int>(std::lround(progress * static_cast<float>(spanSamples)));
+}
 } // namespace
 
 int Performer::gatherWindowSamples(double sampleRate) noexcept
@@ -358,6 +391,8 @@ void Performer::flushNoteGroup() noexcept
         // has no complete plan: keep its existing note-by-note behaviour.
         // Duplicated keys share one string's place while noteOn retains its
         // ownership/re-pluck handling. The first reached string starts now.
+        const int plannedSpan = completePlan
+            ? engine_.strumDelaySamples(lastString - firstString, meanVelocity) : 0;
         int strokeSpan = 0;
         for (int index = 0, reached = 0; index < pendingNoteOnCount_; ++index)
         {
@@ -372,7 +407,10 @@ void Performer::flushNoteGroup() noexcept
                 ? (strumUpstroke_ ? lastString - string : string - firstString)
                 : (strumUpstroke_ ? reached : sounding - 1 - reached);
             ++reached;
-            note.pluckDelay = engine_.strumDelaySamples(rank, meanVelocity);
+            note.pluckDelay = completePlan
+                ? curvedStrumDelay(string, firstString, lastString,
+                                   strumUpstroke_, plannedSpan)
+                : engine_.strumDelaySamples(rank, meanVelocity);
             strokeSpan = std::max(strokeSpan, note.pluckDelay);
         }
         engine_.beginStrum(strokeSpan, restarted ? 0 : static_cast<int>(interval),

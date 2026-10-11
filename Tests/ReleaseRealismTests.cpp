@@ -58,6 +58,20 @@ struct AcustraEngineTestAccess
         return { v.speakingLengthMetres, static_cast<double>(contact.firstAge),
                  static_cast<double>(contact.firstAge + contact.secondAge) };
     }
+    static float pluckPoint(const AcustraEngine& e, int string)
+    { return e.voices_[static_cast<std::size_t>(string)].pluckPoint; }
+    static double releaseNoisePosition(const AcustraEngine& e, int string)
+    {
+        const auto& voice = e.voices_[static_cast<std::size_t>(string)];
+        const auto& tap = voice.releaseNoiseTravel.taps[0];
+        // DC group delay of the first/second-order Thiran allpass, plus
+        // its integer delay. Convert arrival time to position using c=2Lf.
+        const double fractional = tap.order == 2
+            ? 2.0 * (1.0 - tap.a2) / (1.0 + tap.a1 + tap.a2)
+            : tap.order == 1 ? (1.0 - tap.a1) / (1.0 + tap.a1) : 0.0;
+        return 2.0 * (tap.whole + fractional)
+            * e.loopFundamental(voice) / e.sampleRate_;
+    }
     static void retainQuietContact(AcustraEngine& e)
     {
         auto& v = e.voices_[0];
@@ -404,6 +418,64 @@ void releasePadFollowsPhysicalSlideLength()
             }
 }
 
+void pickingHandStopsAtItsPhysicalContact()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const auto picking : { acustra::PickingTechnique::Finger,
+                                   acustra::PickingTechnique::Pick,
+                                   acustra::PickingTechnique::Thumb })
+            for (const float slide : { -7.0f, 0.0f, 7.0f })
+            {
+                auto engine = configured(true, rate);
+                acustra::EngineParameters parameters;
+                parameters.picking = picking;
+                parameters.pluckPosition = 1.0f;
+                parameters.releaseNoise = 0.5f;
+                engine->setParameters(parameters);
+                engine->setPitchBend(slide, 1);
+                engine->noteOn(40, 0.85f, 1);
+                advance(*engine, static_cast<int>(0.2 * rate));
+                const float pluck = Access::pluckPoint(*engine, 0);
+                engine->noteOff(40, 1);
+                advance(*engine, graceSamples(rate) + 2);
+                expect(Access::contact(*engine, 0), "picking-hand fixture missed damping");
+                const auto geometry = Access::contactGeometry(*engine, 0, 0);
+                const double actual = 2.0 * geometry[1] / geometry[2];
+                const bool palm = picking == acustra::PickingTechnique::Pick;
+                const double expected = palm ? 0.028 / geometry[0] : pluck;
+                expect(std::abs(actual - expected) <= 1.0 / geometry[2] + 1.0e-7,
+                       "open-string damping did not follow the technique's physical hand");
+                const double noisePosition = Access::releaseNoisePosition(*engine, 0);
+                if (palm)
+                {
+                    const double distance = noisePosition * geometry[0];
+                    expect(distance >= 0.022 - 1.0e-6 && distance <= 0.034 + 1.0e-6,
+                           "slid palm-release sound moved away from its 28 mm contact");
+                }
+                else
+                    expect(std::abs(noisePosition - pluck) < 1.0e-6,
+                           "finger/thumb release sound left the picking contact");
+            }
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const float slide : { -12.0f, 0.0f, 12.0f })
+        {
+            auto engine = configured(true, rate);
+            acustra::EngineParameters parameters;
+            parameters.releaseNoise = 0.5f;
+            engine->setParameters(parameters);
+            engine->setPitchBend(slide, 1);
+            engine->noteOn(48, 0.85f, 1);
+            advance(*engine, static_cast<int>(0.2 * rate));
+            engine->noteOff(48, 1);
+            advance(*engine, graceSamples(rate) + 2);
+            const auto geometry = Access::contactGeometry(*engine, 0, 0);
+            const double inset = (1.0 - Access::releaseNoisePosition(*engine, 0)) * geometry[0];
+            expect(inset >= 0.012 - 1.0e-6 && inset <= 0.024 + 1.0e-6,
+                   "fretting-release sound must stay within the physical 18 mm pad");
+        }
+}
+
 void contactBoundariesAndContinuity()
 {
     using Access = acustra::AcustraEngineTestAccess;
@@ -597,6 +669,7 @@ int main()
     contactWithdrawalDeadline();
     contactWithdrawalLifecycle();
     releasePadFollowsPhysicalSlideLength();
+    pickingHandStopsAtItsPhysicalContact();
     nominalAndMonotonic(); ownershipAndPedal();
     if (failures) return 1;
     std::cout << "Release damping, passive spatial contact, node selectivity, join/pedal parity and ownership passed\n";
