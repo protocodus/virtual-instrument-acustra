@@ -3099,6 +3099,10 @@ set without it.
 
 ## Release history
 
+Each entry records a source version in this repository. No build of any of
+them has been published as a release; [Build](#build) describes how
+packages are built and signed.
+
 ### 1.3.2 — 2026-10-12 — the mid-band peak takes a dip, and a bit of piezo
 
 - **A dip at the mid-band peak.** On the E2-E5 sweep
