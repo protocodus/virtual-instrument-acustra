@@ -338,7 +338,11 @@ AcustraAudioProcessor::createParameterLayout()
         juce::AudioParameterBoolAttributes().withAutomatable (false)));
     // Off by default: a session saved before it existed gets the default
     // (addMissingParameterDefaults) and so sounds as it did.
-    result.push_back (makePercentParameter (ids::piezoMix, "Piezo Mix", 0.0f, 9));
+    // A new instance starts with a bit of the piezo under the microphones
+    // (the user's default of 2026-10-12, as the Rack's factory patches have
+    // played since 1.0.0d6); a session saved before Piezo Mix existed stays
+    // at 0 (setStateInformation).
+    result.push_back (makePercentParameter (ids::piezoMix, "Piezo Mix", 20.0f, 9));
     // The key-up's own sound: the damping hand landing on the string. 50%
     // is its nominal level, 100% twice that, 0% silent and an exact no-op.
     // A new instance starts at 10%, requested on 2026-10-11. Explicit saved
@@ -614,8 +618,8 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
         auto restoredState = juce::ValueTree::fromXml (*xml);
         // JUCE clamps finite out-of-range values, but NaN can survive its
         // range conversion and mute Output or reach the editor. Repair only
-        // explicit malformed values; absent Room and Release Noise retain
-        // their separate legacy defaults below.
+        // explicit malformed values; absent Piezo Mix, Room and Release
+        // Noise retain their separate legacy defaults below.
         sanitiseSavedParameterValues (restoredState, parameters);
         if (static_cast<int> (restoredState.getProperty (stateVersionProperty, 1))
             < currentStateVersion)
@@ -653,6 +657,15 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
             releaseState.setProperty ("id", ids::releaseNoise, nullptr);
             releaseState.setProperty ("value", 0.0f, nullptr);
             restoredState.appendChild (releaseState, nullptr);
+        }
+        // Likewise a session saved before Piezo Mix existed keeps the
+        // microphones alone.
+        if (! containsParameterState (restoredState, ids::piezoMix))
+        {
+            juce::ValueTree piezoState { "PARAM" };
+            piezoState.setProperty ("id", ids::piezoMix, nullptr);
+            piezoState.setProperty ("value", 0.0f, nullptr);
+            restoredState.appendChild (piezoState, nullptr);
         }
         // Likewise a session saved before Room existed stays dry.
         if (! containsParameterState (restoredState, ids::room))

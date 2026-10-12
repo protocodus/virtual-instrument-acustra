@@ -5,6 +5,24 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the default sound: the plug-in's, with a bit of piezo
+
+Asked whether the Rack's defaults should follow the plug-in's (Body Amount
+70 % against 82 %, Piezo Mix 20 % against 0 %), the user chose "the
+default with a bit of piezo". The Rack's Body Amount default moves to the
+plug-in's 82 %; the plug-in's Piezo Mix default moves to the Rack's 20 %,
+so a new instance of either starts with the same balance and a bit of the
+under-saddle piezo beneath the microphones. A session saved before Piezo
+Mix existed still loads at 0 %, as a session saved before Release Noise
+or Room keeps its silence and its dry room: a changed default never
+changes a saved sound. This is a chosen default, not a listening verdict:
+nobody compared the two balances blind.
+
+The user also directed, without a stated listening verdict, that the
+strum rule, the keyswitches, the range rule and the Parlor air-mode dip
+stay as merged, and that the mid-band candidate (the entry below) be
+built and shipped rather than held for a listener.
+
 ## 2026-10-12 — the MIDI layer audited again: the queue keeps the newest value
 
 A second read-only audit of the Performer and the plug-in wrapper (one
