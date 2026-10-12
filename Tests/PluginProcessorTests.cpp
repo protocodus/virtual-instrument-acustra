@@ -136,10 +136,10 @@ void testParameterContract()
                    "legacy slot; Piezo Mix, Release Noise, Room and Sustain are "
                    "appended");
     // Piezo Mix defaults to 0, so Main is the microphones alone; Release
-    // Noise to 70%, the level a listener chose; Room to 50%; Sustain off.
+    // Noise to the requested 10%; Room to 50%; Sustain off.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 70.0f, 50.0f, 0.0f
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 10.0f, 50.0f, 0.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -242,8 +242,8 @@ void testParameterContract()
                 && releaseNoise->getName (32) == "Release Noise"
                 && releaseNoise->range.start == 0.0f && releaseNoise->range.end == 100.0f,
             "Release Noise must append a 0-100% parameter with AU version hint 10");
-    expect (std::abs (processor.snapshotEngineParameters().releaseNoise - 0.7f) < 0.002f,
-            "a new session's key-ups are not at the chosen 70%");
+    expect (std::abs (processor.snapshotEngineParameters().releaseNoise - 0.1f) < 0.002f,
+            "a new session's key-ups are not at the requested 10%");
     const auto* room = dynamic_cast<const juce::AudioParameterFloat*> (
         processor.parameters.getParameter (ids::room));
     expect (room != nullptr && room->getVersionHint() == 11
@@ -794,7 +794,7 @@ void testReleaseGesturesAndRetiredCc68()
         juce::MidiMessage::noteOff (1, 43, static_cast<juce::uint8> (127)), true, standard);
     expect (touched == touchedSixtyFour && touched == touchedZeroOn,
             "a release without a velocity did not read as the nominal 64");
-    expect (touched != plain, "Release Noise at its default added nothing at key-up");
+    expect (touched != plain, "Release Noise at the configured amount added nothing at key-up");
     expect (touchedFast == touchedFootswitch, "CC68 changed the performance");
     expect (touchedFast != touched,
             "explicit fast key-up did not change damping and optional touch");
@@ -1679,7 +1679,7 @@ void testMalformedStateParameters()
             expect (snapshot.capture == acustra::CaptureType::StereoMic
                         && snapshot.outputGain == 1.0f
                         && std::abs (snapshot.room - 0.5f) < 0.002f
-                        && std::abs (snapshot.releaseNoise - 0.7f) < 0.002f,
+                        && std::abs (snapshot.releaseNoise - 0.1f) < 0.002f,
                     "malformed explicit controls used legacy missing-control defaults");
         };
         check (processor);
@@ -1735,11 +1735,11 @@ void testEditorRendering()
 
     std::vector<juce::Component*> pending { editor.get() };
     std::vector<juce::TextButton*> choiceButtons;
+    std::vector<juce::Slider*> sliders;
     juce::MidiKeyboardComponent* midiKeyboard = nullptr;
     juce::Label* engineStatus = nullptr;
     juce::Component* stringActivity = nullptr;
     int comboBoxCount = 0;
-    int sliderCount = 0;
     while (! pending.empty())
     {
         auto* parent = pending.back();
@@ -1751,23 +1751,45 @@ void testEditorRendering()
                 stringActivity = child;
             if (dynamic_cast<juce::ComboBox*> (child) != nullptr)
                 ++comboBoxCount;
-            if (dynamic_cast<juce::Slider*> (child) != nullptr)
-                ++sliderCount;
             if (auto* label = dynamic_cast<juce::Label*> (child);
                 label != nullptr && label->getName() == "Engine status")
                 engineStatus = label;
             if (auto* button = dynamic_cast<juce::TextButton*> (child);
                 button != nullptr && button->getRadioGroupId() != 0)
                 choiceButtons.push_back (button);
+            if (auto* slider = dynamic_cast<juce::Slider*> (child))
+                sliders.push_back (slider);
             if (auto* candidate = dynamic_cast<juce::MidiKeyboardComponent*> (child))
                 midiKeyboard = candidate;
         }
     }
 
     expect (comboBoxCount == 0, "the editor still hides choices in a combo box");
-    // Every continuous parameter has a knob: the Player's four and the
-    // Capture & Output panel's five (Release Noise and Room included).
-    expect (sliderCount == 9, "the editor does not show all nine knobs");
+    expect (sliders.size() == 9,
+            "the editor does not expose every continuous sound parameter");
+    for (const auto& control : std::array {
+        std::pair { acustra::parameters::releaseNoise, "RELEASE NOISE" },
+        std::pair { acustra::parameters::room, "ROOM" } })
+    {
+        const auto found = std::find_if (sliders.begin(), sliders.end(),
+            [&] (const auto* slider) { return slider->getName() == control.second; });
+        expect (found != sliders.end(), std::string { "missing control: " } + control.second);
+        if (found == sliders.end())
+            continue;
+        auto& slider = **found;
+        const float initial = valueOf (processor, control.first);
+        expect (std::abs (slider.getValue() - initial) < 0.011
+                    && slider.getWantsKeyboardFocus()
+                    && slider.getDescription().isNotEmpty(),
+                std::string { control.second } + " lost its current value or accessibility");
+        setValue (processor, control.first, 0.0f);
+        expect (slider.getValue() == 0.0,
+                std::string { control.second } + " did not follow host automation");
+        slider.setValue (63.2, juce::sendNotificationSync);
+        expect (std::abs (valueOf (processor, control.first) - 63.2f) < 0.011f,
+                std::string { control.second } + " did not update its host parameter");
+        setValue (processor, control.first, initial);
+    }
     expect (stringActivity != nullptr,
             "the six-string activity display is missing");
     const auto refreshDisplayTimer = [&]
@@ -1925,6 +1947,18 @@ void testEditorRendering()
     const auto renderAt = [&] (int width, int height)
     {
         editor->setSize (width, height);
+        for (auto* slider : sliders)
+        {
+            const auto bounds = slider->getBoundsInParent();
+            expect (slider->isVisible() && slider->getWidth() >= 96
+                        && slider->getHeight() >= 140
+                        && editor->getLocalBounds().contains (bounds),
+                    "a sound control is hidden, clipped or too small at a supported size");
+            for (auto* other : sliders)
+                if (other != slider)
+                    expect (! bounds.intersects (other->getBoundsInParent()),
+                            "sound controls overlap");
+        }
         for (auto* button : choiceButtons)
         {
             const auto bounds = button->getBoundsInParent();

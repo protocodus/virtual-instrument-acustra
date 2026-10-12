@@ -1,0 +1,21 @@
+{
+  "files_sha256": {
+    "README.md": "b573c511751b56292f5422c1fd65bffb37ee6f816237d6c2a76a3404c7650e06",
+    "defaults/build.log": "dc49de68fd4c2c97ae235a3848a60e140096d4ab35f58fcebc4477f55c3f6f6a",
+    "defaults/native-formats.log": "ea7f07f354a01a758393d5fb45394a3fb256b3eb3f4ccf41d41cbf13bf409505",
+    "defaults/receipt.json": "36644e0c96c6c181916fb61a9a729129eeab640966391cc965097b16c795b821",
+    "defaults/tests-final.log": "a04b171c0e679e641768c5973ba7ae87a2195d72d0c6a5a56d30b869fa7c2890",
+    "physics/analysis.json": "3fdf9158e03c28251a335a6288aa26ee5a9a2bc14dbd953fbc4c417eaefbd8a6",
+    "physics/analyze.py": "226b080d37734a44bff8403169a14bd9e207972b2059c9d0a1ea41524d7cefca",
+    "physics/findings.md": "f431002283cec0120886b3e3f1a10cd59dccdf1cd517efaa6e23d9f20162e522",
+    "physics/force_trace.cpp": "f9532553d97635a281ee1af94f7c876f9ed4bbb8c608903de37bdde272bfbcfb",
+    "physics/mixture-sensitivity.json": "29173c48ccc1014c1a8faab693a2bd2061d6a766ed2a9c22e66b17161a281471",
+    "physics/mixture_sensitivity.py": "84e0bb0380de79dc5cecda3a1e935311e8acb0a5ca172a6a75967df8dea07863",
+    "physics/moving-stop-current.jsonl": "792442958a0734e4a10e33dadd349ac7e4a9d2984a0ee67df94dce91e082f77c",
+    "physics/provenance.json": "3b5adc2c46ffc67d4702650381d5660d018fafdc8a8f05004658bb5f05e1c11b",
+    "physics/trace-manifest.json": "b133f08b708afd757abb90559e9c4f4d1fdfa3897e5b07a0b2a84355fe413c35",
+    "release-noise/findings.md": "72a7f0272e0c3eee9e96b6b80d52a6562b2a6824e8e3164854f476a88cc4c708"
+  },
+  "report": "../release-readiness-2026-10-11.md",
+  "report_sha256": "9d4402d18671b5cc10f4ba77e2ff644ad0d976634d101c29a1003b2e87ad4a77"
+}

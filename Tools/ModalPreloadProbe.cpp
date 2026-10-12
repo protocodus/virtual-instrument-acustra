@@ -47,36 +47,11 @@ struct AcustraEngineTestAccess
                       << stiffness0 << ',' << stiffness1 << ',' << stiffness2
                       << "]}\n";
 
-            // Each slot's pole as configureBridge set it: the steel blend's
-            // bridge part after part (B's modes, then the parallel parts),
-            // shaped by the body's morph and wood, then the plate floor in
-            // the last slot. Slots the blend leaves empty carry no residue.
-            std::array<float, AcustraEngine::bridgeModeCount + 1> frequencies {};
-            std::array<float, AcustraEngine::bridgeModeCount + 1> qs {};
-            {
-                const auto& configured = engine->parameters_;
-                const AnchorTransform& anchor = wideSteelAnchorTransform;
-                const auto morph = bodyShapeMorph(
-                    detail::measuredSteelBodyModes, anchor, anchorBody(),
-                    targetBodyFor(configured.shape));
-                std::size_t slot = 0;
-                visitSteelBlendBridge(engine->bridgeShapeA0_,
-                    engine->bridgeShapeT1_, engine->bridgeShapePlate_,
-                    engine->bridgeShapeT1UpperHz_, anchor, morph,
-                    steelJointMorph(anchor, configured.shape),
-                    woodFactorsFor(configured.bodyMaterial),
-                    engine->physicalCalibration_,
-                    [&] (const detail::MeasuredBridgeMode&,
-                         const detail::MeasuredBridgeMode& measured, float, bool)
-                    {
-                        frequencies[slot] = measured.frequency;
-                        qs[slot] = measured.q;
-                        ++slot;
-                    });
-                const auto plate = plateConductanceMode(engine->physicalCalibration_);
-                frequencies.back() = plate.frequency;
-                qs.back() = plate.q;
-            }
+            // Invert the configured digital denominator itself: this exports
+            // the actual prototype for both shared damped-sinusoid poles and
+            // unpaired natural oscillators, with all Shape/Wood/floor factors.
+            // Reconstructing it from stored f/Q silently conflated those two
+            // conventions and duplicated the engine's construction mapping.
             const auto& bridge = engine->bridgeLoad_;
             for (std::size_t index = 0; index < bridge.heaveModes.size(); ++index)
             {
@@ -86,12 +61,13 @@ struct AcustraEngineTestAccess
                 if (heave == 0.0f && cross == 0.0f && rock == 0.0f)
                     continue;
 
-                const float frequency = frequencies[index];
-                const float q = qs[index];
-                // Retain the native float prewarp and its operation order.
-                const float fs = static_cast<float>(rate);
-                const float bilinear = 2.0f * fs;
-                const float omega = bilinear * std::tan(pi * frequency / fs);
+                const auto& mode = bridge.heaveModes[index];
+                const double d1 = mode.denominator1, d2 = mode.denominator2;
+                const double bilinear = 2.0 * rate;
+                const double denominator = 1.0 - d1 + d2;
+                const double omega = bilinear * std::sqrt((1.0+d1+d2)/denominator);
+                const double damping = bilinear * (1.0-d2)/denominator;
+                const double q = omega/(2.0*damping);
                 std::cout << "{\"kind\":\"bridge_mode\",\"rate\":" << rate
                           << ",\"variant\":" << variant << ",\"mode\":" << index
                           << ",\"omega_prewarped\":" << omega << ",\"q\":" << q

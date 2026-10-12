@@ -1,0 +1,342 @@
+[  1%] Building VST3 manifest helper for Acustra
+[  3%] Built target AcustraUIAssets
+[  3%] Building CXX object CMakeFiles/AcustraDSP.dir/Source/DSP/AcustraEngine.cpp.o
+[  4%] Building CXX object CMakeFiles/AcustraDSPCxx17.dir/Source/DSP/AcustraEngine.cpp.o
+[  7%] Built target AcustraReferenceBank
+[  8%] Building CXX object CMakeFiles/AcustraDSP.dir/Source/DSP/AcustraPerformer.cpp.o
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/vst3_helpers/Acustra
+make[3]: warning: jobserver unavailable: using -j1.  Add `+' to parent make rule.
+[100%] Built target vst3_helper
+[  8%] Built target Acustra_vst3_helper
+[  9%] Building CXX object CMakeFiles/AcustraDSPExtendedCxx17.dir/Source/DSP/AcustraEngine.cpp.o
+[  9%] Building CXX object CMakeFiles/AcustraDSPCxx17.dir/Source/DSP/AcustraPerformer.cpp.o
+[  9%] Building CXX object CMakeFiles/AcustraDSPExtendedCxx17.dir/Source/DSP/AcustraPerformer.cpp.o
+[  9%] Built target AcustraDSPCxx17
+[ 10%] Built target AcustraSampleBankTests
+[ 10%] Linking CXX static library libAcustraDSP.a
+[ 11%] Linking CXX static library libAcustraDSPExtendedCxx17.a
+[ 11%] Built target AcustraDSP
+[ 11%] Built target AcustraDSPExtendedCxx17
+[ 11%] Building CXX object CMakeFiles/AcustraRenderRealismSongs.dir/Tools/RenderRealismSongs.cpp.o
+[ 12%] Building CXX object CMakeFiles/AcustraRenderDemos.dir/Tools/RenderDemos.cpp.o
+[ 13%] Building CXX object CMakeFiles/AcustraPhysicalFitRenderer.dir/Tools/PhysicalFitRenderer.cpp.o
+[ 13%] Building CXX object CMakeFiles/Acustra.dir/AcustraBuildIdentity.cpp.o
+[ 14%] Building CXX object CMakeFiles/Acustra.dir/Source/PluginProcessor.cpp.o
+[ 15%] Linking CXX executable AcustraRenderRealismSongs
+[ 15%] Built target AcustraRenderRealismSongs
+[ 15%] Building CXX object CMakeFiles/Acustra.dir/Source/PluginEditor.cpp.o
+[ 15%] Linking CXX executable AcustraRenderDemos
+[ 15%] Built target AcustraRenderDemos
+[ 16%] Building CXX object CMakeFiles/AcustraExternalCorpusRenderer.dir/Tools/ExternalCorpusRenderer.cpp.o
+[ 16%] Linking CXX executable AcustraExternalCorpusRenderer
+[ 16%] Built target AcustraExternalCorpusRenderer
+[ 16%] Building CXX object CMakeFiles/AcustraBridgeProbe.dir/Tools/BridgeProbe.cpp.o
+[ 17%] Building CXX object CMakeFiles/AcustraTraceRinging.dir/Tools/TraceRinging.cpp.o
+[ 17%] Linking CXX executable AcustraPhysicalFitRenderer
+[ 18%] Linking CXX static library Acustra_artefacts/Release/libAcustra_SharedCode.a
+[ 18%] Built target AcustraPhysicalFitRenderer
+[ 18%] Linking CXX executable AcustraBridgeProbe
+[ 18%] Building CXX object CMakeFiles/AcustraPerformanceRenderer.dir/Tools/PerformanceRenderer.cpp.o
+[ 18%] Built target AcustraBridgeProbe
+[ 19%] Building CXX object CMakeFiles/AcustraRenderAudibleRealism.dir/Tools/RenderAudibleRealism.cpp.o
+[ 19%] Linking CXX executable AcustraTraceRinging
+[ 29%] Built target Acustra
+[ 29%] Built target AcustraTraceRinging
+[ 29%] Building CXX object CMakeFiles/AcustraRenderNaturalPerformance.dir/Tools/RenderNaturalPerformance.cpp.o
+[ 29%] Building CXX object CMakeFiles/AcustraRenderRepertoire.dir/Tools/RenderRepertoire.cpp.o
+[ 30%] Linking CXX executable AcustraPerformanceRenderer
+[ 30%] Built target AcustraPerformanceRenderer
+[ 30%] Building CXX object CMakeFiles/AcustraEngineTests.dir/Tests/AcustraEngineTests.cpp.o
+[ 30%] Linking CXX executable AcustraRenderAudibleRealism
+[ 30%] Built target AcustraRenderAudibleRealism
+[ 31%] Building CXX object CMakeFiles/AcustraReleaseJoinTests.dir/Tests/ReleaseJoinTests.cpp.o
+[ 32%] Linking CXX executable AcustraRenderNaturalPerformance
+[ 32%] Built target AcustraRenderNaturalPerformance
+[ 33%] Building CXX object CMakeFiles/AcustraStrumDirectionTests.dir/Tests/StrumDirectionTests.cpp.o
+[ 33%] Linking CXX executable AcustraReleaseJoinTests
+[ 33%] Built target AcustraReleaseJoinTests
+[ 34%] Building CXX object CMakeFiles/AcustraHandAllocatorTests.dir/Tests/HandAllocatorTests.cpp.o
+[ 35%] Linking CXX executable AcustraRenderRepertoire
+[ 35%] Built target AcustraRenderRepertoire
+[ 35%] Building CXX object CMakeFiles/AcustraPerformerTests.dir/Tests/PerformerTests.cpp.o
+[ 35%] Linking CXX executable AcustraStrumDirectionTests
+[ 35%] Built target AcustraStrumDirectionTests
+[ 36%] Building CXX object CMakeFiles/AcustraExtendedSampleRateTests.dir/Tests/ExtendedSampleRateTests.cpp.o
+[ 36%] Linking CXX executable AcustraExtendedSampleRateTests
+[ 36%] Built target AcustraExtendedSampleRateTests
+[ 36%] Building CXX object CMakeFiles/AcustraNormalLayoutParity.dir/Tests/SampleRateLayoutParity.cpp.o
+[ 36%] Linking CXX executable AcustraHandAllocatorTests
+[ 36%] Built target AcustraHandAllocatorTests
+[ 36%] Building CXX object CMakeFiles/AcustraExtendedLayoutParity.dir/Tests/SampleRateLayoutParity.cpp.o
+[ 37%] Linking CXX executable AcustraNormalLayoutParity
+[ 37%] Built target AcustraNormalLayoutParity
+[ 38%] Building CXX object CMakeFiles/AcustraReleaseTests.dir/Tests/ReleaseTests.cpp.o
+[ 38%] Linking CXX executable AcustraExtendedLayoutParity
+[ 38%] Built target AcustraExtendedLayoutParity
+[ 38%] Building CXX object CMakeFiles/AcustraContactTravelTests.dir/Tests/ContactTravelTests.cpp.o
+[ 38%] Linking CXX executable AcustraPerformerTests
+[ 38%] Built target AcustraPerformerTests
+[ 38%] Building CXX object CMakeFiles/AcustraOutputBusTests.dir/Tests/OutputBusTests.cpp.o
+[ 39%] Linking CXX executable AcustraContactTravelTests
+[ 39%] Linking CXX executable AcustraReleaseTests
+[ 39%] Built target AcustraContactTravelTests
+[ 39%] Built target AcustraReleaseTests
+[ 40%] Building CXX object CMakeFiles/AcustraCaptureTests.dir/Tests/CaptureTests.cpp.o
+[ 41%] Building CXX object CMakeFiles/AcustraCaptureTransitionTests.dir/Tests/CaptureTransitionTests.cpp.o
+[ 41%] Linking CXX executable AcustraCaptureTransitionTests
+[ 41%] Built target AcustraCaptureTransitionTests
+[ 42%] Building CXX object CMakeFiles/AcustraCaptureVoicingTests.dir/Tests/CaptureVoicingTests.cpp.o
+[ 43%] Linking CXX executable AcustraOutputBusTests
+[ 43%] Built target AcustraOutputBusTests
+[ 43%] Building CXX object CMakeFiles/AcustraMicrophoneBalanceTests.dir/Tests/MicrophoneBalanceTests.cpp.o
+[ 43%] Linking CXX executable AcustraCaptureVoicingTests
+[ 43%] Built target AcustraCaptureVoicingTests
+[ 44%] Building CXX object CMakeFiles/AcustraPiezoCircuitTests.dir/Tests/PiezoCircuitTests.cpp.o
+[ 45%] Linking CXX executable AcustraMicrophoneBalanceTests
+[ 45%] Built target AcustraMicrophoneBalanceTests
+[ 45%] Linking CXX executable AcustraCaptureTests
+[ 46%] Building CXX object CMakeFiles/AcustraGuitarModelTests.dir/Tests/GuitarModelTests.cpp.o
+[ 46%] Built target AcustraCaptureTests
+[ 46%] Building CXX object CMakeFiles/AcustraBodyShapeTests.dir/Tests/BodyShapeTests.cpp.o
+[ 46%] Linking CXX executable AcustraGuitarModelTests
+[ 46%] Built target AcustraGuitarModelTests
+[ 47%] Building CXX object CMakeFiles/AcustraConstructionMatrixTests.dir/Tests/ConstructionMatrixTests.cpp.o
+[ 48%] Linking CXX executable AcustraEngineTests
+[ 48%] Built target AcustraEngineTests
+[ 49%] Building CXX object CMakeFiles/AcustraConstructionHistoryTests.dir/Tests/ConstructionHistoryTests.cpp.o
+[ 49%] Linking CXX executable AcustraPiezoCircuitTests
+[ 49%] Built target AcustraPiezoCircuitTests
+[ 50%] Building CXX object CMakeFiles/AcustraConstructionLoudnessTests.dir/Tests/ConstructionLoudnessTests.cpp.o
+[ 51%] Linking CXX executable AcustraBodyShapeTests
+[ 51%] Linking CXX executable AcustraConstructionMatrixTests
+[ 51%] Built target AcustraBodyShapeTests
+[ 51%] Built target AcustraConstructionMatrixTests
+[ 51%] Building CXX object CMakeFiles/AcustraRecuerdosArticulationTests.dir/Tests/RecuerdosArticulationTests.cpp.o
+[ 51%] Building CXX object CMakeFiles/AcustraPluginProcessorTests.dir/Tests/PluginProcessorTests.cpp.o
+[ 51%] Linking CXX executable AcustraConstructionHistoryTests
+[ 51%] Built target AcustraConstructionHistoryTests
+[ 51%] Building CXX object CMakeFiles/AcustraPluginTempoReleaseTests.dir/Tests/PluginTempoReleaseTests.cpp.o
+[ 52%] Linking CXX executable AcustraRecuerdosArticulationTests
+[ 52%] Built target AcustraRecuerdosArticulationTests
+[ 52%] Building CXX object CMakeFiles/AcustraVelocityRealismTests.dir/Tests/VelocityRealismTests.cpp.o
+[ 52%] Linking CXX executable AcustraConstructionLoudnessTests
+[ 52%] Built target AcustraConstructionLoudnessTests
+[ 52%] Building CXX object CMakeFiles/AcustraContactReleaseTests.dir/Tests/ContactReleaseTests.cpp.o
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:102:50: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  102 |         && a.picking == b.picking && a.stringAge == b.stringAge
+      |                                      ~~~~~~~~~~~ ^  ~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:103:28: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  103 |         && a.pluckPosition == b.pluckPosition && a.touch == b.touch
+      |            ~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:103:58: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  103 |         && a.pluckPosition == b.pluckPosition && a.touch == b.touch
+      |                                                  ~~~~~~~ ^  ~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:104:25: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  104 |         && a.bodyAmount == b.bodyAmount && a.stereoWidth == b.stereoWidth
+      |            ~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:104:58: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  104 |         && a.bodyAmount == b.bodyAmount && a.stereoWidth == b.stereoWidth
+      |                                            ~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:105:25: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  105 |         && a.outputGain == b.outputGain && a.piezoMix == b.piezoMix
+      |            ~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:105:55: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  105 |         && a.outputGain == b.outputGain && a.piezoMix == b.piezoMix
+      |                                            ~~~~~~~~~~ ^  ~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:106:27: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  106 |         && a.releaseNoise == b.releaseNoise && a.room == b.room;
+      |            ~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:106:55: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+  106 |         && a.releaseNoise == b.releaseNoise && a.room == b.room;
+      |                                                ~~~~~~ ^  ~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1391:57: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+ 1391 |                 && valueOf (restored, ids::captureMode) == valueOf (source, ids::captureMode),
+      |                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1502:29: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+ 1501 |             expect (valueOf (restored, ids::bodyMaterial)
+      |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 1502 |                             == migratedWood[static_cast<std::size_t> (oldWood)]
+      |                             ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1529:25: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+ 1528 |             expect (valueOf (*reloadOwner, ids::bodyMaterial)
+      |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 1529 |                         == migratedWood[static_cast<std::size_t> (oldWood)],
+      |                         ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1538:44: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+ 1538 |     expect (valueOf (restored, ids::shape) == shapeBeforeGarbage,
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1625:56: warning: comparing floating point with == or != is unsafe [-Wfloat-equal]
+ 1625 |         expect (valueOf (processor, ids::bodyMaterial) == (oldWood > 0.0f ? 2.0f : 0.0f),
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:1848:66: warning: implicit conversion from 'int' to 'float' may lose precision [-Wimplicit-int-float-conversion]
+ 1848 |             expect (std::abs (valueOf (processor, setup.first) - index) < 0.011f,
+      |                                                                ~ ^~~~~
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2029:6: warning: no previous prototype for function 'testMpeTimbreReachesTheEngineOnMemberChannelOnly' [-Wmissing-prototypes]
+ 2029 | void testMpeTimbreReachesTheEngineOnMemberChannelOnly()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2029:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2029 | void testMpeTimbreReachesTheEngineOnMemberChannelOnly()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2068:6: warning: no previous prototype for function 'testMpePressureReachesTheEngineOnMemberChannelOnly' [-Wmissing-prototypes]
+ 2068 | void testMpePressureReachesTheEngineOnMemberChannelOnly()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2068:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2068 | void testMpePressureReachesTheEngineOnMemberChannelOnly()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2118:20: warning: no previous prototype for function 'renderTimeline' [-Wmissing-prototypes]
+ 2118 | std::vector<float> renderTimeline (const std::vector<TimedMidi>& events,
+      |                    ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2118:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2118 | std::vector<float> renderTimeline (const std::vector<TimedMidi>& events,
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2146:6: warning: no previous prototype for function 'testGatheredChordsVoiceLikeSequencedChords' [-Wmissing-prototypes]
+ 2146 | void testGatheredChordsVoiceLikeSequencedChords()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2146:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2146 | void testGatheredChordsVoiceLikeSequencedChords()
+      | ^
+      | static 
+[ 53%] Linking CXX executable AcustraVelocityRealismTests
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2228:6: warning: no previous prototype for function 'testGatheringOnlyDelaysNotesMeantApart' [-Wmissing-prototypes]
+ 2228 | void testGatheringOnlyDelaysNotesMeantApart()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2228:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2228 | void testGatheringOnlyDelaysNotesMeantApart()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2284:6: warning: no previous prototype for function 'testGatherSwitchAndPanicReleaseHeldNotes' [-Wmissing-prototypes]
+ 2284 | void testGatherSwitchAndPanicReleaseHeldNotes()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2284:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2284 | void testGatherSwitchAndPanicReleaseHeldNotes()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2331:6: warning: no previous prototype for function 'testStringPerChannelModeViaMonoModeOn' [-Wmissing-prototypes]
+ 2331 | void testStringPerChannelModeViaMonoModeOn()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2331:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2331 | void testStringPerChannelModeViaMonoModeOn()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2369:6: warning: no previous prototype for function 'testTheAdapterPlaysExactlyThePerformer' [-Wmissing-prototypes]
+ 2369 | void testTheAdapterPlaysExactlyThePerformer()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2369:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2369 | void testTheAdapterPlaysExactlyThePerformer()
+      | ^
+      | static 
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2454:6: warning: no previous prototype for function 'testOptionalPiezoOutputBus' [-Wmissing-prototypes]
+ 2454 | void testOptionalPiezoOutputBus()
+      |      ^
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tests/PluginProcessorTests.cpp:2454:1: note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 2454 | void testOptionalPiezoOutputBus()
+      | ^
+      | static 
+[ 54%] Linking CXX executable AcustraContactReleaseTests
+[ 54%] Built target AcustraVelocityRealismTests
+[ 54%] Built target AcustraContactReleaseTests
+[ 55%] Building CXX object CMakeFiles/AcustraStringPitchRealismTests.dir/Tests/StringPitchRealismTests.cpp.o
+[ 55%] Building CXX object CMakeFiles/AcustraPalmMutePitchTests.dir/Tests/PalmMutePitchTests.cpp.o
+[ 56%] Linking CXX executable AcustraPalmMutePitchTests
+[ 56%] Built target AcustraPalmMutePitchTests
+[ 57%] Linking CXX executable AcustraPluginTempoReleaseTests
+[ 57%] Linking CXX executable AcustraStringPitchRealismTests
+[ 57%] Building CXX object CMakeFiles/AcustraStringDecayRealismTests.dir/Tests/StringDecayRealismTests.cpp.o
+[ 57%] Built target AcustraStringPitchRealismTests
+[ 57%] Building CXX object CMakeFiles/AcustraBodyRealismTests.dir/Tests/BodyRealismTests.cpp.o
+24 warnings generated.
+[ 58%] Linking CXX executable AcustraPluginProcessorTests
+[ 58%] Linking CXX executable AcustraStringDecayRealismTests
+[ 58%] Built target AcustraStringDecayRealismTests
+[ 59%] Linking CXX executable AcustraBodyRealismTests
+[ 59%] Building CXX object CMakeFiles/AcustraVoicingRealismTests.dir/Tests/VoicingRealismTests.cpp.o
+[ 59%] Built target AcustraBodyRealismTests
+[ 60%] Building CXX object CMakeFiles/AcustraSympathyRealismTests.dir/Tests/SympathyRealismTests.cpp.o
+[ 61%] Linking CXX executable AcustraVoicingRealismTests
+[ 61%] Built target AcustraVoicingRealismTests
+[ 61%] Building CXX object CMakeFiles/AcustraRepeatedPluckRealismTests.dir/Tests/RepeatedPluckRealismTests.cpp.o
+[ 61%] Linking CXX executable AcustraSympathyRealismTests
+[ 61%] Built target AcustraSympathyRealismTests
+[ 62%] Building CXX object CMakeFiles/AcustraPickingHandTests.dir/Tests/PickingHandTests.cpp.o
+[ 62%] Linking CXX executable AcustraPickingHandTests
+[ 62%] Built target AcustraPickingHandTests
+[ 63%] Building CXX object CMakeFiles/AcustraPickingHandBoundaryTests.dir/Tests/PickingHandBoundaryTests.cpp.o
+[ 64%] Linking CXX executable AcustraRepeatedPluckRealismTests
+[ 64%] Built target AcustraRepeatedPluckRealismTests
+[ 65%] Building CXX object CMakeFiles/AcustraStrummingRealismTests.dir/Tests/StrummingRealismTests.cpp.o
+[ 65%] Linking CXX executable AcustraPickingHandBoundaryTests
+[ 65%] Built target AcustraPickingHandBoundaryTests
+[ 66%] Building CXX object CMakeFiles/AcustraLegatoRealismTests.dir/Tests/LegatoRealismTests.cpp.o
+[ 66%] Linking CXX executable AcustraStrummingRealismTests
+[ 66%] Built target AcustraStrummingRealismTests
+[ 67%] Building CXX object CMakeFiles/AcustraReleaseRealismTests.dir/Tests/ReleaseRealismTests.cpp.o
+[ 67%] Linking CXX executable AcustraLegatoRealismTests
+[ 67%] Built target AcustraLegatoRealismTests
+[ 67%] Building CXX object CMakeFiles/AcustraRetuneContinuityTests.dir/Tests/RetuneContinuityTests.cpp.o
+[ 67%] Linking CXX executable AcustraReleaseRealismTests
+[ 67%] Built target AcustraReleaseRealismTests
+[ 67%] Building CXX object CMakeFiles/AcustraPitchGeometryCacheTests.dir/Tests/PitchGeometryCacheTests.cpp.o
+[ 68%] Linking CXX executable AcustraRetuneContinuityTests
+[ 68%] Built target AcustraRetuneContinuityTests
+[ 69%] Building CXX object CMakeFiles/AcustraPhysicalHandRealismTests.dir/Tests/PhysicalHandRealismTests.cpp.o
+[ 70%] Linking CXX executable AcustraPitchGeometryCacheTests
+[ 70%] Built target AcustraPitchGeometryCacheTests
+[ 70%] Building CXX object CMakeFiles/AcustraMaterialStiffnessTests.dir/Tests/MaterialStiffnessTests.cpp.o
+[ 70%] Linking CXX executable AcustraPhysicalHandRealismTests
+[ 70%] Built target AcustraPhysicalHandRealismTests
+[ 71%] Building CXX object CMakeFiles/AcustraPhysicalHandGeometryTests.dir/Tests/PhysicalHandGeometryTests.cpp.o
+[ 72%] Linking CXX executable AcustraMaterialStiffnessTests
+[ 72%] Built target AcustraMaterialStiffnessTests
+[ 72%] Building CXX object CMakeFiles/AcustraReleaseBrushTrajectoryTests.dir/Tests/ReleaseBrushTrajectoryTests.cpp.o
+[ 72%] Linking CXX executable AcustraPhysicalHandGeometryTests
+[ 72%] Built target AcustraPhysicalHandGeometryTests
+[ 73%] Building CXX object CMakeFiles/AcustraFractionalContactTests.dir/Tests/FractionalContactTests.cpp.o
+[ 73%] Linking CXX executable AcustraReleaseBrushTrajectoryTests
+[ 73%] Built target AcustraReleaseBrushTrajectoryTests
+[ 74%] Building CXX object CMakeFiles/AcustraPhysicalStoppingTests.dir/Tests/PhysicalStoppingTests.cpp.o
+[ 74%] Linking CXX executable AcustraFractionalContactTests
+[ 74%] Built target AcustraFractionalContactTests
+[ 75%] Building CXX object CMakeFiles/AcustraPhysicalVibratoStoppingTests.dir/Tests/PhysicalVibratoStoppingTests.cpp.o
+[ 75%] Linking CXX executable AcustraPhysicalStoppingTests
+[ 75%] Built target AcustraPhysicalStoppingTests
+[ 75%] Building CXX object CMakeFiles/AcustraWoodMaterialTests.dir/Tests/WoodMaterialTests.cpp.o
+[ 75%] Linking CXX executable AcustraPhysicalVibratoStoppingTests
+[ 75%] Built target AcustraPhysicalVibratoStoppingTests
+[ 76%] Building CXX object CMakeFiles/AcustraFretMotionTests.dir/Tests/FretMotionTests.cpp.o
+[ 77%] Linking CXX executable AcustraWoodMaterialTests
+[ 77%] Built target AcustraWoodMaterialTests
+[ 77%] Building CXX object CMakeFiles/AcustraMasterTuningTests.dir/Tests/MasterTuningTests.cpp.o
+[ 77%] Linking CXX executable AcustraFretMotionTests
+[ 77%] Built target AcustraFretMotionTests
+[ 78%] Building CXX object CMakeFiles/AcustraConstructionStrumLevels.dir/Tools/ConstructionStrumLevels.cpp.o
+[ 79%] Linking CXX executable AcustraMasterTuningTests
+[ 79%] Built target AcustraMasterTuningTests
+[ 79%] Building CXX object CMakeFiles/AcustraRenderPhysicalHandReview.dir/Tools/RenderPhysicalHandReview.cpp.o
+[ 79%] Linking CXX executable AcustraConstructionStrumLevels
+[ 79%] Built target AcustraConstructionStrumLevels
+[ 80%] Building CXX object CMakeFiles/AcustraRenderMaterialGestureReview.dir/Tools/RenderMaterialGestureReview.cpp.o
+[ 81%] Linking CXX executable AcustraRenderPhysicalHandReview
+[ 81%] Built target AcustraRenderPhysicalHandReview
+[ 82%] Building CXX object CMakeFiles/AcustraRenderFretMotionReview.dir/Tools/RenderFretMotionReview.cpp.o
+[ 82%] Linking CXX executable AcustraRenderMaterialGestureReview
+[ 82%] Built target AcustraRenderMaterialGestureReview
+[ 83%] Linking CXX executable Acustra_artefacts/Release/Standalone/Acustra.app/Contents/MacOS/Acustra
+[ 83%] Linking CXX executable AcustraRenderFretMotionReview
+[ 83%] Built target AcustraRenderFretMotionReview
+[ 84%] Linking CXX CFBundle shared module Acustra_artefacts/Release/AU/Acustra.component/Contents/MacOS/Acustra
+[ 84%] Built target AcustraPluginTempoReleaseTests
+[ 84%] Linking CXX CFBundle shared module Acustra_artefacts/Release/VST3/Acustra.vst3/Contents/MacOS/Acustra
+[ 84%] Built target AcustraPluginProcessorTests
+[ 89%] Built target Acustra_AU
+[ 94%] Built target Acustra_Standalone
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/Acustra_artefacts/Release/VST3/Acustra.vst3: code has no resources but signature indicates they must be present
+-- Replacing invalid signature with ad-hoc signature
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/Acustra_artefacts/Release/VST3/Acustra.vst3: replacing existing signature
+removing moduleinfo.json
+creating /Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/Acustra_artefacts/Release/VST3/Acustra.vst3/Contents/Resources/moduleinfo.json
+[100%] Built target Acustra_VST3

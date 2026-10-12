@@ -1,0 +1,261 @@
+{
+  "files": [
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/jumbo-mahogany-mono_mic-m40-pitch-ab.wav",
+      "sha256": "f072583624b315532a48da6a87d59c3c8b35483738b25a981548d5ee017ca7ae",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.12930898368358612
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/jumbo-mahogany-mono_mic-m41-pitch-ab.wav",
+      "sha256": "d3efc7ef9a6d672eac6c84b5cbe0d8e2ad59809815b1cae3b9cf1627e9722bab",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.12139271199703217
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/jumbo-mahogany-stereo_mic-m40-pitch-ab.wav",
+      "sha256": "b980e6e0a73cb11daa1fd82243118a960e3022e367f177d39d5b9a4962e41f67",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.13757739961147308
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/auditorium-spruce-stereo_mic-m45-pitch-ab.wav",
+      "sha256": "d6ca06219d8ba86e06386974f705b86138fde711bd60e8bb611a4eb78086e2fe",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.12837433815002441
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/parlor-spruce-mono_mic-lowE-H3-245-254-ab.wav",
+      "sha256": "30053daf1d2d58d8e52d3bdaea057f9d768ad208e55bb95d2258c2d1ec4d25cb",
+      "frames": 2488800,
+      "float32_stereo": true,
+      "peak": 0.24044260382652283
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/jumbo-spruce-mono_mic-m40-pitch-ab.wav",
+      "sha256": "b3071ae87765a8e7ab2b1c98c0a40c065caf682d8296432c4b46f3bf3b927905",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.1232985258102417
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/parlor-mahogany-mono_mic-m47-pitch-ab.wav",
+      "sha256": "49b6b252da3a62cac25a6658e7b6a8b90dcc91a2329f16b1ea6329dd219b6fab",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.1165103018283844
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/jumbo-mahogany-stereo_mic-m41-pitch-ab.wav",
+      "sha256": "6b725eae4bcc43935d3fe398d7dc71360099e9ab1f0d916b1c3f49fdbda92e4f",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.12956319749355316
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/jumbo-spruce-mono_mic-m41-pitch-ab.wav",
+      "sha256": "3e7c34e187c4aeebcc6ed424d0641b841164df6f5f0242bad36a2a9352d273ba",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.11133227497339249
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/parlor-spruce-stereo_mic-lowE-H3-245-254-ab.wav",
+      "sha256": "91fe11702e582fc47964bd5d18b4c4ca625871dbf15407695ce157c2351d0f91",
+      "frames": 2488800,
+      "float32_stereo": true,
+      "peak": 0.25332143902778625
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/auditorium-mahogany-stereo_mic-m45-pitch-ab.wav",
+      "sha256": "8f3deb0d99561fd896f6ff3cd8a19580559dd6215fd1ac6cfffb1bfaf4f71683",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.12878139317035675
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/jumbo-spruce-stereo_mic-m41-pitch-ab.wav",
+      "sha256": "7d9c539489d228083dca6cf691412519acebe4f786c2a57d7a2a09f4e5b06c4b",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.12966813147068024
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/jumbo-spruce-stereo_mic-m40-pitch-ab.wav",
+      "sha256": "9758bc4278150c9a22dd49f507c35436436cbfd30d4803dce8c8a33420251bb6",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.14363501965999603
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/parlor-mahogany-stereo_mic-m47-pitch-ab.wav",
+      "sha256": "5bfe33a21e986b9285aed294771adea377d84ebadac727579121a26d9dba8f89",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.11922426521778107
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/parlor-mahogany-mono_mic-lowE-H3-245-254-ab.wav",
+      "sha256": "c900062a361f4464fa120a7bb8c8b3afa6eff5c1c77d6c9a4aa054ac6c9de4a1",
+      "frames": 2488800,
+      "float32_stereo": true,
+      "peak": 0.19901853799819946
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/parlor-spruce-stereo_mic-m47-pitch-ab.wav",
+      "sha256": "d972b2b18ae6061dca871abffafea522d07df788ee4b31ebf5f2234f541a70ac",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.12902167439460754
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/parlor-spruce-mono_mic-m47-pitch-ab.wav",
+      "sha256": "a51050807d01c32ce23d4060a6e9698a96aced4f861753dee6c8037d3f7bd57b",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.11578826606273651
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/parlor-mahogany-stereo_mic-lowE-H3-245-254-ab.wav",
+      "sha256": "c9377307431c6c6011f7fd0c0d9275eaab7c1c7ede24664f47c09577b01f5010",
+      "frames": 2488800,
+      "float32_stereo": true,
+      "peak": 0.20450615882873535
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/auditorium-mahogany-mono_mic-m45-pitch-ab.wav",
+      "sha256": "80306569e56174ef88197bb14f152908e88b2372e76cd9aac918a6c849afd6e0",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.12202739715576172
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/auditorium-spruce-mono_mic-m45-pitch-ab.wav",
+      "sha256": "0265ee64fbe7999e3ada9f4d5772bd4f495fb89241db819827adb4ae7b8797ad",
+      "frames": 1236000,
+      "float32_stereo": true,
+      "peak": 0.11933182924985886
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/auditorium-spruce-stereo_mic-A1-centre-ab.wav",
+      "sha256": "84cdf1c3b2253aa64927bc2b90927c3196d88d648106184c8396da1dd26bbe7d",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.12215104699134827
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-spruce-stereo_mic-F1-centre-ab.wav",
+      "sha256": "0e65c11ae7c1150c32f2ffb15ce5a2927ffdb4abd36ba4d670f6a729c6077d6d",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.12706929445266724
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/parlor-spruce-stereo_mic-B1-centre-ab.wav",
+      "sha256": "ae1eb143d1de774561589895d8c15e01c4d8fa1322c6335879f99903d24f4265",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.12902167439460754
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/parlor-spruce-mono_mic-B1-centre-ab.wav",
+      "sha256": "b1cc9f2b34eb93baaea882d7f977b503111b63c621030d2e40e2bd9aeadb4f1c",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.11578826606273651
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/parlor-mahogany-stereo_mic-B1-centre-ab.wav",
+      "sha256": "428fdae87cad707a95fb767f6fd8ce57422082508547c89f5d29828c522906d4",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.11922426521778107
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-spruce-stereo_mic-E1-centre-ab.wav",
+      "sha256": "33ec74bf89a1fb1eda6266fb3bbe72b0bcec9ce17bc5b2dfc7d8b2387df83a55",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.14363501965999603
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/parlor-mahogany-mono_mic-B1-centre-ab.wav",
+      "sha256": "086859aa7943439f6f1a4ddcdd9eff2df9fec491b3fd46b0ff516dcd87d28cba",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.1165103018283844
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-spruce-mono_mic-E1-centre-ab.wav",
+      "sha256": "9666485e8ea8d2b3484a883676778ee6c1b36323a721dfa3f0ed0ad5f0ebbb8c",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.1232985258102417
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/auditorium-mahogany-mono_mic-A1-centre-ab.wav",
+      "sha256": "e08e8047db2236da5de7ed7ab7c6f687dc5761cda606ef73aad01d8cedf25f62",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.12202739715576172
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-mahogany-stereo_mic-E1-centre-ab.wav",
+      "sha256": "3287e72083193f6c0a27db9d0a8c404ce4f31062842b2a0491e868e1a36f42ec",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.1301267296075821
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/auditorium-spruce-mono_mic-A1-centre-ab.wav",
+      "sha256": "fad134d95dff8149b0706f1a5c8c2d73397f0e5512f926f8440daf1509c69d6b",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.11933182924985886
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-mahogany-mono_mic-F1-centre-ab.wav",
+      "sha256": "81882e122348c986a505296b70b653aabc130d8a3b0740f4bef0fb0af3cd6a63",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.12139271199703217
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/auditorium-mahogany-stereo_mic-A1-centre-ab.wav",
+      "sha256": "397c5e0649c9f4151ea664f7d281acfa941df36ac21da1917c864b1a53e68652",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.12878139317035675
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-spruce-mono_mic-F1-centre-ab.wav",
+      "sha256": "886242029f3969a826d0386a905bcaec485377be5f5287bcba355a604f4eeb54",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.10099073499441147
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-mahogany-mono_mic-E1-centre-ab.wav",
+      "sha256": "f71a55ca09d9af6628306a252aa2fb9f93c1c947307c72e1a81b36046f48e454",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.10727865248918533
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-mahogany-stereo_mic-F1-centre-ab.wav",
+      "sha256": "7b32e922354abd5666b169c68e682e94463a7a14505ed38fead8a3b2308efdc0",
+      "frames": 400800,
+      "float32_stereo": true,
+      "peak": 0.12956319749355316
+    }
+  ],
+  "count": 36,
+  "all_finite": true,
+  "all_float32_stereo": true,
+  "snapshot_hashes_verified": true,
+  "listened": false
+}

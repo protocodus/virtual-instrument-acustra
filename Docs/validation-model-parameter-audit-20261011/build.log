@@ -1,0 +1,157 @@
+[  1%] Building VST3 manifest helper for Acustra
+[  3%] Built target AcustraUIAssets
+[  4%] Building CXX object CMakeFiles/AcustraDSP.dir/Source/DSP/AcustraEngine.cpp.o
+[  4%] Building CXX object CMakeFiles/AcustraDSPCxx17.dir/Source/DSP/AcustraEngine.cpp.o
+[  7%] Built target AcustraReferenceBank
+[  7%] Building CXX object CMakeFiles/AcustraDSPExtendedCxx17.dir/Source/DSP/AcustraEngine.cpp.o
+-- Configuring done (0.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/vst3_helpers/Acustra
+make[3]: warning: jobserver unavailable: using -j1.  Add `+' to parent make rule.
+[100%] Built target vst3_helper
+[  7%] Built target Acustra_vst3_helper
+[  8%] Built target AcustraSampleBankTests
+[  9%] Linking CXX static library libAcustraDSP.a
+[  9%] Built target AcustraDSP
+[ 10%] Built target AcustraDSPCxx17
+[ 10%] Linking CXX executable AcustraRenderDemos
+[ 10%] Linking CXX executable AcustraRenderRealismSongs
+[ 10%] Linking CXX static library libAcustraDSPExtendedCxx17.a
+[ 11%] Built target AcustraRenderRealismSongs
+[ 12%] Built target AcustraRenderDemos
+[ 13%] Built target AcustraDSPExtendedCxx17
+[ 13%] Linking CXX executable AcustraExternalCorpusRenderer
+[ 13%] Linking CXX executable AcustraPhysicalFitRenderer
+[ 14%] Linking CXX executable AcustraBridgeProbe
+[ 14%] Built target AcustraBridgeProbe
+[ 15%] Built target AcustraExternalCorpusRenderer
+[ 16%] Linking CXX executable AcustraTraceRinging
+[ 17%] Linking CXX executable AcustraPerformanceRenderer
+[ 28%] Built target Acustra
+[ 28%] Built target AcustraPerformanceRenderer
+[ 28%] Linking CXX executable AcustraRenderAudibleRealism
+[ 28%] Built target AcustraTraceRinging
+[ 28%] Linking CXX executable AcustraRenderRepertoire
+[ 28%] Linking CXX executable AcustraRenderNaturalPerformance
+[ 28%] Built target AcustraRenderAudibleRealism
+[ 29%] Built target AcustraPhysicalFitRenderer
+[ 30%] Built target AcustraRenderRepertoire
+[ 31%] Building CXX object CMakeFiles/AcustraEngineTests.dir/Tests/AcustraEngineTests.cpp.o
+[ 32%] Built target AcustraRenderNaturalPerformance
+[ 33%] Linking CXX executable AcustraStrumDirectionTests
+[ 34%] Linking CXX executable AcustraReleaseJoinTests
+[ 35%] Linking CXX executable AcustraHandAllocatorTests
+[ 35%] Built target AcustraStrumDirectionTests
+[ 35%] Built target AcustraReleaseJoinTests
+[ 35%] Built target AcustraHandAllocatorTests
+[ 35%] Linking CXX executable AcustraExtendedSampleRateTests
+[ 35%] Linking CXX executable AcustraPerformerTests
+[ 36%] Linking CXX executable AcustraNormalLayoutParity
+[ 37%] Built target AcustraPerformerTests
+[ 37%] Built target AcustraNormalLayoutParity
+[ 38%] Built target AcustraExtendedSampleRateTests
+[ 38%] Linking CXX executable AcustraExtendedLayoutParity
+[ 39%] Linking CXX executable AcustraReleaseTests
+[ 39%] Linking CXX executable AcustraContactTravelTests
+[ 40%] Built target AcustraExtendedLayoutParity
+[ 40%] Built target AcustraReleaseTests
+[ 41%] Built target AcustraContactTravelTests
+[ 42%] Linking CXX executable AcustraCaptureTests
+[ 43%] Linking CXX executable AcustraCaptureVoicingTests
+[ 44%] Linking CXX executable AcustraOutputBusTests
+[ 44%] Built target AcustraCaptureTests
+[ 44%] Built target AcustraCaptureVoicingTests
+[ 44%] Built target AcustraOutputBusTests
+[ 45%] Linking CXX executable AcustraMicrophoneBalanceTests
+[ 45%] Linking CXX executable AcustraPiezoCircuitTests
+[ 46%] Linking CXX executable AcustraGuitarModelTests
+[ 46%] Built target AcustraMicrophoneBalanceTests
+[ 47%] Built target AcustraPiezoCircuitTests
+[ 47%] Built target AcustraGuitarModelTests
+[ 48%] Linking CXX executable AcustraBodyShapeTests
+[ 49%] Linking CXX executable AcustraConstructionMatrixTests
+[ 50%] Linking CXX executable AcustraConstructionHistoryTests
+[ 50%] Built target AcustraBodyShapeTests
+[ 50%] Built target AcustraConstructionMatrixTests
+[ 50%] Building CXX object CMakeFiles/AcustraConstructionLoudnessTests.dir/Tests/ConstructionLoudnessTests.cpp.o
+[ 50%] Built target AcustraConstructionHistoryTests
+[ 51%] Linking CXX executable AcustraRecuerdosArticulationTests
+[ 52%] Linking CXX executable AcustraPluginProcessorTests
+[ 52%] Built target AcustraRecuerdosArticulationTests
+[ 53%] Linking CXX executable AcustraPluginTempoReleaseTests
+[ 54%] Linking CXX executable AcustraConstructionLoudnessTests
+[ 54%] Built target AcustraConstructionLoudnessTests
+[ 55%] Linking CXX executable AcustraVelocityRealismTests
+[ 55%] Built target AcustraVelocityRealismTests
+[ 55%] Linking CXX executable AcustraContactReleaseTests
+[ 56%] Built target AcustraContactReleaseTests
+[ 57%] Linking CXX executable AcustraStringPitchRealismTests
+[ 57%] Built target AcustraStringPitchRealismTests
+[ 58%] Linking CXX executable AcustraPalmMutePitchTests
+[ 58%] Built target AcustraPalmMutePitchTests
+[ 59%] Linking CXX executable AcustraStringDecayRealismTests
+[ 59%] Built target AcustraStringDecayRealismTests
+[ 60%] Linking CXX executable AcustraBodyRealismTests
+[ 60%] Built target AcustraBodyRealismTests
+[ 61%] Linking CXX executable AcustraVoicingRealismTests
+[ 61%] Built target AcustraVoicingRealismTests
+[ 62%] Linking CXX executable AcustraSympathyRealismTests
+[ 62%] Built target AcustraSympathyRealismTests
+[ 62%] Linking CXX executable AcustraRepeatedPluckRealismTests
+[ 63%] Built target AcustraRepeatedPluckRealismTests
+[ 63%] Linking CXX executable AcustraPickingHandTests
+[ 64%] Built target AcustraPickingHandTests
+[ 64%] Linking CXX executable AcustraPickingHandBoundaryTests
+[ 65%] Built target AcustraPickingHandBoundaryTests
+[ 66%] Linking CXX executable AcustraStrummingRealismTests
+[ 66%] Built target AcustraStrummingRealismTests
+[ 67%] Linking CXX executable AcustraLegatoRealismTests
+[ 67%] Built target AcustraLegatoRealismTests
+[ 68%] Linking CXX executable AcustraReleaseRealismTests
+[ 68%] Built target AcustraReleaseRealismTests
+[ 68%] Linking CXX executable AcustraRetuneContinuityTests
+[ 69%] Built target AcustraRetuneContinuityTests
+[ 69%] Linking CXX executable AcustraPitchGeometryCacheTests
+[ 70%] Built target AcustraPitchGeometryCacheTests
+[ 70%] Linking CXX executable AcustraPhysicalHandRealismTests
+[ 71%] Built target AcustraPhysicalHandRealismTests
+[ 72%] Linking CXX executable AcustraMaterialStiffnessTests
+[ 72%] Built target AcustraMaterialStiffnessTests
+[ 72%] Linking CXX executable AcustraPhysicalHandGeometryTests
+[ 73%] Built target AcustraPhysicalHandGeometryTests
+[ 74%] Linking CXX executable AcustraReleaseBrushTrajectoryTests
+[ 74%] Built target AcustraReleaseBrushTrajectoryTests
+[ 75%] Linking CXX executable AcustraFractionalContactTests
+[ 75%] Built target AcustraFractionalContactTests
+[ 75%] Linking CXX executable AcustraPhysicalStoppingTests
+[ 75%] Linking CXX executable AcustraEngineTests
+[ 76%] Built target AcustraPhysicalStoppingTests
+[ 76%] Linking CXX executable AcustraPhysicalVibratoStoppingTests
+[ 76%] Built target AcustraEngineTests
+[ 76%] Linking CXX executable AcustraWoodMaterialTests
+[ 77%] Built target AcustraPhysicalVibratoStoppingTests
+[ 78%] Linking CXX executable AcustraFretMotionTests
+[ 78%] Built target AcustraWoodMaterialTests
+[ 78%] Building CXX object CMakeFiles/AcustraConstructionStrumLevels.dir/Tools/ConstructionStrumLevels.cpp.o
+[ 78%] Built target AcustraFretMotionTests
+[ 78%] Linking CXX executable AcustraRenderPhysicalHandReview
+[ 79%] Built target AcustraRenderPhysicalHandReview
+[ 79%] Linking CXX executable AcustraRenderMaterialGestureReview
+[ 80%] Built target AcustraRenderMaterialGestureReview
+[ 80%] Linking CXX executable AcustraRenderFretMotionReview
+[ 81%] Built target AcustraRenderFretMotionReview
+[ 82%] Linking CXX executable Acustra_artefacts/Release/Standalone/Acustra.app/Contents/MacOS/Acustra
+[ 82%] Linking CXX executable AcustraConstructionStrumLevels
+[ 82%] Built target AcustraConstructionStrumLevels
+[ 83%] Linking CXX CFBundle shared module Acustra_artefacts/Release/AU/Acustra.component/Contents/MacOS/Acustra
+[ 83%] Built target AcustraPluginTempoReleaseTests
+[ 83%] Linking CXX CFBundle shared module Acustra_artefacts/Release/VST3/Acustra.vst3/Contents/MacOS/Acustra
+[ 83%] Built target AcustraPluginProcessorTests
+[ 89%] Built target Acustra_AU
+[ 94%] Built target Acustra_Standalone
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/Acustra_artefacts/Release/VST3/Acustra.vst3: code has no resources but signature indicates they must be present
+-- Replacing invalid signature with ad-hoc signature
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/Acustra_artefacts/Release/VST3/Acustra.vst3: replacing existing signature
+removing moduleinfo.json
+creating /Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/Acustra_artefacts/Release/VST3/Acustra.vst3/Contents/Resources/moduleinfo.json
+[100%] Built target Acustra_VST3

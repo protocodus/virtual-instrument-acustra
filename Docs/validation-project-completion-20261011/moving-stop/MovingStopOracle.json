@@ -1,0 +1,243 @@
+{
+  "scope": "Fixed-wave-speed ideal transverse string with externally prescribed rigid moving stop; no claim of dispersive/two-plane/contact/full instrument qualification.",
+  "method": "Retarded reflection t=reflection+L(reflection)/c; pulse launch=reflection-L(reflection)/c. Same authored 6ms exponential stop used for magnitude examples.",
+  "constant_speed_closed_form_max_abs_error_s": 3.469446951953614e-18,
+  "cases": [
+    {
+      "fret": 2,
+      "slide_semitones": -2,
+      "first_boundary_arrival_s": 0.005405486886376005,
+      "maximum_initial_speed_over_c": 0.11032783270251015,
+      "max_echo_instantaneous_frequency_error_cents": 220.38120019160726,
+      "maximum_abs_pulse_arrival_error_s": 0.0007942156101523601,
+      "pulses": [
+        {
+          "launch_s": -0.02,
+          "reflection_s": -0.014594513113623996,
+          "arrival_s": -0.00918902622724799,
+          "instant_length_arrival_s": -0.00918902622724799,
+          "arrival_error_s": 0.0
+        },
+        {
+          "launch_s": -0.01,
+          "reflection_s": -0.004594513113623995,
+          "arrival_s": 0.0008109737727520095,
+          "instant_length_arrival_s": 0.001017482477383226,
+          "arrival_error_s": 0.00020650870463121643
+        },
+        {
+          "launch_s": -0.005,
+          "reflection_s": 0.00045369656221423823,
+          "arrival_s": 0.005907393124428477,
+          "instant_length_arrival_s": 0.006701608734580837,
+          "arrival_error_s": 0.0007942156101523601
+        },
+        {
+          "launch_s": 0,
+          "reflection_s": 0.005816361188895107,
+          "arrival_s": 0.011632722377790214,
+          "instant_length_arrival_s": 0.011954364806782442,
+          "arrival_error_s": 0.0003216424289922276
+        },
+        {
+          "launch_s": 0.005,
+          "reflection_s": 0.010960927307855254,
+          "arrival_s": 0.01692185461571051,
+          "instant_length_arrival_s": 0.01705778498369563,
+          "arrival_error_s": 0.00013593036798512093
+        },
+        {
+          "launch_s": 0.01,
+          "reflection_s": 0.01602162359836233,
+          "arrival_s": 0.02204324719672466,
+          "instant_length_arrival_s": 0.02210163440285401,
+          "arrival_error_s": 5.838720612934972e-05
+        },
+        {
+          "launch_s": 0.02,
+          "reflection_s": 0.026058851202157604,
+          "arrival_s": 0.032117702404315204,
+          "instant_length_arrival_s": 0.03212865147344694,
+          "arrival_error_s": 1.094906913173821e-05
+        }
+      ]
+    },
+    {
+      "fret": 2,
+      "slide_semitones": 2,
+      "first_boundary_arrival_s": 0.005405486886376005,
+      "maximum_initial_speed_over_c": -0.09829092472986806,
+      "max_echo_instantaneous_frequency_error_cents": 207.55597637482072,
+      "maximum_abs_pulse_arrival_error_s": 0.0006075376389337375,
+      "pulses": [
+        {
+          "launch_s": -0.02,
+          "reflection_s": -0.014594513113623996,
+          "arrival_s": -0.00918902622724799,
+          "instant_length_arrival_s": -0.00918902622724799,
+          "arrival_error_s": 0.0
+        },
+        {
+          "launch_s": -0.01,
+          "reflection_s": -0.004594513113623995,
+          "arrival_s": 0.0008109737727520095,
+          "instant_length_arrival_s": 0.0006839089597127966,
+          "arrival_error_s": -0.00012706481303921286
+        },
+        {
+          "launch_s": -0.005,
+          "reflection_s": 0.00037019944979415536,
+          "arrival_s": 0.005740398899588311,
+          "instant_length_arrival_s": 0.005132861260654573,
+          "arrival_error_s": -0.0006075376389337375
+        },
+        {
+          "launch_s": 0,
+          "reflection_s": 0.005069108520263403,
+          "arrival_s": 0.010138217040526806,
+          "instant_length_arrival_s": 0.009859536630914476,
+          "arrival_error_s": -0.00027868040961233007
+        },
+        {
+          "launch_s": 0.005,
+          "reflection_s": 0.0099284658462824,
+          "arrival_s": 0.0148569316925648,
+          "instant_length_arrival_s": 0.014732711788229144,
+          "arrival_error_s": -0.00012421990433565504
+        },
+        {
+          "launch_s": 0.01,
+          "reflection_s": 0.014865250091285667,
+          "arrival_s": 0.01973050018257133,
+          "instant_length_arrival_s": 0.019675895243290657,
+          "arrival_error_s": -5.4604939280673837e-05
+        },
+        {
+          "launch_s": 0.02,
+          "reflection_s": 0.02482515503099679,
+          "arrival_s": 0.029650310061993576,
+          "instant_length_arrival_s": 0.029639921571382385,
+          "arrival_error_s": -1.0388490611190626e-05
+        }
+      ]
+    },
+    {
+      "fret": 5,
+      "slide_semitones": 12,
+      "first_boundary_arrival_s": 0.004545454545454545,
+      "maximum_initial_speed_over_c": -0.3787878787878788,
+      "max_echo_instantaneous_frequency_error_cents": 847.2054932632739,
+      "maximum_abs_pulse_arrival_error_s": 0.0015628746571087334,
+      "pulses": [
+        {
+          "launch_s": -0.02,
+          "reflection_s": -0.015454545454545453,
+          "arrival_s": -0.010909090909090908,
+          "instant_length_arrival_s": -0.01090909090909091,
+          "arrival_error_s": -1.734723475976807e-18
+        },
+        {
+          "launch_s": -0.01,
+          "reflection_s": -0.005454545454545455,
+          "arrival_s": -0.0009090909090909097,
+          "instant_length_arrival_s": -0.0009090909090909089,
+          "arrival_error_s": 8.673617379884035e-19
+        },
+        {
+          "launch_s": -0.005,
+          "reflection_s": -0.00045454545454545444,
+          "arrival_s": 0.004090909090909091,
+          "instant_length_arrival_s": 0.002528034433800358,
+          "arrival_error_s": -0.0015628746571087334
+        },
+        {
+          "launch_s": 0,
+          "reflection_s": 0.0035338533080816617,
+          "arrival_s": 0.0070677066161633235,
+          "instant_length_arrival_s": 0.006170724143759425,
+          "arrival_error_s": -0.0008969824724038983
+        },
+        {
+          "launch_s": 0.005,
+          "reflection_s": 0.007883552244913307,
+          "arrival_s": 0.010767104489826613,
+          "instant_length_arrival_s": 0.010354698147701936,
+          "arrival_error_s": -0.0004124063421246764
+        },
+        {
+          "launch_s": 0.01,
+          "reflection_s": 0.012553215900373383,
+          "arrival_s": 0.015106431800746768,
+          "instant_length_arrival_s": 0.014923364373148357,
+          "arrival_error_s": -0.0001830674275984101
+        },
+        {
+          "launch_s": 0.02,
+          "reflection_s": 0.022327733527930334,
+          "arrival_s": 0.024655467055860664,
+          "instant_length_arrival_s": 0.024620527603328536,
+          "arrival_error_s": -3.4939452532127546e-05
+        }
+      ]
+    },
+    {
+      "fret": 17,
+      "slide_semitones": -12,
+      "first_boundary_arrival_s": 0.0022727272727272726,
+      "maximum_initial_speed_over_c": 0.3787878787878788,
+      "max_echo_instantaneous_frequency_error_cents": 264.4984974916135,
+      "maximum_abs_pulse_arrival_error_s": 0.0014343216663391216,
+      "pulses": [
+        {
+          "launch_s": -0.02,
+          "reflection_s": -0.017727272727272723,
+          "arrival_s": -0.01545454545454545,
+          "instant_length_arrival_s": -0.015454545454545453,
+          "arrival_error_s": -3.469446951953614e-18
+        },
+        {
+          "launch_s": -0.01,
+          "reflection_s": -0.007727272727272727,
+          "arrival_s": -0.005454545454545454,
+          "instant_length_arrival_s": -0.005454545454545455,
+          "arrival_error_s": -8.673617379884035e-19
+        },
+        {
+          "launch_s": -0.005,
+          "reflection_s": -0.0027272727272727275,
+          "arrival_s": -0.00045454545454545487,
+          "instant_length_arrival_s": -0.00045454545454545444,
+          "arrival_error_s": 4.336808689942018e-19
+        },
+        {
+          "launch_s": 0,
+          "reflection_s": 0.0032156381906113477,
+          "arrival_s": 0.006431276381222695,
+          "instant_length_arrival_s": 0.007865598047561817,
+          "arrival_error_s": 0.0014343216663391216
+        },
+        {
+          "launch_s": 0.005,
+          "reflection_s": 0.009041866765331589,
+          "arrival_s": 0.013083733530663177,
+          "instant_length_arrival_s": 0.013621419346960307,
+          "arrival_error_s": 0.0005376858162971301
+        },
+        {
+          "launch_s": 0.01,
+          "reflection_s": 0.01433710475073597,
+          "arrival_s": 0.018674209501471938,
+          "instant_length_arrival_s": 0.0188959966903181,
+          "arrival_error_s": 0.000221787188846162
+        },
+        {
+          "launch_s": 0.02,
+          "reflection_s": 0.024507202305730696,
+          "arrival_s": 0.02901440461146139,
+          "instant_length_arrival_s": 0.029055058023495887,
+          "arrival_error_s": 4.0653412034498404e-05
+        }
+      ]
+    }
+  ]
+}

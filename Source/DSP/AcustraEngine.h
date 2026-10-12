@@ -131,12 +131,13 @@ struct EngineParameters
     // damping finger or palm landing on the still-vibrating string, launched
     // into it from where it touches, and a faint brush of skin on a wound
     // string's winding (startReleaseNoise in AcustraEngine.cpp). 0.5 is the
-    // nominal level. Sampled at key-up and live for subtle stopped-wound
-    // sliding contact. Zero bypasses new noise; emitted waves continue.
+    // nominal level. Sampled at damping onset (after grace/sustain) and live
+    // for stopped-wound sliding. Zero bypasses new noise; waves continue.
     float releaseNoise { 0.0f };
-    // The room around the microphones, 0 none to 1 a microphone well out in
-    // it: a small studio's early reflections and its 0.45 s reverberation
-    // (RoomAmbience in AcustraEngine.cpp), on the microphone captures only.
+    // The room send around the microphones, 0 none to 1 its maximum level:
+    // a small studio's early reflections and nominal 0.45 s low decay.
+    // It does not move the microphones or change the reflection geometry
+    // (RoomAmbience in AcustraEngine.cpp); microphone captures only.
     // At 0.5 the room's sound sits about 12.5 dB under a held chord's and
     // 10 dB under a released phrase's (whose own sound stops before its
     // room's), at the default controls, and 10 dB lower at each halving (its
@@ -311,6 +312,11 @@ public:
     // zero is an exact no-op.
     void setPalmMutePressure(float pressure) noexcept;
     void setPitchBend(float semitones, int midiChannel = 1) noexcept;
+    // Host reference tuning retensions every string at its existing open/
+    // stopped length. It is independent of the player's slide/bend wheels,
+    // survives reset/prepare, clamps to the host's +/-100-cent range, and
+    // uses zero for nonfinite input.
+    void setMasterTuneCents(float cents) noexcept;
     // MIDI's Modulation Wheel, CC1, as the left hand's vibrato. Zero is an
     // exact no-op, which is the default; see the vibrato map in
     // AcustraEngine.cpp for what the wheel is bounded by.
@@ -957,6 +963,18 @@ private:
         float rightMomentReal {}, rightMomentImaginary {};
     };
 
+    // Immutable construction coefficients, prepared for all saved Shape/Wood
+    // values at setup. Sounding states belong exclusively to BodyBank.
+    struct BodyConfiguration
+    {
+        std::array<BodyMode, bodyModeCount> modes {};
+        int count { 0 };
+        int ordered { 0 };
+        // The construction's air mode, g21's lowest mode as this Shape and
+        // Wood place it, which centres the capture dip (CaptureFilter).
+        float airModeHz { 0.0f };
+    };
+
     // Local-contact transport. Each tap is a fixed lossless
     // fractional delay; source samples enter once and the ordinary string
     // loop carries every subsequent round trip.
@@ -1028,13 +1046,15 @@ private:
         std::uint32_t memberBend { 0 };
         std::uint32_t vibrato { 0 };
         std::uint32_t attackPitch { 0 };
+        std::uint32_t masterTune { 0 };
 
         bool operator==(const PitchGeometryKey& other) const noexcept
         {
             return stoppedMidi == other.stoppedMidi && openMidi == other.openMidi
                 && stringIndex == other.stringIndex && sampleRate == other.sampleRate
                 && performedBend == other.performedBend && memberBend == other.memberBend
-                && vibrato == other.vibrato && attackPitch == other.attackPitch;
+                && vibrato == other.vibrato && attackPitch == other.attackPitch
+                && masterTune == other.masterTune;
         }
     };
 
@@ -1460,6 +1480,10 @@ private:
     static EngineParameters sanitise(const EngineParameters&) noexcept;
     static PhysicalCalibration sanitise(const PhysicalCalibration&) noexcept;
     static float midiFrequency(int midiNote) noexcept;
+    [[nodiscard]] float tunedMidiFrequency(int midiNote) const noexcept
+    {
+        return midiFrequency(midiNote) * masterTuneRatio_;
+    }
     static float clamp(float value, float low, float high) noexcept;
     static float phaseDelayForOnePoleMix(float coefficient, float mix,
                                          float omega) noexcept;
@@ -1473,6 +1497,8 @@ private:
     void applyDiscreteParameters(bool force) noexcept;
     void updateControlState() noexcept;
     void configureBody() noexcept;
+    void prepareBodyConfigurations() noexcept;
+    void buildBodyConfiguration(BodyConfiguration&, BodyShape, BodyMaterial) const noexcept;
     // keepModalState keeps the sounding modes' state (a live reconfigure
     // of the same measured bank: Shape, Wood); otherwise every mode starts
     // from rest.
@@ -1740,6 +1766,8 @@ private:
     PerformanceRealism performanceRealism_ {};
     std::array<Voice, stringCount> voices_ {};
     std::array<BodyMode, bodyModeCount> bodyModes_ {};
+    std::array<BodyConfiguration, 12> bodyConfigurations_ {};
+    bool bodyConfigurationsReady_ { false };
     // What renderBody runs: the two banks above as BodyBank lanes, with
     // their states. Slots past a bank's own modes are all-zero padding
     // (configureBody); their contribution to every sum is exactly zero, so
@@ -1868,6 +1896,8 @@ private:
     float parameterSmoothing_ { 0.002f };
     float levelSmoothing_ { 0.0025f };
     std::array<float, midiChannelCount> pitchBendSemitones_ {};
+    float masterTuneSemitones_ { 0.0f };
+    float masterTuneRatio_ { 1.0f };
     float vibrato_ { 0.0f };
     float vibratoPhase_ { 0.0f };
     float vibratoOnset_ { 0.0f };
@@ -1885,8 +1915,9 @@ private:
     // eight-line feedback delay network, run at the host rate divided by the
     // whole factor that brings it to 64 kHz or under, so its memory does not
     // grow with the rate. The input is the microphones' mid signal; the
-    // output a stereo pair, energy-normalised at prepare so its
-    // direct-to-reverberant ratio is the same at every rate.
+    // output a stereo pair, energy-normalised at prepare for approximately
+    // stable direct-to-reverberant level across rates. Its absorption keeps
+    // the 48 kHz reference decay at DC and 8 kHz (fs/4 below 32 kHz).
     struct RoomAmbience
     {
         static constexpr int lineCount = 8;

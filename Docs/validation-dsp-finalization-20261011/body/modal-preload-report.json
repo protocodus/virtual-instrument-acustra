@@ -1,0 +1,1836 @@
+{
+  "status": "bounded passive mechanical reference completed; not native audio or an identified physical pluck calibration",
+  "protocol": "Finite Galerkin preload reference, never a native audio/MIDI renderer.\n\nWoodhouse 2004 Eq11 constraint plus mass-normalized sine modes. One low-E\nspeaking string, current Original bridge modes, all six fixed tail anchors;\nother speaking strings omitted. Native 48k prewarped poles define ONE continuous\nsystem for every integrator rate. All figures are SI mechanical quantities.\nDamping is diagonal in this chosen basis, not exact distributed viscous drag.\nNative scalar+shelf attenuation sets approximate modal decay per physical round\ntrip; no fitting, clipping, EQ, contact trajectory or radiation bank is used.\nThe observed force drives the free mechanical body in its normal/normalized-\nmoment coordinates. It includes speaking-string and fixed-anchor reactions;\nit does not specify an acoustic pressure state.\n\nRequires NumPy and SciPy. From the repository root:\n  mkdir -p build\n  c++ -std=c++20 -O2 -I Source Tools/ModalPreloadProbe.cpp -o build/ModalPreloadProbe\n  build/ModalPreloadProbe > build/modal-preload-coefficients.jsonl\n  python3 Tools/PrototypeModalPreload.py     --coefficients build/modal-preload-coefficients.jsonl     --output build/modal-preload-analysis\n\nThe output directory must be new. Preserve the source hash record described in\nModalPreloadProbe.cpp alongside the exported coefficients. Workspace source\nhashes recorded here are observation context only: they do NOT establish that\nan externally supplied coefficient file was generated from those sources.\n",
+  "provenance": {
+    "coefficients_sha256": "b10ce0d5475f682bd1671ae278016bcb5c0e04f45b528557459aabcfeab57a67",
+    "script_sha256": "30296323fb465dab1ae9043bc217ba5dc5bc2c0a791607a26fa34ff3148232d2",
+    "workspace_source_hashes_at_analysis": {
+      "AcustraEngine.cpp": "b6c607710a8511e5147af2d087ee0c0697fd77816588674678dee4a0d9c89791",
+      "AcustraEngine.h": "6c62e53ec510bed1cd9bf2021609218de364ac0cc2ad62a62b21013df9acba11",
+      "FittedPhysicalData.h": "ab49687de639fa337dab0f0b812658776c84977c3df1bcf33e063704298cf415",
+      "MeasuredBodyData.h": "1c54a31e2546db4095d373591a45a188fc21bac3820f9b0a3f72c66c96fd9be0",
+      "MeasuredBridgeData.h": "1a6e129e9693b6193d8bd19efccb091dc504d767733582a72263a43565cab085"
+    },
+    "workspace_hash_scope": "Observation context only; these hashes do not prove the supplied coefficients were generated from these sources.",
+    "numpy_version": "1.26.4",
+    "scipy_version": "1.14.1"
+  },
+  "formulation": {
+    "coordinates": "y(x)=(x/L)*B*q_body+sum q_n*sin(n*pi*x/L)/sqrt(mu*L/2), B=[1,arm]*V; R_mode=V_mode*V_mode^T.",
+    "mass": "Mss=I, Msb_n=sqrt(2muL)*(-1)^(n+1)/(n*pi)*B, Mbb=I+muL/3*B^T B.",
+    "stiffness": "Kss=diag((T*k_n^2+EI*k_n^4)/mu); Kbb=diag(Omega_body^2)+V^T*K_all_tails*V+(T/L)*B^T B; Ksb=0.",
+    "damping": "D=diag(2alpha_string,Omega_body/Q_body) in this chosen coordinate basis; positive but not a spatially uniform viscous operator. alpha_string=-log(nativeGain*abs(nativeLossShelves(omega_n)))/(2L/c), an approximate modal decay target.",
+    "preload": "At x/L=.8, b=[sin(n*pi*.8)/sqrt(muL/2), .8*B]; q0=K^-1*b*1N, qdot0=0. No assumed MIDI-force relation.",
+    "release": "M*qdd+D*qdot+K*q=0 after external holding force removal. Body is preloaded mechanically; no pressure bank or acoustic DC equilibrium is assumed.",
+    "energy": "E=.5*(v^T*M*v+q^T*K*q). Trapezoidal update obeys E_next-E=-dt*v_mid^T*D*v_mid, checked each step.",
+    "static_reference": "Pinned stiff string C(xp,xp)=[L*xi*(1-xi)-sinh(eta*xp)*sinh(eta*(L-xp))/(eta*sinh(eta*L))]/T, eta=sqrt(T/EI), plus xi^2*arm^T*C_body_with_tails_and_one_string*arm.",
+    "body_force": "f=arm*(xi*Fp-c^T*a_ddot-(muL/3)*yB_ddot-(T/L)*yB)-Ktail*x; x=V*qb, yB=arm^T*x, c_n=sqrt(2muL)*(-1)^(n+1)/(n*pi). This drives qb_ddot+Db*qb_dot+Omega_b^2*qb=V^T*f.",
+    "release_force_jump": "Delta f=-arm*r*Fp/(1+beta*B*B^T), beta=muL/3-c^T*c, r=xi-c^T*phi. The finite-basis jump vanishes in the complete-basis limit and does not imply a contact impulse or energy jump."
+  },
+  "checks": "M/K Cholesky SPD, positive diagonal D, static algebra, positive preload energy, zero initial velocity by construction, dense expm reference at1/5/10/20ms, trapezoidal free energy balance at every sample. Mode counts32/64/128; rate comparison44.1/48/96k uses the SAME exported48k continuous system.",
+  "force_checks": "Every free-body modal ODE: l2 residual/max(1,||lhs||,||rhs||)<1e-11 at exact states and<1e-9 at every trapezoidal midpoint. The unit floor is a diagnostic mass-normalized force scale. Separate string/body/anchor energy-work residuals divided by initial total energy are<1e-10 per step and<1e-9 cumulatively. Reported sampled force rows use the continuous derivative at their actual observation times; work checks use midpoint finite differences.",
+  "force_scope": "Forces are [normal N, normalized moment N], not displacement or pressure. A held load is balanced by the free body's static restoring force. Elastic/bending endpoint stress alone differs from this Galerkin reaction by c^T*Ds*a_dot-beta*yB_ddot+r*Fp: the damping reaction belongs to the chosen diagonal modal damping model; beta/r reflect basis truncation. No pressure-filter equilibrium or MIDI-force mapping is established.",
+  "limitations": [
+    "Other speaking strings, second transverse polarization, contact motion, noise, longitudinal waves and acoustic radiation are omitted. This is not the production guitar or a listening candidate.",
+    "The measured bridge bank and extrapolated static compliance retain their existing measurement/geometry limitations. Only float-rounding negative residue eigenvalues are projected to zero; numerical changes are recorded.",
+    "Changing modal count changes the finite Galerkin state; convergence is reported, not assumed. Time integration preserves energy dissipation but trapezoidal frequency warping need not be negligible for the highest modes.",
+    "D diagonal in these normalized fixed-string/free-body coordinates does not prescribe the final coupled modal decay rates. Native loop phase, exact delay and dispersion recurrence are not reproduced.",
+    "No measured string/body release recording, force-to-MIDI mapping, absolute acoustic level or perceptual realism claim follows."
+  ],
+  "primary_source": {
+    "url": "https://euphonics.org/wp-content/uploads/2022/03/Guitar_I.pdf",
+    "description": "Woodhouse2004 On the Synthesis of Guitar Plucks, Eq11 constraint and modal energy construction; finite model and code derived independently from the stated energies."
+  },
+  "convergence": [
+    {
+      "material": "steel",
+      "pairs": [
+        "32_to64",
+        "64_to128"
+      ],
+      "expm_observation_changes": [
+        {
+          "maximum_point_displacement_change_m": 2.58225841558221e-06,
+          "maximum_bridge_vector_change_m": 2.5969270738701525e-08
+        },
+        {
+          "maximum_point_displacement_change_m": 3.4169854113425403e-07,
+          "maximum_bridge_vector_change_m": 2.4412640507621803e-09
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "material": "steel",
+      "string_modes": 32,
+      "body_coordinates": 82,
+      "active_bridge_modes": 56,
+      "mass_min_eigenvalue": 0.34282595418987627,
+      "stiffness_min_eigenvalue": 219043.8991543568,
+      "static_equilibrium_relative_residual": 1.5486565077201708e-16,
+      "initial_energy_J": 0.0004612555177688235,
+      "initial_point_displacement_m": 0.000922511035537647,
+      "initial_bridge_displacement_m": [
+        5.9690904388752065e-06,
+        -1.424211800621874e-06
+      ],
+      "static_compliance_relative_error_to_infinite_pinned_stiff_string": -0.01220484107960302,
+      "maximum_string_mode_hz": 2744.1140496570683,
+      "string_alpha_range_per_s": [
+        0.8940716656796874,
+        0.9326929541732657
+      ],
+      "maximum_residue_relative_PSD_projection": 1.0703434267586237e-08,
+      "body_compliance_relative_PSD_projection": 1.764574516603684e-10,
+      "residue_projection_details": [
+        {
+          "mode": 0,
+          "minimum_eigenvalue": 7.73739924343997e-11,
+          "relative_frobenius_change": 2.303035826034321e-16
+        },
+        {
+          "mode": 1,
+          "minimum_eigenvalue": -1.5272479229275014e-10,
+          "relative_frobenius_change": 2.3125049415025975e-10
+        },
+        {
+          "mode": 2,
+          "minimum_eigenvalue": 3.0837158046782023e-09,
+          "relative_frobenius_change": 3.0253854059696315e-18
+        },
+        {
+          "mode": 3,
+          "minimum_eigenvalue": 0.07280950364292711,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 4,
+          "minimum_eigenvalue": 4.4401478932683154e-11,
+          "relative_frobenius_change": 7.954795854732157e-18
+        },
+        {
+          "mode": 5,
+          "minimum_eigenvalue": -6.642014458919657e-12,
+          "relative_frobenius_change": 2.134796251834208e-11
+        },
+        {
+          "mode": 6,
+          "minimum_eigenvalue": -1.2728083521800551e-11,
+          "relative_frobenius_change": 2.1073201906352325e-11
+        },
+        {
+          "mode": 7,
+          "minimum_eigenvalue": -2.4763928155281104e-11,
+          "relative_frobenius_change": 8.596128823040863e-11
+        },
+        {
+          "mode": 8,
+          "minimum_eigenvalue": 0.20602154648977378,
+          "relative_frobenius_change": 3.081887515500632e-16
+        },
+        {
+          "mode": 9,
+          "minimum_eigenvalue": 6.616174038083426e-10,
+          "relative_frobenius_change": 2.2245543661630682e-16
+        },
+        {
+          "mode": 10,
+          "minimum_eigenvalue": -1.848301929665546e-09,
+          "relative_frobenius_change": 3.8525463178475665e-09
+        },
+        {
+          "mode": 11,
+          "minimum_eigenvalue": 0.08585717744119771,
+          "relative_frobenius_change": 2.5616889534335223e-16
+        },
+        {
+          "mode": 12,
+          "minimum_eigenvalue": 4.863910204629728e-10,
+          "relative_frobenius_change": 1.3493164468339492e-16
+        },
+        {
+          "mode": 13,
+          "minimum_eigenvalue": 0.12856629551406068,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 14,
+          "minimum_eigenvalue": 3.741764884104119e-10,
+          "relative_frobenius_change": 1.851164640935282e-17
+        },
+        {
+          "mode": 15,
+          "minimum_eigenvalue": 0.007112653628609822,
+          "relative_frobenius_change": 1.4119793311904376e-16
+        },
+        {
+          "mode": 16,
+          "minimum_eigenvalue": -1.0079996477527547e-09,
+          "relative_frobenius_change": 1.0703434267586237e-08
+        },
+        {
+          "mode": 17,
+          "minimum_eigenvalue": 0.00035566756699807685,
+          "relative_frobenius_change": 9.377099006771226e-18
+        },
+        {
+          "mode": 18,
+          "minimum_eigenvalue": -8.582218082137448e-10,
+          "relative_frobenius_change": 8.700803306802217e-10
+        },
+        {
+          "mode": 19,
+          "minimum_eigenvalue": 1.0903438545967086e-10,
+          "relative_frobenius_change": 2.386364013495008e-16
+        },
+        {
+          "mode": 20,
+          "minimum_eigenvalue": 7.502766730440382e-10,
+          "relative_frobenius_change": 1.1134955340710418e-17
+        },
+        {
+          "mode": 21,
+          "minimum_eigenvalue": 0.0679038357228163,
+          "relative_frobenius_change": 1.2916317491254127e-16
+        },
+        {
+          "mode": 22,
+          "minimum_eigenvalue": 0.27772336899175043,
+          "relative_frobenius_change": 3.5924101004849494e-16
+        },
+        {
+          "mode": 23,
+          "minimum_eigenvalue": -1.9295290743778445e-10,
+          "relative_frobenius_change": 3.4804609133882755e-10
+        },
+        {
+          "mode": 24,
+          "minimum_eigenvalue": 0.022124833387693735,
+          "relative_frobenius_change": 1.1693339927437262e-16
+        },
+        {
+          "mode": 25,
+          "minimum_eigenvalue": 0.28400614799145196,
+          "relative_frobenius_change": 1.9459218397969317e-16
+        },
+        {
+          "mode": 26,
+          "minimum_eigenvalue": 0.44590441625887367,
+          "relative_frobenius_change": 3.2072709559170333e-16
+        },
+        {
+          "mode": 27,
+          "minimum_eigenvalue": 5.736787364229764e-11,
+          "relative_frobenius_change": 1.4810725595395426e-16
+        },
+        {
+          "mode": 28,
+          "minimum_eigenvalue": -7.158245412660604e-10,
+          "relative_frobenius_change": 1.5379456057627766e-09
+        },
+        {
+          "mode": 29,
+          "minimum_eigenvalue": 1.8695673990706228e-10,
+          "relative_frobenius_change": 1.781818658558013e-17
+        },
+        {
+          "mode": 30,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 31,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 32,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 33,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 34,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 35,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 36,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 37,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 38,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 39,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 40,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 41,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 42,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 43,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 44,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 45,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 46,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 47,
+          "minimum_eigenvalue": -2.8068035900557084e-12,
+          "relative_frobenius_change": 6.236016934359738e-11
+        },
+        {
+          "mode": 48,
+          "minimum_eigenvalue": -1.5458797647346307e-11,
+          "relative_frobenius_change": 2.6960978320415644e-10
+        },
+        {
+          "mode": 49,
+          "minimum_eigenvalue": -7.652599101008125e-10,
+          "relative_frobenius_change": 3.364967760484064e-09
+        },
+        {
+          "mode": 50,
+          "minimum_eigenvalue": 0.0043769272063251255,
+          "relative_frobenius_change": 2.689745675708382e-16
+        },
+        {
+          "mode": 51,
+          "minimum_eigenvalue": -6.95320194656903e-12,
+          "relative_frobenius_change": 1.1856139273274963e-10
+        },
+        {
+          "mode": 52,
+          "minimum_eigenvalue": 3.6297744455585013e-12,
+          "relative_frobenius_change": 2.777531842374407e-16
+        },
+        {
+          "mode": 53,
+          "minimum_eigenvalue": 4.097918046275176e-12,
+          "relative_frobenius_change": 1.314007667394877e-16
+        },
+        {
+          "mode": 54,
+          "minimum_eigenvalue": 1.8261826308445777e-11,
+          "relative_frobenius_change": 4.410413651687935e-16
+        },
+        {
+          "mode": 56,
+          "minimum_eigenvalue": 228.6674346923828,
+          "relative_frobenius_change": 0.0
+        }
+      ],
+      "T_N": 110.75900268554688,
+      "mu_kg_per_m": 0.009710509746121077,
+      "L_m": 0.6480000019073486,
+      "EI_N_m2": 0.0003813644378393321,
+      "native_dimensionless_B": 8.09302509878762e-05,
+      "point_force_N": 1.0,
+      "pluck_fraction_from_bridge": 0.2,
+      "body_constraint_force_vector": [
+        0.8,
+        -1.0
+      ],
+      "all_tail_anchor_K": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "mechanical_force": {
+        "columns": [
+          "body_normal_N",
+          "body_normalized_moment_N",
+          "speaking_normal_N",
+          "speaking_normalized_moment_N",
+          "anchors_normal_N",
+          "anchors_normalized_moment_N"
+        ],
+        "held": [
+          0.7986754462195439,
+          -0.9983443077744298,
+          0.7986754462195439,
+          -0.9983443077744298,
+          0.0,
+          0.0
+        ],
+        "immediately_after_release": [
+          0.7972317236255412,
+          -0.9965396545319265,
+          0.7972317236255412,
+          -0.9965396545319265,
+          0.0,
+          0.0
+        ],
+        "release_jump_N": [
+          -0.0014437225940027165,
+          0.0018046532425033401
+        ],
+        "predicted_release_jump_N": [
+          -0.001443722594003729,
+          0.0018046532425046613
+        ],
+        "finite_basis_residual_mass_kg": 3.92310264310837e-05,
+        "point_constraint_remainder": 0.0014797033236653157,
+        "maximum_initial_body_ODE_relative_residual": 1.060221793233341e-15,
+        "expm_times_s": [
+          0.001,
+          0.005,
+          0.01,
+          0.02
+        ],
+        "expm_values": [
+          [
+            0.9206323718941948,
+            -1.1507904648677434,
+            0.9206323718941948,
+            -1.1507904648677434,
+            0.0,
+            0.0
+          ],
+          [
+            -0.2051660774753568,
+            0.256457596844196,
+            -0.2051660774753568,
+            0.256457596844196,
+            0.0,
+            0.0
+          ],
+          [
+            -0.32667419463342495,
+            0.4083427432917812,
+            -0.32667419463342495,
+            0.4083427432917812,
+            0.0,
+            0.0
+          ],
+          [
+            -0.15543108874782172,
+            0.19428886093477715,
+            -0.15543108874782172,
+            0.19428886093477715,
+            0.0,
+            0.0
+          ]
+        ],
+        "maximum_continuous_body_ODE_relative_residual": 1.955708849905068e-15
+      },
+      "expm_observations": {
+        "times_s": [
+          0.001,
+          0.005,
+          0.01,
+          0.02
+        ],
+        "columns": [
+          "point_m",
+          "bridge_heave_m",
+          "bridge_normalized_rock_m"
+        ],
+        "values": [
+          [
+            0.0004597038836811773,
+            5.97609622159234e-06,
+            -1.4320982886882492e-06
+          ],
+          [
+            -0.0002383676277026623,
+            -4.278393487105481e-06,
+            7.286612354227421e-07
+          ],
+          [
+            -0.00010015397144222752,
+            -3.3699229026264427e-06,
+            9.006845800799056e-07
+          ],
+          [
+            -0.0002267524307161918,
+            -4.824302756072568e-06,
+            8.280838368227957e-07
+          ]
+        ]
+      },
+      "integrators": [
+        {
+          "rate": 48000,
+          "steps": 960,
+          "maximum_step_energy_identity_residual_over_initial_energy": 3.0361635188972977e-15,
+          "maximum_positive_energy_step_over_initial_energy": 0.0,
+          "final_energy_over_initial": 0.9511966277617298,
+          "cumulative_dissipation_over_initial": 0.048803372238406605,
+          "cumulative_energy_balance_relative_residual": 1.3633165042304357e-13,
+          "actual_observation_times_s": [
+            0.001,
+            0.005,
+            0.01,
+            0.02
+          ],
+          "observations": [
+            [
+              0.0004596712410011501,
+              5.97410281088814e-06,
+              -1.4300834824730265e-06
+            ],
+            [
+              -0.000238744533231045,
+              -4.280080029308375e-06,
+              7.293803132647402e-07
+            ],
+            [
+              -0.0001004880349923311,
+              -3.3615503888508354e-06,
+              8.905273604932151e-07
+            ],
+            [
+              -0.00022994907217768973,
+              -4.819675650718468e-06,
+              8.254160341647595e-07
+            ]
+          ],
+          "maximum_absolute_point_error_m": 3.1966414614979202e-06,
+          "maximum_absolute_bridge_vector_error_m": 1.3163133998215654e-08,
+          "mechanical_force_values": [
+            [
+              0.9074521770413487,
+              -1.1343152213016858,
+              0.9074521770413487,
+              -1.1343152213016858,
+              0.0,
+              0.0
+            ],
+            [
+              -0.2119335315723363,
+              0.2649169144654204,
+              -0.2119335315723363,
+              0.2649169144654204,
+              0.0,
+              0.0
+            ],
+            [
+              -0.21413756715581253,
+              0.26767195894476564,
+              -0.21413756715581253,
+              0.26767195894476564,
+              0.0,
+              0.0
+            ],
+            [
+              -0.20497720704882938,
+              0.2562215088110367,
+              -0.20497720704882938,
+              0.2562215088110367,
+              0.0,
+              0.0
+            ]
+          ],
+          "maximum_body_ODE_relative_residual": 7.363348642475763e-13,
+          "energy_component_order": [
+            "speaking_string",
+            "free_body",
+            "fixed_anchors"
+          ],
+          "maximum_component_step_work_residual_over_initial_energy": [
+            2.977051523277136e-15,
+            6.288828773544959e-17,
+            0.0
+          ],
+          "cumulative_component_work_residual_over_initial_energy": [
+            1.3589092310486565e-13,
+            2.6443639090676556e-16,
+            0.0
+          ]
+        }
+      ],
+      "elapsed_seconds": 32.668569500005106
+    },
+    {
+      "material": "steel",
+      "string_modes": 64,
+      "body_coordinates": 82,
+      "active_bridge_modes": 56,
+      "mass_min_eigenvalue": 0.3381629633829205,
+      "stiffness_min_eigenvalue": 219043.89915472892,
+      "static_equilibrium_relative_residual": 1.404394341188987e-16,
+      "initial_energy_J": 0.00046517351788618417,
+      "initial_point_displacement_m": 0.0009303470357723681,
+      "initial_bridge_displacement_m": [
+        5.9690904388752065e-06,
+        -1.424211800621874e-06
+      ],
+      "static_compliance_relative_error_to_infinite_pinned_stiff_string": -0.003814303948905895,
+      "maximum_string_mode_hz": 6085.727190025947,
+      "string_alpha_range_per_s": [
+        0.8940716656796874,
+        1.0706232555721042
+      ],
+      "maximum_residue_relative_PSD_projection": 1.0703434267586237e-08,
+      "body_compliance_relative_PSD_projection": 1.764574516603684e-10,
+      "residue_projection_details": [
+        {
+          "mode": 0,
+          "minimum_eigenvalue": 7.73739924343997e-11,
+          "relative_frobenius_change": 2.303035826034321e-16
+        },
+        {
+          "mode": 1,
+          "minimum_eigenvalue": -1.5272479229275014e-10,
+          "relative_frobenius_change": 2.3125049415025975e-10
+        },
+        {
+          "mode": 2,
+          "minimum_eigenvalue": 3.0837158046782023e-09,
+          "relative_frobenius_change": 3.0253854059696315e-18
+        },
+        {
+          "mode": 3,
+          "minimum_eigenvalue": 0.07280950364292711,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 4,
+          "minimum_eigenvalue": 4.4401478932683154e-11,
+          "relative_frobenius_change": 7.954795854732157e-18
+        },
+        {
+          "mode": 5,
+          "minimum_eigenvalue": -6.642014458919657e-12,
+          "relative_frobenius_change": 2.134796251834208e-11
+        },
+        {
+          "mode": 6,
+          "minimum_eigenvalue": -1.2728083521800551e-11,
+          "relative_frobenius_change": 2.1073201906352325e-11
+        },
+        {
+          "mode": 7,
+          "minimum_eigenvalue": -2.4763928155281104e-11,
+          "relative_frobenius_change": 8.596128823040863e-11
+        },
+        {
+          "mode": 8,
+          "minimum_eigenvalue": 0.20602154648977378,
+          "relative_frobenius_change": 3.081887515500632e-16
+        },
+        {
+          "mode": 9,
+          "minimum_eigenvalue": 6.616174038083426e-10,
+          "relative_frobenius_change": 2.2245543661630682e-16
+        },
+        {
+          "mode": 10,
+          "minimum_eigenvalue": -1.848301929665546e-09,
+          "relative_frobenius_change": 3.8525463178475665e-09
+        },
+        {
+          "mode": 11,
+          "minimum_eigenvalue": 0.08585717744119771,
+          "relative_frobenius_change": 2.5616889534335223e-16
+        },
+        {
+          "mode": 12,
+          "minimum_eigenvalue": 4.863910204629728e-10,
+          "relative_frobenius_change": 1.3493164468339492e-16
+        },
+        {
+          "mode": 13,
+          "minimum_eigenvalue": 0.12856629551406068,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 14,
+          "minimum_eigenvalue": 3.741764884104119e-10,
+          "relative_frobenius_change": 1.851164640935282e-17
+        },
+        {
+          "mode": 15,
+          "minimum_eigenvalue": 0.007112653628609822,
+          "relative_frobenius_change": 1.4119793311904376e-16
+        },
+        {
+          "mode": 16,
+          "minimum_eigenvalue": -1.0079996477527547e-09,
+          "relative_frobenius_change": 1.0703434267586237e-08
+        },
+        {
+          "mode": 17,
+          "minimum_eigenvalue": 0.00035566756699807685,
+          "relative_frobenius_change": 9.377099006771226e-18
+        },
+        {
+          "mode": 18,
+          "minimum_eigenvalue": -8.582218082137448e-10,
+          "relative_frobenius_change": 8.700803306802217e-10
+        },
+        {
+          "mode": 19,
+          "minimum_eigenvalue": 1.0903438545967086e-10,
+          "relative_frobenius_change": 2.386364013495008e-16
+        },
+        {
+          "mode": 20,
+          "minimum_eigenvalue": 7.502766730440382e-10,
+          "relative_frobenius_change": 1.1134955340710418e-17
+        },
+        {
+          "mode": 21,
+          "minimum_eigenvalue": 0.0679038357228163,
+          "relative_frobenius_change": 1.2916317491254127e-16
+        },
+        {
+          "mode": 22,
+          "minimum_eigenvalue": 0.27772336899175043,
+          "relative_frobenius_change": 3.5924101004849494e-16
+        },
+        {
+          "mode": 23,
+          "minimum_eigenvalue": -1.9295290743778445e-10,
+          "relative_frobenius_change": 3.4804609133882755e-10
+        },
+        {
+          "mode": 24,
+          "minimum_eigenvalue": 0.022124833387693735,
+          "relative_frobenius_change": 1.1693339927437262e-16
+        },
+        {
+          "mode": 25,
+          "minimum_eigenvalue": 0.28400614799145196,
+          "relative_frobenius_change": 1.9459218397969317e-16
+        },
+        {
+          "mode": 26,
+          "minimum_eigenvalue": 0.44590441625887367,
+          "relative_frobenius_change": 3.2072709559170333e-16
+        },
+        {
+          "mode": 27,
+          "minimum_eigenvalue": 5.736787364229764e-11,
+          "relative_frobenius_change": 1.4810725595395426e-16
+        },
+        {
+          "mode": 28,
+          "minimum_eigenvalue": -7.158245412660604e-10,
+          "relative_frobenius_change": 1.5379456057627766e-09
+        },
+        {
+          "mode": 29,
+          "minimum_eigenvalue": 1.8695673990706228e-10,
+          "relative_frobenius_change": 1.781818658558013e-17
+        },
+        {
+          "mode": 30,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 31,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 32,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 33,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 34,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 35,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 36,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 37,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 38,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 39,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 40,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 41,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 42,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 43,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 44,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 45,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 46,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 47,
+          "minimum_eigenvalue": -2.8068035900557084e-12,
+          "relative_frobenius_change": 6.236016934359738e-11
+        },
+        {
+          "mode": 48,
+          "minimum_eigenvalue": -1.5458797647346307e-11,
+          "relative_frobenius_change": 2.6960978320415644e-10
+        },
+        {
+          "mode": 49,
+          "minimum_eigenvalue": -7.652599101008125e-10,
+          "relative_frobenius_change": 3.364967760484064e-09
+        },
+        {
+          "mode": 50,
+          "minimum_eigenvalue": 0.0043769272063251255,
+          "relative_frobenius_change": 2.689745675708382e-16
+        },
+        {
+          "mode": 51,
+          "minimum_eigenvalue": -6.95320194656903e-12,
+          "relative_frobenius_change": 1.1856139273274963e-10
+        },
+        {
+          "mode": 52,
+          "minimum_eigenvalue": 3.6297744455585013e-12,
+          "relative_frobenius_change": 2.777531842374407e-16
+        },
+        {
+          "mode": 53,
+          "minimum_eigenvalue": 4.097918046275176e-12,
+          "relative_frobenius_change": 1.314007667394877e-16
+        },
+        {
+          "mode": 54,
+          "minimum_eigenvalue": 1.8261826308445777e-11,
+          "relative_frobenius_change": 4.410413651687935e-16
+        },
+        {
+          "mode": 56,
+          "minimum_eigenvalue": 228.6674346923828,
+          "relative_frobenius_change": 0.0
+        }
+      ],
+      "T_N": 110.75900268554688,
+      "mu_kg_per_m": 0.009710509746121077,
+      "L_m": 0.6480000019073486,
+      "EI_N_m2": 0.0003813644378393321,
+      "native_dimensionless_B": 8.09302509878762e-05,
+      "point_force_N": 1.0,
+      "pluck_fraction_from_bridge": 0.2,
+      "body_constraint_force_vector": [
+        0.8,
+        -1.0
+      ],
+      "all_tail_anchor_K": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "mechanical_force": {
+        "columns": [
+          "body_normal_N",
+          "body_normalized_moment_N",
+          "speaking_normal_N",
+          "speaking_normalized_moment_N",
+          "anchors_normal_N",
+          "anchors_normalized_moment_N"
+        ],
+        "held": [
+          0.7986754462195439,
+          -0.9983443077744298,
+          0.7986754462195439,
+          -0.9983443077744298,
+          0.0,
+          0.0
+        ],
+        "immediately_after_release": [
+          0.8135418488946421,
+          -1.0169273111183026,
+          0.8135418488946421,
+          -1.0169273111183026,
+          0.0,
+          0.0
+        ],
+        "release_jump_N": [
+          0.0148664026750982,
+          -0.01858300334387275
+        ],
+        "predicted_release_jump_N": [
+          0.014866402675097702,
+          -0.01858300334387213
+        ],
+        "finite_basis_residual_mass_kg": 1.976873467667917e-05,
+        "point_constraint_remainder": -0.015053101380590572,
+        "maximum_initial_body_ODE_relative_residual": 1.302890216955326e-16,
+        "expm_times_s": [
+          0.001,
+          0.005,
+          0.01,
+          0.02
+        ],
+        "expm_values": [
+          [
+            0.9807920728054892,
+            -1.2259900910068615,
+            0.9807920728054892,
+            -1.2259900910068615,
+            0.0,
+            0.0
+          ],
+          [
+            -0.20382642435259238,
+            0.25478303044074047,
+            -0.20382642435259238,
+            0.25478303044074047,
+            0.0,
+            0.0
+          ],
+          [
+            -0.4149618233411191,
+            0.5187022791763989,
+            -0.4149618233411191,
+            0.5187022791763989,
+            0.0,
+            0.0
+          ],
+          [
+            -0.1526296664980253,
+            0.19078708312253165,
+            -0.1526296664980253,
+            0.19078708312253165,
+            0.0,
+            0.0
+          ]
+        ],
+        "maximum_continuous_body_ODE_relative_residual": 8.717686269142018e-16
+      },
+      "expm_observations": {
+        "times_s": [
+          0.001,
+          0.005,
+          0.01,
+          0.02
+        ],
+        "columns": [
+          "point_m",
+          "bridge_heave_m",
+          "bridge_normalized_rock_m"
+        ],
+        "values": [
+          [
+            0.00046058011549068205,
+            5.957554936496572e-06,
+            -1.413915225973255e-06
+          ],
+          [
+            -0.00023818825787416074,
+            -4.27720414603842e-06,
+            7.274399362384478e-07
+          ],
+          [
+            -9.757171302664531e-05,
+            -3.370327238422276e-06,
+            9.010851767428789e-07
+          ],
+          [
+            -0.000225198313047313,
+            -4.835814328036062e-06,
+            8.392387687193363e-07
+          ]
+        ]
+      },
+      "integrators": [
+        {
+          "rate": 48000,
+          "steps": 960,
+          "maximum_step_energy_identity_residual_over_initial_energy": 3.225057096307415e-15,
+          "maximum_positive_energy_step_over_initial_energy": 0.0,
+          "final_energy_over_initial": 0.9510188128637054,
+          "cumulative_dissipation_over_initial": 0.04898118713636936,
+          "cumulative_energy_balance_relative_residual": 7.470046830280329e-14,
+          "actual_observation_times_s": [
+            0.001,
+            0.005,
+            0.01,
+            0.02
+          ],
+          "observations": [
+            [
+              0.0004602362861832861,
+              5.9546098030239835e-06,
+              -1.4115400300292594e-06
+            ],
+            [
+              -0.00023818767435266895,
+              -4.279047006733766e-06,
+              7.286533427792939e-07
+            ],
+            [
+              -9.823262053240983e-05,
+              -3.3545733907969965e-06,
+              8.832540097199968e-07
+            ],
+            [
+              -0.00022961945979109409,
+              -4.827610721421107e-06,
+              8.325681173758744e-07
+            ]
+          ],
+          "maximum_absolute_point_error_m": 4.421146743781084e-06,
+          "maximum_absolute_bridge_vector_error_m": 2.379357544377151e-08,
+          "mechanical_force_values": [
+            [
+              0.8187739902899366,
+              -1.0234674878624208,
+              0.8187739902899366,
+              -1.0234674878624208,
+              0.0,
+              0.0
+            ],
+            [
+              -0.2005275395940239,
+              0.25065942449252987,
+              -0.2005275395940239,
+              0.25065942449252987,
+              0.0,
+              0.0
+            ],
+            [
+              -0.17016050522301784,
+              0.2127006315287723,
+              -0.17016050522301784,
+              0.2127006315287723,
+              0.0,
+              0.0
+            ],
+            [
+              -0.22487242948142624,
+              0.2810905368517828,
+              -0.22487242948142624,
+              0.2810905368517828,
+              0.0,
+              0.0
+            ]
+          ],
+          "maximum_body_ODE_relative_residual": 7.710467188576035e-13,
+          "energy_component_order": [
+            "speaking_string",
+            "free_body",
+            "fixed_anchors"
+          ],
+          "maximum_component_step_work_residual_over_initial_energy": [
+            3.0969328261071212e-15,
+            7.474212131597672e-17,
+            0.0
+          ],
+          "cumulative_component_work_residual_over_initial_energy": [
+            6.693616455760162e-14,
+            8.448960923483992e-15,
+            0.0
+          ]
+        }
+      ],
+      "elapsed_seconds": 32.24841691699112
+    },
+    {
+      "material": "steel",
+      "string_modes": 128,
+      "body_coordinates": 82,
+      "active_bridge_modes": 56,
+      "mass_min_eigenvalue": 0.3358102331929518,
+      "stiffness_min_eigenvalue": 219043.89915440948,
+      "static_equilibrium_relative_residual": 1.3996629305591167e-16,
+      "initial_energy_J": 0.0004665558328236745,
+      "initial_point_displacement_m": 0.000933111665647349,
+      "initial_bridge_displacement_m": [
+        5.9690904388752065e-06,
+        -1.424211800621874e-06
+      ],
+      "static_compliance_relative_error_to_infinite_pinned_stiff_string": -0.0008540271592398054,
+      "maximum_string_mode_hz": 16086.98684983617,
+      "string_alpha_range_per_s": [
+        0.8940716656796874,
+        1.6592478371559467
+      ],
+      "maximum_residue_relative_PSD_projection": 1.0703434267586237e-08,
+      "body_compliance_relative_PSD_projection": 1.764574516603684e-10,
+      "residue_projection_details": [
+        {
+          "mode": 0,
+          "minimum_eigenvalue": 7.73739924343997e-11,
+          "relative_frobenius_change": 2.303035826034321e-16
+        },
+        {
+          "mode": 1,
+          "minimum_eigenvalue": -1.5272479229275014e-10,
+          "relative_frobenius_change": 2.3125049415025975e-10
+        },
+        {
+          "mode": 2,
+          "minimum_eigenvalue": 3.0837158046782023e-09,
+          "relative_frobenius_change": 3.0253854059696315e-18
+        },
+        {
+          "mode": 3,
+          "minimum_eigenvalue": 0.07280950364292711,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 4,
+          "minimum_eigenvalue": 4.4401478932683154e-11,
+          "relative_frobenius_change": 7.954795854732157e-18
+        },
+        {
+          "mode": 5,
+          "minimum_eigenvalue": -6.642014458919657e-12,
+          "relative_frobenius_change": 2.134796251834208e-11
+        },
+        {
+          "mode": 6,
+          "minimum_eigenvalue": -1.2728083521800551e-11,
+          "relative_frobenius_change": 2.1073201906352325e-11
+        },
+        {
+          "mode": 7,
+          "minimum_eigenvalue": -2.4763928155281104e-11,
+          "relative_frobenius_change": 8.596128823040863e-11
+        },
+        {
+          "mode": 8,
+          "minimum_eigenvalue": 0.20602154648977378,
+          "relative_frobenius_change": 3.081887515500632e-16
+        },
+        {
+          "mode": 9,
+          "minimum_eigenvalue": 6.616174038083426e-10,
+          "relative_frobenius_change": 2.2245543661630682e-16
+        },
+        {
+          "mode": 10,
+          "minimum_eigenvalue": -1.848301929665546e-09,
+          "relative_frobenius_change": 3.8525463178475665e-09
+        },
+        {
+          "mode": 11,
+          "minimum_eigenvalue": 0.08585717744119771,
+          "relative_frobenius_change": 2.5616889534335223e-16
+        },
+        {
+          "mode": 12,
+          "minimum_eigenvalue": 4.863910204629728e-10,
+          "relative_frobenius_change": 1.3493164468339492e-16
+        },
+        {
+          "mode": 13,
+          "minimum_eigenvalue": 0.12856629551406068,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 14,
+          "minimum_eigenvalue": 3.741764884104119e-10,
+          "relative_frobenius_change": 1.851164640935282e-17
+        },
+        {
+          "mode": 15,
+          "minimum_eigenvalue": 0.007112653628609822,
+          "relative_frobenius_change": 1.4119793311904376e-16
+        },
+        {
+          "mode": 16,
+          "minimum_eigenvalue": -1.0079996477527547e-09,
+          "relative_frobenius_change": 1.0703434267586237e-08
+        },
+        {
+          "mode": 17,
+          "minimum_eigenvalue": 0.00035566756699807685,
+          "relative_frobenius_change": 9.377099006771226e-18
+        },
+        {
+          "mode": 18,
+          "minimum_eigenvalue": -8.582218082137448e-10,
+          "relative_frobenius_change": 8.700803306802217e-10
+        },
+        {
+          "mode": 19,
+          "minimum_eigenvalue": 1.0903438545967086e-10,
+          "relative_frobenius_change": 2.386364013495008e-16
+        },
+        {
+          "mode": 20,
+          "minimum_eigenvalue": 7.502766730440382e-10,
+          "relative_frobenius_change": 1.1134955340710418e-17
+        },
+        {
+          "mode": 21,
+          "minimum_eigenvalue": 0.0679038357228163,
+          "relative_frobenius_change": 1.2916317491254127e-16
+        },
+        {
+          "mode": 22,
+          "minimum_eigenvalue": 0.27772336899175043,
+          "relative_frobenius_change": 3.5924101004849494e-16
+        },
+        {
+          "mode": 23,
+          "minimum_eigenvalue": -1.9295290743778445e-10,
+          "relative_frobenius_change": 3.4804609133882755e-10
+        },
+        {
+          "mode": 24,
+          "minimum_eigenvalue": 0.022124833387693735,
+          "relative_frobenius_change": 1.1693339927437262e-16
+        },
+        {
+          "mode": 25,
+          "minimum_eigenvalue": 0.28400614799145196,
+          "relative_frobenius_change": 1.9459218397969317e-16
+        },
+        {
+          "mode": 26,
+          "minimum_eigenvalue": 0.44590441625887367,
+          "relative_frobenius_change": 3.2072709559170333e-16
+        },
+        {
+          "mode": 27,
+          "minimum_eigenvalue": 5.736787364229764e-11,
+          "relative_frobenius_change": 1.4810725595395426e-16
+        },
+        {
+          "mode": 28,
+          "minimum_eigenvalue": -7.158245412660604e-10,
+          "relative_frobenius_change": 1.5379456057627766e-09
+        },
+        {
+          "mode": 29,
+          "minimum_eigenvalue": 1.8695673990706228e-10,
+          "relative_frobenius_change": 1.781818658558013e-17
+        },
+        {
+          "mode": 30,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 31,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 32,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 33,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 34,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 35,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 36,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 37,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 38,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 39,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 40,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 41,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 42,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 43,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 44,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 45,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 46,
+          "minimum_eigenvalue": 0.0,
+          "relative_frobenius_change": 0.0
+        },
+        {
+          "mode": 47,
+          "minimum_eigenvalue": -2.8068035900557084e-12,
+          "relative_frobenius_change": 6.236016934359738e-11
+        },
+        {
+          "mode": 48,
+          "minimum_eigenvalue": -1.5458797647346307e-11,
+          "relative_frobenius_change": 2.6960978320415644e-10
+        },
+        {
+          "mode": 49,
+          "minimum_eigenvalue": -7.652599101008125e-10,
+          "relative_frobenius_change": 3.364967760484064e-09
+        },
+        {
+          "mode": 50,
+          "minimum_eigenvalue": 0.0043769272063251255,
+          "relative_frobenius_change": 2.689745675708382e-16
+        },
+        {
+          "mode": 51,
+          "minimum_eigenvalue": -6.95320194656903e-12,
+          "relative_frobenius_change": 1.1856139273274963e-10
+        },
+        {
+          "mode": 52,
+          "minimum_eigenvalue": 3.6297744455585013e-12,
+          "relative_frobenius_change": 2.777531842374407e-16
+        },
+        {
+          "mode": 53,
+          "minimum_eigenvalue": 4.097918046275176e-12,
+          "relative_frobenius_change": 1.314007667394877e-16
+        },
+        {
+          "mode": 54,
+          "minimum_eigenvalue": 1.8261826308445777e-11,
+          "relative_frobenius_change": 4.410413651687935e-16
+        },
+        {
+          "mode": 56,
+          "minimum_eigenvalue": 228.6674346923828,
+          "relative_frobenius_change": 0.0
+        }
+      ],
+      "T_N": 110.75900268554688,
+      "mu_kg_per_m": 0.009710509746121077,
+      "L_m": 0.6480000019073486,
+      "EI_N_m2": 0.0003813644378393321,
+      "native_dimensionless_B": 8.09302509878762e-05,
+      "point_force_N": 1.0,
+      "pluck_fraction_from_bridge": 0.2,
+      "body_constraint_force_vector": [
+        0.8,
+        -1.0
+      ],
+      "all_tail_anchor_K": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "mechanical_force": {
+        "columns": [
+          "body_normal_N",
+          "body_normalized_moment_N",
+          "speaking_normal_N",
+          "speaking_normalized_moment_N",
+          "anchors_normal_N",
+          "anchors_normalized_moment_N"
+        ],
+        "held": [
+          0.7986754462195439,
+          -0.9983443077744298,
+          0.7986754462195439,
+          -0.9983443077744298,
+          0.0,
+          0.0
+        ],
+        "immediately_after_release": [
+          0.7940717157152613,
+          -0.9925896446440765,
+          0.7940717157152613,
+          -0.9925896446440765,
+          0.0,
+          0.0
+        ],
+        "release_jump_N": [
+          -0.004603730504282644,
+          0.0057546631303533324
+        ],
+        "predicted_release_jump_N": [
+          -0.004603730504282412,
+          0.005754663130353016
+        ],
+        "finite_basis_residual_mass_kg": 9.922976583500581e-06,
+        "point_constraint_remainder": 0.004632751238866639,
+        "maximum_initial_body_ODE_relative_residual": 1.0401002777374722e-15,
+        "expm_times_s": [
+          0.001,
+          0.005,
+          0.01,
+          0.02
+        ],
+        "expm_values": [
+          [
+            0.9952233947962942,
+            -1.2440292434953677,
+            0.9952233947962942,
+            -1.2440292434953677,
+            0.0,
+            0.0
+          ],
+          [
+            -0.23024883247342973,
+            0.28781104059178714,
+            -0.23024883247342973,
+            0.28781104059178714,
+            0.0,
+            0.0
+          ],
+          [
+            -0.42346288155120326,
+            0.5293286019390041,
+            -0.42346288155120326,
+            0.5293286019390041,
+            0.0,
+            0.0
+          ],
+          [
+            -0.16094139936826188,
+            0.20117674921032735,
+            -0.16094139936826188,
+            0.20117674921032735,
+            0.0,
+            0.0
+          ]
+        ],
+        "maximum_continuous_body_ODE_relative_residual": 9.56560297337983e-16
+      },
+      "expm_observations": {
+        "times_s": [
+          0.001,
+          0.005,
+          0.01,
+          0.02
+        ],
+        "columns": [
+          "point_m",
+          "bridge_heave_m",
+          "bridge_normalized_rock_m"
+        ],
+        "values": [
+          [
+            0.00046045472017640853,
+            5.959532100909743e-06,
+            -1.4153472144679126e-06
+          ],
+          [
+            -0.00023807306441302233,
+            -4.276934639242685e-06,
+            7.273106766569586e-07
+          ],
+          [
+            -9.756433950208663e-05,
+            -3.36976000865409e-06,
+            9.005074394246892e-07
+          ],
+          [
+            -0.00022485661450617875,
+            -4.836725456504641e-06,
+            8.402606086336036e-07
+          ]
+        ]
+      },
+      "integrators": [
+        {
+          "rate": 44100,
+          "steps": 882,
+          "maximum_step_energy_identity_residual_over_initial_energy": 3.2559180643466147e-15,
+          "maximum_positive_energy_step_over_initial_energy": 0.0,
+          "final_energy_over_initial": 0.9509627180559099,
+          "cumulative_dissipation_over_initial": 0.049037281943911395,
+          "cumulative_energy_balance_relative_residual": -1.787034716928407e-13,
+          "actual_observation_times_s": [
+            0.000997732426303855,
+            0.004988662131519274,
+            0.01,
+            0.02
+          ],
+          "observations": [
+            [
+              0.00046148150041913725,
+              5.954707925218984e-06,
+              -1.410790107422716e-06
+            ],
+            [
+              -0.00023814917548097464,
+              -4.27957482425063e-06,
+              7.411164476079537e-07
+            ],
+            [
+              -0.00010237907054500247,
+              -3.3541275741331587e-06,
+              8.824614553462197e-07
+            ],
+            [
+              -0.00022655250551287,
+              -4.811677596709678e-06,
+              8.187619298480538e-07
+            ]
+          ],
+          "maximum_absolute_point_error_m": 4.814731042915844e-06,
+          "maximum_absolute_bridge_vector_error_m": 3.300891500537966e-08,
+          "mechanical_force_values": [
+            [
+              0.5992361055657169,
+              -0.7490451319571462,
+              0.5992361055657169,
+              -0.7490451319571462,
+              0.0,
+              0.0
+            ],
+            [
+              -0.20152679703322987,
+              0.25190849629153733,
+              -0.20152679703322987,
+              0.25190849629153733,
+              0.0,
+              0.0
+            ],
+            [
+              -0.16370641724689813,
+              0.20463302155862267,
+              -0.16370641724689813,
+              0.20463302155862267,
+              0.0,
+              0.0
+            ],
+            [
+              -0.21597025035357043,
+              0.269962812941963,
+              -0.21597025035357043,
+              0.269962812941963,
+              0.0,
+              0.0
+            ]
+          ],
+          "maximum_body_ODE_relative_residual": 1.5293509791216618e-12,
+          "energy_component_order": [
+            "speaking_string",
+            "free_body",
+            "fixed_anchors"
+          ],
+          "maximum_component_step_work_residual_over_initial_energy": [
+            4.3988402641857925e-15,
+            7.437883875077279e-17,
+            0.0
+          ],
+          "cumulative_component_work_residual_over_initial_energy": [
+            -1.747965118517017e-13,
+            -2.75956271307215e-15,
+            0.0
+          ]
+        },
+        {
+          "rate": 48000,
+          "steps": 960,
+          "maximum_step_energy_identity_residual_over_initial_energy": 4.704585657553707e-15,
+          "maximum_positive_energy_step_over_initial_energy": 0.0,
+          "final_energy_over_initial": 0.9509240532570493,
+          "cumulative_dissipation_over_initial": 0.049075946742584066,
+          "cumulative_energy_balance_relative_residual": -3.667023125244507e-13,
+          "actual_observation_times_s": [
+            0.001,
+            0.005,
+            0.01,
+            0.02
+          ],
+          "observations": [
+            [
+              0.00046037173883015764,
+              5.945726083249743e-06,
+              -1.403281092259056e-06
+            ],
+            [
+              -0.00023817743304850684,
+              -4.2789916463426236e-06,
+              7.286122739551149e-07
+            ],
+            [
+              -9.779769345695477e-05,
+              -3.353934944745519e-06,
+              8.826596155284702e-07
+            ],
+            [
+              -0.00022959041483567566,
+              -4.828915211586444e-06,
+              8.340352021734977e-07
+            ]
+          ],
+          "maximum_absolute_point_error_m": 4.733800329496913e-06,
+          "maximum_absolute_bridge_vector_error_m": 2.385324853223987e-08,
+          "mechanical_force_values": [
+            [
+              0.8521137831059679,
+              -1.06514222888246,
+              0.8521137831059679,
+              -1.06514222888246,
+              0.0,
+              0.0
+            ],
+            [
+              -0.2040947727588674,
+              0.2551184659485842,
+              -0.2040947727588674,
+              0.2551184659485842,
+              0.0,
+              0.0
+            ],
+            [
+              -0.1910101303844847,
+              0.23876266298060586,
+              -0.1910101303844847,
+              0.23876266298060586,
+              0.0,
+              0.0
+            ],
+            [
+              -0.2634543533275348,
+              0.3293179416594185,
+              -0.2634543533275348,
+              0.3293179416594185,
+              0.0,
+              0.0
+            ]
+          ],
+          "maximum_body_ODE_relative_residual": 6.340851460547288e-13,
+          "energy_component_order": [
+            "speaking_string",
+            "free_body",
+            "fixed_anchors"
+          ],
+          "maximum_component_step_work_residual_over_initial_energy": [
+            4.201071130295365e-15,
+            7.109533356946007e-17,
+            0.0
+          ],
+          "cumulative_component_work_residual_over_initial_energy": [
+            -3.70841656594059e-13,
+            4.8945928121332345e-15,
+            0.0
+          ]
+        },
+        {
+          "rate": 96000,
+          "steps": 1920,
+          "maximum_step_energy_identity_residual_over_initial_energy": 3.687716725198856e-15,
+          "maximum_positive_energy_step_over_initial_energy": 0.0,
+          "final_energy_over_initial": 0.9508022823648606,
+          "cumulative_dissipation_over_initial": 0.0491977176353866,
+          "cumulative_energy_balance_relative_residual": 2.4725681909126464e-13,
+          "actual_observation_times_s": [
+            0.001,
+            0.005,
+            0.01,
+            0.02
+          ],
+          "observations": [
+            [
+              0.000460392833992072,
+              5.9554880682032315e-06,
+              -1.412247657561226e-06
+            ],
+            [
+              -0.00023820761687317374,
+              -4.277694897180623e-06,
+              7.278062230825697e-07
+            ],
+            [
+              -9.746089850153127e-05,
+              -3.3682812563581363e-06,
+              8.985514723295632e-07
+            ],
+            [
+              -0.00022977078498038648,
+              -4.82837796136259e-06,
+              8.328713811851645e-07
+            ]
+          ],
+          "maximum_absolute_point_error_m": 4.914170474207735e-06,
+          "maximum_absolute_bridge_vector_error_m": 1.1148154889098661e-08,
+          "mechanical_force_values": [
+            [
+              0.9827323415834731,
+              -1.2284154269793415,
+              0.9827323415834731,
+              -1.2284154269793415,
+              0.0,
+              0.0
+            ],
+            [
+              -0.20286287069117565,
+              0.25357858836396957,
+              -0.20286287069117565,
+              0.25357858836396957,
+              0.0,
+              0.0
+            ],
+            [
+              -0.28628441252631626,
+              0.3578555156578953,
+              -0.28628441252631626,
+              0.3578555156578953,
+              0.0,
+              0.0
+            ],
+            [
+              -0.2203483979185518,
+              0.27543549739818973,
+              -0.2203483979185518,
+              0.27543549739818973,
+              0.0,
+              0.0
+            ]
+          ],
+          "maximum_body_ODE_relative_residual": 2.96130537605738e-12,
+          "energy_component_order": [
+            "speaking_string",
+            "free_body",
+            "fixed_anchors"
+          ],
+          "maximum_component_step_work_residual_over_initial_energy": [
+            3.002428627627734e-15,
+            7.664112417807032e-17,
+            0.0
+          ],
+          "cumulative_component_work_residual_over_initial_energy": [
+            2.670094785111495e-13,
+            -1.9393190066471515e-14,
+            0.0
+          ]
+        }
+      ],
+      "elapsed_seconds": 2.7581189580087084
+    }
+  ]
+}

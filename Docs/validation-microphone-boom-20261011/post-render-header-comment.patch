@@ -1,0 +1,15 @@
+--- candidate-render/Source/DSP/AcustraEngine.h
++++ current/Source/DSP/AcustraEngine.h
+@@ -1499,9 +1499,9 @@
+     static WoodPhysicalProperties bodyWoodProperties(BodyMaterial) noexcept;
+     static std::array<float, 4> bodyWoodFactors(
+         const EngineParameters& parameters) noexcept;
+-    // The Original's capture voicing (CaptureVoicingData.h) as an amplitude
+-    // gain at a frequency, its level included. This is the analog target;
+-    // the summed microphone pressure takes its causal digital filter.
++    // Common/Dreadnought capture voicing as an amplitude gain, level included.
++    // This analog target excludes the other constructions' additional A0 cut;
++    // summed microphone pressure takes the complete causal digital filter.
+     static float captureVoicingGain(float frequency) noexcept;
+     float bridgePhaseDelay(float frequency, int stringIndex) const noexcept;
+     // The saddle's mobility at one string's two ports, at a frequency: the

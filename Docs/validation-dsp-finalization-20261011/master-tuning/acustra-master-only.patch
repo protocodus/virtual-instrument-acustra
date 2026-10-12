@@ -1,0 +1,254 @@
+diff --git a/Source/DSP/AcustraEngine.cpp b/Source/DSP/AcustraEngine.cpp
+index a524194..e358478 100644
+--- a/Source/DSP/AcustraEngine.cpp
++++ b/Source/DSP/AcustraEngine.cpp
+@@ -4094,6 +4146,52 @@ void AcustraEngine::setTempoBpm(double bpm) noexcept
+             updateReleaseJoinWindow(voice);
+ }
+ 
++void AcustraEngine::setMasterTuneCents(float cents) noexcept
++{
++    // The host owns this reference, independently of MIDI controller resets.
++    // Reason supplies +/-100 cents. Bound this retensioning control to that
++    // host range; wide performance gestures belong to the separate wheels.
++    const float semitones = exact::isfinite(cents)
++        ? 0.01f * clamp(cents, -100.0f, 100.0f) : 0.0f;
++    if (semitones == masterTuneSemitones_)
++        return;
++    masterTuneSemitones_ = semitones;
++    masterTuneRatio_ = semitones == 0.0f ? 1.0f : std::exp2(semitones / 12.0f);
++    ++voiceConfigurationGeneration_;
++    if (!prepared_)
++        return;
++
++    // A cleared/silence-flushed instrument has no moving wave to slew,
++    // however many empty callbacks the host has rendered. A released string
++    // can still vibrate sympathetically, so merely having no MIDI owners is
++    // not enough: use the existing sound-state flush marker as well.
++    const bool atRest = idleFlushed_ && std::none_of(voices_.begin(), voices_.end(),
++        [] (const Voice& voice) { return voice.played || voice.tailActive; });
++    for (int string = 0; string < stringCount; ++string)
++    {
++        auto& voice = voices_[static_cast<std::size_t>(string)];
++        const float previousImpedance = voice.characteristicImpedance;
++        configureVoice(voice, string, voice.midiNote, false, false, !atRest);
++        if (atRest)
++        {
++            for (auto& loop : voice.loops)
++                loop.currentDelay = loop.targetDelay;
++            voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
++        }
++        else if (previousImpedance > 0.0f && voice.characteristicImpedance > 0.0f)
++        {
++            // Preserve the junction's current port, then let its existing
++            // 6 ms follower reach the retensioned string with the delay.
++            voice.appliedBendImpedanceScale *= previousImpedance
++                / voice.characteristicImpedance;
++        }
++    }
++    // A captured refret tail keeps its original string and port, as it does
++    // under playing-wheel changes. No contact, emitted packet or random draw
++    // belongs to a reference-tuning notification.
++    bridgeDerivativesCrossConfigure_ = !atRest;
++}
++
+ void AcustraEngine::setPhysicalCalibration(
+     const PhysicalCalibration& calibration) noexcept
+ {
+@@ -4937,7 +5035,7 @@ float AcustraEngine::bridgePhaseDelay(const PortMobility& port, float frequency,
+         return 0.0f;
+     const auto notes = openNotes(parameters_.tuning);
+     const float impedance = stringImpedance(
+-        stringIndex, notes[static_cast<std::size_t>(stringIndex)]);
++        stringIndex, notes[static_cast<std::size_t>(stringIndex)]) * masterTuneRatio_;
+     // This estimates one string's return phase from the body.
+     // Other strings' frequency-dependent loopback impedances are omitted here,
+     // although the runtime junction includes their returning waves. It is an
+@@ -5288,15 +5392,15 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
+         // the same finite-string bounds as the geometry calculation below;
+         // the wheel at zero does no additional geometry work.
+         const float fretLength = scaleLength * std::exp2(-static_cast<float>(fret) / 12.0f);
+-        const float unbentFrequency = midiFrequency(stoppedMidi);
++        const float fretFrequency = midiFrequency(stoppedMidi);
+         const float slideInterval = clamp(performedBend - memberBendSemitones,
+                                            -192.0f, 192.0f);
+-        const float slideFrequency = clamp(unbentFrequency
++        const float slideFrequency = clamp(fretFrequency
+             * std::exp2(slideInterval / 12.0f),
+-            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
+-            0.24f * static_cast<float>(sampleRate_));
++            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f) / masterTuneRatio_,
++            0.24f * static_cast<float>(sampleRate_) / masterTuneRatio_);
+         const float length = slideInterval == 0.0f ? fretLength
+-            : fretLength * unbentFrequency / slideFrequency;
++            : fretLength * fretFrequency / slideFrequency;
+         vibratoInterval = vibratoSemitones(voice, length);
+     }
+     const float axialRigidity = stringAxialRigidity(stringIndex);
+@@ -5305,12 +5409,13 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
+         stoppedMidi, voice.openMidi, stringIndex,
+         exact::bits(static_cast<float>(sampleRate_)), exact::bits(performedBend),
+         exact::bits(memberBendSemitones), exact::bits(vibratoInterval),
+-        exact::bits(voice.attackPitchCents) };
++        exact::bits(voice.attackPitchCents), exact::bits(masterTuneSemitones_) };
+     auto& geometry = voice.pitchGeometry;
+     if (!geometry.valid || !(pitchKey == geometry.key))
+     {
+         const float fretLength = scaleLength * std::exp2(-static_cast<float>(fret) / 12.0f);
+-        const float unbentFrequency = midiFrequency(stoppedMidi);
++        const float fretFrequency = midiFrequency(stoppedMidi);
++        const float unbentFrequency = fretFrequency * masterTuneRatio_;
+         // The bounded Kirchhoff-Carrier surrogate follows the waveguide's inferred
+         // slope energy; its delay target slews on the existing 6 ms time constant.
+         // A conventional wheel or MPE manager slides the fretting point; its
+@@ -5322,18 +5427,22 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
+         // the finite waveguide before taking a physical reciprocal.
+         const float slideInterval = clamp(performedBend - memberBendSemitones,
+                                            -192.0f, 192.0f);
+-        const float slideFrequency = clamp(unbentFrequency
++        // Use the untuned reference for this ratio: cancelling master tune
++        // after two rounded products could move a held finger by one ulp and
++        // spuriously start its roughness source. Only an actual delay-band
++        // limit can constrain the requested length through reference tuning.
++        const float slideFrequency = clamp(fretFrequency
+             * std::exp2(slideInterval / 12.0f),
+-            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
+-            0.24f * static_cast<float>(sampleRate_));
++            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f) / masterTuneRatio_,
++            0.24f * static_cast<float>(sampleRate_) / masterTuneRatio_);
+         const float soundingLength = slideInterval == 0.0f ? fretLength
+-            : fretLength * unbentFrequency / slideFrequency;
++            : fretLength * fretFrequency / slideFrequency;
+         // Apply the existing fret-decay calibration to the same fretting point,
+         // including a fractional slide. Outside the playable fretboard retain
+         // its nearest supported target rather than extrapolating the fit.
+         const float speakingFret = slideInterval == 0.0f ? static_cast<float>(fret)
+             : clamp(static_cast<float>(fret)
+-                + 12.0f * std::log2(slideFrequency / unbentFrequency),
++                + 12.0f * std::log2(slideFrequency / fretFrequency),
+                 0.0f, static_cast<float>(fretCount));
+         // The wheel's vibrato is the fretting hand modulating the string's
+         // tension at a fixed length (see vibratoSemitones), and a tension
+@@ -5361,13 +5470,13 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
+             static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
+             0.24f * static_cast<float>(sampleRate_));
+ 
+-        const float openFrequency = midiFrequency(voice.openMidi);
++        const float openFrequency = tunedMidiFrequency(voice.openMidi);
+         const float openWaveSpeed = 2.0f * scaleLength * openFrequency;
+         const float standardWaveSpeed = 2.0f * scaleLength
+             * midiFrequency(standardOpenMidi[index]);
+         const float linearMass = steelTensionNewtons[index]
+             / (standardWaveSpeed * standardWaveSpeed);
+-        const float tension = voice.openMidi == standardOpenMidi[index]
++        const float tension = voice.openMidi == standardOpenMidi[index] && masterTuneRatio_ == 1.0f
+             ? steelTensionNewtons[index]
+             : std::max(linearMass * openWaveSpeed * openWaveSpeed, 1.0f);
+         // Slide or bend, settled. A channel's pitch bend is a slide: the fretting
+@@ -5511,7 +5620,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
+     // The fit also needs its three collocation partials inside its stated
+     // 0.42 fs band (collocateDispersion), at every supported host rate.
+     const float highestFitFrequency = std::min(
+-        midiFrequency(voice.openMidi + fretCount + 12),
++        tunedMidiFrequency(voice.openMidi + fretCount + 12),
+         static_cast<float>(0.42 * sampleRate_
+             / stretchedPartial(3.0, inharmonicity)));
+     const float dispersionFitFrequency = std::min(lossDesignFrequency,
+@@ -5738,7 +5847,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
+                                                        stringIndex);
+     const float desiredPeriodGain = std::pow(0.001f,
+         1.0f / std::max(fundamentalT60 * frequency, 1.0f));
+-    const float unbentImpedance = stringImpedance(stringIndex, voice.openMidi);
++    const float unbentImpedance = stringImpedance(stringIndex, voice.openMidi) * masterTuneRatio_;
+     const float coupledDetune = coupledPolarisationDetune(
+         bridgePort, unbentImpedance, unbentImpedance
+             * exact::sqrt((bentTension / tension) / (1.0f
+@@ -5844,7 +5953,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
+     voice.midiNote = midiNote;
+     voice.fret = fret;
+     voice.characteristicImpedance = stringImpedance(
+-        stringIndex, voice.openMidi);
++        stringIndex, voice.openMidi) * masterTuneRatio_;
+     // Z = sqrt(T*mu) with Grimes' stretched mass per length is Z0 times the
+     // frequency ratio the same tension produces - 12.3% for a whole tone -
+     // and saturates with the tension where his law stops. The junction reads
+@@ -5899,7 +6008,7 @@ AcustraEngine::VoiceBend AcustraEngine::voiceBend(
+ // the note's own frequency.
+ float AcustraEngine::loopFundamental(const Voice& voice) const noexcept
+ {
+-    const float unbent = midiFrequency(
++    const float unbent = tunedMidiFrequency(
+         voice.harmonic > 1 ? voice.openMidi : voice.midiNote);
+     const float bend = voiceBend(voice).performed;
+     if (bend == 0.0f)
+@@ -5936,7 +6045,7 @@ void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
+     const float secondMoment = pi * diameter * diameter * diameter * diameter
+                              / 64.0f;
+     const float openWaveSpeed = 2.0f * scaleLength
+-                              * midiFrequency(voice.openMidi);
++                              * tunedMidiFrequency(voice.openMidi);
+     const float tension = voice.tensionNewtons > 0.0f
+         ? voice.tensionNewtons : voice.characteristicImpedance * openWaveSpeed;
+     const float lengthSquared = soundingLength * soundingLength;
+@@ -7660,7 +7773,7 @@ double AcustraEngine::plectrumSlipPole(const Voice& voice,
+         return 0.0;
+     // c = 2 L0 f0 of the open string: fretting shortens the string, not the
+     // wave speed.
+-    const float unbentWaveSpeed = 2.0f * scaleLength * midiFrequency(voice.openMidi);
++    const float unbentWaveSpeed = 2.0f * scaleLength * tunedMidiFrequency(voice.openMidi);
+     // A member's lateral bend raises wave speed at the same stopped length.
+     // This is the same sqrt(T/mu) ratio already used by the junction, with
+     // stretched mass included; a slide leaves the ratio exactly one.
+diff --git a/Source/DSP/AcustraEngine.h b/Source/DSP/AcustraEngine.h
+index 49944cf..b30c0b0 100644
+--- a/Source/DSP/AcustraEngine.h
++++ b/Source/DSP/AcustraEngine.h
+@@ -301,6 +302,11 @@ public:
+     // zero is an exact no-op.
+     void setPalmMutePressure(float pressure) noexcept;
+     void setPitchBend(float semitones, int midiChannel = 1) noexcept;
++    // Host reference tuning retensions every string at its existing open/
++    // stopped length. It is independent of the player's slide/bend wheels,
++    // survives reset/prepare, clamps to the host's +/-100-cent range, and
++    // uses zero for nonfinite input.
++    void setMasterTuneCents(float cents) noexcept;
+     // MIDI's Modulation Wheel, CC1, as the left hand's vibrato. Zero is an
+     // exact no-op, which is the default; see the vibrato map in
+     // AcustraEngine.cpp for what the wheel is bounded by.
+@@ -1018,13 +1024,15 @@ private:
+         std::uint32_t memberBend { 0 };
+         std::uint32_t vibrato { 0 };
+         std::uint32_t attackPitch { 0 };
++        std::uint32_t masterTune { 0 };
+ 
+         bool operator==(const PitchGeometryKey& other) const noexcept
+         {
+             return stoppedMidi == other.stoppedMidi && openMidi == other.openMidi
+                 && stringIndex == other.stringIndex && sampleRate == other.sampleRate
+                 && performedBend == other.performedBend && memberBend == other.memberBend
+-                && vibrato == other.vibrato && attackPitch == other.attackPitch;
++                && vibrato == other.vibrato && attackPitch == other.attackPitch
++                && masterTune == other.masterTune;
+         }
+     };
+ 
+@@ -1446,6 +1454,10 @@ private:
+     static EngineParameters sanitise(const EngineParameters&) noexcept;
+     static PhysicalCalibration sanitise(const PhysicalCalibration&) noexcept;
+     static float midiFrequency(int midiNote) noexcept;
++    [[nodiscard]] float tunedMidiFrequency(int midiNote) const noexcept
++    {
++        return midiFrequency(midiNote) * masterTuneRatio_;
++    }
+     static float clamp(float value, float low, float high) noexcept;
+     static float phaseDelayForOnePoleMix(float coefficient, float mix,
+                                          float omega) noexcept;
+@@ -1851,6 +1863,8 @@ private:
+     float parameterSmoothing_ { 0.002f };
+     float levelSmoothing_ { 0.0025f };
+     std::array<float, midiChannelCount> pitchBendSemitones_ {};
++    float masterTuneSemitones_ { 0.0f };
++    float masterTuneRatio_ { 1.0f };
+     float vibrato_ { 0.0f };
+     float vibratoPhase_ { 0.0f };
+     float vibratoOnset_ { 0.0f };

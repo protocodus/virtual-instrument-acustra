@@ -1,0 +1,557 @@
+[
+  {
+    "candidate": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/measured_bridge_coefficients.csv",
+    "candidate_sha256": "cb9675b78a2afb4fd726570833afc006dffb1e2b5ccbe5c25520bd49573656a7",
+    "rate": 48000,
+    "duration_seconds": 0.25,
+    "picking": "finger",
+    "score": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/harness/candidate-invariants/score.txt",
+    "score_sha256": "5fca2900b1ae45b70ae79621ecdd7919edd81f3276505b3ed1e7da6cc2f67526",
+    "prepared_field_allowlist_check": {
+      "all_non_observation_bytes_unchanged": true,
+      "all_cached_pole_bits_unchanged": true,
+      "prepared_constructions": 12,
+      "compared_bytes": 46128000,
+      "compared_cached_pole_components": 46080
+    },
+    "per_sample_constructions": [
+      {
+        "shape": "parlor",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "e373464a33f73c2e917b299be5f437367b16d51ddfd5f194fb52cb4f997fd93d",
+        "piezo_sha256": "83a6273dbf3460a93e3ba74947f8ebf1b79c631d11cf220d0d261f95af6e9344",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "parlor",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "bb1ed5c5137fa6ca5ea415c3275b269272007ad69fa7756ac200e8753ec32ab3",
+        "piezo_sha256": "b0ff44452ce6c36693035c81e44f056ff7336a1d0e0bb1481df6b18bf00d5719",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "auditorium",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "44ff4b0e7fb0f035e3b4e47c83bf303c90752f95442f19050170600d4e09b2e7",
+        "piezo_sha256": "663ccad4c7ca3db5ec6987318974355574a817e2963a7de1d719b5620840cae4",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "auditorium",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "e2be9670914106661e3c6404de6dd4c92afded98d11e4fa97298360041eadd92",
+        "piezo_sha256": "545eb3ff53db3712f1f45d073130da14b877db8b9179bd84d2b3fee31761ffc0",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "66f1c648e794f32240ef225ca4cc541a13b7a7c0763dc5847dbe8a708d64672c",
+        "piezo_sha256": "caadc59d83dab1644d3919c9ae5efb7c419e032ffe3d0176e074df4c68aea09f",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "dreadnought",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "7d9db7f34836f2d17779c8e723cb1aea459c21a6b1033ba315b7310cb4949c07",
+        "piezo_sha256": "f1e1df87af01020ff0fdf79270c33ab1c5136044ca7272da93181f50494f3c6b",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "jumbo",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "b451a17c153eb062bfdc2a09e8994ff389223b3268b66add05a7c182e0dbbc7d",
+        "piezo_sha256": "84a351e6067ed533168ed637ff6d4892db966e81686d40ec4aa9564995f547a6",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "jumbo",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "336e623a1621809adbb65d3634186c2d41c379352394c1238bb81cb842bd1574",
+        "piezo_sha256": "d6007aa6b57eda752157f0ed1e66d3ff3cb99418ffd4ee44b33ee88c3175c4d1",
+        "microphone_output_changed": true
+      }
+    ],
+    "full_state_witness": {
+      "shape": "parlor",
+      "wood": "spruce",
+      "frames": 512,
+      "double_columns": 1965,
+      "all_state_bytes_equal": true,
+      "sha256": "4821adf332377d0a3f3151cada0078119ac1999207c707a9bd70a7da77c7b30c"
+    },
+    "original_renderer_vs_trace_renderer_audio_byte_equal": true,
+    "trace_renderer_sha256": "c5d15bd0ffc4986cc157a90bf0c2c1003871b422cc0ace05fb06f30e0a731906",
+    "allowlist_probe_sha256": "9cde3de0fbb6dc93d2da8229ab9a293c946ee5fdea2435939d3384a9eb8dcc4f",
+    "frozen_library_sha256": "9ac3e0b2d92ad626e31951e04b383bb6af764660ef6c7b4919647920344d7278",
+    "all_pass": true
+  },
+  {
+    "candidate": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/measured_blend_coefficients.csv",
+    "candidate_sha256": "f7799bd7f399dd03962036bc402e7690b97180bcd5fad3feb44e98920217c3d4",
+    "rate": 48000,
+    "duration_seconds": 0.25,
+    "picking": "finger",
+    "score": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/harness/candidate-invariants-final/score.txt",
+    "score_sha256": "5fca2900b1ae45b70ae79621ecdd7919edd81f3276505b3ed1e7da6cc2f67526",
+    "prepared_field_allowlist_check": {
+      "all_non_observation_bytes_unchanged": true,
+      "all_cached_pole_bits_unchanged": true,
+      "prepared_constructions": 12,
+      "compared_bytes": 46128000,
+      "compared_cached_pole_components": 46080
+    },
+    "per_sample_constructions": [
+      {
+        "shape": "parlor",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "e373464a33f73c2e917b299be5f437367b16d51ddfd5f194fb52cb4f997fd93d",
+        "piezo_sha256": "83a6273dbf3460a93e3ba74947f8ebf1b79c631d11cf220d0d261f95af6e9344",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "parlor",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "bb1ed5c5137fa6ca5ea415c3275b269272007ad69fa7756ac200e8753ec32ab3",
+        "piezo_sha256": "b0ff44452ce6c36693035c81e44f056ff7336a1d0e0bb1481df6b18bf00d5719",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "auditorium",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "44ff4b0e7fb0f035e3b4e47c83bf303c90752f95442f19050170600d4e09b2e7",
+        "piezo_sha256": "663ccad4c7ca3db5ec6987318974355574a817e2963a7de1d719b5620840cae4",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "auditorium",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "e2be9670914106661e3c6404de6dd4c92afded98d11e4fa97298360041eadd92",
+        "piezo_sha256": "545eb3ff53db3712f1f45d073130da14b877db8b9179bd84d2b3fee31761ffc0",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "66f1c648e794f32240ef225ca4cc541a13b7a7c0763dc5847dbe8a708d64672c",
+        "piezo_sha256": "caadc59d83dab1644d3919c9ae5efb7c419e032ffe3d0176e074df4c68aea09f",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "dreadnought",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "7d9db7f34836f2d17779c8e723cb1aea459c21a6b1033ba315b7310cb4949c07",
+        "piezo_sha256": "f1e1df87af01020ff0fdf79270c33ab1c5136044ca7272da93181f50494f3c6b",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "jumbo",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "b451a17c153eb062bfdc2a09e8994ff389223b3268b66add05a7c182e0dbbc7d",
+        "piezo_sha256": "84a351e6067ed533168ed637ff6d4892db966e81686d40ec4aa9564995f547a6",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "jumbo",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "336e623a1621809adbb65d3634186c2d41c379352394c1238bb81cb842bd1574",
+        "piezo_sha256": "d6007aa6b57eda752157f0ed1e66d3ff3cb99418ffd4ee44b33ee88c3175c4d1",
+        "microphone_output_changed": true
+      }
+    ],
+    "full_state_witness": {
+      "shape": "parlor",
+      "wood": "spruce",
+      "frames": 512,
+      "double_columns": 1965,
+      "all_state_bytes_equal": true,
+      "sha256": "4821adf332377d0a3f3151cada0078119ac1999207c707a9bd70a7da77c7b30c"
+    },
+    "original_renderer_vs_trace_renderer_audio_byte_equal": true,
+    "trace_renderer_sha256": "c5d15bd0ffc4986cc157a90bf0c2c1003871b422cc0ace05fb06f30e0a731906",
+    "allowlist_probe_sha256": "9cde3de0fbb6dc93d2da8229ab9a293c946ee5fdea2435939d3384a9eb8dcc4f",
+    "frozen_library_sha256": "9ac3e0b2d92ad626e31951e04b383bb6af764660ef6c7b4919647920344d7278",
+    "all_pass": true
+  },
+  {
+    "candidate": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/runtime-candidates-v2/neck30_literal264.csv",
+    "candidate_sha256": "d29e16587d3a5e6bc3596a756323e31062082d3e261b8167450ab4a8ea42d55d",
+    "rate": 48000,
+    "duration_seconds": 0.25,
+    "picking": "finger",
+    "score": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/harness/candidate-invariants/score.txt",
+    "score_sha256": "5fca2900b1ae45b70ae79621ecdd7919edd81f3276505b3ed1e7da6cc2f67526",
+    "prepared_field_allowlist_check": {
+      "all_non_observation_bytes_unchanged": true,
+      "all_cached_pole_bits_unchanged": true,
+      "prepared_constructions": 12,
+      "compared_bytes": 46128000,
+      "compared_cached_pole_components": 46080
+    },
+    "per_sample_constructions": [
+      {
+        "shape": "parlor",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "e373464a33f73c2e917b299be5f437367b16d51ddfd5f194fb52cb4f997fd93d",
+        "piezo_sha256": "83a6273dbf3460a93e3ba74947f8ebf1b79c631d11cf220d0d261f95af6e9344",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "parlor",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "bb1ed5c5137fa6ca5ea415c3275b269272007ad69fa7756ac200e8753ec32ab3",
+        "piezo_sha256": "b0ff44452ce6c36693035c81e44f056ff7336a1d0e0bb1481df6b18bf00d5719",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "auditorium",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "44ff4b0e7fb0f035e3b4e47c83bf303c90752f95442f19050170600d4e09b2e7",
+        "piezo_sha256": "663ccad4c7ca3db5ec6987318974355574a817e2963a7de1d719b5620840cae4",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "auditorium",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "e2be9670914106661e3c6404de6dd4c92afded98d11e4fa97298360041eadd92",
+        "piezo_sha256": "545eb3ff53db3712f1f45d073130da14b877db8b9179bd84d2b3fee31761ffc0",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "66f1c648e794f32240ef225ca4cc541a13b7a7c0763dc5847dbe8a708d64672c",
+        "piezo_sha256": "caadc59d83dab1644d3919c9ae5efb7c419e032ffe3d0176e074df4c68aea09f",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "dreadnought",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "7d9db7f34836f2d17779c8e723cb1aea459c21a6b1033ba315b7310cb4949c07",
+        "piezo_sha256": "f1e1df87af01020ff0fdf79270c33ab1c5136044ca7272da93181f50494f3c6b",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "jumbo",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "b451a17c153eb062bfdc2a09e8994ff389223b3268b66add05a7c182e0dbbc7d",
+        "piezo_sha256": "84a351e6067ed533168ed637ff6d4892db966e81686d40ec4aa9564995f547a6",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "jumbo",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "336e623a1621809adbb65d3634186c2d41c379352394c1238bb81cb842bd1574",
+        "piezo_sha256": "d6007aa6b57eda752157f0ed1e66d3ff3cb99418ffd4ee44b33ee88c3175c4d1",
+        "microphone_output_changed": true
+      }
+    ],
+    "full_state_witness": {
+      "shape": "parlor",
+      "wood": "spruce",
+      "frames": 512,
+      "double_columns": 1965,
+      "all_state_bytes_equal": true,
+      "sha256": "4821adf332377d0a3f3151cada0078119ac1999207c707a9bd70a7da77c7b30c"
+    },
+    "original_renderer_vs_trace_renderer_audio_byte_equal": true,
+    "trace_renderer_sha256": "c5d15bd0ffc4986cc157a90bf0c2c1003871b422cc0ace05fb06f30e0a731906",
+    "allowlist_probe_sha256": "9cde3de0fbb6dc93d2da8229ab9a293c946ee5fdea2435939d3384a9eb8dcc4f",
+    "frozen_library_sha256": "9ac3e0b2d92ad626e31951e04b383bb6af764660ef6c7b4919647920344d7278",
+    "all_pass": true
+  },
+  {
+    "candidate": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/runtime-candidates-v2/offhole45_literal264.csv",
+    "candidate_sha256": "d64c4633d9b514ab73e8398532c8e0c1aada4267638b9e2196f60e3f6455efe4",
+    "rate": 48000,
+    "duration_seconds": 0.25,
+    "picking": "finger",
+    "score": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/harness/candidate-invariants/score.txt",
+    "score_sha256": "5fca2900b1ae45b70ae79621ecdd7919edd81f3276505b3ed1e7da6cc2f67526",
+    "prepared_field_allowlist_check": {
+      "all_non_observation_bytes_unchanged": true,
+      "all_cached_pole_bits_unchanged": true,
+      "prepared_constructions": 12,
+      "compared_bytes": 46128000,
+      "compared_cached_pole_components": 46080
+    },
+    "per_sample_constructions": [
+      {
+        "shape": "parlor",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "e373464a33f73c2e917b299be5f437367b16d51ddfd5f194fb52cb4f997fd93d",
+        "piezo_sha256": "83a6273dbf3460a93e3ba74947f8ebf1b79c631d11cf220d0d261f95af6e9344",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "parlor",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "bb1ed5c5137fa6ca5ea415c3275b269272007ad69fa7756ac200e8753ec32ab3",
+        "piezo_sha256": "b0ff44452ce6c36693035c81e44f056ff7336a1d0e0bb1481df6b18bf00d5719",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "auditorium",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "44ff4b0e7fb0f035e3b4e47c83bf303c90752f95442f19050170600d4e09b2e7",
+        "piezo_sha256": "663ccad4c7ca3db5ec6987318974355574a817e2963a7de1d719b5620840cae4",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "auditorium",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "e2be9670914106661e3c6404de6dd4c92afded98d11e4fa97298360041eadd92",
+        "piezo_sha256": "545eb3ff53db3712f1f45d073130da14b877db8b9179bd84d2b3fee31761ffc0",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "66f1c648e794f32240ef225ca4cc541a13b7a7c0763dc5847dbe8a708d64672c",
+        "piezo_sha256": "caadc59d83dab1644d3919c9ae5efb7c419e032ffe3d0176e074df4c68aea09f",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "dreadnought",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "7d9db7f34836f2d17779c8e723cb1aea459c21a6b1033ba315b7310cb4949c07",
+        "piezo_sha256": "f1e1df87af01020ff0fdf79270c33ab1c5136044ca7272da93181f50494f3c6b",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "jumbo",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "b451a17c153eb062bfdc2a09e8994ff389223b3268b66add05a7c182e0dbbc7d",
+        "piezo_sha256": "84a351e6067ed533168ed637ff6d4892db966e81686d40ec4aa9564995f547a6",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "jumbo",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "336e623a1621809adbb65d3634186c2d41c379352394c1238bb81cb842bd1574",
+        "piezo_sha256": "d6007aa6b57eda752157f0ed1e66d3ff3cb99418ffd4ee44b33ee88c3175c4d1",
+        "microphone_output_changed": true
+      }
+    ],
+    "full_state_witness": {
+      "shape": "parlor",
+      "wood": "spruce",
+      "frames": 512,
+      "double_columns": 1965,
+      "all_state_bytes_equal": true,
+      "sha256": "4821adf332377d0a3f3151cada0078119ac1999207c707a9bd70a7da77c7b30c"
+    },
+    "original_renderer_vs_trace_renderer_audio_byte_equal": true,
+    "trace_renderer_sha256": "c5d15bd0ffc4986cc157a90bf0c2c1003871b422cc0ace05fb06f30e0a731906",
+    "allowlist_probe_sha256": "9cde3de0fbb6dc93d2da8229ab9a293c946ee5fdea2435939d3384a9eb8dcc4f",
+    "frozen_library_sha256": "9ac3e0b2d92ad626e31951e04b383bb6af764660ef6c7b4919647920344d7278",
+    "all_pass": true
+  },
+  {
+    "candidate": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/runtime-free-candidates-v1/free_neck30.csv",
+    "candidate_sha256": "dbc0f6c47d4d256cf22f9be0a2923f257429c5e220fd8b40933b92958d2b9045",
+    "rate": 48000,
+    "duration_seconds": 0.25,
+    "picking": "finger",
+    "score": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/harness/candidate-invariants-final/score.txt",
+    "score_sha256": "5fca2900b1ae45b70ae79621ecdd7919edd81f3276505b3ed1e7da6cc2f67526",
+    "prepared_field_allowlist_check": {
+      "all_non_observation_bytes_unchanged": true,
+      "all_cached_pole_bits_unchanged": true,
+      "prepared_constructions": 12,
+      "compared_bytes": 46128000,
+      "compared_cached_pole_components": 46080
+    },
+    "per_sample_constructions": [
+      {
+        "shape": "parlor",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "e373464a33f73c2e917b299be5f437367b16d51ddfd5f194fb52cb4f997fd93d",
+        "piezo_sha256": "83a6273dbf3460a93e3ba74947f8ebf1b79c631d11cf220d0d261f95af6e9344",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "parlor",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "bb1ed5c5137fa6ca5ea415c3275b269272007ad69fa7756ac200e8753ec32ab3",
+        "piezo_sha256": "b0ff44452ce6c36693035c81e44f056ff7336a1d0e0bb1481df6b18bf00d5719",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "auditorium",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "44ff4b0e7fb0f035e3b4e47c83bf303c90752f95442f19050170600d4e09b2e7",
+        "piezo_sha256": "663ccad4c7ca3db5ec6987318974355574a817e2963a7de1d719b5620840cae4",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "auditorium",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "e2be9670914106661e3c6404de6dd4c92afded98d11e4fa97298360041eadd92",
+        "piezo_sha256": "545eb3ff53db3712f1f45d073130da14b877db8b9179bd84d2b3fee31761ffc0",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "dreadnought",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "66f1c648e794f32240ef225ca4cc541a13b7a7c0763dc5847dbe8a708d64672c",
+        "piezo_sha256": "caadc59d83dab1644d3919c9ae5efb7c419e032ffe3d0176e074df4c68aea09f",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "dreadnought",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "7d9db7f34836f2d17779c8e723cb1aea459c21a6b1033ba315b7310cb4949c07",
+        "piezo_sha256": "f1e1df87af01020ff0fdf79270c33ab1c5136044ca7272da93181f50494f3c6b",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "jumbo",
+        "wood": "spruce",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "b451a17c153eb062bfdc2a09e8994ff389223b3268b66add05a7c182e0dbbc7d",
+        "piezo_sha256": "84a351e6067ed533168ed637ff6d4892db966e81686d40ec4aa9564995f547a6",
+        "microphone_output_changed": true
+      },
+      {
+        "shape": "jumbo",
+        "wood": "mahogany",
+        "frames": 12000,
+        "all_mechanical_piezo_fields_and_modal_hash_byte_equal": true,
+        "piezo_output_byte_equal": true,
+        "trace_sha256": "336e623a1621809adbb65d3634186c2d41c379352394c1238bb81cb842bd1574",
+        "piezo_sha256": "d6007aa6b57eda752157f0ed1e66d3ff3cb99418ffd4ee44b33ee88c3175c4d1",
+        "microphone_output_changed": true
+      }
+    ],
+    "full_state_witness": {
+      "shape": "parlor",
+      "wood": "spruce",
+      "frames": 512,
+      "double_columns": 1965,
+      "all_state_bytes_equal": true,
+      "sha256": "4821adf332377d0a3f3151cada0078119ac1999207c707a9bd70a7da77c7b30c"
+    },
+    "original_renderer_vs_trace_renderer_audio_byte_equal": true,
+    "trace_renderer_sha256": "c5d15bd0ffc4986cc157a90bf0c2c1003871b422cc0ace05fb06f30e0a731906",
+    "allowlist_probe_sha256": "9cde3de0fbb6dc93d2da8229ab9a293c946ee5fdea2435939d3384a9eb8dcc4f",
+    "frozen_library_sha256": "9ac3e0b2d92ad626e31951e04b383bb6af764660ef6c7b4919647920344d7278",
+    "all_pass": true
+  }
+]

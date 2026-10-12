@@ -1,0 +1,90 @@
+{
+  "weights": [
+    0.4,
+    0.2,
+    0.3,
+    0.45,
+    0.3,
+    0.1
+  ],
+  "source_files": [
+    null,
+    "build-audit/studio-mic-variants/measured_bridge_coefficients.csv",
+    "build-audit/studio-mic-research/runtime-candidates-v2/neck30_literal264.csv",
+    "build-audit/studio-mic-research/runtime-candidates-v2/offhole45_literal264.csv",
+    "build-audit/studio-mic-research/runtime-free-candidates-v1/free_neck30.csv",
+    "build-audit/studio-mic-variants/measured_blend_coefficients.csv"
+  ],
+  "notches": [
+    {
+      "wood": 0,
+      "hz": 254.1068278513776,
+      "normalized_moment": -1.0,
+      "components_complex": [
+        [
+          0.10242332073379119,
+          -0.03601208462595573
+        ],
+        [
+          0.0876088920976888,
+          0.08901636651256672
+        ],
+        [
+          -0.013941215969744125,
+          0.014216263621483899
+        ],
+        [
+          -0.04587265837224303,
+          -0.03359184071348499
+        ],
+        [
+          -0.01663015542253968,
+          0.007206138038303987
+        ],
+        [
+          -0.06957458955233076,
+          -0.056689704092987674
+        ]
+      ],
+      "relative_rounding_error": 1.976808186488822e-06,
+      "component_cancellation_condition": 8.937274876024434,
+      "spatial_fractional_error_for_equal_output_change": 0.6043693260440274,
+      "note": "Sensitivity of this specific fixed-ratio deep zero. Does not estimate real acoustic parameter errors or listener audibility."
+    },
+    {
+      "wood": 1,
+      "hz": 244.69165983232566,
+      "normalized_moment": -1.0,
+      "components_complex": [
+        [
+          0.08766014303847434,
+          -0.033297687651700235
+        ],
+        [
+          0.07595413375380984,
+          0.0751347330810429
+        ],
+        [
+          -0.014094541415258049,
+          0.010897454396662894
+        ],
+        [
+          -0.04313862607827302,
+          -0.02715226098336094
+        ],
+        [
+          -0.014599015235811738,
+          0.006905026250916294
+        ],
+        [
+          -0.06303115140205978,
+          -0.04439858634933165
+        ]
+      ],
+      "relative_rounding_error": 3.010399335292496e-06,
+      "component_cancellation_condition": 11.652870488172383,
+      "spatial_fractional_error_for_equal_output_change": 0.4296173604432303,
+      "note": "Sensitivity of this specific fixed-ratio deep zero. Does not estimate real acoustic parameter errors or listener audibility."
+    }
+  ]
+}

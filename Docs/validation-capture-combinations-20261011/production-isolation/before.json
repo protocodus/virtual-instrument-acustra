@@ -1,0 +1,505 @@
+{
+  "stage": "before",
+  "binary": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-combinations-20261011/production-verification/ProductionObserverTraceBefore",
+  "binary_sha256": "15f5a9d0755f2d55de7c60949925c194ca4b90c204a515b30a7f2c8c23d996c2",
+  "library": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/harness/libAcustraDSP.a",
+  "library_sha256": "9ac3e0b2d92ad626e31951e04b383bb6af764660ef6c7b4919647920344d7278",
+  "matching_header_root": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/harness/Source",
+  "engine_header_sha256": "5f1ccc4258254e9b00f6785ec4e2a12ea6fb32f350f23e07ab22c02da2303f6c",
+  "probe_source_sha256": "69344a3f17df39ab9cb1645ab8c38de803d967a73675ccb3ef89f39eaf57c2a2",
+  "trace_helper_sha256": "b682c13fa148124347b41ec53307b519ec2bb9e452cb81ea5b418746a30e39be",
+  "runner_sha256": "a584447d06991d78da65fb2de5d5bbdfb5a54ac2463d908706dcedfed2f45064",
+  "cases": [
+    {
+      "key": "44100-s0-w0-n12000",
+      "rate": 44100,
+      "shape": 0,
+      "wood": 0,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "0f65f9bbf7a576124e7aa0a5a52725f39fb2ef5c38bd6a687505c627f0e750b1",
+        ".piezo.f32": "2f9f2713dc2f4a1e9e2fe06a76082e0cc13578d8fd69715665a800e8492e5b9a",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "bb7872fc464cf8506b5510aeb20e5315d08a12b0e2bf6b5ba9b7d8de799911fa"
+      }
+    },
+    {
+      "key": "44100-s0-w1-n12000",
+      "rate": 44100,
+      "shape": 0,
+      "wood": 1,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "951d7fc39b88c741bd818c27685bda2222a3f8859a2ce126d8d766ccb5a40d6f",
+        ".piezo.f32": "9739002367b570b390d4de3889947f6378ed7ac68e215cf884a9b8a6eb37d532",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "c94abfcbcc33cd3b78bd72256428c47ff52cb5e66f2efef306a08b83ae542a94"
+      }
+    },
+    {
+      "key": "44100-s0-w2-n12000",
+      "rate": 44100,
+      "shape": 0,
+      "wood": 2,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "2ceb42f7494c381b1b66ea6543d23289432017a462b6c60e4413b696ac4a702c",
+        ".piezo.f32": "019a2d53d0a3586c820e7aa429394180157ad894b768c4ed63c6d3807548ee89",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "2e70b001c146b6c71f98796d9a7533a24284267cb29471dae261aa82ab855623"
+      }
+    },
+    {
+      "key": "44100-s1-w0-n12000",
+      "rate": 44100,
+      "shape": 1,
+      "wood": 0,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "41b6ff196ec22f20e5b94b735781b2a81b69f04473883cd883559443868eb7a4",
+        ".piezo.f32": "c77e0672f59accf75fc5d5cbb2d03e5859747aae4e3d827134ee25b685d5702f",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "e668c893e41d3b3331f69781ba341ea05355c9cac64d91bba2325c3bf4bf6626"
+      }
+    },
+    {
+      "key": "44100-s1-w1-n12000",
+      "rate": 44100,
+      "shape": 1,
+      "wood": 1,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "a310830d298338ce7dc19a297e5bbe4b501c5300c32532254ec0cfba13ed4177",
+        ".piezo.f32": "4247dc45f1f15c3393e9ee47ba491dc434ec3ca5466cbef7188ae0f13f461409",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "35c187508bccf024ba5802dd56a93786bd18ad19a05eb45d41316ac096c71d1e"
+      }
+    },
+    {
+      "key": "44100-s1-w2-n12000",
+      "rate": 44100,
+      "shape": 1,
+      "wood": 2,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "8fa7446da7df094aa3e90720f13a69b423f0bfcae5b4c4fee1df5b4a5b29a113",
+        ".piezo.f32": "c3404b32bc287dcb43c6d25882fa9ffebb1da5349c089e2d8bd7a6f40aaf09d5",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "c292e9172a4bcaed3efcb042f054002d3d779c6632fc2eff750e402ea5033669"
+      }
+    },
+    {
+      "key": "44100-s2-w0-n12000",
+      "rate": 44100,
+      "shape": 2,
+      "wood": 0,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "0bc06e999e357db945fc17b092902f87eec75f3c7b23e1d0d8179ddeb9a493e0",
+        ".piezo.f32": "f63aefc2d2a62f281348e9c0ecfe7f47ce87691f3b9a6be3af4505e627c4fe18",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "6a73710dc030da5e69898df625d83a3fd4ba12b62eb55147827547090552cf3e"
+      }
+    },
+    {
+      "key": "44100-s2-w1-n12000",
+      "rate": 44100,
+      "shape": 2,
+      "wood": 1,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "74daa93d1fad18553fd1ac3d06290361de0c81a2bbf414f56d17799927ef565d",
+        ".piezo.f32": "0b4764c48605914a9e39f3cf2c03a7faa3e62487102080f6dbf7df396477db6e",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "0eee800528e395e9ce24137db2a8351014a9ebc4fe29d96f4438f1d9246465ab"
+      }
+    },
+    {
+      "key": "44100-s2-w2-n12000",
+      "rate": 44100,
+      "shape": 2,
+      "wood": 2,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "7c70327bef70a7fc0198aaa9f3f2467895e58df8a56cc706504b0e735767ac51",
+        ".piezo.f32": "04c7a67ac18b0481f926e0fd73ebbeba0187529ddba6aac3196bef2d069982ea",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "484c46405746f823632bfb40f96a4b85db8a0a6d431014810ae0426e9a9d1bab"
+      }
+    },
+    {
+      "key": "44100-s3-w0-n12000",
+      "rate": 44100,
+      "shape": 3,
+      "wood": 0,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "92272d1343c716b560145b5a80b1d9d9bfe8652402210a897a91e4c667409d28",
+        ".piezo.f32": "984de0f9d0d8667bc0105c7b0dbce2233d97ea19c6fb327523340ca754e4db17",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "a108ab8c5974d98a2d7221443f0fd93ddd868120453d219094d6c24055dd6056"
+      }
+    },
+    {
+      "key": "44100-s3-w1-n12000",
+      "rate": 44100,
+      "shape": 3,
+      "wood": 1,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "c5b7f9926aad79617ae49a41f5cab9ea7ee9fbd126ae43fb67b2dc98adc109fb",
+        ".piezo.f32": "ed6ed2edecff3ba354700302a223321a8143d82fcfbbba8f70a1b7c28a51709c",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "559c1723b7370f6b781f8f31df087bc2f4bb9f0b4f2943f9c3f5b76204b85a34"
+      }
+    },
+    {
+      "key": "44100-s3-w2-n12000",
+      "rate": 44100,
+      "shape": 3,
+      "wood": 2,
+      "frames": 11025,
+      "sha256": {
+        ".mic.f32": "5cd93684c82ec07c4419850df23aad79f5226cf44f0c182629a6c24db510da6e",
+        ".piezo.f32": "b02fc8578ee6d5efdf5f52c735617efb71cfb18fac780bd838b9987fce20ca32",
+        ".poles.u32": "c55d468df78e5cd55170f28c303cdce17005fb25ece6049fca81b397c7e11031",
+        ".trace.csv": "2196a3ca58c5c45cfe74480101af41fee268bb103e79b01878b46f9281ce7215"
+      }
+    },
+    {
+      "key": "48000-s0-w0-n12000",
+      "rate": 48000,
+      "shape": 0,
+      "wood": 0,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "028c6a595af8f30b3741640a6aca4943782e3d822f3789a4f9fd570fd46f4edb",
+        ".piezo.f32": "d1b9d05d987aa88d13a3dee4e74cf28f756680ea6dbe9fb694ee197ee9b6bccb",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "e373464a33f73c2e917b299be5f437367b16d51ddfd5f194fb52cb4f997fd93d"
+      }
+    },
+    {
+      "key": "48000-s0-w1-n12000",
+      "rate": 48000,
+      "shape": 0,
+      "wood": 1,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "8966e642efae01124332f3b2bf02a2aa4e9ff31130c944c225227d5e2291e4c8",
+        ".piezo.f32": "7c2f8592f0e05ac293359c3f93f10c575cb8b76966484edc8149f199e45bb3ed",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "bb1ed5c5137fa6ca5ea415c3275b269272007ad69fa7756ac200e8753ec32ab3"
+      }
+    },
+    {
+      "key": "48000-s0-w2-n12000",
+      "rate": 48000,
+      "shape": 0,
+      "wood": 2,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "ca1f91d6fe26ede8daa38f27bc199f3c76e3d4cf17519877053a380ab232a308",
+        ".piezo.f32": "9479d55be299dba40c987aee7125b183acdbd896899fb6c8816966f421567430",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "0badf1f8956a5f079eada70f2f938e5144d49c82a7a61c64eda8621d4a3e162d"
+      }
+    },
+    {
+      "key": "48000-s1-w0-n12000",
+      "rate": 48000,
+      "shape": 1,
+      "wood": 0,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "c64da8adaa0b17d61dfbab822e3d8690de657902c32bf9581d963cc949f1195e",
+        ".piezo.f32": "b771bc70aa269392c2c02c0c47bd5e7d30ae8f6d907c638fb8b425f7fbcffd17",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "44ff4b0e7fb0f035e3b4e47c83bf303c90752f95442f19050170600d4e09b2e7"
+      }
+    },
+    {
+      "key": "48000-s1-w1-n12000",
+      "rate": 48000,
+      "shape": 1,
+      "wood": 1,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "8bd36fa66c6d00d443980f51d9ec9ad0b91cf5e406de70ba97f44047fb4a3358",
+        ".piezo.f32": "6d2c131bc918b9c4b90e5693f5ecca8b5b5a9f4df4512027fd80ecfcaf062d71",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "e2be9670914106661e3c6404de6dd4c92afded98d11e4fa97298360041eadd92"
+      }
+    },
+    {
+      "key": "48000-s1-w2-n12000",
+      "rate": 48000,
+      "shape": 1,
+      "wood": 2,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "06aa48f459fdcff331bb806d094c83316fa3c629ed3d12a198b1be114ec96f15",
+        ".piezo.f32": "3b165377b1f10af6ff8e734cf2820341c5c4e0d3bfe356a41a666fc9410bec36",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "82bb562b8fd4d70ded4496e3532278e61198e2f3f104e9df8ab8b4fdeb6a8d2c"
+      }
+    },
+    {
+      "key": "48000-s2-w0-n12000",
+      "rate": 48000,
+      "shape": 2,
+      "wood": 0,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "dae9998eef87a2165ca93c30c44464a7bf613498edc7a6d8edc09020709099e4",
+        ".piezo.f32": "2a69fa6aa929e428e6a7c54cf386274db97b172761f559a99b140343de6df99b",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "66f1c648e794f32240ef225ca4cc541a13b7a7c0763dc5847dbe8a708d64672c"
+      }
+    },
+    {
+      "key": "48000-s2-w1-n12000",
+      "rate": 48000,
+      "shape": 2,
+      "wood": 1,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "0d87df6af194260d15cf18d8791a44f25956459984a34f82b030381047a4ab23",
+        ".piezo.f32": "646af4f207e6e651b9d6e0f696496ecc4f6d8b02e1cded3e44f1376a333f216e",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "7d9db7f34836f2d17779c8e723cb1aea459c21a6b1033ba315b7310cb4949c07"
+      }
+    },
+    {
+      "key": "48000-s2-w2-n12000",
+      "rate": 48000,
+      "shape": 2,
+      "wood": 2,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "6a48fd73986814e6ad1990717cc90274dfdb6c4c37fa4250b93e542712c1cc50",
+        ".piezo.f32": "89b3edf6a3d71cd94599c44888cb478448eeb28d51da6bb448cdd59ff7c72783",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "14458c14299ef873a643640ed10642821a19b2a96ac97fb8afe63fa75c8bd59b"
+      }
+    },
+    {
+      "key": "48000-s3-w0-n12000",
+      "rate": 48000,
+      "shape": 3,
+      "wood": 0,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "0c0102d93c4bfcbf8062b749982c731ba09baa161a121b21d5877eb697e3808b",
+        ".piezo.f32": "de6abe29e04d1b3a1e6c773edcc8ccdcc8228c77a06b6c8e85a700260146d6ea",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "b451a17c153eb062bfdc2a09e8994ff389223b3268b66add05a7c182e0dbbc7d"
+      }
+    },
+    {
+      "key": "48000-s3-w1-n12000",
+      "rate": 48000,
+      "shape": 3,
+      "wood": 1,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "c45de31d42de4799fe5cbc59e53556f797f7742372ed76d95458b43c5889fb33",
+        ".piezo.f32": "1924372080ea7d16541bdbd634b775459e2f71c9202723e4c38badb67fce8ce2",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "336e623a1621809adbb65d3634186c2d41c379352394c1238bb81cb842bd1574"
+      }
+    },
+    {
+      "key": "48000-s3-w2-n12000",
+      "rate": 48000,
+      "shape": 3,
+      "wood": 2,
+      "frames": 12000,
+      "sha256": {
+        ".mic.f32": "4f60d93b6a36f3d9fbab6fbf33b3b6f13def1e246a75e9041cd8ae4b5f2a9744",
+        ".piezo.f32": "701afb5e3d94987b793227e8015fae56536cce6521ea3a778b71f90219e6dc13",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "b29281976b1a41de28902d84670dba8b3f9b939da57433ee1d303689699b3e33"
+      }
+    },
+    {
+      "key": "96000-s0-w0-n12000",
+      "rate": 96000,
+      "shape": 0,
+      "wood": 0,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "22cd8c4628dd457e19537a6dfbbc3de34f27e327dec2be475c845440f65441fb",
+        ".piezo.f32": "48aa1698c3f95e020ad80f081f761656b73ea50d07a86550369cbc0aaa32a926",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "0c27cf4a402ab837e2b488cc6e9ec367c2ddac7b8baead1065f46cd1968eb82e"
+      }
+    },
+    {
+      "key": "96000-s0-w1-n12000",
+      "rate": 96000,
+      "shape": 0,
+      "wood": 1,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "17c81b8fc4e9f5c0cf9daf1876b47eadae8228e6d32d0f347c8e879465cf3cb2",
+        ".piezo.f32": "a9d14cd0d88c1e8a3ef901f961b5b2f30bce1f728bf33ba3dfb980a8bd22f76b",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "54b280bc40b0ac7b470f498f9c71f8038b4a30de94165e34b231ee275d227c14"
+      }
+    },
+    {
+      "key": "96000-s0-w2-n12000",
+      "rate": 96000,
+      "shape": 0,
+      "wood": 2,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "fdbf6e4789b23140eec05076d12a1d9a6904cc1a2af91f74b8fbf6a363dec35c",
+        ".piezo.f32": "db07780f862d450a13a441a5a1cf4fc21889eb726ffabe8803a41ad296689772",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "d2ef3726ca068b55fae1486f3f6cd6f48010af84dee8395125273a1ea2b86d9a"
+      }
+    },
+    {
+      "key": "96000-s1-w0-n12000",
+      "rate": 96000,
+      "shape": 1,
+      "wood": 0,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "2d70ee4a08af156904ac303d82da714c59c5246c87587a25898f98d6a589dadf",
+        ".piezo.f32": "475dfea152926e4c34ed936efb40fb56337bf9b11a809bdb9d4e3ed83579d78e",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "c2f27a03d7a45ea0c4023425db65e4fe894727f58bfd1f2157a8202caaa03788"
+      }
+    },
+    {
+      "key": "96000-s1-w1-n12000",
+      "rate": 96000,
+      "shape": 1,
+      "wood": 1,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "82f418f0977de58e7826ea61d80927862ffd5d6fc699e9b33839b48325a749fe",
+        ".piezo.f32": "3145df8cc829506fbe28727b402ee1cac50ce316debfb2d0ee62f2d0a5a19df6",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "4f72050ee5e1e12c8041a6396c5c959e5541cc58ffba41d31954352bc9ce07a5"
+      }
+    },
+    {
+      "key": "96000-s1-w2-n12000",
+      "rate": 96000,
+      "shape": 1,
+      "wood": 2,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "3c3be1d7af4ac2cf1cfd3d995685c87f41e444e609c2475dd3b95fe1ce470ad5",
+        ".piezo.f32": "b0730d524abce55caeda9b0da655848e4da3ac89dd0329d6cf10d9f20f62a10f",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "681416bdc2996d5d443f8b775203a83644abbf76234d5956fabc00c9a37bdab9"
+      }
+    },
+    {
+      "key": "96000-s2-w0-n12000",
+      "rate": 96000,
+      "shape": 2,
+      "wood": 0,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "86b2e9b21e6dcb66d4329fa8aca32b7968b8ada0195ff6ec61337e444dc3f472",
+        ".piezo.f32": "54e2a0326d8c10b23f3c39bf4f659481b167c3fea3e3042d470f63f0427cbcfc",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "3b001be148143b736cf129351a3dc500619aaf6fc09bc6a38f9e9cea6bcaeb07"
+      }
+    },
+    {
+      "key": "96000-s2-w1-n12000",
+      "rate": 96000,
+      "shape": 2,
+      "wood": 1,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "fec575fc49d529fa597e7206bb86db3acec43ea31447914e5c951ae90dee945b",
+        ".piezo.f32": "5854a3e9e86c6477b1fd9b3311b9e4b8b14c0906038a321da7be3d2fddc2a4aa",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "b19e780dc5a9f54447b26ccd768ea06ca73f07222a8f96eb1a5d44962c6e1f9a"
+      }
+    },
+    {
+      "key": "96000-s2-w2-n12000",
+      "rate": 96000,
+      "shape": 2,
+      "wood": 2,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "da7d5bdf7ea747eb1b165619c390eb900f649ba431a137f711e0c8e1cfa38f8b",
+        ".piezo.f32": "590e7dca53e4ac4ac6ec41e502a6a882d7cb855383b2b60c463eda7fceec8e4a",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "11da83f85d43639ca300cb82acdf8941087814640c40580c3d8f49bda0189c4e"
+      }
+    },
+    {
+      "key": "96000-s3-w0-n12000",
+      "rate": 96000,
+      "shape": 3,
+      "wood": 0,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "733ba7280f0b169b18f4bb77bbf13f7c071ca5d8b4e22c7c0c4267d39e53e4e9",
+        ".piezo.f32": "808c25bdb775594b5458366696fe1eeb3603ac47bcba267982d75945d39e1e88",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "9679ce166395fd698f6d5a7a2058929176a6a691abddf307df6a2bab4a25e7da"
+      }
+    },
+    {
+      "key": "96000-s3-w1-n12000",
+      "rate": 96000,
+      "shape": 3,
+      "wood": 1,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "9c269937cd8fd5bb6e6093af6d322aa6811c9934788c53b3d92111444994c9d9",
+        ".piezo.f32": "ba7b6dfe0f4fae1ac91aa7dfa08a89ddb4e4bcbdebe5290297625795675d8126",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "8b9e8bc05cf14a1eb2a266b0d8da40f90370eb6820e1eaa7578c0158d07d61ae"
+      }
+    },
+    {
+      "key": "96000-s3-w2-n12000",
+      "rate": 96000,
+      "shape": 3,
+      "wood": 2,
+      "frames": 24000,
+      "sha256": {
+        ".mic.f32": "1c360b67cefa8e4338d4035f5c6a719f588a1277f807b3a929fdab1fb5bcceea",
+        ".piezo.f32": "c56fba7d2d25613779a2829c29bced0280dc23fe3aa2964d71dcfb4d0deeac86",
+        ".poles.u32": "81332a7c34bdb39f23b7171f6775d9bc85dec7db0e869689d59c9cf36f281def",
+        ".trace.csv": "e74338a552f642e2a8b540648cb35d4e1c857f9071630c320a532ba7027f2e14"
+      }
+    },
+    {
+      "key": "48000-s0-w0-n512",
+      "rate": 48000,
+      "shape": 0,
+      "wood": 0,
+      "frames": 512,
+      "sha256": {
+        ".mic.f32": "256a9d0b2645fcaaaff99717dfce4b4601819a7f05a623802490fbfd422eb03a",
+        ".piezo.f32": "e2894ea14ff9c20db0e06a480e1eb4a40c9f5cedc1f69d52da3a3d73527d209f",
+        ".poles.u32": "fc9c5e71a1148b5f859b114a8280744d32e76d6316a322897b2bc1b6802d05f6",
+        ".trace.csv": "2356c97e5c1e25fef9deab1d7ed3a025d58656bfc2ccf52e2d38c2500fdf17bc",
+        ".states.f64": "4821adf332377d0a3f3151cada0078119ac1999207c707a9bd70a7da77c7b30c"
+      }
+    }
+  ],
+  "ordinary_cases": 36,
+  "full_bridge_body_state_witness_samples": 512,
+  "scope": "Separate old/new production binaries. No observation CSV is loaded or injected. Each engine computes its own native body observation.",
+  "limits": [
+    "Before/after audit fixture, not a permanent old-version product path.",
+    "Per-sample modal hashes supplemented by exact 512-sample full bridge/body modal-state witness.",
+    "Waveguide delay buffers are not dumped; bridge/reaction/body dynamics and all piezo probe fields are compared every sample.",
+    "Short sounding/release/repluck/chord fixture; very late inaudible idle-reset timing is not asserted."
+  ]
+}

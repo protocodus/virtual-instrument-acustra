@@ -1,0 +1,40 @@
+{
+  "observed_source_rms_db": {
+    "eastman-pick": 2.9583156689267045,
+    "eastman-finger": 1.8270309348020157,
+    "martin-hd28": 4.7717451309057335,
+    "bank-flattop": 4.521594368963616,
+    "guitarset": 4.828037822665385
+  },
+  "observed_consensus_rms_db": {
+    "declared_protocol": 2.764893405239756,
+    "without_duplicate_eastman_bank": 2.759113127004052,
+    "without_Eastman": 3.3782581282340636,
+    "without_Martin": 2.943131225497659,
+    "without_GuitarSet": 2.894367469493426
+  },
+  "all_group_same_sign_over_2db": [
+    {
+      "hz": 1000.0,
+      "recording_minus_model_db": {
+        "Eastman": -2.2617930511473148,
+        "Martin": -5.244600931755283,
+        "GuitarSet": -4.97066993514603
+      },
+      "same_sign_all_three_groups": true,
+      "minimum_absolute_difference_db": 2.2617930511473148,
+      "group_span_db": 2.982807880607968
+    },
+    {
+      "hz": 2519.8420997897465,
+      "recording_minus_model_db": {
+        "Eastman": 5.262651729624517,
+        "Martin": 9.098420005110702,
+        "GuitarSet": 2.0656509008831927
+      },
+      "same_sign_all_three_groups": true,
+      "minimum_absolute_difference_db": 2.0656509008831927,
+      "group_span_db": 7.032769104227509
+    }
+  ]
+}

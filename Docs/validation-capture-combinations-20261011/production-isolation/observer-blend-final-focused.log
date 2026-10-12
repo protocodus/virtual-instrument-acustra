@@ -1,0 +1,9 @@
+approved observer: 576 complex residues, max relative error 3.38914e-07
+observer rate 8000: 408 complex residues, 18 inactive modes, max relative error 3.78529e-07
+observer rate 24000: 468 complex residues, 3 inactive modes, max relative error 3.79854e-07
+observer rate 44100: 480 complex residues, 0 inactive modes, max relative error 3.2361e-07
+observer rate 96000: 480 complex residues, 0 inactive modes, max relative error 4.08425e-07
+observer rate 192000: 480 complex residues, 0 inactive modes, max relative error 4.0378e-07
+observer rate 384000: 480 complex residues, 0 inactive modes, max relative error 4.40324e-07
+observer rate 48000: 480 complex residues, 0 inactive modes, max relative error 3.38914e-07
+spatial calibration corners: 768 poles, frequency 80.6086..216.921 Hz, Q 0.715645..57.542

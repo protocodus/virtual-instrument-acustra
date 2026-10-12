@@ -2,6 +2,8 @@
 #include "DSP/ConstructionLoudnessData.h"
 #include "DSP/MeasuredBodyData.h"
 #include "DSP/MeasuredBridgeData.h"
+#include "DSP/StudioCaptureLoudnessData.h"
+#include "Fixtures/FixedVelocityObserverData.h"
 
 #include <algorithm>
 #include <array>
@@ -14,6 +16,7 @@
 #include <memory>
 #include <numbers>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -41,12 +44,18 @@ struct AcustraEngineTestAccess
         engine.voices_[static_cast<std::size_t>(string - 1)].excitationNoiseState = seed;
     }
     // The observation under which the Finger's 3 dB articulation contract
-    // was established: the six pre-2026-10-08 modal-magnitude sections.
-    // Pin the reference here rather than following production microphone EQ.
+    // was established: pre-blend treble/upper residues and the six historical
+    // modal-magnitude sections. Pin both parts: pinning EQ alone still let a
+    // new pressure mixture silently change this supposedly fixed observer.
     // This changes only readout residues, preserving every pole and both
     // force/moment histories; it never changes the reciprocal instrument.
     static void useFixedVelocityObserver(AcustraEngine& engine)
     {
+        if (engine.sampleRate_ != 48000.0 || engine.parameters_.shape != BodyShape::Dreadnought
+            || engine.parameters_.bodyMaterial != BodyMaterial::Spruce
+            || engine.bodyBank_.count != 160)
+            throw std::runtime_error("fixed velocity observer requires its declared 48k construction");
+        const auto before = engine.bodyBank_;
         struct Section { double frequency, gainDb, q; bool lowShelf; };
         constexpr std::array<Section, 6> sections {{
             { 120.0, 0.58, 0.7, true },
@@ -60,6 +69,16 @@ struct AcustraEngineTestAccess
         {
             const auto slot = static_cast<std::size_t>(index);
             auto& bank = engine.bodyBank_;
+            const auto& reference = test::fixedVelocityObserverModes[index];
+            if (std::hypot(bank.poleReal[slot] - reference[0],
+                           bank.poleImaginary[slot] - reference[1]) > 1.0e-6)
+                throw std::runtime_error("fixed velocity observer poles no longer match its fixture");
+            int component = 2;
+            for (auto* residue : { &bank.leftReal, &bank.leftImaginary,
+                    &bank.rightReal, &bank.rightImaginary,
+                    &bank.leftMomentReal, &bank.leftMomentImaginary,
+                    &bank.rightMomentReal, &bank.rightMomentImaginary })
+                (*residue)[slot] = reference[component++];
             if (bank.poleImaginary[slot] == 0.0f)
                 continue;
             const double frequency = std::atan2(double(bank.poleImaginary[slot]),
@@ -84,6 +103,16 @@ struct AcustraEngineTestAccess
                 (*residue)[slot] *= static_cast<float>(gain);
         }
         engine.bodyBank_.captureFilter.enabled = false;
+        const auto& after = engine.bodyBank_;
+        if (before.poleReal != after.poleReal || before.poleImaginary != after.poleImaginary
+            || before.real != after.real || before.imaginary != after.imaginary
+            || before.momentReal != after.momentReal || before.momentImaginary != after.momentImaginary
+            || before.count != after.count || before.ordered != after.ordered
+            || before.captureFilter.coefficients != after.captureFilter.coefficients
+            || before.captureFilter.stateLeft != after.captureFilter.stateLeft
+            || before.captureFilter.stateRight != after.captureFilter.stateRight
+            || before.captureFilter.gain != after.captureFilter.gain)
+            throw std::runtime_error("fixed velocity observer changed poles or dynamic/filter state");
     }
     static float highLossMix(const AcustraEngine& engine, int string)
     {
@@ -290,6 +319,7 @@ struct AcustraEngineTestAccess
         double frequency;
         double q;
         double residue;
+        std::array<std::complex<double>, 4> observation;
     };
 
     struct ReleasedContactSnapshot
@@ -541,7 +571,10 @@ struct AcustraEngineTestAccess
                                * 48000.0 / (2.0 * std::numbers::pi);
         const double q = -std::numbers::pi * frequency
                        / (48000.0 * std::log(radius));
-        return { frequency, q, std::hypot(mode.leftReal, mode.leftImaginary) };
+        return { frequency, q, std::hypot(mode.leftReal, mode.leftImaginary), {{
+            { mode.leftReal, mode.leftImaginary }, { mode.rightReal, mode.rightImaginary },
+            { mode.leftMomentReal, mode.leftMomentImaginary },
+            { mode.rightMomentReal, mode.rightMomentImaginary } }} };
     }
 
     static double bridgeAdmittance(PhysicalCalibration calibration)
@@ -2116,20 +2149,34 @@ double spectralAmplitudeAt(const Audio& audio, double frequency,
     return std::hypot(real, imaginary);
 }
 
+struct DecayWindows
+{
+    double earlyBegin;
+    double lateBegin;
+    double duration;
+};
+
+constexpr DecayWindows sustainedDecayWindows { 0.20, 1.00, 0.40 };
+constexpr DecayWindows upperPartialDecayWindows { 0.20, 0.60, 0.20 };
+
 double spectralDecayRate(const Audio& audio, double expectedHz,
-                         double searchCents, double rate)
+                         double searchCents, double rate,
+                         DecayWindows windows = sustainedDecayWindows)
 {
     // A tension glide moves the partial between these windows. Measuring
     // both at the early frequency treats detuning as lost amplitude; locate
     // the partial again in the late window before comparing equal-length
-    // Hann-window amplitudes, whose centres are 0.8 s apart.
+    // Hann-window amplitudes, separated by the difference in start times.
+    const double earlyEnd = windows.earlyBegin + windows.duration;
+    const double lateEnd = windows.lateBegin + windows.duration;
     const double earlyHz = spectralPeakFrequency(
-        audio, expectedHz, searchCents, 0.20, 0.60, rate);
+        audio, expectedHz, searchCents, windows.earlyBegin, earlyEnd, rate);
     const double lateHz = spectralPeakFrequency(
-        audio, expectedHz, searchCents, 1.00, 1.40, rate);
+        audio, expectedHz, searchCents, windows.lateBegin, lateEnd, rate);
     return 20.0 * std::log10(
-        spectralAmplitudeAt(audio, earlyHz, 0.20, 0.60, rate)
-        / spectralAmplitudeAt(audio, lateHz, 1.00, 1.40, rate)) / 0.8;
+        spectralAmplitudeAt(audio, earlyHz, windows.earlyBegin, earlyEnd, rate)
+        / spectralAmplitudeAt(audio, lateHz, windows.lateBegin, lateEnd, rate))
+        / (windows.lateBegin - windows.earlyBegin);
 }
 
 void testDecayEstimatorFollowsPitchGlides()
@@ -2155,6 +2202,41 @@ void testDecayEstimatorFollowsPitchGlides()
             expect(std::abs(measured - decayDbPerSecond) < 0.001,
                    "a pitch glide was mistaken for exponential amplitude loss");
         }
+}
+
+void testDecayEstimatorResolvesWeakFastPartials()
+{
+    // A faint upper partial must remain measurable beside a much stronger,
+    // slower fundamental after conversion to the engine's float samples.
+    // The exponential slopes are independent ground truth; the faster case
+    // also guards against moving this observation back into the weak tail.
+    for (double rate : { 44100.0, 48000.0, 96000.0 })
+        for (double decayDbPerSecond : { 55.0, 80.0 })
+            for (double glideHzPerSecond : { 0.0, -10.0 })
+            {
+                const double amplitude = decayDbPerSecond == 55.0 ? 0.003 : 0.0001;
+                const int samples = static_cast<int>(1.6 * rate);
+                Audio audio { std::vector<float>(static_cast<std::size_t>(samples)),
+                              std::vector<float>(static_cast<std::size_t>(samples)) };
+                for (int sample = 0; sample < samples; ++sample)
+                {
+                    const double t = sample / rate;
+                    const double fundamental = 0.1 * std::pow(10.0, -10.0 * t / 20.0)
+                        * std::cos(2.0 * std::numbers::pi * 1046.5 * t);
+                    const double partial = amplitude
+                        * std::pow(10.0, -decayDbPerSecond * t / 20.0)
+                        * std::cos(2.0 * std::numbers::pi
+                            * (8430.0 * t + 0.5 * glideHzPerSecond * t * t));
+                    const float value = static_cast<float>(fundamental + partial);
+                    audio.left[static_cast<std::size_t>(sample)] = value;
+                    audio.right[static_cast<std::size_t>(sample)] = value;
+                }
+                const double measured = spectralDecayRate(
+                    audio, 8430.0, 60.0, rate, upperPartialDecayWindows);
+                const double tolerance = decayDbPerSecond == 55.0 ? 0.001 : 0.01;
+                expect(std::abs(measured - decayDbPerSecond) < tolerance,
+                       "a weak fast partial's known decay was measured inaccurately");
+            }
 }
 
 void testSilenceAndFiniteOutput()
@@ -3345,10 +3427,13 @@ void testTheFractionalDelayReadIsLossless()
     // Isolate the string loop from bridge loading and sympathetic strings,
     // and observe saddle force: the microphone filter changes partial levels
     // during pitch glides and adds its own decay.
-    // The loss shelves now retain the same calibrated 48 kHz transfer across
-    // hosts, but bilinear warping leaves H8 decay spread at 4.1..12.9% over
-    // these rates and notes. The H1 spread is below 0.20%; neither tolerance
-    // is a claim of perfect sample-rate independence.
+    // The constant-loss model added on 2026-10-10 improves the old shelf-only
+    // result. Read H8 in the earlier interval: by 1.0..1.4 s the MIDI 84
+    // partial is about -122..-128 dBFS and its rendered decay is sensitive
+    // to platform arithmetic. The earlier interval follows the same decay
+    // before that weak tail (4.77% macOS / 4.97% Linux maximum rate spread).
+    // Keep the 6% bound and the original H1 observation. This is still a
+    // finite approximation, not perfect sample-rate independence.
     struct Reading { double perSecond; double perPass; };
     const auto decay = [] (int midiNote, double rate, int partial)
     {
@@ -3374,7 +3459,8 @@ void testTheFractionalDelayReadIsLossless()
         // Stiffness stretches H8 and the tension glide moves every partial
         // during the note. Follow its frequency separately in each window.
         const double perSecond = spectralDecayRate(
-            audio, partial * fundamental, 60.0, rate);
+            audio, partial * fundamental, 60.0, rate,
+            partial == 8 ? upperPartialDecayWindows : sustainedDecayWindows);
         return Reading { perSecond, perSecond / fundamental };
     };
 
@@ -3382,6 +3468,7 @@ void testTheFractionalDelayReadIsLossless()
     {
         double lowestPass = 1.0e9;
         double highestPass = 0.0;
+        double worstRateSpread = 0.0;
         for (int midiNote = 76; midiNote <= 84; ++midiNote)
         {
             double lowest = 1.0e9;
@@ -3398,12 +3485,11 @@ void testTheFractionalDelayReadIsLossless()
                 lowestPass = std::min(lowestPass, reading.perPass);
                 highestPass = std::max(highestPass, reading.perPass);
             }
-            // Restore the original 1.5% fundamental bound. The apparent
-            // 1.87/2.78/1.77% spread at MIDI 82/83/84 was detuning in the
-            // fixed-frequency estimator. Tracking alone puts all three below
-            // 0.2%; with the reference loss mapping they remain below 0.21%.
+            // Track each partial before measuring its decay: a fixed-bin
+            // estimator confuses the tension glide with amplitude loss.
             const double spread = 2.0 * (highest - lowest) / (highest + lowest);
-            expect(spread < (partial == 1 ? 0.015 : 0.15),
+            worstRateSpread = std::max(worstRateSpread, spread);
+            expect(spread < (partial == 1 ? 0.001 : 0.06),
                    "steel MIDI " + std::to_string(midiNote) + " H"
                        + std::to_string(partial)
                        + " decayed at rates that differ by "
@@ -3411,9 +3497,11 @@ void testTheFractionalDelayReadIsLossless()
         }
         // Loss per round trip across the nine notes and three rates. It is
         // physical - a higher note's H8 sits at a higher frequency, where the
-        // string loses more. The isolated saddle observer spans 1.40:1 on
-        // H1 and 1.16:1 on H8, not the 47:1 the interpolated read produced
-        // out of loop fractions alone.
+        // string loses more, unlike the 47:1 range the interpolated read
+        // produced out of loop fractions alone.
+        std::cout << "Isolated string H" << partial << " decay: maximum rate spread "
+                  << 100.0 * worstRateSpread << "%, round-trip loss range "
+                  << highestPass / lowestPass << ":1\n";
         expect(highestPass / lowestPass < 2.5,
                "steel H" + std::to_string(partial)
                    + " loss per round trip ranged over a factor of "
@@ -4837,19 +4925,35 @@ void testBodyAndBridgeCalibrationChangePhysicalDescriptors()
     quietLowModes.lowBodyModeGain = 0.25f;
     auto strongLowModes = acustra::fittedPhysicalCalibration;
     strongLowModes.lowBodyModeGain = 32.0f;
-    const double lowModeRatio
-        = acustra::AcustraEngineTestAccess::configuredBody(
-            strongLowModes, 0).residue
-        / acustra::AcustraEngineTestAccess::configuredBody(
-            quietLowModes, 0).residue;
-    const double midModeRatio
-        = acustra::AcustraEngineTestAccess::configuredBody(
-            strongLowModes, 2).residue
-        / acustra::AcustraEngineTestAccess::configuredBody(
-            quietLowModes, 2).residue;
-    expect(std::abs(lowModeRatio - 128.0) < 1.0e-3
-               && std::abs(midModeRatio - 1.0) < 1.0e-6,
-           "low-body calibration changed the wrong measured modes");
+    auto middleLowModes = acustra::fittedPhysicalCalibration;
+    middleLowModes.lowBodyModeGain = .5f * (quietLowModes.lowBodyModeGain + strongLowModes.lowBodyModeGain);
+    // The approved blend retains .4 of the original observation. Only its
+    // low-mode treble contribution takes airGain; scaling the entire summed
+    // pressure by 128 would now incorrectly scale the other microphones.
+    for (int index : { 0, 1, 2, 133, 134 })
+    {
+        const auto quiet = acustra::AcustraEngineTestAccess::configuredBody(quietLowModes, index);
+        const auto middle = acustra::AcustraEngineTestAccess::configuredBody(middleLowModes, index);
+        const auto strong = acustra::AcustraEngineTestAccess::configuredBody(strongLowModes, index);
+        expect(quiet.frequency == strong.frequency && quiet.q == strong.q,
+               "low-body observation calibration changed a physical pole");
+        const bool airMode = index == 0 || index == 133;
+        const auto& reference = acustra::test::fixedVelocityObserverModes[index];
+        for (int path = 0; path < 4; ++path)
+        {
+            const auto difference = strong.observation[path] - quiet.observation[path];
+            const auto expected = airMode && path % 2 == 0
+                ? .4 * (strongLowModes.lowBodyModeGain - quietLowModes.lowBodyModeGain)
+                    / acustra::fittedPhysicalCalibration.lowBodyModeGain
+                    * std::complex<double>(reference[2 + 2 * path], reference[3 + 2 * path])
+                : std::complex<double> {};
+            expect(std::abs(difference - expected) < 2.0e-6 * std::max(std::abs(expected), 1.0e-8),
+                   "low-body calibration did not isolate the original treble air contribution");
+            expect(std::abs(middle.observation[path] - .5 * (quiet.observation[path] + strong.observation[path]))
+                       < 2.0e-6 * std::max(std::abs(strong.observation[path]), 1.0e-8),
+                   "low-body observation calibration is not affine in air gain");
+        }
+    }
 
     // The plate conductance floor extrapolates past the measured band and
     // carries its own level, so the measured weights must be checked with it
@@ -5233,8 +5337,8 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
         changed.prepare(rate, 64);
         reference.noteOn(52, 0.6f);
         changed.noteOn(52, 0.6f);
-        // Each Picking plays at its own output level (the construction
-        // loudness table, ConstructionLoudnessData.h), which glides; the
+        // Each Picking plays at its own output level (the legacy construction
+        // reference times the fixed studio microphone level match), which glides; the
         // string itself is untouched, so the ringing note changes by one
         // gain, the same in both channels, within the three levels.
         float lowest = 1.0f, highest = 1.0f;
@@ -5245,8 +5349,10 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
                 // Dreadnought, Spruce
                 return static_cast<std::size_t>((2 * 3 + 0) * 3 + technique);
             };
-            const float ratio = acustra::detail::constructionMicReference[cell(picking)]
-                / acustra::detail::constructionMicReference[cell(0)];
+            const float ratio = (acustra::detail::constructionMicReference[cell(picking)]
+                * acustra::detail::studioStereoLevelMatch[cell(picking)])
+                / (acustra::detail::constructionMicReference[cell(0)]
+                    * acustra::detail::studioStereoLevelMatch[cell(0)]);
             lowest = std::min(lowest, ratio);
             highest = std::max(highest, ratio);
         }
@@ -6575,7 +6681,7 @@ std::size_t loudnessCell(const acustra::EngineParameters& p)
 
 // Whether `actual` is `expected` times one level per sample, the same in both
 // channels and moving monotonically from 1 toward `to`: a construction's
-// output level (ConstructionLoudnessData.h) glided while the waveform stayed
+// complete microphone output reference glided while the waveform stayed
 // exactly what it was.
 bool differsOnlyInLevel(const Audio& actual, const Audio& expected, double to)
 {
@@ -6714,11 +6820,15 @@ void testBodyChangesPreserveAnUnfinishedFade()
         actualFade.right.push_back(actual.right[0]);
         ++remaining;
     }
-    // The queued wood's level (ConstructionLoudnessData.h) glides in at once;
-    // the waveform itself must be the sounding bank's, untouched.
-    expect(differsOnlyInLevel(actualFade, expectedFade,
-               double(acustra::detail::constructionMicReference[loudnessCell(latest)])
-                   / acustra::detail::constructionMicReference[loudnessCell(second)]),
+    // The queued construction's complete microphone reference glides in at
+    // once: both the legacy level and the fixed studio capture level match.
+    // The waveform itself must be the sounding bank's, untouched.
+    const double targetLevelRatio =
+        (double(acustra::detail::constructionMicReference[loudnessCell(latest)])
+            * acustra::detail::studioStereoLevelMatch[loudnessCell(latest)])
+        / (double(acustra::detail::constructionMicReference[loudnessCell(second)])
+            * acustra::detail::studioStereoLevelMatch[loudnessCell(second)]);
+    expect(differsOnlyInLevel(actualFade, expectedFade, targetLevelRatio),
            "a queued body change interrupted the existing microphone waveform");
     expect(remaining > 0 && remaining < 2000,
            "a pending body update exceeded the existing 40 ms fade");
@@ -9435,6 +9545,7 @@ int main()
     testPluckDrawsIgnoreEarlierBursts();
     testBridgeHandTopLossIsItsT60Ratio();
     testDecayEstimatorFollowsPitchGlides();
+    testDecayEstimatorResolvesWeakFastPartials();
     testLossFiltersPreserveTheReferenceTransfer();
     testSilenceAndFiniteOutput();
     testUnsupportedSampleRatesClampToTheModelledRange();

@@ -452,17 +452,6 @@ void process(Engine& e, int frames, double* energy = nullptr, float* peak = null
 double sectionFrequency(const auto& mode, double rate);
 
 // The denominators configureBridge builds from a mode's float frequency and
-// Q, in the engine's double arithmetic (prewarped bilinear, 2*damping = w/q).
-std::array<double, 2> denominators(float frequency, float q, double rate)
-{
-    const double bilinear = 2.0*rate;
-    const double omega = bilinear*std::tan(double(3.14159265358979323846f)*frequency/rate);
-    const double damping = omega/(2.0*q);
-    const double d0 = bilinear*bilinear + 2.0*damping*bilinear + omega*omega;
-    return { (-2.0*bilinear*bilinear + 2.0*omega*omega)/d0,
-             (bilinear*bilinear - 2.0*damping*bilinear + omega*omega)/d0 };
-}
-
 // Steel's own bridge is g21's, the radiation's guitar: every bridge mode that
 // is the same resonance as a radiation mode (the generator's twin) takes that
 // mode's engine pole, frequency and Q to the float, under every Shape and
@@ -476,25 +465,46 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
     for (const auto twin : twins) paired += twin >= 0;
     expect(paired == 18, "steel's own bridge does not twin its 18 resolved modes");
     double worst = 0;
-    for (int shape = 0; shape < 4; ++shape)
+    for (const double rate : {8000.0, 44100.0, 48000.0, 96000.0})
+      for (const float qScale : {.05f, 1.0f, 1.8f})
+       for (int shape = 0; shape < 4; ++shape)
         for (int wood = 0; wood < 3; ++wood)
         {
             acustra::EngineParameters p;
             p.shape = static_cast<acustra::BodyShape>(shape);
             p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
             auto e = std::make_unique<Engine>();
-            e->setParameters(p); e->prepare(48000, 64);
+            auto calibration = acustra::fittedPhysicalCalibration;
+            calibration.bodyQScale = qScale;
+            e->setParameters(p); e->setPhysicalCalibration(calibration); e->prepare(rate, 64);
             const auto bridge = Access::bridge(*e);
             for (std::size_t i = 0; i < twins.size(); ++i)
             {
                 if (twins[i] < 0) continue;
-                const auto pole = Access::radiationPole(p, Access::calibration(*e), twins[i]);
-                const auto expected = denominators(pole[0], pole[1], 48000.0);
+                const auto pole = Access::bodyPole(*e, twins[i]);
                 const auto& mode = bridge.heaveModes[i];
+                if (pole[1] == 0.0)
+                {
+                    expect(bridge.residueHeave[i] == 0.0f && bridge.residueRock[i] == 0.0f,
+                           "a bridge twin rings above its radiation's host-rate cutoff");
+                    continue;
+                }
+                // Coefficients of (z-p)(z-conj(p)), recovered from the
+                // actual radiation pole; no prototype frequency/Q formula.
+                const std::array<double, 2> expected { -2.0*pole[0],
+                    pole[0]*pole[0]+pole[1]*pole[1] };
                 worst = std::max({ worst,
-                    std::abs(mode.denominator1-expected[0])/std::abs(expected[0]),
-                    std::abs(mode.denominator2-expected[1])/std::abs(expected[1]) });
+                    std::abs(mode.denominator1-expected[0]),
+                    std::abs(mode.denominator2-expected[1]) });
+                const double immediate = -mode.numerator2/(1.0+mode.denominator2);
+                const double dc = immediate + (mode.numerator1+mode.numerator2)
+                    /(1.0+mode.denominator1+mode.denominator2);
+                const double nyquist = immediate + (-mode.numerator1+mode.numerator2)
+                    /(1.0-mode.denominator1+mode.denominator2);
+                expect(std::abs(dc) < 1e-10 && std::abs(nyquist) < 1e-10,
+                       "a shared mobility mode lost its DC or Nyquist zero");
             }
+            if (rate != 48000.0 || qScale != 1.0f) continue;
             // Changing Wood live reaches the bridge as a fresh engine does.
             auto live = std::make_unique<Engine>();
             auto first = p; first.bodyMaterial = acustra::BodyMaterial::Spruce;
@@ -512,13 +522,12 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
     expect(worst < 1e-12, "a twinned bridge mode is not its radiation mode's pole");
 }
 
-// The analog frequency a configured bridge section was designed at, from its
-// prewarped bilinear denominators: 1+d1+d2 = 4w^2/d0 and 1-d1+d2 = 4B^2/d0.
+// Damped oscillation frequency from the actual digital polynomial roots.
 double sectionFrequency(const auto& mode, double rate)
 {
-    const double ratio = (1.0+mode.denominator1+mode.denominator2)
-                       / (1.0-mode.denominator1+mode.denominator2);
-    return rate/pi*std::atan(std::sqrt(ratio));
+    const Complex pole = (-mode.denominator1
+        + std::sqrt(Complex(mode.denominator1*mode.denominator1-4*mode.denominator2)))/2.0;
+    return std::arg(pole)*rate/(2*pi);
 }
 
 // Shape moves a bridge bank by the same three class factors (A0 group, T1
@@ -559,9 +568,16 @@ void testBridgeModesMoveWithTheirRadiationNeighbours()
                     < std::abs(std::log(radiation[nearest]/measured)))
                     nearest = j;
             if ((measured < 150.0) != (radiation[nearest] < 150.0f)) continue;
+            const auto designFrequency = [&] (const auto& mode)
+            {
+                if (steelBridgeRadiationTwins[i] >= 0) return sectionFrequency(mode, 48000);
+                const double ratio = (1+mode.denominator1+mode.denominator2)
+                                   /(1-mode.denominator1+mode.denominator2);
+                return 48000/pi*std::atan(std::sqrt(ratio));
+            };
             const double bridgeCents = 1200*std::log2(
-                sectionFrequency(bridge.heaveModes[i], 48000)
-                / sectionFrequency(anchorBridge.heaveModes[i], 48000));
+                designFrequency(bridge.heaveModes[i])
+                / designFrequency(anchorBridge.heaveModes[i]));
             const double radiationCents = 1200*std::log2(
                 double(Access::radiationPole(q, Access::calibration(*e), int(nearest))[0])
                 / Access::radiationPole(p, Access::calibration(*anchor), int(nearest))[0]);
@@ -832,9 +848,8 @@ void testSteelBlendJointBridgeRingsOnItsRadiation()
                     const double bodyQ = -pi * bodyHz / (rate * std::log(radius));
                     const auto& mode = bridge.heaveModes[std::size_t(bridgeSlot)];
                     const double bridgeHz = sectionFrequency(mode, rate);
-                    const double tangent = std::tan(pi * bridgeHz / rate);
-                    const double bridgeQ = tangent * (1.0 + mode.denominator1 + mode.denominator2)
-                        / (2.0 * tangent * tangent * (1.0 - mode.denominator2));
+                    const double bridgeQ = -2.0*pi*bridgeHz
+                        / (rate*std::log(mode.denominator2));
                     worstCents = std::max(worstCents, std::abs(1200.0 * std::log2(bridgeHz / bodyHz)));
                     worstQ = std::max(worstQ, std::abs(bridgeQ / bodyQ - 1.0));
                 }
@@ -1363,7 +1378,7 @@ void testRadiationContinuesAboveTheFittedBand()
 // frequency) does not depend on the box, nor do its moment and cross terms
 // (rock over f^2, cross over f^1.5). Kept residues, the law before
 // 2026-10-10, raised the Jumbo's plate-mode mobility peaks by A and lowered
-// the Parlor's. The A0 and T1 groups (below 400 Hz here) keep theirs.
+// the Parlor's. The A0 and T1 groups instead take coupled participation.
 void testPlateModesKeepTheirPeakMobilityAcrossShapes()
 {
     const auto table = [] (acustra::BodyShape shape)
@@ -1387,12 +1402,18 @@ void testPlateModesKeepTheirPeakMobilityAcrossShapes()
         {
             const auto& a = anchor.modes[std::size_t(i)];
             const auto& b = shaped.modes[std::size_t(i)];
-            // The table holds each section's prewarped design frequency.
-            const auto analog = [] (float omega)
-            { return 48000.0 / pi * std::atan(omega / (2.0 * 48000.0)); };
-            if (analog(a.omega) < 400.0)
+            const bool shared = i >= int(acustra::detail::steelBridgeRadiationTwins.size())
+                || acustra::detail::steelBridgeRadiationTwins[std::size_t(i)] >= 0;
+            const auto frequency = [&] (const auto& mode)
+            {
+                if (!shared) return 48000.0/pi*std::atan(mode.omega/96000.0);
+                const Complex analog(-mode.damping, std::sqrt(std::max(0.0,
+                    double(mode.omega)*mode.omega-double(mode.damping)*mode.damping)));
+                return std::arg((96000.0+analog)/(96000.0-analog))*48000/(2*pi);
+            };
+            if (frequency(a) < 400.0)
                 continue;
-            const double ratio = analog(b.omega) / analog(a.omega);
+            const double ratio = frequency(b) / frequency(a);
             const auto check = [&] (double shapedResidue, double anchorResidue, double power)
             {
                 if (shapedResidue == 0.0 && anchorResidue == 0.0)
@@ -1413,8 +1434,148 @@ void testPlateModesKeepTheirPeakMobilityAcrossShapes()
            "a plate mode's peak bridge mobility depends on the Shape");
 }
 
+// A symmetric mass-normalized 2x2 stiffness matrix gives the independent
+// spectral projector P11 of each coupled mode. The driving-point residue
+// in physical displacement is cavitySquared * P11 * V/A^2. This does not
+// reuse the production eigenvector normalization or its Shape factors.
+std::array<double, 2> lowBridgeProjectors(double plateSquared,
+                                        double cavitySquared, double holeSquared)
+{
+    const double a = plateSquared + cavitySquared, d = holeSquared;
+    const double gap = std::hypot(a - d, 2.0 * std::sqrt(cavitySquared * holeSquared));
+    const double low = 0.5 * (a + d - gap), high = 0.5 * (a + d + gap);
+    return { cavitySquared * (a - high) / (low - high),
+             cavitySquared * (a - low) / (high - low) };
+}
+
+void testLowBridgeParticipationFollowsTheCoupledBox()
+{
+    namespace d = acustra::detail;
+    constexpr std::array<double, 4> area { .343*.467*.72, .381*.492*.72,
+                                          .397*.508*.75, .432*.533*.72 };
+    constexpr std::array<double, 4> depth { .108, .105, .111, .124 };
+    const auto holeSquared = [&] (int shape)
+    {
+        constexpr double radius = .1016/2.0;
+        return std::pow(343.0/(2.0*pi), 2) * pi*radius*radius
+            / (area[std::size_t(shape)]*depth[std::size_t(shape)]*(.003+1.7*radius));
+    };
+    double worst = 0.0;
+    int checked = 0;
+    for (int wood = 0; wood < 3; ++wood)
+    {
+        acustra::EngineParameters p;
+        p.bodyMaterial = static_cast<acustra::BodyMaterial>(wood);
+        auto reference = std::make_unique<Engine>();
+        reference->setParameters(p); reference->prepare(48000, 64);
+        const auto baseline = Access::bridgeTable(*reference);
+        const double calibration = Access::calibration(*reference).bodyFrequencyScale;
+        std::array<std::array<double, 2>, 2> pair;
+        for (int bank = 0; bank < 2; ++bank)
+            for (int mode = 0; mode < 2; ++mode)
+            {
+                const int slot = bank == 0 ? mode
+                    : int(d::measuredSteelBodyModes.size()) + 1 + mode;
+                const auto pole = Access::bodyPole(*reference, slot);
+                pair[std::size_t(bank)][std::size_t(mode)]
+                    = std::atan2(pole[1], pole[0])*48000/(2*pi*calibration);
+            }
+        for (int shape : {0, 1, 3})
+        {
+            p.shape = static_cast<acustra::BodyShape>(shape);
+            auto e = std::make_unique<Engine>(); e->setParameters(p); e->prepare(48000, 64);
+            const auto shaped = Access::bridgeTable(*e);
+            for (int bank = 0; bank < 2; ++bank)
+            {
+                const double a0 = pair[std::size_t(bank)][0], t1 = pair[std::size_t(bank)][1];
+                const double h2 = holeSquared(2), plate2 = a0*a0*t1*t1/h2;
+                const double cavity2 = a0*a0+t1*t1-plate2-h2;
+                const double areaRatio = area[std::size_t(shape)]/area[2];
+                const double depthRatio = depth[std::size_t(shape)]/depth[2];
+                const auto before = lowBridgeProjectors(plate2, cavity2, h2);
+                const auto after = lowBridgeProjectors(plate2/(areaRatio*areaRatio),
+                                                       cavity2/depthRatio, holeSquared(shape));
+                const auto check = [&] (int slot, int group)
+                {
+                    const auto& a = baseline.modes[std::size_t(slot)];
+                    const auto& b = shaped.modes[std::size_t(slot)];
+                    const double expected = depthRatio/areaRatio
+                        * after[std::size_t(group)]/before[std::size_t(group)];
+                    for (const auto values : { std::array<double, 2>{a.heave, b.heave},
+                                                std::array<double, 2>{a.cross, b.cross},
+                                                std::array<double, 2>{a.rock, b.rock} })
+                        if (values[0] != 0.0)
+                        {
+                            worst = std::max(worst, std::abs(values[1]/values[0]/expected-1));
+                            ++checked;
+                        }
+                };
+                if (bank == 0)
+                    for (std::size_t i = 0; i < d::steelBridgeRadiationTwins.size(); ++i)
+                    {
+                        const int twin = d::steelBridgeRadiationTwins[i];
+                        if (twin == 0 || twin == 1) check(int(i), twin);
+                    }
+                else
+                {
+                    int slot = int(d::measuredSteelBridgeModes.size());
+                    for (const auto& mode : d::measuredSteelJointBodyModes)
+                    {
+                        if (mode.frequency >= d::steelBlendJointBandHz) continue;
+                        if (mode.heave == 0.0f && mode.rock == 0.0f) continue;
+                        if (mode.frequency < 200.0f) check(slot, mode.frequency < 150.0f ? 0 : 1);
+                        ++slot;
+                    }
+                }
+            }
+        }
+    }
+    std::cout << "coupled low-mode bridge participation: " << checked
+              << " residues, worst relative error " << worst << '\n';
+    expect(checked >= 100 && worst < 2e-5,
+           "Shape bridge residues omit the coupled eigenprojector or V/A^2 geometry");
+}
+
+void testAnchorMapIsSharedAcrossFittedBanks()
+{
+    namespace d = acustra::detail;
+    acustra::EngineParameters p;
+    auto e = std::make_unique<Engine>(); e->setParameters(p); e->prepare(48000, 64);
+    const auto& calibration = Access::calibration(*e);
+    double worst = 0.0;
+    int slot = int(d::measuredSteelBodyModes.size());
+    for (const auto& mode : d::measuredSteelJointBodyModes)
+    {
+        if (mode.frequency >= d::steelBlendJointBandHz) continue;
+        const auto nearest = std::min_element(d::measuredSteelBodyModes.begin(),
+            d::measuredSteelBodyModes.end(), [&] (const auto& a, const auto& b)
+            { return std::abs(std::log(a.frequency/mode.frequency))
+                   < std::abs(std::log(b.frequency/mode.frequency)); });
+        const int index = int(nearest-d::measuredSteelBodyModes.begin());
+        // A nearby mode in the other fitted bank must receive the same
+        // anchor detune, despite a different row index and row parity.
+        const auto g21 = Access::radiationPole(p, calibration, index);
+        const auto joint = Access::bodyPole(*e, slot++);
+        const double jointHz = std::atan2(joint[1], joint[0])*48000/(2*pi);
+        const auto classScale = [] (double frequency, double t1Upper)
+        { return frequency > 85 && frequency < 145 ? 109.0/107
+               : frequency >= 150 && frequency <= t1Upper ? 1.0 : .9; };
+        const double ownUpper = std::sqrt(double(d::measuredSteelBodyModes[1].frequency)
+            * d::measuredSteelBodyModes[2].frequency);
+        const double jointUpper = std::sqrt(double(d::measuredSteelJointBodyModes[2].frequency)
+            * d::measuredSteelJointBodyModes[3].frequency);
+        const double ownDetune = g21[0]/(nearest->frequency*classScale(nearest->frequency, ownUpper));
+        const double jointDetune = jointHz/(mode.frequency*classScale(mode.frequency, jointUpper));
+        worst = std::max(worst, std::abs(jointDetune/ownDetune-1));
+    }
+    std::cout << "shared frequency-keyed anchor detune relative error=" << worst << '\n';
+    expect(worst < 3e-7, "the joint body anchor depends on its fitted row index");
+}
+
 int main()
 {
+    testLowBridgeParticipationFollowsTheCoupledBox();
+    testAnchorMapIsSharedAcrossFittedBanks();
     testPlateModesKeepTheirPeakMobilityAcrossShapes();
     testOriginalAirDecayIsLocalized();
     testRadiationContinuesAboveTheFittedBand();

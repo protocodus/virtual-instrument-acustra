@@ -1,0 +1,29 @@
+coupled low-mode bridge participation: 135 residues, worst relative error 0.320538
+FAIL: Shape bridge residues omit the coupled eigenprojector or V/A^2 geometry
+shared frequency-keyed anchor detune relative error=0.0301845
+FAIL: the joint body anchor depends on its fitted row index
+plate-mode peak mobility across Shapes: 285 residues, worst relative change 4.49173e-06
+Original A0 at 44100 Hz: 94.1832 Hz, free T60 0.548675 s
+Original A0 at 48000 Hz: 94.1832 Hz, free T60 0.548621 s
+Original A0 at 96000 Hz: 94.1832 Hz, free T60 0.548627 s
+radiation above the fitted band: worst third-octave fall 5.73042 dB, top band under 2-4 kHz by at most 11.7618 dB, 8-16 kHz at 44.1/96 kHz within 0.10248 dB of 48 kHz
+steel own bridge twin pole relative error=0.341218
+FAIL: a twinned bridge mode is not its radiation mode's pole
+bridge vs neighbouring radiation shape move, worst cents=0.0050888 (steel own, shape 0, 2341.55 Hz)
+steel blend: 55 bridge modes, 160 radiation modes, worst part level error 1.22849e-07, least relative residue determinant -2.61293e-07
+steel blend: 47 own-bridge poles, least port conductance over B's alone, per its share, 1 at 8208.11 Hz
+steel blend, every Shape and Wood: least string mobility real 0, largest bridge pole radius 0.999833, largest body pole radius 0.999833, ring second 9 over second 1 1.30135e-08
+steel blend free ring: worst window over the running maximum 0.00070398, last second over loudest 5.64068e-17
+steel blend sustained strums: worst window over the running maximum 1.05399, seconds 16-20 over 4-8 0.955713
+steel blend joint bridge vs its radiation, every Shape, Wood and rate: worst 150.181 cents, worst Q ratio error 0.0830516, least relative residue determinant -3.89141e-07, live mismatches 0
+FAIL: a retained joint bridge mode left its radiation resonance
+FAIL: a retained joint bridge mode's Q left its radiation's
+shape actual-biquad phase error cents=9.82798e-05 minimum mobility real=0 case=48000,0,0,19,247,
+string port over the bridge's own conductance: worst 1.00001 (shape 3 at 44100.000000 Hz, string 5, 481.886721 Hz), above A0 and T1 1.00001
+MIDI 45 (110 Hz, A0 94.1832 Hz): drain 1.41083 dB/s through the junction, 1.50119 dB/s from the bridge's own conductance
+largest immediate shape delay-target change samples=0.918427
+shape static minimum body work=0 transition/capture peak=0.310353
+construction switch tick, worst margin over its bound -4.06722 dB (steel Tuning)
+coupled pitch pull, steel Jumbo G3: 0.0595594 cents
+note-to-note level, steel Dreadnought: rough 2.63724 dB, deepest hole 7.38185 dB
+Body shape failures=5

@@ -1,0 +1,329 @@
+{
+  "purpose": "Measure connected widths of existing force/moment stress notches; no new variants.",
+  "rate_hz": 48000,
+  "baseline_coefficients_sha256": "6e9c3fcce4b9ec94ee1000f4df75e7d0bd4233b796916acead3b3ce79722d5cb",
+  "scorer_sha256": "79c861945cb95a1a383ddcd9860829667b57b7c4e4ade4e2aba5af1550af0819",
+  "script_sha256": "3aacd5b7424d4c8f66de8a1177b7c2b76a9556dd17e6ffc71ef2a31f3ac87df2",
+  "definitions": {
+    "relative_loss": "20log10(abs(H_candidate(F=1,M=-1))/abs(H_baseline(F=1,M=-1))).",
+    "width": "Connected interval containing the refined minimum with relative loss below -6 or -10dB. Root-refined crossings; no musical-tone bandwidth assumed.",
+    "local_notch": "Center magnitude in dB minus mean dB at +/-2 semitones, evaluated at the same refined frequency for baseline and candidate.",
+    "normalized_moment": "M = physical torque/a, a=0.0232 m. M/F=-1 corresponds a bass-side archive impact. String lever arms are -1.25, -0.75, -0.25, +0.25, +0.75, +1.25; actual coupled force/moment ratios are frequency-dependent and can be complex.",
+    "capture": "stereo_mid is (raw mic L+R)/2, unchanged by Width; right_mono is the separate mono microphone transfer, not a stereo sum.",
+    "limits": "A narrow notch is not necessarily inaudible: a sustained harmonic can be narrower still, and bending/tuning can cross it. Point FRF loss is not whole-note loss. The native grid supplies different, actual coupled input trajectories; its finite-band partial powers can conceal narrow subband holes."
+  },
+  "notches": [
+    {
+      "candidate": "balanced_all",
+      "shape": "parlor",
+      "wood": "spruce",
+      "channel": "stereo_mid",
+      "normalized_moment_to_force": -1.0,
+      "sampled_minimum_loss": {
+        "hz": 254.13204819600068,
+        "db": -15.112669379585178
+      },
+      "refined_minimum_loss": {
+        "hz": 254.10636044698046,
+        "db": -15.27142179117217
+      },
+      "connected_relative_loss_intervals": {
+        "-6.0": {
+          "low_hz": 253.71236940832307,
+          "high_hz": 254.5213959939592,
+          "width_hz": 0.8090265856361327,
+          "width_cents": 5.511698159515177,
+          "threshold_crossing_residual_db": [
+            1.9188561850569386e-10,
+            -3.5485037130911223e-10
+          ]
+        },
+        "-10.0": {
+          "low_hz": 253.89820028305945,
+          "high_hz": 254.3202193495527,
+          "width_hz": 0.42201906649324883,
+          "width_cents": 2.8751966358374133,
+          "threshold_crossing_residual_db": [
+            -1.574615993149564e-10,
+            1.7047696587724204e-10
+          ]
+        }
+      },
+      "local_notch_at_refined_frequency_db": {
+        "baseline": -18.835061562438735,
+        "candidate": -35.010279455627135,
+        "change": -16.1752178931884
+      },
+      "previous_sweep_worst_local_notch_before": {
+        "hz": 254.13204819600068,
+        "db": -18.830748943809514
+      },
+      "previous_sweep_worst_local_notch_after": {
+        "hz": 254.13204819600068,
+        "db": -34.8472653274452
+      },
+      "override_sha256": "138d8dd032d171c8b36dbca2e9327314bd4ff1cdc8f951d980ab386f435e5e39",
+      "independent_complex_pole_vs_rational_max_db_error": 4.169145029209176e-10
+    },
+    {
+      "candidate": "balanced_all",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "channel": "stereo_mid",
+      "normalized_moment_to_force": -1.0,
+      "sampled_minimum_loss": {
+        "hz": 244.71404136056861,
+        "db": -17.30812465590667
+      },
+      "refined_minimum_loss": {
+        "hz": 244.69109141829477,
+        "db": -17.539344135592494
+      },
+      "connected_relative_loss_intervals": {
+        "-6.0": {
+          "low_hz": 244.29751963825302,
+          "high_hz": 245.09645614944847,
+          "width_hz": 0.7989365111954498,
+          "width_cents": 5.652490175111858,
+          "threshold_crossing_residual_db": [
+            1.865423371327779e-10,
+            -3.703171103097702e-11
+          ]
+        },
+        "-10.0": {
+          "low_hz": 244.47295784040045,
+          "high_hz": 244.9127606677033,
+          "width_hz": 0.4398028273028558,
+          "width_cents": 3.111663482135003,
+          "threshold_crossing_residual_db": [
+            3.694111683216761e-11,
+            3.892353106493829e-11
+          ]
+        }
+      },
+      "local_notch_at_refined_frequency_db": {
+        "baseline": -18.779258244320822,
+        "candidate": -37.27178616394531,
+        "change": -18.492527919624486
+      },
+      "previous_sweep_worst_local_notch_before": {
+        "hz": 244.71404136056861,
+        "db": -18.78171725390942
+      },
+      "previous_sweep_worst_local_notch_after": {
+        "hz": 244.71404136056861,
+        "db": -37.04309063635584
+      },
+      "override_sha256": "138d8dd032d171c8b36dbca2e9327314bd4ff1cdc8f951d980ab386f435e5e39",
+      "independent_complex_pole_vs_rational_max_db_error": 2.8699354004402267e-10
+    },
+    {
+      "candidate": "balanced_all",
+      "shape": "auditorium",
+      "wood": "maple",
+      "channel": "stereo_mid",
+      "normalized_moment_to_force": -1.0,
+      "sampled_minimum_loss": {
+        "hz": 220.6303643910914,
+        "db": -27.10647416424156
+      },
+      "refined_minimum_loss": {
+        "hz": 220.6567415724731,
+        "db": -38.90317970555173
+      },
+      "connected_relative_loss_intervals": {
+        "-6.0": {
+          "low_hz": 220.30759828572667,
+          "high_hz": 221.00469973362436,
+          "width_hz": 0.697101447897694,
+          "width_cents": 5.469354792211529,
+          "threshold_crossing_residual_db": [
+            -6.125056017936004e-11,
+            4.762110705769373e-10
+          ]
+        },
+        "-10.0": {
+          "low_hz": 220.4524714237063,
+          "high_hz": 220.86056517643956,
+          "width_hz": 0.4080937527332651,
+          "width_cents": 3.20183607884486,
+          "threshold_crossing_residual_db": [
+            -3.0382096838366124e-10,
+            -9.449614424283936e-10
+          ]
+        }
+      },
+      "local_notch_at_refined_frequency_db": {
+        "baseline": -19.25134235411203,
+        "candidate": -59.166358428405886,
+        "change": -39.91501607429385
+      },
+      "previous_sweep_worst_local_notch_before": {
+        "hz": 220.68518573492753,
+        "db": -19.263458599396944
+      },
+      "previous_sweep_worst_local_notch_after": {
+        "hz": 220.6303643910914,
+        "db": -47.34443645476133
+      },
+      "override_sha256": "138d8dd032d171c8b36dbca2e9327314bd4ff1cdc8f951d980ab386f435e5e39",
+      "independent_complex_pole_vs_rational_max_db_error": 4.700240197053063e-10
+    },
+    {
+      "candidate": "measured_continuity",
+      "shape": "parlor",
+      "wood": "spruce",
+      "channel": "right_mono",
+      "normalized_moment_to_force": -1.0,
+      "sampled_minimum_loss": {
+        "hz": 252.74680437682719,
+        "db": -29.03618925498448
+      },
+      "refined_minimum_loss": {
+        "hz": 252.731236998426,
+        "db": -32.60779576922549
+      },
+      "connected_relative_loss_intervals": {
+        "-6.0": {
+          "low_hz": 252.5295310952492,
+          "high_hz": 253.25695242045074,
+          "width_hz": 0.7274213252015329,
+          "width_cents": 4.979719607097247,
+          "threshold_crossing_residual_db": [
+            1.2298784213271574e-10,
+            -1.3020695632803836e-11
+          ]
+        },
+        "-10.0": {
+          "low_hz": 252.58871870562962,
+          "high_hz": 252.98367850754033,
+          "width_hz": 0.39495980191071567,
+          "width_cents": 2.704926138964279,
+          "threshold_crossing_residual_db": [
+            -9.72075753224999e-11,
+            1.7688250864011934e-10
+          ]
+        }
+      },
+      "local_notch_at_refined_frequency_db": {
+        "baseline": -21.581041131945966,
+        "candidate": -54.485729662802086,
+        "change": -32.90468853085613
+      },
+      "previous_sweep_worst_local_notch_before": {
+        "hz": 252.18229238070978,
+        "db": -30.48831931829213
+      },
+      "previous_sweep_worst_local_notch_after": {
+        "hz": 252.74680437682719,
+        "db": -50.71819859069139
+      },
+      "override_sha256": "cb1282b05867e7064c9dac036b2fc0a6c41f22006620dba6f55ebc43babadbb6",
+      "independent_complex_pole_vs_rational_max_db_error": 6.175717714995699e-10
+    },
+    {
+      "candidate": "measured_continuity",
+      "shape": "dreadnought",
+      "wood": "maple",
+      "channel": "stereo_mid",
+      "normalized_moment_to_force": -1.0,
+      "sampled_minimum_loss": {
+        "hz": 196.8031505857011,
+        "db": -34.189131982620786
+      },
+      "refined_minimum_loss": {
+        "hz": 196.79899791971667,
+        "db": -49.01862792314687
+      },
+      "connected_relative_loss_intervals": {
+        "-6.0": {
+          "low_hz": 196.7005958541881,
+          "high_hz": 196.95267789823964,
+          "width_hz": 0.2520820440515479,
+          "width_cents": 2.2172460211670053,
+          "threshold_crossing_residual_db": [
+            -4.3239722913313017e-10,
+            2.006572685786523e-11
+          ]
+        },
+        "-10.0": {
+          "low_hz": 196.7363941757217,
+          "high_hz": 196.88017761692583,
+          "width_hz": 0.14378344120413544,
+          "width_cents": 1.2647983749393916,
+          "threshold_crossing_residual_db": [
+            1.1053309378894483e-09,
+            1.6609469355444162e-09
+          ]
+        }
+      },
+      "local_notch_at_refined_frequency_db": {
+        "baseline": -28.594364802653324,
+        "candidate": -77.83926709877315,
+        "change": -49.244902296119825
+      },
+      "previous_sweep_worst_local_notch_before": {
+        "hz": 196.70538531815004,
+        "db": -29.312185037241882
+      },
+      "previous_sweep_worst_local_notch_after": {
+        "hz": 196.8031505857011,
+        "db": -62.945690779795115
+      },
+      "override_sha256": "cb1282b05867e7064c9dac036b2fc0a6c41f22006620dba6f55ebc43babadbb6",
+      "independent_complex_pole_vs_rational_max_db_error": 2.1211434386714245e-08
+    },
+    {
+      "candidate": "measured_continuity",
+      "shape": "auditorium",
+      "wood": "maple",
+      "channel": "right_mono",
+      "normalized_moment_to_force": -1.0,
+      "sampled_minimum_loss": {
+        "hz": 219.53679288457684,
+        "db": -29.431320482421096
+      },
+      "refined_minimum_loss": {
+        "hz": 219.543693976332,
+        "db": -30.175150401609223
+      },
+      "connected_relative_loss_intervals": {
+        "-6.0": {
+          "low_hz": 219.35744840669844,
+          "high_hz": 220.0075961046568,
+          "width_hz": 0.6501476979583742,
+          "width_cents": 5.123569420064368,
+          "threshold_crossing_residual_db": [
+            4.808242692888598e-10,
+            -1.4667911329979688e-10
+          ]
+        },
+        "-10.0": {
+          "low_hz": 219.4131342662148,
+          "high_hz": 219.76861376752896,
+          "width_hz": 0.3554795013141643,
+          "width_cents": 2.802567973613418,
+          "threshold_crossing_residual_db": [
+            4.5000803083894425e-10,
+            3.8260417056790175e-10
+          ]
+        }
+      },
+      "local_notch_at_refined_frequency_db": {
+        "baseline": -21.093797293151248,
+        "candidate": -51.68127912344836,
+        "change": -30.587481830297115
+      },
+      "previous_sweep_worst_local_notch_before": {
+        "hz": 219.04645571304246,
+        "db": -28.236202171471547
+      },
+      "previous_sweep_worst_local_notch_after": {
+        "hz": 219.53679288457684,
+        "db": -51.02979699336598
+      },
+      "override_sha256": "cb1282b05867e7064c9dac036b2fc0a6c41f22006620dba6f55ebc43babadbb6",
+      "independent_complex_pole_vs_rational_max_db_error": 5.086562282485829e-10
+    }
+  ]
+}

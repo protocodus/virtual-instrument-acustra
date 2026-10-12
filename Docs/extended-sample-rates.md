@@ -19,11 +19,13 @@ The pulse capacity preserves the 3 ms pull-off duration at 768 kHz. The string
 capacity permits low Drop D with an octave-down bend and -100-cent master
 tuning at 768 kHz; notes below the available delay range still reach a bound.
 
-On the local arm64 build, an extended `Performer` occupies 15,902,544 bytes;
-three preallocated instances occupy 47,707,632 bytes (45.50 MiB), before wrapper
-filters and buffers. These objects belong on the heap. Preparation clears
-voices and scheduling/controller history and rebuilds rate-dependent tables;
-perform it outside the audio callback. A mode-bank wrapper must synchronize
+The 2026-10-11 local arm64 `ExtendedSampleRates` test reports an extended
+`AcustraEngine` of 14,245,808 bytes and `Performer` of 14,283,072 bytes;
+three preallocated performers occupy 42,849,216 bytes (40.86 MiB), before
+wrapper filters and buffers. These are build-specific sizes, not an ABI
+promise. These objects belong on the heap. Preparation clears voices and
+scheduling/controller history, preserves the host's Master Tune reference,
+and rebuilds rate-dependent tables; perform it outside the audio callback. A mode-bank wrapper must synchronize
 parameters, controller state and clocks and account for queued notes and
 retained/room tails before switching. Active held-voice count alone does not
 establish silence.
@@ -36,15 +38,17 @@ internal samples; querying them does not include a wrapper's FIR latency.
 ## Validation
 
 `Acustra.ExtendedSampleRates` uses heap fixtures and compiles both its library
-and tests as C++17. It exercises 352.8, 384, 705.6 and 768 kHz: low bent notes in
-both guitar models, master tuning and channel bend, finite output and release,
-passive remapped loss poles, derivative reference timing, contact-pulse length,
+and tests as C++17. It exercises 48, 96, 192, 352.8, 384, 705.6 and 768 kHz:
+low bent notes on the single Original model, master tuning and channel bend,
+finite output and release, passive remapped loss poles, derivative reference timing, contact-pulse length,
 Gather latency and clean reprepare behavior.
 
 `Acustra.SampleRateLayoutParity` builds one renderer per ABI and compares all
 three output buses byte for byte at 44.1, 48, 96, 192 and 384 kHz. Its score
-includes a chord, re-pluck, expression, bend, model change and panic with room
-and piezo enabled. This covers ordinary notes within both layouts' capacities;
+includes a chord, re-pluck, expression, bend and All Notes Off with room
+and piezo enabled. The longer scores through 192 kHz also include repeated
+six-string strokes, an explicit legato transition and reset; there is no
+model switch. This covers ordinary notes within both layouts' capacities;
 extended storage intentionally permits low pitches formerly limited by the
 shorter delay. It does not assert that oversampling itself leaves audio equal.
 

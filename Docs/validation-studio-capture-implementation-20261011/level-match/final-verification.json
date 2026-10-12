@@ -1,0 +1,2040 @@
+{
+  "scope": "Final compiled engine: 72 phrase +72 hardest-case native renders. Frozen scores and reference measurements reused; no fitting.",
+  "renderer_sha256": "8a2decbd50b0d2ba451ec2eeb1146c642b7670df25ecc4e514c167f4892d30a8",
+  "manifest_sha256": "9301d52dc267e21faec281aae5b608d77e39b17221ebbfd7af3f46680bbc3899",
+  "reference_report_sha256": "3a1e6534a598ea0883510c12c3da8d76b065ac337677a289d300cd424659ca95",
+  "source_sha256": {
+    "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/level-match/verify_final.py": "44d2ddb16fc6164a96e96a0ef9bdc723d9ce5dae191cbf7ceaf0f48f66786148",
+    "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tools/CalibrateConstructionLoudness.py": "a6605ae3f654079bc8640af68d73593fa1772b4d795a4db8e7d310ed5265d692",
+    "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/Tools/MeasureMaterialLoudness.py": "e8bb6b39f2dc430ab3fdf0d24311bfe0cea4927f0ab4881627863b665fb2e0c9"
+  },
+  "rows": [
+    {
+      "shape": "parlor",
+      "wood": "spruce",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 0,
+      "level_match_gain": 1.126994252204895,
+      "final": {
+        "phrase": {
+          "audio_sha256": "3ef0ca6e182c0d42a71a53f1e15ac8d81380ef2f0512c1df67c0ad410280aaeb",
+          "frames": 2083200,
+          "peak_dbfs": -8.970683813095093,
+          "prelimiter_peak_dbfs": -8.970683591798611,
+          "lufs": -27.469673800006266,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "506d9558004c694dca3737ad7862ec0818b96c71fb2d07ea0af12de8f9a6a151",
+          "frames": 456000,
+          "peak_dbfs": -3.503670394420624,
+          "prelimiter_peak_dbfs": -3.503670405623306,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -2.0695833313766343e-07,
+      "hardest_peak_error_vs_prediction_db": -5.160232614542792e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "spruce",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 0,
+      "level_match_gain": 1.1529885530471802,
+      "final": {
+        "phrase": {
+          "audio_sha256": "0843d8b5fcb694391ba216a8dbd44ad9bca6ac636b289f5c44eb9f5c68482ca1",
+          "frames": 2083200,
+          "peak_dbfs": -9.024572968482971,
+          "prelimiter_peak_dbfs": -9.02457275067956,
+          "lufs": -27.512960102437923,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "1f13ae4d1118175b0c97f78b97b5a562f65bd34d79303220a2e4676e4f3cf92d",
+          "frames": 456000,
+          "peak_dbfs": -4.380135238170624,
+          "prelimiter_peak_dbfs": -4.380135106397164,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -4.852278685518741e-07,
+      "hardest_peak_error_vs_prediction_db": 4.820889154544261e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "spruce",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 1,
+      "level_match_gain": 1.1045470237731934,
+      "final": {
+        "phrase": {
+          "audio_sha256": "6b8c163ee6d0f7cb9892db583b142a0758b50dd2d5d7dff090b4d3d1558b95ce",
+          "frames": 2083200,
+          "peak_dbfs": -8.179402351379395,
+          "prelimiter_peak_dbfs": -8.179402480785916,
+          "lufs": -27.51638810028426,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "241084ebc5702fc814de40bdc0ee89ccae4dbe711a567fc0e21bd54421d6b709",
+          "frames": 456000,
+          "peak_dbfs": -3.3271121978759766,
+          "prelimiter_peak_dbfs": -3.327112067712132,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -2.0449618531870328e-07,
+      "hardest_peak_error_vs_prediction_db": -1.3842705870459326e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "spruce",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 1,
+      "level_match_gain": 1.2571144104003906,
+      "final": {
+        "phrase": {
+          "audio_sha256": "06cbbc581b6002e4e080cda24cb9c825ea057b6e691137aad6fb6bb50c403095",
+          "frames": 2083200,
+          "peak_dbfs": -7.689666152000427,
+          "prelimiter_peak_dbfs": -7.689666261637663,
+          "lufs": -27.53208596948262,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "1abdc2e78825e0794013d392145bc0d2bb05171c2f74d6cca3f38dd18ac42c5d",
+          "frames": 456000,
+          "peak_dbfs": -3.800409436225891,
+          "prelimiter_peak_dbfs": -3.800409324665312,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -0.015698210959605774,
+      "hardest_peak_error_vs_prediction_db": 6.592229566670937e-07,
+      "passes": false
+    },
+    {
+      "shape": "parlor",
+      "wood": "spruce",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 2,
+      "level_match_gain": 1.1383845806121826,
+      "final": {
+        "phrase": {
+          "audio_sha256": "b93e107116d61656cc9f35978a50f73cb5a0e7ea3c51222fac9f6b3429c0967f",
+          "frames": 2083200,
+          "peak_dbfs": -8.125512599945068,
+          "prelimiter_peak_dbfs": -8.125512459031011,
+          "lufs": -27.49542005041751,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "8d65d383550f268fc57988c67acb95f91edd64f3ff8662d69808faba2a9ba765",
+          "frames": 456000,
+          "peak_dbfs": -6.844847798347473,
+          "prelimiter_peak_dbfs": -6.844848087087959,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.4578929707909083e-07,
+      "hardest_peak_error_vs_prediction_db": 9.48879517181922e-08,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "spruce",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 2,
+      "level_match_gain": 1.1668400764465332,
+      "final": {
+        "phrase": {
+          "audio_sha256": "6598dba28ae8b98b3fb94289cb4d66d9a8b753ceaa33799a22da6be6ea580d54",
+          "frames": 2083200,
+          "peak_dbfs": -8.114850521087646,
+          "prelimiter_peak_dbfs": -8.114850495452735,
+          "lufs": -27.521658231850004,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "a87abd0d2cdc5f7df8b93979e17b89066ee0fc5425f51169692c38db1cb788c4",
+          "frames": 456000,
+          "peak_dbfs": -6.8403297662734985,
+          "prelimiter_peak_dbfs": -6.840329947302859,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 9.298210308372745e-07,
+      "hardest_peak_error_vs_prediction_db": 1.5381102009826009e-06,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "mahogany",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 3,
+      "level_match_gain": 1.1446949243545532,
+      "final": {
+        "phrase": {
+          "audio_sha256": "e3658b1c44bcb25d03d64d46164b73d36f3d5b48d6895a191dab3b44eaef6134",
+          "frames": 2083200,
+          "peak_dbfs": -7.933260202407837,
+          "prelimiter_peak_dbfs": -7.933260351091159,
+          "lufs": -27.48914370666724,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "19800d55a0e118d19c2a16c94ed6e607d4071003852277eae6175c72f84f139a",
+          "frames": 456000,
+          "peak_dbfs": -5.107134580612183,
+          "prelimiter_peak_dbfs": -5.10713471715046,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -3.7974248101591e-07,
+      "hardest_peak_error_vs_prediction_db": -8.065630741072027e-08,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "mahogany",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 3,
+      "level_match_gain": 1.169045090675354,
+      "final": {
+        "phrase": {
+          "audio_sha256": "0e6794966b206ad7d124032d213ba8592a9935fa057f2268f54de10308fffc2d",
+          "frames": 2083200,
+          "peak_dbfs": -7.994133830070496,
+          "prelimiter_peak_dbfs": -7.994133679650593,
+          "lufs": -27.470670824031185,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "0d93684065e9c6cd139cefd0bf904ef8312ee86dce4781f2d1f5618fe026b221",
+          "frames": 456000,
+          "peak_dbfs": -4.695147275924683,
+          "prelimiter_peak_dbfs": -4.695147413409037,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -9.552306536875221e-07,
+      "hardest_peak_error_vs_prediction_db": -9.119913144672864e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "mahogany",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 4,
+      "level_match_gain": 1.1215318441390991,
+      "final": {
+        "phrase": {
+          "audio_sha256": "7d17f8b3677f3568bd55d66697ce4ca5e797056e68bff77294187f21efc08007",
+          "frames": 2083200,
+          "peak_dbfs": -8.921401500701904,
+          "prelimiter_peak_dbfs": -8.921401444990082,
+          "lufs": -27.516388526064908,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "6312d5070cffd868084d9278da999f359195b6dbaa671b0bae19f2c44f93e543",
+          "frames": 456000,
+          "peak_dbfs": -4.129394590854645,
+          "prelimiter_peak_dbfs": -4.129394656172527,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -6.6273333487743e-08,
+      "hardest_peak_error_vs_prediction_db": 3.550335989643827e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "mahogany",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 4,
+      "level_match_gain": 1.2956349849700928,
+      "final": {
+        "phrase": {
+          "audio_sha256": "6924e34bede8b4bda3e1114732caf8a6abc2d8e5bb94f446b4ad1890b1f62551",
+          "frames": 2083200,
+          "peak_dbfs": -8.74907672405243,
+          "prelimiter_peak_dbfs": -8.749076694631295,
+          "lufs": -27.516388048563474,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "32164f9695b0ba4c0e2f2cc6145db7390d20866b0ea4d218584cde34928459a0",
+          "frames": 456000,
+          "peak_dbfs": -3.4076058864593506,
+          "prelimiter_peak_dbfs": -3.4076059105928107,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 2.587280434340755e-08,
+      "hardest_peak_error_vs_prediction_db": -1.5757425897433563e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "mahogany",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 5,
+      "level_match_gain": 1.1404129266738892,
+      "final": {
+        "phrase": {
+          "audio_sha256": "714b9542df9afe9980ea4cd0afd04061c21686793f7548d0e1d21097403a0e1d",
+          "frames": 2083200,
+          "peak_dbfs": -8.92060399055481,
+          "prelimiter_peak_dbfs": -8.920604019591272,
+          "lufs": -27.500277971759697,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "3a1997153dfa09ce9350df2a4448b49732446c2b7abbf9bae818ffa30adb65e9",
+          "frames": 456000,
+          "peak_dbfs": -7.795390486717224,
+          "prelimiter_peak_dbfs": -7.795390470085179,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.3074894411602145e-07,
+      "hardest_peak_error_vs_prediction_db": 7.114501379135163e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "mahogany",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 5,
+      "level_match_gain": 1.17214035987854,
+      "final": {
+        "phrase": {
+          "audio_sha256": "880c64aad931c808b660e64cc4347f9409aaf533b4d4e7affad4e9ef3b7bfcd5",
+          "frames": 2083200,
+          "peak_dbfs": -8.752387166023254,
+          "prelimiter_peak_dbfs": -8.752387379890752,
+          "lufs": -27.48786102762084,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "d90c1ae41b8406ddb004c8d323115cedcd0cd3a80280ebc0ec2db0100d2e61c4",
+          "frames": 456000,
+          "peak_dbfs": -7.112894058227539,
+          "prelimiter_peak_dbfs": -7.112893942821365,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -5.483198037836701e-07,
+      "hardest_peak_error_vs_prediction_db": -4.1793010563395683e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "maple",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 6,
+      "level_match_gain": 1.1421585083007812,
+      "final": {
+        "phrase": {
+          "audio_sha256": "1f31847d84d901c6721d68ee312ebbef4e195cff68216075c398149f2d901b6a",
+          "frames": 2083200,
+          "peak_dbfs": -9.090981483459473,
+          "prelimiter_peak_dbfs": -9.090981656779892,
+          "lufs": -27.67980142458848,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "d613e6d817708f106723bb80318df3f393a759124e68b97e003a8b976dba3eb9",
+          "frames": 456000,
+          "peak_dbfs": -4.572281539440155,
+          "prelimiter_peak_dbfs": -4.572281518520875,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 2.9859465300319243e-07,
+      "hardest_peak_error_vs_prediction_db": -3.345721717451511e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "maple",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 6,
+      "level_match_gain": 1.1580784320831299,
+      "final": {
+        "phrase": {
+          "audio_sha256": "94b85580a737f6e5a2800f098492ddd6a825747310ecc86bb04a7fb1047730ab",
+          "frames": 2083200,
+          "peak_dbfs": -9.194400310516357,
+          "prelimiter_peak_dbfs": -9.194400422114905,
+          "lufs": -27.670362392589325,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "002205a98862db7254fb918c21a51ec4127094a19e462b639f674fb1a1c70bfd",
+          "frames": 456000,
+          "peak_dbfs": -5.087398290634155,
+          "prelimiter_peak_dbfs": -5.0873980865589505,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -2.9196461426295173e-07,
+      "hardest_peak_error_vs_prediction_db": -5.402389264830276e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "maple",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 7,
+      "level_match_gain": 1.112075924873352,
+      "final": {
+        "phrase": {
+          "audio_sha256": "32b6001b3cb07e5395a436b7f5ed8a3b1139fec158ef3acfd87348a0f2ed90ad",
+          "frames": 2083200,
+          "peak_dbfs": -9.515827298164368,
+          "prelimiter_peak_dbfs": -9.51582738598178,
+          "lufs": -27.51638820323174,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "cd18d417a8b479fb7df44999622c76dc4518fe047a87e2f5673da36a77bf3d45",
+          "frames": 456000,
+          "peak_dbfs": -2.2801080346107483,
+          "prelimiter_peak_dbfs": -2.2801080563375677,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -1.2956884987147532e-07,
+      "hardest_peak_error_vs_prediction_db": -1.4009337023779267e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "maple",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 7,
+      "level_match_gain": 1.2560971975326538,
+      "final": {
+        "phrase": {
+          "audio_sha256": "dfb498688feabb83eaff5879e033f95e7b22a406d79108104bf7983b58c15c96",
+          "frames": 2083200,
+          "peak_dbfs": -9.329538941383362,
+          "prelimiter_peak_dbfs": -9.329538921780866,
+          "lufs": -27.516387807208556,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "1c4dd1c0087058c1086651fd1d456eeb485ec6be2e797e89304a2cbc548309b7",
+          "frames": 456000,
+          "peak_dbfs": -3.300260007381439,
+          "prelimiter_peak_dbfs": -3.300259980548451,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -1.8348233155052185e-07,
+      "hardest_peak_error_vs_prediction_db": -7.272135249536404e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "maple",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 8,
+      "level_match_gain": 1.1534816026687622,
+      "final": {
+        "phrase": {
+          "audio_sha256": "e6b7ee4dbf8bc2c4b63d722e3554cc1a476d7d97303146e33356f97bff923a30",
+          "frames": 2083200,
+          "peak_dbfs": -9.236655235290527,
+          "prelimiter_peak_dbfs": -9.236654968733047,
+          "lufs": -27.741480246228953,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "08273c9a9defe5c4e12e9c0a7a0e9f8f53cd58c2ade8309829744c09243f27b1",
+          "frames": 456000,
+          "peak_dbfs": -8.09888243675232,
+          "prelimiter_peak_dbfs": -8.098882706919559,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -9.011372057443623e-07,
+      "hardest_peak_error_vs_prediction_db": -1.950639667569476e-07,
+      "passes": true
+    },
+    {
+      "shape": "parlor",
+      "wood": "maple",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 8,
+      "level_match_gain": 1.1633403301239014,
+      "final": {
+        "phrase": {
+          "audio_sha256": "bffb6135695f82d3a70f5ee6acfa35fffd5462e8e7a43ba528d5f570b4e53093",
+          "frames": 2083200,
+          "peak_dbfs": -9.42586600780487,
+          "prelimiter_peak_dbfs": -9.425866216294544,
+          "lufs": -27.758064426494453,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "ff2e9d78f0f817b5c7a2c96c294a0c615d4366097f1ac74f5bc808512e007147",
+          "frames": 456000,
+          "peak_dbfs": -7.663569450378418,
+          "prelimiter_peak_dbfs": -7.663569708948063,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.7894890902425686e-08,
+      "hardest_peak_error_vs_prediction_db": -1.9692178732100274e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "spruce",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 9,
+      "level_match_gain": 1.0050468444824219,
+      "final": {
+        "phrase": {
+          "audio_sha256": "4f9f18e4761b7cecc275f62582bb46ed08be5d26005dbdb8a2d3cee313bf5b59",
+          "frames": 2083200,
+          "peak_dbfs": -9.588389992713928,
+          "prelimiter_peak_dbfs": -9.588390033460612,
+          "lufs": -27.560861072044524,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "de641904199cdb2f75fbc8c73c6ec9dcf2abc5162df045ff5d11d4e3b8035c0a",
+          "frames": 456000,
+          "peak_dbfs": -2.517039179801941,
+          "prelimiter_peak_dbfs": -2.5170390421765685,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -2.1436701658217316e-07,
+      "hardest_peak_error_vs_prediction_db": 4.2323183135906106e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "spruce",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 9,
+      "level_match_gain": 1.0923084020614624,
+      "final": {
+        "phrase": {
+          "audio_sha256": "4a7a5a6f64068622c302972f8efddddabad904b8bdc151fd10395ea0a5836958",
+          "frames": 2083200,
+          "peak_dbfs": -8.87225091457367,
+          "prelimiter_peak_dbfs": -8.872250679546195,
+          "lufs": -27.514022114009226,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "4cef9fe9a257c82598cce27adf3c10067b160cddbfa4024300b5156a6dc2d186",
+          "frames": 456000,
+          "peak_dbfs": -4.522582292556763,
+          "prelimiter_peak_dbfs": -4.522582404702569,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -2.2463346383005955e-07,
+      "hardest_peak_error_vs_prediction_db": -6.298964683182362e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "spruce",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 10,
+      "level_match_gain": 1.1123238801956177,
+      "final": {
+        "phrase": {
+          "audio_sha256": "36c99fbc6f6b102de2f6430b3f644997408292efa881b1c68a0cb0a217462057",
+          "frames": 2083200,
+          "peak_dbfs": -9.25551176071167,
+          "prelimiter_peak_dbfs": -9.255512054488115,
+          "lufs": -27.51638800365809,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "8daf82dedb66f5aeea2b57dcbd9d42d4b08a541c05a33ad8e4f4293bfe94f421",
+          "frames": 456000,
+          "peak_dbfs": -2.1212558448314667,
+          "prelimiter_peak_dbfs": -2.121255904292649,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -1.004809682569885e-06,
+      "hardest_peak_error_vs_prediction_db": -4.0131886391847615e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "spruce",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 10,
+      "level_match_gain": 1.3768013715744019,
+      "final": {
+        "phrase": {
+          "audio_sha256": "293585c2730ec59fbbfee35b979977436ca5d5d4f735ef45ca16212bd2d3a87e",
+          "frames": 2083200,
+          "peak_dbfs": -9.5247483253479,
+          "prelimiter_peak_dbfs": -9.524748480891912,
+          "lufs": -27.516386842918475,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "fc01bca1a1f0c71064d9f3d79929e1f8cbd48e07afe879dbff0b43de2a7757e3",
+          "frames": 456000,
+          "peak_dbfs": -3.6744195222854614,
+          "prelimiter_peak_dbfs": -3.67441956958611,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 5.361400852166298e-07,
+      "hardest_peak_error_vs_prediction_db": 3.3675915833697445e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "spruce",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 11,
+      "level_match_gain": 1.0097893476486206,
+      "final": {
+        "phrase": {
+          "audio_sha256": "eef822d7813e2b5d304c085e8e0150849dfd7f2ed19694f758c80119d0fb2b11",
+          "frames": 2083200,
+          "peak_dbfs": -9.53465223312378,
+          "prelimiter_peak_dbfs": -9.534652428275871,
+          "lufs": -27.545400413078887,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "f31e20e74ae7f115c1e29547596557eabcdfa3c53a4450fdfb4b16e2f840f236",
+          "frames": 456000,
+          "peak_dbfs": -7.511969208717346,
+          "prelimiter_peak_dbfs": -7.511968953785245,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.0623752331184733e-06,
+      "hardest_peak_error_vs_prediction_db": 3.472554324090993e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "spruce",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 11,
+      "level_match_gain": 1.1045341491699219,
+      "final": {
+        "phrase": {
+          "audio_sha256": "c6580d2b01d7461af773367af1d7b56b077988fa59e65bd45d1108dfddc91ab4",
+          "frames": 2083200,
+          "peak_dbfs": -9.208232760429382,
+          "prelimiter_peak_dbfs": -9.208232531348973,
+          "lufs": -27.554833278803585,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "ae54ec22ed32146ca41f0304caaff4ae5f83845be3f1ff4e50881bc10b82c748",
+          "frames": 456000,
+          "peak_dbfs": -7.557864189147949,
+          "prelimiter_peak_dbfs": -7.557864206455479,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 3.043856224849151e-07,
+      "hardest_peak_error_vs_prediction_db": -3.543728670507562e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 12,
+      "level_match_gain": 0.999690055847168,
+      "final": {
+        "phrase": {
+          "audio_sha256": "cfa2a7663474552ac7cb0813983184c6daabab28651d063911782dd718a88a00",
+          "frames": 2083200,
+          "peak_dbfs": -8.797935247421265,
+          "prelimiter_peak_dbfs": -8.79793544511551,
+          "lufs": -27.507623931255598,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "72808b8998b8eaef9151ee0a412eaf6180d7b1d4a94093ddbad653baeb65fde4",
+          "frames": 456000,
+          "peak_dbfs": -3.887028694152832,
+          "prelimiter_peak_dbfs": -3.887028550406651,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 3.412616500497734e-07,
+      "hardest_peak_error_vs_prediction_db": 7.780265742773906e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 12,
+      "level_match_gain": 1.073166847229004,
+      "final": {
+        "phrase": {
+          "audio_sha256": "515ef857e317fc3981ae3edc597624d3de1d07c48b887fec970b4f74cb919572",
+          "frames": 2083200,
+          "peak_dbfs": -8.442327380180359,
+          "prelimiter_peak_dbfs": -8.442327307066808,
+          "lufs": -27.501977883772643,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "b0b0c9f0650a2ab9b29d8cc904b199bef3acb6e4b944401d8c8427603edaa55a",
+          "frames": 456000,
+          "peak_dbfs": -4.549953043460846,
+          "prelimiter_peak_dbfs": -4.549952963847367,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 5.487212320076651e-07,
+      "hardest_peak_error_vs_prediction_db": 3.110925179683477e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 13,
+      "level_match_gain": 1.0818161964416504,
+      "final": {
+        "phrase": {
+          "audio_sha256": "8f68d8cbe04af1aaa07633534f5a2bf925df6b4fc8893a7593ecfc7115a0b214",
+          "frames": 2083200,
+          "peak_dbfs": -9.050856828689575,
+          "prelimiter_peak_dbfs": -9.05085687267178,
+          "lufs": -27.5163866220661,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "235fee405c021129a876085301aff008fd3b8c38d28627d68220e7a4c9ddce58",
+          "frames": 456000,
+          "peak_dbfs": -3.3533504605293274,
+          "prelimiter_peak_dbfs": -3.3533504764190702,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.5697448674245607e-06,
+      "hardest_peak_error_vs_prediction_db": 1.2820433292759503e-06,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 13,
+      "level_match_gain": 1.2940527200698853,
+      "final": {
+        "phrase": {
+          "audio_sha256": "07354c24f5c8145e753bc85119f86b775566c556fcdcf6fd8428ec3aab1c8cbe",
+          "frames": 2083200,
+          "peak_dbfs": -8.741151094436646,
+          "prelimiter_peak_dbfs": -8.741151065753359,
+          "lufs": -27.516387741056782,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "52f08a7b94d5f5adec03b509c0c7de92c4bd3245c0ed403516f80f2945da5608",
+          "frames": 456000,
+          "peak_dbfs": -3.242948353290558,
+          "prelimiter_peak_dbfs": -3.2429484985760206,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.8225980369379613e-07,
+      "hardest_peak_error_vs_prediction_db": 2.798277596305354e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 14,
+      "level_match_gain": 1.0063989162445068,
+      "final": {
+        "phrase": {
+          "audio_sha256": "4e76d86b39f975d432c545a81916fdcac122586df8c0532eac008665d6434dc2",
+          "frames": 2083200,
+          "peak_dbfs": -9.575893878936768,
+          "prelimiter_peak_dbfs": -9.575893781806043,
+          "lufs": -27.510404312135087,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "92397d5278074d50d1d88edeaa4f34d589026fe7b1afb29f59a0522cfd7e451c",
+          "frames": 456000,
+          "peak_dbfs": -7.17177152633667,
+          "prelimiter_peak_dbfs": -7.171771527204783,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -1.603594093069205e-07,
+      "hardest_peak_error_vs_prediction_db": -2.4765093886713885e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 14,
+      "level_match_gain": 1.0887690782546997,
+      "final": {
+        "phrase": {
+          "audio_sha256": "7fc7b27d5ed5f365120cc7ace088bbf90a2fe8b2b7da3dc078d91e043a7bfa18",
+          "frames": 2083200,
+          "peak_dbfs": -9.747453927993774,
+          "prelimiter_peak_dbfs": -9.747453851648546,
+          "lufs": -27.490281806130852,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "c0ecb9d8dee7cf3c8a7a0d7fd49397336ad1fe99df069e89c3461280b558f9ea",
+          "frames": 456000,
+          "peak_dbfs": -5.79162061214447,
+          "prelimiter_peak_dbfs": -5.791620594966245,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -5.381091128242588e-08,
+      "hardest_peak_error_vs_prediction_db": 8.30871114132492e-08,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "maple",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 15,
+      "level_match_gain": 1.069012999534607,
+      "final": {
+        "phrase": {
+          "audio_sha256": "46f4ce6b0ffe7183233dfd610b5dd956b6646fbde8fd3f8be47edfeca9dc7379",
+          "frames": 2083200,
+          "peak_dbfs": -8.90478789806366,
+          "prelimiter_peak_dbfs": -8.904787766663027,
+          "lufs": -27.46738297993578,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "00b47cfeb016eab2ced7875c0c3c847c772bc7024151e840ed2beb099abbeda7",
+          "frames": 456000,
+          "peak_dbfs": -4.0877565741539,
+          "prelimiter_peak_dbfs": -4.0877565938267395,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -4.5832814521418186e-07,
+      "hardest_peak_error_vs_prediction_db": 2.0285687796217644e-08,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "maple",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 15,
+      "level_match_gain": 1.1112056970596313,
+      "final": {
+        "phrase": {
+          "audio_sha256": "0aaf95e9a1b5998d74f0d894c03ff9697ec8ef5a5ab35c6f60a7150c3b6b2ddb",
+          "frames": 2083200,
+          "peak_dbfs": -8.676249384880066,
+          "prelimiter_peak_dbfs": -8.676249090899104,
+          "lufs": -27.46812229229157,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "9bc72369eadfb0b9d5239c1bc263f3a784feb61f8decd45fddc0685874711f7f",
+          "frames": 456000,
+          "peak_dbfs": -5.729031562805176,
+          "prelimiter_peak_dbfs": -5.729031278354938,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 4.783886708992213e-07,
+      "hardest_peak_error_vs_prediction_db": 1.3646325420779704e-06,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "maple",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 16,
+      "level_match_gain": 1.1048736572265625,
+      "final": {
+        "phrase": {
+          "audio_sha256": "b3ed659e289c58601d6b9c85b82d8b8cd77123df5ca08dddf1a5187a05773f15",
+          "frames": 2083200,
+          "peak_dbfs": -7.352534532546997,
+          "prelimiter_peak_dbfs": -7.352534389356099,
+          "lufs": -27.51638805562332,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "3c9bb703f3a710bf55ee8752fcbfdda9ca8341a7d86d0076a5fd5ee705e120be",
+          "frames": 456000,
+          "peak_dbfs": -2.584734857082367,
+          "prelimiter_peak_dbfs": -2.5847348992780383,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -1.3045186264548647e-07,
+      "hardest_peak_error_vs_prediction_db": -3.611953585114236e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "maple",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 16,
+      "level_match_gain": 1.298291802406311,
+      "final": {
+        "phrase": {
+          "audio_sha256": "f24f324757923618065ab484b355286356a8f3029c77b09cbf6da5a7fa497c5a",
+          "frames": 2083200,
+          "peak_dbfs": -9.448434710502625,
+          "prelimiter_peak_dbfs": -9.448434858784728,
+          "lufs": -27.516389491850678,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "eb095be7e1787bef50a1474d62467aa29bcf83a60a144de20656d22e56d04b37",
+          "frames": 456000,
+          "peak_dbfs": -3.546861410140991,
+          "prelimiter_peak_dbfs": -3.5468613791103727,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 7.595831164053379e-08,
+      "hardest_peak_error_vs_prediction_db": -5.438705277249767e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "maple",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 17,
+      "level_match_gain": 1.0735840797424316,
+      "final": {
+        "phrase": {
+          "audio_sha256": "6093c3d95dfc8497c03ff4f7d2a7ac0593e5ab51d9e18b4ccd042c1950b8245e",
+          "frames": 2083200,
+          "peak_dbfs": -9.773182272911072,
+          "prelimiter_peak_dbfs": -9.773182509027095,
+          "lufs": -27.496655149403967,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "1b159acf41402201b900960eac17348ef3f0b79904ae05af3e21df96b82cc33c",
+          "frames": 456000,
+          "peak_dbfs": -7.699616551399231,
+          "prelimiter_peak_dbfs": -7.699616322168476,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -2.9449565985828485e-07,
+      "hardest_peak_error_vs_prediction_db": -2.5211575582773094e-07,
+      "passes": true
+    },
+    {
+      "shape": "auditorium",
+      "wood": "maple",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 17,
+      "level_match_gain": 1.1265130043029785,
+      "final": {
+        "phrase": {
+          "audio_sha256": "37137af517270b225061cb2898c7bcac068e4d0df33fc7d7eacaabc54d37b5b5",
+          "frames": 2083200,
+          "peak_dbfs": -9.634135365486145,
+          "prelimiter_peak_dbfs": -9.634135144018012,
+          "lufs": -27.46723513615031,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "db2d137f84b96bbe5b6fddfc021e4abc18e60cd4adca01a17608d298356172eb",
+          "frames": 456000,
+          "peak_dbfs": -7.873172760009766,
+          "prelimiter_peak_dbfs": -7.87317271869582,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 3.8856956763311246e-08,
+      "hardest_peak_error_vs_prediction_db": 1.1888361584055929e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 18,
+      "level_match_gain": 0.9983915686607361,
+      "final": {
+        "phrase": {
+          "audio_sha256": "6fcd62b8e6afd7a5c5709b5f98a0a339b7e537b52169e846fa5cc257a94ab174",
+          "frames": 2083200,
+          "peak_dbfs": -8.594397902488708,
+          "prelimiter_peak_dbfs": -8.594397716544771,
+          "lufs": -27.516388447230728,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "5f46f9cf50dbc73cc6e5e962bd9844da412495f23ed4b330d08ce37f45209bef",
+          "frames": 456000,
+          "peak_dbfs": -4.245166182518005,
+          "prelimiter_peak_dbfs": -4.245166172428767,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -8.020639121752993e-07,
+      "hardest_peak_error_vs_prediction_db": -6.857620187261659e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 18,
+      "level_match_gain": 1.0810418128967285,
+      "final": {
+        "phrase": {
+          "audio_sha256": "70a3e68a0e40621d6b39475091178f99f80d58d26ce7d49ee94a14c4a942f11c",
+          "frames": 2083200,
+          "peak_dbfs": -8.47438097000122,
+          "prelimiter_peak_dbfs": -8.474380769447203,
+          "lufs": -26.67740632972371,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "6d027133b0fa925bb0be782db26a168442860959229df018b202991af53a758d",
+          "frames": 456000,
+          "peak_dbfs": -3.8036149740219116,
+          "prelimiter_peak_dbfs": -3.803615071091027,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 2.5739764808463406e-07,
+      "hardest_peak_error_vs_prediction_db": -1.3976612045496495e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 19,
+      "level_match_gain": 1.1106587648391724,
+      "final": {
+        "phrase": {
+          "audio_sha256": "9da3d1e30510801bc7c6f942f22dfcb09d83544623baa58349075acc967cf588",
+          "frames": 2083200,
+          "peak_dbfs": -9.448909759521484,
+          "prelimiter_peak_dbfs": -9.448909632320081,
+          "lufs": -27.51638649575436,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "b2b75de68dc7e31ec8881fcf80d90ecdc9795ee5674eb37a5c6e29277af99c04",
+          "frames": 456000,
+          "peak_dbfs": -2.726089060306549,
+          "prelimiter_peak_dbfs": -2.7260891923482387,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 7.322801316433925e-07,
+      "hardest_peak_error_vs_prediction_db": 7.26452018540158e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 19,
+      "level_match_gain": 1.3592451810836792,
+      "final": {
+        "phrase": {
+          "audio_sha256": "4e2d1fa9087a478b3651166769f9216bd1dcd927cae87644876612def609333d",
+          "frames": 2083200,
+          "peak_dbfs": -9.393547773361206,
+          "prelimiter_peak_dbfs": -9.393547940690247,
+          "lufs": -27.53215827693631,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "7792db5c1042abd307a1ef81edd2298ccc1001640f322584d406be83d442aa75",
+          "frames": 456000,
+          "peak_dbfs": -4.3085625767707825,
+          "prelimiter_peak_dbfs": -4.308562578955434,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -0.015770413806194483,
+      "hardest_peak_error_vs_prediction_db": -5.993910257018342e-09,
+      "passes": false
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 20,
+      "level_match_gain": 0.9941051602363586,
+      "final": {
+        "phrase": {
+          "audio_sha256": "dc792c88658f7580baf4780afe6fa1045c76d89514762466cfcd735a3c421453",
+          "frames": 2083200,
+          "peak_dbfs": -8.583726286888123,
+          "prelimiter_peak_dbfs": -8.583726115430274,
+          "lufs": -27.497300062979466,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "5258aec5586e6d81b404955f70b725e7b4bff49bda6a3d551424220c109ebcb3",
+          "frames": 456000,
+          "peak_dbfs": -6.297313570976257,
+          "prelimiter_peak_dbfs": -6.2973137158005965,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 5.562289118188346e-08,
+      "hardest_peak_error_vs_prediction_db": 5.371710916080019e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "spruce",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 20,
+      "level_match_gain": 1.0665048360824585,
+      "final": {
+        "phrase": {
+          "audio_sha256": "1128a886c93f675aca355db9a52059e240c3dfb823b8034aca0cc930fde484a7",
+          "frames": 2083200,
+          "peak_dbfs": -8.337754011154175,
+          "prelimiter_peak_dbfs": -8.337753886272845,
+          "lufs": -27.462926096699697,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "ea45f5ee5ebd76b6bb7263eb212e16256ff808af4f09ec2c3d8d85dfc5e6d085",
+          "frames": 456000,
+          "peak_dbfs": -7.566934823989868,
+          "prelimiter_peak_dbfs": -7.566934975144367,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -2.7305799576993195e-07,
+      "hardest_peak_error_vs_prediction_db": 4.0928301903164765e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 21,
+      "level_match_gain": 0.9876297116279602,
+      "final": {
+        "phrase": {
+          "audio_sha256": "49b1d9e9bca808d7d216435099ef7a813d7ed3e1ebb7dc694d81de3a9b949d84",
+          "frames": 2083200,
+          "peak_dbfs": -8.729824423789978,
+          "prelimiter_peak_dbfs": -8.72982459899596,
+          "lufs": -27.482433527851274,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "0e0c9ffe577989e65be73eeacbc93ae6d3a52be2ce072268de3d14aa879441c8",
+          "frames": 456000,
+          "peak_dbfs": -3.1453937292099,
+          "prelimiter_peak_dbfs": -3.1453938207543035,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -4.401958513255977e-07,
+      "hardest_peak_error_vs_prediction_db": -6.202342848204978e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 21,
+      "level_match_gain": 1.06027352809906,
+      "final": {
+        "phrase": {
+          "audio_sha256": "2ca867f6c82d70f62beb63ca0defa54496784e7c64166154daf9a6d665a413ed",
+          "frames": 2083200,
+          "peak_dbfs": -8.240085244178772,
+          "prelimiter_peak_dbfs": -8.240085101909258,
+          "lufs": -27.433958167326303,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "fa4de731e1a794c0601edb3329d9d7e8bbdd02a0fd0258b259b559744f827d38",
+          "frames": 456000,
+          "peak_dbfs": -4.554428160190582,
+          "prelimiter_peak_dbfs": -4.554428078988523,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -0.014417064355345843,
+      "hardest_peak_error_vs_prediction_db": -1.924907362393924e-07,
+      "passes": false
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 22,
+      "level_match_gain": 1.0613322257995605,
+      "final": {
+        "phrase": {
+          "audio_sha256": "befd7e1217b02cd52cabafbfa392e0422858a26fc0c89987ae75dd884a10b0c7",
+          "frames": 2083200,
+          "peak_dbfs": -8.9402836561203,
+          "prelimiter_peak_dbfs": -8.940283412111588,
+          "lufs": -27.516387088060757,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "3c934826047e09147576ba7ca212c311aa1dce811f9e13a40aa78f4930694bb6",
+          "frames": 456000,
+          "peak_dbfs": -2.100032866001129,
+          "prelimiter_peak_dbfs": -2.1000328688383094,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -2.1590682308669784e-07,
+      "hardest_peak_error_vs_prediction_db": -4.5130069548093843e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 22,
+      "level_match_gain": 1.2717933654785156,
+      "final": {
+        "phrase": {
+          "audio_sha256": "32b2ce71a5033df14459d1c330829fe3814e53d4e39aec7ac9db098093d891f9",
+          "frames": 2083200,
+          "peak_dbfs": -8.5054612159729,
+          "prelimiter_peak_dbfs": -8.505461214883361,
+          "lufs": -27.531773660311746,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "f4a6ce589ecfccb123d65c5977ad1d75bde10095b466c7e5ada796dc87933ba3",
+          "frames": 456000,
+          "peak_dbfs": -2.8806641697883606,
+          "prelimiter_peak_dbfs": -2.880664214733339,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -0.0153871860196233,
+      "hardest_peak_error_vs_prediction_db": 1.526871296064769e-08,
+      "passes": false
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 23,
+      "level_match_gain": 0.9843708872795105,
+      "final": {
+        "phrase": {
+          "audio_sha256": "6e14a78a05bc95841c4ea3bf9bd3f2fa3781bdfa08bef5d676dfcb1176eb21ed",
+          "frames": 2083200,
+          "peak_dbfs": -9.02287244796753,
+          "prelimiter_peak_dbfs": -9.022872602901407,
+          "lufs": -27.456455981877195,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "27b313ed0a881073525a7f05b6959d799a103c8e268db6150962c5a20f0c6300",
+          "frames": 456000,
+          "peak_dbfs": -6.16952657699585,
+          "prelimiter_peak_dbfs": -6.169526569349281,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -5.1036153081440716e-08,
+      "hardest_peak_error_vs_prediction_db": -4.2367672925536226e-08,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "mahogany",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 23,
+      "level_match_gain": 1.0628514289855957,
+      "final": {
+        "phrase": {
+          "audio_sha256": "323a5ca96591219bce2fdc57c86e2a499a1ace8b81c59d478f3c6db93abd2528",
+          "frames": 2083200,
+          "peak_dbfs": -8.91835331916809,
+          "prelimiter_peak_dbfs": -8.918353115706203,
+          "lufs": -27.38527441546063,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "1fcd387db26e3a76a893c06bf250fa526026b4122300a9ab3858d2a74554bc70",
+          "frames": 456000,
+          "peak_dbfs": -6.350163221359253,
+          "prelimiter_peak_dbfs": -6.350163044874721,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -6.553590132796216e-07,
+      "hardest_peak_error_vs_prediction_db": -1.172899030343899e-06,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "maple",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 24,
+      "level_match_gain": 0.9996222257614136,
+      "final": {
+        "phrase": {
+          "audio_sha256": "8e353adfe430d9dd7aba1e87d548a8dff7e26f8bb64e6a1c286ad216d9feba88",
+          "frames": 2083200,
+          "peak_dbfs": -7.677156925201416,
+          "prelimiter_peak_dbfs": -7.67715666940036,
+          "lufs": -27.43119058136978,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "95b902dad527553443a8a233ae0398b3d703e82eefe5101d3f50508b97944b87",
+          "frames": 456000,
+          "peak_dbfs": -3.7543922662734985,
+          "prelimiter_peak_dbfs": -3.7543922819617888,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 2.3516918190580327e-07,
+      "hardest_peak_error_vs_prediction_db": 2.0306605419406765e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "maple",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 24,
+      "level_match_gain": 1.062907338142395,
+      "final": {
+        "phrase": {
+          "audio_sha256": "5cd6b9dbc4eb503bbed37b91ebc0ef004e1a9d8fc581e9ac21bf1668601d98cc",
+          "frames": 2083200,
+          "peak_dbfs": -7.7619946002960205,
+          "prelimiter_peak_dbfs": -7.761994504889612,
+          "lufs": -27.3954806475017,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "550ef647bd7efb86aaf9268056ee280aaeed1a1d6f0add0cd89390b97aa1e3c2",
+          "frames": 456000,
+          "peak_dbfs": -3.4828388690948486,
+          "prelimiter_peak_dbfs": -3.482838972307842,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -4.553182826327884e-07,
+      "hardest_peak_error_vs_prediction_db": -1.0755023316377788e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "maple",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 25,
+      "level_match_gain": 1.0968470573425293,
+      "final": {
+        "phrase": {
+          "audio_sha256": "f32fdc40947b3e1bea339b01dcd31d898075a699aed60c89a9e395280e5750b9",
+          "frames": 2083200,
+          "peak_dbfs": -6.7293161153793335,
+          "prelimiter_peak_dbfs": -6.729315948401569,
+          "lufs": -27.516388262144826,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "32f0171dbaf20733ebedaebaee22ddde8360adfbcf174c5b03e59525402eb6f6",
+          "frames": 456000,
+          "peak_dbfs": -2.2484230995178223,
+          "prelimiter_peak_dbfs": -2.2484230632372495,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -3.203825116315784e-08,
+      "hardest_peak_error_vs_prediction_db": 2.1220616908124157e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "maple",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 25,
+      "level_match_gain": 1.2862616777420044,
+      "final": {
+        "phrase": {
+          "audio_sha256": "eb6554864765e9cda111be5df6a61d59dcf512d0a9d2d6bfb293acecfd2f9492",
+          "frames": 2083200,
+          "peak_dbfs": -7.076169848442078,
+          "prelimiter_peak_dbfs": -7.076169576560426,
+          "lufs": -27.516387597687565,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "927839bffa1c5b086d59e575a0889d9eddf5430754c0bb3e96e0faa6d129ca51",
+          "frames": 456000,
+          "peak_dbfs": -3.0445125699043274,
+          "prelimiter_peak_dbfs": -3.044512678799105,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 5.090408663477319e-07,
+      "hardest_peak_error_vs_prediction_db": 1.5528505015183214e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "maple",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 26,
+      "level_match_gain": 1.0003570318222046,
+      "final": {
+        "phrase": {
+          "audio_sha256": "3ece7750a2f927212d4d37d64a248dcdf33563d0d764770adada7a6bc9325bab",
+          "frames": 2083200,
+          "peak_dbfs": -8.291879892349243,
+          "prelimiter_peak_dbfs": -8.291879628203768,
+          "lufs": -27.399885812602744,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "6c7763a8996c34e2b1df6069dc2841e47ed4556f143eec9f1dfd8e0fc9f38bbd",
+          "frames": 456000,
+          "peak_dbfs": -6.354647278785706,
+          "prelimiter_peak_dbfs": -6.354647342938762,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -1.705686898390013e-07,
+      "hardest_peak_error_vs_prediction_db": 5.655753660960272e-07,
+      "passes": true
+    },
+    {
+      "shape": "dreadnought",
+      "wood": "maple",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 26,
+      "level_match_gain": 1.0534557104110718,
+      "final": {
+        "phrase": {
+          "audio_sha256": "0d96201c7ace82070a6e0170c5c21ab44aa92bb5b4e6701c3f28eb2fffcad573",
+          "frames": 2083200,
+          "peak_dbfs": -8.483182787895203,
+          "prelimiter_peak_dbfs": -8.4831828739226,
+          "lufs": -27.40117303511263,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "08d52bff882b749e39b08a8e10816546c0ca72fbb872ce876b498f699c59ac81",
+          "frames": 456000,
+          "peak_dbfs": -6.304394006729126,
+          "prelimiter_peak_dbfs": -6.304394162924338,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -8.167758949184645e-07,
+      "hardest_peak_error_vs_prediction_db": -8.812661400625643e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "spruce",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 27,
+      "level_match_gain": 1.0096848011016846,
+      "final": {
+        "phrase": {
+          "audio_sha256": "bd1804c733af2c71eba8542840646e0920e2bd85f6db84aed89777a0b06c2ced",
+          "frames": 2083200,
+          "peak_dbfs": -7.181227803230286,
+          "prelimiter_peak_dbfs": -7.181227597119049,
+          "lufs": -27.28634477397663,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "8004f87a81b1d4900ffc041eadf322f3f01e3992b4af79bc810a6d02c30df005",
+          "frames": 456000,
+          "peak_dbfs": -3.545713424682617,
+          "prelimiter_peak_dbfs": -3.54571347326992,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.1120084515425788e-06,
+      "hardest_peak_error_vs_prediction_db": 7.899157496993325e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "spruce",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 27,
+      "level_match_gain": 1.0751948356628418,
+      "final": {
+        "phrase": {
+          "audio_sha256": "550fb7493a112b59f00604c5e15f20154e47583c1aaafb2ae00915b5fabe0984",
+          "frames": 2083200,
+          "peak_dbfs": -8.685595989227295,
+          "prelimiter_peak_dbfs": -8.685596003456356,
+          "lufs": -27.28234134231784,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "a701fae4b2e44be59e476658928d87203eb3ab5652c1501f9d2f35936f858bca",
+          "frames": 456000,
+          "peak_dbfs": -4.093645215034485,
+          "prelimiter_peak_dbfs": -4.0936451675234835,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -1.7630050308525824e-07,
+      "hardest_peak_error_vs_prediction_db": -3.42002504538641e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "spruce",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 28,
+      "level_match_gain": 1.0721122026443481,
+      "final": {
+        "phrase": {
+          "audio_sha256": "cc12048b23613bf23d0969d77603856435cc634642b264b94aaa0ab145a96509",
+          "frames": 2083200,
+          "peak_dbfs": -8.752475380897522,
+          "prelimiter_peak_dbfs": -8.752475303937324,
+          "lufs": -27.51638658275493,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "19e6c37d536050647f128be721f4d2d305527fad527c9fa0a2d31d16ee4a93d1",
+          "frames": 456000,
+          "peak_dbfs": -2.617494761943817,
+          "prelimiter_peak_dbfs": -2.617494700352176,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 3.213455350703498e-07,
+      "hardest_peak_error_vs_prediction_db": -4.2411362422001275e-08,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "spruce",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 28,
+      "level_match_gain": 1.2877318859100342,
+      "final": {
+        "phrase": {
+          "audio_sha256": "90a3c8b956d08904bbf8205294500fb9d2500b8aa62e6725370b269a9f12771f",
+          "frames": 2083200,
+          "peak_dbfs": -8.237133622169495,
+          "prelimiter_peak_dbfs": -8.237133729936229,
+          "lufs": -27.51638691804524,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "2bde5ceb6382ba130534cd93ae06c04a187c3734446dcd60a3db5bf4533d1361",
+          "frames": 456000,
+          "peak_dbfs": -3.9440974593162537,
+          "prelimiter_peak_dbfs": -3.9440975994527063,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 9.878721876077634e-07,
+      "hardest_peak_error_vs_prediction_db": 1.1797957317760677e-06,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "spruce",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 29,
+      "level_match_gain": 1.0029692649841309,
+      "final": {
+        "phrase": {
+          "audio_sha256": "179801e198d7adefd201c7f07c91cf4c8282ce647456c01410e33e2a20cc9813",
+          "frames": 2083200,
+          "peak_dbfs": -7.852048277854919,
+          "prelimiter_peak_dbfs": -7.852048156085393,
+          "lufs": -27.232499730321795,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "5db5e924c0f7f5aded66da9cd18af038969b58d9d1552988ff1102adc79c4bc7",
+          "frames": 456000,
+          "peak_dbfs": -6.775797605514526,
+          "prelimiter_peak_dbfs": -6.775797705199855,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.1593005311283378e-07,
+      "hardest_peak_error_vs_prediction_db": -2.738387747669435e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "spruce",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 29,
+      "level_match_gain": 1.0809568166732788,
+      "final": {
+        "phrase": {
+          "audio_sha256": "bb711b46be4ba877c2a9a7fbd82dbe98b4ec75177b85d3fb99317beae9fc6ff6",
+          "frames": 2083200,
+          "peak_dbfs": -9.079076051712036,
+          "prelimiter_peak_dbfs": -9.079075895328412,
+          "lufs": -27.241784205793472,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "016458f50dcb4f15825545781ae6405b07d9445561350224b0222cfcd1282e30",
+          "frames": 456000,
+          "peak_dbfs": -6.40322208404541,
+          "prelimiter_peak_dbfs": -6.403222287291362,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -5.682312291810376e-07,
+      "hardest_peak_error_vs_prediction_db": -6.789118316419263e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 30,
+      "level_match_gain": 1.0146498680114746,
+      "final": {
+        "phrase": {
+          "audio_sha256": "e5542404b1fe54b2d7f10bece264140fc7ecb002cc9d4e3e783393ac546bf6ba",
+          "frames": 2083200,
+          "peak_dbfs": -8.580666184425354,
+          "prelimiter_peak_dbfs": -8.58066608611746,
+          "lufs": -27.241304735070614,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "3aab30b516ef80d768189dbf894c2b891b505282030385894cb390694f513dad",
+          "frames": 456000,
+          "peak_dbfs": -4.276645183563232,
+          "prelimiter_peak_dbfs": -4.276645165187495,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 9.6648950176359e-07,
+      "hardest_peak_error_vs_prediction_db": 9.567409797739401e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 30,
+      "level_match_gain": 1.0848430395126343,
+      "final": {
+        "phrase": {
+          "audio_sha256": "ea6945cf53f203763b636b914e377c50899d7834bef96f007ba2580a85860596",
+          "frames": 2083200,
+          "peak_dbfs": -9.806848764419556,
+          "prelimiter_peak_dbfs": -9.806848982098384,
+          "lufs": -27.34321120179643,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "596a639ab3eca384c4787dca3f919152570cc30f5e6b22ba559f242d58cb6d1e",
+          "frames": 456000,
+          "peak_dbfs": -3.3870813250541687,
+          "prelimiter_peak_dbfs": -3.387081319977834,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.4738203546471595e-07,
+      "hardest_peak_error_vs_prediction_db": -4.021369592877022e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 31,
+      "level_match_gain": 1.1052149534225464,
+      "final": {
+        "phrase": {
+          "audio_sha256": "46c733652f29cd7b3cc048da3161255f2be15c3c76a2f8794696c1320d00bc26",
+          "frames": 2083200,
+          "peak_dbfs": -9.488986730575562,
+          "prelimiter_peak_dbfs": -9.488986964333499,
+          "lufs": -27.702892236566957,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "c21448a1e4024a4e391c7698cb621ff8b423baf3ca217faa89aa06cd6843bd5d",
+          "frames": 456000,
+          "peak_dbfs": -2.32440248131752,
+          "prelimiter_peak_dbfs": -2.324402454944187,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 5.896303250096935e-07,
+      "hardest_peak_error_vs_prediction_db": 1.3645068275280892e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 31,
+      "level_match_gain": 1.3269935846328735,
+      "final": {
+        "phrase": {
+          "audio_sha256": "335deab3a36125336226e880fed7fba9911cbb0df6e4a82b863d732bcc944648",
+          "frames": 2083200,
+          "peak_dbfs": -9.107565879821777,
+          "prelimiter_peak_dbfs": -9.107565648942069,
+          "lufs": -27.51638655842157,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "eaca80e46a6b8ebd01007eaad1f6f35ba8be26793d15d448e290896069585979",
+          "frames": 456000,
+          "peak_dbfs": -2.425791174173355,
+          "prelimiter_peak_dbfs": -2.4257911024310257,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.0505051548648225e-06,
+      "hardest_peak_error_vs_prediction_db": 3.138804114399818e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 32,
+      "level_match_gain": 1.013865351676941,
+      "final": {
+        "phrase": {
+          "audio_sha256": "e446f17b511297245775aa8de6602b1463b83c6aeb2035d1c23febd7b00ce690",
+          "frames": 2083200,
+          "peak_dbfs": -9.00342047214508,
+          "prelimiter_peak_dbfs": -9.003420689116602,
+          "lufs": -27.15172520901538,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "1e1b70a4c296332fde51ddd4c8c65c07efc799698aab8e45eeab400366c8431b",
+          "frames": 456000,
+          "peak_dbfs": -6.011396646499634,
+          "prelimiter_peak_dbfs": -6.011396634094677,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -4.806641129562195e-07,
+      "hardest_peak_error_vs_prediction_db": -5.035052064172874e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 32,
+      "level_match_gain": 1.0764273405075073,
+      "final": {
+        "phrase": {
+          "audio_sha256": "e0a2098eb953321119df1525ad215e00cff9f4d781a6828c71d35901c2f39950",
+          "frames": 2083200,
+          "peak_dbfs": -8.798362612724304,
+          "prelimiter_peak_dbfs": -8.79836241641599,
+          "lufs": -27.264296858594534,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "e3c9fcd5bebab27578b4f7c4214ff2bbfab9b75b881f723ff90f18f3357eedac",
+          "frames": 456000,
+          "peak_dbfs": -5.952008366584778,
+          "prelimiter_peak_dbfs": -5.952008567706567,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -4.579706427421115e-07,
+      "hardest_peak_error_vs_prediction_db": -4.904720061205126e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "maple",
+      "picking": "finger",
+      "capture": "stereo_mic",
+      "cell": 33,
+      "level_match_gain": 0.9834663271903992,
+      "final": {
+        "phrase": {
+          "audio_sha256": "1e8145fb97cdb51bef04932e0c3f217660af141788e6f91a9e9d3a9191789a62",
+          "frames": 2083200,
+          "peak_dbfs": -7.865955233573914,
+          "prelimiter_peak_dbfs": -7.8659551747226075,
+          "lufs": -27.373363003351486,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "30f10f927dd416c7d5eb875afafaee13f16b77b0695335b524288b1d79781102",
+          "frames": 456000,
+          "peak_dbfs": -3.630210757255554,
+          "prelimiter_peak_dbfs": -3.630210644207592,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -1.3204067137451148e-06,
+      "hardest_peak_error_vs_prediction_db": -1.4513546759964413e-06,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "maple",
+      "picking": "finger",
+      "capture": "mono_mic",
+      "cell": 33,
+      "level_match_gain": 1.0560284852981567,
+      "final": {
+        "phrase": {
+          "audio_sha256": "2ecd58f27020337272d5dec8a9f69716b5ee8b60f4d6b13d43c42fff850e1ffe",
+          "frames": 2083200,
+          "peak_dbfs": -9.137629866600037,
+          "prelimiter_peak_dbfs": -9.137629983842944,
+          "lufs": -27.367268100021796,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "89f2361fbd1542c7efdb0411259499960df8a3443320f92df92ea04434fbb805",
+          "frames": 456000,
+          "peak_dbfs": -5.059386491775513,
+          "prelimiter_peak_dbfs": -5.05938640727231,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 2.919716202143263e-07,
+      "hardest_peak_error_vs_prediction_db": 1.4030304207324207e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "maple",
+      "picking": "pick",
+      "capture": "stereo_mic",
+      "cell": 34,
+      "level_match_gain": 1.080298900604248,
+      "final": {
+        "phrase": {
+          "audio_sha256": "b77c95463e05b8b95b944432e9f1f42a65d5803a8dba5bc50fc75307d2022bac",
+          "frames": 2083200,
+          "peak_dbfs": -9.441989064216614,
+          "prelimiter_peak_dbfs": -9.441988804451007,
+          "lufs": -27.51638747957626,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "7085295a2f0c7e8173165cc425b960425adee13547e4fc9ab463dca754bc341a",
+          "frames": 456000,
+          "peak_dbfs": -2.9307547211647034,
+          "prelimiter_peak_dbfs": -2.930754690600536,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -9.737488184669019e-07,
+      "hardest_peak_error_vs_prediction_db": -4.424279427261979e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "maple",
+      "picking": "pick",
+      "capture": "mono_mic",
+      "cell": 34,
+      "level_match_gain": 1.3258501291275024,
+      "final": {
+        "phrase": {
+          "audio_sha256": "9cb75f9f0a1c2257ad2956c7c5654cb1e9a46b16cde88356c3395a6efd032c85",
+          "frames": 2083200,
+          "peak_dbfs": -8.923697471618652,
+          "prelimiter_peak_dbfs": -8.92369725323476,
+          "lufs": -27.531659028395104,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "889f060b0e997a1c060da5bfde14ac8bd9382e8927f1f4048d10a694e8982a5b",
+          "frames": 456000,
+          "peak_dbfs": -3.7950319051742554,
+          "prelimiter_peak_dbfs": -3.7950319104748393,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -0.015272323875404226,
+      "hardest_peak_error_vs_prediction_db": -1.1393084631272643e-06,
+      "passes": false
+    },
+    {
+      "shape": "jumbo",
+      "wood": "maple",
+      "picking": "thumb",
+      "capture": "stereo_mic",
+      "cell": 35,
+      "level_match_gain": 0.9883130788803101,
+      "final": {
+        "phrase": {
+          "audio_sha256": "7a28e3f86a7c9c89bfdb668abf21bfc34d62c7727f9ad50a866f1bf51f442a49",
+          "frames": 2083200,
+          "peak_dbfs": -9.540542364120483,
+          "prelimiter_peak_dbfs": -9.540542611926032,
+          "lufs": -27.36091075150161,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "65b159448c06e7b1111c15f0bfb5ba1178ab84384cfabfeb65449cc1e5ed4888",
+          "frames": 456000,
+          "peak_dbfs": -6.257718801498413,
+          "prelimiter_peak_dbfs": -6.257718551169744,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": -3.55774755433913e-07,
+      "hardest_peak_error_vs_prediction_db": -5.893536600964921e-07,
+      "passes": true
+    },
+    {
+      "shape": "jumbo",
+      "wood": "maple",
+      "picking": "thumb",
+      "capture": "mono_mic",
+      "cell": 35,
+      "level_match_gain": 1.06462824344635,
+      "final": {
+        "phrase": {
+          "audio_sha256": "3116d1dbb36ba443e4398788ad2bd01776877fcf7418224046fd959a0ad92342",
+          "frames": 2083200,
+          "peak_dbfs": -9.60109829902649,
+          "prelimiter_peak_dbfs": -9.601098183977708,
+          "lufs": -27.363985606197968,
+          "limiter_active_samples": 0
+        },
+        "hardest": {
+          "audio_sha256": "46d9fe84ce499249a875d3a23333081a5add85c99c57c5aea7dc5fcf77ab7742",
+          "frames": 456000,
+          "peak_dbfs": -6.617252826690674,
+          "prelimiter_peak_dbfs": -6.6172526574384785,
+          "limiter_active_samples": 0
+        }
+      },
+      "phrase_error_vs_baseline_lu": 1.0634991411961892e-06,
+      "hardest_peak_error_vs_prediction_db": 1.0857021317534077e-06,
+      "passes": true
+    }
+  ],
+  "summary": {
+    "all_pass": false,
+    "maximum_absolute_phrase_error_lu": 0.015770413806194483,
+    "maximum_absolute_peak_prediction_error_db": 1.5381102009826009e-06,
+    "maximum_hardest_peak_dbfs": -2.1000328688383094,
+    "phrase_limiter_active_samples": 0,
+    "hardest_limiter_active_samples": 0
+  },
+  "jobs": 2,
+  "wall_seconds": 109.4975687499973,
+  "native_renders": 144
+}

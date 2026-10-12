@@ -92,7 +92,8 @@ Section sectionAt(int index, bool previous)
 Complex prototype(double frequency, double rate, bool previous, double airModeHz)
 {
     const double level = 4.12
-        + (previous ? 0.0 : acustra::detail::originalCaptureLevelAdjustmentDb);
+        + (previous ? 0.0 : acustra::detail::originalCaptureLevelAdjustmentDb
+              + (airModeHz > 0.0 ? acustra::detail::originalAirModeDipLevelDb : 0.0));
     Complex result = std::pow(10.0, level / 20.0);
     for (int index = 0; index < 7; ++index)
     {

@@ -1,0 +1,9 @@
+Test project /Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit
+    Start 60: Acustra.PluginProcessor
+1/2 Test #60: Acustra.PluginProcessor ..........   Passed   13.73 sec
+    Start 61: Acustra.PluginTempoRelease
+2/2 Test #61: Acustra.PluginTempoRelease .......   Passed    1.93 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Total Test time (real) =  15.66 sec

@@ -36,6 +36,13 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    static float playedFrequency(const AcustraEngine& engine)
+    {
+        for (const auto& voice : engine.voices_)
+            if (voice.played)
+                return voice.pitchGeometry.value.lossDesignFrequency;
+        return 0.0f;
+    }
     static int pluckDelay(const AcustraEngine& engine, int string)
     {
         return engine.voices_[static_cast<std::size_t>(string)].pluckDelay;
@@ -43,6 +50,10 @@ struct AcustraEngineTestAccess
     static int owners(const AcustraEngine& engine, int string)
     {
         return engine.voices_[static_cast<std::size_t>(string)].ownerCount;
+    }
+    static bool pedalHeld(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].pedalHeld;
     }
     static std::array<std::uint32_t, AcustraEngine::stringCount> attackStates(
         const AcustraEngine& engine)
@@ -628,10 +639,22 @@ void testPhysicalStrumPlanningKeepsSpecialNotes()
     expect(unreachable[0] == -1
                && std::equal(ordinary.begin(), ordinary.end(), unreachable.begin() + 1),
            "an unreachable key changed physical string timing");
+    const auto unreachableFlood = delays({ 32, 33, 34, 36, 40, 59, 64 });
+    expect(std::all_of(unreachableFlood.begin(), unreachableFlood.begin() + 4,
+                       [](int delay) { return delay == -1; })
+               && std::equal(ordinary.begin(), ordinary.end(), unreachableFlood.begin() + 4),
+           "more than six MIDI events bypassed a playable chord's physical string plan");
     const auto duplicate = delays({ 40, 59, 64, 59 });
     expect(std::equal(ordinary.begin(), ordinary.end(), duplicate.begin())
                && duplicate[1] == duplicate[3],
            "a duplicated key acquired a second physical string spacing");
+    const auto duplicateFlood = delays({ 40, 59, 64, 40, 64, 40, 64 });
+    expect(std::equal(ordinary.begin(), ordinary.end(), duplicateFlood.begin())
+               && duplicateFlood[0] == duplicateFlood[3]
+               && duplicateFlood[0] == duplicateFlood[5]
+               && duplicateFlood[2] == duplicateFlood[4]
+               && duplicateFlood[2] == duplicateFlood[6],
+           "duplicated MIDI owners bypassed their three-string chord plan");
     const auto harmonic = delays({ 60, 64, 67, 88 });
     expect(harmonic[0] == 0 && harmonic[1] > 0
                && harmonic[2] > harmonic[1] && harmonic[3] > harmonic[2],
@@ -742,8 +765,8 @@ void testHelpersSpellMidi()
            "setPitchBendRange did not set RPN 0");
 }
 
-// Master tune rides on every channel's bend, survives Reset All
-// Controllers, and zero changes nothing.
+// Master tune changes the reference pitch independently of playing wheels,
+// survives Reset All Controllers, and zero changes nothing.
 void testMasterTune()
 {
     const auto play = [](float cents, std::vector<Event> events)
@@ -762,7 +785,8 @@ void testMasterTune()
             performer->endBlock();
         }
         left.insert(left.end(), right.begin(), right.end());
-        return left;
+        return std::make_pair(left,
+            acustra::AcustraEngineTestAccess::playedFrequency(performer->engine()));
     };
     const std::vector<Event> note { message(0.0, 0x90, 45, 100) };
     const std::vector<Event> resetThenNote {
@@ -774,15 +798,25 @@ void testMasterTune()
     expect(play(0.0f, note) == play(0.0f, note) && play(0.0f, note) != play(100.0f, note),
            "master tune did not reach the strings");
     const auto tunedAfterPause = play(100.0f, { message(0.0002, 0x90, 45, 100) });
-    expect(tunedAfterPause == play(0.0f, semitoneUp),
-           "100 cents of master tune did not sound as a semitone of bend");
+    const float semitoneFrequency = 440.0f * std::exp2((46.0f - 69.0f) / 12.0f);
+    expect(std::abs(tunedAfterPause.second / semitoneFrequency - 1.0f) < 1.0e-6f
+               && std::abs(play(0.0f, semitoneUp).second / semitoneFrequency - 1.0f) < 1.0e-6f,
+           "master tune and wheel did not reach the same requested semitone");
     expect(play(100.0f, resetThenNote) == tunedAfterPause,
            "Reset All Controllers dropped the master tune");
 
-    // An MPE member note already hears the manager's bend, so the tune
-    // rides on the manager alone: 100 cents is a member note under a
-    // semitone of manager bend, not two (audit F20). Reset All Controllers
-    // on the member keeps that.
+    // Invalid host tuning must fall back to zero without poisoning the
+    // stored offset: later wheel/RPN messages still need to reach the string.
+    const auto bentWithoutTune = play(0.0f, semitoneUp);
+    for (const float invalid : { std::numeric_limits<float>::quiet_NaN(),
+                                 std::numeric_limits<float>::infinity(),
+                                 -std::numeric_limits<float>::infinity() })
+        expect(play(invalid, semitoneUp) == bentWithoutTune,
+               "invalid master tuning disabled subsequent pitch bend");
+
+    // A global reference shift reaches an MPE member once, independently of
+    // its manager's playing wheel (audit F20). Different mechanisms share
+    // a pitch target, not the same string length/tension or audio timbre.
     const std::vector<Event> zone { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 6),
                                     message(0.0, 0xb0, 6, 15) };
     auto memberNote = zone;
@@ -796,7 +830,8 @@ void testMasterTune()
     memberResetThenNote.push_back(message(0.0, 0xb1, 121, 0));
     memberResetThenNote.push_back(message(0.0002, 0x91, 45, 100));
     const auto tunedMember = play(100.0f, memberNote);
-    expect(tunedMember == play(0.0f, memberUnderManagerSemitone),
+    expect(std::abs(tunedMember.second / semitoneFrequency - 1.0f) < 1.0e-6f
+               && std::abs(play(0.0f, memberUnderManagerSemitone).second / semitoneFrequency - 1.0f) < 1.0e-6f,
            "master tune reached an MPE member note twice");
     expect(play(100.0f, memberResetThenNote) == tunedMember,
            "Reset All Controllers on a member put the master tune on it");
@@ -1143,34 +1178,6 @@ void testChannelModeMessagesAlsoReleaseNotes()
     }
 }
 
-// A non-finite master tune is ignored rather than cancelling every wheel.
-void testNonFiniteMasterTuneIsIgnored()
-{
-    auto performer = std::make_unique<Performer>();
-    performer->setParameters(acustra::EngineParameters {});
-    performer->prepare(48000.0, 64);
-    performer->setMasterTuneCents(50.0f);
-    performer->setMasterTuneCents(std::numeric_limits<float>::quiet_NaN());
-    std::vector<float> left(64), right(64);
-    performer->beginBlock(left.data(), right.data(), 64);
-    performer->noteOn(0, 1, 57, 100);
-    performer->endBlock();
-    expect(performer->engine().heldString(57, 1) >= 0, "the note did not sound");
-    // The 50 cents survive the NaN: the same note under 50 cents alone
-    // renders the same first block.
-    auto again = std::make_unique<Performer>();
-    again->setParameters(acustra::EngineParameters {});
-    again->prepare(48000.0, 64);
-    again->setMasterTuneCents(50.0f);
-    std::vector<float> l2(64), r2(64);
-    again->beginBlock(l2.data(), r2.data(), 64);
-    again->noteOn(0, 1, 57, 100);
-    again->endBlock();
-    expect(std::equal(left.begin(), left.end(), l2.begin())
-               && std::equal(right.begin(), right.end(), r2.begin()),
-           "a NaN master tune changed the tuning");
-}
-
 // The level at one frequency over [from, to) seconds, from both channels.
 double bandLevel(const Render& render, double sampleRate, double frequency,
                  double from, double to)
@@ -1371,6 +1378,37 @@ void testAllNotesOffLeavesReleasedStringsAlone()
     }
 }
 
+// A slow strum can have released MIDI owners before its last picks arrive.
+// All Notes Off must respect the pedal that held those original key-ups,
+// just as it does for strings whose pick has already arrived.
+void testAllNotesOffPreservesQueuedStrumPedalOwnership()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (const bool pedalAtKeyUp : { false, true })
+            for (const bool allNotesOff : { false, true })
+            {
+                auto performer = std::make_unique<Performer>();
+                performer->prepare(rate, 256);
+                std::array<float, 256> left {}, right {};
+                performer->beginBlock(left.data(), right.data(), 256);
+                if (pedalAtKeyUp)
+                    performer->controlChange(0, 1, 64, 127);
+                for (const int note : { 40, 45, 50, 55, 59, 64 })
+                    performer->noteOn(0, 1, note, 20);
+                for (const int note : { 40, 45, 50, 55, 59, 64 })
+                    performer->noteOff(48, 1, note);
+                if (!pedalAtKeyUp)
+                    performer->controlChange(96, 1, 64, 127);
+                if (allNotesOff)
+                    performer->controlChange(144, 1, 123, 0);
+                performer->endBlock();
+                for (int string = 0; string < acustra::AcustraEngine::stringCount; ++string)
+                    expect(Access::pedalHeld(performer->engine(), string) == pedalAtKeyUp,
+                           "All Notes Off changed a queued strum's key-up pedal ownership");
+            }
+}
+
 // Reset All Controllers lifts the pedal as CC64 0 does, so after a key-up on
 // its sample a pedal pressed again does not catch the note.
 void testResetAllControllersLiftsThePedalInOrder()
@@ -1405,9 +1443,8 @@ void testUnsoundableNotesMakeNoStrum()
            "an unreachable note turned two notes into a strum");
 }
 
-// The master tune rides on every channel's bend, which prepare and reset
-// zero in the engine: it must be put back, as the same tune sent again is
-// ignored.
+// Master tune is host reference state; prepare/reset clear playing wheels
+// while preserving the reference even if the host does not send it again.
 void testMasterTuneSurvivesPrepareAndReset()
 {
     enum class Then { Nothing, Prepare, Reset };
@@ -1537,11 +1574,11 @@ int main()
     testFullGatherQueueKeepsKeyUps();
     testGatheringKeepsANoteBehindItsChannelsKeyUps();
     testChannelModeMessagesAlsoReleaseNotes();
-    testNonFiniteMasterTuneIsIgnored();
     testShortStrumsSoundEveryString();
     testPlayerKeepsTheEnginesSampleRate();
     testResetSilences();
     testAllNotesOffLeavesReleasedStringsAlone();
+    testAllNotesOffPreservesQueuedStrumPedalOwnership();
     testResetAllControllersLiftsThePedalInOrder();
     testUnsoundableNotesMakeNoStrum();
     testMasterTuneSurvivesPrepareAndReset();

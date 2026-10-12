@@ -8,7 +8,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -28.65859593940106
+    "value": -27.46967163495962
    },
    {
     "construction": [
@@ -17,7 +17,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -28.456532305814594
+    "value": -27.512956807773573
    },
    {
     "construction": [
@@ -26,7 +26,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.37007543585752
+    "value": -27.454672298433035
    },
    {
     "construction": [
@@ -35,7 +35,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -27.507747034322872
+    "value": -27.753156325171624
    },
    {
     "construction": [
@@ -44,7 +44,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -27.240540241849388
+    "value": -27.75315694036771
    },
    {
     "construction": [
@@ -53,7 +53,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.238250134875408
+    "value": -28.653156417651534
    },
    {
     "construction": [
@@ -62,7 +62,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -28.731165791682077
+    "value": -27.49542238140023
    },
    {
     "construction": [
@@ -71,7 +71,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -28.534996295379745
+    "value": -27.521660264797543
    },
    {
     "construction": [
@@ -80,7 +80,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.367448427444835
+    "value": -27.516625672180975
    },
    {
     "construction": [
@@ -89,7 +89,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -28.817731932545968
+    "value": -27.489142468560786
    },
    {
     "construction": [
@@ -98,7 +98,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -28.621180783968594
+    "value": -27.470668366699883
    },
    {
     "construction": [
@@ -107,7 +107,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.355136256183236
+    "value": -27.44429875632437
    },
    {
     "construction": [
@@ -116,7 +116,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -27.731403471401382
+    "value": -27.753157165324993
    },
    {
     "construction": [
@@ -125,7 +125,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -27.243975482514788
+    "value": -27.753157426298433
    },
    {
     "construction": [
@@ -134,7 +134,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.24612266038731
+    "value": -28.65315702012079
    },
    {
     "construction": [
@@ -143,7 +143,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -28.904754392728076
+    "value": -27.500281159314405
    },
    {
     "construction": [
@@ -152,7 +152,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -28.74152830244824
+    "value": -27.487862727849752
    },
    {
     "construction": [
@@ -161,7 +161,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.349870695055362
+    "value": -27.46357956376804
    },
    {
     "construction": [
@@ -170,7 +170,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -28.857397017590994
+    "value": -27.679805528139994
    },
    {
     "construction": [
@@ -179,7 +179,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -28.715866678634814
+    "value": -27.670366485235785
    },
    {
     "construction": [
@@ -188,7 +188,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.351835231883694
+    "value": -27.4573080030086
    },
    {
     "construction": [
@@ -197,7 +197,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -27.780533058101838
+    "value": -27.75315643737895
    },
    {
     "construction": [
@@ -206,7 +206,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -27.361177014135883
+    "value": -27.753156316923132
    },
    {
     "construction": [
@@ -215,7 +215,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.24893028586772
+    "value": -28.653157152567786
    },
    {
     "construction": [
@@ -224,7 +224,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -29.009178531987946
+    "value": -27.741480281607398
    },
    {
     "construction": [
@@ -233,7 +233,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -28.75023826718578
+    "value": -27.758064327640135
    },
    {
     "construction": [
@@ -242,7 +242,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.355589412483205
+    "value": -27.469546689454408
    },
    {
     "construction": [
@@ -251,7 +251,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.440778583076877
+    "value": -27.7531564180544
    },
    {
     "construction": [
@@ -260,7 +260,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -27.366534319985636
+    "value": -27.753155864744304
    },
    {
     "construction": [
@@ -269,7 +269,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.349957922081185
+    "value": -27.753156074859128
    },
    {
     "construction": [
@@ -278,7 +278,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -26.984400018737247
+    "value": -27.753156082633122
    },
    {
     "construction": [
@@ -287,7 +287,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -26.77797611465935
+    "value": -27.753156895532285
    },
    {
     "construction": [
@@ -296,7 +296,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.251997399823964
+    "value": -28.65315714139535
    },
    {
     "construction": [
@@ -305,7 +305,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.381808232114263
+    "value": -27.753156200026172
    },
    {
     "construction": [
@@ -314,7 +314,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -27.329829922369715
+    "value": -27.753155600110215
    },
    {
     "construction": [
@@ -323,7 +323,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.35544780273639
+    "value": -27.753155518941536
    },
    {
     "construction": [
@@ -332,7 +332,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.527325055649502
+    "value": -27.753156581418438
    },
    {
     "construction": [
@@ -341,7 +341,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -27.475689401191655
+    "value": -27.753156713910776
    },
    {
     "construction": [
@@ -350,7 +350,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.34808767643143
+    "value": -27.75315741568608
    },
    {
     "construction": [
@@ -359,7 +359,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -26.985665957647875
+    "value": -27.753155994730566
    },
    {
     "construction": [
@@ -368,7 +368,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -26.80150464740937
+    "value": -27.75315665500375
    },
    {
     "construction": [
@@ -377,7 +377,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.266395168397782
+    "value": -28.653157527649505
    },
    {
     "construction": [
@@ -386,7 +386,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.53974382475187
+    "value": -27.753155673390797
    },
    {
     "construction": [
@@ -395,7 +395,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -27.578278208275165
+    "value": -27.753156855015348
    },
    {
     "construction": [
@@ -404,7 +404,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.354950230439524
+    "value": -27.75315557935406
    },
    {
     "construction": [
@@ -413,7 +413,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -28.39100322108459
+    "value": -27.75315655547534
    },
    {
     "construction": [
@@ -422,7 +422,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -28.320922725014686
+    "value": -27.753155858923336
    },
    {
     "construction": [
@@ -431,7 +431,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.344450409549324
+    "value": -27.75315638920344
    },
    {
     "construction": [
@@ -440,7 +440,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -27.431413653568196
+    "value": -27.753155604978275
    },
    {
     "construction": [
@@ -449,7 +449,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -27.107265168971015
+    "value": -27.753156092923433
    },
    {
     "construction": [
@@ -458,7 +458,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.262980496666554
+    "value": -28.653155991074165
    },
    {
     "construction": [
@@ -467,7 +467,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -28.443595293652248
+    "value": -27.75315745921029
    },
    {
     "construction": [
@@ -476,7 +476,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -28.3241135874249
+    "value": -27.753158008007116
    },
    {
     "construction": [
@@ -485,7 +485,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.335645397594963
+    "value": -27.753158087114983
    },
    {
     "construction": [
@@ -494,7 +494,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.351532669858717
+    "value": -27.753156406787422
    },
    {
     "construction": [
@@ -503,7 +503,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -26.390687554997545
+    "value": -26.906682016493917
    },
    {
     "construction": [
@@ -512,7 +512,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.354107067184184
+    "value": -27.753156466389093
    },
    {
     "construction": [
@@ -521,7 +521,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -26.927118391275428
+    "value": -27.753156892311527
    },
    {
     "construction": [
@@ -530,7 +530,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -26.804351345249124
+    "value": -27.75315683092745
    },
    {
     "construction": [
@@ -539,7 +539,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.241984267394546
+    "value": -28.653156509634375
    },
    {
     "construction": [
@@ -548,7 +548,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.353582554972775
+    "value": -27.75315676686787
    },
    {
     "construction": [
@@ -557,7 +557,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -27.223090627354615
+    "value": -27.753157090901137
    },
    {
     "construction": [
@@ -566,7 +566,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.355495034135867
+    "value": -27.75315690450534
    },
    {
     "construction": [
@@ -575,7 +575,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.291662465581563
+    "value": -27.753156023944364
    },
    {
     "construction": [
@@ -584,7 +584,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -27.24035355287348
+    "value": -27.75315746059552
    },
    {
     "construction": [
@@ -593,7 +593,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.359809090955572
+    "value": -27.753157629654567
    },
    {
     "construction": [
@@ -602,7 +602,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -26.932623960376326
+    "value": -27.753156713439754
    },
    {
     "construction": [
@@ -611,7 +611,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -26.793881850005306
+    "value": -27.753156674742836
    },
    {
     "construction": [
@@ -620,7 +620,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.256459765224736
+    "value": -28.653157282752968
    },
    {
     "construction": [
@@ -629,7 +629,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.27696168994011
+    "value": -27.75315461789111
    },
    {
     "construction": [
@@ -638,7 +638,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -27.21667439910542
+    "value": -27.75315562048355
    },
    {
     "construction": [
@@ -647,7 +647,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.361436534380932
+    "value": -27.75315625881147
    },
    {
     "construction": [
@@ -656,7 +656,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.656649384429567
+    "value": -27.75315657209106
    },
    {
     "construction": [
@@ -665,7 +665,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -27.497946513742757
+    "value": -27.753156020846596
    },
    {
     "construction": [
@@ -674,7 +674,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.361081020835464
+    "value": -27.753155224875364
    },
    {
     "construction": [
@@ -683,7 +683,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -27.07229966356889
+    "value": -27.75315701180668
    },
    {
     "construction": [
@@ -692,7 +692,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -26.831926406574983
+    "value": -27.75315635437371
    },
    {
     "construction": [
@@ -701,7 +701,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.24538012796191
+    "value": -28.653156824195186
    },
    {
     "construction": [
@@ -710,7 +710,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.636358550793613
+    "value": -27.753156607891892
    },
    {
     "construction": [
@@ -719,7 +719,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -27.51292452056885
+    "value": -27.753155968859726
    },
    {
     "construction": [
@@ -728,7 +728,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.362252800283766
+    "value": -27.75315732446814
    },
    {
     "construction": [
@@ -737,7 +737,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.463203180451444
+    "value": -27.753156258689028
    },
    {
     "construction": [
@@ -746,7 +746,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -27.408151535717813
+    "value": -27.753155867814197
    },
    {
     "construction": [
@@ -755,7 +755,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.357234728095175
+    "value": -27.75315696461051
    },
    {
     "construction": [
@@ -764,7 +764,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -26.931206508358063
+    "value": -27.753156244638934
    },
    {
     "construction": [
@@ -773,7 +773,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -26.832422462002768
+    "value": -27.753156585264072
    },
    {
     "construction": [
@@ -782,7 +782,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.23901984230768
+    "value": -28.653156860716162
    },
    {
     "construction": [
@@ -791,7 +791,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.39767550508691
+    "value": -27.753156438772624
    },
    {
     "construction": [
@@ -800,7 +800,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -27.424579608813882
+    "value": -27.75315592876825
    },
    {
     "construction": [
@@ -809,7 +809,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.334241566765407
+    "value": -27.75315675398155
    },
    {
     "construction": [
@@ -818,7 +818,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.385983068949795
+    "value": -27.75315663000386
    },
    {
     "construction": [
@@ -827,7 +827,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -27.411656513758242
+    "value": -27.753156285592357
    },
    {
     "construction": [
@@ -836,7 +836,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.34119236292378
+    "value": -27.753156046908995
    },
    {
     "construction": [
@@ -845,7 +845,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -27.179130827957835
+    "value": -27.753156063656004
    },
    {
     "construction": [
@@ -854,7 +854,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -26.728265466215333
+    "value": -27.75315468727037
    },
    {
     "construction": [
@@ -863,7 +863,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.24612747582688
+    "value": -28.65315622782197
    },
    {
     "construction": [
@@ -872,7 +872,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.395458092208845
+    "value": -27.75315698979873
    },
    {
     "construction": [
@@ -881,7 +881,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -27.32844057334834
+    "value": -27.753157075745538
    },
    {
     "construction": [
@@ -890,7 +890,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.353556869427386
+    "value": -27.753156660105518
    },
    {
     "construction": [
@@ -899,7 +899,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.31859663796923
+    "value": -27.75315627074109
    },
    {
     "construction": [
@@ -908,7 +908,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -27.326981228395947
+    "value": -27.753157739672353
    },
    {
     "construction": [
@@ -917,7 +917,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -27.379266574157285
+    "value": -27.75315719873173
    },
    {
     "construction": [
@@ -926,7 +926,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -26.90948160696834
+    "value": -27.753156945472647
    },
    {
     "construction": [
@@ -935,7 +935,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -26.797794580231063
+    "value": -27.753156407892032
    },
    {
     "construction": [
@@ -944,7 +944,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -28.25150526509767
+    "value": -28.653157118529432
    },
    {
     "construction": [
@@ -953,7 +953,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.34445192679939
+    "value": -27.75315596591094
    },
    {
     "construction": [
@@ -962,7 +962,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -27.29631431258078
+    "value": -27.753156953662764
    },
    {
     "construction": [
@@ -971,7 +971,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -27.36366166458122
+    "value": -27.753156982058663
    }
   ],
   "peaks": [
@@ -982,7 +982,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -3.1245544670377425
+    "value": -3.5639031063959643
    },
    {
     "construction": [
@@ -991,7 +991,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -3.407768396099719
+    "value": -4.021479829240155
    },
    {
     "construction": [
@@ -1000,7 +1000,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -0.9056181459672821
+    "value": -1.286082032660473
    },
    {
     "construction": [
@@ -1009,7 +1009,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -1.9628948222009281
+    "value": -4.366140839437078
    },
    {
     "construction": [
@@ -1018,7 +1018,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -1.9840400279726842
+    "value": -3.6443517161180723
    },
    {
     "construction": [
@@ -1027,7 +1027,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -0.9734072367101859
+    "value": -1.3699002328993748
    },
    {
     "construction": [
@@ -1036,7 +1036,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -2.62466703268818
+    "value": -2.516864724051548
    },
    {
     "construction": [
@@ -1045,7 +1045,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -4.383769696540626
+    "value": -3.5369184167805994
    },
    {
     "construction": [
@@ -1054,7 +1054,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -1.0617922373839044
+    "value": -1.5280782912244775
    },
    {
     "construction": [
@@ -1063,7 +1063,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -2.6455933735480306
+    "value": -2.3945485229297074
    },
    {
     "construction": [
@@ -1072,7 +1072,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -3.9889140509171535
+    "value": -3.9694624656534105
    },
    {
     "construction": [
@@ -1081,7 +1081,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -0.9186935544958379
+    "value": -1.3138236519202884
    },
    {
     "construction": [
@@ -1090,7 +1090,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -2.5506592168352222
+    "value": -3.5828034485164624
    },
    {
     "construction": [
@@ -1099,7 +1099,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -2.688386658234476
+    "value": -3.670777644180145
    },
    {
     "construction": [
@@ -1108,7 +1108,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -0.9718056534398088
+    "value": -1.333239382733519
    },
    {
     "construction": [
@@ -1117,7 +1117,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -3.400703850589117
+    "value": -3.000251088158822
    },
    {
     "construction": [
@@ -1126,7 +1126,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -4.089702150868216
+    "value": -3.992950944181838
    },
    {
     "construction": [
@@ -1135,7 +1135,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -1.1160192480702291
+    "value": -1.4762452395722248
    },
    {
     "construction": [
@@ -1144,7 +1144,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -3.006458549011652
+    "value": -3.0588433725643327
    },
    {
     "construction": [
@@ -1153,7 +1153,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -3.3985475547467585
+    "value": -4.701225155058329
    },
    {
     "construction": [
@@ -1162,7 +1162,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -0.8437763392113566
+    "value": -1.2608850526567619
    },
    {
     "construction": [
@@ -1171,7 +1171,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -2.1671325520321743
+    "value": -2.572685218109367
    },
    {
     "construction": [
@@ -1180,7 +1180,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -3.215980833820844
+    "value": -3.3508228900996966
    },
    {
     "construction": [
@@ -1189,7 +1189,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -1.0544800018968508
+    "value": -1.3300064460388459
    },
    {
     "construction": [
@@ -1198,7 +1198,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -2.026510995312841
+    "value": -2.7278417277501816
    },
    {
     "construction": [
@@ -1207,7 +1207,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -2.2508901758039164
+    "value": -3.5987006431812105
    },
    {
     "construction": [
@@ -1216,7 +1216,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -1.0398337067294607
+    "value": -1.401745119213372
    },
    {
     "construction": [
@@ -1225,7 +1225,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -2.549112168504295
+    "value": -2.9248562739196
    },
    {
     "construction": [
@@ -1234,7 +1234,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -2.4437830754850145
+    "value": -4.164526715952739
    },
    {
     "construction": [
@@ -1243,7 +1243,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -1.100120608662554
+    "value": -1.4738720424822032
    },
    {
     "construction": [
@@ -1252,7 +1252,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -1.7099109085798094
+    "value": -2.2761879509993315
    },
    {
     "construction": [
@@ -1261,7 +1261,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -2.553271354173481
+    "value": -2.754575364702359
    },
    {
     "construction": [
@@ -1270,7 +1270,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -1.2331231741560913
+    "value": -1.3898744307199125
    },
    {
     "construction": [
@@ -1279,7 +1279,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -3.003088338614062
+    "value": -3.1601646986727157
    },
    {
     "construction": [
@@ -1288,7 +1288,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -3.461220609668519
+    "value": -4.0438188680551015
    },
    {
     "construction": [
@@ -1297,7 +1297,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -1.2026082826641762
+    "value": -1.7284974601004666
    }
   ]
  },
@@ -1310,7 +1310,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -26.327332353749938
+    "value": -25.138408049308495
    },
    {
     "construction": [
@@ -1319,7 +1319,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -25.781833722571257
+    "value": -24.838258224530236
    },
    {
     "construction": [
@@ -1328,7 +1328,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -30.260321777123288
+    "value": -30.344918639698804
    },
    {
     "construction": [
@@ -1337,7 +1337,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -21.248613661969415
+    "value": -21.226663954269057
    },
    {
     "construction": [
@@ -1346,7 +1346,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -19.579883204385876
+    "value": -19.780348443664767
    },
    {
     "construction": [
@@ -1355,7 +1355,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.214876517718352
+    "value": -24.21319080616574
    },
    {
     "construction": [
@@ -1364,7 +1364,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -26.53513688029039
+    "value": -25.299393470008543
    },
    {
     "construction": [
@@ -1373,7 +1373,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -25.983228519078757
+    "value": -24.969892488496555
    },
    {
     "construction": [
@@ -1382,7 +1382,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -31.060377813293734
+    "value": -31.209555058029874
    },
    {
     "construction": [
@@ -1391,7 +1391,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -26.76071517665778
+    "value": -25.432125712672597
    },
    {
     "construction": [
@@ -1400,7 +1400,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -26.248895166395545
+    "value": -25.098382749126834
    },
    {
     "construction": [
@@ -1409,7 +1409,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -30.097664307835387
+    "value": -30.18682680797652
    },
    {
     "construction": [
@@ -1418,7 +1418,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -21.701818032152673
+    "value": -21.55412637345272
    },
    {
     "construction": [
@@ -1427,7 +1427,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -19.600569421642867
+    "value": -19.799176415173058
    },
    {
     "construction": [
@@ -1436,7 +1436,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.19092225882263
+    "value": -24.174779475623538
    },
    {
     "construction": [
@@ -1445,7 +1445,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.018523762498095
+    "value": -25.614050529084423
    },
    {
     "construction": [
@@ -1454,7 +1454,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -26.530377222950204
+    "value": -25.276711648351714
    },
    {
     "construction": [
@@ -1463,7 +1463,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -30.945248698475712
+    "value": -31.05895756718839
    },
    {
     "construction": [
@@ -1472,7 +1472,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -28.341179392766833
+    "value": -27.163587903315833
    },
    {
     "construction": [
@@ -1481,7 +1481,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -28.058244236203873
+    "value": -27.012744042804844
    },
    {
     "construction": [
@@ -1490,7 +1490,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -29.68065385464909
+    "value": -29.786126625773996
    },
    {
     "construction": [
@@ -1499,7 +1499,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -23.756517717538443
+    "value": -23.517206298170706
    },
    {
     "construction": [
@@ -1508,7 +1508,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -22.00992674050441
+    "value": -22.160486649558383
    },
    {
     "construction": [
@@ -1517,7 +1517,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.042121553646595
+    "value": -24.03627791350078
    },
    {
     "construction": [
@@ -1526,7 +1526,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -28.536348920640794
+    "value": -27.268650670260246
    },
    {
     "construction": [
@@ -1535,7 +1535,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -28.162946929114767
+    "value": -27.170772989569123
    },
    {
     "construction": [
@@ -1544,7 +1544,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -30.542897642178662
+    "value": -30.656854919149865
    },
    {
     "construction": [
@@ -1553,7 +1553,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.254009818269054
+    "value": -27.67428728923734
    },
    {
     "construction": [
@@ -1562,7 +1562,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -26.34475065585262
+    "value": -26.878266967787162
    },
    {
     "construction": [
@@ -1571,7 +1571,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -29.981291021993478
+    "value": -30.02107265802837
    },
    {
     "construction": [
@@ -1580,7 +1580,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -20.951471189554677
+    "value": -21.47715418194117
    },
    {
     "construction": [
@@ -1589,7 +1589,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -18.305751134542362
+    "value": -18.94554733938206
    },
    {
     "construction": [
@@ -1598,7 +1598,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.21723193818825
+    "value": -24.221501756062526
    },
    {
     "construction": [
@@ -1607,7 +1607,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.72622434161412
+    "value": -28.24190132711199
    },
    {
     "construction": [
@@ -1616,7 +1616,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -26.68064363531515
+    "value": -27.311076692324878
    },
    {
     "construction": [
@@ -1625,7 +1625,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -30.71942359265273
+    "value": -30.775926720763053
    },
    {
     "construction": [
@@ -1634,7 +1634,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -28.58098062775656
+    "value": -28.928450409865345
    },
    {
     "construction": [
@@ -1643,7 +1643,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -27.652414481352512
+    "value": -28.088736184084166
    },
    {
     "construction": [
@@ -1652,7 +1652,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -29.90845572633563
+    "value": -29.938260099622347
    },
    {
     "construction": [
@@ -1661,7 +1661,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -22.477077614130145
+    "value": -23.011024386394823
    },
    {
     "construction": [
@@ -1670,7 +1670,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -20.24848354679566
+    "value": -20.97904687202263
    },
    {
     "construction": [
@@ -1679,7 +1679,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.199846243111452
+    "value": -24.149357062762853
    },
    {
     "construction": [
@@ -1688,7 +1688,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -28.870728862055376
+    "value": -29.217007711185747
    },
    {
     "construction": [
@@ -1697,7 +1697,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -27.955614962514947
+    "value": -28.285512886424186
    },
    {
     "construction": [
@@ -1706,7 +1706,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -30.683210995351416
+    "value": -30.711869136535075
    },
    {
     "construction": [
@@ -1715,7 +1715,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -29.442717857144842
+    "value": -29.323112744627934
    },
    {
     "construction": [
@@ -1724,7 +1724,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -28.857360845762912
+    "value": -28.907526854152405
    },
    {
     "construction": [
@@ -1733,7 +1733,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -29.8233300252457
+    "value": -29.886404141631132
    },
    {
     "construction": [
@@ -1742,7 +1742,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -24.307549829287336
+    "value": -24.64209695189451
    },
    {
     "construction": [
@@ -1751,7 +1751,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -22.251532410201627
+    "value": -22.88773141099914
    },
    {
     "construction": [
@@ -1760,7 +1760,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.049018690497892
+    "value": -24.032197483412453
    },
    {
     "construction": [
@@ -1769,7 +1769,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -29.898937927848483
+    "value": -29.862218288847608
    },
    {
     "construction": [
@@ -1778,7 +1778,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -29.226290122311806
+    "value": -29.29229332589688
    },
    {
     "construction": [
@@ -1787,7 +1787,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -30.5670252380485
+    "value": -30.61225371503189
    },
    {
     "construction": [
@@ -1796,7 +1796,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.351532669858717
+    "value": -27.753156406787422
    },
    {
     "construction": [
@@ -1805,7 +1805,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -26.390687554997545
+    "value": -26.906682016493917
    },
    {
     "construction": [
@@ -1814,7 +1814,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -30.231369841559683
+    "value": -30.190875494261924
    },
    {
     "construction": [
@@ -1823,7 +1823,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -21.100544600439164
+    "value": -21.697706771350802
    },
    {
     "construction": [
@@ -1832,7 +1832,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -18.57536133347562
+    "value": -19.227363415828144
    },
    {
     "construction": [
@@ -1841,7 +1841,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.24001327989216
+    "value": -24.231360343906477
    },
    {
     "construction": [
@@ -1850,7 +1850,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.899265448412773
+    "value": -28.284989630436392
    },
    {
     "construction": [
@@ -1859,7 +1859,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -27.00987754336781
+    "value": -27.515498505388823
    },
    {
     "construction": [
@@ -1868,7 +1868,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -31.09716142852425
+    "value": -31.0709465317287
    },
    {
     "construction": [
@@ -1877,7 +1877,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -28.29699300872332
+    "value": -28.746263415681874
    },
    {
     "construction": [
@@ -1886,7 +1886,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -27.605405031757535
+    "value": -28.08117731022943
    },
    {
     "construction": [
@@ -1895,7 +1895,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -30.18337183062299
+    "value": -30.150817516808335
    },
    {
     "construction": [
@@ -1904,7 +1904,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -22.580754797947684
+    "value": -23.177936084768923
    },
    {
     "construction": [
@@ -1913,7 +1913,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -20.97346387066618
+    "value": -21.731164946724558
    },
    {
     "construction": [
@@ -1922,7 +1922,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.173925903891902
+    "value": -24.18341983319721
    },
    {
     "construction": [
@@ -1931,7 +1931,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -28.801842473487767
+    "value": -29.29375196216354
    },
    {
     "construction": [
@@ -1940,7 +1940,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -28.01363248561074
+    "value": -28.485970239650523
    },
    {
     "construction": [
@@ -1949,7 +1949,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -31.008959153568554
+    "value": -30.97575327572332
    },
    {
     "construction": [
@@ -1958,7 +1958,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -29.831133290076878
+    "value": -30.020980911648834
    },
    {
     "construction": [
@@ -1967,7 +1967,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -28.951124122487943
+    "value": -29.28405945061142
    },
    {
     "construction": [
@@ -1976,7 +1976,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -30.049611942044137
+    "value": -30.01348596909182
    },
    {
     "construction": [
@@ -1985,7 +1985,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -24.36084906629099
+    "value": -24.87985939397509
    },
    {
     "construction": [
@@ -1994,7 +1994,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -21.645778904188013
+    "value": -22.333627454750868
    },
    {
     "construction": [
@@ -2003,7 +2003,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.10538492484638
+    "value": -24.108407142686083
    },
    {
     "construction": [
@@ -2012,7 +2012,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -30.238537584030524
+    "value": -30.4448156984715
    },
    {
     "construction": [
@@ -2021,7 +2021,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -29.343370606585406
+    "value": -29.660882310205615
    },
    {
     "construction": [
@@ -2030,7 +2030,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -30.858707676678755
+    "value": -30.82419359130923
    },
    {
     "construction": [
@@ -2039,7 +2039,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -27.051517057707798
+    "value": -27.16125899069375
    },
    {
     "construction": [
@@ -2048,7 +2048,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -26.302896784581257
+    "value": -26.436496442013148
    },
    {
     "construction": [
@@ -2057,7 +2057,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -30.357905766652976
+    "value": -30.295859576513404
    },
    {
     "construction": [
@@ -2066,7 +2066,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -21.036724520402426
+    "value": -21.55152027125141
    },
    {
     "construction": [
@@ -2075,7 +2075,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -19.19302257069532
+    "value": -19.82448543734277
    },
    {
     "construction": [
@@ -2084,7 +2084,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.23692730822086
+    "value": -24.21916676743583
    },
    {
     "construction": [
@@ -2093,7 +2093,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -27.377443299424876
+    "value": -27.512014057397057
    },
    {
     "construction": [
@@ -2102,7 +2102,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -26.684814635392964
+    "value": -26.774824944242486
    },
    {
     "construction": [
@@ -2111,7 +2111,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -31.152125395786033
+    "value": -31.106835488229876
    },
    {
     "construction": [
@@ -2120,7 +2120,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -28.804937669241504
+    "value": -28.993197686641427
    },
    {
     "construction": [
@@ -2129,7 +2129,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -27.99410905450796
+    "value": -28.283371247430093
    },
    {
     "construction": [
@@ -2138,7 +2138,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -30.174314635222668
+    "value": -30.14181277113086
    },
    {
     "construction": [
@@ -2147,7 +2147,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -23.06316457551765
+    "value": -23.629527777372427
    },
    {
     "construction": [
@@ -2156,7 +2156,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -20.451449256252445
+    "value": -21.174070460954116
    },
    {
     "construction": [
@@ -2165,7 +2165,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -24.152672518433484
+    "value": -24.13600769435955
    },
    {
     "construction": [
@@ -2174,7 +2174,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -29.123707272075606
+    "value": -29.28605061028198
    },
    {
     "construction": [
@@ -2183,7 +2183,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -28.27666862581007
+    "value": -28.598479509342724
    },
    {
     "construction": [
@@ -2192,7 +2192,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -30.913652787930054
+    "value": -30.88605971146155
    },
    {
     "construction": [
@@ -2201,7 +2201,7 @@
     ],
     "picking": "finger",
     "capture": "stereo_mic",
-    "value": -29.824147737270494
+    "value": -30.18181752883347
    },
    {
     "construction": [
@@ -2210,7 +2210,7 @@
     ],
     "picking": "finger",
     "capture": "mono_mic",
-    "value": -29.15611257541325
+    "value": -29.541748930204744
    },
    {
     "construction": [
@@ -2219,7 +2219,7 @@
     ],
     "picking": "finger",
     "capture": "piezo",
-    "value": -29.977941022444334
+    "value": -29.894146281849387
    },
    {
     "construction": [
@@ -2228,7 +2228,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -24.421234357232017
+    "value": -25.04329715384254
    },
    {
     "construction": [
@@ -2237,7 +2237,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": -22.21654260185726
+    "value": -22.956803529460434
    },
    {
     "construction": [
@@ -2246,7 +2246,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": -23.974288980960054
+    "value": -23.964892037762134
    },
    {
     "construction": [
@@ -2255,7 +2255,7 @@
     ],
     "picking": "thumb",
     "capture": "stereo_mic",
-    "value": -30.155840478321974
+    "value": -30.496718998805513
    },
    {
     "construction": [
@@ -2264,7 +2264,7 @@
     ],
     "picking": "thumb",
     "capture": "mono_mic",
-    "value": -29.35980305988072
+    "value": -29.79355828254709
    },
    {
     "construction": [
@@ -2273,7 +2273,7 @@
     ],
     "picking": "thumb",
     "capture": "piezo",
-    "value": -30.75840147463507
+    "value": -30.681640403268858
    }
   ],
   "peaks": [
@@ -2284,7 +2284,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": 3.1345789053157125
+    "value": 2.9625892645066005
    },
    {
     "construction": [
@@ -2293,7 +2293,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 4.252888641363793
+    "value": 3.9513286674627874
    },
    {
     "construction": [
@@ -2302,7 +2302,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 3.117755471189774
+    "value": 3.153883578825318
    },
    {
     "construction": [
@@ -2311,7 +2311,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": 4.066690617047783
+    "value": 1.8328899524351936
    },
    {
     "construction": [
@@ -2320,7 +2320,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 5.6593660328992375
+    "value": 4.309629295007303
    },
    {
     "construction": [
@@ -2329,7 +2329,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 3.0817931648544916
+    "value": 3.108477311597878
    },
    {
     "construction": [
@@ -2338,7 +2338,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": 1.399348307875215
+    "value": 1.7190854151566977
    },
    {
     "construction": [
@@ -2347,7 +2347,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 0.9674805770908455
+    "value": 2.0557512505841506
    },
    {
     "construction": [
@@ -2356,7 +2356,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 3.1450164948372183
+    "value": 3.0888009478425307
    },
    {
     "construction": [
@@ -2365,7 +2365,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": 3.3873354556345383
+    "value": 3.8814533777622446
    },
    {
     "construction": [
@@ -2374,7 +2374,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 4.483310929199836
+    "value": 4.8381470904968165
    },
    {
     "construction": [
@@ -2383,7 +2383,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 3.1160719071398777
+    "value": 3.1178317334125367
    },
    {
     "construction": [
@@ -2392,7 +2392,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": 1.9579291266825072
+    "value": 1.159328159819279
    },
    {
     "construction": [
@@ -2401,7 +2401,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 3.8646344423792325
+    "value": 3.103332138800976
    },
    {
     "construction": [
@@ -2410,7 +2410,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 3.0947432718465215
+    "value": 3.170561082153134
    },
    {
     "construction": [
@@ -2419,7 +2419,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -0.27684002630825555
+    "value": 0.11080756492494359
    },
    {
     "construction": [
@@ -2428,7 +2428,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 0.7660306079011727
+    "value": 0.8724737377424532
    },
    {
     "construction": [
@@ -2437,7 +2437,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 3.097942558098432
+    "value": 3.1447132680894887
    },
    {
     "construction": [
@@ -2446,7 +2446,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": 2.8201152418246136
+    "value": 2.996606748396392
    },
    {
     "construction": [
@@ -2455,7 +2455,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 4.830442457026744
+    "value": 3.8245682600409756
    },
    {
     "construction": [
@@ -2464,7 +2464,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 3.158194648291027
+    "value": 3.160911113071136
    },
    {
     "construction": [
@@ -2473,7 +2473,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": 2.184736610396466
+    "value": 2.002535410561464
    },
    {
     "construction": [
@@ -2482,7 +2482,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 2.604437145518282
+    "value": 2.671168837918582
    },
    {
     "construction": [
@@ -2491,7 +2491,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 3.0280538594359836
+    "value": 3.1397310035169133
    },
    {
     "construction": [
@@ -2500,7 +2500,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": 0.6849396019650626
+    "value": 0.1454558900814127
    },
    {
     "construction": [
@@ -2509,7 +2509,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 2.935257326583055
+    "value": 1.820828256441633
    },
    {
     "construction": [
@@ -2518,7 +2518,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 3.100161496386068
+    "value": 3.1430045622957317
    },
    {
     "construction": [
@@ -2527,7 +2527,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": 3.3453698194513413
+    "value": 3.2767796994679257
    },
    {
     "construction": [
@@ -2536,7 +2536,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 5.195616815822434
+    "value": 3.764144431968564
    },
    {
     "construction": [
@@ -2545,7 +2545,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 2.9019719254242666
+    "value": 2.960118050798131
    },
    {
     "construction": [
@@ -2554,7 +2554,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": 2.4060553438603742
+    "value": 1.847440335284246
    },
    {
     "construction": [
@@ -2563,7 +2563,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 3.7235448557894055
+    "value": 3.8245088616138965
    },
    {
     "construction": [
@@ -2572,7 +2572,7 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 2.8603317832373065
+    "value": 3.1272741027425073
    },
    {
     "construction": [
@@ -2581,7 +2581,7 @@
     ],
     "picking": "pick",
     "capture": "stereo_mic",
-    "value": -0.5148410888777399
+    "value": -0.4503049070426104
    },
    {
     "construction": [
@@ -2590,7 +2590,7 @@
     ],
     "picking": "pick",
     "capture": "mono_mic",
-    "value": 1.120031368705284
+    "value": 0.7525340103764977
    },
    {
     "construction": [
@@ -2599,171 +2599,154 @@
     ],
     "picking": "pick",
     "capture": "piezo",
-    "value": 3.0746080014734414
+    "value": 2.9597676206668324
    }
   ]
  },
  "summary": {
-  "target_lufs": -27.351532669858717,
+  "target_lufs": -27.753156406787422,
   "captures": {
    "stereo_mic": {
-    "min_lu": -1.657645862129229,
-    "max_lu": 0.44205106289037843,
-    "median_lu": -0.06301190946883573,
-    "quietest": "parlor maple thumb",
-    "loudest": "jumbo maple pick",
-    "within_tolerance": 28,
+    "min_lu": -1.052422867076075e-06,
+    "max_lu": 0.2834847718278013,
+    "median_lu": 1.088310650487756e-07,
+    "quietest": "auditorium maple thumb",
+    "loudest": "parlor spruce finger",
+    "within_tolerance": 36,
     "cells": 36
    },
    "mono_mic": {
-    "min_lu": -1.3987055973270621,
-    "max_lu": 0.9608451148611721,
-    "median_lu": 0.022397421999688305,
+    "min_lu": -0.004907920852712522,
+    "max_lu": 0.8464743902935048,
+    "median_lu": 7.113900046817889e-08,
     "quietest": "parlor maple thumb",
     "loudest": "dreadnought spruce finger",
-    "within_tolerance": 30,
+    "within_tolerance": 36,
     "cells": 36
    },
    "piezo": {
-    "min_lu": -0.9148624985390654,
-    "max_lu": 0.017291103093310056,
-    "median_lu": -0.009726107749481017,
+    "min_lu": -0.9000011208620826,
+    "max_lu": 0.3088576504630538,
+    "median_lu": -5.665471647375853e-07,
     "quietest": "auditorium mahogany pick",
-    "loudest": "jumbo spruce thumb",
+    "loudest": "parlor mahogany finger",
     "within_tolerance": 36,
     "cells": 36
    }
   },
   "groups": {
    "finger": {
-    "min_lu": -1.5058643477322775,
-    "median_lu": -0.14373144819175643,
-    "max_lu": 0.059870204277153505
+    "min_lu": -2.2321643911027422e-07,
+    "median_lu": 6.802316576681733e-08,
+    "max_lu": 0.2834847718278013
    },
    "pick": {
-    "min_lu": -0.4290003882431215,
-    "median_lu": 0.3225498592503335,
-    "max_lu": 0.44205106289037843
+    "min_lu": -7.585375705332353e-07,
+    "median_lu": 2.5512134627092564e-08,
+    "max_lu": 8.018091470773925e-07
    },
    "thumb": {
-    "min_lu": -1.657645862129229,
-    "median_lu": -0.1171769950606727,
-    "max_lu": 0.07457097991860806
+    "min_lu": -1.052422867076075e-06,
+    "median_lu": 3.238188668319708e-07,
+    "max_lu": 0.2577340253871938
    }
   },
   "hardest": {
    "stereo_mic pick": {
-    "peak_dbfs": -1.7099109085798094,
+    "peak_dbfs": -2.2761879509993315,
     "construction": "jumbo mahogany pick",
-    "median_peak_dbfs": -2.587663124761701,
-    "headroom_to_knee_db": 0.7099109267678192,
+    "median_peak_dbfs": -2.962553681039211,
+    "headroom_to_knee_db": 1.2761879691873412,
     "over_knee": 0,
-    "under_1db": 10,
+    "under_1db": 12,
     "cells": 12,
-    "short_of_1db": [
-     {
-      "construction": "jumbo mahogany pick",
-      "peak_dbfs": -1.7099109085798094,
-      "lu": 0.17240184190088215
-     },
-     {
-      "construction": "parlor mahogany pick",
-      "peak_dbfs": -1.9628948222009281,
-      "lu": -0.3798708015426655
-     }
-    ]
+    "short_of_1db": []
    },
    "mono_mic pick": {
-    "peak_dbfs": -1.9840400279726842,
-    "construction": "parlor mahogany pick",
-    "median_peak_dbfs": -3.3072641942838015,
-    "headroom_to_knee_db": 0.984040046160694,
+    "peak_dbfs": -2.754575364702359,
+    "construction": "jumbo mahogany pick",
+    "median_peak_dbfs": -3.820120054916778,
+    "headroom_to_knee_db": 1.7545753828903687,
     "over_knee": 0,
-    "under_1db": 11,
+    "under_1db": 12,
     "cells": 12,
-    "short_of_1db": [
-     {
-      "construction": "parlor mahogany pick",
-      "peak_dbfs": -1.9840400279726842,
-      "lu": 0.10755718734392872
-     }
-    ]
+    "short_of_1db": []
    },
    "piezo pick": {
-    "peak_dbfs": -0.8437763392113566,
+    "peak_dbfs": -1.2608850526567619,
     "construction": "dreadnought spruce pick",
-    "median_peak_dbfs": -1.0471568543131557,
-    "headroom_to_knee_db": -0.1562236426006336,
-    "over_knee": 5,
+    "median_peak_dbfs": -1.3798873318096436,
+    "headroom_to_knee_db": 0.26088507084477164,
+    "over_knee": 0,
     "under_1db": 0,
     "cells": 12,
     "short_of_1db": [
      {
       "construction": "dreadnought spruce pick",
-      "peak_dbfs": -0.8437763392113566,
-      "lu": -0.8904515975358294
+      "peak_dbfs": -1.2608850526567619,
+      "lu": -0.9000001028469526
      },
      {
       "construction": "parlor spruce pick",
-      "peak_dbfs": -0.9056181459672821,
-      "lu": -0.8867174650166909
+      "peak_dbfs": -1.286082032660473,
+      "lu": -0.9000000108641117
      },
      {
       "construction": "auditorium spruce pick",
-      "peak_dbfs": -0.9186935544958379,
-      "lu": -0.9004647299652468
-     },
-     {
-      "construction": "auditorium mahogany pick",
-      "peak_dbfs": -0.9718056534398088,
-      "lu": -0.9148624985390654
-     },
-     {
-      "construction": "parlor mahogany pick",
-      "peak_dbfs": -0.9734072367101859,
-      "lu": -0.8945899905285941
-     },
-     {
-      "construction": "dreadnought maple pick",
-      "peak_dbfs": -1.0398337067294607,
-      "lu": -0.8938474581031919
+      "peak_dbfs": -1.3138236519202884,
+      "lu": -0.9000007346079286
      },
      {
       "construction": "dreadnought mahogany pick",
-      "peak_dbfs": -1.0544800018968508,
-      "lu": -0.9049270953660198
+      "peak_dbfs": -1.3300064460388459,
+      "lu": -0.9000008759655458
      },
      {
-      "construction": "parlor maple pick",
-      "peak_dbfs": -1.0617922373839044,
-      "lu": -0.8973976160090018
+      "construction": "auditorium mahogany pick",
+      "peak_dbfs": -1.333239382733519,
+      "lu": -0.9000011208620826
      },
      {
-      "construction": "jumbo spruce pick",
-      "peak_dbfs": -1.100120608662554,
-      "lu": -0.8874871724489637
-     },
-     {
-      "construction": "auditorium maple pick",
-      "peak_dbfs": -1.1160192480702291,
-      "lu": -0.9114478268078372
-     },
-     {
-      "construction": "jumbo maple pick",
-      "peak_dbfs": -1.2026082826641762,
-      "lu": -0.8999725952389532
+      "construction": "parlor mahogany pick",
+      "peak_dbfs": -1.3699002328993748,
+      "lu": -0.9000006133333684
      },
      {
       "construction": "jumbo mahogany pick",
-      "peak_dbfs": -1.2331231741560913,
-      "lu": -0.8945948059681648
+      "peak_dbfs": -1.3898744307199125,
+      "lu": -0.8999998210345481
+     },
+     {
+      "construction": "dreadnought maple pick",
+      "peak_dbfs": -1.401745119213372,
+      "lu": -0.9000004174077638
+     },
+     {
+      "construction": "jumbo spruce pick",
+      "peak_dbfs": -1.4738720424822032,
+      "lu": -0.9000004539287403
+     },
+     {
+      "construction": "auditorium maple pick",
+      "peak_dbfs": -1.4762452395722248,
+      "lu": -0.8999995842867428
+     },
+     {
+      "construction": "parlor maple pick",
+      "peak_dbfs": -1.5280782912244775,
+      "lu": -0.900000745780364
+     },
+     {
+      "construction": "jumbo maple pick",
+      "peak_dbfs": -1.7284974601004666,
+      "lu": -0.9000007117420097
      }
     ]
    }
   }
  },
  "validation": {
-  "status": "header_written_requires_native_rerender",
-  "header_written": true
+  "status": "passed",
+  "header_written": false
  }
 }

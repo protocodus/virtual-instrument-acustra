@@ -145,6 +145,13 @@ complex H1 force-to-pressure responses to the upper, treble-side and bass-side
 microphones, each 10 cm above the top plate. Their common time origin and
 relative phase are retained.
 
+`Source/DSP/StudioCaptureData.h` adapts four complex pressure modes from
+these fitted tables and `MeasuredJointBodyData.h` into constrained and free
+plate/hole source strengths. `Tools/GenerateStudioCapture.py` records the
+source hashes and finite-radiator geometry assumptions. Its projected neck
+and off-hole observations are derived models, not additional measurements
+from the archive. This adaptation retains the CC BY 4.0 attribution above.
+
 The archive's physical-measures table identifies g21's strings as Savarez
 Tomatito, with nylon/KF trebles and wound multifilament basses. Acustra adapts
 this flamenco measurement for its steel strings; it is not a measured

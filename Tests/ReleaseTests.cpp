@@ -21,6 +21,36 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    // Observe the vibrating string independently of microphone residues,
+    // body ringing and capture filters. The squared first difference of
+    // each travelling displacement wave removes its arbitrary DC offset;
+    // average one current round trip in each polarization. This is a wave
+    // slope norm, not a claim to include every store of mechanical energy.
+    static double activeStringWaveSlopeNorm(const AcustraEngine& engine)
+    {
+        double result = 0.0;
+        for (const auto& voice : engine.voices_)
+            if (voice.played)
+                for (const auto& loop : voice.loops)
+                {
+                    const int count = std::clamp(static_cast<int>(std::round(loop.currentDelay)),
+                        8, AcustraEngine::maximumDelaySamples - 3);
+                    double plane = 0.0;
+                    for (int age = 1; age <= count; ++age)
+                    {
+                        const int index = (loop.writeIndex - age
+                            + AcustraEngine::maximumDelaySamples) % AcustraEngine::maximumDelaySamples;
+                        const int previous = (index - 1 + AcustraEngine::maximumDelaySamples)
+                            % AcustraEngine::maximumDelaySamples;
+                        const double difference = double(loop.delay[static_cast<std::size_t>(index)])
+                            - double(loop.delay[static_cast<std::size_t>(previous)]);
+                        plane += difference * difference;
+                    }
+                    result += plane / count;
+                }
+        return result;
+    }
+
     struct ReleaseGeometry
     {
         float length, seconds, damping;
@@ -474,6 +504,53 @@ double releaseDrop(const acustra::EngineParameters& parameters,
                     / energy(releasedAudio, 48000.0, from, to));
 }
 
+// Use the same host-block-quantized gestures as renderEvents, but compare
+// the actual travelling strings. A microphone's body-mode weighting can
+// change released/held pressure without changing the hand's damping at all.
+double releaseStringWaveNorm(const acustra::EngineParameters& parameters,
+                             const std::vector<Timed>& events, double from, double to)
+{
+    constexpr double rate = 48000.0;
+    auto performer = std::make_unique<acustra::Performer>();
+    performer->setParameters(parameters);
+    performer->prepare(rate, blockSize);
+    performer->engine().setSympatheticStringsEnabled(false);
+    const auto frames = static_cast<std::size_t>(to * rate);
+    std::array<float, blockSize> left {}, right {};
+    std::size_t next = 0;
+    double result = 0.0;
+    for (std::size_t position = 0; position < frames; position += blockSize)
+    {
+        const int count = static_cast<int>(std::min<std::size_t>(blockSize, frames - position));
+        performer->beginBlock(left.data(), right.data(), count);
+        while (next < events.size()
+               && static_cast<std::size_t>(events[next].seconds * rate)
+                      < position + static_cast<std::size_t>(count))
+        {
+            performer->handleMidi(0, events[next].bytes.data(), 3);
+            ++next;
+        }
+        performer->endBlock();
+        // Full, equally spaced host blocks only: held/released renders
+        // sample exactly the same times and no partial block gets extra weight.
+        if (count == blockSize && position / rate >= from)
+            result += acustra::AcustraEngineTestAccess::activeStringWaveSlopeNorm(
+                performer->engine());
+    }
+    return result;
+}
+
+double releaseStringDrop(const acustra::EngineParameters& parameters,
+                         const std::vector<Timed>& held, const std::vector<Timed>& released,
+                         double from, double to)
+{
+    const double heldNorm = releaseStringWaveNorm(parameters, held, from, to);
+    const double releasedNorm = releaseStringWaveNorm(parameters, released, from, to);
+    expect(heldNorm > 0.0 && releasedNorm > 0.0,
+           "release string observation must contain a nonzero vibrating wave");
+    return decibels(heldNorm / releasedNorm);
+}
+
 // A released natural harmonic is damped by the hand as its open string is:
 // the loop runs at the open string's period, so the hand's loss per trip
 // round it must be the open string's, not the sounding harmonic's n times
@@ -509,8 +586,8 @@ void testReleasedHarmonicsAreDampedLikeTheirOpenString()
 // trip as if unslid, it rang four times as long. A slide before the hand
 // lands can also change its stopping regime; loss-rate-normalize that
 // comparison rather than requiring an open catch to decay like a fret.
-// Measured 50 to 100 ms after damping starts, while the released string
-// still dominates the sound.
+// Observe the travelling strings 50 to 100 ms after damping starts. Body
+// radiation can outlive the string and depends on microphone placement.
 void testSlidNotesAreDampedAtTheirSlidPitch()
 {
     using Access = acustra::AcustraEngineTestAccess;
@@ -578,23 +655,20 @@ void testSlidNotesAreDampedAtTheirSlidPitch()
         const Timed down { 0.3, { 0xe0, 0, 0 } };
         const double release = dampingStart(off.seconds, 48000.0, true);
         const Timed downAfter { release + 0.02, { 0xe0, 0, 0 } };
-        const double plain = releaseDrop(parameters, with({ on }), with({ on, off }),
+        const double plain = releaseStringDrop(parameters, with({ on }), with({ on, off }),
                                          release + 0.05, release + 0.1);
-        const double slid = releaseDrop(parameters, with({ on, down }),
+        const double slid = releaseStringDrop(parameters, with({ on, down }),
                                         with({ on, down, off }), release + 0.05, release + 0.1);
-        const double slidAfter = releaseDrop(parameters, with({ on, downAfter }),
+        const double slidAfter = releaseStringDrop(parameters, with({ on, downAfter }),
                                              with({ on, off, downAfter }),
                                              release + 0.05, release + 0.1);
-        std::cout << "Acustra A4 released/held 50-100 ms after damping: unslid -" << plain
+        std::cout << "Acustra A4 string wave slope norm released/held 50-100 ms after damping: unslid -" << plain
                   << " dB, slid two octaves down -" << slid << " dB, slid down after damping -"
                   << slidAfter << " dB\n";
-        // Damped per trip as if unslid, the slide drops a quarter to a half
-        // as far as the unslid note in this window (6.8 and 12.0 dB against
-        // 20.0); damped at its slid
-        // pitch, 0.7-1.1 of it. The rest is the body: at A2 the default
-        // construction's low modes ring on under the damped string, and how
-        // long depends on where Shape and Wood put them, so the gate is a
-        // fraction of the unslid drop rather than a fixed number of dB.
+        // Keep the original .65 relative damping guard, now on the string
+        // itself. Evaluating the hand's loss at the unslid pitch gives too
+        // little attenuation per trip after the period becomes four times
+        // longer; a microphone cannot reliably isolate that loss.
         // This A4 lives on the high E: the -24-semitone pre-slide crosses
         // the nut and now correctly receives the slower open-hand catch.
         // Its independently specified rate scales the same .65 guard.

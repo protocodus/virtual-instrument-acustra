@@ -2,10 +2,14 @@
 
 The user asked for a smooth, natural studio sound without unwanted resonances
 or boominess. Nobody listened during this pass, so it records what the
-instrument measures, which of its levers move those measurements, and what
-is left for a listener to choose. No sound change ships from it. The engine
-is `acdb856` (the Sustain switch and the panel knobs change no sample), the
-renderer `AcustraPerformanceRenderer` from a Release GCC 13.3 build, 48 kHz.
+instrument measures, which of its levers move those measurements, what was
+applied from that (one bounded capture refinement, under "What was
+applied") and what is left for a listener to choose. The survey below is
+on engine `acdb856` (the Sustain switch and the panel knobs change no
+sample); the applied change is measured against the merged main
+(`dbd939b`, whose balanced observation blend moved the same numbers
+first). The renderer is `AcustraPerformanceRenderer` from a Release GCC
+13.3 build, 48 kHz.
 
 ## The sweep
 
@@ -103,60 +107,78 @@ the wrong partials.
 
 ## What was applied
 
-Two bounded, authored changes, each in a direction the listener had already
-chosen and each sized by the sweep (Docs/decisions.md, 2026-10-11):
+One bounded, authored change, in the direction the user confirmed as less
+boom on 2026-10-09 and sized by the sweep (Docs/decisions.md, 2026-10-11):
+a dip at the construction's air mode on the summed microphone pressure, a
+peak section of -2.5 dB, Q 2.5 (MicrophoneBalanceData.h) centred on g21's
+lowest mode as each Shape and Wood places it, so it follows the
+construction where the fixed 125 Hz refinement could not. The piezo never
+passes through it. It sits after the balanced microphone observation blend
+the user approved the same day (the parallel work merged with this
+branch), which had not removed the sweep's air-mode excess: over the blend
+the Dreadnought's G2 still stood +3.1 dB and the Auditorium's G#2 +5.5.
 
-- **A dip at the construction's air mode** on the summed microphone pressure:
-  a peak section of -4 dB, Q 2.5 (MicrophoneBalanceData.h), centred on the
-  lowest configured g21 pole, so it follows Shape where the fixed 125 Hz
-  refinement of 2026-10-09 (which the user confirmed as less boom) could
-  not. The piezo never passes through it.
-- **Damped mid plate modes**: the measured modes between 350 and 900 Hz
-  keep 0.7 of the flamenca's Q, shared with their bridge twins
-  (`radiationPole`), the direction of the 2026-09-27 blind verdict.
+Every construction whose air mode sits under 117 Hz takes it: the Jumbo's
+at 84-91 Hz, the Dreadnought's at 94-101 and the Auditorium's at 106-113
+as Spruce, Mahogany and Maple place it. The Parlor's, at 121-128 Hz, lifts
+A#2/B2 as much (+3.5/+5.3 dB) but keeps it: its margin on the cross-phrase
+construction loudness fixture (Parlor Spruce Finger at 2.87 of the 3 LU
+allowed) has no room for the 0.2 LU more the dip costs that fixture's
+phrase than the calibration phrase, and a tolerance is not loosened to fit
+a refinement. A -4 dB dip with a level restore sized on the calibration
+phrase was tried first and put the Parlor past that tolerance; the -2.5 dB
+dip takes no restore.
 
-The sweep, same tool and settings, before and after (neighbourhood
-deviation in dB):
+A second candidate, 0.7 of the flamenca's Q on the plate modes between 350
+and 900 Hz, measured well in isolation (A#4 +9.8 to +8.0 on the previous
+engine) but was dropped at the merge: the user's model and parameter audit
+of the same day pins the radiation to each mode's measured damping (432
+GuitarModels expectations), and the approved blend states that no physical
+damping change is part of it. The mid peak and hole therefore stay as
+measured.
 
-| Render | RMS deviation | Deepest hole | Loudest peak | F#2 | G2 | G#2 | A2 | E2 | A#4 | C#5 |
+The sweep, same tool and settings, the merged main before and after the dip
+(neighbourhood deviation in dB; the deepest hole and loudest peak do not
+move):
+
+| Render | RMS deviation | Deepest hole | Loudest peak | F#2 | G2 | G#2 | A2 | A#2 | B2 | E2 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Dreadnought, stereo mic | 3.64 → 3.10 | -10.4 → -9.4 (C#5) | +9.8 → +8.0 (A#4) | +4.2 → +3.2 | +4.0 → +2.4 | +1.3 → +1.1 | -2.5 → -2.2 | -5.4 → -3.5 | +9.8 → +8.0 | -10.4 → -9.4 |
-| Auditorium, stereo mic | 3.64 → 3.12 | -9.8 → -8.8 (D#5) | +9.8 → +8.2 (C5) | -1.8 → -1.0 | +1.8 → +0.9 | +5.7 → +4.3 | +3.3 → +2.1 | -4.5 → -3.4 | -1.5 → -1.0 | +2.4 → +2.7 |
-| Jumbo, stereo mic | 3.54 → 3.16 | -10.4 → -10.0 (B4) | +9.5 → +7.9 (G#4) | +0.8 → +0.8 | -0.5 → -0.2 | -1.2 → -1.2 | -1.0 → -0.9 | +2.2 → +1.6 | -3.5 → -3.0 | -0.4 → -0.3 |
-| Parlor, stereo mic | 2.49 → 2.16 | -6.1 → -5.5 (E5) | +5.7 → +5.0 (D#5) | -1.1 → -0.6 | -2.4 → -1.6 | -1.7 → -1.4 | -0.5 → -0.5 | -1.0 → -1.1 | +3.8 → +3.4 | +0.2 → +0.3 |
-| Dreadnought, mono mic | 3.50 → 3.08 | -8.3 → -8.1 (C#5) | +7.3 → +6.4 (A#4) | +3.4 → +2.1 | +4.1 → +2.5 | +1.9 → +1.7 | -2.3 → -2.0 | -5.4 → -3.0 | +7.3 → +6.4 | -8.3 → -8.1 |
+| Dreadnought, stereo mic | 3.71 → 3.63 | -11.5 (C#5) | +9.9 (A#4) | +4.3 → +3.7 | +3.1 → +2.0 | +1.2 → +1.0 | -2.2 → -2.0 | -1.9 → -1.6 | -1.5 → -1.3 | -4.3 → -3.1 |
+| Auditorium, stereo mic | 3.65 → 3.57 | -11.1 (D#5) | +10.0 (C5) | -1.8 → -1.2 | +0.3 → -0.2 | +5.5 → +4.6 | +2.7 → +1.9 | +0.2 → +0.3 | -1.9 → -1.9 | -3.2 → -2.6 |
+| Auditorium Maple, stereo mic | 4.19 → 4.13 | -10.8 (D#5) | +11.7 (C5) | -2.7 → -1.9 | -3.1 → -2.8 | +0.7 → +0.6 | +3.8 → +2.8 | +5.1 → +4.3 | +0.2 → -0.2 | -0.5 → -0.4 |
+| Jumbo, stereo mic | 3.48 → 3.45 | -9.3 (B4) | +9.9 (G#4) | +0.9 → +0.9 | -0.6 → -0.4 | -1.2 → -1.2 | -1.0 → -0.7 | -2.3 → -2.2 | -1.7 → -1.6 | +2.6 → +2.3 |
+| Parlor, stereo mic | 2.64 | -7.8 (E5) | +5.3 (B2) | -0.3 | -2.0 | -2.7 | -1.1 | +3.5 | +5.3 | -1.0 |
+| Dreadnought, mono mic | 3.48 → 3.38 | -8.4 (C#5) | +9.0 (A#4) | +3.4 → +2.6 | +3.3 → +2.2 | +1.7 → +1.5 | -2.1 → -1.9 | -1.8 → -1.5 | -0.9 → -0.8 | -4.1 → -2.7 |
 
-The Parlor's air-mode notes, A#2 and B2, fall from +4.2/+5.5 to +3.1/+4.0.
-In absolute sustained level the air-mode notes lose 2.5-3.7 dB (the
-Dreadnought's F#2 -3.3, G2 -3.7; the Auditorium's G#2 -3.7, A2 -3.6) and
-E2 0.8-1.2 dB, except on the Jumbo, whose air mode sits at E2/F2 (-3.0/-3.4),
-where E2 was 2.2 dB over its neighbours and is now 1.6. The mean sustained
-level over the sweep falls 0.7-1.0 dB per Shape before re-levelling.
+In absolute sustained level the air-mode notes lose 1.7-2.4 dB (the
+Dreadnought's F#2 -1.8, G2 -2.3; the Auditorium's G#2 -2.1, A2 -2.2, its
+Maple box's A2/A#2 -2.4; the Jumbo's E2/F2 -1.7/-2.0, its air mode sitting
+there) and E2 0.4-0.6 dB on the Dreadnought and Auditorium. The air-mode
+notes still sit 2-4.6 dB over their neighbours, as the real flat-top's A#2
+does ("Against the real flat-top").
 
 Levelling: the default cell's stereo phrase (the calibration phrase set)
-measured -27.3515 LUFS before and -28.1285 after, so the capture level
-scalar takes 0.7770 dB back (-27.3515 again); its mono microphone moved
--0.60 LU and its piezo +0.01 LU before the construction re-levelling, which
-`Tools/CalibrateConstructionLoudness.py --write-header` then applied to
-every cell and `--check` verified; its measurements, before and after the
-gains, are in [construction-loudness-2026-10-11.json](construction-loudness-2026-10-11.json).
-Before the re-levelling the cells had moved by up to 1.7 LU on the
-microphones (28 of 36 stereo cells still within the ±1 LU tolerance) and
-by at most 0.9 LU on the piezo; the hardest case's peak stays under the
-limiter's knee on every stereo and mono cell.
-
-What remains: the Shape-dependent mid peak and hole are smaller, not gone
-(A#4 +8.0, C#5 -9.4 on the Dreadnought); they are the single-point
-near-field microphone response documented in Known gaps, and a bridge
-microphone fitted as a blend of the archive's measured positions remains
-the way to close them. The air-mode notes still sit 2-4 dB over their
-neighbours, as the real flat-top's A#2 does.
+measured -27.5164 LUFS on main and -27.7532 with the dip, 0.24 LU inside
+the construction loudness contract, and no scalar restores it. The dipped
+constructions were re-levelled to the default by
+`Tools/CalibrateConstructionLoudness.py --write-header --shapes auditorium
+dreadnought jumbo` (the new `--shapes` keeps the other Shapes' gains), the
+Parlor's Finger and Thumb cells keep main's gains (0.2-0.3 LU over the
+lowered target) and its Pick cells follow the headroom rule
+(`--shapes parlor --pickings pick`); `--check` verifies every cell and
+capture: the stereo microphone within -0.00/+0.28 LU of the target on all
+36 cells, the mono microphone within -0.00/+0.85 and the piezo within
+-0.90/+0.31 (the loudest the Parlor's un-dipped Finger and Thumb cells),
+the hardest Pick case 2.3 dB under the limiter's knee on the stereo
+microphones and 1.3 dB on the piezo. Its measurements, as rendered with
+the final gains and without them, are in
+[construction-loudness-2026-10-11.json](construction-loudness-2026-10-11.json).
 
 ## The other techniques, and the third microphone
 
 With the change, the Dreadnought's sweep on the stereo microphones reads
-2.16 dB RMS with the Pick (worst D#5 +4.8, deepest hole C5 -4.7) and 3.32
-dB with the Thumb (A#4 +8.7, C#5 -9.8): the Pick's brighter, less
+2.19 dB RMS with the Pick (worst D#5 +4.8, deepest hole C5 -4.2) and
+3.85 dB with the Thumb (A#4 +10.7, C#5 -11.9): the Pick's brighter, less
 fundamental-heavy notes sit closer to a real guitar's 2 dB already.
 
 The measured bank holds a third position, the bass-bridge microphone,
@@ -170,24 +192,28 @@ measured further from the top would remove them.
 
 ## Audio quality probes
 
-The strummed phrase at Room 0.5, velocity 96 and 127, rendered at 44.1,
-48 and 96 kHz: no DC (under -122 dBFS), sub-20 Hz content at -66 to -72
-dBFS, the tail two seconds after the last release at -104 to -108 dBFS,
-no sample within 1 dB of full scale (peaks -7.6 to -13.1 dBFS, so the
-safety limiter is idle), and the 10-16 kHz share within 2.0 dB and the
-16-20 kHz share within 2.7 dB across the three rates.
+The strummed phrase at Room 0.5, velocity 96 and 127, rendered with the
+shipped engine at 44.1, 48 and 96 kHz (mono sum, 65536-point Welch
+spectrum): no DC (the mean under -129 dBFS), the share of the power under
+20 Hz at -47.5 to -48.3 dB, the tail two seconds after the last release at
+-107 to -112 dBFS, no sample within 1 dB of full scale (peaks -8.7 to
+-14.1 dBFS, so the safety limiter is idle), and across the three rates the
+10-16 kHz share within 2.6 dB and the 16-20 kHz share within 4.2 dB (the
+higher rates' lower shares; 96 kHz adds nothing above 20 kHz that the
+lower rates fold back).
 
 ## Against the recordings
 
 The project's descriptor loss (`Tools/FitPhysicalModel.py --compare`, the
 matched observation) on `AcustraPhysicalFitRenderer`'s embedded-bank sets,
-previous engine against this one, same calibration and targets:
+the merged main (`dbd939b`) against this engine, same calibration and
+targets:
 
 | Set | Rows | Before | After | Change | Terms that moved |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Flat-top, Finger | 8 | 7.1850 | 7.2515 | +0.93% | attack +0.23, harmonics +0.08, decay -0.02 |
-| Archtop training, Pick | 54 | 8.9071 | 8.8500 | -0.64% | attack -0.19, body -0.08, harmonics -0.08, dynamics +0.11 |
-| Archtop validation, Pick | 14 | 7.3757 | 7.2977 | -1.06% | attack -0.19, body -0.14, decay -0.06 |
+| Flat-top, Finger | 8 | 7.1444 | 7.1844 | +0.56% | attack +0.10, harmonics +0.05, body +0.04 |
+| Archtop training, Pick | 54 | 8.8686 | 8.8099 | -0.66% | attack -0.16, body -0.16, harmonics -0.04, dynamics +0.05 |
+| Archtop validation, Pick | 14 | 7.4836 | 7.4145 | -0.92% | attack -0.17, body -0.17, harmonics -0.06 |
 
 Two of the three sets read closer to their recordings, the finger-plucked
 flat-top slightly further on its attack term. All three moves are within
@@ -198,7 +224,7 @@ loss establishes closer measured features, not a listener's preference.
 ## Hearing it
 
 Nobody has listened. To hear the change blind, build the previous engine
-(`d0da5a3`) and this one, render the sweep and the strummed phrase above
+(main at `dbd939b`) and this one, render the sweep and the strummed phrase above
 with each `AcustraPerformanceRenderer` (the tool for the sweep; the phrase
 is `Tools/MeasureNoteEvenness.py`'s events format with the chords listed
 in the room section), label them A and B without telling the listener

@@ -54,7 +54,7 @@ def main():
               "Plain high E: unchanged control", "Ordinary notes: unchanged control",
               "Release Noise zero: unchanged control", "MPE member bend: unchanged control"]
     descriptions = [
-        "A held seventh-fret A string slides gently up, back, to the nut and away. Release Noise 70%, the existing plug-in/Rack default. The brush is intentionally faint.",
+        "A held seventh-fret A string slides gently up, back, to the nut and away. Release Noise is explicitly 70% for this gesture comparison (the former plug-in/Rack default). The brush is intentionally faint.",
         "Shorter slides on a held wound G string. Speed changes the texture continuously; no per-note noise layers are selected.",
         "The slow trajectory on plain high E. No new wound-string roughness is added.",
         "Normal stationary fretted notes. The existing release contacts are preserved; no extra random fret noise is added.",

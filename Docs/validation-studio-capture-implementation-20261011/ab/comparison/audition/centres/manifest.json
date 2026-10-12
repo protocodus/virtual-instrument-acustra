@@ -1,0 +1,554 @@
+{
+  "policy": "Before0\u20134s; silence0.35s; after4.35\u20138.35s. Same per-capture global gains as full sweep auditions; no new gain normalization. Finger96, zero cents.",
+  "comparison_sha256": "944dbfb0df091035f54f734ef66b3ce1a88b04f39c7927059cba1b2e6cbea61c",
+  "script_sha256": "5174d3bcaa12b62ace1aba2db760ff8de08a39b1bb7256e465169f910b1f4079",
+  "format": "48kHz stereo IEEE float32 WAV",
+  "tail_fade_seconds": 0.02,
+  "listened": false,
+  "files": [
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/parlor-spruce-stereo_mic-B1-centre-ab.wav",
+      "sha256": "ae1eb143d1de774561589895d8c15e01c4d8fa1322c6335879f99903d24f4265",
+      "shape": "parlor",
+      "wood": "spruce",
+      "capture": "stereo_mic",
+      "reason_note": "B1",
+      "midi": 47,
+      "nominal_frequency_hz": 123.47082531403103,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.217792496381776
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-parlor-spruce-stereo_mic-finger-v96-m47-s2-c+0.000000.f32",
+          "sha256": "0dd05d73c1ea9c1b7f841af3108300c4abda5a14e3779d9b3fee7cc4eac571ed"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-parlor-spruce-stereo_mic-finger-v96-m47-s2-c+0.000000.f32",
+          "sha256": "cc24c8a4adbdd69c41574f705c56755c9e32f6fc543eeb0855750f63c15f1620"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/parlor-spruce-mono_mic-B1-centre-ab.wav",
+      "sha256": "b1cc9f2b34eb93baaea882d7f977b503111b63c621030d2e40e2bd9aeadb4f1c",
+      "shape": "parlor",
+      "wood": "spruce",
+      "capture": "mono_mic",
+      "reason_note": "B1",
+      "midi": 47,
+      "nominal_frequency_hz": 123.47082531403103,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.2241166211377523
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-parlor-spruce-mono_mic-finger-v96-m47-s2-c+0.000000.f32",
+          "sha256": "f52d827e80fe9fda4593351b9019533ab2c97a0b587e991b2bad85810bcbcd58"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-parlor-spruce-mono_mic-finger-v96-m47-s2-c+0.000000.f32",
+          "sha256": "61fee8a793d88ee42d00524bb9d27a49b5f66b167223856c6b9ee62cdf15b303"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/parlor-mahogany-stereo_mic-B1-centre-ab.wav",
+      "sha256": "428fdae87cad707a95fb767f6fd8ce57422082508547c89f5d29828c522906d4",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "capture": "stereo_mic",
+      "reason_note": "B1",
+      "midi": 47,
+      "nominal_frequency_hz": 123.47082531403103,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.217792496381776
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-parlor-mahogany-stereo_mic-finger-v96-m47-s2-c+0.000000.f32",
+          "sha256": "01fab58653e57661a295f882ea9f01f5d25e4bb10dfc1ce60c048c99da496d83"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-parlor-mahogany-stereo_mic-finger-v96-m47-s2-c+0.000000.f32",
+          "sha256": "19ae9d7504712820ef68bdd4ec0d8b6d3b11a2bd9868b4dfede95c5722a03cc5"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/parlor-mahogany-mono_mic-B1-centre-ab.wav",
+      "sha256": "086859aa7943439f6f1a4ddcdd9eff2df9fec491b3fd46b0ff516dcd87d28cba",
+      "shape": "parlor",
+      "wood": "mahogany",
+      "capture": "mono_mic",
+      "reason_note": "B1",
+      "midi": 47,
+      "nominal_frequency_hz": 123.47082531403103,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.2241166211377523
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-parlor-mahogany-mono_mic-finger-v96-m47-s2-c+0.000000.f32",
+          "sha256": "bc0f7a47cf5720d33d52cff2008c0442fd0185582fe727db75939bc1f0023246"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-parlor-mahogany-mono_mic-finger-v96-m47-s2-c+0.000000.f32",
+          "sha256": "fc7e815095d695a270b69a47b9779de25ec25b69396cc81d0dc4ba6f2850ffa2"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/auditorium-spruce-stereo_mic-A1-centre-ab.wav",
+      "sha256": "84cdf1c3b2253aa64927bc2b90927c3196d88d648106184c8396da1dd26bbe7d",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "capture": "stereo_mic",
+      "reason_note": "A1",
+      "midi": 45,
+      "nominal_frequency_hz": 110.0,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.217792496381776
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-auditorium-spruce-stereo_mic-finger-v96-m45-s2-c+0.000000.f32",
+          "sha256": "bc954a77bbd811bfc21c15c47cc817b4b29ddd9e11e27784b5b86ef1af926de7"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-auditorium-spruce-stereo_mic-finger-v96-m45-s2-c+0.000000.f32",
+          "sha256": "80b258d7ec96af087e44f6804254954c634dc992e39d046b921258992c32265a"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/auditorium-spruce-mono_mic-A1-centre-ab.wav",
+      "sha256": "fad134d95dff8149b0706f1a5c8c2d73397f0e5512f926f8440daf1509c69d6b",
+      "shape": "auditorium",
+      "wood": "spruce",
+      "capture": "mono_mic",
+      "reason_note": "A1",
+      "midi": 45,
+      "nominal_frequency_hz": 110.0,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.2241166211377523
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-auditorium-spruce-mono_mic-finger-v96-m45-s2-c+0.000000.f32",
+          "sha256": "50988928cc9237e3aa77d0d28601a1908387e1fbab229f1509f321dcbf95231c"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-auditorium-spruce-mono_mic-finger-v96-m45-s2-c+0.000000.f32",
+          "sha256": "0dc003005b680a82440c681a9f0cb40aedc492c10102420564e930ef2195e069"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/auditorium-mahogany-stereo_mic-A1-centre-ab.wav",
+      "sha256": "397c5e0649c9f4151ea664f7d281acfa941df36ac21da1917c864b1a53e68652",
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "capture": "stereo_mic",
+      "reason_note": "A1",
+      "midi": 45,
+      "nominal_frequency_hz": 110.0,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.217792496381776
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-auditorium-mahogany-stereo_mic-finger-v96-m45-s2-c+0.000000.f32",
+          "sha256": "e252ba158b79045f3620517326b51259cf891d4f277c9342b43df2beaebf4843"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-auditorium-mahogany-stereo_mic-finger-v96-m45-s2-c+0.000000.f32",
+          "sha256": "0d912e4aea275e04440419c4d6945d20830da01cccf34cd556be6028da700efa"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/auditorium-mahogany-mono_mic-A1-centre-ab.wav",
+      "sha256": "e08e8047db2236da5de7ed7ab7c6f687dc5761cda606ef73aad01d8cedf25f62",
+      "shape": "auditorium",
+      "wood": "mahogany",
+      "capture": "mono_mic",
+      "reason_note": "A1",
+      "midi": 45,
+      "nominal_frequency_hz": 110.0,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.2241166211377523
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-auditorium-mahogany-mono_mic-finger-v96-m45-s2-c+0.000000.f32",
+          "sha256": "6080aa1d84701d046d71ef5f6d6ede7a8de7d41b889df92260df8a1030653599"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-auditorium-mahogany-mono_mic-finger-v96-m45-s2-c+0.000000.f32",
+          "sha256": "7c71b295095bd983e22a41414fd88a82f70fb7568d1bb76a180a74534c3f1be3"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-spruce-stereo_mic-E1-centre-ab.wav",
+      "sha256": "33ec74bf89a1fb1eda6266fb3bbe72b0bcec9ce17bc5b2dfc7d8b2387df83a55",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "capture": "stereo_mic",
+      "reason_note": "E1",
+      "midi": 40,
+      "nominal_frequency_hz": 82.4068892282175,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.217792496381776
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-jumbo-spruce-stereo_mic-finger-v96-m40-s1-c+0.000000.f32",
+          "sha256": "c1892da9f820d34a13516fc6c8662c7293fd2fdc276a89a69e9563db45a14f41"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-jumbo-spruce-stereo_mic-finger-v96-m40-s1-c+0.000000.f32",
+          "sha256": "c10671db3a3a921fa53415243c6e8c0a8dc308d63d9601f9b293b94a23388729"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-spruce-mono_mic-E1-centre-ab.wav",
+      "sha256": "9666485e8ea8d2b3484a883676778ee6c1b36323a721dfa3f0ed0ad5f0ebbb8c",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "capture": "mono_mic",
+      "reason_note": "E1",
+      "midi": 40,
+      "nominal_frequency_hz": 82.4068892282175,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.2241166211377523
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-jumbo-spruce-mono_mic-finger-v96-m40-s1-c+0.000000.f32",
+          "sha256": "035b6cdb811afa36e31f6aa3d27e1ac9c96b363276696c96cbddd3b956c0e962"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-jumbo-spruce-mono_mic-finger-v96-m40-s1-c+0.000000.f32",
+          "sha256": "d5e9b8ad8be034da92762a2c0a21e11bb60ed50e9cfbc7c486c8cda15f2babca"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-mahogany-stereo_mic-E1-centre-ab.wav",
+      "sha256": "3287e72083193f6c0a27db9d0a8c404ce4f31062842b2a0491e868e1a36f42ec",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "capture": "stereo_mic",
+      "reason_note": "E1",
+      "midi": 40,
+      "nominal_frequency_hz": 82.4068892282175,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.217792496381776
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-jumbo-mahogany-stereo_mic-finger-v96-m40-s1-c+0.000000.f32",
+          "sha256": "843ad99402b9f6b3d15563bf0bb9e693b39d3ec1532553b693738c46e9334bad"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-jumbo-mahogany-stereo_mic-finger-v96-m40-s1-c+0.000000.f32",
+          "sha256": "d95817862784ad6fb50febac73339a7eb4b8e935abf6613c2d8d2d527b4e289a"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-mahogany-mono_mic-E1-centre-ab.wav",
+      "sha256": "f71a55ca09d9af6628306a252aa2fb9f93c1c947307c72e1a81b36046f48e454",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "capture": "mono_mic",
+      "reason_note": "E1",
+      "midi": 40,
+      "nominal_frequency_hz": 82.4068892282175,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.2241166211377523
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-jumbo-mahogany-mono_mic-finger-v96-m40-s1-c+0.000000.f32",
+          "sha256": "ad5a675ba99957394da1879e7ee235d6db91cb2eee2c0b06dbb9752e626ebc49"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-jumbo-mahogany-mono_mic-finger-v96-m40-s1-c+0.000000.f32",
+          "sha256": "0e80a1c375f733ca42dac6a6cad08b9a10d64e37d8df2b499bf692a0cdbf709a"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-spruce-stereo_mic-F1-centre-ab.wav",
+      "sha256": "0e65c11ae7c1150c32f2ffb15ce5a2927ffdb4abd36ba4d670f6a729c6077d6d",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "capture": "stereo_mic",
+      "reason_note": "F1",
+      "midi": 41,
+      "nominal_frequency_hz": 87.30705785825097,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.217792496381776
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-jumbo-spruce-stereo_mic-finger-v96-m41-s1-c+0.000000.f32",
+          "sha256": "5dc4170525bf8d0eda9116639c83b925ddf49843253c83d24a4b3f1464370b76"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-jumbo-spruce-stereo_mic-finger-v96-m41-s1-c+0.000000.f32",
+          "sha256": "945879e7054ae697237c3afdc9664a4291da6f9e2afc93f250999af39b4de1cf"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-spruce-mono_mic-F1-centre-ab.wav",
+      "sha256": "886242029f3969a826d0386a905bcaec485377be5f5287bcba355a604f4eeb54",
+      "shape": "jumbo",
+      "wood": "spruce",
+      "capture": "mono_mic",
+      "reason_note": "F1",
+      "midi": 41,
+      "nominal_frequency_hz": 87.30705785825097,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.2241166211377523
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-jumbo-spruce-mono_mic-finger-v96-m41-s1-c+0.000000.f32",
+          "sha256": "3d27253ff35011129e6670ad91405c710de6c4f634fe86c323d04baa096f71d5"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-jumbo-spruce-mono_mic-finger-v96-m41-s1-c+0.000000.f32",
+          "sha256": "9e452a739dc0d0c34b4ec6c50356383c38a2122c3fa4a10a62a5b9637fb9288f"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-mahogany-stereo_mic-F1-centre-ab.wav",
+      "sha256": "7b32e922354abd5666b169c68e682e94463a7a14505ed38fead8a3b2308efdc0",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "capture": "stereo_mic",
+      "reason_note": "F1",
+      "midi": 41,
+      "nominal_frequency_hz": 87.30705785825097,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.217792496381776
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-jumbo-mahogany-stereo_mic-finger-v96-m41-s1-c+0.000000.f32",
+          "sha256": "f4dacde01e286e59a890a91258a2567d6ea41812184cf165bfa5bdc1fa46cb0d"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-jumbo-mahogany-stereo_mic-finger-v96-m41-s1-c+0.000000.f32",
+          "sha256": "39adb9e9c9f1ad710f8830da541b49c8717156155e4f133c888166b82e7c9fd8"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/comparison/audition/centres/jumbo-mahogany-mono_mic-F1-centre-ab.wav",
+      "sha256": "81882e122348c986a505296b70b653aabc130d8a3b0740f4bef0fb0af3cd6a63",
+      "shape": "jumbo",
+      "wood": "mahogany",
+      "capture": "mono_mic",
+      "reason_note": "F1",
+      "midi": 41,
+      "nominal_frequency_hz": 87.30705785825097,
+      "segments": [
+        {
+          "version": "before",
+          "start_seconds": 0.0,
+          "end_seconds": 4.0,
+          "gain_linear": 1.0
+        },
+        {
+          "version": "after",
+          "start_seconds": 4.35,
+          "end_seconds": 8.35,
+          "gain_linear": 1.2241166211377523
+        }
+      ],
+      "inputs": [
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/before-renders/audio/primary-jumbo-mahogany-mono_mic-finger-v96-m41-s1-c+0.000000.f32",
+          "sha256": "77a9846ab6b126e4bb5f7cf966c1a923d1cbde2783de2681ea13c79857d13b68"
+        },
+        {
+          "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/capture-implementation-20261011/ab/after-renders/audio/primary-jumbo-mahogany-mono_mic-finger-v96-m41-s1-c+0.000000.f32",
+          "sha256": "9a5adfb22b6187398e32c5e5df30139eb71fc8e92b1f9f19de521f8cc33d44dd"
+        }
+      ]
+    }
+  ]
+}

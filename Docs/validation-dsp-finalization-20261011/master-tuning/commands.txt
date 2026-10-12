@@ -1,0 +1,48 @@
+Working directory:
+/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011
+
+Before source editing, copied the existing 6b80170 native DSP library:
+cp build-audit/libAcustraDSP.a /tmp/acustra-master-tune-baseline.a
+
+Red geometry witness (compiled against original headers/library before edits):
+clang++ -std=c++17 -O2 -ISource /tmp/acustra-master-tune-geometry-probe.cpp build-audit/libAcustraDSP.a -o /tmp/acustra-master-tune-geometry-probe
+/tmp/acustra-master-tune-geometry-probe
+
+Focused current objects and geometry/contract checks:
+clang++ -std=c++17 -O2 -Wall -Wextra -Wshadow -Werror -ISource -c Source/DSP/AcustraEngine.cpp -o /tmp/acustra-master-tune-engine.o
+clang++ -std=c++17 -O2 -Wall -Wextra -Wshadow -Werror -ISource -c Source/DSP/AcustraPerformer.cpp -o /tmp/acustra-master-tune-performer.o
+clang++ -std=c++17 -O2 -ISource /tmp/acustra-master-tune-geometry-probe.cpp /tmp/acustra-master-tune-engine.o /tmp/acustra-master-tune-performer.o build-audit/libAcustraDSP.a -o /tmp/acustra-master-tune-geometry-probe-fixed
+/tmp/acustra-master-tune-geometry-probe-fixed
+clang++ -std=c++17 -O2 -Wall -Wextra -Wshadow -Werror -ISource Tests/MasterTuningTests.cpp /tmp/acustra-master-tune-engine.o /tmp/acustra-master-tune-performer.o build-audit/libAcustraDSP.a -o /tmp/acustra-master-tuning-tests
+/tmp/acustra-master-tuning-tests
+clang++ -std=c++20 -O2 -ISource -ITests Tests/PerformerTests.cpp /tmp/acustra-master-tune-engine.o /tmp/acustra-master-tune-performer.o build-audit/libAcustraDSP.a -o /tmp/acustra-master-tune-performer-tests
+/tmp/acustra-master-tune-performer-tests
+
+Zero-tune parity isolation:
+1. Write git show 6b80170:Source/DSP/AcustraEngine.cpp and ALL
+   tracked Source/DSP/*.h headers to both
+   /tmp/acustra-master-zero-base/Source/DSP and
+   /tmp/acustra-master-zero-candidate/Source/DSP.
+2. Apply the preserved acustra-master-only.patch only to candidate:
+git apply --unsafe-paths --directory=/private/tmp/acustra-master-zero-candidate /tmp/acustra-master-only.patch
+3. Compile both engines with identical flags, the frozen baseline DSP headers,
+   and the same original dependency library. Freezing generated headers also
+   excludes the concurrent Pick loudness-table recalibration:
+clang++ -std=c++17 -O2 -I/tmp/acustra-master-zero-base/Source -ISource/DSP -ISource /tmp/acustra-master-zero-probe.cpp /tmp/acustra-master-zero-base/Source/DSP/AcustraEngine.cpp /tmp/acustra-master-tune-baseline.a -o /tmp/acustra-master-zero-base-test
+clang++ -std=c++17 -O2 -I/tmp/acustra-master-zero-candidate/Source -ISource/DSP -ISource /tmp/acustra-master-zero-probe.cpp /tmp/acustra-master-zero-candidate/Source/DSP/AcustraEngine.cpp /tmp/acustra-master-tune-baseline.a -o /tmp/acustra-master-zero-candidate-test
+/tmp/acustra-master-zero-base-test
+/tmp/acustra-master-zero-candidate-test
+
+The two logs contain identical FNV-1a hashes for the float words of rendered
+stereo output. These isolate tuning, excluding concurrent body-model edits.
+Full final combined source compilation/testing is coordinated by the root audit.
+
+Initial-idle negative/positive witness (run before/after the idle-state fix):
+clang++ -std=c++17 -O2 -ISource /tmp/acustra-master-idle-probe.cpp /tmp/acustra-master-tune-engine.o /tmp/acustra-master-tune-performer.o build-audit/libAcustraDSP.a -o /tmp/acustra-master-idle-probe-fixed
+/tmp/acustra-master-idle-probe-fixed
+
+The red idle witness was compiled with the same dedicated tuning implementation
+but the earlier `sampleClock_ == 0` at-rest predicate. The fix uses existing
+`idleFlushed_` together with no played/pending or tail voices, so a silent callback
+does not leave delay/impedance followers unsettled before the first note.
+Current tests include both initial silence and All Sound Off.

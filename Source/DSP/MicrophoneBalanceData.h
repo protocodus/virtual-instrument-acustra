@@ -12,13 +12,9 @@
 namespace acustra::detail
 {
 
-// Restore the default phrase's loudness after each tonal refinement: 1.2172
-// dB for the 2026-10-09 bass/air refinement's 1.21724 LU loss, and 0.7770
-// dB for the 2026-10-11 air-mode dip and plate damping's 0.7770 LU loss on
-// the default cell's stereo microphones (the calibration phrase set,
-// Tools/CalibrateConstructionLoudness.py, -27.3515 LUFS before and after).
+// Restore the default phrase's -24.0513 LUFS after its 1.21724 LU loss.
 // This scalar is separate from the tonal refinement and pickup calibration.
-inline constexpr float originalCaptureLevelAdjustmentDb = 1.2172f + 0.7770f;
+inline constexpr float originalCaptureLevelAdjustmentDb = 1.2172f;
 inline constexpr float originalBassShelfAdjustmentDb = -3.0f;
 inline constexpr float originalAirPeakAdjustmentDb = -2.75f;
 
@@ -27,13 +23,33 @@ inline constexpr float originalAirPeakAdjustmentDb = -2.75f;
 // the note at A0 stood 4-6 dB over its neighbours on every Shape (F#2/G2 on
 // the Dreadnought, G#2/A2 on the Auditorium, whose A2 the user named as
 // boom on 2026-10-09; Docs/studio-smoothness-2026-10-11.md), with the loss
-// shared by both microphones. The dip takes 1-2 dB off that excess (G2
-// +4.0 to +2.4 dB on the Dreadnought) and leaves E2, under the
-// Dreadnought's A0, within 1.2 dB of where it was. An authored capture
-// refinement, like the two above: no listening verdict yet, and the
-// measured instrument is untouched. The piezo never passes through it.
-inline constexpr float originalAirModeDipDb = -4.0f;
+// shared by both microphones and still there over the balanced observation
+// blend (G2 +3.1, G#2 +5.5 on the Auditorium). The dip takes about 1 dB
+// off that excess (G2 +3.1 to +2.0 dB on the Dreadnought, G#2 +5.5 to +4.6
+// on the Auditorium) and moves E2, under the Dreadnought's A0, by 0.6 dB.
+// An authored capture refinement, like the two above: no listening verdict
+// yet, and the measured instrument is untouched. The piezo never passes
+// through it.
+inline constexpr float originalAirModeDipDb = -2.5f;
 inline constexpr float originalAirModeDipQ = 2.5f;
+// The dip takes no level restore: it costs the default cell's stereo phrase
+// 0.24 LU (the calibration phrase set, Tools/CalibrateConstructionLoudness.py,
+// -27.5164 to -27.7532 LUFS), inside the construction loudness contract,
+// and a restore sized on that phrase overshot the shorter construction
+// fixture's phrase by 0.2 LU, which the Parlor's margin there did not
+// have. The dipped constructions are re-levelled to the default; one
+// without the dip keeps its calibrated gains untouched.
+inline constexpr float originalAirModeDipLevelDb = 0.0f;
+// Every construction but the Parlor takes the dip, by the air mode's
+// frequency: the Jumbo's sits at 84-91 Hz, the Dreadnought's at 94-101 and
+// the Auditorium's at 106-113 as Spruce, Mahogany and Maple place it, the
+// Parlor's at 121-128. The Parlor's lifts A#2/B2 as much (+3.5/+5.3 dB
+// over their neighbours) but keeps it for now: its margin on the
+// cross-phrase construction loudness fixture (Parlor Spruce Finger at 2.87
+// of the 3 LU allowed) has no room for the 0.2 LU more the dip costs that
+// fixture's phrase than the calibration phrase, and a tolerance is not
+// loosened to fit a refinement.
+inline constexpr float originalAirModeDipUpperHz = 117.0f;
 
 constexpr CaptureVoicingSection balancedOriginalCaptureSection(
     CaptureVoicingSection section) noexcept

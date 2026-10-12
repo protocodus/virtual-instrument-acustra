@@ -1,0 +1,299 @@
+{
+  "analysis_sample_rate": 48000,
+  "model_render_complete": true,
+  "observation": "matched",
+  "calibration_order": [
+    "bodyFrequencyScale",
+    "bodyQScale",
+    "bridgeMobilityScale",
+    "residueTiltDbPerOctave",
+    "steel.stiffnessScale",
+    "steel.fundamentalT60Scale",
+    "steel.frequencyLossScale",
+    "steel.apertureScale",
+    "steel.transientScale",
+    "steel.pluckDistanceScale",
+    "steel.velocityBrightnessDepth",
+    "apertureRegisterExponent",
+    "lowBodyModeGain",
+    "steelDisplacementScaleMetres",
+    "steelFretT60Slope",
+    "highLossCutoffScale",
+    "bridgeConductanceFloor",
+    "bridgeConductanceCornerHz",
+    "bridgeTailLengthMetres",
+    "pickReleaseVelocityShare",
+    "pickReleaseVelocityExponent",
+    "pickEdgeRadiusMetres",
+    "steelWoundFrictionLoss",
+    "steelPlainBendingLoss",
+    "steelWoundBendingLoss"
+  ],
+  "calibration_values": [
+    1,
+    1,
+    0.754677176,
+    0,
+    0.749355435,
+    1.52999997,
+    0.519999981,
+    0.48832792,
+    2.21306968,
+    1.79999995,
+    1.10625005,
+    -0.0706290081,
+    4,
+    0.00773577858,
+    -0.0597851574,
+    2.2858603,
+    0.0109999999,
+    2187.76025,
+    0.00325000007,
+    0.58203125,
+    0.858593762,
+    0.00011621094,
+    0.000224999996,
+    0.00233437493,
+    0.0175000001
+  ],
+  "model_controls": {
+    "shape": "dreadnought",
+    "body_material": 0,
+    "guitar_model": "original",
+    "capture": "stereo_mic",
+    "picking": "per job row: finger, pick or thumb",
+    "tuning": 0,
+    "string_age": 0.150000006,
+    "pluck_position": 0.280000001,
+    "touch": 0.579999983,
+    "body_amount": 0.819999993,
+    "stereo_width": 0.620000005,
+    "room": 0,
+    "output_gain": 0.419999987,
+    "picking_default": "finger",
+    "picking_override": null
+  },
+  "provenance": {
+    "corpus": "martin-hd28",
+    "split": "martin-hd28",
+    "license": "CC0-1.0",
+    "source": "https://github.com/sfzinstruments/Discord-SFZ-GM-Bank/tree/7a9c478fe331f94f246d33332f0adedb25bbbe27/Discord%20GM/Melodic/026-Acoustic%20Guitar%20%28steel%29",
+    "rows_json": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/rows.json",
+    "rows_json_sha256": "e178baf6acb821dd21df33cef784ee160595e5c1d9bfeec7e972039be8258fda",
+    "target_timing": "20 ms before the note onset to min(next onset - 20 ms, onset + 4.2 s), 60 ms terminal half-cosine fade",
+    "model_render": "fresh AcustraEngine per picking/MIDI/velocity; 48000 Hz; 127-sample blocks; 4.2 s; model_controls, otherwise default controls",
+    "renderer": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/AcustraExternalCorpusRenderer",
+    "renderer_sha256": "48210eec312b43d95c9e90d1bed9348d7bc94443b8ae54d1fc2ef68d2ebec1f4"
+  },
+  "examples": [
+    {
+      "id": "martin-hd28-m40-E2",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 40,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m40-E2.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m40-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    },
+    {
+      "id": "martin-hd28-m43-G2",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 43,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m43-G2.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m43-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    },
+    {
+      "id": "martin-hd28-m46-Bb2",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 46,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m46-Bb2.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m46-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    },
+    {
+      "id": "martin-hd28-m49-Db3",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 49,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m49-Db3.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m49-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    },
+    {
+      "id": "martin-hd28-m52-E3",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 52,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m52-E3.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m52-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    },
+    {
+      "id": "martin-hd28-m55-G3",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 55,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m55-G3.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m55-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    },
+    {
+      "id": "martin-hd28-m58-Bb3",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 58,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m58-Bb3.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m58-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    },
+    {
+      "id": "martin-hd28-m61-Db4",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 61,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m61-Db4.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m61-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    },
+    {
+      "id": "martin-hd28-m64-E4",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 64,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m64-E4.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m64-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    },
+    {
+      "id": "martin-hd28-m68-Ab4",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 68,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m68-Ab4.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m68-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    },
+    {
+      "id": "martin-hd28-m77-F5",
+      "material": "steel",
+      "picking": "finger",
+      "midi": 77,
+      "velocity": 91,
+      "round_robin": 0,
+      "dynamic_group": null,
+      "target": {
+        "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/project-finalization/data/martin/targets/martin-hd28-m77-F5.f32",
+        "sample_rate": 44100,
+        "channels": 1
+      },
+      "model": {
+        "path": "model-finger-m77-v91.f32",
+        "sample_rate": 48000,
+        "channels": 2
+      }
+    }
+  ]
+}

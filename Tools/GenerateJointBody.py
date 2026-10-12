@@ -70,8 +70,12 @@ In the steel blend (Source/DSP/SteelBodyBlend.h) this bank is played as a
 parallel copy at steelBlendJointBodyWeight, beside g21's own bank and bridge;
 its level constant is named steelJointTopMobilityRatio there so it stands
 beside MeasuredBridgeData.h's steelTopMobilityRatio. The committed
-MeasuredJointBodyData.h is the one cand/body-joint-pole-body (1813a88) wrote,
-with only that name changed.
+MeasuredJointBodyData.h retains cand/body-joint-pole-body (1813a88)'s numeric
+table. That fit used different damped/natural f/Q conventions in its two
+bases. The 2026-10-11 correction inverse-bilinear-maps the radiation pole for
+the mobility too; ValidateSharedBodyPoles.py revalidates the retained residues
+against the original measurements without claiming a refit. New fits below
+use this common digital-pole basis throughout, including PSD selection.
 
 Level. steelJointTopMobilityRatio is the Fylde Falstaff's measured bridge
 mobility (Carcagno et al. 2018, between strings 5 and 6; FyldeBridgeReference.py
@@ -225,9 +229,9 @@ class Problem:
         zi = self.z_inverse[:, None]
         positive = 1.0 / (1.0 - pole[None, :] * zi)
         negative = 1.0 / (1.0 - np.conj(pole)[None, :] * zi)
-        omega = 2.0 * FS * np.tan(np.pi * f / FS)
+        analog = 2.0 * FS * (pole - 1.0) / (pole + 1.0)
         s = self.s[:, None]
-        denominator = s * s + (omega / q)[None, :] * s + (omega * omega)[None, :]
+        denominator = s * s - 2.0 * analog.real[None, :] * s + (np.abs(analog)**2)[None, :]
         section = s / denominator
         if not derivatives:
             return positive, negative, section
@@ -235,13 +239,14 @@ class Problem:
         dp_dq = pole * (np.pi * f / (q * FS))
         d_positive = zi * positive ** 2  # d/dp of 1/(1 - p z^-1)
         d_negative = zi * negative ** 2
-        domega_df = f * 2.0 * np.pi / np.cos(np.pi * f / FS) ** 2
-        dsection_domega = -s * (s / q[None, :] + 2.0 * omega[None, :]) / denominator ** 2
-        dsection_dq = s * s * (omega / q)[None, :] / denominator ** 2  # times q (log Q)
+        def derivative(dp):
+            da = 4.0 * FS * dp / (pole + 1.0)**2
+            dd = -2.0 * da.real[None, :] * s + (2.0 * np.real(np.conj(analog)*da))[None, :]
+            return -s * dd / denominator**2
         return (positive, negative, section,
                 (d_positive * dp_df, d_negative * np.conj(dp_df)),
                 (d_positive * dp_dq, d_negative * np.conj(dp_dq)),
-                dsection_domega * domega_df, dsection_dq)
+                derivative(dp_df), derivative(dp_dq))
 
     @staticmethod
     def solve(matrix: np.ndarray, vector: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -485,7 +490,7 @@ def bridge_elimination(targets: tuple, corner: float, modes: list) -> list:
         bridge.MAX_COMPLEX_RELATIVE_ERROR, bridge.MAX_MEDIAN_MAGNITUDE_ERROR_DB = np.inf, np.inf
         while len(active) >= 8:
             fitted, phase, relative, magnitude = bridge.positive_semidefinite_fit(
-                FREQUENCY, treble, bass, cross, corner, [modes[k] for k in active])
+                FREQUENCY, treble, bass, cross, corner, [modes[k] for k in active], decay_poles=True)
             by_frequency = {round(row[0], 6): row for row in fitted}
             energy = {k: (by_frequency[round(modes[k][0], 6)][2] + by_frequency[round(modes[k][0], 6)][4]
                           if round(modes[k][0], 6) in by_frequency else 0.0) for k in active}
@@ -531,8 +536,8 @@ def string_mobility(rows: list, frequency: np.ndarray, arm: float) -> np.ndarray
         residue = heave + 2.0 * arm * cross + arm * arm * rock
         if residue == 0.0:
             continue
-        omega = 2.0 * FS * np.tan(np.pi * f / FS)
-        total += residue * s / (s * s + omega / q * s + omega * omega)
+        omega, damping = bridge.mobility_parameters(f, q, decay_poles=True)
+        total += residue * s / (s * s + 2.0 * damping * s + omega * omega)
     return total
 
 
@@ -544,7 +549,9 @@ def fylde_rows(fylde_mat: Path) -> list:
 
 def fylde_mobility(rows: list, frequency: np.ndarray) -> np.ndarray:
     """The Fylde fit's scalar mobility, the same at every string."""
-    return string_mobility(rows, frequency, 0.0)
+    # This separately measured bank was fitted as natural oscillators; the
+    # joint radiation's damped-sinusoid convention does not apply to it.
+    return bridge.modal_mobility(np.asarray(rows), frequency, 0.0)
 
 
 def top_mobility_ratio(joint_rows: list, fylde: list) -> float:
@@ -581,7 +588,8 @@ def render_header(guitar: int, fq: np.ndarray, residues: np.ndarray, rows: list,
         "// microphone, right = bass, upper = upper-bout; force F=Fb+Ft then",
         "// moment T=Ft-Fb. Mobility residues as MeasuredBridgeData.h: a string at",
         "// lever arm u sees heave + 2u cross + u^2 rock times",
-        "// s/(s^2 + (omega/q) s + omega^2), positive semidefinite per mode; zero on",
+        "// s/(s^2 - 2 Re(a) s + |a|^2), a=2fs(p-1)/(p+1),",
+        "// p=exp((-pi*f/q + j*2pi*f)/fs); positive semidefinite per mode; zero on",
         "// every mode outside the bridge's own set.",
         f"// {len(fq)} modes, {active} carrying mobility ({rocking} rocking below the",
         f"// {summary['corner']:.0f} Hz cross-side corner). Bridge fit over six string positions,",
@@ -625,6 +633,27 @@ def self_test() -> None:
     acc = np.array([string_mobility([(f, q, h, 0.0, 0.0) for (f, q), h in zip(modes, rng.uniform(0.1, 1, 3))],
                                     FREQUENCY, 0.0) for _ in range(4)])
     problem = Problem(mic, acc)
+    # Check actual denominator roots, including broad Q<1/2 and a high
+    # normalized frequency; an ordinary oscillator prewarp cannot pass this.
+    broad = np.array([[371.9, 1.25], [2500.0, .08], [17000.0, 4.0]])
+    for f, q in broad:
+        omega, damping = bridge.mobility_parameters(f, q, decay_poles=True)
+        b = 2*FS
+        d0 = b*b+2*damping*b+omega*omega
+        roots = np.roots([1, 2*(omega*omega-b*b)/d0,
+                          (b*b-2*damping*b+omega*omega)/d0])
+        target = np.exp((-np.pi*f/q+2j*np.pi*f)/FS)
+        if np.min(abs(roots-target)) > 1e-10:
+            raise AssertionError("mobility's actual roots differ from the radiation pole")
+    broad_x = np.concatenate((np.log(broad[:, 0]), np.log(broad[:, 1])))
+    basis = problem.bases(broad_x, derivatives=True)
+    for k in range(len(broad_x)):
+        delta = np.zeros_like(broad_x); delta[k] = 1e-6
+        numeric = (problem.bases(broad_x+delta)[2]-problem.bases(broad_x-delta)[2])/(2e-6)
+        analytical = np.zeros_like(numeric)
+        analytical[:, k % 3] = basis[5 if k < 3 else 6][:, k % 3]
+        if np.linalg.norm(numeric-analytical)/np.linalg.norm(numeric) > 2e-6:
+            raise AssertionError("broad common-pole derivative differs from finite differences")
     x = np.concatenate((np.log(modes[:, 0]), np.log(modes[:, 1])))
     # Kaufman's Jacobian against a finite difference of the projected
     # residual, near the solution where the two agree to first order

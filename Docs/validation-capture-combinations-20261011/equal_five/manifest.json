@@ -1,0 +1,211 @@
+{
+  "name": "equal_five",
+  "selection_screen_name": "equal_five",
+  "weights": {
+    "baseline": 0.0,
+    "measured_bridge": 0.2,
+    "neck30_literal264": 0.2,
+    "offhole45_literal264": 0.2,
+    "free_neck30": 0.2,
+    "measured_blend": 0.2
+  },
+  "nominal_compensation": {
+    "baseline": 1.0,
+    "measured_bridge": 1.0,
+    "neck30_literal264": 3.0,
+    "offhole45_literal264": 4.5,
+    "free_neck30": 3.0,
+    "measured_blend": 1.0
+  },
+  "scope": "Constant complex-observation mixture. Same weights for every construction, input, channel and mode. No EQ, phase rotation, timing offset, pole or mechanical changes.",
+  "selection": {
+    "name": "equal_five",
+    "weights": {
+      "baseline": 0.0,
+      "measured_bridge": 0.2,
+      "neck30_literal264": 0.2,
+      "offhole45_literal264": 0.2,
+      "free_neck30": 0.2,
+      "measured_blend": 0.2
+    },
+    "metrics": {
+      "worst_target_attack_early_balance_change_db": -1.2139370526656705,
+      "worst_group_target_attack_early_median_db": -3.201819647866122,
+      "all_target_attack_early_median_db": -3.9659205922557668,
+      "minimum_h1_change_db": -10.045769371344655,
+      "maximum_upper_h1_change_db": 4.400254734752828,
+      "worst_neighbor_dip_change_db": -2.2238538017031146,
+      "worst_neighbor_peak_change_db": 2.123359863997047,
+      "minimum_mono_retention_db": -0.5255209042240878,
+      "worst_mono_retention_change_db": -0.05846888819860396,
+      "maximum_rms_loss_db": -4.81618403512649
+    },
+    "flags": [
+      "h1_loss_over6",
+      "upper_h1_gain_over3"
+    ],
+    "target_groups": {
+      "parlor/stereo_mic": {
+        "attack": {
+          "median": -3.201819647866122,
+          "min": -3.557578903595612,
+          "max": -1.2139370526656705
+        },
+        "early": {
+          "median": -4.297402425634246,
+          "min": -4.39266226635322,
+          "max": -2.9277051539195043
+        },
+        "held": {
+          "median": -4.048765544400485,
+          "min": -4.451169883666807,
+          "max": -3.5251618394763966
+        },
+        "late": {
+          "median": -2.7747484161140434,
+          "min": -3.3372671796790314,
+          "max": -2.2374161075449166
+        }
+      },
+      "parlor/mono_mic": {
+        "attack": {
+          "median": -4.061726261167168,
+          "min": -4.806369350664468,
+          "max": -2.6977197815739657
+        },
+        "early": {
+          "median": -4.726711283933941,
+          "min": -6.266737769661731,
+          "max": -4.249794101619202
+        },
+        "held": {
+          "median": -4.881873734145515,
+          "min": -5.117700191421214,
+          "max": -4.473660133040134
+        },
+        "late": {
+          "median": -5.029776244660905,
+          "min": -5.337612433952728,
+          "max": -4.561038794481874
+        }
+      },
+      "auditorium/stereo_mic": {
+        "attack": {
+          "median": -3.4999666475722595,
+          "min": -4.0210999213134,
+          "max": -2.713652765894178
+        },
+        "early": {
+          "median": -3.6655680082692896,
+          "min": -4.033661437278042,
+          "max": -3.113693689776511
+        },
+        "held": {
+          "median": -3.4653484025218155,
+          "min": -3.816710165095863,
+          "max": -3.427175571921886
+        },
+        "late": {
+          "median": -3.4272564723165146,
+          "min": -3.6449589954027104,
+          "max": -2.9411113787733
+        }
+      },
+      "auditorium/mono_mic": {
+        "attack": {
+          "median": -3.727326249392407,
+          "min": -3.9526488387970176,
+          "max": -3.1473064586026176
+        },
+        "early": {
+          "median": -3.619880235720899,
+          "min": -4.147594283443524,
+          "max": -3.505186082909333
+        },
+        "held": {
+          "median": -4.050239165987904,
+          "min": -4.414624817119154,
+          "max": -3.5082769992740737
+        },
+        "late": {
+          "median": -4.209026776679963,
+          "min": -4.687896446752113,
+          "max": -4.028768407087945
+        }
+      },
+      "jumbo/stereo_mic": {
+        "attack": {
+          "median": -3.797054191811773,
+          "min": -4.814061227688541,
+          "max": -1.958171673984186
+        },
+        "early": {
+          "median": -4.082224014038175,
+          "min": -4.450858312286705,
+          "max": -3.8322825448497824
+        },
+        "held": {
+          "median": -4.36079741362548,
+          "min": -4.653086607714435,
+          "max": -3.627268260694038
+        },
+        "late": {
+          "median": -4.421462700264293,
+          "min": -5.693774232203992,
+          "max": -3.664381135489478
+        }
+      },
+      "jumbo/mono_mic": {
+        "attack": {
+          "median": -4.373428134985943,
+          "min": -4.812368985628854,
+          "max": -3.435208169032375
+        },
+        "early": {
+          "median": -4.4442750204382016,
+          "min": -4.817280177961557,
+          "max": -3.8357635904266942
+        },
+        "held": {
+          "median": -4.472873992090715,
+          "min": -4.990042704634298,
+          "max": -4.169682721128744
+        },
+        "late": {
+          "median": -5.1523887080758755,
+          "min": -6.483412926312127,
+          "max": -4.406223519025971
+        }
+      }
+    }
+  },
+  "inputs": [
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/harness/verification/baseline-observer.csv",
+      "sha256": "3b17314b3dcd6e47efa751bd54d2fefa7803a252c9fe0f8f92c82ee7a91f3f01"
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/measured_bridge_coefficients.csv",
+      "sha256": "cb9675b78a2afb4fd726570833afc006dffb1e2b5ccbe5c25520bd49573656a7"
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/runtime-candidates-v2/neck30_literal264.csv",
+      "sha256": "d29e16587d3a5e6bc3596a756323e31062082d3e261b8167450ab4a8ea42d55d"
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/runtime-candidates-v2/offhole45_literal264.csv",
+      "sha256": "d64c4633d9b514ab73e8398532c8e0c1aada4267638b9e2196f60e3f6455efe4"
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/runtime-free-candidates-v1/free_neck30.csv",
+      "sha256": "dbc0f6c47d4d256cf22f9be0a2923f257429c5e220fd8b40933b92958d2b9045"
+    },
+    {
+      "path": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-variants/measured_blend_coefficients.csv",
+      "sha256": "f7799bd7f399dd03962036bc402e7690b97180bcd5fad3feb44e98920217c3d4"
+    }
+  ],
+  "coefficient_sha256": "d062fda4daca6c56dca53ae5981d9fbc045cb4a2e5beb2538fd9085ece398ccf",
+  "screen_sha256": "6a1aedcf393b79bbdf201343a4094d490c44bbab49790d360a44d1eb255332b2",
+  "runner_sha256": "7649bbe7009e0b5522dcb83838bf373162c7e54bef2afc43cb6b188f29ba85e7"
+}

@@ -1,0 +1,33 @@
+{
+  "scope": "Final test-only repair after fixed studio microphone level matching; no production source or library changes.",
+  "diagnosis": "Queued construction level oracle omitted studioStereoLevelMatch from the complete stereo reference; the same omission existed in the picking-automation level oracle.",
+  "queued_reference": "Jumbo/Mahogany/Finger versus Dreadnought/Mahogany/Finger",
+  "legacy_endpoint_ratio": 1.0487722868094067,
+  "complete_endpoint_ratio": 1.077465219546541,
+  "missing_factor_db": 0.23444114451135198,
+  "preserved_checks": [
+    "Left/right sample gain equality",
+    "Monotonic gain transition",
+    "Existing 1e-5 relative waveform/gain tolerances",
+    "Existing 40 ms body fade bound",
+    "Exact queued and cancelled subsequent waveform equality"
+  ],
+  "commands": [
+    "cmake --build build-audit --target AcustraEngineTests -j 2",
+    "build-audit/AcustraEngineTests"
+  ],
+  "build_exit_code": 0,
+  "test_exit_code": 0,
+  "test_result": "All Acustra engine tests passed",
+  "hashes": {
+    "Tests/AcustraEngineTests.cpp": "ac043b98b4a773ff1831966300e5a8b48fec1a69ed75970565fca4107a9c41a7",
+    "Source/DSP/AcustraEngine.cpp": "57fa5116658c3e55fcb8aa07af793dba4ff06b4addc6cc253ebde13f946d62a1",
+    "Source/DSP/StudioCaptureLoudnessData.h": "f75754057d03ed88facae11bf13d7ebd2a524ddb6038f9925cfe6c802d1a7973",
+    "build-audit/libAcustraDSP.a": "282ae53ffe4a0f977bb9c11ec4c06858303dd118aa00a03bc8315e021da7ca00"
+  },
+  "evidence_hashes": {
+    "engine-transition-build.log": "cc070a1dad7c0a1edbb96f67fd71a1d4e2dc653cff60730dc4a6de32bb8bd221",
+    "engine-transition-tests.log": "40db9c21d4a890e7db4207cab2648a7f355be5f7ac89c872c8cd4350cc77538a"
+  },
+  "historical_receipt_note": "provenance.json preserves its original test hashes and earlier focused log scope; this receipt records the later test-only update and complete Engine rerun."
+}

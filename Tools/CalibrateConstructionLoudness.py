@@ -65,13 +65,25 @@ The selection combines with the other write options:
   python3 Tools/CalibrateConstructionLoudness.py --measurements m.json \\
       --write-header --pickings pick --preserve-piezo-level
 
-`--pickings` selects header writes only. Measurement and `--check` still cover
-every construction, style and capture. `--all-pickings` independently adds
-Finger and Thumb to the hardest-case rendering protocol.
+`--pickings` selects header writes only, and `--shapes` does the same by
+Shape (a capture change that reaches only some Shapes rewrites only their
+cells: `--write-header --shapes auditorium dreadnought jumbo`); the two
+combine, so `--shapes parlor --pickings pick` rewrites three cells.
+Measurement and `--check` still cover every construction, style and
+capture. `--all-pickings` independently adds Finger and Thumb to the
+hardest-case rendering protocol.
 
-The gains already built in (read from the header) are divided out of each
-measurement, so writing the header again from a build that has them gives the
-same gains. Renders go to a temporary directory and are removed as soon as
+Only the three gains in ConstructionLoudnessData.h are divided out of each
+measurement. The fixed, microphone-only StudioCaptureLoudnessData.h factors
+remain part of the measured instrument: stereo and mono each keep their own
+factor, while the piezo has neither. A refit therefore does not apply them
+twice. Relative strum predictions use new/old legacy gains, so these fixed
+factors cancel there too. --preserve-piezo-level preserves the legacy mic*piezo
+product, which remains the entire pickup reference. Reuse measurements only
+when DSP and fixed studio factors match the measured build; the saved strum
+schema checks legacy tables, not every source or fixed-reference change.
+Writing again after a rebuild with the new legacy gains gives the same fit.
+Renders go to a temporary directory and are removed as soon as
 they are measured; nothing is downloaded and no audio is kept. NumPy and SciPy
 are required.
 """
@@ -266,7 +278,12 @@ def measure(renderer: str, jobs: int, hardest_pickings=("pick",)) -> dict:
 
 
 def raw_levels(measured: dict, built: dict[str, np.ndarray]) -> dict:
-    """Each measurement with the built-in gains divided out, in dB."""
+    """Divide out only the legacy tables being refitted, in dB.
+
+    Fixed studio gains stay in the microphone signal being calibrated. They
+    are independent for Stereo/Mono and absent from Piezo; removing them here
+    would make the regenerated legacy table apply that correction twice.
+    """
     def gain_db(construction, picking, capture):
         cell = index(*construction, picking)
         gain = built["mic"][cell]
@@ -322,10 +339,10 @@ def to_float32(value: float) -> float:
 
 def retain_unselected_gains(tables: dict[str, np.ndarray],
                             built: dict[str, np.ndarray],
-                            pickings=PICKINGS) -> None:
-    """Keep all existing gains outside the selected styles' cells."""
+                            pickings=PICKINGS, shapes=SHAPES) -> None:
+    """Keep all existing gains outside the selected styles' and Shapes' cells."""
     for cell in itertools.product(SHAPES, WOODS, PICKINGS):
-        if cell[2] not in pickings:
+        if cell[2] not in pickings or cell[0] not in shapes:
             i = index(*cell)
             for name in tables:
                 tables[name][i] = built[name][i]
@@ -614,6 +631,60 @@ def self_test() -> None:
     seen = {index(*cell) for cell in itertools.product(SHAPES, WOODS, PICKINGS)}
     assert seen == set(range(CELLS))
     assert len(list(constructions())) == 12
+    # A fixed microphone reference is part of the calibrated instrument,
+    # not another table to divide out/refit. Deliberately different, nonunity
+    # stereo/mono factors catch accidental double application or leakage to
+    # Piezo; no engine rendering or copied production coefficients are used.
+    studio = {"stereo_mic": np.geomspace(.8, 1.6, CELLS),
+              "mono_mic": np.geomspace(1.7, .7, CELLS),
+              "piezo": np.ones(CELLS)}
+    legacy = {"mic": np.linspace(.7, 1.8, CELLS),
+              "mono": np.linspace(1.3, .6, CELLS),
+              "piezo": np.linspace(.8, 1.4, CELLS)}
+    default_cell = index(*DEFAULT)
+    for name in legacy:
+        legacy[name][default_cell] = 1.0
+    unscaled = {"lufs": {}, "peaks": {}}
+    measured = {"lufs": {}, "peaks": {}}
+    for c, p, capture in itertools.product(constructions(), PICKINGS, CAPTURES):
+        key, cell = (c, p, capture), index(*c, p)
+        base = -32.0 + .13 * cell + .4 * CAPTURES.index(capture)
+        unscaled["lufs"][key] = base
+        measured["lufs"][key] = base + 20 * np.log10(
+            studio[capture][cell] * absolute_gain(legacy, cell, capture))
+    retained = raw_levels(measured, legacy)
+    fitted = gains(retained)
+    target = retained["lufs"][(DEFAULT[:2], DEFAULT[2], "stereo_mic")]
+    remapped = {"lufs": {}, "peaks": {}}
+    for key, base in unscaled["lufs"].items():
+        c, p, capture = key
+        cell = index(*c, p)
+        expected_raw = base + 20 * np.log10(studio[capture][cell])
+        assert abs(retained["lufs"][key] - expected_raw) < 1e-12
+        remapped["lufs"][key] = expected_raw + 20 * np.log10(absolute_gain(fitted, cell, capture))
+        # The default Mono trim is intentionally pinned to unity by this
+        # existing fitter; every other cell/capture lands at the target.
+        if not (cell == default_cell and capture == "mono_mic"):
+            assert abs(remapped["lufs"][key] - target) < 1e-12
+        # Native strum predictions change only the legacy gain ratio. Fixed
+        # studio factors remain embedded in the measured cell/default ratio.
+        old_cell = studio[capture][cell] * absolute_gain(legacy, cell, capture)
+        old_default = studio[capture][default_cell] * absolute_gain(legacy, default_cell, capture)
+        new_cell = studio[capture][cell] * absolute_gain(fitted, cell, capture)
+        new_default = studio[capture][default_cell] * absolute_gain(fitted, default_cell, capture)
+        predicted = 20 * np.log10(old_cell / old_default) + 20 * np.log10(
+            absolute_gain(fitted, cell, capture) / absolute_gain(legacy, cell, capture)) - 20 * np.log10(
+            absolute_gain(fitted, default_cell, capture) / absolute_gain(legacy, default_cell, capture))
+        assert abs(predicted - 20 * np.log10(new_cell / new_default)) < 1e-12
+    repeated = gains(raw_levels(remapped, fitted))
+    for name in fitted:
+        assert np.allclose(repeated[name], fitted[name], rtol=1e-12, atol=0)
+    preserved = {name: values.copy() for name, values in fitted.items()}
+    preserve_piezo_level(preserved, legacy)
+    for cell in range(CELLS):
+        old_level = to_float32(legacy["mic"][cell]) * to_float32(legacy["piezo"][cell])
+        new_level = to_float32(preserved["mic"][cell]) * preserved["piezo"][cell]
+        assert abs(new_level / old_level - 1.0) < 1e-12
     # The phrase set is fixed: the same rows every time, playable, under the
     # renderer's minute, and spanning soft to hard.
     first, second = phrase_set(), phrase_set()
@@ -673,6 +744,14 @@ def self_test() -> None:
             expected = fitted if cell[2] in pickings else old
             for name in scoped:
                 assert scoped[name][i] == expected[name][i], (cell, name)
+    # A Shape filter keeps the other Shapes' cells too, every style included.
+    scoped = {name: values.copy() for name, values in fitted.items()}
+    retain_unselected_gains(scoped, old, PICKINGS, ("auditorium", "dreadnought", "jumbo"))
+    for cell in itertools.product(SHAPES, WOODS, PICKINGS):
+        i = index(*cell)
+        expected = old if cell[0] == "parlor" else fitted
+        for name in scoped:
+            assert scoped[name][i] == expected[name][i], (cell, name)
     scoped = {name: values.copy() for name, values in fitted.items()}
     retain_unselected_gains(scoped, old, ("pick",))
     before = {name: values.copy() for name, values in scoped.items()}
@@ -910,6 +989,12 @@ def argument_parser() -> argparse.ArgumentParser:
                              " moved one style's level; the target is the default"
                              " cell's either way; does not restrict measurements or"
                              " --check)")
+    parser.add_argument("--shapes", nargs="+", choices=SHAPES, default=SHAPES,
+                        help="with --write-header, rewrite only these Shapes' cells"
+                             " and keep every other cell's built gains (a change that"
+                             " reached some constructions only, such as a capture"
+                             " refinement gated by the construction's air mode; does"
+                             " not restrict measurements or --check)")
     parser.add_argument("--self-test", action="store_true")
     return parser
 
@@ -954,7 +1039,7 @@ def main() -> int:
     if arguments.write_header:
         tables = gains(raw, arguments.max_headroom_cut)
         built = built_gains()
-        retain_unselected_gains(tables, built, arguments.pickings)
+        retain_unselected_gains(tables, built, arguments.pickings, arguments.shapes)
         if arguments.preserve_piezo_level:
             preserve_piezo_level(tables, built, arguments.pickings)
         if saved_strums is not None:

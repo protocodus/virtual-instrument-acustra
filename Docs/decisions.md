@@ -5,6 +5,83 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-11 — lower the new-instance Release Noise default to 10%
+
+At the user's request, Release Noise now starts at 10% instead of 70%. This
+changes the control's default, including the native editor's parameter reset,
+without changing the DSP gain law or its 50% nominal reference. Explicit
+saved values retain their levels; states without the parameter still load at
+0%. The bare engine default remains 0%, preserving offline reference and
+test semantics. This supersedes the new-instance default in the historical
+2026-09-30 listening decision, not that session's saved settings or evidence.
+
+## 2026-10-11 — adopt the balanced microphone observation blend
+
+After research into studio placement and trials of individual and combined
+observers, the user approved implementing the balanced blend. The mixture
+retains 40% of the preceding capture, 20% unboosted measured treble pressure,
+and 10% each of three low-mode spatial projections and the measured microphone
+mix. It is fixed across constructions and notes. No new EQ, physical damping,
+body/bridge coupling or piezo change is part of this decision. A flat
+microphone-only gain subsequently restores preceding phrase levels, preserving
+the existing independent loudness guard without changing the chosen balance.
+
+The [production implementation and native A/B](studio-capture-implementation-2026-10-11.md)
+reduce fundamental prominence around Parlor B1, Auditorium A1 and Jumbo E1–F1.
+They preserve body/Piezo traces while retaining local resonant note peaks and
+some partial cancellation. The projected geometry is a declared approximation,
+not a new spatial measurement. The user's implementation approval and the
+numerical validation are distinct from a new listening verdict on this build.
+
+## 2026-10-11 — consistent released-load observation and callback work
+
+The existing instrument's piezo now includes the released crown load already
+applied to its bridge and body, at the same per-string saddle sensitivity.
+The [force-unit and circuit evidence](piezo-release-load-2026-10-11.md) records
+the original overload-test failure, the established passband distinction,
+and a failing antialiasing-bypass negative control. Circuit gain, construction
+trims and the listener-chosen release share are retained. This supersedes the
+direct-force omission in the 2026-10-01 headroom decision; it is not a claim
+that the release envelope has been measured on a physical pickup.
+
+Sparse repeated-contact events and setup-time body coefficient preparation
+remove redundant callback work. Exact parity covers the contact state and
+42 callback/continuation cases, including the accepted 48 kHz wet reference.
+Final combined-model evidence is in the [completion report](project-completion-2026-10-11.md).
+The [moving-stop timing limit](moving-stop-limit-2026-10-11.md) remains explicit;
+a partial delayed-read patch would conflict with local contacts and captured
+tails. No unsupported playing techniques are added.
+
+## 2026-10-11 — preserve Room absorption across sample rates
+
+The existing eight-line mono-send room remains the accepted design. Each line
+now keeps its 48 kHz reference decay at DC and 8 kHz (fs/4 when the internal
+rate is below 32 kHz), accounting for prime-rounded delay lengths. Previously
+its high-frequency target followed Nyquist, so the 8 kHz decay changed with
+the host rate. The original 48 kHz coefficients are unchanged exactly.
+
+This is a rate-consistency correction, not a new listening choice. The separate
+RoomAbsorption contract checks the actual complex transfer functions against
+the original reference: 128 line/rate cases, stable passive coefficients and
+relative decay errors below 2e-6. Full final-model validation is recorded with
+the project completion evidence. The previously rejected two-microphone room
+is not restored; pair-mid cancellation remains an explicit capture limitation.
+
+## 2026-10-11 — model and parameter consistency audit
+
+The audit starts from the latest fetched main and remains scoped to ACUSTRA.
+It removes a Q floor that overrode two fitted broad resonances, regenerates
+the affected Pick level trims, preserves playable chord planning in the
+presence of duplicate/unreachable notes, respects queued-strum pedal
+ownership, and recovers from invalid master tuning. Room and Release Noise
+now expose their existing parameters on the custom panel. Parameter IDs,
+defaults, compatibility slots and saved-state migration remain unchanged.
+
+These are model, contract and numerical corrections with no new listening
+verdict. All 83 tests and the full construction calibration pass. The
+existing broad-Q transfer-convention approximation and the 96 kHz/32-frame
+six-string re-pick CPU limit remain explicit in the
+[audit and retained evidence](model-parameter-audit-2026-10-11.md).
 ## 2026-10-11 — the MIDI layer audited: two Gather Chords defects fixed
 
 A read-only review of the Performer, the plug-in's processBlock and state
@@ -30,23 +107,24 @@ MPE member channels are no longer gathered at all: their notes are
 allocated one at a time and their CC74, pressure and bend precede each
 note, which gathering reordered. The window's latency is unchanged.
 
-Two spec gaps closed with them: CC124-127 also act as All Notes Off
-(MIDI 1.0's channel-mode rule), and a non-finite master tune is ignored
-rather than silently cancelling every channel's bend. Four limits the
+One spec gap closed with them: CC124-127 also act as All Notes Off
+(MIDI 1.0's channel-mode rule). A non-finite master tune is handled by
+the engine's own master tuning (the model and parameter consistency
+audit above), which reads it as zero. Four limits the
 audit named are recorded in README Known gaps rather than changed: the
 MPE zone is not saved with a session, CC96/97 are ignored, the Sustain
 switch acts at block starts and is not delayed under Gather Chords, and
 Panic leaves the bridge hand (CC2) where it is.
 
-## 2026-10-11 — an air-mode dip and damped mid plate modes, by measurement
+## 2026-10-11 — an air-mode dip, by measurement
 
 The user asked for a smooth studio sound without unwanted resonances or
 boominess. Nobody listened in this pass, so it measured
 ([the report](studio-smoothness-2026-10-11.md), with the new
-`Tools/MeasureNoteEvenness.py`) and then applied two bounded, authored
-changes in directions the listener had already chosen, each sized by the
-sweep rather than by ear. The sweep's deviations were the air mode's low
-peak (F#2/G2 +4 dB on the Dreadnought, G#2/A2 +5.7/+3.3 on the Auditorium,
+`Tools/MeasureNoteEvenness.py`) and then applied one bounded, authored
+change in a direction the listener had already chosen, sized by the sweep
+rather than by ear. The sweep's deviations were the air mode's low peak
+(F#2/G2 +4 dB on the Dreadnought, G#2/A2 +5.7/+3.3 on the Auditorium,
 whose A2 the user named as boom on 2026-10-09, A#2/B2 on the Parlor) and
 each Shape's ±10 dB mid peak and antiresonance hole from the body's
 400-600 Hz modes (A#4 and C#5 on the Dreadnought). The room adds nothing
@@ -54,30 +132,47 @@ below 160 Hz; the air-mode gain chosen by ear does not move the low peak;
 the real flat-top's own sweep is as uneven as the model's on the eight
 notes available.
 
-Applied: a -4 dB, Q 2.5 dip on the summed microphone pressure at each
-construction's own air mode (the lowest configured g21 pole, so it follows
-Shape as the fixed 125 Hz refinement of 2026-10-09 could not), and 0.7 of
-the flamenca's Q for the plate modes between 350 and 900 Hz, shared with
-their bridge twins so the string sees the resonance it radiates through.
-The dip is the same kind of capture refinement the user confirmed as "less
-boom" on 2026-10-09; the damping continues the direction of the 2026-09-27
-blind verdict for damped plate modes. Neither touches the measured body
-data, the piezo's saddle force, parameters or layout.
+Applied: a -2.5 dB, Q 2.5 dip on the summed microphone pressure at each
+construction's own air mode (g21's lowest mode as the Shape and Wood place
+it, so it follows the construction as the fixed 125 Hz refinement of
+2026-10-09 could not), after the balanced microphone observation blend
+approved the same day, which had not removed the sweep's air-mode excess
+(the Dreadnought's G2 still +3.1 dB over the blend, the Auditorium's G#2
++5.5). The dip is the same kind of capture refinement the user confirmed
+as "less boom" on 2026-10-09. It touches neither the measured body data,
+the piezo's saddle force, parameters nor layout. Every construction but
+the Parlor takes it, by the air mode's frequency (under 117 Hz: the Jumbo's
+at 84-91 Hz, the Dreadnought's at 94-101, the Auditorium's at 106-113; the
+Parlor's at 121-128). The Parlor's A#2/B2 lift (+3.5/+5.3 dB) is as large
+but stays: its margin on the cross-phrase construction loudness fixture
+(Parlor Spruce Finger at 2.87 of the 3 LU allowed) has no room for the
+0.2 LU more the dip costs that fixture's phrase than the calibration
+phrase, and that tolerance is not loosened to fit a refinement.
 
-Measured on the sweep (neighbourhood deviation, velocity 96, Finger): RMS
-3.64 to 3.10 dB on the Dreadnought, 3.64 to 3.12 Auditorium, 3.54 to 3.16
-Jumbo, 2.49 to 2.16 Parlor, 3.50 to 3.08 on the mono microphone; the
-Dreadnought's G2 +4.0 to +2.4 and E2 -5.4 to -3.5, the Auditorium's G#2
-+5.7 to +4.3, A#4 +9.8 to +8.0, C#5 -10.4 to -9.4. The default cell's
-stereo phrase lost 0.777 LU, taken back by the capture level scalar
-(MicrophoneBalanceData.h), and every construction was re-levelled by
-`Tools/CalibrateConstructionLoudness.py`. The piezo's level moved by 0.01
-LU. Against the embedded recordings the descriptor loss moves within one
-percent: the two picked archtop sets closer (-0.6% and -1.1%, attack and
-body terms), the eight finger flat-top notes further (+0.9%, the attack
-term). This is a measured smoothing, not a listening verdict: the report
-records how to render the previous engine beside it for a blind A/B, and
-the numbers that would show a listener's preference are not these.
+A second candidate, 0.7 of the flamenca's Q on the plate modes between 350
+and 900 Hz, measured well alone (A#4 +9.8 to +8.0 dB) but was dropped when
+this branch merged main: the model and parameter consistency audit above
+pins the radiation to each mode's measured damping, and the approved blend
+states that no physical damping change is part of it. The mid peak and
+hole stay as measured. A deeper dip (-4 dB) was tried and sized back: with
+its level restore it put the Parlor past the fixture's tolerance, and the
+-2.5 dB dip takes no restore at all.
+
+Measured on the sweep over the merged main (neighbourhood deviation,
+velocity 96, Finger): the Dreadnought's G2 +3.1 to +2.0 dB and E2 -4.3 to
+-3.1, F#2 +4.3 to +3.7; the Auditorium's G#2 +5.5 to +4.6 and A2 +2.7 to
++1.9 (its Maple box's A2/A#2 +3.8/+5.1 to +2.8/+4.3); the Jumbo's E2 +2.6
+to +2.3; RMS deviation 3.71 to 3.63 on the Dreadnought. The default cell's
+stereo phrase loses 0.24 LU (-27.5164 to -27.7532 LUFS, inside the
+construction loudness contract), the dipped constructions were re-levelled
+to it by `Tools/CalibrateConstructionLoudness.py` (new `--shapes`), and
+the Parlor's Finger and Thumb cells keep their gains. Against the embedded
+recordings the descriptor loss moves within one percent of main's: the two
+picked archtop sets closer (-0.7% and -0.9%, attack and body terms), the
+eight finger flat-top notes further (+0.6%, the attack term). This is a
+measured smoothing, not a listening verdict: the report records how to render the
+previous engine beside it for a blind A/B, and the numbers that would show
+a listener's preference are not these.
 
 ## 2026-10-11 — a Sustain switch beside the pedal
 

@@ -3,9 +3,7 @@
 // the measured interference, and exercise its bank-local histories.
 #include "DSP/AcustraEngine.h"
 #include "DSP/CaptureVoicingData.h"
-#include "DSP/MeasuredBodyData.h"
 #include "DSP/MicrophoneBalanceData.h"
-#include "DSP/SteelBodyBlend.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -53,7 +51,9 @@ Complex target(double frequency, double rate, double airModeHz)
     // neither runtime digital coefficients nor the runtime gain helper.
     Complex response = std::pow(10.0,
         (double(acustra::detail::captureVoicingLevelDb)
-         + double(acustra::detail::originalCaptureLevelAdjustmentDb)) / 20.0);
+         + double(acustra::detail::originalCaptureLevelAdjustmentDb)
+         + (airModeHz > 0.0 ? double(acustra::detail::originalAirModeDipLevelDb) : 0.0))
+        / 20.0);
     // The fitted sections and, last, the dip at the construction's air mode
     // (MicrophoneBalanceData.h), a peak section the prototype spells itself.
     std::vector<acustra::detail::CaptureVoicingSection> sections(
@@ -138,43 +138,10 @@ void testDigitalTransferAndReset(double rate)
     expect(same, "capture reset did not reproduce the cleared impulse");
 }
 
-void testMeasuredResiduesAreNotEqualized()
-{
-    namespace d = acustra::detail;
-    auto engine = std::make_unique<Engine>();
-    engine->prepare(48000, 64);
-    const auto bank = Access::bank(*engine);
-    // At the shipped Spruce/Dreadnought anchor the shape and wood factors
-    // are unity. Its authored pressure scale remains 0.93, with bass 1.28.
-    // Check complex force AND moment residues of the low-mid modes directly:
-    // a post-sum filter must not also leave the former modal weighting here.
-    for (int index : { 1, 2, 3, 4, 5, 6, 7, 8 })
-    {
-        const auto i = static_cast<std::size_t>(index);
-        const auto& mode = d::measuredSteelBodyModes[i];
-        const double frequency = std::atan2(bank.poleImaginary[i], bank.poleReal[i]) * 48000. / (2. * pi);
-        const double share = mode.frequency < d::steelBlendJointBandHz
-            ? 1.0 - d::steelBlendJointBodyWeight
-            : 1.0 - d::steelBlendJointBodyWeight * d::steelBlendHighJointFraction;
-        const double scale = .93 * (1.0 + .28 * std::exp(-frequency / 520.0))
-            * share * d::microphoneTiltGain(float(frequency));
-        const std::array<Complex, 4> expected {{
-            scale * Complex(mode.leftReal, mode.leftImaginary),
-            scale * Complex(mode.upperReal, mode.upperImaginary),
-            scale * Complex(mode.leftMomentReal, mode.leftMomentImaginary),
-            scale * Complex(mode.upperMomentReal, mode.upperMomentImaginary)
-        }};
-        const std::array<Complex, 4> actual {{
-            { bank.leftReal[i], bank.leftImaginary[i] },
-            { bank.rightReal[i], bank.rightImaginary[i] },
-            { bank.leftMomentReal[i], bank.leftMomentImaginary[i] },
-            { bank.rightMomentReal[i], bank.rightMomentImaginary[i] }
-        }};
-        for (std::size_t axis = 0; axis < actual.size(); ++axis)
-            expect(std::abs(actual[axis] - expected[axis]) < 5e-5 * std::abs(expected[axis]),
-                   "capture weighting remains in measured force/moment residues");
-    }
-}
+// CaptureObserverBlendTests compares the complete force/moment observer with
+// independent pre-implementation acceptance data. Its approved constant mix
+// intentionally replaces the former treble/upper-only residue expectation.
+// The tests here still require the unchanged contour to act after that sum.
 
 template <typename Bank>
 Complex modalResponse(const Bank& bank, double frequency, double arm, bool legacyWeight)
@@ -279,7 +246,6 @@ int main()
 {
     for (double rate : { 8000., 24000., 44100., 48000., 96000., 192000., 384000. })
         testDigitalTransferAndReset(rate);
-    testMeasuredResiduesAreNotEqualized();
     testLowMidCancellationRegression();
     for (double rate : { 44100., 48000., 96000. }) testOriginalHistoryAndReprepare(rate);
     return failures == 0 ? 0 : 1;

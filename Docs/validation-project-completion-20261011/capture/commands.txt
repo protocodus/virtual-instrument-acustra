@@ -1,0 +1,14 @@
+# Run from the repository root. Public corpus preparation and the bank/open
+# renders had completed before these final capture commands. Their exact rows,
+# controls, calibration and renderer hashes are retained in the JSON manifests.
+# See Tools/PrepareEastmanCorpus.py, Tools/PrepareMartinCorpus.py and
+# Docs/capture-observation-2026-10-10.md for the established preparation protocol.
+
+python3 -I Tools/BenchmarkPerformances.py --dataset build-audit/project-finalization/data/guitarset --renderer build-audit/AcustraPerformanceRenderer --output build-audit/project-finalization/capture/guitarset --capture stereo_mic --room 0 --observation matched
+python3 -I Tools/BenchmarkPerformances.py --dataset build-audit/project-finalization/data/guitarset --renderer build-audit/AcustraPerformanceRenderer --output build-audit/project-finalization/capture/guitarset-mono --capture mono_mic --room 0 --observation matched
+python3 -I Tools/FitCaptureVoicing.py --bank build-audit/project-finalization/capture/bank --open build-audit/project-finalization/capture/open --guitarset build-audit/project-finalization/capture/guitarset --guitarset-mono build-audit/project-finalization/capture/guitarset-mono --observation matched --json build-audit/project-finalization/capture/capture-residuals.json
+
+# The sensitivity script was first run in build-audit/project-finalization;
+# the evidence copy only adjusts its repository/report path discovery.
+# It reads the saved fit report, renders no audio and writes no DSP header.
+python3 Docs/validation-project-completion-20261011/capture/AssessCaptureResiduals.py

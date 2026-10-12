@@ -23,7 +23,18 @@ struct AcustraEngineTestAccess
     static auto bridge(const AcustraEngine& e) { return e.bridgeLoad_; }
     static auto table(const AcustraEngine& e) { return e.bridgeMobilityTable(); }
     static std::complex<double> residue(const AcustraEngine& e, int i)
-    { return { e.bodyBank_.rightReal[std::size_t(i)], e.bodyBank_.rightImaginary[std::size_t(i)] }; }
+    {
+        const auto slot = std::size_t(i);
+        const std::complex<double> right(e.bodyBank_.rightReal[slot], e.bodyBank_.rightImaginary[slot]);
+        if (i >= 2) return right;
+        // Every added A0/T1 plate/hole observer is even in x, with symmetric
+        // virtual receiving positions. Its identical L/R pressure cancels
+        // here, exposing a fixed, nonzero combination of measured taps whose
+        // common physical participation can still be checked independently.
+        // Full low-mode complex observations (including joint A0/T1) have a
+        // separate pre-implementation golden in CaptureObserverBlendTests.
+        return std::complex<double>(e.bodyBank_.leftReal[slot], e.bodyBank_.leftImaginary[slot]) - right;
+    }
     static std::complex<float> port(const AcustraEngine& e, float f, int string)
     { return e.bridgePortMobility(f, string).normal; }
     static double radius(const AcustraEngine& e, int i)
@@ -205,10 +216,13 @@ void coupledModesAndResidues()
                     const double mic=std::pow(10.0,(.4375*std::log2(std::clamp(f,60.0,10000.0)/1000.0))/20.0);
                     return bass*fitted*mic;
                 };
-                const auto actual=Access::residue(*e,index)/Access::residue(*s,index);
+                const auto referenceResidue=Access::residue(*s,index);
+                expect(std::abs(referenceResidue)>1e-8,
+                       "Wood physical participation witness lost its measured spatial component");
+                const auto actual=Access::residue(*e,index)/referenceResidue;
                 const double radiationRatio=actual.real()*contour(oldFrequency)/contour(newFrequency);
                 worstRadiation=std::max(worstRadiation,std::abs(radiationRatio/expectedResidue-1.0));
-                expect(std::abs(actual.imag())<2e-6,"Wood rotated a fixed-mode radiation residue");
+                expect(std::abs(actual.imag())<2e-6,"Wood rotated the fixed measured radiation component");
             }
             int lowCount=0,plateCount=0;
             for(std::size_t slot=0;slot<acustra::detail::steelBridgeRadiationTwins.size();++slot)
