@@ -3091,7 +3091,56 @@ set without it.
 
 ## Release history
 
-### 2026-10-12 — strum direction timed by the song, and keyswitches
+### 1.3.2 — 2026-10-12 — the mid-band peak takes a dip, and a bit of piezo
+
+- **A dip at the mid-band peak.** On the E2-E5 sweep
+  (`Tools/MeasureNoteEvenness.py`, velocity 96, Finger, stereo mic, Room
+  0.5) each Shape's upper strong mid mode put one note 8-11 dB over its
+  neighbours (Dreadnought A#4, Auditorium C5, Jumbo G#4; the Parlor's D#5
+  5.4 dB). The summed microphone pressure now dips -9 dB at Q 8 on that
+  mode, which `AcustraEngine::locateMidBand` finds per Shape and Wood at
+  prepare (404-614 Hz) as the highest point of the engine's own response
+  within a fourth below its deepest antiresonance between 450 and 800 Hz;
+  the piezo never passes through it. The peaks fall to +5.0 (Dreadnought),
+  +3.8 (Auditorium), +5.7 (Jumbo) and +2.2 dB (Parlor), and the sweep's
+  RMS deviation from 4.20 to 3.52, 3.51 to 3.20, 3.81 to 3.22 and 3.35 to
+  2.71 dB. The holes above the peaks are radiation nulls and stay; a boost
+  at them was measured and not shipped. See
+  [the report](Docs/mid-band-dip-2026-10-12.md).
+- **The level is restored.** The dip carries a +0.5263 dB restore sized on
+  the default construction's calibration phrase, every construction is
+  re-levelled to it by `Tools/CalibrateConstructionLoudness.py`, and the
+  mono microphone takes -1.0 dB, which puts the default's mono capture on
+  the calibration target (0.85 dB under where 1.3.1 played it against the
+  pair).
+- **Piezo Mix starts at 20 %,** the Rack's default, so a new instance
+  starts with a bit of the under-saddle piezo beneath the microphones; a
+  session saved before Piezo Mix existed still loads at 0 %. A chosen
+  default, not a listening verdict.
+- Nobody has listened to the dip; the user directed that it ship on the
+  measurements (Docs/decisions.md).
+
+### 1.3.1 — 2026-10-12 — the Parlor's air-mode dip, and the second MIDI audit
+
+- **The Parlor takes the air-mode dip** the other bodies took in 1.2.0, its
+  upper bound moved from 117 to 130 Hz to reach the Parlor's 121-128 Hz air
+  mode. At Room 0.5 B2 falls from +5.7 to +4.6 dB over its neighbours and
+  A#2 from +4.0 to +3.4. The Parlor's Finger and Thumb cells sit 0.5 LU
+  over the calibration target, so the construction loudness fixture keeps
+  its 3 LU contract (Parlor Spruce Finger at -2.57 LU). No parameter or
+  saved state changes. Nobody has listened to it; the user directed that
+  it stay as merged (Docs/decisions.md).
+- **The second MIDI audit's fixes.** A full Gather Chords queue drops its
+  oldest controller value rather than the newest, so a wheel's release or
+  a bend's return is never lost, and messages the instrument ignores
+  (program change, polyphonic pressure, system bytes) are never queued. A
+  note group stamped by an offset that decreased within a block measures
+  its stroke interval from the rendered position. The plug-in plays its
+  MIDI silently while bypassed, so a key-up sent then is not lost, treats
+  the host's reset as Panic, and consumes Panic before the on-screen
+  keyboard adds its keys.
+
+### 1.3.0 — 2026-10-12 — strum direction timed by the song, and keyswitches
 
 - **A dotted-eighth alternation window.** A strum used to alternate with
   the previous one whenever less than two seconds had passed, so slow
@@ -3117,7 +3166,7 @@ set without it.
   on 2026-10-12 (Docs/decisions.md); the Rack Extension prints the same
   legend on its rear panel.
 
-### 2026-10-11 — a Sustain switch, and the sweep smoothed by measurement
+### 1.2.0 — 2026-10-11 — a Sustain switch, and the sweep smoothed by measurement
 
 - **A dip at the construction's air mode.** Measured with the new
   `Tools/MeasureNoteEvenness.py`, the note at each Shape's air mode stood
