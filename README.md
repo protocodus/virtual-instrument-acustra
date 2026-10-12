@@ -2,7 +2,7 @@
 
 [![Acustra editor](Docs/screenshots/acustra-standalone.png)](Docs/screenshots/acustra-standalone.png)
 
-Acustra is an acoustic-guitar instrument for VST3, Audio Unit and Standalone
+Acustra is an acoustic-guitar instrument for VST®3, Audio Unit and Standalone
 hosts. It synthesises every note in real time from six physical string models,
 a passive measured bridge and a measurement-derived guitar body. The plug-in
 contains no sample player and no recorded note audio.
@@ -4160,7 +4160,16 @@ Shinyguitar and Eastman E1D recordings in the offline reference bank
 are dedicated under CC0 1.0 and are not linked into the plug-in. The measured
 bridge/body coefficient tables are adapted from Robert Mores' archive under CC
 BY 4.0, and two derived level constants and the piezo's bridge conductance
-from Carcagno et al.'s Fylde measurement, also CC BY 4.0. JUCE is
-a separate dependency offered under AGPLv3 or a commercial JUCE licence. See
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and the files in
-[`ThirdParty`](ThirdParty) before distributing a combined plug-in or app.
+from Carcagno et al.'s Fylde measurement, also CC BY 4.0. GuitarSet, CC BY
+4.0, is one of the recording sets the capture voicing is fitted to and the
+source of three strum statistics. JUCE is
+a separate dependency offered under AGPLv3 or a commercial JUCE licence, and
+the libraries it compiles in (the VST3 SDK, HarfBuzz, SheenBidi, libpng, zlib,
+the IJG JPEG code and, on macOS, Apple's AudioUnitSDK) carry their own
+licences, collected in
+[`ThirdParty/JUCE-DEPENDENCY-LICENSES.txt`](ThirdParty/JUCE-DEPENDENCY-LICENSES.txt).
+See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and the files in
+[`ThirdParty`](ThirdParty) before distributing a combined plug-in or app; the
+desktop packages ship them with the [user guide](Docs/USER_GUIDE.md).
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.

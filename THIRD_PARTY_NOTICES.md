@@ -113,7 +113,7 @@ not alter the packed PCM. The local upstream source note is distributed as
 `Assets/SampleBank/manifest.json` records every reference region's mapping,
 decoded hash, packed offset, onset, fade and source provenance. The separate
 reference payload is transformed audio from these CC0 works; it is not
-Acustra-authored source audio. The VST3, Audio Unit and standalone binaries
+Acustra-authored source audio. The VST®3, Audio Unit and standalone binaries
 contain no part of this payload.
 
 CC0 imposes no attribution or share-alike condition; this notice is retained
@@ -294,6 +294,47 @@ experimental participant data are not distributed. This attribution, licence
 link, source link and description of changes must accompany distributions of
 these derived values.
 
+## GuitarSet: derived values only
+
+Qingyang Xi, Rachel M. Bittner, Johan Pauwels, Xuzhou Ye and Juan P. Bello,
+*GuitarSet: A Dataset for Guitar Transcription*, ISMIR 2018. Dataset:
+GuitarSet v1.1.0, <https://zenodo.org/records/3371780>.
+
+Licence: [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/)
+
+No GuitarSet audio or annotation is included in this repository or any
+Acustra binary. Values Acustra fitted to it are compiled into every
+binary:
+
+- The capture voicing, the six filter sections in
+  `Source/DSP/CaptureVoicingData.h`, written by `Tools/FitCaptureVoicing.py`.
+  It is fitted, in third octaves, to the consensus of five sets of
+  steel-string recordings against the engine's renders of the same notes;
+  one set is GuitarSet's six microphone performances (`audio_mono-mic`,
+  one 12-second excerpt per player, rendered from their annotations by
+  `Tools/BenchmarkPerformances.py`).
+- Three strum statistics that `Tools/MeasureStrums.py` measures from the
+  comping tracks' hex-pickup audio (`audio_hex-pickup_debleeded`) and
+  their note annotations: the pick's traversal speed, 0.51 to 2.46 m/s
+  (`AcustraEngine::strumDelaySamples` in `Source/DSP/AcustraEngine.cpp`);
+  a stroke's span varying with a 36.47 % standard deviation
+  (`strumSpeedJitterHalfWidth` in `Source/DSP/AcustraEngine.h`); and a
+  repeated string's level varying with a 4.47 dB standard deviation (the
+  7.74 dB half-width in `AcustraEngine::initialisePluck`).
+
+These are Acustra's measurements and fits from the dataset, not part of
+it; the source comments and tools above describe how each was derived. This
+attribution, licence link, source link and description of changes must
+accompany distributions of these derived values.
+
+The capture voicing's other recordings are CC0 and are listed for
+provenance only: the Eastman E1D takes above (both whole takes,
+`Tools/PrepareEastmanCorpus.py`), the reference bank's eight finger-plucked
+Eastman notes, and 11 notes of Jeff Learman's 2017 Martin HD28 samples
+(program 026 of the Discord SFZ GM Bank,
+<https://github.com/sfzinstruments/Discord-SFZ-GM-Bank>, commit
+`7a9c478fe331f94f246d33332f0adedb25bbbe27`, `Tools/PrepareMartinCorpus.py`).
+
 ## DAFx-26 nonlinear modal synthesis paper: no licensed material
 
 Michele Ducceschi, Riccardo Russo and Craig J. Webb, *Measurement-Informed
@@ -399,3 +440,7 @@ Acustra's source tree and offline reference tools include the two CC0
 recording families described above. The distributed plug-in and standalone
 binaries include none of their recorded audio, and include no convolution
 impulse response, neural model or added room/reverb capture.
+
+## Trademarks
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.
