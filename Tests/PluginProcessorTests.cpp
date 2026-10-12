@@ -128,16 +128,18 @@ void testParameterContract()
         ids::stringAge, ids::pluckPosition, ids::touch, ids::bodyAmount,
         ids::stereoWidth, ids::output, ids::capture, ids::picking,
         ids::upperMic, ids::piezoLoading, ids::captureMode, ids::guitarModel,
-        ids::gatherChords, ids::piezoMix, ids::releaseNoise, ids::room
+        ids::gatherChords, ids::piezoMix, ids::releaseNoise, ids::room,
+        ids::sustain
     };
-    static_assert (ids::parameterCount == 19,
+    static_assert (ids::parameterCount == 20,
                    "String Material and Bridge Model are gone; Guitar Model is a "
-                   "legacy slot; Piezo Mix, Release Noise and Room are appended");
+                   "legacy slot; Piezo Mix, Release Noise, Room and Sustain are "
+                   "appended");
     // Piezo Mix defaults to 0, so Main is the microphones alone; Release
-    // Noise to the requested 10%; Room to 50%.
+    // Noise to the requested 10%; Room to 50%; Sustain off.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 10.0f, 50.0f
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 10.0f, 50.0f, 0.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -251,6 +253,12 @@ void testParameterContract()
             "Room must append a 0-100% parameter with AU version hint 11");
     expect (std::abs (processor.snapshotEngineParameters().room - 0.5f) < 0.002f,
             "a new session's room is not at its 50% default");
+    const auto* sustain = dynamic_cast<const juce::AudioParameterBool*> (
+        processor.parameters.getParameter (ids::sustain));
+    expect (sustain != nullptr && sustain->getVersionHint() == 12
+                && sustain->getParameterIndex() == 19 && sustain->isAutomatable()
+                && sustain->getName (32) == "Sustain" && ! sustain->get(),
+            "Sustain must append an automatable switch, off, with AU version hint 12");
 
     setValue (processor, ids::shape, 3.0f);
     setValue (processor, ids::bodyMaterial, 2.0f);
@@ -822,6 +830,85 @@ void testResetAllControllersReleasesSustain()
     }
     expect (processor.getActiveVoiceCount() == 0,
             "Reset All Controllers left sustain latched");
+}
+
+// The Sustain switch holds released notes on every channel as the pedal
+// does, and the two let go independently: the pedal keeps its notes when
+// the switch goes off, and the switch keeps them when the pedal comes up.
+void testSustainSwitchHoldsReleasedNotes()
+{
+    namespace ids = acustra::parameters;
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
+    processor.prepareToPlay (sampleRate, blockSize);
+    juce::AudioBuffer<float> audio { 2, blockSize };
+    const auto play = [&] (juce::MidiBuffer midi)
+    {
+        processor.processBlock (audio, midi);
+        expect (finite (audio), "Sustain rendered a non-finite sample");
+    };
+    const auto settle = [&]
+    {
+        for (int block = 0; block < 100; ++block)
+            play ({});
+    };
+    const auto note = [] (int channel)
+    {
+        juce::MidiBuffer midi;
+        midi.addEvent (juce::MidiMessage::noteOn (channel, 52, 0.8f), 0);
+        midi.addEvent (juce::MidiMessage::noteOff (channel, 52), 2);
+        return midi;
+    };
+    const auto pedal = [] (int channel, bool down)
+    {
+        juce::MidiBuffer midi;
+        midi.addEvent (juce::MidiMessage::controllerEvent (channel, 64, down ? 127 : 0), 0);
+        return midi;
+    };
+
+    play (note (1));
+    settle();
+    expect (processor.getActiveVoiceCount() == 0,
+            "a released note rang on with Sustain off");
+
+    setValue (processor, ids::sustain, 1.0f);
+    play (note (3));
+    settle();
+    expect (processor.getActiveVoiceCount() == 1,
+            "Sustain did not hold a released note on channel 3");
+    play (pedal (3, true));
+    play (pedal (3, false));
+    settle();
+    expect (processor.getActiveVoiceCount() == 1,
+            "a pedal lifted under Sustain let the note go");
+    setValue (processor, ids::sustain, 0.0f);
+    settle();
+    expect (processor.getActiveVoiceCount() == 0,
+            "switching Sustain off did not let the held note go");
+
+    play (pedal (1, true));
+    setValue (processor, ids::sustain, 1.0f);
+    play (note (1));
+    setValue (processor, ids::sustain, 0.0f);
+    settle();
+    expect (processor.getActiveVoiceCount() == 1,
+            "switching Sustain off let go a note the pedal still holds");
+    play (pedal (1, false));
+    settle();
+    expect (processor.getActiveVoiceCount() == 0,
+            "the pedal lifted after Sustain went off did not let the note go");
+
+    // Panic clears a held note and leaves the switch where it was.
+    setValue (processor, ids::sustain, 1.0f);
+    play (note (1));
+    processor.requestPanic();
+    play ({});
+    expect (processor.getActiveVoiceCount() == 0, "Panic left a Sustain-held note");
+    play (note (1));
+    settle();
+    expect (processor.getActiveVoiceCount() == 1
+                && valueOf (processor, ids::sustain) >= 0.5f,
+            "Panic switched Sustain off");
 }
 
 void testMemberChannelOwnershipAndControllers()
@@ -2409,7 +2496,8 @@ void testTheAdapterPlaysExactlyThePerformer()
                         : control.kind == Kind::Age ? ids::stringAge
                         : control.kind == Kind::Pluck ? ids::pluckPosition
                         : control.kind == Kind::Touch ? ids::touch
-                        : control.kind == Kind::PiezoMix ? ids::piezoMix : nullptr;
+                        : control.kind == Kind::PiezoMix ? ids::piezoMix
+                        : control.kind == Kind::Sustain ? ids::sustain : nullptr;
                     if (id != nullptr)
                         setValue (processor, id, control.value);
                     else
@@ -2432,6 +2520,7 @@ void testTheAdapterPlaysExactlyThePerformer()
                 if (panic)
                     performer->reset();
                 performer->setGatherChords (valueOf (processor, ids::gatherChords) >= 0.5f);
+                performer->setSustainHold (valueOf (processor, ids::sustain) >= 0.5f);
                 performer->beginBlock (left.data(), right.data(), block);
                 for (const auto metadata : midi)
                     performer->handleMidi (metadata.samplePosition, metadata.data,
@@ -2694,6 +2783,7 @@ int main()
     testTheAdapterPlaysExactlyThePerformer();
     testReleaseGesturesAndRetiredCc68();
     testResetAllControllersReleasesSustain();
+    testSustainSwitchHoldsReleasedNotes();
     testMemberChannelOwnershipAndControllers();
     testMemberPitchBendDoesNotLeakChannels();
     testRpnPitchRangesAndSelectionState();

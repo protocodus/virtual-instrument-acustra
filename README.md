@@ -42,6 +42,12 @@ directly playable, without added input latency or new controls. See the
 The subsequent [CPU optimization](Docs/cpu-optimization-2026-10-07.md) preserves
 the rendered audio while reducing redundant pitch and pluck calculations.
 
+Version 1.2.0 adds the Sustain switch, puts Release Noise and Room on the
+panel, fixes the Gather Chords defects the MIDI audit found and takes the
+air-mode boom down by measurement (a dip at the air mode of every
+construction but the Parlor); see
+[Versioned builds and packages](#versioned-builds-and-packages).
+
 Version 1.1.4 expands the MIDI velocity range: soft strokes apply much less
 force to the string and its physical release contact. Wood and Shape now
 settle to exact construction references and string delays, so returning to a
@@ -73,6 +79,21 @@ stronger body variations intentionally change their sound. See the
 and [realism work](Docs/realism-work.md) for measurements and limits.
 
 ## Versioned builds and packages
+
+Version 1.2.0 adds the host-automatable Sustain switch (a new, appended
+parameter, off by default), puts Release Noise and Room on the panel, fixes
+the two Gather Chords defects the 2026-10-11 MIDI audit found (a full queue
+losing key-ups; a gathered note pulled ahead of its key's stray key-up),
+makes the channel-mode messages act as All Notes Off, and takes the
+air-mode boom down by measurement (`Tools/MeasureNoteEvenness.py`): a dip
+at the air mode of every construction but the Parlor, on the summed
+microphone pressure after the balanced observation blend, with the dipped
+constructions re-levelled. The piezo's saddle force, the measured body
+data and its damping, parameter IDs, saved states and the wooden interface
+are retained; the sound change is authored and measured, and was preferred
+blind over main's engine on 2026-10-12. See the
+[release history](#release-history) and the
+[smoothness report](Docs/studio-smoothness-2026-10-11.md).
 
 Since 2026-10-10 (after 1.1.3) Acustra plays one guitar body, the Original:
 the Bellido 1978 (Classical 78) Model, its measured g35 body and bridge and
@@ -121,7 +142,7 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
 locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
-it with the project version (currently `1.1.4`) and the source revision. Changing that identity rebuilds
+it with the project version (currently `1.2.0`) and the source revision. Changing that identity rebuilds
 the wrappers; each linked format receives its frozen identity record, and macOS
 bundles embed the build number. Packaging rejects a cache
 that disagrees with those records or macOS bundle metadata. Assign a new build
@@ -619,7 +640,18 @@ a proof of physical energy conservation.
 
 CC64 sustain holds notes released under the pedal until pedal-up, which
 starts damping directly. Pressing the pedal after a key-up does not catch its
-pending release. All Notes Off uses its existing sustain-aware release directly, and
+pending release. The SUSTAIN switch beside CHORDS is the same hold on every
+channel at once (`Performer::setSustainHold`): on, every released note rings
+on, its string still fretted, until the string is taken for another note or
+the switch goes off, which damps the held notes as a pedal-up does. The
+switch and the pedal hold independently: a pedal lifted under the switch,
+or the switch turned off under a channel's pedal, keeps the note, and
+Reset All Controllers lifts only the pedal. Like the pedal, the switch does
+not catch a key-up already in its release window. It is host-automatable,
+so a track can alternate let-ring and damped passages, and it takes effect
+at the start of the block the host changes it in, before that block's MIDI.
+Off, the default, is an exact no-op; a session saved before it existed
+loads it off. All Notes Off uses its existing sustain-aware release directly, and
 All Sound Off/panic clears sound immediately. Queued strums still sound when
 the pick reaches each string; their ordinary release window starts there.
 For longer gaps, holding the note or using sustain keeps it ringing. The
@@ -698,10 +730,19 @@ shares, while asynchronies played on purpose usually exceed 30 ms
 The cost is 30 ms of latency on every note, which the plug-in reports (on
 top of the engine's own seven samples, Outputs) so a host compensates it on
 playback; a player hears it live. The switch is off by
-default. A key repeated inside the window, or a controller that changes how
-notes are allocated (sound or notes off, reset, mono/poly, the RPNs that lay
-out an MPE zone), ends a chord. String-per-channel controllers already say how
-each note is played, so they are only delayed.
+default. A key repeated inside the window, a key whose key-up the channel
+sent inside it (a later Note On of a released key stays behind that key-up,
+which may be stray, its string already taken by another note), or a
+controller that changes how notes are allocated (sound or notes off, reset,
+the channel-mode messages, the RPNs that lay out an MPE zone), ends a
+chord. String-per-channel controllers and MPE member channels already say
+how each note is played, so their events are only delayed, never regrouped:
+a member's CC74, pressure and bend stay ahead of the note they belong to.
+The window's queue holds 1024 events, the window plus one block. When a
+stream fills it, a continuous gesture (bend, pressure, an ordinary
+controller), whose next value supersedes it, is dropped and counted; a
+message that starts or ends a note, the pedal, a reset or a mode message
+is never lost, the oldest queued continuous event making room for it.
 
 And no two plucks land in the same place: each draws its own point within ±0.02
 of the string length, the take-to-take spread the reference recordings'
@@ -795,7 +836,8 @@ layout such as a hexaphonic pickup or a guitar-to-MIDI converter might send —
 puts each of the six channels onto its own string, bypassing the allocator;
 no control-surface driver on hand is confirmed to transmit CC126 itself, so
 today the mode is reachable through a MIDI editor or a host's own CC tools.
-Upper-zone MPE is not implemented.
+As MIDI 1.0 requires, the four channel-mode messages (CC124-127) also act
+as All Notes Off on their channel. Upper-zone MPE is not implemented.
 
 ### Pluck and strings
 
@@ -1456,6 +1498,7 @@ resonances meet it (Known gaps).
 | **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% (the default) the output is exactly as without it; with Capture on Piezo it does nothing, since the piezo is already the whole output. |
 | **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. Also controls subtle speed-dependent friction during held wound-string slides. 0-100% (50% nominal, 10% default), scaled by release velocity and what the string still carries. Explicit saved values retain their levels. 0% adds no new noise; already emitted waves continue. A session saved before it existed loads at 0%. Available on the Player panel and host-automatable. |
 | **Room** | Small-studio reflections around the microphones, 0-100% with a 50% plug-in default. Zero becomes dry once the existing room tail fades. The piezo remains dry. Available on the Capture panel and host-automatable; a session saved before Room existed loads at 0%. |
+| **Sustain** | On, every released note rings on as under the sustain pedal, on every channel, until its string is taken or the switch goes off, which damps the held notes as a pedal-up does; CC64 keeps working beside it, and each holds independently of the other. Off (the default) damps every key-up as before and is an exact no-op. Host-automatable; the SUSTAIN switch beside CHORDS. |
 | **String Age** | Lowers the string cutoff and increases dislocation loss; on the wound strings it also scales winding friction and bending loss (0.2 of the default's on fresh strings, 7.8 times it at 1), so an old set's basses lose their upper partials first. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Past a quarter of a (short, high-fretted) string the point bends smoothly toward 0.36 of it and never reaches it, so the control changes the stroke at every fret for every technique. Explicit MPE position overrides that ratio. |
 | **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. It also sets how fast every technique lets the string go: the release edge scales over two octaves across the control (none at its default), firmer faster and brighter, softer slower and darker, even at velocity 127. |
@@ -2165,6 +2208,28 @@ polarisation losses, an unscaled heave-only plate floor, absent slide roughness
 and an unadopted 94.2 Hz air retune no longer describe the current instrument.
 Dated evidence is retained so the earlier decisions remain traceable.
 
+- Left by the 2026-10-11 MIDI audit, each a limit rather than a stuck note:
+  - The MPE lower zone is not saved with a session: after a reload, a
+    member channel's events are conventional (a ±2 semitone bend range)
+    until the controller sends RPN 6 again, which MPE controllers do on
+    connection and most hosts repeat at transport start.
+  - RPN Data Increment and Decrement (CC96/97) are ignored; only Data
+    Entry (CC6/38) sets a bend range or the zone.
+  - The Sustain switch acts at the start of the block the host changes it
+    in, before that block's MIDI, so an automation point lands up to one
+    block early, and under Gather Chords a key-up sent within the 30 ms
+    before a switch-on is still held, since the switch is not delayed with
+    the notes.
+  - Panic and Reset All Controllers leave the bridge hand (CC2) where it
+    is, as MIDI's reset list does; a controller left at full pressure keeps
+    the strings muted until it moves.
+- The Parlor's air mode, at 121-128 Hz, still lifts A#2 and B2 3.5 and
+  5.3 dB over their neighbours on the microphones: the 2026-10-11 air-mode
+  dip stops at 117 Hz because the Parlor's margin on the construction
+  loudness fixture has no room for what the dip costs its phrase
+  ([the report](Docs/studio-smoothness-2026-10-11.md)). The other three
+  Shapes' air-mode notes sit 2-4.6 dB over their neighbours after the dip,
+  as the real flat-top's A#2 does.
 - Left by the 2026-09-30 defect audit, each a trade in the shipped sound
   rather than a fix:
   - The parallel polarisation shares the normal loop's bridge compensation,
@@ -2947,6 +3012,58 @@ set without it.
   assert the behaviour directly.
 
 ## Release history
+
+### 2026-10-11 — a Sustain switch, and the sweep smoothed by measurement
+
+- **A dip at the construction's air mode.** Measured with the new
+  `Tools/MeasureNoteEvenness.py`, the note at each Shape's air mode stood
+  3-6 dB over its neighbours (F#2/G2 on the Dreadnought, G#2/A2 on the
+  Auditorium, A#2/B2 on the Parlor), over the balanced observation blend
+  too. The summed microphone pressure now takes a -2.5 dB, Q 2.5 dip at the
+  construction's own air mode, following Shape and Wood, on every
+  construction whose air mode sits under 117 Hz (all but the Parlor); the
+  piezo never passes through it. The Dreadnought's G2 falls from +3.1 to
+  +2.0 dB over its neighbours with E2 rising from -4.3 to -3.1, the
+  Auditorium's G#2 from +5.5 to +4.6 and its Maple box's A#2 from +5.1 to
+  +4.3, the Jumbo's E2 from +2.6 to +2.3. The default phrase loses 0.24 LU,
+  inside the construction loudness contract, and the dipped constructions
+  are re-levelled to it; the Parlor keeps its gains and its A#2/B2 lift
+  (Known gaps). The body's 400-600 Hz modes still put one note 10 dB over
+  its neighbours and the next 10 dB under (A#4 and C#5 on the Dreadnought):
+  a damping candidate measured well but was dropped, since the model audit
+  pins the radiation to each mode's measured damping. Authored and
+  measured, then heard: on 2026-10-12 the user preferred this engine (B)
+  over main's (A) on a blind pack of the phrase, seven single notes and an
+  A4-D5 melody on the Dreadnought and Auditorium (Docs/decisions.md). See
+  the [report](Docs/studio-smoothness-2026-10-11.md) for the before and
+  after tables and the pack.
+- **Sustain, a host-automatable switch** beside CHORDS and PANIC
+  (`Performer::setSustainHold`): on, every released note rings on exactly as
+  under the CC64 pedal, on every channel, until its string is taken or the
+  switch goes off, which damps the held notes as a pedal-up does. The
+  switch and the pedal hold independently; Reset All Controllers lifts only
+  the pedal, and Panic clears the strings and leaves the switch where it
+  was. Off, the default, is an exact no-op, and a session saved before it
+  existed loads it off. The Rack Extension's Sustain property already
+  spells CC64, so it needs no change.
+- **Release Noise and Room reach the panel.** Both were host-automatable
+  only; the Player panel now holds four knobs (String Age, Pluck Position,
+  Touch, Release Noise) and Capture & Output five (Body, Stereo, Piezo,
+  Room, Output), on the same grid. Parameters, defaults and saved states
+  are unchanged. The screenshot above is painted by the new
+  `AcustraEditorSnapshot` (Tools/EditorSnapshot.cpp), the editor off screen
+  at its design size, so a layout change can be looked at without a host.
+- **Gather Chords no longer loses key-ups or regroups them.** A full
+  gathering queue dropped whatever arrived next, a Note Off, pedal-up or
+  All Notes Off included, and the string stayed held for ever; it now drops
+  the oldest queued continuous gesture instead. A gathered Note On was
+  pulled ahead of an earlier key-up of the same key on its channel (stray
+  once another note had taken the key's string), which then released the
+  new note under a held key; a released key now ends the chord. MPE member
+  channels are no longer gathered, so a member's CC74, pressure and bend
+  stay ahead of their note. The channel-mode messages CC124-127 also act
+  as All Notes Off, as MIDI 1.0 requires. Each fix has a Performer test
+  that failed on the previous engine.
 
 ### 2026-10-10 — the strings' loss angles
 

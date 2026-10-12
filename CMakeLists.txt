@@ -22,7 +22,7 @@ endif()
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.1.4 LANGUAGES C CXX)
+project(Acustra VERSION 1.2.0 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -683,6 +683,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditAttackBands.py"
                                  --self-test)
                 set_tests_properties(Acustra.AuditAttackBands PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.MeasureNoteEvenness
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/MeasureNoteEvenness.py"
+                                 --self-test)
+                set_tests_properties(Acustra.MeasureNoteEvenness PROPERTIES TIMEOUT 60)
                 add_test(NAME Acustra.AuditDampingCurve
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AuditDampingCurve.py"
@@ -796,6 +801,22 @@ if(BUILD_TESTING)
         endif()
         acustra_add_suite(Acustra.PluginTempoRelease AcustraPluginTempoReleaseTests)
         set_tests_properties(Acustra.PluginTempoRelease PROPERTIES TIMEOUT 120)
+    endif()
+endif()
+
+# The editor painted off screen to a PNG (Docs/screenshots).
+if(ACUSTRA_BUILD_PLUGIN AND ACUSTRA_BUILD_TOOLS)
+    add_executable(AcustraEditorSnapshot Tools/EditorSnapshot.cpp)
+    target_link_libraries(AcustraEditorSnapshot PRIVATE Acustra)
+    target_include_directories(AcustraEditorSnapshot PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+        "$<TARGET_PROPERTY:Acustra,JUCE_GENERATED_SOURCES_DIRECTORY>"
+        "$<TARGET_PROPERTY:Acustra,INCLUDE_DIRECTORIES>")
+    target_compile_features(AcustraEditorSnapshot PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(AcustraEditorSnapshot PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(AcustraEditorSnapshot PRIVATE -Wall -Wextra -Wpedantic)
     endif()
 endif()
 

@@ -65,9 +65,13 @@ The selection combines with the other write options:
   python3 Tools/CalibrateConstructionLoudness.py --measurements m.json \\
       --write-header --pickings pick --preserve-piezo-level
 
-`--pickings` selects header writes only. Measurement and `--check` still cover
-every construction, style and capture. `--all-pickings` independently adds
-Finger and Thumb to the hardest-case rendering protocol.
+`--pickings` selects header writes only, and `--shapes` does the same by
+Shape (a capture change that reaches only some Shapes rewrites only their
+cells: `--write-header --shapes auditorium dreadnought jumbo`); the two
+combine, so `--shapes parlor --pickings pick` rewrites three cells.
+Measurement and `--check` still cover every construction, style and
+capture. `--all-pickings` independently adds Finger and Thumb to the
+hardest-case rendering protocol.
 
 Only the three gains in ConstructionLoudnessData.h are divided out of each
 measurement. The fixed, microphone-only StudioCaptureLoudnessData.h factors
@@ -335,10 +339,10 @@ def to_float32(value: float) -> float:
 
 def retain_unselected_gains(tables: dict[str, np.ndarray],
                             built: dict[str, np.ndarray],
-                            pickings=PICKINGS) -> None:
-    """Keep all existing gains outside the selected styles' cells."""
+                            pickings=PICKINGS, shapes=SHAPES) -> None:
+    """Keep all existing gains outside the selected styles' and Shapes' cells."""
     for cell in itertools.product(SHAPES, WOODS, PICKINGS):
-        if cell[2] not in pickings:
+        if cell[2] not in pickings or cell[0] not in shapes:
             i = index(*cell)
             for name in tables:
                 tables[name][i] = built[name][i]
@@ -740,6 +744,14 @@ def self_test() -> None:
             expected = fitted if cell[2] in pickings else old
             for name in scoped:
                 assert scoped[name][i] == expected[name][i], (cell, name)
+    # A Shape filter keeps the other Shapes' cells too, every style included.
+    scoped = {name: values.copy() for name, values in fitted.items()}
+    retain_unselected_gains(scoped, old, PICKINGS, ("auditorium", "dreadnought", "jumbo"))
+    for cell in itertools.product(SHAPES, WOODS, PICKINGS):
+        i = index(*cell)
+        expected = old if cell[0] == "parlor" else fitted
+        for name in scoped:
+            assert scoped[name][i] == expected[name][i], (cell, name)
     scoped = {name: values.copy() for name, values in fitted.items()}
     retain_unselected_gains(scoped, old, ("pick",))
     before = {name: values.copy() for name, values in scoped.items()}
@@ -977,6 +989,12 @@ def argument_parser() -> argparse.ArgumentParser:
                              " moved one style's level; the target is the default"
                              " cell's either way; does not restrict measurements or"
                              " --check)")
+    parser.add_argument("--shapes", nargs="+", choices=SHAPES, default=SHAPES,
+                        help="with --write-header, rewrite only these Shapes' cells"
+                             " and keep every other cell's built gains (a change that"
+                             " reached some constructions only, such as a capture"
+                             " refinement gated by the construction's air mode; does"
+                             " not restrict measurements or --check)")
     parser.add_argument("--self-test", action="store_true")
     return parser
 
@@ -1021,7 +1039,7 @@ def main() -> int:
     if arguments.write_header:
         tables = gains(raw, arguments.max_headroom_cut)
         built = built_gains()
-        retain_unselected_gains(tables, built, arguments.pickings)
+        retain_unselected_gains(tables, built, arguments.pickings, arguments.shapes)
         if arguments.preserve_piezo_level:
             preserve_piezo_level(tables, built, arguments.pickings)
         if saved_strums is not None:

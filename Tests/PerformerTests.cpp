@@ -110,13 +110,14 @@ void feed(Performer& performer, int offset, const Event& event, Feed how)
 }
 
 void applyControl(acustra::EngineParameters& parameters, bool& gather,
-                  bool& panic, const Control& control)
+                  bool& sustain, bool& panic, const Control& control)
 {
     using Kind = Control::Kind;
     const int index = static_cast<int>(control.value);
     switch (control.kind)
     {
         case Kind::GatherChords: gather = control.value >= 0.5f; break;
+        case Kind::Sustain: sustain = control.value >= 0.5f; break;
         case Kind::Panic: panic = true; break;
         case Kind::CaptureMode:
             parameters.capture = index == 0 ? acustra::CaptureType::StereoMic
@@ -179,6 +180,7 @@ Render render(const Scenario& scenario, double sampleRate, int blockSize,
     block.reserve(scenario.events.size());
 
     const long allocationsBefore = allocationCount.load();
+    bool sustain = false;
     for (int start = 0; start < length; start += blockSize)
     {
         bool panic = false;
@@ -187,7 +189,8 @@ Render render(const Scenario& scenario, double sampleRate, int blockSize,
                 && sampleAt(scenario.controls[index].seconds, sampleRate)
                        < start + blockSize)
             {
-                applyControl(parameters, gather, panic, scenario.controls[index]);
+                applyControl(parameters, gather, sustain, panic,
+                             scenario.controls[index]);
                 applied[index] = true;
             }
         block.clear();
@@ -208,6 +211,7 @@ Render render(const Scenario& scenario, double sampleRate, int blockSize,
         if (panic)
             performer->reset();
         performer->setGatherChords(gather);
+        performer->setSustainHold(sustain);
         result.latency = std::max(result.latency, performer->latencySamples());
         performer->beginBlock(result.left.data() + start,
                               result.right.data() + start, blockSize);
@@ -977,6 +981,73 @@ void testSustainMeetsSameSampleKeyUpsInOrder()
                            + std::to_string(controller));
 }
 
+// Sustain, the panel switch, is the pedal on every channel at once: the
+// same bits as CC64 wherever the two can be compared, and the pedal keeps
+// its own notes when the switch goes off.
+void testSustainHoldIsThePedalOnEveryChannel()
+{
+    const auto on = message(0.0, 0x90, 60, 100);
+    const auto off = message(0.5, 0x80, 60, 64);
+    const auto pedal = [](double seconds, bool down)
+    {
+        return message(seconds, 0xb0, 64, down ? 127 : 0);
+    };
+    const auto hold = [](double seconds, bool held)
+    {
+        return Control { seconds, Control::Kind::Sustain, held ? 1.0f : 0.0f };
+    };
+    const auto play = [](std::vector<Event> events, std::vector<Control> controls = {},
+                         bool gather = false)
+    {
+        auto scenario = custom("hold", 1.5, std::move(events));
+        scenario.controls = std::move(controls);
+        return render(scenario, 48000.0, 64, gather);
+    };
+    const auto released = play({ on, off });
+    const auto pedalled = play({ on, pedal(0.0, true), off });
+    const auto held = play({ on, off }, { hold(0.0, true) });
+    expect(held != released, "Sustain did not hold a released note");
+    expect(held == pedalled, "Sustain on is not the pedal pressed before the note");
+    expect(play({ on, off }, { hold(0.0, true), hold(1.0, false) })
+               == play({ on, pedal(0.0, true), off, pedal(1.0, false) }),
+           "Sustain switched off is not the pedal lifted at the same sample");
+    expect(play({ on, off }, { hold(0.0, true) }, true)
+               == play({ on, pedal(0.0, true), off }, {}, true),
+           "Sustain on under Gather Chords is not the gathered pedal");
+    // The two hold independently: a pedal lifted under the switch, and the
+    // switch lifted under a pedal, both keep the note.
+    expect(play({ on, pedal(0.2, true), off, pedal(1.0, false) }, { hold(0.0, true) })
+               == held,
+           "a pedal lifted under Sustain let the note go");
+    expect(play({ on, pedal(0.2, true), off }, { hold(0.0, true), hold(1.0, false) })
+               == play({ on, pedal(0.2, true), off }),
+           "Sustain switched off under the pedal let the note go");
+    expect(play({ on, off, message(0.6, 0xb0, 121, 0) }, { hold(0.0, true) }) == held,
+           "Reset All Controllers let a note go under Sustain");
+    // Like the pedal, the switch does not catch a key-up already released.
+    expect(play({ on, off }, { hold(0.6, true) }) == released,
+           "Sustain switched on after a key-up caught the note");
+    // Every channel, an MPE member's included.
+    const std::vector<Event> zone { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 6),
+                                    message(0.0, 0xb0, 6, 15) };
+    const auto mpe = [&](std::vector<Event> events, std::vector<Control> controls = {})
+    {
+        auto all = zone;
+        all.insert(all.end(), events.begin(), events.end());
+        return play(std::move(all), std::move(controls));
+    };
+    const auto memberOn = message(0.0, 0x91, 60, 100);
+    const auto memberOff = message(0.5, 0x81, 60, 64);
+    expect(mpe({ memberOn, memberOff }, { hold(0.0, true) })
+               == mpe({ memberOn, message(0.0, 0xb1, 64, 127), memberOff }),
+           "Sustain is not a member channel's own pedal");
+    expect(play({ message(0.0, 0x95, 60, 100), message(0.5, 0x85, 60, 64) },
+                { hold(0.0, true), hold(1.0, false) })
+               == play({ message(0.0, 0x95, 60, 100), message(0.0, 0xb5, 64, 127),
+                         message(0.5, 0x85, 60, 64), message(1.0, 0xb5, 64, 0) }),
+           "Sustain is not channel 6's pedal");
+}
+
 void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
 {
     // 130 Note Ons on one sample: the group holds 128.
@@ -994,6 +1065,117 @@ void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
            "the gathering queue's overflow was not counted ("
                + std::to_string(flooded.dropped) + ")");
     expect(flooded.allocations == 0, "a full gathering queue allocated");
+}
+
+// A player after `seconds` of these events (raw bytes, in time order), for
+// a test that reads the engine's state afterwards.
+std::unique_ptr<Performer> playThrough(const std::vector<Event>& events,
+                                       double seconds, int blockSize, bool gather)
+{
+    auto performer = std::make_unique<Performer>();
+    performer->setParameters(acustra::EngineParameters {});
+    performer->prepare(48000.0, blockSize);
+    performer->engine().setPortObserversEnabled(false);
+    performer->setGatherChords(gather);
+    const int length = sampleAt(seconds, 48000.0);
+    std::vector<float> left(static_cast<std::size_t>(blockSize));
+    std::vector<float> right(static_cast<std::size_t>(blockSize));
+    for (int start = 0; start < length; start += blockSize)
+    {
+        performer->beginBlock(left.data(), right.data(), blockSize);
+        for (const auto& event : events)
+        {
+            const int at = sampleAt(event.seconds, 48000.0);
+            if (at >= start && at < start + blockSize)
+                performer->handleMidi(at - start + event.skew,
+                                      event.bytes.data(), event.size);
+        }
+        performer->endBlock();
+    }
+    return performer;
+}
+
+// A full Gather Chords queue loses a continuous controller, never a key-up:
+// a Note Off that arrives behind 1100 CC1 values in one block still lets
+// its string go, and what was lost is still counted.
+void testFullGatherQueueKeepsKeyUps()
+{
+    std::vector<Event> events { message(0.010, 0x90, 45, 100) };
+    for (int index = 0; index < 1100; ++index)
+        events.push_back(message(0.012, 0xb0, 1, index % 128));
+    events.push_back(message(0.014, 0x80, 45, 64));
+    const auto performer = playThrough(events, 2.5, 2048, true);
+    expect(performer->droppedEventCount() == 1100 + 2 - 1024,
+           "the full queue did not count the controllers it lost ("
+               + std::to_string(performer->droppedEventCount()) + ")");
+    expect(performer->engine().heldString(45, 1) < 0
+               && performer->engine().getActiveVoiceCount() == 0,
+           "a key-up that met a full gathering queue was lost and its string stuck");
+    // The pedal-up and All Notes Off are kept the same way.
+    for (const int controller : { 64, 123 })
+    {
+        std::vector<Event> pedalled { message(0.010, 0x90, 45, 100) };
+        if (controller == 64)
+            pedalled.push_back(message(0.011, 0xb0, 64, 127));
+        for (int index = 0; index < 1100; ++index)
+            pedalled.push_back(message(0.012, 0xb0, 1, index % 128));
+        if (controller == 64)
+            pedalled.push_back(message(0.014, 0x80, 45, 64));
+        pedalled.push_back(message(0.015, 0xb0, controller, 0));
+        const auto held = playThrough(pedalled, 2.5, 2048, true);
+        expect(held->engine().getActiveVoiceCount() == 0,
+               "controller " + std::to_string(controller)
+                   + " was lost to a full gathering queue");
+    }
+}
+
+// E2 loses its string to F2 (only the low E reaches F2), so E2's later
+// key-up is stray. Gathered behind A3, a new E2 used to be pulled ahead of
+// that stray key-up, which then released it although its key was down.
+void testGatheringKeepsANoteBehindItsChannelsKeyUps()
+{
+    const std::vector<Event> events {
+        message(0.0, 0x90, 40, 100), message(0.1, 0x90, 41, 100),
+        message(0.5, 0x90, 57, 100), message(0.505, 0x80, 40, 64),
+        message(0.51, 0x90, 40, 100) };
+    for (const bool gather : { false, true })
+    {
+        const auto performer = playThrough(events, 1.0, 256, gather);
+        expect(performer->engine().heldString(40, 1) >= 0,
+               std::string { "a held E2 was released by an earlier stray key-up" }
+                   + (gather ? " under Gather Chords" : ""));
+    }
+    // An MPE member channel's note is never pulled ahead of the CC74 that
+    // precedes it: the second note's pluck point is its own, so the two
+    // renders differ, gathered or not.
+    const std::vector<Event> zone { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 6),
+                                    message(0.0, 0xb0, 6, 1) };
+    const auto member = [&](int timbre)
+    {
+        auto all = zone;
+        all.push_back(message(0.1, 0xb1, 74, 0));
+        all.push_back(message(0.1, 0x91, 52, 100));
+        all.push_back(message(0.1 + 0.002, 0x81, 52, 64));
+        all.push_back(message(0.11, 0xb1, 74, timbre));
+        all.push_back(message(0.11 + 0.001, 0x91, 59, 100));
+        return render(custom("member timbre", 1.0, all), 48000.0, 64, true);
+    };
+    expect(member(0) != member(127),
+           "a gathered MPE member note lost the CC74 sent just before it");
+}
+
+// MIDI 1.0's channel-mode messages (CC124-127) also act as All Notes Off.
+void testChannelModeMessagesAlsoReleaseNotes()
+{
+    for (const int controller : { 124, 125, 126, 127 })
+    {
+        const auto performer = playThrough(
+            { message(0.0, 0x91, 52, 100), message(0.2, 0xb1, controller, 0) },
+            1.0, 256, false);
+        expect(performer->engine().heldString(52, 2) < 0
+                   && performer->engine().getActiveVoiceCount() == 0,
+               "CC" + std::to_string(controller) + " did not release the channel's notes");
+    }
 }
 
 // The level at one frequency over [from, to) seconds, from both channels.
@@ -1387,7 +1569,11 @@ int main()
     testMasterTune();
     testResetAllControllersResetsVibratoAndPressure();
     testSustainMeetsSameSampleKeyUpsInOrder();
+    testSustainHoldIsThePedalOnEveryChannel();
     testOverflowIsCountedNotAllocated(battery);
+    testFullGatherQueueKeepsKeyUps();
+    testGatheringKeepsANoteBehindItsChannelsKeyUps();
+    testChannelModeMessagesAlsoReleaseNotes();
     testShortStrumsSoundEveryString();
     testPlayerKeepsTheEnginesSampleRate();
     testResetSilences();

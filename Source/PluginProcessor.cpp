@@ -80,6 +80,7 @@ enum ParameterSlot
     slotPiezoMix,
     slotReleaseNoise,
     slotRoom,
+    slotSustain,
     slotCount
 };
 
@@ -100,7 +101,8 @@ constexpr std::array<const char*, slotCount> parameterIds {
     ids::gatherChords,
     ids::piezoMix,
     ids::releaseNoise,
-    ids::room
+    ids::room,
+    ids::sustain
 };
 
 std::unique_ptr<juce::RangedAudioParameter> makePercentParameter (
@@ -353,6 +355,13 @@ AcustraAudioProcessor::createParameterLayout()
     // loads it at zero (setStateInformation) and so sounds as it did. The
     // piezo never hears it.
     result.push_back (makePercentParameter (ids::room, "Room", 50.0f, 11));
+    // Sustain (acustra::Performer::setSustainHold): on, every released note
+    // rings on as under the sustain pedal until the switch goes off, on
+    // every channel; CC64 still works beside it. Automatable, so a track can
+    // switch between let-ring and damped passages. Off by default, and a
+    // session saved before it existed loads it off, so it sounds as it did.
+    result.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { ids::sustain, 12 }, "Sustain", false));
 
     return { result.begin(), result.end() };
 }
@@ -467,6 +476,10 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // DSP/AcustraPerformer.h.
     performer.setGatherChords (parameterPointers[slotGatherChords]->load (
                                    std::memory_order_relaxed) >= 0.5f);
+    // Before this block's MIDI, so a key-up in it is held when the switch
+    // came on with it; a switch-off lets the held notes go here.
+    performer.setSustainHold (parameterPointers[slotSustain]->load (
+                                  std::memory_order_relaxed) >= 0.5f);
     // The Piezo output is rendered only when the host enabled it; a null
     // pointer tells the engine not to.
     const auto channel = [&] (int bus, int index) -> float*

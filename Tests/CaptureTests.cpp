@@ -1589,7 +1589,7 @@ void testMicrophoneFilterBypassAndLifecycle()
         expect(filter.stateLeft != fresh.stateLeft && filter.stateRight != fresh.stateRight,
                "microphone filter lifecycle probe did not establish both histories");
         const auto hotFilter = filter;
-        filter.configure(rate);
+        filter.configure(rate, filter.airModeHz);
         expect(filter.coefficients == hotFilter.coefficients
                    && filter.stateLeft == hotFilter.stateLeft
                    && filter.stateRight == hotFilter.stateRight,
@@ -1678,10 +1678,20 @@ void testMicrophoneFilterConstructionTransitions()
         maple.bodyMaterial = BodyMaterial::Maple;
         engine->setParameters(maple);
         const auto afterWood = Access::captureFilter(*engine);
-        expect(afterWood.coefficients == beforeWood.coefficients
+        // The six fitted sections are construction-independent; the last,
+        // the dip at the construction's air mode, follows Wood's coupled
+        // air/top participation. The histories carry across either way.
+        bool fittedSectionsKept = true;
+        for (std::size_t section = 0; section + 1 < afterWood.coefficients.size(); ++section)
+            fittedSectionsKept = fittedSectionsKept
+                && afterWood.coefficients[section] == beforeWood.coefficients[section];
+        expect(fittedSectionsKept
                    && afterWood.stateLeft == beforeWood.stateLeft
                    && afterWood.stateRight == beforeWood.stateRight,
                "Wood reconfiguration reset the microphone filter history");
+        expect(afterWood.airModeHz > 60.0f && afterWood.airModeHz < 150.0f
+                   && std::abs(afterWood.airModeHz - beforeWood.airModeHz) < 10.0f,
+               "Wood moved the capture dip off the air mode");
         engine->setParameters(p); // Restore the sounding bank before advancing.
 
         auto oldBank = Access::bodyBank(*engine);

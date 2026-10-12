@@ -3,6 +3,7 @@
 // the measured interference, and exercise its bank-local histories.
 #include "DSP/AcustraEngine.h"
 #include "DSP/CaptureVoicingData.h"
+#include "DSP/MicrophoneBalanceData.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -44,13 +45,26 @@ void expect(bool pass, const std::string& message)
     if (!pass) { ++failures; std::cerr << "FAIL: " << message << '\n'; }
 }
 
-Complex target(double frequency, double rate)
+Complex target(double frequency, double rate, double airModeHz)
 {
     // Evaluate the analog prototypes at the bilinear frequency. This uses
     // neither runtime digital coefficients nor the runtime gain helper.
     Complex response = std::pow(10.0,
-        (double(acustra::detail::captureVoicingLevelDb) + double(1.2172f)) / 20.0);
-    for (const auto& section : acustra::detail::captureVoicingSections)
+        (double(acustra::detail::captureVoicingLevelDb)
+         + double(acustra::detail::originalCaptureLevelAdjustmentDb)
+         + (airModeHz > 0.0 ? double(acustra::detail::originalAirModeDipLevelDb) : 0.0))
+        / 20.0);
+    // The fitted sections and, last, the dip at the construction's air mode
+    // (MicrophoneBalanceData.h), a peak section the prototype spells itself.
+    std::vector<acustra::detail::CaptureVoicingSection> sections(
+        std::begin(acustra::detail::captureVoicingSections),
+        std::end(acustra::detail::captureVoicingSections));
+    expect(airModeHz > 60.0 && airModeHz < 150.0,
+           "the configured air mode is not a low body mode: " + std::to_string(airModeHz));
+    sections.push_back({ acustra::detail::CaptureVoicingKind::Peak, float(airModeHz),
+                         acustra::detail::originalAirModeDipDb,
+                         acustra::detail::originalAirModeDipQ });
+    for (const auto& section : sections)
     {
         // Independent authored capture refinement; keep the prototype
         // separate from the production coefficient/helper implementation.
@@ -104,7 +118,7 @@ void testDigitalTransferAndReset(double rate)
     for (double frequency : { 0.0, 40.0, 82.4069, 125.0, 250.0, 392.0, 494.0,
                               500.0, 800.0, 1000.0, 1400.0, 2800.0, .45 * rate })
     {
-        const auto expected = target(frequency, rate);
+        const auto expected = target(frequency, rate, double(filter.airModeHz));
         const auto l = responseAt(left, frequency, rate) / .25;
         const auto r = responseAt(right, frequency, rate)
             / (-.125 * std::polar(1.0, -2.0 * pi * frequency * 17.0 / rate));
@@ -163,7 +177,7 @@ void testLowMidCancellationRegression()
     constexpr double arm = 1.25;
     const auto raw = modalResponse(bank, frequency, arm, false);
     const auto old = modalResponse(bank, frequency, arm, true);
-    const auto desired = target(frequency, 48000.0);
+    const auto desired = target(frequency, 48000.0, double(bank.captureFilter.airModeHz));
     const double oldDb = 20.0 * std::log10(std::abs(old / raw));
     const double targetDb = 20.0 * std::log10(std::abs(desired));
     // The authored scalar restores phrase loudness; assess the tonal cut

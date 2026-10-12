@@ -5,6 +5,21 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the air-mode dip, heard: B over main
+
+The user listened to the blind A/B pack rendered for the 2026-10-11 air-mode
+dip and preferred B. A was main at `dbd939b` (the balanced observation
+blend, no dip); B was this engine (`8cfcec6`, the -2.5 dB dip at the
+construction's air mode on every Shape but the Parlor). The pack: the
+strummed phrase (E A D G E at 100 BPM), seven single notes (E2, G2, A2, A3,
+E4, A#4, C#5) and the A4-D5 melody, each on the Dreadnought and the
+Auditorium, stereo mic, Finger, Room 0.5, 24-bit at one shared gain, with
+the key in a separate file. The verdict was "B is better", given before the
+key was read; the user did not single out a piece or a Shape. This is the
+listening verdict the 2026-10-11 entry below said the measurements could
+not give, and the dip ships on its strength. The Parlor's A#2/B2 lift and
+the mid peak and hole were not part of the pair and stay as recorded there.
+
 ## 2026-10-11 — lower the new-instance Release Noise default to 10%
 
 At the user's request, Release Noise now starts at 10% instead of 70%. This
@@ -82,6 +97,125 @@ verdict. All 83 tests and the full construction calibration pass. The
 existing broad-Q transfer-convention approximation and the 96 kHz/32-frame
 six-string re-pick CPU limit remain explicit in the
 [audit and retained evidence](model-parameter-audit-2026-10-11.md).
+## 2026-10-11 — the MIDI layer audited: two Gather Chords defects fixed
+
+A read-only review of the Performer, the plug-in's processBlock and state
+code and the engine's note entry points found direct mode sound and two
+defects under Gather Chords, both reproduced by new Performer tests that
+fail on the previous engine and pass now.
+
+A full gathering queue (1024 events, the window plus one block) dropped
+whatever arrived next, so a Note Off, pedal-up or All Notes Off behind a
+dense controller stream was lost and its string stayed held for ever, with
+the outcome depending on the host's block size. The queue now drops the
+oldest queued continuous gesture (bend, pressure, an ordinary controller)
+to make room for any message that starts or ends a note or sets a mode;
+only when nothing continuous is queued is a message itself dropped. The
+count of lost events is unchanged in meaning.
+
+Gathering pulled a later Note On of the lead's channel ahead of a key-up
+of the same key sent between them. When another note had already taken
+that key's string the key-up was stray and harmless in direct mode, but
+pulled ahead of it the new note was released under a held key. A key
+released inside the window now ends the chord, as a repeated key does.
+MPE member channels are no longer gathered at all: their notes are
+allocated one at a time and their CC74, pressure and bend precede each
+note, which gathering reordered. The window's latency is unchanged.
+
+One spec gap closed with them: CC124-127 also act as All Notes Off
+(MIDI 1.0's channel-mode rule). A non-finite master tune is handled by
+the engine's own master tuning (the model and parameter consistency
+audit above), which reads it as zero. Four limits the
+audit named are recorded in README Known gaps rather than changed: the
+MPE zone is not saved with a session, CC96/97 are ignored, the Sustain
+switch acts at block starts and is not delayed under Gather Chords, and
+Panic leaves the bridge hand (CC2) where it is.
+
+## 2026-10-11 — an air-mode dip, by measurement
+
+The user asked for a smooth studio sound without unwanted resonances or
+boominess. Nobody listened in this pass, so it measured
+([the report](studio-smoothness-2026-10-11.md), with the new
+`Tools/MeasureNoteEvenness.py`) and then applied one bounded, authored
+change in a direction the listener had already chosen, sized by the sweep
+rather than by ear. The sweep's deviations were the air mode's low peak
+(F#2/G2 +4 dB on the Dreadnought, G#2/A2 +5.7/+3.3 on the Auditorium,
+whose A2 the user named as boom on 2026-10-09, A#2/B2 on the Parlor) and
+each Shape's ±10 dB mid peak and antiresonance hole from the body's
+400-600 Hz modes (A#4 and C#5 on the Dreadnought). The room adds nothing
+below 160 Hz; the air-mode gain chosen by ear does not move the low peak;
+the real flat-top's own sweep is as uneven as the model's on the eight
+notes available.
+
+Applied: a -2.5 dB, Q 2.5 dip on the summed microphone pressure at each
+construction's own air mode (g21's lowest mode as the Shape and Wood place
+it, so it follows the construction as the fixed 125 Hz refinement of
+2026-10-09 could not), after the balanced microphone observation blend
+approved the same day, which had not removed the sweep's air-mode excess
+(the Dreadnought's G2 still +3.1 dB over the blend, the Auditorium's G#2
++5.5). The dip is the same kind of capture refinement the user confirmed
+as "less boom" on 2026-10-09. It touches neither the measured body data,
+the piezo's saddle force, parameters nor layout. Every construction but
+the Parlor takes it, by the air mode's frequency (under 117 Hz: the Jumbo's
+at 84-91 Hz, the Dreadnought's at 94-101, the Auditorium's at 106-113; the
+Parlor's at 121-128). The Parlor's A#2/B2 lift (+3.5/+5.3 dB) is as large
+but stays: its margin on the cross-phrase construction loudness fixture
+(Parlor Spruce Finger at 2.87 of the 3 LU allowed) has no room for the
+0.2 LU more the dip costs that fixture's phrase than the calibration
+phrase, and that tolerance is not loosened to fit a refinement.
+
+A second candidate, 0.7 of the flamenca's Q on the plate modes between 350
+and 900 Hz, measured well alone (A#4 +9.8 to +8.0 dB) but was dropped when
+this branch merged main: the model and parameter consistency audit above
+pins the radiation to each mode's measured damping, and the approved blend
+states that no physical damping change is part of it. The mid peak and
+hole stay as measured. A deeper dip (-4 dB) was tried and sized back: with
+its level restore it put the Parlor past the fixture's tolerance, and the
+-2.5 dB dip takes no restore at all.
+
+Measured on the sweep over the merged main (neighbourhood deviation,
+velocity 96, Finger): the Dreadnought's G2 +3.1 to +2.0 dB and E2 -4.3 to
+-3.1, F#2 +4.3 to +3.7; the Auditorium's G#2 +5.5 to +4.6 and A2 +2.7 to
++1.9 (its Maple box's A2/A#2 +3.8/+5.1 to +2.8/+4.3); the Jumbo's E2 +2.6
+to +2.3; RMS deviation 3.71 to 3.63 on the Dreadnought. The default cell's
+stereo phrase loses 0.24 LU (-27.5164 to -27.7532 LUFS, inside the
+construction loudness contract), the dipped constructions were re-levelled
+to it by `Tools/CalibrateConstructionLoudness.py` (new `--shapes`), and
+the Parlor's Finger and Thumb cells keep their gains. Against the embedded
+recordings the descriptor loss moves within one percent of main's: the two
+picked archtop sets closer (-0.7% and -0.9%, attack and body terms), the
+eight finger flat-top notes further (+0.6%, the attack term). This is a
+measured smoothing; the listening verdict came the next day (the
+2026-10-12 entry above: the user preferred this engine, B, over main, A,
+on the blind pack), and the numbers here are not what decided it.
+
+## 2026-10-11 — a Sustain switch beside the pedal
+
+The user asked for a sustain mode against the normal one, where a key-up
+mutes its string, as a switch a host can automate, with the sustain pedal
+doing the same. The engine already had the pedal's hold per channel, so
+the switch is that hold on every channel at once (`setSustainHold`), with
+the pedal and the switch letting go independently: the same `letGoUnlessPedalled`
+path serves a pedal-up and the switch going off, so a channel whose pedal
+is still down keeps its notes either way.
+
+Two readings of "raise the finger" were considered. Lifting the fretting
+finger and letting the string ring at its open pitch is physically what a
+careless release does, but it would turn an arpeggio over a held chord
+into open strings nobody played; a guitarist letting a chord ring keeps the
+shape held. The switch therefore keeps the hand on the fret, exactly as the
+pedal does, and is documented as such. The switch is a playing control, not
+an `EngineParameters` member, and takes effect at the start of the block it
+changes in, before that block's MIDI, so a key-up in that block is held
+when the switch came on with it. Like the pedal it never catches a key-up
+already in its release window.
+
+Verified by bit-exact comparison against the pedal in the Performer suite
+(on, off, under Gather Chords, under an MPE member's pedal, on channel 6,
+and under Reset All Controllers), by the plug-in's parameter contract
+(appended, automatable, off by default, AU version hint 12) and by a
+hold/release sequence through `processBlock`. No sound change: every
+existing suite's output is unchanged, since off is an exact no-op.
 
 ## 2026-10-11 — restrained sliding-finger roughness
 

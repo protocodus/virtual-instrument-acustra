@@ -4617,7 +4617,7 @@ void AcustraEngine::configureBody() noexcept
     // them in vector accumulators (BodyBank::render). Shape and Wood keep
     // the same modes in the same slots ringing (sameBodyBank, audit F14).
     bodyBank_.load(bodyModes_, configuration.count, configuration.ordered);
-    bodyBank_.captureFilter.configure(sampleRate_);
+    bodyBank_.captureFilter.configure(sampleRate_, configuration.airModeHz);
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
     bodyConfigured_ = true;
@@ -4644,6 +4644,11 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
     const auto shapeMorph = bodyConstructionMorph(bank, anchor, anchorBody(),
         targetBodyFor(shape), material);
     const auto woodFactors = woodFactorsFor(material);
+    // The air mode as this construction places it, from the requested pole
+    // (not the damped one, so a Q-only change leaves it exact): the capture
+    // dip's centre (CaptureFilter::configure).
+    configuration.airModeHz = radiationPole(bank[0], 0, anchor, shapeMorph,
+                                            woodFactors, physicalCalibration_).frequency;
     // Observation residues include the approved fixed pressure mixture.
     // Its spatial terms remove common arrival delay; renderBody adds none.
 
@@ -8433,6 +8438,8 @@ bool AcustraEngine::channelControlsVoice(int midiChannel,
 
 bool AcustraEngine::sustainIsDown(const Voice& voice) const noexcept
 {
+    if (sustainHold_)
+        return true;
     if (voice.midiChannel < 1 || voice.midiChannel > midiChannelCount)
         return false;
     const bool own = sustainPedals_[static_cast<std::size_t>(
@@ -9673,6 +9680,8 @@ void AcustraEngine::noteOffWithVelocity(int midiNote, int midiChannel,
 
 bool AcustraEngine::sustainHolds(int midiChannel) const noexcept
 {
+    if (sustainHold_)
+        return true;
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return false;
     const bool own = sustainPedals_[static_cast<std::size_t>(midiChannel - 1)];
@@ -9769,21 +9778,40 @@ void AcustraEngine::setSustainPedal(bool down, int midiChannel) noexcept
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
-        if (voice.releaseAfterPluck && channelControlsVoice(midiChannel, voice)
-            && !sustainIsDown(voice))
-        {
-            voice.pedalReleasedBeforePluck = voice.pedalReleasedBeforePluck
-                || voice.pedalHeldAtKeyUp;
-            voice.pedalHeldAtKeyUp = false;
-            voice.pedalHeld = false;
-            continue;
-        }
-        if (!voice.pedalHeld || voice.keyDown
-            || !channelControlsVoice(midiChannel, voice)
-            || sustainIsDown(voice))
-            continue;
-        beginRelease(voice, string);
+        if (channelControlsVoice(midiChannel, voice))
+            letGoUnlessPedalled(voice, string);
     }
+}
+
+void AcustraEngine::setSustainHold(bool hold) noexcept
+{
+    if (sustainHold_ == hold)
+        return;
+    sustainHold_ = hold;
+    if (hold)
+        return;
+    for (int string = 0; string < stringCount; ++string)
+        letGoUnlessPedalled(voices_[static_cast<std::size_t>(string)], string);
+}
+
+void AcustraEngine::letGoUnlessPedalled(Voice& voice, int stringIndex) noexcept
+{
+    if (sustainIsDown(voice))
+        return;
+    if (voice.releaseAfterPluck)
+    {
+        // A strum's string the pick has not reached: it is let go when the
+        // pick arrives, with the pedal's immediate contact if a pedal held
+        // its key-up.
+        voice.pedalReleasedBeforePluck = voice.pedalReleasedBeforePluck
+            || voice.pedalHeldAtKeyUp;
+        voice.pedalHeldAtKeyUp = false;
+        voice.pedalHeld = false;
+        return;
+    }
+    if (!voice.pedalHeld || voice.keyDown)
+        return;
+    beginRelease(voice, stringIndex);
 }
 
 void AcustraEngine::setPitchBend(float semitones, int midiChannel) noexcept
@@ -10585,28 +10613,44 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
 
 }
 
-void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate) noexcept
+void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
+                                                       float airMode) noexcept
 {
     if (!enabled)
         reset();
     enabled = true;
+    airModeHz = exact::isfinite(airMode) && airMode > 0.0f
+        && airMode <= detail::originalAirModeDipUpperHz ? airMode : 0.0f;
     static_assert(sizeof(detail::captureVoicingSections)
-                      / sizeof(detail::captureVoicingSections[0]) == sections,
-                  "the capture filter must hold every authored section");
+                      / sizeof(detail::captureVoicingSections[0]) == sections - 1,
+                  "the capture filter must hold every authored section and the air dip");
     gain = static_cast<float>(std::pow(10.0,
         (static_cast<double>(detail::captureVoicingLevelDb)
-            + detail::originalCaptureLevelAdjustmentDb) / 20.0));
+            + detail::originalCaptureLevelAdjustmentDb
+            + (airModeHz > 0.0f ? detail::originalAirModeDipLevelDb : 0.0f)) / 20.0));
     // The authored recording contour acts on the summed pressure. Weighting
     // modal residues by a contour instead breaks off-resonance cancellation:
     // the intended 500 Hz cut could become a boost on treble notes. Every
     // mechanical/radiation pole and relative modal residue stays intact.
     // Shape and Wood retain its history; their fades copy it with the bank.
+    // The last section is the dip at this construction's air mode
+    // (MicrophoneBalanceData.h), flat when no air mode is known.
     constexpr double doublePi = 3.141592653589793238462643383279502884;
     for (int index = 0; index < sections; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
-        const auto section = detail::balancedOriginalCaptureSection(
-            detail::captureVoicingSections[slot]);
+        const bool airDip = index == sections - 1;
+        if (airDip && airModeHz == 0.0f)
+        {
+            coefficients[slot] = { 1.0, 0.0, 0.0, 0.0, 0.0 };
+            continue;
+        }
+        const auto section = airDip
+            ? detail::CaptureVoicingSection { detail::CaptureVoicingKind::Peak,
+                                              airModeHz, detail::originalAirModeDipDb,
+                                              detail::originalAirModeDipQ }
+            : detail::balancedOriginalCaptureSection(
+                  detail::captureVoicingSections[slot]);
         const auto kind = section.kind;
         const double frequency = section.frequencyHz;
         const double gainDb = section.gainDb;

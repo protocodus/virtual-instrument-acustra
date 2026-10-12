@@ -50,6 +50,28 @@ int curvedStrumDelay(int string, int first, int last, bool upstroke,
     // and the engine's common stroke-speed/rhythm constraint are retained.
     return static_cast<int>(std::lround(progress * static_cast<float>(spanSamples)));
 }
+
+// A continuous gesture, whose next value supersedes it: pitch bend,
+// pressure and the ordinary controllers. Notes, the pedal, the connected
+// articulation switches, the RPN/NRPN bytes and the channel-mode messages
+// are not: a full queue may lose the former, never the latter.
+bool continuousMessage(const std::uint8_t* data, int size) noexcept
+{
+    const auto kind = static_cast<unsigned>(data[0]) & 0xf0u;
+    if (kind == 0xe0u || kind == 0xd0u || kind == 0xa0u)
+        return true;
+    if (kind != 0xb0u || size < 3)
+        return false;
+    switch (data[1] & 0x7fu)
+    {
+        case 6: case 38: case 64: case 65: case 84: case 96: case 97: case 98:
+        case 99: case 100: case 101: case 120: case 121: case 122: case 123:
+        case 124: case 125: case 126: case 127:
+            return false;
+        default:
+            return true;
+    }
+}
 } // namespace
 
 int Performer::gatherWindowSamples(double sampleRate) noexcept
@@ -118,7 +140,7 @@ void Performer::setTempoBpmAt(int sampleOffset, double bpm) noexcept
         handleTempoEvent(sample, bpm);
         return;
     }
-    if (heldCount_ == heldEventCapacity)
+    if (heldCount_ == heldEventCapacity && ! evictContinuousHeldEvent())
     {
         ++droppedEvents_;
         return;
@@ -200,7 +222,11 @@ void Performer::handleMidi(int sampleOffset, const std::uint8_t* data,
     // Only channel messages of one to three bytes reach dispatchMidiData.
     if (size < 1 || size > 3)
         return;
-    if (heldCount_ == heldEventCapacity)
+    // A full queue loses a continuous gesture rather than a message that
+    // starts or ends a note: a dropped key-up would leave its string held
+    // for ever (see heldEventCapacity).
+    if (heldCount_ == heldEventCapacity
+        && (continuousMessage(data, size) || ! evictContinuousHeldEvent()))
     {
         ++droppedEvents_;
         return;
@@ -212,6 +238,23 @@ void Performer::handleMidi(int sampleOffset, const std::uint8_t* data,
     std::copy_n(data, size, held.bytes.begin());
     held.gathered = false;
     held.tempo = false;
+}
+
+bool Performer::evictContinuousHeldEvent() noexcept
+{
+    for (int index = 0; index < heldCount_; ++index)
+    {
+        const auto& held = held_[static_cast<std::size_t>(index)];
+        if (held.tempo || held.gathered
+            || ! continuousMessage(held.bytes.data(), held.size))
+            continue;
+        std::move(held_.begin() + index + 1, held_.begin() + heldCount_,
+                  held_.begin() + index);
+        --heldCount_;
+        ++droppedEvents_;
+        return true;
+    }
+    return false;
 }
 
 void Performer::endBlockAt(int sampleOffset) noexcept
@@ -255,7 +298,11 @@ void Performer::endBlock() noexcept
                 static_cast<int>(std::max<std::int64_t>(
                     0, held.due - processedSamples_)),
                 held.bytes.data(), held.size);
-            if (joined && gatherChords_ && ! engine_.isStringPerChannelMode())
+            // An MPE member channel's notes are allocated one at a time
+            // (planChord is inert there) and its CC74, pressure and bend
+            // precede each note: gathering would pull a note ahead of them.
+            if (joined && gatherChords_ && ! engine_.isStringPerChannelMode()
+                && ! isLowerZoneMember(static_cast<int>(held.bytes[0] & 0x0fu) + 1))
                 gatherChord(next);
         }
         int kept = 0;
@@ -542,6 +589,12 @@ void Performer::gatherChord(int first) noexcept
 {
     const auto& lead = held_[static_cast<std::size_t>(first)];
     const int channel = static_cast<int>(lead.bytes[0] & 0x0fu) + 1;
+    // Keys released on the channel inside the window. A later Note On of
+    // one of them stays behind its key-up and ends the chord, as a repeated
+    // key does: pulled ahead of it, the key-up (stray when the key's string
+    // was already taken by another note) would release the new note while
+    // its key is down.
+    std::array<std::uint32_t, 4> released {};
     for (int index = first + 1; index < heldCount_; ++index)
     {
         auto& held = held_[static_cast<std::size_t>(index)];
@@ -560,16 +613,26 @@ void Performer::gatherChord(int first) noexcept
             {
                 case 6: case 38: case 65: case 84: case 96: case 97: case 98:
                 case 99: case 100: case 101: case 120: case 121:
-                case 123: case 126: case 127:
+                case 123: case 124: case 125: case 126: case 127:
                     return;
                 default:
                     continue;
             }
         }
-        if (status != 0x90u || held.size < 3 || (held.bytes[2] & 0x7fu) == 0u
-            || static_cast<int>(held.bytes[0] & 0x0fu) + 1 != channel)
+        if (held.size < 3 || static_cast<int>(held.bytes[0] & 0x0fu) + 1 != channel)
             continue;
         const int note = static_cast<int>(held.bytes[1] & 0x7fu);
+        const auto noteBit = 1u << (note % 32);
+        auto& releasedWord = released[static_cast<std::size_t>(note / 32)];
+        if (status == 0x80u || (status == 0x90u && (held.bytes[2] & 0x7fu) == 0u))
+        {
+            releasedWord |= noteBit;
+            continue;
+        }
+        if (status != 0x90u)
+            continue;
+        if ((releasedWord & noteBit) != 0u)
+            return;
         if (pendingNoteOnCount_ == sampleGroupCapacity
             || std::any_of(pendingNoteOns_.begin(),
                            pendingNoteOns_.begin() + pendingNoteOnCount_,
@@ -675,7 +738,7 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
             // zone.
             engine_.setMpeTimbre(static_cast<float>(value) / 127.0f, midiChannel);
         }
-        else if (controller == 126u && midiChannel == 1)
+        else if (controller == 123u || controller >= 124u)
         {
             // MIDI 1.0's own Mono Mode On channel-mode message on the basic
             // channel: value is how many consecutive channels become
@@ -687,12 +750,17 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
             // requests it), so today nothing sends this on those rigs; a
             // future control surface or the host's own MIDI editor can. Any
             // other value, including 0, turns the mode back off.
-            engine_.setStringPerChannelMode(
-                value == static_cast<unsigned>(AcustraEngine::stringCount));
-        }
-        else if (controller == 127u && midiChannel == 1)
-        {
-            engine_.setStringPerChannelMode(false);
+            if (controller == 126u && midiChannel == 1)
+                engine_.setStringPerChannelMode(
+                    value == static_cast<unsigned>(AcustraEngine::stringCount));
+            else if (controller == 127u && midiChannel == 1)
+                engine_.setStringPerChannelMode(false);
+            // All Notes Off itself, and the four channel-mode messages (Omni
+            // Off/On, Mono, Poly), which MIDI 1.0 says also act as it.
+            engine_.allNotesOff(midiChannel);
+            for (int channel = 1; channel <= 16; ++channel)
+                if (channelIsInControllerScope(midiChannel, channel))
+                    portamentoSources_[static_cast<std::size_t>(channel - 1)] = -1;
         }
         else if (controller == 120u)
         {
@@ -704,13 +772,6 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
         else if (controller == 121u)
         {
             resetControllerScope(midiChannel);
-        }
-        else if (controller == 123u)
-        {
-            engine_.allNotesOff(midiChannel);
-            for (int channel = 1; channel <= 16; ++channel)
-                if (channelIsInControllerScope(midiChannel, channel))
-                    portamentoSources_[static_cast<std::size_t>(channel - 1)] = -1;
         }
     }
 }

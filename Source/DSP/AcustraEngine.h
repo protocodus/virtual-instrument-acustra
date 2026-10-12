@@ -297,6 +297,16 @@ public:
     // pedal: its own, or, on an MPE lower-zone member, the manager's too.
     [[nodiscard]] bool sustainHolds(int midiChannel) const noexcept;
     void setSustainPedal(bool down, int midiChannel = 1) noexcept;
+    // Sustain, the panel switch: while on, every key-up on every channel is
+    // held exactly as under its pedal (the hand stays on the fret and the
+    // string rings until it is taken or the hold ends), and a pedal adds
+    // nothing. Switching it off lets go what only it held, the hand damping
+    // them as a pedal-up does; a channel whose own pedal is still down keeps
+    // its notes. Like the pedal, switching it on never catches a key-up
+    // already in its release window. Kept across reset and prepare, like the
+    // channel layout; off is an exact no-op.
+    void setSustainHold(bool hold) noexcept;
+    [[nodiscard]] bool isSustainHeld() const noexcept { return sustainHold_; }
     // Continuous bridge-hand damping, 0 open to 1 fully muted. Exposed as a
     // controller rather than a panel control: it is a playing pressure, and
     // zero is an exact no-op.
@@ -960,6 +970,9 @@ private:
         std::array<BodyMode, bodyModeCount> modes {};
         int count { 0 };
         int ordered { 0 };
+        // The construction's air mode, g21's lowest mode as this Shape and
+        // Wood place it, which centres the capture dip (CaptureFilter).
+        float airModeHz { 0.0f };
     };
 
     // Local-contact transport. Each tap is a fixed lossless
@@ -1405,7 +1418,9 @@ private:
         // on the physical modes. Each fading bank keeps its own history.
         struct CaptureFilter
         {
-            static constexpr int sections = 6;
+            // The fitted contour's six sections and, last, the dip at the
+            // construction's air mode (MicrophoneBalanceData.h).
+            static constexpr int sections = 7;
             // Each section's normalized RBJ coefficients: b0, b1, b2, a1, a2.
             // Double storage keeps the low-frequency sections accurate up to
             // 384 kHz.
@@ -1413,8 +1428,10 @@ private:
             std::array<std::array<double, 2>, sections> stateLeft {}, stateRight {};
             bool enabled { false };
             float gain { 1.0f };
+            // The air mode the last section is centred on; 0 leaves it flat.
+            float airModeHz { 0.0f };
 
-            void configure(double sampleRate) noexcept;
+            void configure(double sampleRate, float airModeHz) noexcept;
             void reset() noexcept
             {
                 for (auto& state : stateLeft)
@@ -1649,6 +1666,9 @@ private:
     [[nodiscard]] bool channelControlsVoice(int midiChannel,
                                             const Voice& voice) const noexcept;
     [[nodiscard]] bool sustainIsDown(const Voice& voice) const noexcept;
+    // A pedal-up's effect on one voice: nothing while another pedal still
+    // holds it, else the hand lets it go.
+    void letGoUnlessPedalled(Voice& voice, int stringIndex) noexcept;
     int chooseString(int midiNote) const noexcept;
     int chooseStringWithoutHand(int midiNote) const noexcept;
     // The fretting hand (see chooseString). Each string remembers the last
@@ -2006,6 +2026,7 @@ private:
     std::array<float, midiChannelCount> mpePressure_ {};
     bool stringPerChannelMode_ { false };
     std::array<bool, midiChannelCount> sustainPedals_ {};
+    bool sustainHold_ { false };
     bool bridgeCouplingEnabled_ { true };
     bool sympatheticStringsEnabled_ { true };
     bool portObserversEnabled_ { true };
