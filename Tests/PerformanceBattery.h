@@ -373,10 +373,12 @@ inline std::vector<Scenario> makeBattery()
         b.on(0.6, 1, 47, 90);
         b.scenario.events.back().skew = 100000; // after its block
         // 130 Note Ons on one sample overflow the group; 130 Note Offs too.
+        // From 28: the stroke keyswitches (24-26) are not notes and would
+        // not count.
         for (int index = 0; index < 130; ++index)
-            b.on(0.8, 1 + index / 100, 20 + index % 100, 70);
+            b.on(0.8, 1 + index / 100, 28 + index % 100, 70);
         for (int index = 0; index < 130; ++index)
-            b.off(1.0, 1 + index / 100, 20 + index % 100);
+            b.off(1.0, 1 + index / 100, 28 + index % 100);
         b.raw(1.2, { 0xf8 }).raw(1.2, { 0x90, 64 }).on(1.25, 1, 64);
         result.push_back(std::move(b.scenario));
     }

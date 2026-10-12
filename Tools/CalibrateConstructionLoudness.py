@@ -30,6 +30,12 @@ Pick cell whose hardest case would come nearer sits under the target by
 what it needs, at most 0.9 LU (--max-headroom-cut), inside the tolerance.
 With the loudness fixed, a construction's peak is its own crest factor
 (Docs/decisions.md).
+One construction sits over the target on purpose: the Parlor's Finger and
+Thumb cells by CROSS_PHRASE_LIFT_LU (0.5 LU, inside the tolerance), because
+the Parlor plays the construction loudness fixture's chord-and-strum phrase
+almost 3 LU under the default while its calibration phrase sits on the
+target, and the air-mode dip it took on 2026-10-12 would otherwise put that
+fixture past its 3 LU (Docs/decisions.md, 2026-10-12).
 With the gains built in, `--check` requires every cell within +-1 LU of the
 target on each capture, and every Pick cell whose hardest case is short of
 the 1 dB to have given up the level the tolerance allows; the report lists
@@ -129,6 +135,9 @@ LIMIT_KNEE = 0.89125094        # safetyLimit's threshold, -1 dBFS
 LIMIT_HEADROOM = 1.0 - LIMIT_KNEE
 TOLERANCE_LU = 1.0
 HEADROOM_DB = 1.0
+# (shape, picking) cells that sit this much over the target on every capture
+# (see the module docstring); every other cell sits on it.
+CROSS_PHRASE_LIFT_LU = {("parlor", "finger"): 0.5, ("parlor", "thumb"): 0.5}
 
 
 def index(shape, wood, picking) -> int:
@@ -314,8 +323,9 @@ def gains(raw: dict, max_cut_db: float = 0.9) -> dict[str, np.ndarray]:
         for picking in PICKINGS:
             cell = index(*construction, picking)
             level = {}
+            lift = CROSS_PHRASE_LIFT_LU.get((construction[0], picking), 0.0)
             for capture in CAPTURES:
-                gain = target - lufs[(construction, picking, capture)]
+                gain = target + lift - lufs[(construction, picking, capture)]
                 peak = peaks.get((construction, picking, capture))
                 if picking == "pick" and peak is not None:
                     gain -= float(np.clip(peak + gain - ceiling, 0.0, max_cut_db))
@@ -513,7 +523,8 @@ def header_text(tables: dict[str, np.ndarray]) -> str:
         "// the default construction's integrated loudness (Dreadnought, Spruce,",
         "// Finger, on the stereo microphones), each capture on its own",
         "// (Docs/decisions.md, 2026-09-29, \"Every construction as loud as the",
-        "// default\"). A cell is",
+        "// default\"); the Parlor's Finger and Thumb cells sit 0.5 LU over it",
+        "// (the tool's CROSS_PHRASE_LIFT_LU; Docs/decisions.md, 2026-10-12). A cell is",
         "//   (shape * 3 + wood) * 3 + picking",
         "// in the enums' order in AcustraEngine.h.",
         "#pragma once",
@@ -663,9 +674,11 @@ def self_test() -> None:
         assert abs(retained["lufs"][key] - expected_raw) < 1e-12
         remapped["lufs"][key] = expected_raw + 20 * np.log10(absolute_gain(fitted, cell, capture))
         # The default Mono trim is intentionally pinned to unity by this
-        # existing fitter; every other cell/capture lands at the target.
+        # existing fitter; every other cell/capture lands at the target,
+        # plus its lift for the cells CROSS_PHRASE_LIFT_LU names.
         if not (cell == default_cell and capture == "mono_mic"):
-            assert abs(remapped["lufs"][key] - target) < 1e-12
+            lift = CROSS_PHRASE_LIFT_LU.get((c[0], p), 0.0)
+            assert abs(remapped["lufs"][key] - target - lift) < 1e-12
         # Native strum predictions change only the legacy gain ratio. Fixed
         # studio factors remain embedded in the measured cell/default ratio.
         old_cell = studio[capture][cell] * absolute_gain(legacy, cell, capture)
@@ -823,9 +836,14 @@ def self_test() -> None:
     # The piezo had no peak to keep under the knee: its level is unchanged.
     assert abs(capped["piezo"][cell] * capped["mic"][cell]
                - made["piezo"][cell] * made["mic"][cell]) < 1e-12
+    # The Parlor's Thumb cell sits CROSS_PHRASE_LIFT_LU over the target on
+    # every capture: its stereo gain is 0.5 dB over the plain -3.2, and the
+    # mono trim, a ratio of two lifted captures, is unchanged.
     maple = index("parlor", "maple", "thumb")
-    assert abs(20 * np.log10(made["mic"][maple]) + 3.2) < 1e-9
+    assert abs(20 * np.log10(made["mic"][maple]) + 2.7) < 1e-9
     assert abs(20 * np.log10(made["mono"][maple]) + 0.5) < 1e-9
+    pick_cell = index("parlor", "maple", "pick")
+    assert abs(20 * np.log10(made["mic"][pick_cell]) + 3.1) < 1e-9
     # One quiet native tuning needs +0.82 dB, within the phrase tolerance.
     # Every other cell and capture stays at unity.
     unity = {name: np.ones(CELLS) for name in ("mic", "mono", "piezo")}

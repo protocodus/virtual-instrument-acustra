@@ -5,6 +5,144 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the mid-band peak and hole, measured at Room 0.5 and left
+
+With the air-mode dip on every body, the largest deviation on the E2-E5
+sweep (`Tools/MeasureNoteEvenness.py`, velocity 96, Finger, stereo mic, at
+the plug-in's Room 0.5 rather than the report's dry engine) is the body's
+400-660 Hz modes on every Shape: a peak with a hole one to three semitones
+above it. Dreadnought A#4 +11.4 dB over its neighbours and C#5 -12.4 (RMS
+4.20 dB); Auditorium C5 +8.4, E5 +8.4 and D#5 -10.3 (3.51); Jumbo G#4
++10.5 and B4 -10.6 (3.81); Parlor D#5 +5.4 and E5 -10.4 (3.35). The
+authored recording contour already cuts 250 and 500 Hz by 6 dB (Q 1.2),
+fitted to real flat-top recordings, so this is modal, not a broad tilt.
+
+Two mechanisms were weighed and neither built. A construction-following
+capture dip at the dominant mid mode, like the air-mode dip, takes 3-4 dB
+off the peak and nothing off the hole, so a 20 dB contrast becomes 17; a
+boost at the antiresonance would need the summed response's minimum
+computed per construction, which no tool does yet. Lowering the plate
+modes' Q (the 2026-10-11 candidate, 0.7 of the flamenca's) spreads the
+energy into the hole as well, but the model and parameter audit pins the
+radiation to each mode's measured damping. The real flat-top's own sweep
+is as uneven on the eight notes available, so whether the listener hears
+this as a fault or as a guitar is not known: it is the next sound item
+for a session with a listener, not a measurement to act on alone.
+
+## 2026-10-12 — the Parlor takes the air-mode dip, levelled inside its contracts
+
+The entry below measured the Parlor's dip and held it because, re-levelled
+to the calibration target, Parlor Spruce Finger would play -3.07 LU on the
+construction loudness fixture, 0.07 past its 3 LU. Of the two ways it named
+to let the Parlor take the dip, this takes the one that loosens no
+tolerance: the Parlor's Finger and Thumb cells now sit 0.5 LU over the
+calibration target on every capture (`Tools/CalibrateConstructionLoudness.py`,
+`CROSS_PHRASE_LIFT_LU`, inside the calibration's own 1 LU and recorded in
+the generated header), its Pick cells follow the headroom rule as before,
+and the dip's upper bound moves from 117 to 130 Hz so the Parlor's air
+mode (121-128 Hz as Spruce, Mahogany and Maple place it) is inside it; the
+dip itself (-2.5 dB, Q 2.5) is unchanged. The Parlor already played the
+fixture's chord-and-strum phrase 2.87 LU under the default with its
+calibration phrase on the target, so the half LU also brings that material
+nearer the other bodies.
+
+Measured (sweep at velocity 96, Finger, stereo mic, Room 0.5): the Parlor's
+B2 +5.7 to +4.6 dB over its neighbours, A#2 +4.0 to +3.4, RMS deviation
+3.44 to 3.35 dB; A#3 (+5.6) and the E5 hole (-10.4) unchanged. Levelled:
+the fixture reads -2.57 LU on Parlor Spruce Finger (was -2.87; every other
+cell between -2.5 and +1.9) and the calibration's `--check` holds every
+cell and capture inside its tolerance. The Engine, Capture, CaptureVoicing,
+MicrophoneBalance, BodyShape, GuitarModels, ConstructionMatrix,
+ConstructionHistory, ConstructionLoudness, ConstructionLoudnessCalibration,
+PiezoCircuit and OutputBuses suites pass. Nobody has listened: a blind
+Parlor pack (A/B, the key apart) was rendered for the user, and the change
+goes up as its own pull request for that verdict rather than being merged
+on the measurements. Version 1.3.1.
+
+## 2026-10-12 — the Parlor's air-mode dip, measured again and still held
+
+The Parlor's B2/A#2 lift is the largest low-end resonance left after the
+air-mode dip (every other Shape takes it). Measured on a scratch build with
+the dip's cutoff raised over the Parlor's air mode (117 to 130 Hz; nothing
+else changed), on the E2-E5 sweep at velocity 96, Finger, stereo mic, Room
+0.5: B2 +5.7 to +4.6 dB over its neighbours, A#2 +4.0 to +3.4, the sweep's
+RMS deviation 3.44 to 3.35 dB; the next peak, A#3 at +5.6, is untouched,
+as is the E5 hole at -10.4. The dip lowers the Parlor's calibration phrase
+by 0.78 LU on Spruce Finger (0.86 Thumb, 0.88/0.95 Mahogany, 1.08/1.24
+Maple) and the construction loudness fixture's phrase by 0.98 (Spruce
+Finger, -2.87 to -3.85 LU from the default). Re-levelled to the
+calibration target, Parlor Spruce Finger would play -3.07 LU on the
+fixture, 0.07 past its 3 LU contract, with Mahogany Finger at -2.95; every
+other Parlor cell lands between -2.0 and -2.5. That is the 2026-10-11
+finding (the dip costs the fixture's phrase 0.2 LU more than the
+calibration phrase) measured again, and the tolerance is not loosened to
+fit a refinement, so the Parlor keeps its lift. A dip shallow enough to
+fit (about -1.6 dB) would take B2 only to about +5.0 dB.
+
+What would let the Parlor take the dip is a choice, not a measurement:
+widen the fixture's tolerance for the Parlor by a quarter LU, or let its
+Finger and Thumb cells sit about half an LU over the calibration target
+(inside the calibration's own 1 LU), which also lifts a Shape the fixture
+already finds nearly 3 LU quiet on its chord-and-strum phrase. Neither is
+taken here; both are the user's call. Nobody listened to the scratch
+build and it ships nothing.
+
+## 2026-10-12 — only the tuning's range answers
+
+The user asked that the instrument allow only the guitar's range for its
+tuning and ignore lower and higher notes. Lower notes were already ignored
+(no string frets them). Higher ones, above the twentieth fret of the
+highest string, reached the open strings' natural harmonics since
+2026-09-25: a note at an exact multiple of an open pitch within 25 cents
+was played as a node touch. That reach is retired: canSound and noteOn now
+answer only fretted pitches, and planChord no longer keeps a string aside
+for a harmonic. The node-touch projection itself stays in the engine,
+unreachable from any pitch. The range per tuning is E2-C6 (Standard),
+D2-C6 (Drop D), D2-B5 (DADGAD, Open G) and D#2-B5 (half step down); the
+plug-in's keyboard already showed it. The tests that proved the harmonics
+sounded, kept held strings and were damped like their open string go with
+the feature; one range test takes their place, and the stress test that
+mixed harmonics into muted chord changes plays the top frets instead.
+Demo renders made before this date still describe two natural harmonics.
+
+## 2026-10-12 — strum direction: a dotted-eighth window and keyswitches
+
+The user asked how to choose between a downstroke and an upstroke, since a
+chord's strings ring in the opposite order on each and the difference is
+audible, and offered three rules: a keyswitch, an interval rule (notes
+closer than a sixteenth alternate, otherwise a downstroke) or leaving the
+two-second alternation as it was. Assessment given and agreed: the
+two-second rule alternates any two strums less than two seconds apart, so
+slow chords came out down, up, down; an interval rule is the right first
+step, but at an eighth rather than a sixteenth, because the commonest
+strumming pattern, eighth-note down-up, has consecutive strums an eighth
+apart and a sixteenth threshold would make them all downstrokes; and a
+keyswitch is the override no automatic rule can replace (deliberate
+upstroke accents, syncopation). The user chose the interval rule plus the
+keyswitch.
+
+Shipped: a strum within strumAlternationBeats, a dotted eighth (0.75 beat)
+at the host tempo, of the previous one alternates; a later one, or any
+after the two-second rest, is a downstroke. The dotted eighth rather than
+an eighth absorbs humanization, swung eighths (whose long gap is two thirds
+of a beat) and triplets, and still leaves quarter-note chords all
+downstrokes. Keyswitches C0, C#0 and D0 (MIDI 24-26, under Drop D's low D)
+latch downstrokes, upstrokes or automatic until the next keyswitch, reset
+or prepare, on every channel; they never sound, take no string, and are
+not gathered into a chord. No parameter and no saved state. The plug-in
+prints the keyswitches with the mod wheel's and pitch bend's roles on its
+strings panel; the Rack Extension prints the same on its rear panel.
+
+Considered and not shipped: reading a spread chord's arrival order as its
+roll direction (lowest key first, a downstroke). Under Gather Chords the
+order is known, but a sloppy triad starts with its lowest or highest key
+two times in three by chance, which would randomize the direction of live
+chords; a sequencer's chord lands on one sample and carries no order.
+Deferred: a rule on the host's beat position, down on the eighth grid and
+up between, which is what the hand does and which the interval rule gets
+wrong for two upstrokes a beat apart; it waits on a listening pass of the
+interval rule. Nobody has listened to either yet.
+
 ## 2026-10-12 — the air-mode dip, heard: B over main
 
 The user listened to the blind A/B pack rendered for the 2026-10-11 air-mode

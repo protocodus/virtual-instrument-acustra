@@ -3,7 +3,8 @@
 // the default construction's integrated loudness (Dreadnought, Spruce,
 // Finger, on the stereo microphones), each capture on its own
 // (Docs/decisions.md, 2026-09-29, "Every construction as loud as the
-// default"). A cell is
+// default"); the Parlor's Finger and Thumb cells sit 0.5 LU over it
+// (the tool's CROSS_PHRASE_LIFT_LU; Docs/decisions.md, 2026-10-12). A cell is
 //   (shape * 3 + wood) * 3 + picking
 // in the enums' order in AcustraEngine.h.
 #pragma once
@@ -15,7 +16,7 @@ namespace acustra::detail
 // The factor on the output reference (outputReferenceFor).
 inline constexpr std::array<float, 36> constructionMicReference {{
     // original parlor: spruce, mahogany, maple x finger, pick, thumb
-    0.764604449f, 0.471710324f, 0.776602089f, 0.789131105f, 0.489833474f, 0.804800928f, 0.942299843f, 0.614048243f, 0.947018623f,
+    0.885990322f, 0.493114501f, 0.908419311f, 0.924598873f, 0.511852264f, 0.950807035f, 1.13020253f, 0.645044744f, 1.1572082f,
     // original auditorium: spruce, mahogany, maple x finger, pick, thumb
     0.990960956f, 0.485511929f, 1.05788207f, 1.14489245f, 0.579286516f, 1.18356633f, 1.19811308f, 0.698951542f, 1.27483225f,
     // original dreadnought: spruce, mahogany, maple x finger, pick, thumb
@@ -26,7 +27,7 @@ inline constexpr std::array<float, 36> constructionMicReference {{
 // The mono microphone's factor over constructionMicReference.
 inline constexpr std::array<float, 36> constructionMonoTrim {{
     // original parlor: spruce, mahogany, maple x finger, pick, thumb
-    0.961232066f, 0.846611559f, 0.959871411f, 0.964354157f, 0.817057252f, 0.963283181f, 0.983851969f, 0.855389714f, 0.986908555f,
+    0.965086877f, 0.843349218f, 0.961725056f, 0.95454663f, 0.809041321f, 0.957787275f, 0.981416821f, 0.849443555f, 0.985906959f,
     // original auditorium: spruce, mahogany, maple x finger, pick, thumb
     0.912428856f, 0.747170329f, 0.898377359f, 0.907850385f, 0.791409194f, 0.89830786f, 0.953280568f, 0.817112207f, 0.936491251f,
     // original dreadnought: spruce, mahogany, maple x finger, pick, thumb
@@ -38,7 +39,7 @@ inline constexpr std::array<float, 36> constructionMonoTrim {{
 // (PiezoDesign::trim).
 inline constexpr std::array<float, 36> constructionPiezoTrim {{
     // original parlor: spruce, mahogany, maple x finger, pick, thumb
-    1.82421279f, 1.2715292f, 1.96991694f, 1.73770976f, 1.21908128f, 1.8796649f, 1.38756013f, 0.957091689f, 1.52407694f,
+    1.61123586f, 1.21633708f, 1.73593545f, 1.51610816f, 1.16663909f, 1.63003778f, 1.18438327f, 0.911100388f, 1.27871394f,
     // original auditorium: spruce, mahogany, maple x finger, pick, thumb
     1.3102051f, 1.23656607f, 1.33875561f, 1.12328625f, 1.0278188f, 1.18779933f, 1.06700039f, 0.840436697f, 1.09018886f,
     // original dreadnought: spruce, mahogany, maple x finger, pick, thumb

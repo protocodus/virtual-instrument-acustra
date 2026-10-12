@@ -513,10 +513,12 @@ void testSameSampleChordsAreStrummedAndAlternate()
     std::vector<double> downs, ups, downAgains;
     for (int stroke = 0; stroke < 8; ++stroke)
     {
-        // The odd-length group ends on a downstroke: the next stroke must
-        // restart down after the long rest, overriding its pending upstroke.
-        downs.push_back (upperRegisterDelay (0.5));
-        ups.push_back (upperRegisterDelay (0.5));
+        // Strums 0.3 s apart sit within the dotted eighth at the default
+        // 120 BPM (375 ms) and alternate. The odd-length group ends on a
+        // downstroke: the next stroke must restart down after the long rest,
+        // overriding its pending upstroke.
+        downs.push_back (upperRegisterDelay (0.2));
+        ups.push_back (upperRegisterDelay (0.2));
         downAgains.push_back (upperRegisterDelay (2.5));
     }
     const double down = median (downs);
@@ -2737,13 +2739,15 @@ static void testStringActivityDisplay()
     expect (visible->getStringActivityForDisplay()[0].openMidi == 38,
             "the string display did not follow Drop D tuning");
 
-    juce::MidiBuffer harmonic;
-    harmonic.addEvent (juce::MidiMessage::noteOn (1, 88, 0.72f), 0);
-    render (12, harmonic);
+    // A pitch above the fretted range is ignored (the range rule of
+    // 2026-10-12): no string takes it and the display shows nothing for it.
+    juce::MidiBuffer outside;
+    outside.addEvent (juce::MidiMessage::noteOn (1, 88, 0.72f), 0);
+    render (12, outside);
     strings = visible->getStringActivityForDisplay();
-    expect (std::any_of (strings.begin(), strings.end(), [] (const auto& string)
-            { return string.keyDown && string.midiNote == 88 && string.harmonic > 1; }),
-            "the display lost the natural-harmonic identity");
+    expect (std::none_of (strings.begin(), strings.end(), [] (const auto& string)
+            { return string.keyDown && string.midiNote == 88; }),
+            "the display showed a pitch outside the tuning's range");
 
     visible->releaseResources();
     strings = visible->getStringActivityForDisplay();

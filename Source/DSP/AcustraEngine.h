@@ -194,6 +194,8 @@ public:
     // a same-pitch/channel reattack at that endpoint still joining. Tempo
     // changes retime the remaining beats; reset/prepare keep the host tempo.
     void setTempoBpm(double bpm) noexcept;
+    // The tempo in use: the last valid one given, 120 BPM until then.
+    [[nodiscard]] double tempoBpm() const noexcept { return tempoBpm_; }
 
     // Setup/offline-fitting control. If already prepared, changing the
     // calibration resets the engine; do not call it from the audio thread.
@@ -268,8 +270,8 @@ public:
     [[nodiscard]] int strumDelaySamples(int stringRank,
                                         float velocity) const noexcept;
     // Whether noteOn() would sound this note at all in the current tuning
-    // and channel mode, rather than drop it (below the lowest string with no
-    // harmonic to reach it, or off a string-per-channel string's frets).
+    // and channel mode, rather than drop it (outside the tuning's fretted
+    // range, or off a string-per-channel string's frets).
     [[nodiscard]] bool canSound(int midiNote, int midiChannel = 1) const noexcept;
     // Key-up releases MIDI ownership at once. Physical damping and release
     // noise wait through the tempo-relative join window above, cancelled by
@@ -402,11 +404,12 @@ public:
     };
     // Read on the audio thread, or while processing is stopped. Low string
     // first; played includes a fretted note waiting for its scheduled pluck.
-    // Idle strings and natural harmonics have fret 0; harmonic > 1 identifies
-    // the latter and midiNote is their requested sounding pitch. level is the
-    // existing smoothed absolute string reaction force (including a retained
-    // re-pluck tail), not displacement or output volume. This observer does
-    // no extra per-sample work and does not advance any synthesis state.
+    // Idle strings have fret 0. harmonic stays 1 since natural harmonics by
+    // pitch were retired (2026-10-12); the field keeps the display packet
+    // layout front ends read. level is the existing smoothed absolute string
+    // reaction force (including a retained re-pluck tail), not displacement
+    // or output volume. This observer does no extra per-sample work and does
+    // not advance any synthesis state.
     [[nodiscard]] std::array<StringActivity, stringCount>
         getStringActivity() const noexcept;
     [[nodiscard]] float getLastBridgeVelocity() const noexcept;
@@ -1732,12 +1735,6 @@ private:
     void muteVacatedString(Voice& voice, int stringIndex) noexcept;
     void rememberFinger(int stringIndex) noexcept;
     void releaseFinger(int stringIndex) noexcept;
-    struct HarmonicChoice
-    {
-        int string { -1 };
-        int harmonic { 1 };
-    };
-    [[nodiscard]] HarmonicChoice chooseHarmonic(int midiNote) const noexcept;
     float renderExcitation(Voice& voice) noexcept;
     // The key-up's sound (EngineParameters::releaseNoise): started by
     // beginRelease and muteVacatedString, rendered and launched from the
