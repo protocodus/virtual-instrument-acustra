@@ -25,18 +25,19 @@ macOS 11 or later.
 - **Archive (`.zip`)**: it holds the same folders. Copy each bundle to
   the folder named above.
 
-If macOS will not open the installer because it cannot verify the
-developer, the package is not notarized. Open it only if it came from
-Protocodus, by choosing Open Anyway under Privacy & Security in System
-Settings.
+macOS checks a downloaded installer when it is opened. Bundles unpacked
+from a downloaded archive keep the download's quarantine flag, so macOS
+checks each of them too when it is first opened or loaded; bundles the
+installer puts in place carry no such flag. A build that Apple has not
+notarized fails the check: macOS reports that it cannot verify the
+developer, and a host may refuse to load the plug-in.
 
 ### Windows (VST3, standalone; 64-bit)
 
 Unzip the `.zip`. Copy the folder `VST3/Acustra.vst3` into
 `C:\Program Files\Common Files\VST3\`. The standalone app is
-`Standalone/Acustra.exe` and runs from any folder. If Windows SmartScreen
-stops an unsigned app, choose More info, then Run anyway, only if the file
-came from Protocodus.
+`Standalone/Acustra.exe` and runs from any folder. Windows SmartScreen
+may stop a downloaded app that is not Authenticode-signed before it runs.
 
 ### Linux (VST3, standalone; x86-64)
 
@@ -54,16 +55,19 @@ folders above (and, on macOS, `/Library/Application Support/Acustra/`).
 
 1. In your host, rescan plug-ins if it does not find Acustra, then put
    Acustra on an instrument track and arm the track for MIDI.
-2. Play anything from E2 to C6 (standard tuning; middle C is C4). Notes a
-   guitar in the chosen tuning cannot fret are ignored.
+2. Play anything from E2 to C6 (MIDI 40-84) in standard tuning. Notes a
+   guitar in the chosen tuning cannot fret are ignored. This guide calls
+   middle C (MIDI 60) C4; the on-screen keyboard's labels and the panel's
+   legend count it as C3, so their octave numbers are one lower.
 3. With no keyboard attached, click the on-screen keyboard at the bottom of
    the window. When it has keyboard focus the computer keys A to K play C5
-   to C6 (W, E, T, Y and U are the sharps).
+   to C6 (MIDI 72-84, the keys labelled C4 to C5), with W, E, T, Y and U
+   the sharps.
 
 In the standalone app, click **Options** at the top of its window, choose
-**Audio/MIDI Settings...**, pick an audio output and tick your MIDI
-keyboard under the MIDI inputs. The same menu saves and loads the app's
-state.
+**Audio/MIDI Settings...**, pick an audio output and make sure your MIDI
+keyboard is ticked under the MIDI inputs. The same menu saves and loads
+the app's state.
 
 A new instance starts as a spruce Dreadnought in standard tuning, played
 with the fingers and heard through the stereo microphones, with a little
@@ -126,17 +130,18 @@ window can be resized from its corner and keeps its proportions.
   is dry once the room has rung out; the piezo never hears it.
 - **Output** (0 dB): final level, -24 to +6 dB.
 
-**Strings display**: the six strings, high E at the top. Filled markers
-are held frets, outlined markers released notes, and blue-green open
-markers sympathetic vibration. The legend repeats the keyswitches and the
-wheels' roles.
+**Strings display**: the six strings, the highest at the top. Filled
+markers are held frets, outlined markers released notes, and blue-green
+open markers sympathetic vibration. The legend repeats the keyswitches
+and the wheels' roles.
 
 ## Playing
 
 **Range.** Each string reaches its twentieth fret, so each tuning has its
-own range: E2-C6 (Standard), D2-C6 (Drop D), D2-A#5 (DADGAD and Open G),
-D#2-B5 (Half-step down). Anything outside it is ignored. The on-screen
-keyboard spans D2-C6.
+own range: E2-C6 (Standard; MIDI 40-84), D2-C6 (Drop D; 38-84), D2-A#5
+(DADGAD and Open G; 38-82), D#2-B5 (Half-step down; 39-83). Anything
+outside it is ignored. The on-screen keyboard spans D2-C6 (MIDI 38-84);
+its labels count middle C as C3, so its top key reads C5.
 
 **Velocity** is how hard the string is plucked. **Release velocity** sets
 how firmly the hand damps the string: 64 is nominal, softer key-ups ring
@@ -155,10 +160,12 @@ return and goes the other way; after a longer gap it is a downstroke
 again. Notes played by hand arrive a little apart: turn on CHORDS to
 gather them, at the cost of 30 ms latency.
 
-**Keyswitches** below the guitar's range latch the strum direction on any
-channel until the next keyswitch or PANIC: **C0** (MIDI 24) every strum
-down, **C#0** (25) every strum up, **D0** (26) back to automatic. They
-never sound.
+**Keyswitches** below the guitar's range latch the strum direction on
+every channel, whichever channel sends them, until the next keyswitch or
+PANIC: MIDI 24 makes every strum a downstroke, 25 an upstroke and 26
+returns to automatic. They never sound. The panel's legend names them
+**C0**, **C#0** and **D0**, counting middle C as C3; with middle C as C4,
+as in the rest of this guide, they are C1, C#1 and D1.
 
 **Sustain switch and sustain pedal.** CC64 holds released notes on its
 channel until pedal-up; SUSTAIN does the same on every channel. They hold
@@ -186,12 +193,14 @@ is.
 
 ## MIDI implementation
 
-All sixteen channels are independent unless an MPE zone is set.
+All sixteen channels are independent unless an MPE zone is set, except
+that CC1, CC2 and the strum keyswitches act on the whole instrument
+whichever channel sends them.
 
 | Message | What it does |
 | --- | --- |
 | Note On / Off | Pluck, with velocity as force; release velocity sets the damping |
-| Notes 24-26 (C0, C#0, D0) | Strum-direction keyswitches |
+| Notes 24-26 | Strum-direction keyswitches: C0, C#0, D0 as the panel names them (C1-D1 with middle C as C4) |
 | Pitch bend | Slide; 2 semitones by default (RPN 0 sets 0-96) |
 | CC1 | Vibrato |
 | CC2 | Picking-hand damping at the saddle |
