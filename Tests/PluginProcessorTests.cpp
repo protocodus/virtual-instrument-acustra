@@ -231,17 +231,17 @@ void testParameterContract()
         processor.parameters.getParameter (ids::guitarModel));
     expect (model != nullptr && model->getVersionHint() == 7
                 && model->getParameterIndex() == 14 && ! model->isAutomatable()
-                && model->choices == juce::StringArray { "Original", "Bellido 1978" },
+                && model->choices == juce::StringArray { "Original", "Classical 78" },
             "the retired Guitar Model lost its legacy slot identity");
     if (auto* modelParameter = processor.parameters.getParameter (ids::guitarModel))
     {
         // What a host's normalised snapshot holds: every packaged build
-        // stores Original as 0 and Bellido as 1.
+        // stores Original as 0 and Classical 78 as 1.
         const auto* choice = dynamic_cast<const juce::AudioParameterChoice*> (modelParameter);
         modelParameter->setValueNotifyingHost (1.0f);
-        const bool bellido = choice != nullptr && choice->getIndex() == 1;
+        const bool secondModel = choice != nullptr && choice->getIndex() == 1;
         modelParameter->setValueNotifyingHost (0.0f);
-        expect (bellido && choice->getIndex() == 0,
+        expect (secondModel && choice->getIndex() == 0,
                 "the legacy Guitar Model's normalised 0 and 1 changed their storage");
     }
     const auto* gather = dynamic_cast<const juce::AudioParameterBool*> (
@@ -1505,7 +1505,7 @@ void testStateRoundTripAndMigration()
         roundTripped (source, *secondOwner);
     }
 
-    // A session that chose the Bellido 1978 (or, from a five-choice local
+    // A session that chose Classical 78 (or, from a five-choice local
     // build, a retired 2-4) reloads every other control unchanged and plays
     // the Original guitar: the engine parameters equal those of the same
     // state saved on Original.
@@ -1969,9 +1969,25 @@ void testEditorRendering()
         Expected { "Dreadnought", acustra::BodyShape::Dreadnought, acustra::BodyMaterial::Spruce },
         Expected { "Auditorium", acustra::BodyShape::Auditorium, acustra::BodyMaterial::Spruce },
         Expected { "Parlor", acustra::BodyShape::Parlor, acustra::BodyMaterial::Spruce } };
+    // The GUITAR switch offers exactly the current construction presets, no
+    // more and no fewer, and the retired Model switch stays gone.
+    {
+        std::vector<std::string> guitarButtons;
+        for (const auto* button : choiceButtons)
+            if (button->getName().startsWith ("GUITAR:"))
+                guitarButtons.push_back (button->getName().toStdString());
+        std::vector<std::string> expectedGuitarButtons;
+        for (const auto& preset : presets)
+            expectedGuitarButtons.push_back (
+                (juce::String ("GUITAR: ") + preset.caption).toStdString());
+        std::sort (guitarButtons.begin(), guitarButtons.end());
+        std::sort (expectedGuitarButtons.begin(), expectedGuitarButtons.end());
+        expect (guitarButtons == expectedGuitarButtons,
+                "the GUITAR switch is not exactly the current construction presets");
+    }
     expect (std::none_of (choiceButtons.begin(), choiceButtons.end(), [] (const auto* button)
-            { return button->getName() == "GUITAR: Bellido 1978" || button->getName().startsWith ("MODEL:"); }),
-            "the retired Bellido preset or Model switch is still on the editor");
+            { return button->getName().startsWith ("MODEL:"); }),
+            "the retired Model switch is still on the editor");
     for (const auto& preset : presets)
     {
         const auto name = juce::String ("GUITAR: ") + preset.caption;

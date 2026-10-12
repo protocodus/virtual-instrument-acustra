@@ -407,7 +407,7 @@ def self_test(renderer: Path | None) -> None:
                                        "stereo_mic", "finger", "original"], capture_output=True)
             assert rejected.returncode != 0 and not (root / "invalid.f32").exists()
             for options in (["--string-material", "steel"], ["--body-material", "cedar"],
-                            ["--guitar-model", "original"], ["--guitar-model", "bellido1978"],
+                            ["--guitar-model", "original"],
                             ["--tuning", "open_z"], ["--tuning"], ["--unknown", "steel"],
                             ["--tuning", "standard", "--tuning", "drop_d"],
                             ["--body-material", "spruce", "--body-material", "maple"]):

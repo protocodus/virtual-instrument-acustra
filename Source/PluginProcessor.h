@@ -26,7 +26,7 @@ inline constexpr auto upperMic = "upperMic";
 inline constexpr auto piezoLoading = "piezoLoading";
 
 inline constexpr auto captureMode = "captureMode";
-// Retired on 2026-10-10 with the Bellido 1978 guitar; kept for host identity.
+// Retired on 2026-10-10 with the second guitar model; kept for host identity.
 inline constexpr auto guitarModel = "guitarModel";
 inline constexpr auto gatherChords = "gatherChords";
 inline constexpr auto piezoMix = "piezoMix";

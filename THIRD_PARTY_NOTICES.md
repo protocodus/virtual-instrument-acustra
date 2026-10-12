@@ -235,11 +235,11 @@ the source MAT file, recorded impulses, photographs or documentation from the
 archive. The attribution, source link, licence link and description of changes
 above must accompany distributions containing the coefficient table.
 
-The archive's other records are no longer shipped: g35 (a 1978 Manuel Lopez
-Bellido classical, which the Bellido 1978 Model played with steel strings until
-2026-10-10, from `Source/DSP/BellidoData.h`) was removed with that Model; g34
-(a 1971 Manuel Contreras classical, which the nylon strings played until
-2026-09-29) and the unused g36 candidate were removed with the nylon model.
+The archive's other records are no longer shipped: g35 (a 1978 classical, whose
+table the Classical 78 Model played with steel strings until 2026-10-10) was
+removed with that Model; g34 (a 1971 Manuel Contreras classical, which the nylon
+strings played until 2026-09-29) and the unused g36 candidate were removed with
+the nylon model.
 g37, g38, g39, g42 and g43 contribute only the plate-Q statistic above; none
 of their coefficients ship.
 

@@ -173,7 +173,7 @@ blind over main's engine on 2026-10-12. See the
 [smoothness report](Docs/studio-smoothness-2026-10-11.md).
 
 Since 2026-10-10 (after 1.1.3) Acustra plays one guitar body, the Original:
-the Bellido 1978 (Classical 78) Model, its measured g35 body and bridge and
+the Classical 78 Model, its measured g35 body and bridge and
 its classical-only attack, sustain and player-loading policies are removed at
 the user's request. A session that chose it reloads every other setting and
 plays the Original; every Original sound is unchanged to the bit. See the
@@ -1587,7 +1587,7 @@ manufacturers. Each switch changes Shape and Material with host automation
 gestures, leaving tuning and output where the player set them. Other
 combinations show Custom construction.
 
-The Original is the only guitar model. The Bellido 1978, a second measured
+The Original is the only guitar model. The Classical 78, a second measured
 guitar (Mores g35, a classical strung with steel), was removed on 2026-10-10
 at the user's request; three steel models fitted from Mark Rau's
 measurements, which carry no redistribution license, were retired before
@@ -1595,7 +1595,7 @@ publication. The `guitarModel` host parameter keeps its ID, AU version hint 7,
 index and two-choice range as a non-automatable legacy slot, like the three
 retired capture slots, so a host that addresses parameters by index finds
 every later control where it was; nothing reads it, and a session that chose
-the Bellido reloads every other setting and plays the Original. Since
+the Classical 78 reloads every other setting and plays the Original. Since
 2026-09-29 a saved state carries `stateVersion` 2; an older one loads with
 its `stringMaterial` and `bridgeModel` values dropped, so a nylon or Fylde
 session plays steel on the Original bridge, and with Cedar as Mahogany.
@@ -2438,7 +2438,7 @@ Dated evidence is retained so the earlier decisions remain traceable.
   the limiter is up to +1.59 dBFS on the stereo microphones, past the knee on
   20 of the 24 constructions then shipping (7 before), -0.13 on the mono (5,
   from 2) and +2.02 on the piezo (all 24, as before); the 24 included the
-  Bellido 1978's 12, removed on 2026-10-10. The default construction's
+  Classical 78's 12, removed on 2026-10-10. The default construction's
   reaches -1.20 dBFS on the stereo microphones, 0.2 dB under the knee, where
   it kept 2.1 dB under it. A hand at the bridge holds the most force against
   its note, and six strings released on one sample add their releases. That
@@ -2446,7 +2446,7 @@ Dated evidence is retained so the earlier decisions remain traceable.
   and the hardest case's strums - 9 ms and 4 ms a string - stay under the
   knee on 22 of the 24 on the stereo microphones (at least 1 dB under on 20)
   and at least 1 dB under on 23 on the mono; the two over the knee were the
-  Bellido's Parlor in mahogany and spruce (-0.04 and -0.06 dBFS), so every
+  Classical 78's Parlor in mahogany and spruce (-0.04 and -0.06 dBFS), so every
   remaining construction's strums stay under it. Six on one
   sample reaches the engine from a chord spread over channels (MPE,
   string-per-channel). Keeping it under the knee there on every
@@ -3008,7 +3008,7 @@ set without it.
   in 200-280 Hz measure Q 11-21, because the rule halves an excess that is
   concentrated in one mode; a rule by mode class would bring in a
   classification and a constant of its own, and is not made. No second
-  measured body remains beside it: the Bellido 1978's matched bridge and
+  measured body remains beside it: the Classical 78's matched bridge and
   radiation bank, once a separate Model, was removed on 2026-10-10, and the
   three steel guitars before it were retired (Construction controls).
 - The band audits now measure a distance the build chose rather than an error
@@ -3435,15 +3435,15 @@ packages are built and signed.
 - **A two-microphone Room was heard and not adopted**
   ([the room report](Docs/room-2026-10-10.md)).
 
-### 2026-10-10 — Bellido 1978 (Classical 78) removed
+### 2026-10-10 — Classical 78 removed
 
-At the user's request the second guitar model, the steel-strung Bellido 1978
+At the user's request the second guitar model, the steel-strung Classical 78
 (Mores archive g35), is removed with its measured body and bridge banks, its
 microphone contour and its classical-only attack, sustain and player-loading
 policies. The Original is the only guitar body; its sound is unchanged in the
 matched native comparison. The `guitarModel` host parameter remains as a
 hidden, non-automatable legacy slot, so saved sessions and index-addressed
-automation keep working, and a session that chose the Bellido plays the
+automation keep working, and a session that chose the Classical 78 plays the
 Original. See [the removal record](Docs/classic78-removal-2026-10-10.md).
 
 ### 2026-10-09 — project cleanup
@@ -3504,7 +3504,7 @@ git history rather than here.
   bank's flat-top +0.3%, GuitarSet's log-spectral error 14.42 -> 14.00 dB,
   convergence 0.828 -> 0.804 and chroma 0.224 -> 0.210; note to note 3.3 ->
   2.7 dB rough. Every Original construction's sound changes (each was
-  re-levelled to its loudness); the Bellido's microphones are unchanged. See
+  re-levelled to its loudness); the Classical 78's microphones are unchanged. See
   [The microphones and the room](#the-microphones-and-the-room) and
   Docs/decisions.md.
 
@@ -3529,14 +3529,14 @@ git history rather than here.
   cleanup all leftovers."; then "the bridge choice does not do much
   difference"). The String Material and Bridge Model controls are gone; Body
   Material is Spruce, Mahogany or Maple (Cedar, the closest of the four to
-  Mahogany, is removed). The Bellido 1978 stays, strung with steel. The
+  Mahogany, is removed). The Classical 78 stays, strung with steel. The
   Guitar menu's Classical nylon and Fylde bridge / steel presets give way to
-  one Bellido 1978 preset (Auditorium, Mahogany). Saved sessions migrate:
+  one Classical 78 preset (Auditorium, Mahogany). Saved sessions migrate:
   Cedar loads as Mahogany, and a session that played nylon or the Fylde
-  bridge plays steel on the Original bridge (on the Bellido if it chose it),
+  bridge plays steel on the Original bridge (on the Classical 78 if it chose it),
   so it sounds different. Every steel construction that remains sounds
   exactly as before, bit for bit. The nylon demo is gone; Recuerdos and
-  Lágrima play on the Bellido with steel strings, and the picking-techniques
+  Lágrima play on the Classical 78 with steel strings, and the picking-techniques
   demo on steel alone. The nylon calibration, the g34 and Fylde banks, the
   classical rows of the dry-note benchmark, the Iowa corpus and the nylon-only
   tools and reports are removed.
@@ -3555,8 +3555,8 @@ git history rather than here.
     26 dB; All Notes/Sound Off acts before the notes on its own sample, so
     those notes sound; Reset All Controllers also resets the wheel's vibrato
     and channel pressure; master tune reaches an MPE note once.
-  - Constructions: Shape keeps each of the Bellido's bridge modes on its
-    radiation; nylon's and the Bellido's bridges follow Wood and Shape; the
+  - Constructions: Shape keeps each of the Classical 78's bridge modes on its
+    radiation; nylon's and the Classical 78's bridges follow Wood and Shape; the
     Classical preset is nylon's measured body at the cedar it was built of
     (+31 cents, brighter than the cedar warp it was); a Shape, Wood, Bridge
     or Model change under a ringing chord no longer ticks, and a change onto
@@ -3575,7 +3575,7 @@ git history rather than here.
   The default construction's microphones are unchanged to the bit; every
   other construction changes only in level, so saved sessions on them play louder or quieter: nylon at
   the default body +2.1 dB, the Classical preset +3.1 dB, steel on the
-  Bellido up to +9.9 dB, the Fylde Jumbo with the Pick -5.3 dB. The
+  Classical 78 up to +9.9 dB, the Fylde Jumbo with the Pick -5.3 dB. The
   default's Pick plays 1.25 dB quieter, its piezo 3.45 dB louder with the
   fingers. A change of any of them glides over 20 ms.
 - **Steel plays a lighter body that stands in for the one Set 21
@@ -3732,7 +3732,7 @@ git history rather than here.
 - **The Washburn, Santa Cruz and Martin models are retired.** Their
   coefficients were fitted from Mark Rau's measurements, which carry no
   redistribution license, so they are not published with this repository.
-  Model offers Original and Bellido 1978; a saved session or host that still
+  Model offers Original and Classical 78; a saved session or host that still
   selects a retired model hears Original.
 
 ### 2026-09-24

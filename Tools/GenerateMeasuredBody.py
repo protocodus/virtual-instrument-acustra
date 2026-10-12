@@ -101,16 +101,16 @@ GUITAR_DESCRIPTION = {
     34: "a 1971 Manuel Contreras classical Spanish, cedar/Rio palisander, "
         "measured anechoic in the class-1 free-field laboratory of the "
         "Hamburg University of Applied Sciences",
-    35: "a 1978 Manuel Lopez Bellido classical Spanish, cedar/Rio palisander, "
+    35: "a 1978 classical Spanish, cedar/Rio palisander, "
         "measured anechoic in the class-1 free-field laboratory of the "
         "Hamburg University of Applied Sciences",
-    36: "a 2001 Jose Lopez Bellido classical Spanish, spruce/Indian "
+    36: "a 2001 classical Spanish, spruce/Indian "
         "palisander, measured anechoic in the class-1 free-field laboratory "
         "of the Hamburg University of Applied Sciences",
     37: "a 1981 Manuel Contreras flamenca blanca, spruce/cypress, measured "
         "anechoic in the class-1 free-field laboratory of the Hamburg "
         "University of Applied Sciences",
-    38: "a 1970 Jose Lopez Bellido flamenca blanca, cedar/cypress, measured "
+    38: "a 1970 flamenca blanca, cedar/cypress, measured "
         "anechoic in the class-1 free-field laboratory of the Hamburg "
         "University of Applied Sciences",
     39: "a 1971 German Perez Barranco flamenca blanca (Nr. 11), cedar/"

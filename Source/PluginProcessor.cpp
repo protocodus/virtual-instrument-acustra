@@ -379,11 +379,11 @@ AcustraAudioProcessor::createParameterLayout()
     // The retired Guitar Model keeps its ID, version, index and range, as the
     // legacy slots above do: a host addressing parameters by index still
     // finds every later control where it was. Nothing reads it; a session
-    // that chose the Bellido 1978 plays the Original guitar (Docs/
+    // that chose the retired second model plays the Original guitar (Docs/
     // decisions.md, 2026-10-10).
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::guitarModel, 7 }, "Legacy guitar model",
-        juce::StringArray { "Original", "Bellido 1978" }, 0,
+        juce::StringArray { "Original", "Classical 78" }, 0,
         juce::AudioParameterChoiceAttributes().withAutomatable (false)));
     // Off by default: gathering holds every note back (see acustra::Performer), so
     // it changes the plug-in's latency and is not automatable.
