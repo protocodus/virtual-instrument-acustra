@@ -2056,8 +2056,13 @@ void testEditorRendering()
                         && ! stringActivity->getBounds().intersects (midiKeyboard->getBounds()),
                     "the string display is clipped or overlaps the keyboard");
         juce::Image image { juce::Image::ARGB, width, height, true };
-        juce::Graphics graphics { image };
-        editor->paintEntireComponent (graphics, true);
+        {
+            // A Direct2D image (Windows' native type) commits its drawing
+            // only when the Graphics drawing into it ends; reading pixels
+            // before that reads the cleared image.
+            juce::Graphics graphics { image };
+            editor->paintEntireComponent (graphics, true);
+        }
 
         std::set<juce::uint32> colours;
         bool opaque = true;
