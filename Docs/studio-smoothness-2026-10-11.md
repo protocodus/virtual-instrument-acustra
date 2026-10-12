@@ -17,9 +17,12 @@ first). The renderer is `AcustraPerformanceRenderer` from a Release GCC
 `Tools/MeasureNoteEvenness.py` renders E2-E5 one note at a time on the string
 that reaches each at the lowest fret, velocity 96, Finger, held 1.2 s, and
 reads each note's sustained level (0.08-1.15 s, mono sum) against the mean
-of up to three neighbours each side. Room 0. A real flat-top's own sweep
-deviates by about 2 dB RMS (Eastman E1D, README Known gaps), so the
-question is where the deviation is larger than that and why.
+of up to three neighbours each side. Room 0. The real flat-top's figures
+in README Known gaps (the Eastman E1D, 1.8-2.2 dB RMS) count each note in
+its own neighbourhood's mean, which this tool does not, so the tool reads
+the same levels about a fifth rougher (17-22 % on the sweeps of
+[the mid-band dip report](mid-band-dip-2026-10-12.md)). The question is
+where the deviation is larger than the recordings' and why.
 
 | Render | RMS deviation (dB) | Deepest hole | Loudest peak | F#2 | G2 | E2 | A#4 | C#5 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |

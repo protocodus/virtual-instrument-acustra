@@ -19,8 +19,15 @@ and the RMS of dev over the sweep with its extreme notes. A prominent
 positive dev on a low note near the body's air mode, or a deep negative one
 under a near-field antiresonance, is where a listener hears a resonance or
 a hole; this measures where they are and how large, not whether they are
-heard as unnatural (a real flat-top's own sweep deviates by about 2 dB RMS,
-README Known gaps). Signal metrics establish no listener preference.
+heard as unnatural. Signal metrics establish no listener preference.
+
+dev leaves the note out of its neighbours' mean. The real flat-top figures
+in README Known gaps (the Eastman E1D takes: 1.8 dB RMS fingered, 2.2
+picked) count the note in that mean, over each note's first second, as
+Tests/BodyShapeTests.cpp does. That scales each dev by n/(n+1), n the
+neighbours counted, so this tool's RMS reads the same levels higher, by
+17-22 % on the sweeps of Docs/mid-band-dip-2026-10-12.md. Compare a sweep
+with the recordings on the note-counted figure, not on this one.
 
 Any renderer option may follow the output directory, including --calibration
 FILE (Tools/CalibrationFile.h's "name value" lines) to try a calibration

@@ -2,10 +2,11 @@
 
 [![Acustra editor](Docs/screenshots/acustra-standalone.png)](Docs/screenshots/acustra-standalone.png)
 
-Acustra is an acoustic-guitar instrument for VST3, Audio Unit and Standalone
+Acustra is an acoustic-guitar instrument for VST®3, Audio Unit and Standalone
 hosts. It synthesises every note in real time from six physical string models,
 a passive measured bridge and a measurement-derived guitar body. The plug-in
 contains no sample player and no recorded note audio.
+The [user guide](Docs/USER_GUIDE.md) covers installing and playing it.
 
 Start with Guitar, Picking and Capture: construction presets,
 finger/pick/thumb styles, and stereo mic, mono mic or an under-saddle piezo
@@ -704,7 +705,7 @@ tension.
 
 The instrument answers only its tuning's range: from the lowest open string
 to the twentieth fret of the highest (E2 to C6 in Standard, D2 to C6 in
-Drop D, D2 to B5 in DADGAD and Open G, D#2 to B5 a half step down). A pitch
+Drop D, D2 to A#5 in DADGAD and Open G, D#2 to B5 a half step down). A pitch
 outside it, above or below, is ignored: no string takes it and nothing
 sounds. Until 2026-10-12 pitches above the fretboard reached the open
 strings' natural harmonics (the node-touch projection); the user asked for
@@ -2426,13 +2427,21 @@ Dated evidence is retained so the earlier decisions remain traceable.
 
 - Single notes' radiated level is still rougher from note to note than the
   open recordings', though less than it was. Over E2-C6, 1 s RMS at the
-  Stereo mic, the RMS deviation from a seven-note neighbourhood is 2.2 dB
+  Stereo mic, the RMS deviation from a seven-note neighbourhood (each note
+  against the mean of itself and up to three neighbours each side, as
+  `Tests/BodyShapeTests.cpp` scores it and as the recordings' figures were
+  scored, Docs/decisions.md 2026-10-01) is 2.2 dB
   finger-played on the steel Dreadnought (2.6 before the mid-band dip of
   2026-10-12, 3.3 before the capture voicing of 2026-10-01), against 1.8
   on the Eastman E1D played with fingers and 2.2 with a pick; the deepest
   one-note hole is 7.4 dB against the mean of its two neighbours (7.7 on
   1.3.1; 5.3 just after the capture voicing of 2026-10-01, 9.1 before it),
-  against 4.4-9.3 in the recordings. The holes are the measured bodies' own: a close microphone
+  against 4.4-9.3 in the recordings. `Tools/MeasureNoteEvenness.py` leaves
+  the note out of that mean, which reads the same levels 17-22 % rougher
+  (its E2-E5 sweeps in the mid-band dip report: 3.52, 3.20, 3.22 and 2.71
+  dB, against 2.95, 2.63, 2.75 and 2.26 with the note counted), so its
+  figures are not directly comparable with the recordings'. The holes are
+  the measured bodies' own: a close microphone
   over the bridge hears same-sign modal pairs, such as g21's 515 and 589
   Hz, as an antiresonance, and they move with Shape; the mid-band dip
   takes the peak below each such hole down 9 dB
@@ -3157,7 +3166,60 @@ set without it.
 
 ## Release history
 
-### 2026-10-12 — strum direction timed by the song, and keyswitches
+Each entry records a source version in this repository. No build of any of
+them has been published as a release; [Build](#build) describes how
+packages are built and signed.
+
+### 1.3.2 — 2026-10-12 — the mid-band peak takes a dip, and a bit of piezo
+
+- **A dip at the mid-band peak.** On the E2-E5 sweep
+  (`Tools/MeasureNoteEvenness.py`, velocity 96, Finger, stereo mic, Room
+  0.5) each Shape's upper strong mid mode put one note 8-11 dB over its
+  neighbours (Dreadnought A#4, Auditorium C5, Jumbo G#4; the Parlor's D#5
+  5.4 dB). The summed microphone pressure now dips -9 dB at Q 8 on that
+  mode, which `AcustraEngine::locateMidBand` finds per Shape and Wood at
+  prepare (404-614 Hz) as the highest point of the engine's own response
+  within a fourth below its deepest antiresonance between 450 and 800 Hz;
+  the piezo never passes through it. The peaks fall to +5.0 (Dreadnought),
+  +3.8 (Auditorium), +5.7 (Jumbo) and +2.2 dB (Parlor), and the sweep's
+  RMS deviation from 4.20 to 3.52, 3.51 to 3.20, 3.81 to 3.22 and 3.35 to
+  2.71 dB. The holes above the peaks are radiation nulls and stay; a boost
+  at them was measured and not shipped. See
+  [the report](Docs/mid-band-dip-2026-10-12.md).
+- **The level is restored.** The dip carries a +0.5263 dB restore sized on
+  the default construction's calibration phrase, every construction is
+  re-levelled to it by `Tools/CalibrateConstructionLoudness.py`, and the
+  mono microphone takes -1.0 dB, which puts the default's mono capture on
+  the calibration target (0.85 dB under where 1.3.1 played it against the
+  pair).
+- **Piezo Mix starts at 20 %,** the Rack's default, so a new instance
+  starts with a bit of the under-saddle piezo beneath the microphones; a
+  session saved before Piezo Mix existed still loads at 0 %. A chosen
+  default, not a listening verdict.
+- Nobody has listened to the dip; the user directed that it ship on the
+  measurements (Docs/decisions.md).
+
+### 1.3.1 — 2026-10-12 — the Parlor's air-mode dip, and the second MIDI audit
+
+- **The Parlor takes the air-mode dip** the other bodies took in 1.2.0, its
+  upper bound moved from 117 to 130 Hz to reach the Parlor's 121-128 Hz air
+  mode. At Room 0.5 B2 falls from +5.7 to +4.6 dB over its neighbours and
+  A#2 from +4.0 to +3.4. The Parlor's Finger and Thumb cells sit 0.5 LU
+  over the calibration target, so the construction loudness fixture keeps
+  its 3 LU contract (Parlor Spruce Finger at -2.57 LU). No parameter or
+  saved state changes. Nobody has listened to it; the user directed that
+  it stay as merged (Docs/decisions.md).
+- **The second MIDI audit's fixes.** A full Gather Chords queue drops its
+  oldest controller value rather than the newest, so a wheel's release or
+  a bend's return is never lost, and messages the instrument ignores
+  (program change, polyphonic pressure, system bytes) are never queued. A
+  note group stamped by an offset that decreased within a block measures
+  its stroke interval from the rendered position. The plug-in plays its
+  MIDI silently while bypassed, so a key-up sent then is not lost, treats
+  the host's reset as Panic, and consumes Panic before the on-screen
+  keyboard adds its keys.
+
+### 1.3.0 — 2026-10-12 — strum direction timed by the song, and keyswitches
 
 - **A dotted-eighth alternation window.** A strum used to alternate with
   the previous one whenever less than two seconds had passed, so slow
@@ -3183,7 +3245,7 @@ set without it.
   on 2026-10-12 (Docs/decisions.md); the Rack Extension prints the same
   legend on its rear panel.
 
-### 2026-10-11 — a Sustain switch, and the sweep smoothed by measurement
+### 1.2.0 — 2026-10-11 — a Sustain switch, and the sweep smoothed by measurement
 
 - **A dip at the construction's air mode.** Measured with the new
   `Tools/MeasureNoteEvenness.py`, the note at each Shape's air mode stood
@@ -4244,7 +4306,16 @@ Shinyguitar and Eastman E1D recordings in the offline reference bank
 are dedicated under CC0 1.0 and are not linked into the plug-in. The measured
 bridge/body coefficient tables are adapted from Robert Mores' archive under CC
 BY 4.0, and two derived level constants and the piezo's bridge conductance
-from Carcagno et al.'s Fylde measurement, also CC BY 4.0. JUCE is
-a separate dependency offered under AGPLv3 or a commercial JUCE licence. See
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and the files in
-[`ThirdParty`](ThirdParty) before distributing a combined plug-in or app.
+from Carcagno et al.'s Fylde measurement, also CC BY 4.0. GuitarSet, CC BY
+4.0, is one of the recording sets the capture voicing is fitted to and the
+source of three strum statistics. JUCE is
+a separate dependency offered under AGPLv3 or a commercial JUCE licence, and
+the libraries it compiles in (the VST3 SDK, HarfBuzz, SheenBidi, libpng, zlib,
+the IJG JPEG code and, on macOS, Apple's AudioUnitSDK) carry their own
+licences, collected in
+[`ThirdParty/JUCE-DEPENDENCY-LICENSES.txt`](ThirdParty/JUCE-DEPENDENCY-LICENSES.txt).
+See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and the files in
+[`ThirdParty`](ThirdParty) before distributing a combined plug-in or app; the
+desktop packages ship them with the [user guide](Docs/USER_GUIDE.md).
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.
