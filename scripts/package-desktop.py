@@ -34,7 +34,7 @@ def package(build, platform, config="Release"):
         files["README.md"]=PROJECT/"USER_GUIDE.md"
         files["JUCE-LICENSE.md"]=PROJECT/"ThirdParty/JUCE-LICENSE.md"
     else:
-        docs += ["ThirdParty/CC0-1.0.txt","ThirdParty/Eastman-E1D-README.md","ThirdParty/Shinyguitar-README.txt","Assets/SampleBank/manifest.json"]
+        docs += ["ThirdParty/JUCE-DEPENDENCY-LICENSES.txt","ThirdParty/CC0-1.0.txt","ThirdParty/Eastman-E1D-README.md","ThirdParty/Shinyguitar-README.txt","Assets/SampleBank/manifest.json"]
         files["README.md"]=PROJECT/"README.md"
     for doc in docs: files[doc]=PROJECT/doc
     for f in files.values():

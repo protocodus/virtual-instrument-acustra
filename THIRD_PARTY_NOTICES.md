@@ -372,11 +372,28 @@ AGPLv3 for the complete combined work or an appropriate commercial JUCE
 licence. Review the JUCE 8 licence terms before distribution:
 <https://github.com/juce-framework/JUCE/blob/8.0.14/LICENSE.md>
 
-JUCE includes or interfaces with additional third-party components. Their
-copyright notices and licence terms are listed in JUCE's own `LICENSE.md` and
-source tree. The VST3 SDK portions used through JUCE are identified there as
-MIT-licensed; Apple's Audio Unit frameworks are supplied by the macOS SDK and
-remain subject to Apple's terms.
+The JUCE modules Acustra builds with (`juce_audio_utils`, the modules it
+depends on, and `juce_audio_plugin_client` for the plug-in formats) compile
+further third-party code into the binaries. Their licence texts, copied
+unchanged from the pinned JUCE tree, are in
+[`ThirdParty/JUCE-DEPENDENCY-LICENSES.txt`](ThirdParty/JUCE-DEPENDENCY-LICENSES.txt),
+which ships with every package:
+
+- in every format: HarfBuzz (Old MIT licence), SheenBidi (Apache 2.0),
+  libpng (PNG Reference Library License), zlib (zlib licence) and the
+  Independent JPEG Group's JPEG software. This software is based in part on
+  the work of the Independent JPEG Group.
+- in the VST3 plug-in: Steinberg's VST3 SDK (MIT).
+- in the macOS Audio Unit: Apple's AudioUnitSDK (Apache 2.0), which JUCE
+  vendors. The Apple system frameworks it links are supplied by the macOS
+  SDK and remain subject to Apple's terms.
+- FLAC and Ogg Vorbis (BSD-style licences), which JUCE's default audio-format
+  configuration compiles; Acustra never reads or writes either format.
+
+The other components JUCE's `LICENSE.md` lists are not compiled in: Oboe
+is Android's, GLEW, CHOC/QuickJS and Box2D belong to modules Acustra does not
+use, and the LV2, AAX and ASIO SDKs to formats and an option (`JUCE_ASIO`)
+it does not build.
 
 Acustra's source tree and offline reference tools include the two CC0
 recording families described above. The distributed plug-in and standalone

@@ -74,7 +74,7 @@ class DesktopPackageTests:
             p=self.artifacts/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(value);p.chmod(0o755)
         self.documents=['LICENSE','THIRD_PARTY_NOTICES.md','ThirdParty/JUCE-LICENSE.md']
         if PRODUCT=='YouKnow': self.documents+=['PRIVACY.md','ThirdParty/CLAP-LICENSE.md','USER_GUIDE.md','INSTALL_MACOS.md','INSTALL_WINDOWS.md','INSTALL_LINUX.md']
-        else:self.documents+=['README.md','ThirdParty/CC0-1.0.txt','ThirdParty/Eastman-E1D-README.md','ThirdParty/Shinyguitar-README.txt','Assets/SampleBank/manifest.json']
+        else:self.documents+=['README.md','ThirdParty/JUCE-DEPENDENCY-LICENSES.txt','ThirdParty/CC0-1.0.txt','ThirdParty/Eastman-E1D-README.md','ThirdParty/Shinyguitar-README.txt','Assets/SampleBank/manifest.json']
         for name in self.documents:
             p=self.project/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(name)
         self.env=os.environ.copy()
