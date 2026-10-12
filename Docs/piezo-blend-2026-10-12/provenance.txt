@@ -1,0 +1,11 @@
+d31f7bb114e60d52cefa698a3dc7d2eea5b778ed12ada721ea02b79453c6922c  /tmp/claude-0/-home-user/4688934d-1b89-5f41-91ba-35a404398aec/scratchpad/piezo-study/bin/AcustraPerformanceRenderer
+8ea51f933e2ef91caadc4a75a0fc70cc5ffe98d5
+0
+5a3ebfe568b4cf997cbefadaf8c0e77cc9afc2998f46668cb121b216e185d7e6  Source/DSP/AcustraEngine.cpp
+561256b741460f3aef7fe71ba13ae39259ad67e824b6179b18175e201a46d693  Source/DSP/AcustraEngine.h
+34b1bc9104b839cfc99789811acf4eb6719d93832ec3a4bce6812805e35b73b3  Tools/PerformanceRenderer.cpp
+bab8cc0fb416ad6de605fa4c07c75d4f14792b040450e95b2da6c29d3298d736  Tools/MeasureNoteEvenness.py
+e8bb6b39f2dc430ab3fdf0d24311bfe0cea4927f0ab4881627863b665fb2e0c9  Tools/MeasureMaterialLoudness.py
+c++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+CMAKE_CXX_FLAGS:STRING=
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG

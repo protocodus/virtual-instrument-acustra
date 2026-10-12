@@ -1,0 +1,8 @@
+per-string set 126 notes; 45 of them are the sweep's own renders
+non-sweep per-string notes: V0 3.300 V1 3.148 V2 3.327 V3c 2.969 V3d 2.830
+  V2-V1 3/8 worst +0.66
+  V3c-V1 9/2 worst +0.24
+  V3d-V1 11/0 worst -0.04
+common setting chosen on 6 constructions' sweeps: improvement vs V1 on those 6 0.314 dB; on the other 6 sweeps 0.213 dB (5th pct +0.032); on the other 6 per-string 0.097 dB (5th pct -0.189)
+settings chosen: {'+-0.750ms': 74, '--0.250ms': 66, '-+0.625ms': 31, '++0.250ms': 17, '+-0.625ms': 5, '--0.125ms': 4, '-+0.500ms': 3}
+per-construction best V3 on sweep -> per-string: mean sweep gain vs V1 0.476, per-string gain vs V1 0.281

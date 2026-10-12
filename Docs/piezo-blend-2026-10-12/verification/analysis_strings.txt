@@ -1,0 +1,21 @@
+[strings mic_r0 m=0.1] V0 2.946 V1 2.868 V2 2.989 V3c 2.757 V3d 2.747 | V2-V1 3/5 worst +0.45 jumbo-spruce | V3c-V1 7/1 worst +0.09 jumbo-spruce | V3d-V1 11/0 worst -0.05 auditorium-maple | V3d-V0 12/0
+[strings mic_r0 m=0.2] V0 2.946 V1 2.774 V2 2.944 V3c 2.566 V3d 2.567 | V2-V1 5/7 worst +0.82 jumbo-spruce | V3c-V1 10/1 worst +0.12 jumbo-spruce | V3d-V1 11/1 worst +0.06 jumbo-mahogany | V3d-V0 11/0
+    per cons V1/V3d: parsp 2.93/2.67 parma 3.10/2.95 parma 3.11/2.87 audsp 2.79/2.50 audma 2.86/2.65 audma 3.16/3.00 dresp 2.61/2.32 drema 2.80/2.47 drema 2.98/2.85 jumsp 2.39/2.23 jumma 2.28/2.34 jumma 2.29/1.98
+[strings mic_r0 m=0.35] V0 2.946 V1 2.612 V2 2.752 V3c 2.369 V3d 2.369 | V2-V1 5/7 worst +0.89 jumbo-spruce | V3c-V1 9/1 worst +0.19 jumbo-spruce | V3d-V1 11/1 worst +0.38 jumbo-mahogany | V3d-V0 11/1
+[strings mic_r0 m=0.5] V0 2.946 V1 2.459 V2 2.574 V3c 2.233 V3d 2.225 | V2-V1 4/7 worst +0.76 jumbo-spruce | V3c-V1 8/2 worst +0.31 jumbo-spruce | V3d-V1 10/1 worst +0.58 jumbo-mahogany | V3d-V0 11/1
+[strings mic_r1 m=0.1] V0 4.009 V1 3.955 V2 4.017 V3c 3.941 V3d 3.919 | V2-V1 3/7 worst +0.32 jumbo-spruce | V3c-V1 6/4 worst +0.19 parlor-spruce | V3d-V1 6/2 worst +0.11 dreadnought-maple | V3d-V0 7/0
+[strings mic_r1 m=0.2] V0 4.009 V1 3.860 V2 3.954 V3c 3.879 V3d 3.793 | V2-V1 4/8 worst +0.52 jumbo-spruce | V3c-V1 5/5 worst +0.42 parlor-spruce | V3d-V1 6/2 worst +0.16 dreadnought-maple | V3d-V0 11/1
+    per cons V1/V3d: parsp 4.16/4.26 parma 4.70/4.47 parma 4.42/4.25 audsp 3.74/3.68 audma 3.85/3.61 audma 4.11/4.07 dresp 3.77/3.80 drema 3.98/3.87 drema 3.81/3.97 jumsp 3.24/3.24 jumma 3.09/2.92 jumma 3.44/3.39
+[strings mic_r1 m=0.35] V0 4.009 V1 3.676 V2 3.772 V3c 3.805 V3d 3.585 | V2-V1 3/7 worst +0.63 jumbo-spruce | V3c-V1 4/7 worst +0.49 parlor-spruce | V3d-V1 7/2 worst +0.11 dreadnought-maple | V3d-V0 11/0
+[strings mic_r1 m=0.5] V0 4.009 V1 3.466 V2 3.538 V3c 3.680 V3d 3.386 | V2-V1 3/8 worst +0.54 jumbo-spruce | V3c-V1 1/8 worst +0.65 auditorium-mahogany | V3d-V1 6/4 worst +0.18 dreadnought-maple | V3d-V0 12/0
+[strings mono_r05 m=0.1] V0 3.539 V1 3.491 V2 3.560 V3c 3.444 V3d 3.402 | V2-V1 4/6 worst +0.31 jumbo-spruce | V3c-V1 5/2 worst +0.15 jumbo-spruce | V3d-V1 10/0 worst +0.01 dreadnought-maple | V3d-V0 10/0
+[strings mono_r05 m=0.2] V0 3.539 V1 3.433 V2 3.555 V3c 3.331 V3d 3.236 | V2-V1 4/7 worst +0.58 jumbo-spruce | V3c-V1 7/2 worst +0.18 jumbo-mahogany | V3d-V1 11/0 worst -0.03 dreadnought-maple | V3d-V0 12/0
+    per cons V1/V3d: parsp 3.06/2.91 parma 3.94/3.63 parma 3.48/3.29 audsp 3.60/3.39 audma 3.64/3.43 audma 3.86/3.70 dresp 3.82/3.61 drema 3.61/3.46 drema 3.68/3.65 jumsp 2.95/2.80 jumma 2.90/2.68 jumma 2.67/2.28
+[strings mono_r05 m=0.35] V0 3.539 V1 3.258 V2 3.512 V3c 3.134 V3d 2.997 | V2-V1 4/8 worst +1.03 jumbo-spruce | V3c-V1 6/3 worst +0.25 jumbo-mahogany | V3d-V1 11/1 worst +0.22 dreadnought-maple | V3d-V0 12/0
+[strings mono_r05 m=0.5] V0 3.539 V1 3.002 V2 3.326 V3c 2.918 V3d 2.801 | V2-V1 3/8 worst +1.18 jumbo-spruce | V3c-V1 6/6 worst +0.41 jumbo-mahogany | V3d-V1 9/1 worst +0.49 dreadnought-maple | V3d-V0 12/0
+lagscan strings mic_r0: V1 2.774 V3d 2.567 V3c 2.566; best +pol 2.550 at -0.688 ms; best -pol 2.567 at +0.625 ms
+   -pol: +0.000:2.944 +0.125:2.941 +0.250:2.823 +0.375:2.697 +0.500:2.599 +0.625:2.567 +0.750:2.627 +0.875:2.755 +1.000:2.828
+lagscan strings mic_r1: V1 3.860 V3d 3.793 V3c 3.879; best +pol 3.712 at +2.125 ms; best -pol 3.785 at +0.562 ms
+   -pol: +0.000:3.954 +0.125:3.965 +0.250:3.914 +0.375:3.833 +0.500:3.786 +0.625:3.793 +0.750:3.807 +0.875:3.860 +1.000:3.943
+lagscan strings mono_r05: V1 3.433 V3d 3.236 V3c 3.331; best +pol 3.218 at +2.125 ms; best -pol 3.235 at +0.688 ms
+   -pol: +0.000:3.555 +0.125:3.604 +0.250:3.540 +0.375:3.444 +0.500:3.300 +0.625:3.236 +0.750:3.237 +0.875:3.283 +1.000:3.390

@@ -1,0 +1,157 @@
+RMS deviation (dB), E2-C6, Finger, stereo mic, Room 0.5, velocity 96; MeasureNoteEvenness metric
+V0 mics only; V1 +0.2 piezo (shipped); V2 -0.2 piezo; V3best = best of the +-1 ms / 0.125 ms grid x polarity
+label: polarity then delay (positive = piezo later)
+
+construction              V0    V1    V2 V3best     setting       V0 hole      V1 hole      V2 hole      V3 hole      V0 peak     V1 peak     V2 peak     V3 peak
+parlor-spruce           3.42  3.90  3.35   2.91   --0.250ms      A#5 -7.8    F#5 -14.3     E5 -10.2      B3 -7.2      C6 +6.8     C6 +7.5     G5 +6.4     C6 +6.1
+parlor-mahogany         3.89  3.69  3.30   3.12   --0.125ms      F5 -12.2      F5 -9.0      F5 -8.8      F5 -7.8    G#5 +10.1   G#5 +10.1    G#5 +8.5    G#5 +8.7
+parlor-maple            4.17  3.85  3.54   3.26   --0.125ms     F#5 -15.3    F#5 -13.1     A#5 -8.1     F#5 -7.4      G5 +8.6     A5 +8.0     G5 +8.5     G5 +7.3
+auditorium-spruce       3.20  3.19  2.76   2.55   --0.125ms     D#5 -10.3     D#5 -9.1     D#5 -7.0     D#5 -6.4     A#3 +7.0    A#3 +6.8    A#3 +6.7    A#3 +6.7
+auditorium-mahogany     3.25  2.99  3.49   2.86   -+0.625ms       D5 -8.4     C#4 -5.7      D5 -9.5      D5 -5.7      A3 +6.8     F5 +6.5     A3 +6.8     F5 +6.5
+auditorium-maple        3.58  3.35  3.52   3.05   --1.000ms      D#5 -9.9     D#5 -6.2     D#5 -9.7     D#5 -6.2     A#3 +7.5    A#3 +7.1    A#3 +7.2    A#3 +7.1
+dreadnought-spruce      3.32  3.25  2.88   2.55   --0.250ms     C#5 -11.0     C#5 -8.9     C#5 -7.5     C#5 -6.6     G#3 +5.3    G#3 +5.0    G#3 +5.2    G#3 +5.3
+dreadnought-mahogany    3.68  3.35  3.97   3.11   -+0.625ms       C5 -9.9     C#4 -7.1     C6 -10.0     F#4 -5.8     D#5 +6.8    D#5 +6.6     A5 +6.5    D#5 +6.3
+dreadnought-maple       3.47  3.15  3.49   2.99   -+0.625ms     C#5 -10.2      G3 -7.3    C#5 -10.3      G3 -6.4     A#4 +6.3    G#5 +6.3    A#4 +6.5    G#5 +6.3
+jumbo-spruce            3.25  2.98  3.63   2.67   -+0.625ms       B4 -9.3      C5 -8.5     B4 -10.0      B4 -5.9      D5 +8.1     D5 +7.8     D5 +7.4     D5 +7.3
+jumbo-mahogany          2.75  2.75  2.61   2.23   +-0.750ms       B4 -7.6      B4 -8.3      B5 -4.7      A4 -3.8     D#4 +6.1    D#4 +5.5    D#4 +6.2    D#4 +6.1
+jumbo-maple             3.01  3.17  2.92   2.60   --0.250ms       E5 -6.7      C5 -8.6      B4 -5.7      B3 -4.7      D5 +7.0     D5 +6.7     D5 +6.0     D5 +5.7
+mean of 12              3.42  3.30  3.29   2.82
+
+Hole-adjacent and named notes: dev (dB) V0 / V1 / V2 / V3best; level change vs V0 (dB) V1 / V2; sustain-window correlation mic.piezo; 0.2*piezo over mic (dB)
+  parlor-spruce            E5       dev   -5.4   -1.2  -10.2   -4.9   dlevel  +3.6  -4.1   corr +0.81   pz/mic  -4.6
+  parlor-spruce            F5       dev   -5.6   -4.2   -5.2   -5.7   dlevel  +1.5  +0.2   corr +0.20   pz/mic  -6.3
+  parlor-spruce           F#5*      dev   -7.5  -14.3   -1.8   -3.5   dlevel  -5.3  +4.4   corr -0.85   pz/mic  -2.7
+  parlor-spruce            G5       dev   +6.6   +6.8   +6.4   +4.2   dlevel  +0.3  -0.1   corr +0.13   pz/mic -14.8
+  parlor-spruce           G#5       dev   +5.0   +6.3   +3.5   +2.7   dlevel  +0.9  -0.6   corr +0.41   pz/mic -13.2
+  parlor-mahogany         D#5       dev   +3.3   +4.0   +0.4   +0.9   dlevel  +1.7  -1.6   corr +0.65   pz/mic -10.5
+  parlor-mahogany          E5       dev   -9.3   -8.4   -7.0   -6.0   dlevel  +1.9  +2.8   corr -0.10   pz/mic  -1.4
+  parlor-mahogany          F5*      dev  -12.2   -9.0   -8.8   -7.8   dlevel  +4.0  +3.6   corr +0.05   pz/mic  +1.5
+  parlor-mahogany         F#5       dev   +3.2   +0.4   +3.7   +2.7   dlevel  -1.0  +1.1   corr -0.63   pz/mic -14.0
+  parlor-mahogany          G5       dev   +3.5   +3.3   +2.2   +0.6   dlevel  +0.7  -0.0   corr +0.15   pz/mic -10.9
+  parlor-maple             E5       dev   -1.5   +0.5   -6.6   -5.6   dlevel  +2.9  -3.4   corr +0.84   pz/mic  -7.1
+  parlor-maple             F5       dev   -6.7   -6.7   -4.9   -3.9   dlevel  +1.4  +2.1   corr -0.09   pz/mic  -2.9
+  parlor-maple            F#5*      dev  -15.3  -13.1   -7.6   -7.4   dlevel  +3.4  +7.0   corr -0.44   pz/mic  +4.1
+  parlor-maple             G5       dev   +8.6   +6.3   +8.5   +7.3   dlevel  -0.3  +0.4   corr -0.31   pz/mic -17.6
+  parlor-maple            G#5       dev   +2.9   +3.2   +0.3   -1.0   dlevel  +1.4  -1.1   corr +0.52   pz/mic -10.7
+  auditorium-spruce       C#5       dev   +2.3   +3.3   +0.0   +0.5   dlevel  +1.8  -1.7   corr +0.69   pz/mic -10.5
+  auditorium-spruce        D5       dev   -5.9   -5.8   -5.0   -4.0   dlevel  +1.1  +0.9   corr +0.03   pz/mic  -5.8
+  auditorium-spruce       D#5*      dev  -10.3   -9.1   -7.0   -6.4   dlevel  +2.0  +2.8   corr -0.09   pz/mic  -1.2
+  auditorium-spruce        E5       dev   +4.1   +2.6   +4.5   +3.4   dlevel  -0.2  +0.4   corr -0.22   pz/mic -15.4
+  auditorium-spruce        F5       dev   +3.7   +3.8   +2.7   +2.1   dlevel  +0.8  -0.5   corr +0.36   pz/mic -13.1
+  auditorium-mahogany     C#5       dev   -4.4   -2.4   -5.2   -3.2   dlevel  +2.8  -0.9   corr +0.46   pz/mic  -4.5
+  auditorium-mahogany      D5       dev   -8.4   -5.6   -9.5   -5.7   dlevel  +3.5  -1.3   corr +0.53   pz/mic  -3.1
+  auditorium-mahogany     D#5*      dev   +0.6   -3.7   +3.9   -1.9   dlevel  -2.4  +2.1   corr -0.82   pz/mic  -9.8
+  auditorium-mahogany      E5       dev   +0.3   +0.6   +0.2   +1.0   dlevel  +1.3  -0.4   corr +0.29   pz/mic  -8.9
+  auditorium-mahogany      F5       dev   +6.7   +6.5   +6.6   +6.5   dlevel  +0.6  -0.4   corr +0.37   pz/mic -15.6
+  auditorium-maple         D5       dev   -5.4   -3.8   -5.5   -5.0   dlevel  +2.8  -0.1   corr +0.35   pz/mic  -3.6
+  auditorium-maple        D#5       dev   -9.9   -6.2   -9.7   -6.2   dlevel  +4.5  +0.1   corr +0.47   pz/mic  -0.3
+  auditorium-maple         E5*      dev   +2.3   -1.5   +4.7   +0.7   dlevel  -1.7  +1.7   corr -0.75   pz/mic -11.6
+  auditorium-maple         F5       dev   +2.0   +2.1   +1.2   +1.8   dlevel  +1.3  -0.6   corr +0.36   pz/mic  -9.8
+  auditorium-maple        F#5       dev   +5.7   +4.8   +5.8   +5.4   dlevel  +0.1  +0.2   corr -0.02   pz/mic -15.0
+  dreadnought-spruce       B4       dev   +0.8   +1.3   -1.1   -0.1   dlevel  +1.6  -1.2   corr +0.53   pz/mic  -9.6
+  dreadnought-spruce       C5       dev   -5.9   -4.9   -5.4   -3.7   dlevel  +2.0  +0.7   corr +0.17   pz/mic  -4.3
+  dreadnought-spruce      C#5*      dev  -11.0   -8.9   -7.5   -6.6   dlevel  +3.1  +3.1   corr -0.00   pz/mic  +0.2
+  dreadnought-spruce       D5       dev   +4.5   +2.5   +4.9   +2.7   dlevel  -0.4  +0.6   corr -0.34   pz/mic -15.3
+  dreadnought-spruce      D#5       dev   +4.7   +4.5   +3.7   +2.8   dlevel  +0.6  -0.2   corr +0.23   pz/mic -13.1
+  dreadnought-mahogany     B4       dev   -3.4   -2.0   -3.8   -2.9   dlevel  +2.1  -0.2   corr +0.30   pz/mic  -5.4
+  dreadnought-mahogany     C5       dev   -9.9   -5.4   -9.9   -5.5   dlevel  +4.9  +0.2   corr +0.49   pz/mic  +0.2
+  dreadnought-mahogany    C#5*      dev   -0.3   -5.9   +3.4   -2.5   dlevel  -3.5  +2.8   corr -0.87   pz/mic  -7.5
+  dreadnought-mahogany     D5       dev   +1.7   +1.5   +1.7   +1.4   dlevel  +0.9  -0.0   corr +0.17   pz/mic  -9.5
+  dreadnought-mahogany    D#5       dev   +6.8   +6.6   +6.3   +6.3   dlevel  +0.6  -0.3   corr +0.27   pz/mic -14.2
+  dreadnought-maple        C5       dev   -3.4   -2.0   -3.9   -2.7   dlevel  +2.6  -0.3   corr +0.36   pz/mic  -4.2
+  dreadnought-maple       C#5       dev  -10.2   -5.6  -10.3   -5.5   dlevel  +5.4  -0.1   corr +0.56   pz/mic  +0.8
+  dreadnought-maple        D5*      dev   +2.2   -2.5   +4.8   -0.3   dlevel  -2.4  +2.0   corr -0.86   pz/mic -10.5
+  dreadnought-maple       D#5       dev   +1.6   +1.5   +1.4   +1.2   dlevel  +1.0  -0.1   corr +0.20   pz/mic  -9.0
+  dreadnought-maple        E5       dev   +5.3   +5.1   +4.7   +5.2   dlevel  +0.7  -0.4   corr +0.30   pz/mic -13.6
+  jumbo-spruce            A#4       dev   -3.4   -0.8   -5.1   -2.5   dlevel  +3.3  -1.3   corr +0.53   pz/mic  -3.5
+  jumbo-spruce             B4       dev   -9.3   -5.2  -10.0   -5.9   dlevel  +4.6  -0.5   corr +0.54   pz/mic  -0.5
+  jumbo-spruce             C5*      dev   -2.8   -8.5   +1.6   -4.0   dlevel  -3.6  +3.6   corr -0.77   pz/mic  -4.4
+  jumbo-spruce            C#5       dev   +1.0   +1.3   +0.9   +1.5   dlevel  +1.4  -0.0   corr +0.23   pz/mic  -7.3
+  jumbo-spruce             D5       dev   +8.1   +7.8   +7.4   +7.3   dlevel  +0.5  -0.3   corr +0.27   pz/mic -14.9
+  jumbo-mahogany           A4       dev   -1.5   +0.0   -4.1   -3.8   dlevel  +2.6  -2.3   corr +0.68   pz/mic  -6.8
+  jumbo-mahogany          A#4       dev   -3.5   -3.5   -2.7   -2.4   dlevel  +1.3  +0.6   corr +0.10   pz/mic  -5.9
+  jumbo-mahogany           B4*      dev   -7.6   -8.3   -3.0   -3.5   dlevel  +0.8  +3.6   corr -0.31   pz/mic  -1.3
+  jumbo-mahogany           C5       dev   +1.3   +1.0   +1.2   +0.8   dlevel  +1.1  -0.1   corr +0.22   pz/mic  -9.1
+  jumbo-mahogany          C#5       dev   +5.0   +4.9   +4.2   +4.4   dlevel  +0.8  -0.3   corr +0.27   pz/mic -12.1
+  jumbo-maple             A#4       dev   -2.0   +0.4   -5.5   -1.7   dlevel  +3.4  -2.9   corr +0.71   pz/mic  -4.5
+  jumbo-maple              B4       dev   -6.0   -4.6   -5.7   -4.6   dlevel  +2.6  +0.2   corr +0.29   pz/mic  -3.7
+  jumbo-maple              C5*      dev   -5.7   -8.6   -0.4   -1.2   dlevel  -0.9  +4.2   corr -0.53   pz/mic  -1.4
+  jumbo-maple             C#5       dev   +3.2   +3.0   +2.7   -1.2   dlevel  +1.2  -0.3   corr +0.28   pz/mic  -9.2
+  jumbo-maple              D5       dev   +7.0   +6.7   +6.0   +5.7   dlevel  +0.7  -0.3   corr +0.26   pz/mic -12.9
+
+One setting for all 12 (requested grid): best by mean RMS deviation +-0.750ms (mean 3.010, max 3.386); best by worst-construction RMS +-0.625ms (mean 3.033, max 3.376); every-sample grid best by mean +1,-34 samples (3.006)
+
+Mean / max RMS deviation over the 12 constructions per setting (requested grid):
+    +-1.000ms  mean 3.202  max 3.728
+    +-0.875ms  mean 3.090  max 3.539
+    +-0.750ms  mean 3.010  max 3.386
+    +-0.625ms  mean 3.033  max 3.376
+    +-0.500ms  mean 3.191  max 3.634
+    +-0.375ms  mean 3.382  max 3.785
+    +-0.250ms  mean 3.497  max 4.087
+    +-0.125ms  mean 3.477  max 4.130
+    ++0.000ms  mean 3.300  max 3.895
+    ++0.125ms  mean 3.116  max 3.615
+    ++0.250ms  mean 3.077  max 3.614
+    ++0.375ms  mean 3.219  max 3.604
+    ++0.500ms  mean 3.431  max 4.041
+    ++0.625ms  mean 3.411  max 4.014
+    ++0.750ms  mean 3.332  max 3.746
+    ++0.875ms  mean 3.276  max 3.768
+    ++1.000ms  mean 3.200  max 3.752
+    --1.000ms  mean 3.253  max 3.708
+    --0.875ms  mean 3.432  max 3.911
+    --0.750ms  mean 3.516  max 3.956
+    --0.625ms  mean 3.443  max 4.042
+    --0.500ms  mean 3.238  max 3.874
+    --0.375ms  mean 3.094  max 3.571
+    --0.250ms  mean 3.018  max 3.628
+    --0.125ms  mean 3.070  max 3.722
+    -+0.000ms  mean 3.289  max 3.972
+    -+0.125ms  mean 3.407  max 3.905
+    -+0.250ms  mean 3.351  max 3.880
+    -+0.375ms  mean 3.239  max 3.661
+    -+0.500ms  mean 3.127  max 3.743
+    -+0.625ms  mean 3.106  max 3.704
+    -+0.750ms  mean 3.173  max 3.935
+    -+0.875ms  mean 3.253  max 3.903
+    -+1.000ms  mean 3.324  max 3.952
+
+Per construction, RMS deviation over the requested grid (rows: setting):
+      setting parlor-spru parlor-maho parlor-mapl auditorium- auditorium- auditorium- dreadnought dreadnought dreadnought jumbo-spruc jumbo-mahog jumbo-maple
+    +-1.000ms        3.45        3.54        3.64        3.03        3.22        3.73        2.83        3.49        3.32        3.00        2.36        2.82
+    +-0.875ms        3.22        3.50        3.54        2.81        3.15        3.47        2.72        3.42        3.29        3.05        2.25        2.65
+    +-0.750ms        3.06        3.30        3.39        2.68        3.16        3.34        2.69        3.34        3.26        3.05        2.23        2.63
+    +-0.625ms        3.01        3.23        3.37        2.70        3.16        3.28        2.82        3.38        3.24        3.12        2.36        2.75
+    +-0.500ms        3.08        3.33        3.53        2.88        3.20        3.32        3.10        3.63        3.29        3.37        2.64        2.92
+    +-0.375ms        3.28        3.54        3.78        3.24        3.25        3.44        3.47        3.78        3.37        3.13        3.06        3.24
+    +-0.250ms        3.71        3.78        4.09        3.50        3.23        3.51        3.61        3.47        3.34        2.99        3.12        3.61
+    +-0.125ms        4.08        3.82        4.13        3.44        3.09        3.47        3.50        3.34        3.25        3.08        2.97        3.57
+    ++0.000ms        3.90        3.69        3.85        3.19        2.99        3.35        3.25        3.35        3.15        2.98        2.75        3.17
+    ++0.125ms        3.26        3.62        3.57        2.93        2.96        3.24        3.02        3.37        3.13        2.83        2.62        2.84
+    ++0.250ms        2.97        3.61        3.50        2.86        3.07        3.31        2.93        3.40        3.21        2.75        2.57        2.73
+    ++0.375ms        3.03        3.59        3.55        2.89        3.39        3.58        3.01        3.60        3.44        2.99        2.69        2.85
+    ++0.500ms        3.12        3.51        3.60        2.98        3.75        3.88        3.12        4.04        3.71        3.58        2.88        3.01
+    ++0.625ms        3.16        3.38        3.65        3.02        3.59        3.78        3.12        4.01        3.66        3.56        3.01        3.00
+    ++0.750ms        3.31        3.26        3.75        3.12        3.45        3.60        3.08        3.62        3.45        3.32        2.92        3.12
+    ++0.875ms        3.67        3.34        3.77        3.22        3.27        3.52        3.03        3.38        3.25        3.21        2.70        2.95
+    ++1.000ms        3.75        3.39        3.69        3.21        3.16        3.34        3.05        3.26        3.27        2.88        2.59        2.80
+    --1.000ms        3.12        3.60        3.71        3.05        2.99        3.05        3.24        3.53        3.12        3.35        3.10        3.18
+    --0.875ms        3.44        3.60        3.91        3.25        3.14        3.22        3.53        3.80        3.26        3.29        3.33        3.41
+    --0.750ms        3.75        3.77        3.96        3.49        3.26        3.48        3.55        3.63        3.30        3.04        3.43        3.53
+    --0.625ms        3.90        3.83        4.04        3.46        3.15        3.58        3.29        3.38        3.19        2.98        3.05        3.47
+    --0.500ms        3.51        3.71        3.87        3.15        3.01        3.43        2.99        3.39        3.13        3.03        2.75        2.90
+    --0.375ms        3.11        3.52        3.53        2.78        3.03        3.34        2.72        3.57        3.16        3.13        2.59        2.65
+    --0.250ms        2.91        3.26        3.26        2.57        3.21        3.29        2.55        3.63        3.26        3.24        2.43        2.60
+    --0.125ms        3.03        3.12        3.26        2.55        3.40        3.40        2.56        3.72        3.37        3.39        2.37        2.67
+    -+0.000ms        3.35        3.30        3.54        2.76        3.49        3.52        2.88        3.97        3.49        3.63        2.61        2.92
+    -+0.125ms        3.45        3.59        3.90        3.09        3.36        3.55        3.17        3.89        3.39        3.52        2.92        3.05
+    -+0.250ms        3.51        3.54        3.88        3.21        3.23        3.46        3.17        3.48        3.23        3.21        3.01        3.27
+    -+0.375ms        3.64        3.42        3.66        3.24        3.09        3.37        3.14        3.27        3.16        3.05        2.75        3.09
+    -+0.500ms        3.74        3.46        3.57        3.09        2.90        3.15        3.05        3.15        3.00        2.80        2.65        2.96
+    -+0.625ms        3.69        3.62        3.70        2.95        2.86        3.10        2.98        3.11        2.99        2.67        2.58        3.03
+    -+0.750ms        3.47        3.92        3.94        3.01        2.93        3.29        3.03        3.21        3.11        2.71        2.51        2.94
+    -+0.875ms        3.21        3.90        3.85        3.22        3.08        3.40        3.24        3.54        3.30        2.87        2.58        2.83
+    -+1.000ms        3.00        3.63        3.59        3.20        3.17        3.40        3.39        3.95        3.32        3.33        2.84        3.04
+
+Every-sample search (+-48 samples), per construction best: parlor-spruce -1/-12 smp 2.91; parlor-mahogany -1/-7 smp 3.11; parlor-maple -1/-8 smp 3.23; auditorium-spruce -1/-8 smp 2.53; auditorium-mahogany -1/+28 smp 2.86; auditorium-maple -1/-48 smp 3.05; dreadnought-spruce -1/-9 smp 2.51; dreadnought-mahogany -1/+28 smp 3.10; dreadnought-maple -1/+27 smp 2.97; jumbo-spruce -1/+30 smp 2.67; jumbo-mahogany +1/-37 smp 2.23; jumbo-maple -1/-13 smp 2.60

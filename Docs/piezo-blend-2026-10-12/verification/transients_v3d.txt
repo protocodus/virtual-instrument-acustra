@@ -1,0 +1,4 @@
+V2-V1 over 156 notes: peak mean +0.25 range -1.81..+2.81 dB; first 5 ms mean +0.50 range -2.23..+3.80 dB; first 5 ms vs V0 mean +1.02
+V3c-V1 over 156 notes: peak mean +0.16 range -1.49..+2.08 dB; first 5 ms mean +0.12 range -2.43..+2.93 dB; first 5 ms vs V0 mean +0.64
+V3d-V1 over 156 notes: peak mean +0.53 range -1.70..+2.55 dB; first 5 ms mean +0.60 range -1.66..+3.66 dB; first 5 ms vs V0 mean +1.12
+V1-V0 first 5 ms mean +0.52 range -0.99..+3.80

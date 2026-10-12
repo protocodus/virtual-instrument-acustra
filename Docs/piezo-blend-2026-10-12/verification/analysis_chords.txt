@@ -1,0 +1,14 @@
+[chords mic_r05 m=0.2] V0 1.479 V1 1.412 V2 1.466 V3c 1.428 V3d 1.449 | V2-V1 3/6 worst +0.34 dreadnought-maple | V3c-V1 2/5 worst +0.11 jumbo-spruce | V3d-V1 3/6 worst +0.20 dreadnought-maple | V3d-V0 5/1
+    per cons V1/V3d: parsp 1.49/1.59 parma 1.49/1.43 parma 1.51/1.42 audsp 1.51/1.58 audma 1.74/1.76 audma 1.79/1.78 dresp 1.30/1.40 drema 1.54/1.55 drema 1.64/1.84 jumsp 0.70/0.83 jumma 1.24/1.37 jumma 0.98/0.85
+[chords mic_r05 m=0.5] V0 1.479 V1 1.224 V2 1.352 V3c 1.252 V3d 1.333 | V2-V1 3/8 worst +0.68 dreadnought-maple | V3c-V1 4/6 worst +0.26 dreadnought-spruce | V3d-V1 3/8 worst +0.55 dreadnought-maple | V3d-V0 9/1
+[chords mic_r0 m=0.2] V0 1.203 V1 1.179 V2 1.180 V3c 1.128 V3d 1.163 | V2-V1 3/4 worst +0.43 jumbo-mahogany | V3c-V1 7/1 worst +0.16 jumbo-mahogany | V3d-V1 3/2 worst +0.26 jumbo-mahogany | V3d-V0 6/1
+    per cons V1/V3d: parsp 1.20/1.19 parma 1.19/1.12 parma 1.49/1.31 audsp 0.92/0.97 audma 1.25/1.24 audma 1.32/1.30 dresp 0.94/0.93 drema 1.23/1.22 drema 1.50/1.56 jumsp 1.13/1.11 jumma 0.94/1.20 jumma 1.03/0.81
+[chords mic_r0 m=0.5] V0 1.203 V1 1.096 V2 1.097 V3c 0.965 V3d 1.084 | V2-V1 5/6 worst +0.46 jumbo-mahogany | V3c-V1 9/1 worst +0.06 dreadnought-maple | V3d-V1 3/4 worst +0.19 dreadnought-maple | V3d-V0 8/1
+[chords mic_r1 m=0.2] V0 2.092 V1 1.951 V2 2.120 V3c 2.078 V3d 2.110 | V2-V1 1/10 worst +0.66 dreadnought-maple | V3c-V1 1/11 worst +0.23 dreadnought-mahogany | V3d-V1 1/9 worst +0.48 dreadnought-maple | V3d-V0 1/3
+    per cons V1/V3d: parsp 2.04/2.16 parma 2.00/1.91 parma 1.73/1.75 audsp 2.23/2.38 audma 2.29/2.48 audma 2.46/2.63 dresp 2.01/2.22 drema 1.88/2.15 drema 2.01/2.49 jumsp 1.32/1.51 jumma 1.94/1.96 jumma 1.49/1.66
+[chords mic_r1 m=0.5] V0 2.092 V1 1.618 V2 1.993 V3c 1.948 V3d 1.974 | V2-V1 1/10 worst +1.36 dreadnought-maple | V3c-V1 1/11 worst +0.54 dreadnought-maple | V3d-V1 1/10 worst +1.10 dreadnought-maple | V3d-V0 10/1
+[chords mono_r05 m=0.2] V0 1.648 V1 1.562 V2 1.664 V3c 1.618 V3d 1.618 | V2-V1 3/9 worst +0.47 dreadnought-maple | V3c-V1 1/6 worst +0.19 dreadnought-maple | V3d-V1 1/7 worst +0.25 dreadnought-maple | V3d-V0 6/1
+    per cons V1/V3d: parsp 1.68/1.82 parma 1.62/1.58 parma 1.53/1.51 audsp 1.69/1.75 audma 1.86/1.93 audma 1.95/1.99 dresp 1.62/1.67 drema 1.75/1.82 drema 1.78/2.03 jumsp 0.77/0.88 jumma 1.39/1.44 jumma 1.10/0.98
+[chords mono_r05 m=0.5] V0 1.648 V1 1.371 V2 1.552 V3c 1.449 V3d 1.481 | V2-V1 3/9 worst +0.84 dreadnought-maple | V3c-V1 3/6 worst +0.36 dreadnought-maple | V3d-V1 4/7 worst +0.60 dreadnought-maple | V3d-V0 10/1
+[chords mic_r05 m=0.2 Lpow+Rpow] V0 1.423 V1 1.362 V2 1.415 V3c 1.379 V3d 1.406 | V2-V1 3/7 worst +0.34 dreadnought-maple | V3c-V1 2/5 worst +0.11 dreadnought-maple | V3d-V1 2/6 worst +0.23 dreadnought-maple | V3d-V0 3/1
+    per cons V1/V3d: parsp 1.46/1.55 parma 1.45/1.40 parma 1.48/1.39 audsp 1.45/1.53 audma 1.67/1.70 audma 1.72/1.72 dresp 1.24/1.35 drema 1.45/1.48 drema 1.53/1.76 jumsp 0.70/0.79 jumma 1.23/1.36 jumma 0.97/0.84

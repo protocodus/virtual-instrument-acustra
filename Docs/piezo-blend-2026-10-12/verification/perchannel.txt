@@ -1,0 +1,12 @@
+L          V0 3.369 V1 3.230 V2 3.360 V3c 3.262 V3d 3.093 | V2-V1 4/7 | V3c-V1 5/5 | V3d-V1 8/1
+R          V0 3.475 V1 3.294 V2 3.467 V3c 3.157 V3d 3.183 | V2-V1 5/5 | V3c-V1 7/4 | V3d-V1 7/0
+mono       V0 3.416 V1 3.300 V2 3.289 V3c 3.010 V3d 3.106 | V2-V1 7/5 | V3c-V1 7/3 | V3d-V1 12/0
+LRmeanpow  V0 3.155 V1 3.008 V2 3.093 V3c 2.885 V3d 2.878 | V2-V1 5/7 | V3c-V1 7/2 | V3d-V1 9/0
+  parlor-spruce L: V0 -5.4 V1 -10.4 V2 -1.0 V3c -2.4 V3d -7.7
+  parlor-spruce R: V0 -6.3 V1 -8.5 V2 -2.3 V3c -2.5 V3d -10.1
+  parlor-spruce mono: V0 -7.5 V1 -14.3 V2 -1.8 V3c -2.9 V3d -12.6
+  parlor-spruce LRmeanpow: V0 -6.1 V1 -9.5 V2 -2.2 V3c -2.9 V3d -8.9
+  jumbo-spruce L: V0 +0.8 V1 -3.3 V2 +3.4 V3c +1.5 V3d -1.1
+  jumbo-spruce R: V0 -2.6 V1 -3.7 V2 -0.3 V3c -0.1 V3d -2.6
+  jumbo-spruce mono: V0 -2.8 V1 -8.5 V2 +1.6 V3c -0.1 V3d -4.0
+  jumbo-spruce LRmeanpow: V0 -1.1 V1 -4.0 V2 +1.5 V3c +0.3 V3d -2.2

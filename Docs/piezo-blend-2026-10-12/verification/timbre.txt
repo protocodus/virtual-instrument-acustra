@@ -1,0 +1,10 @@
+Mean over 12 constructions of neighbourhood-deviation RMS (dB), E2-C6 Finger v96 Room 0.5, m=0.2
+metric                 V0     V1     V2    V3c    V3d   V3d better/worse than V1 (>0.05)  V2 b/w
+rms_dbfs             3.42   3.30   3.29   3.01   3.11   12/0  worst -0.06 (parlor-mahogany)   7/5
+attack_dbfs          3.01   2.95   2.92   2.64   2.81   11/0  worst -0.03 (auditorium-mahogany)   6/5
+peak_dbfs            1.96   1.92   1.92   1.76   1.88   6/2  worst +0.18 (parlor-spruce)   4/5
+bass_share_db        5.03   4.92   5.00   4.72   4.85   5/4  worst +0.18 (jumbo-mahogany)   5/7
+lowmid_share_db      6.19   6.43   6.01   5.82   5.96   12/0  worst -0.11 (jumbo-spruce)   6/5
+pres_share_db        3.53   3.53   3.45   3.45   3.59   3/5  worst +0.40 (jumbo-maple)   6/5
+treb_share_db        4.95   4.74   4.81   4.74   4.66   6/3  worst +0.43 (auditorium-spruce)   5/5
+h2_over_h1_db        7.31   7.34   7.02   6.63   6.77   10/2  worst +1.76 (jumbo-maple)   7/4

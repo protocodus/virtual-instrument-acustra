@@ -5,6 +5,23 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the Piezo Mix blend stays as it is
+
+The default Piezo Mix (20 %) deepens the Parlor Spruce's F#5 (-7.5 to -14.3
+dB against its neighbours) and the Jumbo Spruce's C5 (-2.8 to -8.5). Measured
+offline over all 12 constructions, by exact superposition of the microphone
+and piezo renders: inverting the piezo, or shifting it -1 to +1 ms in either
+polarity, does not fix those notes without moving the cancellation. Inverting
+digs new holes (Parlor E5 -10.2, Jumbo B4 -10.0) and is worse on 5-6 of 12
+constructions. The most consistent shift (inverted, 0.625 ms later) leaves
+Parlor F#5 at -12.6, makes chords less even and changes the low end and
+loudness of every saved session with a piezo. The holes start in the
+microphones' top-string response, where the bridge's rocking moment sets the
+phase string by string. Two independent agents reproduced the figures and
+refuted a blend change as a fix. Kept: polarity, timing and the 20 % default.
+Nothing was chosen by ear; whether these notes matter remains the owner's
+question. See [the report](piezo-blend-2026-10-12.md).
+
 ## 2026-10-12 — an idle plug-in instance sleeps
 
 Launch audit item robustness-idle-cpu. Implementation choices, measured and
