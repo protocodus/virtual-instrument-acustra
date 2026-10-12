@@ -1,5 +1,10 @@
 # Acustra Rack polish, 2026-10-12
 
+Historical report for the initial 1.3.0 polish. The later
+[chorus repair](chorus-repair-2026-10-12.md) supersedes its independent-plane
+tuning interpretation and changes the maximum Detune to ±20 cents. The original
+±50-cent measurements below describe the earlier revision.
+
 The user requested exact equal-tempered string tuning, optional per-note Detune,
 and a smaller open/fretted difference while retaining guitar behaviour. This
 report covers canonical engine changes. The Rack adapter owns the new rear

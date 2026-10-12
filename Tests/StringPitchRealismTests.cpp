@@ -118,7 +118,7 @@ struct AcustraEngineTestAccess
             auto state = expectedVoice.noteDetuneState;
             state ^= state << 13; state ^= state >> 17; state ^= state << 5;
             state = state == 0u ? 0x6d2b79f5u : state;
-            expectedVoice.noteDetuneCents = 50.0f * detune
+            expectedVoice.noteDetuneCents = 20.0f * detune
                 * static_cast<float>(static_cast<std::int32_t>(state))
                 / static_cast<float>(std::numeric_limits<std::int32_t>::max());
         }
@@ -602,8 +602,8 @@ void testDetuneBelongsToActualPlayedContact()
                     [static_cast<std::size_t>(string)] + 5;
                 engine->noteOn(note, 0.5f, string + 1);
                 const float cents = Access::noteDetune(*engine, string);
-                expect(std::isfinite(cents) && std::abs(cents) <= 50.0f,
-                       "Detune exceeded its per-note +/-50-cent range");
+                expect(std::isfinite(cents) && std::abs(cents) <= 20.0f,
+                       "Detune exceeded its per-note +/-20-cent range");
                 positive |= cents > 5.0f; negative |= cents < -5.0f;
                 const double expected = 440.0 * std::exp2((note - 69.0) / 12.0)
                     * std::exp2(cents / 1200.0);
@@ -639,9 +639,22 @@ void testDetuneBelongsToActualPlayedContact()
         engine->setParameters(parameters);
         advance(*engine, 18);
         const float queued = Access::noteDetune(*engine, 0);
-        expect(queued != 0.0f && std::abs(queued) <= 25.0f,
+        expect(queued != 0.0f && std::abs(queued) <= 10.0f,
                "queued contact ignored the current Detune amount");
         const auto afterContact = Access::detuneSeed(*engine, 0);
+        auto fullAmount = std::make_unique<acustra::AcustraEngine>();
+        fullAmount->prepare(rate, 128);
+        fullAmount->setStringPerChannelMode(true);
+        auto fullParameters = parameters;
+        fullParameters.detune = 1.0f;
+        fullAmount->setParameters(fullParameters);
+        expect(Access::detuneSeed(*fullAmount, 0) == initialSeed,
+               "scheduled Detune controls changed the dedicated random seed");
+        fullAmount->noteOn(45, 0.5f, 1, 17);
+        advance(*fullAmount, 18);
+        expect(Access::detuneSeed(*fullAmount, 0) == afterContact
+            && queued == 0.5f * Access::noteDetune(*fullAmount, 0),
+            "half-range queued contact did not scale the same normalized draw");
         engine->reset();
         expect(Access::noteDetune(*engine, 0) == 0.0f
             && Access::detuneSeed(*engine, 0) == afterContact,

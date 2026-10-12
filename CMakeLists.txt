@@ -334,6 +334,18 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.Engine AcustraEngineTests)
     set_tests_properties(Acustra.Engine PROPERTIES TIMEOUT 600)
 
+    add_executable(AcustraChorusRegressionTests Tests/ChorusRegressionTests.cpp)
+    target_link_libraries(AcustraChorusRegressionTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraChorusRegressionTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.ChorusRegression AcustraChorusRegressionTests)
+    set_tests_properties(Acustra.ChorusRegression PROPERTIES TIMEOUT 90)
+
+    add_executable(AcustraModalTuningTests Tests/ModalTuningTests.cpp)
+    target_link_libraries(AcustraModalTuningTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraModalTuningTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.ModalTuning AcustraModalTuningTests)
+    set_tests_properties(Acustra.ModalTuning PROPERTIES TIMEOUT 180)
+
     add_executable(AcustraReleaseJoinTests Tests/ReleaseJoinTests.cpp)
     target_link_libraries(AcustraReleaseJoinTests PRIVATE AcustraDSP)
     target_compile_features(AcustraReleaseJoinTests PRIVATE cxx_std_20)

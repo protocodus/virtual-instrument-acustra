@@ -10,16 +10,135 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    static std::array<float, 24> commonRestState(AcustraEngine& engine)
+    {
+        std::array<float, 24> result {};
+        const auto& references = engine.restingStringModels();
+        for (std::size_t string = 0; string < references.size(); ++string)
+        {
+            const auto& voice = engine.voices_[string];
+            result[4 * string] = voice.commonTuningValue;
+            result[4 * string + 1] = voice.loops[0].targetDelay;
+            result[4 * string + 2] = voice.loops[1].targetDelay;
+            result[4 * string + 3] = references[string].delay;
+        }
+        return result;
+    }
+
+    static void forceCommonRest(AcustraEngine& engine)
+    {
+        engine.restingStringGeneration_ = 0;
+        for (int string = 0; string < AcustraEngine::stringCount; ++string)
+        {
+            auto& voice = engine.voices_[static_cast<std::size_t>(string)];
+            voice.commonTuningGeneration = 0;
+            voice.configurationKey.generation = 0;
+            engine.configureVoice(voice, string, voice.openMidi, false);
+        }
+    }
+
+    static bool commonTuningCacheContract(AcustraEngine& engine)
+    {
+        auto& voice = engine.voices_[0];
+        const auto original = std::make_unique<AcustraEngine::Voice>(voice);
+        const auto request = [&] (int string = 0, int changed = -1)
+        {
+            std::array<float, 5> values {};
+            for (std::size_t index = 0; index < values.size(); ++index)
+                std::memcpy(&values[index], &original->commonTuningKey[index + 1], sizeof(float));
+            if (changed >= 0)
+                values[static_cast<std::size_t>(changed)] = std::nextafter(values[static_cast<std::size_t>(changed)], INFINITY);
+            return engine.coupledPolarisationDetune(voice, string,
+                values[1], values[2], values[0], values[3], values[4]);
+        };
+        voice.commonTuningValue = -123.0f;
+        if (request() != -123.0f)
+            return false;
+        voice.attackPitchCents = 0.1f;
+        if (request() != -123.0f)
+            return false; // the physical attack glide is outside nominal calibration
+        voice = *original;
+        voice.commonTuningGeneration = 0;
+        engine.restingStringGeneration_ = 0;
+        if (request() != original->commonTuningValue)
+            return false;
+        for (int changed = 0; changed < 5; ++changed)
+        {
+            voice = *original;
+            voice.commonTuningValue = -123.0f;
+            if (request(0, changed) == -123.0f)
+                return false;
+        }
+        voice = *original;
+        voice.commonTuningValue = -123.0f;
+        if (request(1) == -123.0f)
+            return false;
+        voice = *original;
+        voice.commonTuningValue = -123.0f;
+        auto saved = std::make_unique<AcustraEngine::Voice>(voice);
+        voice.commonTuningGeneration = 0;
+        voice = *saved;
+        if (request() != -123.0f)
+            return false;
+        engine.reset();
+        return voice.commonTuningGeneration == engine.voiceConfigurationGeneration_
+            && voice.commonTuningValue != -123.0f;
+    }
+
+    static bool restingReferenceParity(AcustraEngine& engine)
+    {
+        const auto& references = engine.restingStringModels();
+        for (std::size_t string = 0; string < references.size(); ++string)
+        {
+            const auto& model = references[string];
+            const auto& voice = engine.voices_[string];
+            const auto& loop = voice.loops[0];
+            const float uncorrected = loop.targetDelay / (1.0f + voice.polarisationDetune);
+            const float ulp = std::nextafter(model.delay, INFINITY) - model.delay;
+            if (std::abs(uncorrected - model.delay) > 3.0f * ulp
+                || model.impedance != voice.characteristicImpedance
+                || model.loopGain != loop.loopGain
+                || model.highCoefficient != loop.lowpassCoefficient
+                || model.highMix != loop.highLossMix
+                || model.highFilter.remapped != loop.lossFilter.remapped
+                || model.highFilter.ratePole != loop.lossFilter.ratePole
+                || model.highFilter.delayedInputGain != loop.lossFilter.delayedInputGain
+                || model.bendingGain != loop.bendingLossGain
+                || model.bendingA1 != loop.bendingLossA1 || model.bendingA2 != loop.bendingLossA2
+                || model.constantGain != loop.constantLossGain
+                || model.constantA1 != loop.constantLossA1 || model.constantA2 != loop.constantLossA2
+                || model.constantN2 != loop.constantLossN2
+                || model.dispersion[0] != loop.dispersionA1 || model.dispersion[1] != loop.dispersionA2
+                || model.dispersion[2] != loop.secondDispersionA1
+                || model.dispersion[3] != loop.secondDispersionA2
+                || model.secondDispersion != loop.secondDispersionActive)
+            {
+                std::cerr << "FAIL: resting reference drifted from intrinsic open-string builder, string "
+                          << string << " at " << engine.sampleRate_ << " Hz\n";
+                return false;
+            }
+        }
+        return true;
+    }
+
     static void invalidate(AcustraEngine& engine)
     {
         for (auto& voice : engine.voices_)
+        {
             voice.pitchGeometry.valid = false;
+            voice.commonTuningGeneration = 0;
+        }
+        engine.restingStringGeneration_ = 0;
     }
 
     static void invalidateConfiguration(AcustraEngine& engine)
     {
         for (auto& voice : engine.voices_)
+        {
             voice.configurationKey.generation = 0;
+            voice.commonTuningGeneration = 0;
+        }
+        engine.restingStringGeneration_ = 0;
     }
 
     static std::array<float, 3> memberGeometry(const AcustraEngine& engine)
@@ -236,9 +355,38 @@ int main()
 {
     using Engine = acustra::AcustraEngine;
     using Access = acustra::AcustraEngineTestAccess;
+    for (double rate : { 44100.0, 48000.0, 96000.0 })
+    for (float age : { 0.0f, 0.5f, 1.0f })
+    for (auto tuning : { acustra::Tuning::Standard, acustra::Tuning::DropD,
+                         acustra::Tuning::Dadgad, acustra::Tuning::OpenG,
+                         acustra::Tuning::HalfStepDown })
+    {
+        auto reference = std::make_unique<Engine>();
+        acustra::EngineParameters parameters;
+        parameters.stringAge = age;
+        parameters.tuning = tuning;
+        reference->setParameters(parameters);
+        reference->setMasterTuneCents(17.0f);
+        reference->prepare(rate, 128);
+        if (!Access::restingReferenceParity(*reference))
+            return 1;
+        const auto fresh = Access::commonRestState(*reference);
+        reference->noteOn(64, 0.6f);
+        reference->reset();
+        const auto reset = Access::commonRestState(*reference);
+        Access::forceCommonRest(*reference);
+        const auto forced = Access::commonRestState(*reference);
+        if (std::memcmp(fresh.data(), reset.data(), sizeof(fresh)) != 0
+            || std::memcmp(fresh.data(), forced.data(), sizeof(fresh)) != 0)
+        {
+            std::cerr << "FAIL: common resting tuning retained preparation or note history\n";
+            return 1;
+        }
+    }
     auto probe = std::make_unique<Engine>();
     probe->prepare(48000.0, 128);
-    if (!Access::hitAndResetContract(*probe) || !Access::rawInputMisses(*probe))
+    if (!Access::commonTuningCacheContract(*probe)
+        || !Access::hitAndResetContract(*probe) || !Access::rawInputMisses(*probe))
     {
         std::cerr << "FAIL: exact pitch-geometry hit/miss/reset/copy contract\n";
         return 1;

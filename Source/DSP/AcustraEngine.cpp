@@ -236,6 +236,7 @@ constexpr float twoPi = 2.0f * pi;
 // within 2.8 dB/s, though the two planes' beat reads up to 4.7 dB/s slower
 // (Docs/string-hf-loss-2026-10-10.md). It is still an authored value.
 constexpr float stringRoundTripGain = 0.99915f;
+constexpr float noteDetuneRangeCents = 20.0f;
 // The dislocation Q of an isolated plain steel string, constant over the
 // audio band, fitted by Paté et al. (Sec. III.D) to a d'Addario G string's
 // measured partial Qs from 200 Hz to 1 kHz (constantLossSection).
@@ -3126,10 +3127,18 @@ void AcustraEngine::OnePole::configureRate(float referencePole,
     ratePole = static_cast<float>((referencePole - warp) / denominator);
 }
 
+void AcustraEngine::StringLoop::setCurrentDelay(float samples) noexcept
+{
+    currentDelay = samples;
+    delayProgress = samples;
+    delayProgressBits = exact::bits(samples);
+}
+
 void AcustraEngine::StringLoop::reset() noexcept
 {
     delay.fill(0.0f);
     writeIndex = 0;
+    setCurrentDelay(currentDelay);
     allpassY1 = 0.0f;
     allpassY2 = 0.0f;
     readDelayValid = false;
@@ -3445,14 +3454,14 @@ void AcustraEngine::StringLoop::switchSecondDispersion(bool active) noexcept
         secondDispersion.y2 = allpassY2;
         allpassY1 = following;
         allpassY2 = next;
-        currentDelay -= 2.0f;
+        setCurrentDelay(currentDelay - 2.0f);
     }
     else
     {
         allpassY1 = secondDispersion.y1;
         allpassY2 = secondDispersion.y2;
         secondDispersion.reset();
-        currentDelay += 2.0f;
+        setCurrentDelay(currentDelay + 2.0f);
     }
 }
 
@@ -3464,9 +3473,17 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
         if (--loopGainTransitionSamples == 0)
             loopGain = targetLoopGain;
         else
+        {
+            // Repeated float additions can stall below half an ULP and leave
+            // the whole requested gain change to the last sample. Recover
+            // accumulated progress from the fixed step and finite deadline,
+            // as the intrinsic coefficients below do, retaining float state.
+            const float next = static_cast<float>(static_cast<double>(targetLoopGain)
+                - static_cast<double>(loopGainStep) * loopGainTransitionSamples);
             loopGain = loopGainStep > 0.0f
-                ? std::min(targetLoopGain, loopGain + loopGainStep)
-                : std::max(targetLoopGain, loopGain + loopGainStep);
+                ? std::min(targetLoopGain, std::max(loopGain, next))
+                : std::max(targetLoopGain, std::min(loopGain, next));
+        }
     }
     if (intrinsicCoefficientSamples > 0)
     {
@@ -3491,7 +3508,20 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
                     : std::max(target, std::min(*applied[index], next));
         }
     }
-    currentDelay = settlingGlide(currentDelay, targetDelay, delaySmoothing);
+    // A float follower's increment rounds to zero while a physically
+    // significant delay difference remains. Preserve its sub-ULP progress
+    // instead of snapping that whole difference on one sample. Explicit
+    // prescription/reset/switch writes to the published delay start here;
+    // copies retain the precise progress of an already moving string.
+    if (exact::bits(currentDelay) != delayProgressBits)
+        delayProgress = currentDelay;
+    const double nextDelay = delayProgress + static_cast<double>(delaySmoothing)
+        * (static_cast<double>(targetDelay) - delayProgress);
+    delayProgress = nextDelay == delayProgress
+        || std::abs(static_cast<double>(targetDelay) - nextDelay) < 1.0e-4
+        ? static_cast<double>(targetDelay) : nextDelay;
+    currentDelay = static_cast<float>(delayProgress);
+    delayProgressBits = exact::bits(currentDelay);
     float delayed = readDelay(currentDelay);
     if (secondDispersionActive)
         delayed = secondDispersion.process(delayed, secondDispersionA1,
@@ -4188,7 +4218,7 @@ void AcustraEngine::settleSuspendedParameters() noexcept
             if (rebuildBody || rebuildBridge)
                 configureVoice(voice, string, voice.midiNote, false, false);
             for (auto& loop : voice.loops)
-                loop.currentDelay = loop.targetDelay;
+                loop.setCurrentDelay(loop.targetDelay);
         }
 }
 
@@ -4248,7 +4278,7 @@ void AcustraEngine::setMasterTuneCents(float cents) noexcept
         if (atRest)
         {
             for (auto& loop : voice.loops)
-                loop.currentDelay = loop.targetDelay;
+                loop.setCurrentDelay(loop.targetDelay);
             voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
         }
         else if (previousImpedance > 0.0f && voice.characteristicImpedance > 0.0f)
@@ -5492,51 +5522,226 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
     return result;
 }
 
-// Excessive polarisation splits are tuned against each port's reflection.
-// Under a cent the shared end compensation preserves natural guitar colour;
-// by four cents each plane receives its own correction. Sharing only the
-// normal plane's correction left the weakly loaded parallel wave up to ten
-// cents out as it took over the sustain. Physical speaking length and string
-// stiffness remain shared; the distinct bridge end phases receive distinct
-// delay compensation. Through the rocking transfer both waves still ring
-// as one pair of modes. Near the fundamental each loop's round trip is
-// its gain and phase times the saddle's 2x2 reflection R = (Y0 - Y)(Y0 + Y)^-1,
-// so the pair's modes are the eigenvalues of diag(G_normal, G_parallel) R: a
-// mode's phase over 2 pi is how far it sits from the requested pitch, as a
-// fraction of it, and its magnitude per round trip how fast it decays. The
-// individual loop compensation aligns the uncoupled modes as needed;
-// what the coupling adds is read here as the shift of the note's
-// sustained, energy-weighted centre - the pitch a tuner or a player's ear
-// reads once the attack has passed. Each mode is weighted by its
-// normal-polarisation share (the normal polarisation radiates through the
-// heave, far more strongly than the parallel one through the rocking) times
-// the energy it still carries after the first 100 ms,
-// |lambda|^(2n)/(1 - |lambda|^2) per unit start with n the periods in
-// 100 ms. The pluck's own division between the planes is not in the weight,
-// which is why a steel open B, plucked mostly parallel to the top, settles
-// 2.5 cents from its request. That matters where the rocking is strong: on
-// the flamenca's bridge the open B's normal-dominated mode sheds 0.24 dB a
-// period while its parallel-dominated partner sheds 0.011, so the note's
-// sustain is the partner's and its attack briefly sits apart from it. When
-// the pair is weakly coupled the centre is the normal member's own shift.
-// Both loops are lengthened by that fraction; the doublet's split and its
-// beat are left as the coupling makes them. Zero wherever the saddle's
-// rocking was not measured.
-float AcustraEngine::coupledPolarisationDetune(
-    const PortMobility& port, float impedance, float bentImpedance,
-    float frequency, float parallelPhaseShare, float normalGain,
-    float parallelGain) const noexcept
+// Completed intrinsic fits are shared by real voices and the resting-string
+// reference builder. Reuse requires the complete, exact input tuple.
+std::pair<std::array<float, 2>, std::array<float, 2>> AcustraEngine::solvedDispersion(
+    const std::array<double, 13>& arguments) noexcept
 {
+    const auto solved = std::find_if(dispersionSolves_.begin(),
+        dispersionSolves_.end(), [&arguments] (const DispersionSolve& solve)
+        {
+            return solve.valid && solve.arguments == arguments;
+        });
+    if (solved != dispersionSolves_.end())
+        return std::pair { solved->decayRatios, solved->poleRatios };
+    const auto calibration = calibrateDispersion(
+        arguments[0], arguments[1], arguments[2], arguments[3],
+        arguments[4], arguments[5], arguments[6], arguments[7], arguments[8],
+        arguments[9], arguments[10], arguments[11], arguments[12]);
+    auto& slot = dispersionSolves_[static_cast<std::size_t>(nextDispersionSolve_)];
+    slot.arguments = arguments;
+    for (std::size_t section = 0; section < 2; ++section)
+    {
+        slot.decayRatios[section] = static_cast<float>(calibration.decayRatio[section]);
+        slot.poleRatios[section] = static_cast<float>(calibration.poleRatio[section]);
+    }
+    slot.valid = true;
+    nextDispersionSolve_ = (nextDispersionSolve_ + 1)
+        % static_cast<int>(dispersionSolves_.size());
+    return std::pair { slot.decayRatios, slot.poleRatios };
+}
+
+const std::array<AcustraEngine::RestingStringModel, AcustraEngine::stringCount>&
+AcustraEngine::restingStringModels() noexcept
+{
+    const auto notes = openNotes(parameters_.tuning);
+    if (restingStringGeneration_ == voiceConfigurationGeneration_
+        && restingStringNotes_ == notes && restingStringRate_ == sampleRate_
+        && restingStringMasterTune_ == masterTuneSemitones_)
+        return restingStringModels_;
+    const auto& physical = physicalCalibration_.steel;
+    const float age = parameters_.stringAge;
+    const float cutoff = 12500.0f * std::exp(-0.9f * age)
+        * physicalCalibration_.highLossCutoffScale;
+    const float highCoefficient = std::exp(-twoPi
+        * clamp(cutoff, 1200.0f, 0.44f * 48000.0f) * (1.0f / 48000.0f));
+    const float dislocationLoss = physical.frequencyLossScale / static_cast<float>(steelDislocationQ)
+        * (1.0f + 1.35f * age) / (1.0f + 1.35f * 0.15f);
+    const float woundAgeing = std::max(0.2f, 1.0f + 8.0f * (age - 0.15f));
+    constexpr float scaleLength = 0.648f;
+    for (int string = 0; string < stringCount; ++string)
+    {
+        const auto index = static_cast<std::size_t>(string);
+        auto& model = restingStringModels_[index];
+        const float frequency = clamp(tunedMidiFrequency(notes[index]),
+            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
+            0.24f * static_cast<float>(sampleRate_));
+        const float waveSpeed = 2.0f * scaleLength * tunedMidiFrequency(notes[index]);
+        const float standardWaveSpeed = 2.0f * scaleLength * midiFrequency(standardOpenMidi[index]);
+        const float mass = steelTensionNewtons[index] / (standardWaveSpeed * standardWaveSpeed);
+        const float tension = notes[index] == standardOpenMidi[index] && masterTuneRatio_ == 1.0f
+            ? steelTensionNewtons[index] : std::max(mass * waveSpeed * waveSpeed, 1.0f);
+        const float diameter = steelBendingDiameter[index];
+        const float stiffness = pi * pi * pi * steelYoungsModulus
+            * diameter * diameter * diameter * diameter / 64.0f;
+        const float inharmonicity = clamp(stiffness * (string < 4 ? physical.stiffnessScale : 1.0f)
+            / (tension * scaleLength * scaleLength), 0.0f, 0.004f);
+        const float frictionLoss = string <= 3
+            ? physicalCalibration_.steelWoundFrictionLoss * woundAgeing : 0.0f;
+        const float constantLoss = dislocationLoss + frictionLoss;
+        const float bendingFactor = string <= 3
+            ? std::max(0.0f, physicalCalibration_.steelWoundBendingLoss * woundAgeing - frictionLoss)
+            : physicalCalibration_.steelPlainBendingLoss;
+        const auto bending = bendingLossSection(bendingFactor, inharmonicity, frequency, sampleRate_);
+        const auto constant = constantLossSection(constantLoss, inharmonicity, frequency, sampleRate_);
+        model.bendingGain = static_cast<float>(bending.gain);
+        model.bendingA1 = static_cast<float>(bending.a1);
+        model.bendingA2 = static_cast<float>(bending.a2);
+        model.constantGain = static_cast<float>(constant.gain);
+        model.constantA1 = static_cast<float>(constant.a1);
+        model.constantA2 = static_cast<float>(constant.a2);
+        model.constantN2 = static_cast<float>(constant.n2);
+        model.highCoefficient = highCoefficient;
+        model.highMix = clamp((0.035f + 0.42f * age
+            + 0.018f * static_cast<float>(stringCount - 1 - string))
+            * physical.frequencyLossScale, 0.0f, 0.95f);
+        model.highFilter.configureRate(highCoefficient, sampleRate_);
+        const auto [decay, pole] = solvedDispersion({ inharmonicity, frequency, sampleRate_,
+            0.0, 0.0, highCoefficient, model.highMix, model.bendingA1, model.bendingA2,
+            model.constantA1, model.constantA2, static_cast<float>(constant.n1), model.constantN2 });
+        DispersionSections dispersion;
+        const float omega = twoPi * frequency * inverseSampleRate_;
+        for (std::size_t section = 0; section < 2; ++section)
+        {
+            secondOrderAllpassCoefficients(static_cast<double>(omega), decay[section], pole[section],
+                dispersion.a1[section], dispersion.a2[section]);
+            model.dispersion[2 * section] = static_cast<float>(dispersion.a1[section]);
+            model.dispersion[2 * section + 1] = static_cast<float>(dispersion.a2[section]);
+        }
+        model.secondDispersion = dispersion.used[1] = decay[1] > 0.0f;
+        const float rawDelay = static_cast<float>(tunedLoopDelay(frequency, sampleRate_,
+            0.0, 0.0, highCoefficient, model.highMix, dispersion, model.bendingA1,
+            model.bendingA2, model.constantA1, model.constantA2,
+            static_cast<float>(constant.n1), model.constantN2));
+        model.delay = clamp(rawDelay - bridgePhaseDelay(bridgePortMobility(frequency, string), frequency, string),
+            3.0f, static_cast<float>(activeDelaySamples() - 3));
+        model.impedance = stringImpedance(string, notes[index]) * masterTuneRatio_;
+        const float fundamentalT60 = 5.4f * (1.0f - 0.12f * age) * physical.fundamentalT60Scale;
+        const float desiredGain = std::pow(0.001f, 1.0f / std::max(fundamentalT60 * frequency, 1.0f));
+        const float lossOmega = static_cast<float>(referenceLossOmega(omega, sampleRate_));
+        const float filterGain = magnitudeForOnePoleMix(highCoefficient, model.highMix, lossOmega)
+            * static_cast<float>(bendingLossMagnitude(model.bendingGain, model.bendingA1, model.bendingA2, omega)
+                * constantLossMagnitude(model.constantGain, model.constantA1, model.constantA2,
+                    model.constantN2, omega));
+        model.loopGain = clamp(desiredGain / std::max(filterGain, 0.50f) * stringRoundTripGain, 0.70f, 0.999995f);
+    }
+    restingStringNotes_ = notes;
+    restingStringRate_ = sampleRate_;
+    restingStringMasterTune_ = masterTuneSemitones_;
+    restingStringGeneration_ = voiceConfigurationGeneration_;
+    return restingStringModels_;
+}
+
+// One shared delay keeps the two planes' upper partials coherent. Correcting
+// each plane with its own constant H1 end delay also shifted every higher
+// partial, creating the audible chorus fixed here. The common nominal tuning
+// uses the saddle's coupled eigenmodes and their remaining energy after 3 s,
+// rather than the former 100 ms attack weighting. This is a bounded unit-circle
+// mode-centre approximation, independently checked against actual damped poles.
+//
+// Other strings enter through deterministic resting open branches. Using live
+// played loops here would make base tuning depend on chord order and cache
+// history. Their real played and retained waves still interact at the junction;
+// they are not replaced or muted. A nominal-input cache excludes the string's
+// own small attack glide, so this model is not rebuilt every control period.
+float AcustraEngine::coupledPolarisationDetune(
+    Voice& voice, int stringIndex, float impedance, float bentImpedance,
+    float frequency, float normalGain, float parallelGain) noexcept
+{
+    const std::array<std::uint32_t, 7> key { static_cast<std::uint32_t>(stringIndex), exact::bits(frequency), exact::bits(impedance),
+        exact::bits(bentImpedance), exact::bits(normalGain), exact::bits(parallelGain),
+        exact::bits(static_cast<float>(sampleRate_)) };
+    if (voice.commonTuningGeneration == voiceConfigurationGeneration_
+        && voice.commonTuningKey == key && voice.commonTuningSympathetic == sympatheticStringsEnabled_)
+        return voice.commonTuningValue;
+    voice.commonTuningKey = key;
+    voice.commonTuningGeneration = voiceConfigurationGeneration_;
+    voice.commonTuningSympathetic = sympatheticStringsEnabled_;
+    const auto finish = [&voice] (float result)
+    {
+        voice.commonTuningValue = result;
+        return result;
+    };
+    const auto port = bridgePortMobility(frequency, stringIndex);
     if (!port.valid || port.transfer == std::complex<float>{})
-        return 0.0f;
+        return finish(0.0f);
     using Complex = std::complex<double>;
     // The junction reads the string's port at its bent impedance; the normal
     // loop's own compensation (bridgePhaseDelay) was taken at the unbent one.
     const double admittance = 1.0 / static_cast<double>(bentImpedance);
     const double unbentAdmittance = 1.0 / static_cast<double>(impedance);
-    const Complex normal = port.normal;
-    const Complex transfer = port.transfer;
-    const Complex parallel = port.parallel;
+    const auto loadOtherStrings = [&](const PortMobility& source) {
+        PortMobility effective = source;
+        if (!sympatheticStringsEnabled_) return effective;
+        const double eta = saddleHeightRatio(), arm = saddleLeverArm(stringIndex);
+        const Complex y11 = Complex(source.parallel) / (eta * eta);
+        const Complex y01 = -Complex(source.transfer) / eta - arm * y11;
+        const Complex y00 = Complex(source.normal) - 2.0 * arm * y01 - arm * arm * y11;
+        const double omega = 2.0 * piDouble * frequency / sampleRate_;
+        const Complex z = std::polar(1.0, -omega), zz = z * z;
+        Complex g00 {}, g01 {}, g11 {};
+        const auto& references = restingStringModels();
+        for (int other = 0; other < stringCount; ++other) {
+            if (other == stringIndex) continue;
+            const auto& model = references[static_cast<std::size_t>(other)];
+            const double impedance = model.impedance;
+            // Both resting planes share the same immutable loop model.
+            // Compute that transfer once, then retain the original normal
+            // followed by parallel addition order in the junction load.
+            const int anchor = delayAnchor(model.delay);
+            double a1, a2; thiranCoefficients(model.delay - anchor, a1, a2);
+            const auto ap = [&](double first, double second) {
+                return (second + first * z + zz) / (1.0 + first * z + second * zz);
+            };
+            Complex feedback = std::polar(double(model.loopGain), -omega * anchor) * ap(a1, a2);
+            feedback *= ap(model.dispersion[0], model.dispersion[1]);
+            if (model.secondDispersion) feedback *= ap(model.dispersion[2], model.dispersion[3]);
+            const double pole = model.highFilter.remapped ? model.highFilter.ratePole : model.highCoefficient;
+            const double delayed = model.highFilter.remapped ? model.highFilter.delayedInputGain : 0.0;
+            feedback *= 1.0 - double(model.highMix) + double(model.highMix)
+                * ((1.0 - pole - delayed) + delayed * z) / (1.0 - pole * z);
+            feedback *= 1.0 - (1.0 - z)
+                * (double(1.0f - model.bendingGain) - double(model.bendingA2) * z)
+                / (1.0 + double(model.bendingA1) * z + double(model.bendingA2) * zz);
+            feedback *= 1.0 - (1.0 - z)
+                * (double(1.0f - model.constantGain) + double(model.constantN2 - model.constantA2) * z)
+                / (1.0 + double(model.constantA1) * z + double(model.constantA2) * zz);
+            if (std::abs(1.0 - feedback) < 1.0e-9) continue;
+            const Complex load = impedance * (1.0 + feedback) / (1.0 - feedback);
+            const double u = saddleLeverArm(other);
+            g00 += load;
+            g01 += load * u;
+            g11 += load * u * u;
+            g11 += load * eta * eta;
+        }
+        const Complex a = 1.0 + y00 * g00 + y01 * g01;
+        const Complex b = y00 * g01 + y01 * g11;
+        const Complex c = y01 * g00 + y11 * g01;
+        const Complex d = 1.0 + y01 * g01 + y11 * g11;
+        const Complex determinant = a * d - b * c;
+        if (std::abs(determinant) < 1.0e-10) return effective;
+        const Complex h = (d * y00 - b * y01) / determinant;
+        const Complex cross = (d * y01 - b * y11) / determinant;
+        const Complex rock = (a * y11 - c * y01) / determinant;
+        effective.normal = h + 2.0 * arm * cross + arm * arm * rock;
+        effective.transfer = -eta * (cross + arm * rock);
+        effective.parallel = eta * eta * rock;
+        return effective;
+    };
+    const auto loaded = loadOtherStrings(port);
+    const Complex normal = loaded.normal;
+    const Complex transfer = loaded.transfer;
+    const Complex parallel = loaded.parallel;
     const Complex b00 = admittance + normal;
     const Complex b11 = admittance + parallel;
     const Complex inverseDeterminant = 1.0 / (b00 * b11 - transfer * transfer);
@@ -5549,43 +5754,55 @@ float AcustraEngine::coupledPolarisationDetune(
     const Complex r11 = (transfer * transfer + c11 * b00) * inverseDeterminant;
     // The parallel plane's phase follows the same bounded correction share
     // used when its delay is configured below.
-    const double ownPhase = std::arg(Complex((unbentAdmittance - normal)
-                                             / (unbentAdmittance + normal)));
-    const double ownParallelPhase = std::arg(Complex((unbentAdmittance - parallel)
-                                             / (unbentAdmittance + parallel)));
-    const double parallelPhase = ownPhase + parallelPhaseShare
-        * (ownParallelPhase - ownPhase);
+    const double ownPhase = std::arg(Complex((unbentAdmittance - Complex(port.normal))
+                                             / (unbentAdmittance + Complex(port.normal))));
     const Complex gainNormal = std::polar(static_cast<double>(normalGain), -ownPhase);
-    const Complex gainParallel = std::polar(static_cast<double>(parallelGain),
-        -parallelPhase);
+    const Complex gainParallel = std::polar(static_cast<double>(parallelGain), -ownPhase);
     const Complex a00 = gainNormal * r00;
     const Complex a01 = gainNormal * r01;
     const Complex a10 = gainParallel * r10;
     const Complex a11 = gainParallel * r11;
     const Complex halfTrace = 0.5 * (a00 + a11);
     const Complex root = std::sqrt(halfTrace * halfTrace - (a00 * a11 - a01 * a10));
-    constexpr double onsetSeconds = 0.1;
+    constexpr double onsetSeconds = 3.0;
     const double onsetPeriods = onsetSeconds * static_cast<double>(frequency);
-    double weighted = 0.0;
-    double weights = 0.0;
-    for (const Complex eigenvalue : { halfTrace + root, halfTrace - root })
+    std::array<double, 2> logWeight { -1.0e300, -1.0e300 }, phase {};
+    double highestWeight = -1.0e300;
+    const std::array<Complex, 2> eigenvalues { halfTrace + root, halfTrace - root };
+    for (std::size_t mode = 0; mode < eigenvalues.size(); ++mode)
     {
-        const double normalPart = std::norm(a01);
-        const double parallelPart = std::norm(eigenvalue - a00);
-        if (!(normalPart + parallelPart > 0.0))
+        const auto eigenvalue = eigenvalues[mode];
+        // Use the larger of two equivalent eigenvectors. The first loses its
+        // normal component by cancellation on a weakly coupled normal branch.
+        const double firstNormal = std::norm(a01), firstParallel = std::norm(eigenvalue - a00);
+        const double secondNormal = std::norm(eigenvalue - a11), secondParallel = std::norm(a10);
+        const bool alternate = secondNormal + secondParallel > firstNormal + firstParallel;
+        const double normalPart = alternate ? secondNormal : firstNormal;
+        const double parallelPart = alternate ? secondParallel : firstParallel;
+        const double total = normalPart + parallelPart;
+        const double power = std::norm(eigenvalue);
+        if (!(total > 0.0 && normalPart > 0.0 && power > 0.0)
+            || !exact::isfinite(power) || !exact::isfinite(total))
             continue;
-        const double share = normalPart / (normalPart + parallelPart);
-        const double perPeriod = std::norm(eigenvalue);
-        const double energy = share * std::pow(perPeriod, onsetPeriods)
-            / std::max(1.0 - perPeriod, 1.0e-6);
-        weighted += energy * std::arg(eigenvalue);
-        weights += energy;
+        const double share = normalPart / total;
+        phase[mode] = std::arg(eigenvalue);
+        logWeight[mode] = std::log(share) + onsetPeriods * std::log(power)
+            - std::log(std::max(1.0 - power, 1.0e-6));
+        highestWeight = std::max(highestWeight, logWeight[mode]);
     }
-    if (!(weights > 0.0))
-        return 0.0f;
+    if (!(highestWeight > -1.0e300))
+        return finish(0.0f);
+    double weighted = 0.0, weights = 0.0;
+    for (std::size_t mode = 0; mode < eigenvalues.size(); ++mode)
+    {
+        const double weight = std::exp(logWeight[mode] - highestWeight);
+        weighted += weight * phase[mode];
+        weights += weight;
+    }
     const double detune = weighted / (weights * 2.0 * piDouble);
-    return exact::isfinite(detune)
-        ? static_cast<float>(std::clamp(detune, -0.02, 0.02)) : 0.0f;
+    return finish(exact::isfinite(detune)
+        ? static_cast<float>(std::clamp(detune, -0.02, 0.02)) : 0.0f);
+
 }
 
 // A string's two transverse polarisations do not reach the body alike. The
@@ -5945,31 +6162,6 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         : physicalCalibration_.steelPlainBendingLoss;
     // A dispersion design for these complete arguments, from the solves
     // already made when one matches exactly, otherwise solved and kept.
-    const auto solvedDispersion = [this] (const std::array<double, 13>& arguments)
-    {
-        const auto solved = std::find_if(dispersionSolves_.begin(),
-            dispersionSolves_.end(), [&arguments] (const DispersionSolve& solve)
-            {
-                return solve.valid && solve.arguments == arguments;
-            });
-        if (solved != dispersionSolves_.end())
-            return std::pair { solved->decayRatios, solved->poleRatios };
-        const auto calibration = calibrateDispersion(
-            arguments[0], arguments[1], arguments[2], arguments[3],
-            arguments[4], arguments[5], arguments[6], arguments[7], arguments[8],
-            arguments[9], arguments[10], arguments[11], arguments[12]);
-        auto& slot = dispersionSolves_[static_cast<std::size_t>(nextDispersionSolve_)];
-        slot.arguments = arguments;
-        for (std::size_t section = 0; section < 2; ++section)
-        {
-            slot.decayRatios[section] = static_cast<float>(calibration.decayRatio[section]);
-            slot.poleRatios[section] = static_cast<float>(calibration.poleRatio[section]);
-        }
-        slot.valid = true;
-        nextDispersionSolve_ = (nextDispersionSolve_ + 1)
-            % static_cast<int>(dispersionSolves_.size());
-        return std::pair { slot.decayRatios, slot.poleRatios };
-    };
     const auto bendingSection = [&] (double fundamental, double rate)
     {
         return bendingLossSection(static_cast<double>(bendingFactor),
@@ -6107,26 +6299,14 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float desiredPeriodGain = std::pow(0.001f,
         1.0f / std::max(fundamentalT60 * frequency, 1.0f));
     const float unbentImpedance = stringImpedance(stringIndex, voice.openMidi) * masterTuneRatio_;
-    const float parallelBridgeDelay = bridgePort.valid
-        ? -std::arg((1.0f / unbentImpedance - bridgePort.parallel)
-            / (1.0f / unbentImpedance + bridgePort.parallel)) / omega : 0.0f;
-    // A small natural doublet is useful guitar colour. Retain the shared
-    // compensation when the two end phases differ by under a cent; excessive
-    // splits smoothly receive their own correction, fully by four cents.
-    // This keeps sub-cent treble articulation while fixing the audibly detuned
-    // low-register sustain, with no pitch/register boundary or discontinuity.
-    const float planeMismatchCents = 1200.0f * std::log2(std::max(0.5f,
-        1.0f + (measuredBridgeDelay - parallelBridgeDelay) / rawDelay));
-    const float correction = clamp((exact::abs(planeMismatchCents) - 1.0f)
-        / 3.0f, 0.0f, 1.0f);
-    const float parallelPhaseShare = correction * correction * (3.0f - 2.0f * correction);
+    const float nominalPeriodGain = std::pow(0.001f,
+        1.0f / std::max(fundamentalT60 * lossDesignFrequency, 1.0f));
     const float coupledDetune = coupledPolarisationDetune(
-        bridgePort, unbentImpedance, unbentImpedance
+        voice, stringIndex, unbentImpedance, unbentImpedance
             * exact::sqrt((bentTension / tension) / (1.0f
                 + (bentTension - tension) / std::max(axialRigidity, 1.0f))),
-        frequency, parallelPhaseShare,
-        desiredPeriodGain * stringRoundTripGain,
-        desiredPeriodGain * stringRoundTripGain);
+        lossDesignFrequency, nominalPeriodGain * stringRoundTripGain,
+        nominalPeriodGain * stringRoundTripGain);
     voice.polarisationDetune = coupledDetune;
     const float lossOmega = static_cast<float>(referenceLossOmega(omega, sampleRate_));
     const float filterGain = magnitudeForOnePoleMix(
@@ -6141,9 +6321,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     {
         auto& loop = voice.loops[static_cast<std::size_t>(polarisation)];
         const float planeDelay = rawDelay;
-        const float planeBridgeDelay = polarisation == 0
-            ? measuredBridgeDelay : measuredBridgeDelay
-                + parallelPhaseShare * (parallelBridgeDelay - measuredBridgeDelay);
+        const float planeBridgeDelay = measuredBridgeDelay;
         const float polarisationDelay = coupledDetune != 0.0f
             ? (planeDelay - planeBridgeDelay) * (1.0f + coupledDetune)
             : planeDelay - planeBridgeDelay;
@@ -6151,7 +6329,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             polarisationDelay,
             3.0f, static_cast<float>(activeDelaySamples() - 3));
         if (clearDelay)
-            loop.currentDelay = loop.targetDelay;
+            loop.setCurrentDelay(loop.targetDelay);
         if (referenceTuning)
         {
             const float referenceBridgeDelay = planeBridgeDelay
@@ -6884,7 +7062,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     {
         auto& loop = voice.loops[static_cast<std::size_t>(polarisation)];
         loop.reset();
-        loop.currentDelay = loop.targetDelay;
+        loop.setCurrentDelay(loop.targetDelay);
         const int length = std::clamp(
             static_cast<int>(std::round(loop.targetDelay)), 8,
             activeDelaySamples() - 3);
@@ -9156,7 +9334,7 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     voice.returnSamples = 0;
     voice.attackPitchCents = 0.0f;
     voice.attackPitchDecay = 1.0f;
-    voice.noteDetuneCents = 50.0f * parameters_.detune
+    voice.noteDetuneCents = noteDetuneRangeCents * parameters_.detune
         * xorshiftNoise(voice.noteDetuneState);
     // Stop only future picking input. Already emitted waves keep travelling.
     voice.excitationEnvelope = 0.0f;
@@ -9658,7 +9836,7 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
     // Retain the preceding loops before changing their pitch. Queued attacks
     // take the control's current value at contact, never when they were queued.
     const float previousDetune = voice.noteDetuneCents;
-    voice.noteDetuneCents = 50.0f * parameters_.detune
+    voice.noteDetuneCents = noteDetuneRangeCents * parameters_.detune
         * xorshiftNoise(voice.noteDetuneState);
     if (repluck || scheduled || voice.noteDetuneCents != previousDetune)
     {
@@ -10061,7 +10239,10 @@ void AcustraEngine::setPortObserversEnabled(bool enabled) noexcept
 
 void AcustraEngine::setSympatheticStringsEnabled(bool enabled) noexcept
 {
+    if (sympatheticStringsEnabled_ == enabled)
+        return;
     sympatheticStringsEnabled_ = enabled;
+    ++voiceConfigurationGeneration_;
 }
 
 void AcustraEngine::ContactTravel::reset(float directDelay,
@@ -10842,14 +11023,39 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
     {
         __builtin_memcpy(values.data() + index, &value, sizeof(value));
     };
-    // |x| < 1e-30 is exactly -1e-30 < x < 1e-30, NaN included (false).
+    // IEEE binary32 magnitude bits increase with finite positive value.
+    // 0x0da24260 is exactly the float 1e-30 threshold; equality is retained.
+    // NaN/Inf magnitudes lie above it, while either zero sign flushes to +0.
     const auto flush = [] (Vector value)
     {
-        const Mask tiny = (value < 1.0e-30f) & (value > -1.0e-30f);
-        return reinterpret_cast<Vector>(reinterpret_cast<Mask>(value) & ~tiny);
+        static_assert(sizeof(float) == 4 && std::numeric_limits<float>::is_iec559,
+                      "body state flush requires IEEE binary32");
+        const Mask bits = reinterpret_cast<Mask>(value);
+        const Mask magnitude = bits & 0x7fffffff;
+        const Mask tiny = magnitude < 0x0da24260;
+        return reinterpret_cast<Vector>(bits & ~tiny);
     };
     const Vector forceLanes = { force, force, force, force };
     const Vector momentLanes = { moment, moment, moment, moment };
+    // L/R are independent accumulators, advanced in the original mode order.
+    // The SDK vector contract requires 16 bytes; the upper sums are not returned.
+    Vector stereo = { output.left, output.right, 0.0f, 0.0f };
+    const auto addStereo = [&] (Vector pair)
+    {
+#if defined(__clang__)
+#pragma clang fp contract(off)
+#pragma clang fp reassociate(off)
+#endif
+        stereo += 2.0f * pair;
+    };
+    const auto addScaledStereo = [&] (Vector pair)
+    {
+#if defined(__clang__)
+#pragma clang fp contract(off)
+#pragma clang fp reassociate(off)
+#endif
+        stereo += pair;
+    };
     // One group of four lanes advanced; its contributions to the two sums.
     const auto advance = [&] (int index, Vector& leftPart, Vector& rightPart)
     {
@@ -10885,10 +11091,32 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
     {
         Vector leftPart, rightPart;
         advance(index, leftPart, rightPart);
-        for (int lane = 0; lane < valid; ++lane)
+        if (valid == lanes)
         {
-            output.left += 2.0f * leftPart[lane];
-            output.right += 2.0f * rightPart[lane];
+#if defined(__clang__)
+#pragma clang fp contract(off)
+#pragma clang fp reassociate(off)
+#endif
+            // Scale each unchanged contribution exactly once, then interleave
+            // constant lane pairs. Only the lower L/R sums become output.
+            const Vector leftScaled = 2.0f * leftPart;
+            const Vector rightScaled = 2.0f * rightPart;
+            const Vector zip01 = { leftScaled[0], rightScaled[0], leftScaled[1], rightScaled[1] };
+            const Vector zip23 = { leftScaled[2], rightScaled[2], leftScaled[3], rightScaled[3] };
+            const Vector swap01 = { zip01[2], zip01[3], zip01[0], zip01[1] };
+            const Vector swap23 = { zip23[2], zip23[3], zip23[0], zip23[1] };
+            addScaledStereo(zip01);
+            addScaledStereo(swap01);
+            addScaledStereo(zip23);
+            addScaledStereo(swap23);
+        }
+        else
+        {
+            for (int lane = 0; lane < valid; ++lane)
+            {
+                const Vector pair = { leftPart[lane], rightPart[lane], 0.0f, 0.0f };
+                addStereo(pair);
+            }
         }
     };
     int index = 0;
@@ -10917,9 +11145,13 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
             leftSum += leftPart;
             rightSum += rightPart;
         }
-        output.left += 2.0f * ((leftSum[0] + leftSum[1]) + (leftSum[2] + leftSum[3]));
-        output.right += 2.0f * ((rightSum[0] + rightSum[1]) + (rightSum[2] + rightSum[3]));
+        const float leftTail = (leftSum[0] + leftSum[1]) + (leftSum[2] + leftSum[3]);
+        const float rightTail = (rightSum[0] + rightSum[1]) + (rightSum[2] + rightSum[3]);
+        const Vector pair = { leftTail, rightTail, 0.0f, 0.0f };
+        addStereo(pair);
     }
+    output.left = stereo[0];
+    output.right = stereo[1];
 #else
     for (int index = 0; index < count; ++index)
     {
