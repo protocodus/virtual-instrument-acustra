@@ -6,7 +6,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <limits>
 #include <memory>
+#include <tuple>
 #include <vector>
 
 namespace
@@ -23,6 +25,44 @@ double hostTempoBpm (juce::AudioPlayHead* playHead)
                 if (std::isfinite (*bpm) && *bpm > 0.0)
                     return *bpm;
     return 120.0;
+}
+
+// An idle instance sleeps, as the Rack Extension's engine does, once its
+// output (Main and the Piezo bus) has stayed under -120 dBFS (a 24-bit
+// converter's floor is -144, 16-bit dither -96) for sleepSeconds with no
+// string played: an instrument rendering silence otherwise costs a sounding
+// one's CPU. The engine adds that it has cleared its own residue
+// (AcustraEngine::suspend), so sleep changes no sample.
+constexpr float sleepThreshold = 1.0e-6f;
+constexpr double sleepSeconds = 0.5;
+
+bool below (const float* samples, int count) noexcept
+{
+    const auto range = juce::FloatVectorOperations::findMinAndMax (samples, count);
+    return range.getStart() > -sleepThreshold && range.getEnd() < sleepThreshold;
+}
+
+// A Note On that may strike a string: a superset (a note no string reaches
+// counts too), so a sleeping engine wakes in time. A stroke keyswitch
+// strikes nothing.
+bool strikesAString (const juce::MidiMessageMetadata& metadata) noexcept
+{
+    const auto* data = metadata.data;
+    return metadata.numBytes >= 3 && (data[0] & 0xf0) == 0x90 && (data[2] & 0x7f) != 0
+        && ! acustra::Performer::isKeyswitch (data[1] & 0x7f);
+}
+
+bool sameEngineParameters (const acustra::EngineParameters& a,
+                           const acustra::EngineParameters& b) noexcept
+{
+    const auto fields = [] (const acustra::EngineParameters& p)
+    {
+        return std::tie (p.shape, p.bodyMaterial, p.capture, p.tuning, p.picking,
+                         p.stringAge, p.pluckPosition, p.touch, p.bodyAmount,
+                         p.stereoWidth, p.outputGain, p.piezoMix,
+                         p.releaseNoise, p.room);
+    };
+    return fields (a) == fields (b);
 }
 
 using StringActivity = acustra::AcustraEngine::StringActivity;
@@ -459,8 +499,15 @@ void AcustraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     const auto displayRevision = stringDisplayRevision.fetch_add (
         1, std::memory_order_acq_rel) + 1;
     keyboardState.reset();
-    performer.setParameters (snapshotEngineParameters());
+    appliedParameters = snapshotEngineParameters();
+    performer.setParameters (appliedParameters);
+    // Prepared, the engine is awake; it may sleep after the silent wait.
     performer.prepare (sampleRate, samplesPerBlock);
+    silentSamples = 0;
+    samplesSinceNoteOn = std::numeric_limits<std::int64_t>::max() / 2;
+    sleepAfterSamples = static_cast<int> (sleepSeconds * performer.engine().sampleRate());
+    strumRestSamples = static_cast<std::int64_t> (
+        acustra::Performer::strumRestSeconds * performer.engine().sampleRate());
     // The engine keeps a rate it models exactly and substitutes another for
     // any other (AcustraEngine::prepare), which would play every note off
     // pitch.
@@ -535,6 +582,19 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         performer.reset();
     keyboardState.processNextMidiBuffer (midiMessages, 0, numSamples, true);
     updateEngineParameters();
+    // The last sample in this block that may strike a string, or -1. A
+    // sleeping engine wakes for the whole block: its flushed state renders
+    // exact zeros up to the note, and the performer's same-sample order is
+    // never split. Every other event (controllers, bend, pressure,
+    // keyswitches, RPNs, All Notes Off) reaches the sleeping engine through
+    // the performer, at its sample, and acts as on an awake one: suspended,
+    // the engine still runs its control-rate state (AcustraEngine::suspend).
+    int lastStrike = -1;
+    for (const auto metadata : midiMessages)
+        if (strikesAString (metadata))
+            lastStrike = metadata.samplePosition;
+    if (lastStrike >= 0)
+        performer.engine().resume();
 
     performer.setTempoBpm (hostTempoBpm (getPlayHead()));
 
@@ -562,6 +622,7 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         performer.handleMidi (metadata.samplePosition, metadata.data,
                               metadata.numBytes);
     performer.endBlock();
+    updateSleep (buffer, buses.piezo, lastStrike);
 
     const auto& engine = performer.engine();
     activeVoiceCount.store (engine.getActiveVoiceCount(),
@@ -582,6 +643,35 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     }
     else
         stringDisplaySamplesUntilUpdate = 0;
+}
+
+// The rule the Rack Extension's engine sleeps by (WriteOutputs there): no
+// string played (held, sustained, released and damping, or a strum's string
+// still to come), the output under sleepThreshold for sleepSeconds, and a
+// full strum rest since the last struck key. The rest is for parity: here
+// the performer's strum clock and the engine's clocks keep running through
+// sleep (AcustraEngine::suspend), so the next strum is a downstroke either
+// way, and Gather Chords, whose window is 30 ms, has nothing left to hold.
+// The engine refuses until its idle flush has cleared what still rings
+// under the threshold, 7 to 10 s later in the cases measured; a residue
+// cleared sooner changed the next chord by up to 6e-4. Until then this
+// asks again each block, which costs a scan of six strings.
+void AcustraAudioProcessor::updateSleep (const juce::AudioBuffer<float>& buffer,
+                                         const float* piezo, int lastStrike) noexcept
+{
+    const int numSamples = buffer.getNumSamples();
+    samplesSinceNoteOn = lastStrike >= 0 ? numSamples - std::clamp (lastStrike, 0, numSamples)
+                                         : samplesSinceNoteOn + numSamples;
+    auto& engine = performer.engine();
+    if (engine.isSuspended())
+        return;
+    const bool quiet = engine.getActiveVoiceCount() == 0
+        && below (buffer.getReadPointer (0), numSamples)
+        && below (buffer.getReadPointer (1), numSamples)
+        && (piezo == nullptr || below (piezo, numSamples));
+    silentSamples = quiet ? std::min (silentSamples + numSamples, sleepAfterSamples) : 0;
+    if (silentSamples >= sleepAfterSamples && samplesSinceNoteOn > strumRestSamples)
+        static_cast<void> (engine.suspend());
 }
 
 void AcustraAudioProcessor::setStringDisplayEnabled (bool enabled) noexcept
@@ -632,7 +722,8 @@ void AcustraAudioProcessor::publishStringActivity (std::uint32_t revision) noexc
 
 // A bypassed instrument keeps playing its MIDI, silently, so a key-up
 // delivered while bypassed is not lost and the notes held across the
-// bypass continue when it ends.
+// bypass continue when it ends. It sleeps by the same rule, on the audio it
+// would have played.
 void AcustraAudioProcessor::processBlockBypassed (juce::AudioBuffer<float>& buffer,
                                                   juce::MidiBuffer& midiMessages)
 {
@@ -649,7 +740,17 @@ void AcustraAudioProcessor::reset()
 
 void AcustraAudioProcessor::updateEngineParameters() noexcept
 {
-    performer.setParameters (snapshotEngineParameters());
+    const auto next = snapshotEngineParameters();
+    // Parameter glides and construction fades run per sample, which a
+    // sleeping engine skips: a change wakes it, and it sleeps again only
+    // after the silent wait, by when they have settled as they would have.
+    if (! sameEngineParameters (next, appliedParameters))
+    {
+        performer.engine().resume();
+        silentSamples = 0;
+        appliedParameters = next;
+    }
+    performer.setParameters (next);
 }
 
 void AcustraAudioProcessor::requestPanic() noexcept

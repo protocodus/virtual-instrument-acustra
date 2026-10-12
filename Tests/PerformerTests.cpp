@@ -1551,6 +1551,98 @@ void testMasterTuneSurvivesPrepareAndReset()
     expect(play(100.0f, Then::Reset) != play(0.0f, Then::Reset),
            "reset dropped the master tune");
 }
+// AcustraEngine::suspend, as a front end that sleeps uses it through the
+// player (the plug-in's processBlock). It is refused while a string is
+// played, and while the released chord's residue rings, however quietly,
+// until the engine's own idle flush has cleared it. Suspended, the engine
+// writes silence, allocates nothing and takes controllers while its clocks
+// and control-rate state (here a vibrato started while asleep) run on; a
+// struck note resumes it at its sample, and the whole run is bit for bit
+// the run of an engine that never slept.
+void testASuspendedEngineKeepsTime()
+{
+    constexpr double rate = 48000.0;
+    constexpr int block = 61;
+    const auto at = [](double seconds) { return static_cast<long long>(seconds * rate); };
+    auto awake = std::make_unique<Performer>();
+    auto sleeper = std::make_unique<Performer>();
+    for (auto* performer : { awake.get(), sleeper.get() })
+    {
+        performer->prepare(rate, block);
+        performer->setTempoBpm(120.0);
+    }
+    const std::array<int, 6> chord { 41, 46, 51, 56, 61, 84 };
+    const long long chordOn = at(0.1) + 7;
+    const long long chordOff = at(0.4);
+    const long long vibratoAt = at(16.0) + 5;
+    const long long note = at(18.0) + 29;
+    const long long end = note + at(1.5);
+    std::vector<float> left(block), right(block), piezo(block);
+    std::vector<float> sleepLeft(block), sleepRight(block), sleepPiezo(block);
+    bool refusedWhileHeld = false;
+    bool refusedWhileRinging = false;
+    long long suspendedAt = -1;
+    bool silent = true;
+    bool identical = true;
+    long allocations = 0;
+    long long suspendedBlocks = 0;
+    for (long long start = 0; start < end; start += block)
+    {
+        if (start > chordOn && start < chordOff && ! refusedWhileHeld)
+            refusedWhileHeld = ! sleeper->engine().suspend() && ! sleeper->engine().isSuspended();
+        if (start >= at(6.0) && suspendedAt < 0)
+        {
+            if (sleeper->engine().suspend())
+                suspendedAt = start;
+            else if (start < at(6.0) + block)
+                refusedWhileRinging = ! sleeper->engine().isSuspended();
+        }
+        const auto play = [&](Performer& performer, float* l, float* r, float* p)
+        {
+            performer.beginBlock(l, r, acustra::AcustraEngine::OutputBuses { p }, block);
+            const auto offset = [&](long long sample)
+            {
+                return sample >= start && sample < start + block ? static_cast<int>(sample - start) : -1;
+            };
+            for (const int key : chord)
+            {
+                if (const int o = offset(chordOn); o >= 0) performer.noteOn(o, 1, key, 100);
+                if (const int o = offset(chordOff); o >= 0) performer.noteOff(o, 1, key);
+            }
+            if (const int o = offset(vibratoAt); o >= 0) performer.controlChange(o, 1, 1, 64);
+            if (const int o = offset(note); o >= 0) performer.noteOn(o, 1, 57, 90);
+            performer.endBlock();
+        };
+        play(*awake, left.data(), right.data(), piezo.data());
+        const bool suspended = sleeper->engine().isSuspended();
+        std::fill(sleepLeft.begin(), sleepLeft.end(), 1.0f);
+        std::fill(sleepRight.begin(), sleepRight.end(), 1.0f);
+        std::fill(sleepPiezo.begin(), sleepPiezo.end(), 1.0f);
+        const long before = allocationCount.load();
+        play(*sleeper, sleepLeft.data(), sleepRight.data(), sleepPiezo.data());
+        if (suspended && start + block <= note)
+        {
+            ++suspendedBlocks;
+            allocations += allocationCount.load() - before;
+            for (int index = 0; index < block; ++index)
+                silent = silent && sleepLeft[static_cast<std::size_t>(index)] == 0.0f
+                    && sleepRight[static_cast<std::size_t>(index)] == 0.0f
+                    && sleepPiezo[static_cast<std::size_t>(index)] == 0.0f;
+        }
+        identical = identical && left == sleepLeft && right == sleepRight && piezo == sleepPiezo;
+    }
+    expect(refusedWhileHeld, "an engine with held strings suspended");
+    expect(refusedWhileRinging, "an engine whose residue still rang suspended");
+    expect(suspendedAt > at(6.0) && suspendedAt < vibratoAt - block,
+           "an idle engine did not suspend once it had cleared its residue");
+    expect(suspendedBlocks > at(2.0) / block && silent && allocations == 0,
+           "a suspended engine did not write silence without allocating");
+    expect(! sleeper->engine().isSuspended(), "a struck note did not resume the engine");
+    expect(identical, "an engine that slept differed from an engine that never slept");
+    std::cout << "Suspended at " << static_cast<double>(suspendedAt) / rate
+              << " s after a chord released at 0.4 s\n";
+}
+
 // A chord still forming is one channel's: another channel's notes every
 // 20 ms must not keep channel 1's window open, so a note it has held for a
 // second is not refretted and plucked again when channel 1 plays the next.
@@ -1627,6 +1719,7 @@ int main()
     testUnsoundableNotesMakeNoStrum();
     testMasterTuneSurvivesPrepareAndReset();
     testChordWindowIsPerChannel();
+    testASuspendedEngineKeepsTime();
 
     if (failures != 0)
     {

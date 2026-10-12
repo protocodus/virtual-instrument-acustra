@@ -388,6 +388,24 @@ public:
     // Main plus the requested output, in one pass.
     void process(float* left, float* right, const OutputBuses& buses,
                  int numSamples) noexcept;
+    // A front end that stops computing an idle, inaudible instrument (the
+    // plug-in's sleep) suspends it instead of skipping its blocks. suspend()
+    // refuses, changing nothing, while any string is played, held, sustained
+    // or about to be plucked, and until the idle flush (processIdleFlush)
+    // has cleared the instrument: no tail, contact or re-pluck arrival left
+    // and everything under 1e-11 for 80 ms, so it never cuts a sound, however
+    // loud the caller's output is. From then on process() writes the zeros
+    // the flushed instrument would have rendered and does only what time
+    // does to an instrument nobody plays: the sample clock and the
+    // control-rate state (bridge hand, vibrato, construction and string
+    // configuration) advance as over silence. The next note then plays bit
+    // for bit as without the suspension, however much was skipped.
+    // Per-sample parameter glides and fades stand still, so suspend only once
+    // they have settled. A noteOn() that sounds resumes it at its sample;
+    // resume() and prepare() end it too.
+    bool suspend() noexcept;
+    void resume() noexcept { suspended_ = false; }
+    [[nodiscard]] bool isSuspended() const noexcept { return suspended_; }
 
     [[nodiscard]] int getActiveVoiceCount() const noexcept;
     [[nodiscard]] int getSympatheticStringCount() const noexcept;
@@ -2066,6 +2084,7 @@ private:
     // the next sample (FixedDerivative::processAcrossStep).
     bool bridgeDerivativesCrossConfigure_ { false };
     bool prepared_ { false };
+    bool suspended_ { false };
     bool bodyConfigured_ { false };
     std::uint64_t noteOrder_ { 0 };
     // Samples rendered since reset(); the hand's memory and the chord window

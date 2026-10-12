@@ -3032,6 +3032,487 @@ static void testStringActivityDisplay()
     hidden->releaseResources();
 }
 
+// --- Sleep -----------------------------------------------------------------
+// An idle instance stops rendering (AcustraAudioProcessor::updateSleep) and
+// its engine is suspended (AcustraEngine::suspend). Each session drives a
+// processor with Main and the Piezo bus beside a Performer that never
+// sleeps, fed the same MIDI and controls block by block, as
+// testTheAdapterPlaysExactlyThePerformer does.
+struct SleepSession
+{
+    struct Event
+    {
+        std::int64_t sample;
+        juce::MidiMessage message;
+    };
+    struct Control
+    {
+        std::int64_t sample; // applied at the start of the block holding it
+        const char* id;
+        float value;
+    };
+
+    std::vector<Event> events;
+    std::vector<Control> controls;
+    int block = 64;
+    bool bypassed = false;
+
+    // Main left, Main right and Piezo, per sample, from the processor and
+    // from the never-sleeping reference; whether the processor slept after
+    // each block, and the end of the block after which it first slept.
+    std::array<std::vector<float>, 3> actual, reference;
+    std::vector<bool> asleep;
+    std::int64_t firstSleep = -1;
+
+    void run (std::int64_t length)
+    {
+        namespace ids = acustra::parameters;
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
+        auto layout = processor.getBusesLayout();
+        layout.outputBuses.getReference (1) = juce::AudioChannelSet::mono();
+        expect (processor.setBusesLayout (layout), "the Piezo bus could not be enabled");
+        processor.prepareToPlay (sampleRate, block);
+        auto performer = std::make_unique<acustra::Performer>();
+        performer->setParameters (processor.snapshotEngineParameters());
+        performer->prepare (sampleRate, block);
+        performer->setTempoBpm (120.0);
+
+        juce::AudioBuffer<float> audio { 3, block };
+        std::array<std::vector<float>, 3> scratch;
+        for (auto& channel : scratch)
+            channel.assign (static_cast<std::size_t> (block), 0.0f);
+        for (auto& channel : actual)
+            channel.clear();
+        for (auto& channel : reference)
+            channel.clear();
+        asleep.clear();
+        firstSleep = -1;
+        for (std::int64_t start = 0; start < length; start += block)
+        {
+            const int count = static_cast<int> (std::min<std::int64_t> (block, length - start));
+            for (const auto& control : controls)
+                if (control.sample >= start && control.sample < start + count)
+                    setValue (processor, control.id, control.value);
+            juce::MidiBuffer midi;
+            for (const auto& event : events)
+                if (event.sample >= start && event.sample < start + count)
+                    midi.addEvent (event.message, static_cast<int> (event.sample - start));
+            juce::AudioBuffer<float> view { audio.getArrayOfWritePointers(), 3, count };
+            if (bypassed)
+                processor.processBlockBypassed (view, midi);
+            else
+                processor.processBlock (view, midi);
+
+            performer->setParameters (processor.snapshotEngineParameters());
+            performer->setGatherChords (valueOf (processor, ids::gatherChords) >= 0.5f);
+            performer->setSustainHold (valueOf (processor, ids::sustain) >= 0.5f);
+            performer->setTempoBpm (120.0);
+            performer->beginBlock (scratch[0].data(), scratch[1].data(),
+                                   acustra::AcustraEngine::OutputBuses { scratch[2].data() },
+                                   count);
+            for (const auto metadata : midi)
+                performer->handleMidi (metadata.samplePosition, metadata.data,
+                                       metadata.numBytes);
+            performer->endBlock();
+
+            for (std::size_t channel = 0; channel < 3; ++channel)
+            {
+                const auto* rendered = view.getReadPointer (static_cast<int> (channel));
+                actual[channel].insert (actual[channel].end(), rendered, rendered + count);
+                reference[channel].insert (reference[channel].end(), scratch[channel].begin(),
+                                           scratch[channel].begin() + count);
+            }
+            asleep.push_back (processor.isAsleep());
+            if (firstSleep < 0 && processor.isAsleep())
+                firstSleep = start + count;
+        }
+    }
+
+    bool asleepAt (std::int64_t sample) const
+    {
+        const auto index = static_cast<std::size_t> (sample / block);
+        return index < asleep.size() && asleep[index];
+    }
+
+    // The largest difference from the reference over [begin, end), on all
+    // three outputs.
+    float difference (std::int64_t begin, std::int64_t end) const
+    {
+        float result = 0.0f;
+        for (std::size_t channel = 0; channel < 3; ++channel)
+            for (auto sample = std::max<std::int64_t> (begin, 0);
+                 sample < std::min<std::int64_t> (end, static_cast<std::int64_t> (actual[channel].size()));
+                 ++sample)
+                result = std::max (result, std::abs (actual[channel][static_cast<std::size_t> (sample)]
+                                                     - reference[channel][static_cast<std::size_t> (sample)]));
+        return result;
+    }
+
+    // Whether every block the processor began asleep was exact zeros on
+    // all three outputs.
+    bool sleptSilently() const
+    {
+        for (std::size_t index = 1; index < asleep.size(); ++index)
+        {
+            if (! asleep[index - 1] || ! asleep[index])
+                continue;
+            for (const auto& channel : actual)
+                for (std::size_t sample = index * static_cast<std::size_t> (block);
+                     sample < std::min (channel.size(), (index + 1) * static_cast<std::size_t> (block));
+                     ++sample)
+                    if (channel[sample] != 0.0f)
+                        return false;
+        }
+        return true;
+    }
+
+    // The last sample whose magnitude reaches level on any output, or -1.
+    static std::int64_t lastReaching (const std::array<std::vector<float>, 3>& audio, float level)
+    {
+        std::int64_t result = -1;
+        for (const auto& channel : audio)
+            for (std::size_t sample = 0; sample < channel.size(); ++sample)
+                if (std::abs (channel[sample]) >= level)
+                    result = std::max (result, static_cast<std::int64_t> (sample));
+        return result;
+    }
+};
+
+std::int64_t samplesAt (double seconds)
+{
+    return static_cast<std::int64_t> (std::llround (seconds * sampleRate));
+}
+
+const std::array<int, 6> sleepChord { 41, 46, 51, 56, 61, 84 };
+
+void addChord (SleepSession& session, std::int64_t on, std::int64_t off, float velocity = 0.8f)
+{
+    for (const int note : sleepChord)
+    {
+        session.events.push_back ({ on, juce::MidiMessage::noteOn (1, note, velocity) });
+        if (off >= 0)
+            session.events.push_back ({ off, juce::MidiMessage::noteOff (1, note) });
+    }
+}
+
+std::vector<float> monoOf (const SleepSession& session, std::int64_t begin, std::int64_t end)
+{
+    std::vector<float> result;
+    for (auto sample = begin; sample < end; ++sample)
+        result.push_back (0.5f * (session.actual[0][static_cast<std::size_t> (sample)]
+                                  + session.actual[1][static_cast<std::size_t> (sample)]));
+    return result;
+}
+
+void testIdleInstancesSleep()
+{
+    // A fresh instance with nothing played sleeps after the silent wait,
+    // to the block.
+    SleepSession idle;
+    idle.run (samplesAt (1.0));
+    expect (idle.firstSleep == samplesAt (0.5),
+            "an idle instance did not sleep after half a second of silence");
+    expect (idle.asleep.back() && idle.sleptSilently(),
+            "a sleeping instance woke or rendered something");
+
+    // Bypassed, it sleeps by the same rule. (A played instance:
+    // testNotesAfterSleepMatchANeverSleepingInstance.)
+    SleepSession bypassed;
+    bypassed.bypassed = true;
+    bypassed.run (samplesAt (0.6));
+    expect (bypassed.firstSleep == samplesAt (0.5), "a bypassed idle instance did not sleep");
+}
+
+void testNotesAfterSleepMatchANeverSleepingInstance()
+{
+    // A chord and its release, then sleep, then another six-string chord
+    // about a second later on a frame inside a block, at two block sizes and
+    // with Gather Chords. The output falls under -120 dBFS within a few
+    // seconds, but the engine suspends only once it has cleared its own
+    // residue (AcustraEngine::suspend): the instance sleeps at the end of the
+    // block in which the never-sleeping reference falls to exact zero. Its
+    // clocks ran on, so the chord meets the hand, repeat memory and strum
+    // clock where the never-sleeping instance does, and the whole run is
+    // that instance's, bit for bit. (Clearing a residue under -120 dBFS
+    // sooner changed such a chord by up to 6e-4.)
+    for (const int block : { 61, 512 })
+        for (const bool gather : { false, true })
+        {
+            if (gather && block != 61)
+                continue;
+            SleepSession session;
+            session.block = block;
+            if (gather)
+                session.controls.push_back ({ 0, acustra::parameters::gatherChords, 1.0f });
+            addChord (session, samplesAt (0.1) + 7, samplesAt (0.4));
+            const auto chord = samplesAt (14.0) + 29;
+            addChord (session, chord, chord + samplesAt (0.3));
+            const auto end = chord + samplesAt (1.5);
+            session.run (end);
+            const auto label = " (block " + std::to_string (block)
+                + (gather ? ", gathering" : "") + ")";
+            std::array<std::vector<float>, 3> beforeChord;
+            for (std::size_t channel = 0; channel < 3; ++channel)
+                beforeChord[channel].assign (session.reference[channel].begin(),
+                                             session.reference[channel].begin() + chord);
+            const auto lastAudible = SleepSession::lastReaching (beforeChord, 1.0e-6f);
+            const auto residueEnd = SleepSession::lastReaching (
+                beforeChord, std::numeric_limits<float>::denorm_min()) + 1;
+            expect (lastAudible > 0 && session.firstSleep >= residueEnd
+                        && session.firstSleep < residueEnd + block,
+                    "the instance did not sleep when its engine had cleared its residue" + label);
+            expect (session.asleepAt (chord - block) && ! session.asleepAt (chord),
+                    "the instance did not sleep before the chord and wake for it" + label);
+            expect (session.sleptSilently(), "a sleeping instance rendered something" + label);
+            // The waking block renders exact zeros up to the chord (from its
+            // flushed state) and the chord at its sample.
+            const auto wakeBlock = chord / block * block;
+            float wakeLevel = 0.0f;
+            for (const auto& channel : session.actual)
+                for (auto sample = wakeBlock; sample < chord; ++sample)
+                    wakeLevel = std::max (wakeLevel, std::abs (channel[static_cast<std::size_t> (sample)]));
+            expect (wakeLevel == 0.0f, "the waking block sounded before its chord" + label);
+            float chordLevel = 0.0f;
+            for (auto sample = chord; sample < end; ++sample)
+                chordLevel = std::max (chordLevel, std::abs (session.reference[0][static_cast<std::size_t> (sample)]));
+            expect (chordLevel > 0.1f, "the reference chord did not sound" + label);
+            const float difference = session.difference (0, end);
+            expect (difference == 0.0f,
+                    "a chord after sleep differed from a never-sleeping instance" + label
+                    + ": " + std::to_string (difference));
+            std::cout << "Acustra chord after sleep" << label << ": after a chord at 0.1 s, "
+                      << "last sample >= 1e-6 at " << lastAudible / sampleRate
+                      << " s, reference residue until " << residueEnd / sampleRate
+                      << " s, asleep at " << session.firstSleep / sampleRate << " s; chord at "
+                      << chord / sampleRate << " s, largest difference " << difference
+                      << " (chord peak " << chordLevel << ")\n";
+        }
+}
+
+void testEventsWhileAsleepTakeEffectAsAwake()
+{
+    // From silence the instance sleeps at 0.5 s. At 1 s Output and Shape
+    // are automated, which wakes it for the silent wait. Asleep again, at
+    // 1.6 s it is sent the sustain pedal, a bend (with its RPN 0 range) and
+    // the upstroke keyswitch; none wakes it, so only the suspended engine
+    // takes them. A strum at 2.2 s, released at 2.4 s, must then be an
+    // upstroke, bent and held by the pedal, exactly as in the never-sleeping
+    // reference.
+    namespace ids = acustra::parameters;
+    const auto events = [] (bool bend)
+    {
+        SleepSession session;
+        session.block = 61;
+        const auto at = samplesAt (1.6) + 3;
+        session.events.push_back ({ at, juce::MidiMessage::controllerEvent (1, 64, 127) });
+        session.events.push_back ({ at, juce::MidiMessage::controllerEvent (1, 101, 0) });
+        session.events.push_back ({ at, juce::MidiMessage::controllerEvent (1, 100, 0) });
+        session.events.push_back ({ at, juce::MidiMessage::controllerEvent (1, 6, 7) });
+        if (bend)
+            session.events.push_back ({ at + 11, juce::MidiMessage::pitchWheel (1, 8192 + 2048) });
+        session.events.push_back ({ at + 20, juce::MidiMessage::noteOn (1, acustra::Performer::keyswitchUpstroke, 0.7f) });
+        session.events.push_back ({ at + 40, juce::MidiMessage::noteOff (1, acustra::Performer::keyswitchUpstroke) });
+        session.controls.push_back ({ samplesAt (1.0), ids::output, -9.0f });
+        session.controls.push_back ({ samplesAt (1.0), ids::shape, 0.0f });
+        addChord (session, samplesAt (2.2) + 13, samplesAt (2.4));
+        session.run (samplesAt (3.5));
+        return session;
+    };
+    const auto session = events (true);
+    const auto at = samplesAt (1.6) + 3;
+    expect (session.asleepAt (samplesAt (0.75)) && ! session.asleepAt (samplesAt (1.0))
+                && session.asleepAt (at - session.block),
+            "an automated parameter did not wake the instance for the silent wait");
+    bool sleptThrough = true;
+    for (auto sample = at; sample < samplesAt (2.2) - session.block; sample += session.block)
+        sleptThrough = sleptThrough && session.asleepAt (sample);
+    expect (sleptThrough, "a controller, bend, RPN or keyswitch woke the sleeping instance");
+    const float difference = session.difference (0, samplesAt (3.5));
+    expect (difference == 0.0f,
+            "events sent while asleep did not take effect as on a never-sleeping instance: "
+                + std::to_string (difference));
+    const double rise = upperRegisterRise (monoOf (session, samplesAt (2.2), samplesAt (2.4)));
+    expect (rise < 0.004, "the upstroke keyswitch sent while asleep was lost");
+    float held = 0.0f;
+    for (auto sample = samplesAt (3.3); sample < samplesAt (3.5); ++sample)
+        held = std::max (held, std::abs (session.actual[0][static_cast<std::size_t> (sample)]));
+    expect (held > 1.0e-3f && ! session.asleep.back(),
+            "the pedal pressed while asleep did not hold the released chord");
+    const auto unbent = events (false);
+    float bendChange = 0.0f;
+    for (auto sample = samplesAt (2.2); sample < samplesAt (3.5); ++sample)
+        bendChange = std::max (bendChange, std::abs (session.actual[0][static_cast<std::size_t> (sample)]
+                                                     - unbent.actual[0][static_cast<std::size_t> (sample)]));
+    expect (bendChange > 1.0e-3f, "the bend sent while asleep changed nothing");
+    std::cout << "Acustra events while asleep: largest difference " << difference
+              << ", upstroke rise " << rise * 1000.0 << " ms\n";
+}
+
+void testTheFirstStrumAfterSleepIsADownstroke()
+{
+    // A downstroke and its return, then sleep, then a strum: a downstroke,
+    // as after any long rest, with the strum clock run on through sleep.
+    SleepSession session;
+    session.block = 61;
+    addChord (session, samplesAt (0.1) + 5, samplesAt (0.25));
+    addChord (session, samplesAt (0.4) + 5, samplesAt (0.55));
+    const auto strum = samplesAt (16.0) + 17;
+    addChord (session, strum, strum + samplesAt (0.2));
+    session.run (strum + samplesAt (0.5));
+    expect (session.firstSleep > 0 && session.asleepAt (strum - session.block),
+            "the instance did not sleep before the strum");
+    const double down = upperRegisterRise (monoOf (session, samplesAt (0.1), samplesAt (0.25)));
+    const double up = upperRegisterRise (monoOf (session, samplesAt (0.4), samplesAt (0.55)));
+    const double after = upperRegisterRise (monoOf (session, strum, strum + samplesAt (0.2)));
+    expect (down >= 0.006 && up < 0.5 * down, "the strums before sleep did not alternate");
+    expect (after >= 0.006 && after > 2.0 * up, "the first strum after sleep was not a downstroke");
+    const float difference = session.difference (0, strum + samplesAt (0.5));
+    expect (difference == 0.0f, "the strum after sleep differed from a never-sleeping instance: "
+                                    + std::to_string (difference));
+    std::cout << "Acustra strum after sleep: down " << down * 1000.0 << " ms, up "
+              << up * 1000.0 << " ms, after sleep " << after * 1000.0
+              << " ms; largest difference " << difference << '\n';
+}
+
+void testSleepWaitsForEverythingThatCanSound()
+{
+    namespace ids = acustra::parameters;
+    // A held key, even one the bridge hand has silenced.
+    {
+        SleepSession session;
+        session.events.push_back ({ samplesAt (0.05), juce::MidiMessage::controllerEvent (1, 2, 127) });
+        session.events.push_back ({ samplesAt (0.1), juce::MidiMessage::noteOn (1, 64, 0.7f) });
+        session.run (samplesAt (8.0));
+        expect (session.firstSleep < 0, "the instance slept while a key was held");
+    }
+    // A released note held by the pedal or the Sustain switch: no sleep while
+    // it rings, and sleep after it is let go. Held to 16 s, past the 14.5 s
+    // at which the same note left alone puts the instance to sleep.
+    for (const bool pedal : { true, false })
+    {
+        SleepSession session;
+        if (pedal)
+        {
+            session.events.push_back ({ samplesAt (0.05), juce::MidiMessage::controllerEvent (1, 64, 127) });
+            session.events.push_back ({ samplesAt (16.0), juce::MidiMessage::controllerEvent (1, 64, 0) });
+        }
+        else
+        {
+            session.controls.push_back ({ 0, ids::sustain, 1.0f });
+            session.controls.push_back ({ samplesAt (16.0), ids::sustain, 0.0f });
+        }
+        session.events.push_back ({ samplesAt (0.1), juce::MidiMessage::noteOn (1, 64, 0.7f) });
+        session.events.push_back ({ samplesAt (0.3), juce::MidiMessage::noteOff (1, 64) });
+        session.run (samplesAt (19.0));
+        const std::string label = pedal ? "the sustain pedal" : "the Sustain switch";
+        expect (session.firstSleep > samplesAt (16.0),
+                "the instance slept while " + label + " held a ringing note");
+        expect (session.asleep.back(), "the instance did not sleep after " + label + " let go");
+    }
+    // Gather Chords: a chord arriving at the end of a block is still held
+    // when the block ends, and the instance is awake for it.
+    {
+        SleepSession session;
+        session.controls.push_back ({ 0, ids::gatherChords, 1.0f });
+        const auto chord = samplesAt (1.0) / session.block * session.block + session.block - 3;
+        addChord (session, chord, chord + samplesAt (0.3));
+        session.run (samplesAt (1.5));
+        expect (session.asleepAt (chord - session.block) && ! session.asleepAt (chord),
+                "the instance slept while Gather Chords held notes");
+        expect (session.difference (0, samplesAt (1.5)) == 0.0f,
+                "a gathered chord after sleep differed from a never-sleeping instance");
+    }
+}
+
+void testSleepThroughResetsPanicAndStateLoads()
+{
+    // Whatever happens to a sleeping instance, the next note sounds; the
+    // displays show the idle strings while it sleeps.
+    juce::MemoryBlock state;
+    {
+        AcustraAudioProcessor source;
+        source.getStateInformation (state);
+    }
+    for (int action = 0; action < 6; ++action)
+    {
+        auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+        auto& processor = *processorOwner;
+        processor.prepareToPlay (sampleRate, blockSize);
+        processor.setStringDisplayEnabled (true);
+        juce::AudioBuffer<float> audio { 2, blockSize };
+        juce::MidiBuffer empty;
+        for (int block = 0; block * blockSize < samplesAt (0.6); ++block)
+            processor.processBlock (audio, empty);
+        expect (processor.isAsleep(), "an idle instance did not sleep");
+        const auto idle = processor.getStringActivityForDisplay();
+        expect (processor.getActiveVoiceCount() == 0 && processor.getSympatheticStringCount() == 0
+                    && std::none_of (idle.begin(), idle.end(), [] (const auto& string)
+                           { return string.played || string.keyDown || string.level != 0.0f; }),
+                "a sleeping instance showed string activity");
+
+        juce::MidiBuffer events;
+        const char* name = "";
+        switch (action)
+        {
+            case 0: name = "host reset"; processor.reset(); break;
+            case 1: name = "Panic"; processor.requestPanic(); break;
+            case 2: name = "prepareToPlay"; processor.prepareToPlay (sampleRate, blockSize); break;
+            case 3: name = "state load";
+                processor.setStateInformation (state.getData(), static_cast<int> (state.getSize()));
+                break;
+            case 4: name = "All Sound Off";
+                events.addEvent (juce::MidiMessage::allSoundOff (1), 0); break;
+            default: name = "All Notes Off";
+                events.addEvent (juce::MidiMessage::allNotesOff (1), 0); break;
+        }
+        processor.processBlock (audio, events);
+        juce::MidiBuffer note;
+        note.addEvent (juce::MidiMessage::noteOn (1, 71, 0.8f), 100);
+        processor.processBlock (audio, note);
+        float level = audio.getMagnitude (0, 100, blockSize - 100);
+        // Past the display's 30 Hz publication after the action's reset.
+        for (int block = 0; block < 8; ++block)
+        {
+            processor.processBlock (audio, empty);
+            level = std::max (level, audio.getMagnitude (0, 0, blockSize));
+        }
+        const auto strings = processor.getStringActivityForDisplay();
+        expect (! processor.isAsleep() && level > 1.0e-3f && processor.getActiveVoiceCount() == 1
+                    && strings[5].keyDown && strings[5].fret == 7,
+                std::string { "a note after " } + name + " while asleep did not sound or show: level "
+                    + std::to_string (level) + ", strings " + std::to_string (processor.getActiveVoiceCount()));
+    }
+
+    // The editor opened on a sleeping instance shows it ready and idle.
+    auto processorOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *processorOwner;
+    processor.prepareToPlay (sampleRate, blockSize);
+    juce::AudioBuffer<float> audio { 2, blockSize };
+    juce::MidiBuffer empty;
+    for (int block = 0; block * blockSize < samplesAt (0.6); ++block)
+        processor.processBlock (audio, empty);
+    std::unique_ptr<juce::AudioProcessorEditor> editor { processor.createEditor() };
+    auto* status = editor != nullptr
+        ? findLabel (*editor, [] (const juce::Label& label) { return label.getName() == "Engine status"; })
+        : nullptr;
+    expect (processor.isAsleep() && status != nullptr, "the sleeping instance's editor has no status");
+    if (status != nullptr)
+    {
+        status->setText ("timer pending", juce::dontSendNotification);
+        for (int attempt = 0; attempt < 50 && status->getText() == "timer pending"; ++attempt)
+        {
+            juce::Thread::sleep (20);
+            juce::Timer::callPendingTimersSynchronously();
+        }
+        expect (status->getText().endsWith ("0 STRINGS"),
+                "the editor of a sleeping instance did not show it ready and idle: "
+                    + status->getText().toStdString());
+        const auto image = editor->createComponentSnapshot (editor->getLocalBounds());
+        expect (image.isValid(), "the editor of a sleeping instance did not paint");
+    }
+}
+
 int main()
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -3068,6 +3549,12 @@ int main()
     testEditorSizeFitsTheDisplayAndIsRemembered();
     testUnsupportedSampleRatesAreSilent();
     testEditorShowsTheBuildIdentity();
+    testIdleInstancesSleep();
+    testNotesAfterSleepMatchANeverSleepingInstance();
+    testEventsWhileAsleepTakeEffectAsAwake();
+    testTheFirstStrumAfterSleepIsADownstroke();
+    testSleepWaitsForEverythingThatCanSound();
+    testSleepThroughResetsPanicAndStateLoads();
 
     if (failureCount != 0)
     {
