@@ -43,6 +43,14 @@ directly playable, without added input latency or new controls. See the
 The subsequent [CPU optimization](Docs/cpu-optimization-2026-10-07.md) preserves
 the rendered audio while reducing redundant pitch and pluck calculations.
 
+Version 1.3.3 prepares the packages for release without changing the
+sound: a user guide and the third-party notices they owe ship in every
+package, the Windows build needs no VC++ redistributable, the Standalone
+enables a connected MIDI keyboard, the editor fits the display and
+remembers its size, and a tag-driven workflow drafts signed-when-possible
+releases. Nothing has been released yet; see
+[Release workflow](#release-workflow).
+
 Version 1.3.2 takes the mid-band peak down by measurement: every
 construction's summed microphone pressure dips at its own strong mid mode
 (404-614 Hz as Shape and Wood place it), so the note on it plays 2-6 dB
