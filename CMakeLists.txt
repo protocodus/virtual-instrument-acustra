@@ -790,7 +790,11 @@ if(BUILD_TESTING)
 
         acustra_add_suite(Acustra.PluginProcessor
                  AcustraPluginProcessorTests)
-        set_tests_properties(Acustra.PluginProcessor PROPERTIES TIMEOUT 90)
+        # The sleep tests render a played instance and a never-sleeping
+        # reference past the engine's idle flush, 13-19 s of audio each. The
+        # suite took about 41 s on a loaded 4-CPU Linux machine, against 25 s
+        # without them, which left 90 s too little room for slower runners.
+        set_tests_properties(Acustra.PluginProcessor PROPERTIES TIMEOUT 180)
 
         add_executable(AcustraPluginTempoReleaseTests
             Tests/PluginTempoReleaseTests.cpp)

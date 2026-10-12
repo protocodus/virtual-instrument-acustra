@@ -11305,7 +11305,12 @@ float AcustraEngine::renderPiezo(float force) noexcept
 
 bool AcustraEngine::suspend() noexcept
 {
-    if (!prepared_)
+    // Only a flushed instrument (processIdleFlush) holds nothing but exact
+    // zeros, which a suspension keeps, so nothing after it differs from an
+    // engine that was never suspended. Clearing the residue sooner, while
+    // it was under -120 dBFS at the output, changed a chord struck seconds
+    // later by up to 6e-4 (2026-10-12 decision).
+    if (!prepared_ || !idleFlushed_)
         return false;
     for (const auto& voice : voices_)
         if (voice.played || voice.keyDown || voice.pedalHeld
@@ -11313,16 +11318,12 @@ bool AcustraEngine::suspend() noexcept
             return false;
     if (!suspended_)
     {
-        // What processIdleFlush does once everything is under its floor,
-        // and the level observers' decay to zero after it, so a long sleep
-        // ends in the state a never-suspended engine reaches.
-        for (int string = 0; string < stringCount; ++string)
-        {
-            auto& voice = voices_[static_cast<std::size_t>(string)];
-            returnToOpenString(voice, string, true);
+        // After the flush the level observers only decay towards zero, and
+        // zero changes nothing they decide (their 2e-7 thresholds, or a
+        // pluck's level, which takes the larger). Suspended strings then
+        // show as idle.
+        for (auto& voice : voices_)
             voice.level = 0.0f;
-        }
-        resetSoundState();
         suspended_ = true;
     }
     return true;

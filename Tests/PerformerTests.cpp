@@ -1551,16 +1551,14 @@ void testMasterTuneSurvivesPrepareAndReset()
     expect(play(100.0f, Then::Reset) != play(0.0f, Then::Reset),
            "reset dropped the master tune");
 }
-// A chord still forming is one channel's: another channel's notes every
-// 20 ms must not keep channel 1's window open, so a note it has held for a
-// second is not refretted and plucked again when channel 1 plays the next.
 // AcustraEngine::suspend, as a front end that sleeps uses it through the
 // player (the plug-in's processBlock). It is refused while a string is
-// played. Suspended, the engine writes silence, allocates nothing and takes
-// controllers while its clocks and control-rate state (here a vibrato
-// started while asleep) run on; a struck note resumes it at its sample. Once
-// the engine that never slept has cleared its own residue, the note plays
-// bit for bit as there.
+// played, and while the released chord's residue rings, however quietly,
+// until the engine's own idle flush has cleared it. Suspended, the engine
+// writes silence, allocates nothing and takes controllers while its clocks
+// and control-rate state (here a vibrato started while asleep) run on; a
+// struck note resumes it at its sample, and the whole run is bit for bit
+// the run of an engine that never slept.
 void testASuspendedEngineKeepsTime()
 {
     constexpr double rate = 48000.0;
@@ -1576,12 +1574,14 @@ void testASuspendedEngineKeepsTime()
     const std::array<int, 6> chord { 41, 46, 51, 56, 61, 84 };
     const long long chordOn = at(0.1) + 7;
     const long long chordOff = at(0.4);
-    const long long vibratoAt = at(7.0) + 5;
-    const long long note = at(30.0) + 29;
+    const long long vibratoAt = at(16.0) + 5;
+    const long long note = at(18.0) + 29;
     const long long end = note + at(1.5);
     std::vector<float> left(block), right(block), piezo(block);
     std::vector<float> sleepLeft(block), sleepRight(block), sleepPiezo(block);
     bool refusedWhileHeld = false;
+    bool refusedWhileRinging = false;
+    long long suspendedAt = -1;
     bool silent = true;
     bool identical = true;
     long allocations = 0;
@@ -1590,8 +1590,13 @@ void testASuspendedEngineKeepsTime()
     {
         if (start > chordOn && start < chordOff && ! refusedWhileHeld)
             refusedWhileHeld = ! sleeper->engine().suspend() && ! sleeper->engine().isSuspended();
-        if (start >= at(6.0) && start < note - block && ! sleeper->engine().isSuspended())
-            expect(sleeper->engine().suspend(), "an idle engine refused to suspend");
+        if (start >= at(6.0) && suspendedAt < 0)
+        {
+            if (sleeper->engine().suspend())
+                suspendedAt = start;
+            else if (start < at(6.0) + block)
+                refusedWhileRinging = ! sleeper->engine().isSuspended();
+        }
         const auto play = [&](Performer& performer, float* l, float* r, float* p)
         {
             performer.beginBlock(l, r, acustra::AcustraEngine::OutputBuses { p }, block);
@@ -1624,16 +1629,23 @@ void testASuspendedEngineKeepsTime()
                     && sleepRight[static_cast<std::size_t>(index)] == 0.0f
                     && sleepPiezo[static_cast<std::size_t>(index)] == 0.0f;
         }
-        if (start + block > note)
-            identical = identical && left == sleepLeft && right == sleepRight && piezo == sleepPiezo;
+        identical = identical && left == sleepLeft && right == sleepRight && piezo == sleepPiezo;
     }
     expect(refusedWhileHeld, "an engine with held strings suspended");
-    expect(suspendedBlocks > at(20.0) / block && silent && allocations == 0,
+    expect(refusedWhileRinging, "an engine whose residue still rang suspended");
+    expect(suspendedAt > at(6.0) && suspendedAt < vibratoAt - block,
+           "an idle engine did not suspend once it had cleared its residue");
+    expect(suspendedBlocks > at(2.0) / block && silent && allocations == 0,
            "a suspended engine did not write silence without allocating");
     expect(! sleeper->engine().isSuspended(), "a struck note did not resume the engine");
-    expect(identical, "a note after suspension differed from an engine that never slept");
+    expect(identical, "an engine that slept differed from an engine that never slept");
+    std::cout << "Suspended at " << static_cast<double>(suspendedAt) / rate
+              << " s after a chord released at 0.4 s\n";
 }
 
+// A chord still forming is one channel's: another channel's notes every
+// 20 ms must not keep channel 1's window open, so a note it has held for a
+// second is not refretted and plucked again when channel 1 plays the next.
 void testChordWindowIsPerChannel()
 {
     const auto heldAfter = [](int busyChannel)

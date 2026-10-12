@@ -30,9 +30,9 @@ double hostTempoBpm (juce::AudioPlayHead* playHead)
 // An idle instance sleeps, as the Rack Extension's engine does, once its
 // output (Main and the Piezo bus) has stayed under -120 dBFS (a 24-bit
 // converter's floor is -144, 16-bit dither -96) for sleepSeconds with no
-// string played: the sympathetic strings and the body keep a tail for
-// seconds under that, and computing it costs a sounding instrument's CPU
-// for no audible result.
+// string played: an instrument rendering silence otherwise costs a sounding
+// one's CPU. The engine adds that it has cleared its own residue
+// (AcustraEngine::suspend), so sleep changes no sample.
 constexpr float sleepThreshold = 1.0e-6f;
 constexpr double sleepSeconds = 0.5;
 
@@ -652,6 +652,10 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 // the performer's strum clock and the engine's clocks keep running through
 // sleep (AcustraEngine::suspend), so the next strum is a downstroke either
 // way, and Gather Chords, whose window is 30 ms, has nothing left to hold.
+// The engine refuses until its idle flush has cleared what still rings
+// under the threshold, 7 to 10 s later in the cases measured; a residue
+// cleared sooner changed the next chord by up to 6e-4. Until then this
+// asks again each block, which costs a scan of six strings.
 void AcustraAudioProcessor::updateSleep (const juce::AudioBuffer<float>& buffer,
                                          const float* piezo, int lastStrike) noexcept
 {

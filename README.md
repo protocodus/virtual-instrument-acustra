@@ -1926,19 +1926,23 @@ the two-pointer forms render Main alone and are the same samples.
 
 **An idle instance sleeps.** With no string played (held, sustained,
 damping or still to come in a strum), Main and Piezo under -120 dBFS for
-half a second and a two-second strum rest since the last struck key, the
-plug-in stops computing the strings, by the Rack Extension's rule. Its
-blocks are then exact zeros, at about 0.5 µs instead of about 62 µs per
-64-frame block at 48 kHz on the build machine (rough figures; a playing
-instance is unchanged). The engine's clocks run on while it sleeps
-(`AcustraEngine::suspend`), so the next note meets the picking hand,
-vibrato and strum direction where it would have, whatever the block size:
-once a never-sleeping instance has cleared its own residue, the note is
-bit for bit the same, and within seconds of sleep it differs by at most
-about 8e-6 (-102 dBFS). A struck key wakes it for its block; controllers,
-bend, keyswitches and RPNs reach it asleep, and a parameter change wakes
-it for the half second its glides need. A bypassed instance sleeps too.
-See [the decision](Docs/decisions.md).
+half a second and a two-second strum rest since the last struck key (the
+Rack Extension's rule), and the engine's own residue cleared, the plug-in
+stops computing the strings. The engine clears what still rings under the
+threshold once everything has stayed under 1e-11 for 80 ms
+(`AcustraEngine::suspend`), so an instance never played sleeps after half
+a second and a played one, in the cases measured, 7 to 10 s after its
+output fell under -120 dBFS, 12 to 17 s after its last key. Its blocks
+are then exact zeros, at about 0.5 µs instead of about 62 µs per 64-frame
+block at 48 kHz (rough figures from an unquiet shared build machine; a
+playing instance is unchanged within measurement noise). The engine's
+clocks run on while it sleeps, so the next note meets the picking hand,
+vibrato and strum direction where it would have: whatever the block size,
+the output is bit for bit that of an instance that never slept, in every
+case tested. A struck key wakes it for its block; controllers, bend,
+keyswitches and RPNs reach it asleep, and a parameter change wakes it for
+the half second its glides need. A bypassed instance sleeps too. See
+[the decision](Docs/decisions.md).
 
 ## Why this architecture
 
@@ -3266,15 +3270,17 @@ packages are built and signed.
   has been released.
 - **An idle instance sleeps** (launch audit, idle CPU). By the Rack
   Extension's rule (silent under -120 dBFS for 0.5 s, no string played, a
-  strum rest since the last key) the plug-in stops computing the strings:
-  an idle 64-frame block at 48 kHz drops from about 62 µs to about 0.5 µs
-  on the build machine, and a playing one is unchanged. The engine gains a
-  suspended mode (`AcustraEngine::suspend`) whose clocks run on, so a note
-  after sleep plays as on an instance that never slept: bit for bit once
-  that instance has cleared its own residue, and within 8e-6 (measured)
-  before. A struck key, or a changed parameter, wakes it; every other MIDI
-  message reaches it asleep. See [Outputs](#outputs) and
-  [the decision](Docs/decisions.md).
+  strum rest since the last key), once the engine has also cleared its own
+  residue, the plug-in stops computing the strings: an idle 64-frame block
+  at 48 kHz drops from about 62 µs to about 0.5 µs, roughly, on an unquiet
+  shared build machine, and a playing one is unchanged within measurement
+  noise. An instance never played sleeps after half a second, a played
+  one 12 to 17 s after its last key in the cases measured. The engine
+  gains a suspended mode (`AcustraEngine::suspend`) whose clocks run on,
+  so sleep changes no sample in any case tested: a note after it plays bit
+  for bit as on an instance that never slept. A struck key, or a changed
+  parameter, wakes it; every other MIDI message reaches it asleep. See
+  [Outputs](#outputs) and [the decision](Docs/decisions.md).
 - No parameter or saved parameter value changes. The Performer is
   unchanged, and the engine's only change is that suspended mode, which
   nothing but the plug-in's sleep uses.

@@ -3146,13 +3146,13 @@ struct SleepSession
         return true;
     }
 
-    // The last sample at or above the sleep threshold on any output, or -1.
-    std::int64_t lastAudible (const std::array<std::vector<float>, 3>& audio) const
+    // The last sample whose magnitude reaches level on any output, or -1.
+    static std::int64_t lastReaching (const std::array<std::vector<float>, 3>& audio, float level)
     {
         std::int64_t result = -1;
         for (const auto& channel : audio)
             for (std::size_t sample = 0; sample < channel.size(); ++sample)
-                if (std::abs (channel[sample]) >= 1.0e-6f)
+                if (std::abs (channel[sample]) >= level)
                     result = std::max (result, static_cast<std::int64_t> (sample));
         return result;
     }
@@ -3195,122 +3195,95 @@ void testIdleInstancesSleep()
     expect (idle.asleep.back() && idle.sleptSilently(),
             "a sleeping instance woke or rendered something");
 
-    // After a played chord: only once its output has stayed under -120 dBFS
-    // for the wait, and a strum rest after the chord. The tail it no longer
-    // computes is under the threshold in the never-sleeping reference too.
-    SleepSession played;
-    played.block = 61;
-    addChord (played, samplesAt (0.1) + 7, samplesAt (0.4));
-    played.run (samplesAt (14.0));
-    const auto lastAudible = played.lastAudible (played.actual);
-    expect (played.firstSleep > 0
-                && played.firstSleep - lastAudible >= samplesAt (0.5)
-                && played.firstSleep - samplesAt (0.1) > samplesAt (acustra::Performer::strumRestSeconds),
-            "an instance slept before its output had been silent for the wait");
-    expect (played.firstSleep - lastAudible <= samplesAt (0.5) + 2 * played.block,
-            "an instance stayed awake after its output had been silent for the wait");
-    expect (played.sleptSilently(), "a sleeping instance rendered something");
-    float droppedTail = 0.0f;
-    for (const auto& channel : played.reference)
-        for (auto sample = played.firstSleep; sample < static_cast<std::int64_t> (channel.size()); ++sample)
-            droppedTail = std::max (droppedTail, std::abs (channel[static_cast<std::size_t> (sample)]));
-    expect (droppedTail < 1.0e-6f, "sleep dropped an audible tail");
-    expect (played.difference (0, played.firstSleep - played.block) == 0.0f,
-            "an awake instance did not play exactly as the performer");
-
-    // Bypassed, it sleeps by the same rule.
+    // Bypassed, it sleeps by the same rule. (A played instance:
+    // testNotesAfterSleepMatchANeverSleepingInstance.)
     SleepSession bypassed;
     bypassed.bypassed = true;
     bypassed.run (samplesAt (0.6));
     expect (bypassed.firstSleep == samplesAt (0.5), "a bypassed idle instance did not sleep");
-    std::cout << "Acustra sleep: idle after " << idle.firstSleep / sampleRate
-              << " s; after a chord at 0.1 s, last sample >= 1e-6 at "
-              << lastAudible / sampleRate << " s, asleep at " << played.firstSleep / sampleRate
-              << " s; the dropped tail peaks at " << droppedTail << '\n';
 }
 
 void testNotesAfterSleepMatchANeverSleepingInstance()
 {
-    // The same chord and release, a long silence, then one note on a frame
-    // inside a block, at several block sizes and with Gather Chords. The
-    // sleeping engine's clocks ran on (AcustraEngine::suspend), so the note
-    // meets the hand, repeat memory and strum clock where a never-sleeping
-    // instance does; once that instance has cleared its own residue
-    // (processIdleFlush), the two agree. A note sooner after sleep meets
-    // the residue the sleeping instance dropped and is held to a looser
-    // bound, measured below.
-    for (const int block : { 64, 61, 512 })
+    // A chord and its release, then sleep, then another six-string chord
+    // about a second later on a frame inside a block, at two block sizes and
+    // with Gather Chords. The output falls under -120 dBFS within a few
+    // seconds, but the engine suspends only once it has cleared its own
+    // residue (AcustraEngine::suspend): the instance sleeps at the end of the
+    // block in which the never-sleeping reference falls to exact zero. Its
+    // clocks ran on, so the chord meets the hand, repeat memory and strum
+    // clock where the never-sleeping instance does, and the whole run is
+    // that instance's, bit for bit. (Clearing a residue under -120 dBFS
+    // sooner changed such a chord by up to 6e-4.)
+    for (const int block : { 61, 512 })
         for (const bool gather : { false, true })
         {
             if (gather && block != 61)
                 continue;
-            for (const double noteSeconds : { 30.0, 10.0 })
-            {
-                SleepSession session;
-                session.block = block;
-                if (gather)
-                    session.controls.push_back ({ 0, acustra::parameters::gatherChords, 1.0f });
-                addChord (session, samplesAt (0.1) + 7, samplesAt (0.4));
-                const auto note = samplesAt (noteSeconds) + 29;
-                session.events.push_back ({ note, juce::MidiMessage::noteOn (1, 57, 0.7f) });
-                session.events.push_back ({ note + samplesAt (0.5), juce::MidiMessage::noteOff (1, 57) });
-                session.run (note + samplesAt (1.5));
-                const auto label = " (block " + std::to_string (block)
-                    + (gather ? ", gathering" : "") + ", note at "
-                    + std::to_string (static_cast<int> (noteSeconds)) + " s)";
-                expect (session.firstSleep > 0 && session.firstSleep < note - block
-                            && session.asleepAt (note - block) && ! session.asleepAt (note),
-                        "the instance did not sleep before the note and wake for it" + label);
-                expect (session.sleptSilently(), "a sleeping instance rendered something" + label);
-                // The waking block renders exact zeros up to the note (from
-                // its flushed state) and the note at its sample.
-                const auto wakeBlock = note / block * block;
-                float beforeNote = 0.0f;
-                for (const auto& channel : session.actual)
-                    for (auto sample = wakeBlock; sample < note; ++sample)
-                        beforeNote = std::max (beforeNote, std::abs (channel[static_cast<std::size_t> (sample)]));
-                expect (beforeNote == 0.0f, "the waking block sounded before its note" + label);
-                const float noteDifference = session.difference (note, note + samplesAt (1.5));
-                const float noteLevel = [&]
-                {
-                    float result = 0.0f;
-                    for (auto sample = note; sample < note + samplesAt (1.5); ++sample)
-                        result = std::max (result, std::abs (session.reference[0][static_cast<std::size_t> (sample)]));
-                    return result;
-                }();
-                expect (noteLevel > 0.01f, "the reference note did not sound" + label);
-                expect (noteDifference <= (noteSeconds > 20.0 ? 1.0e-6f : 1.0e-5f),
-                        "a note after sleep differed from a never-sleeping instance" + label
-                        + ": " + std::to_string (noteDifference));
-                // Where the never-sleeping reference's own residue last
-                // sounded, under the threshold, before the note.
-                std::int64_t residue = -1;
-                for (const auto& channel : session.reference)
-                    for (std::int64_t sample = 0; sample < note; ++sample)
-                        if (channel[static_cast<std::size_t> (sample)] != 0.0f)
-                            residue = std::max (residue, sample);
-                std::cout << "Acustra note after sleep" << label << ": asleep at "
-                          << session.firstSleep / sampleRate << " s, reference residue until "
-                          << (residue + 1) / sampleRate << " s, largest difference "
-                          << noteDifference << " (note peak " << noteLevel << ")\n";
-            }
+            SleepSession session;
+            session.block = block;
+            if (gather)
+                session.controls.push_back ({ 0, acustra::parameters::gatherChords, 1.0f });
+            addChord (session, samplesAt (0.1) + 7, samplesAt (0.4));
+            const auto chord = samplesAt (14.0) + 29;
+            addChord (session, chord, chord + samplesAt (0.3));
+            const auto end = chord + samplesAt (1.5);
+            session.run (end);
+            const auto label = " (block " + std::to_string (block)
+                + (gather ? ", gathering" : "") + ")";
+            std::array<std::vector<float>, 3> beforeChord;
+            for (std::size_t channel = 0; channel < 3; ++channel)
+                beforeChord[channel].assign (session.reference[channel].begin(),
+                                             session.reference[channel].begin() + chord);
+            const auto lastAudible = SleepSession::lastReaching (beforeChord, 1.0e-6f);
+            const auto residueEnd = SleepSession::lastReaching (
+                beforeChord, std::numeric_limits<float>::denorm_min()) + 1;
+            expect (lastAudible > 0 && session.firstSleep >= residueEnd
+                        && session.firstSleep < residueEnd + block,
+                    "the instance did not sleep when its engine had cleared its residue" + label);
+            expect (session.asleepAt (chord - block) && ! session.asleepAt (chord),
+                    "the instance did not sleep before the chord and wake for it" + label);
+            expect (session.sleptSilently(), "a sleeping instance rendered something" + label);
+            // The waking block renders exact zeros up to the chord (from its
+            // flushed state) and the chord at its sample.
+            const auto wakeBlock = chord / block * block;
+            float wakeLevel = 0.0f;
+            for (const auto& channel : session.actual)
+                for (auto sample = wakeBlock; sample < chord; ++sample)
+                    wakeLevel = std::max (wakeLevel, std::abs (channel[static_cast<std::size_t> (sample)]));
+            expect (wakeLevel == 0.0f, "the waking block sounded before its chord" + label);
+            float chordLevel = 0.0f;
+            for (auto sample = chord; sample < end; ++sample)
+                chordLevel = std::max (chordLevel, std::abs (session.reference[0][static_cast<std::size_t> (sample)]));
+            expect (chordLevel > 0.1f, "the reference chord did not sound" + label);
+            const float difference = session.difference (0, end);
+            expect (difference == 0.0f,
+                    "a chord after sleep differed from a never-sleeping instance" + label
+                    + ": " + std::to_string (difference));
+            std::cout << "Acustra chord after sleep" << label << ": after a chord at 0.1 s, "
+                      << "last sample >= 1e-6 at " << lastAudible / sampleRate
+                      << " s, reference residue until " << residueEnd / sampleRate
+                      << " s, asleep at " << session.firstSleep / sampleRate << " s; chord at "
+                      << chord / sampleRate << " s, largest difference " << difference
+                      << " (chord peak " << chordLevel << ")\n";
         }
 }
 
 void testEventsWhileAsleepTakeEffectAsAwake()
 {
-    // From silence the instance sleeps at 0.5 s. At 0.75 s it is sent the
-    // sustain pedal, a bend (with its RPN 0 range) and the upstroke
-    // keyswitch; none wakes it. At 1 s Output and Shape are automated, which
-    // wakes it for the silent wait. A strum at 2.2 s, released at 2.4 s,
-    // must then be an upstroke, bent and held by the pedal, exactly as in
-    // the never-sleeping reference.
+    // From silence the instance sleeps at 0.5 s. At 1 s Output and Shape
+    // are automated, which wakes it for the silent wait. Asleep again, at
+    // 1.6 s it is sent the sustain pedal, a bend (with its RPN 0 range) and
+    // the upstroke keyswitch; none wakes it, so only the suspended engine
+    // takes them. A strum at 2.2 s, released at 2.4 s, must then be an
+    // upstroke, bent and held by the pedal, exactly as in the never-sleeping
+    // reference.
     namespace ids = acustra::parameters;
     const auto events = [] (bool bend)
     {
         SleepSession session;
         session.block = 61;
-        const auto at = samplesAt (0.75) + 3;
+        const auto at = samplesAt (1.6) + 3;
         session.events.push_back ({ at, juce::MidiMessage::controllerEvent (1, 64, 127) });
         session.events.push_back ({ at, juce::MidiMessage::controllerEvent (1, 101, 0) });
         session.events.push_back ({ at, juce::MidiMessage::controllerEvent (1, 100, 0) });
@@ -3326,13 +3299,16 @@ void testEventsWhileAsleepTakeEffectAsAwake()
         return session;
     };
     const auto session = events (true);
-    const auto at = samplesAt (0.75) + 3;
-    expect (session.asleepAt (at) && session.asleepAt (at + 2 * session.block),
-            "a controller, bend, RPN or keyswitch woke the sleeping instance");
-    expect (! session.asleepAt (samplesAt (1.0)) && session.asleepAt (samplesAt (2.2) - session.block),
+    const auto at = samplesAt (1.6) + 3;
+    expect (session.asleepAt (samplesAt (0.75)) && ! session.asleepAt (samplesAt (1.0))
+                && session.asleepAt (at - session.block),
             "an automated parameter did not wake the instance for the silent wait");
+    bool sleptThrough = true;
+    for (auto sample = at; sample < samplesAt (2.2) - session.block; sample += session.block)
+        sleptThrough = sleptThrough && session.asleepAt (sample);
+    expect (sleptThrough, "a controller, bend, RPN or keyswitch woke the sleeping instance");
     const float difference = session.difference (0, samplesAt (3.5));
-    expect (difference <= 1.0e-6f,
+    expect (difference == 0.0f,
             "events sent while asleep did not take effect as on a never-sleeping instance: "
                 + std::to_string (difference));
     const double rise = upperRegisterRise (monoOf (session, samplesAt (2.2), samplesAt (2.4)));
@@ -3370,9 +3346,9 @@ void testTheFirstStrumAfterSleepIsADownstroke()
     const double after = upperRegisterRise (monoOf (session, strum, strum + samplesAt (0.2)));
     expect (down >= 0.006 && up < 0.5 * down, "the strums before sleep did not alternate");
     expect (after >= 0.006 && after > 2.0 * up, "the first strum after sleep was not a downstroke");
-    const float difference = session.difference (strum, strum + samplesAt (0.5));
-    expect (difference <= 1.0e-6f, "the strum after sleep differed from a never-sleeping instance: "
-                                       + std::to_string (difference));
+    const float difference = session.difference (0, strum + samplesAt (0.5));
+    expect (difference == 0.0f, "the strum after sleep differed from a never-sleeping instance: "
+                                    + std::to_string (difference));
     std::cout << "Acustra strum after sleep: down " << down * 1000.0 << " ms, up "
               << up * 1000.0 << " ms, after sleep " << after * 1000.0
               << " ms; largest difference " << difference << '\n';
@@ -3390,25 +3366,26 @@ void testSleepWaitsForEverythingThatCanSound()
         expect (session.firstSleep < 0, "the instance slept while a key was held");
     }
     // A released note held by the pedal or the Sustain switch: no sleep while
-    // it rings, and sleep after it is let go.
+    // it rings, and sleep after it is let go. Held to 16 s, past the 14.5 s
+    // at which the same note left alone puts the instance to sleep.
     for (const bool pedal : { true, false })
     {
         SleepSession session;
         if (pedal)
         {
             session.events.push_back ({ samplesAt (0.05), juce::MidiMessage::controllerEvent (1, 64, 127) });
-            session.events.push_back ({ samplesAt (8.0), juce::MidiMessage::controllerEvent (1, 64, 0) });
+            session.events.push_back ({ samplesAt (16.0), juce::MidiMessage::controllerEvent (1, 64, 0) });
         }
         else
         {
             session.controls.push_back ({ 0, ids::sustain, 1.0f });
-            session.controls.push_back ({ samplesAt (8.0), ids::sustain, 0.0f });
+            session.controls.push_back ({ samplesAt (16.0), ids::sustain, 0.0f });
         }
         session.events.push_back ({ samplesAt (0.1), juce::MidiMessage::noteOn (1, 64, 0.7f) });
         session.events.push_back ({ samplesAt (0.3), juce::MidiMessage::noteOff (1, 64) });
-        session.run (samplesAt (16.0));
+        session.run (samplesAt (19.0));
         const std::string label = pedal ? "the sustain pedal" : "the Sustain switch";
-        expect (session.firstSleep > samplesAt (8.0),
+        expect (session.firstSleep > samplesAt (16.0),
                 "the instance slept while " + label + " held a ringing note");
         expect (session.asleep.back(), "the instance did not sleep after " + label + " let go");
     }
@@ -3422,7 +3399,7 @@ void testSleepWaitsForEverythingThatCanSound()
         session.run (samplesAt (1.5));
         expect (session.asleepAt (chord - session.block) && ! session.asleepAt (chord),
                 "the instance slept while Gather Chords held notes");
-        expect (session.difference (0, samplesAt (1.5)) <= 1.0e-6f,
+        expect (session.difference (0, samplesAt (1.5)) == 0.0f,
                 "a gathered chord after sleep differed from a never-sleeping instance");
     }
 }
