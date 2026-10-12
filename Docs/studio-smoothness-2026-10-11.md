@@ -4,7 +4,8 @@ The user asked for a smooth, natural studio sound without unwanted resonances
 or boominess. Nobody listened during this pass, so it records what the
 instrument measures, which of its levers move those measurements, what was
 applied from that (one bounded capture refinement, under "What was
-applied") and what is left for a listener to choose. The survey below is
+applied") and what was left for a listener to choose; the listener's
+verdict came on 2026-10-12 ("Hearing it"). The survey below is
 on engine `acdb856` (the Sustain switch and the panel knobs change no
 sample); the applied change is measured against the merged main
 (`dbd939b`, whose balanced observation blend moved the same numbers
@@ -223,10 +224,13 @@ loss establishes closer measured features, not a listener's preference.
 
 ## Hearing it
 
-Nobody has listened. To hear the change blind, build the previous engine
-(main at `dbd939b`) and this one, render the sweep and the strummed phrase above
-with each `AcustraPerformanceRenderer` (the tool for the sweep; the phrase
-is `Tools/MeasureNoteEvenness.py`'s events format with the chords listed
-in the room section), label them A and B without telling the listener
-which is which, and record the verdict in Docs/decisions.md. The tool's
-`summary.json` records every number in these tables.
+Heard on 2026-10-12. The blind pack was rendered with main's engine
+(`dbd939b`) as A and this engine (`8cfcec6`) as B by each build's
+`AcustraPerformanceRenderer`: the strummed phrase from the room section,
+seven single notes (E2, G2, A2, A3, E4, A#4, C#5) and an A4-D5 melody that
+crosses the mid peak and hole, each on the Dreadnought and the Auditorium,
+stereo mic, Finger, Room 0.5, 24-bit WAV at one shared gain, the key in a
+separate file. The user's verdict, given before reading the key, was "B is
+better"; no piece or Shape was singled out. Docs/decisions.md (2026-10-12)
+records it. The tool's `summary.json` records every number in the tables
+above.

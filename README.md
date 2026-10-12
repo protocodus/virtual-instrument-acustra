@@ -90,7 +90,8 @@ at the air mode of every construction but the Parlor, on the summed
 microphone pressure after the balanced observation blend, with the dipped
 constructions re-levelled. The piezo's saddle force, the measured body
 data and its damping, parameter IDs, saved states and the wooden interface
-are retained; the sound change is authored and measured, not yet heard. See the
+are retained; the sound change is authored and measured, and was preferred
+blind over main's engine on 2026-10-12. See the
 [release history](#release-history) and the
 [smoothness report](Docs/studio-smoothness-2026-10-11.md).
 
@@ -3031,8 +3032,11 @@ set without it.
   its neighbours and the next 10 dB under (A#4 and C#5 on the Dreadnought):
   a damping candidate measured well but was dropped, since the model audit
   pins the radiation to each mode's measured damping. Authored and
-  measured, not heard: see the [report](Docs/studio-smoothness-2026-10-11.md)
-  for the before and after tables and the blind A/B recipe.
+  measured, then heard: on 2026-10-12 the user preferred this engine (B)
+  over main's (A) on a blind pack of the phrase, seven single notes and an
+  A4-D5 melody on the Dreadnought and Auditorium (Docs/decisions.md). See
+  the [report](Docs/studio-smoothness-2026-10-11.md) for the before and
+  after tables and the pack.
 - **Sustain, a host-automatable switch** beside CHORDS and PANIC
   (`Performer::setSustainHold`): on, every released note rings on exactly as
   under the CC64 pedal, on every channel, until its string is taken or the

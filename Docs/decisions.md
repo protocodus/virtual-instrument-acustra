@@ -5,6 +5,21 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the air-mode dip, heard: B over main
+
+The user listened to the blind A/B pack rendered for the 2026-10-11 air-mode
+dip and preferred B. A was main at `dbd939b` (the balanced observation
+blend, no dip); B was this engine (`8cfcec6`, the -2.5 dB dip at the
+construction's air mode on every Shape but the Parlor). The pack: the
+strummed phrase (E A D G E at 100 BPM), seven single notes (E2, G2, A2, A3,
+E4, A#4, C#5) and the A4-D5 melody, each on the Dreadnought and the
+Auditorium, stereo mic, Finger, Room 0.5, 24-bit at one shared gain, with
+the key in a separate file. The verdict was "B is better", given before the
+key was read; the user did not single out a piece or a Shape. This is the
+listening verdict the 2026-10-11 entry below said the measurements could
+not give, and the dip ships on its strength. The Parlor's A#2/B2 lift and
+the mid peak and hole were not part of the pair and stay as recorded there.
+
 ## 2026-10-11 — lower the new-instance Release Noise default to 10%
 
 At the user's request, Release Noise now starts at 10% instead of 70%. This
@@ -170,9 +185,9 @@ the Parlor's Finger and Thumb cells keep their gains. Against the embedded
 recordings the descriptor loss moves within one percent of main's: the two
 picked archtop sets closer (-0.7% and -0.9%, attack and body terms), the
 eight finger flat-top notes further (+0.6%, the attack term). This is a
-measured smoothing, not a listening verdict: the report records how to render the
-previous engine beside it for a blind A/B, and the numbers that would show
-a listener's preference are not these.
+measured smoothing; the listening verdict came the next day (the
+2026-10-12 entry above: the user preferred this engine, B, over main, A,
+on the blind pack), and the numbers here are not what decided it.
 
 ## 2026-10-11 — a Sustain switch beside the pedal
 

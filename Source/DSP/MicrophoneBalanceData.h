@@ -27,9 +27,9 @@ inline constexpr float originalAirPeakAdjustmentDb = -2.75f;
 // blend (G2 +3.1, G#2 +5.5 on the Auditorium). The dip takes about 1 dB
 // off that excess (G2 +3.1 to +2.0 dB on the Dreadnought, G#2 +5.5 to +4.6
 // on the Auditorium) and moves E2, under the Dreadnought's A0, by 0.6 dB.
-// An authored capture refinement, like the two above: no listening verdict
-// yet, and the measured instrument is untouched. The piezo never passes
-// through it.
+// An authored capture refinement, like the two above, preferred blind
+// over main's engine on 2026-10-12 (Docs/decisions.md); the measured
+// instrument is untouched. The piezo never passes through it.
 inline constexpr float originalAirModeDipDb = -2.5f;
 inline constexpr float originalAirModeDipQ = 2.5f;
 // The dip takes no level restore: it costs the default cell's stereo phrase
