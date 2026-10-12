@@ -5,6 +5,34 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the Parlor's air-mode dip, measured again and still held
+
+The Parlor's B2/A#2 lift is the largest low-end resonance left after the
+air-mode dip (every other Shape takes it). Measured on a scratch build with
+the dip's cutoff raised over the Parlor's air mode (117 to 130 Hz; nothing
+else changed), on the E2-E5 sweep at velocity 96, Finger, stereo mic, Room
+0.5: B2 +5.7 to +4.6 dB over its neighbours, A#2 +4.0 to +3.4, the sweep's
+RMS deviation 3.44 to 3.35 dB; the next peak, A#3 at +5.6, is untouched,
+as is the E5 hole at -10.4. The dip lowers the Parlor's calibration phrase
+by 0.78 LU on Spruce Finger (0.86 Thumb, 0.88/0.95 Mahogany, 1.08/1.24
+Maple) and the construction loudness fixture's phrase by 0.98 (Spruce
+Finger, -2.87 to -3.85 LU from the default). Re-levelled to the
+calibration target, Parlor Spruce Finger would play -3.07 LU on the
+fixture, 0.07 past its 3 LU contract, with Mahogany Finger at -2.95; every
+other Parlor cell lands between -2.0 and -2.5. That is the 2026-10-11
+finding (the dip costs the fixture's phrase 0.2 LU more than the
+calibration phrase) measured again, and the tolerance is not loosened to
+fit a refinement, so the Parlor keeps its lift. A dip shallow enough to
+fit (about -1.6 dB) would take B2 only to about +5.0 dB.
+
+What would let the Parlor take the dip is a choice, not a measurement:
+widen the fixture's tolerance for the Parlor by a quarter LU, or let its
+Finger and Thumb cells sit about half an LU over the calibration target
+(inside the calibration's own 1 LU), which also lifts a Shape the fixture
+already finds nearly 3 LU quiet on its chord-and-strum phrase. Neither is
+taken here; both are the user's call. Nobody listened to the scratch
+build and it ships nothing.
+
 ## 2026-10-12 — only the tuning's range answers
 
 The user asked that the instrument allow only the guitar's range for its
