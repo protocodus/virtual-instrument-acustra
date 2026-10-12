@@ -112,13 +112,16 @@ ditto "${APP}" "${PACKAGE_ROOT}/Applications/Acustra.app"
 
 NOTICE_ROOT="${PACKAGE_ROOT}/Library/Application Support/Acustra/Documentation"
 JUCE_NOTICE="${PROJECT_DIR}/ThirdParty/JUCE-LICENSE.md"
+JUCE_DEPENDENCY_NOTICE="${PROJECT_DIR}/ThirdParty/JUCE-DEPENDENCY-LICENSES.txt"
 CC0_NOTICE="${PROJECT_DIR}/ThirdParty/CC0-1.0.txt"
 EASTMAN_NOTICE="${PROJECT_DIR}/ThirdParty/Eastman-E1D-README.md"
 SHINY_NOTICE="${PROJECT_DIR}/ThirdParty/Shinyguitar-README.txt"
 BANK_MANIFEST="${PROJECT_DIR}/Assets/SampleBank/manifest.json"
+USER_GUIDE="${PROJECT_DIR}/Docs/USER_GUIDE.md"
 for notice in "${PROJECT_DIR}/LICENSE" "${PROJECT_DIR}/THIRD_PARTY_NOTICES.md" \
-              "${JUCE_NOTICE}" "${CC0_NOTICE}" \
-              "${EASTMAN_NOTICE}" "${SHINY_NOTICE}" "${BANK_MANIFEST}"; do
+              "${JUCE_NOTICE}" "${JUCE_DEPENDENCY_NOTICE}" "${CC0_NOTICE}" \
+              "${EASTMAN_NOTICE}" "${SHINY_NOTICE}" "${BANK_MANIFEST}" \
+              "${USER_GUIDE}"; do
     if [[ ! -f "${notice}" ]]; then
         echo "error: missing distribution notice: ${notice}" >&2
         exit 1
@@ -133,6 +136,8 @@ copy_documentation() {
     ditto "${PROJECT_DIR}/THIRD_PARTY_NOTICES.md" \
         "${destination}/THIRD_PARTY_NOTICES.md"
     ditto "${JUCE_NOTICE}" "${destination}/ThirdParty/JUCE-LICENSE.md"
+    ditto "${JUCE_DEPENDENCY_NOTICE}" \
+        "${destination}/ThirdParty/JUCE-DEPENDENCY-LICENSES.txt"
     ditto "${CC0_NOTICE}" "${destination}/ThirdParty/CC0-1.0.txt"
     ditto "${EASTMAN_NOTICE}" \
         "${destination}/ThirdParty/Eastman-E1D-README.md"
@@ -140,6 +145,7 @@ copy_documentation() {
         "${destination}/ThirdParty/Shinyguitar-README.txt"
     ditto "${BANK_MANIFEST}" \
         "${destination}/Assets/SampleBank/manifest.json"
+    ditto "${USER_GUIDE}" "${destination}/USER_GUIDE.md"
 }
 
 copy_documentation "${NOTICE_ROOT}"
@@ -172,8 +178,34 @@ PKG_FINAL="${DIST_DIR}/Acustra-${DISTRIBUTION_VERSION}-macOS-${ARTIFACT_ARCH}.pk
 # Rebuilding this version must not remove packages from earlier releases.
 rm -f "${ZIP_PATH}" "${PKG_FINAL}" "${PKG_UNSIGNED}"
 
+# By default Installer moves a bundle to wherever it finds an installed copy
+# with the same identifier, which all three formats share, and skips it when
+# that copy is newer. Install each bundle at its own path, replacing any version.
+COMPONENT_PLIST="${BUILD_DIR}/package-components.plist"
+pkgbuild --analyze --root "${PACKAGE_ROOT}" "${COMPONENT_PLIST}"
+# pkgbuild --analyze omits some keys from a bundle's entry (on the runner
+# the VST3's had no BundleIsRelocatable), and PlistBuddy's Set fails on a
+# missing key, so each key is removed if present and added.
+set_bundle_key() {
+    "${PLIST_BUDDY}" -c "Delete :$1:$2" "${COMPONENT_PLIST}" >/dev/null 2>&1 || true
+    "${PLIST_BUDDY}" -c "Add :$1:$2 $3 $4" "${COMPONENT_PLIST}"
+}
+bundle_count=0
+while "${PLIST_BUDDY}" -c "Print :${bundle_count}:RootRelativeBundlePath" \
+        "${COMPONENT_PLIST}" >/dev/null 2>&1; do
+    set_bundle_key "${bundle_count}" BundleIsRelocatable bool false
+    set_bundle_key "${bundle_count}" BundleIsVersionChecked bool false
+    set_bundle_key "${bundle_count}" BundleOverwriteAction string upgrade
+    bundle_count=$((bundle_count + 1))
+done
+if [[ "${bundle_count}" -ne 3 ]]; then
+    echo "error: pkgbuild found ${bundle_count} bundles, expected the VST3, AU and app" >&2
+    exit 1
+fi
+
 COPYFILE_DISABLE=1 pkgbuild \
     --root "${PACKAGE_ROOT}" \
+    --component-plist "${COMPONENT_PLIST}" \
     --identifier cz.protocodus.acustra.pkg \
     --version "${BUILD_NUMBER}" \
     --install-location / \

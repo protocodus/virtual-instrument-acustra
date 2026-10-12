@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -104,6 +105,28 @@ bool sameEngineParameters (const acustra::EngineParameters& a,
         && a.bodyAmount == b.bodyAmount && a.stereoWidth == b.stereoWidth
         && a.outputGain == b.outputGain && a.piezoMix == b.piezoMix
         && a.releaseNoise == b.releaseNoise && a.room == b.room;
+}
+
+// The user area of the display the editor opens on (empty without one),
+// chosen as the editor chooses it.
+juce::Rectangle<int> editorDisplayArea()
+{
+    const auto* display = juce::Desktop::getInstance().getDisplays()
+        .getDisplayForPoint (juce::Desktop::getMousePosition().toFloat());
+    return display != nullptr ? display->userBounds.toNearestInt() : juce::Rectangle<int> {};
+}
+
+juce::Label* findLabel (juce::Component& root,
+                        const std::function<bool (const juce::Label&)>& matches)
+{
+    for (auto* child : root.getChildren())
+    {
+        if (auto* label = dynamic_cast<juce::Label*> (child); label != nullptr && matches (*label))
+            return label;
+        if (auto* found = findLabel (*child, matches))
+            return found;
+    }
+    return nullptr;
 }
 
 std::vector<float> flattened (const juce::AudioBuffer<float>& audio)
@@ -1768,8 +1791,14 @@ void testEditorRendering()
     if (editor == nullptr)
         return;
 
-    expect (editor->getWidth() == editorWidth && editor->getHeight() == editorHeight,
-            "the editor did not open at its documented design size");
+    {
+        // The design size, or the largest the display has room for.
+        const auto opening = AcustraAudioProcessorEditor::sizingFor (0, editorDisplayArea());
+        expect (opening.width <= editorWidth && editor->getWidth() == opening.width
+                    && editor->getHeight() == juce::roundToInt (
+                        opening.width * static_cast<double> (editorHeight) / editorWidth),
+                "the editor did not open at its design size or the display's room");
+    }
     expect (editor->isResizable(), "the editor is not host-resizable");
     expect (editor->getNumChildComponents() >= 18,
             "the editor is missing controls or the keyboard");
@@ -2027,8 +2056,13 @@ void testEditorRendering()
                         && ! stringActivity->getBounds().intersects (midiKeyboard->getBounds()),
                     "the string display is clipped or overlaps the keyboard");
         juce::Image image { juce::Image::ARGB, width, height, true };
-        juce::Graphics graphics { image };
-        editor->paintEntireComponent (graphics, true);
+        {
+            // A Direct2D image (Windows' native type) commits its drawing
+            // only when the Graphics drawing into it ends; reading pixels
+            // before that reads the cleared image.
+            juce::Graphics graphics { image };
+            editor->paintEntireComponent (graphics, true);
+        }
 
         std::set<juce::uint32> colours;
         bool opaque = true;
@@ -2151,6 +2185,183 @@ void testEditorRendering()
                     [] (const auto& string) { return ! string.keyDown && string.level == 0.0f; }),
             "closing the editor stopped audio or retained display publication");
     processor.releaseResources();
+}
+
+void testEditorSizeFitsTheDisplayAndIsRemembered()
+{
+    using Editor = AcustraAudioProcessorEditor;
+    namespace ids = acustra::parameters;
+    const auto heightOf = [] (int width)
+    {
+        return juce::roundToInt (width * static_cast<double> (editorHeight) / editorWidth);
+    };
+
+    // Without a display, or on one with room, a new editor opens at its
+    // design size with the usual minimum; a saved width is kept in limits.
+    const juce::Rectangle<int> roomy { 0, 0, 2560, 1400 };
+    for (const auto area : { juce::Rectangle<int> {}, roomy })
+    {
+        const auto sizing = Editor::sizingFor (0, area);
+        expect (sizing.width == editorWidth && sizing.minimumWidth == editorMinimumWidth,
+                "a new editor did not open at its design size where it fits");
+    }
+    expect (Editor::sizingFor (1300, roomy).width == 1300
+                && Editor::sizingFor (99999, roomy).width == editorMaximumWidth
+                && Editor::sizingFor (100, roomy).width == editorMinimumWidth,
+            "a saved editor width was not kept within the editor's limits");
+    // 1366 x 768 under a 40-point taskbar: the editor and its minimum shrink,
+    // keeping the aspect ratio, to the room under a 48-point title bar.
+    const auto laptop = Editor::sizingFor (1300, { 0, 0, 1366, 728 });
+    expect (laptop.width == 777 && laptop.minimumWidth == 777
+                && heightOf (laptop.width) + 48 <= 728,
+            "the editor did not fit a 1366 x 768 display");
+    // A 1440 x 900 MacBook Air under its menu bar has room above the
+    // minimum, so only the opening size shrinks.
+    const auto air = Editor::sizingFor (0, { 0, 25, 1440, 875 });
+    expect (air.width == 945 && air.minimumWidth == editorMinimumWidth,
+            "the editor did not fit a 1440 x 900 display");
+    // Never below 0.6 of the design size, however small the display.
+    const auto tiny = Editor::sizingFor (0, { 0, 0, 640, 480 });
+    expect (tiny.width == 672 && tiny.minimumWidth == 672,
+            "the editor shrank below 0.6 of its design size");
+
+    // The last width travels with the state, beside the parameters: never
+    // a host parameter, and absent until an editor has been resized.
+    auto sourceOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& source = *sourceOwner;
+    const auto savedXml = [] (AcustraAudioProcessor& processor)
+    {
+        juce::MemoryBlock bytes;
+        processor.getStateInformation (bytes);
+        return juce::AudioProcessor::getXmlFromBinary (
+            bytes.getData(), static_cast<int> (bytes.getSize()));
+    };
+    {
+        const auto xml = savedXml (source);
+        expect (xml != nullptr && ! xml->hasAttribute ("editorWidth"),
+                "a state saved before any editor opened carries a width");
+    }
+    const auto area = editorDisplayArea();
+    {
+        std::unique_ptr<juce::AudioProcessorEditor> editor { source.createEditor() };
+        const auto opening = Editor::sizingFor (0, area);
+        expect (editor->getWidth() == opening.width
+                    && editor->getConstrainer() != nullptr
+                    && editor->getConstrainer()->getMinimumWidth() == opening.minimumWidth
+                    && editor->getConstrainer()->getMinimumHeight() == heightOf (opening.minimumWidth),
+                "a new editor did not open at, or limit itself to, the sizes for its display");
+        // The width the editor picked for the display is nobody's choice.
+        const auto xml = savedXml (source);
+        expect (source.getEditorWidth() == 0 && xml != nullptr && ! xml->hasAttribute ("editorWidth"),
+                "opening the editor remembered the width it picked for the display");
+        editor->setSize (1280, heightOf (1280));
+    }
+    expect (source.getEditorWidth() == 1280, "the processor lost the editor's last width");
+    juce::MemoryBlock stored;
+    source.getStateInformation (stored);
+    {
+        const auto xml = savedXml (source);
+        expect (xml != nullptr && xml->getIntAttribute ("editorWidth") == 1280
+                    && xml->getChildByAttribute ("id", "editorWidth") == nullptr,
+                "the editor width was not saved beside the parameters");
+        expect (source.getParameters().size() == ids::parameterCount,
+                "remembering the editor size added a host parameter");
+    }
+    auto restoredOwner = std::make_unique<AcustraAudioProcessor>();
+    auto& restored = *restoredOwner;
+    restored.setStateInformation (stored.getData(), static_cast<int> (stored.getSize()));
+    expect (restored.getEditorWidth() == 1280
+                && ! restored.parameters.state.hasProperty ("editorWidth"),
+            "a reloaded state lost its editor width or kept it among the parameters");
+    {
+        std::unique_ptr<juce::AudioProcessorEditor> editor { restored.createEditor() };
+        const auto expected = Editor::sizingFor (1280, area).width;
+        expect (editor->getWidth() == expected && editor->getHeight() == heightOf (expected),
+                "a reloaded session did not reopen its editor at the size it was left");
+        // Fitting a smaller display does not replace the session's width.
+        expect (restored.getEditorWidth() == 1280,
+                "reopening the editor replaced the session's width");
+    }
+
+    // A state without a width (saved before it was kept), or with a
+    // malformed one, leaves the last width.
+    const auto lastWidth = restored.getEditorWidth();
+    for (const juce::var malformed : { juce::var {}, juce::var ("wide"), juce::var (-3) })
+    {
+        auto state = restored.parameters.copyState();
+        state.setProperty ("stateVersion", 2, nullptr);
+        if (! malformed.isVoid())
+            state.setProperty ("editorWidth", malformed, nullptr);
+        juce::MemoryBlock bytes;
+        if (const auto xml = state.createXml())
+            juce::AudioProcessor::copyXmlToBinary (*xml, bytes);
+        restored.setStateInformation (bytes.getData(), static_cast<int> (bytes.getSize()));
+        expect (restored.getEditorWidth() == lastWidth,
+                "a state without a valid editor width changed the last one");
+    }
+}
+
+void testUnsupportedSampleRatesAreSilent()
+{
+    // The engine models 8 kHz to its maximum rate and clamps any other,
+    // which would play every note off pitch: there the processor stays
+    // silent and the editor says so. A supported rate plays again.
+    auto owner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *owner;
+    const auto play = [&] (double rate)
+    {
+        processor.prepareToPlay (rate, blockSize);
+        juce::AudioBuffer<float> audio { 2, blockSize };
+        float loudest = 0.0f;
+        for (int block = 0; block < 24; ++block)
+        {
+            juce::MidiBuffer midi;
+            if (block == 0)
+                midi.addEvent (juce::MidiMessage::noteOn (1, 64, 0.8f), 0);
+            processor.processBlock (audio, midi);
+            expect (finite (audio), "non-finite output at " + std::to_string (rate) + " Hz");
+            loudest = std::max (loudest, peak (audio));
+        }
+        return loudest;
+    };
+    const auto maximum = acustra::AcustraEngine::maximumSupportedSampleRate;
+    for (const double rate : { 8000.0, sampleRate, maximum })
+        expect (play (rate) > 0.001f && processor.isSampleRateSupported(),
+                "Acustra did not play at its supported " + std::to_string (rate) + " Hz");
+    for (const double rate : { 7999.0, maximum + 1.0, 2.0 * maximum, 0.0 })
+        expect (! (play (rate) > 0.0f) && ! processor.isSampleRateSupported(),
+                "Acustra played at the unsupported " + std::to_string (rate) + " Hz");
+
+    std::unique_ptr<juce::AudioProcessorEditor> editor { processor.createEditor() };
+    auto* status = findLabel (*editor, [] (const juce::Label& label)
+                                    { return label.getName() == "Engine status"; });
+    expect (status != nullptr && status->getText().contains ("UNSUPPORTED RATE")
+                && status->getTooltip().contains ("384 kHz"),
+            "the editor did not say the host's rate is unsupported");
+    play (sampleRate);
+    editor.reset();
+    editor.reset (processor.createEditor());
+    status = findLabel (*editor, [] (const juce::Label& label)
+                        { return label.getName() == "Engine status"; });
+    expect (status != nullptr && status->getText().startsWith ("48.0 kHz")
+                && ! status->getText().contains ("UNSUPPORTED"),
+            "the editor still called a supported rate unsupported");
+    editor.reset();
+    processor.releaseResources();
+}
+
+void testEditorShowsTheBuildIdentity()
+{
+    // The version and build number come from the identity record CMake
+    // freezes into every format; reading it keeps it in each binary.
+    auto owner = std::make_unique<AcustraAudioProcessor>();
+    std::unique_ptr<juce::AudioProcessorEditor> editor { owner->createEditor() };
+    const auto* subtitle = findLabel (*editor, [] (const juce::Label& label)
+                                      { return label.getText().startsWith ("PHYSICALLY MODELLED"); });
+    expect (subtitle != nullptr
+                && subtitle->getText().contains (
+                    juce::String (JucePlugin_VersionString) + " (BUILD "),
+            "the editor does not show the version and build from the identity record");
 }
 } // namespace
 
@@ -2299,9 +2510,10 @@ void testGatheredChordsVoiceLikeSequencedChords()
     expect (latency == 1440 + acustra::AcustraEngine::outputLatencySamples(),
             "Gather Chords did not report its 30 ms window as latency");
     {
-        // Below the modelled range the engine plays at 8 kHz, and the window
-        // the player holds MIDI back for is counted there: the latency
-        // reported is that window, not 30 ms of the host's rate.
+        // Below the modelled range the engine is prepared at 8 kHz (the
+        // plug-in stays silent there), and the window the player would hold
+        // MIDI back for is counted at that rate: the latency reported is
+        // that window, not 30 ms of the host's rate.
         auto lowRateOwner = std::make_unique<AcustraAudioProcessor>();
         setValue (*lowRateOwner, acustra::parameters::gatherChords, 1.0f);
         lowRateOwner->prepareToPlay (4000.0, blockSize);
@@ -2837,6 +3049,9 @@ int main()
     testMalformedStateParameters();
     testStringActivityDisplay();
     testEditorRendering();
+    testEditorSizeFitsTheDisplayAndIsRemembered();
+    testUnsupportedSampleRatesAreSilent();
+    testEditorShowsTheBuildIdentity();
 
     if (failureCount != 0)
     {

@@ -1,13 +1,14 @@
-// Renders the plug-in editor, as it opens for a new instance, to a PNG: the
-// README's screenshot (Docs/screenshots/acustra-standalone.png) and a way to
-// look at a layout change without a host. The editor is painted off screen
-// at its design size, so no window is opened; on Linux the fonts still need
-// a display, which xvfb-run provides.
+// Renders the plug-in editor, as it opens for a new instance on a display
+// with room for it, to a PNG: the README's screenshot
+// (Docs/screenshots/acustra-standalone.png) and a way to look at a layout
+// change without a host. The editor is painted off screen at its design
+// size, so no window is opened; on Linux the fonts still need a display,
+// which xvfb-run provides.
 //
 //   AcustraEditorSnapshot OUTPUT.png [WIDTH]
 //
 // WIDTH scales the editor at its fixed aspect ratio; the default is the
-// design width the editor opens at.
+// design width, 1120, whatever room the (virtual) display has.
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
 
@@ -30,14 +31,11 @@ int main(int argc, char** argv)
         std::fprintf(stderr, "the processor has no editor\n");
         return 1;
     }
-    if (argc == 3)
-    {
-        const int width = juce::String(argv[2]).getIntValue();
-        if (width > 0)
-            editor->setSize(width, juce::roundToInt(
-                static_cast<float>(width) * static_cast<float>(editor->getHeight())
-                / static_cast<float>(editor->getWidth())));
-    }
+    const int width = argc == 3 ? juce::String(argv[2]).getIntValue() : 1120;
+    if (width > 0)
+        editor->setSize(width, juce::roundToInt(
+            static_cast<float>(width) * static_cast<float>(editor->getHeight())
+            / static_cast<float>(editor->getWidth())));
     // The status line and construction switches follow the editor's timer.
     juce::Timer::callPendingTimersSynchronously();
     const auto image = editor->createComponentSnapshot(editor->getLocalBounds(), false, 1.0f);

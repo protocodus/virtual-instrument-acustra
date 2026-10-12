@@ -113,7 +113,7 @@ not alter the packed PCM. The local upstream source note is distributed as
 `Assets/SampleBank/manifest.json` records every reference region's mapping,
 decoded hash, packed offset, onset, fade and source provenance. The separate
 reference payload is transformed audio from these CC0 works; it is not
-Acustra-authored source audio. The VST3, Audio Unit and standalone binaries
+Acustra-authored source audio. The VST®3, Audio Unit and standalone binaries
 contain no part of this payload.
 
 CC0 imposes no attribution or share-alike condition; this notice is retained
@@ -294,6 +294,47 @@ experimental participant data are not distributed. This attribution, licence
 link, source link and description of changes must accompany distributions of
 these derived values.
 
+## GuitarSet: derived values only
+
+Qingyang Xi, Rachel M. Bittner, Johan Pauwels, Xuzhou Ye and Juan P. Bello,
+*GuitarSet: A Dataset for Guitar Transcription*, ISMIR 2018. Dataset:
+GuitarSet v1.1.0, <https://zenodo.org/records/3371780>.
+
+Licence: [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/)
+
+No GuitarSet audio or annotation is included in this repository or any
+Acustra binary. Values Acustra fitted to it are compiled into every
+binary:
+
+- The capture voicing, the six filter sections in
+  `Source/DSP/CaptureVoicingData.h`, written by `Tools/FitCaptureVoicing.py`.
+  It is fitted, in third octaves, to the consensus of five sets of
+  steel-string recordings against the engine's renders of the same notes;
+  one set is GuitarSet's six microphone performances (`audio_mono-mic`,
+  one 12-second excerpt per player, rendered from their annotations by
+  `Tools/BenchmarkPerformances.py`).
+- Three strum statistics that `Tools/MeasureStrums.py` measures from the
+  comping tracks' hex-pickup audio (`audio_hex-pickup_debleeded`) and
+  their note annotations: the pick's traversal speed, 0.51 to 2.46 m/s
+  (`AcustraEngine::strumDelaySamples` in `Source/DSP/AcustraEngine.cpp`);
+  a stroke's span varying with a 36.47 % standard deviation
+  (`strumSpeedJitterHalfWidth` in `Source/DSP/AcustraEngine.h`); and a
+  repeated string's level varying with a 4.47 dB standard deviation (the
+  7.74 dB half-width in `AcustraEngine::initialisePluck`).
+
+These are Acustra's measurements and fits from the dataset, not part of
+it; the source comments and tools above describe how each was derived. This
+attribution, licence link, source link and description of changes must
+accompany distributions of these derived values.
+
+The capture voicing's other recordings are CC0 and are listed for
+provenance only: the Eastman E1D takes above (both whole takes,
+`Tools/PrepareEastmanCorpus.py`), the reference bank's eight finger-plucked
+Eastman notes, and 11 notes of Jeff Learman's 2017 Martin HD28 samples
+(program 026 of the Discord SFZ GM Bank,
+<https://github.com/sfzinstruments/Discord-SFZ-GM-Bank>, commit
+`7a9c478fe331f94f246d33332f0adedb25bbbe27`, `Tools/PrepareMartinCorpus.py`).
+
 ## DAFx-26 nonlinear modal synthesis paper: no licensed material
 
 Michele Ducceschi, Riccardo Russo and Craig J. Webb, *Measurement-Informed
@@ -355,6 +396,27 @@ The bridge conductance under the saddle (1.59e-3 s/kg) is the mean of Re(Y)
 over 5-7 kHz of the measured Fylde mobility (see its entry above); no new
 data is added for it.
 
+## fdlibm `scalbnf`: Sun Microsystems notice
+
+Built with the Reason Rack Extension's Jukebox SDK only, the engine's
+`std::complex<float>` division scales by `sdkScalbn()` in
+`Source/DSP/AcustraEngine.cpp`, a transcription, bit for bit, of `scalbnf`
+from newlib's `libm/common/sf_scalbn.c` (Ian Lance Taylor of Cygnus Support
+converted it to float from `s_scalbn.c`), which the SDK's libc links. The
+desktop plug-in does not compile it. That file's notice, which it asks to be
+preserved:
+
+```
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+```
+
 ## JUCE 8.0.14
 
 JUCE is Copyright (c) Raw Material Software Limited.
@@ -372,13 +434,34 @@ AGPLv3 for the complete combined work or an appropriate commercial JUCE
 licence. Review the JUCE 8 licence terms before distribution:
 <https://github.com/juce-framework/JUCE/blob/8.0.14/LICENSE.md>
 
-JUCE includes or interfaces with additional third-party components. Their
-copyright notices and licence terms are listed in JUCE's own `LICENSE.md` and
-source tree. The VST3 SDK portions used through JUCE are identified there as
-MIT-licensed; Apple's Audio Unit frameworks are supplied by the macOS SDK and
-remain subject to Apple's terms.
+The JUCE modules Acustra builds with (`juce_audio_utils`, the modules it
+depends on, and `juce_audio_plugin_client` for the plug-in formats) compile
+further third-party code into the binaries. Their licence texts, copied
+unchanged from the pinned JUCE tree, are in
+[`ThirdParty/JUCE-DEPENDENCY-LICENSES.txt`](ThirdParty/JUCE-DEPENDENCY-LICENSES.txt),
+which ships with every package:
+
+- in every format: HarfBuzz (Old MIT licence), SheenBidi (Apache 2.0),
+  libpng (PNG Reference Library License), zlib (zlib licence) and the
+  Independent JPEG Group's JPEG software. This software is based in part on
+  the work of the Independent JPEG Group.
+- in the VST3 plug-in: Steinberg's VST3 SDK (MIT).
+- in the macOS Audio Unit: Apple's AudioUnitSDK (Apache 2.0), which JUCE
+  vendors. The Apple system frameworks it links are supplied by the macOS
+  SDK and remain subject to Apple's terms.
+- FLAC and Ogg Vorbis (BSD-style licences), which JUCE's default audio-format
+  configuration compiles; Acustra never reads or writes either format.
+
+The other components JUCE's `LICENSE.md` lists are not compiled in: Oboe
+is Android's, GLEW, CHOC/QuickJS and Box2D belong to modules Acustra does not
+use, and the LV2, AAX and ASIO SDKs to formats and an option (`JUCE_ASIO`)
+it does not build.
 
 Acustra's source tree and offline reference tools include the two CC0
 recording families described above. The distributed plug-in and standalone
 binaries include none of their recorded audio, and include no convolution
 impulse response, neural model or added room/reverb capture.
+
+## Trademarks
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.
