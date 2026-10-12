@@ -1019,7 +1019,8 @@ float monoReferenceFor(const EngineParameters& parameters) noexcept
 {
     return originalOutputReferenceFor(parameters)
         * detail::constructionMonoTrim[constructionLoudnessCell(parameters)]
-        * detail::studioMonoLevelMatch[constructionLoudnessCell(parameters)];
+        * detail::studioMonoLevelMatch[constructionLoudnessCell(parameters)]
+        * detail::originalMonoLevelGain;
 }
 
 float piezoReferenceFor(const EngineParameters& parameters) noexcept
@@ -4617,7 +4618,8 @@ void AcustraEngine::configureBody() noexcept
     // them in vector accumulators (BodyBank::render). Shape and Wood keep
     // the same modes in the same slots ringing (sameBodyBank, audit F14).
     bodyBank_.load(bodyModes_, configuration.count, configuration.ordered);
-    bodyBank_.captureFilter.configure(sampleRate_, configuration.airModeHz);
+    bodyBank_.captureFilter.configure(sampleRate_, configuration.airModeHz,
+                                      configuration.midPeakHz);
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
     bodyConfigured_ = true;
@@ -4999,6 +5001,72 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
                 &mode.rightMomentReal, &mode.rightMomentImaginary })
             *residue *= gain;
     }
+    locateMidBand(configuration);
+}
+
+double AcustraEngine::summedMicrophoneMagnitude(const BodyConfiguration& configuration,
+                                                double hz, double sampleRate) noexcept
+{
+    // Each mode is 2 Re[R / (1 - p z^-1)] on a real input (BodyBank::render),
+    // summed over the force residues of both microphones.
+    const double omega = twoPi * hz / sampleRate;
+    const std::complex<double> inverseZ(std::cos(omega), -std::sin(omega));
+    std::complex<double> left, right;
+    for (int index = 0; index < configuration.count; ++index)
+    {
+        const auto& mode = configuration.modes[static_cast<std::size_t>(index)];
+        if (mode.poleImaginary == 0.0f)
+            continue;
+        const std::complex<double> pole(mode.poleReal, mode.poleImaginary);
+        const auto direct = 1.0 / (1.0 - pole * inverseZ);
+        const auto mirror = 1.0 / (1.0 - std::conj(pole) * inverseZ);
+        const std::complex<double> residueLeft(mode.leftReal, mode.leftImaginary);
+        const std::complex<double> residueRight(mode.rightReal, mode.rightImaginary);
+        left += residueLeft * direct + std::conj(residueLeft) * mirror;
+        right += residueRight * direct + std::conj(residueRight) * mirror;
+    }
+    return 0.5 * std::abs(left + right);
+}
+
+void AcustraEngine::locateMidBand(BodyConfiguration& configuration) const noexcept
+{
+    configuration.midPeakHz = 0.0f;
+    configuration.midHoleHz = 0.0f;
+    // A 1/96-octave walk: the hole is the band's deepest point, the peak
+    // the highest point within a fourth below it (MicrophoneBalanceData.h).
+    constexpr double stepsPerOctave = 96.0;
+    const double step = std::pow(2.0, 1.0 / stepsPerOctave);
+    double holeHz = 0.0, holeMagnitude = std::numeric_limits<double>::infinity();
+    for (double hz = detail::originalMidHoleLowerHz; hz <= detail::originalMidHoleUpperHz; hz *= step)
+    {
+        const double magnitude = summedMicrophoneMagnitude(configuration, hz, sampleRate_);
+        if (magnitude < holeMagnitude)
+        {
+            holeMagnitude = magnitude;
+            holeHz = hz;
+        }
+    }
+    if (!(holeHz > 0.0))
+        return;
+    double peakHz = 0.0, peakMagnitude = 0.0;
+    bool first = true;
+    for (double hz = holeHz / detail::originalMidHoleSearchRatio; hz < holeHz; hz *= step)
+    {
+        const double magnitude = summedMicrophoneMagnitude(configuration, hz, sampleRate_);
+        // The window's first point is a mode below the window, not a peak
+        // within it.
+        if (magnitude > peakMagnitude)
+        {
+            peakMagnitude = magnitude;
+            peakHz = first ? 0.0 : hz;
+        }
+        first = false;
+    }
+    const double depthDb = 20.0 * std::log10(peakMagnitude / std::max(holeMagnitude, 1.0e-30));
+    if (!(peakHz > 0.0) || !(depthDb >= detail::originalMidHoleMinimumDepthDb))
+        return;
+    configuration.midPeakHz = static_cast<float>(peakHz);
+    configuration.midHoleHz = static_cast<float>(holeHz);
 }
 
 void AcustraEngine::configureBridge(bool keepModalState) noexcept
@@ -10541,41 +10609,56 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
 }
 
 void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
-                                                       float airMode) noexcept
+                                                       float airMode, float midPeak) noexcept
 {
     if (!enabled)
         reset();
     enabled = true;
     airModeHz = exact::isfinite(airMode) && airMode > 0.0f
         && airMode <= detail::originalAirModeDipUpperHz ? airMode : 0.0f;
+    const auto inMidBand = [] (float hz)
+    {
+        return exact::isfinite(hz)
+            && hz >= detail::originalMidHoleLowerHz / detail::originalMidHoleSearchRatio
+            && hz <= detail::originalMidHoleUpperHz;
+    };
+    midPeakHz = inMidBand(midPeak) ? midPeak : 0.0f;
     static_assert(sizeof(detail::captureVoicingSections)
-                      / sizeof(detail::captureVoicingSections[0]) == sections - 1,
-                  "the capture filter must hold every authored section and the air dip");
+                      / sizeof(detail::captureVoicingSections[0]) == sections - 2,
+                  "the capture filter must hold every authored section, the air dip "
+                  "and the mid-band dip");
     gain = static_cast<float>(std::pow(10.0,
         (static_cast<double>(detail::captureVoicingLevelDb)
             + detail::originalCaptureLevelAdjustmentDb
-            + (airModeHz > 0.0f ? detail::originalAirModeDipLevelDb : 0.0f)) / 20.0));
+            + (airModeHz > 0.0f ? detail::originalAirModeDipLevelDb : 0.0f)
+            + (midPeakHz > 0.0f ? detail::originalMidBandLevelDb : 0.0f)) / 20.0));
     // The authored recording contour acts on the summed pressure. Weighting
     // modal residues by a contour instead breaks off-resonance cancellation:
     // the intended 500 Hz cut could become a boost on treble notes. Every
     // mechanical/radiation pole and relative modal residue stays intact.
     // Shape and Wood retain its history; their fades copy it with the bank.
-    // The last section is the dip at this construction's air mode
-    // (MicrophoneBalanceData.h), flat when no air mode is known.
+    // The last two sections follow the construction: the dip at its air
+    // mode and the dip at its mid-band peak (MicrophoneBalanceData.h), each
+    // flat when its frequency is not known.
     constexpr double doublePi = 3.141592653589793238462643383279502884;
     for (int index = 0; index < sections; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
-        const bool airDip = index == sections - 1;
-        if (airDip && airModeHz == 0.0f)
+        const int following = index - (sections - 2); // negative: authored; 0, 1: construction
+        const float centreHz = following == 0 ? airModeHz : following == 1 ? midPeakHz : 1.0f;
+        if (following >= 0 && centreHz == 0.0f)
         {
             coefficients[slot] = { 1.0, 0.0, 0.0, 0.0, 0.0 };
             continue;
         }
-        const auto section = airDip
+        const auto section = following == 0
             ? detail::CaptureVoicingSection { detail::CaptureVoicingKind::Peak,
                                               airModeHz, detail::originalAirModeDipDb,
                                               detail::originalAirModeDipQ }
+            : following == 1
+            ? detail::CaptureVoicingSection { detail::CaptureVoicingKind::Peak,
+                                              midPeakHz, detail::originalMidPeakDipDb,
+                                              detail::originalMidPeakDipQ }
             : detail::balancedOriginalCaptureSection(
                   detail::captureVoicingSections[slot]);
         const auto kind = section.kind;

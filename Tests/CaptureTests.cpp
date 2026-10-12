@@ -133,6 +133,12 @@ struct AcustraEngineTestAccess
     {
         return engine.bodyBank_;
     }
+    static const auto& bodyConfiguration(const AcustraEngine& engine,
+                                         BodyShape shape, BodyMaterial wood)
+    {
+        return engine.bodyConfigurations_[static_cast<std::size_t>(
+            3 * static_cast<int>(shape) + static_cast<int>(wood))];
+    }
     template <typename Filter>
     static auto filterHistory(const Filter& filter)
     {
@@ -341,6 +347,89 @@ std::complex<double> responseAt(const std::vector<float>& impulse, double freque
         phase *= step;
     }
     return sum;
+}
+
+// The mid-band peak the capture filter dips (MicrophoneBalanceData.h) is
+// located per construction from its own summed microphone response: the
+// deepest antiresonance between 450 and 800 Hz and the strong mode within
+// a fourth below it, at least 6 dB over the hole. Checked here against an
+// independent walk of the same response on every Shape and Wood, and
+// against the live filter.
+void testMidBandPairFollowsTheConstruction()
+{
+    using namespace acustra;
+    auto engine = std::make_unique<AcustraEngine>();
+    engine->prepare(48000, 64);
+    constexpr double rate = 48000.0;
+    const auto magnitude = [] (const auto& configuration, double hz)
+    {
+        const auto inverseZ = std::polar(1.0, -2.0 * pi * hz / rate);
+        std::complex<double> sum;
+        for (int index = 0; index < configuration.count; ++index)
+        {
+            const auto& mode = configuration.modes[static_cast<std::size_t>(index)];
+            if (mode.poleImaginary == 0.0f)
+                continue;
+            const std::complex<double> pole(mode.poleReal, mode.poleImaginary);
+            for (const auto residue : { std::complex<double>(mode.leftReal, mode.leftImaginary),
+                                        std::complex<double>(mode.rightReal, mode.rightImaginary) })
+                sum += residue / (1.0 - pole * inverseZ)
+                    + std::conj(residue) / (1.0 - std::conj(pole) * inverseZ);
+        }
+        return 0.5 * std::abs(sum);
+    };
+    const double neighbour = std::pow(2.0, 1.0 / 48.0);
+    for (int shape = 0; shape < 4; ++shape)
+        for (int wood = 0; wood < 3; ++wood)
+        {
+            const auto& configuration = Access::bodyConfiguration(*engine,
+                static_cast<BodyShape>(shape), static_cast<BodyMaterial>(wood));
+            const double peak = configuration.midPeakHz;
+            const double hole = configuration.midHoleHz;
+            const std::string cell = "shape " + std::to_string(shape)
+                + " wood " + std::to_string(wood);
+            expect(hole >= 450.0 && hole <= 800.0,
+                   "mid-band hole outside its band on " + cell);
+            expect(peak >= hole / 1.3348 && peak < hole,
+                   "mid-band peak is not within a fourth below its hole on " + cell);
+            const double holeMagnitude = magnitude(configuration, hole);
+            const double peakMagnitude = magnitude(configuration, peak);
+            expect(holeMagnitude <= magnitude(configuration, hole / neighbour)
+                       && holeMagnitude <= magnitude(configuration, hole * neighbour),
+                   "mid-band hole is not a local minimum of the summed response on " + cell);
+            expect(peakMagnitude >= magnitude(configuration, peak / neighbour)
+                       && peakMagnitude >= magnitude(configuration, peak * neighbour),
+                   "mid-band peak is not a local maximum of the summed response on " + cell);
+            // The same walk, made here: nothing in the band is deeper than
+            // the hole, nothing within a fourth below it taller than the peak.
+            const double step = std::pow(2.0, 1.0 / 96.0);
+            double deepest = holeMagnitude, tallest = peakMagnitude;
+            for (double hz = 450.0; hz <= 800.0; hz *= step)
+                deepest = std::min(deepest, magnitude(configuration, hz));
+            for (double hz = hole / 1.3348 * step; hz < hole; hz *= step)
+                tallest = std::max(tallest, magnitude(configuration, hz));
+            // The stored float centres round the walk's points by 1e-7,
+            // which a 38 dB null turns into a few hundredths of a dB.
+            expect(holeMagnitude <= deepest * 1.006,
+                   "a deeper mid-band hole was passed over on " + cell);
+            expect(peakMagnitude >= tallest * 0.994,
+                   "a taller mid-band peak was passed over on " + cell);
+            const double depthDb = 20.0 * std::log10(peakMagnitude / holeMagnitude);
+            expect(depthDb >= 6.0, "mid-band hole is shallower than 6 dB on " + cell);
+            std::cout << "mid-band pair " << cell << ": peak " << peak << " Hz, hole "
+                      << hole << " Hz, depth " << depthDb << " dB\n";
+            EngineParameters p;
+            p.shape = static_cast<BodyShape>(shape);
+            p.bodyMaterial = static_cast<BodyMaterial>(wood);
+            engine->setParameters(p);
+            // Let the construction fade finish so the next change is not
+            // queued behind it.
+            for (int n = 0; n < 48000 / 10 && Access::bodyFade(*engine) < 1.0f; ++n)
+                Access::body(*engine, 0.0f, 0.0f);
+            const auto filter = Access::captureFilter(*engine);
+            expect(filter.midPeakHz == configuration.midPeakHz,
+                   "the live capture filter is not centred on the construction's peak on " + cell);
+        }
 }
 
 double decibels(double magnitude) { return 20.0 * std::log10(magnitude); }
@@ -1589,7 +1678,7 @@ void testMicrophoneFilterBypassAndLifecycle()
         expect(filter.stateLeft != fresh.stateLeft && filter.stateRight != fresh.stateRight,
                "microphone filter lifecycle probe did not establish both histories");
         const auto hotFilter = filter;
-        filter.configure(rate, filter.airModeHz);
+        filter.configure(rate, filter.airModeHz, filter.midPeakHz);
         expect(filter.coefficients == hotFilter.coefficients
                    && filter.stateLeft == hotFilter.stateLeft
                    && filter.stateRight == hotFilter.stateRight,
@@ -1678,11 +1767,12 @@ void testMicrophoneFilterConstructionTransitions()
         maple.bodyMaterial = BodyMaterial::Maple;
         engine->setParameters(maple);
         const auto afterWood = Access::captureFilter(*engine);
-        // The six fitted sections are construction-independent; the last,
-        // the dip at the construction's air mode, follows Wood's coupled
-        // air/top participation. The histories carry across either way.
+        // The six fitted sections are construction-independent; the last
+        // two, the dips at the construction's air mode and mid-band peak,
+        // follow Wood's coupled air/top participation. The histories carry
+        // across either way.
         bool fittedSectionsKept = true;
-        for (std::size_t section = 0; section + 1 < afterWood.coefficients.size(); ++section)
+        for (std::size_t section = 0; section + 2 < afterWood.coefficients.size(); ++section)
             fittedSectionsKept = fittedSectionsKept
                 && afterWood.coefficients[section] == beforeWood.coefficients[section];
         expect(fittedSectionsKept
@@ -1692,6 +1782,10 @@ void testMicrophoneFilterConstructionTransitions()
         expect(afterWood.airModeHz > 60.0f && afterWood.airModeHz < 150.0f
                    && std::abs(afterWood.airModeHz - beforeWood.airModeHz) < 10.0f,
                "Wood moved the capture dip off the air mode");
+        expect(afterWood.midPeakHz >= 330.0f && afterWood.midPeakHz <= 800.0f
+                   && std::abs(afterWood.midPeakHz - beforeWood.midPeakHz)
+                          < 0.06f * beforeWood.midPeakHz,
+               "Wood moved the mid-band dip off its mode");
         engine->setParameters(p); // Restore the sounding bank before advancing.
 
         auto oldBank = Access::bodyBank(*engine);
@@ -1807,6 +1901,7 @@ void testMicrophoneFilterOnlyChangesObservation()
 int main()
 {
     testCaptureObservations();
+    testMidBandPairFollowsTheConstruction();
     testCaptureLifecycle();
     testPiezoStringWeights();
     testReleasedLoadUnits();

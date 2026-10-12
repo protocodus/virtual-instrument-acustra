@@ -42,12 +42,19 @@ directly playable, without added input latency or new controls. See the
 The subsequent [CPU optimization](Docs/cpu-optimization-2026-10-07.md) preserves
 the rendered audio while reducing redundant pitch and pluck calculations.
 
+Version 1.3.2 takes the mid-band peak down by measurement: every
+construction's summed microphone pressure dips at its own strong mid mode
+(420-605 Hz as Shape and Wood place it), so the note on it plays 2-5 dB
+over its neighbours rather than 8-11, and the constructions are
+re-levelled. The plug-in's Piezo Mix now starts at 20 %, the Rack's
+default; a saved session keeps its own value. See
+[Versioned builds and packages](#versioned-builds-and-packages).
+
 Version 1.3.0 times strum direction by the song: a strum within a dotted
 eighth of the last alternates, a later one is a downstroke again, and the
 C0, C#0 and D0 keyswitches latch downstrokes, upstrokes or the automatic
 rule. It also answers only its tuning's range, ignoring pitches below the
-lowest open string or above the twentieth fret; see
-[Versioned builds and packages](#versioned-builds-and-packages).
+lowest open string or above the twentieth fret.
 
 Version 1.2.0 adds the Sustain switch, puts Release Noise and Room on the
 panel, fixes the Gather Chords defects the MIDI audit found and takes the
@@ -85,6 +92,21 @@ stronger body variations intentionally change their sound. See the
 and [realism work](Docs/realism-work.md) for measurements and limits.
 
 ## Versioned builds and packages
+
+Version 1.3.2 dips the summed microphone pressure at each construction's
+mid-band peak, the strong body mode the E2-E5 sweep showed 8-11 dB over
+its neighbours (Dreadnought A#4, Auditorium C5, Jumbo G#4; the Parlor's
+D#5 5 dB): -9 dB at Q 8, centred per Shape and Wood on the engine's own
+response at prepare, the sweep's RMS deviation falling from 4.20 to 3.52
+dB on the Dreadnought, 3.51 to 3.20 on the Auditorium, 3.81 to 3.22 on
+the Jumbo and 3.35 to 2.71 on the Parlor, and every construction
+re-levelled ([the report](Docs/mid-band-dip-2026-10-12.md)). The holes
+above those peaks are radiation nulls and stay; a boost at them was
+measured and not shipped. The plug-in's Piezo Mix default moves from 0 to
+20 %, the Rack's, so a new instance of either starts with a bit of the
+under-saddle piezo beneath the microphones; a session saved before Piezo
+Mix existed still loads at 0 %. Nobody has listened to the dip
+(Docs/decisions.md).
 
 Version 1.3.1 gives the Parlor the air-mode dip the other three bodies
 took in 1.2.0 (its B2 falls from +5.7 to +4.6 dB over its neighbours, A#2
@@ -177,7 +199,7 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
 locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
-it with the project version (currently `1.3.0`) and the source revision. Changing that identity rebuilds
+it with the project version (currently `1.3.2`) and the source revision. Changing that identity rebuilds
 the wrappers; each linked format receives its frozen identity record, and macOS
 bundles embed the build number. Packaging rejects a cache
 that disagrees with those records or macOS bundle metadata. Assign a new build
@@ -2337,14 +2359,19 @@ Dated evidence is retained so the earlier decisions remain traceable.
 
 - Single notes' radiated level is still rougher from note to note than the
   open recordings', though less than it was. Over E2-C6, 1 s RMS at the
-  Stereo mic, the RMS deviation from a seven-note neighbourhood is 2.6 dB
-  finger-played on the steel Dreadnought (3.3 before the capture voicing of
-  2026-10-01), against 1.8 on the Eastman E1D played with fingers and 2.2
-  with a pick; the deepest one-note hole is 5.3 dB (9.1 before, C#5),
-  against 4.4-9.3 in the recordings. The rest are the measured bodies' own:
-  a close microphone over the bridge hears same-sign modal pairs, such as
-  g21's 515 and 589 Hz, as an antiresonance, and they move with Shape; the
-  voicing is a smooth gain and does not reach them. A fit of the bridge
+  Stereo mic, the RMS deviation from a seven-note neighbourhood is 2.2 dB
+  finger-played on the steel Dreadnought (2.6 before the mid-band dip of
+  2026-10-12, 3.3 before the capture voicing of 2026-10-01), against 1.8
+  on the Eastman E1D played with fingers and 2.2 with a pick; the deepest
+  one-note hole is 7.4 dB against the mean of its two neighbours (7.7
+  before the dip; 9.1 before the capture voicing), against 4.4-9.3 in the
+  recordings. The holes are the measured bodies' own: a close microphone
+  over the bridge hears same-sign modal pairs, such as g21's 515 and 589
+  Hz, as an antiresonance, and they move with Shape; the mid-band dip
+  takes the peak below each such hole down 9 dB
+  ([the report](Docs/mid-band-dip-2026-10-12.md)) and a boost at the hole,
+  measured, recovered about 1 dB of it while lifting the next note 4 dB,
+  so the hole stays. A fit of the bridge
   microphone as a blend of the archive's measured positions, heard before it
   ships, would be the way to close them. Against the Eastman rows the low
   E2 still sits 6-8 dB under its neighbours, and the first voicing lifted

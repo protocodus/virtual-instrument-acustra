@@ -54,6 +54,53 @@ inline constexpr float originalAirModeDipLevelDb = 0.0f;
 // low mids.
 inline constexpr float originalAirModeDipUpperHz = 130.0f;
 
+// The mid-band dip (2026-10-12): the summed microphone response of every
+// construction carries, between 450 and 800 Hz, a deep antiresonance where
+// the measured g21 bank's same-sign residues cancel (the C#5 hole of
+// Tests/BodyShapeTests: 36-40 dB under the response's mid-band peaks) and,
+// a major third below it, the upper of the body's two strong mid modes. On
+// the E2-E5 sweep at the plug-in's Room 0.5 (Tools/MeasureNoteEvenness.py)
+// the note on that upper mode stood +11.4 dB over its neighbours on the
+// Dreadnought (A#4, the mode at 460 Hz), +8.4 on the Auditorium (C5, 516
+// Hz) and +10.5 on the Jumbo (G#4, 419 Hz); on the Parlor the pair sits at
+// 605/741 Hz, D5/D#5 +4.5/+5.4 with the hole above the sweep. The lower
+// mode of each pair, as tall in the pressure response (333-409 Hz), plays
+// only 2-3 dB over its neighbours, so the hole, not the response's tallest
+// point, finds the peak: the engine locates both per construction from its
+// own response at prepare (AcustraEngine::locateMidBand), so Shape, Wood
+// and the calibration move them together, and the capture filter dips the
+// peak. Measured with the dip (same sweep): A#4 +11.4 to +5.3 dB on the
+// Dreadnought, C5 +8.4 to +3.7 on the Auditorium, G#4 +10.5 to +5.6 on the
+// Jumbo, D#5 +5.4 to +2.3 on the Parlor. A matching boost at the hole
+// (+8 dB, Q 8) was measured and not shipped: the hole's notes (C#5 -12.4
+// on the Dreadnought, D#5 -10.3 on the Auditorium, B4 -10.6 on the Jumbo)
+// are radiation nulls whose fundamental sits 7-14 dB under their second
+// partial, so the boost recovered about 1 dB of each while lifting the note
+// above the hole by 4 dB (D5 +5.3 to +9.4, E5 +8.4 to +12.8). A real
+// flat-top's own sweep deviates about 2 dB RMS. An authored capture
+// refinement of the same kind as the air-mode dip, shipped on the user's
+// direction without a listening verdict; the piezo never passes through it.
+inline constexpr float originalMidHoleLowerHz = 450.0f;
+inline constexpr float originalMidHoleUpperHz = 800.0f;
+// The peak is the highest point within a fourth below the hole and must
+// stand at least this far over it; otherwise the construction takes no dip.
+inline constexpr float originalMidHoleSearchRatio = 1.3348f;
+inline constexpr float originalMidHoleMinimumDepthDb = 6.0f;
+inline constexpr float originalMidPeakDipDb = -9.0f;
+inline constexpr float originalMidPeakDipQ = 8.0f;
+// The dip takes no level restore: all constructions are re-levelled to the
+// default by Tools/CalibrateConstructionLoudness.py afterwards.
+inline constexpr float originalMidBandLevelDb = 0.0f;
+// The mono microphone is the right channel at its own reference
+// (monoReferenceFor). Under the dip it rose 0.15 LU against the pair on the
+// default construction (the dipped mode radiates more to the left
+// microphone), from 0.85 to 1.0002 LU over the default's stereo loudness,
+// past the calibration's 1 LU; its default cell is pinned at 1 in the
+// generated tables, so it takes this level instead, which puts the
+// default's mono microphone on the target the other cells are levelled to.
+// -1.0 dB, as a gain.
+inline constexpr float originalMonoLevelGain = 0.891250938f;
+
 constexpr CaptureVoicingSection balancedOriginalCaptureSection(
     CaptureVoicingSection section) noexcept
 {

@@ -28,9 +28,10 @@ struct AcustraEngineTestAccess
     static void restorePreviousCapture(AcustraEngine& engine, Designer designer)
     {
         auto& filter = engine.bodyBank_.captureFilter;
-        // The six fitted sections; the last slot, the air-mode dip of
-        // 2026-10-11, stays as the engine configured it in both engines,
-        // so the comparison isolates the 2026-10-09 refinement.
+        // The six fitted sections; the last two slots, the air-mode dip of
+        // 2026-10-11 and the mid-band dip of 2026-10-12, stay as the engine
+        // configured them in both engines, so the comparison isolates the
+        // 2026-10-09 refinement.
         for (int index = 0; index < 6; ++index)
             filter.coefficients[static_cast<std::size_t>(index)]
                 = designer(index, engine.sampleRate_);
@@ -86,22 +87,29 @@ Section sectionAt(int index, bool previous)
     return section;
 }
 
-// airModeHz > 0 adds the 2026-10-11 dip at the construction's air mode
-// (MicrophoneBalanceData.h), which both the refined and the restored
-// previous filter carry.
-Complex prototype(double frequency, double rate, bool previous, double airModeHz)
+// airModeHz > 0 adds the 2026-10-11 dip at the construction's air mode and
+// midPeakHz > 0 the 2026-10-12 dip at its mid-band peak
+// (MicrophoneBalanceData.h). Both the refined and the restored previous
+// filter carry both.
+Complex prototype(double frequency, double rate, bool previous, double airModeHz,
+                  double midPeakHz)
 {
     const double level = 4.12
         + (previous ? 0.0 : acustra::detail::originalCaptureLevelAdjustmentDb
-              + (airModeHz > 0.0 ? acustra::detail::originalAirModeDipLevelDb : 0.0));
+              + (airModeHz > 0.0 ? acustra::detail::originalAirModeDipLevelDb : 0.0)
+              + (midPeakHz > 0.0 ? acustra::detail::originalMidBandLevelDb : 0.0));
     Complex result = std::pow(10.0, level / 20.0);
-    for (int index = 0; index < 7; ++index)
+    const std::array<Section, 2> following {{
+        { false, airModeHz, double(acustra::detail::originalAirModeDipDb),
+          double(acustra::detail::originalAirModeDipQ) },
+        { false, midPeakHz, double(acustra::detail::originalMidPeakDipDb),
+          double(acustra::detail::originalMidPeakDipQ) } }};
+    for (int index = 0; index < 8; ++index)
     {
-        if (index == 6 && !(airModeHz > 0.0))
-            break;
+        if (index >= 6 && !(following[static_cast<std::size_t>(index - 6)].frequency > 0.0))
+            continue;
         const auto section = index < 6 ? sectionAt(index, previous)
-            : Section { false, airModeHz, double(acustra::detail::originalAirModeDipDb),
-                        double(acustra::detail::originalAirModeDipQ) };
+            : following[static_cast<std::size_t>(index - 6)];
         const double a = std::pow(10.0, section.gain / 40.0);
         const Complex s(0.0, std::tan(pi * frequency / rate)
             / std::tan(pi * section.frequency / rate));
@@ -162,7 +170,8 @@ void testActualFilter(double rate)
     for (double frequency : { 55.0, 110.0, 125.0, 220.0, 440.0, 659.255,
                               880.0, 1320.0, 1400.0, 2500.0, 5000.0 })
     {
-        const auto expected = prototype(frequency, rate, false, filter.airModeHz);
+        const auto expected = prototype(frequency, rate, false, filter.airModeHz,
+                                        filter.midPeakHz);
         worst = std::max(worst, std::abs(transform(impulse, frequency, rate) / .25
             - expected) / std::abs(expected));
     }
@@ -253,10 +262,10 @@ void testNativeNote(double rate, acustra::BodyMaterial wood,
            "native harmonic balance fixture did not excite both measured harmonics");
     const double delta = 10.0 * std::log10((newNumerator / newDenominator)
         / (oldNumerator / oldDenominator));
-    const double airModeHz = Access::filter(*current).airModeHz;
+    const auto filter = Access::filter(*current);
     const auto relative = [&] (double frequency)
-    { return prototype(frequency, rate, false, airModeHz)
-        / prototype(frequency, rate, true, airModeHz); };
+    { return prototype(frequency, rate, false, filter.airModeHz, filter.midPeakHz)
+        / prototype(frequency, rate, true, filter.airModeHz, filter.midPeakHz); };
     const double expected = 20.0 * std::log10(std::abs(relative(f0 * numerator)
         / relative(f0 * denominator)));
     // Require the refinement to reduce the fundamental's dominance natively

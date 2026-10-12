@@ -5,6 +5,67 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the mid-band peak takes a dip; the hole stays
+
+The entry of the same day that measured the body's mid-band peak and hole
+and left them weighed a construction-following dip and a boost at the
+antiresonance. On the user's direction ("use candidate", given without a
+listening verdict) both were built and measured, and the dip ships. The
+engine locates the pair per construction from its own summed microphone
+response at prepare (`AcustraEngine::locateMidBand`): the deepest
+antiresonance between 450 and 800 Hz, where the measured bank's same-sign
+residues cancel 36-40 dB under the mid-band peaks, and the highest point
+within a fourth below it. That rule, not the response's tallest point,
+finds the note the sweep hears: each body has a lower mid mode (333-409
+Hz) as tall in the pressure response that plays only 2-3 dB over its
+neighbours, and the upper one (419-605 Hz) that plays 8-11 dB over. The
+summed pressure takes -9 dB at Q 8 there, the eighth section of the
+capture filter after the air-mode dip; the piezo never passes through it.
+Measured on the E2-E5 sweep (velocity 96, Finger, stereo mic, Room 0.5):
+Dreadnought A#4 +11.4 to +5.0 dB over its neighbours, RMS deviation 4.20
+to 3.52 dB; Auditorium C5 +8.4 to +3.8, 3.51 to 3.20; Jumbo G#4 +10.5 to
++5.7, 3.81 to 3.22; Parlor D#5 +5.4 to +2.2 and D5 +4.5 to +1.4, 3.35 to
+2.71. The holes move 1-3 dB nearer their neighbours because the
+neighbours fell (C#5 -12.4 to -11.0, D#5 -10.3 to -8.4, B4 -10.6 to -9.3,
+E5 -10.4 to -7.7).
+
+The boost at the hole (+8 dB, Q 8) was measured and not shipped: it
+recovered about 1 dB of each hole while lifting the note above it by 4 dB
+(Dreadnought D5 +4.9 to +9.4, Auditorium E5 +8.4 to +12.8) and the second
+partial of the note an octave under, and the RMS deviation with it was
+3.80, 3.66, 3.19 and 2.67 dB against the dip's 3.52, 3.20, 3.22 and 2.71.
+The holes' notes are radiation nulls whose fundamental sits 7-14 dB under
+their second partial at the sustained level, so a boost at the fundamental
+reaches little of the note; they stay, as the entry below said they
+would. A fuller account, with the before/dip/boost table of every mid-band
+note on every body, is in [the report](mid-band-dip-2026-10-12.md).
+
+Levelled: the dip takes no level restore and every construction is
+re-levelled to the default by `Tools/CalibrateConstructionLoudness.py`.
+The mono microphone, the right channel at its own reference, rose 0.15 LU
+against the pair on the default construction under the dip (the dipped
+mode radiates more to the left microphone), from 0.85 to 1.0002 LU over
+the default's stereo loudness, past the calibration's 1 LU tolerance;
+its default cell is pinned at 1 in the generated tables, so the mono
+microphone takes -1.0 dB (`originalMonoLevelGain`), which puts the
+default's mono capture on the target every other cell is levelled to.
+Measured after the re-levelling: the calibration's `--check` holds every
+cell and capture (stereo mic -0.00..+0.50 LU, mono mic -0.02..+0.50,
+piezo -0.90..+0.50), and the construction loudness fixture reads
+-2.85..+1.72 LU over its 51 renders, the quietest Parlor Spruce Finger
+(was -2.57; the dip costs the Parlor's fixture phrase 0.28 LU more than
+its calibration phrase, inside the 3 LU contract). The full DSP suite
+and the plug-in suites pass; one fixture changed, the natural-decay check
+of `Tests/ConstructionHistoryTests.cpp`, whose 0.4 s window the beating
+Parlor Mahogany tail put 1.6 % over the 1e-7 floor after a 0.1 s block
+under it: the window now decides, at the same floor and cap (the report).
+
+Nobody has listened. A blind pack (A/B, the key apart) was rendered for
+the user with main's engine (`c4596b4`) and this one on the Dreadnought
+and Auditorium. The user directed that the candidate ship on the
+measurements; a measurement establishes where the peak was and how far it
+fell, not whether the guitar sounds better for it. Version 1.3.2.
+
 ## 2026-10-12 — the default sound: the plug-in's, with a bit of piezo
 
 Asked whether the Rack's defaults should follow the plug-in's (Body Amount
