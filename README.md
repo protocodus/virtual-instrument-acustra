@@ -2360,13 +2360,21 @@ Dated evidence is retained so the earlier decisions remain traceable.
 
 - Single notes' radiated level is still rougher from note to note than the
   open recordings', though less than it was. Over E2-C6, 1 s RMS at the
-  Stereo mic, the RMS deviation from a seven-note neighbourhood is 2.2 dB
+  Stereo mic, the RMS deviation from a seven-note neighbourhood (each note
+  against the mean of itself and up to three neighbours each side, as
+  `Tests/BodyShapeTests.cpp` scores it and as the recordings' figures were
+  scored, Docs/decisions.md 2026-10-01) is 2.2 dB
   finger-played on the steel Dreadnought (2.6 before the mid-band dip of
   2026-10-12, 3.3 before the capture voicing of 2026-10-01), against 1.8
   on the Eastman E1D played with fingers and 2.2 with a pick; the deepest
   one-note hole is 7.4 dB against the mean of its two neighbours (7.7 on
   1.3.1; 5.3 just after the capture voicing of 2026-10-01, 9.1 before it),
-  against 4.4-9.3 in the recordings. The holes are the measured bodies' own: a close microphone
+  against 4.4-9.3 in the recordings. `Tools/MeasureNoteEvenness.py` leaves
+  the note out of that mean, which reads the same levels 17-22 % rougher
+  (its E2-E5 sweeps in the mid-band dip report: 3.52, 3.20, 3.22 and 2.71
+  dB, against 2.95, 2.63, 2.75 and 2.26 with the note counted), so its
+  figures are not directly comparable with the recordings'. The holes are
+  the measured bodies' own: a close microphone
   over the bridge hears same-sign modal pairs, such as g21's 515 and 589
   Hz, as an antiresonance, and they move with Shape; the mid-band dip
   takes the peak below each such hole down 9 dB

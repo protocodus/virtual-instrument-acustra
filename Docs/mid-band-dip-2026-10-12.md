@@ -18,9 +18,15 @@ each side) put the largest deviation left on every Shape in the body's
 mid modes: a peak with a hole one to three semitones above it. Before
 this change: Dreadnought A#4 +11.4 dB and C#5 -12.4 (RMS deviation 4.20
 dB over E2-E5); Auditorium C5 +8.4 and D#5 -10.3 (3.51); Jumbo G#4 +10.5
-and B4 -10.6 (3.81); Parlor D#5 +5.4 and E5 -10.4 (3.35). A real
-flat-top's own sweep deviates by about 2 dB RMS on the notes available
-(README, Known gaps).
+and B4 -10.6 (3.81); Parlor D#5 +5.4 and E5 -10.4 (3.35). The real
+flat-top figures in README Known gaps (the Eastman E1D takes, 1.8 dB RMS
+fingered and 2.2 picked) count each note in its own neighbourhood's mean,
+over its first second, as `Tests/BodyShapeTests.cpp` does; this tool
+leaves the note out. Counting the note from the logged levels (rounded to
+0.1 dB; the window and Room stay this sweep's), these sweeps read 3.55,
+2.89, 3.26 and 2.75 dB before the dip and 2.95, 2.63, 2.75 and 2.26 with
+it, against the tool's 4.20, 3.51, 3.81 and 3.35, and 3.52, 3.20, 3.22 and
+2.71: compare those with the recordings.
 
 ## Where the pair is in the engine's own response
 
