@@ -952,6 +952,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         constrainer->setFixedAspectRatio (
             static_cast<double> (designWidth) / designHeight);
     setSize (sizing.width, heightFor (sizing.width));
+    rememberWidth = true;
     startTimerHz (12);
     timerCallback();
 }
@@ -1134,8 +1135,9 @@ void AcustraAudioProcessorEditor::paint (juce::Graphics& g)
 
 void AcustraAudioProcessorEditor::resized()
 {
-    // The session remembers the size the editor was left at.
-    audioProcessor.setEditorWidth (getWidth());
+    // The session remembers the size the editor was resized to.
+    if (rememberWidth)
+        audioProcessor.setEditorWidth (getWidth());
     // Lay out one instrument at the documented aspect ratio. Scaling the
     // complete grid keeps captions, gestures and keyboard aligned at every
     // supported host size, rather than reflowing individual controls.

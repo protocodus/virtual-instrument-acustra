@@ -262,7 +262,13 @@ private:
                 seen.add (input.identifier);
         }
         if (settings != nullptr && seen.size() != before)
+        {
+            // JUCE saves the enabled inputs only when the application quits
+            // cleanly; saving them with the list keeps a crash from leaving
+            // an input listed but never enabled.
+            holder->saveAudioDeviceState();
             settings->setValue (seenKey, seen.joinIntoString ("\n"));
+        }
     }
 
     static constexpr auto seenKey = "autoEnabledMidiInputs";
@@ -455,8 +461,9 @@ void AcustraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     keyboardState.reset();
     performer.setParameters (snapshotEngineParameters());
     performer.prepare (sampleRate, samplesPerBlock);
-    // The engine keeps a rate it models exactly and clamps any other
-    // (AcustraEngine::prepare), which would play every note off pitch.
+    // The engine keeps a rate it models exactly and substitutes another for
+    // any other (AcustraEngine::prepare), which would play every note off
+    // pitch.
     sampleRateSupported.store (juce::exactlyEqual (performer.engine().sampleRate(),
                                                    sampleRate),
                                std::memory_order_relaxed);

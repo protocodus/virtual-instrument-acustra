@@ -12,7 +12,7 @@ adapter compiling the canonical sources itself must supply it consistently.
 There is no automatic resampling or plug-in parameter change in this option.
 The JUCE plug-in links the ordinary layout: at a host rate outside 8-384 kHz
 it outputs silence and its status line reads UNSUPPORTED RATE, rather than
-play at the clamped rate and so off pitch.
+play at the engine's substitute rate and so off pitch.
 
 The extended layout reserves 32768 samples per string delay instead of 8192,
 32 derivative-history samples instead of 16, 2305 samples per explicit finger

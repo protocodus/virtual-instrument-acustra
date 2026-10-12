@@ -82,14 +82,18 @@ focus rings are drawn independently for clear interaction at every supported siz
 A six-string fretboard above the keyboard shows the actual frets being played,
 released notes, and sympathetic vibration on open strings. Its animation shows
 vibration activity rather than an audio-rate waveform. The editor opens at
-1120 × 980, with all nine continuous sound controls visible, or at the same
-proportions as large as the display leaves room for under a window's title
-bar (and below its usual 896 × 784 minimum, down to 672 × 588, on a display
-too small for that). A session reopens it at the size it was left: the width
-is saved with the session's state, not as a parameter, so hosts never
-automate it. The header shows the version and build number. The Standalone
-enables each MIDI input the first time it sees it, at launch or when it is
-connected; one turned off in Options > Audio/MIDI Settings stays off.
+1120 × 980, with all nine continuous sound controls visible, or at the width
+it was last resized to in the session: that width is saved with the
+session's state, not as a parameter, so hosts never automate it. When the
+display has less room under a window's title bar, the editor opens smaller
+at the same proportions, and on a display too small for its usual
+896 × 784 minimum the minimum drops too, down to 672 × 588; a size made
+smaller to fit is not remembered. The header shows the version and build
+number. The Standalone enables each MIDI input the first time it sees it,
+at launch or when it is connected (built, not yet run with a MIDI device);
+one turned off in Options > Audio/MIDI Settings stays off while it keeps
+its identifier, which on Linux is an ALSA client and port number that can
+change.
 The Picking tooltip names CC2 as
 the bridge hand. Ordinary Note-off allows a 1/32-note gap before damping,
 so a following stroke can continue the ringing string. Existing
@@ -1831,8 +1835,10 @@ sample, since the piezo is computed for Main anyway.
 
 The plug-in plays at host rates from 8 kHz to 384 kHz
 (`AcustraEngine::maximumSupportedSampleRate`). At any other rate the engine
-would hold its rate at the nearer bound and play every note off pitch, so
-both outputs stay silent and the editor's status line reads UNSUPPORTED RATE.
+would run at a rate other than the host's (it clamps a finite rate to the
+nearer bound and uses 48 kHz for a zero, negative or non-finite rate), so
+every note would play off pitch; both outputs stay silent instead and the
+editor's status line reads UNSUPPORTED RATE.
 
 In code, `AcustraEngine::process(left, right, buses, numSamples)` and
 `Performer::beginBlock(left, right, buses, numSamples)` take an
@@ -3105,21 +3111,27 @@ set without it.
 
 ### 2026-10-12 — plug-in launch fixes: Standalone MIDI, editor size, rates, version
 
-- **The Standalone hears a connected keyboard.** JUCE's desktop Standalone
-  opens a MIDI input only once it is ticked in Options > Audio/MIDI
-  Settings. Acustra's now enables each input the first time it sees it, at
-  launch or when it is plugged in, and records it in the Standalone's
-  settings; after that the saved Audio/MIDI settings decide, so an input
-  the user turned off stays off. Nothing changes in the plug-in formats.
-- **The editor fits the display and remembers its size.** It opens at its
-  design size, 1120 × 980, or as large as the display under the mouse leaves
-  room for below a 48-point title bar, keeping its proportions; its minimum,
-  896 × 784, drops to fit a smaller display, down to 672 × 588. The last
-  width is saved with the session's state beside the parameters, not as a
-  host parameter; a state without one leaves the last width.
+- **The Standalone enables a connected keyboard** (built, not yet run with
+  a MIDI device). JUCE's desktop Standalone opens a MIDI input only once it
+  is ticked in Options > Audio/MIDI Settings. Acustra's now enables each
+  input the first time it sees it, at launch or when it is plugged in, and
+  records it in the Standalone's settings, saving the Audio/MIDI settings
+  with it; after that the saved Audio/MIDI settings decide, so an input
+  the user turned off stays off while it keeps its identifier (on Linux an
+  ALSA client and port number, which can change). Nothing changes in the
+  plug-in formats.
+- **The editor fits the display and remembers its size.** It opens at the
+  width it was last resized to in the session, or its design size,
+  1120 × 980, made smaller at the same proportions when the display under
+  the mouse has less room below a 48-point title bar; its minimum,
+  896 × 784, drops to fit a smaller display, down to 672 × 588. The width
+  is saved with the session's state beside the parameters, not as a host
+  parameter; a width made smaller to fit is not saved, and a state without
+  one leaves the last width.
 - **Unsupported rates are silent and say so.** Outside 8-384 kHz the engine
-  clamps its rate and would play off pitch; the processor now outputs
-  silence there and the status line reads UNSUPPORTED RATE.
+  would run at a rate other than the host's and play off pitch; the
+  processor now outputs silence there and the status line reads
+  UNSUPPORTED RATE.
 - **The build identity is in every binary and on screen.** The editor
   reads the version and build number from the identity record CMake
   freezes, which also keeps that record from being dropped at link time.

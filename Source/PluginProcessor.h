@@ -95,15 +95,16 @@ public:
         return engineReady.load (std::memory_order_acquire);
     }
     // False after a prepareToPlay at a rate the engine does not model
-    // (8 kHz to AcustraEngine::maximumSupportedSampleRate). It would clamp
-    // the rate and play every note off pitch, so the processor stays silent.
+    // (8 kHz to AcustraEngine::maximumSupportedSampleRate). It would run at
+    // another rate and play every note off pitch, so the processor stays
+    // silent.
     [[nodiscard]] bool isSampleRateSupported() const noexcept
     {
         return sampleRateSupported.load (std::memory_order_relaxed);
     }
-    // The editor's last width, saved with the state (not a parameter, so
-    // hosts never automate it) for the next editor to open at; 0 until an
-    // editor has been sized or a state carrying a width has been loaded.
+    // The width an editor was last resized to, saved with the state (not a
+    // parameter, so hosts never automate it) for the next editor to open
+    // at; 0 until one is resized or a state carrying a width is loaded.
     [[nodiscard]] int getEditorWidth() const noexcept
     {
         return editorWidth.load (std::memory_order_relaxed);

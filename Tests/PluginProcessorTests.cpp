@@ -2221,7 +2221,7 @@ void testEditorSizeFitsTheDisplayAndIsRemembered()
             "the editor shrank below 0.6 of its design size");
 
     // The last width travels with the state, beside the parameters: never
-    // a host parameter, and absent until an editor has been sized.
+    // a host parameter, and absent until an editor has been resized.
     auto sourceOwner = std::make_unique<AcustraAudioProcessor>();
     auto& source = *sourceOwner;
     const auto savedXml = [] (AcustraAudioProcessor& processor)
@@ -2245,6 +2245,10 @@ void testEditorSizeFitsTheDisplayAndIsRemembered()
                     && editor->getConstrainer()->getMinimumWidth() == opening.minimumWidth
                     && editor->getConstrainer()->getMinimumHeight() == heightOf (opening.minimumWidth),
                 "a new editor did not open at, or limit itself to, the sizes for its display");
+        // The width the editor picked for the display is nobody's choice.
+        const auto xml = savedXml (source);
+        expect (source.getEditorWidth() == 0 && xml != nullptr && ! xml->hasAttribute ("editorWidth"),
+                "opening the editor remembered the width it picked for the display");
         editor->setSize (1280, heightOf (1280));
     }
     expect (source.getEditorWidth() == 1280, "the processor lost the editor's last width");
@@ -2269,10 +2273,13 @@ void testEditorSizeFitsTheDisplayAndIsRemembered()
         const auto expected = Editor::sizingFor (1280, area).width;
         expect (editor->getWidth() == expected && editor->getHeight() == heightOf (expected),
                 "a reloaded session did not reopen its editor at the size it was left");
+        // Fitting a smaller display does not replace the session's width.
+        expect (restored.getEditorWidth() == 1280,
+                "reopening the editor replaced the session's width");
     }
 
     // A state without a width (saved before it was kept), or with a
-    // malformed one, leaves the last width: the one the editor just took.
+    // malformed one, leaves the last width.
     const auto lastWidth = restored.getEditorWidth();
     for (const juce::var malformed : { juce::var {}, juce::var ("wide"), juce::var (-3) })
     {

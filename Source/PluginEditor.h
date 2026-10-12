@@ -98,6 +98,9 @@ private:
     juce::Rectangle<int> playerPanelBounds;
     juce::Rectangle<int> capturePanelBounds;
     juce::Rectangle<int> keyboardPanelBounds;
+    // False while the constructor sizes the editor: a width chosen to fit
+    // the display is nobody's choice, so only later resizes are remembered.
+    bool rememberWidth { false };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AcustraAudioProcessorEditor)
 };
