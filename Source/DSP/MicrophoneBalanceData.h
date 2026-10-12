@@ -88,9 +88,15 @@ inline constexpr float originalMidHoleSearchRatio = 1.3348f;
 inline constexpr float originalMidHoleMinimumDepthDb = 6.0f;
 inline constexpr float originalMidPeakDipDb = -9.0f;
 inline constexpr float originalMidPeakDipQ = 8.0f;
-// The dip takes no level restore: all constructions are re-levelled to the
-// default by Tools/CalibrateConstructionLoudness.py afterwards.
-inline constexpr float originalMidBandLevelDb = 0.0f;
+// The dip's level restore, sized on the default cell's calibration phrase
+// (Tools/CalibrateConstructionLoudness.py, Dreadnought Spruce Finger on
+// the stereo microphones): the dip took it from -27.7532 to -28.2795 LUFS,
+// and since every other construction and capture is levelled to that
+// cell, the whole instrument went half a dB quieter with it (the Rack's
+// piezo patch fell under its bank's loudness window). The restore puts
+// the default cell back on its level; the constructions are re-levelled
+// to it afterwards.
+inline constexpr float originalMidBandLevelDb = 0.5263f;
 // The mono microphone is the right channel at its own reference
 // (monoReferenceFor). Under the dip it rose 0.15 LU against the pair on the
 // default construction (the dipped mode radiates more to the left

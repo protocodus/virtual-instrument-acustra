@@ -40,9 +40,15 @@ reaches little of the note; they stay, as the entry below said they
 would. A fuller account, with the before/dip/boost table of every mid-band
 note on every body, is in [the report](mid-band-dip-2026-10-12.md).
 
-Levelled: the dip takes no level restore and every construction is
-re-levelled to the default by `Tools/CalibrateConstructionLoudness.py`.
-The mono microphone, the right channel at its own reference, rose 0.15 LU
+Levelled: the dip took the default cell's calibration phrase from
+-27.7532 to -28.2795 LUFS, and since every other construction and capture
+is levelled to that cell, the whole instrument went half a dB quieter
+with it: the Rack's piezo patch fell under its bank's loudness window
+(-28.22 dBFS against a -28 floor). So the dip carries a level restore
+sized on that phrase (+0.5263 dB, `originalMidBandLevelDb`), as the
+fitted contour's did, and every construction is re-levelled to the
+restored default by `Tools/CalibrateConstructionLoudness.py`. The mono
+microphone, the right channel at its own reference, rose 0.15 LU
 against the pair on the default construction under the dip (the dipped
 mode radiates more to the left microphone), from 0.85 to 1.0002 LU over
 the default's stereo loudness, past the calibration's 1 LU tolerance;
@@ -50,11 +56,10 @@ its default cell is pinned at 1 in the generated tables, so the mono
 microphone takes -1.0 dB (`originalMonoLevelGain`), which puts the
 default's mono capture on the target every other cell is levelled to.
 Measured after the re-levelling: the calibration's `--check` holds every
-cell and capture (stereo mic -0.00..+0.50 LU, mono mic -0.02..+0.50,
-piezo -0.90..+0.50), and the construction loudness fixture reads
--2.85..+1.72 LU over its 51 renders, the quietest Parlor Spruce Finger
-(was -2.57; the dip costs the Parlor's fixture phrase 0.28 LU more than
-its calibration phrase, inside the 3 LU contract). The full DSP suite
+cell and capture (stereo mic -0.00..+0.50 LU, mono mic -0.00..+0.50 LU, piezo -0.92..+0.50 LU), and the construction loudness fixture
+reads -2.85..+1.74 LU over its 51 renders, the quietest Parlor Spruce
+Finger (was -2.57; the dip costs the Parlor's fixture phrase about 0.3 LU
+more than its calibration phrase, inside the 3 LU contract). The full DSP suite
 and the plug-in suites pass; one fixture changed, the natural-decay check
 of `Tests/ConstructionHistoryTests.cpp`, whose 0.4 s window the beating
 Parlor Mahogany tail put 1.6 % over the 1e-7 floor after a 0.1 s block

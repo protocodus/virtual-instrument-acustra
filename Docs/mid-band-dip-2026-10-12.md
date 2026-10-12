@@ -50,8 +50,10 @@ move both together.
 The dip is -9 dB at Q 8 on the summed pressure, after the balanced
 observation blend and the air-mode dip, the eighth section of the capture
 filter (`MicrophoneBalanceData.h`); the piezo never passes through it. It
-takes no level restore: every construction is re-levelled to the default
-by `Tools/CalibrateConstructionLoudness.py` afterwards (below).
+carries a level restore of +0.5263 dB sized on the default cell's
+calibration phrase, which the dip took from -27.7532 to -28.2795 LUFS
+(below); every construction is re-levelled to the restored default by
+`Tools/CalibrateConstructionLoudness.py` afterwards.
 
 ## Measured
 
@@ -64,7 +66,10 @@ falls from 4.20 to 3.52 dB on the Dreadnought, 3.51 to 3.20 on the
 Auditorium, 3.81 to 3.22 on the Jumbo and 3.35 to 2.71 on the Parlor; the
 holes move 1-3 dB nearer their neighbours because the neighbours fell.
 The logs are in [`mid-band-dip-2026-10-12/`](mid-band-dip-2026-10-12/)
-(`before-*.log`, `dip-*.log`, `dip-and-boost-*.log`).
+(`before-*.log`, `dip-*.log`, `dip-and-boost-*.log`); `dip-*.log` is the
+shipped engine with the level restore below, `dip-and-boost-*.log` the
+boost candidate before it, so their `rms` columns differ by 0.53 dB and
+the `dev` columns compare directly.
 
 ### Dreadnought
 
@@ -173,12 +178,19 @@ was removed; the capture filter has eight sections.
 
 ## Levelled
 
-Every construction is re-levelled to the default by
+The dip took the default cell's calibration phrase (Dreadnought Spruce
+Finger, stereo microphones) from -27.7532 to -28.2795 LUFS. Levelled to
+that without a restore, the whole instrument went half a dB quieter, and
+the Rack Extension's piezo patch (`Piezo Stage Steel`) rendered its open
+E strum at -28.22 dBFS RMS, under its bank's -28 dBFS floor
+(`Examples/Acustra/Tests/AllPatchRenderTest.cpp`). So the dip carries a
+level restore of +0.5263 dB on the capture filter's gain, sized on that
+phrase as the fitted contour's 1.2172 dB was, and every construction is
+re-levelled to the restored default by
 `Tools/CalibrateConstructionLoudness.py --write-header` (all Shapes and
-Pickings, the Parlor's Finger and Thumb cells keeping their 0.5 LU lift)
-and `--check` holds: stereo mic -0.00..+0.50 LU over the 36 cells, mono
-mic -0.02..+0.50, piezo -0.90..+0.50, every Pick cell short of the
-headroom having given up the level the tolerance allows. The mono
+Pickings, the Parlor's Finger and Thumb cells keeping their 0.5 LU lift);
+`--check` holds: stereo mic -0.00..+0.50 LU, mono mic -0.00..+0.50 LU, piezo -0.92..+0.50 LU over the 36 cells, every Pick cell short of
+the headroom having given up the level the tolerance allows. The mono
 microphone, the right channel at its own reference, had risen 0.15 LU
 against the pair on the default construction under the dip (the dipped
 mode radiates more to the left microphone), from 0.85 to 1.0002 LU over
@@ -187,10 +199,10 @@ is pinned at 1 in the generated tables, so the mono microphone takes
 -1.0 dB (`originalMonoLevelGain`, `MicrophoneBalanceData.h`), which puts
 the default's mono capture on the target the other cells are levelled to.
 The construction loudness fixture (`Tests/ConstructionLoudnessTests.cpp`,
-the chord-and-strum phrase, 3 LU) reads -2.85..+1.72 LU over its 51
+the chord-and-strum phrase, 3 LU) reads -2.85..+1.74 LU over its 51
 renders, the quietest Parlor Spruce Finger (was -2.57: the dip costs the
-Parlor's fixture phrase 0.28 LU more than its calibration phrase), the
-loudest Dreadnought Maple Pick on the mono mic.
+Parlor's fixture phrase about 0.3 LU more than its calibration phrase),
+the loudest Dreadnought Maple Pick, mono mic.
 
 ## Tests
 
