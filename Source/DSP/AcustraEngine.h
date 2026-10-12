@@ -144,6 +144,9 @@ struct EngineParameters
     // send is 0.794 room^1.66). Zero is an exact no-op; a change lets the
     // sounding room ring out.
     float room { 0.0f };
+    // Independent pitch offset per played contact: 0 exact reference tuning,
+    // 1 uniformly distributed within +/-50 cents. Held notes keep their draw.
+    float detune { 0.0f };
 };
 
 struct AcustraEngineTestAccess;
@@ -1075,6 +1078,7 @@ private:
         std::uint32_t memberBend { 0 };
         std::uint32_t vibrato { 0 };
         std::uint32_t attackPitch { 0 };
+        std::uint32_t noteDetune { 0 };
         std::uint32_t masterTune { 0 };
 
         bool operator==(const PitchGeometryKey& other) const noexcept
@@ -1083,6 +1087,7 @@ private:
                 && stringIndex == other.stringIndex && sampleRate == other.sampleRate
                 && performedBend == other.performedBend && memberBend == other.memberBend
                 && vibrato == other.vibrato && attackPitch == other.attackPitch
+                && noteDetune == other.noteDetune
                 && masterTune == other.masterTune;
         }
     };
@@ -1223,6 +1228,9 @@ private:
         // This separate stream never moves the position/angle/noise draws,
         // and is advanced once per repeated pluck, independent of host rate.
         std::uint32_t repeatPluckState { 1 };
+        // A separate stream leaves picking/noise variation unchanged at zero.
+        std::uint32_t noteDetuneState { 1 };
+        float noteDetuneCents { 0.0f };
         int lastPluckMidiNote { -1 };
         int lastPluckMidiChannel { 0 };
         float lastPluckVelocity { 0.0f };
@@ -1610,10 +1618,10 @@ private:
                            int stringIndex) const noexcept;
     // How far, as a fraction of the request, the pair of modes the two
     // polarisations form through a rocking saddle sits from the pitch the
-    // normal loop was tuned to alone (see AcustraEngine.cpp).
+    // independently tuned loops request (see AcustraEngine.cpp).
     [[nodiscard]] float coupledPolarisationDetune(
         const PortMobility& port, float impedance, float bentImpedance,
-        float frequency, float normalGain,
+        float frequency, float parallelPhaseShare, float normalGain,
         float parallelGain) const noexcept;
     // The saddle crown's height over the measured body's rocking axis, over
     // the normalized rocking coordinate's half-spacing: what projects a

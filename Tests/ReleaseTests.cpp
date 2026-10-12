@@ -568,7 +568,7 @@ void testSlidNotesAreDampedAtTheirSlidPitch()
             / double(0.018f), 0.0, 1.0);
         const double weight = harmonic > 1 ? 0.0
             : distance * distance * (3.0 - 2.0 * distance);
-        return 1.0 / ((1.0 - weight) / double(1.25f) + weight / double(0.16f));
+        return 1.0 / ((1.0 - weight) / double(1.25f) + weight / double(0.32f));
     };
     // Independent coefficient check isolates the hand's loss from body
     // ringing. Include a stopped slide, a near-nut fractional stop, an
@@ -704,7 +704,7 @@ void testReleaseNoise()
 }
 
 // A released string is handed back to the open string once its hand has
-// damped it (returnToOpenString, 0.16 s + 80 ms after fretted damping starts,
+// damped it (returnToOpenString, 0.32 s + 80 ms after fretted damping starts,
 // 1.25 s + 80 ms after open damping starts). A string refretted while it rings keeps
 // its old wave as a tail, which is a port on the bridge; the hand-back cut
 // that port out in one sample, and the impedance step moved the bridge under

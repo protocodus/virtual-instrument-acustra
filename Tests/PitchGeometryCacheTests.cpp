@@ -100,6 +100,7 @@ struct AcustraEngineTestAccess
                 engine.vibratoPhase_ = 1.0f;
             })
             || !proveMiss([&] { voice.attackPitchCents = 0.1f; })
+            || !proveMiss([&] { voice.noteDetuneCents = -12.5f; })
             || !proveMiss([&] {
                 voice.attackPitchCents = std::nextafter(voice.attackPitchCents, 1.0f);
             })
@@ -253,6 +254,7 @@ int main()
         acustra::EngineParameters parameters;
         parameters.picking = picking;
         parameters.room = 0.0f;
+        parameters.detune = 0.65f;
         for (auto* engine : {cached.get(), forced.get()})
         {
             engine->setParameters(parameters);

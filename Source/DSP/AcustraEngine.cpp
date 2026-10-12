@@ -2893,6 +2893,8 @@ void AcustraEngine::restartRandomDraws() noexcept
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 1));
         voice.repeatPluckState = 0xa511e9b3u
             ^ (0x63d83595u * static_cast<std::uint32_t>(string + 1));
+        voice.noteDetuneState = 0x243f6a88u
+            ^ (0xb7e15163u * static_cast<std::uint32_t>(string + 1));
         voice.releaseNoiseState = 0x68e31da4u
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 7));
         voice.legatoFrictionState = 0xd1b54a35u
@@ -2954,6 +2956,7 @@ EngineParameters AcustraEngine::sanitise(const EngineParameters& source) noexcep
     result.releaseNoise = clamp(source.releaseNoise, 0.0f, 1.0f);
     result.piezoMix = clamp(source.piezoMix, 0.0f, 1.0f);
     result.room = clamp(source.room, 0.0f, 1.0f);
+    result.detune = clamp(source.detune, 0.0f, 1.0f);
     return result;
 }
 
@@ -5489,17 +5492,20 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
     return result;
 }
 
-// The normal loop is tuned against its own port and the parallel loop shares
-// its length (so the pair splits by the bridge's pull on the normal member,
-// README "Both polarisations are one string"), and where the saddle rocks
-// the two are also coupled through it (the transfer mobility) and
-// ring as one pair of modes. Near the fundamental each loop's round trip is
+// Excessive polarisation splits are tuned against each port's reflection.
+// Under a cent the shared end compensation preserves natural guitar colour;
+// by four cents each plane receives its own correction. Sharing only the
+// normal plane's correction left the weakly loaded parallel wave up to ten
+// cents out as it took over the sustain. Physical speaking length and string
+// stiffness remain shared; the distinct bridge end phases receive distinct
+// delay compensation. Through the rocking transfer both waves still ring
+// as one pair of modes. Near the fundamental each loop's round trip is
 // its gain and phase times the saddle's 2x2 reflection R = (Y0 - Y)(Y0 + Y)^-1,
 // so the pair's modes are the eigenvalues of diag(G_normal, G_parallel) R: a
 // mode's phase over 2 pi is how far it sits from the requested pitch, as a
 // fraction of it, and its magnitude per round trip how fast it decays. The
-// normal loop's own compensation already puts its uncoupled mode on the
-// request; what the coupling adds is read here as the shift of the note's
+// individual loop compensation aligns the uncoupled modes as needed;
+// what the coupling adds is read here as the shift of the note's
 // sustained, energy-weighted centre - the pitch a tuner or a player's ear
 // reads once the attack has passed. Each mode is weighted by its
 // normal-polarisation share (the normal polarisation radiates through the
@@ -5518,7 +5524,7 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
 // rocking was not measured.
 float AcustraEngine::coupledPolarisationDetune(
     const PortMobility& port, float impedance, float bentImpedance,
-    float frequency, float normalGain,
+    float frequency, float parallelPhaseShare, float normalGain,
     float parallelGain) const noexcept
 {
     if (!port.valid || port.transfer == std::complex<float>{})
@@ -5541,13 +5547,17 @@ float AcustraEngine::coupledPolarisationDetune(
     const Complex r01 = (-c00 * transfer - transfer * b00) * inverseDeterminant;
     const Complex r10 = (-transfer * b11 - c11 * transfer) * inverseDeterminant;
     const Complex r11 = (transfer * transfer + c11 * b00) * inverseDeterminant;
-    // The normal loop's delay cancels its own uncoupled reflection's phase at
-    // the request; the parallel loop shares that bare length.
+    // The parallel plane's phase follows the same bounded correction share
+    // used when its delay is configured below.
     const double ownPhase = std::arg(Complex((unbentAdmittance - normal)
                                              / (unbentAdmittance + normal)));
+    const double ownParallelPhase = std::arg(Complex((unbentAdmittance - parallel)
+                                             / (unbentAdmittance + parallel)));
+    const double parallelPhase = ownPhase + parallelPhaseShare
+        * (ownParallelPhase - ownPhase);
     const Complex gainNormal = std::polar(static_cast<double>(normalGain), -ownPhase);
     const Complex gainParallel = std::polar(static_cast<double>(parallelGain),
-        -ownPhase - 0.0);
+        -parallelPhase);
     const Complex a00 = gainNormal * r00;
     const Complex a01 = gainNormal * r01;
     const Complex a10 = gainParallel * r10;
@@ -5654,7 +5664,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         stoppedMidi, voice.openMidi, stringIndex,
         exact::bits(static_cast<float>(sampleRate_)), exact::bits(performedBend),
         exact::bits(memberBendSemitones), exact::bits(vibratoInterval),
-        exact::bits(voice.attackPitchCents), exact::bits(masterTuneSemitones_) };
+        exact::bits(voice.attackPitchCents), exact::bits(voice.noteDetuneCents),
+        exact::bits(masterTuneSemitones_) };
     auto& geometry = voice.pitchGeometry;
     if (!geometry.valid || !(pitchKey == geometry.key))
     {
@@ -5696,7 +5707,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // tension below, so the inharmonicity and the junction port carry it too.
         // The wheel down is + 0.0f, which is exact.
         const float performedSemitones = clamp(performedBend, -192.0f, 192.0f)
-            + 0.01f * voice.attackPitchCents + vibratoInterval;
+            + 0.01f * voice.attackPitchCents + vibratoInterval
+            + 0.01f * voice.noteDetuneCents;
         // An eight-octave RPN range is legal even when the requested pitch is
         // outside this finite waveguide's representable band. Keep the performed
         // interval, then bound the physical frequency at the existing delay-line
@@ -5711,7 +5723,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // round trip must be designed at the pitch being played: probing the
         // old-fundamental section higher on its curve over-damps bent partials.
         const float lossDesignFrequency = clamp(unbentFrequency * std::exp2(
-            (clamp(performedBend, -192.0f, 192.0f) + vibratoInterval) / 12.0f),
+            (clamp(performedBend, -192.0f, 192.0f) + vibratoInterval
+                + 0.01f * voice.noteDetuneCents) / 12.0f),
             static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
             0.24f * static_cast<float>(sampleRate_));
 
@@ -5741,7 +5754,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         // few-cent tension transient (updateAttackPitch), already carried as a
         // pitch, and routing it here would modulate the junction port on every
         // note's attack, which no measurement asks for.
-        const float tensionSemitones = memberBendSemitones + vibratoInterval;
+        const float tensionSemitones = memberBendSemitones + vibratoInterval
+            + 0.01f * voice.noteDetuneCents;
         const float bentTension = tensionSemitones != 0.0f
             ? bentStringTension(tension, axialRigidity,
                                 std::exp2(tensionSemitones / 12.0f))
@@ -6093,11 +6107,24 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float desiredPeriodGain = std::pow(0.001f,
         1.0f / std::max(fundamentalT60 * frequency, 1.0f));
     const float unbentImpedance = stringImpedance(stringIndex, voice.openMidi) * masterTuneRatio_;
+    const float parallelBridgeDelay = bridgePort.valid
+        ? -std::arg((1.0f / unbentImpedance - bridgePort.parallel)
+            / (1.0f / unbentImpedance + bridgePort.parallel)) / omega : 0.0f;
+    // A small natural doublet is useful guitar colour. Retain the shared
+    // compensation when the two end phases differ by under a cent; excessive
+    // splits smoothly receive their own correction, fully by four cents.
+    // This keeps sub-cent treble articulation while fixing the audibly detuned
+    // low-register sustain, with no pitch/register boundary or discontinuity.
+    const float planeMismatchCents = 1200.0f * std::log2(std::max(0.5f,
+        1.0f + (measuredBridgeDelay - parallelBridgeDelay) / rawDelay));
+    const float correction = clamp((exact::abs(planeMismatchCents) - 1.0f)
+        / 3.0f, 0.0f, 1.0f);
+    const float parallelPhaseShare = correction * correction * (3.0f - 2.0f * correction);
     const float coupledDetune = coupledPolarisationDetune(
         bridgePort, unbentImpedance, unbentImpedance
             * exact::sqrt((bentTension / tension) / (1.0f
                 + (bentTension - tension) / std::max(axialRigidity, 1.0f))),
-        frequency,
+        frequency, parallelPhaseShare,
         desiredPeriodGain * stringRoundTripGain,
         desiredPeriodGain * stringRoundTripGain);
     voice.polarisationDetune = coupledDetune;
@@ -6110,14 +6137,16 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             * constantLossMagnitude(voice.constantLossGain, voice.constantLossA1,
                 voice.constantLossA2, voice.constantLossN2, omega));
     const float loopGain = desiredPeriodGain / std::max(filterGain, 0.50f);
-
     for (int polarisation = 0; polarisation < 2; ++polarisation)
     {
         auto& loop = voice.loops[static_cast<std::size_t>(polarisation)];
         const float planeDelay = rawDelay;
+        const float planeBridgeDelay = polarisation == 0
+            ? measuredBridgeDelay : measuredBridgeDelay
+                + parallelPhaseShare * (parallelBridgeDelay - measuredBridgeDelay);
         const float polarisationDelay = coupledDetune != 0.0f
-            ? (planeDelay - measuredBridgeDelay) * (1.0f + coupledDetune)
-            : planeDelay - measuredBridgeDelay;
+            ? (planeDelay - planeBridgeDelay) * (1.0f + coupledDetune)
+            : planeDelay - planeBridgeDelay;
         loop.targetDelay = clamp(
             polarisationDelay,
             3.0f, static_cast<float>(activeDelaySamples() - 3));
@@ -6125,7 +6154,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             loop.currentDelay = loop.targetDelay;
         if (referenceTuning)
         {
-            const float referenceBridgeDelay = measuredBridgeDelay
+            const float referenceBridgeDelay = planeBridgeDelay
                 * static_cast<float>(48000.0 / sampleRate_);
             const float referenceDelay = coupledDetune != 0.0f
                 ? (referenceRawDelay - referenceBridgeDelay) * (1.0f + coupledDetune)
@@ -7364,6 +7393,7 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.attackPitchCents = 0.0f;
     voice.attackPitchDecay = 1.0f;
     voice.frozenMemberPitchBendSemitones = 0.0f;
+    voice.noteDetuneCents = 0.0f;
     voice.attackSlopeEnergy = 0.0f;
     voice.observedSlopeEnergy = 0.0f;
     voice.harmonic = 1;
@@ -7950,10 +7980,12 @@ void AcustraEngine::beginRelease(Voice& voice, int stringIndex) noexcept
                                                     voice.harmonic);
     // Dissipative rates add. Blending T60 itself would give an intermediate
     // contact less loss than the same weighted open/fretted damping rates.
-    // Explicit endpoints preserve both established unslid gestures exactly.
+    // A stopped note still damps faster than an open catch. The gentler pad
+    // contact uses the time already reached by a slow MIDI release; it halves
+    // the former open/fretted loss-rate jump without erasing the distinction.
     const float nominalReleaseSeconds = fretContact == 0.0f ? 1.25f
-        : fretContact == 1.0f ? 0.16f
-        : 1.0f / ((1.0f - fretContact) / 1.25f + fretContact / 0.16f);
+        : fretContact == 1.0f ? 0.32f
+        : 1.0f / ((1.0f - fretContact) / 1.25f + fretContact / 0.32f);
     // An explicit fast key-up represents a firm damping contact; a slow
     // one a gentler contact. This is a bounded performance map, not a fit
     // to recordings (the sustained-note corpora carry no release gesture).
@@ -9124,6 +9156,8 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     voice.returnSamples = 0;
     voice.attackPitchCents = 0.0f;
     voice.attackPitchDecay = 1.0f;
+    voice.noteDetuneCents = 50.0f * parameters_.detune
+        * xorshiftNoise(voice.noteDetuneState);
     // Stop only future picking input. Already emitted waves keep travelling.
     voice.excitationEnvelope = 0.0f;
     voice.strumming = false;
@@ -9185,6 +9219,8 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     voice.velocity = v;
     voice.attackPitchCents = 0.0f;
     voice.attackPitchDecay = 1.0f;
+    if (!continuing)
+        voice.noteDetuneCents = 0.0f;
     configureVoice(voice, string, midiNote, !continuing);
     voice.onsetSample = sampleClock_;
     rememberFinger(string);
@@ -9557,7 +9593,7 @@ void AcustraEngine::muteVacatedString(Voice& voice, int stringIndex) noexcept
     static_cast<void>(stringIndex);
     if (voice.contactTravelEnabled)
         voice.excitationEnvelope = 0.0f;
-    constexpr float releaseSeconds = 0.16f;
+    constexpr float releaseSeconds = 0.32f;
     voice.releaseSeconds = releaseSeconds;
     voice.releaseDamping = handDamping(releaseSeconds, loopFundamental(voice));
     voice.returnSamples = static_cast<int>(
@@ -9591,6 +9627,7 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
     // queued key-up belongs to this stroke instead, so keep it until the
     // actual pluck arms the ordinary release grace.
     const float queuedReleaseVelocity = voice.releaseVelocity;
+    const bool repluck = voice.repluckPending;
     bool merge = false;
     if (voice.repluckPending)
     {
@@ -9617,16 +9654,17 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
         }
         else
             voice.repluckContactPending = false;
-        // Repeated Pick releases need current reference-rate geometry too,
-        // even when the preceding wave and its filter memories continue.
-        configureVoice(voice, stringIndex, voice.midiNote, !merge, true);
     }
-    else if (scheduled)
+    // Retain the preceding loops before changing their pitch. Queued attacks
+    // take the control's current value at contact, never when they were queued.
+    const float previousDetune = voice.noteDetuneCents;
+    voice.noteDetuneCents = 50.0f * parameters_.detune
+        * xorshiftNoise(voice.noteDetuneState);
+    if (repluck || scheduled || voice.noteDetuneCents != previousDetune)
     {
-        // A wheel or playing control can move after fretting but before the
-        // pick arrives, even between two control updates. Release from the
-        // string's current geometry, as an immediate stroke would do now.
-        configureVoice(voice, stringIndex, voice.midiNote, true);
+        // Repeated Pick releases refresh reference-rate geometry while their
+        // existing waves and histories continue. Fresh contacts start tuned.
+        configureVoice(voice, stringIndex, voice.midiNote, !merge, true);
     }
     initialisePluck(voice, stringIndex, voice.velocity, merge);
     voice.attackFired = true;

@@ -2605,7 +2605,9 @@ void testPhysicalVoiceOwnsReleaseLifecycle()
         engine.process(left.data(), right.data(), count);
         rendered += count;
     }
-    for (int block = 0; block < 115; ++block)
+    const int releaseBlocks = static_cast<int>(std::ceil(
+        (0.32 + 0.08) * sampleRate / blockSize)) + 1;
+    for (int block = 0; block < releaseBlocks; ++block)
         engine.process(left.data(), right.data(), blockSize);
     expect(engine.getActiveVoiceCount() == 0,
            "allocator ownership outlived the audible physical release");
@@ -2618,7 +2620,7 @@ void testPhysicalVoiceOwnsReleaseLifecycle()
     expect(engine.getActiveVoiceCount() == 1,
            "sustain pedal failed to retain physical-note ownership");
     engine.setSustainPedal(false);
-    for (int block = 0; block < 115; ++block)
+    for (int block = 0; block < releaseBlocks; ++block)
         engine.process(left.data(), right.data(), blockSize);
     expect(engine.getActiveVoiceCount() == 0,
            "pedal-up did not release physical-note ownership");
@@ -3056,6 +3058,40 @@ void testSteadyPitchIsCompensated()
                    + std::to_string(midiNote) + " by "
                    + std::to_string(cents) + " cents");
     }
+}
+
+void testEveryStringStaysOnEqualTemperedPitch()
+{
+    // Read the audible fundamental, not the MIDI-derived delay prescription.
+    // The former shared bridge compensation let the parallel wave settle
+    // over ten cents away on E3 and D3, despite exact nominal MIDI tuning.
+    // Preserve small transient/doublet shifts from a real coupled guitar.
+    double worst = 0.0;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+        for (int string = 0; string < 6; ++string)
+            for (int fret : { 0, 1, 5, 12, 20 })
+            {
+                auto engine = std::make_unique<acustra::AcustraEngine>();
+                engine->prepare(rate, blockSize);
+                engine->setStringPerChannelMode(true);
+                const int note = acustra::AcustraEngine::openNotes(
+                    acustra::Tuning::Standard)[static_cast<std::size_t>(string)] + fret;
+                engine->noteOn(note, 0.6f, string + 1);
+                const int count = static_cast<int>(2.8 * rate);
+                Audio audio { std::vector<float>(static_cast<std::size_t>(count)),
+                              std::vector<float>(static_cast<std::size_t>(count)) };
+                engine->process(audio.left.data(), audio.right.data(), count);
+                const double expected = 440.0 * std::exp2((note - 69.0) / 12.0);
+                const double actual = spectralPeakFrequency(
+                    audio, expected, 18.0, 1.6, 2.7, rate);
+                const double cents = 1200.0 * std::log2(actual / expected);
+                worst = std::max(worst, std::abs(cents));
+                expect(std::abs(cents) < 1.8,
+                       "string " + std::to_string(string + 1) + " fret "
+                           + std::to_string(fret) + " missed equal tuning by "
+                           + std::to_string(cents) + " cents at " + std::to_string(rate));
+            }
+    std::cout << "Every-string equal tuning: worst sustained error " << worst << " cents\n";
 }
 
 void testPhysicalSustainSettlesNearRequestedPitch()
@@ -9437,6 +9473,7 @@ int main()
     testAgeRemovesUpperStringEnergy();
     testAttackPitchIsBoundedAndVelocityResponsive();
     testSteadyPitchIsCompensated();
+    testEveryStringStaysOnEqualTemperedPitch();
     testPhysicalSustainSettlesNearRequestedPitch();
     testLoadedE2IsCentredAndNotSplit();
     testSteelDispersionTracksTheStiffStringLaw();

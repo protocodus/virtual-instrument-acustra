@@ -1053,6 +1053,154 @@ void testSustainHoldIsThePedalOnEveryChannel()
            "Sustain is not channel 6's pedal");
 }
 
+void testSustainKeyswitchIsAnIndependentGlobalLatch()
+{
+    const auto key = [](double seconds, int channel = 16)
+    {
+        return message(seconds, 0x90 + channel - 1, Performer::keyswitchSustain, 100);
+    };
+    const auto pedal = [](double seconds, bool down)
+    {
+        return message(seconds, 0xb0, 64, down ? 127 : 0);
+    };
+    const auto on = message(0.0, 0x90, 60, 100);
+    const auto off = message(0.5, 0x80, 60, 64);
+    const auto play = [](std::vector<Event> events, std::vector<Control> controls = {})
+    {
+        auto scenario = custom("sustain keyswitch", 1.3, std::move(events));
+        scenario.controls = std::move(controls);
+        return render(scenario, 48000.0, 64, false);
+    };
+    expect(play({ key(0.0), message(0.1, 0x8f, Performer::keyswitchSustain, 64),
+                  message(0.2, 0x9f, Performer::keyswitchSustain, 0) }) == play({}),
+           "the sustain keyswitch or its key-up sounded");
+    const auto held = play({ key(0.0), on, off });
+    expect(held == play({ pedal(0.0, true), on, off }),
+           "the sustain keyswitch did not hold all channels like the pedal");
+    expect(play({ key(0.0), on, message(0.1, 0x8f, Performer::keyswitchSustain, 64), off })
+               == held,
+           "the sustain keyswitch key-up released its latch");
+    expect(play({ key(0.0), on, off, key(1.0, 5) })
+               == play({ pedal(0.0, true), on, off, pedal(1.0, false) }),
+           "a second sustain keyswitch did not release the global latch");
+    expect(play({ on, key(0.2), key(0.3), off }) == play({ on, off }),
+           "two sustain keyswitch presses did not toggle back off");
+    const std::vector<Control> panelOn {{ 0.0, Control::Kind::Sustain, 1.0f }};
+    expect(play({ key(0.0), on, off, key(1.0) }, panelOn)
+               == play({ on, off }, panelOn),
+           "the keyswitch switched off the independent panel hold");
+    expect(play({ key(0.0), on, off }, {{ 0.0, Control::Kind::Sustain, 1.0f },
+                                     { 1.0, Control::Kind::Sustain, 0.0f }}) == held,
+           "refreshing or releasing the panel erased the keyswitch hold");
+    expect(play({ key(0.0), on, pedal(0.2, true), off, key(1.0) }) == held,
+           "the keyswitch switched off the independent CC64 pedal");
+    expect(play({ key(0.0), on, pedal(0.2, true), off, pedal(1.0, false) }) == held,
+           "the CC64 pedal switched off the independent keyswitch hold");
+    expect(play({ key(0.0), on, off, message(0.6, 0xb0, 121, 0) }) == held,
+           "Reset All Controllers erased the global keyswitch latch");
+    expect(play({ key(0.0), message(0.0, 0x95, 60, 100), message(0.5, 0x85, 60, 64) })
+               == play({ message(0.0, 0xb5, 64, 127), message(0.0, 0x95, 60, 100),
+                         message(0.5, 0x85, 60, 64) }),
+           "the sustain keyswitch failed to hold another channel");
+}
+
+void testSustainKeyswitchOrderingAndGathering()
+{
+    const auto key = [](double seconds)
+    {
+        return message(seconds, 0x9f, Performer::keyswitchSustain, 100);
+    };
+    const auto pedal = [](double seconds, bool down)
+    {
+        return message(seconds, 0xb0, 64, down ? 127 : 0);
+    };
+    const auto on = message(0.0, 0x90, 60, 100);
+    const auto off = message(0.5, 0x80, 60, 127);
+    for (const bool gather : { false, true })
+    {
+        const auto play = [&](std::vector<Event> events, int block = 64, Feed how = Feed::Raw)
+        {
+            return render(custom("keyswitch order", 1.3, std::move(events)),
+                          48000.0, block, gather, how);
+        };
+        expect(play({ on, off, key(0.5) }) == play({ on, off }),
+               "a keyswitch pressed after a same-sample key-up caught the note");
+        expect(play({ on, key(0.5), off }) == play({ on, pedal(0.5, true), off }),
+               "a keyswitch pressed before a same-sample key-up failed to hold it");
+        expect(play({ on, key(0.2), off, key(0.5), key(0.5) })
+                   == play({ on, pedal(0.2, true), off, pedal(0.5, false) }),
+               "a keyswitch lifted and pressed again after key-up recaught it");
+        const std::vector<Event> score { key(0.001), on, off, key(0.501) };
+        const auto reference = play(score);
+        expect(reference == play(score, 127) && reference == play(score, 512),
+               "sustain keyswitch scheduling changed across block partitions");
+        expect(reference == play(score, 64, Feed::Helpers),
+               "raw MIDI and helper sustain keyswitch paths differed");
+        expect(play(score) == play({ pedal(0.001, true), on, off, pedal(0.501, false) }),
+               "the sustain keyswitch lost sample-exact pedal parity");
+    }
+
+    auto performer = std::make_unique<Performer>();
+    performer->prepare(48000.0, 64);
+    performer->setGatherChords(true);
+    std::array<float, 64> left {}, right {};
+    performer->beginBlock(left.data(), right.data(), 64);
+    performer->noteOn(13, 16, Performer::keyswitchSustain, 100);
+    performer->endBlock();
+    expect(!performer->isKeyswitchSustainEnabled(), "Gather applied the sustain keyswitch early");
+    const int due = 13 + Performer::gatherWindowSamples(48000.0);
+    for (int start = 64; start <= due; start += 64)
+    {
+        performer->process(left.data(), right.data(), 64);
+        expect(performer->isKeyswitchSustainEnabled() == (start + 64 > due),
+               "Gather applied the sustain keyswitch in the wrong block");
+    }
+}
+
+void testSustainIndicatorAndPanicFollowEveryInput()
+{
+    auto performer = std::make_unique<Performer>();
+    performer->prepare(48000.0, 64);
+    std::array<float, 64> left {}, right {};
+    expect(!performer->isSustainActive(), "sustain indicator started lit");
+    performer->beginBlock(left.data(), right.data(), 64);
+    performer->controlChange(0, 12, 64, 127);
+    expect(performer->isSustainActive(), "sustain indicator missed a non-manager pedal");
+    performer->noteOn(1, 16, Performer::keyswitchSustain, 100);
+    performer->controlChange(2, 12, 64, 0);
+    expect(performer->isSustainActive() && performer->isKeyswitchSustainEnabled(),
+           "sustain indicator missed the keyswitch after the pedal lifted");
+    performer->endBlock();
+    performer->reset();
+    expect(!performer->isKeyswitchSustainEnabled() && !performer->isSustainActive(),
+           "panic failed to clear the keyswitch and pedal sustain indicator");
+    performer->setSustainHold(true);
+    performer->beginBlock(left.data(), right.data(), 64);
+    performer->noteOn(0, 16, Performer::keyswitchSustain, 100);
+    performer->endBlock();
+    performer->reset();
+    expect(!performer->isKeyswitchSustainEnabled() && performer->isSustainActive(),
+           "panic erased the panel hold or retained the keyswitch");
+    performer->setSustainHold(false);
+    expect(!performer->isSustainActive(), "sustain indicator did not follow the panel off");
+    performer->beginBlock(left.data(), right.data(), 64);
+    performer->noteOn(0, 16, Performer::keyswitchSustain, 100);
+    performer->endBlock();
+    performer->prepare(48000.0, 64);
+    expect(!performer->isKeyswitchSustainEnabled() && !performer->isSustainActive(),
+           "prepare retained the keyswitch sustain latch");
+    performer->setKeyswitchSustain(true);
+    performer->setSustainHold(false);
+    expect(performer->isKeyswitchSustainEnabled() && performer->isSustainActive(),
+           "restoring the keyswitch latch lost the hold under a panel refresh");
+    performer->setSustainHold(true);
+    performer->setKeyswitchSustain(false);
+    expect(!performer->isKeyswitchSustainEnabled() && performer->isSustainActive(),
+           "clearing the restored keyswitch latch erased the independent panel");
+    performer->setSustainHold(false);
+    expect(!performer->isSustainActive(), "the restored keyswitch left a stale hold");
+}
+
 void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
 {
     // 130 Note Ons on one sample: the group holds 128.
@@ -1704,6 +1852,9 @@ int main()
     testResetAllControllersResetsVibratoAndPressure();
     testSustainMeetsSameSampleKeyUpsInOrder();
     testSustainHoldIsThePedalOnEveryChannel();
+    testSustainKeyswitchIsAnIndependentGlobalLatch();
+    testSustainKeyswitchOrderingAndGathering();
+    testSustainIndicatorAndPanicFollowEveryInput();
     testOverflowIsCountedNotAllocated(battery);
     testAFullGatheringQueueKeepsAGesturesFinalValue();
     testDecreasingOffsetsKeepTheirOrder();

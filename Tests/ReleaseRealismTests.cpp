@@ -330,20 +330,20 @@ void ownershipAndPedal()
     expect(e->heldString(43) == 0, "first duplicate off released the second owner");
     e->noteOffWithVelocity(43, 1, 0.0f);
     advance(*e, graceSamples(48000.0) + 2);
-    expect(Access::releaseSeconds(*e, 0) > 0.16f, "final owner's gentle release was lost");
+    expect(Access::releaseSeconds(*e, 0) > 0.32f, "final owner's gentle release was lost");
     e->reset();
     e->setSustainPedal(true);
     e->noteOn(43, 0.7f);
     e->noteOffWithVelocity(43, 1, 1.0f);
     e->setSustainPedal(false);
-    expect(Access::releaseSeconds(*e, 0) == 0.16f,
+    expect(Access::releaseSeconds(*e, 0) == 0.32f,
            "pedal-up reused a stale fast key release instead of nominal contact");
     e->allSoundOff();
     expect(e->getActiveVoiceCount() == 0, "all sound off retained a release voice");
     e->noteOn(43, 0.7f);
     e->noteOff(43);
     advance(*e, graceSamples(48000.0) + 2);
-    expect(Access::releaseSeconds(*e, 0) == 0.16f, "panic left a stale release velocity");
+    expect(Access::releaseSeconds(*e, 0) == 0.32f, "panic left a stale release velocity");
 }
 
 void spatialContactPhysics()
@@ -546,7 +546,7 @@ void contactBoundariesAndContinuity()
         on->noteOff(43);
         advance(*on, graceSamples(rate) + 2);
         expect(Access::contact(*on, 0), "ordinary key-up failed to land after its deadline");
-        advance(*on, static_cast<int>(rate * 0.25));
+        advance(*on, Access::returnSamples(*on) + 1);
         expect(!Access::contact(*on, 0), "finished release kept its contact on the idle string");
         // Prior ownership/reset checks deliberately played only the enabled
         // engine. Fresh fixtures restore matched random-draw histories.
