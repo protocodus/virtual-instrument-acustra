@@ -6,6 +6,7 @@ Acustra is an acoustic-guitar instrument for VST3, Audio Unit and Standalone
 hosts. It synthesises every note in real time from six physical string models,
 a passive measured bridge and a measurement-derived guitar body. The plug-in
 contains no sample player and no recorded note audio.
+The [user guide](Docs/USER_GUIDE.md) covers installing and playing it.
 
 Start with Guitar, Picking and Capture: construction presets,
 finger/pick/thumb styles, and stereo mic, mono mic or an under-saddle piezo
@@ -637,7 +638,7 @@ tension.
 
 The instrument answers only its tuning's range: from the lowest open string
 to the twentieth fret of the highest (E2 to C6 in Standard, D2 to C6 in
-Drop D, D2 to B5 in DADGAD and Open G, D#2 to B5 a half step down). A pitch
+Drop D, D2 to A#5 in DADGAD and Open G, D#2 to B5 a half step down). A pitch
 outside it, above or below, is ignored: no string takes it and nothing
 sounds. Until 2026-10-12 pitches above the fretboard reached the open
 strings' natural harmonics (the node-touch projection); the user asked for

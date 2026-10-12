@@ -117,9 +117,11 @@ CC0_NOTICE="${PROJECT_DIR}/ThirdParty/CC0-1.0.txt"
 EASTMAN_NOTICE="${PROJECT_DIR}/ThirdParty/Eastman-E1D-README.md"
 SHINY_NOTICE="${PROJECT_DIR}/ThirdParty/Shinyguitar-README.txt"
 BANK_MANIFEST="${PROJECT_DIR}/Assets/SampleBank/manifest.json"
+USER_GUIDE="${PROJECT_DIR}/Docs/USER_GUIDE.md"
 for notice in "${PROJECT_DIR}/LICENSE" "${PROJECT_DIR}/THIRD_PARTY_NOTICES.md" \
               "${JUCE_NOTICE}" "${JUCE_DEPENDENCY_NOTICE}" "${CC0_NOTICE}" \
-              "${EASTMAN_NOTICE}" "${SHINY_NOTICE}" "${BANK_MANIFEST}"; do
+              "${EASTMAN_NOTICE}" "${SHINY_NOTICE}" "${BANK_MANIFEST}" \
+              "${USER_GUIDE}"; do
     if [[ ! -f "${notice}" ]]; then
         echo "error: missing distribution notice: ${notice}" >&2
         exit 1
@@ -143,6 +145,7 @@ copy_documentation() {
         "${destination}/ThirdParty/Shinyguitar-README.txt"
     ditto "${BANK_MANIFEST}" \
         "${destination}/Assets/SampleBank/manifest.json"
+    ditto "${USER_GUIDE}" "${destination}/USER_GUIDE.md"
 }
 
 copy_documentation "${NOTICE_ROOT}"

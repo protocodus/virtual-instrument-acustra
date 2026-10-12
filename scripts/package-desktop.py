@@ -35,7 +35,7 @@ def package(build, platform, config="Release"):
         files["JUCE-LICENSE.md"]=PROJECT/"ThirdParty/JUCE-LICENSE.md"
     else:
         docs += ["ThirdParty/JUCE-DEPENDENCY-LICENSES.txt","ThirdParty/CC0-1.0.txt","ThirdParty/Eastman-E1D-README.md","ThirdParty/Shinyguitar-README.txt","Assets/SampleBank/manifest.json"]
-        files["README.md"]=PROJECT/"README.md"
+        files["USER_GUIDE.md"]=PROJECT/"Docs/USER_GUIDE.md"
     for doc in docs: files[doc]=PROJECT/doc
     for f in files.values():
         if not f.is_file() or not f.stat().st_size: raise ValueError("missing or empty distribution document: "+str(f))
