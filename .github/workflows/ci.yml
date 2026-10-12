@@ -85,12 +85,17 @@ jobs:
             -B "build-dsp" \
             -DCMAKE_BUILD_TYPE=Release \
             "-DACUSTRA_BUILD_PLUGIN=ON" \
-            -DBUILD_TESTING=OFF
+            -DBUILD_TESTING=ON
 
-      - name: Build Linux VST3 and standalone
+      - name: Build Linux VST3, standalone and plug-in tests
         run: |
           cmake --build "build-dsp" --parallel \
-            --target "Acustra_VST3" "Acustra_Standalone"
+            --target "Acustra_VST3" "Acustra_Standalone" \
+              "AcustraPluginProcessorTests" "AcustraPluginTempoReleaseTests"
+
+      - name: Run plug-in wrapper tests
+        run: |
+          ctest --test-dir "build-dsp" -R "^Acustra[.](PluginProcessor|PluginTempoRelease)$" --no-tests=error --output-on-failure
 
       - name: Package Linux VST3 and standalone
         id: linux-package
@@ -206,11 +211,15 @@ jobs:
 
       - name: Configure Windows plug-in build
         run: |
-          cmake -S "." -B "build-win" "-DACUSTRA_BUILD_PLUGIN=ON" -DBUILD_TESTING=OFF
+          cmake -S "." -B "build-win" "-DACUSTRA_BUILD_PLUGIN=ON" -DBUILD_TESTING=ON
 
-      - name: Build Windows VST3 and standalone
+      - name: Build Windows VST3, standalone and plug-in tests
         run: |
-          cmake --build "build-win" --config Release --parallel --target "Acustra_VST3" "Acustra_Standalone"
+          cmake --build "build-win" --config Release --parallel --target "Acustra_VST3" "Acustra_Standalone" "AcustraPluginProcessorTests" "AcustraPluginTempoReleaseTests"
+
+      - name: Run plug-in wrapper tests
+        run: |
+          ctest --test-dir "build-win" -C Release -R '^Acustra[.](PluginProcessor|PluginTempoRelease)$' --no-tests=error --output-on-failure
 
       - name: Package Windows VST3 and standalone
         id: windows-package
