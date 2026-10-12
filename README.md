@@ -221,6 +221,74 @@ or `python3 scripts/package-desktop.py --build-dir build-dsp --platform Linux`.
 Both use the same versioned layout and named manifests/checksums. Run
 `python3 scripts/test-distribution.py` to check packaging without rebuilding DSP.
 
+### Release workflow
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds,
+validates and packages the three platforms from one commit:
+
+- **macOS universal** (macos-15): `scripts/build-macos.sh` with
+  `BUILD_UNIVERSAL=ON` builds and runs the whole test suite, `auval -strict`
+  validates the AU and pluginval the VST3, then
+  `scripts/sign-and-package-macos.sh` makes the zip and the pkg. The runner is
+  arm64, so the x86_64 slice is built but never run.
+- **Windows x64** (windows-2025) and **Linux x64** (ubuntu-22.04): the VST3,
+  the Standalone and the plug-in wrapper tests (`Acustra.PluginProcessor`,
+  `Acustra.PluginTempoRelease`), pluginval on the VST3, then
+  `scripts/package-desktop.py`. The Windows job fails if either binary imports
+  the Visual C++ runtime DLLs. The Linux job links libstdc++ and libgcc
+  statically and fails if either binary asks for a glibc newer than Ubuntu
+  22.04's 2.35.
+
+pluginval is release v1.0.4, downloaded and checked against pinned SHA-256
+sums, at strictness level 10. Build numbers are `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT`,
+as in CI, and each platform's package set is kept as a workflow artifact for
+seven days.
+
+The workflow runs on a pull request that changes it, `scripts/`, `cmake/` or
+`CMakeLists.txt`, never signing there; on a manual run of any branch, which signs
+when the secrets exist and makes no release; and on a pushed `v*` tag. After a
+tag's three jobs pass, a last job checks that every manifest names the tag's
+version and the tagged commit built from a clean tree, writes one `SHA256SUMS`
+over all the files, and attaches them to a **draft** GitHub release whose notes
+state each platform's signing. To release a version, confirm that
+`project(Acustra VERSION ...)` in `CMakeLists.txt` names it and that CI passed
+on the commit, then tag that commit:
+
+```sh
+git tag -a v1.3.2 -m "Acustra 1.3.2" <commit>
+git push origin v1.3.2
+```
+
+Signing runs only when its secrets exist (repository Settings, Secrets and
+variables, Actions). With none set, nothing fails for it: the macOS bundles are
+signed ad hoc, the pkg is unsigned, nothing is notarized and the Windows
+binaries are unsigned.
+
+| Secret | Use |
+| --- | --- |
+| `MACOS_CERTIFICATES_P12` | Base64 of a .p12 holding the Developer ID Application and Developer ID Installer identities and their keys; imported into a temporary keychain |
+| `MACOS_CERTIFICATES_PASSWORD` | The .p12's password |
+| `MACOS_APP_SIGN_IDENTITY` | The application identity's name, passed as `APP_SIGN_IDENTITY` |
+| `MACOS_INSTALLER_SIGN_IDENTITY` | The installer identity's name, passed as `INSTALLER_SIGN_IDENTITY` |
+| `MACOS_NOTARY_APPLE_ID`, `MACOS_NOTARY_TEAM_ID`, `MACOS_NOTARY_PASSWORD` | Apple ID, team ID and app-specific password, saved as the notarytool profile passed as `NOTARY_PROFILE`; notarizing needs the certificates as well |
+| `WINDOWS_CERTIFICATE_PFX` | Base64 of a .pfx code-signing certificate and key; `signtool` signs `Acustra.exe` and the VST3 with SHA-256 and an RFC 3161 timestamp, then verifies them |
+| `WINDOWS_CERTIFICATE_PASSWORD` | The .pfx's password |
+
+The Windows step signs from a .pfx file. A certificate whose key lives only on
+a hardware token or with a cloud signing service needs that provider's signing
+step in its place.
+
+What a run cannot do, and a person still must before publishing a draft:
+
+- Obtain the signing identities, an Apple Developer ID (Application and
+  Installer) with a notarization login and a Windows code-signing
+  certificate, and add them as the secrets above. No CI package so far has
+  been signed beyond ad hoc.
+- Qualify the packages in real hosts. The workflow runs the wrapper tests,
+  pluginval and auval; it opens the plug-ins in no DAW.
+- Review the draft and decide what is outside this repository: the JUCE
+  licence route (see [Licensing](#licensing)), the terms and the price.
+
 ## Audio demos
 
 WAV files are omitted from this repository. Generate the ten demos locally
@@ -3950,23 +4018,41 @@ hard-played the passage is. Generated WAVs are local outputs, not a
 cross-platform checksum.
 
 The plug-in build fetches pinned JUCE 8.0.14 unless `ACUSTRA_JUCE_PATH` names a
-local checkout:
+local checkout. `CMAKE_BUILD_TYPE` selects the optimised build for Make and
+Ninja, and `--config` for Xcode and Visual Studio; the packagers read
+`<build>/Acustra_artefacts/Release`:
 
 ```sh
-cmake -S . -B build -DACUSTRA_BUILD_PLUGIN=ON
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DACUSTRA_BUILD_PLUGIN=ON
 cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
 macOS builds VST3, Audio Unit and Standalone targets; other supported desktop
 platforms build VST3 and Standalone. Universal arm64/x86_64 macOS output is on
-by default. The release scripts build, validate, ad-hoc sign and package all
-three formats:
+by default. Visual C++ builds link Microsoft's C and C++ runtime statically, so
+the Windows zip needs no Visual C++ redistributable. The macOS scripts build,
+test, sign and package all three formats:
 
 ```sh
 ./scripts/build-macos.sh
 ./scripts/sign-and-package-macos.sh
 ```
+
+`sign-and-package-macos.sh` signs ad hoc and leaves the pkg unsigned unless
+these name items in the keychain:
+
+- `APP_SIGN_IDENTITY`: a Developer ID Application identity. The three bundles
+  are then signed with the hardened runtime and a secure timestamp.
+- `INSTALLER_SIGN_IDENTITY`: a Developer ID Installer identity, with which
+  `productsign` signs the pkg.
+- `NOTARY_PROFILE`: a profile saved by `xcrun notarytool store-credentials`.
+  It needs both identities; the pkg is then notarized, stapled and validated.
+  The zip holds the same signed bundles without a stapled ticket.
+
+The pkg installs each bundle at its standard path and replaces whatever version
+is there: its component list turns off relocation and the version check, since
+the three formats share one bundle identifier.
 
 Rack builds also need the current Rack panel source. The current selector
 layout is recorded at Rack revision `d6b6dbf`: one Guitar selector for
