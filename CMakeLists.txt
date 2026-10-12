@@ -20,6 +20,12 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
     endif()
 endif()
 
+# The Windows zip ships no VC++ redistributable, so link MSVC's runtime
+# statically (/MT): a DLL runtime would leave the VST3 unloadable and the app
+# unstartable on a PC without it. cmake_minimum_required(3.22) makes CMP0091
+# NEW, which this needs; JUCE reads the property, and other compilers ignore it.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
 project(Acustra VERSION 1.3.2 LANGUAGES C CXX)

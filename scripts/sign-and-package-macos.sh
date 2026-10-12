@@ -172,8 +172,29 @@ PKG_FINAL="${DIST_DIR}/Acustra-${DISTRIBUTION_VERSION}-macOS-${ARTIFACT_ARCH}.pk
 # Rebuilding this version must not remove packages from earlier releases.
 rm -f "${ZIP_PATH}" "${PKG_FINAL}" "${PKG_UNSIGNED}"
 
+# By default Installer moves a bundle to wherever it finds an installed copy
+# with the same identifier, which all three formats share, and skips it when
+# that copy is newer. Install each bundle at its own path, replacing any version.
+COMPONENT_PLIST="${BUILD_DIR}/package-components.plist"
+pkgbuild --analyze --root "${PACKAGE_ROOT}" "${COMPONENT_PLIST}"
+bundle_count=0
+while "${PLIST_BUDDY}" -c "Print :${bundle_count}:RootRelativeBundlePath" \
+        "${COMPONENT_PLIST}" >/dev/null 2>&1; do
+    "${PLIST_BUDDY}" \
+        -c "Set :${bundle_count}:BundleIsRelocatable false" \
+        -c "Set :${bundle_count}:BundleIsVersionChecked false" \
+        -c "Set :${bundle_count}:BundleOverwriteAction upgrade" \
+        "${COMPONENT_PLIST}"
+    bundle_count=$((bundle_count + 1))
+done
+if [[ "${bundle_count}" -ne 3 ]]; then
+    echo "error: pkgbuild found ${bundle_count} bundles, expected the VST3, AU and app" >&2
+    exit 1
+fi
+
 COPYFILE_DISABLE=1 pkgbuild \
     --root "${PACKAGE_ROOT}" \
+    --component-plist "${COMPONENT_PLIST}" \
     --identifier cz.protocodus.acustra.pkg \
     --version "${BUILD_NUMBER}" \
     --install-location / \
