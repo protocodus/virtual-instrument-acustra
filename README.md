@@ -53,8 +53,8 @@ default; a saved session keeps its own value. See
 
 Version 1.3.0 times strum direction by the song: a strum within a dotted
 eighth of the last alternates, a later one is a downstroke again, and the
-C0, C#0 and D0 keyswitches latch downstrokes, upstrokes or the automatic
-rule. It also answers only its tuning's range, ignoring pitches below the
+C0, C#0 and D0 keyswitches (MIDI 24-26) latch downstrokes, upstrokes or
+the automatic rule. It also answers only its tuning's range, ignoring pitches below the
 lowest open string or above the twentieth fret.
 
 Version 1.2.0 adds the Sustain switch, puts Release Noise and Room on the
@@ -83,7 +83,18 @@ focus rings are drawn independently for clear interaction at every supported siz
 A six-string fretboard above the keyboard shows the actual frets being played,
 released notes, and sympathetic vibration on open strings. Its animation shows
 vibration activity rather than an audio-rate waveform. The editor opens at
-1120 × 980, with all nine continuous sound controls visible.
+1120 × 980, with all nine continuous sound controls visible, or at the width
+it was last resized to in the session: that width is saved with the
+session's state, not as a parameter, so hosts never automate it. When the
+display has less room under a window's title bar, the editor opens smaller
+at the same proportions, and on a display too small for its usual
+896 × 784 minimum the minimum drops too, down to 672 × 588; a size made
+smaller to fit is not remembered. The header shows the version and build
+number. The Standalone enables each MIDI input the first time it sees it,
+at launch or when it is connected (built, not yet run with a MIDI device);
+one turned off in Options > Audio/MIDI Settings stays off while it keeps
+its identifier, which on Linux is an ALSA client and port number that can
+change.
 The Picking tooltip names CC2 as
 the bridge hand. Ordinary Note-off allows a 1/32-note gap before damping,
 so a following stroke can continue the ringing string. Existing
@@ -200,8 +211,9 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
 locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
-it with the project version (currently `1.3.2`) and the source revision. Changing that identity rebuilds
-the wrappers; each linked format receives its frozen identity record, and macOS
+it with the project version (currently `1.3.3`) and the source revision. Changing that identity rebuilds
+the wrappers; each linked format receives its frozen identity record (the
+editor reads its version and build number from it), and macOS
 bundles embed the build number. Packaging rejects a cache
 that disagrees with those records or macOS bundle metadata. Assign a new build
 number for a new distributable; changing the package name alone is insufficient.
@@ -716,7 +728,9 @@ Ordinary Note Ons pluck, and notes that arrive together are voiced and
 strummed as chords. Three keyswitches below the guitar's range set the
 strum direction, on any channel, latched until the next keyswitch or Panic:
 C0 (MIDI 24) makes every strum a downstroke, C#0 (25) an upstroke and D0
-(26) returns to the automatic rule (a strum within a dotted eighth of the
+(26) returns to the automatic rule (keyswitch names count middle C as C3,
+as the editor's keyboard does; the ranges elsewhere in this README count
+it as C4, so E2 is MIDI 40 and C6 MIDI 84) (a strum within a dotted eighth of the
 last alternates, a later one is a downstroke). A keyswitch never sounds,
 takes no string and is not gathered into a chord; under Gather Chords it
 applies to the chords sent after it. Retired CC68 remains ignored. Connected finger gestures
@@ -1888,6 +1902,13 @@ unchanged; enable it in the host's output/bus configuration. Audio Units have
 no disabled buses, so an AU host sees both outputs; Main is still the first.
 A disabled bus is not rendered; an enabled one adds a limiter and a store a
 sample, since the piezo is computed for Main anyway.
+
+The plug-in plays at host rates from 8 kHz to 384 kHz
+(`AcustraEngine::maximumSupportedSampleRate`). At any other rate the engine
+would run at a rate other than the host's (it clamps a finite rate to the
+nearer bound and uses 48 kHz for a zero, negative or non-finite rate), so
+every note would play off pitch; both outputs stay silent instead and the
+editor's status line reads UNSUPPORTED RATE.
 
 In code, `AcustraEngine::process(left, right, buses, numSamples)` and
 `Performer::beginBlock(left, right, buses, numSamples)` take an
@@ -3169,6 +3190,51 @@ set without it.
 Each entry records a source version in this repository. No build of any of
 them has been published as a release; [Build](#build) describes how
 packages are built and signed.
+
+### 1.3.3 — 2026-10-12 — launch preparation: packages, notices, Standalone MIDI, editor size
+
+- **The Standalone enables a connected keyboard** (built, not yet run with
+  a MIDI device). JUCE's desktop Standalone opens a MIDI input only once it
+  is ticked in Options > Audio/MIDI Settings. Acustra's now enables each
+  input the first time it sees it, at launch or when it is plugged in, and
+  records it in the Standalone's settings, saving the Audio/MIDI settings
+  with it; after that the saved Audio/MIDI settings decide, so an input
+  the user turned off stays off while it keeps its identifier (on Linux an
+  ALSA client and port number, which can change). Nothing changes in the
+  plug-in formats.
+- **The editor fits the display and remembers its size.** It opens at the
+  width it was last resized to in the session, or its design size,
+  1120 × 980, made smaller at the same proportions when the display under
+  the mouse has less room below a 48-point title bar; its minimum,
+  896 × 784, drops to fit a smaller display, down to 672 × 588. The width
+  is saved with the session's state beside the parameters, not as a host
+  parameter; a width made smaller to fit is not saved, and a state without
+  one leaves the last width.
+- **Unsupported rates are silent and say so.** Outside 8-384 kHz the engine
+  would run at a rate other than the host's and play off pitch; the
+  processor now outputs silence there and the status line reads
+  UNSUPPORTED RATE.
+- **The build identity is in every binary and on screen.** The editor
+  reads the version and build number from the identity record CMake
+  freezes, which also keeps that record from being dropped at link time.
+- **Packages carry a user guide and the notices they owe.**
+  [Docs/USER_GUIDE.md](Docs/USER_GUIDE.md) replaces the developer README in
+  every package; `ThirdParty/JUCE-DEPENDENCY-LICENSES.txt` carries the
+  licences of the code JUCE compiles in (VST3 SDK, AudioUnitSDK, SheenBidi,
+  HarfBuzz, IJG, libpng, zlib, FLAC and Ogg Vorbis), and
+  THIRD_PARTY_NOTICES.md credits GuitarSet (CC BY 4.0) for the values
+  derived from it and Steinberg's VST trademark.
+- **Release engineering.** The Windows build links the C runtime
+  statically, so its zip needs no VC++ redistributable; the macOS pkg
+  installs each bundle at its own path and replaces any version; the
+  plug-in wrapper tests run on Linux and Windows as well as macOS; and a
+  tag-driven workflow (`.github/workflows/release.yml`, see
+  [Release workflow](#release-workflow)) builds universal macOS, Windows
+  and Linux packages, runs pluginval and auval and drafts a release.
+  Signing steps stay dormant until the owner provides identities; nothing
+  has been released.
+- No parameter or saved parameter value changes, and nothing in the engine
+  or Performer changes.
 
 ### 1.3.2 — 2026-10-12 — the mid-band peak takes a dip, and a bit of piezo
 

@@ -7,6 +7,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <memory>
 
 namespace acustra::parameters
 {
@@ -93,6 +94,25 @@ public:
     {
         return engineReady.load (std::memory_order_acquire);
     }
+    // False after a prepareToPlay at a rate the engine does not model
+    // (8 kHz to AcustraEngine::maximumSupportedSampleRate). It would run at
+    // another rate and play every note off pitch, so the processor stays
+    // silent.
+    [[nodiscard]] bool isSampleRateSupported() const noexcept
+    {
+        return sampleRateSupported.load (std::memory_order_relaxed);
+    }
+    // The width an editor was last resized to, saved with the state (not a
+    // parameter, so hosts never automate it) for the next editor to open
+    // at; 0 until one is resized or a state carrying a width is loaded.
+    [[nodiscard]] int getEditorWidth() const noexcept
+    {
+        return editorWidth.load (std::memory_order_relaxed);
+    }
+    void setEditorWidth (int width) noexcept
+    {
+        editorWidth.store (width, std::memory_order_relaxed);
+    }
     // The editor subscribes only while open. Reads never touch the live
     // engine: each string's assignment and activity travel in one atomic.
     void setStringDisplayEnabled (bool enabled) noexcept;
@@ -125,6 +145,8 @@ private:
     std::atomic<int> gatherWindowSamples { 0 };
     std::atomic<bool> panicRequested { false };
     std::atomic<bool> engineReady { false };
+    std::atomic<bool> sampleRateSupported { true };
+    std::atomic<int> editorWidth { 0 };
     std::atomic<int> activeVoiceCount { 0 };
     std::atomic<int> sympatheticStringCount { 0 };
     std::atomic<double> displaySampleRate { 0.0 };
@@ -139,6 +161,10 @@ private:
     std::uint32_t audioStringDisplayRevision { 0 };
     int stringDisplayIntervalSamples { 1600 };
     int stringDisplaySamplesUntilUpdate { 0 };
+    // Opens MIDI inputs in the desktop Standalone; null in every other
+    // wrapper (PluginProcessor.cpp).
+    class StandaloneMidiInputs;
+    std::unique_ptr<StandaloneMidiInputs> standaloneMidiInputs;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AcustraAudioProcessor)
 };

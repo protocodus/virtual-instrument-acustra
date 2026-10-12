@@ -396,6 +396,27 @@ The bridge conductance under the saddle (1.59e-3 s/kg) is the mean of Re(Y)
 over 5-7 kHz of the measured Fylde mobility (see its entry above); no new
 data is added for it.
 
+## fdlibm `scalbnf`: Sun Microsystems notice
+
+Built with the Reason Rack Extension's Jukebox SDK only, the engine's
+`std::complex<float>` division scales by `sdkScalbn()` in
+`Source/DSP/AcustraEngine.cpp`, a transcription, bit for bit, of `scalbnf`
+from newlib's `libm/common/sf_scalbn.c` (Ian Lance Taylor of Cygnus Support
+converted it to float from `s_scalbn.c`), which the SDK's libc links. The
+desktop plug-in does not compile it. That file's notice, which it asks to be
+preserved:
+
+```
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+```
+
 ## JUCE 8.0.14
 
 JUCE is Copyright (c) Raw Material Software Limited.

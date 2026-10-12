@@ -1,17 +1,26 @@
 #include "PluginEditor.h"
 #include "AcustraUIAssets.h"
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
+
+// The identity CMake freezes into every format (cmake/Distribution.cmake).
+// Reading it for the version shown also keeps it in each linked binary.
+extern const char AcustraBuildIdentity[];
 
 namespace
 {
 constexpr int designWidth = 1120;
 constexpr int designHeight = 980;
 constexpr int minimumWidth = 896;
-constexpr int minimumHeight = 784;
 constexpr int maximumWidth = 1456;
 constexpr int maximumHeight = 1274;
+// On a display too small for the minimum, the editor goes no smaller than
+// 0.6 of its design size, and leaves room above it for the title bar of
+// the host's window.
+constexpr int smallestWidth = 672;
+constexpr int windowTitleHeight = 48;
 constexpr int keyboardFirstNote = 38; // Drop-D low string
 constexpr int keyboardLastNote = 84;  // twentieth fret of the high E string
 constexpr int keyboardWhiteKeyCount = 28;
@@ -52,6 +61,19 @@ const juce::Colour brass { 0xffbda16d };
 const juce::Colour panel { 0xff211b16 };
 const juce::Colour panelEdge { 0xff766247 };
 const juce::Colour engraved { 0xff493525 };
+
+int heightFor (int width)
+{
+    return juce::roundToInt (static_cast<double> (width) * designHeight / designWidth);
+}
+
+// The packages' display version, "1.3.2 (build 1)", in the header's capitals.
+juce::String displayVersion()
+{
+    const auto identity = juce::JSON::parse (juce::String::fromUTF8 (AcustraBuildIdentity));
+    return identity["version"].toString() + " (BUILD "
+        + identity["build_number"].toString() + ")";
+}
 
 juce::Font displayFont (float height, int style = juce::Font::plain)
 {
@@ -298,7 +320,7 @@ public:
         setTitle ("String activity");
         setOpaque (true);
         setTooltip (
-            "Six strings, high E at the top. Filled markers show held frets; "
+            "Six strings, the highest-tuned at the top. Filled markers show held frets; "
             "outlined markers show released notes. Blue-green open markers "
             "show sympathetic vibration from another string. H marks a natural "
             "harmonic. Line movement and brightness show schematic vibration "
@@ -752,7 +774,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     titleLabel.setAccessible (false);
     addAndMakeVisible (titleLabel);
 
-    subtitleLabel.setText ("PHYSICALLY MODELLED ACOUSTIC GUITAR",
+    subtitleLabel.setText ("PHYSICALLY MODELLED ACOUSTIC GUITAR  |  " + displayVersion(),
                            juce::dontSendNotification);
     subtitleLabel.setFont (displayFont (15.5f, juce::Font::bold));
     subtitleLabel.setColour (juce::Label::textColourId, brass);
@@ -765,6 +787,10 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     statusLabel.setTitle ("Engine status");
     statusLabel.setDescription (
         "Audio sample rate and sounding strings");
+    statusLabel.setTooltip (
+        "The host's sample rate and the strings sounding. Acustra plays at 8 to "
+        + juce::String (acustra::AcustraEngine::maximumSupportedSampleRate / 1000.0, 0)
+        + " kHz and stays silent at any other rate.");
     statusLabel.setFont (displayFont (15.5f));
     statusLabel.setColour (juce::Label::textColourId, mutedText);
     statusLabel.setJustificationType (juce::Justification::centredRight);
@@ -914,13 +940,33 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     addAndMakeVisible (keyboard);
 
     setResizable (true, true);
-    setResizeLimits (minimumWidth, minimumHeight, maximumWidth, maximumHeight);
+    // The host opens the editor where it was asked for, so the display
+    // under the mouse is the one it appears on.
+    const auto* display = juce::Desktop::getInstance().getDisplays()
+        .getDisplayForPoint (juce::Desktop::getMousePosition().toFloat());
+    const auto sizing = sizingFor (audioProcessor.getEditorWidth(),
+        display != nullptr ? display->userBounds.toNearestInt() : juce::Rectangle<int> {});
+    setResizeLimits (sizing.minimumWidth, heightFor (sizing.minimumWidth),
+                     maximumWidth, maximumHeight);
     if (auto* constrainer = getConstrainer())
         constrainer->setFixedAspectRatio (
             static_cast<double> (designWidth) / designHeight);
-    setSize (designWidth, designHeight);
+    setSize (sizing.width, heightFor (sizing.width));
+    rememberWidth = true;
     startTimerHz (12);
     timerCallback();
+}
+
+AcustraAudioProcessorEditor::Sizing AcustraAudioProcessorEditor::sizingFor (
+    int savedWidth, juce::Rectangle<int> userArea)
+{
+    const auto room = userArea.isEmpty() ? maximumWidth
+        : std::min (userArea.getWidth(),
+                    (userArea.getHeight() - windowTitleHeight) * designWidth / designHeight);
+    // The usual minimum, unless the display is smaller.
+    const auto smallest = std::clamp (room, smallestWidth, minimumWidth);
+    const auto preferred = savedWidth > 0 ? savedWidth : designWidth;
+    return { std::clamp (std::min (preferred, room), smallest, maximumWidth), smallest };
 }
 
 AcustraAudioProcessorEditor::~AcustraAudioProcessorEditor()
@@ -1089,6 +1135,9 @@ void AcustraAudioProcessorEditor::paint (juce::Graphics& g)
 
 void AcustraAudioProcessorEditor::resized()
 {
+    // The session remembers the size the editor was resized to.
+    if (rememberWidth)
+        audioProcessor.setEditorWidth (getWidth());
     // Lay out one instrument at the documented aspect ratio. Scaling the
     // complete grid keeps captions, gestures and keyboard aligned at every
     // supported host size, rather than reflowing individual controls.
@@ -1192,7 +1241,8 @@ void AcustraAudioProcessorEditor::timerCallback()
         const auto rate = audioProcessor.getCurrentSampleRateForDisplay();
         const auto voices = audioProcessor.getActiveVoiceCount();
         next = juce::String (rate / 1000.0, 1) + " kHz  |  "
-             + juce::String (voices) + (voices == 1 ? " STRING" : " STRINGS");
+             + (! audioProcessor.isSampleRateSupported() ? juce::String ("UNSUPPORTED RATE")
+                : juce::String (voices) + (voices == 1 ? " STRING" : " STRINGS"));
     }
 
     if (statusLabel.getText() != next)

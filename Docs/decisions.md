@@ -5,6 +5,69 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — plug-in launch fixes: Standalone MIDI, editor size, rates, version
+
+Implementation choices made while fixing the launch-readiness audit's
+plug-in items; nothing here was chosen by ear or by the owner, and nobody
+has used these changes in a host yet.
+
+- **Standalone MIDI inputs.** JUCE 8.0.14's `StandaloneFilterApp` opens
+  every MIDI input only on Android and iOS
+  (`juce_audio_plugin_client_Standalone.cpp`, `createPluginHolder`). Two JUCE
+  routes were not taken: a custom application
+  (`JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP`) copying that 119-line class to
+  pass `true`, and setting the holder's public `autoOpenMidiDevices` from
+  the processor's constructor before `init()` starts its timer, which leans
+  on the holder's construction order. Both would also re-enable, half a
+  second after every launch, an input the user had turned off, since JUCE's
+  timer enables every device it has not seen in that run. The processor
+  instead, in the Standalone wrapper only, enables each input the first
+  time the application sees it (at launch, after the holder restores its
+  saved devices, or on a device-list change) and lists it under
+  `autoEnabledMidiInputs` in the Standalone's settings file; a listed
+  input is left to the saved Audio/MIDI settings. JUCE saves those
+  settings only when the application quits cleanly, so a pass that enables
+  an input saves them with the list, and a crash cannot leave an input
+  listed but never enabled. Inputs are listed by JUCE's identifier. On
+  Linux (ALSA) that is the sequencer client and port number
+  (`juce_Midi_linux.cpp`), which ALSA assigns, so a device can come back
+  under another number: a keyboard that returns under a new number counts
+  as new and is enabled even if it had been turned off, and a different
+  keyboard that takes a listed number is not enabled. The Linux build
+  machine used has no ALSA sound or sequencer devices, so the enabling has
+  been built but not run with a MIDI device.
+- **Editor size.** The editor opens at the width saved with the session,
+  or its design size, made smaller at its proportions when the user area
+  of the display under the mouse, less 48 points for a window's title bar,
+  has less room; its minimum falls to fit a smaller display, never below
+  0.6 of the design size (672 × 588). A host's plug-in window header taller
+  than a title bar can still push the bottom edge off a small screen; no
+  host was measured. The width the editor was last resized to is a
+  property of the saved state's root, beside `stateVersion`, not a
+  parameter. The width it picks when it opens is not recorded, so a
+  session saved on a small display reopens on a larger one at the width
+  it had before, or the design size. A state loaded while the editor is
+  open sets the width the next editor opens at; the open editor keeps its
+  size.
+- **Rates outside 8-384 kHz** are silent, with UNSUPPORTED RATE on the
+  status line, instead of off pitch. Building the plug-in on the extended
+  768 kHz layout was not done: it is a separate engine ABI, measured at
+  14.2 MB per engine on 2026-10-11 (Docs/extended-sample-rates.md), and its
+  CPU at those rates is unmeasured.
+- **HiDPI wood texture: not changed.** The only textures are
+  `walnut-satin.png` (1254 px square) and `cedar-background.png`
+  (1536 × 1024). The editor paints them to the screen with high
+  resampling quality, and the string display caches its walnut backdrop at
+  the display's density. At 2x the panels sample about one texel per
+  physical pixel at the design size and are magnified about 1.2x at the
+  maximum, while the full-editor walnut behind them is magnified about
+  1.8x at the design size and 2.3x at the maximum. Drawing that background
+  1:1 at 2x would need a texture of about 2240 px (design size) to 2912 px
+  (maximum) on its long side.
+- **Version on screen.** The subtitle reads the version and build number
+  from `AcustraBuildIdentity`; referencing it keeps the identity record in
+  each binary, where the linker had dropped it.
+
 ## 2026-10-12 — the mid-band peak takes a dip; the hole stays
 
 The entry of the same day that measured the body's mid-band peak and hole
