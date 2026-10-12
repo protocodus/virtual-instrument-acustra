@@ -36,20 +36,23 @@ inline constexpr float originalAirModeDipQ = 2.5f;
 // 0.24 LU (the calibration phrase set, Tools/CalibrateConstructionLoudness.py,
 // -27.5164 to -27.7532 LUFS), inside the construction loudness contract,
 // and a restore sized on that phrase overshot the shorter construction
-// fixture's phrase by 0.2 LU, which the Parlor's margin there did not
-// have. The dipped constructions are re-levelled to the default; one
-// without the dip keeps its calibrated gains untouched.
+// fixture's phrase by 0.2 LU. The dipped constructions are re-levelled to
+// the default (the Parlor's Finger and Thumb cells half an LU over it,
+// below).
 inline constexpr float originalAirModeDipLevelDb = 0.0f;
-// Every construction but the Parlor takes the dip, by the air mode's
-// frequency: the Jumbo's sits at 84-91 Hz, the Dreadnought's at 94-101 and
-// the Auditorium's at 106-113 as Spruce, Mahogany and Maple place it, the
-// Parlor's at 121-128. The Parlor's lifts A#2/B2 as much (+3.5/+5.3 dB
-// over their neighbours) but keeps it for now: its margin on the
-// cross-phrase construction loudness fixture (Parlor Spruce Finger at 2.87
-// of the 3 LU allowed) has no room for the 0.2 LU more the dip costs that
-// fixture's phrase than the calibration phrase, and a tolerance is not
-// loosened to fit a refinement.
-inline constexpr float originalAirModeDipUpperHz = 117.0f;
+// Every construction takes the dip, by the air mode's frequency: the
+// Jumbo's sits at 84-91 Hz, the Dreadnought's at 94-101, the Auditorium's
+// at 106-113 and the Parlor's at 121-128 as Spruce, Mahogany and Maple
+// place it. The Parlor joined on 2026-10-12 (its B2 +5.7 to +4.6 dB over
+// its neighbours): the dip costs its chord-and-strum fixture phrase 0.2 LU
+// more than its calibration phrase, which its margin on the construction
+// loudness fixture did not have, so its Finger and Thumb cells now sit
+// 0.5 LU over the calibration target (CalibrateConstructionLoudness.py,
+// CROSS_PHRASE_LIFT_LU) inside the calibration's own tolerance, and the
+// fixture reads -2.57 LU on Parlor Spruce Finger. Nothing above 130 Hz is
+// a guitar's air mode; the bound keeps a misread mode from dipping the
+// low mids.
+inline constexpr float originalAirModeDipUpperHz = 130.0f;
 
 constexpr CaptureVoicingSection balancedOriginalCaptureSection(
     CaptureVoicingSection section) noexcept

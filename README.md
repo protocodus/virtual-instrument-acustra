@@ -86,6 +86,13 @@ and [realism work](Docs/realism-work.md) for measurements and limits.
 
 ## Versioned builds and packages
 
+Version 1.3.1 gives the Parlor the air-mode dip the other three bodies
+took in 1.2.0 (its B2 falls from +5.7 to +4.6 dB over its neighbours, A#2
+from +4.0 to +3.4) and re-levels it, with its Finger and Thumb cells half
+an LU over the calibration target so the construction loudness fixture
+keeps its 3 LU contract (Parlor Spruce Finger at -2.57 LU). No parameter
+or saved state changes; nobody has listened to it yet (Docs/decisions.md).
+
 Version 1.3.0 changes when a strum reverses. A strum within a dotted eighth
 of the previous one at the host tempo (0.375 s at 120 BPM) is the hand's
 return and alternates; after a longer gap, or any rest over two seconds, it
@@ -2255,11 +2262,12 @@ Dated evidence is retained so the earlier decisions remain traceable.
   - Panic and Reset All Controllers leave the bridge hand (CC2) where it
     is, as MIDI's reset list does; a controller left at full pressure keeps
     the strings muted until it moves.
-- The Parlor's air mode, at 121-128 Hz, still lifts A#2 and B2 3.5 and
-  5.3 dB over their neighbours on the microphones: the 2026-10-11 air-mode
-  dip stops at 117 Hz because the Parlor's margin on the construction
-  loudness fixture has no room for what the dip costs its phrase
-  ([the report](Docs/studio-smoothness-2026-10-11.md)). The other three
+- The Parlor's air mode, at 121-128 Hz, still lifts B2 4.6 dB and A#2 3.4
+  over their neighbours on the microphones with the air-mode dip (5.7 and
+  4.0 without it, at Room 0.5): the dip is sized for the other bodies and
+  is not deepened for the Parlor
+  ([the report](Docs/studio-smoothness-2026-10-11.md), Docs/decisions.md
+  2026-10-12). The other three
   Shapes' air-mode notes sit 2-4.6 dB over their neighbours after the dip,
   as the real flat-top's A#2 does.
 - Left by the 2026-09-30 defect audit, each a trade in the shipped sound
@@ -3085,8 +3093,11 @@ set without it.
   Auditorium's G#2 from +5.5 to +4.6 and its Maple box's A#2 from +5.1 to
   +4.3, the Jumbo's E2 from +2.6 to +2.3. The default phrase loses 0.24 LU,
   inside the construction loudness contract, and the dipped constructions
-  are re-levelled to it; the Parlor keeps its gains and its A#2/B2 lift
-  (Known gaps). The body's 400-600 Hz modes still put one note 10 dB over
+  are re-levelled to it. Since 2026-10-12 the Parlor takes the dip too
+  (B2 +5.7 to +4.6 dB over its neighbours at Room 0.5), its Finger and
+  Thumb cells sitting 0.5 LU over the calibration target so the
+  construction loudness fixture stays inside its 3 LU (Known gaps). The
+  body's 400-600 Hz modes still put one note 10 dB over
   its neighbours and the next 10 dB under (A#4 and C#5 on the Dreadnought):
   a damping candidate measured well but was dropped, since the model audit
   pins the radiation to each mode's measured damping. Authored and

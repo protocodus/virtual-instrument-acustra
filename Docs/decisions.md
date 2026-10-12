@@ -5,6 +5,36 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the Parlor takes the air-mode dip, levelled inside its contracts
+
+The entry below measured the Parlor's dip and held it because, re-levelled
+to the calibration target, Parlor Spruce Finger would play -3.07 LU on the
+construction loudness fixture, 0.07 past its 3 LU. Of the two ways it named
+to let the Parlor take the dip, this takes the one that loosens no
+tolerance: the Parlor's Finger and Thumb cells now sit 0.5 LU over the
+calibration target on every capture (`Tools/CalibrateConstructionLoudness.py`,
+`CROSS_PHRASE_LIFT_LU`, inside the calibration's own 1 LU and recorded in
+the generated header), its Pick cells follow the headroom rule as before,
+and the dip's upper bound moves from 117 to 130 Hz so the Parlor's air
+mode (121-128 Hz as Spruce, Mahogany and Maple place it) is inside it; the
+dip itself (-2.5 dB, Q 2.5) is unchanged. The Parlor already played the
+fixture's chord-and-strum phrase 2.87 LU under the default with its
+calibration phrase on the target, so the half LU also brings that material
+nearer the other bodies.
+
+Measured (sweep at velocity 96, Finger, stereo mic, Room 0.5): the Parlor's
+B2 +5.7 to +4.6 dB over its neighbours, A#2 +4.0 to +3.4, RMS deviation
+3.44 to 3.35 dB; A#3 (+5.6) and the E5 hole (-10.4) unchanged. Levelled:
+the fixture reads -2.57 LU on Parlor Spruce Finger (was -2.87; every other
+cell between -2.5 and +1.9) and the calibration's `--check` holds every
+cell and capture inside its tolerance. The Engine, Capture, CaptureVoicing,
+MicrophoneBalance, BodyShape, GuitarModels, ConstructionMatrix,
+ConstructionHistory, ConstructionLoudness, ConstructionLoudnessCalibration,
+PiezoCircuit and OutputBuses suites pass. Nobody has listened: a blind
+Parlor pack (A/B, the key apart) was rendered for the user, and the change
+goes up as its own pull request for that verdict rather than being merged
+on the measurements. Version 1.3.1.
+
 ## 2026-10-12 — the Parlor's air-mode dip, measured again and still held
 
 The Parlor's B2/A#2 lift is the largest low-end resonance left after the
