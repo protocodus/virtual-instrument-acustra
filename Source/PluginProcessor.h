@@ -86,6 +86,12 @@ public:
     {
         return sympatheticStringCount.load (std::memory_order_relaxed);
     }
+    // Whether the engine sleeps (see processBlock). For tests, read between
+    // audio callbacks on the thread that makes them.
+    [[nodiscard]] bool isAsleep() const noexcept
+    {
+        return performer.engine().isSuspended();
+    }
     [[nodiscard]] double getCurrentSampleRateForDisplay() const noexcept
     {
         return displaySampleRate.load (std::memory_order_relaxed);
@@ -134,6 +140,8 @@ private:
     void parameterChanged (const juce::String& parameterID,
                            float newValue) override;
     void updateEngineParameters() noexcept;
+    void updateSleep (const juce::AudioBuffer<float>& buffer, const float* piezo,
+                      int lastStrike) noexcept;
     void publishStringActivity (std::uint32_t revision) noexcept;
 
     std::array<std::atomic<float>*, acustra::parameters::activeParameterCount>
@@ -157,10 +165,18 @@ private:
     std::atomic<bool> stringDisplayEnabled { false };
     std::atomic<std::uint32_t> stringDisplayRevision { 1 };
     std::atomic<std::uint32_t> stringDisplayPublishedRevision { 0 };
-    // These three fields belong exclusively to prepare/process/release.
+    // These fields belong exclusively to prepare/process/release.
     std::uint32_t audioStringDisplayRevision { 0 };
     int stringDisplayIntervalSamples { 1600 };
     int stringDisplaySamplesUntilUpdate { 0 };
+    // Sleep (processBlock): the controls the engine last took, how long the
+    // instrument has been silent and idle, and how long since a key was
+    // struck, against the two waits counted at the engine's rate.
+    acustra::EngineParameters appliedParameters {};
+    int silentSamples { 0 };
+    std::int64_t samplesSinceNoteOn { 0 };
+    int sleepAfterSamples { 24000 };
+    std::int64_t strumRestSamples { 96000 };
     // Opens MIDI inputs in the desktop Standalone; null in every other
     // wrapper (PluginProcessor.cpp).
     class StandaloneMidiInputs;

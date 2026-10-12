@@ -5,6 +5,94 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — an idle plug-in instance sleeps
+
+Launch audit item robustness-idle-cpu. Implementation choices, measured and
+tested; nothing was chosen by ear, and no host has run it yet.
+
+- **The rule is the Rack Extension's** (`Acustra.cpp`, `WriteOutputs`):
+  the plug-in stops computing the strings once no string is played
+  (`getActiveVoiceCount() == 0`: nothing held, sustained by CC64 or the
+  Sustain switch, released and damping, or waiting in a strum), Main and
+  the enabled Piezo bus have stayed under 1e-6 (-120 dBFS) for 0.5 s, and
+  more than `Performer::strumRestSeconds` (2 s) has passed since the last
+  struck key. A block whose MIDI holds a Note On that is not a stroke
+  keyswitch wakes it (a superset: an unplayable note counts), as does a
+  changed engine parameter, which then waits the 0.5 s again so its glides
+  and construction fades finish rendering. Every other message
+  (controllers including CC64, bend, pressure, keyswitches, RPNs, All
+  Notes/Sound Off) reaches the sleeping engine through the Performer, in
+  order and at its sample. Host reset, Panic, state load and prepareToPlay
+  need nothing extra: a reset leaves a silent engine asleep, prepare wakes
+  it, and the next struck key always wakes it.
+- **Unlike the Rack, time runs on while it sleeps.** The Rack plays
+  zero-sample Performer blocks, so its engine and strum clocks stand
+  still; its 64-frame batches make that deterministic. A plug-in's blocks
+  vary, so a stood-still clock would make the next note depend on where
+  the host's blocks fell, and the picking hand's posture follows the
+  engine's sample clock: an off-tree probe that froze both clocks for
+  0.7-1 s moved the next note by 0.011-0.013 on a 0.06 peak. So the engine
+  gained a suspended mode (`AcustraEngine::suspend`/`resume`): `suspend()`
+  refuses while anything is played, otherwise clears the inaudible residue
+  as its idle flush (`processIdleFlush`) eventually would and zeroes the
+  level observers; suspended, `process()` writes zeros and advances only
+  the sample clock and the control-rate state (`updateControlState`:
+  bridge hand, vibrato, construction, string configuration); a `noteOn`
+  that sounds resumes it at its sample. The Performer is unchanged and its clock
+  runs, so Gather Chords' queue and the strum alternation keep real time;
+  the strum-rest condition is kept for parity with the Rack. Suspended
+  blocks allocate nothing (PerformerTests). The Rack adapter is unchanged;
+  it could adopt `suspend()` with a later pin.
+- **The waking block renders from its start**, not from the note: the
+  flushed engine renders exact zeros up to the note (tested), so this costs
+  at most one block of computation and no sample, and the Performer's
+  same-sample ordering is never split.
+- **Exactness, measured** (`testNotesAfterSleepMatchANeverSleepingInstance`,
+  a six-string chord at 0.1 s released at 0.4 s, then A3 inside a block at
+  64, 61 and 512 frames and with Gather Chords): the instance sleeps at
+  4.47 s; a never-sleeping one keeps a residue under 1e-6 until its own
+  idle flush at 12.75 s. A note at 30 s is bit for bit the same (largest
+  difference 0). A note at 10 s differs by up to 7.6e-6 (-102 dBFS, 86 dB
+  under its 0.158 peak). That is the residue the sleeping instance
+  cleared, since the difference vanishes once the reference clears it
+  too; it exceeds the residue's own output level, most likely because a
+  string's retained-wave path keys on the string's level (2e-7), not the
+  output's. The task's 1e-6 bound assumed the dropped tail's level bounds
+  the difference; it does not, so that case is held to 1e-5 and the late
+  one to 1e-6. Rejected: freezing without the flush (2-4e-6 in the probe
+  whether the note came 2.3 s or 20 s after sleep); sleeping only after
+  the engine's own 1e-11 flush (exact in the probe, but 8 s later here);
+  waking for every controller (unneeded: with the control-rate state
+  running, CC64, bend and RPN in PluginProcessorTests, CC1 in
+  PerformerTests and CC2 in the probe, sent while asleep, all give
+  difference 0).
+- **CPU, rough** (off-tree `processBlock` probe of the real processor,
+  20,000 timed 64-frame blocks at 48 kHz after 2 s preroll, five
+  alternating runs per build of baseline 932a4f9 and the committed source,
+  GCC 13.3 -O3 -flto, 4-CPU Intel Xeon 2.1 GHz shared with another test
+  suite, load about 1): idle, median of run medians 63.6 µs before and
+  0.46 µs after (p95 under 0.8 µs); playing (a six-string strum every
+  0.5 s with a note between), 84.1 µs before and 85.8 µs after. An earlier
+  session on the same code before comment-only edits measured 61.4 → 0.46
+  µs idle and 82.8 → 79.5 µs playing, so playing is unchanged within this
+  machine's noise. Not a quiet-machine measurement and no guarantee for
+  another host or processor.
+- **Coverage.** PluginProcessorTests: an idle instance sleeps after 0.5 s
+  and a played one only after 0.5 s under the threshold and the strum
+  rest, with exact zeros on Main and Piezo while asleep and a dropped tail
+  under 1e-6, and bypassed too; notes after sleep as above; CC64, bend with
+  its RPN range, the upstroke keyswitch and automated Output and Shape sent
+  while asleep take effect as on a never-sleeping instance (difference 0);
+  the first strum after sleep is a downstroke; no sleep while a key is
+  held, while CC64 or the Sustain switch holds a ringing note, or while
+  Gather Chords holds notes; a note after host reset, Panic,
+  prepareToPlay, a state load, All Sound Off or All Notes Off while asleep
+  sounds and shows; the editor of a sleeping instance shows it ready with
+  0 strings and paints. PerformerTests: the engine refuses to suspend with
+  held strings, writes silence without allocating while suspended, resumes
+  at a struck note, and a vibrato started while suspended then plays bit
+  for bit as without suspension.
+
 ## 2026-10-12 — plug-in launch fixes: Standalone MIDI, editor size, rates, version
 
 Implementation choices made while fixing the launch-readiness audit's

@@ -3861,6 +3861,7 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive) noexcept
 
 void AcustraEngine::prepare(double sampleRate, int)
 {
+    suspended_ = false;
     static_assert(localMaximumDelaySamples == maximumDelaySamples,
                   "delay indexing and fixed string storage must agree");
     // Only a rate that is no rate at all falls back to 48 kHz; a finite one
@@ -8875,6 +8876,8 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
         return;
     if (!canSound(midiNote, midiChannel))
         return;
+    // A struck string ends a suspension (suspend) at this sample.
+    suspended_ = false;
 
     // The scheduled delay is bounded before anything scales or counts it:
     // ten seconds is far beyond any strum (at most about 0.12 s), and at the
@@ -11300,6 +11303,31 @@ float AcustraEngine::renderPiezo(float force) noexcept
     return result;
 }
 
+bool AcustraEngine::suspend() noexcept
+{
+    if (!prepared_)
+        return false;
+    for (const auto& voice : voices_)
+        if (voice.played || voice.keyDown || voice.pedalHeld
+            || voice.pluckDelay != 0 || voice.repluckPending)
+            return false;
+    if (!suspended_)
+    {
+        // What processIdleFlush does once everything is under its floor,
+        // and the level observers' decay to zero after it, so a long sleep
+        // ends in the state a never-suspended engine reaches.
+        for (int string = 0; string < stringCount; ++string)
+        {
+            auto& voice = voices_[static_cast<std::size_t>(string)];
+            returnToOpenString(voice, string, true);
+            voice.level = 0.0f;
+        }
+        resetSoundState();
+        suspended_ = true;
+    }
+    return true;
+}
+
 void AcustraEngine::process(float* left, float* right, int numSamples) noexcept
 {
     process(left, right, OutputBuses {}, numSamples);
@@ -11311,6 +11339,26 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
     if (!prepared_ || left == nullptr || right == nullptr || numSamples <= 0)
         return;
     float* const piezo = buses.piezo;
+    if (suspended_)
+    {
+        // The control-rate half of the loop below, without its audio. With
+        // nothing played the re-pluck check before updateControlState has
+        // nothing to fire.
+        std::fill_n(left, numSamples, 0.0f);
+        std::fill_n(right, numSamples, 0.0f);
+        if (piezo != nullptr)
+            std::fill_n(piezo, numSamples, 0.0f);
+        for (int sample = 0; sample < numSamples; ++sample)
+        {
+            if (++controlCounter_ >= controlPeriod)
+            {
+                controlCounter_ = 0;
+                updateControlState();
+            }
+            ++sampleClock_;
+        }
+        return;
+    }
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
