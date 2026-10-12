@@ -976,6 +976,14 @@ private:
         // The construction's air mode, g21's lowest mode as this Shape and
         // Wood place it, which centres the capture dip (CaptureFilter).
         float airModeHz { 0.0f };
+        // The mid-band pair located by locateMidBand: the deepest
+        // antiresonance between originalMidHoleLowerHz and
+        // originalMidHoleUpperHz in this construction's summed microphone
+        // response, where the bank cancels, and the strong mode within a
+        // fourth below it, which the capture filter dips; 0 when none
+        // qualifies (MicrophoneBalanceData.h).
+        float midPeakHz { 0.0f };
+        float midHoleHz { 0.0f };
     };
 
     // Local-contact transport. Each tap is a fixed lossless
@@ -1421,9 +1429,10 @@ private:
         // on the physical modes. Each fading bank keeps its own history.
         struct CaptureFilter
         {
-            // The fitted contour's six sections and, last, the dip at the
-            // construction's air mode (MicrophoneBalanceData.h).
-            static constexpr int sections = 7;
+            // The fitted contour's six sections, then the dip at the
+            // construction's air mode and the dip at its mid-band peak
+            // (MicrophoneBalanceData.h).
+            static constexpr int sections = 8;
             // Each section's normalized RBJ coefficients: b0, b1, b2, a1, a2.
             // Double storage keeps the low-frequency sections accurate up to
             // 384 kHz.
@@ -1431,10 +1440,12 @@ private:
             std::array<std::array<double, 2>, sections> stateLeft {}, stateRight {};
             bool enabled { false };
             float gain { 1.0f };
-            // The air mode the last section is centred on; 0 leaves it flat.
+            // The construction's frequencies the last two sections are
+            // centred on; 0 leaves that section flat.
             float airModeHz { 0.0f };
+            float midPeakHz { 0.0f };
 
-            void configure(double sampleRate, float airModeHz) noexcept;
+            void configure(double sampleRate, float airModeHz, float midPeakHz) noexcept;
             void reset() noexcept
             {
                 for (auto& state : stateLeft)
@@ -1501,7 +1512,16 @@ private:
     void updateControlState() noexcept;
     void configureBody() noexcept;
     void prepareBodyConfigurations() noexcept;
-    void buildBodyConfiguration(BodyConfiguration&, BodyShape, BodyMaterial) const noexcept;
+    void buildBodyConfiguration(BodyConfiguration&, BodyShape, BodyMaterial,
+                                double sampleRate) const noexcept;
+    // |(P_L + P_R)/2| of the configuration's force residues at hz: the summed
+    // microphone response BodyBank::render produces for a unit force, before
+    // the capture filter. Setup only; it walks every mode.
+    static double summedMicrophoneMagnitude(const BodyConfiguration&, double hz,
+                                            double sampleRate) noexcept;
+    // Finds the configuration's mid-band antiresonance and the peak below
+    // it from that response (MicrophoneBalanceData.h) and stores them.
+    static void locateMidBand(BodyConfiguration&, double sampleRate) noexcept;
     // keepModalState keeps the sounding modes' state (a live reconfigure
     // of the same measured bank: Shape, Wood); otherwise every mode starts
     // from rest.

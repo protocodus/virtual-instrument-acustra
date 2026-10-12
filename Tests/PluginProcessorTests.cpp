@@ -135,11 +135,11 @@ void testParameterContract()
                    "String Material and Bridge Model are gone; Guitar Model is a "
                    "legacy slot; Piezo Mix, Release Noise, Room and Sustain are "
                    "appended");
-    // Piezo Mix defaults to 0, so Main is the microphones alone; Release
-    // Noise to the requested 10%; Room to 50%; Sustain off.
+    // Piezo Mix defaults to 20%, a bit of the piezo under the microphones;
+    // Release Noise to the requested 10%; Room to 50%; Sustain off.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 10.0f, 50.0f, 0.0f
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 10.0f, 50.0f, 0.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -233,8 +233,8 @@ void testParameterContract()
                 && piezoMix->getName (32) == "Piezo Mix"
                 && piezoMix->range.start == 0.0f && piezoMix->range.end == 100.0f,
             "Piezo Mix must append a 0-100% parameter with AU version hint 9");
-    expect (processor.snapshotEngineParameters().piezoMix == 0.0f,
-            "a new session mixes the piezo into Main");
+    expect (std::abs (processor.snapshotEngineParameters().piezoMix - 0.2f) < 1.0e-6f,
+            "a new session does not start with a bit of the piezo under the microphones");
     const auto* releaseNoise = dynamic_cast<const juce::AudioParameterFloat*> (
         processor.parameters.getParameter (ids::releaseNoise));
     expect (releaseNoise != nullptr && releaseNoise->getVersionHint() == 10

@@ -1019,7 +1019,8 @@ float monoReferenceFor(const EngineParameters& parameters) noexcept
 {
     return originalOutputReferenceFor(parameters)
         * detail::constructionMonoTrim[constructionLoudnessCell(parameters)]
-        * detail::studioMonoLevelMatch[constructionLoudnessCell(parameters)];
+        * detail::studioMonoLevelMatch[constructionLoudnessCell(parameters)]
+        * detail::originalMonoLevelGain;
 }
 
 float piezoReferenceFor(const EngineParameters& parameters) noexcept
@@ -4617,7 +4618,8 @@ void AcustraEngine::configureBody() noexcept
     // them in vector accumulators (BodyBank::render). Shape and Wood keep
     // the same modes in the same slots ringing (sameBodyBank, audit F14).
     bodyBank_.load(bodyModes_, configuration.count, configuration.ordered);
-    bodyBank_.captureFilter.configure(sampleRate_, configuration.airModeHz);
+    bodyBank_.captureFilter.configure(sampleRate_, configuration.airModeHz,
+                                      configuration.midPeakHz);
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
     bodyConfigured_ = true;
@@ -4632,12 +4634,13 @@ void AcustraEngine::prepareBodyConfigurations() noexcept
         for (int material = 0; material < 3; ++material)
             buildBodyConfiguration(bodyConfigurations_[
                 static_cast<std::size_t>(3 * shape + material)],
-                static_cast<BodyShape>(shape), static_cast<BodyMaterial>(material));
+                static_cast<BodyShape>(shape), static_cast<BodyMaterial>(material),
+                sampleRate_);
     bodyConfigurationsReady_ = true;
 }
 
 void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
-    BodyShape shape, BodyMaterial material) const noexcept
+    BodyShape shape, BodyMaterial material, double sampleRate) const noexcept
 {
     const AnchorTransform& anchor = wideSteelAnchorTransform;
     const auto& bank = detail::measuredSteelBodyModes;
@@ -4677,14 +4680,14 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
         const auto engine = radiationPole(measured, index, anchor, morph,
             woodFactors, physicalCalibration_);
         float frequency = engine.frequency;
-        const float highestMode = 0.46f * static_cast<float>(sampleRate_);
+        const float highestMode = 0.46f * static_cast<float>(sampleRate);
         const bool audibleAtThisRate = frequency < highestMode;
         frequency = clamp(frequency, 45.0f, highestMode);
 
         const float upper = clamp(std::log2(std::max(frequency, 120.0f)
             / 120.0f) / 6.0f, 0.0f, 1.0f);
         const float q = engine.q;
-        const auto pole = radiationDigitalPole(frequency, q, static_cast<float>(sampleRate_));
+        const auto pole = radiationDigitalPole(frequency, q, static_cast<float>(sampleRate));
         mode.poleReal = pole.real();
         mode.poleImaginary = audibleAtThisRate ? pole.imag() : 0.0f;
 
@@ -4725,8 +4728,8 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
             const double x = static_cast<double>(pi) * static_cast<double>(frequency) / rate;
             return x == 0.0 ? 1.0 : std::sin(x) / x;
         };
-        const float holdDroop = sampleRate_ == 48000.0 ? 1.0f
-            : static_cast<float>(holdGain(48000.0) / holdGain(sampleRate_));
+        const float holdDroop = sampleRate == 48000.0 ? 1.0f
+            : static_cast<float>(holdGain(48000.0) / holdGain(sampleRate));
         const std::complex<float> residueRateScale
             = (pole - 1.0f) / (referencePole - 1.0f) * holdDroop;
         const auto scaledResidue = [playedDrive, residueRateScale]
@@ -4817,7 +4820,7 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
     // bank. Every construction and rate keeps the band below its top as it
     // was; above it (up to 18 kHz or 0.45 fs) about 10-19 modes are added.
     {
-        const float rate = static_cast<float>(sampleRate_);
+        const float rate = static_cast<float>(sampleRate);
         float top = 0.0f;
         for (int index = 0; index < ownCount; ++index)
         {
@@ -4991,7 +4994,7 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
         if (mode.poleImaginary == 0.0f)
             continue;
         const float frequency = std::atan2(mode.poleImaginary, mode.poleReal)
-            * static_cast<float>(sampleRate_) / twoPi;
+            * static_cast<float>(sampleRate) / twoPi;
         const float gain = detail::microphoneTiltGain(frequency);
         for (auto* residue : { &mode.leftReal, &mode.leftImaginary,
                 &mode.rightReal, &mode.rightImaginary,
@@ -4999,6 +5002,90 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
                 &mode.rightMomentReal, &mode.rightMomentImaginary })
             *residue *= gain;
     }
+    // The mid-band pair is a physical frequency, but under 44.1 kHz the
+    // modes dropped above 0.46 fs are among those whose cancellation forms
+    // the hole: at 8-10 kHz it moved to another mode and the dip with it.
+    // Those rates take the pair a 48 kHz build of this construction places,
+    // as every rate from 11 kHz up already does.
+    if (sampleRate < 44100.0)
+    {
+        BodyConfiguration reference;
+        buildBodyConfiguration(reference, shape, material, 48000.0);
+        configuration.midPeakHz = reference.midPeakHz;
+        configuration.midHoleHz = reference.midHoleHz;
+    }
+    else
+    {
+        locateMidBand(configuration, sampleRate);
+    }
+}
+
+double AcustraEngine::summedMicrophoneMagnitude(const BodyConfiguration& configuration,
+                                                double hz, double sampleRate) noexcept
+{
+    // Each mode is 2 Re[R / (1 - p z^-1)] on a real input (BodyBank::render),
+    // summed over the force residues of both microphones.
+    const double omega = twoPi * hz / sampleRate;
+    const std::complex<double> inverseZ(std::cos(omega), -std::sin(omega));
+    std::complex<double> left, right;
+    for (int index = 0; index < configuration.count; ++index)
+    {
+        const auto& mode = configuration.modes[static_cast<std::size_t>(index)];
+        if (mode.poleImaginary == 0.0f)
+            continue;
+        const std::complex<double> pole(mode.poleReal, mode.poleImaginary);
+        const auto direct = 1.0 / (1.0 - pole * inverseZ);
+        const auto mirror = 1.0 / (1.0 - std::conj(pole) * inverseZ);
+        const std::complex<double> residueLeft(mode.leftReal, mode.leftImaginary);
+        const std::complex<double> residueRight(mode.rightReal, mode.rightImaginary);
+        left += residueLeft * direct + std::conj(residueLeft) * mirror;
+        right += residueRight * direct + std::conj(residueRight) * mirror;
+    }
+    return 0.5 * std::abs(left + right);
+}
+
+void AcustraEngine::locateMidBand(BodyConfiguration& configuration, double sampleRate) noexcept
+{
+    configuration.midPeakHz = 0.0f;
+    configuration.midHoleHz = 0.0f;
+    // A 1/96-octave walk: the hole is the band's deepest point, the peak
+    // the highest point within a fourth below it (MicrophoneBalanceData.h).
+    constexpr double stepsPerOctave = 96.0;
+    const double step = std::pow(2.0, 1.0 / stepsPerOctave);
+    double holeHz = 0.0, holeMagnitude = std::numeric_limits<double>::infinity();
+    for (double hz = detail::originalMidHoleLowerHz; hz <= detail::originalMidHoleUpperHz; hz *= step)
+    {
+        const double magnitude = summedMicrophoneMagnitude(configuration, hz, sampleRate);
+        if (magnitude < holeMagnitude)
+        {
+            holeMagnitude = magnitude;
+            holeHz = hz;
+        }
+    }
+    // A band edge that is still falling is not an antiresonance.
+    if (!(holeHz > 0.0)
+        || !(summedMicrophoneMagnitude(configuration, holeHz / step, sampleRate) > holeMagnitude)
+        || !(summedMicrophoneMagnitude(configuration, holeHz * step, sampleRate) > holeMagnitude))
+        return;
+    double peakHz = 0.0, peakMagnitude = 0.0;
+    bool first = true;
+    for (double hz = holeHz / detail::originalMidHoleSearchRatio; hz < holeHz; hz *= step)
+    {
+        const double magnitude = summedMicrophoneMagnitude(configuration, hz, sampleRate);
+        // The window's first point is a mode below the window, not a peak
+        // within it.
+        if (magnitude > peakMagnitude)
+        {
+            peakMagnitude = magnitude;
+            peakHz = first ? 0.0 : hz;
+        }
+        first = false;
+    }
+    const double depthDb = 20.0 * std::log10(peakMagnitude / std::max(holeMagnitude, 1.0e-30));
+    if (!(peakHz > 0.0) || !(depthDb >= detail::originalMidHoleMinimumDepthDb))
+        return;
+    configuration.midPeakHz = static_cast<float>(peakHz);
+    configuration.midHoleHz = static_cast<float>(holeHz);
 }
 
 void AcustraEngine::configureBridge(bool keepModalState) noexcept
@@ -10541,41 +10628,56 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
 }
 
 void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
-                                                       float airMode) noexcept
+                                                       float airMode, float midPeak) noexcept
 {
     if (!enabled)
         reset();
     enabled = true;
     airModeHz = exact::isfinite(airMode) && airMode > 0.0f
         && airMode <= detail::originalAirModeDipUpperHz ? airMode : 0.0f;
+    const auto inMidBand = [] (float hz)
+    {
+        return exact::isfinite(hz)
+            && hz >= detail::originalMidHoleLowerHz / detail::originalMidHoleSearchRatio
+            && hz <= detail::originalMidHoleUpperHz;
+    };
+    midPeakHz = inMidBand(midPeak) ? midPeak : 0.0f;
     static_assert(sizeof(detail::captureVoicingSections)
-                      / sizeof(detail::captureVoicingSections[0]) == sections - 1,
-                  "the capture filter must hold every authored section and the air dip");
+                      / sizeof(detail::captureVoicingSections[0]) == sections - 2,
+                  "the capture filter must hold every authored section, the air dip "
+                  "and the mid-band dip");
     gain = static_cast<float>(std::pow(10.0,
         (static_cast<double>(detail::captureVoicingLevelDb)
             + detail::originalCaptureLevelAdjustmentDb
-            + (airModeHz > 0.0f ? detail::originalAirModeDipLevelDb : 0.0f)) / 20.0));
+            + (airModeHz > 0.0f ? detail::originalAirModeDipLevelDb : 0.0f)
+            + (midPeakHz > 0.0f ? detail::originalMidBandLevelDb : 0.0f)) / 20.0));
     // The authored recording contour acts on the summed pressure. Weighting
     // modal residues by a contour instead breaks off-resonance cancellation:
     // the intended 500 Hz cut could become a boost on treble notes. Every
     // mechanical/radiation pole and relative modal residue stays intact.
     // Shape and Wood retain its history; their fades copy it with the bank.
-    // The last section is the dip at this construction's air mode
-    // (MicrophoneBalanceData.h), flat when no air mode is known.
+    // The last two sections follow the construction: the dip at its air
+    // mode and the dip at its mid-band peak (MicrophoneBalanceData.h), each
+    // flat when its frequency is not known.
     constexpr double doublePi = 3.141592653589793238462643383279502884;
     for (int index = 0; index < sections; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
-        const bool airDip = index == sections - 1;
-        if (airDip && airModeHz == 0.0f)
+        const int following = index - (sections - 2); // negative: authored; 0, 1: construction
+        const float centreHz = following == 0 ? airModeHz : following == 1 ? midPeakHz : 1.0f;
+        if (following >= 0 && centreHz == 0.0f)
         {
             coefficients[slot] = { 1.0, 0.0, 0.0, 0.0, 0.0 };
             continue;
         }
-        const auto section = airDip
+        const auto section = following == 0
             ? detail::CaptureVoicingSection { detail::CaptureVoicingKind::Peak,
                                               airModeHz, detail::originalAirModeDipDb,
                                               detail::originalAirModeDipQ }
+            : following == 1
+            ? detail::CaptureVoicingSection { detail::CaptureVoicingKind::Peak,
+                                              midPeakHz, detail::originalMidPeakDipDb,
+                                              detail::originalMidPeakDipQ }
             : detail::balancedOriginalCaptureSection(
                   detail::captureVoicingSections[slot]);
         const auto kind = section.kind;

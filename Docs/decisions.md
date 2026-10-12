@@ -5,6 +5,111 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the mid-band peak takes a dip; the hole stays
+
+The entry of the same day that measured the body's mid-band peak and hole
+and left them weighed a construction-following dip and a boost at the
+antiresonance. On the user's direction ("use candidate", given without a
+listening verdict) both were built and measured, and the dip ships. The
+engine locates the pair per construction from its own summed microphone
+response at prepare (`AcustraEngine::locateMidBand`): the deepest
+antiresonance between 450 and 800 Hz, where the measured bank's same-sign
+residues cancel 36-40 dB under the mid-band peaks, and the highest point
+within a fourth below it, three and a half semitones down. That rule, not
+the response's tallest point, finds the note the sweep hears: the
+Dreadnought, Auditorium and Jumbo have a lower mid mode (320-416 Hz) as
+tall in the pressure response that plays only 2-3 dB over its neighbours,
+and the upper one (404-614 Hz across Shape and Wood; 419-605 on Spruce)
+that plays 8-11 dB over (5.4 on the Parlor, whose lower mode, at 461-486
+Hz, puts A#4 +5.2 over and stays). The summed pressure takes -9 dB at Q 8
+there, the eighth section of the capture filter after the air-mode dip;
+the piezo never passes through it. Under 44.1 kHz the pair is the one a
+48 kHz build of the same construction places: there the bank drops modes
+above 0.46 fs whose cancellation forms the hole, and at 8-10 kHz the dip
+had followed the moved hole to a weaker mode (the review below).
+Measured on the E2-E5 sweep (velocity 96, Finger, stereo mic, Room 0.5):
+Dreadnought A#4 +11.4 to +5.0 dB over its neighbours, RMS deviation 4.20
+to 3.52 dB; Auditorium C5 +8.4 to +3.8, 3.51 to 3.20; Jumbo G#4 +10.5 to
++5.7, 3.81 to 3.22; Parlor D#5 +5.4 to +2.2 and D5 +4.5 to +1.4, 3.35 to
+2.71. The holes move 1-3 dB nearer their neighbours because the
+neighbours fell (C#5 -12.4 to -11.0, D#5 -10.3 to -8.4, B4 -10.6 to -9.3,
+E5 -10.4 to -7.7).
+
+The boost at the hole (+8 dB, Q 8) was measured and not shipped. Against
+the dip alone it raised each hole's note about 1 dB (0.8-1.4 dB in level)
+but lifted the note above it 4.4-5.0 dB against its neighbours
+(Dreadnought D5 +4.9 to +9.4, Auditorium E5 +8.4 to +12.8, Jumbo C5 -2.8
+to +2.2) and the second partial of the note an octave under, so the
+Dreadnought's, Auditorium's and Jumbo's holes came out 0.2-0.6 dB deeper
+against their neighbours, and the RMS deviation with it was 3.80, 3.66,
+3.19 and 2.67 dB against the dip's 3.52, 3.20, 3.22 and 2.71. Those holes'
+notes are radiation nulls whose fundamental carries only -7 to -15 dB of
+the note's sustained power, so a boost at the fundamental reaches little
+of the note; they stay, as the entry below said they would. A fuller
+account, with the before/dip/boost table of every mid-band note on every
+body, is in [the report](mid-band-dip-2026-10-12.md).
+
+Levelled: the dip took the default cell's calibration phrase from
+-27.7532 to -28.2795 LUFS, and since every other construction and capture
+is levelled to that cell, the whole instrument went half a dB quieter
+with it: the Rack's piezo patch fell under its bank's loudness window
+(-28.22 dBFS against a -28 floor). So the dip carries a level restore
+sized on that phrase (+0.5263 dB, `originalMidBandLevelDb`), as the
+fitted contour's did, and every construction is re-levelled to the
+restored default by `Tools/CalibrateConstructionLoudness.py`. The mono
+microphone, the right channel at its own reference, rose 0.15 LU
+against the pair on the default construction under the dip (the dipped
+mode radiates more to the left microphone), from 0.85 to 1.0002 LU over
+the default's stereo loudness, past the calibration's 1 LU tolerance;
+its default cell is pinned at 1 in the generated tables, so the mono
+microphone takes -1.0 dB (`originalMonoLevelGain`), which puts the
+default's mono capture on the target every other cell is levelled to
+(0.85 dB under where 1.3.1 played it against the pair). Measured after
+the re-levelling: the calibration's `--check` holds every cell and
+capture (stereo mic -0.00..+0.50 LU, mono mic -0.00..+0.50 LU, piezo
+-0.92..+0.50 LU), and the construction loudness fixture reads
+-2.85..+1.74 LU over its 51 renders, the quietest Parlor Spruce Finger
+(was -2.57; the dip costs the Parlor's fixture phrase about 0.3 LU more
+than its calibration phrase, inside the 3 LU contract). The full DSP
+suite and the plug-in suites pass with every fixture as on main.
+
+Reviewed before merge by four independent finders and a skeptical
+verifier for each (DSP contracts, tests, levelling and the Rack, the
+documentation against these logs): 22 of 26 findings were confirmed and
+fixed. Besides the low-rate rule above, a hole at the walk's band edge is
+no longer taken for an antiresonance, the locator test's bounds were
+tightened from 0.05 dB to the float rounding they absorb and it now
+checks that every rate from 8 to 192 kHz dips the same peak, and a
+fixture relaxation made for the candidate before its level restore
+(the ConstructionHistory natural-decay window, which the restored engine
+passes on every cell) was reverted. The rest corrected numbers in these
+documents; every rendered sample at 48 kHz is byte-identical to the
+reviewed build.
+
+Nobody has listened. A blind pack (A/B, the key apart) was rendered for
+the user with main's engine (`c4596b4`) and this one on the Dreadnought
+and Auditorium. The user directed that the candidate ship on the
+measurements; a measurement establishes where the peak was and how far it
+fell, not whether the guitar sounds better for it. Version 1.3.2.
+
+## 2026-10-12 — the default sound: the plug-in's, with a bit of piezo
+
+Asked whether the Rack's defaults should follow the plug-in's (Body Amount
+70 % against 82 %, Piezo Mix 20 % against 0 %), the user chose "the
+default with a bit of piezo". The Rack's Body Amount default moves to the
+plug-in's 82 %; the plug-in's Piezo Mix default moves to the Rack's 20 %,
+so a new instance of either starts with the same balance and a bit of the
+under-saddle piezo beneath the microphones. A session saved before Piezo
+Mix existed still loads at 0 %, as a session saved before Release Noise
+or Room keeps its silence and its dry room: a changed default never
+changes a saved sound. This is a chosen default, not a listening verdict:
+nobody compared the two balances blind.
+
+The user also directed, without a stated listening verdict, that the
+strum rule, the keyswitches, the range rule and the Parlor air-mode dip
+stay as merged, and that the mid-band candidate (the entry below) be
+built and shipped rather than held for a listener.
+
 ## 2026-10-12 — the MIDI layer audited again: the queue keeps the newest value
 
 A second read-only audit of the Performer and the plug-in wrapper (one

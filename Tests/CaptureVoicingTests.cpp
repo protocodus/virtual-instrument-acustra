@@ -45,17 +45,19 @@ void expect(bool pass, const std::string& message)
     if (!pass) { ++failures; std::cerr << "FAIL: " << message << '\n'; }
 }
 
-Complex target(double frequency, double rate, double airModeHz)
+Complex target(double frequency, double rate, double airModeHz, double midPeakHz)
 {
     // Evaluate the analog prototypes at the bilinear frequency. This uses
     // neither runtime digital coefficients nor the runtime gain helper.
     Complex response = std::pow(10.0,
         (double(acustra::detail::captureVoicingLevelDb)
          + double(acustra::detail::originalCaptureLevelAdjustmentDb)
-         + (airModeHz > 0.0 ? double(acustra::detail::originalAirModeDipLevelDb) : 0.0))
+         + (airModeHz > 0.0 ? double(acustra::detail::originalAirModeDipLevelDb) : 0.0)
+         + (midPeakHz > 0.0 ? double(acustra::detail::originalMidBandLevelDb) : 0.0))
         / 20.0);
-    // The fitted sections and, last, the dip at the construction's air mode
-    // (MicrophoneBalanceData.h), a peak section the prototype spells itself.
+    // The fitted sections, then the dip at the construction's air mode and
+    // the dip at its mid-band peak (MicrophoneBalanceData.h): peak sections
+    // the prototype spells itself.
     std::vector<acustra::detail::CaptureVoicingSection> sections(
         std::begin(acustra::detail::captureVoicingSections),
         std::end(acustra::detail::captureVoicingSections));
@@ -64,6 +66,11 @@ Complex target(double frequency, double rate, double airModeHz)
     sections.push_back({ acustra::detail::CaptureVoicingKind::Peak, float(airModeHz),
                          acustra::detail::originalAirModeDipDb,
                          acustra::detail::originalAirModeDipQ });
+    expect(midPeakHz >= 330.0 && midPeakHz <= 800.0,
+           "the configured mid-band peak is outside its band: " + std::to_string(midPeakHz));
+    sections.push_back({ acustra::detail::CaptureVoicingKind::Peak, float(midPeakHz),
+                         acustra::detail::originalMidPeakDipDb,
+                         acustra::detail::originalMidPeakDipQ });
     for (const auto& section : sections)
     {
         // Independent authored capture refinement; keep the prototype
@@ -115,10 +122,16 @@ void testDigitalTransferAndReset(double rate)
         left[std::size_t(n)] = output[0]; right[std::size_t(n)] = output[1];
     }
     double worst = 0.0;
-    for (double frequency : { 0.0, 40.0, 82.4069, 125.0, 250.0, 392.0, 494.0,
-                              500.0, 800.0, 1000.0, 1400.0, 2800.0, .45 * rate })
+    std::vector<double> probes { 0.0, 40.0, 82.4069, 125.0, 250.0, 392.0, 494.0,
+                                 500.0, 800.0, 1000.0, 1400.0, 2800.0, .45 * rate };
+    // The construction's own centres, where the following sections act most.
+    for (float centre : { filter.airModeHz, filter.midPeakHz })
+        if (centre > 0.0f)
+            probes.push_back(double(centre));
+    for (double frequency : probes)
     {
-        const auto expected = target(frequency, rate, double(filter.airModeHz));
+        const auto expected = target(frequency, rate, double(filter.airModeHz),
+                                     double(filter.midPeakHz));
         const auto l = responseAt(left, frequency, rate) / .25;
         const auto r = responseAt(right, frequency, rate)
             / (-.125 * std::polar(1.0, -2.0 * pi * frequency * 17.0 / rate));
@@ -177,7 +190,8 @@ void testLowMidCancellationRegression()
     constexpr double arm = 1.25;
     const auto raw = modalResponse(bank, frequency, arm, false);
     const auto old = modalResponse(bank, frequency, arm, true);
-    const auto desired = target(frequency, 48000.0, double(bank.captureFilter.airModeHz));
+    const auto desired = target(frequency, 48000.0, double(bank.captureFilter.airModeHz),
+                                double(bank.captureFilter.midPeakHz));
     const double oldDb = 20.0 * std::log10(std::abs(old / raw));
     const double targetDb = 20.0 * std::log10(std::abs(desired));
     // The authored scalar restores phrase loudness; assess the tonal cut
