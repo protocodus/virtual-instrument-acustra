@@ -28,6 +28,17 @@ public:
     explicit AcustraAudioProcessorEditor (AcustraAudioProcessor&);
     ~AcustraAudioProcessorEditor() override;
 
+    // The width the editor opens at and the smallest it can be resized to,
+    // for the width saved with the session (0 for none) and the user area
+    // of the display it opens on (empty for none). Heights follow the
+    // fixed aspect ratio.
+    struct Sizing
+    {
+        int width;
+        int minimumWidth;
+    };
+    static Sizing sizingFor (int savedWidth, juce::Rectangle<int> userArea);
+
     void paint (juce::Graphics&) override;
     void resized() override;
 

@@ -82,7 +82,14 @@ focus rings are drawn independently for clear interaction at every supported siz
 A six-string fretboard above the keyboard shows the actual frets being played,
 released notes, and sympathetic vibration on open strings. Its animation shows
 vibration activity rather than an audio-rate waveform. The editor opens at
-1120 × 980, with all nine continuous sound controls visible.
+1120 × 980, with all nine continuous sound controls visible, or at the same
+proportions as large as the display leaves room for under a window's title
+bar (and below its usual 896 × 784 minimum, down to 672 × 588, on a display
+too small for that). A session reopens it at the size it was left: the width
+is saved with the session's state, not as a parameter, so hosts never
+automate it. The header shows the version and build number. The Standalone
+enables each MIDI input the first time it sees it, at launch or when it is
+connected; one turned off in Options > Audio/MIDI Settings stays off.
 The Picking tooltip names CC2 as
 the bridge hand. Ordinary Note-off allows a 1/32-note gap before damping,
 so a following stroke can continue the ringing string. Existing
@@ -200,7 +207,8 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
 locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
 it with the project version (currently `1.3.2`) and the source revision. Changing that identity rebuilds
-the wrappers; each linked format receives its frozen identity record, and macOS
+the wrappers; each linked format receives its frozen identity record (the
+editor reads its version and build number from it), and macOS
 bundles embed the build number. Packaging rejects a cache
 that disagrees with those records or macOS bundle metadata. Assign a new build
 number for a new distributable; changing the package name alone is insufficient.
@@ -1821,6 +1829,11 @@ no disabled buses, so an AU host sees both outputs; Main is still the first.
 A disabled bus is not rendered; an enabled one adds a limiter and a store a
 sample, since the piezo is computed for Main anyway.
 
+The plug-in plays at host rates from 8 kHz to 384 kHz
+(`AcustraEngine::maximumSupportedSampleRate`). At any other rate the engine
+would hold its rate at the nearer bound and play every note off pitch, so
+both outputs stay silent and the editor's status line reads UNSUPPORTED RATE.
+
 In code, `AcustraEngine::process(left, right, buses, numSamples)` and
 `Performer::beginBlock(left, right, buses, numSamples)` take an
 `AcustraEngine::OutputBuses { piezo }` whose null pointer means "not wanted";
@@ -3089,6 +3102,29 @@ set without it.
   assert the behaviour directly.
 
 ## Release history
+
+### 2026-10-12 — plug-in launch fixes: Standalone MIDI, editor size, rates, version
+
+- **The Standalone hears a connected keyboard.** JUCE's desktop Standalone
+  opens a MIDI input only once it is ticked in Options > Audio/MIDI
+  Settings. Acustra's now enables each input the first time it sees it, at
+  launch or when it is plugged in, and records it in the Standalone's
+  settings; after that the saved Audio/MIDI settings decide, so an input
+  the user turned off stays off. Nothing changes in the plug-in formats.
+- **The editor fits the display and remembers its size.** It opens at its
+  design size, 1120 × 980, or as large as the display under the mouse leaves
+  room for below a 48-point title bar, keeping its proportions; its minimum,
+  896 × 784, drops to fit a smaller display, down to 672 × 588. The last
+  width is saved with the session's state beside the parameters, not as a
+  host parameter; a state without one leaves the last width.
+- **Unsupported rates are silent and say so.** Outside 8-384 kHz the engine
+  clamps its rate and would play off pitch; the processor now outputs
+  silence there and the status line reads UNSUPPORTED RATE.
+- **The build identity is in every binary and on screen.** The editor
+  reads the version and build number from the identity record CMake
+  freezes, which also keeps that record from being dropped at link time.
+- No parameter or saved parameter value changes, and nothing in the engine
+  or Performer changes.
 
 ### 2026-10-12 — strum direction timed by the song, and keyswitches
 

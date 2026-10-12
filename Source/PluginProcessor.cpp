@@ -1,6 +1,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+#include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -184,6 +186,8 @@ void sanitiseSavedParameterValues (
 // Bridge Model parameters).
 const juce::Identifier stateVersionProperty { "stateVersion" };
 constexpr int currentStateVersion = 2;
+// The editor's last width, beside the parameters rather than one of them.
+const juce::Identifier editorWidthProperty { "editorWidth" };
 
 // A state saved before the simplification: the String Material and Bridge
 // Model it may hold are dropped (every session now plays steel strings on
@@ -224,6 +228,48 @@ Enum choiceValue (float value, int maximumIndex) noexcept
 }
 } // namespace
 
+// JUCE's desktop Standalone opens a MIDI input only once it is ticked in
+// Options > Audio/MIDI Settings (it opens them all only on mobile), so a
+// connected keyboard is silent. This enables each input the first time the
+// Standalone sees it, at launch or when it is plugged in, and remembers it
+// in the Standalone's settings; from then on the saved Audio/MIDI settings
+// decide, so an input the user turned off stays off.
+class AcustraAudioProcessor::StandaloneMidiInputs final : private juce::AsyncUpdater
+{
+public:
+    // The holder creates the processor before it restores the saved
+    // devices, so the first pass waits for the message loop.
+    StandaloneMidiInputs() { triggerAsyncUpdate(); }
+    ~StandaloneMidiInputs() override { cancelPendingUpdate(); }
+
+private:
+    void handleAsyncUpdate() override
+    {
+        auto* holder = juce::StandalonePluginHolder::getInstance();
+        if (holder == nullptr)
+            return;
+        auto* settings = holder->settings.get();
+        auto seen = juce::StringArray::fromLines (
+            settings != nullptr ? settings->getValue (seenKey) : juce::String {});
+        const auto before = seen.size();
+        for (const auto& input : juce::MidiInput::getAvailableDevices())
+        {
+            if (seen.contains (input.identifier))
+                continue;
+            holder->deviceManager.setMidiInputDeviceEnabled (input.identifier, true);
+            // One that would not open (in use elsewhere) is tried again later.
+            if (holder->deviceManager.isMidiInputDeviceEnabled (input.identifier))
+                seen.add (input.identifier);
+        }
+        if (settings != nullptr && seen.size() != before)
+            settings->setValue (seenKey, seen.joinIntoString ("\n"));
+    }
+
+    static constexpr auto seenKey = "autoEnabledMidiInputs";
+    juce::MidiDeviceListConnection deviceListChanges =
+        juce::MidiDeviceListConnection::make ([this] { triggerAsyncUpdate(); });
+};
+
 AcustraAudioProcessor::AcustraAudioProcessor()
     // Main follows the Capture selector, as it always has. The optional
     // Piezo bus is the under-saddle piezo itself, whatever Capture selects:
@@ -243,6 +289,8 @@ AcustraAudioProcessor::AcustraAudioProcessor()
     parameters.addParameterListener (ids::gatherChords, this);
     // The engine's own output latency holds before prepareToPlay too.
     setLatencySamples (acustra::Performer::latencySamples (false, 0));
+    if (wrapperType == wrapperType_Standalone)
+        standaloneMidiInputs = std::make_unique<StandaloneMidiInputs>();
 }
 
 AcustraAudioProcessor::~AcustraAudioProcessor()
@@ -407,6 +455,11 @@ void AcustraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     keyboardState.reset();
     performer.setParameters (snapshotEngineParameters());
     performer.prepare (sampleRate, samplesPerBlock);
+    // The engine keeps a rate it models exactly and clamps any other
+    // (AcustraEngine::prepare), which would play every note off pitch.
+    sampleRateSupported.store (juce::exactlyEqual (performer.engine().sampleRate(),
+                                                   sampleRate),
+                               std::memory_order_relaxed);
     // JUCE permits play-head queries only inside processBlock. The first
     // block supplies host tempo before any MIDI, including its Note Offs.
     performer.setTempoBpm (120.0);
@@ -458,7 +511,8 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
-    if (! engineReady.load (std::memory_order_acquire))
+    if (! engineReady.load (std::memory_order_acquire)
+        || ! sampleRateSupported.load (std::memory_order_relaxed))
         return;
 
     // Capture the request before consuming Panic. A request arriving during
@@ -603,6 +657,8 @@ void AcustraAudioProcessor::getStateInformation (
 {
     auto state = parameters.copyState();
     state.setProperty (stateVersionProperty, currentStateVersion, nullptr);
+    if (const auto width = getEditorWidth(); width > 0)
+        state.setProperty (editorWidthProperty, width, nullptr);
     if (const auto xml = state.createXml())
         copyXmlToBinary (*xml, destinationData);
 }
@@ -623,6 +679,12 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
             < currentStateVersion)
             migrateVersionOneState (restoredState);
         restoredState.setProperty (stateVersionProperty, currentStateVersion, nullptr);
+        // A state without a width (or with a malformed one) leaves the
+        // last width; the editor limits whatever it is given.
+        if (const auto width = static_cast<int> (restoredState.getProperty (editorWidthProperty));
+            width > 0)
+            setEditorWidth (width);
+        restoredState.removeProperty (editorWidthProperty, nullptr);
         // The old five-choice capture and two overrides had different ranges.
         // Migrate once, before defaults are added; an explicit modern value wins.
         if (! containsParameterState (restoredState, ids::captureMode))
