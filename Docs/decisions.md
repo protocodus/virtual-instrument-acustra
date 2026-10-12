@@ -5,6 +5,30 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the mid-band peak and hole, measured at Room 0.5 and left
+
+With the air-mode dip on every body, the largest deviation on the E2-E5
+sweep (`Tools/MeasureNoteEvenness.py`, velocity 96, Finger, stereo mic, at
+the plug-in's Room 0.5 rather than the report's dry engine) is the body's
+400-660 Hz modes on every Shape: a peak with a hole one to three semitones
+above it. Dreadnought A#4 +11.4 dB over its neighbours and C#5 -12.4 (RMS
+4.20 dB); Auditorium C5 +8.4, E5 +8.4 and D#5 -10.3 (3.51); Jumbo G#4
++10.5 and B4 -10.6 (3.81); Parlor D#5 +5.4 and E5 -10.4 (3.35). The
+authored recording contour already cuts 250 and 500 Hz by 6 dB (Q 1.2),
+fitted to real flat-top recordings, so this is modal, not a broad tilt.
+
+Two mechanisms were weighed and neither built. A construction-following
+capture dip at the dominant mid mode, like the air-mode dip, takes 3-4 dB
+off the peak and nothing off the hole, so a 20 dB contrast becomes 17; a
+boost at the antiresonance would need the summed response's minimum
+computed per construction, which no tool does yet. Lowering the plate
+modes' Q (the 2026-10-11 candidate, 0.7 of the flamenca's) spreads the
+energy into the hole as well, but the model and parameter audit pins the
+radiation to each mode's measured damping. The real flat-top's own sweep
+is as uneven on the eight notes available, so whether the listener hears
+this as a fault or as a guitar is not known: it is the next sound item
+for a session with a listener, not a measurement to act on alone.
+
 ## 2026-10-12 — the Parlor takes the air-mode dip, levelled inside its contracts
 
 The entry below measured the Parlor's dip and held it because, re-levelled
