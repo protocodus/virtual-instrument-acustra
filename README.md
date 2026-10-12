@@ -2370,6 +2370,12 @@ polarisation losses, an unscaled heave-only plate floor, absent slide roughness
 and an unadopted 94.2 Hz air retune no longer describe the current instrument.
 Dated evidence is retained so the earlier decisions remain traceable.
 
+- The default Piezo Mix of 20 % deepens two holes: where the
+  microphones' antiresonance meets the piezo in opposite phase, the
+  Parlor's F#5 falls from -7.5 to -14.3 dB against its neighbours and the
+  Jumbo's C5 from -2.8 to -8.5 (Room 0.5, E2-C6 sweep); on the Dreadnought
+  and Auditorium the piezo fills the hole instead. Not heard yet; see
+  [the report](Docs/mid-band-dip-2026-10-12.md#over-the-full-range-and-at-the-default-piezo-mix).
 - Strum direction follows an interval rule, not the beat grid: two
   upstrokes a beat apart (the second and third strokes of a "down, down-up,
   up-down-up" pattern) come out down and up unless the C#0 keyswitch asks

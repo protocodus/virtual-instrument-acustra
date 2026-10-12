@@ -176,6 +176,48 @@ on) and only the `dev` columns compare directly.
 | D#5 | 622.3 | +5.4 | +2.2 | +2.3 | -0.4 / -2.0 |
 | E5 | 659.3 | -10.4 | -7.7 | -7.2 | -1.9 / -3.2 |
 
+## Over the full range, and at the default piezo mix
+
+The sweeps above stop at E5, so E5's neighbourhood is one-sided and the
+notes above the dipped mode went unmeasured. The same sweep over the
+instrument's whole range, E2-C6 (`--last 84`), on the four Spruce Shapes,
+in four variants: main before the dip (c4596b4) at Room 0.5, this engine
+at Room 0.5, this engine dry (Room 0), and the plug-in's default sound,
+Room 0.5 with Piezo Mix 0.2 (`AcustraPerformanceRenderer --piezo-mix`,
+added for this). The logs are in
+[`mid-band-dip-2026-10-12/e2-c6/`](mid-band-dip-2026-10-12/e2-c6/).
+
+| Shape | Before, Room 0.5 | Dip, Room 0.5 | Dip, dry | Default (Room 0.5, Piezo Mix 0.2) |
+| --- | ---: | ---: | ---: | ---: |
+| Dreadnought | 3.93 | 3.32 | 2.83 | 3.25 |
+| Auditorium | 3.44 | 3.20 | 3.11 | 3.19 |
+| Jumbo | 3.74 | 3.25 | 2.98 | 2.98 |
+| Parlor | 3.91 | 3.42 | 2.75 | 3.90 |
+
+RMS deviation in dB, E2-C6, the tool's formula (the note left out of its
+neighbourhood mean). With both neighbourhoods the E2-E5 sweeps' E5 figures
+fall away: the Auditorium's E5 reads +4.1 (+8.4 at the sweep's edge) and
+the Dreadnought's +4.0 (+6.1). The Auditorium's D#5 hole reads -10.3, as
+before. Above E5 the dip changes nothing: the largest notes left are the
+Jumbo's D5 (+8.1, the strong mode just above its hole), the Auditorium's
+A#3 (+7.0), the Parlor's C6 (+6.8), G5 (+6.6) and A#5 (-7.8), all present
+before the dip too.
+
+The default piezo deepens two holes. Piezo Mix adds the under-saddle
+piezo coherently beneath the microphones, and at the microphones'
+antiresonance the two can meet in opposite phase. On the Parlor, F#5 (740
+Hz, the Parlor's located hole) falls from -7.5 dB to -14.3 dB against its
+neighbours, its level 5.4 dB lower with the piezo added than without it;
+on the Jumbo, C5 (523 Hz, beside its 516 Hz hole) from -2.8 to -8.5, 3.6
+dB lower. On the Dreadnought and Auditorium the piezo fills the hole
+instead (C#5 -11.0 to -8.9, D#5 -10.3 to -9.1), and every other note it
+reaches gains level. The Parlor's default sound is therefore the least
+even of the four (3.90 dB RMS against 3.42 with the microphones alone).
+This is the 2026-10-12 default ("a bit of piezo"), chosen without a
+listening verdict; whether the deeper Parlor F#5 is heard as a fault, and
+whether the piezo's polarity or level should follow the Shape, is the
+owner's to judge by listening. Nothing is changed for it here.
+
 ## The boost at the hole, measured and not shipped
 
 The candidate as designed also lifted the hole, +8 dB at Q 8 at the

@@ -68,6 +68,30 @@ has used these changes in a host yet.
   from `AcustraBuildIdentity`; referencing it keeps the identity record in
   each binary, where the linker had dropped it.
 
+## 2026-10-12 — the full range and the default sound, measured
+
+The mid-band dip's sweeps stopped at E5, the plug-in plays to C6, and none
+measured the default sound with its 20 % piezo. Measured now over E2-C6
+on the four Spruce Shapes (`Tools/MeasureNoteEvenness.py --last 84`;
+`AcustraPerformanceRenderer` gains `--piezo-mix`). The dip lowers every
+Shape's RMS deviation over the whole range at Room 0.5 (Dreadnought 3.93
+to 3.32 dB, Auditorium 3.44 to 3.20, Jumbo 3.74 to 3.25, Parlor 3.91 to
+3.42); the E2-E5 sweeps' E5 figures were edge effects (Auditorium E5 +4.1
+with both neighbourhoods, not +8.4). Above E5 nothing changes; the Jumbo's
+D5 (+8.1) and the Parlor's top notes (C6 +6.8, G5 +6.6, A#5 -7.8) are the
+largest left.
+
+At the default Piezo Mix of 20 % the piezo meets the microphones'
+antiresonance in opposite phase on two Shapes: the Parlor's F#5 falls
+from -7.5 to -14.3 dB against its neighbours (5.4 dB lower in level than
+without the piezo) and the Jumbo's C5 from -2.8 to -8.5; on the
+Dreadnought and Auditorium the piezo fills the hole instead. The Parlor's
+default sound is the least even (3.90 dB RMS against 3.42 for its
+microphones alone). Recorded as an open question for the owner, by ear:
+whether this matters, and whether the piezo's polarity or default level
+should follow the Shape. Nothing in the sound changes with this entry; see
+[the report](mid-band-dip-2026-10-12.md#over-the-full-range-and-at-the-default-piezo-mix).
+
 ## 2026-10-12 — the mid-band peak takes a dip; the hole stays
 
 The entry of the same day that measured the body's mid-band peak and hole
