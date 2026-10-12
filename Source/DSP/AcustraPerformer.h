@@ -53,12 +53,14 @@ public:
     // the window plus a 4096-sample block at 44.1 kHz, 123 ms, is about 130
     // events; 1024 leaves eight times that for a host's denser streams. An
     // MPE controller streaming bend and pressure on many member channels at
-    // once can still exceed it. A full queue loses a continuous gesture
-    // (bend, pressure, an ordinary controller), whose next value supersedes
-    // it, never a message that starts or ends a note or sets a mode: the
-    // oldest queued continuous event makes room for one of those, so a
-    // key-up is never lost. What is lost is counted (droppedEventCount), and
-    // nothing ever allocates.
+    // once can still exceed it. A full queue loses its oldest continuous
+    // gesture (bend, pressure, an ordinary controller), whose later value
+    // supersedes it, so a wheel's last value is the one that survives; it
+    // never loses a message that starts or ends a note or sets a mode, the
+    // oldest queued continuous event making room for one of those, so a
+    // key-up is never lost. Messages the Performer ignores are never queued.
+    // What is lost is counted (droppedEventCount), and nothing ever
+    // allocates.
     static constexpr int heldEventCapacity = 1024;
     // Note Ons (and, separately, Note Offs) that one sample can group. A
     // 129th Note On on one sample is dropped and counted; a 129th Note Off

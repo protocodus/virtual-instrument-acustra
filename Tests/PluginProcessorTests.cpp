@@ -604,6 +604,45 @@ void testRepeatedHeldChordsKeepTheirAudibleSweep()
               << " ms, up " << up * 1000.0 << " ms\n";
 }
 
+// A bypassed instrument keeps playing its MIDI silently, so a key-up
+// delivered while bypassed is not lost; the host's reset() is a Panic.
+void testBypassAndHostResetKeepNotesCoherent()
+{
+    auto owner = std::make_unique<AcustraAudioProcessor>();
+    auto& processor = *owner;
+    processor.prepareToPlay (sampleRate, blockSize);
+    processor.setStringDisplayEnabled (true);
+    juce::AudioBuffer<float> audio { 2, blockSize };
+    // The display publishes at its own rate, so settle a few blocks before
+    // reading it, as the display test does.
+    juce::MidiBuffer empty;
+    const auto settle = [&]
+    {
+        for (int block = 0; block < 8; ++block)
+            processor.processBlock (audio, empty);
+        return processor.getStringActivityForDisplay();
+    };
+    juce::MidiBuffer on;
+    on.addEvent (juce::MidiMessage::noteOn (1, 71, 0.72f), 0);
+    processor.processBlock (audio, on);
+    auto strings = settle();
+    expect (strings[5].keyDown && strings[5].played, "B4 did not start on the high E");
+
+    juce::MidiBuffer off;
+    off.addEvent (juce::MidiMessage::noteOff (1, 71), 0);
+    processor.processBlockBypassed (audio, off);
+    expect (audio.getMagnitude (0, blockSize) == 0.0f, "a bypassed block was not silent");
+    strings = settle();
+    expect (! strings[5].keyDown, "a key-up delivered while bypassed was lost");
+
+    processor.processBlock (audio, on);
+    processor.reset();
+    strings = settle();
+    expect (std::none_of (strings.begin(), strings.end(),
+                          [] (const auto& string) { return string.keyDown || string.played; }),
+            "the host's reset did not act as a Panic");
+}
+
 void testSameSampleNoteOnOffDoesNotStick()
 {
     const auto renderOneShot = [] (bool noteOnFirst)
@@ -2773,6 +2812,7 @@ int main()
     testProcessorContractAndSampleAccurateMidi();
     testOptionalPiezoOutputBus();
     testSameSampleChordOrderIsCanonical();
+    testBypassAndHostResetKeepNotesCoherent();
     testSameSampleNoteOnOffDoesNotStick();
     testSameSampleChordsAreStrummedAndAlternate();
     testRepeatedHeldChordsKeepTheirAudibleSweep();
