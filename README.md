@@ -44,9 +44,9 @@ the rendered audio while reducing redundant pitch and pluck calculations.
 
 Version 1.3.2 takes the mid-band peak down by measurement: every
 construction's summed microphone pressure dips at its own strong mid mode
-(420-605 Hz as Shape and Wood place it), so the note on it plays 2-5 dB
-over its neighbours rather than 8-11, and the constructions are
-re-levelled. The plug-in's Piezo Mix now starts at 20 %, the Rack's
+(404-614 Hz as Shape and Wood place it), so the note on it plays 2-6 dB
+over its neighbours rather than 8-11 (5 on the Parlor), and the
+constructions are re-levelled. The plug-in's Piezo Mix now starts at 20 %, the Rack's
 default; a saved session keeps its own value. See
 [Versioned builds and packages](#versioned-builds-and-packages).
 
@@ -1561,7 +1561,7 @@ resonances meet it (Known gaps).
 | **Tuning** | Standard, Drop D, DADGAD, Open G or Half-step down: the six open strings and the notes each can reach. A retuned string keeps its gauge (its linear mass), so its tension, impedance and stiffness follow its new pitch, as on a real guitar. |
 | **Picking** | Finger retains the calibrated contact and applies its finite release slip in full, including at maximum velocity, with normalized displacement. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity, retaining its slip ratio to the full-velocity release. Finger and Thumb have a soft double-corner contact burst with no white hiss. Explicit MPE position overrides hand position and can reduce the distinction. |
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
-| **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% the output is exactly as without it; a new instance starts at 20%, a bit of the piezo under the microphones (the default chosen on 2026-10-12, as the Rack's factory patches play), and a session saved before Piezo Mix existed stays at 0%. With Capture on Piezo it does nothing, since the piezo is already the whole output. |
+| **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% the output is exactly as without it; a new instance starts at 20%, a bit of the piezo under the microphones (the default chosen on 2026-10-12, the Rack's new-instance default), and a session saved before Piezo Mix existed stays at 0%. With Capture on Piezo it does nothing, since the piezo is already the whole output. |
 | **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. Also controls subtle speed-dependent friction during held wound-string slides. 0-100% (50% nominal, 10% default), scaled by release velocity and what the string still carries. Explicit saved values retain their levels. 0% adds no new noise; already emitted waves continue. A session saved before it existed loads at 0%. Available on the Player panel and host-automatable. |
 | **Room** | Small-studio reflections around the microphones, 0-100% with a 50% plug-in default. Zero becomes dry once the existing room tail fades. The piezo remains dry. Available on the Capture panel and host-automatable; a session saved before Room existed loads at 0%. |
 | **Sustain** | On, every released note rings on as under the sustain pedal, on every channel, until its string is taken or the switch goes off, which damps the held notes as a pedal-up does; CC64 keeps working beside it, and each holds independently of the other. Off (the default) damps every key-up as before and is an exact no-op. Host-automatable; the SUSTAIN switch beside CHORDS. |
@@ -2363,15 +2363,15 @@ Dated evidence is retained so the earlier decisions remain traceable.
   finger-played on the steel Dreadnought (2.6 before the mid-band dip of
   2026-10-12, 3.3 before the capture voicing of 2026-10-01), against 1.8
   on the Eastman E1D played with fingers and 2.2 with a pick; the deepest
-  one-note hole is 7.4 dB against the mean of its two neighbours (7.7
-  before the dip; 9.1 before the capture voicing), against 4.4-9.3 in the
-  recordings. The holes are the measured bodies' own: a close microphone
+  one-note hole is 7.4 dB against the mean of its two neighbours (7.7 on
+  1.3.1; 5.3 just after the capture voicing of 2026-10-01, 9.1 before it),
+  against 4.4-9.3 in the recordings. The holes are the measured bodies' own: a close microphone
   over the bridge hears same-sign modal pairs, such as g21's 515 and 589
   Hz, as an antiresonance, and they move with Shape; the mid-band dip
   takes the peak below each such hole down 9 dB
-  ([the report](Docs/mid-band-dip-2026-10-12.md)) and a boost at the hole,
-  measured, recovered about 1 dB of it while lifting the next note 4 dB,
-  so the hole stays. A fit of the bridge
+  ([the report](Docs/mid-band-dip-2026-10-12.md)); a boost at the hole,
+  measured, raised the hole's note about 1 dB but the next note 4-5 dB,
+  leaving the hole deeper against its neighbours, so the hole stays. A fit of the bridge
   microphone as a blend of the archive's measured positions, heard before it
   ships, would be the way to close them. Against the Eastman rows the low
   E2 still sits 6-8 dB under its neighbours, and the first voicing lifted

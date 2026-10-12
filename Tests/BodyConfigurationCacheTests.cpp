@@ -16,7 +16,8 @@ struct AcustraEngineTestAccess
             for (int wood = 0; wood < 3; ++wood)
             {
                 engine.buildBodyConfiguration(direct,
-                    static_cast<BodyShape>(shape), static_cast<BodyMaterial>(wood));
+                    static_cast<BodyShape>(shape), static_cast<BodyMaterial>(wood),
+                    engine.sampleRate_);
                 const auto& cached = engine.bodyConfigurations_[3 * shape + wood];
                 if (cached.count != direct.count || cached.ordered != direct.ordered
                     || cached.airModeHz != direct.airModeHz

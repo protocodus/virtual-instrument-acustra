@@ -336,12 +336,10 @@ AcustraAudioProcessor::createParameterLayout()
     result.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { ids::gatherChords, 8 }, "Gather Chords", false,
         juce::AudioParameterBoolAttributes().withAutomatable (false)));
-    // Off by default: a session saved before it existed gets the default
-    // (addMissingParameterDefaults) and so sounds as it did.
     // A new instance starts with a bit of the piezo under the microphones
-    // (the user's default of 2026-10-12, as the Rack's factory patches have
-    // played since 1.0.0d6); a session saved before Piezo Mix existed stays
-    // at 0 (setStateInformation).
+    // (the user's default of 2026-10-12, as a new Rack instance and its
+    // default patch have played since 1.2.1f1); a session saved before Piezo
+    // Mix existed stays at 0 (setStateInformation).
     result.push_back (makePercentParameter (ids::piezoMix, "Piezo Mix", 20.0f, 9));
     // The key-up's own sound: the damping hand landing on the string. 50%
     // is its nominal level, 100% twice that, 0% silent and an exact no-op.

@@ -58,25 +58,28 @@ inline constexpr float originalAirModeDipUpperHz = 130.0f;
 // construction carries, between 450 and 800 Hz, a deep antiresonance where
 // the measured g21 bank's same-sign residues cancel (the C#5 hole of
 // Tests/BodyShapeTests: 36-40 dB under the response's mid-band peaks) and,
-// a major third below it, the upper of the body's two strong mid modes. On
-// the E2-E5 sweep at the plug-in's Room 0.5 (Tools/MeasureNoteEvenness.py)
-// the note on that upper mode stood +11.4 dB over its neighbours on the
-// Dreadnought (A#4, the mode at 460 Hz), +8.4 on the Auditorium (C5, 516
-// Hz) and +10.5 on the Jumbo (G#4, 419 Hz); on the Parlor the pair sits at
-// 605/741 Hz, D5/D#5 +4.5/+5.4 with the hole above the sweep. The lower
-// mode of each pair, as tall in the pressure response (333-409 Hz), plays
-// only 2-3 dB over its neighbours, so the hole, not the response's tallest
+// three and a half semitones below it, the upper of the body's two strong
+// mid modes (404-614 Hz as Shape and Wood place it). On the E2-E5 sweep at
+// the plug-in's Room 0.5 (Tools/MeasureNoteEvenness.py) the note on that
+// upper mode stood +11.4 dB over its neighbours on the Dreadnought (A#4,
+// the mode at 460 Hz), +8.4 on the Auditorium (C5, 516 Hz) and +10.5 on
+// the Jumbo (G#4, 419 Hz); on the Parlor the pair sits at 605/741 Hz,
+// D5/D#5 +4.5/+5.4 with the hole above the sweep. The lower mode of the
+// Dreadnought, Auditorium and Jumbo, as tall in the pressure response
+// (320-416 Hz), plays only 2-3 dB over its neighbours (the Parlor's, at
+// 461-486 Hz, puts A#4 +5.2 over), so the hole, not the response's tallest
 // point, finds the peak: the engine locates both per construction from its
 // own response at prepare (AcustraEngine::locateMidBand), so Shape, Wood
 // and the calibration move them together, and the capture filter dips the
-// peak. Measured with the dip (same sweep): A#4 +11.4 to +5.3 dB on the
-// Dreadnought, C5 +8.4 to +3.7 on the Auditorium, G#4 +10.5 to +5.6 on the
-// Jumbo, D#5 +5.4 to +2.3 on the Parlor. A matching boost at the hole
-// (+8 dB, Q 8) was measured and not shipped: the hole's notes (C#5 -12.4
-// on the Dreadnought, D#5 -10.3 on the Auditorium, B4 -10.6 on the Jumbo)
-// are radiation nulls whose fundamental sits 7-14 dB under their second
-// partial, so the boost recovered about 1 dB of each while lifting the note
-// above the hole by 4 dB (D5 +5.3 to +9.4, E5 +8.4 to +12.8). A real
+// peak. Measured with the dip (same sweep): A#4 +11.4 to +5.0 dB on the
+// Dreadnought, C5 +8.4 to +3.8 on the Auditorium, G#4 +10.5 to +5.7 on the
+// Jumbo, D#5 +5.4 to +2.2 on the Parlor. A matching boost at the hole
+// (+8 dB, Q 8) was measured and not shipped: the hole's notes (C#5 on the
+// Dreadnought, D#5 on the Auditorium, B4 on the Jumbo) are radiation nulls
+// whose fundamental carries only -7 to -15 dB of the note's sustained
+// power, so the boost raised each by about 1 dB while lifting the note
+// above it 4.4-5.0 dB (D5 +4.9 to +9.4, E5 +8.4 to +12.8 against the dip
+// alone), leaving each hole deeper against its neighbours. A real
 // flat-top's own sweep deviates about 2 dB RMS. An authored capture
 // refinement of the same kind as the air-mode dip, shipped on the user's
 // direction without a listening verdict; the piezo never passes through it.

@@ -1512,7 +1512,8 @@ private:
     void updateControlState() noexcept;
     void configureBody() noexcept;
     void prepareBodyConfigurations() noexcept;
-    void buildBodyConfiguration(BodyConfiguration&, BodyShape, BodyMaterial) const noexcept;
+    void buildBodyConfiguration(BodyConfiguration&, BodyShape, BodyMaterial,
+                                double sampleRate) const noexcept;
     // |(P_L + P_R)/2| of the configuration's force residues at hz: the summed
     // microphone response BodyBank::render produces for a unit force, before
     // the capture filter. Setup only; it walks every mode.
@@ -1520,7 +1521,7 @@ private:
                                             double sampleRate) noexcept;
     // Finds the configuration's mid-band antiresonance and the peak below
     // it from that response (MicrophoneBalanceData.h) and stores them.
-    void locateMidBand(BodyConfiguration&) const noexcept;
+    static void locateMidBand(BodyConfiguration&, double sampleRate) noexcept;
     // keepModalState keeps the sounding modes' state (a live reconfigure
     // of the same measured bank: Shape, Wood); otherwise every mode starts
     // from rest.

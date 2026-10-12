@@ -1,8 +1,9 @@
 # The mid-band dip, measured at Room 0.5 — 2026-10-12
 
 Scope: the summed microphone pressure of every construction takes a dip
-at its own mid-band peak, the strong body mode between 420 and 605 Hz
-that put one note of the E2-E5 sweep 8-11 dB over its neighbours. This
+at its own mid-band peak, the strong body mode between 404 and 614 Hz
+that put one note of the E2-E5 sweep 8-11 dB over its neighbours (5.4 on
+the Parlor). This
 follows the air-mode dip of 2026-10-11 ([the report](studio-smoothness-2026-10-11.md))
 and the 2026-10-12 decision entry that measured the peak and hole and
 left them. The user directed on 2026-10-12 that this candidate be built
@@ -28,17 +29,26 @@ force residues, `2 Re[R / (1 - p z^-1)]` per mode, before the capture
 filter) carries on every construction, between 450 and 800 Hz, an
 antiresonance 36-40 dB under its mid-band peaks, where the measured g21
 bank's same-sign residues cancel (the C#5 hole of
-`Tests/BodyShapeTests`), and a major third below it the upper of the
-body's two strong mid modes. Each body also has a lower mid mode (333-409
-Hz) as tall in the pressure response; on the sweep that note plays only
-2-3 dB over its neighbours (Dreadnought F#4 +2.3, Jumbo E4 +3.0,
-Auditorium G#4 +3.0), while the upper mode's note is the +8 to +11 dB
-peak. So the hole finds the peak, not the response's tallest point:
+`Tests/BodyShapeTests`), and about three and a half semitones below it
+(3.50-3.62) the upper of the body's two strong mid modes. The
+Dreadnought, Auditorium and Jumbo also have a lower mid mode (320-416 Hz)
+as tall in the pressure response; on the sweep that note plays only 2-3
+dB over its neighbours (Dreadnought F#4 +2.3, Jumbo E4 +3.0, Auditorium
+G#4 +3.0), while the upper mode's note is the +8 to +11 dB peak. The
+Parlor's lower mode (461-486 Hz) is as tall and its nearest note, A#4,
+plays +5.2 dB over, as far as the upper mode's D#5 (+5.4); the dip takes
+the upper one, and A#4 stays. So the hole finds the peak, not the
+response's tallest point:
 `AcustraEngine::locateMidBand` walks the response at 1/96 octave at
 prepare, takes the band's deepest point as the hole and the highest point
 within a fourth below it as the peak, for all twelve Shape and Wood cells,
 and the capture filter dips the peak. Shape, Wood and the calibration
-move both together.
+move both together. The walk takes no band-edge point for a hole, and
+under 44.1 kHz the pair is the one a 48 kHz build of the same
+construction places: there the bank drops modes above 0.46 fs whose
+cancellation forms the hole, and at 8-10 kHz the hole had moved to
+another mode and taken the dip with it (Dreadnought Spruce 660 Hz rather
+than 460). Every rate from 8 to 192 kHz now dips the same peak.
 
 | Shape | Spruce peak / hole (Hz) | Mahogany | Maple |
 | --- | --- | --- | --- |
@@ -60,16 +70,17 @@ calibration phrase, which the dip took from -27.7532 to -28.2795 LUFS
 The same sweep, before and with the dip, and with the boost at the hole
 that was measured and not shipped (next section). `dev` in dB over the
 mean of the neighbours; the last column is the fundamental's share of the
-sustained power (dB re the loudest band), which says how much of a note
-a dip or boost at its fundamental can reach. The E2-E5 RMS deviation
+sustained power (+/-1.5 % around f0, dB re the 20 Hz-10 kHz total), which
+says how much of a note a dip or boost at its fundamental can reach. The E2-E5 RMS deviation
 falls from 4.20 to 3.52 dB on the Dreadnought, 3.51 to 3.20 on the
 Auditorium, 3.81 to 3.22 on the Jumbo and 3.35 to 2.71 on the Parlor; the
 holes move 1-3 dB nearer their neighbours because the neighbours fell.
 The logs are in [`mid-band-dip-2026-10-12/`](mid-band-dip-2026-10-12/)
 (`before-*.log`, `dip-*.log`, `dip-and-boost-*.log`); `dip-*.log` is the
 shipped engine with the level restore below, `dip-and-boost-*.log` the
-boost candidate before it, so their `rms` columns differ by 0.53 dB and
-the `dev` columns compare directly.
+boost candidate before it, so their `rms` columns are offset by about
+0.15-0.4 dB (the restore as each construction's re-levelling passed it
+on) and only the `dev` columns compare directly.
 
 ### Dreadnought
 
@@ -162,17 +173,20 @@ the `dev` columns compare directly.
 ## The boost at the hole, measured and not shipped
 
 The candidate as designed also lifted the hole, +8 dB at Q 8 at the
-located antiresonance. Measured (the `Dip and boost` column), it
-recovered about 1 dB of each hole (C#5 -11.0 to -11.5 on the
+located antiresonance. Measured (the `Dip and boost` column) against the
+dip alone at the same levelling, it raised each hole's note by about 1 dB
+(0.8-1.4 dB in `rms`) but lifted the note just above the hole by 4.4-5.0
+dB against its neighbours (Dreadnought D5 +4.9 to +9.4, Auditorium E5
++8.4 to +12.8, Jumbo C5 -2.8 to +2.2) and the second partial of the note
+an octave under it (Auditorium E4 +0.5 to +3.9), so each hole came out
+slightly deeper against its neighbours (C#5 -11.0 to -11.5 on the
 Dreadnought, D#5 -8.4 to -9.0 on the Auditorium, B4 -9.3 to -9.5 on the
-Jumbo, each against the dip alone) while lifting the note just above the
-hole by 4 dB (Dreadnought D5 +4.9 to +9.4, Auditorium E5 +8.4 to +12.8,
-Jumbo C5 -2.8 to +2.2) and the second partial of the note an octave under
-it (Auditorium E4 +0.5 to +3.9). The holes' notes are radiation nulls: at
-the sustained level their fundamental sits 7-14 dB under their second
-partial (the fundamental-share column), so a boost at the fundamental
-reaches little of the note, and a boost strong and narrow enough to fill
-a 10 dB hole would ring. The RMS deviation with the boost was 3.80, 3.66,
+Jumbo; only the Parlor's E5 rose, -7.7 to -7.2). Those holes' notes are
+radiation nulls: at the sustained level their fundamental carries only
+-7 to -15 dB of the note's power (the fundamental-share column: C#5 -13.7
+before and -14.6 with the dip, D#5 -11.1/-12.0, B4 -6.9/-7.9), so a boost
+at the fundamental reaches little of the note, and a boost strong and
+narrow enough to fill a 10 dB hole would ring. The RMS deviation with the boost was 3.80, 3.66,
 3.19 and 2.67 dB against the dip's 3.52, 3.20, 3.22 and 2.71. The boost
 was removed; the capture filter has eight sections.
 
@@ -210,19 +224,23 @@ Capture (with the new `testMidBandPairFollowsTheConstruction`: the
 located hole is the band's deepest point and the peak the highest within
 a fourth below it on an independent walk of the summed response, local
 extrema, at least 6 dB apart, and the live filter centred on the peak on
-all twelve cells), CaptureVoicing (the complex prototype carries the dip,
-probed at every construction centre), MicrophoneBalance (eight slots),
+all twelve cells, the same peak at every rate from 8 to 192 kHz, and
+bounds at the float rounding they absorb; with the low-rate rule
+disabled, it fails at 8 and 10 kHz), CaptureVoicing (the complex
+prototype carries the dip and its restore, probed at the default
+construction's air-mode and mid-band centres at seven rates),
+MicrophoneBalance (eight slots),
 BodyConfigurationCache (the cached pair matches a direct build),
 BodyShape, Engine, ConstructionLoudness, ConstructionLoudnessCalibration
 and the rest of the DSP suite: 88 of 88 at 44.1, 48 and 96 kHz where a
 suite spans rates, plus the C++17 library build for the Rack toolchain;
-the plug-in's PluginProcessor and PluginTempoRelease suites. One fixture
-changed: `Tests/ConstructionHistoryTests.cpp`'s natural-decay check let a
-0.1 s block under its 1e-7 floor stand for the 0.4 s window that follows,
-and the Parlor Mahogany's A3 tail, beating, read 1.016e-7 in that window
-after 5.9 s with every other cell at 7-9e-8; the window itself now
-decides, under the same floor and 12 s cap (that cell reads 6.1e-8 after
-6.7 s). On `Tests/BodyShapeTests`' note-to-note measure (E2-C6, 1 s RMS,
+the plug-in's PluginProcessor and PluginTempoRelease suites, with every
+fixture as on main. (On the candidate before its level restore the
+Parlor Mahogany's beating A3 tail read 1.016e-7 in
+`Tests/ConstructionHistoryTests.cpp`'s 0.4 s natural-decay window, over
+its 1e-7 floor; the restored engine reads 7.4-9.1e-8 in every cell's
+first window, that cell 8.6e-8, as on main, so the fixture keeps its
+original check.) On `Tests/BodyShapeTests`' note-to-note measure (E2-C6, 1 s RMS,
 dry, steel Dreadnought) the roughness reads 2.23 dB and the deepest
 one-note hole 7.41 dB against the mean of its two neighbours (bounds 3.2
 and 8); see the README's Known gaps for the comparison with main.

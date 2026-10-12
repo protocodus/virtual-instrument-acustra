@@ -408,11 +408,11 @@ void testMidBandPairFollowsTheConstruction()
                 deepest = std::min(deepest, magnitude(configuration, hz));
             for (double hz = hole / 1.3348 * step; hz < hole; hz *= step)
                 tallest = std::max(tallest, magnitude(configuration, hz));
-            // The stored float centres round the walk's points by 1e-7,
-            // which a 38 dB null turns into a few hundredths of a dB.
-            expect(holeMagnitude <= deepest * 1.006,
+            // The stored float centres round the walk's points by about 6e-8,
+            // which moves the magnitude there by under 3e-6.
+            expect(holeMagnitude <= deepest * (1.0 + 1.0e-5),
                    "a deeper mid-band hole was passed over on " + cell);
-            expect(peakMagnitude >= tallest * 0.994,
+            expect(peakMagnitude >= tallest * (1.0 - 1.0e-5),
                    "a taller mid-band peak was passed over on " + cell);
             const double depthDb = 20.0 * std::log10(peakMagnitude / holeMagnitude);
             expect(depthDb >= 6.0, "mid-band hole is shallower than 6 dB on " + cell);
@@ -430,6 +430,25 @@ void testMidBandPairFollowsTheConstruction()
             expect(filter.midPeakHz == configuration.midPeakHz,
                    "the live capture filter is not centred on the construction's peak on " + cell);
         }
+    // The pair is a physical frequency, so every rate dips the same mode;
+    // under 44.1 kHz through a 48 kHz build, since the bank there drops
+    // modes the hole depends on (buildBodyConfiguration).
+    for (const double otherRate : { 8000.0, 10000.0, 44100.0, 88200.0, 96000.0, 192000.0 })
+    {
+        auto other = std::make_unique<AcustraEngine>();
+        other->prepare(otherRate, 64);
+        for (int shape = 0; shape < 4; ++shape)
+            for (int wood = 0; wood < 3; ++wood)
+            {
+                const auto atRate = Access::bodyConfiguration(*other,
+                    static_cast<BodyShape>(shape), static_cast<BodyMaterial>(wood)).midPeakHz;
+                const auto at48 = Access::bodyConfiguration(*engine,
+                    static_cast<BodyShape>(shape), static_cast<BodyMaterial>(wood)).midPeakHz;
+                expect(atRate == at48, "the mid-band peak moved from " + std::to_string(at48)
+                    + " to " + std::to_string(atRate) + " Hz at " + std::to_string(int(otherRate))
+                    + " Hz on shape " + std::to_string(shape) + " wood " + std::to_string(wood));
+            }
+    }
 }
 
 double decibels(double magnitude) { return 20.0 * std::log10(magnitude); }
