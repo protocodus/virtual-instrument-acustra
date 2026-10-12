@@ -72,6 +72,20 @@ bool continuousMessage(const std::uint8_t* data, int size) noexcept
             return true;
     }
 }
+
+// Whether dispatchMidiData would act on the message at all: the channel
+// messages it reads, at the sizes it reads them. Anything else (program
+// change, polyphonic pressure, system and real-time bytes) is a no-op, so
+// a queue never holds one and one never displaces a gesture.
+bool dispatchable(const std::uint8_t* data, int size) noexcept
+{
+    switch (static_cast<unsigned>(data[0]) & 0xf0u)
+    {
+        case 0x90u: case 0xb0u: case 0xe0u: return size >= 3;
+        case 0x80u: case 0xd0u: return size >= 2;
+        default: return false;
+    }
+}
 } // namespace
 
 int Performer::gatherWindowSamples(double sampleRate) noexcept
@@ -217,20 +231,24 @@ void Performer::handleMidi(int sampleOffset, const std::uint8_t* data,
     if (data == nullptr)
         size = 0;
     const int sample = std::clamp(sampleOffset, 0, blockSamples_);
+    // Only channel messages of one to three bytes reach dispatchMidiData,
+    // on either path.
+    if (size < 1 || size > 3)
+        return;
     if (direct_)
     {
         static_cast<void>(handleEvent(sample, data, size));
         return;
     }
 
-    // Only channel messages of one to three bytes reach dispatchMidiData.
-    if (size < 1 || size > 3)
+    if (! dispatchable(data, size))
         return;
-    // A full queue loses a continuous gesture rather than a message that
-    // starts or ends a note: a dropped key-up would leave its string held
-    // for ever (see heldEventCapacity).
-    if (heldCount_ == heldEventCapacity
-        && (continuousMessage(data, size) || ! evictContinuousHeldEvent()))
+    // A full queue loses its oldest continuous gesture, whose later value
+    // supersedes it, so the newest value of a wheel or a bend is the one
+    // that survives; it never loses a message that starts or ends a note
+    // (a dropped key-up would leave its string held for ever), unless the
+    // whole queue is such messages (see heldEventCapacity).
+    if (heldCount_ == heldEventCapacity && ! evictContinuousHeldEvent())
     {
         ++droppedEvents_;
         return;
@@ -409,8 +427,11 @@ void Performer::flushNoteGroup() noexcept
         // The rest is measured between the strums' own samples, so no block
         // size can move it. groupedSample_ is still this group's sample
         // wherever it is flushed (handleEvent, endBlock).
+        // A group stamped behind the rendered position (an offset that
+        // decreased within the block) plays at that position, so its
+        // interval is measured from there, never backwards.
         const auto strumSample = processedSamples_
-            + static_cast<std::int64_t>(std::max(0, groupedSample_));
+            + static_cast<std::int64_t>(std::max(std::max(0, groupedSample_), renderedTo_));
         const auto interval = lastStrumSample_ < 0 ? std::int64_t { 0 }
                                                    : strumSample - lastStrumSample_;
         const double alternationSeconds = std::min(

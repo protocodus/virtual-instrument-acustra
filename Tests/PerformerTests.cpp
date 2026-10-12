@@ -55,6 +55,7 @@ struct AcustraEngineTestAccess
     {
         return engine.voices_[static_cast<std::size_t>(string)].pedalHeld;
     }
+    static float vibrato(const AcustraEngine& engine) { return engine.vibrato_; }
     static std::array<std::uint32_t, AcustraEngine::stringCount> attackStates(
         const AcustraEngine& engine)
     {
@@ -1071,6 +1072,77 @@ void testOverflowIsCountedNotAllocated(const std::vector<Scenario>& battery)
     expect(flooded.allocations == 0, "a full gathering queue allocated");
 }
 
+// A full gathering queue keeps a gesture's final value: the oldest queued
+// continuous event makes room for the newest, so the wheel's release
+// survives a flood, and messages the Performer ignores displace nothing.
+void testAFullGatheringQueueKeepsAGesturesFinalValue()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    const auto finalWheel = [](int floodCount, int ignoredCount)
+    {
+        auto performer = std::make_unique<Performer>();
+        performer->prepare(48000.0, 1024);
+        performer->setGatherChords(true);
+        std::array<float, 1024> left {}, right {};
+        const auto send = [&](int offset, std::uint8_t status, std::uint8_t data1, std::uint8_t data2)
+        {
+            const std::uint8_t bytes[3] { status, data1, data2 };
+            performer->handleMidi(offset, bytes, status == 0xc0 ? 2 : 3);
+        };
+        performer->beginBlock(left.data(), right.data(), 1024);
+        for (int index = 0; index < floodCount; ++index)
+            send(480, 0xb0, 1, static_cast<std::uint8_t>(1 + index % 127));
+        for (int index = 0; index < ignoredCount; ++index)
+            send(500, 0xc0, static_cast<std::uint8_t>(index % 128), 0);
+        send(528, 0xb0, 1, 0);
+        performer->endBlock();
+        // The window (30 ms) passes in the next two blocks.
+        for (int block = 0; block < 2; ++block)
+        {
+            performer->beginBlock(left.data(), right.data(), 1024);
+            performer->endBlock();
+        }
+        return std::pair { Access::vibrato(performer->engine()),
+                           performer->droppedEventCount() };
+    };
+    const auto flooded = finalWheel(1100, 0);
+    expect(flooded.first == 0.0f && flooded.second == 1100u + 1u - 1024u,
+           "a full gathering queue lost the wheel's release ("
+               + std::to_string(flooded.first) + ", " + std::to_string(flooded.second) + " dropped)");
+    const auto ignored = finalWheel(1024, 100);
+    expect(ignored.first == 0.0f && ignored.second == 1u,
+           "ignored messages displaced the queue's gestures ("
+               + std::to_string(ignored.first) + ", " + std::to_string(ignored.second) + " dropped)");
+    const auto room = finalWheel(500, 0);
+    expect(room.first == 0.0f && room.second == 0u, "a queue with room dropped something");
+}
+
+// Offsets that decrease within a block (a front end's key-up at 2 after a
+// key-down at 3, string by string) keep their arrival order: each plays at
+// the rendered position in turn, so a re-plucked key stays held.
+void testDecreasingOffsetsKeepTheirOrder()
+{
+    auto performer = std::make_unique<Performer>();
+    performer->prepare(48000.0, 256);
+    std::array<float, 256> left {}, right {};
+    performer->beginBlock(left.data(), right.data(), 256);
+    for (const int note : { 40, 47, 52, 56, 59, 64 })
+        performer->noteOn(3, 1, note, 100);
+    performer->endBlock();
+    performer->beginBlock(left.data(), right.data(), 256);
+    for (const int note : { 40, 47, 52, 56, 59, 64 })
+    {
+        performer->noteOff(2, 1, note);
+        performer->noteOn(3, 1, note, 110);
+    }
+    performer->endBlock();
+    int held = 0;
+    for (const int note : { 40, 47, 52, 56, 59, 64 })
+        held += performer->engine().heldString(note, 1) >= 0 ? 1 : 0;
+    expect(held == 6, "decreasing offsets lost a re-plucked key ("
+                          + std::to_string(held) + " held)");
+}
+
 // A player after `seconds` of these events (raw bytes, in time order), for
 // a test that reads the engine's state afterwards.
 std::unique_ptr<Performer> playThrough(const std::vector<Event>& events,
@@ -1541,6 +1613,8 @@ int main()
     testSustainMeetsSameSampleKeyUpsInOrder();
     testSustainHoldIsThePedalOnEveryChannel();
     testOverflowIsCountedNotAllocated(battery);
+    testAFullGatheringQueueKeepsAGesturesFinalValue();
+    testDecreasingOffsetsKeepTheirOrder();
     testFullGatherQueueKeepsKeyUps();
     testGatheringKeepsANoteBehindItsChannelsKeyUps();
     testChannelModeMessagesAlsoReleaseNotes();

@@ -463,12 +463,15 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // this callback invalidates its display publication until the next one.
     const auto displayRevision = stringDisplayRevision.load (std::memory_order_acquire);
     const auto numSamples = buffer.getNumSamples();
-    keyboardState.processNextMidiBuffer (midiMessages, 0, numSamples, true);
-    updateEngineParameters();
-
+    // Consume Panic before the on-screen keyboard adds its events: a key it
+    // pressed since requestPanic() cleared it then starts after the reset
+    // and ends with its key-up, instead of starting before the reset with
+    // no key-up to come.
     const bool panicked = panicRequested.exchange (false, std::memory_order_acq_rel);
     if (panicked)
         performer.reset();
+    keyboardState.processNextMidiBuffer (midiMessages, 0, numSamples, true);
+    updateEngineParameters();
 
     performer.setTempoBpm (hostTempoBpm (getPlayHead()));
 
@@ -562,6 +565,23 @@ void AcustraAudioProcessor::publishStringActivity (std::uint32_t revision) noexc
             packStringActivity (activity[string]), std::memory_order_relaxed);
     audioStringDisplayRevision = revision;
     stringDisplayPublishedRevision.store (revision, std::memory_order_release);
+}
+
+// A bypassed instrument keeps playing its MIDI, silently, so a key-up
+// delivered while bypassed is not lost and the notes held across the
+// bypass continue when it ends.
+void AcustraAudioProcessor::processBlockBypassed (juce::AudioBuffer<float>& buffer,
+                                                  juce::MidiBuffer& midiMessages)
+{
+    processBlock (buffer, midiMessages);
+    buffer.clear();
+}
+
+// The host's reset (AU Reset, a transport stop that asks for silence) is a
+// Panic, taken by the next audio callback.
+void AcustraAudioProcessor::reset()
+{
+    requestPanic();
 }
 
 void AcustraAudioProcessor::updateEngineParameters() noexcept

@@ -92,6 +92,13 @@ from +4.0 to +3.4) and re-levels it, with its Finger and Thumb cells half
 an LU over the calibration target so the construction loudness fixture
 keeps its 3 LU contract (Parlor Spruce Finger at -2.57 LU). No parameter
 or saved state changes; nobody has listened to it yet (Docs/decisions.md).
+It also closes the second MIDI audit's findings: a full Gather Chords
+queue now drops its oldest controller value rather than the newest, so a
+wheel's release or a bend's return is never lost; messages the instrument
+ignores are never queued; a strum stamped by an offset that decreased
+within a block measures its interval from the rendered position; the plug-in plays its
+MIDI silently while bypassed and treats the host's reset as Panic, and
+Panic is consumed before the on-screen keyboard adds its keys.
 
 Version 1.3.0 changes when a strum reverses. A strum within a dotted eighth
 of the previous one at the host tempo (0.375 s at 120 BPM) is the hand's
@@ -773,10 +780,13 @@ chord. String-per-channel controllers and MPE member channels already say
 how each note is played, so their events are only delayed, never regrouped:
 a member's CC74, pressure and bend stay ahead of the note they belong to.
 The window's queue holds 1024 events, the window plus one block. When a
-stream fills it, a continuous gesture (bend, pressure, an ordinary
-controller), whose next value supersedes it, is dropped and counted; a
-message that starts or ends a note, the pedal, a reset or a mode message
-is never lost, the oldest queued continuous event making room for it.
+stream fills it, the oldest queued continuous gesture (bend, pressure, an
+ordinary controller), whose later value supersedes it, is dropped and
+counted, so a wheel's last value is the one that survives; a message that
+starts or ends a note, the pedal, a reset or a mode message is never lost,
+the oldest queued continuous event making room for it. Messages the
+instrument ignores (program change, polyphonic pressure, system bytes) are
+never queued.
 
 And no two plucks land in the same place: each draws its own point within ±0.02
 of the string length, the take-to-take spread the reference recordings'

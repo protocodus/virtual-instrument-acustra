@@ -5,6 +5,35 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — the MIDI layer audited again: the queue keeps the newest value
+
+A second read-only audit of the Performer and the plug-in wrapper (one
+finding real, four contract gaps) after the strum, keyswitch and range
+changes. Fixed: a full Gather Chords queue dropped the incoming continuous
+message rather than the oldest, so a flood of 1100 wheel values followed
+by the wheel's release lost the release and left the vibrato on until the
+wheel moved again (the same for a bend's return to centre and a CC2
+un-mute); it now evicts the oldest continuous event for a new one of any
+kind, so the last value survives, and messages it would ignore (program
+change, polyphonic pressure, system bytes) are never queued, so they
+displace nothing. A note group stamped by an offset that decreased within
+the block (allowed, and used by the layout-parity renderer for key-up then
+key-down string by string) keeps its arrival order, as before, and its
+stroke interval is now measured from the rendered position rather than
+backwards; the direct path applies the same
+one-to-three-byte gate as the queued one. In the plug-in, Panic is
+consumed before the on-screen keyboard adds its events, closing the
+window in which a key pressed after `requestPanic()` cleared the keyboard
+started before the reset and never ended; `processBlockBypassed` plays
+the block's MIDI silently so a key-up delivered while bypassed is not lost
+and held notes continue when the bypass ends; `reset()` is a Panic. Each
+has a test (Performer: the flood keeps the wheel's release, ignored
+messages drop nothing, decreasing offsets keep their order; plug-in: bypass
+and reset). Clean on inspection: velocity-0 Note On, short messages,
+same-sample Off/On, keyswitches on every channel and under Gather, the
+Sustain hold beside the pedal, channel-mode messages, RPN/NRPN state,
+pitch bend edges, MPE scope, block-boundary clamping, reset and prepare.
+
 ## 2026-10-12 — the mid-band peak and hole, measured at Room 0.5 and left
 
 With the air-mode dip on every body, the largest deviation on the E2-E5
