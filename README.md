@@ -245,24 +245,28 @@ as in CI, and each platform's package set is kept as a workflow artifact for
 seven days.
 
 The workflow runs on a pull request that changes it, `scripts/`, `cmake/` or
-`CMakeLists.txt`, never signing there; on a manual run of any branch, which signs
-when the secrets exist and makes no release; and on a pushed `v*` tag. After a
-tag's three jobs pass, a last job checks that every manifest names the tag's
-version and the tagged commit built from a clean tree, writes one `SHA256SUMS`
-over all the files, and attaches them to a **draft** GitHub release whose notes
-state each platform's signing. To release a version, confirm that
-`project(Acustra VERSION ...)` in `CMakeLists.txt` names it and that CI passed
-on the commit, then tag that commit:
+`CMakeLists.txt`, never signing there; on a manual run of any branch, which
+signs on macOS when the secrets exist and makes no release; and on a pushed
+`v*` tag. After a tag's three jobs pass, a last job checks that every manifest
+names the tag's version and the tagged commit built from a clean tree, writes
+one `SHA256SUMS` over all the files, and attaches them to a **draft** GitHub
+release whose notes state each platform's signing and what was validated. To
+draft a release of a version, confirm that `project(Acustra VERSION ...)` in
+`CMakeLists.txt` names it and that CI passed on the commit, then tag that
+commit:
 
 ```sh
-git tag -a v1.3.2 -m "Acustra 1.3.2" <commit>
-git push origin v1.3.2
+git tag -a v<version> -m "Acustra <version>" <commit>
+git push origin v<version>
 ```
 
-Signing runs only when its secrets exist (repository Settings, Secrets and
-variables, Actions). With none set, nothing fails for it: the macOS bundles are
-signed ad hoc, the pkg is unsigned, nothing is notarized and the Windows
-binaries are unsigned.
+macOS signing runs only when its secrets exist (repository Settings, Secrets
+and variables, Actions). With none set, nothing fails for it: the macOS bundles
+are signed ad hoc, the pkg is unsigned and nothing is notarized. The workflow
+has no Windows signing step: publicly trusted code-signing certificates issued
+since June 2023 keep their private key in a hardware module (a token, an HSM or
+a cloud signing service), not in an exportable .pfx, so that step depends on
+the provider chosen.
 
 | Secret | Use |
 | --- | --- |
@@ -271,23 +275,18 @@ binaries are unsigned.
 | `MACOS_APP_SIGN_IDENTITY` | The application identity's name, passed as `APP_SIGN_IDENTITY` |
 | `MACOS_INSTALLER_SIGN_IDENTITY` | The installer identity's name, passed as `INSTALLER_SIGN_IDENTITY` |
 | `MACOS_NOTARY_APPLE_ID`, `MACOS_NOTARY_TEAM_ID`, `MACOS_NOTARY_PASSWORD` | Apple ID, team ID and app-specific password, saved as the notarytool profile passed as `NOTARY_PROFILE`; notarizing needs the certificates as well |
-| `WINDOWS_CERTIFICATE_PFX` | Base64 of a .pfx code-signing certificate and key; `signtool` signs `Acustra.exe` and the VST3 with SHA-256 and an RFC 3161 timestamp, then verifies them |
-| `WINDOWS_CERTIFICATE_PASSWORD` | The .pfx's password |
 
-The Windows step signs from a .pfx file. A certificate whose key lives only on
-a hardware token or with a cloud signing service needs that provider's signing
-step in its place.
+The owner's decisions before publishing a draft are still open, and a run
+settles none of them:
 
-What a run cannot do, and a person still must before publishing a draft:
-
-- Obtain the signing identities, an Apple Developer ID (Application and
-  Installer) with a notarization login and a Windows code-signing
-  certificate, and add them as the secrets above. No CI package so far has
-  been signed beyond ad hoc.
-- Qualify the packages in real hosts. The workflow runs the wrapper tests,
-  pluginval and auval; it opens the plug-ins in no DAW.
-- Review the draft and decide what is outside this repository: the JUCE
-  licence route (see [Licensing](#licensing)), the terms and the price.
+- Whether and how to sign: an Apple Developer ID with notarization, and a
+  Windows signing provider. Until then the packages are signed ad hoc or
+  unsigned, as above.
+- Qualification in real hosts. The workflow runs the wrapper tests, pluginval
+  and auval; it opens the plug-ins in no DAW.
+- A listening verdict on the version's sound changes.
+- The JUCE licence route (see [Licensing](#licensing)), the EULA, terms and
+  privacy policy, and the price and purchase path.
 
 ## Audio demos
 

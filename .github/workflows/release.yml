@@ -149,8 +149,6 @@ jobs:
   windows:
     name: Release Windows x64 (VST3, Standalone)
     runs-on: windows-2025
-    outputs:
-      signing: ${{ steps.sign.outputs.state || 'not Authenticode-signed' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -196,30 +194,6 @@ jobs:
           7z x -y pluginval.zip
           ./pluginval.exe --strictness-level 10 --verbose \
             --validate "Acustra_artefacts/Release/VST3/Acustra.vst3"
-
-      - name: Sign the VST3 and the app
-        id: sign
-        if: github.event_name != 'pull_request'
-        env:
-          CERTIFICATE_PFX: ${{ secrets.WINDOWS_CERTIFICATE_PFX }}
-          CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-        run: |
-          if (-not $env:CERTIFICATE_PFX) {
-            Write-Output "::notice::No WINDOWS_CERTIFICATE_PFX secret: the Windows binaries are not Authenticode-signed."
-            exit 0
-          }
-          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
-          if (-not $signtool) { throw "signtool.exe was not found" }
-          $pfx = Join-Path $env:RUNNER_TEMP 'acustra-signing.pfx'
-          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CERTIFICATE_PFX))
-          $binaries = 'build-win\Acustra_artefacts\Release\Standalone\Acustra.exe', 'build-win\Acustra_artefacts\Release\VST3\Acustra.vst3\Contents\x86_64-win\Acustra.vst3'
-          & $signtool.FullName sign /f $pfx /p $env:CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $binaries
-          $signed = $LASTEXITCODE
-          Remove-Item $pfx
-          if ($signed -ne 0) { throw "signtool sign failed" }
-          & $signtool.FullName verify /pa $binaries
-          if ($LASTEXITCODE -ne 0) { throw "signtool verify failed" }
-          "state=Authenticode-signed" >> $env:GITHUB_OUTPUT
 
       - name: Package Windows VST3 and standalone
         id: package
@@ -374,18 +348,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           MACOS_SIGNING: ${{ needs.macos.outputs.signing }}
-          WINDOWS_SIGNING: ${{ needs.windows.outputs.signing }}
         run: |
           set -euo pipefail
           {
             echo "Drafted by the release workflow from ${GITHUB_SHA}:"
             echo "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             echo
-            echo "- macOS universal: ${MACOS_SIGNING}."
-            echo "- Windows x64: ${WINDOWS_SIGNING}."
+            echo "- macOS universal: ${MACOS_SIGNING}; tests and validators ran only the arm64 slice."
+            echo "- Windows x64: not Authenticode-signed."
             echo "- Linux x64: not signed; built for glibc 2.35 or newer."
             echo
-            echo "Every format passed the plug-in wrapper tests and pluginval at strictness 10; the AU passed auval. This workflow loads the plug-ins in no DAW."
+            echo "On every platform the plug-in wrapper tests passed and the VST3 passed pluginval at strictness level 10; the macOS AU passed auval -strict. The Standalone is built and packaged but checked by neither tool, and this workflow loads the plug-ins in no DAW."
           } > "$RUNNER_TEMP/notes.md"
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
             --title "Acustra ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/notes.md" -- *
