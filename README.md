@@ -3531,8 +3531,8 @@ git history rather than here.
   Material is Spruce, Mahogany or Maple (Cedar, the closest of the four to
   Mahogany, is removed). The Classical 78 stays, strung with steel. The
   Guitar menu's Classical nylon and Fylde bridge / steel presets give way to
-  one Classical 78 preset (Auditorium, Mahogany). Saved sessions migrate:
-  Cedar loads as Mahogany, and a session that played nylon or the Fylde
+  one preset for the Classical 78 (Auditorium, Mahogany). Saved sessions
+  migrate: Cedar loads as Mahogany, and a session that played nylon or the Fylde
   bridge plays steel on the Original bridge (on the Classical 78 if it chose it),
   so it sounds different. Every steel construction that remains sounds
   exactly as before, bit for bit. The nylon demo is gone; Recuerdos and
@@ -3732,8 +3732,9 @@ git history rather than here.
 - **The Washburn, Santa Cruz and Martin models are retired.** Their
   coefficients were fitted from Mark Rau's measurements, which carry no
   redistribution license, so they are not published with this repository.
-  Model offers Original and Classical 78; a saved session or host that still
-  selects a retired model hears Original.
+  Model offers the Original and the second measured guitar (called the
+  Classical 78 here); a saved session or host that still selects a retired
+  model hears Original.
 
 ### 2026-09-24
 
