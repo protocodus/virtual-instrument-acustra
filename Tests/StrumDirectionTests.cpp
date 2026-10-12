@@ -234,19 +234,112 @@ void testPerformerAlternationRestAndReset()
 {
     auto p = std::make_unique<acustra::Performer>();
     p->prepare(48000.0, 127); p->setGatherChords(false);
-    const auto check = [&](float wanted)
+    const auto check = [&](float wanted, const char* message)
     {
         for (int string = 0; string < 6; ++string)
-            expect(Access::sign(p->engine(), string) == wanted,
-                   "automatic stroke's string direction disagreed with wrist alternation");
+            expect(Access::sign(p->engine(), string) == wanted, message);
     };
-    chord(*p); check(1.0f); advance(*p, 12000);
-    chord(*p); check(-1.0f); advance(*p, 12000);
-    chord(*p); check(1.0f); advance(*p, 12000);
-    chord(*p); check(-1.0f);
-    p->reset(); chord(*p); check(1.0f); advance(*p, 12000);
-    chord(*p); check(-1.0f); advance(*p, 96001);
-    chord(*p); check(1.0f);
+    // Strums a quarter second apart, inside the dotted eighth at 120 BPM
+    // (0.375 s), are one hand's down and return.
+    chord(*p); check(1.0f, "first strum was not a downstroke"); advance(*p, 12000);
+    chord(*p); check(-1.0f, "the return inside the window was not an upstroke"); advance(*p, 12000);
+    chord(*p); check(1.0f, "alternation did not continue inside the window"); advance(*p, 12000);
+    chord(*p); check(-1.0f, "alternation did not continue inside the window");
+    p->reset(); chord(*p); check(1.0f, "reset did not restart on a downstroke"); advance(*p, 12000);
+    chord(*p); check(-1.0f, "alternation did not resume after reset"); advance(*p, 96001);
+    chord(*p); check(1.0f, "a two-second rest did not restart on a downstroke");
+    // Quarter-note chords at 120 BPM (0.5 s apart) are all downstrokes...
+    advance(*p, 24000); chord(*p); check(1.0f, "a quarter note later was not a downstroke");
+    advance(*p, 24000); chord(*p); check(1.0f, "a quarter note later was not a downstroke");
+    // ...and the same half second is an eighth at 60 BPM, so they alternate.
+    p->setTempoBpm(60.0);
+    advance(*p, 24000); chord(*p); check(-1.0f, "an eighth at 60 BPM did not alternate");
+    advance(*p, 24000); chord(*p); check(1.0f, "an eighth at 60 BPM did not alternate");
+    // Just inside and just outside the dotted eighth (0.75 s at 60 BPM).
+    advance(*p, 35900); chord(*p); check(-1.0f, "a strum just inside the dotted eighth did not alternate");
+    advance(*p, 36100); chord(*p); check(1.0f, "a strum just outside the dotted eighth was not a downstroke");
+    // At 20 BPM the dotted eighth would be 2.25 s; the two-second rest caps it.
+    p->setTempoBpm(20.0);
+    advance(*p, 91200); chord(*p); check(-1.0f, "a 1.9 s gap at 20 BPM did not alternate");
+    advance(*p, 100800); chord(*p); check(1.0f, "the two-second cap did not restart on a downstroke");
+    // An invalid tempo reads as 120 BPM, as it does for the release window.
+    p->setTempoBpm(0.0);
+    advance(*p, 24000); chord(*p); check(1.0f, "an invalid tempo did not fall back to 120 BPM");
+}
+
+// Keyswitches below the guitar's range latch a direction until the next
+// keyswitch or reset, never sound, and apply to a chord gathered after them.
+void keyswitch(acustra::Performer& p, int note, bool on)
+{
+    std::array<float, 127> left {}, right {};
+    p.beginBlock(left.data(), right.data(), 1);
+    if (on) p.noteOn(0, 1, note, 100); else p.noteOff(0, 1, note, 64);
+    p.endBlock();
+}
+void testKeyswitches()
+{
+    using Mode = acustra::Performer::StrokeMode;
+    auto p = std::make_unique<acustra::Performer>();
+    p->prepare(48000.0, 127); p->setGatherChords(false);
+    const auto check = [&](float wanted, const char* message)
+    {
+        for (int string = 0; string < 6; ++string)
+            expect(Access::sign(p->engine(), string) == wanted, message);
+    };
+    expect(p->strokeMode() == Mode::Automatic, "a fresh Performer is not automatic");
+    // A keyswitch alone plays nothing and holds no key.
+    keyswitch(*p, acustra::Performer::keyswitchUpstroke, true);
+    advance(*p, 1000);
+    expect(p->engine().getActiveVoiceCount() == 0, "a keyswitch sounded a string");
+    expect(p->strokeMode() == Mode::Up, "C#0 did not latch upstrokes");
+    keyswitch(*p, acustra::Performer::keyswitchUpstroke, false);
+    expect(p->strokeMode() == Mode::Up, "a keyswitch's key-up changed the mode");
+    // Every strum is an upstroke, whatever the interval: the first one too.
+    chord(*p); check(-1.0f, "the first strum under C#0 was not an upstroke"); advance(*p, 12000);
+    chord(*p); check(-1.0f, "a strum inside the window under C#0 was not an upstroke"); advance(*p, 96001);
+    chord(*p); check(-1.0f, "a strum after a rest under C#0 was not an upstroke");
+    keyswitch(*p, acustra::Performer::keyswitchDownstroke, true);
+    advance(*p, 12000); chord(*p); check(1.0f, "a strum under C0 was not a downstroke");
+    advance(*p, 12000); chord(*p); check(1.0f, "a strum under C0 was not a downstroke");
+    // D0 returns to the automatic rule: the hand alternates from the last stroke.
+    keyswitch(*p, acustra::Performer::keyswitchAutomatic, true);
+    expect(p->strokeMode() == Mode::Automatic, "D0 did not return to automatic");
+    advance(*p, 12000); chord(*p); check(-1.0f, "automatic did not alternate from the last downstroke");
+    advance(*p, 96001); chord(*p); check(1.0f, "automatic did not restart after a rest");
+    // Panic forgets the latch.
+    keyswitch(*p, acustra::Performer::keyswitchUpstroke, true);
+    p->reset();
+    expect(p->strokeMode() == Mode::Automatic, "reset kept a latched keyswitch");
+    chord(*p); check(1.0f, "the first strum after reset was not a downstroke");
+    // Under Gather Chords a keyswitch sent inside the window before a chord
+    // applies to it and is not gathered into it; one sent after the chord's
+    // first key applies only after the chord.
+    p->setGatherChords(true);
+    advance(*p, 96001);
+    const int window = acustra::Performer::gatherWindowSamples(48000.0);
+    {
+        std::array<float, 127> left {}, right {};
+        p->beginBlock(left.data(), right.data(), 64);
+        p->noteOn(0, 1, acustra::Performer::keyswitchUpstroke, 100);
+        for (const int note : open) p->noteOn(10, 1, note, 100);
+        p->noteOff(20, 1, acustra::Performer::keyswitchUpstroke, 64);
+        p->endBlock();
+    }
+    advance(*p, window + 64);
+    check(-1.0f, "a keyswitch inside the window before a gathered chord did not apply to it");
+    expect(p->engine().getActiveVoiceCount() == 6, "a gathered chord lost strings to a keyswitch");
+    for (const int note : open) keyswitch(*p, note, false);
+    advance(*p, 96001);
+    {
+        std::array<float, 127> left {}, right {};
+        p->beginBlock(left.data(), right.data(), 64);
+        for (const int note : open) p->noteOn(0, 1, note, 100);
+        p->noteOn(10, 1, acustra::Performer::keyswitchDownstroke, 100);
+        p->endBlock();
+    }
+    advance(*p, window + 64);
+    check(-1.0f, "a keyswitch after a gathered chord's first key changed that chord");
+    expect(p->strokeMode() == Mode::Down, "a keyswitch after a gathered chord was lost");
 }
 std::vector<float> phrase(double rate, int block)
 {
@@ -288,6 +381,7 @@ int main()
     testFreshReleaseAndDefaultPaths();
     testScheduledDirectionsAndRetainedSources();
     testPerformerAlternationRestAndReset();
+    testKeyswitches();
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         const auto reference = phrase(rate, 17);
@@ -295,6 +389,6 @@ int main()
                "alternating stroke audio changed with host block partition");
     }
     if (failures == 0)
-        std::cout << "Strum direction: fresh energy, scheduled releases, retained arrivals/tails, wrist reset and block invariance passed\n";
+        std::cout << "Strum direction: fresh energy, scheduled releases, retained arrivals/tails, the dotted-eighth alternation window, keyswitches, wrist reset and block invariance passed\n";
     return failures == 0 ? 0 : 1;
 }

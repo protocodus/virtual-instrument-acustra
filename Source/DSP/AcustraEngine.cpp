@@ -8745,64 +8745,6 @@ int AcustraEngine::chooseStringWithoutHand(int midiNote) const noexcept
     return best;
 }
 
-AcustraEngine::HarmonicChoice
-AcustraEngine::chooseHarmonic(int midiNote) const noexcept
-{
-    // A natural harmonic sounds at exactly n times a string's open pitch, so
-    // the requested note itself says whether the guitar can produce it. No
-    // keyswitch is needed and none is offered. Harmonics 2 to 6 and 8 fall
-    // within 25 cents of equal temperament; the seventh is 31 cents flat,
-    // which is why players avoid it against tempered material, and the same
-    // tolerance excludes it here. Nodes above the eighth are impractical to
-    // touch and very quiet, so the search stops there.
-    constexpr int highestHarmonic = 8;
-    constexpr float toleranceCents = 25.0f;
-    const float wanted = midiFrequency(midiNote);
-    // Re-strike a released harmonic on the string still ringing it, just
-    // as chooseString does for a fretted note. Moving to an unused string
-    // would leave the first vibration sounding alongside the new attack.
-    for (int string = stringCount - 1; string >= 0; --string)
-    {
-        const auto& voice = voices_[static_cast<std::size_t>(string)];
-        if (voice.played && !voice.keyDown && voice.harmonic > 1
-            && voice.midiNote == midiNote
-            && (voice.level > 2.0e-7f
-                || voice.loops[0].gestureContact.active
-                || voice.loops[1].gestureContact.active)
-            // Tuning automation can move the ringing harmonic away from
-            // its requested MIDI pitch. It must still reach this note.
-            && exact::abs(1200.0f * std::log2(midiFrequency(voice.openMidi)
-                * static_cast<float>(voice.harmonic) / wanted)) <= toleranceCents)
-            return { string, voice.harmonic };
-    }
-    HarmonicChoice best {};
-    int bestAvailability = 0;
-    for (int string = stringCount - 1; string >= 0; --string)
-    {
-        const auto& voice = voices_[static_cast<std::size_t>(string)];
-        const float open = midiFrequency(voice.openMidi);
-        for (int harmonic = 2; harmonic <= highestHarmonic; ++harmonic)
-        {
-            const float sounding = open * static_cast<float>(harmonic);
-            if (exact::abs(1200.0f * std::log2(sounding / wanted))
-                > toleranceCents)
-                continue;
-            // Prefer an unused string, then one whose key is up, before
-            // taking a held note. Within that choice the lowest node is
-            // the loudest and the one a player reaches for first.
-            const int availability = !voice.played ? 0 : !voice.keyDown ? 1 : 2;
-            if (best.string < 0 || availability < bestAvailability
-                || (availability == bestAvailability && harmonic < best.harmonic))
-            {
-                best = { string, harmonic };
-                bestAvailability = availability;
-            }
-            break;
-        }
-    }
-    return best;
-}
-
 bool AcustraEngine::canSound(int midiNote, int midiChannel) const noexcept
 {
     if (!prepared_ || midiNote < 0 || midiNote > 127
@@ -8810,7 +8752,10 @@ bool AcustraEngine::canSound(int midiNote, int midiChannel) const noexcept
         return false;
     // The drops noteOn makes, which depend on the tuning alone: a
     // string-per-channel note its own string cannot fret, and a note no
-    // string frets and no natural harmonic reaches.
+    // string frets. The tuning's range is the instrument's: below its
+    // lowest open string and above the twentieth fret of its highest it
+    // answers nothing (natural harmonics by pitch were retired on
+    // 2026-10-12 at the user's request; Docs/decisions.md).
     const auto frets = [&] (int string)
     {
         const int fret = midiNote
@@ -8822,7 +8767,7 @@ bool AcustraEngine::canSound(int midiNote, int midiChannel) const noexcept
     for (int string = 0; string < stringCount; ++string)
         if (frets(string))
             return true;
-    return chooseHarmonic(midiNote).string >= 0;
+    return false;
 }
 
 void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
@@ -8948,16 +8893,9 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
                 ? chooseStringWithoutHand(midiNote) : chooseString(midiNote);
         if (string >= 0 && !planned && !isLowerZoneMember(midiChannel))
             string = reshapeFormingChord(midiNote, midiChannel, string);
+        // Outside the fretted range (canSound) the guitar answers nothing.
         if (string < 0)
-        {
-            // Above the fretted range the guitar still reaches, through the
-            // natural harmonics of its open strings. Below it, it does not.
-            const auto choice = chooseHarmonic(midiNote);
-            if (choice.string < 0)
-                return;
-            string = choice.string;
-            harmonic = choice.harmonic;
-        }
+            return;
     }
     startNote(string, harmonic, midiNote, velocity, midiChannel, delaySamples,
               strumMember);
@@ -9296,7 +9234,6 @@ void AcustraEngine::planChord(const int* midiNotes, int count,
     ShapeSearch search {};
     search.frets.fill(-1);
     search.weights = handWeights();
-    unsigned harmonicStrings = 0u;
     for (int index = 0; index < count; ++index)
     {
         const int midiNote = midiNotes[index];
@@ -9310,16 +9247,8 @@ void AcustraEngine::planChord(const int* midiNotes, int count,
         for (const auto& voice : voices_)
             frettable |= midiNote - voice.openMidi >= 0
                 && midiNote - voice.openMidi <= fretCount;
-        // A repeat of a note the chord already has, or one only a natural
-        // harmonic reaches, is left to the note-by-note allocator. The
-        // harmonic's string is kept out of the shape where the shape allows,
-        // or the note would find it taken and never sound.
-        if (!frettable && !duplicate)
-        {
-            const auto harmonic = chooseHarmonic(midiNote);
-            if (harmonic.string >= 0)
-                harmonicStrings |= 1u << harmonic.string;
-        }
+        // A repeat of a note the chord already has, or one outside the
+        // fretted range, is left to the note-by-note allocator.
         if (duplicate || !frettable)
             continue;
         ShapeNote note {};
@@ -9345,9 +9274,7 @@ void AcustraEngine::planChord(const int* midiNotes, int count,
     }
     if (search.count < 2)
         return;
-    searchShape(search, 0, harmonicStrings);
-    if (!search.found && harmonicStrings != 0u)
-        searchShape(search, 0, 0u);
+    searchShape(search, 0, 0u);
     if (!search.found)
         return;
     for (int index = 0; index < search.count; ++index)

@@ -394,13 +394,14 @@ void testLiveRollKeepsItsOriginalAttacks()
     }
 }
 
-// The two-second rest that starts strumming over on a downstroke is
-// measured between the strums' own samples, so two strums just inside or
-// just outside it alternate, or not, at every block size (audit F23): the
-// rest used to be read between the starts of the blocks they fell in.
+// The dotted eighth within which a strum alternates (0.375 s at the default
+// 120 BPM) is measured between the strums' own samples, so two strums just
+// inside or just outside it alternate, or not, at every block size (audit
+// F23): the rest used to be read between the starts of the blocks they
+// fell in.
 void testStrumRestIsMeasuredBetweenStrums()
 {
-    for (const double gap : { 1.99, 2.01 })
+    for (const double gap : { 0.37, 0.38 })
         for (const bool gather : { false, true })
         {
             std::vector<Event> events;
@@ -480,7 +481,7 @@ void testOneSampleIsOneCanonicalEvent()
 }
 
 // A strum is timed by the strings it reaches: a note the tuning cannot
-// sound (C2 below Standard's low E, with no harmonic to reach it) takes no
+// sound (C2 below Standard's low E) takes no
 // place in the stroke and no part in its speed, so the stroke starts on its
 // first real string at once instead of a string spacing late (audit F24).
 void testStrumsAreTimedByTheNotesThatSound()
@@ -655,10 +656,13 @@ void testPhysicalStrumPlanningKeepsSpecialNotes()
                && duplicateFlood[2] == duplicateFlood[4]
                && duplicateFlood[2] == duplicateFlood[6],
            "duplicated MIDI owners bypassed their three-string chord plan");
-    const auto harmonic = delays({ 60, 64, 67, 88 });
-    expect(harmonic[0] == 0 && harmonic[1] > 0
-               && harmonic[2] > harmonic[1] && harmonic[3] > harmonic[2],
-           "an unplanned harmonic chord changed its existing note-by-note stroke");
+    // A pitch above the fretted range takes no string and no place in the
+    // stroke (the range rule of 2026-10-12): the shape plays as without it.
+    const auto inside = delays({ 60, 64, 67 });
+    const auto outside = delays({ 60, 64, 67, 88 });
+    expect(outside[3] == -1
+               && std::equal(inside.begin(), inside.end(), outside.begin()),
+           "a pitch above the fretted range took a string or a place in the stroke");
     const auto member = delays({ 60, 64, 67 }, 2, true);
     expect(member[0] == 0 && member[1] > 0 && member[2] > member[1],
            "an MPE member's unplanned chord changed its existing stroke");
@@ -1516,40 +1520,6 @@ void testChordWindowIsPerChannel()
     expect(busy.first == quiet.first && busy.second == quiet.second,
            "another channel's notes kept a chord forming and refretted a held note");
 }
-// A same-sample chord with a note only a natural harmonic reaches leaves
-// that harmonic its string, as the same chord rolled does: the shape used
-// to take it, and the harmonic then found no string and never sounded.
-void testChordLeavesAHarmonicItsString()
-{
-    const auto strings = [](const std::vector<int>& notes, int spacing)
-    {
-        auto performer = std::make_unique<Performer>();
-        performer->prepare(48000.0, 64);
-        std::vector<float> left(64), right(64);
-        performer->beginBlock(left.data(), right.data(), 64);
-        for (std::size_t index = 0; index < notes.size(); ++index)
-            performer->noteOn(static_cast<int>(index) * spacing, 1, notes[index], 100);
-        performer->endBlock();
-        for (int block = 0; block < 20; ++block)
-        {
-            performer->beginBlock(left.data(), right.data(), 64);
-            performer->endBlock();
-        }
-        std::vector<int> held;
-        for (const int note : notes)
-            held.push_back(performer->engine().heldString(note, 1));
-        return held;
-    };
-    for (const auto& chord : { std::vector<int> { 88, 67, 64, 60 },
-                               std::vector<int> { 91, 64, 59, 55 } })
-    {
-        const auto together = strings(chord, 0);
-        expect(std::all_of(together.begin(), together.end(), [](int s) { return s >= 0; }),
-               "a same-sample chord dropped its harmonic " + std::to_string(chord[0]));
-        expect(together == strings(chord, 5),
-               "a same-sample chord was placed unlike the same chord rolled");
-    }
-}
 } // namespace
 
 int main()
@@ -1583,7 +1553,6 @@ int main()
     testUnsoundableNotesMakeNoStrum();
     testMasterTuneSurvivesPrepareAndReset();
     testChordWindowIsPerChannel();
-    testChordLeavesAHarmonicItsString();
 
     if (failures != 0)
     {

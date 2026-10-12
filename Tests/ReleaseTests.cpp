@@ -551,35 +551,6 @@ double releaseStringDrop(const acustra::EngineParameters& parameters,
     return decibels(heldNorm / releasedNorm);
 }
 
-// A released natural harmonic is damped by the hand as its open string is:
-// the loop runs at the open string's period, so the hand's loss per trip
-// round it must be the open string's, not the sounding harmonic's n times
-// smaller one (audit F1). Damped at 1/n of that loss it sounded almost as
-// if it were held (2 to 5 dB below it, against the open string's 18).
-void testReleasedHarmonicsAreDampedLikeTheirOpenString()
-{
-    const acustra::EngineParameters parameters;
-    const auto drop = [&] (int note)
-    {
-        const Timed on { 0.1, { 0x90, static_cast<std::uint8_t>(note), 115 } };
-        const Timed off { 0.5, { 0x80, static_cast<std::uint8_t>(note), 64 } };
-        const double release = dampingStart(off.seconds, 48000.0, true);
-        return releaseDrop(parameters, { on }, { on, off }, release + 0.3, release + 0.5);
-    };
-    const double open = drop(64);
-    std::cout << "Acustra released/held 0.3-0.5 s after damping: open E4 -" << open << " dB";
-    for (const int note : { 88, 91, 95 })
-    {
-        const double harmonic = drop(note);
-        std::cout << ", harmonic " << note << " -" << harmonic << " dB";
-        expect(harmonic > open - 4.0,
-               "released harmonic " + std::to_string(note) + " was only "
-                   + std::to_string(harmonic) + " dB below held, against the open string's "
-                   + std::to_string(open));
-    }
-    std::cout << '\n';
-}
-
 // A slid note is damped at the pitch it has slid to: the loop runs there,
 // so the hand's loss per trip round it follows the slide, before key-up or
 // after it (audit F1). Two octaves down redoubles the period; damped per
@@ -978,7 +949,6 @@ int main(int argc, char** argv)
         testPedalCannotTurnOrdinaryReleaseIntoAnExcitation();
         testCc68ChangesNothing();
         testHardPluckReleaseDoesNotCreateAnAttack();
-        testReleasedHarmonicsAreDampedLikeTheirOpenString();
         testSlidNotesAreDampedAtTheirSlidPitch();
         testReleaseNoise();
         testHandBackIsSilent();

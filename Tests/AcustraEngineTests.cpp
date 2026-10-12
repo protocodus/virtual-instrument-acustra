@@ -3696,8 +3696,8 @@ void testDispersionSolveCacheMatchesForcedRecomputation()
         apply([] (auto& engine) { engine.noteOn(45, 0.7f, 1, 37); });
         render(context + " scheduled fret");
         apply([] (auto& engine) { engine.setStringPerChannelMode(false); });
-        apply([] (auto& engine) { engine.noteOn(88, 0.6f); });
-        render(context + " natural harmonic");
+        apply([] (auto& engine) { engine.noteOn(84, 0.6f); });
+        render(context + " twentieth fret");
         apply([] (auto& engine) { engine.reset(); });
         // Keep B, note, age and loss mix fixed while changing only the
         // design's high-loss coefficient. The initial steel cutoff is
@@ -6344,178 +6344,57 @@ void testBridgeHandPressureShortensAndDarkens()
     }
 }
 
-void testNaturalHarmonicsReachAboveTheFretboard()
+void testTheTuningBoundsThePlayableRange()
 {
-    // Above the twentieth fret the guitar still reaches, through the natural
-    // harmonics of its open strings, and the requested pitch alone decides
-    // whether one exists. Below the lowest open string it does not reach.
-    const auto play = [] (int midiNote)
+    // The instrument answers only what its tuning can fret: from the lowest
+    // open string to the twentieth fret of the highest. Above that it used to
+    // reach through natural harmonics of the open strings; on 2026-10-12 the
+    // user asked for the range alone (Docs/decisions.md), so every pitch
+    // outside it, above or below, is ignored: no string, no sound.
+    const auto play = [] (int midiNote, acustra::Tuning tuning)
     {
         auto engineOwner = std::make_unique<acustra::AcustraEngine>();
         auto& engine = *engineOwner;
         acustra::EngineParameters parameters;
+        parameters.tuning = tuning;
         engine.setParameters(parameters);
         engine.prepare(sampleRate, blockSize);
         engine.noteOn(midiNote, 0.9f);
-        const int samples = static_cast<int>(2.0 * sampleRate);
-        Audio out { std::vector<float>(static_cast<std::size_t>(samples)),
-                    std::vector<float>(static_cast<std::size_t>(samples)) };
-        for (int offset = 0; offset < samples; offset += blockSize)
-            engine.process(out.left.data() + offset, out.right.data() + offset,
-                           std::min(blockSize, samples - offset));
-        return out;
-    };
-    const auto rms = [] (const Audio& a)
-    {
+        const bool held = engine.heldString(midiNote) >= 0;
+        const int samples = static_cast<int>(0.5 * sampleRate);
         double energy = 0.0;
-        for (std::size_t i = 0; i < a.left.size(); ++i)
-        {
-            const double mono = 0.5 * (a.left[i] + a.right[i]);
-            energy += mono * mono;
-        }
-        return std::sqrt(energy / std::max<std::size_t>(1, a.left.size()));
-    };
-
-    const double stopped = rms(play(84));
-    expect(stopped > 1.0e-4, "the highest fretted note was silent");
-    // E6 is the fourth harmonic of the open high E, and B6 the sixth of the
-    // open B. Both are exact multiples, so both must sound.
-    for (const int midiNote : { 88, 90 })
-    {
-        const auto harmonic = play(midiNote);
-        const double level = rms(harmonic);
-        expect(level > 1.0e-5, "a natural harmonic above the fretboard was silent");
-        // A touched node keeps only the modes the pluck already put there, so
-        // a harmonic is quieter than a stopped note rather than louder.
-        expect(level < stopped, "a natural harmonic was louder than a stopped note");
-        for (std::size_t i = 0; i < harmonic.left.size(); ++i)
-            expect(std::isfinite(harmonic.left[i])
-                       && std::isfinite(harmonic.right[i])
-                       && std::abs(harmonic.left[i]) <= 1.0f,
-                   "a natural harmonic left headroom or went non-finite");
-    }
-    // No open string has a harmonic within 25 cents of these, and nothing on a
-    // guitar lies below the lowest open string, so all stay silent.
-    for (const int midiNote : { 85, 89, 93, 39, 20 })
-        expect(rms(play(midiNote)) == 0.0,
-               "a pitch the guitar cannot produce was sounded");
-
-    // The lowest usable node wins, and it lands on the pitch it should. The
-    // sounding partial is a few cents sharp because it is a real partial of a
-    // stiff string, which is what a guitar does too.
-    const auto e6 = play(88);
-    double best = 0.0;
-    double bestFrequency = 0.0;
-    for (double frequency = 1250.0; frequency < 1390.0; frequency += 0.25)
-    {
-        double real = 0.0;
-        double imaginary = 0.0;
-        const int count = static_cast<int>(1.0 * sampleRate);
-        for (int i = 0; i < count; ++i)
-        {
-            const double t = i / sampleRate;
-            const double mono = 0.5 * (e6.left[static_cast<std::size_t>(i)]
-                                     + e6.right[static_cast<std::size_t>(i)]);
-            real += mono * std::cos(2.0 * std::numbers::pi * frequency * t);
-            imaginary += mono * std::sin(2.0 * std::numbers::pi * frequency * t);
-        }
-        const double magnitude = std::hypot(real, imaginary);
-        if (magnitude > best) { best = magnitude; bestFrequency = frequency; }
-    }
-    const double wanted = 440.0 * std::exp2((88.0 - 69.0) / 12.0);
-    const double cents = 1200.0 * std::log2(bestFrequency / wanted);
-    expect(std::abs(cents) < 20.0,
-           "the fourth harmonic of the open high E was not near E6");
-}
-
-// A natural harmonic is its open string touched at a node: the finger damps
-// every mode the node does not share, the pluck's own release noise with them,
-// so the harmonic - or its octave, which shares the node - is what sounds. The
-// release burst used to reach the bridge unfiltered, and on D#6, E6 and E7 an
-// unrelated partial of the open string was the loudest in the output.
-// It is read at the saddle (Capture Piezo), where the string's own force
-// arrives flat across this band: through the microphones the body's
-// radiation weights the partials, and the Dreadnought's 8.3 kHz radiation
-// peak, measured +12 dB over the piezo's balance and 1.2 dB short of the
-// octave before the radiation was continued above its fitted band, lifts the
-// open string's 25th partial there (14 dB under the harmonic at the saddle)
-// 0.2 dB over E6's octave (Docs/decisions.md, 2026-09-30). That is the
-// body's colour, not a mode the finger failed to damp.
-void testANaturalHarmonicSoundsItsOwnPitch()
-{
-    const auto spectrumPeak = [] (const Audio& audio, double begin, double end)
-    {
-        const auto first = static_cast<std::size_t>(begin * sampleRate);
-        const auto count = static_cast<std::size_t>((end - begin) * sampleRate);
-        std::size_t size = 1;
-        while (size < count)
-            size <<= 1;
-        std::vector<std::complex<double>> bins(size);
-        for (std::size_t i = 0; i < count; ++i)
-        {
-            const double window = 0.5 - 0.5 * std::cos(
-                2.0 * std::numbers::pi * static_cast<double>(i)
-                / static_cast<double>(count - 1));
-            bins[i] = window * 0.5 * (audio.left[first + i] + audio.right[first + i]);
-        }
-        // Iterative radix-2 FFT.
-        for (std::size_t i = 1, j = 0; i < size; ++i)
-        {
-            std::size_t bit = size >> 1;
-            for (; j & bit; bit >>= 1)
-                j ^= bit;
-            j ^= bit;
-            if (i < j)
-                std::swap(bins[i], bins[j]);
-        }
-        for (std::size_t length = 2; length <= size; length <<= 1)
-        {
-            const double angle = -2.0 * std::numbers::pi / static_cast<double>(length);
-            const std::complex<double> step(std::cos(angle), std::sin(angle));
-            for (std::size_t start = 0; start < size; start += length)
-            {
-                std::complex<double> twiddle(1.0, 0.0);
-                for (std::size_t k = 0; k < length / 2; ++k)
-                {
-                    const auto even = bins[start + k];
-                    const auto odd = bins[start + k + length / 2] * twiddle;
-                    bins[start + k] = even + odd;
-                    bins[start + k + length / 2] = even - odd;
-                    twiddle *= step;
-                }
-            }
-        }
-        const double binHz = sampleRate / static_cast<double>(size);
-        std::size_t best = 0;
-        for (auto bin = static_cast<std::size_t>(80.0 / binHz);
-             bin < static_cast<std::size_t>(16000.0 / binHz); ++bin)
-            if (std::abs(bins[bin]) > std::abs(bins[best]))
-                best = bin;
-        return static_cast<double>(best) * binHz;
-    };
-    for (const int midiNote : { 87, 88, 91, 95, 100 })
-    {
-        auto engineOwner = std::make_unique<acustra::AcustraEngine>();
-        auto& engine = *engineOwner;
-        acustra::EngineParameters parameters;
-        parameters.capture = acustra::CaptureType::Piezo;
-        engine.setParameters(parameters);
-        engine.prepare(sampleRate, blockSize);
-        engine.noteOn(midiNote, 0.7f);
-        const int samples = static_cast<int>(0.7 * sampleRate);
-        Audio out { std::vector<float>(static_cast<std::size_t>(samples)),
-                    std::vector<float>(static_cast<std::size_t>(samples)) };
+        std::vector<float> left(static_cast<std::size_t>(blockSize)),
+            right(static_cast<std::size_t>(blockSize));
         for (int offset = 0; offset < samples; offset += blockSize)
-            engine.process(out.left.data() + offset, out.right.data() + offset,
-                           std::min(blockSize, samples - offset));
-        const double peak = spectrumPeak(out, 0.05, 0.65);
-        const double wanted = 440.0 * std::exp2((midiNote - 69.0) / 12.0);
-        const double cents = 1200.0 * std::log2(peak / wanted);
-        const double octaveCents = cents - 1200.0;
-        expect(std::abs(cents) < 40.0 || std::abs(octaveCents) < 40.0,
-               "natural harmonic MIDI " + std::to_string(midiNote)
-                   + "'s loudest partial was at " + std::to_string(peak)
-                   + " Hz, not its pitch or octave");
+        {
+            const int count = std::min(blockSize, samples - offset);
+            engine.process(left.data(), right.data(), count);
+            for (int i = 0; i < count; ++i)
+                energy += 0.25 * (left[static_cast<std::size_t>(i)] + right[static_cast<std::size_t>(i)])
+                              * (left[static_cast<std::size_t>(i)] + right[static_cast<std::size_t>(i)]);
+        }
+        return std::pair<bool, double> { held, std::sqrt(energy / samples) };
+    };
+    // (tuning, lowest open, highest fretted): one semitone outside either
+    // end is silent, the ends themselves sound.
+    const std::array<std::tuple<acustra::Tuning, int, int>, 5> ranges {{
+        { acustra::Tuning::Standard, 40, 84 }, { acustra::Tuning::DropD, 38, 84 },
+        { acustra::Tuning::Dadgad, 38, 82 }, { acustra::Tuning::OpenG, 38, 82 },
+        { acustra::Tuning::HalfStepDown, 39, 83 } }};
+    for (const auto& [tuning, lowest, highest] : ranges)
+    {
+        for (const int inside : { lowest, highest })
+        {
+            const auto [held, level] = play(inside, tuning);
+            expect(held && level > 1.0e-4,
+                   "a note at the edge of the tuning's range (" + std::to_string(inside) + ") was silent");
+        }
+        for (const int outside : { lowest - 1, highest + 1, 20, 88, 95, 127 })
+        {
+            const auto [held, level] = play(outside, tuning);
+            expect(!held && level == 0.0,
+                   "a pitch outside the tuning's range (" + std::to_string(outside) + ") was sounded");
+        }
     }
 }
 
@@ -7052,8 +6931,8 @@ void testSwitchingTuningUnderAChordDoesNotClick()
 void testTodaysMechanismsSurviveEachOther()
 {
     // The plate conductance floor, the stolen-string tail, bridge-hand
-    // pressure and natural harmonics all landed together. Drive them against
-    // one another: muted chord changes that steal ringing strings, harmonics
+    // pressure and the highest frets all landed together. Drive them against
+    // one another: muted chord changes that steal ringing strings, top frets
     // taken and retaken, a tuning switch underneath, pitch bend
     // across it, and a panic at the end.
     for (const double rate : { 44100.0, 48000.0, 192000.0 })
@@ -7067,7 +6946,9 @@ void testTodaysMechanismsSurviveEachOther()
         std::vector<float> right(static_cast<std::size_t>(blockSize));
         const std::array<std::array<int, 6>, 2> chords {{
             {{ 40, 47, 52, 56, 59, 64 }}, {{ 43, 50, 55, 58, 62, 67 }} }};
-        const std::array<int, 3> harmonics { 88, 90, 95 };
+        // The twentieth fret of the three top strings, where the harmonics
+        // above the fretboard were before the range rule.
+        const std::array<int, 3> harmonics { 75, 79, 84 };
         double maximum = 0.0;
         int step = 0;
         const int stride = static_cast<int>(0.08 * rate);
@@ -9426,8 +9307,7 @@ void testStringAgeReachesTheWoundStrings()
 // peak. A doubled note-on on one sample is one release, not two (two
 // added thumped 6 dB harder than the one pluck it sounds as). A bend after
 // the release moves the string, not the force already taken off the
-// saddle. A natural harmonic is held aside by the picking hand as its open
-// string is, so its saddle sheds that string's force.
+// saddle.
 void testEachReleaseGivesBackTheForceItHeld()
 {
     using Access = acustra::AcustraEngineTestAccess;
@@ -9484,17 +9364,6 @@ void testEachReleaseGivesBackTheForceItHeld()
            "the bend did not change the string's port");
     expect(bent.level == plain.level,
            "a bend after the release changed the force it had let go");
-
-    // E6 is the open high E's fourth harmonic.
-    const auto harmonic = Access::releaseStepTrace(string, 88, 0, -1, -1,
-                                                   samples);
-    const double touched = netAndPeak(harmonic).second;
-    std::cout << "Acustra released force, E6 harmonic over the open high E: "
-              << touched / std::max(single, 1.0e-30) << "\n";
-    expect(harmonic.harmonic == 4,
-           "E6 was not the open high E's fourth harmonic");
-    expect(touched > 0.8 * single && touched < 1.25 * single,
-           "a natural harmonic did not shed its open string's held force");
 }
 
 } // namespace
@@ -9607,8 +9476,7 @@ int main()
     testPlateConductanceFloorReachesBothPorts();
     testStolenStringKeepsRingingUnderHandDamping();
     testBridgeHandPressureShortensAndDarkens();
-    testNaturalHarmonicsReachAboveTheFretboard();
-    testANaturalHarmonicSoundsItsOwnPitch();
+    testTheTuningBoundsThePlayableRange();
     testHeldStringsDoNotLengthenANoteDecay();
     testANoteOverASoundingInstrumentDoesNotClick();
     testBodyChangesPreserveTheSoundingStrings();

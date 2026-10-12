@@ -438,18 +438,25 @@ private:
         g.setFont (displayFont (16.0f, juce::Font::bold));
         g.drawText ("STRINGS", 18, 9, 116, 22,
                     juce::Justification::centredLeft, false);
+        // The performance legend: the stroke keyswitches below the guitar's
+        // range (Performer::StrokeMode) and the two wheels.
+        g.setFont (displayFont (10.5f));
+        g.setColour (mutedText);
+        g.drawText ("KEYSWITCHES  C0 DOWN  C#0 UP  D0 AUTO     MOD WHEEL  VIBRATO"
+                    "     PITCH BEND  TO BEND RANGE",
+                    150, 8, 510, 22, juce::Justification::centredLeft, false);
         g.setFont (displayFont (11.5f));
         g.setColour (brass);
-        g.fillEllipse (628.0f, 15.0f, 7.0f, 7.0f);
-        g.drawText ("HELD", 641, 8, 61, 22,
+        g.fillEllipse (676.0f, 15.0f, 7.0f, 7.0f);
+        g.drawText ("HELD", 689, 8, 61, 22,
                     juce::Justification::centredLeft, false);
         g.setColour (ivory.withAlpha (0.8f));
-        g.drawEllipse (711.0f, 15.0f, 7.0f, 7.0f, 1.1f);
-        g.drawText ("RELEASED", 724, 8, 85, 22,
+        g.drawEllipse (759.0f, 15.0f, 7.0f, 7.0f, 1.1f);
+        g.drawText ("RELEASED", 772, 8, 85, 22,
                     juce::Justification::centredLeft, false);
         g.setColour (sympatheticColour);
-        g.drawEllipse (825.0f, 15.0f, 7.0f, 7.0f, 1.1f);
-        g.drawText ("SYMPATHETIC", 838, 8, 126, 22,
+        g.drawEllipse (873.0f, 15.0f, 7.0f, 7.0f, 1.1f);
+        g.drawText ("SYMPATHETIC", 886, 8, 126, 22,
                     juce::Justification::centredLeft, false);
 
         constexpr float lastY = firstY + 5.0f * rowSpacing;

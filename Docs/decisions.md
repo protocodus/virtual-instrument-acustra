@@ -5,6 +5,62 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-12 — only the tuning's range answers
+
+The user asked that the instrument allow only the guitar's range for its
+tuning and ignore lower and higher notes. Lower notes were already ignored
+(no string frets them). Higher ones, above the twentieth fret of the
+highest string, reached the open strings' natural harmonics since
+2026-09-25: a note at an exact multiple of an open pitch within 25 cents
+was played as a node touch. That reach is retired: canSound and noteOn now
+answer only fretted pitches, and planChord no longer keeps a string aside
+for a harmonic. The node-touch projection itself stays in the engine,
+unreachable from any pitch. The range per tuning is E2-C6 (Standard),
+D2-C6 (Drop D), D2-B5 (DADGAD, Open G) and D#2-B5 (half step down); the
+plug-in's keyboard already showed it. The tests that proved the harmonics
+sounded, kept held strings and were damped like their open string go with
+the feature; one range test takes their place, and the stress test that
+mixed harmonics into muted chord changes plays the top frets instead.
+Demo renders made before this date still describe two natural harmonics.
+
+## 2026-10-12 — strum direction: a dotted-eighth window and keyswitches
+
+The user asked how to choose between a downstroke and an upstroke, since a
+chord's strings ring in the opposite order on each and the difference is
+audible, and offered three rules: a keyswitch, an interval rule (notes
+closer than a sixteenth alternate, otherwise a downstroke) or leaving the
+two-second alternation as it was. Assessment given and agreed: the
+two-second rule alternates any two strums less than two seconds apart, so
+slow chords came out down, up, down; an interval rule is the right first
+step, but at an eighth rather than a sixteenth, because the commonest
+strumming pattern, eighth-note down-up, has consecutive strums an eighth
+apart and a sixteenth threshold would make them all downstrokes; and a
+keyswitch is the override no automatic rule can replace (deliberate
+upstroke accents, syncopation). The user chose the interval rule plus the
+keyswitch.
+
+Shipped: a strum within strumAlternationBeats, a dotted eighth (0.75 beat)
+at the host tempo, of the previous one alternates; a later one, or any
+after the two-second rest, is a downstroke. The dotted eighth rather than
+an eighth absorbs humanization, swung eighths (whose long gap is two thirds
+of a beat) and triplets, and still leaves quarter-note chords all
+downstrokes. Keyswitches C0, C#0 and D0 (MIDI 24-26, under Drop D's low D)
+latch downstrokes, upstrokes or automatic until the next keyswitch, reset
+or prepare, on every channel; they never sound, take no string, and are
+not gathered into a chord. No parameter and no saved state. The plug-in
+prints the keyswitches with the mod wheel's and pitch bend's roles on its
+strings panel; the Rack Extension prints the same on its rear panel.
+
+Considered and not shipped: reading a spread chord's arrival order as its
+roll direction (lowest key first, a downstroke). Under Gather Chords the
+order is known, but a sloppy triad starts with its lowest or highest key
+two times in three by chance, which would randomize the direction of live
+chords; a sequencer's chord lands on one sample and carries no order.
+Deferred: a rule on the host's beat position, down on the eighth grid and
+up between, which is what the hand does and which the interval rule gets
+wrong for two upstrokes a beat apart; it waits on a listening pass of the
+interval rule. Nobody has listened to either yet.
+
 ## 2026-10-12 — the air-mode dip, heard: B over main
 
 The user listened to the blind A/B pack rendered for the 2026-10-11 air-mode

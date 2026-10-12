@@ -42,11 +42,17 @@ directly playable, without added input latency or new controls. See the
 The subsequent [CPU optimization](Docs/cpu-optimization-2026-10-07.md) preserves
 the rendered audio while reducing redundant pitch and pluck calculations.
 
+Version 1.3.0 times strum direction by the song: a strum within a dotted
+eighth of the last alternates, a later one is a downstroke again, and the
+C0, C#0 and D0 keyswitches latch downstrokes, upstrokes or the automatic
+rule. It also answers only its tuning's range, ignoring pitches below the
+lowest open string or above the twentieth fret; see
+[Versioned builds and packages](#versioned-builds-and-packages).
+
 Version 1.2.0 adds the Sustain switch, puts Release Noise and Room on the
 panel, fixes the Gather Chords defects the MIDI audit found and takes the
 air-mode boom down by measurement (a dip at the air mode of every
-construction but the Parlor); see
-[Versioned builds and packages](#versioned-builds-and-packages).
+construction but the Parlor).
 
 Version 1.1.4 expands the MIDI velocity range: soft strokes apply much less
 force to the string and its physical release contact. Wood and Shape now
@@ -79,6 +85,21 @@ stronger body variations intentionally change their sound. See the
 and [realism work](Docs/realism-work.md) for measurements and limits.
 
 ## Versioned builds and packages
+
+Version 1.3.0 changes when a strum reverses. A strum within a dotted eighth
+of the previous one at the host tempo (0.375 s at 120 BPM) is the hand's
+return and alternates; after a longer gap, or any rest over two seconds, it
+is a downstroke again, so quarter-note chords are all downstrokes and
+eighth-note, sixteenth-note, swung and triplet patterns alternate. Three
+keyswitches below the guitar's range latch a direction until the next
+keyswitch or Panic: C0 every strum a downstroke, C#0 every strum an
+upstroke, D0 back to automatic; they never sound. The strings panel prints
+the keyswitches and the two wheels' roles. The instrument now answers
+only its tuning's range: a pitch below the lowest open string or above the
+twentieth fret of the highest is ignored, where pitches above the
+fretboard used to reach the open strings' natural harmonics. No parameter
+is added and no saved state changes; the user chose both on 2026-10-12
+(Docs/decisions.md), and neither has been heard yet.
 
 Version 1.2.0 adds the host-automatable Sustain switch (a new, appended
 parameter, off by default), puts Release Noise and Room on the panel, fixes
@@ -142,7 +163,7 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
 locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
-it with the project version (currently `1.2.0`) and the source revision. Changing that identity rebuilds
+it with the project version (currently `1.3.0`) and the source revision. Changing that identity rebuilds
 the wrappers; each linked format receives its frozen identity record, and macOS
 bundles embed the build number. Packaging rejects a cache
 that disagrees with those records or macOS bundle metadata. Assign a new build
@@ -187,7 +208,8 @@ its engine default, off (the plug-in starts at 50%).
   Open G partial chords.
 - **Playing behaviours** — a chord change
   over a still-ringing chord, CC2 bridge-hand damping, then two natural
-  harmonics above the fretted range.
+  harmonics above the fretted range (rendered before 2026-10-12; those two
+  pitches are silent since the instrument answers only its tuning's range).
 - **Strummed chords** — chords sent on one
   sample swept as alternating strums, then one chord eight times hand-damped,
   no two strokes the same take.
@@ -562,8 +584,8 @@ position, and each remembered finger's weight per fret the hand would have to
 move; notes the hand must hold that no hand spans are impossible. The
 allocator takes the cheapest, then an open string, then the lower fret, then
 a silent string before a ringing one. With nothing fretted held or released
-in the last two seconds (a fresh engine, or a rest as long as the one after
-which a strum restarts on a downstroke) the hand is forgotten, and a note is
+in the last two seconds (a fresh engine, or the longest rest after which a
+strum still alternates) the hand is forgotten, and a note is
 placed exactly as before the hand existed: the free string with the lowest
 fret, else the string released longest ago, else the oldest. That keeps every
 single-note benchmark render bit-identical. String-per-channel controllers
@@ -577,20 +599,23 @@ the new tension from its tuned open frequency. Drop D therefore loosens the
 same low-E string instead of silently substituting a heavier string at standard
 tension.
 
-Above the twentieth fret the instrument still reaches, through the natural
-harmonics of its open strings. A note there is played as a light touch at a
-node if some string has an integer multiple of its open pitch within 25 cents,
-and stays silent otherwise, so the requested pitch alone decides and no
-keyswitch is offered: the seventh harmonic is 31 cents flat and is excluded by
-the same tolerance that admits the second through sixth and the eighth. The
-touch is the exact node-mode projection — the released shape averaged over its
-n cyclic shifts, which passes every multiple of n at unit gain and cancels
-everything else — so the surviving modes keep precisely the amplitude the pluck
-gave them, and a harmonic comes out quieter than the stopped note rather than
-louder.
+The instrument answers only its tuning's range: from the lowest open string
+to the twentieth fret of the highest (E2 to C6 in Standard, D2 to C6 in
+Drop D, D2 to B5 in DADGAD and Open G, D#2 to B5 a half step down). A pitch
+outside it, above or below, is ignored: no string takes it and nothing
+sounds. Until 2026-10-12 pitches above the fretboard reached the open
+strings' natural harmonics (the node-touch projection); the user asked for
+the range alone (Docs/decisions.md), and the on-screen keyboard shows that
+range. The stroke keyswitches live below it.
 
 Ordinary Note Ons pluck, and notes that arrive together are voiced and
-strummed as chords. Retired CC68 remains ignored. Connected finger gestures
+strummed as chords. Three keyswitches below the guitar's range set the
+strum direction, on any channel, latched until the next keyswitch or Panic:
+C0 (MIDI 24) makes every strum a downstroke, C#0 (25) an upstroke and D0
+(26) returns to the automatic rule (a strum within a dotted eighth of the
+last alternates, a later one is a downstroke). A keyswitch never sounds,
+takes no string and is not gathered into a chord; under Gather Chords it
+applies to the chords sent after it. Retired CC68 remains ignored. Connected finger gestures
 are explicit: turn on CC65 on the note's channel, send CC84 with the held
 source pitch, then send one destination Note On. A valid request transfers
 that string's sounding wave to the new fret, with a short bounded finger
@@ -688,8 +713,10 @@ hand can play, is swept as a strum: newly assigned strings are fretted at
 that sample, and each is released when the pick reaches it. An already held
 note keeps its preceding vibration until its scheduled re-pluck. The k-th string
 sounds k string-spacings later at the pick's speed, low to high on a downstroke and
-back on the return, so consecutive strums alternate, and a rest of more than
-two seconds restarts with a downstroke. The shape is planned before this
+back on the return. A strum within a dotted eighth of the last at the host
+tempo is that return and alternates; a later one, or any after a rest of
+more than two seconds, starts over with a downstroke, unless a keyswitch
+has latched a direction (see the MIDI section). The shape is planned before this
 timing: string order can cross pitch order, and an unplayed string between
 two reached strings still takes one spacing to cross. The spacing is the set-up dimension
 at the saddle; the pick's speed is a player's map of velocity over the
@@ -2086,11 +2113,10 @@ The JUCE-free suites cover:
 - the bridge port: no transient erupts from a decaying chord left alone for
   three seconds, and a note after a two-, four- or eight-second silence peaks
   within a factor of two of the same note on a fresh engine;
-- natural harmonics: they sound above the fretted range, stay quieter than
-  the highest stopped note, land within 20 cents of the requested pitch (their
-  loudest partial at the saddle their pitch or its octave), remain
-  finite and inside headroom, and leave silent every pitch no open string can
-  produce, including everything below the lowest open string;
+- the tuning's range: in every tuning the lowest open string and the
+  twentieth fret of the highest sound, and one semitone outside either end,
+  and every pitch beyond, takes no string and stays silent (natural
+  harmonics above the fretboard were retired on 2026-10-12);
 - bridge-hand pressure: exactly no-op at zero, monotonically shortening the
   1--2 s tail and darkening the 2--6 kHz attack across four pressures, never
   louder than open, finite and inside headroom, and reaching the engine from
@@ -2208,6 +2234,12 @@ polarisation losses, an unscaled heave-only plate floor, absent slide roughness
 and an unadopted 94.2 Hz air retune no longer describe the current instrument.
 Dated evidence is retained so the earlier decisions remain traceable.
 
+- Strum direction follows an interval rule, not the beat grid: two
+  upstrokes a beat apart (the second and third strokes of a "down, down-up,
+  up-down-up" pattern) come out down and up unless the C#0 keyswitch asks
+  for upstrokes. A rule reading the host's beat position, down on the
+  eighth grid and up between, would follow the hand itself; it waits on a
+  listening pass of the interval rule (2026-10-12, Docs/decisions.md).
 - Left by the 2026-10-11 MIDI audit, each a limit rather than a stuck note:
   - The MPE lower zone is not saved with a session: after a reload, a
     member channel's events are conventional (a ±2 semitone bend range)
@@ -3012,6 +3044,32 @@ set without it.
   assert the behaviour directly.
 
 ## Release history
+
+### 2026-10-12 — strum direction timed by the song, and keyswitches
+
+- **A dotted-eighth alternation window.** A strum used to alternate with
+  the previous one whenever less than two seconds had passed, so slow
+  chords came out down, up, down. Now a strum within a dotted eighth of the
+  last at the host tempo (`Performer::strumAlternationBeats`, 0.375 s at
+  120 BPM) is the hand's return and alternates, and a later one is a
+  downstroke again; the two-second rest remains the cap at any tempo. The
+  window takes in eighth and sixteenth patterns, swung eighths and triplets,
+  and leaves quarter-note chords all downstrokes. The limit of an interval
+  rule: two upstrokes a beat apart, as in a syncopated pattern, need the
+  keyswitch; a rule that reads the beat grid is the alternative, deferred
+  until this one has been heard.
+- **Only the tuning's range answers.** A pitch below the lowest open
+  string or above the twentieth fret of the highest is ignored: no string,
+  no sound. Pitches above the fretboard used to reach the open strings'
+  natural harmonics; the user asked for the range alone (Docs/decisions.md).
+  The node-touch machinery stays in the engine but nothing reaches it.
+- **Keyswitches C0, C#0 and D0** (MIDI 24-26, below Drop D's low string)
+  latch downstrokes, upstrokes or the automatic rule until the next
+  keyswitch or Panic, on any channel; they never sound, take no string and
+  are not gathered into a chord. The strings panel prints them with the mod
+  wheel's and pitch bend's roles. The user chose the rule and the keyswitch
+  on 2026-10-12 (Docs/decisions.md); the Rack Extension prints the same
+  legend on its rear panel.
 
 ### 2026-10-11 — a Sustain switch, and the sweep smoothed by measurement
 

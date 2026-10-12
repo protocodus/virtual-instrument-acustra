@@ -65,11 +65,33 @@ public:
     // is applied at once, ahead of the group's Note Ons.
     static constexpr int sampleGroupCapacity = 128;
 
-    // A strum after a rest longer than this starts again on a downstroke
-    // instead of alternating from the last stroke. A front end that stops
+    // Stroke direction. Automatic: a strum within strumAlternationBeats of
+    // the previous one, a dotted eighth at the host tempo, is the strumming
+    // hand's return and alternates its stroke; after a longer gap it is a
+    // downstroke again, as an isolated chord is. The dotted eighth takes in
+    // eighth-note and sixteenth-note patterns, swung eighths and triplets,
+    // and leaves quarter-note chords all downstrokes. A rest longer than
+    // strumRestSeconds restarts whatever the tempo; a front end that stops
     // rendering while silent (the Rack Extension idles) must not idle for
-    // less than this after the last note, or the rest would go unmeasured.
+    // less than that after the last note, or the rest would go unmeasured.
+    // The keyswitches, below the guitar's range, latch a direction on every
+    // channel until the next keyswitch, reset or prepare: C0 makes every
+    // strum a downstroke, C#0 an upstroke, D0 returns to automatic. They
+    // never sound and take no string; their key-ups are consumed with them.
+    enum class StrokeMode { Automatic, Down, Up };
+    static constexpr double strumAlternationBeats = 0.75;
     static constexpr double strumRestSeconds = 2.0;
+    static constexpr int keyswitchDownstroke = 24; // C0
+    static constexpr int keyswitchUpstroke = 25;   // C#0
+    static constexpr int keyswitchAutomatic = 26;  // D0
+    [[nodiscard]] static constexpr bool isKeyswitch(int note) noexcept
+    {
+        return note >= keyswitchDownstroke && note <= keyswitchAutomatic;
+    }
+    // The keyswitches' effect, for a front end's own control; it takes
+    // effect at once, like setSustainHold.
+    void setStrokeMode(StrokeMode mode) noexcept { strokeMode_ = mode; }
+    [[nodiscard]] StrokeMode strokeMode() const noexcept { return strokeMode_; }
 
     // The Gather Chords window, and so its latency, at this sample rate.
     [[nodiscard]] static int gatherWindowSamples(double sampleRate) noexcept;
@@ -274,8 +296,11 @@ private:
     AcustraEngine engine_;
 
     // Playing state that outlives a block.
-    // A strum's stroke alternates; the sample clock tells a rest from a beat.
+    // A strum's stroke alternates; the sample clock and the tempo tell a
+    // hand's return from a new stroke, unless a keyswitch has latched one.
     bool strumUpstroke_ { false };
+    StrokeMode strokeMode_ { StrokeMode::Automatic };
+    double tempoBpm_ { 120.0 };
     bool gatherChords_ { false };
     double sampleRate_ { 48000.0 };
     std::int64_t processedSamples_ { 0 };

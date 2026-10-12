@@ -99,6 +99,7 @@ void Performer::prepare(double sampleRate, int maximumBlockSize)
     processedSamples_ = 0;
     lastStrumSample_ = -1;
     strumUpstroke_ = false;
+    strokeMode_ = StrokeMode::Automatic;
     heldCount_ = 0;
     droppedEvents_ = 0;
     gatherWindow_ = gatherWindowSamples(sampleRate_);
@@ -116,6 +117,7 @@ void Performer::setParameters(const EngineParameters& parameters) noexcept
 void Performer::setTempoBpm(double bpm) noexcept
 {
     engine_.setTempoBpm(bpm);
+    tempoBpm_ = engine_.tempoBpm();
 }
 
 void Performer::handleTempoEvent(int eventSample, double bpm) noexcept
@@ -125,6 +127,7 @@ void Performer::handleTempoEvent(int eventSample, double bpm) noexcept
     renderTo(eventSample);
     groupedSample_ = eventSample;
     engine_.setTempoBpm(bpm);
+    tempoBpm_ = engine_.tempoBpm();
 }
 
 void Performer::setTempoBpmAt(int sampleOffset, double bpm) noexcept
@@ -175,6 +178,7 @@ void Performer::reset() noexcept
     engine_.reset();
     lastStrumSample_ = -1;
     strumUpstroke_ = false;
+    strokeMode_ = StrokeMode::Automatic;
     for (int channel = 1; channel <= 16; ++channel)
         refreshPitchBend(channel);
     heldCount_ = 0;
@@ -349,9 +353,10 @@ void Performer::flushNoteGroup() noexcept
               });
     // Three or more notes on one sample are a chord nobody can play at once:
     // a strum reaches its strings one after another, low to high on a
-    // downstroke and back on the return, so consecutive strums alternate. A
-    // rest long enough to start over starts over with a downstroke; two
-    // seconds is that convention, not a measurement.
+    // downstroke and back on the return. A strum within a dotted eighth of
+    // the last (strumAlternationBeats) is that return and alternates; after
+    // a longer gap the hand starts over with a downstroke, unless a
+    // keyswitch has latched a direction (StrokeMode).
     const bool oneChannel = std::all_of(
         pendingNoteOns_.begin(), pendingNoteOns_.begin() + pendingNoteOnCount_,
         [&](const PendingNoteOn& note)
@@ -408,10 +413,14 @@ void Performer::flushNoteGroup() noexcept
             + static_cast<std::int64_t>(std::max(0, groupedSample_));
         const auto interval = lastStrumSample_ < 0 ? std::int64_t { 0 }
                                                    : strumSample - lastStrumSample_;
+        const double alternationSeconds = std::min(
+            strumRestSeconds, strumAlternationBeats * 60.0 / tempoBpm_);
         const bool restarted = lastStrumSample_ < 0
-            || interval > static_cast<std::int64_t>(strumRestSeconds * sampleRate_);
+            || interval > static_cast<std::int64_t>(alternationSeconds * sampleRate_);
         if (restarted)
             strumUpstroke_ = false;
+        if (strokeMode_ != StrokeMode::Automatic)
+            strumUpstroke_ = strokeMode_ == StrokeMode::Up;
         lastStrumSample_ = strumSample;
         // The stroke is timed by the strings it reaches: a note the tuning
         // cannot sound takes no place in it and no part in its speed.
@@ -444,8 +453,8 @@ void Performer::flushNoteGroup() noexcept
         if (sounding > 0)
             meanVelocity /= static_cast<float>(sounding);
         // A complete fretted shape gives the physical string indices. A
-        // harmonic outside it, a larger group or a controller-owned layout
-        // has no complete plan: keep its existing note-by-note behaviour.
+        // larger group or a controller-owned layout has no complete plan:
+        // keep its existing note-by-note behaviour.
         // Duplicated keys share one string's place while noteOn retains its
         // ownership/re-pluck handling. The first reached string starts now.
         const int plannedSpan = completePlan
@@ -527,6 +536,20 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
     const bool noteOff = size >= 2
         && (status == 0x80u
             || (status == 0x90u && size >= 3 && (data[2] & 0x7fu) == 0u));
+    if ((positiveNoteOn || noteOff) && isKeyswitch(static_cast<int>(data[1] & 0x7fu)))
+    {
+        // A keyswitch is a direction, not a note: like a controller it acts
+        // at once, ahead of its sample's Note Ons, on every channel, and
+        // its key-up is nothing.
+        if (positiveNoteOn)
+        {
+            const int note = static_cast<int>(data[1] & 0x7fu);
+            strokeMode_ = note == keyswitchDownstroke ? StrokeMode::Down
+                        : note == keyswitchUpstroke ? StrokeMode::Up
+                                                    : StrokeMode::Automatic;
+        }
+        return false;
+    }
     if (positiveNoteOn)
     {
         if (pendingNoteOnCount_ < sampleGroupCapacity)
@@ -622,6 +645,10 @@ void Performer::gatherChord(int first) noexcept
         if (held.size < 3 || static_cast<int>(held.bytes[0] & 0x0fu) + 1 != channel)
             continue;
         const int note = static_cast<int>(held.bytes[1] & 0x7fu);
+        // A keyswitch is never part of a chord: it comes due on its own,
+        // where it was sent, and a chord gathered across it is unchanged.
+        if (isKeyswitch(note))
+            continue;
         const auto noteBit = 1u << (note % 32);
         auto& releasedWord = released[static_cast<std::size_t>(note / 32)];
         if (status == 0x80u || (status == 0x90u && (held.bytes[2] & 0x7fu) == 0u))
