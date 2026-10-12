@@ -183,14 +183,19 @@ rm -f "${ZIP_PATH}" "${PKG_FINAL}" "${PKG_UNSIGNED}"
 # that copy is newer. Install each bundle at its own path, replacing any version.
 COMPONENT_PLIST="${BUILD_DIR}/package-components.plist"
 pkgbuild --analyze --root "${PACKAGE_ROOT}" "${COMPONENT_PLIST}"
+# pkgbuild --analyze omits some keys from a bundle's entry (on the runner
+# the VST3's had no BundleIsRelocatable), and PlistBuddy's Set fails on a
+# missing key, so each key is removed if present and added.
+set_bundle_key() {
+    "${PLIST_BUDDY}" -c "Delete :$1:$2" "${COMPONENT_PLIST}" >/dev/null 2>&1 || true
+    "${PLIST_BUDDY}" -c "Add :$1:$2 $3 $4" "${COMPONENT_PLIST}"
+}
 bundle_count=0
 while "${PLIST_BUDDY}" -c "Print :${bundle_count}:RootRelativeBundlePath" \
         "${COMPONENT_PLIST}" >/dev/null 2>&1; do
-    "${PLIST_BUDDY}" \
-        -c "Set :${bundle_count}:BundleIsRelocatable false" \
-        -c "Set :${bundle_count}:BundleIsVersionChecked false" \
-        -c "Set :${bundle_count}:BundleOverwriteAction upgrade" \
-        "${COMPONENT_PLIST}"
+    set_bundle_key "${bundle_count}" BundleIsRelocatable bool false
+    set_bundle_key "${bundle_count}" BundleIsVersionChecked bool false
+    set_bundle_key "${bundle_count}" BundleOverwriteAction string upgrade
     bundle_count=$((bundle_count + 1))
 done
 if [[ "${bundle_count}" -ne 3 ]]; then
