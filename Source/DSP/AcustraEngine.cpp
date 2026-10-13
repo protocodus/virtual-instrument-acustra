@@ -2885,6 +2885,7 @@ AcustraEngine::AcustraEngine() noexcept
 void AcustraEngine::restartRandomDraws() noexcept
 {
     strumRandomState_ = 0x9e3779b9u;
+    fingerChordRandomState_ = 0x2545f491u;
     strumSpeedScale_ = 1.0f;
     strumParallelSign_ = 1.0f;
     for (int string = 0; string < stringCount; ++string)
@@ -10002,6 +10003,30 @@ int AcustraEngine::strumDelaySamples(int stringRank,
     const float speed = 0.51f + 1.95f * clamp(velocity, 0.0f, 1.0f);
     return static_cast<int>(static_cast<float>(std::max(stringRank, 0))
         * spacing / speed * static_cast<float>(sampleRate_) + 0.5f);
+}
+
+int AcustraEngine::fingerChordOffsetSamples(int rankFromTop, int count) noexcept
+{
+    // A fingerstyle hand plucks a chord of up to four strings with the
+    // thumb and three fingers at once; nothing sweeps across it. GuitarSet's
+    // bossa nova comping, played that way, shows it on the hex channels
+    // (Tools/MeasureFingerChords.py, attacks re-detected by one rule on every
+    // string): 59% of its chords arrive in no string order at all where the
+    // picked styles' strokes run in order, and a three-string chord spreads a
+    // median 13 ms where a picked one spans 23. Each string here takes the
+    // corpus's median lag behind the chord's highest string, the fingers'
+    // order, plus its own draw: 4.47 ms standard deviation, the residual's
+    // robust spread over 747 three-string chords, as a uniform half-width of
+    // 4.47 * sqrt(3). The four-string chords' wider residual (7.8 ms) is not
+    // used: rolled chords and detector misses fill its tail.
+    constexpr std::array<float, 3> threeStrings { 0.0f, 2.27f, 4.85f };
+    constexpr std::array<float, 4> fourStrings { 0.0f, 2.36f, 6.98f, 3.06f };
+    constexpr float jitterHalfWidthMs = 7.74f;
+    const bool four = count >= 4;
+    const auto rank = static_cast<std::size_t>(std::clamp(rankFromTop, 0, four ? 3 : 2));
+    const float lagMs = (four ? fourStrings[rank] : threeStrings[rank])
+        + jitterHalfWidthMs * xorshiftNoise(fingerChordRandomState_);
+    return static_cast<int>(std::lround(0.001 * static_cast<double>(lagMs) * sampleRate_));
 }
 
 void AcustraEngine::noteOff(int midiNote, int midiChannel) noexcept

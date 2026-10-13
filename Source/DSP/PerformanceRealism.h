@@ -25,6 +25,10 @@ struct PerformanceRealism
     // A released fretted note falls toward the previous fret as the lifting
     // fingertip becomes the string's end (AcustraEngine::beginReleaseFall).
     bool releasePitchFall { true };
+    // Under Finger the thumb and fingers pluck a chord of three or four
+    // strings together instead of sweeping it
+    // (AcustraEngine::fingerChordOffsetSamples).
+    bool fingerChords { true };
 };
 
 } // namespace acustra

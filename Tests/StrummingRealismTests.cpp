@@ -48,6 +48,12 @@ void testContinuousWristSweep(double rate)
 {
     auto full = std::make_unique<Performer>();
     auto sparse = std::make_unique<Performer>();
+    // The sweep itself: the sparse three-string chord under Finger would
+    // otherwise be plucked together (PerformanceRealism::fingerChords).
+    acustra::PerformanceRealism sweep;
+    sweep.fingerChords = false;
+    full->engine().setPerformanceRealism(sweep);
+    sparse->engine().setPerformanceRealism(sweep);
     full->prepare(rate, 64);
     sparse->prepare(rate, 64);
     std::array<float, 64> left {}, right {};

@@ -282,6 +282,12 @@ public:
     // the pick's speed for this velocity and the string spacing.
     [[nodiscard]] int strumDelaySamples(int stringRank,
                                         float velocity) const noexcept;
+    // Samples after the chord's highest string that the string rankFromTop
+    // strings below it sounds when the thumb and fingers pluck a chord of
+    // count (3 or 4) strings together; it can be negative, and the caller
+    // moves the earliest string onto the note-on. Each call draws that
+    // finger's own timing, so call once per string.
+    [[nodiscard]] int fingerChordOffsetSamples(int rankFromTop, int count) noexcept;
     // Whether noteOn() would sound this note at all in the current tuning
     // and channel mode, rather than drop it (outside the tuning's fretted
     // range, or off a string-per-channel string's frets).
@@ -2216,6 +2222,9 @@ private:
     // whole stroke coherent, so a slower or faster draw scales every
     // string's delay together and never reorders them.
     std::uint32_t strumRandomState_ { 0x9e3779b9u };
+    // The fingers' own timing in a plucked chord (fingerChordOffsetSamples),
+    // apart from the strums' draws so a plucked chord moves no strum.
+    std::uint32_t fingerChordRandomState_ { 0x2545f491u };
     float strumSpeedScale_ { 1.0f };
     float strumParallelSign_ { 1.0f };
     // Half-width of the uniform draw beginStrum() applies to strumSpeedScale_.

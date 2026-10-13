@@ -5,6 +5,25 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-13 — fingers pluck a chord of three or four strings together
+
+Under Finger every chord of three or more notes used to be strummed at a
+pick's speed and alternated down and up. A fingerstyle hand plucks three or
+four strings with the thumb and fingers at once. GuitarSet's finger-played
+bossa nova comping shows it on the hex channels, every attack re-detected by
+one rule (`Tools/MeasureFingerChords.py`): 59% of its 1,219 chords arrive in
+no string order where 46% of the 4,637 picked strokes run low to high, a
+three-string chord spreads a median 13.2 ms against a pick's 20.1, and the
+top string leads by a few milliseconds instead of sounding last. Under Finger,
+with no direction latched, a chord on three or four strings now takes the
+measured lag behind its highest string by rank (0, +2.27, +4.85 ms; 0, +2.36,
++6.98, +3.06) plus a draw of 4.47 ms standard deviation, the three-string
+residual's robust spread; the earliest string sounds at the note-on. It takes
+a single note's pluck and is not a stroke, so the strum alternation is left
+where it was. Five and six strings, Pick, Thumb and a latched C0/C#0 strum
+exactly as before (`PerformanceRealism::fingerChords`; `Acustra.FingerChords`).
+Not chosen by ear. See [the report](playing-physics-2026-10-13.md).
+
 ## 2026-10-13 — upstrokes lean treble, picked notes alternate, released notes fall
 
 The user asked for a few novel ways to make the guitar more real, across

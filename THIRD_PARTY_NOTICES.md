@@ -326,6 +326,12 @@ binary:
   and annotations: 0.9 dB more per string toward the high E and 1.2 dB
   under the downstroke between the D and G strings (`upstrokeTiltDbPerString`
   and `upstrokeMidNeckDb` in `AcustraEngine::initialisePluck`).
+- How fingers time a chord they pluck together, which
+  `Tools/MeasureFingerChords.py` measures from the bossa nova comping's
+  hex-pickup audio and annotations: each string's median lag behind the
+  chord's highest string (0, 2.27 and 4.85 ms for three strings; 0, 2.36,
+  6.98 and 3.06 ms for four) and a 4.47 ms standard deviation about it
+  (`AcustraEngine::fingerChordOffsetSamples`).
 
 These are Acustra's measurements and fits from the dataset, not part of
 it; the source comments and tools above describe how each was derived. This

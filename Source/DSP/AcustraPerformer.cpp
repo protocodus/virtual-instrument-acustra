@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace acustra
 {
@@ -130,6 +131,7 @@ void Performer::setParameters(const EngineParameters& parameters) noexcept
 {
     engine_.setParameters(parameters);
     pickTechnique_ = parameters.picking == PickingTechnique::Pick;
+    fingerTechnique_ = parameters.picking == PickingTechnique::Finger;
 }
 
 void Performer::setSustainHold(bool hold) noexcept
@@ -400,7 +402,8 @@ void Performer::flushNoteGroup() noexcept
               });
     // Three or more notes on one sample are a chord nobody can play at once:
     // a strum reaches its strings one after another, low to high on a
-    // downstroke and back on the return. A strum within a dotted eighth of
+    // downstroke and back on the return. Fingers are the exception for
+    // three or four strings, which they pluck together (below). A strum within a dotted eighth of
     // the last (strumAlternationBeats) is that return and alternates; after
     // a longer gap the hand starts over with a downstroke, unless a
     // keyswitch has latched a direction (StrokeMode).
@@ -471,19 +474,18 @@ void Performer::flushNoteGroup() noexcept
         && engine_.performanceRealism().alternatePicking;
     const bool continuedStroke = pickHand && lastStrokeSample_ >= 0
         && interval <= static_cast<std::int64_t>(gatherWindow_);
+    // Under Finger, with no direction latched, the thumb and fingers pluck a
+    // chord of three or four strings together: nothing sweeps across it, and
+    // it is not one of the strumming hand's strokes, so it neither takes nor
+    // moves their alternation.
+    bool pinch = false;
     if (strum)
     {
-        if (continuedStroke)
-            nextUpstroke_ = lastStrokeUpstroke_;
-        else if (restarted)
-            nextUpstroke_ = false;
-        if (strokeMode_ != StrokeMode::Automatic)
-            nextUpstroke_ = strokeMode_ == StrokeMode::Up;
-        lastStrokeSample_ = strokeSample;
         // The stroke is timed by the strings it reaches: a note the tuning
         // cannot sound takes no place in it and no part in its speed.
         std::array<bool, sampleGroupCapacity> sounds {};
         std::array<int, sampleGroupCapacity> strings {};
+        std::array<bool, AcustraEngine::stringCount> onString {};
         bool completePlan = true;
         int firstString = AcustraEngine::stringCount;
         int lastString = -1;
@@ -505,43 +507,80 @@ void Performer::flushNoteGroup() noexcept
                 {
                     firstString = std::min(firstString, string);
                     lastString = std::max(lastString, string);
+                    onString[static_cast<std::size_t>(string)] = true;
                 }
             }
         }
         if (sounding > 0)
             meanVelocity /= static_cast<float>(sounding);
-        // A complete fretted shape gives the physical string indices. A
-        // larger group or a controller-owned layout has no complete plan:
-        // keep its existing note-by-note behaviour.
-        // Duplicated keys share one string's place while noteOn retains its
-        // ownership/re-pluck handling. The first reached string starts now.
-        const int plannedSpan = completePlan
-            ? engine_.strumDelaySamples(lastString - firstString, meanVelocity) : 0;
-        int strokeSpan = 0;
-        for (int index = 0, reached = 0; index < pendingNoteOnCount_; ++index)
+        const auto chordStrings = static_cast<int>(
+            std::count(onString.begin(), onString.end(), true));
+        pinch = fingerTechnique_ && engine_.performanceRealism().fingerChords
+            && strokeMode_ == StrokeMode::Automatic && completePlan
+            && chordStrings >= 3 && chordStrings <= 4;
+        if (pinch)
         {
-            auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
-            if (!sounds[static_cast<std::size_t>(index)])
+            // One draw per string, from the highest down, so duplicated keys
+            // share their string's moment; the earliest finger sounds now.
+            std::array<int, AcustraEngine::stringCount> lag {};
+            int earliest = std::numeric_limits<int>::max();
+            for (int string = AcustraEngine::stringCount - 1, rank = 0; string >= 0; --string)
+                if (onString[static_cast<std::size_t>(string)])
+                {
+                    lag[static_cast<std::size_t>(string)]
+                        = engine_.fingerChordOffsetSamples(rank++, chordStrings);
+                    earliest = std::min(earliest, lag[static_cast<std::size_t>(string)]);
+                }
+            for (int index = 0; index < pendingNoteOnCount_; ++index)
             {
-                note.pluckDelay = 0;
-                continue;
+                auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
+                note.pluckDelay = sounds[static_cast<std::size_t>(index)]
+                    ? lag[static_cast<std::size_t>(strings[static_cast<std::size_t>(index)])] - earliest
+                    : 0;
             }
-            const int string = strings[static_cast<std::size_t>(index)];
-            const int rank = completePlan
-                ? (nextUpstroke_ ? lastString - string : string - firstString)
-                : (nextUpstroke_ ? reached : sounding - 1 - reached);
-            ++reached;
-            note.pluckDelay = completePlan
-                ? curvedStrumDelay(string, firstString, lastString,
-                                   nextUpstroke_, plannedSpan)
-                : engine_.strumDelaySamples(rank, meanVelocity);
-            strokeSpan = std::max(strokeSpan, note.pluckDelay);
         }
-        engine_.beginStrum(strokeSpan,
-                           restarted || continuedStroke ? 0 : static_cast<int>(interval),
-                           nextUpstroke_);
-        lastStrokeUpstroke_ = nextUpstroke_;
-        nextUpstroke_ = ! nextUpstroke_;
+        else
+        {
+            if (continuedStroke)
+                nextUpstroke_ = lastStrokeUpstroke_;
+            else if (restarted)
+                nextUpstroke_ = false;
+            if (strokeMode_ != StrokeMode::Automatic)
+                nextUpstroke_ = strokeMode_ == StrokeMode::Up;
+            lastStrokeSample_ = strokeSample;
+            // A complete fretted shape gives the physical string indices. A
+            // larger group or a controller-owned layout has no complete plan:
+            // keep its existing note-by-note behaviour.
+            // Duplicated keys share one string's place while noteOn retains its
+            // ownership/re-pluck handling. The first reached string starts now.
+            const int plannedSpan = completePlan
+                ? engine_.strumDelaySamples(lastString - firstString, meanVelocity) : 0;
+            int strokeSpan = 0;
+            for (int index = 0, reached = 0; index < pendingNoteOnCount_; ++index)
+            {
+                auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
+                if (!sounds[static_cast<std::size_t>(index)])
+                {
+                    note.pluckDelay = 0;
+                    continue;
+                }
+                const int string = strings[static_cast<std::size_t>(index)];
+                const int rank = completePlan
+                    ? (nextUpstroke_ ? lastString - string : string - firstString)
+                    : (nextUpstroke_ ? reached : sounding - 1 - reached);
+                ++reached;
+                note.pluckDelay = completePlan
+                    ? curvedStrumDelay(string, firstString, lastString,
+                                       nextUpstroke_, plannedSpan)
+                    : engine_.strumDelaySamples(rank, meanVelocity);
+                strokeSpan = std::max(strokeSpan, note.pluckDelay);
+            }
+            engine_.beginStrum(strokeSpan,
+                               restarted || continuedStroke ? 0 : static_cast<int>(interval),
+                               nextUpstroke_);
+            lastStrokeUpstroke_ = nextUpstroke_;
+            nextUpstroke_ = ! nextUpstroke_;
+        }
     }
     // Under Pick, a group that is not a strum is one plectrum stroke: down
     // after a rest, the hand's return within the alternation window, and the
@@ -559,7 +598,7 @@ void Performer::flushNoteGroup() noexcept
             pendingNoteOns_.begin() + pendingNoteOnCount_,
             [&](const PendingNoteOn& other) { return other.channel == note.channel; }) == 1;
         plucked |= playNote(note.note, note.velocity, note.channel,
-                            strum ? note.pluckDelay : 0, strum, unambiguous,
+                            strum ? note.pluckDelay : 0, strum && !pinch, unambiguous,
                             pickedStroke && pickedUpstroke);
     }
     // A connected transition is the fretting hand's, not a stroke.

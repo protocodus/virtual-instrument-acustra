@@ -756,10 +756,13 @@ the range alone (Docs/decisions.md), and the on-screen keyboard shows that
 range. The stroke keyswitches live below it.
 
 Ordinary Note Ons pluck, and notes that arrive together are voiced and
-strummed as chords. Three keyswitches below the guitar's range set the
+strummed as chords. Under Finger a chord of three or four strings is not
+strummed: the thumb and fingers pluck it together, a few milliseconds apart
+in no fixed order, as GuitarSet's finger-played comping does; five or six
+strings are brushed as a strum. Three keyswitches below the guitar's range set the
 stroke direction, on any channel, latched until the next keyswitch or Panic:
 C0 (MIDI 24) makes every strum, and with a pick every picked note, a
-downstroke, C#0 (25) an upstroke and D0
+downstroke (and under Finger strums the chords it would pluck), C#0 (25) an upstroke and D0
 (26) returns to the automatic rule (keyswitch names count middle C as C3,
 as the editor's keyboard does; the ranges elsewhere in this README count
 it as C4, so E2 is MIDI 40 and C6 MIDI 84) (a stroke within a dotted eighth of the

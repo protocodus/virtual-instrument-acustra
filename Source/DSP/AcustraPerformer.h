@@ -82,7 +82,12 @@ public:
     // chord window (chordGatherSeconds) of the hand's last stroke continues
     // that stroke, so a chord whose keys or a guitar controller's strings
     // arrive a few milliseconds apart is one direction, not a flip per note.
-    // Finger and Thumb pluck every single note toward the palm.
+    // Finger and Thumb pluck every single note toward the palm. Under
+    // Finger a chord of three or four strings is not a stroke at all: the
+    // thumb and fingers pluck it together, a few milliseconds apart and in
+    // no fixed order (AcustraEngine::fingerChordOffsetSamples), unless a
+    // keyswitch has latched a direction; five or six strings are brushed
+    // as a strum.
     // The direction keyswitches, below the guitar's range, latch a direction
     // on every channel until the next direction key, reset or prepare: C0
     // makes every stroke a downstroke, C#0 an upstroke, D0 returns to automatic. D#0
@@ -331,6 +336,7 @@ private:
     bool nextUpstroke_ { false };
     bool lastStrokeUpstroke_ { false };
     bool pickTechnique_ { false };
+    bool fingerTechnique_ { true };
     StrokeMode strokeMode_ { StrokeMode::Automatic };
     double tempoBpm_ { 120.0 };
     bool gatherChords_ { false };
