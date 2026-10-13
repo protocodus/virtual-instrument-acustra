@@ -759,7 +759,9 @@ Ordinary Note Ons pluck, and notes that arrive together are voiced and
 strummed as chords. Under Finger a chord of three or four strings is not
 strummed: the thumb and fingers pluck it together, a few milliseconds apart
 in no fixed order, as GuitarSet's finger-played comping does; five or six
-strings are brushed as a strum. Three keyswitches below the guitar's range set the
+strings are brushed as a strum. A strum that crosses a string its chord
+leaves out (open E2, B3 and E4, say) gives that string a dead stroke under
+the fretting hand that keeps it quiet, as GuitarSet's strummers do. Three keyswitches below the guitar's range set the
 stroke direction, on any channel, latched until the next keyswitch or Panic:
 C0 (MIDI 24) makes every strum, and with a pick every picked note, a
 downstroke (and under Finger strums the chords it would pluck), C#0 (25) an upstroke and D0

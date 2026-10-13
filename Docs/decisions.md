@@ -5,6 +5,25 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-13 — a strum mutes the strings it crosses
+
+A chord voiced with a gap (E2, B3 and E4 say, or 30% of a keyboard's
+triads and sevenths in a probe of the hand allocator) let the pick pass
+through the strings in the gap without touching them. GuitarSet's hex
+channels show what a guitarist does instead (`Tools/MeasureMutedStrokes.py`):
+683 strings crossed but left out of the chord rise a median 9.4 dB when the
+pick reaches them, where a string beyond the stroke's end rises 0.0 to 2.4
+dB; they are struck a median 4.6 dB under the string's own played attacks
+and fall 20 dB in 13.8 to 14.8 periods. The Performer now gives each such
+string a dead stroke at its place in the sweep, and `muteStroke` plucks it at
+0.589 of the force under the finger's touch, a 43-period T60 that holds from
+the moment the chord is fretted and also stops whatever the string carried,
+handing it back to the open string after that T60 and 80 ms. Held and
+pedalled strings are left alone. A local finger contact was tried and left
+out: its position is not measured and it made the engine fall faster than
+the corpus (`PerformanceRealism::mutedStrings`; `Acustra.MutedStrings`).
+Not chosen by ear. See [the report](playing-physics-2026-10-13.md).
+
 ## 2026-10-13 — fingers pluck a chord of three or four strings together
 
 Under Finger every chord of three or more notes used to be strummed at a

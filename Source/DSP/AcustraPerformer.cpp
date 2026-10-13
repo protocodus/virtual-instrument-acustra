@@ -479,6 +479,11 @@ void Performer::flushNoteGroup() noexcept
     // it is not one of the strumming hand's strokes, so it neither takes nor
     // moves their alternation.
     bool pinch = false;
+    // The strings inside a swept stroke that the chord leaves out: the pick
+    // crosses them under the fretting hand that mutes them (muteStroke).
+    std::array<int, AcustraEngine::stringCount> mutedDelay {};
+    mutedDelay.fill(-1);
+    float strokeVelocity = 0.0f;
     if (strum)
     {
         // The stroke is timed by the strings it reaches: a note the tuning
@@ -575,6 +580,12 @@ void Performer::flushNoteGroup() noexcept
                     : engine_.strumDelaySamples(rank, meanVelocity);
                 strokeSpan = std::max(strokeSpan, note.pluckDelay);
             }
+            if (completePlan)
+                for (int string = firstString + 1; string < lastString; ++string)
+                    if (!onString[static_cast<std::size_t>(string)])
+                        mutedDelay[static_cast<std::size_t>(string)] = curvedStrumDelay(
+                            string, firstString, lastString, nextUpstroke_, plannedSpan);
+            strokeVelocity = meanVelocity;
             engine_.beginStrum(strokeSpan,
                                restarted || continuedStroke ? 0 : static_cast<int>(interval),
                                nextUpstroke_);
@@ -601,6 +612,10 @@ void Performer::flushNoteGroup() noexcept
                             strum ? note.pluckDelay : 0, strum && !pinch, unambiguous,
                             pickedStroke && pickedUpstroke);
     }
+    for (int string = 0; string < AcustraEngine::stringCount; ++string)
+        if (mutedDelay[static_cast<std::size_t>(string)] >= 0)
+            engine_.muteStroke(string, mutedDelay[static_cast<std::size_t>(string)],
+                               strokeVelocity, pendingNoteOns_[0].channel);
     // A connected transition is the fretting hand's, not a stroke.
     if (pickedStroke && plucked)
     {

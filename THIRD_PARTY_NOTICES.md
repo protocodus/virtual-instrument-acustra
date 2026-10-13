@@ -332,6 +332,11 @@ binary:
   chord's highest string (0, 2.27 and 4.85 ms for three strings; 0, 2.36,
   6.98 and 3.06 ms for four) and a 4.47 ms standard deviation about it
   (`AcustraEngine::fingerChordOffsetSamples`).
+- What a strum does to a string it crosses that the chord leaves out, which
+  `Tools/MeasureMutedStrokes.py` measures from the comping's hex-pickup
+  audio and annotations: a strike 4.6 dB under the string's own played
+  attacks and a 20 dB fall in 13.8 to 14.8 periods, taken as a 43-period
+  T60 (`AcustraEngine::muteStroke` and `beginMutedStroke`).
 
 These are Acustra's measurements and fits from the dataset, not part of
 it; the source comments and tools above describe how each was derived. This

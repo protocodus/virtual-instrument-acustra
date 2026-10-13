@@ -164,7 +164,8 @@ strings more lightly. With Picking on Finger, a chord of three or four
 strings is not strummed: the thumb and fingers pluck it together, a few
 milliseconds apart, and it does not count as a stroke; five or six strings
 are brushed as a strum, and a direction keyswitch makes every chord a
-strum. Notes played by hand arrive a little apart: turn
+strum. A strum across a string the chord leaves out gives that string a
+short muted tick, as the fretting hand keeps it quiet. Notes played by hand arrive a little apart: turn
 on CHORDS to gather them, at the cost of 30 ms latency.
 
 **Picking.** With Picking on Pick, single notes alternate down and up

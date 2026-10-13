@@ -81,6 +81,63 @@ players and chords, and the draw is independent per string, not a hand's
 correlated timing. Which finger takes which string, and the thumb's own
 contact on the bass, are not modelled: every string keeps the Finger pluck.
 
+## 2. A strum mutes the strings it crosses
+
+A chord voiced with a gap, open E2, B3 and E4 on the sixth, second and first
+strings say, or 70 of the 235 triads and sevenths a keyboard voices in close
+and open position (a probe of the hand allocator), left the strings in the
+gap out of its stroke: the pick went through them without touching them. A
+pick cannot. A guitarist keeps those strings quiet with the fretting hand,
+and the pick gives each one a dead stroke on its way across.
+
+`Tools/MeasureMutedStrokes.py` finds them on GuitarSet's hex channels.
+Report: [`muted-strokes-report.json`](validation-playing-physics-20261013/muted-strokes-report.json).
+In the corpus's ordered strokes 683 strings are crossed but left out of the
+chord. At the moment the pick reaches one, interpolated between the attacks
+on either side of it, its channel rises a median 9.4 dB (quartiles 3.5 to
+14.4) over its own last 30 ms, where the first string beyond the stroke's
+far end rises 0.0 dB on the bass side and 2.4 dB on the treble side. The
+strike sits a median 4.6 dB under the same string's own played attacks
+(quartiles −10.1 to −0.9), and the string then falls 20 dB in a median 125,
+100, 75 and 60 ms on the A, D, G and B strings: 13.8 to 14.8 periods of each
+open string.
+
+**Model.** For a swept stroke whose strings the hand has planned, the
+Performer gives each string strictly inside the span with no chord note a
+dead stroke at its place in the sweep (`curvedStrumDelay`, with the
+stroke's own speed draw). `AcustraEngine::muteStroke` plucks it open as a
+member of the stroke, at 0.589 (−4.6 dB) of a played string's force, under
+the finger's touch: 43 periods of T60, the 20 dB time taken as exponential,
+1.4 dB a period. The touch holds from the moment the chord is fretted, so it
+also stops whatever the string carried, a sympathetic ring or the last
+chord's note. Once the pick has let the string go it is handed back to the
+open string after that T60 and the hand's 80 ms. A string a key or the pedal
+holds, or whose own pluck is still on its way, is left alone. Where the
+finger lies on the string is not measured, so no local contact is added; an
+authored one also made the engine fall faster than the corpus.
+
+**Tests** (`Acustra.MutedStrings`): at 44.1, 48 and 96 kHz, down and up,
+the three crossed strings of E2-B3-E4 are muted with no key owning them and
+take their places in the sweep in order; the A string takes exactly the
+43-period touch from the finger's landing, falls 60 dB within it and is
+handed back after the T60 and 80 ms (within 2 ms); a key or the pedal holding
+a crossed string keeps it out; chords with no gap under Pick, Finger and
+Thumb, a finger-plucked chord, and the switch off are bit-identical, while
+the dead strokes are audible against the switch off; a key on a muted string
+takes it back and rings as on a fresh engine within 1 dB; panic clears a
+muted stroke; and blocks of 1, 61, 64 and 512 render identically.
+
+**Limits.** The hand mutes the string only for that T60 and 80 ms; a real
+hand keeps touching it while the chord is held, and the engine lets it ring
+sympathetically again afterwards. The strike and touch are medians over
+strings and players. On the saddle force the engine's dead strokes fall 20
+dB in 35 to 60 ms rather than the hex channel's 60 to 125, because that
+force carries the pluck's broadband first pulse and the two polarisations'
+beat; the touch is matched as a T60, not as that envelope. The strings just
+outside a stroke are grazed in the corpus too (the string the pick passes
+first rises a median 3.6 dB on the bass side and 9.0 dB on the treble, struck
+18 to 19 dB under a played attack) and are not modelled.
+
 ## Dropped on their evidence
 
 - **Strum speed following the tempo.** Pooled over every picked stroke, a

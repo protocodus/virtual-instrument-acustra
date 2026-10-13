@@ -6859,6 +6859,11 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const float forceVariation = gesture.active
             ? 0.35f * gesture.pressure + 0.65f * forceDraw : forceDraw;
         strumLevelGain = std::pow(10.0f, 7.74f * forceVariation / 20.0f);
+        // The same corpus strikes a muted string a median 4.6 dB under that
+        // string's own played attacks (Tools/MeasureMutedStrokes.py): the
+        // finger on it takes part of the pick's push.
+        if (voice.mutedStroke)
+            strumLevelGain *= 0.589f;
         // An upstroke enters the strings from the treble side and leaves the
         // bass strings lighter. Each string compared with itself on
         // GuitarSet's hex channels (Tools/MeasureStrumDirection.py, 180
@@ -7602,6 +7607,7 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.releaseDamping = 1.0f;
     voice.releaseSeconds = 0.0f;
     clearReleaseFall(voice);
+    voice.mutedStroke = false;
     voice.returnSamples = 0;
     for (auto& loop : voice.loops)
         loop.gestureContact = {};
@@ -8310,6 +8316,25 @@ void AcustraEngine::advanceReleaseFall(Voice& voice) noexcept
     for (auto& loop : voice.loops)
         loop.targetDelay = clamp(loop.configuredDelay + voice.releaseFallDelay,
             3.0f, static_cast<float>(activeDelaySamples() - 3));
+}
+
+// A finger lying on a string is a dashpot on it. GuitarSet's comping shows
+// how light that touch is (Tools/MeasureMutedStrokes.py): a string a stroke
+// crosses that the chord leaves out falls 20 dB in a median 125, 100, 75 and
+// 60 ms on the A, D, G and B, 13.8 to 14.8 periods of each open string, so
+// taken as exponential its T60 is 43 periods, 1.4 dB a period. Where the
+// finger lies is not measured, so no local contact is added: the loss is the
+// hand's scalar one, as a release's is. It holds from the moment the finger
+// lands (muteStroke), and once the pick has let the string go the string is
+// handed back to the open string after that T60 and the hand's 80 ms.
+void AcustraEngine::beginMutedStroke(Voice& voice) noexcept
+{
+    constexpr float mutedPeriods = 43.0f;
+    const float fundamental = loopFundamental(voice);
+    voice.releaseSeconds = mutedPeriods / fundamental;
+    voice.releaseDamping = handDamping(voice.releaseSeconds, fundamental);
+    voice.returnSamples = voice.attackFired ? static_cast<int>(
+        (voice.releaseSeconds + 0.08f) * static_cast<float>(sampleRate_)) : 0;
 }
 
 void AcustraEngine::clearReleaseFall(Voice& voice) noexcept
@@ -9516,6 +9541,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     if (!continuing)
         voice.noteDetuneCents = 0.0f;
     clearReleaseFall(voice);
+    voice.mutedStroke = false;
     configureVoice(voice, string, midiNote, !continuing);
     voice.onsetSample = sampleClock_;
     rememberFinger(string);
@@ -9968,6 +9994,12 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
     else
         bridgeDerivativesCrossRelease_ = true;
     configureVoice(voice, stringIndex, voice.midiNote, false);
+    if (voice.mutedStroke)
+    {
+        // The pluck's own release state is the finger's from the start.
+        beginMutedStroke(voice);
+        return;
+    }
     if (voice.releaseAfterPluck)
     {
         const bool immediate = voice.pedalReleasedBeforePluck;
@@ -10027,6 +10059,77 @@ int AcustraEngine::fingerChordOffsetSamples(int rankFromTop, int count) noexcept
     const float lagMs = (four ? fourStrings[rank] : threeStrings[rank])
         + jitterHalfWidthMs * xorshiftNoise(fingerChordRandomState_);
     return static_cast<int>(std::lround(0.001 * static_cast<double>(lagMs) * sampleRate_));
+}
+
+void AcustraEngine::muteStroke(int string, int delaySamples, float velocity,
+                               int midiChannel) noexcept
+{
+    if (!prepared_ || !performanceRealism_.mutedStrings
+        || string < 0 || string >= stringCount
+        || midiChannel < 1 || midiChannel > midiChannelCount
+        || !exact::isfinite(velocity) || velocity <= 0.0f)
+        return;
+    auto& voice = voices_[static_cast<std::size_t>(string)];
+    if (voice.keyDown || voice.pedalHeld || voice.pluckDelay != 0 || voice.repluckPending)
+        return;
+    // As startNote: what the string still carries goes on as a retained
+    // wave, and the finger's loss takes the string from here.
+    const bool retainedWave = voice.level > 2.0e-7f
+        || (voice.contactTravelEnabled && voice.contactTravel.active)
+        || voice.legatoContactTravel.active || voice.legatoContactSamples > 0
+        || voice.repluckArrivals.remaining > 0
+        || (voice.loops[0].gestureContact.active
+            && exact::abs(voice.loops[0].gestureContact.memory) > 1.0e-12f)
+        || (voice.loops[1].gestureContact.active
+            && exact::abs(voice.loops[1].gestureContact.memory) > 1.0e-12f);
+    if (retainedWave)
+        captureTail(voice);
+    for (auto& loop : voice.loops)
+        loop.gestureContact = {};
+    voice.legatoContactSamples = 0;
+    voice.legatoContactAmplitude = 0.0f;
+    voice.releaseJoinPending = false;
+    voice.releaseJoinRemainingBeats = 0.0;
+    voice.harmonic = 1;
+    voice.played = true;
+    voice.keyDown = false;
+    voice.pedalHeld = false;
+    voice.ownerCount = 0;
+    voice.midiChannel = midiChannel;
+    voice.mpeMember = isLowerZoneMember(midiChannel);
+    voice.memberPitchBendFrozen = false;
+    voice.frozenMemberPitchBendSemitones = 0.0f;
+    voice.startOrder = ++noteOrder_;
+    voice.velocity = clamp(velocity, 0.001f, 1.0f);
+    voice.attackPitchCents = 0.0f;
+    voice.attackPitchDecay = 1.0f;
+    voice.noteDetuneCents = 0.0f;
+    clearReleaseFall(voice);
+    configureVoice(voice, string, voice.openMidi, true);
+    voice.onsetSample = sampleClock_;
+    voice.strumming = true;
+    voice.pluckParallelSign = strumParallelSign_;
+    voice.pluckGesture = strumGesture_;
+    voice.repluckPending = false;
+    voice.attackFired = false;
+    voice.releaseAfterPluck = false;
+    voice.pedalHeldAtKeyUp = false;
+    voice.pedalReleasedBeforePluck = false;
+    voice.releaseVelocity = -1.0f;
+    voice.mutedStroke = true;
+    beginMutedStroke(voice);
+    // The pick reaches it at its place in the stroke, at the stroke's own
+    // speed draw, as noteOn times the chord's strings.
+    const int delay = std::max(0, static_cast<int>(std::round(static_cast<float>(
+        std::clamp(delaySamples, 0, static_cast<int>(10.0 * sampleRate_)))
+        * strumSpeedScale_)));
+    if (delay > 0)
+    {
+        voice.excitationEnvelope = 0.0f;
+        voice.pluckDelay = delay + 1;
+        return;
+    }
+    firePluck(voice, string);
 }
 
 void AcustraEngine::noteOff(int midiNote, int midiChannel) noexcept

@@ -363,7 +363,7 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.StrumDirection AcustraStrumDirectionTests)
     set_tests_properties(Acustra.StrumDirection PROPERTIES TIMEOUT 120)
 
-    foreach(suite StrokeDepth AlternatePicking ReleaseFall FingerChords)
+    foreach(suite StrokeDepth AlternatePicking ReleaseFall FingerChords MutedStrings)
         add_executable(Acustra${suite}Tests Tests/${suite}Tests.cpp)
         target_link_libraries(Acustra${suite}Tests PRIVATE AcustraDSP)
         target_compile_features(Acustra${suite}Tests PRIVATE cxx_std_20)

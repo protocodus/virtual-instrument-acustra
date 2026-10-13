@@ -29,6 +29,10 @@ struct PerformanceRealism
     // strings together instead of sweeping it
     // (AcustraEngine::fingerChordOffsetSamples).
     bool fingerChords { true };
+    // A strum crossing a string inside its span that the chord leaves out
+    // gives it a dead stroke under the fretting hand that mutes it
+    // (AcustraEngine::muteStroke).
+    bool mutedStrings { true };
 };
 
 } // namespace acustra

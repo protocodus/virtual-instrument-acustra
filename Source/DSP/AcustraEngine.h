@@ -288,6 +288,14 @@ public:
     // moves the earliest string onto the note-on. Each call draws that
     // finger's own timing, so call once per string.
     [[nodiscard]] int fingerChordOffsetSamples(int rankFromTop, int count) noexcept;
+    // A strum crossing a string inside its span that the chord leaves out:
+    // the fretting hand lies on that string to keep it quiet, so the pick
+    // gives it a dead stroke instead of passing through it. delaySamples is
+    // the string's place in the stroke, before the stroke's speed draw, as
+    // for the chord's own notes; call after their noteOns. A string a key or
+    // the pedal holds, or whose own pluck is still on its way, is left alone.
+    void muteStroke(int string, int delaySamples, float velocity,
+                    int midiChannel = 1) noexcept;
     // Whether noteOn() would sound this note at all in the current tuning
     // and channel mode, rather than drop it (outside the tuning's fretted
     // range, or off a string-per-channel string's frets).
@@ -1397,6 +1405,11 @@ private:
         float releaseFallDecay { 0.0f };
         int releaseFallPeriods { 0 };
         float releaseFallDelay { 0.0f };
+        // A strum's dead stroke on a string the fretting hand mutes
+        // (muteStroke): no key owns it, the finger already lies on it, and
+        // its pluck is damped from the moment it is released. A note on the
+        // string or its return to the open string clears it.
+        bool mutedStroke { false };
         // Samples until a released string is handed back to the allocator.
         int returnSamples { 0 };
         // Samples until a scheduled pluck is released; zero when none waits.
@@ -1706,6 +1719,7 @@ private:
     void beginReleaseFall(Voice& voice) noexcept;
     void advanceReleaseFall(Voice& voice) noexcept;
     void clearReleaseFall(Voice& voice) noexcept;
+    void beginMutedStroke(Voice& voice) noexcept;
     void beginGestureDamping(Voice& voice) noexcept;
     void updateReleaseJoinWindow(Voice& voice) noexcept;
     void processPendingRelease(Voice& voice, int stringIndex) noexcept;
