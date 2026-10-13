@@ -1,5 +1,8 @@
 # Acustra
 
+Version 1.3.4 build 2 names the CC2 playing gesture **Mute** in the editor's
+Picking tooltip and user guide, matching the Rack control. Its behavior is unchanged.
+
 Version 1.3.4 fixes common-tone chord strokes that could be lost when a new
 chord refingers inside the release-join window, and gives every damping
 contact its own string travel geometry while preserving earlier arrivals.

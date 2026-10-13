@@ -909,7 +909,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         1, "PICKING", acustra::parameters::picking,
         "Finger: balanced attack. Pick: crisp and bridgeward. "
         "Thumb: rounder and neckward. Touch adjusts the contact within each "
-        "technique. MIDI: CC2 bridge-hand damping.", 3);
+        "technique. MIDI: CC2 Mute (picking-hand damping).", 3);
     configureSetupChoice (
         2, "CAPTURE", acustra::parameters::captureMode,
         "Stereo body microphones, one mono body microphone, or "

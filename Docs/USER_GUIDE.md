@@ -182,7 +182,7 @@ is.
 - **Pitch bend**: a slide, the fretting hand moving along the neck. The
   range is 2 semitones unless the controller sets another (RPN 0, up to
   96).
-- **CC2**: the picking hand resting by the saddle, damping and darkening
+- **Mute (CC2)**: the picking hand resting by the saddle, damping and darkening
   the strings as pressure rises. PANIC and Reset All Controllers leave it
   where it is, so a controller left at full pressure keeps the strings
   muted until it moves.
@@ -203,7 +203,7 @@ whichever channel sends them.
 | Notes 24-26 | Strum-direction keyswitches: C0, C#0, D0 as the panel names them (C1-D1 with middle C as C4) |
 | Pitch bend | Slide; 2 semitones by default (RPN 0 sets 0-96) |
 | CC1 | Vibrato |
-| CC2 | Picking-hand damping at the saddle |
+| CC2 | Mute: picking-hand damping at the saddle |
 | CC64 | Sustain pedal, per channel |
 | CC65 + CC84 | Slur the held note to the next Note On |
 | CC74 | MPE member channels: that note's pluck position |

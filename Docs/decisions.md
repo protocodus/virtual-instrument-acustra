@@ -5,6 +5,14 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-13 — name the damping gesture Mute
+
+The user requested the simpler **Mute** label for Bridge Hand. The desktop
+instrument exposes this playing gesture through CC2, so its Picking tooltip
+and current user-guide controller labels now use Mute. No parameter ID,
+controller mapping, DSP source or sound behavior changes. This ships as
+version 1.3.4 build 2; the Rack panel receives the corresponding caption.
+
 ## 2026-10-13 — retain chord strokes, separate release contacts, offer piezo polarity
 
 The audible-opportunities investigation identified two state defects rather
