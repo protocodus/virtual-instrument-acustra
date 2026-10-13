@@ -51,6 +51,7 @@ private:
 
     void timerCallback() override;
     void updateConstructionControls();
+    void updateViewVisibility();
     void configureSetupChoice (std::size_t index, const juce::String& name,
                                const char* parameterId,
                                const juce::String& description, int columns = 2);
@@ -70,6 +71,12 @@ private:
     juce::Label titleLabel;
     juce::Label subtitleLabel;
     juce::Label statusLabel;
+    juce::TextButton backButton { "BACK" };
+    juce::TextButton piezoPolarityButton { "INVERT" };
+    juce::Label piezoPolarityStatus;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
+        piezoPolarityAttachment;
+    bool rearView { false };
     juce::TextButton panicButton { "PANIC" };
     juce::TextButton sustainButton { "SUSTAIN" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>

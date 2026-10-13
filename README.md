@@ -1,5 +1,14 @@
 # Acustra
 
+Version 1.3.4 fixes common-tone chord strokes that could be lost when a new
+chord refingers inside the release-join window, and gives every damping
+contact its own string travel geometry while preserving earlier arrivals.
+Open **Back** for the new **Invert Piezo Blend** switch and Normal/Inverted
+indicator. It reverses only the pickup mixed under microphone Capture;
+Piezo-only Capture and the separate Piezo output retain their polarity.
+Normal is the default, including for older sessions. Switching glides smoothly.
+
+
 [![Acustra editor](Docs/screenshots/acustra-standalone.png)](Docs/screenshots/acustra-standalone.png)
 
 Acustra is an acoustic-guitar instrument for VST®3, Audio Unit and Standalone
@@ -220,7 +229,7 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
 locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
-it with the project version (currently `1.3.3`) and the source revision. Changing that identity rebuilds
+it with the project version (currently `1.3.4`) and the source revision. Changing that identity rebuilds
 the wrappers; each linked format receives its frozen identity record (the
 editor reads its version and build number from it), and macOS
 bundles embed the build number. Packaging rejects a cache

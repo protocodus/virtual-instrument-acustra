@@ -4070,6 +4070,7 @@ void AcustraEngine::reset() noexcept
     width_ = parameters_.stereoWidth;
     outputGain_ = parameters_.outputGain;
     piezoMix_ = parameters_.piezoMix;
+    piezoBlendPolarity_ = parameters_.piezoPolarityInverted ? -1.0f : 1.0f;
     roomAmount_ = parameters_.room;
     roomSendFor_ = -1.0f;
     outputReference_ = outputReferenceFor(parameters_);
@@ -7916,6 +7917,10 @@ void AcustraEngine::retainRepluckArrivals(Voice& voice) noexcept
 
 void AcustraEngine::captureTail(Voice& voice) noexcept
 {
+    // Fractional release responses are already emitted string packets too.
+    // Freeze their remaining arrival times before moving the old string into
+    // its retained branch; fresh contacts then start with their own section.
+    drainReleaseNoiseTravel(voice);
     // The retained wave overlaps the newly released pluck as a second virtual
     // string state. Its nominal 10 ms post-release T60 is provisional.
     // Laurson, Erkut, Valimaki and Kuuskankare (CMJ 25(3), 2001,
@@ -9115,11 +9120,18 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
     lastNoteOnSample_[channelIndex] = sampleClock_;
     noteOnSeen_[channelIndex] = true;
 
+    // A new chord can refinger a common tone to leave its old string for
+    // another member. Joining on that old string would discard the plan,
+    // then let the later member steal this newly held note. Keep ordinary
+    // same-string joins; a changed planned placement uses the caught-tail
+    // refret below, preserving the old wave while the new string is plucked.
+    const int sameSamplePlannedString = plannedString(midiNote, midiChannel);
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
         processPendingRelease(voice, string);
-        if (voice.played && !voice.keyDown && voice.midiNote == midiNote
+        if ((sameSamplePlannedString < 0 || sameSamplePlannedString == string)
+            && voice.played && !voice.keyDown && voice.midiNote == midiNote
             && voice.midiChannel == midiChannel
             && (voice.releaseJoinPending || voice.releaseAfterPluck))
         {
@@ -10325,6 +10337,55 @@ std::array<float, 2> AcustraEngine::ContactTravel::process(float source) noexcep
     return result;
 }
 
+bool AcustraEngine::ContactTravel::fractionalQuiet(double bound) const noexcept
+{
+    if (historyRemaining != 0)
+        return false;
+    for (const auto& tap : taps)
+        if (!(exact::abs(tap.y1) <= bound && exact::abs(tap.y2) <= bound))
+            return false;
+    return true;
+}
+
+std::array<float, 2> AcustraEngine::ContactTravel::processFractional(float source) noexcept
+{
+    if (source != 0.0f)
+    {
+        active = true;
+        historyRemaining = 3;
+    }
+    if (!active)
+        return {};
+    const auto at = [&] (int lag)
+    {
+        return static_cast<double>(history[static_cast<std::size_t>(
+            wrapDelayIndex(writeIndex - lag))]);
+    };
+    const double x1 = at(1), x2 = at(2);
+    history[static_cast<std::size_t>(writeIndex)] = source;
+    std::array<float, 2> result {};
+    for (std::size_t i = 0; i < taps.size(); ++i)
+    {
+        auto& tap = taps[i];
+        double value = source;
+        if (tap.order == 2)
+            value = tap.a2 * value + tap.a1 * x1 + x2
+                - tap.a1 * tap.y1 - tap.a2 * tap.y2;
+        else if (tap.order == 1)
+            value = tap.a1 * value + x1 - tap.a1 * tap.y1;
+        tap.y2 = tap.y1;
+        tap.y1 = value;
+        result[i] = static_cast<float>(value);
+    }
+    writeIndex = (writeIndex + 1) % maximumDelaySamples;
+    if (historyRemaining > 0)
+        --historyRemaining;
+    constexpr double silent = 0.25 * std::numeric_limits<float>::denorm_min();
+    if (fractionalQuiet(silent))
+        active = false;
+    return result;
+}
+
 // The key-up's own sound (EngineParameters::releaseNoise). Lifting a key is
 // the hand damping the string, and a hand does not damp a vibrating string
 // silently: skin lands on a string still moving under it, and the friction
@@ -10362,6 +10423,8 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
     const float period = rate / fundamental;
     if (!(period > 1.0f))
         return;
+    // Keep the earlier contact's attributes while freezing its residue.
+    drainReleaseNoiseTravel(voice);
     auto& state = voice.releaseNoiseState;
     const auto draw = [&state] { return xorshiftNoise(state); };
     const float rv = voice.releaseVelocity;
@@ -10506,9 +10569,47 @@ void AcustraEngine::startReleaseNoise(Voice& voice, int stringIndex,
     // with the pad's slip across it the parallel share.
     voice.releaseNoiseNormal = 0.8660254f;
     voice.releaseNoiseParallel = 0.5f;
-    if (!voice.releaseNoiseTravel.active)
-        voice.releaseNoiseTravel.reset(0.5f * position * period,
-                                       (1.0f - 0.5f * position) * period);
+    // An earlier contact's emitted packets keep their old flight times.
+    // Drain its small fractional-filter residue before adopting this new
+    // contact; the already queued integer-delay packets are never reset.
+    voice.releaseNoiseTravel.reset(0.5f * position * period,
+                                   (1.0f - 0.5f * position) * period);
+}
+
+void AcustraEngine::queueReleaseNoisePaths(Voice& voice,
+    const std::array<float, 2>& paths, int offset) noexcept
+{
+    for (std::size_t i = 0; i < paths.size(); ++i)
+    {
+        const float local = i == 0 ? paths[i] : -paths[i];
+        if (exact::abs(local) < 1.0e-30f)
+            continue;
+        voice.repluckArrivals.add(offset + voice.releaseNoiseTravel.taps[i].whole,
+            voice.releaseNoiseNormal * local, voice.releaseNoiseParallel * local);
+    }
+}
+
+int AcustraEngine::drainReleaseNoiseTravel(Voice& voice) noexcept
+{
+    auto& travel = voice.releaseNoiseTravel;
+    // Release geometry has period >1 and position >=.02: its shortest
+    // first-order path is >.01 samples (|pole| <.98021); second-order residuals
+    // lie in [1.1,2.1), with absolute feedback sum <.875. The input/state
+    // bound is (1+|pole|)/(1-|pole|)*FLT_MAX < 3.5e40 for first order.
+    // .98021^8192*3.5e40 < 3e-31; the second-order pair bound is smaller.
+    // 8192 zero samples therefore drain finite float-range inputs below the
+    // existing 1e-30 waveguide floor. No integer-delay history is scanned.
+    constexpr int maximumDrain = 8192;
+    constexpr double waveguideFloor = 1.0e-30;
+    int samples = 0;
+    while (travel.active && samples < maximumDrain)
+    {
+        const auto paths = travel.processFractional(0.0f);
+        queueReleaseNoisePaths(voice, paths, samples++);
+        if (travel.fractionalQuiet(waveguideFloor))
+            travel.active = false;
+    }
+    return samples;
 }
 
 void AcustraEngine::primeFretMotion(Voice& voice) noexcept
@@ -10677,17 +10778,15 @@ float AcustraEngine::renderReleaseNoise(Voice& voice) noexcept
 }
 
 ACUSTRA_NOINLINE void AcustraEngine::addReleaseNoise(
-    Voice& voice, float& verticalIncident, float& horizontalIncident) noexcept
+    Voice& voice) noexcept
 {
     const float noise = renderReleaseNoise(voice);
     if (voice.releaseNoiseTravel.active || noise != 0.0f)
     {
-        const auto paths = voice.releaseNoiseTravel.process(noise);
-        const float local = paths[0] - paths[1];
-        verticalIncident += voice.releaseNoiseNormal * local
-            * voice.loops[0].appliedReleaseGain;
-        horizontalIncident += voice.releaseNoiseParallel * local
-            * voice.loops[1].appliedReleaseGain;
+        // Frozen Thiran and integer delay commute. Fractional filtering
+        // here preserves the original response; whole flight times belong
+        // to the queued packets, independent of later contact geometry.
+        queueReleaseNoisePaths(voice, voice.releaseNoiseTravel.processFractional(noise));
     }
 }
 
@@ -11662,6 +11761,8 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         width_ = glide(width_, targetParameters_.stereoWidth);
         outputGain_ = glide(outputGain_, targetParameters_.outputGain);
         piezoMix_ = glide(piezoMix_, clamp(targetParameters_.piezoMix, 0.0f, 1.0f));
+        piezoBlendPolarity_ = glide(piezoBlendPolarity_,
+            targetParameters_.piezoPolarityInverted ? -1.0f : 1.0f);
 
         std::array<float, stringCount> verticalIncident {};
         std::array<float, stringCount> horizontalIncident {};
@@ -11749,9 +11850,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                     += local * voice.loops[0].appliedReleaseGain;
             }
             if (voice.releaseNoiseSamples > 0 || voice.releaseNoiseTravel.active)
-                addReleaseNoise(voice,
-                    verticalIncident[static_cast<std::size_t>(string)],
-                    horizontalIncident[static_cast<std::size_t>(string)]);
+                addReleaseNoise(voice);
             renderFretMotion(voice, string);
             if (voice.repluckArrivals.remaining > 0)
             {
@@ -12181,8 +12280,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // as Capture moves onto the piezo itself, which is then all of Main.
         if (piezoMix_ != 0.0f)
         {
-            const float blended = piezoMix_ * (1.0f - captureMix_[6])
+            float blended = piezoMix_ * (1.0f - captureMix_[6])
                 * radiationReferenceGain * outputGain_ * loadedPiezo;
+            // Keep the established normal path exact; fade the pickup's
+            // sign through zero when switched while notes are ringing.
+            if (piezoBlendPolarity_ != 1.0f)
+                blended *= piezoBlendPolarity_;
             outputLeft += blended;
             outputRight += blended;
         }

@@ -128,6 +128,9 @@ struct EngineParameters
     // microphones. With Capture on Piezo the piezo is already all of Main,
     // so it adds nothing there.
     float piezoMix { 0.0f };
+    // Reverse only the piezo blended beneath microphone Capture. The
+    // dedicated Piezo bus and Piezo-only Capture retain their polarity.
+    bool piezoPolarityInverted { false };
     // Finger handling sound, 0 none to 1 twice the nominal level: the
     // damping finger or palm landing on the still-vibrating string, launched
     // into it from where it touches, and a faint brush of skin on a wound
@@ -1034,6 +1037,11 @@ private:
         bool active { false };
         void reset(float directDelay, float nutDelay) noexcept;
         std::array<float, 2> process(float source) noexcept;
+        // Fractional sections ahead of the integer flight time. Release
+        // packets are then queued with immutable arrival times, so the next
+        // contact can adopt its own geometry without moving older packets.
+        std::array<float, 2> processFractional(float source) noexcept;
+        bool fractionalQuiet(double bound) const noexcept;
     };
 
     // Everything configureVoice's result depends on, reduced to what it is
@@ -1799,11 +1807,14 @@ private:
     // damping contact.
     void startReleaseNoise(Voice& voice, int stringIndex,
                            bool fretSide) noexcept;
+    void queueReleaseNoisePaths(Voice& voice,
+                               const std::array<float, 2>& paths,
+                               int offset = 0) noexcept;
+    int drainReleaseNoiseTravel(Voice& voice) noexcept;
     static void primeFretMotion(Voice& voice) noexcept;
     void renderFretMotion(Voice& voice, int stringIndex) noexcept;
     float renderReleaseNoise(Voice& voice) noexcept;
-    void addReleaseNoise(Voice& voice, float& verticalIncident,
-                         float& horizontalIncident) noexcept;
+    void addReleaseNoise(Voice& voice) noexcept;
     void finishVoice(Voice& voice, int stringIndex, float verticalIncident,
                      float horizontalIncident, float excitation,
                      float tailIncident, float tailParallelIncident,
@@ -1987,6 +1998,7 @@ private:
     float width_ { 0.62f };
     float outputGain_ { 0.42f };
     float piezoMix_ { 0.0f };
+    float piezoBlendPolarity_ { 1.0f };
     // A small room's sound at the microphones (EngineParameters::room): its
     // early reflections from a tapped line and its late field from an
     // eight-line feedback delay network, run at the host rate divided by the

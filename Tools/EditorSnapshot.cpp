@@ -17,9 +17,9 @@
 
 int main(int argc, char** argv)
 {
-    if (argc < 2 || argc > 3)
+    if (argc < 2 || argc > 4)
     {
-        std::fprintf(stderr, "usage: AcustraEditorSnapshot OUTPUT.png [WIDTH]\n");
+        std::fprintf(stderr, "usage: AcustraEditorSnapshot OUTPUT.png [WIDTH] [rear|inverted]\n");
         return 2;
     }
     juce::ScopedJuceInitialiser_GUI gui;
@@ -31,11 +31,24 @@ int main(int argc, char** argv)
         std::fprintf(stderr, "the processor has no editor\n");
         return 1;
     }
-    const int width = argc == 3 ? juce::String(argv[2]).getIntValue() : 1120;
+    const int width = argc >= 3 ? juce::String(argv[2]).getIntValue() : 1120;
     if (width > 0)
         editor->setSize(width, juce::roundToInt(
             static_cast<float>(width) * static_cast<float>(editor->getHeight())
             / static_cast<float>(editor->getWidth())));
+    if (argc == 4)
+    {
+        if (juce::String(argv[3]) == "inverted")
+            processor->parameters.getParameter(acustra::parameters::piezoPolarityInverted)
+                ->setValueNotifyingHost(1.0f);
+        for (auto* child : editor->getChildren())
+            if (auto* button = dynamic_cast<juce::TextButton*>(child);
+                button != nullptr && button->getName() == "Back settings")
+            {
+                button->setToggleState(true, juce::dontSendNotification);
+                button->onClick();
+            }
+    }
     // The status line and construction switches follow the editor's timer.
     juce::Timer::callPendingTimersSynchronously();
     const auto image = editor->createComponentSnapshot(editor->getLocalBounds(), false, 1.0f);
