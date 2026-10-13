@@ -5695,7 +5695,7 @@ float AcustraEngine::coupledPolarisationDetune(
         for (int other = 0; other < stringCount; ++other) {
             if (other == stringIndex) continue;
             const auto& model = references[static_cast<std::size_t>(other)];
-            const double impedance = model.impedance;
+            const double otherImpedance = model.impedance;
             // Both resting planes share the same immutable loop model.
             // Compute that transfer once, then retain the original normal
             // followed by parallel addition order in the junction load.
@@ -5718,7 +5718,7 @@ float AcustraEngine::coupledPolarisationDetune(
                 * (double(1.0f - model.constantGain) + double(model.constantN2 - model.constantA2) * z)
                 / (1.0 + double(model.constantA1) * z + double(model.constantA2) * zz);
             if (std::abs(1.0 - feedback) < 1.0e-9) continue;
-            const Complex load = impedance * (1.0 + feedback) / (1.0 - feedback);
+            const Complex load = otherImpedance * (1.0 + feedback) / (1.0 - feedback);
             const double u = saddleLeverArm(other);
             g00 += load;
             g01 += load * u;
