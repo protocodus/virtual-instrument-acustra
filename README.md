@@ -7,7 +7,7 @@ With a pick, single notes alternate down and up as a plectrum does, one hand
 with the strums. A released fretted note falls toward the fret below while
 the hand damps it, as the lifting fingertip becomes the string's end.
 Downstrokes, Finger and Thumb notes, open strings and held notes sound as
-before; nobody has listened yet. See
+before. In a blind A/B pass the user preferred it to the previous engine. See
 [the measurements, tests and A/B pack](Docs/stroke-release-realism-2026-10-13.md).
 
 Version 1.3.4 build 2 names the CC2 playing gesture **Mute** in the editor's
@@ -2465,7 +2465,8 @@ Dated evidence is retained so the earlier decisions remain traceable.
   isolation it radiates 2.1-3.8 dB more than a downstroke on the G, B and
   high E (up to 5.7 on one note) and 0.6-1.0 dB less on the low E and A.
   No measurement here says whether a real plectrum's upstroke differs that
-  much; `PerformanceRealism::alternatePicking` off restores downstrokes.
+  much, though the user's blind A/B preference for the candidate included
+  it; `PerformanceRealism::alternatePicking` off restores downstrokes.
 - The release fall's one-semitone asymptote and quarter-T60 time constant
   are sized by the fret geometry inside Roland's qualitative account, not a
   measured trajectory; during the fall the string keeps the fretted note's
@@ -3309,7 +3310,8 @@ packages are built and signed.
 - **Coverage.** New `StrokeDepth`, `AlternatePicking` and `ReleaseFall`
   suites; `Tools/BuildStrokeReleaseReview.py` builds the blind A/B pack and
   checks that the three switches off reproduce 1.3.4 bit for bit. No
-  parameter, saved state or layout changes. Nobody has listened yet.
+  parameter, saved state or layout changes. The user preferred the
+  candidate in the blind A/B pack.
 
 ### 1.3.3 — 2026-10-12 — launch preparation: packages, notices, Standalone MIDI, editor size
 

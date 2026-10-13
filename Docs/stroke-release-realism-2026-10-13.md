@@ -15,7 +15,8 @@ Each is on by default and has an offline switch in `PerformanceRealism`
 (`strokeDepth`, `alternatePicking`, `releasePitchFall`), the existing
 ablation struct that is neither a saved parameter nor a panel control. All
 three off renders bit for bit the previous engine (below). Nothing here was
-chosen by ear, and nobody has listened yet: the A/B pack is for that.
+chosen by ear; the user then listened to the blind A/B pack and preferred
+the candidate (below).
 
 ## Candidates considered
 
@@ -267,6 +268,16 @@ note; `probes/UpDown.cpp`). Whether a real plectrum's upstroke differs this
 much is the question this pair puts to the ear: nothing measured here
 settles it, and switching `alternatePicking` off restores the downstrokes.
 
+### Listening
+
+The user listened to the pack blind, on a page that kept the key away, and
+then judged the candidate better: an overall verdict, not one per pair.
+The builder's draw, seeded with the candidate executable's hash, put the
+candidate on A in pairs 1 to 4 (replaying it gives A, A, A, A, B; a fair
+draw does that one time in sixteen), so the verdict cannot exclude a
+preference for the first file or for A. The playback chain was not
+recorded. All three changes ship on, pair 2's upstroke level included.
+
 ## CPU
 
 Paired callback timing on one build, the switches on against off (the
@@ -304,5 +315,6 @@ that never stopped, +16% and +15%.
   quarter-T60 time constant are authored inside the patent's description.
   During the fall the dispersion and bridge compensation are the fretted
   note's.
-- Nobody has listened. Nothing in this pass is a listening verdict, and the
-  measurements describe what changed, not whether it sounds better.
+- One listener's overall preference, with the candidate always on A, is
+  the only listening evidence; the measurements describe what changed,
+  not whether it sounds better.

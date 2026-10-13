@@ -46,9 +46,13 @@ Rejected candidates and why are in [the report](stroke-release-realism-2026-10-1
 Each has an offline `PerformanceRealism` switch; all three off reproduce the
 previous engine bit for bit on every review score. New `StrokeDepth`,
 `AlternatePicking` and `ReleaseFall` suites; `StrumDirection`'s exact
-return-stroke check now runs with the depth off. The blind A/B pack
-(`Tools/BuildStrokeReleaseReview.py`) awaits the user's ears: nothing here
-was chosen by ear, and no listening verdict is recorded. Version 1.4.0.
+return-stroke check now runs with the depth off. Nothing was chosen by
+ear. The user listened to the blind A/B pack
+(`Tools/BuildStrokeReleaseReview.py`) and judged the candidate better, so
+all three ship on, the upstroke level difference included. That is one
+listener's overall verdict, not per pair, and the seeded draw put the
+candidate on A in all four test pairs, so it cannot exclude a preference
+for A. Version 1.4.0.
 
 ## 2026-10-13 — name the damping gesture Mute
 
