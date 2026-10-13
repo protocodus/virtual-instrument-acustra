@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.3.3 LANGUAGES C CXX)
+project(Acustra VERSION 1.3.4 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -334,6 +334,18 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.Engine AcustraEngineTests)
     set_tests_properties(Acustra.Engine PROPERTIES TIMEOUT 600)
 
+    add_executable(AcustraChorusRegressionTests Tests/ChorusRegressionTests.cpp)
+    target_link_libraries(AcustraChorusRegressionTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraChorusRegressionTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.ChorusRegression AcustraChorusRegressionTests)
+    set_tests_properties(Acustra.ChorusRegression PROPERTIES TIMEOUT 90)
+
+    add_executable(AcustraModalTuningTests Tests/ModalTuningTests.cpp)
+    target_link_libraries(AcustraModalTuningTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraModalTuningTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.ModalTuning AcustraModalTuningTests)
+    set_tests_properties(Acustra.ModalTuning PROPERTIES TIMEOUT 180)
+
     add_executable(AcustraReleaseJoinTests Tests/ReleaseJoinTests.cpp)
     target_link_libraries(AcustraReleaseJoinTests PRIVATE AcustraDSP)
     target_compile_features(AcustraReleaseJoinTests PRIVATE cxx_std_20)
@@ -428,6 +440,21 @@ if(BUILD_TESTING)
     endif()
     acustra_add_suite(Acustra.OutputBuses AcustraOutputBusTests)
     set_tests_properties(Acustra.OutputBuses PROPERTIES TIMEOUT 600)
+
+    add_executable(AcustraPiezoPolarityTests Tests/PiezoPolarityTests.cpp)
+    target_link_libraries(AcustraPiezoPolarityTests PRIVATE AcustraDSP)
+    acustra_add_suite(Acustra.PiezoPolarity AcustraPiezoPolarityTests)
+    set_tests_properties(Acustra.PiezoPolarity PROPERTIES TIMEOUT 90)
+
+    add_executable(AcustraChordJoinPlanTests Tests/ChordJoinPlanTests.cpp)
+    target_link_libraries(AcustraChordJoinPlanTests PRIVATE AcustraDSP)
+    acustra_add_suite(Acustra.ChordJoinPlan AcustraChordJoinPlanTests)
+    set_tests_properties(Acustra.ChordJoinPlan PROPERTIES TIMEOUT 60)
+
+    add_executable(AcustraReleaseGeometryTests Tests/ReleaseGeometryTests.cpp)
+    target_link_libraries(AcustraReleaseGeometryTests PRIVATE AcustraDSP)
+    acustra_add_suite(Acustra.ReleaseGeometry AcustraReleaseGeometryTests)
+    set_tests_properties(Acustra.ReleaseGeometry PROPERTIES TIMEOUT 120)
 
     add_executable(AcustraCaptureTests Tests/CaptureTests.cpp)
     target_link_libraries(AcustraCaptureTests PRIVATE AcustraDSP)

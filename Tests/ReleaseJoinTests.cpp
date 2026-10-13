@@ -404,7 +404,7 @@ Stereo queuedPedalStroke(double rate, int releaseVelocity, bool pedalUpBeforePic
     expect(v.attackFired && v.lastPluckSample == static_cast<std::uint64_t>(pickAt)
                && !v.keyDown && v.ownerCount == 0 && !v.pedalHeld
                && !v.releaseAfterPluck && !v.pedalReleasedBeforePluck
-               && !v.releaseJoinPending && v.releaseSeconds == 0.16f
+               && !v.releaseJoinPending && v.releaseSeconds == 0.32f
                && v.releaseVelocity == -1.0f && v.returnSamples > 0
                && v.releaseNoiseSamples > 0,
            "queued pedal-up did not start the nominal immediate damping contact" + at);

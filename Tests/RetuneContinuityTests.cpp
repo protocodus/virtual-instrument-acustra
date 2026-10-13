@@ -20,6 +20,141 @@ struct AcustraEngineTestAccess {
     static bool sameBits(const Coefficients& a, const Coefficients& b) {
         return std::memcmp(a.data(), b.data(), sizeof(float) * a.size()) == 0;
     }
+    static bool delayProgressContract() {
+        for (const double rate : {44100.0, 48000.0, 96000.0})
+        for (const bool rising : {false, true}) {
+            auto loop = std::make_unique<AcustraEngine::StringLoop>();
+            const float target = 461.204224f;
+            float initial = target;
+            for (int n = 0; n < 92; ++n)
+                initial = std::nextafter(initial, rising ? 0.0f : 1000.0f);
+            const float smoothing = static_cast<float>(1.0 - std::exp(-1.0 / (.006 * rate)));
+            loop->currentDelay = initial;
+            loop->targetDelay = target;
+            loop->reset();
+            const double remaining = double(initial) - target;
+            const float ulp = std::nextafter(target, 1000.0f) - target;
+            // This is a normal 6ms move whose initial step is already below
+            // half a float ULP. It must follow the exponential, not snap all
+            // 92 ULPs immediately merely because a float += step would stall.
+            for (int sample = 1; sample <= static_cast<int>(.06 * rate); ++sample) {
+                loop->advance(smoothing, 1.0f);
+                const double residual = remaining * std::pow(1.0 - double(smoothing), sample);
+                const float expected = std::abs(residual) < 1.0e-4 ? target
+                    : static_cast<float>(double(target) + residual);
+                if (std::abs(loop->currentDelay - expected) > ulp
+                    || loop->currentDelay < std::min(initial, target)
+                    || loop->currentDelay > std::max(initial, target)) return false;
+            }
+            if (loop->currentDelay != target) return false;
+            // Target reversal retains the unrounded progress. A copied
+            // ringing string must take the same trajectory and line reads.
+            loop->targetDelay = initial;
+            for (int n = 0; n < 31; ++n) loop->advance(smoothing, 1.0f);
+            loop->targetDelay = target;
+            auto copied = std::make_unique<AcustraEngine::StringLoop>(*loop);
+            for (int n = 0; n < 127; ++n) {
+                if (loop->advance(smoothing, 1.0f) != copied->advance(smoothing, 1.0f)
+                    || std::memcmp(loop.get(), copied.get(), sizeof(*loop)) != 0) return false;
+            }
+            // An explicit prescription starts from the prescribed value,
+            // including the two-sample geometry handover of dispersion.
+            loop->currentDelay = 121.5f;
+            loop->targetDelay = 120.75f;
+            loop->advance(smoothing, 1.0f);
+            const float prescribed = static_cast<float>(121.5
+                + double(smoothing) * (120.75 - 121.5));
+            if (loop->currentDelay != prescribed) return false;
+            loop->currentDelay = initial;
+            loop->targetDelay = target;
+            loop->reset();
+            loop->advance(smoothing, 1.0f);
+            const float resetExpected = static_cast<float>(double(initial)
+                + double(smoothing) * (double(target) - initial));
+            if (loop->currentDelay != resetExpected) return false;
+            loop->switchSecondDispersion(true);
+            loop->targetDelay -= 2.0f;
+            const float switched = loop->currentDelay;
+            loop->advance(smoothing, 1.0f);
+            const float switchExpected = static_cast<float>(double(switched)
+                + double(smoothing) * (double(loop->targetDelay) - switched));
+            if (loop->currentDelay != switchExpected) return false;
+            loop->switchSecondDispersion(false);
+            loop->targetDelay += 2.0f;
+            const float switchedBack = loop->currentDelay;
+            loop->advance(smoothing, 1.0f);
+            const float returnExpected = static_cast<float>(double(switchedBack)
+                + double(smoothing) * (double(loop->targetDelay) - switchedBack));
+            if (loop->currentDelay != returnExpected) return false;
+        }
+        // At long supported delays the float ULP exceeds the final 1e-4
+        // threshold. A hard prescription may therefore write the SAME bits
+        // while the hidden exponential still has legitimate work left.
+        auto longDelay = std::make_unique<AcustraEngine::StringLoop>();
+        longDelay->currentDelay = longDelay->targetDelay = 4096.0f;
+        longDelay->reset();
+        longDelay->delayProgress = 4096.0002;
+        const auto publishedBits = longDelay->delayProgressBits;
+        longDelay->setCurrentDelay(longDelay->targetDelay);
+        if (longDelay->currentDelay != 4096.0f || longDelay->delayProgress != 4096.0
+            || longDelay->delayProgressBits != publishedBits) return false;
+        longDelay->targetDelay = 4095.0f;
+        constexpr float smoothing = .003f;
+        longDelay->advance(smoothing, 1.0f);
+        const double prescribedProgress = 4096.0 + double(smoothing) * (4095.0 - 4096.0);
+        if (longDelay->delayProgress != prescribedProgress
+            || longDelay->currentDelay != static_cast<float>(prescribedProgress)) return false;
+        return true;
+    }
+    static bool gainProgressContract() {
+        for (const bool rising : {false, true}) {
+            auto loop = std::make_unique<AcustraEngine::StringLoop>();
+            loop->currentDelay = loop->targetDelay = 461.25f;
+            const float initial = 0.992213070393f;
+            float target = initial;
+            for (int ulp = 0; ulp < 48; ++ulp)
+                target = std::nextafter(target, rising ? 1.0f : 0.0f);
+            loop->setLoopGain(initial, false);
+            loop->reset();
+            loop->setLoopGain(target, true);
+            if (loop->loopGainTransitionSamples != 462) return false;
+            const float step = loop->loopGainStep;
+            loop->setLoopGain(target, true);
+            loop->setLoopGain(target, false);
+            if (loop->loopGain != initial || loop->loopGainTransitionSamples != 462
+                || std::memcmp(&step, &loop->loopGainStep, sizeof(float)) != 0) return false;
+            // Each requested sample step is below half an ULP. Rounded +=step
+            // must not stall the gain until one whole endpoint jump.
+            for (int sample = 0; sample < 231; ++sample) loop->advance(0.0f, 1.0f);
+            const float midpoint = static_cast<float>(0.5 * (double(initial) + double(target)));
+            const float ulp = std::nextafter(midpoint, 1.0f) - midpoint;
+            if (std::abs(loop->loopGain - midpoint) > ulp
+                || loop->loopGain < std::min(initial, target)
+                || loop->loopGain > std::max(initial, target)) return false;
+            const float before = loop->loopGain;
+            float reversed = initial;
+            for (int count = 0; count < 24; ++count)
+                reversed = std::nextafter(reversed, rising ? 0.0f : 1.0f);
+            const int remaining = loop->loopGainTransitionSamples;
+            loop->setLoopGain(reversed, false);
+            if (loop->loopGain != before || loop->loopGainTransitionSamples != remaining) return false;
+            auto forced = std::make_unique<AcustraEngine::StringLoop>(*loop);
+            for (int sample = 0; sample < remaining; ++sample) {
+                forced->setLoopGain(reversed, false);
+                loop->advance(0.0f, 1.0f); forced->advance(0.0f, 1.0f);
+                if (std::memcmp(loop.get(), forced.get(), sizeof(*loop)) != 0
+                    || loop->loopGain < std::min(before, reversed)
+                    || loop->loopGain > std::max(before, reversed)) return false;
+            }
+            if (loop->loopGain != reversed || loop->loopGainTransitionSamples != 0) return false;
+            loop->setLoopGain(initial, true);
+            loop->advance(0.0f, 1.0f);
+            loop->reset();
+            if (loop->loopGain != initial || loop->targetLoopGain != initial
+                || loop->loopGainTransitionSamples != 0 || loop->loopGainStep != 0.0f) return false;
+        }
+        return true;
+    }
     // Every section inside its stability triangle, and both loss sections'
     // unit gain at DC, g = 1 + a1 + a2 for the bending section and
     // g + n1 + n2 = 1 + a1 + a2 for the constant-loss one, which a linear
@@ -126,6 +261,8 @@ struct AcustraEngineTestAccess {
 int main() {
     using Engine=acustra::AcustraEngine;
     using Access=acustra::AcustraEngineTestAccess;
+    if(!Access::delayProgressContract()) {std::cerr<<"FAIL: sub-ULP delay progress/copy/reset/prescription contract\n";return 1;}
+    if(!Access::gainProgressContract()) {std::cerr<<"FAIL: sub-ULP feedback gain progress/copy/reset/deadline contract\n";return 1;}
     if(!Access::transitionContract()) {std::cerr<<"FAIL: intrinsic filter transition endpoint/deadline/stability contract\n";return 1;}
     for(double rate:{44100.0,48000.0,96000.0})
     for(bool enabled:{false,true}) {

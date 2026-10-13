@@ -14,6 +14,7 @@
 #include <complex>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 // Capacity of the measured banks: the largest bank a construction plays.
 // That is the steel blend (SteelBodyBlend.h), g21's 132 radiation modes and
@@ -127,6 +128,9 @@ struct EngineParameters
     // microphones. With Capture on Piezo the piezo is already all of Main,
     // so it adds nothing there.
     float piezoMix { 0.0f };
+    // Reverse only the piezo blended beneath microphone Capture. The
+    // dedicated Piezo bus and Piezo-only Capture retain their polarity.
+    bool piezoPolarityInverted { false };
     // Finger handling sound, 0 none to 1 twice the nominal level: the
     // damping finger or palm landing on the still-vibrating string, launched
     // into it from where it touches, and a faint brush of skin on a wound
@@ -144,6 +148,9 @@ struct EngineParameters
     // send is 0.794 room^1.66). Zero is an exact no-op; a change lets the
     // sounding room ring out.
     float room { 0.0f };
+    // Independent pitch offset per played contact: 0 exact reference tuning,
+    // 1 uniformly distributed within +/-20 cents. Held notes keep their draw.
+    float detune { 0.0f };
 };
 
 struct AcustraEngineTestAccess;
@@ -729,6 +736,11 @@ private:
         int writeIndex { 0 };
         float currentDelay { 128.0f };
         float targetDelay { 128.0f };
+        // Carry exponential progress below the float delay's ULP. Rounding
+        // each step can otherwise stall thousandths of a sample from the target and
+        // force an abrupt snap. The published delay and line read stay float.
+        double delayProgress { 128.0 };
+        std::uint32_t delayProgressBits { 0 };
         float loopGain { 0.995f };
         // A discrete retune keeps its feedback loss continuous over one
         // current round trip. This is separate from hand loss: sources still
@@ -855,6 +867,7 @@ private:
         } gestureContact {};
 
         void reset() noexcept;
+        void setCurrentDelay(float samples) noexcept;
         [[nodiscard]] float readDelay(float samples) noexcept;
         // Switches the second dispersion section in or out under a sounding
         // wave (see its definition).
@@ -1024,6 +1037,11 @@ private:
         bool active { false };
         void reset(float directDelay, float nutDelay) noexcept;
         std::array<float, 2> process(float source) noexcept;
+        // Fractional sections ahead of the integer flight time. Release
+        // packets are then queued with immutable arrival times, so the next
+        // contact can adopt its own geometry without moving older packets.
+        std::array<float, 2> processFractional(float source) noexcept;
+        bool fractionalQuiet(double bound) const noexcept;
     };
 
     // Everything configureVoice's result depends on, reduced to what it is
@@ -1075,6 +1093,7 @@ private:
         std::uint32_t memberBend { 0 };
         std::uint32_t vibrato { 0 };
         std::uint32_t attackPitch { 0 };
+        std::uint32_t noteDetune { 0 };
         std::uint32_t masterTune { 0 };
 
         bool operator==(const PitchGeometryKey& other) const noexcept
@@ -1083,6 +1102,7 @@ private:
                 && stringIndex == other.stringIndex && sampleRate == other.sampleRate
                 && performedBend == other.performedBend && memberBend == other.memberBend
                 && vibrato == other.vibrato && attackPitch == other.attackPitch
+                && noteDetune == other.noteDetune
                 && masterTune == other.masterTune;
         }
     };
@@ -1223,6 +1243,9 @@ private:
         // This separate stream never moves the position/angle/noise draws,
         // and is advanced once per repeated pluck, independent of host rate.
         std::uint32_t repeatPluckState { 1 };
+        // A separate stream leaves picking/noise variation unchanged at zero.
+        std::uint32_t noteDetuneState { 1 };
+        float noteDetuneCents { 0.0f };
         int lastPluckMidiNote { -1 };
         int lastPluckMidiChannel { 0 };
         float lastPluckVelocity { 0.0f };
@@ -1324,6 +1347,12 @@ private:
         // pair of modes they form through a rocking saddle is heard at the
         // requested pitch (coupledPolarisationDetune); zero elsewhere.
         float polarisationDetune { 0.0f };
+        // Common saddle tuning is a nominal-pitch calibration. The string's
+        // small attack glide does not change its frozen reference load.
+        std::uint64_t commonTuningGeneration { 0 };
+        std::array<std::uint32_t, 7> commonTuningKey {};
+        bool commonTuningSympathetic { false };
+        float commonTuningValue { 0.0f };
         // The two dispersion sections' pole pairs relative to the
         // fundamental; a zero decay ratio is an unused section.
         std::array<float, 2> dispersionDecayRatios { 0.0f, 0.0f };
@@ -1609,12 +1638,11 @@ private:
     float bridgePhaseDelay(const PortMobility& port, float frequency,
                            int stringIndex) const noexcept;
     // How far, as a fraction of the request, the pair of modes the two
-    // polarisations form through a rocking saddle sits from the pitch the
-    // normal loop was tuned to alone (see AcustraEngine.cpp).
+    // polarisations form through a rocking saddle sits from the nominal
+    // shared-loop pitch (see AcustraEngine.cpp).
     [[nodiscard]] float coupledPolarisationDetune(
-        const PortMobility& port, float impedance, float bentImpedance,
-        float frequency, float normalGain,
-        float parallelGain) const noexcept;
+        Voice& voice, int stringIndex, float impedance, float bentImpedance,
+        float frequency, float normalGain, float parallelGain) noexcept;
     // The saddle crown's height over the measured body's rocking axis, over
     // the normalized rocking coordinate's half-spacing: what projects a
     // string's horizontal (soundboard-parallel) force onto the rocking
@@ -1779,11 +1807,14 @@ private:
     // damping contact.
     void startReleaseNoise(Voice& voice, int stringIndex,
                            bool fretSide) noexcept;
+    void queueReleaseNoisePaths(Voice& voice,
+                               const std::array<float, 2>& paths,
+                               int offset = 0) noexcept;
+    int drainReleaseNoiseTravel(Voice& voice) noexcept;
     static void primeFretMotion(Voice& voice) noexcept;
     void renderFretMotion(Voice& voice, int stringIndex) noexcept;
     float renderReleaseNoise(Voice& voice) noexcept;
-    void addReleaseNoise(Voice& voice, float& verticalIncident,
-                         float& horizontalIncident) noexcept;
+    void addReleaseNoise(Voice& voice) noexcept;
     void finishVoice(Voice& voice, int stringIndex, float verticalIncident,
                      float horizontalIncident, float excitation,
                      float tailIncident, float tailParallelIncident,
@@ -1827,6 +1858,28 @@ private:
         bool valid { false };
     };
     std::array<DispersionSolve, 64> dispersionSolves_ {};
+    [[nodiscard]] std::pair<std::array<float, 2>, std::array<float, 2>>
+        solvedDispersion(const std::array<double, 13>& arguments) noexcept;
+    // History-free open-string branches used only by the base tuning model.
+    // The actual junction still carries every played string and retained tail.
+    struct RestingStringModel
+    {
+        float delay { 3.0f }, impedance { 1.0f }, loopGain { 1.0f };
+        float highCoefficient { 0.0f }, highMix { 0.0f };
+        OnePole highFilter {};
+        float bendingGain { 1.0f }, bendingA1 { 0.0f }, bendingA2 { 0.0f };
+        float constantGain { 1.0f }, constantA1 { 0.0f }, constantA2 { 0.0f };
+        float constantN2 { 0.0f };
+        std::array<float, 4> dispersion {};
+        bool secondDispersion { false };
+    };
+    std::array<RestingStringModel, stringCount> restingStringModels_ {};
+    std::array<int, stringCount> restingStringNotes_ {};
+    std::uint64_t restingStringGeneration_ { 0 };
+    double restingStringRate_ { 0.0 };
+    float restingStringMasterTune_ { 0.0f };
+    [[nodiscard]] const std::array<RestingStringModel, stringCount>&
+        restingStringModels() noexcept;
     // writePickRelease's two released waves at every sample of the loop: its
     // energy pass evaluates them (ten Gaussian edges and ten corner lookups
     // a sample), and its write pass writes the same samples from them.
@@ -1945,6 +1998,7 @@ private:
     float width_ { 0.62f };
     float outputGain_ { 0.42f };
     float piezoMix_ { 0.0f };
+    float piezoBlendPolarity_ { 1.0f };
     // A small room's sound at the microphones (EngineParameters::room): its
     // early reflections from a tapped line and its late field from an
     // eight-line feedback delay network, run at the host rate divided by the

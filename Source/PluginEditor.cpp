@@ -796,6 +796,50 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     statusLabel.setJustificationType (juce::Justification::centredRight);
     addAndMakeVisible (statusLabel);
 
+    backButton.setName ("Back settings");
+    backButton.setTitle ("Back settings");
+    backButton.setTooltip ("Turn to the rear capture settings or return to the front");
+    backButton.setClickingTogglesState (true);
+    backButton.setWantsKeyboardFocus (true);
+    backButton.onClick = [this]
+    {
+        rearView = backButton.getToggleState();
+        backButton.setButtonText (rearView ? "FRONT" : "BACK");
+        updateViewVisibility();
+        resized();
+        repaint();
+    };
+    addAndMakeVisible (backButton);
+
+    const juce::String polarityDescription {
+        "Reverse the piezo blended under the microphones. Choose the polarity "
+        "that sounds fuller for this guitar and part. Piezo-only Capture and "
+        "the separate Piezo output keep their original polarity." };
+    piezoPolarityButton.setName ("Invert piezo blend");
+    piezoPolarityButton.setTitle ("Invert piezo blend");
+    piezoPolarityButton.setDescription (polarityDescription);
+    piezoPolarityButton.setTooltip (polarityDescription);
+    piezoPolarityButton.setClickingTogglesState (true);
+    piezoPolarityButton.setWantsKeyboardFocus (true);
+    addChildComponent (piezoPolarityButton);
+    piezoPolarityStatus.setName ("Piezo polarity indicator");
+    piezoPolarityStatus.setTitle ("Piezo blend polarity");
+    piezoPolarityStatus.setDescription (polarityDescription);
+    piezoPolarityStatus.setJustificationType (juce::Justification::centredLeft);
+    piezoPolarityStatus.setInterceptsMouseClicks (false, false);
+    addChildComponent (piezoPolarityStatus);
+    piezoPolarityButton.onStateChange = [this]
+    {
+        piezoPolarityStatus.setText (piezoPolarityButton.getToggleState()
+            ? "INVERTED" : "NORMAL", juce::dontSendNotification);
+        repaint();
+    };
+    piezoPolarityAttachment = std::make_unique<
+        juce::AudioProcessorValueTreeState::ButtonAttachment> (
+            audioProcessor.parameters, acustra::parameters::piezoPolarityInverted,
+            piezoPolarityButton);
+    piezoPolarityButton.onStateChange();
+
     panicButton.setName ("Panic");
     panicButton.setTitle ("Panic");
     panicButton.setDescription ("Immediately stop every sounding string");
@@ -865,7 +909,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
         1, "PICKING", acustra::parameters::picking,
         "Finger: balanced attack. Pick: crisp and bridgeward. "
         "Thumb: rounder and neckward. Touch adjusts the contact within each "
-        "technique. MIDI: CC2 bridge-hand damping.", 3);
+        "technique. MIDI: CC2 Mute (picking-hand damping).", 3);
     configureSetupChoice (
         2, "CAPTURE", acustra::parameters::captureMode,
         "Stereo body microphones, one mono body microphone, or "
@@ -1128,9 +1172,60 @@ void AcustraAudioProcessorEditor::paint (juce::Graphics& g)
         g.drawLine (static_cast<float> (area.getX()), static_cast<float> (area.getY()),
                     static_cast<float> (area.getX()) + titleWidth, static_cast<float> (area.getY()), 0.6f * scale);
     };
-    heading (guitarPanelBounds, "GUITAR", false);
-    heading (playerPanelBounds, "PLAYER", true);
+    heading (guitarPanelBounds, rearView ? "PIEZO POLARITY" : "GUITAR", false);
+    heading (playerPanelBounds, rearView ? "OUTPUT ROUTING" : "PLAYER", true);
     heading (capturePanelBounds, "CAPTURE & OUTPUT", true);
+    if (rearView)
+    {
+        const auto text = [&] (const juce::String& words, float x, float y,
+                               float w, float h, float size, juce::Colour colour)
+        {
+            g.setColour (colour);
+            g.setFont (displayFont (size * scale));
+            g.drawFittedText (words, juce::Rectangle<float> {
+                x * scale, y * scale, w * scale, h * scale }.toNearestInt(),
+                juce::Justification::centredLeft, 3);
+        };
+        text ("PICKUP BLEND", 46, 148, 300, 22, 13.5f, mutedText);
+        const auto lit = piezoPolarityButton.getToggleState();
+        g.setColour (lit ? juce::Colour { 0xffffc36c } : brass);
+        g.fillEllipse (52 * scale, 193 * scale, 10 * scale, 10 * scale);
+        text ("Changes how the pickup combines\nwith the microphones.",
+              46, 240, 300, 50, 16, ivory);
+        text ("Try both positions and keep the one\nthat suits the guitar and part.",
+              46, 306, 300, 46, 15, mutedText);
+        constexpr std::array<const char*, 3> names {
+            "MICROPHONES", "PIEZO BLEND", "PIEZO OUTPUT" };
+        constexpr std::array<const char*, 3> descriptions {
+            "Capture selects stereo or mono. Room adds ambience.",
+            "Piezo Mix adds the pickup to Main. Polarity changes this blend.",
+            "The separate mono output keeps its original polarity." };
+        for (std::size_t row = 0; row < names.size(); ++row)
+        {
+            const float y = 153.0f + 69.0f * static_cast<float> (row);
+            text (names[row], 406, y, 652, 22, 14, engraved);
+            text (descriptions[row], 406, y + 24, 652, 28, 16, darkWood);
+        }
+    }
+}
+
+void AcustraAudioProcessorEditor::updateViewVisibility()
+{
+    for (std::size_t i = 0; i < setupControls.size(); ++i)
+    {
+        setupLabels[i].setVisible (! rearView || i == 2);
+        setupControls[i]->setVisible (! rearView || i == 2);
+        choiceLabels[i].setVisible (! rearView);
+        choiceControls[i]->setVisible (! rearView);
+    }
+    for (std::size_t i = 0; i < sliderControls.size(); ++i)
+    {
+        const bool capture = i == 3 || i == 4 || i == 5 || i == 6 || i == 8;
+        sliderLabels[i].setVisible (! rearView || capture);
+        sliderControls[i].setVisible (! rearView || capture);
+    }
+    piezoPolarityButton.setVisible (rearView);
+    piezoPolarityStatus.setVisible (rearView);
 }
 
 void AcustraAudioProcessorEditor::resized()
@@ -1154,16 +1249,20 @@ void AcustraAudioProcessorEditor::resized()
     titleLabel.setFont (brandFont (37.0f * scale));
     subtitleLabel.setFont (displayFont (10.5f * scale, juce::Font::bold));
     statusLabel.setFont (displayFont (14.0f * scale));
-    titleLabel.setBounds (box (80, 10, 440, 44));
+    titleLabel.setBounds (box (80, 10, 360, 44));
     subtitleLabel.setBounds (box (84, 52, 460, 20));
-    statusLabel.setBounds (box (556, 27, 226, 32));
-    sustainButton.setBounds (box (796, 25, 100, 36));
-    gatherChordsButton.setBounds (box (908, 25, 94, 36));
-    panicButton.setBounds (box (1014, 25, 80, 36));
+    statusLabel.setBounds (box (458, 22, 210, 28));
+    sustainButton.setBounds (box (680, 25, 100, 36));
+    gatherChordsButton.setBounds (box (792, 25, 94, 36));
+    panicButton.setBounds (box (898, 25, 90, 36));
+    backButton.setBounds (box (1000, 25, 94, 36));
+    piezoPolarityButton.setBounds (box (220, 179, 124, 38));
+    piezoPolarityStatus.setBounds (box (72, 179, 140, 38));
+    piezoPolarityStatus.setFont (displayFont (16 * scale, juce::Font::bold));
 
-    guitarPanelBounds = box (22, 96, 348, 580);
+    guitarPanelBounds = box (22, 96, 348, rearView ? 282 : 580);
     playerPanelBounds = box (382, 96, 716, 282);
-    capturePanelBounds = box (382, 390, 716, 286);
+    capturePanelBounds = rearView ? box (22, 390, 1076, 286) : box (382, 390, 716, 286);
 
     for (auto& label : setupLabels)
         label.setFont (displayFont (13.5f * scale, juce::Font::bold));
@@ -1215,9 +1314,11 @@ void AcustraAudioProcessorEditor::resized()
     for (std::size_t column = 0; column < captureSliders.size(); ++column)
     {
         const auto index = captureSliders[column];
-        const auto x = 400 + static_cast<int> (column) * 136;
-        sliderLabels[index].setBounds (box (x, 446, 136, 24));
-        sliderControls[index].setBounds (box (x + 6, 475, 124, 182));
+        const auto x = (rearView ? 60 : 400) + static_cast<int> (column) * (rearView ? 204 : 136);
+        const auto width = rearView ? 180 : 136;
+        sliderLabels[index].setBounds (box (x, 446, width, 24));
+        sliderControls[index].setBounds (box (x + (rearView ? 14 : 6), 475,
+                                             rearView ? 152 : 124, 182));
     }
 
     stringActivityDisplay->setBounds (box (22, 688, 1076, 168));

@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -14,6 +15,12 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    static void clearRepeatMemory(AcustraEngine& engine)
+    {
+        // Negative control for the original exact-velocity residual switch:
+        // suppressing repeat ownership removes its real force residual.
+        engine.voices_[0].lastPluckMidiNote = -1;
+    }
     struct Release
     {
         double pole, reference, position, displacement, brightness;
@@ -298,13 +305,15 @@ void testRepeatedContactConvergesAcrossExactVelocity()
         Access::ContinuousContact contact;
         std::array<float, 1024> audio;
     };
-    const auto probe = [](acustra::PickingTechnique technique, float velocity)
+    const auto probe = [](acustra::PickingTechnique technique, float velocity, int witness = 0)
     {
         auto engine = fresh(48000.0, technique);
         Access::seed(*engine, 0x13579bdu);
         engine->noteOn(40, 0.5f, 1);
         std::array<float, 512> left {}, right {};
         engine->process(left.data(), right.data(), 512);
+        if (witness == 2)
+            Access::clearRepeatMemory(*engine);
         engine->noteOn(40, velocity, 1);
         Probe result { Access::continuousContact(*engine), {} };
         engine->process(result.audio.data(), result.audio.data() + 512, 512);
@@ -316,6 +325,43 @@ void testRepeatedContactConvergesAcrossExactVelocity()
                                   acustra::PickingTechnique::Thumb })
     {
         const auto exact = probe(technique, 0.5f);
+        // Quantized force, release, energy and coefficient inputs move together
+        // at the smallest representable command. Measure that whole-system
+        // float resolution directly, independently of the larger test step.
+        const auto resolutionUp = probe(technique, std::nextafter(0.5f, 1.0f));
+        const auto resolutionDown = probe(technique, std::nextafter(0.5f, 0.0f));
+        const auto negative = probe(technique, 0.5f, 2);
+        double upEnergy = 0.0, downEnergy = 0.0;
+        double negativeEnergy = 0.0, referenceEnergy = 0.0;
+        for (std::size_t i = 0; i < exact.audio.size(); ++i)
+        {
+            const double up = double(resolutionUp.audio[i]) - exact.audio[i];
+            const double disabled = double(negative.audio[i]) - exact.audio[i];
+            const double down = double(resolutionDown.audio[i]) - exact.audio[i];
+            upEnergy += up * up;
+            downEnergy += down * down;
+            negativeEnergy += disabled * disabled;
+            referenceEnergy += double(exact.audio[i]) * exact.audio[i];
+        }
+        const double resolutionFloor = std::sqrt(std::max(upEnergy, downEnergy)
+            / std::max(referenceEnergy, 1.0e-30));
+        const double negativeError = std::sqrt(negativeEnergy / std::max(referenceEnergy, 1.0e-30));
+        const double precisionFloor = std::max(2.0e-5, resolutionFloor);
+        expect(20.0 * resolutionFloor < negativeError,
+               "float-input resolution approached a real repeat-memory discontinuity");
+        for (const auto* adjacent : { &resolutionUp, &resolutionDown })
+        {
+            expect(std::abs(adjacent->contact.force / exact.contact.force - 1.0) < 2.0e-6,
+                   "one-ULP velocity witness crossed a real repeat-force discontinuity");
+            expect(std::abs(adjacent->contact.corner - exact.contact.corner) < 2.0e-7,
+                   "one-ULP velocity witness crossed a real release-contact discontinuity");
+        }
+        std::cout << "Repeat float resolution: technique " << int(technique)
+                  << ", reference RMS " << std::sqrt(referenceEnergy / exact.audio.size())
+                  << ", one-ULP input RMS up/down " << std::sqrt(upEnergy / exact.audio.size())
+                  << "/" << std::sqrt(downEnergy / exact.audio.size())
+                  << ", relative floor " << resolutionFloor
+                  << ", repeat-memory negative control " << negativeError << '\n';
         for (const float direction : { -1.0f, 1.0f })
         {
             double coarseForce = 0.0, coarseAudio = 0.0, coarseCorner = 0.0;
@@ -344,15 +390,17 @@ void testRepeatedContactConvergesAcrossExactVelocity()
                 }
                 if (exponent == 20)
                 {
-                    // The interval is 4096 times smaller. Permit float and
-                    // waveguide roundoff, but reject a finite jump at the
-                    // exact preceding velocity in force, contact or audio.
+                    // The interval is 4096 times smaller. Preserve the same
+                    // force, contact and 1%-coarse audio convergence guards;
+                    // admit only independently measured whole-instrument float-input resolution.
                     expect(forceError < 0.01 * coarseForce + 2.0e-6,
                            "repeat force jumped at the exact preceding velocity");
                     expect(cornerError < 0.01 * coarseCorner + 2.0e-7,
                            "repeat release speed jumped at the exact preceding velocity");
-                    expect(audioError < 0.01 * coarseAudio + 2.0e-5,
+                    expect(audioError < 0.01 * coarseAudio + precisionFloor,
                            "repeat audio jumped at the exact preceding velocity");
+                    expect(negativeError > 0.01 * coarseAudio + precisionFloor,
+                           "float-resolution allowance concealed the repeat-memory discontinuity");
                     worstFineForce = std::max(worstFineForce, forceError);
                     worstFineAudio = std::max(worstFineAudio, audioError);
                 }

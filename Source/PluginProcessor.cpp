@@ -60,7 +60,7 @@ bool sameEngineParameters (const acustra::EngineParameters& a,
         return std::tie (p.shape, p.bodyMaterial, p.capture, p.tuning, p.picking,
                          p.stringAge, p.pluckPosition, p.touch, p.bodyAmount,
                          p.stereoWidth, p.outputGain, p.piezoMix,
-                         p.releaseNoise, p.room);
+                         p.releaseNoise, p.room, p.piezoPolarityInverted);
     };
     return fields (a) == fields (b);
 }
@@ -123,6 +123,7 @@ enum ParameterSlot
     slotReleaseNoise,
     slotRoom,
     slotSustain,
+    slotPiezoPolarityInverted,
     slotCount
 };
 
@@ -144,7 +145,8 @@ constexpr std::array<const char*, slotCount> parameterIds {
     ids::piezoMix,
     ids::releaseNoise,
     ids::room,
-    ids::sustain
+    ids::sustain,
+    ids::piezoPolarityInverted
 };
 
 std::unique_ptr<juce::RangedAudioParameter> makePercentParameter (
@@ -458,6 +460,10 @@ AcustraAudioProcessor::createParameterLayout()
     // session saved before it existed loads it off, so it sounds as it did.
     result.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { ids::sustain, 12 }, "Sustain", false));
+    // Append to preserve every existing host parameter index. Old sessions
+    // acquire the normal default through addMissingParameterDefaults.
+    result.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { ids::piezoPolarityInverted, 13 }, "Invert Piezo Blend", false));
 
     return { result.begin(), result.end() };
 }
@@ -483,6 +489,7 @@ AcustraAudioProcessor::snapshotEngineParameters() const noexcept
     result.stereoWidth = 0.01f * value (slotStereoWidth);
     result.outputGain = juce::Decibels::decibelsToGain (value (slotOutput));
     result.piezoMix = 0.01f * value (slotPiezoMix);
+    result.piezoPolarityInverted = value (slotPiezoPolarityInverted) >= 0.5f;
     result.releaseNoise = 0.01f * value (slotReleaseNoise);
     result.room = 0.01f * value (slotRoom);
     constexpr std::array captures { acustra::CaptureType::StereoMic,

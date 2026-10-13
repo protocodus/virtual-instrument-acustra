@@ -7,11 +7,28 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <limits>
+#include <vector>
 
 namespace acustra
 {
 struct AcustraEngineTestAccess
 {
+    static float noteDetune(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].noteDetuneCents;
+    }
+    static std::uint32_t detuneSeed(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].noteDetuneState;
+    }
+    static double settledPitch(AcustraEngine& engine, int string)
+    {
+        auto& voice = engine.voices_[static_cast<std::size_t>(string)];
+        voice.attackPitchCents = 0.0f;
+        engine.configureVoice(voice, string, voice.midiNote, false);
+        return voice.pitchGeometry.value.frequency;
+    }
     struct State
     {
         double inharmonicity;
@@ -44,7 +61,8 @@ struct AcustraEngineTestAccess
         std::array<float, 2> before, expected, actual;
     };
 
-    static RepeatedReference repeatedPickReference(double rate, int gesture, bool queued)
+    static RepeatedReference repeatedPickReference(double rate, int gesture, bool queued,
+                                                    float detune = 0.0f)
     {
         std::array<std::unique_ptr<AcustraEngine>, 2> engines;
         const bool memberMode = gesture >= 2;
@@ -58,6 +76,7 @@ struct AcustraEngineTestAccess
             e->prepare(rate, 128);
             EngineParameters parameters;
             parameters.picking = PickingTechnique::Pick;
+            parameters.detune = detune;
             e->setParameters(parameters);
             e->setStringPerChannelMode(true);
             if (memberMode)
@@ -92,6 +111,17 @@ struct AcustraEngineTestAccess
         // ringing voice. The comparison never replaces its old waves.
         const auto saved = expectedVoice;
         expectedVoice.attackPitchCents = 0.0f;
+        if (detune > 0.0f)
+        {
+            // Independent xorshift oracle for the next actual contact's draw;
+            // restore the stream before the real attack so it draws once.
+            auto state = expectedVoice.noteDetuneState;
+            state ^= state << 13; state ^= state >> 17; state ^= state << 5;
+            state = state == 0u ? 0x6d2b79f5u : state;
+            expectedVoice.noteDetuneCents = 20.0f * detune
+                * static_cast<float>(static_cast<std::int32_t>(state))
+                / static_cast<float>(std::numeric_limits<std::int32_t>::max());
+        }
         expectedEngine.configureVoice(expectedVoice, string, note, true);
         result.expected = expectedVoice.referencePickDelay;
         expectedVoice = saved;
@@ -536,6 +566,111 @@ void testRepeatedPickRefreshesReferenceWithoutReplacingTheWave()
                     expect(repeat.actual != repeat.before,
                            "changed Pick gesture never refreshed the reference-rate release");
             }
+    const auto detuned = Access::repeatedPickReference(96000.0, 0, true, 1.0f);
+    expect(detuned.audioExact && detuned.wavePreserved && detuned.clearPreserved,
+           "scheduled detuned Pick repeat replaced histories or changed reference audio");
+    expect(detuned.actual == detuned.expected && detuned.actual != detuned.before,
+           "detuned Pick repeat did not refresh its new per-note reference geometry");
+}
+
+void testDetuneBelongsToActualPlayedContact()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    std::array<float, 128> left {}, right {};
+    const auto advance = [&] (acustra::AcustraEngine& engine, int count)
+    {
+        while (count > 0)
+        {
+            const int frames = std::min(count, 128);
+            engine.process(left.data(), right.data(), frames);
+            count -= frames;
+        }
+    };
+    bool positive = false, negative = false;
+    for (const double rate : { 44100.0, 48000.0, 96000.0 })
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->prepare(rate, 128);
+        engine->setStringPerChannelMode(true);
+        acustra::EngineParameters parameters;
+        parameters.detune = 1.0f;
+        engine->setParameters(parameters);
+        for (int attack = 0; attack < 12; ++attack)
+            for (int string = 0; string < 6; ++string)
+            {
+                const int note = acustra::AcustraEngine::openNotes(parameters.tuning)
+                    [static_cast<std::size_t>(string)] + 5;
+                engine->noteOn(note, 0.5f, string + 1);
+                const float cents = Access::noteDetune(*engine, string);
+                expect(std::isfinite(cents) && std::abs(cents) <= 20.0f,
+                       "Detune exceeded its per-note +/-20-cent range");
+                positive |= cents > 5.0f; negative |= cents < -5.0f;
+                const double expected = 440.0 * std::exp2((note - 69.0) / 12.0)
+                    * std::exp2(cents / 1200.0);
+                expect(std::abs(1200.0 * std::log2(
+                    Access::settledPitch(*engine, string) / expected)) < 0.001,
+                    "per-note Detune did not reach equal-tempered pitch geometry");
+                advance(*engine, 32);
+                expect(Access::noteDetune(*engine, string) == cents,
+                       "held-note Detune drifted during rendering");
+            }
+        const float held = Access::noteDetune(*engine, 0);
+        parameters.detune = 0.0f;
+        engine->setParameters(parameters);
+        engine->setPitchBend(2.0f, 1);
+        engine->setMasterTuneCents(10.0f);
+        advance(*engine, 128);
+        expect(Access::noteDetune(*engine, 0) == held,
+               "live controls resampled a sounding note's Detune");
+        engine->noteOn(45, 0.5f, 1);
+        expect(Access::noteDetune(*engine, 0) == 0.0f,
+               "zero Detune did not restore base tuning on the next attack");
+
+        engine->prepare(rate, 128);
+        engine->setStringPerChannelMode(true);
+        parameters.detune = 1.0f;
+        engine->setParameters(parameters);
+        const auto initialSeed = Access::detuneSeed(*engine, 0);
+        engine->noteOn(45, 0.5f, 1, 17);
+        expect(Access::noteDetune(*engine, 0) == 0.0f
+            && Access::detuneSeed(*engine, 0) == initialSeed,
+            "queued note drew Detune before actual contact");
+        parameters.detune = 0.5f;
+        engine->setParameters(parameters);
+        advance(*engine, 18);
+        const float queued = Access::noteDetune(*engine, 0);
+        expect(queued != 0.0f && std::abs(queued) <= 10.0f,
+               "queued contact ignored the current Detune amount");
+        const auto afterContact = Access::detuneSeed(*engine, 0);
+        auto fullAmount = std::make_unique<acustra::AcustraEngine>();
+        fullAmount->prepare(rate, 128);
+        fullAmount->setStringPerChannelMode(true);
+        auto fullParameters = parameters;
+        fullParameters.detune = 1.0f;
+        fullAmount->setParameters(fullParameters);
+        expect(Access::detuneSeed(*fullAmount, 0) == initialSeed,
+               "scheduled Detune controls changed the dedicated random seed");
+        fullAmount->noteOn(45, 0.5f, 1, 17);
+        advance(*fullAmount, 18);
+        expect(Access::detuneSeed(*fullAmount, 0) == afterContact
+            && queued == 0.5f * Access::noteDetune(*fullAmount, 0),
+            "half-range queued contact did not scale the same normalized draw");
+        engine->reset();
+        expect(Access::noteDetune(*engine, 0) == 0.0f
+            && Access::detuneSeed(*engine, 0) == afterContact,
+            "panic retained a note offset or restarted performance draws");
+        engine->prepare(rate, 128);
+        engine->setStringPerChannelMode(true);
+        engine->noteOn(45, 0.5f, 1);
+        expect(Access::noteDetune(*engine, 0) == queued,
+               "prepare did not restart the deterministic per-note pitch stream");
+        parameters.detune = std::numeric_limits<float>::quiet_NaN();
+        engine->setParameters(parameters);
+        engine->noteOn(45, 0.5f, 1);
+        expect(Access::noteDetune(*engine, 0) == 0.0f,
+               "nonfinite Detune reached the pitch state");
+    }
+    expect(positive && negative, "Detune never produced both sharp and flat notes");
 }
 }
 
@@ -548,6 +683,7 @@ int main()
     testHarmonicAndExtremeSlideAttackGeometry();
     testScheduledFreshAttackReadsCurrentControllers();
     testRepeatedPickRefreshesReferenceWithoutReplacingTheWave();
+    testDetuneBelongsToActualPlayedContact();
     if (failures == 0)
         std::cout << "All string pitch realism tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

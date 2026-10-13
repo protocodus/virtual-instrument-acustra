@@ -5,6 +5,43 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-13 — name the damping gesture Mute
+
+The user requested the simpler **Mute** label for Bridge Hand. The desktop
+instrument exposes this playing gesture through CC2, so its Picking tooltip
+and current user-guide controller labels now use Mute. No parameter ID,
+controller mapping, DSP source or sound behavior changes. This ships as
+version 1.3.4 build 2; the Rack panel receives the corresponding caption.
+
+## 2026-10-13 — retain chord strokes, separate release contacts, offer piezo polarity
+
+The audible-opportunities investigation identified two state defects rather
+than a new physical-model tuning. A same-sample chord plan may move a common
+tone to another string; release-join now respects that plan, retaining the
+old string wave through the existing tail path. The regression witness is
+Bm to E inside the release-join window, where the new B3 stroke was lost.
+No-plan and same-plan joins retain their existing behavior.
+
+Every damping contact now freezes its own travel geometry. Its original
+Thiran fractional response runs before the integer flight time, which is
+stored in the existing bounded arrival queue. Old packets keep their arrival
+times when a later contact starts. Before replacing a fractional section,
+its zero-input residue is queued down to the existing waveguide floor, with
+a finite worst-case bound. This preserves the established transfer response
+apart from floating-point contribution ordering; it adds no delay bank or
+real-time allocation. The new overlap/copy/reset/tail contracts accompany
+the public open-string to fret-12 regression.
+
+The user requested a switch after the mixed piezo polarity probe showed
+opposite preferences for different notes. Piezo Polarity therefore defaults
+to Normal and affects only Piezo Mix beneath the microphones. Inverted is
+optional, smoothly approached with the existing 20 ms parameter follower.
+The dedicated Piezo bus and Piezo-only Capture remain unchanged. The appended
+host parameter defaults to Normal in old sessions. Both interfaces expose a
+rear control and a textual state indicator; the VST gains a Back view with
+its existing capture controls. No blanket listening improvement is inferred
+from these numerical checks. Source version 1.3.4; Rack revision 1.3.2f1.
+
 ## 2026-10-12 — the Piezo Mix blend stays as it is
 
 The default Piezo Mix (20 %) deepens the Parlor Spruce's F#5 (-7.5 to -14.3

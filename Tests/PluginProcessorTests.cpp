@@ -104,7 +104,8 @@ bool sameEngineParameters (const acustra::EngineParameters& a,
         && a.pluckPosition == b.pluckPosition && a.touch == b.touch
         && a.bodyAmount == b.bodyAmount && a.stereoWidth == b.stereoWidth
         && a.outputGain == b.outputGain && a.piezoMix == b.piezoMix
-        && a.releaseNoise == b.releaseNoise && a.room == b.room;
+        && a.releaseNoise == b.releaseNoise && a.room == b.room
+        && a.piezoPolarityInverted == b.piezoPolarityInverted;
 }
 
 // The user area of the display the editor opens on (empty without one),
@@ -152,9 +153,9 @@ void testParameterContract()
         ids::stereoWidth, ids::output, ids::capture, ids::picking,
         ids::upperMic, ids::piezoLoading, ids::captureMode, ids::guitarModel,
         ids::gatherChords, ids::piezoMix, ids::releaseNoise, ids::room,
-        ids::sustain
+        ids::sustain, ids::piezoPolarityInverted
     };
-    static_assert (ids::parameterCount == 20,
+    static_assert (ids::parameterCount == 21,
                    "String Material and Bridge Model are gone; Guitar Model is a "
                    "legacy slot; Piezo Mix, Release Noise, Room and Sustain are "
                    "appended");
@@ -162,7 +163,7 @@ void testParameterContract()
     // Release Noise to the requested 10%; Room to 50%; Sustain off.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 10.0f, 50.0f, 0.0f
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 10.0f, 50.0f, 0.0f, 0.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -294,6 +295,15 @@ void testParameterContract()
     setValue (processor, ids::output, -3.0f);
     setValue (processor, ids::captureMode, 2.0f);
     setValue (processor, ids::picking, 2.0f);
+    const auto* polarity = dynamic_cast<const juce::AudioParameterBool*> (
+        processor.parameters.getParameter (ids::piezoPolarityInverted));
+    expect (polarity != nullptr && polarity->getVersionHint() == 13
+                && polarity->getParameterIndex() == 20 && polarity->isAutomatable()
+                && ! polarity->get(), "piezo polarity lost its appended host identity or normal default");
+    setValue (processor, ids::piezoPolarityInverted, 1.0f);
+    expect (processor.snapshotEngineParameters().piezoPolarityInverted,
+            "host polarity parameter did not reach the engine");
+    setValue (processor, ids::piezoPolarityInverted, 0.0f);
     setValue (processor, ids::piezoMix, 37.0f);
     setValue (processor, ids::room, 23.0f);
     const auto engine = processor.snapshotEngineParameters();
@@ -1451,6 +1461,7 @@ void testStateRoundTripAndMigration()
     setValue (source, ids::captureMode, 1.0f);
     setValue (source, ids::guitarModel, 1.0f);
     setValue (source, ids::piezoMix, 45.0f);
+    setValue (source, ids::piezoPolarityInverted, 1.0f);
     setValue (source, ids::releaseNoise, 33.0f);
     setValue (source, ids::room, 64.0f);
 
@@ -1480,7 +1491,7 @@ void testStateRoundTripAndMigration()
                                 ids::output, ids::capture, ids::picking,
                                 ids::upperMic, ids::piezoLoading, ids::captureMode,
                                 ids::guitarModel, ids::gatherChords, ids::piezoMix,
-                                ids::releaseNoise, ids::room })
+                                ids::releaseNoise, ids::room, ids::piezoPolarityInverted })
         {
             const bool kept = std::abs (valueOf (to, id) - valueOf (from, id)) < 0.011f;
             expect (kept, std::string { "state round trip lost " } + id);
@@ -1577,6 +1588,7 @@ void testStateRoundTripAndMigration()
     setValue (restored, ids::capture, 3.0f);
     setValue (restored, ids::picking, 2.0f);
     setValue (restored, ids::piezoMix, 80.0f);
+    setValue (restored, ids::piezoPolarityInverted, 1.0f);
     setValue (restored, ids::releaseNoise, 90.0f);
     setValue (restored, ids::room, 77.0f);
     setValue (restored, ids::upperMic, 1.0f);
@@ -1599,6 +1611,7 @@ void testStateRoundTripAndMigration()
                 && valueOf (restored, ids::capture) == 0.0f
                 && valueOf (restored, ids::picking) == 0.0f
                 && valueOf (restored, ids::piezoMix) == 0.0f
+                && ! restored.snapshotEngineParameters().piezoPolarityInverted
                 && valueOf (restored, ids::upperMic) == 0.0f
                 && valueOf (restored, ids::piezoLoading) == 0.0f
                 && valueOf (restored, ids::captureMode) == 0.0f
@@ -3513,6 +3526,63 @@ void testSleepThroughResetsPanicAndStateLoads()
     }
 }
 
+void testRearPolarityControls()
+{
+    auto processor = std::make_unique<AcustraAudioProcessor>();
+    processor->prepareToPlay (48000.0, 64);
+    std::unique_ptr<juce::AudioProcessorEditor> editor { processor->createEditor() };
+    juce::TextButton* back = nullptr;
+    juce::TextButton* polarity = nullptr;
+    juce::Label* indicator = nullptr;
+    for (auto* child : editor->getChildren())
+    {
+        if (child->getName() == "Back settings") back = dynamic_cast<juce::TextButton*> (child);
+        if (child->getName() == "Invert piezo blend") polarity = dynamic_cast<juce::TextButton*> (child);
+        if (child->getName() == "Piezo polarity indicator") indicator = dynamic_cast<juce::Label*> (child);
+    }
+    expect (back && polarity && indicator, "rear polarity controls are missing");
+    if (! back || ! polarity || ! indicator) return;
+    expect (! polarity->isVisible() && indicator->getText() == "NORMAL",
+            "polarity is not rear-only with a normal default indicator");
+    back->setToggleState (true, juce::dontSendNotification);
+    back->onClick();
+    expect (polarity->isVisible() && indicator->isVisible() && back->getButtonText() == "FRONT",
+            "Back did not expose the rear controls and return action");
+    expect (polarity->getWantsKeyboardFocus() && polarity->getDescription().contains ("microphones"),
+            "polarity control lost keyboard access or blend description");
+    polarity->setToggleState (true, juce::sendNotificationSync);
+    expect (processor->snapshotEngineParameters().piezoPolarityInverted
+                && indicator->getText() == "INVERTED", "rear switch/indicator missed the host parameter");
+    setValue (*processor, acustra::parameters::piezoPolarityInverted, 0.0f);
+    expect (! polarity->getToggleState() && indicator->getText() == "NORMAL",
+            "rear polarity did not follow host automation");
+    for (const int width : {672, 896, 1120, 1456})
+    {
+        editor->setSize (width, juce::roundToInt (width * 980.0 / 1120.0));
+        std::vector<juce::Component*> visible;
+        for (auto* child : editor->getChildren())
+        {
+            if (! child->isVisible() || child->getName().contains ("resizer")) continue;
+            if (dynamic_cast<juce::TextButton*> (child) || dynamic_cast<juce::Slider*> (child)
+                || child == indicator)
+            {
+                expect (editor->getLocalBounds().contains (child->getBounds()),
+                        "a rear control extends beyond the panel");
+                visible.push_back (child);
+            }
+        }
+        for (std::size_t a = 0; a < visible.size(); ++a)
+            for (std::size_t b = a + 1; b < visible.size(); ++b)
+                expect (! visible[a]->getBounds().intersects (visible[b]->getBounds()),
+                        "rear controls or polarity indicator overlap");
+        expect (editor->createComponentSnapshot (editor->getLocalBounds()).isValid(),
+                "rear settings did not render at a supported size");
+    }
+    back->setToggleState (false, juce::dontSendNotification);
+    back->onClick();
+    expect (! polarity->isVisible() && ! indicator->isVisible(), "Front left rear controls visible");
+}
+
 int main()
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -3546,6 +3616,7 @@ int main()
     testMalformedStateParameters();
     testStringActivityDisplay();
     testEditorRendering();
+    testRearPolarityControls();
     testEditorSizeFitsTheDisplayAndIsRemembered();
     testUnsupportedSampleRatesAreSilent();
     testEditorShowsTheBuildIdentity();

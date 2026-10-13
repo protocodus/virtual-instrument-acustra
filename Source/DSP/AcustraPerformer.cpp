@@ -106,7 +106,9 @@ void Performer::prepare(double sampleRate, int maximumBlockSize)
     portamentoSources_.fill(-1);
     rpnStates_.fill(RpnState {});
     vibratoChannel_ = 0;
+    keyswitchSustain_ = false;
     engine_.prepare(sampleRate, maximumBlockSize);
+    engine_.setSustainHold(panelSustainHold_);
     // The engine's own rate, which it sanitised: the strum rest and the
     // gathering window then keep time with it at any rate a host passes.
     sampleRate_ = engine_.sampleRate();
@@ -126,6 +128,28 @@ void Performer::prepare(double sampleRate, int maximumBlockSize)
 void Performer::setParameters(const EngineParameters& parameters) noexcept
 {
     engine_.setParameters(parameters);
+}
+
+void Performer::setSustainHold(bool hold) noexcept
+{
+    panelSustainHold_ = hold;
+    engine_.setSustainHold(panelSustainHold_ || keyswitchSustain_);
+    updatePendingSustain();
+}
+
+void Performer::setKeyswitchSustain(bool hold) noexcept
+{
+    keyswitchSustain_ = hold;
+    engine_.setSustainHold(panelSustainHold_ || keyswitchSustain_);
+    updatePendingSustain();
+}
+
+bool Performer::isSustainActive() const noexcept
+{
+    for (int channel = 1; channel <= 16; ++channel)
+        if (engine_.sustainHolds(channel))
+            return true;
+    return false;
 }
 
 void Performer::setTempoBpm(double bpm) noexcept
@@ -189,7 +213,9 @@ void Performer::reset() noexcept
     portamentoSources_.fill(-1);
     rpnStates_.fill(RpnState {});
     vibratoChannel_ = 0;
+    keyswitchSustain_ = false;
     engine_.reset();
+    engine_.setSustainHold(panelSustainHold_);
     lastStrumSample_ = -1;
     strumUpstroke_ = false;
     strokeMode_ = StrokeMode::Automatic;
@@ -559,15 +585,18 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
             || (status == 0x90u && size >= 3 && (data[2] & 0x7fu) == 0u));
     if ((positiveNoteOn || noteOff) && isKeyswitch(static_cast<int>(data[1] & 0x7fu)))
     {
-        // A keyswitch is a direction, not a note: like a controller it acts
+        // A keyswitch is a controller: it acts
         // at once, ahead of its sample's Note Ons, on every channel, and
         // its key-up is nothing.
         if (positiveNoteOn)
         {
             const int note = static_cast<int>(data[1] & 0x7fu);
-            strokeMode_ = note == keyswitchDownstroke ? StrokeMode::Down
-                        : note == keyswitchUpstroke ? StrokeMode::Up
-                                                    : StrokeMode::Automatic;
+            if (note == keyswitchSustain)
+                setKeyswitchSustain(!keyswitchSustain_);
+            else
+                strokeMode_ = note == keyswitchDownstroke ? StrokeMode::Down
+                            : note == keyswitchUpstroke ? StrokeMode::Up
+                                                        : StrokeMode::Automatic;
         }
         return false;
     }
@@ -611,20 +640,25 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
         if (status == 0xb0u && size >= 3
             && ((data[1] & 0x7fu) == 64u || (data[1] & 0x7fu) == 121u))
         {
-            for (int index = 0; index < pendingNoteOffCount_; ++index)
-            {
-                auto& off = pendingNoteOffs_[static_cast<std::size_t>(index)];
-                if (!channelIsInControllerScope(midiChannel, off.channel))
-                    continue;
-                off.pedalMoved = true;
-                off.pedalReleased = off.pedalReleased
-                    || (off.sustained && !engine_.sustainHolds(off.channel));
-                off.sustained = off.sustained
-                    && engine_.sustainHolds(off.channel);
-            }
+            updatePendingSustain(midiChannel);
         }
     }
     return false;
+}
+
+void Performer::updatePendingSustain(int controllerChannel) noexcept
+{
+    for (int index = 0; index < pendingNoteOffCount_; ++index)
+    {
+        auto& off = pendingNoteOffs_[static_cast<std::size_t>(index)];
+        if (controllerChannel != 0
+            && !channelIsInControllerScope(controllerChannel, off.channel))
+            continue;
+        off.pedalMoved = true;
+        off.pedalReleased = off.pedalReleased
+            || (off.sustained && !engine_.sustainHolds(off.channel));
+        off.sustained = off.sustained && engine_.sustainHolds(off.channel);
+    }
 }
 
 // A Note On that comes due takes along the Note Ons its channel received

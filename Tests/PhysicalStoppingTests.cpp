@@ -123,7 +123,7 @@ void testLossAndGeometryContinuum()
                 const float length = 0.652f - 0.027f * static_cast<float>(probe) / 160.0f;
                 const auto stop = Access::isolated(length, keyFret, technique);
                 const double weight = expectedWeight(length);
-                const double rate = (1.0 - weight) / double(1.25f) + weight / double(0.16f);
+                const double rate = (1.0 - weight) / double(1.25f) + weight / double(0.32f);
                 const double openPosition = technique == Picking::Pick ? 0.028 / length : 0.22;
                 const double position = (1.0 - weight) * openPosition
                     + weight * (1.0 - 0.018 / length);
@@ -135,7 +135,7 @@ void testLossAndGeometryContinuum()
                 expect(positionError < 3.0e-7, "physical stopping did not follow the effective pad centroid");
                 expect(stop.unchangedWave, "establishing the stopping contact injected a new wave");
                 if (weight == 0.0) expect(stop.time == 1.25f, "open endpoint changed its established release time");
-                if (weight == 1.0) expect(stop.time == 0.16f, "fretted endpoint changed its established release time");
+                if (weight == 1.0) expect(stop.time == 0.32f, "fretted endpoint changed its established release time");
                 if (probe > 0)
                 {
                     expect(stop.time <= previous.time, "shortening the string weakened the damping contact");
@@ -163,8 +163,8 @@ void testRealSlideAndMemberTensionRouting()
             const auto up = Access::routed(rate, 0, 12.0f, 0.0f, technique);
             const auto fretted = Access::routed(rate, 3, 0.0f, 0.0f, technique);
             const auto down = Access::routed(rate, 3, -3.0f, 0.0f, technique);
-            expect(open.time == 1.25f && up.time == 0.16f
-                       && fretted.time == 0.16f && down.time == 1.25f,
+            expect(open.time == 1.25f && up.time == 0.32f
+                       && fretted.time == 0.32f && down.time == 1.25f,
                    "manager slide kept the original key's release category");
             expect(std::abs(up.length / open.length - 0.5) < 2.0e-6
                        && std::abs(down.length / open.length - 1.0) < 2.0e-6,

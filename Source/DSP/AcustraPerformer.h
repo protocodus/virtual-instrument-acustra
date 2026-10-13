@@ -76,19 +76,21 @@ public:
     // strumRestSeconds restarts whatever the tempo; a front end that stops
     // rendering while silent (the Rack Extension idles) must not idle for
     // less than that after the last note, or the rest would go unmeasured.
-    // The keyswitches, below the guitar's range, latch a direction on every
-    // channel until the next keyswitch, reset or prepare: C0 makes every
-    // strum a downstroke, C#0 an upstroke, D0 returns to automatic. They
-    // never sound and take no string; their key-ups are consumed with them.
+    // The direction keyswitches, below the guitar's range, latch a direction
+    // on every channel until the next direction key, reset or prepare: C0
+    // makes every strum a downstroke, C#0 an upstroke, D0 returns to automatic. D#0
+    // toggles global sustain independently of the panel switch and pedals.
+    // They never sound and take no string; their key-ups are consumed.
     enum class StrokeMode { Automatic, Down, Up };
     static constexpr double strumAlternationBeats = 0.75;
     static constexpr double strumRestSeconds = 2.0;
     static constexpr int keyswitchDownstroke = 24; // C0
     static constexpr int keyswitchUpstroke = 25;   // C#0
     static constexpr int keyswitchAutomatic = 26;  // D0
+    static constexpr int keyswitchSustain = 27;    // D#0
     [[nodiscard]] static constexpr bool isKeyswitch(int note) noexcept
     {
-        return note >= keyswitchDownstroke && note <= keyswitchAutomatic;
+        return note >= keyswitchDownstroke && note <= keyswitchSustain;
     }
     // The keyswitches' effect, for a front end's own control; it takes
     // effect at once, like setSustainHold.
@@ -128,11 +130,23 @@ public:
     // own notes when it goes off. Call before beginBlock, like
     // setGatherChords; it takes effect at once and is never held back by
     // Gather Chords. Off, the default, is an exact no-op.
-    void setSustainHold(bool hold) noexcept { engine_.setSustainHold(hold); }
+    void setSustainHold(bool hold) noexcept;
+    // The keyswitch is a separate latch: refreshing the panel's parameter
+    // cannot erase it. Reset/prepare clears it while retaining the panel.
+    // The setter lets a front end preserve the latch when changing its
+    // prepared processing bank. Like the panel setter it takes effect now.
+    void setKeyswitchSustain(bool hold) noexcept;
+    [[nodiscard]] bool isKeyswitchSustainEnabled() const noexcept
+    {
+        return keyswitchSustain_;
+    }
     [[nodiscard]] bool isHoldingSustain() const noexcept
     {
         return engine_.isSustainHeld();
     }
+    // Effective sustain for a front end's indicator, including any CC64
+    // pedal, the panel switch and the backup keyswitch.
+    [[nodiscard]] bool isSustainActive() const noexcept;
     // Everything the host must be told: the engine's own fixed output
     // latency (AcustraEngine::outputLatencySamples) plus, while gathering,
     // the window.
@@ -279,6 +293,9 @@ private:
     void gatherChord(int first) noexcept;
     void renderTo(int sample) noexcept;
     void dispatchMidiData(const std::uint8_t* data, int size) noexcept;
+    // A sustain change after a grouped key-up preserves event order. Zero
+    // means a global change; other values apply the MIDI controller scope.
+    void updatePendingSustain(int controllerChannel = 0) noexcept;
     bool processRpnController(int midiChannel, int controller, int value) noexcept;
     void setLowerZoneMemberCount(int memberCount) noexcept;
     void refreshPitchBend(int midiChannel) noexcept;
@@ -304,6 +321,8 @@ private:
     StrokeMode strokeMode_ { StrokeMode::Automatic };
     double tempoBpm_ { 120.0 };
     bool gatherChords_ { false };
+    bool panelSustainHold_ { false };
+    bool keyswitchSustain_ { false };
     double sampleRate_ { 48000.0 };
     std::int64_t processedSamples_ { 0 };
     std::int64_t lastStrumSample_ { -1 };
