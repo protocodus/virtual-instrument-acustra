@@ -1,5 +1,7 @@
 // A return stroke reverses only its newly released sideways field. Existing
-// waves and packets in flight retain their own direction and energy.
+// waves and packets in flight retain their own direction and energy. How an
+// upstroke's force leans across the strings is StrokeDepthTests'; the
+// reversal is checked here with that depth switched off.
 #include "DSP/AcustraPerformer.h"
 
 #include <algorithm>
@@ -78,9 +80,13 @@ void expect(bool condition, const char* message)
     if (!condition) { ++failures; std::cerr << "FAIL: " << message << '\n'; }
 }
 auto fresh(double rate = 48000.0,
-           acustra::PickingTechnique picking = acustra::PickingTechnique::Pick)
+           acustra::PickingTechnique picking = acustra::PickingTechnique::Pick,
+           bool strokeDepth = true)
 {
     auto e = std::make_unique<acustra::AcustraEngine>();
+    acustra::PerformanceRealism realism;
+    realism.strokeDepth = strokeDepth;
+    e->setPerformanceRealism(realism);
     acustra::EngineParameters p;
     p.picking = picking;
     e->setParameters(p);
@@ -130,8 +136,8 @@ void testFreshReleaseAndDefaultPaths()
                                    acustra::PickingTechnique::Pick,
                                    acustra::PickingTechnique::Thumb })
         {
-            auto down = fresh(rate, picking);
-            auto up = fresh(rate, picking);
+            auto down = fresh(rate, picking, false);
+            auto up = fresh(rate, picking, false);
             down->beginStrum(0, 0, false); up->beginStrum(0, 0, true);
             down->noteOn(47, 0.7f, 1, 0, true); up->noteOn(47, 0.7f, 1, 0, true);
             const auto a = Access::source(*down), b = Access::source(*up);

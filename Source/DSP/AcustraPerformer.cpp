@@ -113,8 +113,9 @@ void Performer::prepare(double sampleRate, int maximumBlockSize)
     // gathering window then keep time with it at any rate a host passes.
     sampleRate_ = engine_.sampleRate();
     processedSamples_ = 0;
-    lastStrumSample_ = -1;
-    strumUpstroke_ = false;
+    lastStrokeSample_ = -1;
+    nextUpstroke_ = false;
+    lastStrokeUpstroke_ = false;
     strokeMode_ = StrokeMode::Automatic;
     heldCount_ = 0;
     droppedEvents_ = 0;
@@ -128,6 +129,7 @@ void Performer::prepare(double sampleRate, int maximumBlockSize)
 void Performer::setParameters(const EngineParameters& parameters) noexcept
 {
     engine_.setParameters(parameters);
+    pickTechnique_ = parameters.picking == PickingTechnique::Pick;
 }
 
 void Performer::setSustainHold(bool hold) noexcept
@@ -216,8 +218,9 @@ void Performer::reset() noexcept
     keyswitchSustain_ = false;
     engine_.reset();
     engine_.setSustainHold(panelSustainHold_);
-    lastStrumSample_ = -1;
-    strumUpstroke_ = false;
+    lastStrokeSample_ = -1;
+    nextUpstroke_ = false;
+    lastStrokeUpstroke_ = false;
     strokeMode_ = StrokeMode::Automatic;
     for (int channel = 1; channel <= 16; ++channel)
         refreshPitchBend(channel);
@@ -448,27 +451,35 @@ void Performer::flushNoteGroup() noexcept
             soundingNotes += engine_.canSound(note.note, note.channel) ? 1 : 0;
         }
     const bool strum = soundingNotes >= 3;
+    // The rest is measured between the strokes' own samples, so no block
+    // size can move it. groupedSample_ is still this group's sample
+    // wherever it is flushed (handleEvent, endBlock).
+    // A group stamped behind the rendered position (an offset that
+    // decreased within the block) plays at that position, so its
+    // interval is measured from there, never backwards.
+    const auto strokeSample = processedSamples_
+        + static_cast<std::int64_t>(std::max(std::max(0, groupedSample_), renderedTo_));
+    const auto interval = lastStrokeSample_ < 0 ? std::int64_t { 0 }
+                                                : strokeSample - lastStrokeSample_;
+    const double alternationSeconds = std::min(
+        strumRestSeconds, strumAlternationBeats * 60.0 / tempoBpm_);
+    const bool restarted = lastStrokeSample_ < 0
+        || interval > static_cast<std::int64_t>(alternationSeconds * sampleRate_);
+    // Under Pick one hand makes every stroke, and no hand makes two within
+    // the chord window: notes that close to its last stroke continue it.
+    const bool pickHand = pickTechnique_
+        && engine_.performanceRealism().alternatePicking;
+    const bool continuedStroke = pickHand && lastStrokeSample_ >= 0
+        && interval <= static_cast<std::int64_t>(gatherWindow_);
     if (strum)
     {
-        // The rest is measured between the strums' own samples, so no block
-        // size can move it. groupedSample_ is still this group's sample
-        // wherever it is flushed (handleEvent, endBlock).
-        // A group stamped behind the rendered position (an offset that
-        // decreased within the block) plays at that position, so its
-        // interval is measured from there, never backwards.
-        const auto strumSample = processedSamples_
-            + static_cast<std::int64_t>(std::max(std::max(0, groupedSample_), renderedTo_));
-        const auto interval = lastStrumSample_ < 0 ? std::int64_t { 0 }
-                                                   : strumSample - lastStrumSample_;
-        const double alternationSeconds = std::min(
-            strumRestSeconds, strumAlternationBeats * 60.0 / tempoBpm_);
-        const bool restarted = lastStrumSample_ < 0
-            || interval > static_cast<std::int64_t>(alternationSeconds * sampleRate_);
-        if (restarted)
-            strumUpstroke_ = false;
+        if (continuedStroke)
+            nextUpstroke_ = lastStrokeUpstroke_;
+        else if (restarted)
+            nextUpstroke_ = false;
         if (strokeMode_ != StrokeMode::Automatic)
-            strumUpstroke_ = strokeMode_ == StrokeMode::Up;
-        lastStrumSample_ = strumSample;
+            nextUpstroke_ = strokeMode_ == StrokeMode::Up;
+        lastStrokeSample_ = strokeSample;
         // The stroke is timed by the strings it reaches: a note the tuning
         // cannot sound takes no place in it and no part in its speed.
         std::array<bool, sampleGroupCapacity> sounds {};
@@ -517,27 +528,49 @@ void Performer::flushNoteGroup() noexcept
             }
             const int string = strings[static_cast<std::size_t>(index)];
             const int rank = completePlan
-                ? (strumUpstroke_ ? lastString - string : string - firstString)
-                : (strumUpstroke_ ? reached : sounding - 1 - reached);
+                ? (nextUpstroke_ ? lastString - string : string - firstString)
+                : (nextUpstroke_ ? reached : sounding - 1 - reached);
             ++reached;
             note.pluckDelay = completePlan
                 ? curvedStrumDelay(string, firstString, lastString,
-                                   strumUpstroke_, plannedSpan)
+                                   nextUpstroke_, plannedSpan)
                 : engine_.strumDelaySamples(rank, meanVelocity);
             strokeSpan = std::max(strokeSpan, note.pluckDelay);
         }
-        engine_.beginStrum(strokeSpan, restarted ? 0 : static_cast<int>(interval),
-                           strumUpstroke_);
-        strumUpstroke_ = ! strumUpstroke_;
+        engine_.beginStrum(strokeSpan,
+                           restarted || continuedStroke ? 0 : static_cast<int>(interval),
+                           nextUpstroke_);
+        lastStrokeUpstroke_ = nextUpstroke_;
+        nextUpstroke_ = ! nextUpstroke_;
     }
+    // Under Pick, a group that is not a strum is one plectrum stroke: down
+    // after a rest, the hand's return within the alternation window, and the
+    // same stroke still travelling within the chord window of the last.
+    const bool pickedStroke = !strum && pickHand && pendingNoteOnCount_ > 0;
+    bool pickedUpstroke = continuedStroke ? lastStrokeUpstroke_
+                        : !restarted && nextUpstroke_;
+    if (strokeMode_ != StrokeMode::Automatic)
+        pickedUpstroke = strokeMode_ == StrokeMode::Up;
+    bool plucked = false;
     for (int index = 0; index < pendingNoteOnCount_; ++index)
     {
         const auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
         const bool unambiguous = std::count_if(pendingNoteOns_.begin(),
             pendingNoteOns_.begin() + pendingNoteOnCount_,
             [&](const PendingNoteOn& other) { return other.channel == note.channel; }) == 1;
-        playNote(note.note, note.velocity, note.channel,
-                 strum ? note.pluckDelay : 0, strum, unambiguous);
+        plucked |= playNote(note.note, note.velocity, note.channel,
+                            strum ? note.pluckDelay : 0, strum, unambiguous,
+                            pickedStroke && pickedUpstroke);
+    }
+    // A connected transition is the fretting hand's, not a stroke.
+    if (pickedStroke && plucked)
+    {
+        if (!continuedStroke)
+        {
+            lastStrokeUpstroke_ = pickedUpstroke;
+            nextUpstroke_ = !pickedUpstroke;
+        }
+        lastStrokeSample_ = strokeSample;
     }
     pendingNoteOnCount_ = 0;
 
@@ -858,17 +891,19 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
     }
 }
 
-void Performer::playNote(int note, float velocity, int channel,
+bool Performer::playNote(int note, float velocity, int channel,
                           int delay, bool strumming,
-                          bool unambiguousTransition) noexcept
+                          bool unambiguousTransition, bool upstroke) noexcept
 {
     const auto index = static_cast<std::size_t>(channel - 1);
     const int source = portamentoSources_[index];
     portamentoSources_[index] = -1;
     if (unambiguousTransition && portamentoSwitches_[index] && source >= 0
         && engine_.transitionNote(source, note, velocity, channel))
-        return;
-    engine_.noteOn(note, velocity, channel, delay, strumming);
+        return false;
+    const bool sounds = engine_.canSound(note, channel);
+    engine_.noteOn(note, velocity, channel, delay, strumming, upstroke);
+    return sounds;
 }
 
 // RPN parsing follows MIDI 1.0 (and JUCE's MidiRPNDetector, which the
