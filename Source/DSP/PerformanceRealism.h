@@ -16,6 +16,15 @@ struct PerformanceRealism
     // The quieter contacts expose intrinsic-filter retuning discontinuities.
     // Keep their continuity repair independently ablatable as well.
     bool retuneContinuity { true };
+    // An upstroke strikes the treble strings harder and the bass strings
+    // lighter than a downstroke (AcustraEngine::initialisePluck).
+    bool strokeDepth { true };
+    // Single picked notes alternate down and up as a plectrum does
+    // (Performer::flushNoteGroup).
+    bool alternatePicking { true };
+    // A released fretted note falls toward the previous fret as the lifting
+    // fingertip becomes the string's end (AcustraEngine::beginReleaseFall).
+    bool releasePitchFall { true };
 };
 
 } // namespace acustra

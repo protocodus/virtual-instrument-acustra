@@ -151,19 +151,27 @@ level of Release Noise.
 **Key-up.** A released note keeps ringing for a 32nd note at the song's
 tempo (62.5 ms at 120 BPM) before the hand damps it, so the same note
 played again in that time continues the ringing string. Hold the key or
-use sustain for longer.
+use sustain for longer. As the hand damps a fretted note its pitch falls
+toward the fret below, as a lifting fingertip lets it on a guitar; open
+strings do not fall.
 
 **Chords and strums.** Notes that arrive together are fretted as one
 chord shape and strummed, low to high on a downstroke. A strum within a
 dotted eighth of the previous one (0.375 s at 120 BPM) is the hand's
 return and goes the other way; after a longer gap it is a downstroke
-again. Notes played by hand arrive a little apart: turn on CHORDS to
-gather them, at the cost of 30 ms latency.
+again. An upstroke catches the treble strings harder and the bass
+strings more lightly. Notes played by hand arrive a little apart: turn
+on CHORDS to gather them, at the cost of 30 ms latency.
 
-**Keyswitches** below the guitar's range latch the strum direction on
+**Picking.** With Picking on Pick, single notes alternate down and up
+by the same rule, as one hand with the strums: eighth and sixteenth notes
+alternate, quarter notes and the first note after a rest are downstrokes.
+Finger and Thumb pluck every note the same way.
+
+**Keyswitches** below the guitar's range latch the stroke direction on
 every channel, whichever channel sends them, until the next keyswitch or
-PANIC: MIDI 24 makes every strum a downstroke, 25 an upstroke and 26
-returns to automatic. They never sound. The panel's legend names them
+PANIC: MIDI 24 makes every strum (and, with a pick, every picked note) a
+downstroke, 25 an upstroke and 26 returns to automatic. They never sound. The panel's legend names them
 **C0**, **C#0** and **D0**, counting middle C as C3; with middle C as C4,
 as in the rest of this guide, they are C1, C#1 and D1.
 
@@ -200,7 +208,7 @@ whichever channel sends them.
 | Message | What it does |
 | --- | --- |
 | Note On / Off | Pluck, with velocity as force; release velocity sets the damping |
-| Notes 24-26 | Strum-direction keyswitches: C0, C#0, D0 as the panel names them (C1-D1 with middle C as C4) |
+| Notes 24-26 | Stroke-direction keyswitches (strums, and picked notes under Pick): C0, C#0, D0 as the panel names them (C1-D1 with middle C as C4) |
 | Pitch bend | Slide; 2 semitones by default (RPN 0 sets 0-96) |
 | CC1 | Vibrato |
 | CC2 | Mute: picking-hand damping at the saddle |

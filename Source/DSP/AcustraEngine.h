@@ -243,8 +243,14 @@ public:
     // stroke's beginStrum() draw and its level draws its own jitter,
     // bounded to what repeated real strums vary by; a single note leaves it
     // false and is unaffected down to the bit.
+    // upstroke is a single note's own stroke direction (a strum member takes
+    // its stroke's, from beginStrum): an upstroke releases the sideways
+    // plane the other way, as a returning plectrum does. The Performer
+    // alternates single picked notes; false is the downstroke every single
+    // note played before.
     void noteOn(int midiNote, float velocity, int midiChannel = 1,
-                int pluckDelaySamples = 0, bool strumMember = false) noexcept;
+                int pluckDelaySamples = 0, bool strumMember = false,
+                bool upstroke = false) noexcept;
     // Explicit connected hammer-on/pull-off on the source's physical string.
     // Transfers one held owner to the new note and keeps its travelling wave;
     // ordinary overlapping noteOn calls remain independent plucks. Returns
@@ -736,6 +742,9 @@ private:
         int writeIndex { 0 };
         float currentDelay { 128.0f };
         float targetDelay { 128.0f };
+        // The target configureVoice set, before a released note's fall
+        // (beginReleaseFall) lengthens it.
+        float configuredDelay { 128.0f };
         // Carry exponential progress below the float delay's ULP. Rounding
         // each step can otherwise stall thousandths of a sample from the target and
         // force an abrupt snap. The published delay and line read stay float.
@@ -1370,6 +1379,18 @@ private:
         // The hand's T60 for the release under way (beginRelease), from
         // which releaseDamping follows the loop's period; zero when none.
         float releaseSeconds { 0.0f };
+        // A released fretted note's fall toward the previous fret
+        // (beginReleaseFall): how far it has fallen and where it is falling
+        // to, in semitones; the share of the fall still to go, its decay per
+        // control period and the control periods it still moves for; and
+        // the samples the fall adds to each loop's configured delay. Zero,
+        // the default, leaves the string exactly where it was.
+        float releaseFallSemitones { 0.0f };
+        float releaseFallTarget { 0.0f };
+        float releaseFallRemaining { 0.0f };
+        float releaseFallDecay { 0.0f };
+        int releaseFallPeriods { 0 };
+        float releaseFallDelay { 0.0f };
         // Samples until a released string is handed back to the allocator.
         int returnSamples { 0 };
         // Samples until a scheduled pluck is released; zero when none waits.
@@ -1676,6 +1697,9 @@ private:
     [[nodiscard]] static float frettingContactWeight(float speakingLength,
                                                        int harmonic) noexcept;
     void beginRelease(Voice& voice, int stringIndex) noexcept;
+    void beginReleaseFall(Voice& voice) noexcept;
+    void advanceReleaseFall(Voice& voice) noexcept;
+    void clearReleaseFall(Voice& voice) noexcept;
     void beginGestureDamping(Voice& voice) noexcept;
     void updateReleaseJoinWindow(Voice& voice) noexcept;
     void processPendingRelease(Voice& voice, int stringIndex) noexcept;

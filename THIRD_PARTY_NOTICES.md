@@ -321,6 +321,11 @@ binary:
   (`strumSpeedJitterHalfWidth` in `Source/DSP/AcustraEngine.h`); and a
   repeated string's level varying with a 4.47 dB standard deviation (the
   7.74 dB half-width in `AcustraEngine::initialisePluck`).
+- An upstroke's attack against a downstroke's on the same string, which
+  `Tools/MeasureStrumDirection.py` measures from the same hex-pickup audio
+  and annotations: 0.9 dB more per string toward the high E and 1.2 dB
+  under the downstroke between the D and G strings (`upstrokeTiltDbPerString`
+  and `upstrokeMidNeckDb` in `AcustraEngine::initialisePluck`).
 
 These are Acustra's measurements and fits from the dataset, not part of
 it; the source comments and tools above describe how each was derived. This

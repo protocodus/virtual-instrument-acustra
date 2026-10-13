@@ -76,9 +76,16 @@ public:
     // strumRestSeconds restarts whatever the tempo; a front end that stops
     // rendering while silent (the Rack Extension idles) must not idle for
     // less than that after the last note, or the rest would go unmeasured.
+    // Under Pick a single note or a two-note group is a stroke of the same
+    // hand: it alternates with the strums and other picked notes by the same
+    // rule, as a plectrum's down-up picking does. One that comes within the
+    // chord window (chordGatherSeconds) of the hand's last stroke continues
+    // that stroke, so a chord whose keys or a guitar controller's strings
+    // arrive a few milliseconds apart is one direction, not a flip per note.
+    // Finger and Thumb pluck every single note toward the palm.
     // The direction keyswitches, below the guitar's range, latch a direction
     // on every channel until the next direction key, reset or prepare: C0
-    // makes every strum a downstroke, C#0 an upstroke, D0 returns to automatic. D#0
+    // makes every stroke a downstroke, C#0 an upstroke, D0 returns to automatic. D#0
     // toggles global sustain independently of the panel switch and pedals.
     // They never sound and take no string; their key-ups are consumed.
     enum class StrokeMode { Automatic, Down, Up };
@@ -299,9 +306,12 @@ private:
     bool processRpnController(int midiChannel, int controller, int value) noexcept;
     void setLowerZoneMemberCount(int memberCount) noexcept;
     void refreshPitchBend(int midiChannel) noexcept;
-    void playNote(int note, float velocity, int channel,
+    // Whether it plucked: false for a connected transition, or a note no
+    // string can sound.
+    bool playNote(int note, float velocity, int channel,
                   int delay = 0, bool strumming = false,
-                  bool unambiguousTransition = true) noexcept;
+                  bool unambiguousTransition = true,
+                  bool upstroke = false) noexcept;
     [[nodiscard]] bool isLowerZoneMember(int midiChannel) const noexcept;
     void resetControllerScope(int midiChannel) noexcept;
     [[nodiscard]] bool channelIsInControllerScope(int controllerChannel,
@@ -315,9 +325,12 @@ private:
     AcustraEngine engine_;
 
     // Playing state that outlives a block.
-    // A strum's stroke alternates; the sample clock and the tempo tell a
-    // hand's return from a new stroke, unless a keyswitch has latched one.
-    bool strumUpstroke_ { false };
+    // The picking hand's strokes alternate; the sample clock and the tempo
+    // tell a hand's return from a new stroke, unless a keyswitch has
+    // latched one. nextUpstroke_ is the direction of a return stroke.
+    bool nextUpstroke_ { false };
+    bool lastStrokeUpstroke_ { false };
+    bool pickTechnique_ { false };
     StrokeMode strokeMode_ { StrokeMode::Automatic };
     double tempoBpm_ { 120.0 };
     bool gatherChords_ { false };
@@ -325,7 +338,7 @@ private:
     bool keyswitchSustain_ { false };
     double sampleRate_ { 48000.0 };
     std::int64_t processedSamples_ { 0 };
-    std::int64_t lastStrumSample_ { -1 };
+    std::int64_t lastStrokeSample_ { -1 };
     std::array<RpnState, 16> rpnStates_ {};
     std::array<float, 16> rawPitchWheels_ {};
     // Both messages are required: CC65 never infers legato from overlap.

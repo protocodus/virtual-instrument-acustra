@@ -5,6 +5,51 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-13 — upstrokes lean treble, picked notes alternate, released notes fall
+
+The user asked for a few novel ways to make the guitar more real, across
+sound, resonance, playing, attack, release, sustain, artifacts and dynamics,
+with A/B tests and no new parameter or GUI change. Three behaviours were
+chosen because a real guitar has them, Acustra did not, and evidence sizes
+them; all act on a performance rather than a calibrated single note, so the
+recording benchmark and construction loudness calibration are untouched.
+Rejected candidates and why are in [the report](stroke-release-realism-2026-10-13.md).
+
+- **Stroke depth.** Measured on GuitarSet's 180 comping takes, each string
+  against its own downstrokes on its own hex channel
+  (`Tools/MeasureStrumDirection.py`; GuitarSet's annotated onsets trail the
+  attacks by about 16 ms, and an uncorrected first pass reported a ±5 dB
+  profile from that alone). A line through each take's up-minus-down
+  attacks rises 0.76-1.03 dB per string toward the high E and sits 0.89-1.59
+  dB under the downstroke mid-neck, on three attack measures. An upstroke
+  string is released at `-1.2 + 0.9 (k - 2.5)` dB of its downstroke force.
+  A first version dropped the offset as the players' accents; its upstrokes
+  came out about 1.3 dB louder at the microphones, which no take shows, so
+  the measured offset is kept and its cause stays unseparated.
+- **Alternate picking.** Under Pick a single note or two-note group is a
+  stroke of the same hand as the strums, with their dotted-eighth rule and
+  keyswitch latch; a stroke within 30 ms of the last continues it. An
+  upstroke reverses the sideways release as a return strum already did, so
+  the saddle's moments now add on the treble strings and cancel on the bass:
+  an isolated upstroke radiates 2.1-3.8 dB more than a downstroke on the G,
+  B and high E and 0.6-1.0 dB less on the low E and A. Whether a plectrum's
+  upstroke differs that much is the ear's call. Finger and Thumb are
+  unchanged.
+- **Release fall.** A released fretted note falls toward the previous fret,
+  one semitone approached with a quarter of the hand's T60 and stopped at 86%
+  when the note is 30 dB down, after Roland's US 7470851 B2 (the fingertip
+  "becomes the endpoint node"; "the pitch drops about a half tone" as the
+  envelope nears zero). It lengthens each loop's configured delay: moving
+  the string as a slide re-solved its dispersion every control period and
+  cost half again a callback, overrunning at 96 kHz/32 frames.
+
+Each has an offline `PerformanceRealism` switch; all three off reproduce the
+previous engine bit for bit on every review score. New `StrokeDepth`,
+`AlternatePicking` and `ReleaseFall` suites; `StrumDirection`'s exact
+return-stroke check now runs with the depth off. The blind A/B pack
+(`Tools/BuildStrokeReleaseReview.py`) awaits the user's ears: nothing here
+was chosen by ear, and no listening verdict is recorded. Version 1.4.0.
+
 ## 2026-10-13 — name the damping gesture Mute
 
 The user requested the simpler **Mute** label for Bridge Hand. The desktop
