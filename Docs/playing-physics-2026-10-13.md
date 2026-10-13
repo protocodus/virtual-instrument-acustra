@@ -138,6 +138,46 @@ outside a stroke are grazed in the corpus too (the string the pick passes
 first rises a median 3.6 dB on the bass side and 9.0 dB on the treble, struck
 18 to 19 dB under a played attack) and are not modelled.
 
+## 3. The release fall, measured
+
+1.4.0 let a released fretted note's pitch fall as the lifting fingertip
+becomes the string's end, with an authored curve: one semitone approached
+with a quarter of the hand's T60, stopping at 86% when the note is 30 dB
+down. GuitarSet measures it. `Tools/MeasureReleaseFall.py` reads the
+corpus's per-string pitch tracks against each note's own middle and the hex
+channel's level against its sustain, over the last 200 ms of every note
+whose string is not played again within 300 ms
+([`release-fall-report.json`](validation-playing-physics-20261013/release-fall-report.json)):
+
+| Level under the sustain | 0–3 dB | 3–6 | 6–10 | 10–15 | 15–20 | 20–25 | 25–30 | 30–40 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Fretted, 4,329 note ends, median cents | −0.4 | −1.9 | −15.7 | −28.9 | −39.2 | −49.8 | −61.6 | −80.5 |
+| Open, 394 note ends, median cents | −0.1 | +1.8 | +5.8 | +10.0 | +16.9 | +6.0 | +7.3 | −4.8 |
+| Authored 1.4.0 curve at the bin's centre | −10 | −26 | −41 | −56 | −69 | −78 | −84 | −86 |
+
+The fretted notes hold their pitch for the first few decibels and then fall
+about 2.3 cents a dB, to 80 cents at 35 dB down; the open strings, with no
+fingertip to lift, do not fall. The authored curve fell far too early and a
+little too far. The fall now follows the measured medians against the level
+the hand's own damping has taken (60 dB per T60), interpolated linearly
+between the bins' centres, and stops at 35 dB down; at the nominal fretted
+0.32 s release that is 29 cents after 67 ms and 80.5 after 187 ms. A firmer
+key-up still falls faster, a string fretted only in part still falls in
+proportion, and the delay offset that carries the fall is unchanged.
+
+**Tests** (`Acustra.ReleaseFall`, updated): the fall follows the measured
+curve within one control period at 44.1, 48 and 96 kHz and stops at 80.5
+cents; the isolated string's rendered fundamental falls 4.3 cents in a 50 ms
+window centred 30 ms after the damping begins and 32.6 cents centred at 80 ms,
+where the curve, weighted by the window and the decaying note, predicts 5.3
+and 32.6; the re-fret, pedal, panic, rate, block and firm-key-up checks keep
+their 1.4.0 meaning with thresholds moved to the new curve.
+
+**Limits.** The curve is a median: real note ends spread widely about it
+(at 30–40 dB down the quartiles are 6 and 288 cents) with how fast a finger
+lets go, which a key-up's velocity only partly carries. The comping corpus
+is one guitar and six players.
+
 ## Dropped on their evidence
 
 - **Strum speed following the tempo.** Pooled over every picked stroke, a

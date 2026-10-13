@@ -843,13 +843,12 @@ Once its window expires, Note-off damps the note at every release velocity,
 including 127, without adding a new pluck, so a fast keyboard key-up never
 sounds like another stroke. A fretted note's fingertip lifts the string off
 the fret as it relaxes and becomes the string's end, so the dying note falls
-toward the fret below: one semitone approached with a quarter of the hand's
-T60, a third of a semitone by the time it has lost 6 dB, stopping 86% of the
-way when it is 30 dB down; a firmer key-up falls faster. Roland's
-guitar-to-MIDI patent describes the drop its hexaphonic pickups track (US
-7470851 B2: "the pitch drops about a half tone" as the envelope nears zero);
-the curve is that account sized by the fret geometry, not a measured
-trajectory. Open strings, held and pedalled notes do not fall, and a new
+as GuitarSet's hex-pickup pitch tracks measure it on 4,329 fretted note
+ends: nothing in the first 4 dB it loses, then about 2.3 cents a dB, 29 cents
+at 12.5 dB down and 80 at 35 dB, where it stops; it follows the hand's own
+damping, so a firmer key-up falls faster. Roland's guitar-to-MIDI patent
+describes the same drop (US 7470851 B2: "the pitch drops about a half tone"
+as the envelope nears zero). Open strings, held and pedalled notes do not fall, and a new
 stroke presses the string back onto its fret
 ([the report](Docs/stroke-release-realism-2026-10-13.md)). At that damping
 start it adds the hand's own touch
@@ -2472,11 +2471,12 @@ Dated evidence is retained so the earlier decisions remain traceable.
   No measurement here says whether a real plectrum's upstroke differs that
   much, though the user's blind A/B preference for the candidate included
   it; `PerformanceRealism::alternatePicking` off restores downstrokes.
-- The release fall's one-semitone asymptote and quarter-T60 time constant
-  are sized by the fret geometry inside Roland's qualitative account, not a
-  measured trajectory; during the fall the string keeps the fretted note's
-  dispersion, bridge compensation and hand loss, a period at most 6% shorter
-  than the one sounding.
+- The release fall is GuitarSet's median curve against the level the
+  hand's damping has taken; real note ends spread widely about it (at 35 dB
+  down the quartiles are 6 and 288 cents of fall) with how fast a finger
+  lets go, which MIDI's key-up only partly carries. During the fall the
+  string keeps the fretted note's dispersion, bridge compensation and hand
+  loss, a period at most 5% shorter than the one sounding.
 - Left by the 2026-10-11 MIDI audit, each a limit rather than a stuck note:
   - The MPE lower zone is not saved with a session: after a reload, a
     member channel's events are conventional (a ±2 semitone bend range)

@@ -337,6 +337,11 @@ binary:
   audio and annotations: a strike 4.6 dB under the string's own played
   attacks and a 20 dB fall in 13.8 to 14.8 periods, taken as a 43-period
   T60 (`AcustraEngine::muteStroke` and `beginMutedStroke`).
+- How far a released fretted note's pitch falls as its level drops, which
+  `Tools/MeasureReleaseFall.py` measures from the comping's pitch contours
+  and hex-pickup audio: the median fall at 1.5, 4.5, 8, 12.5, 17.5, 22.5,
+  27.5 and 35 dB under the sustain, 0.4 to 80.5 cents
+  (`releaseFallCurve` in `Source/DSP/AcustraEngine.cpp`).
 
 These are Acustra's measurements and fits from the dataset, not part of
 it; the source comments and tools above describe how each was derived. This

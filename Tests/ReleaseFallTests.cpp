@@ -1,8 +1,8 @@
-// A released fretted note falls toward the previous fret as the lifting
-// fingertip becomes the string's end (AcustraEngine::beginReleaseFall):
-// one semitone approached with a quarter of the hand's T60 until the note is
-// 30 dB down, the period lengthened at the string's tension. Open strings do
-// not fall.
+// A released fretted note falls as the lifting fingertip becomes the
+// string's end (AcustraEngine::beginReleaseFall): GuitarSet's measured
+// curve of cents against the level the hand's damping has taken, 80 cents
+// by 35 dB, where it stops, the period lengthened at the string's tension.
+// Open strings do not fall.
 #include "DSP/AcustraPerformer.h"
 
 #include <algorithm>
@@ -19,13 +19,13 @@ struct AcustraEngineTestAccess
 {
     struct Fall
     {
-        float now, target, seconds, period, tension, slideSpeed, length;
+        float now, scale, seconds, period, tension, slideSpeed, length;
         std::array<float, 2> added; bool played;
     };
     static Fall fall(const AcustraEngine& e, int string)
     {
         const auto& v = e.voices_[static_cast<std::size_t>(string)];
-        return { v.releaseFallSemitones, v.releaseFallTarget, v.releaseSeconds,
+        return { v.releaseFallSemitones, v.releaseFallScale, v.releaseSeconds,
                  v.contactPeriodSamples, v.tensionNewtons, v.fretMotion.speed,
                  v.speakingLengthMetres,
                  { v.loops[0].targetDelay - v.loops[0].configuredDelay,
@@ -44,6 +44,22 @@ int failures = 0;
 void expect(bool condition, const char* message)
 {
     if (!condition) { ++failures; std::cerr << "FAIL: " << message << '\n'; }
+}
+
+// The measured median fall (Tools/MeasureReleaseFall.py), cents against
+// the level drop in dB, held from 35 dB.
+double measuredFall(double dropDb)
+{
+    constexpr std::array<std::array<double, 2>, 9> curve {{
+        { 0.0, 0.0 }, { 1.5, 0.4 }, { 4.5, 1.9 }, { 8.0, 15.7 }, { 12.5, 28.9 },
+        { 17.5, 39.2 }, { 22.5, 49.8 }, { 27.5, 61.6 }, { 35.0, 80.5 } }};
+    if (dropDb <= 0.0)
+        return 0.0;
+    for (std::size_t k = 1; k < curve.size(); ++k)
+        if (dropDb <= curve[k][0])
+            return curve[k - 1][1] + (curve[k][1] - curve[k - 1][1])
+                * (dropDb - curve[k - 1][0]) / (curve[k][0] - curve[k - 1][0]);
+    return curve.back()[1];
 }
 
 std::unique_ptr<Engine> engine(bool fall, double rate, bool isolate = false,
@@ -95,7 +111,7 @@ void releaseAt(Engine& e, int note, int string, double rate)
         advance(e, 1, 1);
 }
 
-void testFallFollowsThePreviousFretWithAQuarterOfTheHandsTime()
+void testFallFollowsTheMeasuredCurve()
 {
     // D string, fifth fret: G3. Its loops are configured as the held note
     // was; the fall adds the samples that lengthen the period by its ratio.
@@ -104,11 +120,10 @@ void testFallFollowsThePreviousFretWithAQuarterOfTheHandsTime()
         auto falling = engine(true, rate);
         releaseAt(*falling, 55, 2, rate);
         const auto start = Access::fall(*falling, 2);
-        expect(start.target == -1.0f, "a released fretted note does not fall toward the previous fret");
-        // It stops at half the hand's T60, 86% of the way.
-        const double stop = 0.5 * start.seconds;
+        expect(start.scale == 1.0f, "a released fretted note does not take the whole measured fall");
         expect(start.seconds > 0.0f, "a released note has no hand time");
-        const double tau = 0.25 * start.seconds;
+        // It stops when the hand's damping has taken 35 dB.
+        const double stop = 35.0 / 60.0 * start.seconds;
         double worstTrajectory = 0.0, worstPitch = 0.0, previous = 0.0;
         bool monotonic = true;
         for (int step = 1; step <= static_cast<int>(0.3 * rate); ++step)
@@ -117,15 +132,17 @@ void testFallFollowsThePreviousFretWithAQuarterOfTheHandsTime()
             const auto now = Access::fall(*falling, 2);
             if (!now.played)
                 break;
-            // Independent law: 1 - exp(-t/tau) until it stops, advanced a
-            // whole control period at each update of the control grid, so
-            // it may lead or trail the continuous curve by one period.
+            // Independent law: the measured curve against 60 dB per T60,
+            // advanced a whole control period at each update of the control
+            // grid, so it may lead or trail the continuous curve by one.
             const double t = static_cast<double>(step) / rate;
             const double period = Access::controlPeriod() / rate;
             const auto curve = [&](double time)
-            { return -(1.0 - std::exp(-std::clamp(time, 0.0, stop + period) / tau)); };
-            const double late = t < stop - period ? curve(t - period) : curve(stop - period);
-            const double early = t < stop - period ? curve(t + period) : curve(stop + period);
+            {
+                return -0.01 * measuredFall(60.0 * std::clamp(time, 0.0, stop + period)
+                                            / start.seconds);
+            };
+            const double late = curve(t - period), early = curve(t + period);
             if (now.now > late + 1.0e-4 || now.now < early - 1.0e-4)
                 worstTrajectory = std::max(worstTrajectory,
                     std::min(std::abs(now.now - late), std::abs(now.now - early)));
@@ -139,9 +156,10 @@ void testFallFollowsThePreviousFretWithAQuarterOfTheHandsTime()
         }
         std::cout << rate << " Hz: trajectory outside one control period by "
                   << worstTrajectory << " semitones, added delay error "
-                  << worstPitch << " of a period\n";
-        expect(worstTrajectory < 1.0e-3, "the fall does not follow 1 - exp(-t / (T60/4))");
+                  << worstPitch << " of a period, final fall " << previous * 100.0 << " cents\n";
+        expect(worstTrajectory < 1.0e-3, "the fall does not follow the measured curve");
         expect(monotonic, "the fall is not monotonic");
+        expect(std::abs(previous * 100.0 + 80.5) < 0.05, "the fall did not stop at 80.5 cents");
         expect(worstPitch < 1.0e-5, "the loops' delays do not carry the fall");
     }
 }
@@ -204,7 +222,7 @@ void testTheSoundingPitchFalls()
                 const double t = static_cast<double>(from + n) / rate;
                 const double w = (0.5 - 0.5 * std::cos(2.0 * 3.14159265358979 * n / (count - 1)))
                     * std::exp(-2.0 * 6.9078 * t / seconds);
-                weighted += w * -100.0 * (1.0 - std::exp(-t / (0.25 * seconds)));
+                weighted += w * -measuredFall(60.0 * t / seconds);
                 weights += w;
             }
             const double expected = weighted / weights;
@@ -221,7 +239,7 @@ void testOpenStringsDoNotFall()
     auto steady = engine(false, 48000.0);
     releaseAt(*falling, 50, 2, 48000.0);
     releaseAt(*steady, 50, 2, 48000.0);
-    expect(Access::fall(*falling, 2).target == 0.0f, "an open string fell");
+    expect(Access::fall(*falling, 2).scale == 0.0f, "an open string fell");
     expect(advance(*falling, 24000) == advance(*steady, 24000),
            "an open string's release changed with the fall");
 }
@@ -235,13 +253,14 @@ void testRefrettingReturnsWithoutASlide()
     auto steady = engine(false, 48000.0, false, 0.7f);
     releaseAt(*falling, 45, 0, 48000.0); // low E, 5th fret
     releaseAt(*steady, 45, 0, 48000.0);
-    advance(*falling, 2400);
-    advance(*steady, 2400);
+    // 100 ms into the damping: 19 dB down, about 42 cents fallen.
+    advance(*falling, 4800);
+    advance(*steady, 4800);
     expect(Access::fall(*falling, 0).now < -0.2f, "the fall had not begun before the re-fret");
     falling->noteOn(45, 0.7f, 1);
     steady->noteOn(45, 0.7f, 1);
     const auto refretted = Access::fall(*falling, 0);
-    expect(refretted.now == 0.0f && refretted.target == 0.0f
+    expect(refretted.now == 0.0f && refretted.scale == 0.0f
                && refretted.added[0] == 0.0f && refretted.added[1] == 0.0f,
            "a new stroke left the string fallen");
     float scrape = 0.0f;
@@ -261,20 +280,20 @@ void testPedalHandBackAndPanic()
     auto e = engine(true, 48000.0);
     e->setSustainPedal(true, 3);
     releaseAt(*e, 57, 2, 48000.0); // D string, 7th fret, on channel 3
-    expect(Access::fall(*e, 2).target == 0.0f, "a pedalled note fell before the pedal lifted");
+    expect(Access::fall(*e, 2).scale == 0.0f, "a pedalled note fell before the pedal lifted");
     e->setSustainPedal(false, 3);
     advance(*e, 64);
-    expect(Access::fall(*e, 2).target == -1.0f && Access::fall(*e, 2).now < 0.0f,
+    expect(Access::fall(*e, 2).scale == 1.0f && Access::fall(*e, 2).now < 0.0f,
            "lifting the pedal did not let the fretted note fall");
     advance(*e, static_cast<int>(0.6 * 48000.0));
     const auto handedBack = Access::fall(*e, 2);
-    expect(!handedBack.played && handedBack.now == 0.0f && handedBack.target == 0.0f,
+    expect(!handedBack.played && handedBack.now == 0.0f && handedBack.scale == 0.0f,
            "a string handed back kept its fall");
     releaseAt(*e, 57, 2, 48000.0);
     advance(*e, 1200);
     e->allSoundOff(3);
     const auto cleared = Access::fall(*e, 2);
-    expect(cleared.now == 0.0f && cleared.target == 0.0f, "panic left a string fallen");
+    expect(cleared.now == 0.0f && cleared.scale == 0.0f, "panic left a string fallen");
 }
 
 void testNoNewAttackAtTheRelease()
@@ -365,9 +384,10 @@ void testMemberTensionBendIsKept()
     const int string = e->heldString(57, 2);
     const float tension = Access::fall(*e, string).tension;
     e->noteOff(57, 2);
+    // The join window, then 100 ms of damping: about 42 cents fallen.
     advance(*e, 3001 + 4800);
     const auto now = Access::fall(*e, string);
-    expect(now.now < -0.5f, "a member note did not fall");
+    expect(now.now < -0.3f, "a member note did not fall");
     expect(std::abs(now.tension / tension - 1.0f) < 1.0e-6f,
            "the fall changed the member's bent tension");
 }
@@ -376,7 +396,7 @@ void testMemberTensionBendIsKept()
 int main()
 {
     std::cout << std::unitbuf;
-    testFallFollowsThePreviousFretWithAQuarterOfTheHandsTime();
+    testFallFollowsTheMeasuredCurve();
     testTheSoundingPitchFalls();
     testOpenStringsDoNotFall();
     testRefrettingReturnsWithoutASlide();

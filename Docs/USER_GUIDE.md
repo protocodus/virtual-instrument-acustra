@@ -152,8 +152,9 @@ level of Release Noise.
 tempo (62.5 ms at 120 BPM) before the hand damps it, so the same note
 played again in that time continues the ringing string. Hold the key or
 use sustain for longer. As the hand damps a fretted note its pitch falls
-toward the fret below, as a lifting fingertip lets it on a guitar; open
-strings do not fall.
+toward the fret below, as a lifting fingertip lets it on a guitar: as
+GuitarSet's players' notes do, hardly at first, then by up to 80 cents as
+the note dies away; open strings do not fall.
 
 **Chords and strums.** Notes that arrive together are fretted as one
 chord shape and strummed, low to high on a downstroke. A strum within a

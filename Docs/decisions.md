@@ -5,6 +5,20 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-13 — the release fall follows GuitarSet's measured curve
+
+1.4.0's release fall was authored: one semitone approached with a quarter of
+the hand's T60, stopping at 86%. GuitarSet's hex-pickup pitch tracks now
+measure it (`Tools/MeasureReleaseFall.py`, 4,329 fretted note ends): the
+pitch holds for the first 4 dB the note loses, then falls about 2.3 cents a
+dB, 29 cents at 12.5 dB down and 80 at 35 dB, while 394 open-string ends stay
+within a few cents. The authored curve fell more than twice as far by 10 dB
+(49 cents against 22) and reached 86 cents. The fall now follows the measured median against
+the hand's own damping, 60 dB per T60, and stops at 35 dB down; a firmer
+key-up still falls faster. Nothing else of the 1.4.0 mechanism changes
+(`Acustra.ReleaseFall` tests the new law). The user heard and preferred
+1.4.0 with the authored curve; this is a measured correction, not heard yet.
+
 ## 2026-10-13 — a strum mutes the strings it crosses
 
 A chord voiced with a gap (E2, B3 and E4 say, or 30% of a keyboard's

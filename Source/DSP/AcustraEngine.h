@@ -1393,16 +1393,17 @@ private:
         // The hand's T60 for the release under way (beginRelease), from
         // which releaseDamping follows the loop's period; zero when none.
         float releaseSeconds { 0.0f };
-        // A released fretted note's fall toward the previous fret
-        // (beginReleaseFall): how far it has fallen and where it is falling
-        // to, in semitones; the share of the fall still to go, its decay per
-        // control period and the control periods it still moves for; and
-        // the samples the fall adds to each loop's configured delay. Zero,
-        // the default, leaves the string exactly where it was.
+        // A released fretted note's fall as the fingertip lifts
+        // (beginReleaseFall): how far it has fallen, in semitones; how much of
+        // the measured fall a string fretted only in part takes; the level
+        // the hand's damping has taken so far and takes each control period,
+        // in dB; the control periods it still moves for; and the samples the
+        // fall adds to each loop's configured delay. Zero, the default,
+        // leaves the string exactly where it was.
         float releaseFallSemitones { 0.0f };
-        float releaseFallTarget { 0.0f };
-        float releaseFallRemaining { 0.0f };
-        float releaseFallDecay { 0.0f };
+        float releaseFallScale { 0.0f };
+        float releaseFallDrop { 0.0f };
+        float releaseFallDropPerPeriod { 0.0f };
         int releaseFallPeriods { 0 };
         float releaseFallDelay { 0.0f };
         // A strum's dead stroke on a string the fretting hand mutes

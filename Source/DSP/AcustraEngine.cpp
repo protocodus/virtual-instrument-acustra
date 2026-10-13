@@ -4537,7 +4537,7 @@ void AcustraEngine::updateControlState() noexcept
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
         updateAttackPitch(voice, string);
-        if (voice.releaseFallRemaining > 0.0f)
+        if (voice.releaseFallPeriods > 0)
             advanceReleaseFall(voice);
         configureVoice(voice, string, voice.midiNote, false);
         updateTailHandLoss(voice);
@@ -8255,31 +8255,53 @@ void AcustraEngine::beginGestureDamping(Voice& voice) noexcept
         loop.beginGestureContact(position, strength, relaxation);
 }
 
+namespace
+{
+// GuitarSet's fretted note ends (Tools/MeasureReleaseFall.py, 4,329 notes on
+// the hex channels' tracked pitch): the median fall, in cents, against how
+// far the note's level has dropped under its sustain, in dB.
+constexpr std::array<std::array<float, 2>, 9> releaseFallCurve {{
+    { 0.0f, 0.0f }, { 1.5f, 0.4f }, { 4.5f, 1.9f }, { 8.0f, 15.7f },
+    { 12.5f, 28.9f }, { 17.5f, 39.2f }, { 22.5f, 49.8f }, { 27.5f, 61.6f },
+    { 35.0f, 80.5f } }};
+
+float releaseFallCents(float dropDb) noexcept
+{
+    if (!(dropDb > releaseFallCurve.front()[0]))
+        return 0.0f;
+    for (std::size_t k = 1; k < releaseFallCurve.size(); ++k)
+        if (dropDb <= releaseFallCurve[k][0])
+        {
+            const auto& low = releaseFallCurve[k - 1];
+            const auto& high = releaseFallCurve[k];
+            return low[1] + (high[1] - low[1]) * (dropDb - low[0]) / (high[0] - low[0]);
+        }
+    return releaseFallCurve.back()[1];
+}
+} // namespace
+
 // A fretted note is stopped by the fingertip pressing the string onto the
 // fret. To end it the finger relaxes: the string lifts off the fret while the
 // fingertip still holds it, and the fingertip, behind the fret, becomes the
-// string's end. Roland's guitar-to-MIDI patent describes this in the pitch
-// its hexaphonic pickups track (US 7470851 B2, Haga, 2008, FIG. 4: "the
-// finger that is in contact with the string becomes the endpoint node"; on
-// release "a drop in the pitch starts and following that, the envelope level
-// begins to rapidly attenuate", and with the envelope nearly zero "the pitch
-// drops about a half tone", varying with how fast the finger lets go and
-// from string to string). The fingertip lies between this fret and the one
-// below it, so the vibrating string lengthens toward the previous fret's
-// length and its pitch falls toward one semitone lower. The fall approaches
-// that with a time constant of a quarter of the hand's T60, so it leads the
-// damping as the patent describes: a third of a semitone by the time the note
-// has lost 6 dB. At half the T60, when the note is 30 dB down, it has gone 86%
-// of the way and stops: the rest of the curve would keep the loops retuning,
-// at a per-sample cost, under that level. A firmer key-up, which damps faster
-// (beginRelease), falls faster with it. An open string has no finger on a
-// fret and does not fall. This is the patent's qualitative account sized by
-// the fret geometry, not a measured trajectory.
+// string's end, so the vibrating string lengthens and its pitch falls.
+// Roland's guitar-to-MIDI patent describes it in the pitch its hexaphonic
+// pickups track (US 7470851 B2, Haga, 2008, FIG. 4: "the finger that is in
+// contact with the string becomes the endpoint node"; with the envelope
+// nearly zero "the pitch drops about a half tone"). GuitarSet's hex channels
+// measure it (releaseFallCurve): nothing in the first 4 dB the note loses,
+// then about 2.3 cents a dB, 29 cents at 12.5 dB and 80 at 35 dB, where open
+// strings, with no fingertip to lift, stay within a few cents. The fall
+// follows that curve against the hand's own damping, 60 dB per T60: at the
+// nominal fretted 0.32 s release, 29 cents after 67 ms and 80 after 187 ms,
+// where the note is 35 dB down and the fall stops, since the rest would keep
+// the loops retuning, at a per-sample cost, under that level. A firmer
+// key-up, which damps faster (beginRelease), falls faster with it. A string
+// fretted only in part (a slide's handover at the nut) falls in proportion.
 // The fall adds to each loop's configured delay instead of reconfiguring the
 // string as a slide: re-solving a released string's dispersion and bridge
 // phase every control period cost half again a callback for six strings.
 // Dispersion, bridge compensation and hand loss stay the fretted note's, a
-// period at most 6% shorter than the one sounding, on a note being damped.
+// period at most 5% shorter than the one sounding, on a note being damped.
 // speakingLengthMetres, the stop the hand holds, does not move, so the fall
 // is not a finger sliding along the winding (renderFretMotion).
 void AcustraEngine::beginReleaseFall(Voice& voice) noexcept
@@ -8289,28 +8311,24 @@ void AcustraEngine::beginReleaseFall(Voice& voice) noexcept
     if (!performanceRealism_.releasePitchFall || !(fretContact > 0.0f)
         || !(voice.releaseSeconds > 0.0f))
         return;
-    voice.releaseFallTarget = -fretContact;
-    voice.releaseFallRemaining = 1.0f;
-    voice.releaseFallDecay = static_cast<float>(std::exp(
-        -static_cast<double>(controlPeriod)
-            / (0.25 * static_cast<double>(voice.releaseSeconds) * sampleRate_)));
+    constexpr float stopDb = releaseFallCurve.back()[0];
+    voice.releaseFallScale = fretContact;
+    voice.releaseFallDrop = 0.0f;
+    voice.releaseFallDropPerPeriod = static_cast<float>(60.0 * controlPeriod
+        / (static_cast<double>(voice.releaseSeconds) * sampleRate_));
     voice.releaseFallPeriods = std::max(1, static_cast<int>(std::ceil(
-        0.5 * static_cast<double>(voice.releaseSeconds) * sampleRate_
-            / static_cast<double>(controlPeriod))));
+        stopDb / voice.releaseFallDropPerPeriod)));
 }
 
 // One control period of the fall: the period it reaches, as samples added to
 // each loop's configured delay, which the loop's delay follows at its 6 ms.
 void AcustraEngine::advanceReleaseFall(Voice& voice) noexcept
 {
-    voice.releaseFallRemaining *= voice.releaseFallDecay;
-    voice.releaseFallSemitones = voice.releaseFallTarget
-        * (1.0f - voice.releaseFallRemaining);
-    if (--voice.releaseFallPeriods <= 0)
-    {
-        voice.releaseFallTarget = voice.releaseFallSemitones;
-        voice.releaseFallRemaining = 0.0f;
-    }
+    voice.releaseFallDrop = std::min(voice.releaseFallDrop + voice.releaseFallDropPerPeriod,
+                                     releaseFallCurve.back()[0]);
+    --voice.releaseFallPeriods;
+    voice.releaseFallSemitones = -0.01f * voice.releaseFallScale
+        * releaseFallCents(voice.releaseFallDrop);
     voice.releaseFallDelay = voice.contactPeriodSamples
         * (std::exp2(-voice.releaseFallSemitones / 12.0f) - 1.0f);
     for (auto& loop : voice.loops)
@@ -8343,9 +8361,9 @@ void AcustraEngine::clearReleaseFall(Voice& voice) noexcept
         for (auto& loop : voice.loops)
             loop.targetDelay = loop.configuredDelay;
     voice.releaseFallSemitones = 0.0f;
-    voice.releaseFallTarget = 0.0f;
-    voice.releaseFallRemaining = 0.0f;
-    voice.releaseFallDecay = 0.0f;
+    voice.releaseFallScale = 0.0f;
+    voice.releaseFallDrop = 0.0f;
+    voice.releaseFallDropPerPeriod = 0.0f;
     voice.releaseFallPeriods = 0;
     voice.releaseFallDelay = 0.0f;
 }
