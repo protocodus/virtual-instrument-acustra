@@ -126,7 +126,7 @@ window can be resized from its corner and keeps its proportions.
   ignore it.
 - **Piezo** (20 %): the piezo mixed in beneath the microphones; no effect
   when Capture is Piezo.
-- **Room** (50 %): a small studio's reflections around the microphones; 0
+- **Room** (10 %): a small studio's reflections around the microphones; 0
   is dry once the room has rung out; the piezo never hears it.
 - **Output** (0 dB): final level, -24 to +6 dB.
 

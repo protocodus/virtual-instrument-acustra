@@ -4,7 +4,8 @@ Version 1.3.5 brings soft and medium velocities closer to firm playing in
 level while retaining their softer release character. Repeated strums use
 a restrained one-dB force variation instead of the previous broad random
 accents. Timing, string interaction and the full-velocity single-note
-reference are preserved. See the
+reference are preserved. New desktop instances start with 10% Room; explicit
+saved values keep their levels. See the
 [responsive dynamics measurements](Docs/responsive-dynamics-2026-10-13.md).
 
 Version 1.3.4 build 2 names the CC2 playing gesture **Mute** in the editor's
@@ -37,7 +38,7 @@ Room and Output remain directly accessible. Bridge-hand damping is a playing ges
 rather than a setting, so it arrives on CC2 and costs the panel nothing.
 The microphone observer uses a fixed blend of measured pressure responses
 and low-mode studio-position projections. It retains the existing recording
-voicing and Room parameter (50% for a new instance). See the
+voicing and Room parameter (10% for a new instance). See the
 [studio capture implementation](Docs/studio-capture-implementation-2026-10-11.md)
 and [the microphones and the room](#the-microphones-and-the-room).
 "Top of market"
@@ -340,7 +341,7 @@ These PCM16 stereo WAVs are rendered deterministically by
 `AcustraEngine` used by the plug-in. Each file receives one whole-file peak
 normalisation after rendering. There is no external post-EQ, compression,
 reverb, room effect or recorded-note layer, and the engine's own Room is at
-its engine default, off (the plug-in starts at 50%).
+its engine default, off (the plug-in starts at 10%).
 
 - **Steel sustain range** — isolated held
   notes from open E2 through B5.
@@ -1673,7 +1674,7 @@ resonances meet it (Known gaps).
 | **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
 | **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% the output is exactly as without it; a new instance starts at 20%, a bit of the piezo under the microphones (the default chosen on 2026-10-12, the Rack's new-instance default), and a session saved before Piezo Mix existed stays at 0%. With Capture on Piezo it does nothing, since the piezo is already the whole output. |
 | **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. Also controls subtle speed-dependent friction during held wound-string slides. 0-100% (50% nominal, 10% default), scaled by release velocity and what the string still carries. Explicit saved values retain their levels. 0% adds no new noise; already emitted waves continue. A session saved before it existed loads at 0%. Available on the Player panel and host-automatable. |
-| **Room** | Small-studio reflections around the microphones, 0-100% with a 50% plug-in default. Zero becomes dry once the existing room tail fades. The piezo remains dry. Available on the Capture panel and host-automatable; a session saved before Room existed loads at 0%. |
+| **Room** | Small-studio reflections around the microphones, 0-100% with a 10% plug-in default. Zero becomes dry once the existing room tail fades. The piezo remains dry. Available on the Capture panel and host-automatable; a session saved before Room existed loads at 0%. |
 | **Sustain** | On, every released note rings on as under the sustain pedal, on every channel, until its string is taken or the switch goes off, which damps the held notes as a pedal-up does; CC64 keeps working beside it, and each holds independently of the other. Off (the default) damps every key-up as before and is an exact no-op. Host-automatable; the SUSTAIN switch beside CHORDS. |
 | **String Age** | Lowers the string cutoff and increases dislocation loss; on the wound strings it also scales winding friction and bending loss (0.2 of the default's on fresh strings, 7.8 times it at 1), so an old set's basses lose their upper partials first. |
 | **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Past a quarter of a (short, high-fretted) string the point bends smoothly toward 0.36 of it and never reaches it, so the control changes the stroke at every fret for every technique. Explicit MPE position overrides that ratio. |

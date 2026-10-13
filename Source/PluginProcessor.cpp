@@ -446,13 +446,11 @@ AcustraAudioProcessor::createParameterLayout()
                                             10.0f, 10));
     // The room around the microphones (acustra::EngineParameters::room): 0%
     // the dry, close-miked instrument, 100% the maximum small-studio send.
-    // Microphone distance and reflection geometry stay fixed. On for a new
-    // instance at 50%, where the room sits 10-12.5 dB
-    // under the guitar, the amount the open recordings measured best against
-    // (Docs/decisions.md, 2026-10-01); a session saved before it existed
-    // loads it at zero (setStateInformation) and so sounds as it did. The
-    // piezo never hears it.
-    result.push_back (makePercentParameter (ids::room, "Room", 50.0f, 11));
+    // Microphone distance and reflection geometry stay fixed. New instances
+    // start at the requested subtle 10% room. Explicit saved values retain
+    // their levels; a session saved before Room existed loads it at zero
+    // (setStateInformation) and so sounds as it did. The piezo never hears it.
+    result.push_back (makePercentParameter (ids::room, "Room", 10.0f, 11));
     // Sustain (acustra::Performer::setSustainHold): on, every released note
     // rings on as under the sustain pedal until the switch goes off, on
     // every channel; CC64 still works beside it. Automatable, so a track can
