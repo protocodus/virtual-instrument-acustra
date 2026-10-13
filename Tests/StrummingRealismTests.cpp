@@ -185,11 +185,103 @@ std::vector<float> rapidPhrase(double rate, int frames, bool reverse, bool gathe
     left.insert(left.end(), right.begin(), right.end());
     return left;
 }
+
+void testFixedVelocityRepeatedStrokeLevels()
+{
+    // Render real repeated chords through the MIDI performer. Equal command
+    // velocity must not manufacture large random accents. Ringing waves and
+    // alternating stroke direction legitimately change the resulting level,
+    // so measure a broad set of adjacent RMS changes rather than flattening
+    // individual strokes or requiring identical audio.
+    constexpr int rate = 48000;
+    constexpr int block = 128;
+    constexpr int repeats = 12;
+    constexpr int start = rate / 10;
+    constexpr std::array<std::array<int, 6>, 2> shapes {{
+        {{ 40, 47, 52, 56, 59, 64 }},
+        {{ 48, 52, 55, 60, 64, 67 }}
+    }};
+    std::vector<double> increases;
+    bool finite = true;
+    for (const auto picking : { acustra::PickingTechnique::Finger,
+                                acustra::PickingTechnique::Pick,
+                                acustra::PickingTechnique::Thumb })
+        for (const auto& shape : shapes)
+            for (const auto direction : { Performer::StrokeMode::Automatic,
+                                          Performer::StrokeMode::Down })
+                for (const int velocity : { 64, 100 })
+                    for (const double seconds : { 0.15, 0.3, 0.6 })
+                    {
+                        auto performer = std::make_unique<Performer>();
+                        acustra::EngineParameters parameters;
+                        parameters.picking = picking;
+                        parameters.room = 0.0f;
+                        parameters.detune = 0.0f;
+                        performer->setParameters(parameters);
+                        performer->prepare(rate, block);
+                        performer->setGatherChords(false);
+                        performer->setStrokeMode(direction);
+                        const int interval = static_cast<int>(std::lround(seconds * rate));
+                        const int samples = start + repeats * interval;
+                        std::vector<float> left(static_cast<std::size_t>(samples));
+                        std::vector<float> right(left.size());
+                        for (int at = 0; at < samples; at += block)
+                        {
+                            const int count = std::min(block, samples - at);
+                            performer->beginBlock(left.data() + at, right.data() + at, count);
+                            for (int stroke = 0; stroke < repeats; ++stroke)
+                            {
+                                const int on = start + stroke * interval;
+                                const int off = on + interval - static_cast<int>(0.008 * rate);
+                                if (on >= at && on < at + count)
+                                    for (const int note : shape)
+                                        performer->noteOn(on - at, 1, note, velocity);
+                                if (off >= at && off < at + count)
+                                    for (const int note : shape)
+                                        performer->noteOff(off - at, 1, note, 64);
+                            }
+                            performer->endBlock();
+                        }
+                        const int window = std::min(interval, rate / 4);
+                        double previousDb = 0.0;
+                        for (int stroke = 0; stroke < repeats; ++stroke)
+                        {
+                            double energy = 0.0;
+                            const int begin = start + stroke * interval;
+                            for (int sample = begin; sample < begin + window; ++sample)
+                            {
+                                const double l = left[static_cast<std::size_t>(sample)];
+                                const double r = right[static_cast<std::size_t>(sample)];
+                                finite = finite && std::isfinite(l) && std::isfinite(r)
+                                    && std::abs(l) <= 1.0 && std::abs(r) <= 1.0;
+                                energy += 0.5 * (l * l + r * r);
+                            }
+                            finite = finite && energy > 1.0e-12;
+                            const double levelDb = 10.0 * std::log10(
+                                std::max(energy / window, 1.0e-30));
+                            if (stroke > 0)
+                                increases.push_back(levelDb - previousDb);
+                            previousDb = levelDb;
+                        }
+                    }
+    expect(finite, "fixed-velocity repeated strokes were silent, nonfinite or unbounded");
+    std::sort(increases.begin(), increases.end());
+    const double p95 = increases[static_cast<std::size_t>(
+        0.95 * static_cast<double>(increases.size() - 1))];
+    expect(p95 < 3.5,
+           "fixed-velocity repeated chords acquired excessive automatic RMS accents");
+    expect(increases.back() < 6.0,
+           "a fixed-velocity repeated chord produced a dramatic RMS jump");
+    std::cout << "Fixed-velocity repeated-strum adjacent RMS increase: p95 "
+              << p95 << " dB, maximum " << increases.back() << " dB\n";
+}
+
 }
 
 int main()
 {
     testSweepChangesAudio();
+    testFixedVelocityRepeatedStrokeLevels();
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         testContinuousWristSweep(rate);

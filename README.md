@@ -1,5 +1,12 @@
 # Acustra
 
+Version 1.3.5 brings soft and medium velocities closer to firm playing in
+level while retaining their softer release character. Repeated strums use
+a restrained one-dB force variation instead of the previous broad random
+accents. Timing, string interaction and the full-velocity single-note
+reference are preserved. See the
+[responsive dynamics measurements](Docs/responsive-dynamics-2026-10-13.md).
+
 Version 1.3.4 build 2 names the CC2 playing gesture **Mute** in the editor's
 Picking tooltip and user guide, matching the Rack control. Its behavior is unchanged.
 

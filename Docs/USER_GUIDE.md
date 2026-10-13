@@ -143,7 +143,10 @@ own range: E2-C6 (Standard; MIDI 40-84), D2-C6 (Drop D; 38-84), D2-A#5
 outside it is ignored. The on-screen keyboard spans D2-C6 (MIDI 38-84);
 its labels count middle C as C3, so its top key reads C5.
 
-**Velocity** is how hard the string is plucked. **Release velocity** sets
+**Velocity** is how hard the string is plucked. Soft and medium strokes
+retain their gentler tone while staying present alongside stronger notes.
+Repeated strums keep small natural variations without large random accents.
+**Release velocity** sets
 how firmly the hand damps the string: 64 is nominal, softer key-ups ring
 up to about twice as long, firmer ones about half; it also sets the
 level of Release Noise.

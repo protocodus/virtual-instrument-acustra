@@ -341,10 +341,10 @@ void testContinuousCommandForceAndMemory()
             expect(current.gain > 0.888f && current.gain < 1.121f,
                    "continuous repeat envelope exceeded existing force bounds");
         }
-        // With brightness fixed, command force is proportional to v². A
+        // With brightness fixed, command force is proportional to v. A
         // full two-dB force change therefore reaches these velocity ratios.
-        for (const float centre : { 0.5f, 0.5f * float(std::pow(10.0, -1.0 / 20.0)),
-                                          0.5f * float(std::pow(10.0, 1.0 / 20.0)) })
+        for (const float centre : { 0.5f, 0.5f * float(std::pow(10.0, -2.0 / 20.0)),
+                                          0.5f * float(std::pow(10.0, 2.0 / 20.0)) })
         {
             const auto exact = probe(centre, 2400, seed);
             double broad = 0.0, narrow = 0.0;

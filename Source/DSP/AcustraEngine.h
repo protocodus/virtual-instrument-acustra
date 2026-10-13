@@ -241,8 +241,8 @@ public:
     // strumMember marks a note as one string of a strum (including its
     // first, undelayed string): its scheduled delay is scaled by the
     // stroke's beginStrum() draw and its level draws its own jitter,
-    // bounded to what repeated real strums vary by; a single note leaves it
-    // false and is unaffected down to the bit.
+    // restrained to a one-dB force residual; a single note leaves it false
+    // and is unaffected by that residual.
     void noteOn(int midiNote, float velocity, int midiChannel = 1,
                 int pluckDelaySamples = 0, bool strumMember = false) noexcept;
     // Explicit connected hammer-on/pull-off on the source's physical string.
