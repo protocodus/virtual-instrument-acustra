@@ -5,6 +5,23 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-14 — the 1.5.0 listening verdict: all seven ship
+
+The user listened to the blind A/B pack for the seven playing-physics
+changes (`Tools/BuildPlayingPhysicsReview.py`) on a page that kept the key
+away, choosing one take a pair, and picked the candidate in four of nine:
+the dead strokes, the strum scatter, the picked pairs and the whole picked
+song. They picked 1.4.0's behaviour over the finger chords, the measured
+release fall, the stroke span law and the stroke edges with their refit
+tilt, and the 1.4.0 engine over the whole fingerstyle song. After seeing the
+key the user chose to ship all seven as they are, so four changes ship
+against the user's own blind pick, as measured corrections rather than
+choices by ear; each keeps its `PerformanceRealism` switch. Each pair is
+one forced choice by one listener, and the seeded draw put the candidate on
+A in pairs 1 to 5 and on B in 6 to 10 while A was picked six times in nine,
+so a preference for A cannot be excluded. See
+[the report](playing-physics-2026-10-13.md).
+
 ## 2026-10-14 — a stroke's edges are lighter; the upstroke tilt refit
 
 1.4.0 tilts an upstroke's strings by 0.9 dB a string toward the treble,
@@ -24,8 +41,9 @@ and exit strings 1.8 and 2.0 dB lighter (the Performer names them in
 tilt is 0.30 dB a string; the 1.2 dB offset between strokes stays
 (`PerformanceRealism::strokeEdges`; `Acustra.StrokeEdges`; `Acustra.StrokeDepth`
 keeps testing the 1.4.0 line with it off). This changes what the user heard
-and preferred in 1.4.0, as a measured correction; it is not heard yet. See
-[the report](playing-physics-2026-10-13.md).
+and preferred in 1.4.0, as a measured correction; in the 1.5.0 blind pack the
+user picked the 1.4.0 tilt over it and then chose to ship it (the verdict
+entry above). See [the report](playing-physics-2026-10-13.md).
 
 ## 2026-10-14 — a small stroke crosses each string more slowly
 
@@ -99,7 +117,9 @@ within a few cents. The authored curve fell more than twice as far by 10 dB
 the hand's own damping, 60 dB per T60, and stops at 35 dB down; a firmer
 key-up still falls faster. Nothing else of the 1.4.0 mechanism changes
 (`Acustra.ReleaseFall` tests the new law). The user heard and preferred
-1.4.0 with the authored curve; this is a measured correction, not heard yet.
+1.4.0 with the authored curve; this is a measured correction, and in the
+1.5.0 blind pack the user picked the authored curve over it and then chose
+to ship it (the verdict entry above).
 
 ## 2026-10-13 — a strum mutes the strings it crosses
 

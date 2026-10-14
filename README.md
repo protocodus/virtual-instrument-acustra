@@ -9,8 +9,10 @@ two-note group is a small stroke; a small stroke crosses each string more
 slowly than a full one; and a stroke strikes the strings it enters and
 leaves on more lightly, which replaces most of 1.4.0's upstroke tilt. A
 released fretted note's fall follows the measured curve; otherwise single
-notes, open strings and held notes sound as before. Nobody has listened
-yet; see
+notes, open strings and held notes sound as before. In the blind A/B pack
+the user picked the dead strokes, the scatter and the picked pairs over
+1.4.0's behaviour and 1.4.0's over the other four, then chose to ship all
+seven; see
 [the measurements, tests and A/B pack](Docs/playing-physics-2026-10-13.md).
 
 Version 1.3.4 build 2 names the CC2 playing gesture **Mute** in the editor's
@@ -3364,7 +3366,9 @@ packages are built and signed.
   fall-off output bit for bit; `Tools/BuildPlayingPhysicsReview.py` checks
   that while building the blind A/B pack. No parameter, saved state or
   layout changes. Played passages cost the same within run-to-run noise.
-  Nobody has listened yet.
+  In the blind A/B pack the user picked the candidate in four of nine pairs
+  (the dead strokes, scatter, picked pairs and the picked song) and chose to
+  ship all seven.
 
 ### 1.4.0 — 2026-10-13 — upstrokes lean treble, picked notes alternate, released notes fall
 

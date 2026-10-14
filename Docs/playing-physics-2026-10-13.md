@@ -9,8 +9,9 @@ measured release fall replaced the authored one under the switch 1.4.0
 already had, so with every switch off and the fall let go the engine renders
 the previous build's own output with its fall let go, bit for bit. Each
 section says what the change does, what sizes it, how it is tested and what
-it leaves open. Nothing here was chosen by ear; the A/B pack and its CPU
-check close the report.
+it leaves open. Nothing here was chosen by ear. The user then listened to
+the blind A/B pack, picked the candidate in four of nine pairs and chose to
+ship all seven; the pack, that listening and the CPU check close the report.
 
 The decision log, README Known gaps and the 2026-10-11 DSP completion
 checklist were read first so that nothing already rejected would be
@@ -440,7 +441,8 @@ applied to every stroke of three or more; three-string strokes cannot part
 an edge from a tilt (both lie along the same three strings), though their
 exit string is lighter too. The edge gains are means over the three
 measures, which disagree most on the tilt. This replaces part of what the
-user heard and preferred in 1.4.0, as a measured correction.
+user heard and preferred in 1.4.0, as a measured correction, and the user
+picked the 1.4.0 tilt over it in the blind pack (Listening, below).
 
 ## The A/B pack
 
@@ -473,12 +475,47 @@ written at 16 bits with no EQ, separate normalization, compression or timing
 alignment. The candidate sits on A in five of the ten pairs, drawn by a
 generator seeded with the candidate renderer's hash; 1.4.0's pack, seeded
 the same way but unbalanced, put it on A in all four test pairs. The key
-(`key.json`) and each pair's level and difference measurements stay outside
-the repository until the listening verdict, since a pair's level change
-would tell its takes apart; the committed manifest
-([`review-manifest.json`](validation-playing-physics-20261013/review-manifest.json))
-keeps the frozen sources' and renders' hashes and the checks. Nobody has
-listened yet.
+and each pair's level and difference measurements stayed outside the
+repository until the listening verdict, since a pair's level change would
+tell its takes apart. They are now committed, the key as
+[`review-key.json`](validation-playing-physics-20261013/review-key.json)
+and the measurements in
+[`review-manifest.json`](validation-playing-physics-20261013/review-manifest.json)
+beside the frozen sources' and renders' hashes and the checks. A copy of
+the key went into the listening page's store, which the page never reads,
+at 01:33 UTC on 2026-10-14, nearly three hours before the first answer;
+it is unchanged and matches.
+
+### Listening
+
+The user listened blind on a page that played each pair's takes as A and B
+and kept the key away, choosing one take a pair; "can't tell" was offered
+and not used, and the control had no choice.
+
+| Pair | What differed | Candidate | Picked | Preferred |
+| --- | --- | --- | --- | --- |
+| 1 | Finger chords | A | B | off, the chord swept |
+| 2 | Dead strokes | A | A | **on** |
+| 3 | The measured fall, alone | A | B | 1.4.0's authored fall |
+| 4 | Strum scatter | A | A | **on** |
+| 5 | Picked pairs | A | A | **on** |
+| 6 | Stroke span law | B | A | off |
+| 7 | Stroke edges and the 0.30 dB tilt | B | A | off, 1.4.0's 0.9 dB tilt |
+| 8 | A picked song | B | B | **1.5.0** |
+| 9 | A fingerstyle song | B | A | 1.4.0 |
+
+That is four of nine for the candidate. The fingerstyle song went to
+1.4.0, and of the six new switches only the finger chords' changes it. The
+picked song went to 1.5.0; the scatter, picked pairs, span law and edges
+all change it, though the span law and edges lost on their own. Each row is
+one forced choice by one listener. The draw put the candidate on A in pairs
+1 to 5 and on B in 6 to 10, an order a balanced shuffle gives one time in
+252, and A was picked six times in nine, so a preference for A cannot be
+excluded; the playback chain was not recorded. After seeing the key the
+user chose to ship all seven as they are. The finger chords, the measured
+fall, the span law and the stroke edges therefore ship against the user's
+own blind pick, as measured corrections, and each keeps its
+`PerformanceRealism` switch.
 
 ## CPU
 
