@@ -40,6 +40,9 @@ std::unique_ptr<Performer> player(bool muted,
     auto performer = std::make_unique<Performer>();
     acustra::PerformanceRealism realism;
     realism.mutedStrings = muted;
+    // The dead strokes' places are measured against the sweep itself; their
+    // scatter about it, with the chord's own strings, is Acustra.StrumScatter's.
+    realism.strumScatter = false;
     performer->engine().setPerformanceRealism(realism);
     acustra::EngineParameters parameters;
     parameters.picking = picking;

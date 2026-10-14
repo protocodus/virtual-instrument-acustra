@@ -342,6 +342,10 @@ binary:
   and hex-pickup audio: the median fall at 1.5, 4.5, 8, 12.5, 17.5, 22.5,
   27.5 and 35 dB under the sustain, 0.4 to 80.5 cents
   (`releaseFallCurve` in `Source/DSP/AcustraEngine.cpp`).
+- How far each string of a picked stroke sounds from the stroke's own
+  sweep, which `Tools/MeasureStrumScatter.py` measures from the comping's
+  hex-pickup audio and annotations: a robust 4.53 ms, of which 4.35 ms is
+  taken as each string's own moment (`AcustraEngine::strumScatterSamples`).
 
 These are Acustra's measurements and fits from the dataset, not part of
 it; the source comments and tools above describe how each was derived. This

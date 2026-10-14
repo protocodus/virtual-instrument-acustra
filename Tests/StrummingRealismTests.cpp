@@ -26,6 +26,10 @@ struct AcustraEngineTestAccess
     {
         return engine.strumSpeedScale_;
     }
+    static float strokeSign(const AcustraEngine& engine)
+    {
+        return engine.strumParallelSign_;
+    }
 };
 }
 
@@ -49,9 +53,12 @@ void testContinuousWristSweep(double rate)
     auto full = std::make_unique<Performer>();
     auto sparse = std::make_unique<Performer>();
     // The sweep itself: the sparse three-string chord under Finger would
-    // otherwise be plucked together (PerformanceRealism::fingerChords).
+    // otherwise be plucked together (PerformanceRealism::fingerChords), and
+    // each string would sound at its own moment about the sweep
+    // (strumScatter).
     acustra::PerformanceRealism sweep;
     sweep.fingerChords = false;
+    sweep.strumScatter = false;
     full->engine().setPerformanceRealism(sweep);
     sparse->engine().setPerformanceRealism(sweep);
     full->prepare(rate, 64);
@@ -233,14 +240,15 @@ int main()
         }
 
         // Panic establishes a fresh wrist gesture, even with no rendered
-        // two-second rest. The next chord must begin low-to-high again.
+        // two-second rest. The next chord must begin low-to-high again. Each
+        // string sounds at its own moment about the sweep (strumScatter), so
+        // the stroke's direction is read from the stroke itself.
         performer->reset();
         performer->beginBlock(left.data(), right.data(), 1);
         for (const int note : open)
             performer->noteOn(0, 1, note, 100);
         performer->endBlock();
-        expect(Access::delay(performer->engine(), 0) == 0
-                   && Access::delay(performer->engine(), 5) > 0,
+        expect(Access::strokeSign(performer->engine()) > 0.0f,
                "reset resumed a stale upstroke instead of starting a downstroke");
 
         // Duplicate owners remain two physical pitches, with no automatic

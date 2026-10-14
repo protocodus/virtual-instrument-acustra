@@ -877,7 +877,13 @@ hand can play, is swept as a strum: newly assigned strings are fretted at
 that sample, and each is released when the pick reaches it. An already held
 note keeps its preceding vibration until its scheduled re-pluck. The k-th string
 sounds k string-spacings later at the pick's speed, low to high on a downstroke and
-back on the return. A strum within a dotted eighth of the last at the host
+back on the return, and then at a moment of its own about that sweep: a
+uniform draw of 4.35 ms standard deviation, the scatter of GuitarSet's
+picked strokes about their own sweeps less the attack detector's own
+(`Tools/MeasureStrumScatter.py`), which sounds a third to two thirds of the
+strokes out of string order as the corpus's are. It is a time, not a place on
+the sweep, since a take's slower strokes scatter no more than its faster ones;
+the earliest string sounds at the note-on. A strum within a dotted eighth of the last at the host
 tempo is that return and alternates; a later one, or any after a rest of
 more than two seconds, starts over with a downstroke, unless a keyswitch
 has latched a direction (see the MIDI section). An upstroke enters from the
@@ -2759,14 +2765,18 @@ Dated evidence is retained so the earlier decisions remain traceable.
   buying with that rail — less bridge damping, or something the modal fit
   above 10 kHz does not carry — is the open question.
 
-- Repeated strums with identical MIDI differ by their stroke, their pluck
-  points and the strings' state, and by nothing else: the timing and force
-  variability of a strumming hand is not measured here (the corpus has no
-  strums), so a sequencer's humanise remains its source, and the sweep only
-  touches chords that arrive on one sample. Same-direction strokes of one
-  chord still correlate 0.93 on a bass-first downstroke and 0.995 on a
-  treble-first upstroke, because a pluck point moves a treble string's
-  waveform far less than a bass string's.
+- Repeated strums with identical MIDI differ by their stroke's speed, force
+  and direction, each string's own moment and pluck point, and the strings'
+  state, the hand's variation measured on GuitarSet's strokes. Sixteen
+  alternating picked E major strokes 0.3 s apart, keys released 0.2 s in,
+  correlate 0.015 between downstrokes and 0.034 between upstrokes over their
+  first 250 ms, 0.093 and 0.127 without each string's own moment
+  (`Docs/validation-playing-physics-20261013/probes`); the 0.93 and 0.995 of
+  2026-09-02 were eight hand-damped strokes against the first, by an earlier
+  protocol and engine. Where a stroke starts against
+  the beat is still the sequencer's: its earliest string sounds at the
+  note-on, and the sweep only touches chords that arrive on one sample or
+  are gathered.
 - Velocity reaches attack brightness under Pick only in part. The string
   now slides off the plectrum's edge in r/u, u the speed its own held force
   gives it, so a soft stroke is released darker than a hard one: on the

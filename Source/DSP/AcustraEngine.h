@@ -288,6 +288,14 @@ public:
     // moves the earliest string onto the note-on. Each call draws that
     // finger's own timing, so call once per string.
     [[nodiscard]] int fingerChordOffsetSamples(int rankFromTop, int count) noexcept;
+    // The speed draw of the stroke the last beginStrum() call began: what
+    // noteOn() and muteStroke() scale a strum member's place by.
+    [[nodiscard]] float strumSpeedScale() const noexcept { return strumSpeedScale_; }
+    // One string's own moment about its place in a swept stroke, in samples
+    // at the current rate: a time, which the stroke's speed draw does not
+    // scale. Each call draws one string's, so call once per string reached;
+    // the caller moves the stroke's earliest string onto the note-on.
+    [[nodiscard]] float strumScatterSamples() noexcept;
     // A strum crossing a string inside its span that the chord leaves out:
     // the fretting hand lies on that string to keep it quiet, so the pick
     // gives it a dead stroke instead of passing through it. delaySamples is
@@ -2240,6 +2248,9 @@ private:
     // The fingers' own timing in a plucked chord (fingerChordOffsetSamples),
     // apart from the strums' draws so a plucked chord moves no strum.
     std::uint32_t fingerChordRandomState_ { 0x2545f491u };
+    // Each swept string's own moment (strumScatterSamples), apart from the
+    // speed draws so the scatter moves no stroke's speed.
+    std::uint32_t strumScatterRandomState_ { 0x68e31da4u };
     float strumSpeedScale_ { 1.0f };
     float strumParallelSign_ { 1.0f };
     // Half-width of the uniform draw beginStrum() applies to strumSpeedScale_.

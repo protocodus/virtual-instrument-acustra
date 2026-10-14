@@ -178,6 +178,88 @@ their 1.4.0 meaning with thresholds moved to the new curve.
 lets go, which a key-up's velocity only partly carries. The comping corpus
 is one guitar and six players.
 
+## 4. A strum's strings scatter about its sweep
+
+A swept stroke put each string exactly where the wrist's arc and the
+stroke's speed draw placed it: every strum sounded its strings in string
+order, and a repeated chord kept one shape, only stretched. A pick does not
+meet the strings on a line. `Tools/MeasureStrumScatter.py` fits each
+GuitarSet stroke of four or more strings, its attacks re-detected by the
+finger-chords rule, by least squares against string number, which is the
+stroke's own sweep whatever its speed and direction, and reads each
+string's moment about it. Report: [`strum-scatter-report.json`](validation-playing-physics-20261013/strum-scatter-report.json).
+
+| | Pick (rock, singer-songwriter, funk) | Jazz |
+| --- | ---: | ---: |
+| Strokes of four to six strings | 2,430 | 719 |
+| Each string about its stroke's sweep, robust SD (SD) | 4.53 ms (6.77) | 4.45 ms (6.71) |
+| Four, five, six strings, robust SD | 4.19, 4.94, 5.40 ms | 4.18, 5.55, 5.52 ms |
+| Downstrokes, upstrokes, robust SD | 4.35, 5.09 ms | 3.49, 6.07 ms |
+| In string order at 4–12 ms a string, four / five / six strings | 65% / 49% / 34% | 70% / 43% / 27% |
+
+The scatter is a time, not a place on the sweep: within each of 52 picked
+takes, the slower half of its strokes, taking 1.43 times as long a string,
+scatters 0.86 times as much as the faster half (quartiles 0.68 to 1.19),
+where a place would scatter 1.43 times as much. Part of the 4.53 ms is the
+detector's. An off-tree probe of this snapshot reads every string's bridge
+reaction force, a stand-in for its hex channel, through 320 picked strokes
+of eight chords ([`probes`](validation-playing-physics-20261013/probes)):
+the same rule finds the unscattered strokes' attacks a robust 1.27 ms off
+their own sweeps, where their scheduled plucks sit 0.36 ms off (the arc's
+bend), which leaves 4.35 ms for the hand.
+
+**Model.** Each string a swept stroke reaches, when the hand has planned
+the chord, takes a uniform draw of 4.35 ms standard deviation (half-width
+7.53 ms), a time added after the stroke's speed draw
+(`AcustraEngine::strumScatterSamples`, `Performer::flushNoteGroup`). The
+chord's own strings and the dead strokes of section 2 draw alike, six draws
+a stroke from a generator of their own, so the speed draws are unchanged.
+The earliest string, which can be any the stroke reaches, sounds at the
+note-on, and at fast repeats none is taken past the next stroke's predicted
+start, which the speed draw already keeps the sweep clear of. The size is
+chosen from the robust spread; a check it was not fitted to agrees. Moved
+by such a draw and the detector's 1.27 ms, each corpus stroke's own size and
+time a string sound 63%, 47% and 32% of four-, five- and six-string strokes
+in string order, against the corpus's 65%, 49% and 34%. Read back by the
+probe, the engine's strokes now scatter a robust 4.79 ms (SD 4.51) and
+sound 60%, 47% and 38% in string order, where the unscattered engine
+measured 1.27 ms and 100%, 100% and 89%. Sixteen alternating E major
+strokes 0.3 s apart correlate 0.015 between downstrokes and 0.034 between
+upstrokes over their first 250 ms, against 0.093 and 0.127 unscattered. A
+stroke costs six draws and a few divisions; nothing runs per sample.
+
+**Tests** (`Acustra.StrumScatter`): at 44.1, 48 and 96 kHz the draws centre
+within 0.06 ms of zero, spread 4.35 ms within 0.06 ms and fill ±7.53 ms;
+through the Performer, at each rate, 160 six-string E major strokes keep
+their speed draws, sound their earliest string at the note-on and move each
+string from the unscattered stroke by 3.99 ms about the stroke's own mean
+(4.35 sqrt(5/6) = 3.97 expected, within 0.3 ms), as much in the fastest
+third of the speed draws as in the slowest (3.92 and 4.00 ms; a place would
+differ by half); 43 of them sound in string order where the unscattered
+sweep keeps all 160, and some downstrokes are led by a string other than
+the low E. The dead strokes of E2-B3-E4 scatter with the chord, its earliest
+contact at the note-on. A soft six-string stroke every 60 ms never
+schedules a string past the next stroke or leaves one waiting into it.
+Single notes under Pick and Finger, two-note groups, a finger-plucked
+four-string chord and a seven-note group the hand cannot plan are
+bit-identical with the switch on and off, while a strum changes audibly;
+blocks of 1, 61, 64 and 512 render identically, and preparing again
+restarts the draws. `Acustra.Performer`, `Acustra.StrummingRealism` and
+`Acustra.MutedStrings` measure the sweep's own geometry, so those fixtures
+turn the scatter off; one `Acustra.StrummingRealism` check now reads a
+stroke's direction from the stroke instead of from which string sounds
+first. With the switch off the probe's forces and plucks are the previous
+build's bit for bit.
+
+**Limits.** One draw for every string and stroke: the corpus's upstrokes
+scatter more than its downstrokes (5.09 against 4.35 ms robust) and its
+wider strokes more than its narrower (4.19 to 5.40 ms), and neither is
+modelled. The draw has no tail, where 10% of the corpus's residuals exceed
+10.6 ms, partly the detector's misses. The jazz takes scatter as much but
+keep string order differently (70%, 43% and 27%), so the order check is the
+picked styles'. Where a stroke starts against the beat is still the
+sequencer's.
+
 ## Dropped on their evidence
 
 - **Strum speed following the tempo.** Pooled over every picked stroke, a

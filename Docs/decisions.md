@@ -5,6 +5,28 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-14 — a strum's strings scatter about its sweep
+
+Every swept stroke put each string exactly where the wrist's arc and the
+stroke's speed draw placed it, so every strum sounded its strings in string
+order and repeated strokes kept one shape. GuitarSet's picked strokes do not
+(`Tools/MeasureStrumScatter.py`, 2,430 strokes of four to six strings,
+attacks re-detected): each string sits a robust 4.53 ms off its own stroke's
+least-squares sweep, and only 65%, 49% and 34% of four-, five- and
+six-string strokes sound in string order. The same rule finds 1.27 ms on
+the engine's unscattered strokes (an off-tree probe reading each string's
+bridge force), its own error, which leaves 4.35 ms. A take's slower strokes
+scatter no more than its faster ones (0.86 times, at 1.43 times the time a
+string), so the scatter is a time, not a place on the sweep. Each string a
+planned sweep reaches, dead strokes included, now takes a uniform draw of
+4.35 ms standard deviation after the stroke's speed draw, the earliest on
+the note-on and none past the next stroke's predicted start
+(`AcustraEngine::strumScatterSamples`, `Performer::flushNoteGroup`). Read
+back by the same rule the engine's strokes scatter 4.79 ms and sound 60%,
+47% and 38% in string order (`PerformanceRealism::strumScatter`;
+`Acustra.StrumScatter`). Not chosen by ear. See
+[the report](playing-physics-2026-10-13.md).
+
 ## 2026-10-13 — the release fall follows GuitarSet's measured curve
 
 1.4.0's release fall was authored: one semitone approached with a quarter of

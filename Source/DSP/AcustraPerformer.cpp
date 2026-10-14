@@ -580,15 +580,61 @@ void Performer::flushNoteGroup() noexcept
                     : engine_.strumDelaySamples(rank, meanVelocity);
                 strokeSpan = std::max(strokeSpan, note.pluckDelay);
             }
-            if (completePlan)
+            if (completePlan && engine_.performanceRealism().mutedStrings)
                 for (int string = firstString + 1; string < lastString; ++string)
                     if (!onString[static_cast<std::size_t>(string)])
                         mutedDelay[static_cast<std::size_t>(string)] = curvedStrumDelay(
                             string, firstString, lastString, nextUpstroke_, plannedSpan);
             strokeVelocity = meanVelocity;
-            engine_.beginStrum(strokeSpan,
-                               restarted || continuedStroke ? 0 : static_cast<int>(interval),
-                               nextUpstroke_);
+            const int repeatInterval = restarted || continuedStroke
+                ? 0 : static_cast<int>(interval);
+            engine_.beginStrum(strokeSpan, repeatInterval, nextUpstroke_);
+            // The pick meets each string at a moment of its own about the
+            // sweep (strumScatterSamples). That is a time, which the
+            // stroke's speed draw does not scale, so it enters the places
+            // noteOn and muteStroke scale by that draw divided by it. The
+            // earliest string, which can now be any the stroke reaches,
+            // sounds at the note-on, and no string is taken past the next
+            // stroke's predicted start, which the speed draw keeps clear.
+            // Six draws a stroke, one per string, whatever the chord.
+            if (completePlan && engine_.performanceRealism().strumScatter)
+            {
+                std::array<float, AcustraEngine::stringCount> scatter {};
+                for (auto& draw : scatter)
+                    draw = engine_.strumScatterSamples();
+                const float scale = engine_.strumSpeedScale();
+                if (scale > 0.0f)
+                {
+                    std::array<float, AcustraEngine::stringCount> place {};
+                    float earliest = std::numeric_limits<float>::max();
+                    for (int string = firstString; string <= lastString; ++string)
+                    {
+                        const auto slot = static_cast<std::size_t>(string);
+                        if (!onString[slot] && mutedDelay[slot] < 0)
+                            continue;
+                        place[slot] = static_cast<float>(curvedStrumDelay(
+                                          string, firstString, lastString,
+                                          nextUpstroke_, plannedSpan))
+                            + scatter[slot] / scale;
+                        earliest = std::min(earliest, place[slot]);
+                    }
+                    const float latest = repeatInterval > 0
+                        ? static_cast<float>(repeatInterval - 1) / scale
+                        : std::numeric_limits<float>::max();
+                    const auto scattered = [&](int string)
+                    {
+                        return static_cast<int>(std::lround(std::min(
+                            place[static_cast<std::size_t>(string)] - earliest, latest)));
+                    };
+                    for (int index = 0; index < pendingNoteOnCount_; ++index)
+                        if (sounds[static_cast<std::size_t>(index)])
+                            pendingNoteOns_[static_cast<std::size_t>(index)].pluckDelay
+                                = scattered(strings[static_cast<std::size_t>(index)]);
+                    for (int string = firstString + 1; string < lastString; ++string)
+                        if (mutedDelay[static_cast<std::size_t>(string)] >= 0)
+                            mutedDelay[static_cast<std::size_t>(string)] = scattered(string);
+                }
+            }
             lastStrokeUpstroke_ = nextUpstroke_;
             nextUpstroke_ = ! nextUpstroke_;
         }

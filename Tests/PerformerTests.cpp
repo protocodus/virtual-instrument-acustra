@@ -527,9 +527,12 @@ void testStrumsFollowPhysicalStrings()
                 : std::array<int, 3> { 3, 4, 5 };
             auto performer = std::make_unique<Performer>();
             // The sweep itself: three strings under Finger would otherwise be
-            // plucked together (PerformanceRealism::fingerChords).
+            // plucked together (PerformanceRealism::fingerChords), and each
+            // string would sound at its own moment about the sweep
+            // (strumScatter).
             acustra::PerformanceRealism sweep;
             sweep.fingerChords = false;
+            sweep.strumScatter = false;
             performer->engine().setPerformanceRealism(sweep);
             performer->prepare(sampleRate, 64);
             std::array<float, 64> left {}, right {};

@@ -33,6 +33,9 @@ struct PerformanceRealism
     // gives it a dead stroke under the fretting hand that mutes it
     // (AcustraEngine::muteStroke).
     bool mutedStrings { true };
+    // Each string of a swept stroke sounds at its own moment about the
+    // sweep, as a pick meets real strings (AcustraEngine::strumScatterSamples).
+    bool strumScatter { true };
 };
 
 } // namespace acustra

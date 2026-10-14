@@ -157,7 +157,10 @@ GuitarSet's players' notes do, hardly at first, then by up to 80 cents as
 the note dies away; open strings do not fall.
 
 **Chords and strums.** Notes that arrive together are fretted as one
-chord shape and strummed, low to high on a downstroke. A strum within a
+chord shape and strummed, low to high on a downstroke. The pick meets each
+string a few milliseconds early or late, as a real strum does, so one
+stroke is never quite the next and the first string heard is not always
+the lowest. A strum within a
 dotted eighth of the previous one (0.375 s at 120 BPM) is the hand's
 return and goes the other way; after a longer gap it is a downstroke
 again. An upstroke catches the treble strings harder and the bass

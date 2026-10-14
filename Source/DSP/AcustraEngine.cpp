@@ -2886,6 +2886,7 @@ void AcustraEngine::restartRandomDraws() noexcept
 {
     strumRandomState_ = 0x9e3779b9u;
     fingerChordRandomState_ = 0x2545f491u;
+    strumScatterRandomState_ = 0x68e31da4u;
     strumSpeedScale_ = 1.0f;
     strumParallelSign_ = 1.0f;
     for (int string = 0; string < stringCount; ++string)
@@ -10077,6 +10078,23 @@ int AcustraEngine::fingerChordOffsetSamples(int rankFromTop, int count) noexcept
     const float lagMs = (four ? fourStrings[rank] : threeStrings[rank])
         + jitterHalfWidthMs * xorshiftNoise(fingerChordRandomState_);
     return static_cast<int>(std::lround(0.001 * static_cast<double>(lagMs) * sampleRate_));
+}
+
+float AcustraEngine::strumScatterSamples() noexcept
+{
+    // A pick does not meet the strings on its sweep's own line. On
+    // GuitarSet's picked comping (Tools/MeasureStrumScatter.py) each string's
+    // re-detected attack sits about its own stroke's least-squares line with
+    // a robust standard deviation of 4.53 ms; the same rule finds 1.27 ms on
+    // the engine's unscattered strokes, its own error, which leaves 4.35 ms.
+    // A take's slower strokes scatter no more than its faster ones, so this
+    // is a time and not a place on the sweep. Drawn uniform with that
+    // standard deviation (a half-width of 4.35 * sqrt(3)), it also gives the
+    // corpus's share of four-, five- and six-string strokes that sound in
+    // string order.
+    constexpr double halfWidthSeconds = 0.00753;
+    return static_cast<float>(halfWidthSeconds * sampleRate_)
+        * xorshiftNoise(strumScatterRandomState_);
 }
 
 void AcustraEngine::muteStroke(int string, int delaySamples, float velocity,
