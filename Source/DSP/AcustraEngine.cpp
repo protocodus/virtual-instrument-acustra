@@ -2889,6 +2889,7 @@ void AcustraEngine::restartRandomDraws() noexcept
     strumScatterRandomState_ = 0x68e31da4u;
     strumSpeedScale_ = 1.0f;
     strumParallelSign_ = 1.0f;
+    strumEntryString_ = strumExitString_ = -1;
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -4057,6 +4058,7 @@ void AcustraEngine::reset() noexcept
     sampleClock_ = 0;
     pickingGesture_ = {};
     strumGesture_ = {};
+    strumEntryString_ = strumExitString_ = -1;
     pickingGestureSeen_ = false;
     pickingGestureOriginSample_ = 0;
     pickingGestureSample_ = 0;
@@ -6689,9 +6691,12 @@ AcustraEngine::PickingGesture AcustraEngine::nextPickingGesture() noexcept
 
 void AcustraEngine::beginStrum(int strokeSpanSamples,
                               int repeatIntervalSamples,
-                              bool upstroke) noexcept
+                              bool upstroke, int entryString,
+                              int exitString) noexcept
 {
     strumParallelSign_ = upstroke ? -1.0f : 1.0f;
+    strumEntryString_ = entryString;
+    strumExitString_ = exitString;
     strumGesture_ = nextPickingGesture();
     // A stroke's own pick speed varies stroke to stroke (GuitarSet's
     // comping tracks, Tools/MeasureStrums.py -- see strumDelaySamples and
@@ -6865,23 +6870,30 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // finger on it takes part of the pick's push.
         if (voice.mutedStroke)
             strumLevelGain *= 0.589f;
-        // An upstroke enters the strings from the treble side and leaves the
-        // bass strings lighter. Each string compared with itself on
-        // GuitarSet's hex channels (Tools/MeasureStrumDirection.py, 180
-        // comping takes), a line through each take's up-minus-down attack
-        // rises 0.76, 0.92 and 1.03 dB per string toward the high E on the
-        // three attack measures and sits 0.89, 1.59 and 1.11 dB under the
-        // downstroke between the D and G strings. Their means set it here:
-        // the high E 1.05 dB over its downstroke, the low E 3.45 dB under.
-        // Whether that offset is the return stroke's own lightness or the
-        // players' accents on the beat the corpus cannot separate; leaving it
-        // out made an upstroke louder than its downstroke at the microphones,
-        // which no take shows. The downstroke is the reference.
+        // An upstroke enters the strings from the treble side. Each string
+        // compared with itself on GuitarSet's hex channels
+        // (Tools/MeasureStrumDirection.py, 180 comping takes), a line through
+        // each take's up-minus-down attack rises 0.76, 0.92 and 1.03 dB per
+        // string toward the high E on the three attack measures and sits
+        // 0.89, 1.59 and 1.11 dB under the downstroke between the D and G
+        // strings. That line compares a string's upstrokes with its
+        // downstrokes across all of a take's strokes, whatever else they
+        // held. Inside one stroke (Tools/MeasureStrokeEdges.py) the strings an
+        // upstroke enters and leaves on are lighter, as a downstroke's are
+        // (strumEdgeGain), and what is left of the tilt is 0.09, 0.13 and
+        // 0.68 dB per string on the three measures: their mean, 0.30, with
+        // the edges (strokeEdges), the line's 0.9 without them. The mid-neck
+        // offset is between strokes and stays: whether it is the return
+        // stroke's own lightness or the players' accents on the beat the
+        // corpus cannot separate, and leaving it out made an upstroke louder
+        // than its downstroke at the microphones, which no take shows. The
+        // downstroke is the reference.
         constexpr float upstrokeMidNeckDb = -1.2f;
-        constexpr float upstrokeTiltDbPerString = 0.9f;
+        const float upstrokeTiltDbPerString = performanceRealism_.strokeEdges ? 0.30f : 0.9f;
         if (voice.pluckParallelSign < 0.0f && performanceRealism_.strokeDepth)
             strumLevelGain *= std::pow(10.0f, (upstrokeMidNeckDb + upstrokeTiltDbPerString
                 * (static_cast<float>(stringIndex) - 2.5f)) / 20.0f);
+        strumLevelGain *= voice.strokeEdgeGain;
     }
     // Repeated single-note sequencer strokes deserve modest force variety
     // too, below the spread of the real Eastman same-pitch/style takes:
@@ -9308,6 +9320,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             voice.strumming = strumMember;
             voice.pluckParallelSign = strumMember ? strumParallelSign_ : singleStrokeSign;
             voice.pluckGesture = strumMember ? strumGesture_ : PickingGesture {};
+            voice.strokeEdgeGain = strumMember ? strumEdgeGain(string) : 1.0f;
             voice.repluckPending = true;
             // The key is down again before the pick came: its key-up is
             // void, and one pick serves both strokes, as it always has.
@@ -9573,6 +9586,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
         ? capturedParallelSign : strumParallelSign_;
     voice.pluckGesture = capturedGesture != nullptr
         ? *capturedGesture : strumMember ? strumGesture_ : PickingGesture {};
+    voice.strokeEdgeGain = strumMember ? strumEdgeGain(string) : 1.0f;
     voice.repluckPending = continuing;
     voice.attackFired = continuing;
     voice.releaseAfterPluck = false;
@@ -9855,6 +9869,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         std::uint64_t startOrder, onsetSample;
         float parallelSign;
         PickingGesture gesture;
+        float edgeGain;
     };
     std::array<Moved, stringCount> moved {};
     int movedCount = 0;
@@ -9873,7 +9888,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
             voice.velocity, voice.releaseVelocity, voice.strumming, voice.releaseAfterPluck,
             voice.pedalHeldAtKeyUp, voice.pedalReleasedBeforePluck,
             voice.startOrder, voice.onsetSample,
-            voice.pluckParallelSign, voice.pluckGesture };
+            voice.pluckParallelSign, voice.pluckGesture, voice.strokeEdgeGain };
         voice.keyDown = false;
         voice.pedalHeld = false;
         voice.ownerCount = 0;
@@ -9894,6 +9909,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         voice.ownerCount = move.ownerCount;
         voice.startOrder = move.startOrder;
         voice.onsetSample = move.onsetSample;
+        voice.strokeEdgeGain = move.edgeGain;
         // A strum member already let go keeps its pending key-up on the
         // string it moved to (startNote cleared it). One whose pick was due
         // on this very sample has just been plucked by startNote, so its
@@ -10110,6 +10126,25 @@ float AcustraEngine::strumScatterSamples() noexcept
         * xorshiftNoise(strumScatterRandomState_);
 }
 
+float AcustraEngine::strumEdgeGain(int string) const noexcept
+{
+    // A pick strikes the strings it enters and leaves a chord on more
+    // lightly than those between them, in either direction. Within each of
+    // GuitarSet's picked strokes of four or more strings
+    // (Tools/MeasureStrokeEdges.py, each string against its own channel's
+    // median in the take, then against the rest of its own stroke) the entry
+    // string sits 1.47, 1.76 and 2.15 dB under the strings inside on the
+    // three attack measures, the exit string 1.86, 1.81 and 2.20 dB: their
+    // means, 1.8 and 2.0 dB.
+    if (!performanceRealism_.strokeEdges)
+        return 1.0f;
+    if (string == strumEntryString_)
+        return 0.813f;
+    if (string == strumExitString_)
+        return 0.794f;
+    return 1.0f;
+}
+
 void AcustraEngine::muteStroke(int string, int delaySamples, float velocity,
                                int midiChannel) noexcept
 {
@@ -10159,6 +10194,7 @@ void AcustraEngine::muteStroke(int string, int delaySamples, float velocity,
     voice.strumming = true;
     voice.pluckParallelSign = strumParallelSign_;
     voice.pluckGesture = strumGesture_;
+    voice.strokeEdgeGain = 1.0f;
     voice.repluckPending = false;
     voice.attackFired = false;
     voice.releaseAfterPluck = false;
@@ -10468,6 +10504,7 @@ void AcustraEngine::allSoundOff(int midiChannel) noexcept
         resetSoundState();
         pickingGesture_ = {};
         strumGesture_ = {};
+        strumEntryString_ = strumExitString_ = -1;
         pickingGestureSeen_ = false;
         pickingGestureOriginSample_ = sampleClock_;
         pickingGestureSample_ = sampleClock_;

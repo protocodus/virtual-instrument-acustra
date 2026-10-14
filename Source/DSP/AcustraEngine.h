@@ -231,9 +231,14 @@ public:
     // A return stroke releases the sideways plane in the opposite direction.
     // Each scheduled string captures its own direction at note-on, so a later
     // stroke cannot change an earlier contact still travelling to the bridge.
+    // entryString and exitString (0 is the low E; -1 when not known) are the
+    // strings the stroke enters and leaves the chord on, which the pick
+    // strikes more lightly than those between them; each string captures its
+    // part at note-on too.
     void beginStrum(int strokeSpanSamples = 0,
                     int repeatIntervalSamples = 0,
-                    bool upstroke = false) noexcept;
+                    bool upstroke = false,
+                    int entryString = -1, int exitString = -1) noexcept;
     // A pluck can be scheduled: the string is taken and fretted now, the
     // fretting hand having formed the chord, and released this many samples
     // later, which is how a strum reaches its strings one after another.
@@ -1289,6 +1294,9 @@ private:
         // in flight keep their own signed gain until firePluck retains them.
         float pluckParallelSign { 1.0f };
         PickingGesture pluckGesture {};
+        // A strum member's force for being the string its stroke enters or
+        // leaves on (strumEdgeGain), captured at note-on; 1 otherwise.
+        float strokeEdgeGain { 1.0f };
         float excitationParallelGain { 0.51f };
         float tailExcitationParallelGain { 0.51f };
         // The release burst's noise, handed over from randomState at each
@@ -1731,6 +1739,7 @@ private:
     void advanceReleaseFall(Voice& voice) noexcept;
     void clearReleaseFall(Voice& voice) noexcept;
     void beginMutedStroke(Voice& voice) noexcept;
+    [[nodiscard]] float strumEdgeGain(int string) const noexcept;
     void beginGestureDamping(Voice& voice) noexcept;
     void updateReleaseJoinWindow(Voice& voice) noexcept;
     void processPendingRelease(Voice& voice, int stringIndex) noexcept;
@@ -2255,6 +2264,9 @@ private:
     std::uint32_t strumScatterRandomState_ { 0x68e31da4u };
     float strumSpeedScale_ { 1.0f };
     float strumParallelSign_ { 1.0f };
+    // The strings the latest stroke enters and leaves its chord on, or -1.
+    int strumEntryString_ { -1 };
+    int strumExitString_ { -1 };
     // Half-width of the uniform draw beginStrum() applies to strumSpeedScale_.
     // GuitarSet's comping tracks (Tools/MeasureStrums.py), pooled over runs
     // of >=3 repeats of one chord and direction, put a stroke's own total

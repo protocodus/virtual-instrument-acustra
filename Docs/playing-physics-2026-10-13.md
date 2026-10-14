@@ -376,6 +376,69 @@ mix, which the profile leaves out. The jazz and finger takes' small groups are n
 sense and are not used. How a stroke's speed follows its force within a
 player is a separate measurement.
 
+## 7. A stroke's edges are lighter, and the upstroke's tilt refit
+
+1.4.0 tilts an upstroke's strings toward the treble by 0.9 dB a string with
+a 1.2 dB offset at mid-neck, the line GuitarSet gives when each string's
+upstroke attacks are compared with its own downstroke attacks over a whole
+take (`Tools/MeasureStrumDirection.py`). That comparison carries whatever
+else the strokes held: the corpus's upstrokes reach the bass strings half as
+often as its downstrokes, and the first and last strings of a stroke were
+found lighter (Dropped, below). `Tools/MeasureStrokeEdges.py` fits both at
+once inside single strokes: each string's attack on its own channel, less
+that string's median in the take, so the coil's gain cancels; then against
+the rest of its own stroke, so the stroke's force and any accent cancel; then
+by least squares as the entry and exit strings' differences from the
+strings inside, plus a tilt across string number for each direction. A
+stroke enters on its lowest string going down and its highest going up.
+Report: [`stroke-edges-report.json`](validation-playing-physics-20261013/stroke-edges-report.json).
+
+| 2,344 picked strokes of four to six strings, 85 takes | Energy added | 40 ms peak | Transient |
+| --- | ---: | ---: | ---: |
+| Entry string under those inside (90% over takes) | 1.47 dB (1.15–1.80) | 1.76 (1.45–2.11) | 2.15 (1.75–2.53) |
+| Exit string under those inside | 1.86 dB (1.54–2.20) | 1.81 (1.55–2.07) | 2.20 (1.86–2.54) |
+| Upstroke's tilt over the downstroke's, inside a stroke | +0.09 dB a string | +0.13 | +0.68 |
+| The same without the edges in the fit | +0.25 | +0.15 | +0.69 |
+
+Inside one stroke the pick strikes the strings it enters and leaves on
+about 2 dB more lightly than those between, going down as much as going up,
+and an upstroke tilts its strings by a fraction of the whole takes' line.
+The transient measure keeps more of a tilt; the energy and the peak hardly
+any. The 1.2 dB offset is a difference between strokes and cannot be seen
+inside one; it stays as measured.
+
+**Model.** For a stroke of three or more strings the Performer names the
+strings it enters and leaves the chord on (`AcustraEngine::beginStrum`), and
+each string captures its part at note-on, as it captures the stroke's
+direction, carried with it if the forming hand moves it
+(`AcustraEngine::strumEdgeGain`). The entry string is released at 0.813 of
+its force (−1.8 dB) and the exit string at 0.794 (−2.0 dB), the means of the
+three measures; a pair has no strings inside to be lighter than and takes
+none. An upstroke's tilt is the measures' mean, 0.30 dB a string, on the
+same −1.2 dB offset: `−1.2 + 0.30 (k − 2.5)` dB, k 0 for the low E. Dead
+strokes are inside the stroke by definition.
+
+**Tests** (`Acustra.StrokeEdges`): at 44.1, 48 and 96 kHz under Finger,
+Pick and Thumb, each string's released force against the switch off is its
+edge's gain times the change from the 0.9 tilt to 0.30, within 1e-5 of the
+ratio, a downstroke's inner strings exactly as before and a stroke naming no
+edges unchanged; through the Performer, D major's D and high E strings are
+its entry and exit in each direction and its G and B strings take no edge
+gain, and E2-B3-E4's dead A, D and G strings take none while the low E is
+its end (within 0.2%: open and handed-back strings keep a trace of the
+bridge's motion); picked single notes, downstroke pairs, a finger-plucked
+chord and a seven-note group the hand cannot plan are bit-identical with the
+switch on and off, while six-string strums change audibly; blocks of 1, 61,
+64 and 512 render identically. `Acustra.StrokeDepth` keeps testing the 1.4.0
+line with the switch off.
+
+**Limits.** The edges are measured on strokes of four to six strings and
+applied to every stroke of three or more; three-string strokes cannot part
+an edge from a tilt (both lie along the same three strings), though their
+exit string is lighter too. The edge gains are means over the three
+measures, which disagree most on the tilt. This replaces part of what the
+user heard and preferred in 1.4.0, as a measured correction.
+
 ## Dropped on their evidence
 
 - **Strum speed following the tempo.** Pooled over every picked stroke, a
@@ -384,10 +447,36 @@ player is a separate measurement.
   one progression at its two tempi the exponent is −0.21 (take-resampled 90%
   interval −0.34 to −0.09), and rock and funk strum more slowly at their
   faster tempo. Too weak and too inconsistent to model.
-- **The first and last string of a stroke.** In picked strokes of four or
-  more strings a string is struck 2.3 dB lighter when the pick reaches it
-  first and 5.1 dB lighter when it reaches it last than inside the stroke
-  (90% intervals −3.1 to −1.5 and −5.6 to −3.9 dB). The 1.4.0 upstroke tilt
-  was fitted on the same strokes without separating position from
-  direction, so adding a position profile would count part of it twice; it
-  needs a joint refit of both.
+- **The first and last string of a stroke, on their own.** In picked
+  strokes of four or more strings a string is struck 2.3 dB lighter when the
+  pick reaches it first and 5.1 dB lighter when it reaches it last than
+  inside the stroke (90% intervals −3.1 to −1.5 and −5.6 to −3.9 dB), by
+  attack time on one measure. The 1.4.0 upstroke tilt was fitted on the same
+  strokes without separating position from direction, so adding this
+  profile would have counted part of it twice. Section 7 refits both
+  jointly, by the stroke's spatial ends, on all three measures.
+- **Strum direction from the beat grid.** A rule reading the beat (down on
+  the eighth-note grid, up between) names GuitarSet's stroke directions
+  right more often overall than the engine's interval rule, 67.6% of 3,910
+  strokes against 62.7%, but only through the bossa nova and jazz takes
+  (70.4% against 39.0%, 80.5% against 62.8%). On the picked styles it is
+  worse: rock 67.4% against 75.4%, singer-songwriter 60.4% against 63.4%,
+  funk 63.4% against 61.2%. The interval rule stays (the README's Known
+  gaps keep the listening question).
+- **A stroke's speed following its force.** Within takes, controlling a
+  stroke's size and direction, a stroke 10 dB louder on its own channels
+  takes 0.836 times as long a string (take-resampled 90% interval 0.78 to
+  0.90), or 0.70 if the level measure's split-half reliability (0.50) is
+  corrected for. The velocity map is a player's map that also
+  carries how fast a player strums a song at all, which a within-take slope
+  does not measure, so it stays.
+- **The thumb on the bass of a finger chord.** Fingerstyle puts the thumb on
+  the bass strings, but the engine's Thumb contact is authored, not fitted
+  to thumb-plucked recordings (the real-note archive merges finger and thumb
+  labels), so giving it the bass would trade one unmeasured timbre for
+  another.
+- **Finger-played pairs.** GuitarSet's isolated finger-played two-string
+  groups are no more simultaneous than picked ones (8% within 2 ms, a
+  median 11.2 ms apart) but take no order (42% lower string first, 50%
+  higher): two fingers a hundredth of a second apart, not a pinch. Without a
+  measure of when a player means that, Finger pairs still sound together.

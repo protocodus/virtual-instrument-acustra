@@ -163,8 +163,9 @@ stroke is never quite the next and the first string heard is not always
 the lowest. A strum within a
 dotted eighth of the previous one (0.375 s at 120 BPM) is the hand's
 return and goes the other way; after a longer gap it is a downstroke
-again. An upstroke catches the treble strings harder and the bass
-strings more lightly. With Picking on Finger, a chord of three or four
+again. The pick strikes the first and last strings of a stroke a little
+more lightly than those between them, and an upstroke leans slightly
+toward the treble strings. With Picking on Finger, a chord of three or four
 strings is not strummed: the thumb and fingers pluck it together, a few
 milliseconds apart, and it does not count as a stroke; five or six strings
 are brushed as a strum, and a direction keyswitch makes every chord a

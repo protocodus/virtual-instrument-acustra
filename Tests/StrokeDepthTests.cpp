@@ -39,6 +39,9 @@ std::unique_ptr<acustra::AcustraEngine> engine(bool depth, double rate,
     auto e = std::make_unique<acustra::AcustraEngine>();
     acustra::PerformanceRealism realism;
     realism.strokeDepth = depth;
+    // The 1.4.0 line across the strings; its refit with the stroke's lighter
+    // edges, inside one stroke, is Acustra.StrokeEdges's.
+    realism.strokeEdges = false;
     e->setPerformanceRealism(realism);
     acustra::EngineParameters parameters;
     parameters.picking = picking;
@@ -136,6 +139,7 @@ std::unique_ptr<acustra::Performer> player(bool depth)
     auto p = std::make_unique<acustra::Performer>();
     acustra::PerformanceRealism realism;
     realism.strokeDepth = depth;
+    realism.strokeEdges = false;
     p->engine().setPerformanceRealism(realism);
     p->prepare(48000.0, 64);
     p->setTempoBpm(120.0);

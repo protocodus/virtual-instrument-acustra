@@ -886,13 +886,19 @@ the sweep, since a take's slower strokes scatter no more than its faster ones;
 the earliest string sounds at the note-on. A strum within a dotted eighth of the last at the host
 tempo is that return and alternates; a later one, or any after a rest of
 more than two seconds, starts over with a downstroke, unless a keyswitch
-has latched a direction (see the MIDI section). An upstroke enters from the
-treble side: each string is released at `-1.2 + 0.9 (k - 2.5)` dB of the
-force a downstroke gives it, k 0 for the low E (the low E 3.45 dB under,
-the high E 1.05 over), the line GuitarSet's hex-pickup comping gives when
-each string's upstroke attacks are compared with its own downstroke attacks
-(`Tools/MeasureStrumDirection.py`); a lighter string is let go more slowly
-and darker, as any softer stroke. Downstrokes are unchanged. With a pick, a
+has latched a direction (see the MIDI section). A stroke of three or more
+strings strikes the strings it enters and leaves the chord on more lightly
+than those between them, in either direction: 1.8 dB under for the entry
+string and 2.0 dB for the exit string, what GuitarSet's picked strokes show
+when each string is compared with the rest of its own stroke
+(`Tools/MeasureStrokeEdges.py`). An upstroke enters from the treble side and
+is released at `-1.2 + 0.30 (k - 2.5)` dB of the force a downstroke gives
+each string, k 0 for the low E: the offset from comparing each string's
+upstroke attacks with its own downstroke attacks
+(`Tools/MeasureStrumDirection.py`), the tilt what is left inside one stroke
+once its edges are counted (0.9 dB a string in 1.4.0, which the whole
+takes' comparison gave). A lighter string is let go more slowly and darker,
+as any softer stroke. With a pick, a
 single note or two-note group is a stroke of the same hand: it alternates
 with the strums and the other picked notes by the same dotted-eighth rule,
 and one within 30 ms of the hand's last stroke continues it; fingers and the
@@ -2471,14 +2477,17 @@ Dated evidence is retained so the earlier decisions remain traceable.
   eighth grid and up between, would follow the hand itself; it waits on a
   listening pass of the interval rule (2026-10-12, Docs/decisions.md).
   Picked notes under Pick follow the same rule since 1.4.0.
-- The upstroke's depth is a mean line through the strings, fitted per take
-  on GuitarSet's comping; part of its 1.2 dB offset may be the players'
-  accents on the beat, which the corpus cannot separate. GuitarSet's
-  upstrokes also reach the bass strings half as often as its downstrokes
-  and cross each string 18% more slowly; neither is modelled, since a MIDI
-  chord names the strings it wants and the slower span may be onset
-  detection on weak attacks
-  ([the measurement](Docs/stroke-release-realism-2026-10-13.md)).
+- The upstroke's 1.2 dB offset comes from comparing whole takes' upstrokes
+  with their downstrokes; part of it may be the players' accents on the
+  beat, which the corpus cannot separate. Its tilt across the strings and
+  the stroke's lighter edges are measured inside single strokes since
+  2026-10-14; the edges are means over strokes of four to six strings
+  applied to every stroke of three or more. GuitarSet's upstrokes also
+  reach the bass strings half as often as its downstrokes and cross each
+  string 18% more slowly; neither is modelled, since a MIDI chord names the
+  strings it wants and the slower span may be onset detection on weak
+  attacks ([the measurement](Docs/stroke-release-realism-2026-10-13.md),
+  [the refit](Docs/playing-physics-2026-10-13.md)).
 - A single picked upstroke reverses only the sideways release, the
   return-stroke model strums have had since 2026-10-07, so at the saddle its
   moments add on the treble strings and cancel on the bass ones: in

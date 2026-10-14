@@ -355,6 +355,11 @@ binary:
   from their hex-pickup audio and annotations: the spacings crossed to the
   -0.36 power once each string's scatter is allowed for
   (`AcustraEngine::strumDelaySamples`).
+- How hard a pick strikes each string of a stroke against the rest of the
+  same stroke, which `Tools/MeasureStrokeEdges.py` measures from the
+  comping's hex-pickup audio and annotations: the entry and exit strings
+  1.8 and 2.0 dB under the strings inside, and an upstroke tilt of 0.30 dB
+  a string (`AcustraEngine::strumEdgeGain`, `initialisePluck`).
 
 These are Acustra's measurements and fits from the dataset, not part of
 it; the source comments and tools above describe how each was derived. This

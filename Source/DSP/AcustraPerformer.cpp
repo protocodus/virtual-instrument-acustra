@@ -597,7 +597,12 @@ void Performer::flushNoteGroup() noexcept
             strokeVelocity = meanVelocity;
             const int repeatInterval = restarted || continuedStroke
                 ? 0 : static_cast<int>(interval);
-            engine_.beginStrum(strokeSpan, repeatInterval, nextUpstroke_);
+            // The strings the pick enters and leaves the chord on, struck more
+            // lightly than those between them; a pair has none between.
+            const bool edges = completePlan && chordStrings >= 3;
+            engine_.beginStrum(strokeSpan, repeatInterval, nextUpstroke_,
+                               edges ? (nextUpstroke_ ? lastString : firstString) : -1,
+                               edges ? (nextUpstroke_ ? firstString : lastString) : -1);
             // The pick meets each string at a moment of its own about the
             // sweep (strumScatterSamples). That is a time, which the
             // stroke's speed draw does not scale, so it enters the places

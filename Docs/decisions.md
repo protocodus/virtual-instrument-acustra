@@ -5,6 +5,28 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-14 — a stroke's edges are lighter; the upstroke tilt refit
+
+1.4.0 tilts an upstroke's strings by 0.9 dB a string toward the treble,
+the line GuitarSet gives when each string's upstrokes are compared with its
+downstrokes across a whole take. That comparison mixes what else the
+strokes held: the corpus's upstrokes reach the bass strings half as often,
+and the playing-physics report had found a stroke's first and last strings
+lighter. Fitted jointly inside each stroke (`Tools/MeasureStrokeEdges.py`,
+2,344 picked strokes of four to six strings, each string against its own
+channel's median in the take and then against the rest of its stroke), the
+entry string sits 1.47, 1.76 and 2.15 dB and the exit string 1.86, 1.81
+and 2.20 dB under the strings inside on the three attack measures, in
+either direction, and what is left of the upstroke's tilt is 0.09, 0.13 and
+0.68 dB a string. A stroke of three or more strings now strikes its entry
+and exit strings 1.8 and 2.0 dB lighter (the Performer names them in
+`beginStrum`; each string captures its part at note-on), and the upstroke's
+tilt is 0.30 dB a string; the 1.2 dB offset between strokes stays
+(`PerformanceRealism::strokeEdges`; `Acustra.StrokeEdges`; `Acustra.StrokeDepth`
+keeps testing the 1.4.0 line with it off). This changes what the user heard
+and preferred in 1.4.0, as a measured correction; it is not heard yet. See
+[the report](playing-physics-2026-10-13.md).
+
 ## 2026-10-14 — a small stroke crosses each string more slowly
 
 Every stroke crossed each string in the same time for its velocity, so a

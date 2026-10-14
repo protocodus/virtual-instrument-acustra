@@ -43,6 +43,10 @@ struct PerformanceRealism
     // crosses, so a small stroke crosses each string more slowly
     // (AcustraEngine::strumDelaySamples).
     bool strokeSpanLaw { true };
+    // A stroke strikes the strings it enters and leaves on more lightly than
+    // those between them, and an upstroke tilts its strings by the stroke's
+    // own measure (AcustraEngine::strumEdgeGain, initialisePluck).
+    bool strokeEdges { true };
 };
 
 } // namespace acustra
