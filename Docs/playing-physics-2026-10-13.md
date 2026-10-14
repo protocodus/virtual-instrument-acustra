@@ -2,19 +2,22 @@
 
 The user asked for new techniques, models and phenomena that make the
 instrument more real, with no new parameter, one change per commit and a
-blind A/B test once all of them are in. Each change below is on by default
-and has an offline switch in `PerformanceRealism`, the ablation struct that
-is neither a saved parameter nor a panel control; with every switch off the
-engine renders the previous build bit for bit. Each section says what the
-change does, what sizes it, how it is tested and what it leaves open.
-Nothing here was chosen by ear.
+blind A/B test once all of them are in. Each of the seven changes below is
+on by default and has an offline switch in `PerformanceRealism`, the
+ablation struct that is neither a saved parameter nor a panel control. The
+measured release fall replaced the authored one under the switch 1.4.0
+already had, so with every switch off and the fall let go the engine renders
+the previous build's own output with its fall let go, bit for bit. Each
+section says what the change does, what sizes it, how it is tested and what
+it leaves open. Nothing here was chosen by ear; the A/B pack and its CPU
+check close the report.
 
 The decision log, README Known gaps and the 2026-10-11 DSP completion
 checklist were read first so that nothing already rejected would be
 repeated: fret buzz, a measured contact click, audio-rate tension
 modulation, automatic legato, per-string detuning, a position-shift squeak,
-MIDI-triggered body knocks and a hiss floor stay out. Two measured
-candidates were dropped on their evidence (end of this report).
+MIDI-triggered body knocks and a hiss floor stay out. The candidates
+dropped on their evidence are listed at the end of this report.
 
 ## 1. Fingers pluck a chord together
 
@@ -438,6 +441,77 @@ an edge from a tilt (both lie along the same three strings), though their
 exit string is lighter too. The edge gains are means over the three
 measures, which disagree most on the tilt. This replaces part of what the
 user heard and preferred in 1.4.0, as a measured correction.
+
+## The A/B pack
+
+`Tools/BuildPlayingPhysicsReview.py` freezes two DSP trees, 1.4.0 (4baeb82,
+the engine the user heard and preferred) and the candidate with all seven
+changes, compiles `Tools/RenderPlayingPhysicsReview.cpp` against each with
+clang++ -O3, and renders ten 8 s scores at the plug-in's default controls,
+48 kHz and 64-frame blocks. The candidate's build can switch each mechanism
+off on its own, or all of them. Each pair isolates one change where it can:
+
+| Pair | Score | Candidate | Against |
+| --- | --- | --- | --- |
+| 1 | Fingerstyle comping (Finger) | candidate | finger chords off |
+| 2 | Open-voiced strums (Pick) | candidate | dead strokes off |
+| 3 | Staccato fingerstyle (Finger) | every change off but the fall, measured | 1.4.0, authored fall |
+| 4 | One chord, strummed over and over (Pick) | candidate | scatter off |
+| 5 | Power chords (Pick) | candidate | two-string strokes off |
+| 6 | Small strokes (Pick) | candidate | span law off |
+| 7 | Down-up strumming (Pick) | candidate | stroke edges off (the 1.4.0 tilt) |
+| 8 | A picked song | candidate | 1.4.0 |
+| 9 | A fingerstyle song | candidate | 1.4.0 |
+| 10 | Open strings, one at a time | candidate | 1.4.0, bit-identical by design |
+
+The build stops unless every score renders, with every mechanism off and the
+fall let go, the 1.4.0 tree's own fall-off render bit for bit; the control
+renders 1.4.0 bit for bit; each mechanism's own score changes when only it is
+off; and the measured fall alone changes the staccato score. All four hold.
+The files share one gain (the loudest render 1 dB under full scale) and are
+written at 16 bits with no EQ, separate normalization, compression or timing
+alignment. The candidate sits on A in five of the ten pairs, drawn by a
+generator seeded with the candidate renderer's hash; 1.4.0's pack, seeded
+the same way but unbalanced, put it on A in all four test pairs. The key
+(`key.json`) and each pair's level and difference measurements stay outside
+the repository until the listening verdict, since a pair's level change
+would tell its takes apart; the committed manifest
+([`review-manifest.json`](validation-playing-physics-20261013/review-manifest.json))
+keeps the frozen sources' and renders' hashes and the checks. Nobody has
+listened yet.
+
+## CPU
+
+The changes add work at a stroke's or a release's events, not per sample:
+six scatter draws and a few divisions a stroke, a finger chord's draws, a
+dead stroke's pluck, a captured edge gain, and the measured fall's curve
+read once a control period. Paired probes, compiled with g++ 13.3 -O3
+against the frozen source on a 4-CPU Xeon at 2.1 GHz (a cloud VM, nothing
+else running; not a quiet-machine benchmark,
+[`probes/results.txt`](validation-playing-physics-20261013/probes/results.txt)):
+
+- One build, the seven switches on against off, 14 s played passages: a
+  picked song with full, open-voiced and three-string strums, power chords
+  and single notes, −2.4% (48 kHz, 64 frames) and −1.8% (96 kHz, 32) on the
+  median callback; a fingerstyle one with plucked chords, +1.4% and −0.2%.
+  Run-to-run noise is of that size. Pooled p95 and p99 move by as much
+  either way, except the fingerstyle p95 at 48 kHz (178 against 158 µs),
+  where a plucked chord's strings start within a few milliseconds of one
+  another, within one callback's 1.3 ms.
+- Both trees built alike, the 1.4.0 release probe (an F barre let go, the
+  0.45 s after its damping begins): with the fall let go the two engines
+  cost the same (88–91 µs at 48 kHz, 42–43 at 96 kHz). The measured fall
+  adds 5.7–6.4% to the mean callback at 48 kHz and 6.0–7.0% at 96 kHz
+  against 1.4.0's 2.7–4.9% and 4.6–8.4%; it now runs to 35 dB down instead
+  of stopping at 30. The median callback shows more (11.7–12.4% against
+  7.5–7.7% at 48 kHz) because the fall is active in nearly half the
+  window's callbacks.
+- 1.4.0's own song probe on both trees: within run-to-run noise (90–94 µs
+  at 48 kHz, 43.6–44.0 at 96 kHz on the median callback).
+
+At 48 kHz and 64 frames a callback has 1,333 µs and these take 7–8% of it;
+at 96 kHz and 32 frames, 333 µs and 13–15%. A local timing is no guarantee
+on another processor or host.
 
 ## Dropped on their evidence
 

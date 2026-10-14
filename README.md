@@ -1,14 +1,17 @@
 # Acustra
 
-Version 1.4.0 adds three things a real guitar does, with no new control.
-An upstroke lands lighter on the bass strings and harder on the treble ones
-than a downstroke, by the amount GuitarSet's hex-pickup comping measures.
-With a pick, single notes alternate down and up as a plectrum does, one hand
-with the strums. A released fretted note falls toward the fret below while
-the hand damps it, as the lifting fingertip becomes the string's end.
-Downstrokes, Finger and Thumb notes, open strings and held notes sound as
-before. In a blind A/B pass the user preferred it to the previous engine. See
-[the measurements, tests and A/B pack](Docs/stroke-release-realism-2026-10-13.md).
+Version 1.5.0 adds seven things a guitarist's hands do, each measured on
+GuitarSet's hex-pickup recordings of six players, with no new control.
+Fingers pluck a chord of three or four strings together instead of sweeping
+it. A strum gives the strings it crosses but leaves out a dead stroke; each
+string of a stroke sounds at a moment of its own about the sweep; a pick's
+two-note group is a small stroke; a small stroke crosses each string more
+slowly than a full one; and a stroke strikes the strings it enters and
+leaves on more lightly, which replaces most of 1.4.0's upstroke tilt. A
+released fretted note's fall follows the measured curve; otherwise single
+notes, open strings and held notes sound as before. Nobody has listened
+yet; see
+[the measurements, tests and A/B pack](Docs/playing-physics-2026-10-13.md).
 
 Version 1.3.4 build 2 names the CC2 playing gesture **Mute** in the editor's
 Picking tooltip and user guide, matching the Rack control. Its behavior is unchanged.
@@ -3328,6 +3331,40 @@ set without it.
 Each entry records a source version in this repository. No build of any of
 them has been published as a release; [Build](#build) describes how
 packages are built and signed.
+
+### 1.5.0 — 2026-10-14 — the playing hand, measured
+
+- **Finger chords.** Under Finger a chord of three or four strings is plucked
+  by the thumb and fingers together: each string takes GuitarSet's median
+  lag behind the highest string plus a draw of its own, 4.47 ms standard
+  deviation, the earliest at the note-on. It is not a stroke. Five and six
+  strings, Pick, Thumb and a latched direction strum as before.
+- **Dead strokes.** A strum that crosses a string its chord leaves out gives
+  it a dead stroke at its place in the sweep, 4.6 dB under a played string's
+  force and under a 43-period touch, as GuitarSet's crossed strings show.
+- **The release fall, measured.** The fall follows GuitarSet's median pitch
+  against the hand's damping: hardly any for the first 4 dB, then about
+  2.3 cents a dB, to 80 cents at 35 dB down.
+- **Strum scatter.** Each string of a swept stroke sounds at its own moment
+  about the sweep, a uniform 4.35 ms standard deviation added after the
+  stroke's speed draw, so a third to two thirds of strokes sound out of
+  string order, as GuitarSet's do. The earliest string sounds at the note-on.
+- **Picked pairs.** Under Pick a two-note group is a stroke across its two
+  strings, swept, alternated and scattered as a strum.
+- **Stroke span.** A stroke's span grows as the 0.64 power of the spacings
+  it crosses, the profile inside each of GuitarSet's takes, so a small stroke
+  crosses each string more slowly; a six-string stroke keeps its speed.
+- **Stroke edges.** A stroke of three or more strings strikes the strings it
+  enters and leaves on 1.8 and 2.0 dB lighter, as measured inside single
+  strokes, and an upstroke tilts by 0.30 dB a string instead of 0.9.
+- **Coverage.** New `FingerChords`, `MutedStrings`, `StrumScatter`,
+  `TwoStringStrokes`, `StrokeSpan` and `StrokeEdges` suites; `ReleaseFall`
+  follows the measured curve. Every mechanism has a `PerformanceRealism`
+  switch, and all of them off with the fall let go render 1.4.0's own
+  fall-off output bit for bit; `Tools/BuildPlayingPhysicsReview.py` checks
+  that while building the blind A/B pack. No parameter, saved state or
+  layout changes. Played passages cost the same within run-to-run noise.
+  Nobody has listened yet.
 
 ### 1.4.0 — 2026-10-13 — upstrokes lean treble, picked notes alternate, released notes fall
 
