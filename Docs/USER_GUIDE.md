@@ -175,7 +175,9 @@ on CHORDS to gather them, at the cost of 30 ms latency.
 **Picking.** With Picking on Pick, single notes alternate down and up
 by the same rule, as one hand with the strums: eighth and sixteenth notes
 alternate, quarter notes and the first note after a rest are downstrokes.
-Finger and Thumb pluck every note the same way.
+Two notes played together, a power chord say, are one small stroke: the
+pick reaches one string a few milliseconds before the other. Finger and
+Thumb pluck every note the same way.
 
 **Keyswitches** below the guitar's range latch the stroke direction on
 every channel, whichever channel sends them, until the next keyswitch or

@@ -356,7 +356,7 @@ void testUnsweptPlayingIsUnchanged()
     const std::vector<Case> cases {
         { acustra::PickingTechnique::Pick, melody, "picked single notes" },
         { acustra::PickingTechnique::Finger, melody, "finger single notes" },
-        { acustra::PickingTechnique::Pick, dyads, "picked two-note groups" },
+        { acustra::PickingTechnique::Finger, dyads, "finger two-note groups" },
         { acustra::PickingTechnique::Finger, plucked, "a finger-plucked four-string chord" },
         { acustra::PickingTechnique::Pick, cluster, "a seven-note group the hand cannot plan" } };
     for (const auto& c : cases)

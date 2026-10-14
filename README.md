@@ -896,7 +896,12 @@ and darker, as any softer stroke. Downstrokes are unchanged. With a pick, a
 single note or two-note group is a stroke of the same hand: it alternates
 with the strums and the other picked notes by the same dotted-eighth rule,
 and one within 30 ms of the hand's last stroke continues it; fingers and the
-thumb pluck every single note toward the palm. The shape is planned before this
+thumb pluck every single note toward the palm. A pick's two-note group is
+swept across its two strings as a strum is, since one plectrum cannot reach
+both at once: of GuitarSet's 1,526 picked two-string groups on adjacent
+strings only 5% sound within 2 ms of each other, a median 13.0 ms apart and
+mostly in the stroke's direction (`Tools/MeasureTwoStringStrokes.py`).
+Fingers and the thumb still sound two notes together. The shape is planned before this
 timing: string order can cross pitch order, and an unplayed string between
 two reached strings still takes one spacing to cross. The spacing is the set-up dimension
 at the saddle; the pick's speed is a player's map of velocity over the

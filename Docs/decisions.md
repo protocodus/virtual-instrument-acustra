@@ -5,6 +5,23 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-14 — a pick's two-note group is a stroke
+
+Two notes on one sample under Pick sounded both strings at once: only three
+or more were swept. A plectrum cannot reach two strings at once, and
+GuitarSet's picked comping agrees (`Tools/MeasureTwoStringStrokes.py`): of
+1,526 isolated two-string groups on adjacent strings only 5% sound within
+2 ms of each other, a median 13.0 ms apart, 61% low string first and 34%
+high string first, as down- and upstrokes would. Under Pick a two-note
+group is now a stroke across its two strings, swept, alternated and
+scattered as a strum, with a dead stroke on any string it crosses between
+them (`PerformanceRealism::twoStringStrokes`; `Acustra.TwoStringStrokes`).
+Its direction is the one the picked-note rule already gave it. Fingers and
+the thumb still sound two notes together, though the corpus's finger-played
+pairs are not simultaneous either (8% within 2 ms, in no preferred order);
+that belongs to the fingers' own timing. Not chosen by ear. See
+[the report](playing-physics-2026-10-13.md).
+
 ## 2026-10-14 — a strum's strings scatter about its sweep
 
 Every swept stroke put each string exactly where the wrist's arc and the

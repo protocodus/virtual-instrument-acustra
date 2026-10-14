@@ -36,6 +36,9 @@ struct PerformanceRealism
     // Each string of a swept stroke sounds at its own moment about the
     // sweep, as a pick meets real strings (AcustraEngine::strumScatterSamples).
     bool strumScatter { true };
+    // Under Pick two notes on one sample are a stroke across their two
+    // strings, swept as a strum is (Performer::flushNoteGroup).
+    bool twoStringStrokes { true };
 };
 
 } // namespace acustra

@@ -260,6 +260,57 @@ keep string order differently (70%, 43% and 27%), so the order check is the
 picked styles'. Where a stroke starts against the beat is still the
 sequencer's.
 
+## 5. A pick's two-note group is a stroke
+
+Only three or more notes on one sample were swept. Under Pick two notes, a
+power chord or a double stop, sounded both strings on the same sample, and
+one plectrum cannot do that: it reaches one string before the other.
+`Tools/MeasureTwoStringStrokes.py` finds GuitarSet's two-string groups (two
+strings' onsets inside the chord window with no other onset within 120 ms
+either side) and detects both attacks again. Report: [`two-string-strokes-report.json`](validation-playing-physics-20261013/two-string-strokes-report.json).
+
+| Two strings, adjacent | Pick (rock, singer-songwriter, funk) | Finger (bossa nova) | Jazz |
+| --- | ---: | ---: | ---: |
+| Groups | 1,526 | 293 | 268 |
+| Apart, median (quartiles) | 13.0 ms (7.8–19.3) | 11.2 ms (6.0–16.1) | 9.8 ms (4.5–15.9) |
+| Within 2 ms of each other | 5% | 8% | 13% |
+| Lower string first / higher first, by more than 2 ms | 61% / 34% | 42% / 50% | 46% / 41% |
+
+The picked pairs run mostly low string first, as down- and upstrokes in the
+proportion strummers play them would; strings two and three or more apart
+behave alike (135 and 99 groups, 10% and 6% within 2 ms). The attack
+detector's own error, 1.27 ms on each attack (section 4), cannot part two
+simultaneous attacks by 13 ms.
+
+**Model.** Under Pick a two-note group the tuning can sound is a stroke
+across its two strings (`Performer::flushNoteGroup`): it takes the strum's
+sweep at the pick's speed for its velocity, the stroke's speed draw, each
+string's own moment (section 4), the strum's force variation and upstroke
+tilt, and a dead stroke on any string it crosses between them (section 2).
+Its direction is the one the picked-note rule already gave it, so the
+hand's alternation is unchanged. Fingers and the thumb still sound two notes
+together.
+
+**Tests** (`Acustra.TwoStringStrokes`): at 44.1, 48 and 96 kHz, 200
+alternating E2-B2 power chords under Pick sound their first string at the
+note-on, only 41 within 2 ms of each other (all 200 with the switch off),
+the lower string first in 69 of 100 downstrokes and the higher first in 68
+of 100 upstrokes, 5.36 ms apart on average along the stroke against the
+sweep's 5.44 ms for that velocity, and keep the stroke direction they had
+before; an E2-E3 octave shape gives the A string a dead stroke; a pair 10 ms
+after a picked note continues that note's stroke; Finger and Thumb pairs,
+picked single notes and picked strums are bit-identical with the switch on
+and off, while picked pairs change audibly; blocks of 1, 61, 64 and 512
+render identically. `Acustra.StrumScatter`'s unswept pairs are now Finger's.
+
+**Limits.** The engine's picked pairs sound 5.4 ms apart on average at this
+velocity where the corpus's are a median 13.0 ms apart, and 20% of them
+within 2 ms against the corpus's 5%: they take a strum's speed for two
+strings, while the corpus's smaller strokes cross each string more slowly
+(isolated groups of two, three and four strings take 12.0, 8.6 and 7.7 ms a
+string). Finger-played pairs are not simultaneous in the corpus either (8%
+within 2 ms, in no preferred order), and stay so here.
+
 ## Dropped on their evidence
 
 - **Strum speed following the tempo.** Pooled over every picked stroke, a

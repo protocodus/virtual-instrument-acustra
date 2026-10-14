@@ -402,8 +402,9 @@ void Performer::flushNoteGroup() noexcept
               });
     // Three or more notes on one sample are a chord nobody can play at once:
     // a strum reaches its strings one after another, low to high on a
-    // downstroke and back on the return. Fingers are the exception for
-    // three or four strings, which they pluck together (below). A strum within a dotted eighth of
+    // downstroke and back on the return, and so does a pick's stroke across
+    // two. Fingers are the exception for three or four strings, which they
+    // pluck together (below). A strum within a dotted eighth of
     // the last (strumAlternationBeats) is that return and alternates; after
     // a longer gap the hand starts over with a downstroke, unless a
     // keyswitch has latched a direction (StrokeMode).
@@ -442,7 +443,7 @@ void Performer::flushNoteGroup() noexcept
     // Only notes the tuning can sound make a stroke: a note no string
     // reaches neither times it (below) nor turns one or two notes into one.
     int soundingNotes = 0;
-    if (pendingNoteOnCount_ >= 3 && oneChannel)
+    if (pendingNoteOnCount_ >= 2 && oneChannel)
         for (int index = 0; index < pendingNoteOnCount_; ++index)
         {
             const auto& note = pendingNoteOns_[static_cast<std::size_t>(index)];
@@ -453,7 +454,14 @@ void Performer::flushNoteGroup() noexcept
                 continue;
             soundingNotes += engine_.canSound(note.note, note.channel) ? 1 : 0;
         }
-    const bool strum = soundingNotes >= 3;
+    // A plectrum reaches one of two strings before the other: of GuitarSet's
+    // 1,526 picked two-string groups on adjacent strings
+    // (Tools/MeasureTwoStringStrokes.py) 5% sound within 2 ms of each other,
+    // the strings a median 13.0 ms apart and 61% low string first. Fingers
+    // pluck theirs as before, and so does the thumb.
+    const bool strum = soundingNotes >= 3
+        || (soundingNotes == 2 && pickTechnique_
+            && engine_.performanceRealism().twoStringStrokes);
     // The rest is measured between the strokes' own samples, so no block
     // size can move it. groupedSample_ is still this group's sample
     // wherever it is flushed (handleEvent, endBlock).

@@ -346,6 +346,10 @@ binary:
   sweep, which `Tools/MeasureStrumScatter.py` measures from the comping's
   hex-pickup audio and annotations: a robust 4.53 ms, of which 4.35 ms is
   taken as each string's own moment (`AcustraEngine::strumScatterSamples`).
+- How far apart a pick sounds the strings of a two-note group, which
+  `Tools/MeasureTwoStringStrokes.py` measures from the comping's hex-pickup
+  audio and annotations: 5% of adjacent pairs within 2 ms, a median 13.0 ms
+  apart (`Performer::flushNoteGroup`).
 
 These are Acustra's measurements and fits from the dataset, not part of
 it; the source comments and tools above describe how each was derived. This
