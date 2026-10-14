@@ -231,9 +231,14 @@ public:
     // A return stroke releases the sideways plane in the opposite direction.
     // Each scheduled string captures its own direction at note-on, so a later
     // stroke cannot change an earlier contact still travelling to the bridge.
+    // entryString and exitString (0 is the low E; -1 when not known) are the
+    // strings the stroke enters and leaves the chord on, which the pick
+    // strikes more lightly than those between them; each string captures its
+    // part at note-on too.
     void beginStrum(int strokeSpanSamples = 0,
                     int repeatIntervalSamples = 0,
-                    bool upstroke = false) noexcept;
+                    bool upstroke = false,
+                    int entryString = -1, int exitString = -1) noexcept;
     // A pluck can be scheduled: the string is taken and fretted now, the
     // fretting hand having formed the chord, and released this many samples
     // later, which is how a strum reaches its strings one after another.
@@ -279,9 +284,33 @@ public:
     // is down for this note on this channel, or -1.
     [[nodiscard]] int heldString(int midiNote, int midiChannel = 1) const noexcept;
     // Samples after the first string that a strum's k-th string sounds, from
-    // the pick's speed for this velocity and the string spacing.
-    [[nodiscard]] int strumDelaySamples(int stringRank,
-                                        float velocity) const noexcept;
+    // the pick's speed for this velocity and the string spacing, in a stroke
+    // that crosses strokeGaps spacings in all: a smaller stroke crosses each
+    // string more slowly. The default is the six-string stroke's.
+    [[nodiscard]] int strumDelaySamples(int stringRank, float velocity,
+                                        int strokeGaps = stringCount - 1) const noexcept;
+    // Samples after the chord's highest string that the string rankFromTop
+    // strings below it sounds when the thumb and fingers pluck a chord of
+    // count (3 or 4) strings together; it can be negative, and the caller
+    // moves the earliest string onto the note-on. Each call draws that
+    // finger's own timing, so call once per string.
+    [[nodiscard]] int fingerChordOffsetSamples(int rankFromTop, int count) noexcept;
+    // The speed draw of the stroke the last beginStrum() call began: what
+    // noteOn() and muteStroke() scale a strum member's place by.
+    [[nodiscard]] float strumSpeedScale() const noexcept { return strumSpeedScale_; }
+    // One string's own moment about its place in a swept stroke, in samples
+    // at the current rate: a time, which the stroke's speed draw does not
+    // scale. Each call draws one string's, so call once per string reached;
+    // the caller moves the stroke's earliest string onto the note-on.
+    [[nodiscard]] float strumScatterSamples() noexcept;
+    // A strum crossing a string inside its span that the chord leaves out:
+    // the fretting hand lies on that string to keep it quiet, so the pick
+    // gives it a dead stroke instead of passing through it. delaySamples is
+    // the string's place in the stroke, before the stroke's speed draw, as
+    // for the chord's own notes; call after their noteOns. A string a key or
+    // the pedal holds, or whose own pluck is still on its way, is left alone.
+    void muteStroke(int string, int delaySamples, float velocity,
+                    int midiChannel = 1) noexcept;
     // Whether noteOn() would sound this note at all in the current tuning
     // and channel mode, rather than drop it (outside the tuning's fretted
     // range, or off a string-per-channel string's frets).
@@ -1265,6 +1294,9 @@ private:
         // in flight keep their own signed gain until firePluck retains them.
         float pluckParallelSign { 1.0f };
         PickingGesture pluckGesture {};
+        // A strum member's force for being the string its stroke enters or
+        // leaves on (strumEdgeGain), captured at note-on; 1 otherwise.
+        float strokeEdgeGain { 1.0f };
         float excitationParallelGain { 0.51f };
         float tailExcitationParallelGain { 0.51f };
         // The release burst's noise, handed over from randomState at each
@@ -1379,18 +1411,24 @@ private:
         // The hand's T60 for the release under way (beginRelease), from
         // which releaseDamping follows the loop's period; zero when none.
         float releaseSeconds { 0.0f };
-        // A released fretted note's fall toward the previous fret
-        // (beginReleaseFall): how far it has fallen and where it is falling
-        // to, in semitones; the share of the fall still to go, its decay per
-        // control period and the control periods it still moves for; and
-        // the samples the fall adds to each loop's configured delay. Zero,
-        // the default, leaves the string exactly where it was.
+        // A released fretted note's fall as the fingertip lifts
+        // (beginReleaseFall): how far it has fallen, in semitones; how much of
+        // the measured fall a string fretted only in part takes; the level
+        // the hand's damping has taken so far and takes each control period,
+        // in dB; the control periods it still moves for; and the samples the
+        // fall adds to each loop's configured delay. Zero, the default,
+        // leaves the string exactly where it was.
         float releaseFallSemitones { 0.0f };
-        float releaseFallTarget { 0.0f };
-        float releaseFallRemaining { 0.0f };
-        float releaseFallDecay { 0.0f };
+        float releaseFallScale { 0.0f };
+        float releaseFallDrop { 0.0f };
+        float releaseFallDropPerPeriod { 0.0f };
         int releaseFallPeriods { 0 };
         float releaseFallDelay { 0.0f };
+        // A strum's dead stroke on a string the fretting hand mutes
+        // (muteStroke): no key owns it, the finger already lies on it, and
+        // its pluck is damped from the moment it is released. A note on the
+        // string or its return to the open string clears it.
+        bool mutedStroke { false };
         // Samples until a released string is handed back to the allocator.
         int returnSamples { 0 };
         // Samples until a scheduled pluck is released; zero when none waits.
@@ -1700,6 +1738,8 @@ private:
     void beginReleaseFall(Voice& voice) noexcept;
     void advanceReleaseFall(Voice& voice) noexcept;
     void clearReleaseFall(Voice& voice) noexcept;
+    void beginMutedStroke(Voice& voice) noexcept;
+    [[nodiscard]] float strumEdgeGain(int string) const noexcept;
     void beginGestureDamping(Voice& voice) noexcept;
     void updateReleaseJoinWindow(Voice& voice) noexcept;
     void processPendingRelease(Voice& voice, int stringIndex) noexcept;
@@ -2216,8 +2256,17 @@ private:
     // whole stroke coherent, so a slower or faster draw scales every
     // string's delay together and never reorders them.
     std::uint32_t strumRandomState_ { 0x9e3779b9u };
+    // The fingers' own timing in a plucked chord (fingerChordOffsetSamples),
+    // apart from the strums' draws so a plucked chord moves no strum.
+    std::uint32_t fingerChordRandomState_ { 0x2545f491u };
+    // Each swept string's own moment (strumScatterSamples), apart from the
+    // speed draws so the scatter moves no stroke's speed.
+    std::uint32_t strumScatterRandomState_ { 0x68e31da4u };
     float strumSpeedScale_ { 1.0f };
     float strumParallelSign_ { 1.0f };
+    // The strings the latest stroke enters and leaves its chord on, or -1.
+    int strumEntryString_ { -1 };
+    int strumExitString_ { -1 };
     // Half-width of the uniform draw beginStrum() applies to strumSpeedScale_.
     // GuitarSet's comping tracks (Tools/MeasureStrums.py), pooled over runs
     // of >=3 repeats of one chord and direction, put a stroke's own total

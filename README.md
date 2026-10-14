@@ -1,14 +1,19 @@
 # Acustra
 
-Version 1.4.0 adds three things a real guitar does, with no new control.
-An upstroke lands lighter on the bass strings and harder on the treble ones
-than a downstroke, by the amount GuitarSet's hex-pickup comping measures.
-With a pick, single notes alternate down and up as a plectrum does, one hand
-with the strums. A released fretted note falls toward the fret below while
-the hand damps it, as the lifting fingertip becomes the string's end.
-Downstrokes, Finger and Thumb notes, open strings and held notes sound as
-before; nobody has listened yet. See
-[the measurements, tests and A/B pack](Docs/stroke-release-realism-2026-10-13.md).
+Version 1.5.0 adds seven things a guitarist's hands do, each measured on
+GuitarSet's hex-pickup recordings of six players, with no new control.
+Fingers pluck a chord of three or four strings together instead of sweeping
+it. A strum gives the strings it crosses but leaves out a dead stroke; each
+string of a stroke sounds at a moment of its own about the sweep; a pick's
+two-note group is a small stroke; a small stroke crosses each string more
+slowly than a full one; and a stroke strikes the strings it enters and
+leaves on more lightly, which replaces most of 1.4.0's upstroke tilt. A
+released fretted note's fall follows the measured curve; otherwise single
+notes, open strings and held notes sound as before. In the blind A/B pack
+the user picked the dead strokes, the scatter and the picked pairs over
+1.4.0's behaviour and 1.4.0's over the other four, then chose to ship all
+seven; see
+[the measurements, tests and A/B pack](Docs/playing-physics-2026-10-13.md).
 
 Version 1.3.4 build 2 names the CC2 playing gesture **Mute** in the editor's
 Picking tooltip and user guide, matching the Rack control. Its behavior is unchanged.
@@ -756,10 +761,15 @@ the range alone (Docs/decisions.md), and the on-screen keyboard shows that
 range. The stroke keyswitches live below it.
 
 Ordinary Note Ons pluck, and notes that arrive together are voiced and
-strummed as chords. Three keyswitches below the guitar's range set the
+strummed as chords. Under Finger a chord of three or four strings is not
+strummed: the thumb and fingers pluck it together, a few milliseconds apart
+in no fixed order, as GuitarSet's finger-played comping does; five or six
+strings are brushed as a strum. A strum that crosses a string its chord
+leaves out (open E2, B3 and E4, say) gives that string a dead stroke under
+the fretting hand that keeps it quiet, as GuitarSet's strummers do. Three keyswitches below the guitar's range set the
 stroke direction, on any channel, latched until the next keyswitch or Panic:
 C0 (MIDI 24) makes every strum, and with a pick every picked note, a
-downstroke, C#0 (25) an upstroke and D0
+downstroke (and under Finger strums the chords it would pluck), C#0 (25) an upstroke and D0
 (26) returns to the automatic rule (keyswitch names count middle C as C3,
 as the editor's keyboard does; the ranges elsewhere in this README count
 it as C4, so E2 is MIDI 40 and C6 MIDI 84) (a stroke within a dotted eighth of the
@@ -838,13 +848,12 @@ Once its window expires, Note-off damps the note at every release velocity,
 including 127, without adding a new pluck, so a fast keyboard key-up never
 sounds like another stroke. A fretted note's fingertip lifts the string off
 the fret as it relaxes and becomes the string's end, so the dying note falls
-toward the fret below: one semitone approached with a quarter of the hand's
-T60, a third of a semitone by the time it has lost 6 dB, stopping 86% of the
-way when it is 30 dB down; a firmer key-up falls faster. Roland's
-guitar-to-MIDI patent describes the drop its hexaphonic pickups track (US
-7470851 B2: "the pitch drops about a half tone" as the envelope nears zero);
-the curve is that account sized by the fret geometry, not a measured
-trajectory. Open strings, held and pedalled notes do not fall, and a new
+as GuitarSet's hex-pickup pitch tracks measure it on 4,329 fretted note
+ends: nothing in the first 4 dB it loses, then about 2.3 cents a dB, 29 cents
+at 12.5 dB down and 80 at 35 dB, where it stops; it follows the hand's own
+damping, so a firmer key-up falls faster. Roland's guitar-to-MIDI patent
+describes the same drop (US 7470851 B2: "the pitch drops about a half tone"
+as the envelope nears zero). Open strings, held and pedalled notes do not fall, and a new
 stroke presses the string back onto its fret
 ([the report](Docs/stroke-release-realism-2026-10-13.md)). At that damping
 start it adds the hand's own touch
@@ -873,25 +882,47 @@ hand can play, is swept as a strum: newly assigned strings are fretted at
 that sample, and each is released when the pick reaches it. An already held
 note keeps its preceding vibration until its scheduled re-pluck. The k-th string
 sounds k string-spacings later at the pick's speed, low to high on a downstroke and
-back on the return. A strum within a dotted eighth of the last at the host
+back on the return, and then at a moment of its own about that sweep: a
+uniform draw of 4.35 ms standard deviation, the scatter of GuitarSet's
+picked strokes about their own sweeps less the attack detector's own
+(`Tools/MeasureStrumScatter.py`), which sounds a third to two thirds of the
+strokes out of string order as the corpus's are. It is a time, not a place on
+the sweep, since a take's slower strokes scatter no more than its faster ones;
+the earliest string sounds at the note-on. A strum within a dotted eighth of the last at the host
 tempo is that return and alternates; a later one, or any after a rest of
 more than two seconds, starts over with a downstroke, unless a keyswitch
-has latched a direction (see the MIDI section). An upstroke enters from the
-treble side: each string is released at `-1.2 + 0.9 (k - 2.5)` dB of the
-force a downstroke gives it, k 0 for the low E (the low E 3.45 dB under,
-the high E 1.05 over), the line GuitarSet's hex-pickup comping gives when
-each string's upstroke attacks are compared with its own downstroke attacks
-(`Tools/MeasureStrumDirection.py`); a lighter string is let go more slowly
-and darker, as any softer stroke. Downstrokes are unchanged. With a pick, a
+has latched a direction (see the MIDI section). A stroke of three or more
+strings strikes the strings it enters and leaves the chord on more lightly
+than those between them, in either direction: 1.8 dB under for the entry
+string and 2.0 dB for the exit string, what GuitarSet's picked strokes show
+when each string is compared with the rest of its own stroke
+(`Tools/MeasureStrokeEdges.py`). An upstroke enters from the treble side and
+is released at `-1.2 + 0.30 (k - 2.5)` dB of the force a downstroke gives
+each string, k 0 for the low E: the offset from comparing each string's
+upstroke attacks with its own downstroke attacks
+(`Tools/MeasureStrumDirection.py`), the tilt what is left inside one stroke
+once its edges are counted (0.9 dB a string in 1.4.0, which the whole
+takes' comparison gave). A lighter string is let go more slowly and darker,
+as any softer stroke. With a pick, a
 single note or two-note group is a stroke of the same hand: it alternates
 with the strums and the other picked notes by the same dotted-eighth rule,
 and one within 30 ms of the hand's last stroke continues it; fingers and the
-thumb pluck every single note toward the palm. The shape is planned before this
+thumb pluck every single note toward the palm. A pick's two-note group is
+swept across its two strings as a strum is, since one plectrum cannot reach
+both at once: of GuitarSet's 1,526 picked two-string groups on adjacent
+strings only 5% sound within 2 ms of each other, a median 13.0 ms apart and
+mostly in the stroke's direction (`Tools/MeasureTwoStringStrokes.py`).
+Fingers and the thumb still sound two notes together. The shape is planned before this
 timing: string order can cross pitch order, and an unplayed string between
 two reached strings still takes one spacing to cross. The spacing is the set-up dimension
 at the saddle; the pick's speed is a player's map of velocity over the
 0.51–2.46 m/s range measured from GuitarSet strokes. The corpus does not
-establish that velocity-to-speed relationship. Chords whose notes arrive
+establish that velocity-to-speed relationship. That speed is a six-string
+stroke's: a smaller stroke is not the same sweep cut short, but crosses
+each string more slowly, its span growing as the 0.64 power of the
+spacings it crosses, the profile of each of GuitarSet's picked takes
+(`Tools/MeasureStrokeSpan.py`), so at MIDI 96 two strings sound 9.7 ms
+apart and six span 27 ms. Chords whose notes arrive
 spread in time are played as sent, unless Gather Chords is on.
 
 Notes that land on one sample and one channel are fretted as one shape
@@ -2451,26 +2482,31 @@ Dated evidence is retained so the earlier decisions remain traceable.
   eighth grid and up between, would follow the hand itself; it waits on a
   listening pass of the interval rule (2026-10-12, Docs/decisions.md).
   Picked notes under Pick follow the same rule since 1.4.0.
-- The upstroke's depth is a mean line through the strings, fitted per take
-  on GuitarSet's comping; part of its 1.2 dB offset may be the players'
-  accents on the beat, which the corpus cannot separate. GuitarSet's
-  upstrokes also reach the bass strings half as often as its downstrokes
-  and cross each string 18% more slowly; neither is modelled, since a MIDI
-  chord names the strings it wants and the slower span may be onset
-  detection on weak attacks
-  ([the measurement](Docs/stroke-release-realism-2026-10-13.md)).
+- The upstroke's 1.2 dB offset comes from comparing whole takes' upstrokes
+  with their downstrokes; part of it may be the players' accents on the
+  beat, which the corpus cannot separate. Its tilt across the strings and
+  the stroke's lighter edges are measured inside single strokes since
+  2026-10-14; the edges are means over strokes of four to six strings
+  applied to every stroke of three or more. GuitarSet's upstrokes also
+  reach the bass strings half as often as its downstrokes and cross each
+  string 18% more slowly; neither is modelled, since a MIDI chord names the
+  strings it wants and the slower span may be onset detection on weak
+  attacks ([the measurement](Docs/stroke-release-realism-2026-10-13.md),
+  [the refit](Docs/playing-physics-2026-10-13.md)).
 - A single picked upstroke reverses only the sideways release, the
   return-stroke model strums have had since 2026-10-07, so at the saddle its
   moments add on the treble strings and cancel on the bass ones: in
   isolation it radiates 2.1-3.8 dB more than a downstroke on the G, B and
   high E (up to 5.7 on one note) and 0.6-1.0 dB less on the low E and A.
   No measurement here says whether a real plectrum's upstroke differs that
-  much; `PerformanceRealism::alternatePicking` off restores downstrokes.
-- The release fall's one-semitone asymptote and quarter-T60 time constant
-  are sized by the fret geometry inside Roland's qualitative account, not a
-  measured trajectory; during the fall the string keeps the fretted note's
-  dispersion, bridge compensation and hand loss, a period at most 6% shorter
-  than the one sounding.
+  much, though the user's blind A/B preference for the candidate included
+  it; `PerformanceRealism::alternatePicking` off restores downstrokes.
+- The release fall is GuitarSet's median curve against the level the
+  hand's damping has taken; real note ends spread widely about it (at 35 dB
+  down the quartiles are 6 and 288 cents of fall) with how fast a finger
+  lets go, which MIDI's key-up only partly carries. During the fall the
+  string keeps the fretted note's dispersion, bridge compensation and hand
+  loss, a period at most 5% shorter than the one sounding.
 - Left by the 2026-10-11 MIDI audit, each a limit rather than a stuck note:
   - The MPE lower zone is not saved with a session: after a reload, a
     member channel's events are conventional (a ±2 semitone bend range)
@@ -2753,14 +2789,18 @@ Dated evidence is retained so the earlier decisions remain traceable.
   buying with that rail — less bridge damping, or something the modal fit
   above 10 kHz does not carry — is the open question.
 
-- Repeated strums with identical MIDI differ by their stroke, their pluck
-  points and the strings' state, and by nothing else: the timing and force
-  variability of a strumming hand is not measured here (the corpus has no
-  strums), so a sequencer's humanise remains its source, and the sweep only
-  touches chords that arrive on one sample. Same-direction strokes of one
-  chord still correlate 0.93 on a bass-first downstroke and 0.995 on a
-  treble-first upstroke, because a pluck point moves a treble string's
-  waveform far less than a bass string's.
+- Repeated strums with identical MIDI differ by their stroke's speed, force
+  and direction, each string's own moment and pluck point, and the strings'
+  state, the hand's variation measured on GuitarSet's strokes. Sixteen
+  alternating picked E major strokes 0.3 s apart, keys released 0.2 s in,
+  correlate 0.015 between downstrokes and 0.034 between upstrokes over their
+  first 250 ms, 0.093 and 0.127 without each string's own moment
+  (`Docs/validation-playing-physics-20261013/probes`); the 0.93 and 0.995 of
+  2026-09-02 were eight hand-damped strokes against the first, by an earlier
+  protocol and engine. Where a stroke starts against
+  the beat is still the sequencer's: its earliest string sounds at the
+  note-on, and the sweep only touches chords that arrive on one sample or
+  are gathered.
 - Velocity reaches attack brightness under Pick only in part. The string
   now slides off the plectrum's edge in r/u, u the speed its own held force
   gives it, so a soft stroke is released darker than a hard one: on the
@@ -3294,6 +3334,42 @@ Each entry records a source version in this repository. No build of any of
 them has been published as a release; [Build](#build) describes how
 packages are built and signed.
 
+### 1.5.0 — 2026-10-14 — the playing hand, measured
+
+- **Finger chords.** Under Finger a chord of three or four strings is plucked
+  by the thumb and fingers together: each string takes GuitarSet's median
+  lag behind the highest string plus a draw of its own, 4.47 ms standard
+  deviation, the earliest at the note-on. It is not a stroke. Five and six
+  strings, Pick, Thumb and a latched direction strum as before.
+- **Dead strokes.** A strum that crosses a string its chord leaves out gives
+  it a dead stroke at its place in the sweep, 4.6 dB under a played string's
+  force and under a 43-period touch, as GuitarSet's crossed strings show.
+- **The release fall, measured.** The fall follows GuitarSet's median pitch
+  against the hand's damping: hardly any for the first 4 dB, then about
+  2.3 cents a dB, to 80 cents at 35 dB down.
+- **Strum scatter.** Each string of a swept stroke sounds at its own moment
+  about the sweep, a uniform 4.35 ms standard deviation added after the
+  stroke's speed draw, so a third to two thirds of strokes sound out of
+  string order, as GuitarSet's do. The earliest string sounds at the note-on.
+- **Picked pairs.** Under Pick a two-note group is a stroke across its two
+  strings, swept, alternated and scattered as a strum.
+- **Stroke span.** A stroke's span grows as the 0.64 power of the spacings
+  it crosses, the profile inside each of GuitarSet's takes, so a small stroke
+  crosses each string more slowly; a six-string stroke keeps its speed.
+- **Stroke edges.** A stroke of three or more strings strikes the strings it
+  enters and leaves on 1.8 and 2.0 dB lighter, as measured inside single
+  strokes, and an upstroke tilts by 0.30 dB a string instead of 0.9.
+- **Coverage.** New `FingerChords`, `MutedStrings`, `StrumScatter`,
+  `TwoStringStrokes`, `StrokeSpan` and `StrokeEdges` suites; `ReleaseFall`
+  follows the measured curve. Every mechanism has a `PerformanceRealism`
+  switch, and all of them off with the fall let go render 1.4.0's own
+  fall-off output bit for bit; `Tools/BuildPlayingPhysicsReview.py` checks
+  that while building the blind A/B pack. No parameter, saved state or
+  layout changes. Played passages cost the same within run-to-run noise.
+  In the blind A/B pack the user picked the candidate in four of nine pairs
+  (the dead strokes, scatter, picked pairs and the picked song) and chose to
+  ship all seven.
+
 ### 1.4.0 — 2026-10-13 — upstrokes lean treble, picked notes alternate, released notes fall
 
 - **Stroke depth.** An upstroke string is released at `-1.2 + 0.9 (k - 2.5)`
@@ -3309,7 +3385,8 @@ packages are built and signed.
 - **Coverage.** New `StrokeDepth`, `AlternatePicking` and `ReleaseFall`
   suites; `Tools/BuildStrokeReleaseReview.py` builds the blind A/B pack and
   checks that the three switches off reproduce 1.3.4 bit for bit. No
-  parameter, saved state or layout changes. Nobody has listened yet.
+  parameter, saved state or layout changes. The user preferred the
+  candidate in the blind A/B pack.
 
 ### 1.3.3 — 2026-10-12 — launch preparation: packages, notices, Standalone MIDI, editor size
 

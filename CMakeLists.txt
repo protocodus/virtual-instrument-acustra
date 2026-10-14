@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.4.0 LANGUAGES C CXX)
+project(Acustra VERSION 1.5.0 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -363,7 +363,7 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.StrumDirection AcustraStrumDirectionTests)
     set_tests_properties(Acustra.StrumDirection PROPERTIES TIMEOUT 120)
 
-    foreach(suite StrokeDepth AlternatePicking ReleaseFall)
+    foreach(suite StrokeDepth AlternatePicking ReleaseFall FingerChords MutedStrings StrumScatter TwoStringStrokes StrokeSpan StrokeEdges)
         add_executable(Acustra${suite}Tests Tests/${suite}Tests.cpp)
         target_link_libraries(Acustra${suite}Tests PRIVATE AcustraDSP)
         target_compile_features(Acustra${suite}Tests PRIVATE cxx_std_20)

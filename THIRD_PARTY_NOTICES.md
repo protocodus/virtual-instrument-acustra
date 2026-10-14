@@ -326,6 +326,40 @@ binary:
   and annotations: 0.9 dB more per string toward the high E and 1.2 dB
   under the downstroke between the D and G strings (`upstrokeTiltDbPerString`
   and `upstrokeMidNeckDb` in `AcustraEngine::initialisePluck`).
+- How fingers time a chord they pluck together, which
+  `Tools/MeasureFingerChords.py` measures from the bossa nova comping's
+  hex-pickup audio and annotations: each string's median lag behind the
+  chord's highest string (0, 2.27 and 4.85 ms for three strings; 0, 2.36,
+  6.98 and 3.06 ms for four) and a 4.47 ms standard deviation about it
+  (`AcustraEngine::fingerChordOffsetSamples`).
+- What a strum does to a string it crosses that the chord leaves out, which
+  `Tools/MeasureMutedStrokes.py` measures from the comping's hex-pickup
+  audio and annotations: a strike 4.6 dB under the string's own played
+  attacks and a 20 dB fall in 13.8 to 14.8 periods, taken as a 43-period
+  T60 (`AcustraEngine::muteStroke` and `beginMutedStroke`).
+- How far a released fretted note's pitch falls as its level drops, which
+  `Tools/MeasureReleaseFall.py` measures from the comping's pitch contours
+  and hex-pickup audio: the median fall at 1.5, 4.5, 8, 12.5, 17.5, 22.5,
+  27.5 and 35 dB under the sustain, 0.4 to 80.5 cents
+  (`releaseFallCurve` in `Source/DSP/AcustraEngine.cpp`).
+- How far each string of a picked stroke sounds from the stroke's own
+  sweep, which `Tools/MeasureStrumScatter.py` measures from the comping's
+  hex-pickup audio and annotations: a robust 4.53 ms, of which 4.35 ms is
+  taken as each string's own moment (`AcustraEngine::strumScatterSamples`).
+- How far apart a pick sounds the strings of a two-note group, which
+  `Tools/MeasureTwoStringStrokes.py` measures from the comping's hex-pickup
+  audio and annotations: 5% of adjacent pairs within 2 ms, a median 13.0 ms
+  apart (`Performer::flushNoteGroup`).
+- How a picked stroke's time a string falls with the strings it crosses,
+  which `Tools/MeasureStrokeSpan.py` measures within the comping's takes
+  from their hex-pickup audio and annotations: the spacings crossed to the
+  -0.36 power once each string's scatter is allowed for
+  (`AcustraEngine::strumDelaySamples`).
+- How hard a pick strikes each string of a stroke against the rest of the
+  same stroke, which `Tools/MeasureStrokeEdges.py` measures from the
+  comping's hex-pickup audio and annotations: the entry and exit strings
+  1.8 and 2.0 dB under the strings inside, and an upstroke tilt of 0.30 dB
+  a string (`AcustraEngine::strumEdgeGain`, `initialisePluck`).
 
 These are Acustra's measurements and fits from the dataset, not part of
 it; the source comments and tools above describe how each was derived. This

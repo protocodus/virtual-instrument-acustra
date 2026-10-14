@@ -1,0 +1,527 @@
+{
+  "protocol": "playing-physics-20261014",
+  "sample_rate": 48000,
+  "duration_seconds": 8,
+  "block_frames": 64,
+  "flags": [
+    "-std=c++20",
+    "-O3",
+    "-DNDEBUG"
+  ],
+  "controls": "plug-in defaults: Output 0 dB, Room 50 %, Piezo Mix 20 %, Release Noise 10 %, stereo microphones, Dreadnought Spruce",
+  "compiler": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/bin\n",
+  "renderer_sha256": "25de40de717f7ed00ff0f1cfa6e5c7ff556328289312ca5332c445127bdcf975",
+  "builder_sha256": "a66ae516285b8865be77b9fe7ae2d1de750372c6bb2c99fddfdc3b8dc8eafcd3",
+  "sources": {
+    "baseline": {
+      "Source/DSP/AcustraEngine.cpp": "83a40d81377c555703ae2f5922093fcaadb71a62fa1ddc00bc39e5d1d5e4abff",
+      "Source/DSP/AcustraEngine.h": "b4b0aea6cbfd4a9f22d3fcca6a24dc38fb70e61c6758d06a5091477174b5f1f0",
+      "Source/DSP/AcustraPerformer.cpp": "b047864a2ab2897079c371dd59f01d11a1a49cc4980f48cde694d7b2e754f841",
+      "Source/DSP/AcustraPerformer.h": "174bbd5ef1f6f37e640b1af2b41c16c0234fff81dd1c9add5e7d4ebcd6749790",
+      "Source/DSP/CaptureVoicingData.h": "70efbc0194f161237b00e9318f3ecb632e8aeb77899924ded16729a9f6fc036d",
+      "Source/DSP/ConstructionLoudnessData.h": "e76ebb80231b208bdec54791b5c9a4016d0b78a073ca8f27ebeb0ae2aeb9a282",
+      "Source/DSP/FittedPhysicalData.h": "ab49687de639fa337dab0f0b812658776c84977c3df1bcf33e063704298cf415",
+      "Source/DSP/GaussianApertureData.h": "5383edf9778c013587ab9578f262e40ac61ec5d8660a7fbd4348f072a24a834a",
+      "Source/DSP/MeasuredBodyData.h": "1c54a31e2546db4095d373591a45a188fc21bac3820f9b0a3f72c66c96fd9be0",
+      "Source/DSP/MeasuredBridgeData.h": "1a6e129e9693b6193d8bd19efccb091dc504d767733582a72263a43565cab085",
+      "Source/DSP/MeasuredJointBodyData.h": "e8f076bedbc5807a33318adf6b8a16a74a9fd8fcd6db944749d068764064f2c9",
+      "Source/DSP/MicrophoneBalanceData.h": "327fc73ccc62c0fea7bcdae5824fdf24039de3ec513c334ab866bd7e61ed5306",
+      "Source/DSP/PerformanceRealism.h": "2e266d405a79a9c237d2fdfaea50962e5ca7cd639e2f8aa0db2e94dc21d90569",
+      "Source/DSP/PiezoBlampTable.h": "5d4c18901af73d3a8b11e68784af16830f11fa0923647d2da71137e824b91399",
+      "Source/DSP/SteelBodyBlend.h": "8f3320861ab768c53aae30802ff680fd52e75f1487ebaf74dad563f3f09384d2",
+      "Source/DSP/StudioCaptureData.h": "021c98d9654329ede3951926ac752a62ac4c007c16b2c96fca0a5de4520f4e84",
+      "Source/DSP/StudioCaptureLoudnessData.h": "f75754057d03ed88facae11bf13d7ebd2a524ddb6038f9925cfe6c802d1a7973"
+    },
+    "candidate": {
+      "Source/DSP/AcustraEngine.cpp": "cee45a0d3b34e01b836d5ef86aff7d16338f9bd71686230aba36c68cfdfa489b",
+      "Source/DSP/AcustraEngine.h": "bb2c661c380c9e8af58ea02e32011f7fd330a105d2a44f67e26b6c42fa52a2b9",
+      "Source/DSP/AcustraPerformer.cpp": "5e745a34e3a5cd2911443230a34015d810c0dbac47525560f1077d89a858b6b4",
+      "Source/DSP/AcustraPerformer.h": "fc42377103c406034b359f335f80fbb8fe7674a6727e2a314e01742ad75c9d77",
+      "Source/DSP/CaptureVoicingData.h": "70efbc0194f161237b00e9318f3ecb632e8aeb77899924ded16729a9f6fc036d",
+      "Source/DSP/ConstructionLoudnessData.h": "e76ebb80231b208bdec54791b5c9a4016d0b78a073ca8f27ebeb0ae2aeb9a282",
+      "Source/DSP/FittedPhysicalData.h": "ab49687de639fa337dab0f0b812658776c84977c3df1bcf33e063704298cf415",
+      "Source/DSP/GaussianApertureData.h": "5383edf9778c013587ab9578f262e40ac61ec5d8660a7fbd4348f072a24a834a",
+      "Source/DSP/MeasuredBodyData.h": "1c54a31e2546db4095d373591a45a188fc21bac3820f9b0a3f72c66c96fd9be0",
+      "Source/DSP/MeasuredBridgeData.h": "1a6e129e9693b6193d8bd19efccb091dc504d767733582a72263a43565cab085",
+      "Source/DSP/MeasuredJointBodyData.h": "e8f076bedbc5807a33318adf6b8a16a74a9fd8fcd6db944749d068764064f2c9",
+      "Source/DSP/MicrophoneBalanceData.h": "327fc73ccc62c0fea7bcdae5824fdf24039de3ec513c334ab866bd7e61ed5306",
+      "Source/DSP/PerformanceRealism.h": "ccf83422019cb242c91c8129ed558fbfaade537ce828bd3b4979aefc79759889",
+      "Source/DSP/PiezoBlampTable.h": "5d4c18901af73d3a8b11e68784af16830f11fa0923647d2da71137e824b91399",
+      "Source/DSP/SteelBodyBlend.h": "8f3320861ab768c53aae30802ff680fd52e75f1487ebaf74dad563f3f09384d2",
+      "Source/DSP/StudioCaptureData.h": "021c98d9654329ede3951926ac752a62ac4c007c16b2c96fca0a5de4520f4e84",
+      "Source/DSP/StudioCaptureLoudnessData.h": "f75754057d03ed88facae11bf13d7ebd2a524ddb6038f9925cfe6c802d1a7973"
+    }
+  },
+  "executable_sha256": {
+    "baseline": "afd4df2d687413d51696c32d00db24bc965b978fb51b4fecac69f37469ec0f28",
+    "candidate": "392b029c42d85319a350a6d4bbccbac87ffaa2accf463d99d807a0c079589183"
+  },
+  "renders": {
+    "baseline/baseline/01-finger-comping": "0c10e5ce9cea08ecb947a4d21fb0e2842ebe7ee4b3d43fab62fab995d2859b0c",
+    "baseline/baseline/02-gapped-strums": "46d3c30e9afcb270d1077d468e3add57b5ac1611d17cae3b824bbe6acfe5f805",
+    "baseline/baseline/03-staccato-fingerstyle": "359ac48da7b6dea979cbec8825e98954ad001c33c2309c40d51c067be94e1042",
+    "baseline/baseline/04-repeated-strums": "3bc9565ac20b6478b40addaee075b66200076e84438c7b2240b86db7e17642cd",
+    "baseline/baseline/05-power-chords": "1b0ed6c358b1a38e96577452452c160aa4c2cd93a6e86d5d0fd437a69791913e",
+    "baseline/baseline/06-small-strokes": "ca70347f2b11d855cc76f79b483ed6b65a3ac711f44f63317c50c0df6620b978",
+    "baseline/baseline/07-strum-eighths": "ec0fecba4e398705cb209316d1b615adf8403632cff738fea3aaa50a2e599adf",
+    "baseline/baseline/08-song-pick": "e30356b4405845f9fc2bf6e247906522ef49ba6a805d38b508e8be47c6e0a45d",
+    "baseline/baseline/09-song-finger": "d2b97b812c9c43d93a69355c91de6589cf06f3b1567fbad98ff1b04b53d277a6",
+    "baseline/baseline/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6",
+    "baseline/fall-off/01-finger-comping": "b4f270b00af698767974f93e8a1cde2ef39fa6ed112c10361d2206a2a2fe1efe",
+    "baseline/fall-off/02-gapped-strums": "0a6c76ea50890c993c680912b363e3bb4cb6844abe756304646aedc5f91c8156",
+    "baseline/fall-off/03-staccato-fingerstyle": "39f85ba479e63bcc040ed410b82c103b5d38ac3bd376456e1729d0f0ec0a962e",
+    "baseline/fall-off/04-repeated-strums": "3bc9565ac20b6478b40addaee075b66200076e84438c7b2240b86db7e17642cd",
+    "baseline/fall-off/05-power-chords": "c929f1c457a46ea96c80b9c3a7d25cfebf2c4199b02e696a3e97d01027130fd0",
+    "baseline/fall-off/06-small-strokes": "ca70347f2b11d855cc76f79b483ed6b65a3ac711f44f63317c50c0df6620b978",
+    "baseline/fall-off/07-strum-eighths": "7dead0e0cc9aa4747112082098822369ac7e43e66d7886b12f79153dd9140b53",
+    "baseline/fall-off/08-song-pick": "196089d04356f24b8d8e373c1f93804880e0667edd45897f9da04d7938438a88",
+    "baseline/fall-off/09-song-finger": "62f4b2656da83bee110d25fcdf218dca9f2d992d1b47035fb68ae55360c5936d",
+    "baseline/fall-off/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6",
+    "candidate/candidate/01-finger-comping": "29a721907f375643acaeff29c705aa4968836f6369cb3b6f3f55769e5c5168e3",
+    "candidate/candidate/02-gapped-strums": "e6c8f6bdfb660e8404811ebb4e2548b3d1fd0b378b0a84743cc6b5a6c5d8dd15",
+    "candidate/candidate/03-staccato-fingerstyle": "7ba861141a2c88ff4a41edc255d00168f1202f6eca38ccd2f6dc6e21629a2c71",
+    "candidate/candidate/04-repeated-strums": "8794db1440ab527699f45efa1c00e87795377f877c7ac813f84851acc57f95ab",
+    "candidate/candidate/05-power-chords": "8395622e2bf2c422c5d7632597a8eeffd5285d79fc299269c38261c8951caf15",
+    "candidate/candidate/06-small-strokes": "58334f11a9e852c8a46ca103ecde01de3f7bb757733d75cb02c4ea69c6023825",
+    "candidate/candidate/07-strum-eighths": "2078f96f9b2967bb16138d742e5b47d34c217d5fd140d508bcfbe58462f16b85",
+    "candidate/candidate/08-song-pick": "6508a4fcf361663fc1998130a2efe18e542bc73a03373c5476324489b145771b",
+    "candidate/candidate/09-song-finger": "eec435be72ffebff6c3265f8bcc7fdddcf606dae31024639177153172379399c",
+    "candidate/candidate/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6",
+    "candidate/all-off/01-finger-comping": "b4f270b00af698767974f93e8a1cde2ef39fa6ed112c10361d2206a2a2fe1efe",
+    "candidate/all-off/02-gapped-strums": "0a6c76ea50890c993c680912b363e3bb4cb6844abe756304646aedc5f91c8156",
+    "candidate/all-off/03-staccato-fingerstyle": "39f85ba479e63bcc040ed410b82c103b5d38ac3bd376456e1729d0f0ec0a962e",
+    "candidate/all-off/04-repeated-strums": "3bc9565ac20b6478b40addaee075b66200076e84438c7b2240b86db7e17642cd",
+    "candidate/all-off/05-power-chords": "c929f1c457a46ea96c80b9c3a7d25cfebf2c4199b02e696a3e97d01027130fd0",
+    "candidate/all-off/06-small-strokes": "ca70347f2b11d855cc76f79b483ed6b65a3ac711f44f63317c50c0df6620b978",
+    "candidate/all-off/07-strum-eighths": "7dead0e0cc9aa4747112082098822369ac7e43e66d7886b12f79153dd9140b53",
+    "candidate/all-off/08-song-pick": "196089d04356f24b8d8e373c1f93804880e0667edd45897f9da04d7938438a88",
+    "candidate/all-off/09-song-finger": "62f4b2656da83bee110d25fcdf218dca9f2d992d1b47035fb68ae55360c5936d",
+    "candidate/all-off/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6",
+    "candidate/only-fall/01-finger-comping": "0b874c6393605732ef5a2a6dd5d27c9d577ca0ffeb7a05695dea9db933bb4e61",
+    "candidate/only-fall/02-gapped-strums": "c9161cc1bd0cbaa0f7f4bd0605b3bd175c40f54069001ddc1def318ad0016d69",
+    "candidate/only-fall/03-staccato-fingerstyle": "8e0f08f55abfa2ba737e1066e2ffb36f21dc763c26f24f014073d747f3d44f50",
+    "candidate/only-fall/04-repeated-strums": "3bc9565ac20b6478b40addaee075b66200076e84438c7b2240b86db7e17642cd",
+    "candidate/only-fall/05-power-chords": "93fb5d60360757af4fb38fca8fcc4fbd784ebb6076f070aca13547a394b02a06",
+    "candidate/only-fall/06-small-strokes": "ca70347f2b11d855cc76f79b483ed6b65a3ac711f44f63317c50c0df6620b978",
+    "candidate/only-fall/07-strum-eighths": "086fdb5c339430373ab5c7cf783c8f694dddb5dfe7dc5cabedae9e028c3a8a15",
+    "candidate/only-fall/08-song-pick": "8c8b8d1dd956314f1fa41d777fec5a65d90e2a571c3a9c58dd5ac8d69e1be0ed",
+    "candidate/only-fall/09-song-finger": "af038dbf389ec6d574aa490b3b3c7a47ce5ed443ed752d7b5505c07bb95b6d1d",
+    "candidate/only-fall/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6",
+    "candidate/no-fingerChords/01-finger-comping": "ead67afc730c9f17c3570b0671dc432e0e57a158f8a1c4fdb49baf3babaa4adf",
+    "candidate/no-fingerChords/02-gapped-strums": "e6c8f6bdfb660e8404811ebb4e2548b3d1fd0b378b0a84743cc6b5a6c5d8dd15",
+    "candidate/no-fingerChords/03-staccato-fingerstyle": "e8fcb928107b1afffe9ae580bf8874ee8638a484ee25903d24a331bb9c3bc0e6",
+    "candidate/no-fingerChords/04-repeated-strums": "8794db1440ab527699f45efa1c00e87795377f877c7ac813f84851acc57f95ab",
+    "candidate/no-fingerChords/05-power-chords": "8395622e2bf2c422c5d7632597a8eeffd5285d79fc299269c38261c8951caf15",
+    "candidate/no-fingerChords/06-small-strokes": "58334f11a9e852c8a46ca103ecde01de3f7bb757733d75cb02c4ea69c6023825",
+    "candidate/no-fingerChords/07-strum-eighths": "2078f96f9b2967bb16138d742e5b47d34c217d5fd140d508bcfbe58462f16b85",
+    "candidate/no-fingerChords/08-song-pick": "6508a4fcf361663fc1998130a2efe18e542bc73a03373c5476324489b145771b",
+    "candidate/no-fingerChords/09-song-finger": "2d0feb8fdcb4ae42bf15e74ee8919ca27b14aff01bceda3b446e7d7d1ae6b3e6",
+    "candidate/no-fingerChords/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6",
+    "candidate/no-mutedStrings/01-finger-comping": "29a721907f375643acaeff29c705aa4968836f6369cb3b6f3f55769e5c5168e3",
+    "candidate/no-mutedStrings/02-gapped-strums": "ca9739a1b4f3b318894219619234298c5d285041af1e64bd093bfc4d8364ed26",
+    "candidate/no-mutedStrings/03-staccato-fingerstyle": "7ba861141a2c88ff4a41edc255d00168f1202f6eca38ccd2f6dc6e21629a2c71",
+    "candidate/no-mutedStrings/04-repeated-strums": "8794db1440ab527699f45efa1c00e87795377f877c7ac813f84851acc57f95ab",
+    "candidate/no-mutedStrings/05-power-chords": "0f0b8662c59963f8fefb0d467b5bc20242372313152b91584ad3f7092f57bd49",
+    "candidate/no-mutedStrings/06-small-strokes": "58334f11a9e852c8a46ca103ecde01de3f7bb757733d75cb02c4ea69c6023825",
+    "candidate/no-mutedStrings/07-strum-eighths": "2078f96f9b2967bb16138d742e5b47d34c217d5fd140d508bcfbe58462f16b85",
+    "candidate/no-mutedStrings/08-song-pick": "6508a4fcf361663fc1998130a2efe18e542bc73a03373c5476324489b145771b",
+    "candidate/no-mutedStrings/09-song-finger": "eec435be72ffebff6c3265f8bcc7fdddcf606dae31024639177153172379399c",
+    "candidate/no-mutedStrings/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6",
+    "candidate/no-strumScatter/01-finger-comping": "29a721907f375643acaeff29c705aa4968836f6369cb3b6f3f55769e5c5168e3",
+    "candidate/no-strumScatter/02-gapped-strums": "a4832990083a98611deeef1c726afd45640b478e867fe3217c7dc40e978b8229",
+    "candidate/no-strumScatter/03-staccato-fingerstyle": "4e89cf37ea51e1dc2def4e555650ef3014939d8f167a370c9a1a73a4520442f0",
+    "candidate/no-strumScatter/04-repeated-strums": "70e1949efde98047b544da5ba9312998e074a1a4dd3a359ca1659a0baef87c05",
+    "candidate/no-strumScatter/05-power-chords": "b829f0af43eb15a92969c8ee09bb4d3d71ac5f73c04a36f36421f1ad1b00086f",
+    "candidate/no-strumScatter/06-small-strokes": "1e108c9a173a86225c956e2d95f5ecbe87580fa5b1f232da0868a5c5f68105f6",
+    "candidate/no-strumScatter/07-strum-eighths": "22e284dc6ffb1e31e56209af260276dfd82a40efc2a7a9ad280418b4e9370ad1",
+    "candidate/no-strumScatter/08-song-pick": "fd57a7e609c742105a0d18d20832bd2c8d8d696f2cc5abd10ac4cacc89030fd6",
+    "candidate/no-strumScatter/09-song-finger": "eec435be72ffebff6c3265f8bcc7fdddcf606dae31024639177153172379399c",
+    "candidate/no-strumScatter/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6",
+    "candidate/no-twoStringStrokes/01-finger-comping": "29a721907f375643acaeff29c705aa4968836f6369cb3b6f3f55769e5c5168e3",
+    "candidate/no-twoStringStrokes/02-gapped-strums": "e6c8f6bdfb660e8404811ebb4e2548b3d1fd0b378b0a84743cc6b5a6c5d8dd15",
+    "candidate/no-twoStringStrokes/03-staccato-fingerstyle": "7ba861141a2c88ff4a41edc255d00168f1202f6eca38ccd2f6dc6e21629a2c71",
+    "candidate/no-twoStringStrokes/04-repeated-strums": "8794db1440ab527699f45efa1c00e87795377f877c7ac813f84851acc57f95ab",
+    "candidate/no-twoStringStrokes/05-power-chords": "93fb5d60360757af4fb38fca8fcc4fbd784ebb6076f070aca13547a394b02a06",
+    "candidate/no-twoStringStrokes/06-small-strokes": "58334f11a9e852c8a46ca103ecde01de3f7bb757733d75cb02c4ea69c6023825",
+    "candidate/no-twoStringStrokes/07-strum-eighths": "2078f96f9b2967bb16138d742e5b47d34c217d5fd140d508bcfbe58462f16b85",
+    "candidate/no-twoStringStrokes/08-song-pick": "db043d4a6aa6d082d88ee3f1c10c484428ddf2779f52e9177f9d566510d14c6e",
+    "candidate/no-twoStringStrokes/09-song-finger": "eec435be72ffebff6c3265f8bcc7fdddcf606dae31024639177153172379399c",
+    "candidate/no-twoStringStrokes/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6",
+    "candidate/no-strokeSpanLaw/01-finger-comping": "29a721907f375643acaeff29c705aa4968836f6369cb3b6f3f55769e5c5168e3",
+    "candidate/no-strokeSpanLaw/02-gapped-strums": "f5e8dae5866f746c5e33f1368d959af74a454c9273804d29fb2534b797f7190d",
+    "candidate/no-strokeSpanLaw/03-staccato-fingerstyle": "7edb74eb568bf3abe4fbdc85a77e36053fa35c361a6b13b90e38582172e3ec32",
+    "candidate/no-strokeSpanLaw/04-repeated-strums": "978627825cf05d89a60eafc55d7c7c6fd621ca7de840e07f491193daf1aea78d",
+    "candidate/no-strokeSpanLaw/05-power-chords": "0941321503a4a60b39bb759543cf3b516951871981179391c6eda0c193b35552",
+    "candidate/no-strokeSpanLaw/06-small-strokes": "8188013a43453523034d1aa8ccbe0e437e5d8ccc7a973cfe0cdab99d603feef2",
+    "candidate/no-strokeSpanLaw/07-strum-eighths": "6e5e68fcf30d0c391f6f5cb999282c55f836691173b84f593bf3f1b6c39cf5d0",
+    "candidate/no-strokeSpanLaw/08-song-pick": "e772e3c88a68ee81b3ba04c76dbf54537b26aad29b29964165c9250da30d57cf",
+    "candidate/no-strokeSpanLaw/09-song-finger": "eec435be72ffebff6c3265f8bcc7fdddcf606dae31024639177153172379399c",
+    "candidate/no-strokeSpanLaw/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6",
+    "candidate/no-strokeEdges/01-finger-comping": "29a721907f375643acaeff29c705aa4968836f6369cb3b6f3f55769e5c5168e3",
+    "candidate/no-strokeEdges/02-gapped-strums": "113e62ff660c82178854e4b529153fca5957a68b8896eecd0576e1eb6cc6a11d",
+    "candidate/no-strokeEdges/03-staccato-fingerstyle": "0e235e5f8f1e08eeabd8f1504edf492d05c571e13aa4e7399ef0d98cfda9f548",
+    "candidate/no-strokeEdges/04-repeated-strums": "3a22166251b9bf50eba13b85eec8e7a411c77b1f7f6eb50b8e6eb68501610278",
+    "candidate/no-strokeEdges/05-power-chords": "fdc1c328a19dd96c7fcdf96fd8e3f855d39d55be6c48650990feba23e942f548",
+    "candidate/no-strokeEdges/06-small-strokes": "d6b7236f5b84e0f9b520d0668dbe0e26479f389c378d59df31157fd1caa43bf0",
+    "candidate/no-strokeEdges/07-strum-eighths": "050a5bef9cb25951257a4a8e463856db0e55253e698e46ff58809dd1de283067",
+    "candidate/no-strokeEdges/08-song-pick": "f7a37f23f1411991f0f32c7a3920052b8979450d80e56e53b0fd7a08daacda9d",
+    "candidate/no-strokeEdges/09-song-finger": "eec435be72ffebff6c3265f8bcc7fdddcf606dae31024639177153172379399c",
+    "candidate/no-strokeEdges/10-control-open-strings": "2f98cb52bb3209dad2d292428803daa463cb1baf05e43a1556eeb1677d0250f6"
+  },
+  "pairs": [
+    {
+      "index": 1,
+      "title": "Fingerstyle comping",
+      "score": "01-finger-comping",
+      "candidate_render": "candidate/candidate",
+      "compared_with": "candidate/no-fingerChords",
+      "files": {
+        "A": "01-A.wav",
+        "B": "01-B.wav"
+      },
+      "pcm_sha256": {
+        "A": "7d6a83fc291904ca88c0822620936a2559f23010a203b083f31dacce021823b7",
+        "B": "e83ce1997e9d75f159b7da7e64ff5e5a08d34a22cacb252dc8c5fd83b44a02e2"
+      },
+      "native_peak": [
+        0.34686049818992615,
+        0.29023411870002747
+      ],
+      "native_rms": [
+        0.051124380938238054,
+        0.04938326891709182
+      ],
+      "rms_change_db": -0.3009645521421384,
+      "difference_rms_relative_db": -0.19947204514161626,
+      "first_difference_seconds": 0.40016666666666667,
+      "bit_identical": false
+    },
+    {
+      "index": 2,
+      "title": "Open-voiced strums",
+      "score": "02-gapped-strums",
+      "candidate_render": "candidate/candidate",
+      "compared_with": "candidate/no-mutedStrings",
+      "files": {
+        "A": "02-A.wav",
+        "B": "02-B.wav"
+      },
+      "pcm_sha256": {
+        "A": "928d72b7547b057216432a23162959dc39a7be11e0cce4226b2226890f9b05de",
+        "B": "9f829c83aa4d5632ea454c46557c2090bcfd7793fee6e95a47aa6ee8beb282e9"
+      },
+      "native_peak": [
+        0.5619315505027771,
+        0.5951938629150391
+      ],
+      "native_rms": [
+        0.0897629402712224,
+        0.09132733192317613
+      ],
+      "rms_change_db": 0.15007400571690446,
+      "difference_rms_relative_db": -2.703729644554885,
+      "first_difference_seconds": 0.10016666666666667,
+      "bit_identical": false
+    },
+    {
+      "index": 3,
+      "title": "Staccato fingerstyle",
+      "score": "03-staccato-fingerstyle",
+      "candidate_render": "candidate/only-fall",
+      "compared_with": "baseline/baseline",
+      "files": {
+        "A": "03-A.wav",
+        "B": "03-B.wav"
+      },
+      "pcm_sha256": {
+        "A": "67b49026b12b3329acd7e60f9e1512bb0c9f5bacdf99ff302503f67933d6b06e",
+        "B": "558ba79173b6bd2292a58c428ba317346bdfb8e9cbc0f57d036af7f993b39d05"
+      },
+      "native_peak": [
+        0.6349747776985168,
+        0.6349930167198181
+      ],
+      "native_rms": [
+        0.05602254127016544,
+        0.0559567068243756
+      ],
+      "rms_change_db": -0.010213156564770497,
+      "difference_rms_relative_db": -24.538326767205326,
+      "first_difference_seconds": 0.4754791666666667,
+      "bit_identical": false
+    },
+    {
+      "index": 4,
+      "title": "One chord, strummed over and over",
+      "score": "04-repeated-strums",
+      "candidate_render": "candidate/candidate",
+      "compared_with": "candidate/no-strumScatter",
+      "files": {
+        "A": "04-A.wav",
+        "B": "04-B.wav"
+      },
+      "pcm_sha256": {
+        "A": "ba9c15763a89daff04bde5aca8436ee47e631c708b3c9fa940fd95016b649664",
+        "B": "490fa3f16bfed8f4f8276103f0c702d0861012be4665a7abe62d6d753458dc1c"
+      },
+      "native_peak": [
+        0.6966559290885925,
+        0.9054986238479614
+      ],
+      "native_rms": [
+        0.12023803440990985,
+        0.12245145025651621
+      ],
+      "rms_change_db": 0.15844130111208346,
+      "difference_rms_relative_db": 2.0795944622970044,
+      "first_difference_seconds": 0.10016666666666667,
+      "bit_identical": false
+    },
+    {
+      "index": 5,
+      "title": "Power chords",
+      "score": "05-power-chords",
+      "candidate_render": "candidate/candidate",
+      "compared_with": "candidate/no-twoStringStrokes",
+      "files": {
+        "A": "05-A.wav",
+        "B": "05-B.wav"
+      },
+      "pcm_sha256": {
+        "A": "fb8bd743cbf0e6cde42ab6feeebae26ed449b3fb8ec960f4deafa5abf0244fe3",
+        "B": "205ad6e46c09a33216e29b5a9c17f367e701df4df0f8cb8e6887795126c4eba3"
+      },
+      "native_peak": [
+        0.4522823095321655,
+        0.8486227989196777
+      ],
+      "native_rms": [
+        0.08418185221251086,
+        0.08079825839152745
+      ],
+      "rms_change_db": -0.35632954882227286,
+      "difference_rms_relative_db": 1.0334503509424922,
+      "first_difference_seconds": 0.10016666666666667,
+      "bit_identical": false
+    },
+    {
+      "index": 6,
+      "title": "Small strokes",
+      "score": "06-small-strokes",
+      "candidate_render": "candidate/candidate",
+      "compared_with": "candidate/no-strokeSpanLaw",
+      "files": {
+        "A": "06-A.wav",
+        "B": "06-B.wav"
+      },
+      "pcm_sha256": {
+        "A": "6beefde85c00d3dc88a77ca83f63c145dd25e56425dcac558df7223820df2b37",
+        "B": "1e2680e8780f845c502eaefdcd89e2635d9b416f30be2874e70b8ec5e0f0fa17"
+      },
+      "native_peak": [
+        0.6492985486984253,
+        0.5714396834373474
+      ],
+      "native_rms": [
+        0.09046740460958684,
+        0.08963225555132197
+      ],
+      "rms_change_db": -0.08055611587865805,
+      "difference_rms_relative_db": 2.0023909594869305,
+      "first_difference_seconds": 0.11510416666666666,
+      "bit_identical": false
+    },
+    {
+      "index": 7,
+      "title": "Down-up strumming",
+      "score": "07-strum-eighths",
+      "candidate_render": "candidate/candidate",
+      "compared_with": "candidate/no-strokeEdges",
+      "files": {
+        "A": "07-A.wav",
+        "B": "07-B.wav"
+      },
+      "pcm_sha256": {
+        "A": "d05783a716a5f43fa7fc6ddfecb2385fca44dd699c82f50878520baf290007f4",
+        "B": "3c23179b0351e816aa8d97b8edf90d44911ca3aa5668516f453fb78e7b700b14"
+      },
+      "native_peak": [
+        0.857663094997406,
+        0.852232813835144
+      ],
+      "native_rms": [
+        0.1342933470456044,
+        0.12157412709933058
+      ],
+      "rms_change_db": -0.8642667605987597,
+      "difference_rms_relative_db": -5.1142258988404,
+      "first_difference_seconds": 0.10354166666666667,
+      "bit_identical": false
+    },
+    {
+      "index": 8,
+      "title": "A picked song, all together",
+      "score": "08-song-pick",
+      "candidate_render": "candidate/candidate",
+      "compared_with": "baseline/baseline",
+      "files": {
+        "A": "08-A.wav",
+        "B": "08-B.wav"
+      },
+      "pcm_sha256": {
+        "A": "18deb177884c10650d3f41c8895c2c16bab7b1ef6345d95068caa8dc4e0aa9c3",
+        "B": "7e3b9113c5255327787fc1085f46092cf3cfd9eb04dd26ab72518f9fcddbec3e"
+      },
+      "native_peak": [
+        0.7643387317657471,
+        0.6341067552566528
+      ],
+      "native_rms": [
+        0.07498812328571723,
+        0.0697975034191141
+      ],
+      "rms_change_db": -0.6230519213407624,
+      "difference_rms_relative_db": 0.7302000581666451,
+      "first_difference_seconds": 0.7251666666666666,
+      "bit_identical": false
+    },
+    {
+      "index": 9,
+      "title": "A fingerstyle song, all together",
+      "score": "09-song-finger",
+      "candidate_render": "candidate/candidate",
+      "compared_with": "baseline/baseline",
+      "files": {
+        "A": "09-A.wav",
+        "B": "09-B.wav"
+      },
+      "pcm_sha256": {
+        "A": "0959c75707aa67ad8e8786a6e8c3e66834988c3d0a51f69a987eec7d36d504cc",
+        "B": "7d5e0543130494586e5174c6aa365d8031986852f1f8d76d8ccb0ecbe4e57afc"
+      },
+      "native_peak": [
+        0.25991976261138916,
+        0.2437942773103714
+      ],
+      "native_rms": [
+        0.03372628006962187,
+        0.036620272215656266
+      ],
+      "rms_change_db": 0.7150625226879881,
+      "difference_rms_relative_db": 0.8232019803230999,
+      "first_difference_seconds": 0.4573125,
+      "bit_identical": false
+    },
+    {
+      "index": 10,
+      "title": "Unchanged control",
+      "score": "10-control-open-strings",
+      "candidate_render": "candidate/candidate",
+      "compared_with": "baseline/baseline",
+      "files": {
+        "A": "10-A.wav",
+        "B": "10-B.wav"
+      },
+      "pcm_sha256": {
+        "A": "70efe03d29edd5cea5bdd700cdc37c739a2c0d614bbafe340e66ef7ea47685a1",
+        "B": "70efe03d29edd5cea5bdd700cdc37c739a2c0d614bbafe340e66ef7ea47685a1"
+      },
+      "native_peak": [
+        0.22680962085723877,
+        0.22680962085723877
+      ],
+      "native_rms": [
+        0.04265422222939231,
+        0.04265422222939231
+      ],
+      "rms_change_db": 0.0,
+      "difference_rms_relative_db": null,
+      "first_difference_seconds": null,
+      "bit_identical": true
+    }
+  ],
+  "all_off_reproduces_baseline_fall_off": true,
+  "mechanism_reaches_score": {
+    "01-finger-comping": {
+      "no-fingerChords": true,
+      "no-mutedStrings": false,
+      "no-strumScatter": false,
+      "no-twoStringStrokes": false,
+      "no-strokeSpanLaw": false,
+      "no-strokeEdges": false
+    },
+    "02-gapped-strums": {
+      "no-fingerChords": false,
+      "no-mutedStrings": true,
+      "no-strumScatter": true,
+      "no-twoStringStrokes": false,
+      "no-strokeSpanLaw": true,
+      "no-strokeEdges": true
+    },
+    "03-staccato-fingerstyle": {
+      "no-fingerChords": true,
+      "no-mutedStrings": false,
+      "no-strumScatter": true,
+      "no-twoStringStrokes": false,
+      "no-strokeSpanLaw": true,
+      "no-strokeEdges": true
+    },
+    "04-repeated-strums": {
+      "no-fingerChords": false,
+      "no-mutedStrings": false,
+      "no-strumScatter": true,
+      "no-twoStringStrokes": false,
+      "no-strokeSpanLaw": true,
+      "no-strokeEdges": true
+    },
+    "05-power-chords": {
+      "no-fingerChords": false,
+      "no-mutedStrings": true,
+      "no-strumScatter": true,
+      "no-twoStringStrokes": true,
+      "no-strokeSpanLaw": true,
+      "no-strokeEdges": true
+    },
+    "06-small-strokes": {
+      "no-fingerChords": false,
+      "no-mutedStrings": false,
+      "no-strumScatter": true,
+      "no-twoStringStrokes": false,
+      "no-strokeSpanLaw": true,
+      "no-strokeEdges": true
+    },
+    "07-strum-eighths": {
+      "no-fingerChords": false,
+      "no-mutedStrings": false,
+      "no-strumScatter": true,
+      "no-twoStringStrokes": false,
+      "no-strokeSpanLaw": true,
+      "no-strokeEdges": true
+    },
+    "08-song-pick": {
+      "no-fingerChords": false,
+      "no-mutedStrings": false,
+      "no-strumScatter": true,
+      "no-twoStringStrokes": true,
+      "no-strokeSpanLaw": true,
+      "no-strokeEdges": true
+    },
+    "09-song-finger": {
+      "no-fingerChords": true,
+      "no-mutedStrings": false,
+      "no-strumScatter": false,
+      "no-twoStringStrokes": false,
+      "no-strokeSpanLaw": false,
+      "no-strokeEdges": false
+    },
+    "10-control-open-strings": {
+      "no-fingerChords": false,
+      "no-mutedStrings": false,
+      "no-strumScatter": false,
+      "no-twoStringStrokes": false,
+      "no-strokeSpanLaw": false,
+      "no-strokeEdges": false
+    }
+  },
+  "shared_pcm_gain": 0.9652547064600044
+}

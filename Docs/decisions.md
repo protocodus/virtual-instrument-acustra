@@ -5,6 +5,160 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-14 — the 1.5.0 listening verdict: all seven ship
+
+The user listened to the blind A/B pack for the seven playing-physics
+changes (`Tools/BuildPlayingPhysicsReview.py`) on a page that kept the key
+away, choosing one take a pair, and picked the candidate in four of nine:
+the dead strokes, the strum scatter, the picked pairs and the whole picked
+song. They picked 1.4.0's behaviour over the finger chords, the measured
+release fall, the stroke span law and the stroke edges with their refit
+tilt, and the 1.4.0 engine over the whole fingerstyle song. After seeing the
+key the user chose to ship all seven as they are, so four changes ship
+against the user's own blind pick, as measured corrections rather than
+choices by ear; each keeps its `PerformanceRealism` switch. Each pair is
+one forced choice by one listener, and the seeded draw put the candidate on
+A in pairs 1 to 5 and on B in 6 to 10 while A was picked six times in nine,
+so a preference for A cannot be excluded. See
+[the report](playing-physics-2026-10-13.md).
+
+## 2026-10-14 — a stroke's edges are lighter; the upstroke tilt refit
+
+1.4.0 tilts an upstroke's strings by 0.9 dB a string toward the treble,
+the line GuitarSet gives when each string's upstrokes are compared with its
+downstrokes across a whole take. That comparison mixes what else the
+strokes held: the corpus's upstrokes reach the bass strings half as often,
+and the playing-physics report had found a stroke's first and last strings
+lighter. Fitted jointly inside each stroke (`Tools/MeasureStrokeEdges.py`,
+2,344 picked strokes of four to six strings, each string against its own
+channel's median in the take and then against the rest of its stroke), the
+entry string sits 1.47, 1.76 and 2.15 dB and the exit string 1.86, 1.81
+and 2.20 dB under the strings inside on the three attack measures, in
+either direction, and what is left of the upstroke's tilt is 0.09, 0.13 and
+0.68 dB a string. A stroke of three or more strings now strikes its entry
+and exit strings 1.8 and 2.0 dB lighter (the Performer names them in
+`beginStrum`; each string captures its part at note-on), and the upstroke's
+tilt is 0.30 dB a string; the 1.2 dB offset between strokes stays
+(`PerformanceRealism::strokeEdges`; `Acustra.StrokeEdges`; `Acustra.StrokeDepth`
+keeps testing the 1.4.0 line with it off). This changes what the user heard
+and preferred in 1.4.0, as a measured correction; in the 1.5.0 blind pack the
+user picked the 1.4.0 tilt over it and then chose to ship it (the verdict
+entry above). See [the report](playing-physics-2026-10-13.md).
+
+## 2026-10-14 — a small stroke crosses each string more slowly
+
+Every stroke crossed each string in the same time for its velocity, so a
+two-string stroke spanned a fifth of a six-string one. GuitarSet's picked
+strokes do not (`Tools/MeasureStrokeSpan.py`, 6,915 strokes of two to six
+strings, attacks re-detected): within each take, against the take's own
+four-string strokes, the time a string is a median 1.48 times as long over
+two strings, 1.15 over three, 0.96 over five and 0.85 over six. Simulating
+each take's strokes with each string's own scatter and measuring them the
+same way, the spacings crossed to the -0.36 power (90% -0.41 to -0.31) is
+closest to that profile. The pooled medians fall faster (12.2 ms a string
+over two strings to 5.3 over six), but they mix the takes' different speeds
+and stroke sizes; a log-log regression within takes reads -0.41, and it
+rests on the scatter's tails where the medians do not. A stroke's span now
+grows as the spacings' 0.64 power, from the six-string stroke, which keeps
+its speed map (`AcustraEngine::strumDelaySamples`): at MIDI 96 the engine's
+strokes take 9.7, 7.6, 6.5, 5.9 and 5.4 ms a string over two to six
+strings, and picked pairs sound 9.6 ms apart on average, 8% within 2 ms
+(`PerformanceRealism::strokeSpanLaw`; `Acustra.StrokeSpan`). Not chosen by
+ear. See [the report](playing-physics-2026-10-13.md).
+
+## 2026-10-14 — a pick's two-note group is a stroke
+
+Two notes on one sample under Pick sounded both strings at once: only three
+or more were swept. A plectrum cannot reach two strings at once, and
+GuitarSet's picked comping agrees (`Tools/MeasureTwoStringStrokes.py`): of
+1,526 isolated two-string groups on adjacent strings only 5% sound within
+2 ms of each other, a median 13.0 ms apart, 61% low string first and 34%
+high string first, as down- and upstrokes would. Under Pick a two-note
+group is now a stroke across its two strings, swept, alternated and
+scattered as a strum, with a dead stroke on any string it crosses between
+them (`PerformanceRealism::twoStringStrokes`; `Acustra.TwoStringStrokes`).
+Its direction is the one the picked-note rule already gave it. Fingers and
+the thumb still sound two notes together, though the corpus's finger-played
+pairs are not simultaneous either (8% within 2 ms, in no preferred order);
+that belongs to the fingers' own timing. Not chosen by ear. See
+[the report](playing-physics-2026-10-13.md).
+
+## 2026-10-14 — a strum's strings scatter about its sweep
+
+Every swept stroke put each string exactly where the wrist's arc and the
+stroke's speed draw placed it, so every strum sounded its strings in string
+order and repeated strokes kept one shape. GuitarSet's picked strokes do not
+(`Tools/MeasureStrumScatter.py`, 2,430 strokes of four to six strings,
+attacks re-detected): each string sits a robust 4.53 ms off its own stroke's
+least-squares sweep, and only 65%, 49% and 34% of four-, five- and
+six-string strokes sound in string order. The same rule finds 1.27 ms on
+the engine's unscattered strokes (an off-tree probe reading each string's
+bridge force), its own error, which leaves 4.35 ms. A take's slower strokes
+scatter no more than its faster ones (0.86 times, at 1.43 times the time a
+string), so the scatter is a time, not a place on the sweep. Each string a
+planned sweep reaches, dead strokes included, now takes a uniform draw of
+4.35 ms standard deviation after the stroke's speed draw, the earliest on
+the note-on and none past the next stroke's predicted start
+(`AcustraEngine::strumScatterSamples`, `Performer::flushNoteGroup`). Read
+back by the same rule the engine's strokes scatter 4.79 ms and sound 60%,
+47% and 38% in string order (`PerformanceRealism::strumScatter`;
+`Acustra.StrumScatter`). Not chosen by ear. See
+[the report](playing-physics-2026-10-13.md).
+
+## 2026-10-13 — the release fall follows GuitarSet's measured curve
+
+1.4.0's release fall was authored: one semitone approached with a quarter of
+the hand's T60, stopping at 86%. GuitarSet's hex-pickup pitch tracks now
+measure it (`Tools/MeasureReleaseFall.py`, 4,329 fretted note ends): the
+pitch holds for the first 4 dB the note loses, then falls about 2.3 cents a
+dB, 29 cents at 12.5 dB down and 80 at 35 dB, while 394 open-string ends stay
+within a few cents. The authored curve fell more than twice as far by 10 dB
+(49 cents against 22) and reached 86 cents. The fall now follows the measured median against
+the hand's own damping, 60 dB per T60, and stops at 35 dB down; a firmer
+key-up still falls faster. Nothing else of the 1.4.0 mechanism changes
+(`Acustra.ReleaseFall` tests the new law). The user heard and preferred
+1.4.0 with the authored curve; this is a measured correction, and in the
+1.5.0 blind pack the user picked the authored curve over it and then chose
+to ship it (the verdict entry above).
+
+## 2026-10-13 — a strum mutes the strings it crosses
+
+A chord voiced with a gap (E2, B3 and E4 say, or 30% of a keyboard's
+triads and sevenths in a probe of the hand allocator) let the pick pass
+through the strings in the gap without touching them. GuitarSet's hex
+channels show what a guitarist does instead (`Tools/MeasureMutedStrokes.py`):
+683 strings crossed but left out of the chord rise a median 9.4 dB when the
+pick reaches them, where a string beyond the stroke's end rises 0.0 to 2.4
+dB; they are struck a median 4.6 dB under the string's own played attacks
+and fall 20 dB in 13.8 to 14.8 periods. The Performer now gives each such
+string a dead stroke at its place in the sweep, and `muteStroke` plucks it at
+0.589 of the force under the finger's touch, a 43-period T60 that holds from
+the moment the chord is fretted and also stops whatever the string carried,
+handing it back to the open string after that T60 and 80 ms. Held and
+pedalled strings are left alone. A local finger contact was tried and left
+out: its position is not measured and it made the engine fall faster than
+the corpus (`PerformanceRealism::mutedStrings`; `Acustra.MutedStrings`).
+Not chosen by ear. See [the report](playing-physics-2026-10-13.md).
+
+## 2026-10-13 — fingers pluck a chord of three or four strings together
+
+Under Finger every chord of three or more notes used to be strummed at a
+pick's speed and alternated down and up. A fingerstyle hand plucks three or
+four strings with the thumb and fingers at once. GuitarSet's finger-played
+bossa nova comping shows it on the hex channels, every attack re-detected by
+one rule (`Tools/MeasureFingerChords.py`): 59% of its 1,219 chords arrive in
+no string order where 46% of the 4,637 picked strokes run low to high, a
+three-string chord spreads a median 13.2 ms against a pick's 20.1, and the
+top string leads by a few milliseconds instead of sounding last. Under Finger,
+with no direction latched, a chord on three or four strings now takes the
+measured lag behind its highest string by rank (0, +2.27, +4.85 ms; 0, +2.36,
++6.98, +3.06) plus a draw of 4.47 ms standard deviation, the three-string
+residual's robust spread; the earliest string sounds at the note-on. It takes
+a single note's pluck and is not a stroke, so the strum alternation is left
+where it was. Five and six strings, Pick, Thumb and a latched C0/C#0 strum
+exactly as before (`PerformanceRealism::fingerChords`; `Acustra.FingerChords`).
+Not chosen by ear. See [the report](playing-physics-2026-10-13.md).
+
 ## 2026-10-13 — upstrokes lean treble, picked notes alternate, released notes fall
 
 The user asked for a few novel ways to make the guitar more real, across
@@ -46,9 +200,13 @@ Rejected candidates and why are in [the report](stroke-release-realism-2026-10-1
 Each has an offline `PerformanceRealism` switch; all three off reproduce the
 previous engine bit for bit on every review score. New `StrokeDepth`,
 `AlternatePicking` and `ReleaseFall` suites; `StrumDirection`'s exact
-return-stroke check now runs with the depth off. The blind A/B pack
-(`Tools/BuildStrokeReleaseReview.py`) awaits the user's ears: nothing here
-was chosen by ear, and no listening verdict is recorded. Version 1.4.0.
+return-stroke check now runs with the depth off. Nothing was chosen by
+ear. The user listened to the blind A/B pack
+(`Tools/BuildStrokeReleaseReview.py`) and judged the candidate better, so
+all three ship on, the upstroke level difference included. That is one
+listener's overall verdict, not per pair, and the seeded draw put the
+candidate on A in all four test pairs, so it cannot exclude a preference
+for A. Version 1.4.0.
 
 ## 2026-10-13 — name the damping gesture Mute
 

@@ -2885,8 +2885,11 @@ AcustraEngine::AcustraEngine() noexcept
 void AcustraEngine::restartRandomDraws() noexcept
 {
     strumRandomState_ = 0x9e3779b9u;
+    fingerChordRandomState_ = 0x2545f491u;
+    strumScatterRandomState_ = 0x68e31da4u;
     strumSpeedScale_ = 1.0f;
     strumParallelSign_ = 1.0f;
+    strumEntryString_ = strumExitString_ = -1;
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -4055,6 +4058,7 @@ void AcustraEngine::reset() noexcept
     sampleClock_ = 0;
     pickingGesture_ = {};
     strumGesture_ = {};
+    strumEntryString_ = strumExitString_ = -1;
     pickingGestureSeen_ = false;
     pickingGestureOriginSample_ = 0;
     pickingGestureSample_ = 0;
@@ -4536,7 +4540,7 @@ void AcustraEngine::updateControlState() noexcept
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
         updateAttackPitch(voice, string);
-        if (voice.releaseFallRemaining > 0.0f)
+        if (voice.releaseFallPeriods > 0)
             advanceReleaseFall(voice);
         configureVoice(voice, string, voice.midiNote, false);
         updateTailHandLoss(voice);
@@ -6687,9 +6691,12 @@ AcustraEngine::PickingGesture AcustraEngine::nextPickingGesture() noexcept
 
 void AcustraEngine::beginStrum(int strokeSpanSamples,
                               int repeatIntervalSamples,
-                              bool upstroke) noexcept
+                              bool upstroke, int entryString,
+                              int exitString) noexcept
 {
     strumParallelSign_ = upstroke ? -1.0f : 1.0f;
+    strumEntryString_ = entryString;
+    strumExitString_ = exitString;
     strumGesture_ = nextPickingGesture();
     // A stroke's own pick speed varies stroke to stroke (GuitarSet's
     // comping tracks, Tools/MeasureStrums.py -- see strumDelaySamples and
@@ -6858,23 +6865,35 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const float forceVariation = gesture.active
             ? 0.35f * gesture.pressure + 0.65f * forceDraw : forceDraw;
         strumLevelGain = std::pow(10.0f, 7.74f * forceVariation / 20.0f);
-        // An upstroke enters the strings from the treble side and leaves the
-        // bass strings lighter. Each string compared with itself on
-        // GuitarSet's hex channels (Tools/MeasureStrumDirection.py, 180
-        // comping takes), a line through each take's up-minus-down attack
-        // rises 0.76, 0.92 and 1.03 dB per string toward the high E on the
-        // three attack measures and sits 0.89, 1.59 and 1.11 dB under the
-        // downstroke between the D and G strings. Their means set it here:
-        // the high E 1.05 dB over its downstroke, the low E 3.45 dB under.
-        // Whether that offset is the return stroke's own lightness or the
-        // players' accents on the beat the corpus cannot separate; leaving it
-        // out made an upstroke louder than its downstroke at the microphones,
-        // which no take shows. The downstroke is the reference.
+        // The same corpus strikes a muted string a median 4.6 dB under that
+        // string's own played attacks (Tools/MeasureMutedStrokes.py): the
+        // finger on it takes part of the pick's push.
+        if (voice.mutedStroke)
+            strumLevelGain *= 0.589f;
+        // An upstroke enters the strings from the treble side. Each string
+        // compared with itself on GuitarSet's hex channels
+        // (Tools/MeasureStrumDirection.py, 180 comping takes), a line through
+        // each take's up-minus-down attack rises 0.76, 0.92 and 1.03 dB per
+        // string toward the high E on the three attack measures and sits
+        // 0.89, 1.59 and 1.11 dB under the downstroke between the D and G
+        // strings. That line compares a string's upstrokes with its
+        // downstrokes across all of a take's strokes, whatever else they
+        // held. Inside one stroke (Tools/MeasureStrokeEdges.py) the strings an
+        // upstroke enters and leaves on are lighter, as a downstroke's are
+        // (strumEdgeGain), and what is left of the tilt is 0.09, 0.13 and
+        // 0.68 dB per string on the three measures: their mean, 0.30, with
+        // the edges (strokeEdges), the line's 0.9 without them. The mid-neck
+        // offset is between strokes and stays: whether it is the return
+        // stroke's own lightness or the players' accents on the beat the
+        // corpus cannot separate, and leaving it out made an upstroke louder
+        // than its downstroke at the microphones, which no take shows. The
+        // downstroke is the reference.
         constexpr float upstrokeMidNeckDb = -1.2f;
-        constexpr float upstrokeTiltDbPerString = 0.9f;
+        const float upstrokeTiltDbPerString = performanceRealism_.strokeEdges ? 0.30f : 0.9f;
         if (voice.pluckParallelSign < 0.0f && performanceRealism_.strokeDepth)
             strumLevelGain *= std::pow(10.0f, (upstrokeMidNeckDb + upstrokeTiltDbPerString
                 * (static_cast<float>(stringIndex) - 2.5f)) / 20.0f);
+        strumLevelGain *= voice.strokeEdgeGain;
     }
     // Repeated single-note sequencer strokes deserve modest force variety
     // too, below the spread of the real Eastman same-pitch/style takes:
@@ -7601,6 +7620,7 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.releaseDamping = 1.0f;
     voice.releaseSeconds = 0.0f;
     clearReleaseFall(voice);
+    voice.mutedStroke = false;
     voice.returnSamples = 0;
     for (auto& loop : voice.loops)
         loop.gestureContact = {};
@@ -8248,31 +8268,53 @@ void AcustraEngine::beginGestureDamping(Voice& voice) noexcept
         loop.beginGestureContact(position, strength, relaxation);
 }
 
+namespace
+{
+// GuitarSet's fretted note ends (Tools/MeasureReleaseFall.py, 4,329 notes on
+// the hex channels' tracked pitch): the median fall, in cents, against how
+// far the note's level has dropped under its sustain, in dB.
+constexpr std::array<std::array<float, 2>, 9> releaseFallCurve {{
+    { 0.0f, 0.0f }, { 1.5f, 0.4f }, { 4.5f, 1.9f }, { 8.0f, 15.7f },
+    { 12.5f, 28.9f }, { 17.5f, 39.2f }, { 22.5f, 49.8f }, { 27.5f, 61.6f },
+    { 35.0f, 80.5f } }};
+
+float releaseFallCents(float dropDb) noexcept
+{
+    if (!(dropDb > releaseFallCurve.front()[0]))
+        return 0.0f;
+    for (std::size_t k = 1; k < releaseFallCurve.size(); ++k)
+        if (dropDb <= releaseFallCurve[k][0])
+        {
+            const auto& low = releaseFallCurve[k - 1];
+            const auto& high = releaseFallCurve[k];
+            return low[1] + (high[1] - low[1]) * (dropDb - low[0]) / (high[0] - low[0]);
+        }
+    return releaseFallCurve.back()[1];
+}
+} // namespace
+
 // A fretted note is stopped by the fingertip pressing the string onto the
 // fret. To end it the finger relaxes: the string lifts off the fret while the
 // fingertip still holds it, and the fingertip, behind the fret, becomes the
-// string's end. Roland's guitar-to-MIDI patent describes this in the pitch
-// its hexaphonic pickups track (US 7470851 B2, Haga, 2008, FIG. 4: "the
-// finger that is in contact with the string becomes the endpoint node"; on
-// release "a drop in the pitch starts and following that, the envelope level
-// begins to rapidly attenuate", and with the envelope nearly zero "the pitch
-// drops about a half tone", varying with how fast the finger lets go and
-// from string to string). The fingertip lies between this fret and the one
-// below it, so the vibrating string lengthens toward the previous fret's
-// length and its pitch falls toward one semitone lower. The fall approaches
-// that with a time constant of a quarter of the hand's T60, so it leads the
-// damping as the patent describes: a third of a semitone by the time the note
-// has lost 6 dB. At half the T60, when the note is 30 dB down, it has gone 86%
-// of the way and stops: the rest of the curve would keep the loops retuning,
-// at a per-sample cost, under that level. A firmer key-up, which damps faster
-// (beginRelease), falls faster with it. An open string has no finger on a
-// fret and does not fall. This is the patent's qualitative account sized by
-// the fret geometry, not a measured trajectory.
+// string's end, so the vibrating string lengthens and its pitch falls.
+// Roland's guitar-to-MIDI patent describes it in the pitch its hexaphonic
+// pickups track (US 7470851 B2, Haga, 2008, FIG. 4: "the finger that is in
+// contact with the string becomes the endpoint node"; with the envelope
+// nearly zero "the pitch drops about a half tone"). GuitarSet's hex channels
+// measure it (releaseFallCurve): nothing in the first 4 dB the note loses,
+// then about 2.3 cents a dB, 29 cents at 12.5 dB and 80 at 35 dB, where open
+// strings, with no fingertip to lift, stay within a few cents. The fall
+// follows that curve against the hand's own damping, 60 dB per T60: at the
+// nominal fretted 0.32 s release, 29 cents after 67 ms and 80 after 187 ms,
+// where the note is 35 dB down and the fall stops, since the rest would keep
+// the loops retuning, at a per-sample cost, under that level. A firmer
+// key-up, which damps faster (beginRelease), falls faster with it. A string
+// fretted only in part (a slide's handover at the nut) falls in proportion.
 // The fall adds to each loop's configured delay instead of reconfiguring the
 // string as a slide: re-solving a released string's dispersion and bridge
 // phase every control period cost half again a callback for six strings.
 // Dispersion, bridge compensation and hand loss stay the fretted note's, a
-// period at most 6% shorter than the one sounding, on a note being damped.
+// period at most 5% shorter than the one sounding, on a note being damped.
 // speakingLengthMetres, the stop the hand holds, does not move, so the fall
 // is not a finger sliding along the winding (renderFretMotion).
 void AcustraEngine::beginReleaseFall(Voice& voice) noexcept
@@ -8282,33 +8324,48 @@ void AcustraEngine::beginReleaseFall(Voice& voice) noexcept
     if (!performanceRealism_.releasePitchFall || !(fretContact > 0.0f)
         || !(voice.releaseSeconds > 0.0f))
         return;
-    voice.releaseFallTarget = -fretContact;
-    voice.releaseFallRemaining = 1.0f;
-    voice.releaseFallDecay = static_cast<float>(std::exp(
-        -static_cast<double>(controlPeriod)
-            / (0.25 * static_cast<double>(voice.releaseSeconds) * sampleRate_)));
+    constexpr float stopDb = releaseFallCurve.back()[0];
+    voice.releaseFallScale = fretContact;
+    voice.releaseFallDrop = 0.0f;
+    voice.releaseFallDropPerPeriod = static_cast<float>(60.0 * controlPeriod
+        / (static_cast<double>(voice.releaseSeconds) * sampleRate_));
     voice.releaseFallPeriods = std::max(1, static_cast<int>(std::ceil(
-        0.5 * static_cast<double>(voice.releaseSeconds) * sampleRate_
-            / static_cast<double>(controlPeriod))));
+        stopDb / voice.releaseFallDropPerPeriod)));
 }
 
 // One control period of the fall: the period it reaches, as samples added to
 // each loop's configured delay, which the loop's delay follows at its 6 ms.
 void AcustraEngine::advanceReleaseFall(Voice& voice) noexcept
 {
-    voice.releaseFallRemaining *= voice.releaseFallDecay;
-    voice.releaseFallSemitones = voice.releaseFallTarget
-        * (1.0f - voice.releaseFallRemaining);
-    if (--voice.releaseFallPeriods <= 0)
-    {
-        voice.releaseFallTarget = voice.releaseFallSemitones;
-        voice.releaseFallRemaining = 0.0f;
-    }
+    voice.releaseFallDrop = std::min(voice.releaseFallDrop + voice.releaseFallDropPerPeriod,
+                                     releaseFallCurve.back()[0]);
+    --voice.releaseFallPeriods;
+    voice.releaseFallSemitones = -0.01f * voice.releaseFallScale
+        * releaseFallCents(voice.releaseFallDrop);
     voice.releaseFallDelay = voice.contactPeriodSamples
         * (std::exp2(-voice.releaseFallSemitones / 12.0f) - 1.0f);
     for (auto& loop : voice.loops)
         loop.targetDelay = clamp(loop.configuredDelay + voice.releaseFallDelay,
             3.0f, static_cast<float>(activeDelaySamples() - 3));
+}
+
+// A finger lying on a string is a dashpot on it. GuitarSet's comping shows
+// how light that touch is (Tools/MeasureMutedStrokes.py): a string a stroke
+// crosses that the chord leaves out falls 20 dB in a median 125, 100, 75 and
+// 60 ms on the A, D, G and B, 13.8 to 14.8 periods of each open string, so
+// taken as exponential its T60 is 43 periods, 1.4 dB a period. Where the
+// finger lies is not measured, so no local contact is added: the loss is the
+// hand's scalar one, as a release's is. It holds from the moment the finger
+// lands (muteStroke), and once the pick has let the string go the string is
+// handed back to the open string after that T60 and the hand's 80 ms.
+void AcustraEngine::beginMutedStroke(Voice& voice) noexcept
+{
+    constexpr float mutedPeriods = 43.0f;
+    const float fundamental = loopFundamental(voice);
+    voice.releaseSeconds = mutedPeriods / fundamental;
+    voice.releaseDamping = handDamping(voice.releaseSeconds, fundamental);
+    voice.returnSamples = voice.attackFired ? static_cast<int>(
+        (voice.releaseSeconds + 0.08f) * static_cast<float>(sampleRate_)) : 0;
 }
 
 void AcustraEngine::clearReleaseFall(Voice& voice) noexcept
@@ -8317,9 +8374,9 @@ void AcustraEngine::clearReleaseFall(Voice& voice) noexcept
         for (auto& loop : voice.loops)
             loop.targetDelay = loop.configuredDelay;
     voice.releaseFallSemitones = 0.0f;
-    voice.releaseFallTarget = 0.0f;
-    voice.releaseFallRemaining = 0.0f;
-    voice.releaseFallDecay = 0.0f;
+    voice.releaseFallScale = 0.0f;
+    voice.releaseFallDrop = 0.0f;
+    voice.releaseFallDropPerPeriod = 0.0f;
     voice.releaseFallPeriods = 0;
     voice.releaseFallDelay = 0.0f;
 }
@@ -9263,6 +9320,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             voice.strumming = strumMember;
             voice.pluckParallelSign = strumMember ? strumParallelSign_ : singleStrokeSign;
             voice.pluckGesture = strumMember ? strumGesture_ : PickingGesture {};
+            voice.strokeEdgeGain = strumMember ? strumEdgeGain(string) : 1.0f;
             voice.repluckPending = true;
             // The key is down again before the pick came: its key-up is
             // void, and one pick serves both strokes, as it always has.
@@ -9515,6 +9573,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     if (!continuing)
         voice.noteDetuneCents = 0.0f;
     clearReleaseFall(voice);
+    voice.mutedStroke = false;
     configureVoice(voice, string, midiNote, !continuing);
     voice.onsetSample = sampleClock_;
     rememberFinger(string);
@@ -9527,6 +9586,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
         ? capturedParallelSign : strumParallelSign_;
     voice.pluckGesture = capturedGesture != nullptr
         ? *capturedGesture : strumMember ? strumGesture_ : PickingGesture {};
+    voice.strokeEdgeGain = strumMember ? strumEdgeGain(string) : 1.0f;
     voice.repluckPending = continuing;
     voice.attackFired = continuing;
     voice.releaseAfterPluck = false;
@@ -9809,6 +9869,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         std::uint64_t startOrder, onsetSample;
         float parallelSign;
         PickingGesture gesture;
+        float edgeGain;
     };
     std::array<Moved, stringCount> moved {};
     int movedCount = 0;
@@ -9827,7 +9888,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
             voice.velocity, voice.releaseVelocity, voice.strumming, voice.releaseAfterPluck,
             voice.pedalHeldAtKeyUp, voice.pedalReleasedBeforePluck,
             voice.startOrder, voice.onsetSample,
-            voice.pluckParallelSign, voice.pluckGesture };
+            voice.pluckParallelSign, voice.pluckGesture, voice.strokeEdgeGain };
         voice.keyDown = false;
         voice.pedalHeld = false;
         voice.ownerCount = 0;
@@ -9848,6 +9909,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         voice.ownerCount = move.ownerCount;
         voice.startOrder = move.startOrder;
         voice.onsetSample = move.onsetSample;
+        voice.strokeEdgeGain = move.edgeGain;
         // A strum member already let go keeps its pending key-up on the
         // string it moved to (startNote cleared it). One whose pick was due
         // on this very sample has just been plucked by startNote, so its
@@ -9967,6 +10029,12 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
     else
         bridgeDerivativesCrossRelease_ = true;
     configureVoice(voice, stringIndex, voice.midiNote, false);
+    if (voice.mutedStroke)
+    {
+        // The pluck's own release state is the finger's from the start.
+        beginMutedStroke(voice);
+        return;
+    }
     if (voice.releaseAfterPluck)
     {
         const bool immediate = voice.pedalReleasedBeforePluck;
@@ -9977,8 +10045,8 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
     }
 }
 
-int AcustraEngine::strumDelaySamples(int stringRank,
-                                     float velocity) const noexcept
+int AcustraEngine::strumDelaySamples(int stringRank, float velocity,
+                                     int strokeGaps) const noexcept
 {
     // The pick crosses the strings at one speed, so the k-th string it
     // reaches sounds k spacings later. The spacing is the set-up dimension
@@ -10000,8 +10068,153 @@ int AcustraEngine::strumDelaySamples(int stringRank,
     // dependence.
     constexpr float spacing = 0.0540f / 5.0f;
     const float speed = 0.51f + 1.95f * clamp(velocity, 0.0f, 1.0f);
-    return static_cast<int>(static_cast<float>(std::max(stringRank, 0))
-        * spacing / speed * static_cast<float>(sampleRate_) + 0.5f);
+    float delay = static_cast<float>(std::max(stringRank, 0))
+        * spacing / speed * static_cast<float>(sampleRate_);
+    // That speed is the six-string stroke's. A smaller stroke is not the
+    // same sweep cut short. Within each of GuitarSet's picked takes
+    // (Tools/MeasureStrokeSpan.py) a stroke's time a string, against the
+    // take's own four-string strokes, is a median 1.48 times as long over
+    // two strings, 1.15 over three, 0.96 over five and 0.85 over six; each
+    // string's own scatter allowed for, that is the spacings crossed to the
+    // -0.36 power (90% -0.41 to -0.31). A stroke's span grows as their 0.64
+    // power, from the six-string stroke's.
+    if (performanceRealism_.strokeSpanLaw && strokeGaps > 0
+        && strokeGaps < stringCount - 1)
+        delay *= std::pow(static_cast<float>(stringCount - 1)
+                          / static_cast<float>(strokeGaps), 0.36f);
+    return static_cast<int>(delay + 0.5f);
+}
+
+int AcustraEngine::fingerChordOffsetSamples(int rankFromTop, int count) noexcept
+{
+    // A fingerstyle hand plucks a chord of up to four strings with the
+    // thumb and three fingers at once; nothing sweeps across it. GuitarSet's
+    // bossa nova comping, played that way, shows it on the hex channels
+    // (Tools/MeasureFingerChords.py, attacks re-detected by one rule on every
+    // string): 59% of its chords arrive in no string order at all where the
+    // picked styles' strokes run in order, and a three-string chord spreads a
+    // median 13 ms where a picked one spans 23. Each string here takes the
+    // corpus's median lag behind the chord's highest string, the fingers'
+    // order, plus its own draw: 4.47 ms standard deviation, the residual's
+    // robust spread over 747 three-string chords, as a uniform half-width of
+    // 4.47 * sqrt(3). The four-string chords' wider residual (7.8 ms) is not
+    // used: rolled chords and detector misses fill its tail.
+    constexpr std::array<float, 3> threeStrings { 0.0f, 2.27f, 4.85f };
+    constexpr std::array<float, 4> fourStrings { 0.0f, 2.36f, 6.98f, 3.06f };
+    constexpr float jitterHalfWidthMs = 7.74f;
+    const bool four = count >= 4;
+    const auto rank = static_cast<std::size_t>(std::clamp(rankFromTop, 0, four ? 3 : 2));
+    const float lagMs = (four ? fourStrings[rank] : threeStrings[rank])
+        + jitterHalfWidthMs * xorshiftNoise(fingerChordRandomState_);
+    return static_cast<int>(std::lround(0.001 * static_cast<double>(lagMs) * sampleRate_));
+}
+
+float AcustraEngine::strumScatterSamples() noexcept
+{
+    // A pick does not meet the strings on its sweep's own line. On
+    // GuitarSet's picked comping (Tools/MeasureStrumScatter.py) each string's
+    // re-detected attack sits about its own stroke's least-squares line with
+    // a robust standard deviation of 4.53 ms; the same rule finds 1.27 ms on
+    // the engine's unscattered strokes, its own error, which leaves 4.35 ms.
+    // A take's slower strokes scatter no more than its faster ones, so this
+    // is a time and not a place on the sweep. Drawn uniform with that
+    // standard deviation (a half-width of 4.35 * sqrt(3)), it also gives the
+    // corpus's share of four-, five- and six-string strokes that sound in
+    // string order.
+    constexpr double halfWidthSeconds = 0.00753;
+    return static_cast<float>(halfWidthSeconds * sampleRate_)
+        * xorshiftNoise(strumScatterRandomState_);
+}
+
+float AcustraEngine::strumEdgeGain(int string) const noexcept
+{
+    // A pick strikes the strings it enters and leaves a chord on more
+    // lightly than those between them, in either direction. Within each of
+    // GuitarSet's picked strokes of four or more strings
+    // (Tools/MeasureStrokeEdges.py, each string against its own channel's
+    // median in the take, then against the rest of its own stroke) the entry
+    // string sits 1.47, 1.76 and 2.15 dB under the strings inside on the
+    // three attack measures, the exit string 1.86, 1.81 and 2.20 dB: their
+    // means, 1.8 and 2.0 dB.
+    if (!performanceRealism_.strokeEdges)
+        return 1.0f;
+    if (string == strumEntryString_)
+        return 0.813f;
+    if (string == strumExitString_)
+        return 0.794f;
+    return 1.0f;
+}
+
+void AcustraEngine::muteStroke(int string, int delaySamples, float velocity,
+                               int midiChannel) noexcept
+{
+    if (!prepared_ || !performanceRealism_.mutedStrings
+        || string < 0 || string >= stringCount
+        || midiChannel < 1 || midiChannel > midiChannelCount
+        || !exact::isfinite(velocity) || velocity <= 0.0f)
+        return;
+    auto& voice = voices_[static_cast<std::size_t>(string)];
+    if (voice.keyDown || voice.pedalHeld || voice.pluckDelay != 0 || voice.repluckPending)
+        return;
+    // As startNote: what the string still carries goes on as a retained
+    // wave, and the finger's loss takes the string from here.
+    const bool retainedWave = voice.level > 2.0e-7f
+        || (voice.contactTravelEnabled && voice.contactTravel.active)
+        || voice.legatoContactTravel.active || voice.legatoContactSamples > 0
+        || voice.repluckArrivals.remaining > 0
+        || (voice.loops[0].gestureContact.active
+            && exact::abs(voice.loops[0].gestureContact.memory) > 1.0e-12f)
+        || (voice.loops[1].gestureContact.active
+            && exact::abs(voice.loops[1].gestureContact.memory) > 1.0e-12f);
+    if (retainedWave)
+        captureTail(voice);
+    for (auto& loop : voice.loops)
+        loop.gestureContact = {};
+    voice.legatoContactSamples = 0;
+    voice.legatoContactAmplitude = 0.0f;
+    voice.releaseJoinPending = false;
+    voice.releaseJoinRemainingBeats = 0.0;
+    voice.harmonic = 1;
+    voice.played = true;
+    voice.keyDown = false;
+    voice.pedalHeld = false;
+    voice.ownerCount = 0;
+    voice.midiChannel = midiChannel;
+    voice.mpeMember = isLowerZoneMember(midiChannel);
+    voice.memberPitchBendFrozen = false;
+    voice.frozenMemberPitchBendSemitones = 0.0f;
+    voice.startOrder = ++noteOrder_;
+    voice.velocity = clamp(velocity, 0.001f, 1.0f);
+    voice.attackPitchCents = 0.0f;
+    voice.attackPitchDecay = 1.0f;
+    voice.noteDetuneCents = 0.0f;
+    clearReleaseFall(voice);
+    configureVoice(voice, string, voice.openMidi, true);
+    voice.onsetSample = sampleClock_;
+    voice.strumming = true;
+    voice.pluckParallelSign = strumParallelSign_;
+    voice.pluckGesture = strumGesture_;
+    voice.strokeEdgeGain = 1.0f;
+    voice.repluckPending = false;
+    voice.attackFired = false;
+    voice.releaseAfterPluck = false;
+    voice.pedalHeldAtKeyUp = false;
+    voice.pedalReleasedBeforePluck = false;
+    voice.releaseVelocity = -1.0f;
+    voice.mutedStroke = true;
+    beginMutedStroke(voice);
+    // The pick reaches it at its place in the stroke, at the stroke's own
+    // speed draw, as noteOn times the chord's strings.
+    const int delay = std::max(0, static_cast<int>(std::round(static_cast<float>(
+        std::clamp(delaySamples, 0, static_cast<int>(10.0 * sampleRate_)))
+        * strumSpeedScale_)));
+    if (delay > 0)
+    {
+        voice.excitationEnvelope = 0.0f;
+        voice.pluckDelay = delay + 1;
+        return;
+    }
+    firePluck(voice, string);
 }
 
 void AcustraEngine::noteOff(int midiNote, int midiChannel) noexcept
@@ -10291,6 +10504,7 @@ void AcustraEngine::allSoundOff(int midiChannel) noexcept
         resetSoundState();
         pickingGesture_ = {};
         strumGesture_ = {};
+        strumEntryString_ = strumExitString_ = -1;
         pickingGestureSeen_ = false;
         pickingGestureOriginSample_ = sampleClock_;
         pickingGestureSample_ = sampleClock_;

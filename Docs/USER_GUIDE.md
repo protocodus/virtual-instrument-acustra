@@ -152,21 +152,35 @@ level of Release Noise.
 tempo (62.5 ms at 120 BPM) before the hand damps it, so the same note
 played again in that time continues the ringing string. Hold the key or
 use sustain for longer. As the hand damps a fretted note its pitch falls
-toward the fret below, as a lifting fingertip lets it on a guitar; open
-strings do not fall.
+toward the fret below, as a lifting fingertip lets it on a guitar: as
+GuitarSet's players' notes do, hardly at first, then by up to 80 cents as
+the note dies away; open strings do not fall.
 
 **Chords and strums.** Notes that arrive together are fretted as one
-chord shape and strummed, low to high on a downstroke. A strum within a
+chord shape and strummed, low to high on a downstroke. The pick meets each
+string a few milliseconds early or late, as a real strum does, so one
+stroke is never quite the next and the first string heard is not always
+the lowest. A strum within a
 dotted eighth of the previous one (0.375 s at 120 BPM) is the hand's
 return and goes the other way; after a longer gap it is a downstroke
-again. An upstroke catches the treble strings harder and the bass
-strings more lightly. Notes played by hand arrive a little apart: turn
+again. The pick strikes the first and last strings of a stroke a little
+more lightly than those between them, and an upstroke leans slightly
+toward the treble strings. With Picking on Finger, a chord of three or four
+strings is not strummed: the thumb and fingers pluck it together, a few
+milliseconds apart, and it does not count as a stroke; five or six strings
+are brushed as a strum, and a direction keyswitch makes every chord a
+strum. A strum across a string the chord leaves out gives that string a
+short muted tick, as the fretting hand keeps it quiet. Notes played by hand arrive a little apart: turn
 on CHORDS to gather them, at the cost of 30 ms latency.
 
 **Picking.** With Picking on Pick, single notes alternate down and up
 by the same rule, as one hand with the strums: eighth and sixteenth notes
 alternate, quarter notes and the first note after a rest are downstrokes.
-Finger and Thumb pluck every note the same way.
+Two notes played together, a power chord say, are one small stroke: the
+pick reaches one string about a hundredth of a second before the other. A
+small stroke crosses each string more slowly than a full six-string one,
+as a strumming hand does. Finger and
+Thumb pluck every note the same way.
 
 **Keyswitches** below the guitar's range latch the stroke direction on
 every channel, whichever channel sends them, until the next keyswitch or
