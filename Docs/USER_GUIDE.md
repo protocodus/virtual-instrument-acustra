@@ -176,7 +176,9 @@ on CHORDS to gather them, at the cost of 30 ms latency.
 by the same rule, as one hand with the strums: eighth and sixteenth notes
 alternate, quarter notes and the first note after a rest are downstrokes.
 Two notes played together, a power chord say, are one small stroke: the
-pick reaches one string a few milliseconds before the other. Finger and
+pick reaches one string about a hundredth of a second before the other. A
+small stroke crosses each string more slowly than a full six-string one,
+as a strumming hand does. Finger and
 Thumb pluck every note the same way.
 
 **Keyswitches** below the guitar's range latch the stroke direction on

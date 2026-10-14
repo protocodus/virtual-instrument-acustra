@@ -10029,8 +10029,8 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
     }
 }
 
-int AcustraEngine::strumDelaySamples(int stringRank,
-                                     float velocity) const noexcept
+int AcustraEngine::strumDelaySamples(int stringRank, float velocity,
+                                     int strokeGaps) const noexcept
 {
     // The pick crosses the strings at one speed, so the k-th string it
     // reaches sounds k spacings later. The spacing is the set-up dimension
@@ -10052,8 +10052,21 @@ int AcustraEngine::strumDelaySamples(int stringRank,
     // dependence.
     constexpr float spacing = 0.0540f / 5.0f;
     const float speed = 0.51f + 1.95f * clamp(velocity, 0.0f, 1.0f);
-    return static_cast<int>(static_cast<float>(std::max(stringRank, 0))
-        * spacing / speed * static_cast<float>(sampleRate_) + 0.5f);
+    float delay = static_cast<float>(std::max(stringRank, 0))
+        * spacing / speed * static_cast<float>(sampleRate_);
+    // That speed is the six-string stroke's. A smaller stroke is not the
+    // same sweep cut short. Within each of GuitarSet's picked takes
+    // (Tools/MeasureStrokeSpan.py) a stroke's time a string, against the
+    // take's own four-string strokes, is a median 1.48 times as long over
+    // two strings, 1.15 over three, 0.96 over five and 0.85 over six; each
+    // string's own scatter allowed for, that is the spacings crossed to the
+    // -0.36 power (90% -0.41 to -0.31). A stroke's span grows as their 0.64
+    // power, from the six-string stroke's.
+    if (performanceRealism_.strokeSpanLaw && strokeGaps > 0
+        && strokeGaps < stringCount - 1)
+        delay *= std::pow(static_cast<float>(stringCount - 1)
+                          / static_cast<float>(strokeGaps), 0.36f);
+    return static_cast<int>(delay + 0.5f);
 }
 
 int AcustraEngine::fingerChordOffsetSamples(int rankFromTop, int count) noexcept

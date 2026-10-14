@@ -5,6 +5,27 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-14 — a small stroke crosses each string more slowly
+
+Every stroke crossed each string in the same time for its velocity, so a
+two-string stroke spanned a fifth of a six-string one. GuitarSet's picked
+strokes do not (`Tools/MeasureStrokeSpan.py`, 6,915 strokes of two to six
+strings, attacks re-detected): within each take, against the take's own
+four-string strokes, the time a string is a median 1.48 times as long over
+two strings, 1.15 over three, 0.96 over five and 0.85 over six. Simulating
+each take's strokes with each string's own scatter and measuring them the
+same way, the spacings crossed to the -0.36 power (90% -0.41 to -0.31) is
+closest to that profile. The pooled medians fall faster (12.2 ms a string
+over two strings to 5.3 over six), but they mix the takes' different speeds
+and stroke sizes; a log-log regression within takes reads -0.41, and it
+rests on the scatter's tails where the medians do not. A stroke's span now
+grows as the spacings' 0.64 power, from the six-string stroke, which keeps
+its speed map (`AcustraEngine::strumDelaySamples`): at MIDI 96 the engine's
+strokes take 9.7, 7.6, 6.5, 5.9 and 5.4 ms a string over two to six
+strings, and picked pairs sound 9.6 ms apart on average, 8% within 2 ms
+(`PerformanceRealism::strokeSpanLaw`; `Acustra.StrokeSpan`). Not chosen by
+ear. See [the report](playing-physics-2026-10-13.md).
+
 ## 2026-10-14 — a pick's two-note group is a stroke
 
 Two notes on one sample under Pick sounded both strings at once: only three

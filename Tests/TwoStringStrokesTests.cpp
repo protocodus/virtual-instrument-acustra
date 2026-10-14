@@ -155,7 +155,7 @@ void testPickedPairsAreSwept()
         expect(on.size() == static_cast<std::size_t>(count) && off.size() == on.size(),
                "a two-note group went missing");
         const double ms = 1000.0 / rate;
-        const double place = ms * swept->engine().strumDelaySamples(1, 96.0f / 127.0f);
+        const double place = ms * swept->engine().strumDelaySamples(1, 96.0f / 127.0f, 1);
         int within = 0, alongDown = 0, downs = 0, alongUp = 0, ups = 0, sameDirection = 0;
         double gapSum = 0.0;
         for (std::size_t k = 0; k < std::min(on.size(), off.size()); ++k)

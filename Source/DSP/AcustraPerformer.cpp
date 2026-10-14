@@ -567,7 +567,8 @@ void Performer::flushNoteGroup() noexcept
             // Duplicated keys share one string's place while noteOn retains its
             // ownership/re-pluck handling. The first reached string starts now.
             const int plannedSpan = completePlan
-                ? engine_.strumDelaySamples(lastString - firstString, meanVelocity) : 0;
+                ? engine_.strumDelaySamples(lastString - firstString, meanVelocity,
+                                            lastString - firstString) : 0;
             int strokeSpan = 0;
             for (int index = 0, reached = 0; index < pendingNoteOnCount_; ++index)
             {
@@ -585,7 +586,7 @@ void Performer::flushNoteGroup() noexcept
                 note.pluckDelay = completePlan
                     ? curvedStrumDelay(string, firstString, lastString,
                                        nextUpstroke_, plannedSpan)
-                    : engine_.strumDelaySamples(rank, meanVelocity);
+                    : engine_.strumDelaySamples(rank, meanVelocity, sounding - 1);
                 strokeSpan = std::max(strokeSpan, note.pluckDelay);
             }
             if (completePlan && engine_.performanceRealism().mutedStrings)

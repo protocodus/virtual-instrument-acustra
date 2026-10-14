@@ -39,6 +39,10 @@ struct PerformanceRealism
     // Under Pick two notes on one sample are a stroke across their two
     // strings, swept as a strum is (Performer::flushNoteGroup).
     bool twoStringStrokes { true };
+    // A stroke's span grows less than in proportion to the strings it
+    // crosses, so a small stroke crosses each string more slowly
+    // (AcustraEngine::strumDelaySamples).
+    bool strokeSpanLaw { true };
 };
 
 } // namespace acustra

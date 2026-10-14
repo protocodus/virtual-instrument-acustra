@@ -279,9 +279,11 @@ public:
     // is down for this note on this channel, or -1.
     [[nodiscard]] int heldString(int midiNote, int midiChannel = 1) const noexcept;
     // Samples after the first string that a strum's k-th string sounds, from
-    // the pick's speed for this velocity and the string spacing.
-    [[nodiscard]] int strumDelaySamples(int stringRank,
-                                        float velocity) const noexcept;
+    // the pick's speed for this velocity and the string spacing, in a stroke
+    // that crosses strokeGaps spacings in all: a smaller stroke crosses each
+    // string more slowly. The default is the six-string stroke's.
+    [[nodiscard]] int strumDelaySamples(int stringRank, float velocity,
+                                        int strokeGaps = stringCount - 1) const noexcept;
     // Samples after the chord's highest string that the string rankFromTop
     // strings below it sounds when the thumb and fingers pluck a chord of
     // count (3 or 4) strings together; it can be negative, and the caller

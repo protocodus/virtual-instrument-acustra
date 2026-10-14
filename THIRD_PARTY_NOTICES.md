@@ -350,6 +350,11 @@ binary:
   `Tools/MeasureTwoStringStrokes.py` measures from the comping's hex-pickup
   audio and annotations: 5% of adjacent pairs within 2 ms, a median 13.0 ms
   apart (`Performer::flushNoteGroup`).
+- How a picked stroke's time a string falls with the strings it crosses,
+  which `Tools/MeasureStrokeSpan.py` measures within the comping's takes
+  from their hex-pickup audio and annotations: the spacings crossed to the
+  -0.36 power once each string's scatter is allowed for
+  (`AcustraEngine::strumDelaySamples`).
 
 These are Acustra's measurements and fits from the dataset, not part of
 it; the source comments and tools above describe how each was derived. This

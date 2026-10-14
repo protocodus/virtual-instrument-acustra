@@ -303,13 +303,78 @@ picked single notes and picked strums are bit-identical with the switch on
 and off, while picked pairs change audibly; blocks of 1, 61, 64 and 512
 render identically. `Acustra.StrumScatter`'s unswept pairs are now Finger's.
 
-**Limits.** The engine's picked pairs sound 5.4 ms apart on average at this
-velocity where the corpus's are a median 13.0 ms apart, and 20% of them
-within 2 ms against the corpus's 5%: they take a strum's speed for two
-strings, while the corpus's smaller strokes cross each string more slowly
-(isolated groups of two, three and four strings take 12.0, 8.6 and 7.7 ms a
-string). Finger-played pairs are not simultaneous in the corpus either (8%
-within 2 ms, in no preferred order), and stay so here.
+**Limits.** As committed, the engine's picked pairs sounded 5.4 ms apart on
+average at this velocity where the corpus's are a median 13.0 ms apart, and
+20% of them within 2 ms against the corpus's 5%: they took a strum's speed
+for two strings, while the corpus's smaller strokes cross each string more
+slowly. Section 6 measures that and corrects most of it. Finger-played pairs are not
+simultaneous in the corpus either (8% within 2 ms, in no preferred order),
+and stay so here.
+
+## 6. A small stroke crosses each string more slowly
+
+Every stroke crossed each string in the same time for its velocity: a
+two-string stroke spanned a fifth of a six-string one, a three-string
+stroke two fifths. GuitarSet's strummers do not sweep a small stroke at a
+big one's speed. `Tools/MeasureStrokeSpan.py` takes every picked stroke of
+two to six strings (runs of onsets on distinct strings inside the chord
+window), detects each attack again, and fits its time a string by least
+squares against string number. Report: [`stroke-span-report.json`](validation-playing-physics-20261013/stroke-span-report.json).
+
+| Strings in the stroke | 2 | 3 | 4 | 5 | 6 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Strokes | 2,282 | 2,205 | 1,569 | 641 | 218 |
+| Time a string, pooled median | 12.2 ms | 8.9 | 7.6 | 6.1 | 5.3 |
+| Within a take, over its four-string median (takes) | 1.48 (64) | 1.15 (71) | 1 | 0.96 (37) | 0.85 (17) |
+| Simulated at the spacings' −0.36 power, measured alike | 1.49 | 1.12 | 1 | 0.90 | 0.84 |
+| Engine at MIDI 96, unscattered | 9.7 ms | 7.6 | 6.5 | 5.9 | 5.4 |
+| … over its four-string time | 1.48 | 1.16 | 1 | 0.90 | 0.83 |
+
+The pooled medians mix the takes: a take that plays many small strokes is
+not the take that plays many big ones, at its own speed. One player's own
+profile is the within-take ratio, a take's median time a string for a size
+over its median for four strings (where it has five of each). To read an
+exponent from it, every take's strokes are simulated at the take's
+four-string median scaled by the spacings to a power, each string moved by
+its own scatter (section 4) and the detector's error, and measured the same
+way: the −0.36 power is the closest profile (90% interval over resampled
+takes −0.41 to −0.31). A log-log regression of time a string on spacings
+within takes reads −0.41, which that scatter should bias toward zero; it
+weighs the occasional near-zero two-string time the scatter's tail makes,
+which the medians do not, so the profile is the one taken.
+
+**Model.** The pick's speed for a velocity is the six-string stroke's, the
+map kept as it was; a stroke over fewer spacings crosses each one
+(5 / spacings)^0.36 times more slowly, so its span grows as the spacings'
+0.64 power (`AcustraEngine::strumDelaySamples`, which the Performer now
+tells how many spacings the stroke crosses). Its own strings keep the
+wrist's arc between its ends; a six-string stroke, a finger-plucked chord
+and every single note are as before. At MIDI 96 a picked pair now sounds
+9.6 ms apart on average, 8% within 2 ms, against the corpus's 13.0 ms and 5%.
+
+**Tests** (`Acustra.StrokeSpan`): at 44.1, 48 and 96 kHz and four
+velocities a stroke's span is the six-string span times (spacings / 5)^0.64
+within a sample (in proportion with the switch off), the six-string span
+and the default unchanged, and a stroke's own strings evenly spaced; through
+the Performer, unscattered strokes of two to six strings under Pick each
+span their speed draw times the law's span within a sample and cross each
+string (5 / spacings)^0.36 times more slowly than six strings do (within
+0.02 of the ratio); six-string strums, G major, a finger-plucked chord,
+finger pairs and picked single notes are bit-identical with the switch on
+and off, a three-string strum changes audibly, and blocks of 1, 61, 64 and
+512 render identically. `Acustra.TwoStringStrokes` takes a pair's place from
+the two-string law (200 alternating power chords: 9.6 ms apart on average
+against 9.7, 16 of 200 within 2 ms, the lower string first in 87 of 100
+downstrokes and the higher in 89 of 100 upstrokes).
+
+**Limits.** The six-string anchor is a choice: the velocity map was pinned
+to the pooled speeds of strokes of three to six strings, mostly three and
+four, and keeping six strings where they were changes the least of what is
+already heard. Against the pooled medians the engine's pairs at MIDI 96 are
+quicker (9.7 against 12.2 ms a string): the pooled figure carries the takes'
+mix, which the profile leaves out. The jazz and finger takes' small groups are not strokes in the same
+sense and are not used. How a stroke's speed follows its force within a
+player is a separate measurement.
 
 ## Dropped on their evidence
 

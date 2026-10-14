@@ -906,7 +906,12 @@ timing: string order can cross pitch order, and an unplayed string between
 two reached strings still takes one spacing to cross. The spacing is the set-up dimension
 at the saddle; the pick's speed is a player's map of velocity over the
 0.51–2.46 m/s range measured from GuitarSet strokes. The corpus does not
-establish that velocity-to-speed relationship. Chords whose notes arrive
+establish that velocity-to-speed relationship. That speed is a six-string
+stroke's: a smaller stroke is not the same sweep cut short, but crosses
+each string more slowly, its span growing as the 0.64 power of the
+spacings it crosses, the profile of each of GuitarSet's picked takes
+(`Tools/MeasureStrokeSpan.py`), so at MIDI 96 two strings sound 9.7 ms
+apart and six span 27 ms. Chords whose notes arrive
 spread in time are played as sent, unless Gather Chords is on.
 
 Notes that land on one sample and one channel are fretted as one shape
