@@ -5,6 +5,41 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-15 — sound-refinement candidate accepted
+
+After receiving the repaired A/B comparison page, the user chose “go with
+candidate and push.” Both refinements from the ten-direction screen are
+accepted: the quieter independent Pick-contact burst and the 150 Hz narrowing
+of the room's bass side. Both remain enabled by default, with no new host or UI
+parameters. The accepted DSP is byte-identical to the frozen candidate used
+for the audio comparisons and validation. No per-pair votes or detailed listening
+judgments were supplied, so this records the overall acceptance only.
+
+The [private comparison player](https://acustra-sound-ab.voho-evangelist.chatgpt.site)
+serves the unchanged audio together with repaired loading, seeking and A/B
+switching. See the [research report](sound-refinements-2026-10-15.md) and
+[player repair evidence](validation-sound-refinements-20261015/player-fix/README.md).
+
+## 2026-10-15 — ten sound screens, two bounded refinements for A/B
+
+The user requested research and experiments toward a clean, pleasant, smooth,
+natural and mix-ready sound without new UI parameters. Ten directions were
+screened against the current 1.5.0 engine. Two are implemented: Pick's independent
+contact-noise burst runs at half amplitude, leaving its calibrated pitched
+release intact, and a 150 Hz high-pass narrows only the room's stereo side in
+the bass while retaining its original mid. Each has an independent offline
+`PerformanceRealism` switch; no host control or saved parameter ID is added.
+
+These are authored sound choices backed by isolation measurements, not a
+listener verdict or newly measured physical constants. Larger pluck changes,
+reduced strum variation, capture cuts/tilts and stronger room anti-aliasing were
+rejected or deferred because of collateral changes or insufficient musical
+evidence. In particular, current reference notes do not justify the presence
+cuts suggested by an older capture report. The existing microphone voicing and
+all earlier accepted performance rules remain in place. See the
+[ten-experiment report](sound-refinements-2026-10-15.md) for measurements,
+sources, reproducibility, validation and the matched blind A/B protocol.
+
 ## 2026-10-14 — the 1.5.0 listening verdict: all seven ship
 
 The user listened to the blind A/B pack for the seven playing-physics

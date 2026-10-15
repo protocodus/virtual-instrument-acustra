@@ -2111,6 +2111,10 @@ private:
         float previousRight { 0.0f };
         float currentLeft { 0.0f };
         float currentRight { 0.0f };
+        // Host-rate 150 Hz Butterworth high-pass on the wet side only. The
+        // room's original mid is retained independently at the output sum.
+        std::array<double, 5> sideHighpassCoefficients {};
+        std::array<double, 2> sideHighpassState {};
         // Internal samples since anything but an exact zero went in or came
         // out; past the longest path every state is zero again.
         int quietSamples { 0 };
@@ -2121,6 +2125,7 @@ private:
         // One host sample of the mid signal in (already scaled by the send),
         // the room's left and right out.
         void process(float input, float& left, float& right) noexcept;
+        float coherentSide(float side) noexcept;
         void step(float input) noexcept;
     };
     RoomAmbience room_ {};

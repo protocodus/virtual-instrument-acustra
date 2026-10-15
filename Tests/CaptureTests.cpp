@@ -190,9 +190,12 @@ struct Audio
 };
 
 Audio render(acustra::EngineParameters parameters, int rate = 48000,
-             int block = 64)
+             int block = 64, bool roomBassCoherence = true)
 {
     auto engine = std::make_unique<acustra::AcustraEngine>();
+    acustra::PerformanceRealism realism;
+    realism.roomBassCoherence = roomBassCoherence;
+    engine->setPerformanceRealism(realism);
     engine->setParameters(parameters);
     engine->prepare(rate, block);
     for (int note : { 40, 45, 50, 55, 59, 64 })
@@ -1448,13 +1451,16 @@ void testOutputGainScalesTheWholeCapture()
               << worstRelativeError << '\n';
 }
 
-// 12. The room at the plug-in's 50% sits 11-14 dB under a held chord (about
+// 12. The calibrated room at the plug-in's 50% sits 11-14 dB under a held chord (about
 // 10 under a released phrase, whose own sound stops before its room's), and
 // decays in about 0.45 s, at every sample rate: it runs at the host rate
 // divided down to 64 kHz or under and is energy-normalised at prepare.
+// Keep that original calibration contract separate from the 2026-10-15
+// wet-side narrowing, which intentionally removes a little stereo energy.
 void testRoomLevelAndDecayAcrossRates()
 {
     std::vector<double> levels;
+    std::vector<double> refinedLevels;
     for (int rate : { 44100, 48000, 96000, 192000 })
     {
         acustra::EngineParameters parameters;
@@ -1487,8 +1493,8 @@ void testRoomLevelAndDecayAcrossRates()
         double direct = 0.0, added = 0.0;
         acustra::EngineParameters roomy;
         roomy.room = 0.5f;
-        const auto dry = render(parameters, rate);
-        const auto wet = render(roomy, rate);
+        const auto dry = render(parameters, rate, 64, false);
+        const auto wet = render(roomy, rate, 64, false);
         for (std::size_t index = 0; index < dry.left.size(); ++index)
             for (const auto& [a, b] : { std::pair { dry.left[index], wet.left[index] },
                                         std::pair { dry.right[index], wet.right[index] } })
@@ -1499,10 +1505,37 @@ void testRoomLevelAndDecayAcrossRates()
         levels.push_back(10.0 * std::log10(direct / std::max(added, 1.0e-30)));
         std::cout << "Room at " << rate << " Hz: RT60 " << rt60 << " s, the guitar "
                   << levels.back() << " dB over its room at 0.5\n";
+        const auto refined = render(roomy, rate);
+        double refinedAdded = 0.0, monoError = 0.0;
+        for (std::size_t index = 0; index < dry.left.size(); ++index)
+        {
+            for (const auto& [a, b] : { std::pair { dry.left[index], refined.left[index] },
+                                        std::pair { dry.right[index], refined.right[index] } })
+                refinedAdded += (static_cast<double>(b) - a) * (static_cast<double>(b) - a);
+            monoError = std::max(monoError, std::abs(
+                static_cast<double>(wet.left[index]) + wet.right[index]
+                - static_cast<double>(refined.left[index]) - refined.right[index]));
+        }
+        const double reductionDb = 10.0 * std::log10(added / std::max(refinedAdded, 1.0e-30));
+        refinedLevels.push_back(10.0 * std::log10(direct / std::max(refinedAdded, 1.0e-30)));
+        // An explicit budget for this fixed chord at the default Width:
+        // constrain the small stereo-energy reduction without restoring
+        // the removed bass width. Baseline: 13.887-13.919 dB under the guitar;
+        // the side refinement removes 0.144-0.149 dB from that wet energy.
+        expect(reductionDb > 0.10 && reductionDb < 0.25,
+               "wet-side narrowing changed this chord's room by " + std::to_string(reductionDb)
+                   + " dB at " + std::to_string(rate));
+        expect(monoError < 1.0e-7, "wet-side narrowing changed the room's mono sum");
+        std::cout << "Room bass refinement at " << rate << " Hz: wet reduction "
+                  << reductionDb << " dB, guitar/room " << refinedLevels.back()
+                  << " dB, mono rounding " << monoError << '\n';
     }
     for (double level : levels)
         expect(level > 11.0 && level < 14.0 && std::abs(level - levels.front()) < 0.5,
                "the room at 0.5 sat " + std::to_string(level) + " dB under the guitar");
+    for (double level : refinedLevels)
+        expect(std::abs(level - refinedLevels.front()) < 0.5,
+               "refined room balance varied with sample rate");
 }
 
 // 13. The room renders the same at any block size, follows Width (zero is

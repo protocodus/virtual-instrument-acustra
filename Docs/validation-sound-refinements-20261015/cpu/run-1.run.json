@@ -1,0 +1,29 @@
+{
+  "command": [
+    "/workspace/acustra-realism-20261015/cpu/build/AcustraSoundRefinementBenchmark",
+    "/workspace/acustra-realism-20261015/cpu/run-1",
+    "1"
+  ],
+  "source_manifest_sha256": "b3d9672070de6b85c1cea8de2f11570a5b83103cb6639c2ef9d5f25151e44792",
+  "executable_sha256": "32b1ffccce47ad22b8941eaa77c7f18b7f477146a4a3f5c585b26481fd1adf8a",
+  "cpu_affinity_before": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "cpu_affinity_timed": [
+    0
+  ],
+  "quiet_period": "Parent explicitly confirms builds, tests, and renders idle before launch",
+  "processes_before": "    PID    PPID STAT COMMAND         COMMAND\n      1       0 S+   tail            tail -f /dev/null\n      2       1 S+   caas-prefix-tra /usr/local/bin/caas-prefix-transfer-server --host 0.0.0.0 --port 1040\n    201       1 Ssl  dockerd         /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --pidfile=/run/codex-docker/dockerd.pid --exec-root=/run/codex-docker/exec-86hi5_pm --storage-driver=vfs --group=agent\n    253     201 Ssl  containerd      containerd --config /run/codex-docker/exec-86hi5_pm/containerd/containerd.toml\n    520       0 Sl+  codex           /opt/codex/bin/codex exec-server --remote https://codex-cloud-environments.chatgpt.com/api --environment-id ccarenv_b64_Y2NhcmVudl8wYTJkZDQ2NTUwOTA4MTkxYjc2ZjUxNjQ5YzAxNGVhNg --linux-sandbox-pid-namespace=inherit\n   5170       1 Zs   chromium        [chromium] <defunct>\n   5202       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   5204       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   5208       1 Z    chromium        [chromium] <defunct>\n   5209       1 Z    chromium        [chromium] <defunct>\n   5232       1 Z    chromium        [chromium] <defunct>\n   5266       1 Z    chromium        [chromium] <defunct>\n   5279       1 Z    chromium        [chromium] <defunct>\n   5298       1 Z    chromium        [chromium] <defunct>\n   5305       1 Z    chromium        [chromium] <defunct>\n   5308       1 Z    chromium        [chromium] <defunct>\n   5328       1 Z    chromium        [chromium] <defunct>\n   5744       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   5746       1 Z    chromium        [chromium] <defunct>\n   5747       1 Z    chromium        [chromium] <defunct>\n   5749       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   6001       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   6004       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   6005       1 Z    chromium        [chromium] <defunct>\n   6007       1 Z    chromium        [chromium] <defunct>\n   7178       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   7181       1 Z    chromium        [chromium] <defunct>\n   7182       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   7183       1 Z    chromium        [chromium] <defunct>\n   7313     520 Ss   python3         python3 /workspace/acustra-realism-20261015/cpu/run_final.py 1\n   7316    7313 R    ps              ps -eo pid,ppid,stat,comm,args\n",
+  "start_utc": "2026-10-15T08:25:35.170383+00:00",
+  "exit_code": 0,
+  "end_utc": "2026-10-15T08:25:53.273785+00:00",
+  "processes_after": "    PID    PPID STAT COMMAND         COMMAND\n      1       0 S+   tail            tail -f /dev/null\n      2       1 S+   caas-prefix-tra /usr/local/bin/caas-prefix-transfer-server --host 0.0.0.0 --port 1040\n    201       1 Ssl  dockerd         /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --pidfile=/run/codex-docker/dockerd.pid --exec-root=/run/codex-docker/exec-86hi5_pm --storage-driver=vfs --group=agent\n    253     201 Ssl  containerd      containerd --config /run/codex-docker/exec-86hi5_pm/containerd/containerd.toml\n    520       0 Sl+  codex           /opt/codex/bin/codex exec-server --remote https://codex-cloud-environments.chatgpt.com/api --environment-id ccarenv_b64_Y2NhcmVudl8wYTJkZDQ2NTUwOTA4MTkxYjc2ZjUxNjQ5YzAxNGVhNg --linux-sandbox-pid-namespace=inherit\n   5170       1 Zs   chromium        [chromium] <defunct>\n   5202       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   5204       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   5208       1 Z    chromium        [chromium] <defunct>\n   5209       1 Z    chromium        [chromium] <defunct>\n   5232       1 Z    chromium        [chromium] <defunct>\n   5266       1 Z    chromium        [chromium] <defunct>\n   5279       1 Z    chromium        [chromium] <defunct>\n   5298       1 Z    chromium        [chromium] <defunct>\n   5305       1 Z    chromium        [chromium] <defunct>\n   5308       1 Z    chromium        [chromium] <defunct>\n   5328       1 Z    chromium        [chromium] <defunct>\n   5744       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   5746       1 Z    chromium        [chromium] <defunct>\n   5747       1 Z    chromium        [chromium] <defunct>\n   5749       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   6001       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   6004       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   6005       1 Z    chromium        [chromium] <defunct>\n   6007       1 Z    chromium        [chromium] <defunct>\n   7178       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   7181       1 Z    chromium        [chromium] <defunct>\n   7182       1 Z    chrome_crashpad [chrome_crashpad] <defunct>\n   7183       1 Z    chromium        [chromium] <defunct>\n   7313     520 Ss   python3         python3 /workspace/acustra-realism-20261015/cpu/run_final.py 1\n   7318    7313 R    ps              ps -eo pid,ppid,stat,comm,args\n",
+  "output_sha256": {
+    "run-1.json": "46989bdeec29cf19e366fe30124c7d4c2b8c567f446a6895aa7b02e05bb1307c",
+    "run-1.csv": "79e5325d92f9cd04fa6d2e7cca404752e275df96269db2ce4d23480e67c8d045"
+  }
+}

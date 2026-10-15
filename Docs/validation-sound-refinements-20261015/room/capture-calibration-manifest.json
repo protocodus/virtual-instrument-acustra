@@ -1,0 +1,20 @@
+{
+  "diagnosis": "Frozen baseline calibration and current refinement-off calibration agree; current refinement reduces wet stereo energy by 0.144-0.149 dB while preserving mono within floating-point rounding.",
+  "baseline_revision": "90d2d8c502fc65efcf864be54b3738d6c5e79aa1",
+  "focused_test": {
+    "name": "Acustra.Capture",
+    "result": "passed",
+    "seconds": 56.66
+  },
+  "baseline_full_capture_test": "passed",
+  "sha256": {
+    "/workspace/virtual-instrument-acustra/Source/DSP/AcustraEngine.cpp": "96e2248e43fb18677227d91ddebb59c1d583f4133b166637991d4439cd98b682",
+    "/workspace/virtual-instrument-acustra/Source/DSP/AcustraEngine.h": "c735f0d9dc916f476a648ac2f4ee7fd70599da3f38d88e4150921595a8fce469",
+    "/workspace/virtual-instrument-acustra/Source/DSP/PerformanceRealism.h": "ca226e732566969bf833217d7c4dcf3a42a83ecd7ffab4ac478796ccbec5fffd",
+    "/workspace/virtual-instrument-acustra/Tests/CaptureTests.cpp": "cebd7c565eac4226cab5f5166bd790f7ee07194bdacc0d52ae642cd8159769cf",
+    "/workspace/virtual-instrument-acustra/build-dsp/libAcustraDSP.a": "1a2f824318696f623f46185696c1b51f7904bef50a27d6dc031dd9dc96f5b068",
+    "/workspace/acustra-realism-20261015/baseline/libAcustraDSP.a": "9a886bb53e25ab158349f7e8cedc4c98e162cb7fcbe545af85209bd3808998f0",
+    "/workspace/acustra-realism-20261015/baseline/Source/DSP/AcustraEngine.h": "bb2c661c380c9e8af58ea02e32011f7fd330a105d2a44f67e26b6c42fa52a2b9",
+    "/workspace/acustra-realism-20261015/baseline/Source/DSP/PerformanceRealism.h": "ccf83422019cb242c91c8129ed558fbfaade537ce828bd3b4979aefc79759889"
+  }
+}

@@ -1,0 +1,13 @@
+# Comparison player repair — 2026-10-15
+
+The user reported “Playback unavailable … The element has no supported sources.” The supplied page used relative `audio/*.wav` resources, which require the surrounding directory. Opening its HTML through a preview that does not serve those files fails independently of the WAV encoding. Exact original 48 kHz stereo PCM24 WAVs play successfully in Chromium over HTTP. This supports an asset delivery failure; the user's preview itself was not instrumented.
+
+A separate transport defect was reproduced with Python's standard HTTP server, which does not implement byte-range serving: an original clip played to 0.93 s, but switching A/B reset it to approximately 0.18 s. Seeking to 5 s and switching level also restarted near 0.18 s. The browser reported `seekable=[[0,0]]`. Thus earlier validation against a range-capable server missed this case.
+
+The repaired builder loads each requested HTTP WAV into a cached Blob URL, checks its RIFF/WAVE header, and waits for metadata before seeking. This makes the main comparison controls independent of server byte-range support. It no longer eagerly requests all forty comparison clips. Request guards prevent cancelled or superseded loads from starting playback; desired seek position survives loading and source switching. HTTP/missing-file errors are explicit and retryable. A local `file://` fallback retains direct media URLs for fully extracted packs because browser fetch restrictions differ for local files.
+
+`check-player.py` retains the actual browser check used on the fixed directory. It uses Python Playwright, `/usr/bin/chromium`, and a temporary local HTTP server without range support. Run `python check-player.py` from any directory while the fixed pack remains at the recorded workspace path. It validates all ten scenes, initial lazy loading, seeking, both switches, paused switching, restart, playback exclusivity, votes export, reveal, delayed-load races/cancellation, missing audio/retry, and HTML returned in place of a WAV. All 26 checks passed; `browser-check.json` records observations.
+
+The managed Chromium installation blocks navigation to `file://` URLs with `ERR_BLOCKED_BY_ADMINISTRATOR`, so extracted local-file playback was not directly verified in this environment. Hosted delivery is handled separately. Sequential direct audio controls continue to use their normal media URLs; the Blob fix applies to the main A/B controls.
+
+`copy-receipt.json` confirms all 60 WAVs, the blind identities, manifest and scores are unchanged. The original listening directory remains intact. Only the player HTML and builder changed, plus this repair evidence.

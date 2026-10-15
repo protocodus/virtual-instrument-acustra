@@ -493,6 +493,18 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.RoomAbsorption AcustraRoomAbsorptionTests)
     set_tests_properties(Acustra.RoomAbsorption PROPERTIES TIMEOUT 60)
 
+    add_executable(AcustraPickRoughnessTests Tests/PickRoughnessTests.cpp)
+    target_link_libraries(AcustraPickRoughnessTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraPickRoughnessTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.PickRoughness AcustraPickRoughnessTests)
+    set_tests_properties(Acustra.PickRoughness PROPERTIES TIMEOUT 120)
+
+    add_executable(AcustraRoomBassCoherenceTests Tests/RoomBassCoherenceTests.cpp)
+    target_link_libraries(AcustraRoomBassCoherenceTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraRoomBassCoherenceTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.RoomBassCoherence AcustraRoomBassCoherenceTests)
+    set_tests_properties(Acustra.RoomBassCoherence PROPERTIES TIMEOUT 120)
+
     add_executable(AcustraCaptureVoicingTests Tests/CaptureVoicingTests.cpp)
     target_link_libraries(AcustraCaptureVoicingTests PRIVATE AcustraDSP)
     set_target_properties(AcustraCaptureVoicingTests PROPERTIES

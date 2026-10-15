@@ -1,0 +1,51 @@
+Acustra sound-refinement CPU protocol, 2026-10-15
+
+Prepared baseline: /workspace/acustra-realism-20261015/baseline
+Harness and two-stage builder: BenchmarkSoundRefinements.cpp and build.py
+Prepared object directory: build
+
+The baseline and candidate use the same compiler executable and flags, distinct
+namespaces, and each snapshot's matching headers. build/manifest.json records
+complete source-file hashes, frozen harness hashes, compiler binary hash,
+platform, lscpu, process affinity, cgroup CPU quota, and object/executable hashes.
+
+48 main configurations:
+- 48 and 96 kHz; blocks of 64 and 128 frames.
+- Finger and Pick, each with a held six-string chord or repeated attacks.
+- Room 0, .5, and 1, otherwise default controls with release noise .5.
+- Repeated Finger attacks use four fingers; Pick attacks queue six-string strums.
+- Attack velocities cycle 50, 80, 105, 127 every .16 seconds, with key-up at .12 s.
+Eight additional direct full-force cases cover Finger/Pick, 48/96 kHz, Touch 0/1,
+block 64, and Room .5. These bypass performer velocity variation through direct
+string-per-channel engine contacts. Actual contact velocity must equal 1.
+Effective Touch is measured, since Touch 0 plus high velocity is not necessarily
+an effective Touch of 0. All main scenarios use Performer scheduling.
+
+Each scenario lasts 1.5 s, with at least .25 s of untimed preroll. Pairs alternate
+baseline-first/candidate-first every callback; the starting parity also changes
+with scenario and run. Both Main channels and the dedicated Piezo bus are active,
+and port observers are enabled. Only the callback is timed. Construction,
+preparation, score generation, observation, sample validation/hashing, allocation
+of result arrays, sorting, and report writing are outside timed regions. Raw
+pairs include callback frame, order, and whether they fall in the 60 ms attack
+window. Aggregate tables include median, p95, p99, max, and sample counts. Main
+and auxiliary outputs must remain finite and nonzero, contacts must be observed,
+and no MIDI events may drop. Intentionally changed audio is not required to match.
+
+Final build (after candidate source freeze):
+python3 build.py finish CANDIDATE_SNAPSHOT_ROOT build
+
+Optional functional smoke (NOT final timing evidence):
+build/AcustraSoundRefinementBenchmark smoke 0 --smoke
+
+Final timing: run serially only after all builds/tests/renders stop. Run three
+replicates, recording UTC start/end, exact command, CPU affinity, and process
+snapshot. Example, when CPU 0 is in the allowed affinity mask:
+taskset -c 0 build/AcustraSoundRefinementBenchmark run-1 1
+
+The JSON and CSV are written only once all timed scenarios in that run finish.
+Keep raw per-run reports, frozen inputs, and manifests. Summary percentage change
+is 100 * (candidate / baseline - 1), so positive values mean higher callback cost.
+For each configuration report its run median and p95 with absolute microseconds.
+Repeat only if variability or an unresolved concern warrants it; retain every run. These measurements concern
+this cloud CPU and the stated workloads, and do not establish host guarantees.

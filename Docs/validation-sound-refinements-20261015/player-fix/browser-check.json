@@ -1,0 +1,340 @@
+{
+  "url": "http://127.0.0.1:35483/index.html",
+  "server_supports_range": false,
+  "checks": [
+    {
+      "name": "lazy_loading_no_initial_audio_downloads",
+      "pass": true,
+      "detail": [
+        "http://127.0.0.1:35483/audio/01-soft-register-A.wav",
+        "http://127.0.0.1:35483/audio/02-hard-register-A.wav",
+        "http://127.0.0.1:35483/audio/03-dry-repetitions-A.wav",
+        "http://127.0.0.1:35483/audio/04-finger-arpeggio-A.wav",
+        "http://127.0.0.1:35483/audio/05-finger-chords-A.wav",
+        "http://127.0.0.1:35483/audio/06-picked-strums-A.wav",
+        "http://127.0.0.1:35483/audio/07-dry-mono-A.wav",
+        "http://127.0.0.1:35483/audio/08-piezo-control-A.wav",
+        "http://127.0.0.1:35483/audio/09-isolated-pick-A.wav",
+        "http://127.0.0.1:35483/audio/10-isolated-room-A.wav",
+        "http://127.0.0.1:35483/audio/01-soft-register-B.wav",
+        "http://127.0.0.1:35483/audio/01-soft-register-native-B.wav"
+      ]
+    },
+    {
+      "name": "scene_1_plays_pcm24",
+      "pass": true,
+      "detail": {
+        "t": 0.112603,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/e2886354-9540-4055-94d9-d6b7a230382d",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "scene_2_plays_pcm24",
+      "pass": true,
+      "detail": {
+        "t": 0.105726,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/81c61684-c378-4c6e-8283-b1b93b58a624",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "scene_3_plays_pcm24",
+      "pass": true,
+      "detail": {
+        "t": 0.104026,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/f395fb7b-4667-439f-9df9-ca5a8a3ba3f9",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "scene_4_plays_pcm24",
+      "pass": true,
+      "detail": {
+        "t": 0.102892,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/9c054a8b-74a4-4446-be22-3ea3bbe38651",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "scene_5_plays_pcm24",
+      "pass": true,
+      "detail": {
+        "t": 0.118198,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/a4b499bf-a212-4101-b018-a51c4726b951",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "scene_6_plays_pcm24",
+      "pass": true,
+      "detail": {
+        "t": 0.112764,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/9a7dff4b-6389-4a95-8442-0421cfdb052b",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "scene_7_plays_pcm24",
+      "pass": true,
+      "detail": {
+        "t": 0.10659,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/2068d29b-0859-433b-8165-7b2fedf92010",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "scene_8_plays_pcm24",
+      "pass": true,
+      "detail": {
+        "t": 0.105958,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/784db537-8d75-45ce-8676-b0ed3b0247b5",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "scene_9_plays_pcm24",
+      "pass": true,
+      "detail": {
+        "t": 0.104266,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/7153691d-4a7c-475b-b9f3-2e2a91cb604a",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "scene_10_plays_pcm24",
+      "pass": true,
+      "detail": {
+        "t": 0.103474,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/864fdb5f-7a13-4b9d-83cb-1f4612fc7c60",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "seek_works_without_http_ranges",
+      "pass": true,
+      "detail": {
+        "t": 5.030342,
+        "position": 5,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/e2886354-9540-4055-94d9-d6b7a230382d",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "switch_side_preserves_position",
+      "pass": true,
+      "detail": {
+        "t": 5.071618,
+        "position": 5.053854,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 B \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/edb1a999-e762-43a8-ae03-9d801d475e18",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "switch_level_preserves_position",
+      "pass": true,
+      "detail": {
+        "t": 5.079644,
+        "position": 5.071618,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 B \u00b7 Native balance",
+        "src": "blob:http://127.0.0.1:35483/5ee14dae-4bf0-4c05-8ce5-2ee2e9b080a3",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "paused_switch_keeps_requested_position",
+      "pass": true,
+      "detail": {
+        "t": 7,
+        "position": 7,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 B \u00b7 Native balance",
+        "src": "blob:http://127.0.0.1:35483/5ee14dae-4bf0-4c05-8ce5-2ee2e9b080a3",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "restart_keeps_playing_from_start",
+      "pass": true,
+      "detail": {
+        "t": 0.025971,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 B \u00b7 Native balance",
+        "src": "blob:http://127.0.0.1:35483/5ee14dae-4bf0-4c05-8ce5-2ee2e9b080a3",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "scene_exclusivity",
+      "pass": true,
+      "detail": {
+        "t": 0.034374,
+        "position": 0.034363,
+        "paused": true,
+        "playing": false,
+        "loading": false,
+        "status": "Paused \u00b7 B \u00b7 Native balance",
+        "src": "blob:http://127.0.0.1:35483/5ee14dae-4bf0-4c05-8ce5-2ee2e9b080a3",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "vote_export_keeps_pack_and_notes",
+      "pass": true,
+      "detail": {
+        "pack_id": "9384f1ba8f6a89ee9a7c5f32213f8eaebf5e672e1023f54ed707efb42b60b916"
+      }
+    },
+    {
+      "name": "key_reveal",
+      "pass": true,
+      "detail": "iframe present"
+    },
+    {
+      "name": "no_script_errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "seek_and_switch_during_delayed_load",
+      "pass": true,
+      "detail": {
+        "t": 6,
+        "position": 6,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 B \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/1f1d4694-f32a-426b-83fe-5ff4585221b9",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "cancel_during_delayed_load_no_late_play",
+      "pass": true,
+      "detail": {
+        "t": 0,
+        "position": 0,
+        "paused": true,
+        "playing": false,
+        "loading": false,
+        "status": "Paused \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/14d35591-9c6b-4993-8769-6f287605aef0",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "no_delayed_script_errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "missing_audio_error_is_actionable",
+      "pass": true,
+      "detail": {
+        "t": 0,
+        "position": 0,
+        "paused": true,
+        "playing": false,
+        "loading": false,
+        "status": "Audio could not play. Audio download returned HTTP 404. Open the hosted comparison or extract the full ZIP; the page needs its audio files.",
+        "src": "",
+        "seekable": null
+      }
+    },
+    {
+      "name": "retry_after_missing_audio",
+      "pass": true,
+      "detail": {
+        "t": 0.010034,
+        "position": 0,
+        "paused": false,
+        "playing": true,
+        "loading": false,
+        "status": "Playing \u00b7 A \u00b7 RMS matched",
+        "src": "blob:http://127.0.0.1:35483/787efdd4-e4b9-4118-b22f-656f3ce68bc8",
+        "seekable": 10
+      }
+    },
+    {
+      "name": "html_preview_response_detected",
+      "pass": true,
+      "detail": {
+        "t": 0,
+        "position": 0,
+        "paused": true,
+        "playing": false,
+        "loading": false,
+        "status": "Audio could not play. The audio address did not return a WAV file. Open the hosted comparison or extract the full ZIP; the page needs its audio files.",
+        "src": "",
+        "seekable": null
+      }
+    }
+  ]
+}

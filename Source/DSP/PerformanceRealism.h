@@ -47,6 +47,13 @@ struct PerformanceRealism
     // those between them, and an upstroke tilts its strings by the stroke's
     // own measure (AcustraEngine::strumEdgeGain, initialisePluck).
     bool strokeEdges { true };
+    // Restrain the independent pick-contact roughness while retaining the
+    // calibrated displacement/velocity release (AcustraEngine::initialisePluck).
+    // An authored sound refinement; this is not a measured pick-noise level.
+    bool restrainedPickRoughness { true };
+    // Keep the room's low end near the stereo centre without changing its
+    // mono return, timing or dry microphones. An authored mix refinement.
+    bool roomBassCoherence { true };
 };
 
 } // namespace acustra

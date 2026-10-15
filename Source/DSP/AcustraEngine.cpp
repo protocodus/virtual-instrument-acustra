@@ -7487,6 +7487,15 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     voice.velocity = v;
     voice.excitationEnvelope = amplitude * (0.003f + 0.014f * touch)
         * physical.transientScale;
+    // Restrain the pick's independent broadband contact roughness without
+    // changing its pitched displacement/velocity release. The 2026-10-15
+    // experiment reduces 4-16 kHz in the first 15 ms by a median 1.35 dB,
+    // while the 80-1000 Hz attack and total level remain nearly unchanged.
+    // This half-amplitude burst is an authored listening candidate, not a
+    // measured plectrum-noise calibration. Finger and Thumb keep their
+    // existing finite-contact bursts.
+    if (pick && performanceRealism_.restrainedPickRoughness)
+        voice.excitationEnvelope *= 0.5f;
     voice.excitationEnvelope *= voice.repluckForceGain;
     // A natural harmonic's finger is still on the node when the pluck lets
     // go, so the release's broadband burst is filtered by it as every other
@@ -12552,7 +12561,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                                   * (reference * dryLeft + reference * dryRight),
                               wetLeft, wetRight);
                 const float wetMid = 0.5f * (wetLeft + wetRight);
-                const float wetSide = 0.5f * width_ * (wetLeft - wetRight);
+                // Preserve the original mid directly: Mono Capture and
+                // Width zero keep the same room, including float rounding.
+                // Only the stereo wet side loses low-frequency energy.
+                const float wetSide = performanceRealism_.roomBassCoherence
+                    ? width_ * room_.coherentSide(0.5f * (wetLeft - wetRight))
+                    : 0.5f * width_ * (wetLeft - wetRight);
                 outputLeft += outputGain_ * (wetMid + wetSide);
                 outputRight += outputGain_ * (wetMid - wetSide);
                 monoMic += 1.41421356f * wetMid * monoReference_
@@ -12710,6 +12724,14 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
     decimation = std::max(1, static_cast<int>(std::ceil(hostRate / roomMaximumRate)));
     inverseDecimation = 1.0f / static_cast<float>(decimation);
     const double rate = hostRate / decimation;
+    // A fixed, gentle narrowing of the room below 150 Hz. Design at the
+    // host rate because the side is observed after reconstruction. This
+    // leaves the accepted room's feedback, diffusion and arrivals intact.
+    const double sideK = std::tan(piDouble * 150.0 / hostRate);
+    const double sideNorm = 1.0 / (1.0 + std::sqrt(2.0) * sideK + sideK * sideK);
+    sideHighpassCoefficients = { sideNorm, -2.0 * sideNorm, sideNorm,
+        2.0 * (sideK * sideK - 1.0) * sideNorm,
+        (1.0 - std::sqrt(2.0) * sideK + sideK * sideK) * sideNorm };
     const auto samples = [rate] (float milliseconds)
     {
         return static_cast<int>(std::lround(static_cast<double>(milliseconds)
@@ -12864,6 +12886,7 @@ void AcustraEngine::RoomAmbience::reset() noexcept
     accumulator = 0.0f;
     previousLeft = previousRight = 0.0f;
     currentLeft = currentRight = 0.0f;
+    sideHighpassState.fill(0.0);
     quietSamples = 0;
     active = false;
 }
@@ -12971,6 +12994,21 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
     const float share = static_cast<float>(phase + 1) * inverseDecimation;
     left = previousLeft + share * (currentLeft - previousLeft);
     right = previousRight + share * (currentRight - previousRight);
+}
+
+float AcustraEngine::RoomAmbience::coherentSide(float side) noexcept
+{
+    const auto& c = sideHighpassCoefficients;
+    const double result = c[0] * side + sideHighpassState[0];
+    const double first = c[1] * side - c[3] * result + sideHighpassState[1];
+    const double second = c[2] * side - c[4] * result;
+    sideHighpassState[0] = std::abs(first) < 1.0e-20 ? 0.0 : first;
+    sideHighpassState[1] = std::abs(second) < 1.0e-20 ? 0.0 : second;
+    // The room's source can become silent before this output filter does.
+    // Keep advancing its finite tail until the same room floor clears it.
+    if (sideHighpassState[0] != 0.0 || sideHighpassState[1] != 0.0)
+        active = true;
+    return static_cast<float>(result);
 }
 
 void AcustraEngine::processIdleFlush(float samplePeak) noexcept

@@ -1047,10 +1047,13 @@ struct AcustraEngineTestAccess
 
     static PluckSnapshot pluck(PhysicalCalibration calibration, float velocity,
                                int midiNote = 52,
-                               PickingTechnique picking = PickingTechnique::Finger)
+                               PickingTechnique picking = PickingTechnique::Finger,
+                               const PerformanceRealism* realism = nullptr)
     {
         auto engineOwner = std::make_unique<AcustraEngine>();
         auto& engine = *engineOwner;
+        if (realism != nullptr)
+            engine.setPerformanceRealism(*realism);
         engine.setPhysicalCalibration(calibration);
         EngineParameters parameters;
         parameters.picking = picking;
@@ -5338,6 +5341,8 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
 {
     using acustra::PickingTechnique;
     using acustra::AcustraEngineTestAccess;
+    acustra::PerformanceRealism legacyRoughness;
+    legacyRoughness.restrainedPickRoughness = false;
     for (const float velocity : { 0.2f, 0.5f, 0.9f, 1.0f })
     {
         const auto finger = AcustraEngineTestAccess::pluck(
@@ -5348,17 +5353,31 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
         const auto thumb = AcustraEngineTestAccess::pluck(
             acustra::fittedPhysicalCalibration, velocity,
             52, PickingTechnique::Thumb);
+        const auto legacyPick = AcustraEngineTestAccess::pluck(
+            acustra::fittedPhysicalCalibration, velocity,
+            52, PickingTechnique::Pick, &legacyRoughness);
         // Compare what the hand held, before the different release contacts
         // redistribute the line. A weak Pick's slow slip can lower its line
         // peak below Thumb even though its held displacement is greater.
         expect(pick.heldDisplacement > thumb.heldDisplacement
                    && pick.peakDisplacement > 0.0 && thumb.peakDisplacement > 0.0,
                "pick/thumb did not retain their held force and released waves");
-        // Picking styles share the existing contact-burst amplitude law.
-        const double expectedPick = finger.noiseEnvelope;
+        // The legacy Pick shares Finger's independently observed force/noise
+        // law. The 2026-10-15 refinement halves only the Pick's roughness;
+        // retain the former assertion and tolerance with its switch off,
+        // then check the selected default against that same Finger reference.
+        const double expectedLegacyPick = finger.noiseEnvelope;
+        expect(std::abs(legacyPick.noiseEnvelope - expectedLegacyPick)
+                   <= 1.0e-5 * std::max(expectedLegacyPick, 1.0e-3),
+               "the legacy pick's contact burst did not follow the shared amplitude law");
+        const double expectedPick = 0.5 * finger.noiseEnvelope;
         expect(std::abs(pick.noiseEnvelope - expectedPick)
                    <= 1.0e-5 * std::max(expectedPick, 1.0e-3),
-               "the pick's contact burst did not follow the shared amplitude law");
+               "the restrained pick's contact burst did not retain half the shared amplitude");
+        expect(pick.heldDisplacement == legacyPick.heldDisplacement
+                   && pick.peakDisplacement == legacyPick.peakDisplacement
+                   && pick.pluckPoint == legacyPick.pluckPoint,
+               "restraining pick roughness changed its pitched release");
         expect(pick.touch == finger.touch && finger.touch == thumb.touch
                    && thumb.noiseEnvelope == finger.noiseEnvelope,
                "picking styles changed the shared touch/noise amplitude law");

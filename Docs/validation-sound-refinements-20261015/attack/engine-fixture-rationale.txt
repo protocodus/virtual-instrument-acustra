@@ -1,0 +1,18 @@
+2026-10-15 Engine regression fixture update
+
+The baseline Engine suite passed. The selected Pick-only roughness amplitude
+change made four assertions fail, one for each velocity 0.2, 0.5, 0.9 and 1.0,
+in testPickingChangesTheContactWithoutRetuningOrReplucking. Those assertions
+required Pick and Finger contact-noise envelopes to be equal. That is the
+legacy amplitude policy intentionally changed by this candidate; the pitched
+release, force and geometry contracts still apply unchanged.
+
+The revised fixture retains the original shared-amplitude assertion and its
+1e-5 * max(expected, 1e-3) tolerance with restrainedPickRoughness disabled.
+It also checks the default Pick against half the independently observed Finger
+envelope, using the same tolerance formula, and adds exact equality of Pick's
+held displacement, released peak displacement and contact position across the
+offline switch. Finger/Thumb's shared Touch/noise assertion is unchanged.
+
+No production source, calibration or numeric tolerance was changed for this
+fixture correction. engine-fixture-validation.log records the refreshed suite.

@@ -1,0 +1,88 @@
+mid-band pair shape 0 wood 0: peak 605.049 Hz, hole 740.59 Hz, depth 38.0674 dB
+mid-band pair shape 0 wood 1: peak 583.595 Hz, hole 714.33 Hz, depth 38.1476 dB
+mid-band pair shape 0 wood 2: peak 613.849 Hz, hole 751.362 Hz, depth 36.0811 dB
+mid-band pair shape 1 wood 0: peak 516.184 Hz, hole 631.818 Hz, depth 37.5389 dB
+mid-band pair shape 1 wood 1: peak 497.881 Hz, hole 609.415 Hz, depth 38.1265 dB
+mid-band pair shape 1 wood 2: peak 523.692 Hz, hole 645.653 Hz, depth 37.0027 dB
+mid-band pair shape 2 wood 0: peak 459.867 Hz, hole 562.886 Hz, depth 38.5877 dB
+mid-band pair shape 2 wood 1: peak 443.562 Hz, hole 542.927 Hz, depth 39.834 dB
+mid-band pair shape 2 wood 2: peak 466.556 Hz, hole 575.211 Hz, depth 37.9031 dB
+mid-band pair shape 3 wood 0: peak 418.666 Hz, hole 516.168 Hz, depth 40.3252 dB
+mid-band pair shape 3 wood 1: peak 403.822 Hz, hole 494.285 Hz, depth 40.2065 dB
+mid-band pair shape 3 wood 2: peak 427.834 Hz, hole 523.676 Hz, depth 39.6194 dB
+Piezo weighted force: worst relative error 3.42453e-07
+Released load force units: max relative-to-impulse error 1.99292e-05
+Piezo thresholds at 44100, Touch 0.58: U1B 0.972458, U1A 1.00165 times shipped weights
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 44100, driven 0.975378, Touch 0.580000: -73.5682 dB, below 0.25 fs -78.3025 dB; passband -75.5934 dB vs bare -80.7032 dB; a bare clip -79.7846 dB (0.375 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 44100, driven 0.981216, Touch 0.580000: -70.186 dB, below 0.25 fs -77.4568 dB; passband -73.26 dB vs bare -72.1298 dB; a bare clip -71.1115 dB (0.625 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 44100, driven 0.987054, Touch 0.580000: -70.0847 dB, below 0.25 fs -77.687 dB; passband -73.2902 dB vs bare -69.0741 dB; a bare clip -67.8718 dB (0.875 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 44100, driven 0.992892, Touch 0.580000: -69.9054 dB, below 0.25 fs -80.0296 dB; passband -73.8123 dB vs bare -67.5091 dB; a bare clip -66.0999 dB (1 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 44100, driven 0.998731, Touch 0.580000: -70.7844 dB, below 0.25 fs -83.4911 dB; passband -75.1646 dB vs bare -66.568 dB; a bare clip -64.8833 dB (1.125 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing at 44100, Touch 0.58, upper-half passband mean: -74.089 dB, a bare clip -67.7171 dB; full band -70.2582 vs bare -66.285 dB
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 44100, driven 1.400000, Touch 0.580000: -67.3429 dB, below 0.25 fs -81.5978 dB; passband -73.0993 dB vs bare -62.9039 dB; a bare clip -60.8759 dB (3.125 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 44100, driven 1.450000, Touch 0.580000: -66.0746 dB, below 0.25 fs -73.639 dB; passband -69.7254 dB vs bare -63.1748 dB; a bare clip -60.354 dB (3.625 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 44100, driven 1.500000, Touch 0.580000: -60.2604 dB, below 0.25 fs -63.5531 dB; passband -61.5946 dB vs bare -58.1747 dB; a bare clip -56.2235 dB (5.25 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 44100, driven 1.550000, Touch 0.580000: -61.341 dB, below 0.25 fs -64.4541 dB; passband -62.7936 dB vs bare -54.726 dB; a bare clip -52.9129 dB (6.625 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 44100, driven 1.600000, Touch 0.580000: -63.4857 dB, below 0.25 fs -69.7049 dB; passband -67.6 dB vs bare -56.6022 dB; a bare clip -54.0482 dB (8.5 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo thresholds at 48000, Touch 0.58: U1B 0.910256, U1A 0.936012 times shipped weights
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 48000, driven 0.912831, Touch 0.580000: -65.4004 dB, below 0.25 fs -67.9822 dB; passband -66.2592 dB vs bare -65.4479 dB; a bare clip -64.6271 dB (0.875 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 48000, driven 0.917982, Touch 0.580000: -70.1744 dB, below 0.25 fs -79.1448 dB; passband -73.437 dB vs bare -64.6702 dB; a bare clip -63.482 dB (1 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 48000, driven 0.923134, Touch 0.580000: -69.8889 dB, below 0.25 fs -79.9051 dB; passband -73.6809 dB vs bare -63.0957 dB; a bare clip -61.644 dB (1.125 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 48000, driven 0.928285, Touch 0.580000: -70.5722 dB, below 0.25 fs -82.8917 dB; passband -75.5046 dB vs bare -61.5347 dB; a bare clip -59.9543 dB (1.125 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 48000, driven 0.933436, Touch 0.580000: -72.3057 dB, below 0.25 fs -83.4323 dB; passband -79.495 dB vs bare -62.2902 dB; a bare clip -60.284 dB (1.25 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing at 48000, Touch 0.58, upper-half passband mean: -76.2269 dB, a bare clip -62.3069 dB; full band -70.9223 vs bare -60.6274 dB
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 48000, driven 1.400000, Touch 0.580000: -71.3494 dB, below 0.25 fs -79.0266 dB; passband -72.9715 dB vs bare -61.1405 dB; a bare clip -59.2609 dB (3.25 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 48000, driven 1.450000, Touch 0.580000: -67.7287 dB, below 0.25 fs -76.1145 dB; passband -70.2933 dB vs bare -60.8955 dB; a bare clip -58.9851 dB (3.875 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 48000, driven 1.500000, Touch 0.580000: -66.7002 dB, below 0.25 fs -77.5459 dB; passband -70.01 dB vs bare -60.454 dB; a bare clip -58.317 dB (5.125 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 48000, driven 1.550000, Touch 0.580000: -64.3319 dB, below 0.25 fs -68.6512 dB; passband -66.1173 dB vs bare -59.214 dB; a bare clip -56.7426 dB (6.875 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 48000, driven 1.600000, Touch 0.580000: -65.7395 dB, below 0.25 fs -74.197 dB; passband -69.8728 dB vs bare -57.9799 dB; a bare clip -55.3213 dB (10.375 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo thresholds at 44100, Touch 1: U1B 0.994604, U1A 1.02445 times shipped weights
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 44100, driven 0.997589, Touch 1.000000: -68.1155 dB, below 0.25 fs -71.139 dB; passband -69.2385 dB vs bare -67.4884 dB; a bare clip -66.6226 dB (0.875 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 44100, driven 1.003558, Touch 1.000000: -65.8356 dB, below 0.25 fs -69.3979 dB; passband -67.2905 dB vs bare -66.673 dB; a bare clip -65.3284 dB (0.875 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 44100, driven 1.009527, Touch 1.000000: -68.8311 dB, below 0.25 fs -79.2013 dB; passband -72.6191 dB vs bare -64.9529 dB; a bare clip -63.2924 dB (1.125 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 44100, driven 1.015496, Touch 1.000000: -68.7831 dB, below 0.25 fs -79.8058 dB; passband -72.9367 dB vs bare -62.9444 dB; a bare clip -61.1866 dB (1.125 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 44100, driven 1.021465, Touch 1.000000: -69.247 dB, below 0.25 fs -80.9426 dB; passband -74.0579 dB vs bare -61.2723 dB; a bare clip -59.4551 dB (1.125 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing at 44100, Touch 1, upper-half passband mean: -73.2046 dB, a bare clip -63.0565 dB; full band -68.9537 vs bare -61.3114 dB
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 44100, driven 1.350000, Touch 1.000000: -71.8015 dB, below 0.25 fs -80.7573 dB; passband -77.1313 dB vs bare -61.5566 dB; a bare clip -60.8865 dB (2.875 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 44100, driven 1.390000, Touch 1.000000: -73.6473 dB, below 0.25 fs -80.3475 dB; passband -77.5112 dB vs bare -60.7774 dB; a bare clip -60.0588 dB (2.875 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 44100, driven 1.430000, Touch 1.000000: -73.7379 dB, below 0.25 fs -82.2947 dB; passband -77.8605 dB vs bare -59.9744 dB; a bare clip -59.2145 dB (2.875 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 44100, driven 1.470000, Touch 1.000000: -72.4074 dB, below 0.25 fs -82.9567 dB; passband -77.2741 dB vs bare -59.6573 dB; a bare clip -58.8246 dB (2.875 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 44100, driven 1.510000, Touch 1.000000: -64.4292 dB, below 0.25 fs -67.4621 dB; passband -65.8125 dB vs bare -58.9093 dB; a bare clip -58.013 dB (4.5 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo thresholds at 48000, Touch 1: U1B 0.970851, U1A 0.998024 times shipped weights
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 48000, driven 0.973569, Touch 1.000000: -76.3343 dB, below 0.25 fs -82.3004 dB; passband -78.9661 dB vs bare -85.5172 dB; a bare clip -83.9353 dB (0.5 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 48000, driven 0.979003, Touch 1.000000: -73.1404 dB, below 0.25 fs -80.2074 dB; passband -76.1849 dB vs bare -74.5615 dB; a bare clip -73.1712 dB (0.75 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 48000, driven 0.984438, Touch 1.000000: -70.2497 dB, below 0.25 fs -75.9489 dB; passband -72.7552 dB vs bare -70.6925 dB; a bare clip -69.1439 dB (0.875 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 48000, driven 0.989872, Touch 1.000000: -71.2078 dB, below 0.25 fs -77.2745 dB; passband -73.8995 dB vs bare -68.8355 dB; a bare clip -67.0395 dB (1 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing, Pick at velocity 127 at the bridge, at 48000, driven 0.995307, Touch 1.000000: -71.8823 dB, below 0.25 fs -79.8681 dB; passband -75.2608 dB vs bare -67.2508 dB; a bare clip -65.2388 dB (1.125 host-sample equivalents past the swing, 0 U1A-limited samples, knees hidden 1)
+Piezo isolated clip aliasing at 48000, Touch 1, upper-half passband mean: -73.9718 dB, a bare clip -68.9263 dB; full band -71.1133 vs bare -67.1407 dB
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 48000, driven 1.350000, Touch 1.000000: -74.678 dB, below 0.25 fs -77.5005 dB; passband -75.5301 dB vs bare -56.7895 dB; a bare clip -54.8322 dB (3.125 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 48000, driven 1.390000, Touch 1.000000: -74.3229 dB, below 0.25 fs -76.5374 dB; passband -75.0096 dB vs bare -57.9609 dB; a bare clip -55.6144 dB (3.25 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 48000, driven 1.430000, Touch 1.000000: -73.4723 dB, below 0.25 fs -76.0206 dB; passband -74.768 dB vs bare -58.9864 dB; a bare clip -56.2713 dB (3.125 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 48000, driven 1.470000, Touch 1.000000: -72.7665 dB, below 0.25 fs -76.1671 dB; passband -74.9201 dB vs bare -59.798 dB; a bare clip -56.8333 dB (3.25 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo combined-circuit/free-clip error, Pick at velocity 127 at the bridge, at 48000, driven 1.510000, Touch 1.000000: -69.3739 dB, below 0.25 fs -75.2835 dB; passband -72.6837 dB vs bare -59.7227 dB; a bare clip -56.7897 dB (4.75 host-sample equivalents past the swing, 3 U1A-limited samples, knees hidden 1)
+Piezo bridge extreme, velocity 127, Touch 0 at 44100: linear U1B headroom -1.35821 dB; total nonlinear deviation -35.2294 dB, U1A-limited samples 2
+Piezo bridge extreme, velocity 127, Touch 0.58 at 44100: linear U1B headroom -0.24258 dB; total nonlinear deviation -56.2724 dB, U1A-limited samples 0
+Piezo bridge extreme, velocity 127, Touch 1 at 44100: linear U1B headroom -0.0469928 dB; total nonlinear deviation -66.4234 dB, U1A-limited samples 0
+Piezo bridge extreme, velocity 127, Touch 0 at 48000: linear U1B headroom -1.43145 dB; total nonlinear deviation -33.3321 dB, U1A-limited samples 2
+Piezo bridge extreme, velocity 127, Touch 0.58 at 48000: linear U1B headroom -0.816732 dB; total nonlinear deviation -42.4681 dB, U1A-limited samples 2
+Piezo bridge extreme, velocity 127, Touch 1 at 48000: linear U1B headroom -0.256945 dB; total nonlinear deviation -55.4905 dB, U1A-limited samples 1
+Piezo chain silent 3.97175 s after its hardest moment at 44100 Hz
+Piezo chain silent 3.97152 s after its hardest moment at 48000 Hz
+Piezo chain silent 3.97579 s after its hardest moment at 96000 Hz
+Piezo chain silent 3.9762 s after its hardest moment at 192000 Hz
+Piezo exact silence 12.1397 s after a chord at 44100 Hz
+Piezo exact silence 12.1387 s after a chord at 48000 Hz
+Piezo capture switch: largest rise 1x its crossfade's (1.15838x the unswitched renders'), largest departure from the crossfade 3.72529e-09
+Piezo Finger strum, velocity 127: open-circuit peak 0.703441 V, jack 0.555505 V, headroom 13.0561 dB
+Piezo Pick strum, velocity 127: open-circuit peak 1.76639 V, jack 1.39376 V, headroom 4.91644 dB
+Piezo player's Pick strums, velocity 127: open-circuit peak 2.87783 V, headroom 0.163616 dB
+Piezo Pick at velocity 127, Pluck Position 0: open-circuit peak 3.1732 V, headroom -0.239591 dB
+Piezo: hottest reference strum 1.89773 V open-circuit; least headroom 0.163616 dB
+Piezo chain 44.1 vs 96 kHz: worst 0.44355 dB, 50 Hz - 15 kHz
+Output automation whole-capture relative peak error: 1.76839e-07
+Room at 44100 Hz: RT60 0.379932 s, the guitar 13.8866 dB over its room at 0.5
+Room at 48000 Hz: RT60 0.380375 s, the guitar 13.9071 dB over its room at 0.5
+Room at 96000 Hz: RT60 0.38275 s, the guitar 13.9188 dB over its room at 0.5
+Exact silence after a released chord: 14.2967 s dry, 16.7603 s with the room at 0.6, peaking at -199.671 dBFS after the dry
+Capture voicing: within 7.34096 dB of its level, steepest 1.05916 dB per twelfth octave, 0.650185 dB above 4 kHz
+All Acustra capture tests passed

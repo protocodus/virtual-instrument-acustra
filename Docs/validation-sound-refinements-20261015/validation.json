@@ -1,0 +1,106 @@
+{
+  "baseline_revision": "90d2d8c502fc65efcf864be54b3738d6c5e79aa1",
+  "build": "Release, GCC 14.2, JUCE-free, tools and all Python tests required",
+  "all_targets_built": true,
+  "cpp17_dsp_and_extended_layout_built": true,
+  "registered_checks_passed_on_final_dsp": 104,
+  "execution": "102 passing suites from the broad run, plus final Capture and Engine reruns after test-only expectation changes. No DSP changes after freeze.",
+  "fixture_changes": {
+    "Capture": "Retain original 11-14 dB calibration with room refinement off; separately require 0.10-0.25 dB intended reduction and mono/rate invariance.",
+    "Engine": "Retain original 1e-5 shared-burst tolerance with refinement off; use same tolerance for new half-amplitude law and exact pitched-release invariants."
+  },
+  "scope_limits": [
+    "No JUCE plug-in or DAW playback validation: native graphical/audio development prerequisites are unavailable in this non-root environment.",
+    "No Reason Rack SDK package built.",
+    "No listener preference is claimed."
+  ],
+  "logs": {
+    "Docs/validation-sound-refinements-20261015/regression-initial.log": "3387454cdd889c8ab7b7a599ad7b8f322cdea8ea9399d518e33e47118498ea6b",
+    "Docs/validation-sound-refinements-20261015/attack/engine-fixture-validation.log": "65f79a0642a9fb61f76e9cdcb456889b3a575061fc44f40d06a9b51eba02a74c",
+    "Docs/validation-sound-refinements-20261015/room/capture-current-room.log": "dcfaecf120eec4255d4d461575f0d06880c42da4175d38725391fe64ff447b32",
+    "Docs/validation-sound-refinements-20261015/room/capture-calibration-manifest.json": "45bd8aaada7985b7f73207491109fd28bb73de0f809e171dc939f447525274d4",
+    "/workspace/acustra-realism-20261015/candidate-build-final.log": "47a214eda2bbf5eb24e6b34dcdc0939552a80f36ed491b972a12dfa46ce406d7"
+  },
+  "listening_validation": {
+    "pack_id": "9384f1ba8f6a89ee9a7c5f32213f8eaebf5e672e1023f54ed707efb42b60b916",
+    "pairs": 10,
+    "balanced_candidate_A": 5,
+    "source_and_audio_hashes_verified": true,
+    "all_off_baseline_exact_pairs": 8,
+    "pcm_files_verified": 60,
+    "matched_rms_error_max_db": 1.0911135456914762e-07,
+    "isolated_room_mono_sum_max_difference": 2.9802322387695312e-08,
+    "results": [
+      {
+        "scene": "01-soft-register",
+        "identical": false,
+        "matched_rms_error_db": 1.0911135456914762e-07,
+        "native_level_change_db": -0.01619686314161411,
+        "sample_difference_rms": 0.0002641753221273738
+      },
+      {
+        "scene": "02-hard-register",
+        "identical": false,
+        "matched_rms_error_db": 1.903154259666028e-08,
+        "native_level_change_db": -0.049810823281864675,
+        "sample_difference_rms": 0.0033610175578392097
+      },
+      {
+        "scene": "03-dry-repetitions",
+        "identical": true,
+        "matched_rms_error_db": 0.0,
+        "native_level_change_db": 0.0,
+        "sample_difference_rms": 0.0
+      },
+      {
+        "scene": "04-finger-arpeggio",
+        "identical": false,
+        "matched_rms_error_db": 3.174781444847373e-08,
+        "native_level_change_db": -0.01818652133773134,
+        "sample_difference_rms": 0.0023265989431149542
+      },
+      {
+        "scene": "05-finger-chords",
+        "identical": false,
+        "matched_rms_error_db": 1.8848744661271e-11,
+        "native_level_change_db": -0.006224951686527748,
+        "sample_difference_rms": 0.0027866407706060824
+      },
+      {
+        "scene": "06-picked-strums",
+        "identical": false,
+        "matched_rms_error_db": 5.708837888357183e-10,
+        "native_level_change_db": -0.041928600338191686,
+        "sample_difference_rms": 0.00953652931715254
+      },
+      {
+        "scene": "07-dry-mono",
+        "identical": true,
+        "matched_rms_error_db": 0.0,
+        "native_level_change_db": 0.0,
+        "sample_difference_rms": 0.0
+      },
+      {
+        "scene": "08-piezo-control",
+        "identical": false,
+        "matched_rms_error_db": 6.365865047653713e-09,
+        "native_level_change_db": -0.10630286829593369,
+        "sample_difference_rms": 0.00427718967764998
+      },
+      {
+        "scene": "09-isolated-pick",
+        "identical": false,
+        "matched_rms_error_db": 9.817900863592418e-09,
+        "native_level_change_db": -0.0475362489189686,
+        "sample_difference_rms": 0.002397455663137883
+      },
+      {
+        "scene": "10-isolated-room",
+        "identical": false,
+        "matched_rms_error_db": 1.4511884390407396e-09,
+        "native_level_change_db": -0.037522124135495244,
+        "sample_difference_rms": 0.004776280218374311
+      }
+    ]
+  }
+}
