@@ -56,3 +56,25 @@ other desktop activity and core residency were uncontrolled.
 cumulative candidates. The baseline-to-cumulative03 quick canonical comparison
 also matches 37,123,200 sample values and 2,532,428 public-state words, but it is
 not a substitute for the independent candidate01 Room and SDK checks above.
+
+## 2. Exact scalar builtins in new room/winding paths
+
+Use the existing `exact::floor` and `exact::abs` helpers for the newly introduced
+winding phase and room-side state-floor calculations. Under the SDK's freestanding
+build these avoid three software `floor` calls per active winding sample and two
+`fabs` calls per room-side update. The operands, precision, formulas and thresholds
+are unchanged. The helpers retain their existing standard-library fallback.
+
+The first stage measured **0.9719% further aggregate CPU reduction** relative to
+ring spans; the two changes together measured **1.9050%** relative to baseline.
+These gains are not additive and remain machine/workload-specific. This cumulative
+module has 12 CPU / 145 wall deadline exceedances across its 202,500 callbacks.
+Every one of its ten SDK-native Main/write-flag comparisons matches the original
+baseline exactly; actual activation witnesses confirm hammer/pull and wound motion.
+Room states/audio also match in the cumulative03 oracle (including `coherentSide`).
+Finite-value/sample equivalence is claimed; floating-point exception flags are
+outside the instrument's contract and were not compared.
+
+The proposed stationary-contact early return (`candidate-03`) is **not retained**:
+its aggregate CPU was 0.2277% slower than this cumulative module in the preserved
+stage, despite exact audio/state. No improvement is claimed for that shortcut.

@@ -11073,7 +11073,7 @@ namespace
 // No audio-rate trig or static lazy-initialisation guard is needed.
 float woundContactSine(double cycles) noexcept
 {
-    double x = cycles - std::floor(cycles + 0.5);
+    double x = cycles - exact::floor(cycles + 0.5);
     if (x > 0.25) x = 0.5 - x;
     if (x < -0.25) x = -0.5 - x;
     x *= 6.2831853071795864769;
@@ -11244,7 +11244,7 @@ void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
             motion.ridgeLevel = motion.ridgePole * motion.ridgeLevel
                 + (1.0f - motion.ridgePole) * (moving ? motion.forceRms : 0.0f);
             motion.ridgePhase += motion.ridgeIncrement;
-            motion.ridgePhase -= std::floor(motion.ridgePhase);
+            motion.ridgePhase -= exact::floor(motion.ridgePhase);
             const float sine = woundContactSine(motion.ridgePhase);
             const float cosine = woundContactSine(motion.ridgePhase + 0.25);
             float last = 0.0f, current = sine;
@@ -13498,8 +13498,8 @@ float AcustraEngine::RoomAmbience::coherentSide(float side) noexcept
     const double result = c[0] * side + sideHighpassState[0];
     const double first = c[1] * side - c[3] * result + sideHighpassState[1];
     const double second = c[2] * side - c[4] * result;
-    sideHighpassState[0] = std::abs(first) < 1.0e-20 ? 0.0 : first;
-    sideHighpassState[1] = std::abs(second) < 1.0e-20 ? 0.0 : second;
+    sideHighpassState[0] = exact::abs(first) < 1.0e-20 ? 0.0 : first;
+    sideHighpassState[1] = exact::abs(second) < 1.0e-20 ? 0.0 : second;
     // The room's source can become silent before this output filter does.
     // Keep advancing its finite tail until the same room floor clears it.
     if (sideHighpassState[0] != 0.0 || sideHighpassState[1] != 0.0)
