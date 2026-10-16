@@ -54,6 +54,29 @@ struct PerformanceRealism
     // Keep the room's low end near the stereo centre without changing its
     // mono return, timing or dry microphones. An authored mix refinement.
     bool roomBassCoherence { true };
+    // A fretting finger supplies work even when the held string is quiet.
+    // The finite work/velocity map is authored, not a measured hand force.
+    bool hammerWork { true };
+    // A descending connected gesture releases a lateral pluck at the old
+    // fret, with its own finite work rather than a downward hammer impact.
+    bool pullOffPluck { true };
+    // An authored bounded separation for two simultaneous Finger notes,
+    // informed by the existing GuitarSet pair analysis (intent is ambiguous).
+    bool fingerPairs { true };
+    // Winding crossings follow traveled distance; the wrap pitches and
+    // branch balance are synthesis priors, not measured string dimensions.
+    bool woundRidges { true };
+    // Experimental axial-force observer. Its reduced saddle projection is
+    // uncalibrated and too faint to establish an audible improvement. Retain
+    // it for explicit offline comparisons, not the production default.
+    bool longitudinalSqueak { false };
+    // Receiver-specific early-reflection distances and microphone patterns.
+    bool directionalRoom { true };
+    // Correct the high-rate room conversion's unintended spectral loss.
+    bool roomRateConversion { true };
+    // Keep crossed-but-unused strings under the fretting hand while the
+    // associated chord is held, rather than releasing them on a fixed timer.
+    bool heldShapeMute { true };
 };
 
 } // namespace acustra

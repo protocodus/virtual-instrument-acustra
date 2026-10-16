@@ -295,6 +295,9 @@ public:
     // moves the earliest string onto the note-on. Each call draws that
     // finger's own timing, so call once per string.
     [[nodiscard]] int fingerChordOffsetSamples(int rankFromTop, int count) noexcept;
+    // Signed separation of a simultaneous automatic Finger pair. Independent
+    // of chord/stroke draws; caller anchors the earlier finger at note-on.
+    [[nodiscard]] int fingerPairSeparationSamples() noexcept;
     // The speed draw of the stroke the last beginStrum() call began: what
     // noteOn() and muteStroke() scale a strum member's place by.
     [[nodiscard]] float strumSpeedScale() const noexcept { return strumSpeedScale_; }
@@ -309,8 +312,11 @@ public:
     // the string's place in the stroke, before the stroke's speed draw, as
     // for the chord's own notes; call after their noteOns. A string a key or
     // the pedal holds, or whose own pluck is still on its way, is left alone.
+    // heldShapeOwners identifies only this complete swept chord's physical
+    // strings, after noteOn has established their owners. Zero keeps the
+    // standalone dead stroke transient; the pedal never owns a hand shape.
     void muteStroke(int string, int delaySamples, float velocity,
-                    int midiChannel = 1) noexcept;
+                    int midiChannel = 1, unsigned heldShapeOwners = 0u) noexcept;
     // Whether noteOn() would sound this note at all in the current tuning
     // and channel mode, rather than drop it (outside the tuning's fretted
     // range, or off a string-per-channel string's frets).
@@ -1211,8 +1217,45 @@ private:
             float low { 0.0f }, high { 0.0f };
             float leak { 0.0f };
             int remaining { 0 };
+            // Optional wound-contact colour. All state belongs to this
+            // contact; already emitted packets remain in the arrival queue.
+            double ridgePhase { 0.0 };
+            float ridgeIncrement { 0.0f }, ridgeLevel { 0.0f };
+            float ridgePole { 0.0f }, ridgeForce { 0.0f };
+            float forceRms { 0.0f }, axialForce { 0.0f };
+            bool colourPrepared { false };
+            float axialRadius { 0.0f }, axialDrive { 0.0f }, axialSpeed { 0.0f };
+            std::array<float, 3> axialFrequency {}, axialCosine {}, axialSine {};
+            std::array<float, 3> axialQ {}, axialP {}, axialWeight {}, axialAudible {};
         };
         FretMotion fretMotion {};
+        // Axial force packets have their own short physical flight time;
+        // starting a new finger contact cannot recall a previous packet.
+        struct AxialContactArrivals
+        {
+            static constexpr int capacity = 512;
+            std::array<float, capacity> force {};
+            int readIndex { 0 }, remaining { 0 };
+            void clear() noexcept { force.fill(0.0f); readIndex = remaining = 0; }
+            void add(int offset, float value) noexcept
+            {
+                assert(offset >= 0 && offset < capacity);
+                if (value == 0.0f) return;
+                force[static_cast<std::size_t>((readIndex + offset) % capacity)] += value;
+                remaining = std::max(remaining, offset + 1);
+            }
+            float process() noexcept
+            {
+                if (remaining <= 0) return 0.0f;
+                auto& slot = force[static_cast<std::size_t>(readIndex)];
+                const float result = slot;
+                slot = 0.0f;
+                readIndex = (readIndex + 1) % capacity;
+                --remaining;
+                return result;
+            }
+        };
+        AxialContactArrivals axialContactArrivals {};
         std::uint32_t fretMotionNoiseState { 1 };
         std::array<StringLoop, 2> loops {};
         VoiceConfigurationKey configurationKey {};
@@ -1231,6 +1274,8 @@ private:
         // fret-friction source belongs to this retained wave on a re-pluck.
         ContactTravel tailLegatoContactTravel {};
         float tailLegatoContactAmplitude { 0.0f };
+        float tailLegatoNormalGain { 1.0f };
+        float tailLegatoParallelGain { 0.0f };
         int tailLegatoContactAge { 0 };
         int tailLegatoContactSamples { 0 };
         std::array<float, maximumLegatoContactSamples + 1> tailLegatoContactPulse {};
@@ -1429,6 +1474,9 @@ private:
         // its pluck is damped from the moment it is released. A note on the
         // string or its return to the open string clears it.
         bool mutedStroke { false };
+        // Original physical-key lifetimes of the complete swept shape. Bits
+        // are removed at ownership changes, never rejoined by later notes.
+        unsigned heldShapeOwners { 0u };
         // Samples until a released string is handed back to the allocator.
         int returnSamples { 0 };
         // Samples until a scheduled pluck is released; zero when none waits.
@@ -1479,9 +1527,13 @@ private:
         // An explicitly requested connected finger articulation: a smooth
         // finite contact pulse and filtered fret friction, transported from
         // the finger's point on the string. Their combined slope energy is
-        // bounded by the sounding wave. Storage covers 3 ms at the maximum rate;
+        // bounded by residual wave energy plus explicitly authored finger work.
+        // Hammer is normal; a pull-off additionally releases a sideways wave.
+        // Storage covers 3 ms at the maximum rate;
         // event-time preparation avoids random draws/filter work per sample.
         float legatoContactAmplitude { 0.0f };
+        float legatoNormalGain { 1.0f };
+        float legatoParallelGain { 0.0f };
         int legatoContactAge { 0 };
         int legatoContactSamples { 0 };
         std::array<float, maximumLegatoContactSamples + 1> legatoContactPulse {};
@@ -1739,6 +1791,8 @@ private:
     void advanceReleaseFall(Voice& voice) noexcept;
     void clearReleaseFall(Voice& voice) noexcept;
     void beginMutedStroke(Voice& voice) noexcept;
+    void releaseHeldShapeOwner(int string) noexcept;
+    void clearHeldShapeMute(int midiChannel) noexcept;
     [[nodiscard]] float strumEdgeGain(int string) const noexcept;
     void beginGestureDamping(Voice& voice) noexcept;
     void updateReleaseJoinWindow(Voice& voice) noexcept;
@@ -2093,6 +2147,28 @@ private:
         std::array<int, tapCount> tapDelays {};
         std::array<float, tapCount> tapLeft {};
         std::array<float, tapCount> tapRight {};
+        // One coherent source, observed by a 20 cm spaced cardioid pair.
+        // Each image has its own receiver delay, with cubic interpolation.
+        struct Arrival
+        {
+            int firstDelay { 1 };
+            std::array<float, 4> weights {};
+        };
+        std::array<Arrival, tapCount> arrivalsLeft {}, arrivalsRight {};
+        bool directional { false };
+        bool rateConversion { false };
+        // Two 64-internal-sample Blackman-windowed sinc filters. The first
+        // rejects aliases before decimation; the second rejects images.
+        // Their combined group delay is removed from every room arrival.
+        static constexpr int converterOrder = 64;
+        static constexpr int maximumDecimation = 12; // through 768 kHz
+        static constexpr int converterCapacity = converterOrder * maximumDecimation + 1;
+        std::array<float, converterCapacity> converterCoefficients {}, converterInput {};
+        std::array<std::array<float, converterOrder + 1>, maximumDecimation>
+            converterPhases {};
+        std::array<float, converterOrder + 1> converterLeft {}, converterRight {};
+        int converterLength { 1 };
+        int converterInputHead { 0 }, converterOutputHead { 0 };
         int lateDelay { 1 };
         // The late field's input gain, set at prepare to its share.
         float lateInput { 1.0f };
@@ -2120,7 +2196,8 @@ private:
         int quietSamples { 0 };
         bool active { false };
 
-        void prepare(double hostRate) noexcept;
+        void prepare(double hostRate, bool directionalReflections = false,
+                     bool correctedRateConversion = false) noexcept;
         void reset() noexcept;
         // One host sample of the mid signal in (already scaled by the send),
         // the room's left and right out.
@@ -2264,6 +2341,7 @@ private:
     // The fingers' own timing in a plucked chord (fingerChordOffsetSamples),
     // apart from the strums' draws so a plucked chord moves no strum.
     std::uint32_t fingerChordRandomState_ { 0x2545f491u };
+    std::uint32_t fingerPairRandomState_ { 0x9a735c21u };
     // Each swept string's own moment (strumScatterSamples), apart from the
     // speed draws so the scatter moves no stroke's speed.
     std::uint32_t strumScatterRandomState_ { 0x68e31da4u };

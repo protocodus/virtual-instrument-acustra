@@ -403,8 +403,8 @@ void Performer::flushNoteGroup() noexcept
     // Three or more notes on one sample are a chord nobody can play at once:
     // a strum reaches its strings one after another, low to high on a
     // downstroke and back on the return, and so does a pick's stroke across
-    // two. Fingers are the exception for three or four strings, which they
-    // pluck together (below). A strum within a dotted eighth of
+    // two. Fingers can pluck two, three or four strings independently (below).
+    // A strum within a dotted eighth of
     // the last (strumAlternationBeats) is that return and alternates; after
     // a longer gap the hand starts over with a downstroke, unless a
     // keyswitch has latched a direction (StrokeMode).
@@ -458,8 +458,13 @@ void Performer::flushNoteGroup() noexcept
     // 1,526 picked two-string groups on adjacent strings
     // (Tools/MeasureTwoStringStrokes.py) 5% sound within 2 ms of each other,
     // the strings a median 13.0 ms apart and 61% low string first. Fingers
-    // pluck theirs as before, and so does the thumb.
-    const bool strum = soundingNotes >= 3
+    // have a separate bounded pair timing rule; the thumb keeps its timing.
+    // This group is simultaneous MIDI or a chord explicitly owned by Gather
+    // Chords. With gathering off, distinct event timestamps never join it.
+    const bool fingerPair = soundingNotes == 2 && fingerTechnique_
+        && strokeMode_ == StrokeMode::Automatic
+        && engine_.performanceRealism().fingerPairs;
+    bool strum = soundingNotes >= 3 || fingerPair
         || (soundingNotes == 2 && pickTechnique_
             && engine_.performanceRealism().twoStringStrokes);
     // The rest is measured between the strokes' own samples, so no block
@@ -483,14 +488,14 @@ void Performer::flushNoteGroup() noexcept
     const bool continuedStroke = pickHand && lastStrokeSample_ >= 0
         && interval <= static_cast<std::int64_t>(gatherWindow_);
     // Under Finger, with no direction latched, the thumb and fingers pluck a
-    // chord of three or four strings together: nothing sweeps across it, and
-    // it is not one of the strumming hand's strokes, so it neither takes nor
-    // moves their alternation.
+    // pair or chord of three or four strings independently: nothing sweeps
+    // across it. It neither takes nor moves the strumming hand's alternation.
     bool pinch = false;
     // The strings inside a swept stroke that the chord leaves out: the pick
     // crosses them under the fretting hand that mutes them (muteStroke).
     std::array<int, AcustraEngine::stringCount> mutedDelay {};
     mutedDelay.fill(-1);
+    unsigned mutedOwners = 0u;
     float strokeVelocity = 0.0f;
     if (strum)
     {
@@ -528,20 +533,25 @@ void Performer::flushNoteGroup() noexcept
             meanVelocity /= static_cast<float>(sounding);
         const auto chordStrings = static_cast<int>(
             std::count(onString.begin(), onString.end(), true));
-        pinch = fingerTechnique_ && engine_.performanceRealism().fingerChords
-            && strokeMode_ == StrokeMode::Automatic && completePlan
-            && chordStrings >= 3 && chordStrings <= 4;
+        pinch = fingerTechnique_ && strokeMode_ == StrokeMode::Automatic && completePlan
+            && ((engine_.performanceRealism().fingerChords
+                 && chordStrings >= 3 && chordStrings <= 4)
+                || (fingerPair && chordStrings == 2));
         if (pinch)
         {
-            // One draw per string, from the highest down, so duplicated keys
-            // share their string's moment; the earliest finger sounds now.
+            // A pair draws one signed separation; a larger chord draws once
+            // per string from the highest down. Duplicated keys share their
+            // string's moment; the earliest finger sounds now.
             std::array<int, AcustraEngine::stringCount> lag {};
             int earliest = std::numeric_limits<int>::max();
+            const int pairSeparation = fingerPair && chordStrings == 2
+                ? engine_.fingerPairSeparationSamples() : 0;
             for (int string = AcustraEngine::stringCount - 1, rank = 0; string >= 0; --string)
                 if (onString[static_cast<std::size_t>(string)])
                 {
-                    lag[static_cast<std::size_t>(string)]
-                        = engine_.fingerChordOffsetSamples(rank++, chordStrings);
+                    lag[static_cast<std::size_t>(string)] = fingerPair && chordStrings == 2
+                        ? (rank++ == 0 ? 0 : pairSeparation)
+                        : engine_.fingerChordOffsetSamples(rank++, chordStrings);
                     earliest = std::min(earliest, lag[static_cast<std::size_t>(string)]);
                 }
             for (int index = 0; index < pendingNoteOnCount_; ++index)
@@ -552,7 +562,7 @@ void Performer::flushNoteGroup() noexcept
                     : 0;
             }
         }
-        else
+        else if (!fingerPair)
         {
             if (continuedStroke)
                 nextUpstroke_ = lastStrokeUpstroke_;
@@ -590,10 +600,14 @@ void Performer::flushNoteGroup() noexcept
                 strokeSpan = std::max(strokeSpan, note.pluckDelay);
             }
             if (completePlan && engine_.performanceRealism().mutedStrings)
-                for (int string = firstString + 1; string < lastString; ++string)
-                    if (!onString[static_cast<std::size_t>(string)])
+            {
+                for (int string = firstString; string <= lastString; ++string)
+                    if (onString[static_cast<std::size_t>(string)])
+                        mutedOwners |= 1u << string;
+                    else
                         mutedDelay[static_cast<std::size_t>(string)] = curvedStrumDelay(
                             string, firstString, lastString, nextUpstroke_, plannedSpan);
+            }
             strokeVelocity = meanVelocity;
             const int repeatInterval = restarted || continuedStroke
                 ? 0 : static_cast<int>(interval);
@@ -652,6 +666,10 @@ void Performer::flushNoteGroup() noexcept
             lastStrokeUpstroke_ = nextUpstroke_;
             nextUpstroke_ = ! nextUpstroke_;
         }
+        // A controller-owned or otherwise unplanned pair keeps its original
+        // simultaneous scheduling; only a complete ordinary hand gets timing.
+        if (fingerPair && !pinch)
+            strum = false;
     }
     // Under Pick, a group that is not a strum is one plectrum stroke: down
     // after a rest, the hand's return within the alternation window, and the
@@ -675,7 +693,7 @@ void Performer::flushNoteGroup() noexcept
     for (int string = 0; string < AcustraEngine::stringCount; ++string)
         if (mutedDelay[static_cast<std::size_t>(string)] >= 0)
             engine_.muteStroke(string, mutedDelay[static_cast<std::size_t>(string)],
-                               strokeVelocity, pendingNoteOns_[0].channel);
+                               strokeVelocity, pendingNoteOns_[0].channel, mutedOwners);
     // A connected transition is the fretting hand's, not a stroke.
     if (pickedStroke && plucked)
     {

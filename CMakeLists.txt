@@ -363,7 +363,7 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.StrumDirection AcustraStrumDirectionTests)
     set_tests_properties(Acustra.StrumDirection PROPERTIES TIMEOUT 120)
 
-    foreach(suite StrokeDepth AlternatePicking ReleaseFall FingerChords MutedStrings StrumScatter TwoStringStrokes StrokeSpan StrokeEdges)
+    foreach(suite StrokeDepth AlternatePicking ReleaseFall FingerChords MutedStrings StrumScatter TwoStringStrokes StrokeSpan StrokeEdges PerformerContact WoundSlide RoomCapture HeldShapeMute)
         add_executable(Acustra${suite}Tests Tests/${suite}Tests.cpp)
         target_link_libraries(Acustra${suite}Tests PRIVATE AcustraDSP)
         target_compile_features(Acustra${suite}Tests PRIVATE cxx_std_20)
@@ -986,6 +986,11 @@ if(BUILD_TESTING)
     set_target_properties(AcustraLegatoRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     add_test(NAME Acustra.LegatoRealism COMMAND AcustraLegatoRealismTests)
     set_tests_properties(Acustra.LegatoRealism PROPERTIES TIMEOUT 60)
+endif()
+
+if(ACUSTRA_BUILD_TOOLS)
+    add_executable(AcustraRenderRealismQuickWins Tools/RenderRealismQuickWins.cpp)
+    target_link_libraries(AcustraRenderRealismQuickWins PRIVATE AcustraDSP)
 endif()
 
 # Recording-guided realism regression 10.

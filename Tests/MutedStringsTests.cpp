@@ -168,6 +168,11 @@ void testTheDeadStrokeDiesUnderTheFinger()
     for (const double rate : { 48000.0, 96000.0 })
     {
         auto performer = player(true, acustra::PickingTechnique::Pick, rate);
+        // This audits the original transient dead-stroke retirement. Held
+        // shape ownership and its longer contact are tested separately.
+        auto realism = performer->engine().performanceRealism();
+        realism.heldShapeMute = false;
+        performer->engine().setPerformanceRealism(realism);
         const auto at = static_cast<std::int64_t>(0.05 * rate);
         const double t60 = 43.0 / 110.0;
         float peak = 0.0f;

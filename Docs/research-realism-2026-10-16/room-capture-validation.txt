@@ -1,0 +1,3 @@
+Room geometry: floor excess 4.6475 ms; left wall ITD 0.581684 ms; right wall ITD 0.582205 ms
+Full wet transfer: legacy 96/48 at 12 kHz -2.69012 dB; corrected max 0.000392354 dB, phase 2.09551e-07 rad
+Full wet alias -83.7681 dB; image -116.992 dB; anti-alias worst stopband -75.2882 dB

@@ -127,6 +127,13 @@ void testSweepChangesAudio()
     constexpr double rate = 48000.0;
     constexpr int frames = 7200;
     constexpr float velocity = 32.0f / 127.0f;
+    // Isolate the wrist curve: the Performer otherwise adds independent
+    // scatter and edge gains which this manual linear scheduler omits.
+    acustra::PerformanceRealism timingOnly;
+    timingOnly.strumScatter = false;
+    timingOnly.strokeEdges = false;
+    performer->engine().setPerformanceRealism(timingOnly);
+    linear->setPerformanceRealism(timingOnly);
     performer->prepare(rate, frames);
     linear->prepare(rate, frames);
     std::array<std::vector<float>, 4> audio;
@@ -251,17 +258,30 @@ int main()
         expect(Access::strokeSign(performer->engine()) > 0.0f,
                "reset resumed a stale upstroke instead of starting a downstroke");
 
-        // Duplicate owners remain two physical pitches, with no automatic
-        // stroke or delayed dyad attack. MIDI ownership remains balanced.
+        // Duplicate owners remain two physical pitches. Their Finger timing
+        // must equal the ordinary two-note pinch, not a three-string sweep.
+        // MIDI ownership remains balanced independently of that timing.
+        auto referenceDyad = std::make_unique<Performer>();
+        referenceDyad->prepare(rate, 64);
+        referenceDyad->beginBlock(left.data(), right.data(), 1);
+        referenceDyad->noteOn(0, 1, 59, 100);
+        referenceDyad->noteOn(0, 1, 64, 100);
+        referenceDyad->endBlock();
         auto dyad = std::make_unique<Performer>();
         dyad->prepare(rate, 64);
         dyad->beginBlock(left.data(), right.data(), 1);
         for (const int note : { 59, 64, 59 })
             dyad->noteOn(0, 1, note, 100);
         dyad->endBlock();
-        expect(Access::delay(dyad->engine(), dyad->engine().heldString(59)) == 0
-                   && Access::delay(dyad->engine(), dyad->engine().heldString(64)) == 0,
-               "duplicate owners turned a dyad into a physical three-string strum");
+        const int low = dyad->engine().heldString(59), high = dyad->engine().heldString(64);
+        const int referenceLow = referenceDyad->engine().heldString(59);
+        const int referenceHigh = referenceDyad->engine().heldString(64);
+        expect(low >= 0 && high >= 0 && referenceLow >= 0 && referenceHigh >= 0,
+               "duplicate dyad lost a physical string");
+        if (low >= 0 && high >= 0 && referenceLow >= 0 && referenceHigh >= 0)
+            expect(Access::delay(dyad->engine(), low) == Access::delay(referenceDyad->engine(), referenceLow)
+                       && Access::delay(dyad->engine(), high) == Access::delay(referenceDyad->engine(), referenceHigh),
+                   "duplicate owners turned a dyad into a physical three-string strum");
         dyad->beginBlock(left.data(), right.data(), 1);
         dyad->noteOff(0, 1, 59);
         dyad->endBlock();

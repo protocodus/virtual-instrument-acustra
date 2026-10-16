@@ -2886,6 +2886,7 @@ void AcustraEngine::restartRandomDraws() noexcept
 {
     strumRandomState_ = 0x9e3779b9u;
     fingerChordRandomState_ = 0x2545f491u;
+    fingerPairRandomState_ = 0x9a735c21u;
     strumScatterRandomState_ = 0x68e31da4u;
     strumSpeedScale_ = 1.0f;
     strumParallelSign_ = 1.0f;
@@ -4036,7 +4037,8 @@ void AcustraEngine::prepare(double sampleRate, int)
         / (0.040f * static_cast<float>(sampleRate_));
     bridgeLoadFadeStep_ = 1.0f
         / (0.020f * static_cast<float>(sampleRate_));
-    room_.prepare(sampleRate_);
+    room_.prepare(sampleRate_, performanceRealism_.directionalRoom,
+                  performanceRealism_.roomRateConversion);
     prepareBodyConfigurations();
     prepared_ = true;
     restartRandomDraws();
@@ -4132,6 +4134,7 @@ void AcustraEngine::resetSoundState() noexcept
     room_.reset();
     for (auto& voice : voices_)
     {
+        voice.axialContactArrivals.clear();
         voice.releaseStepAge = -1;
         voice.releaseStepRise = voice.releaseStepForce
             = voice.releaseStepLevel = 0.0f;
@@ -4325,7 +4328,11 @@ void AcustraEngine::setPerformanceRealism(
     ++voiceConfigurationGeneration_;
     restartRandomDraws();
     if (prepared_)
+    {
+        room_.prepare(sampleRate_, performanceRealism_.directionalRoom,
+                      performanceRealism_.roomRateConversion);
         reset();
+    }
 }
 
 void AcustraEngine::applyDiscreteParameters(bool force) noexcept
@@ -7580,6 +7587,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
 void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
                                        bool clearDelay) noexcept
 {
+    releaseHeldShapeOwner(stringIndex);
+    voice.heldShapeOwners = 0u;
     if (voice.keyDown || voice.pedalHeld)
         releaseFinger(stringIndex);
     voice.played = false;
@@ -7637,7 +7646,10 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
     voice.repluckPending = false;
     voice.repluckContactPending = false;
     if (clearDelay)
+    {
         voice.repluckArrivals.clear();
+        voice.axialContactArrivals.clear();
+    }
     voice.releaseAfterPluck = false;
     voice.pedalHeldAtKeyUp = false;
     voice.pedalReleasedBeforePluck = false;
@@ -7962,7 +7974,14 @@ void AcustraEngine::retainRepluckArrivals(Voice& voice) noexcept
                     voice.legatoContactSamples = 0;
             }
             const auto paths = voice.legatoContactTravel.process(source);
-            normal += split * (paths[0] - paths[1]);
+            if (voice.legatoParallelGain == 0.0f)
+                normal += split * (paths[0] - paths[1]);
+            else
+            {
+                const float local = split * (paths[0] - paths[1]);
+                normal += voice.legatoNormalGain * local;
+                parallel += voice.legatoParallelGain * local;
+            }
         }
         voice.repluckArrivals.add(offset++, normal, parallel);
     }
@@ -8009,6 +8028,8 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     {
         voice.tailLegatoContactTravel = voice.legatoContactTravel;
         voice.tailLegatoContactAmplitude = voice.legatoContactAmplitude;
+        voice.tailLegatoNormalGain = voice.legatoNormalGain;
+        voice.tailLegatoParallelGain = voice.legatoParallelGain;
         voice.tailLegatoContactAge = voice.legatoContactAge;
         voice.tailLegatoContactSamples = voice.legatoContactSamples;
         voice.tailLegatoContactPulse = voice.legatoContactPulse;
@@ -8358,6 +8379,20 @@ void AcustraEngine::advanceReleaseFall(Voice& voice) noexcept
             3.0f, static_cast<float>(activeDelaySamples() - 3));
 }
 
+void AcustraEngine::releaseHeldShapeOwner(int string) noexcept
+{
+    const unsigned keep = ~(1u << string);
+    for (auto& voice : voices_)
+        voice.heldShapeOwners &= keep;
+}
+
+void AcustraEngine::clearHeldShapeMute(int midiChannel) noexcept
+{
+    for (auto& voice : voices_)
+        if (voice.heldShapeOwners != 0u && channelControlsVoice(midiChannel, voice))
+            voice.heldShapeOwners = 0u;
+}
+
 // A finger lying on a string is a dashpot on it. GuitarSet's comping shows
 // how light that touch is (Tools/MeasureMutedStrokes.py): a string a stroke
 // crosses that the chord leaves out falls 20 dB in a median 125, 100, 75 and
@@ -8366,7 +8401,8 @@ void AcustraEngine::advanceReleaseFall(Voice& voice) noexcept
 // finger lies is not measured, so no local contact is added: the loss is the
 // hand's scalar one, as a release's is. It holds from the moment the finger
 // lands (muteStroke), and once the pick has let the string go the string is
-// handed back to the open string after that T60 and the hand's 80 ms.
+// eligible to return after that T60 and the hand's 80 ms. A still-held
+// complete shape keeps this same light loss until its original keys lift.
 void AcustraEngine::beginMutedStroke(Voice& voice) noexcept
 {
     constexpr float mutedPeriods = 43.0f;
@@ -9412,10 +9448,15 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
         || voice.legatoContactTravel.active || voice.legatoContactSamples > 0)
         return false;
 
+    // The old key lifetime ends even though its wave survives the refret.
+    releaseHeldShapeOwner(string);
     // No shape replacement and no tail copy: these are the same physical
     // waves at a new fret. A released source's later Note Off is harmless;
     // only the target owns this vibrating string after the transfer.
     const bool hammer = targetMidiNote > sourceMidiNote;
+    const bool externalWork = hammer ? performanceRealism_.hammerWork
+                                      : performanceRealism_.pullOffPluck;
+    const bool pullRelease = !hammer && performanceRealism_.pullOffPluck;
     const float contactPosition = clamp(std::exp2(-static_cast<float>(
         std::abs(targetMidiNote - sourceMidiNote)) / 12.0f), 0.5f, 0.97f);
     const float displacement = voice.loops[0].displacementAt(contactPosition);
@@ -9445,8 +9486,8 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     // listening map, not a measured contact-force fit. Its independent draws
     // cannot change the picking/release streams or ordinary overlapping MIDI.
     // Windowed 0.9--5 kHz noise starts/ends at rest. Orthogonalise its sampled
-    // slope against the smooth pulse, then give it a small part of the SAME
-    // <=2% budget: adding fret noise must not add an unconstrained attack.
+    // slope against the smooth pulse, then give it a small part of the shared
+    // residual-plus-external work budget. Friction adds no unbounded energy.
     auto& pulse = voice.legatoContactPulse;
     std::array<float, maximumLegatoContactSamples + 1> smoothPulse {};
     pulse[0] = 0.0f;
@@ -9458,7 +9499,13 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     double previousSmooth = 0.0, previousNoise = 0.0;
     for (int age = 1; age <= voice.legatoContactSamples; ++age)
     {
-        const double phase = piDouble * age / voice.legatoContactSamples;
+        const double time = static_cast<double>(age) / voice.legatoContactSamples;
+        // A pull-off first loads sideways, then releases over the final third.
+        // This bounded asymmetric profile is authored, not a measured finger
+        // trajectory. Sin-squared joins preserve zero value and slope at rest.
+        const double phase = pullRelease
+            ? piDouble * (time < 2.0 / 3.0 ? 0.75 * time : 1.5 * time - 0.5)
+            : piDouble * age / voice.legatoContactSamples;
         smoothPulse[static_cast<std::size_t>(age)] = age == voice.legatoContactSamples ? 0.0f
             : static_cast<float>(std::sin(phase) * std::sin(phase));
         const double smooth = smoothPulse[static_cast<std::size_t>(age)];
@@ -9500,13 +9547,49 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
         previous = value;
     }
     const float velocity = clamp(fingerVelocity, 0.0f, 1.0f);
-    const float amplitude = slopeEnergy > 0.0 && norm > 0.0
-        ? static_cast<float>(std::sqrt(0.02 * velocity * velocity
-                                       * slopeEnergy / norm)) : 0.0f;
-    voice.legatoContactAmplitude = (hammer ? -1.0f : 1.0f)
-        * (displacement < 0.0f ? -amplitude : amplitude);
-    voice.legatoContactTravel.reset(0.5f * period * contactPosition,
-                                    period * (1.0f - 0.5f * contactPosition));
+    double work = 0.0;
+    // Use physical flight time for new work, independent of the loop filter's
+    // phase compensation. Keep the old numerical delay for the ablation.
+    const float physicalPeriod = externalWork ? voice.contactPeriodSamples : period;
+    const float contactPeriod = pullRelease
+        ? physicalPeriod / contactPosition : physicalPeriod;
+    if (externalWork)
+    {
+        // Bilbao et al., DAFx 2024, Eqs. 9–13: the finger supplies external
+        // work; it does not vanish when the held string becomes quiet.
+        // Use an authored 0.24*v^2 contact-force law at the ordinary pluck's
+        // 0.16L open reference; this is not the calibrated picking-velocity law.
+        // A point force deflects by L*p*(1-p)/T; its triangular wave has
+        // discrete slope energy A^2/(N*p*(1-p)), proportional to 1/fs.
+        // The 0.35 hammer / 0.30 pull force fractions are conservative authored
+        // gesture strengths, not measured Newtons or fitted recording levels.
+        const double p = contactPosition;
+        const double length = std::clamp(static_cast<double>(voice.speakingLengthMetres)
+            / (pullRelease ? p : 1.0), 0.05, 0.648);
+        const double tensionRatio = voice.tensionNewtons > 0.0f
+            ? std::min(1.0, static_cast<double>(voice.pitchGeometry.value.tension)
+                / voice.tensionNewtons) : 1.0;
+        const double amplitude = 0.24 * velocity * velocity * (hammer ? 0.35 : 0.30)
+            * length * p * (1.0 - p) / (0.648 * 0.16 * 0.84) * tensionRatio;
+        work = amplitude * amplitude / (contactPeriod * p * (1.0 - p));
+    }
+    // Preserve the old calculation exactly when the independent switch is off.
+    const float amplitude = externalWork
+        ? static_cast<float>(std::sqrt((0.02 * velocity * velocity * slopeEnergy
+                                       + work) / norm))
+        : slopeEnergy > 0.0 && norm > 0.0
+            ? static_cast<float>(std::sqrt(0.02 * velocity * velocity
+                                           * slopeEnergy / norm)) : 0.0f;
+    voice.legatoContactAmplitude = externalWork ? (hammer ? -amplitude : amplitude)
+        : (hammer ? -1.0f : 1.0f) * (displacement < 0.0f ? -amplitude : amplitude);
+    // The hammer strikes towards the fretboard; a departing finger releases
+    // mostly sideways. The 25/75 energy split is authored, with unit norm.
+    voice.legatoNormalGain = pullRelease ? 0.5f : 1.0f;
+    voice.legatoParallelGain = pullRelease ? 0.8660254037844386f : 0.0f;
+    // For a pull the old fret lies at L_old/L_target on the longer string.
+    // Both propagation paths therefore use its TARGET round-trip period.
+    voice.legatoContactTravel.reset(0.5f * contactPeriod * contactPosition,
+                                    contactPeriod * (1.0f - 0.5f * contactPosition));
     voice.velocity = velocity;
     voice.startOrder = ++noteOrder_;
     voice.onsetSample = sampleClock_;
@@ -9537,6 +9620,8 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
                               float capturedParallelSign) noexcept
 {
     auto& voice = voices_[static_cast<std::size_t>(string)];
+    releaseHeldShapeOwner(string);
+    voice.heldShapeOwners = 0u;
     voice.releaseJoinPending = false;
     voice.releaseJoinRemainingBeats = 0.0;
     // Taking a string that is still sounding, for any note, is a refret and a
@@ -9775,6 +9860,10 @@ void AcustraEngine::planChord(const int* midiNotes, int count,
     searchShape(search, 0, 0u);
     if (!search.found)
         return;
+    // The latest complete hand shape replaces this channel's former touch,
+    // even when some old keys remain down. New crossed contacts are attached
+    // after the plan's noteOns, by the performer.
+    clearHeldShapeMute(midiChannel);
     for (int index = 0; index < search.count; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
@@ -9869,6 +9958,7 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
     if (search.best.moves == 0)
         return incomingString;
 
+    clearHeldShapeMute(midiChannel);
     // Lift every moved note first, so a chain of moves finds its strings free.
     struct Moved
     {
@@ -10118,6 +10208,17 @@ int AcustraEngine::fingerChordOffsetSamples(int rankFromTop, int count) noexcept
     return static_cast<int>(std::lround(0.001 * static_cast<double>(lagMs) * sampleRate_));
 }
 
+int AcustraEngine::fingerPairSeparationSamples() noexcept
+{
+    // GuitarSet's 293 adjacent Finger pairs: median |lag| 11.156 ms,
+    // quartiles 5.986/16.122, 7.85% within 2 ms, no strong direction.
+    // A signed uniform ±22.312 ms gives 11.156, 5.578/16.734 and 8.96%.
+    // Mapping a simultaneous MIDI pair to this corpus mixture is authored;
+    // it cannot identify whether a recorded pair was meant as a pinch.
+    return static_cast<int>(std::lround(0.022312 * sampleRate_
+        * xorshiftNoise(fingerPairRandomState_)));
+}
+
 float AcustraEngine::strumScatterSamples() noexcept
 {
     // A pick does not meet the strings on its sweep's own line. On
@@ -10155,16 +10256,35 @@ float AcustraEngine::strumEdgeGain(int string) const noexcept
 }
 
 void AcustraEngine::muteStroke(int string, int delaySamples, float velocity,
-                               int midiChannel) noexcept
+                               int midiChannel, unsigned heldShapeOwners) noexcept
 {
     if (!prepared_ || !performanceRealism_.mutedStrings
         || string < 0 || string >= stringCount
         || midiChannel < 1 || midiChannel > midiChannelCount
         || !exact::isfinite(velocity) || velocity <= 0.0f)
         return;
+    unsigned liveOwners = 0u;
+    if (performanceRealism_.heldShapeMute)
+        for (int owner = 0; owner < stringCount; ++owner)
+        {
+            const auto& member = voices_[static_cast<std::size_t>(owner)];
+            if ((heldShapeOwners & (1u << owner)) != 0u && member.played
+                && member.keyDown && member.ownerCount > 0
+                && member.midiChannel == midiChannel)
+                liveOwners |= 1u << owner;
+        }
     auto& voice = voices_[static_cast<std::size_t>(string)];
-    if (voice.keyDown || voice.pedalHeld || voice.pluckDelay != 0 || voice.repluckPending)
+    if (voice.keyDown || voice.pedalHeld)
         return;
+    if (voice.pluckDelay != 0 || voice.repluckPending)
+    {
+        // A repeated complete shape can arrive before the same dead stroke.
+        // Its existing queued pick still serves once; only the hand ownership
+        // changes. A queued played note or another channel stays protected.
+        if (voice.mutedStroke && voice.midiChannel == midiChannel && liveOwners != 0u)
+            voice.heldShapeOwners = liveOwners;
+        return;
+    }
     // As startNote: what the string still carries goes on as a retained
     // wave, and the finger's loss takes the string from here.
     const bool retainedWave = voice.level > 2.0e-7f
@@ -10211,6 +10331,7 @@ void AcustraEngine::muteStroke(int string, int delaySamples, float velocity,
     voice.pedalReleasedBeforePluck = false;
     voice.releaseVelocity = -1.0f;
     voice.mutedStroke = true;
+    voice.heldShapeOwners = liveOwners;
     beginMutedStroke(voice);
     // The pick reaches it at its place in the stroke, at the stroke's own
     // speed draw, as noteOn times the chord's strings.
@@ -10290,6 +10411,7 @@ void AcustraEngine::releaseKey(int midiNote, int midiChannel,
     if (--candidate.ownerCount > 0)
         return;
     candidate.ownerCount = 0;
+    releaseHeldShapeOwner(candidateIndex);
     freezeMemberPitchBend(candidate);
     candidate.releaseVelocity = exact::isfinite(releaseVelocity)
         ? std::min(releaseVelocity, 1.0f) : -1.0f;
@@ -10427,6 +10549,9 @@ void AcustraEngine::setMpePressure(float value, int midiChannel) noexcept
 
 void AcustraEngine::setStringPerChannelMode(bool enabled) noexcept
 {
+    if (enabled != stringPerChannelMode_)
+        for (auto& voice : voices_)
+            voice.heldShapeOwners = 0u;
     stringPerChannelMode_ = enabled;
 }
 
@@ -10466,6 +10591,7 @@ void AcustraEngine::allNotesOff(int midiChannel) noexcept
 {
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return;
+    clearHeldShapeMute(midiChannel);
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -10939,6 +11065,34 @@ int AcustraEngine::drainReleaseNoiseTravel(Voice& voice) noexcept
     return samples;
 }
 
+namespace
+{
+// Range-reduced eleventh-order sine. Error on the reduced [-pi/2,pi/2]
+// interval is below 6e-8; unlike an impulse/waveshaper this leaves only a
+// negligible approximation residue outside the explicitly retained partials.
+// No audio-rate trig or static lazy-initialisation guard is needed.
+float woundContactSine(double cycles) noexcept
+{
+    double x = cycles - std::floor(cycles + 0.5);
+    if (x > 0.25) x = 0.5 - x;
+    if (x < -0.25) x = -0.5 - x;
+    x *= 6.2831853071795864769;
+    const double xx = x * x;
+    return static_cast<float>(x * (1.0 + xx * (-1.0 / 6.0
+        + xx * (1.0 / 120.0 + xx * (-1.0 / 5040.0
+        + xx * (1.0 / 362880.0 - xx / 39916800.0))))));
+}
+
+float woundContactBand(float cyclesPerSample) noexcept
+{
+    // Reserve a transition band for the moving contact's modulation. Above
+    // the range, restore broadband energy rather than pinning a false tone
+    // to a frequency cap or folding the winding rate through Nyquist.
+    const float x = std::clamp((cyclesPerSample - 0.25f) / 0.15f, 0.0f, 1.0f);
+    return 1.0f - x * x * (3.0f - 2.0f * x);
+}
+}
+
 void AcustraEngine::primeFretMotion(Voice& voice) noexcept
 {
     voice.fretMotion = {};
@@ -10971,6 +11125,8 @@ void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
         // arrival queue continue naturally; they cannot be recalled.
         motion.low = motion.high = motion.sourceWave = 0.0f;
         motion.remaining = 0;
+        motion.ridgeLevel = motion.ridgeForce = motion.axialForce = 0.0f;
+        motion.axialQ = motion.axialP = {};
         return;
     }
     const float speed = exact::abs(motion.speed);
@@ -11012,6 +11168,7 @@ void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
         const float rms = 0.00004f * voice.peakLevel * (amount / 0.5f)
             * contact * speedLevel;
         motion.forceGain = rms * static_cast<float>(exact::sqrt(3.0 / energy));
+        motion.forceRms = rms;
         const float leakFrequency = clamp(voice.pitchGeometry.value.lossDesignFrequency, 20.0f, 500.0f);
         motion.leak = 1.0f / (1.0f + twoPi * leakFrequency * inverseSampleRate_);
         motion.remaining = static_cast<int>(0.12 * sampleRate_);
@@ -11022,6 +11179,8 @@ void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
     else if (--motion.remaining == 0)
     {
         motion.low = motion.high = motion.sourceWave = 0.0f;
+        motion.ridgeLevel = motion.ridgeForce = motion.axialForce = 0.0f;
+        motion.axialQ = motion.axialP = {};
         return;
     }
     // Key-up stops new roughness; the short stored filter/displacement tail
@@ -11029,6 +11188,129 @@ void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
     motion.low += motion.lowCoefficient * (input - motion.low);
     motion.high += motion.highCoefficient * (input - motion.high);
     motion.emittedForce = motion.forceGain * (motion.high - motion.low);
+    if (performanceRealism_.woundRidges || performanceRealism_.longitudinalSqueak)
+    {
+        if (!motion.colourPrepared)
+        {
+            // Fixed nut-to-saddle axial boundary: a sliding soft pad is not
+            // assumed to clamp axial motion like a capo. The effective core
+            // is already a bending fit, so these are frequency priors, not
+            // measured longitudinal modes of this string set. Tension bends
+            // never enter this calculation. Pakarinen et al., JASA (2007),
+            // doi:10.1121/1.2786607; Puputti et al., NIME (2008), pp.49-52.
+            constexpr float length = 0.648f;
+            const auto index = static_cast<std::size_t>(stringIndex);
+            const float openFrequency = 440.0f * std::exp2(
+                (static_cast<float>(standardOpenMidi[index]) - 69.0f) / 12.0f);
+            const float transverseSpeed = 2.0f * length * openFrequency;
+            const float linearMass = steelTensionNewtons[index]
+                / (transverseSpeed * transverseSpeed);
+            const float fundamental = exact::sqrt(stringAxialRigidity(stringIndex)
+                / linearMass) / (2.0f * length);
+            motion.axialSpeed = 2.0f * length * fundamental;
+            // JASA 2007 Eq.4: EA/(mu L^2) * k/f_k = 4 f_1.
+            // Sample its force impulse response with dt=1/Fs. The source
+            // and resulting saddle tension are both forces, not displacement
+            // waves; there is no loudness multiplier or transverse pitch here.
+            motion.axialDrive = 4.0f * fundamental * inverseSampleRate_;
+            // Authored 35 ms T60. The rotation form contracts its state norm
+            // with zero input, without the time-varying direct-form pole
+            // energy problem. Coefficients are prepared once per contact.
+            motion.axialRadius = static_cast<float>(std::exp(-6.907755278982137
+                / (0.035 * sampleRate_)));
+            motion.ridgePole = static_cast<float>(std::exp(-1.0 / (0.001 * sampleRate_)));
+            for (std::size_t mode = 0; mode < motion.axialQ.size(); ++mode)
+            {
+                const float frequency = fundamental * static_cast<float>(mode + 1);
+                motion.axialFrequency[mode] = frequency;
+                const float cycles = frequency * inverseSampleRate_;
+                motion.axialAudible[mode] = woundContactBand(cycles);
+                const double angle = twoPi * static_cast<double>(cycles);
+                motion.axialCosine[mode] = static_cast<float>(std::cos(angle));
+                motion.axialSine[mode] = static_cast<float>(std::sin(angle));
+            }
+            motion.colourPrepared = true;
+        }
+        if (performanceRealism_.woundRidges)
+        {
+            if (moving)
+            {
+                // Authored wrap pitches preserving the old 0.5 m/s spectral
+                // anchors: 0.250/0.208/0.172/0.143 mm. No extra RNG draws.
+                constexpr std::array<float, 4> crossingsPerMetre { 4000, 4800, 5800, 7000 };
+                motion.ridgeIncrement = speed * inverseSampleRate_
+                    * crossingsPerMetre[static_cast<std::size_t>(stringIndex)];
+            }
+            motion.ridgeLevel = motion.ridgePole * motion.ridgeLevel
+                + (1.0f - motion.ridgePole) * (moving ? motion.forceRms : 0.0f);
+            motion.ridgePhase += motion.ridgeIncrement;
+            motion.ridgePhase -= std::floor(motion.ridgePhase);
+            const float sine = woundContactSine(motion.ridgePhase);
+            const float cosine = woundContactSine(motion.ridgePhase + 0.25);
+            float last = 0.0f, current = sine;
+            float periodic = 0.0f, retainedEnergy = 0.0f;
+            constexpr float fullEnergy = 1.0f + 0.25f + 1.0f / 9.0f + 0.0625f;
+            for (int harmonic = 1; harmonic <= 4; ++harmonic)
+            {
+                const float weight = woundContactBand(
+                    harmonic * motion.ridgeIncrement) / harmonic;
+                periodic += weight * current;
+                retainedEnergy += weight * weight;
+                const float next = 2.0f * cosine * current - last;
+                last = current;
+                current = next;
+            }
+            // Ten percent of the stationary force variance is redistributed
+            // into structured crossings. Faded partials return their budget
+            // to roughness; no post-fade renormalisation or blanket boost.
+            constexpr float periodicGain = 0.3748170285f; // sqrt(0.2/fullEnergy)
+            motion.ridgeForce = periodicGain * motion.ridgeLevel * periodic;
+            motion.emittedForce = static_cast<float>(exact::sqrt(
+                1.0f - 0.1f * retainedEnergy / fullEnergy)) * motion.emittedForce
+                + motion.ridgeForce;
+        }
+        if (performanceRealism_.longitudinalSqueak)
+        {
+            if (moving)
+            {
+                const float position = clamp((static_cast<float>(motion.length) - 0.018f)
+                    / 0.648f, 0.0f, 1.0f);
+                for (std::size_t mode = 0; mode < motion.axialWeight.size(); ++mode)
+                {
+                    motion.axialWeight[mode] = motion.axialAudible[mode]
+                        * woundContactSine(0.5 * static_cast<double>(mode + 1) * position);
+                }
+            }
+            float colour = 0.0f;
+            for (std::size_t mode = 0; mode < motion.axialQ.size(); ++mode)
+            {
+                const float q = motion.axialQ[mode];
+                const float p = motion.axialP[mode]
+                    + motion.axialDrive * motion.axialWeight[mode] * motion.emittedForce;
+                motion.axialQ[mode] = motion.axialRadius
+                    * (motion.axialCosine[mode] * q + motion.axialSine[mode] * p);
+                motion.axialP[mode] = motion.axialRadius
+                    * (motion.axialCosine[mode] * p - motion.axialSine[mode] * q);
+                colour += motion.axialQ[mode];
+            }
+            // Weight new excitation, not stored modal energy: a moving pad
+            // cannot change the gain of a wave it already launched. Each
+            // mode contracts by r without input, with bounded drive 4f1/Fs.
+            // A truncated modal sum lacks the exact causal cancellation of
+            // infinitely many axial modes. Give this reduced observer an
+            // explicit contact-to-saddle flight before it reaches the body.
+            motion.axialForce = colour;
+            const float distance = clamp(static_cast<float>(motion.length) - 0.018f,
+                                         0.0f, 0.648f);
+            const float delay = distance * static_cast<float>(sampleRate_) / motion.axialSpeed;
+            const int whole = static_cast<int>(delay);
+            const float fraction = delay - whole;
+            // At 768 kHz the slowest axial speed needs fewer than 260
+            // samples. The fixed 512-slot queue also covers the final tap.
+            voice.axialContactArrivals.add(whole, (1.0f - fraction) * colour);
+            voice.axialContactArrivals.add(whole + 1, fraction * colour);
+        }
+    }
     const float impedance = voice.characteristicImpedance
         * voice.appliedBendImpedanceScale;
     if (!(impedance > 0.0f))
@@ -11054,8 +11336,8 @@ void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
     };
     // A reduced transverse contact source: equal force splitting is already
     // in 1/(2Z), and the stopped-end return inverts displacement. Fractional
-    // arrival weights are convex. This is not a full longitudinal squeak
-    // model (real fingertip handling also excites longitudinal string modes).
+    // arrival weights are convex. Axial force uses its separate finite-time
+    // body observation; it must not be damped through this transverse loop.
     emit(0.5f * position * period, 1.0f);
     emit((1.0f - 0.5f * position) * period, -1.0f);
 }
@@ -11278,8 +11560,14 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
     // T60 and the hand's 80 ms; waiting for it to fall silent would wait for
     // ever, because the bridge keeps driving it while anything else sounds.
     // What it still carries goes on as an idle string's wave.
+    // A swept shape's light touch remains while any of its original keys
+    // is physically held. The measured loss and initial dead stroke stay
+    // unchanged; only their automatic hand-back waits. Event-time ownership
+    // changes prune the mask, so no owner search runs in the audio loop.
     if (voice.played && !voice.keyDown && !voice.pedalHeld
-        && voice.returnSamples > 0 && --voice.returnSamples == 0)
+        && voice.returnSamples > 0
+        && (voice.returnSamples > 1 || voice.heldShapeOwners == 0u)
+        && --voice.returnSamples == 0)
         returnToOpenString(voice, stringIndex, false);
 
 }
@@ -12104,6 +12392,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         float piezoIncident = 0.0f;
         float piezoImpedance0 = 0.0f;
         float piezoImpedance1 = 0.0f;
+        float axialBodyForce = 0.0f, axialBodyMoment = 0.0f, axialPiezoForce = 0.0f;
         const float saddleHeight = saddleHeightRatio();
         for (int string = 0; string < stringCount; ++string)
         {
@@ -12173,12 +12462,37 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 const auto paths = voice.legatoContactTravel.process(contact);
                 constexpr float equalEnergySplit = 0.7071067811865475f;
                 const float local = equalEnergySplit * (paths[0] - paths[1]);
-                verticalIncident[static_cast<std::size_t>(string)]
-                    += local * voice.loops[0].appliedReleaseGain;
+                if (voice.legatoParallelGain == 0.0f)
+                    verticalIncident[static_cast<std::size_t>(string)]
+                        += local * voice.loops[0].appliedReleaseGain;
+                else
+                {
+                    verticalIncident[static_cast<std::size_t>(string)]
+                        += voice.legatoNormalGain * local * voice.loops[0].appliedReleaseGain;
+                    horizontalIncident[static_cast<std::size_t>(string)]
+                        += voice.legatoParallelGain * local * voice.loops[1].appliedReleaseGain;
+                }
             }
             if (voice.releaseNoiseSamples > 0 || voice.releaseNoiseTravel.active)
                 addReleaseNoise(voice);
             renderFretMotion(voice, string);
+            if (voice.axialContactArrivals.remaining > 0)
+            {
+                // Reduced external-force observation, with an authored
+                // 12-degree rear break angle and equal tension around the
+                // saddle: dFz=sin(12deg)*dT. Break angle resolves axial
+                // tension into saddle down-force (Kemp, PLoS ONE 2023,
+                // doi:10.1371/journal.pone.0292515). The angle and equality
+                // assumption are not measured for the archive guitar.
+                // Only this vertical component and its across-saddle moment
+                // have measured capture paths. No unmeasured neck-axis
+                // rocking, axial feedback or extra acoustic gain is claimed.
+                constexpr float breakAngleProjection = 0.2079116908f;
+                const float force = breakAngleProjection * voice.axialContactArrivals.process();
+                axialBodyForce += force;
+                axialBodyMoment += saddleLeverArm(string) * force;
+                axialPiezoForce += piezoStringWeights_[static_cast<std::size_t>(string)] * force;
+            }
             if (voice.repluckArrivals.remaining > 0)
             {
                 const auto arrivals = voice.repluckArrivals.process();
@@ -12214,9 +12528,19 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                     }
                     const auto paths = voice.tailLegatoContactTravel.process(contact);
                     constexpr float equalEnergySplit = 0.7071067811865475f;
-                    tailIncident[static_cast<std::size_t>(string)]
-                        += equalEnergySplit * (paths[0] - paths[1])
-                            * voice.tailLoop.appliedReleaseGain;
+                    if (voice.tailLegatoParallelGain == 0.0f)
+                        tailIncident[static_cast<std::size_t>(string)]
+                            += equalEnergySplit * (paths[0] - paths[1])
+                                * voice.tailLoop.appliedReleaseGain;
+                    else
+                    {
+                        const float local = equalEnergySplit * (paths[0] - paths[1]);
+                        tailIncident[static_cast<std::size_t>(string)]
+                            += voice.tailLegatoNormalGain * local * voice.tailLoop.appliedReleaseGain;
+                        tailParallelIncident[static_cast<std::size_t>(string)]
+                            += voice.tailLegatoParallelGain * local
+                                * voice.tailParallelLoop.appliedReleaseGain;
+                    }
                 }
                 if (voice.tailContactTravel.active)
                 {
@@ -12482,7 +12806,14 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
 
         // Idle-string reactions enter the measured body through the shared
         // junction. Preserve the previous force's zero-sign normalization.
-        const BodyOutput body = renderBody(lastBridgeBodyForce_ + 0.0f, bodyMomentRate);
+        // The axial observer is a force, already differentiated by its
+        // physical model. Sending it through displacement-wave derivatives
+        // or transverse loss would attenuate precisely the handling modes
+        // a soft fingertip excites. The zero branch retains baseline bits.
+        const BodyOutput body = axialBodyForce == 0.0f && axialBodyMoment == 0.0f
+            ? renderBody(lastBridgeBodyForce_ + 0.0f, bodyMomentRate)
+            : renderBody(lastBridgeBodyForce_ + axialBodyForce,
+                         bodyMomentRate + axialBodyMoment);
         const float bodyScale = 0.68f + 0.72f * bodyAmount_;
         const float monoBody = 0.5f * (body.left + body.right);
         const float spreadLeft = monoBody + width_ * (body.left - monoBody);
@@ -12509,7 +12840,8 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // Advance the whole piezo chain even while unheard, so selecting it
         // crossfades to the voltage of the already-ringing instrument. The
         // piezo force keeps the original zero-sign normalization.
-        const float loadedPiezo = renderPiezo(lastPiezoForce_ + 0.0f);
+        const float loadedPiezo = renderPiezo(axialPiezoForce == 0.0f
+            ? lastPiezoForce_ + 0.0f : lastPiezoForce_ + axialPiezoForce);
         const float idlePeak = std::max({ exact::abs(body.left),
             exact::abs(body.right), exact::abs(body.upper),
             exact::abs(loadedPiezo) });
@@ -12635,23 +12967,18 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
     }
 }
 
-// The room (EngineParameters::room): a small studio, 5.2 x 4.1 x 2.7 m, the
-// guitar 0.95 m over the floor with the microphones 0.32 m in front of it.
-// The early reflections are its image sources within two bounces, the ten
-// strongest, at their delays after the direct sound and their spherical
-// spreading times the surfaces' pressure reflection (wood floor 0.88, treated
-// ceiling 0.62, walls 0.75-0.80), panned by the arrival's side across the
-// pair (softened to 0.7: neither microphone is a point). The late field is
-// an eight-line feedback delay network (Jot and Chaigne, AES 90 (1991)
-// preprint 3030) with a Hadamard mix, its lines 17-41 ms, each damped by a
-// one-pole with nominal low-frequency decay of 0.45 s and shorter high
-// decay. Each line keeps the accepted 48 kHz absorption curve's decay at
-// 8 kHz (or fs/4 below 32 kHz), rather than moving that target with Nyquist.
-// An 8 ms input delay and four
-// allpasses feed the lines; their first late output arrives around 25 ms,
-// after the early taps end near 17 ms. What goes in is filtered by a 9 kHz
-// one-pole and the reflections by a 6.5 kHz one; the room carries no detail
-// above them.
+// The room (EngineParameters::room) retains the original eight-line late
+// field: Jot and Chaigne, AES 90 (1991), preprint 3030, with a lossless
+// Hadamard mix and 17-41 ms lines. Its one-pole absorption preserves the
+// accepted 48 kHz decay at DC and 8 kHz (fs/4 below 32 kHz). Four allpasses
+// diffuse the input after an 8 ms delay. The room's own 9 kHz input pole and
+// the early reflections' 6.5 kHz pole retain the established spectral colour.
+// The legacy early table below is preserved for ablation. Directional mode
+// instead derives each receiver's delay and cardioid gain from the same ten
+// image paths in an explicit 5.2 x 4.1 x 2.7 m room. The source remains the
+// microphones' coherent mid; no unknown guitar radiation pattern is invented.
+// Corrected high-rate conversion uses matched anti-alias / anti-image FIRs;
+// their fixed group delay is taken out of the early and late input paths.
 namespace
 {
 struct RoomTap
@@ -12717,13 +13044,55 @@ void roomHadamard(std::array<float, roomLineTotal>& values) noexcept
 }
 } // namespace
 
-void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
+void AcustraEngine::RoomAmbience::prepare(double hostRate,
+    bool directionalReflections, bool correctedRateConversion) noexcept
 {
+    directional = directionalReflections;
+    rateConversion = correctedRateConversion;
     static_assert(roomTapTotal == static_cast<std::size_t>(tapCount)
                   && roomLineTotal == static_cast<std::size_t>(lineCount));
     decimation = std::max(1, static_cast<int>(std::ceil(hostRate / roomMaximumRate)));
     inverseDecimation = 1.0f / static_cast<float>(decimation);
     const double rate = hostRate / decimation;
+    const int conversionDelay = rateConversion && decimation > 1 ? converterOrder : 0;
+    if (conversionDelay != 0)
+    {
+        // A passband through 3/8 of the internal rate, and at least 75 dB
+        // rejection from its Nyquist onwards. Unlike a box average / linear
+        // hold, the pair does not impose an extra sinc-cubed guitar EQ.
+        converterLength = converterOrder * decimation + 1;
+        const int order = converterLength - 1;
+        const double cutoff = 0.4375 / decimation;
+        double sum = 0.0;
+        for (int index = 0; index <= order; ++index)
+        {
+            const double offset = index - 0.5 * order;
+            const double window = 0.42 - 0.5 * std::cos(2.0 * piDouble * index / order)
+                + 0.08 * std::cos(4.0 * piDouble * index / order);
+            const double sinc = offset == 0.0 ? 2.0 * cutoff
+                : std::sin(2.0 * piDouble * cutoff * offset) / (piDouble * offset);
+            const double coefficient = window * sinc;
+            converterCoefficients[static_cast<std::size_t>(index)]
+                = static_cast<float>(coefficient);
+            sum += coefficient;
+        }
+        for (int index = 0; index <= order; ++index)
+            converterCoefficients[static_cast<std::size_t>(index)]
+                = static_cast<float>(converterCoefficients[static_cast<std::size_t>(index)] / sum);
+        for (int part = 0; part < decimation; ++part)
+        {
+            auto& coefficients = converterPhases[static_cast<std::size_t>(part)];
+            coefficients.fill(0.0f);
+            double phaseSum = 0.0;
+            for (int index = part; index <= order; index += decimation)
+                phaseSum += converterCoefficients[static_cast<std::size_t>(index)];
+            // Normalise each branch's DC gain, rather than inheriting the
+            // small phase-dependent gain from the window's truncation.
+            for (int index = part; index <= order; index += decimation)
+                coefficients[static_cast<std::size_t>(index / decimation)]
+                    = static_cast<float>(converterCoefficients[static_cast<std::size_t>(index)] / phaseSum);
+        }
+    }
     // A fixed, gentle narrowing of the room below 150 Hz. Design at the
     // host rate because the side is observed after reconstruction. This
     // leaves the accepted room's feedback, diffusion and arrivals intact.
@@ -12739,12 +13108,60 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
     };
     for (std::size_t tap = 0; tap < roomTaps.size(); ++tap)
     {
-        tapDelays[tap] = std::clamp(samples(roomTaps[tap].milliseconds), 1,
-                                    earlyCapacity - 1);
+        tapDelays[tap] = std::clamp(samples(roomTaps[tap].milliseconds)
+                                      - conversionDelay, 1, earlyCapacity - 1);
         tapLeft[tap] = roomTaps[tap].left;
         tapRight[tap] = roomTaps[tap].right;
     }
-    lateDelay = std::clamp(samples(roomLateMilliseconds), 1, earlyCapacity - 1);
+    if (directional)
+    {
+        // Allen/Berkley image paths, with receiver cardioid D=(1+cos(theta))/2
+        // (Xu et al., 2023, eq. 9). Coordinates are metres: 5.2 x 4.1 x 2.7 m,
+        // source (2.3,1.5,.95), receivers (+/- .10,.32,0) from that source,
+        // both facing -Y. This is an explicit room/microphone arrangement,
+        // not an inferred guitar radiation pattern. Retain one coherent mid.
+        struct Image { double x, y, z, reflection; };
+        constexpr std::array<Image, roomTapTotal> images {{
+            { 2.3, 1.5, -0.95, 0.88 },
+            { 2.3, -1.5, 0.95, 0.80 },
+            { 2.3, 1.5, 4.45, 0.62 },
+            { 2.3, -1.5, -0.95, 0.88 * 0.80 },
+            { -2.3, 1.5, 0.95, 0.80 },
+            { 2.3, 6.7, 0.95, 0.75 },
+            { -2.3, 1.5, -0.95, 0.88 * 0.80 },
+            { 2.3, 6.7, -0.95, 0.88 * 0.75 },
+            { 8.1, 1.5, 0.95, 0.75 },
+            { 8.1, 1.5, -0.95, 0.88 * 0.75 },
+        }};
+        const double directDistance = std::sqrt(0.10 * 0.10 + 0.32 * 0.32);
+        const double directivity = 0.5 * (1.0 + 0.32 / directDistance);
+        for (std::size_t tap = 0; tap < images.size(); ++tap)
+            for (int channel = 0; channel < 2; ++channel)
+            {
+                const auto& source = images[tap];
+                const double dx = source.x - (channel == 0 ? 2.2 : 2.4);
+                const double dy = source.y - 1.82;
+                const double dz = source.z - 0.95;
+                const double distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+                const double delay = std::clamp((distance - directDistance) / 343.0
+                    * rate - conversionDelay, 2.0, static_cast<double>(earlyCapacity - 3));
+                auto& arrival = channel == 0 ? arrivalsLeft[tap] : arrivalsRight[tap];
+                const int integral = static_cast<int>(std::floor(delay));
+                const double fraction = delay - integral;
+                arrival.firstDelay = integral - 1;
+                arrival.weights = {
+                    static_cast<float>(-fraction * (1.0 - fraction) * (2.0 - fraction) / 6.0),
+                    static_cast<float>((1.0 + fraction) * (1.0 - fraction) * (2.0 - fraction) / 2.0),
+                    static_cast<float>((1.0 + fraction) * fraction * (2.0 - fraction) / 2.0),
+                    static_cast<float>(-(1.0 + fraction) * fraction * (1.0 - fraction) / 6.0)
+                };
+                auto& gain = channel == 0 ? tapLeft[tap] : tapRight[tap];
+                gain = static_cast<float>(source.reflection * directDistance / distance
+                    * (0.5 * (1.0 - dy / distance) / directivity));
+            }
+    }
+    lateDelay = std::clamp(samples(roomLateMilliseconds) - conversionDelay,
+                           1, earlyCapacity - 1);
     longest = lateDelay;
     for (std::size_t diffuser = 0; diffuser < diffuserLengths.size(); ++diffuser)
     {
@@ -12812,7 +13229,10 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate) noexcept
         absorptionPole[line] = static_cast<float>(pole);
         absorptionGain[line] = static_cast<float>(perLow * (1.0 - pole));
     }
-    inputCoefficient = static_cast<float>(-std::expm1(-2.0 * piDouble * 9000.0 / hostRate));
+    // The established 9 kHz room pole belongs to the room's own grid. The
+    // converter handles host-band anti-aliasing independently of that colour.
+    inputCoefficient = static_cast<float>(-std::expm1(-2.0 * piDouble * 9000.0
+        / (rateConversion ? rate : hostRate)));
     earlyCoefficient = static_cast<float>(-std::expm1(-2.0 * piDouble
                                                       * std::min(6500.0, 0.4 * rate) / rate));
     // Normalise: the reflections and the late field at their share, then
@@ -12887,6 +13307,10 @@ void AcustraEngine::RoomAmbience::reset() noexcept
     previousLeft = previousRight = 0.0f;
     currentLeft = currentRight = 0.0f;
     sideHighpassState.fill(0.0);
+    converterInput.fill(0.0f);
+    converterLeft.fill(0.0f);
+    converterRight.fill(0.0f);
+    converterInputHead = converterOutputHead = 0;
     quietSamples = 0;
     active = false;
 }
@@ -12903,12 +13327,29 @@ void AcustraEngine::RoomAmbience::step(float input) noexcept
     };
     float reflectedLeft = 0.0f;
     float reflectedRight = 0.0f;
-    for (std::size_t tap = 0; tap < tapDelays.size(); ++tap)
+    if (directional)
     {
-        const float value = delayed(tapDelays[tap]);
-        reflectedLeft += tapLeft[tap] * value;
-        reflectedRight += tapRight[tap] * value;
+        const auto arrivalValue = [&delayed] (const Arrival& arrival)
+        {
+            float value = 0.0f;
+            for (std::size_t index = 0; index < arrival.weights.size(); ++index)
+                value += arrival.weights[index]
+                    * delayed(arrival.firstDelay + static_cast<int>(index));
+            return value;
+        };
+        for (std::size_t tap = 0; tap < tapDelays.size(); ++tap)
+        {
+            reflectedLeft += tapLeft[tap] * arrivalValue(arrivalsLeft[tap]);
+            reflectedRight += tapRight[tap] * arrivalValue(arrivalsRight[tap]);
+        }
     }
+    else
+        for (std::size_t tap = 0; tap < tapDelays.size(); ++tap)
+        {
+            const float value = delayed(tapDelays[tap]);
+            reflectedLeft += tapLeft[tap] * value;
+            reflectedRight += tapRight[tap] * value;
+        }
     float late = lateInput * delayed(lateDelay);
     earlyHead = earlyHead + 1 == earlyCapacity ? 0 : earlyHead + 1;
     earlyLeft += earlyCoefficient * (reflectedLeft - earlyLeft);
@@ -12978,6 +13419,46 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
         return;
     }
     active = true;
+    if (rateConversion && decimation > 1)
+    {
+        converterInput[static_cast<std::size_t>(converterInputHead)] = input;
+        if (phase == 0)
+        {
+            double filtered = 0.0;
+            int index = converterInputHead;
+            for (int coefficient = 0; coefficient < converterLength; ++coefficient)
+            {
+                filtered += static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
+                    * converterInput[static_cast<std::size_t>(index)];
+                index = index == 0 ? converterLength - 1 : index - 1;
+            }
+            inputState += inputCoefficient * (static_cast<float>(filtered) - inputState);
+            if (exact::abs(inputState) < 1.0e-20f)
+                inputState = 0.0f;
+            step(inputState);
+            converterOutputHead = converterOutputHead == converterOrder
+                ? 0 : converterOutputHead + 1;
+            converterLeft[static_cast<std::size_t>(converterOutputHead)] = currentLeft;
+            converterRight[static_cast<std::size_t>(converterOutputHead)] = currentRight;
+        }
+        converterInputHead = converterInputHead + 1 == converterLength
+            ? 0 : converterInputHead + 1;
+        const auto& coefficients = converterPhases[static_cast<std::size_t>(phase)];
+        double sumLeft = 0.0, sumRight = 0.0;
+        int index = converterOutputHead;
+        for (std::size_t coefficient = 0; coefficient < coefficients.size(); ++coefficient)
+        {
+            sumLeft += static_cast<double>(coefficients[coefficient])
+                * converterLeft[static_cast<std::size_t>(index)];
+            sumRight += static_cast<double>(coefficients[coefficient])
+                * converterRight[static_cast<std::size_t>(index)];
+            index = index == 0 ? converterOrder : index - 1;
+        }
+        left = static_cast<float>(sumLeft);
+        right = static_cast<float>(sumRight);
+        phase = phase + 1 == decimation ? 0 : phase + 1;
+        return;
+    }
     inputState += inputCoefficient * (input - inputState);
     if (exact::abs(inputState) < 1.0e-20f)
         inputState = 0.0f;
@@ -13041,6 +13522,7 @@ void AcustraEngine::processIdleFlush(float samplePeak) noexcept
             && !voice.tailContactTravel.active
             && voice.repluckArrivals.remaining == 0
             && voice.tailRepluckArrivals.remaining == 0
+            && voice.axialContactArrivals.remaining == 0
             && !voice.legatoContactTravel.active && voice.legatoContactSamples == 0
             && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0;
     if (!idle)

@@ -123,6 +123,11 @@ void continuousAndOwned()
         {
             const int string = notes[2] - 1;
             auto e = std::make_unique<acustra::AcustraEngine>();
+            // This existing contract audits the legacy residual-energy model.
+            // Independent external work is covered by PerformerContactTests.
+            acustra::PerformanceRealism legacy;
+            legacy.hammerWork = legacy.pullOffPluck = false;
+            e->setPerformanceRealism(legacy);
             e->prepare(rate, 127);
             e->setStringPerChannelMode(true);
             e->noteOn(notes[0], 0.8f, notes[2]);
