@@ -13426,11 +13426,19 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
         {
             double filtered = 0.0;
             int index = converterInputHead;
-            for (int coefficient = 0; coefficient < converterLength; ++coefficient)
+            int coefficient = 0;
+            // Walk the two contiguous parts of the ring in the original
+            // coefficient order. Every product and addition stays unchanged;
+            // only the per-tap wrap test moves outside the inner loops.
+            for (; index >= 0; --index, ++coefficient)
             {
                 filtered += static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
                     * converterInput[static_cast<std::size_t>(index)];
-                index = index == 0 ? converterLength - 1 : index - 1;
+            }
+            for (index = converterLength - 1; coefficient < converterLength; --index, ++coefficient)
+            {
+                filtered += static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
+                    * converterInput[static_cast<std::size_t>(index)];
             }
             inputState += inputCoefficient * (static_cast<float>(filtered) - inputState);
             if (exact::abs(inputState) < 1.0e-20f)
@@ -13446,13 +13454,20 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
         const auto& coefficients = converterPhases[static_cast<std::size_t>(phase)];
         double sumLeft = 0.0, sumRight = 0.0;
         int index = converterOutputHead;
-        for (std::size_t coefficient = 0; coefficient < coefficients.size(); ++coefficient)
+        std::size_t coefficient = 0;
+        for (; index >= 0; --index, ++coefficient)
         {
             sumLeft += static_cast<double>(coefficients[coefficient])
                 * converterLeft[static_cast<std::size_t>(index)];
             sumRight += static_cast<double>(coefficients[coefficient])
                 * converterRight[static_cast<std::size_t>(index)];
-            index = index == 0 ? converterOrder : index - 1;
+        }
+        for (index = converterOrder; coefficient < coefficients.size(); --index, ++coefficient)
+        {
+            sumLeft += static_cast<double>(coefficients[coefficient])
+                * converterLeft[static_cast<std::size_t>(index)];
+            sumRight += static_cast<double>(coefficients[coefficient])
+                * converterRight[static_cast<std::size_t>(index)];
         }
         left = static_cast<float>(sumLeft);
         right = static_cast<float>(sumRight);
