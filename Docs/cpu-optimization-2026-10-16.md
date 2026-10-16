@@ -183,3 +183,69 @@ The user reported hearing no difference for **room order64 versus order32**.
 specified. This supports trying that option but is not a universal audibility
 claim or an instruction to adopt it. Detailed mechanism-based sound estimates
 are in `tradeoffs/SOUND-IMPACT-02.md`; no agent claims a listening preference.
+
+## Additional exact-output experiments
+
+The user's request for further quality-preserving savings prompted four isolated
+experiments, each based on retained candidate02. `stage-03-exact-candidates`
+freezes the actual SDK modules and ten default cases (five scores at 48/96 kHz).
+All 40 candidate/reference audio-and-write-flag comparisons passed. Serial
+timing retained every one of 150 runs and 202,500 callbacks per module.
+
+| Candidate | CPU saving versus retained02 | Decision |
+| --- | ---: | --- |
+| 05: exact builtin for moving-delay absolute value | -0.451% | Reject |
+| 06: hoist unchanged output gain targets to the process call | +0.174% | Too small to claim a useful win; not adopted |
+| 07: mirror room FIR operands as exact doubles | -0.046% | Reject; also adds 19,584 bytes per engine |
+| 08b: share freshly computed Thiran coefficients between string planes | -1.755% | Reject |
+
+Positive values indicate lower thread CPU; these are equal-case geometric means
+of median-of-three run means. Individual cases and all deadline counts remain
+in `timing/summary.json`, with decisions in `selection.json`. The room mirror
+requires additional handling for floating-point mode changes while exceptional
+values remain in history; its lack of a measured gain makes that complexity
+unwarranted. Candidate08b deliberately permits only same-call fresh coefficients:
+the earlier candidate08 was rejected after a directed-rounding counterexample
+showed that copying historical coefficients changes results. Neither is adopted.
+
+A five-second diagnostic sample of the retained SDK module's strum workload
+(`profile-02-strums`) identified the main string loop, body rendering and bridge
+mode updates as larger costs than control updates. Its instrumented timings are
+not used as performance measurements. Previous failed bridge/capture SIMD
+experiments remain documented in the October 8 and October 13 reports.
+
+Three further experiments in `stage-04-exact-candidates` passed all 30 actual
+SDK audio/write-flag comparisons, then completed the same ten-case screen with
+120 serial runs and 202,500 callbacks per module. All task-owned builds, tests,
+renders and profiling were terminal before timing; desktop activity and core
+placement remained uncontrolled. Each candidate is independently based on02.
+
+| Candidate | CPU saving versus retained02 | Decision |
+| --- | ---: | --- |
+| 09: share global loss scalars across six strings within one control update | -0.444% | Reject |
+| 10: reuse geometry already calculated for vibrato in the same invocation | -0.308% | Reject |
+| 11: move intrinsic-coefficient transitions outside the inlined sample loop | -1.416% | Reject |
+
+09 uses a lazy stack context, so it never reuses coefficients across control
+updates or caller rounding-mode changes. Its focused oracle passes 216,000
+audio values and 1,218,600 state words across four fixed rounding modes plus
+mode changes between calls, with all six voices reached. 10 introduces no
+persistent state; its 6,144-call oracle passes 761,856 geometry/configuration
+words across four rounding modes, four rates, six strings and 32 profiles.
+Activation witnesses count 105,054/208,416 reused geometry sets in bends at
+48/96 kHz, yet those CPU cells are 0.023%/0.246% slower. Work removed from a
+source expression does not establish a machine-code speedup.
+
+11 preserves the transition body verbatim in a non-inlined helper. The compiled
+sample loop shrinks from 5,394 to 5,003 instructions and uses 128 fewer stack
+bytes, but all ten timing cells are slower. RetuneContinuity passes, as does
+the quick whole-engine comparison of 37,123,200 audio values and 2,532,428
+public-state words. The same quick engine comparison also passes for10.
+
+Across these two screens, **seven isolated candidates, 270 timed runs and
+1,822,500 measured callbacks** yielded no convincing additional optimization.
+All evidence, including failed performance experiments and scheduling outliers,
+is retained. No new DSP candidate is adopted. The source remains candidate02,
+with the previously completed 108-test suite and full exact-output validation
+above; documentation-only additions do not invalidate those source hashes.
+Its broad measured saving remains **0.7065%**, without any quality-policy change.
