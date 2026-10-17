@@ -194,8 +194,14 @@ long per-version notes are in the
 ## Downloads
 
 <!-- build-download-begin: rewritten by .github/workflows/main-build.yml; edits between the markers are overwritten -->
-No main build has finished yet. Packages appear here after the first run of
-the main build workflow.
+Latest main build: **1.6.0-build.39010457874.1** from commit [`e9d11a3`](https://github.com/protocodus/virtual-instrument-acustra/commit/e9d11a35797997ee391b7a208f27d75bd4dffdbd), [run 2](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39010457874). Download [acustra-main-build-2](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39010457874/artifacts/12093341998) (signed in to GitHub; kept for 30 days); it holds these packages, the demo WAVs, `BUILD.txt` and `SHA256SUMS`.
+
+| Package |
+| --- |
+| `Acustra-1.6.0-build.39010457874.1-Linux-x64.tar.gz` |
+| `Acustra-1.6.0-build.39010457874.1-Windows-x64.zip` |
+| `Acustra-1.6.0-build.39010457874.1-macOS-universal.pkg` |
+| `Acustra-1.6.0-build.39010457874.1-macOS-universal.zip` |
 <!-- build-download-end -->
 
 ---
