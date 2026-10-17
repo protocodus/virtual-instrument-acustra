@@ -2,9 +2,10 @@ name: Main build
 
 # Every push to main, nightly and on demand: the release workflow's validated
 # packages for all three platforms, one demo per factory preset and the editor
-# screenshot, collected into one acustra-main-build-<run> artifact. The README
-# demo and download blocks, the demo MP3s and the screenshot are then
-# committed, but only while main still points at the commit that was built.
+# screenshot, collected into one acustra-main-build-<run> artifact, beside a
+# 30-minute libFuzzer run. The README demo and download blocks, the demo MP3s
+# and the screenshot are then committed, but only while main still points at
+# the commit that was built.
 # The renders are deterministic, so an unchanged engine commits nothing.
 on:
   push:
@@ -61,6 +62,43 @@ jobs:
           path: demos/
           if-no-files-found: error
           retention-days: 30
+
+  long-fuzz:
+    name: Long libFuzzer run (fuzz tier)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build
+
+      - name: Build the libFuzzer harness under ASan + UBSan
+        run: |
+          cmake -S . -B build-fuzz -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+            -DACUSTRA_BUILD_PLUGIN=OFF -DACUSTRA_BUILD_TOOLS=OFF \
+            -DACUSTRA_ENABLE_SANITIZERS=ON -DBUILD_TESTING=ON
+          cmake --build build-fuzz --parallel --target AcustraDspFuzz
+
+      - name: Fuzz for 30 minutes
+        working-directory: build-fuzz
+        run: |
+          mkdir -p corpus fuzz-artifacts
+          ./AcustraDspFuzz -max_total_time=1800 -max_len=4096 -rss_limit_mb=4096 \
+            -print_final_stats=1 -artifact_prefix=fuzz-artifacts/ corpus
+
+      - name: Upload fuzz reproducers
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-reproducers-acustra-${{ github.run_number }}
+          path: build-fuzz/fuzz-artifacts/
+          if-no-files-found: ignore
 
   collect:
     name: Collect and publish the main build

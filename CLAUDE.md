@@ -135,9 +135,14 @@ cmake --build build-dsp --config Release --parallel 2 --target AcustraEngineTest
 ctest --test-dir build-dsp -C Release -R "^Acustra[.](Engine|StringPitchRealism)$" --output-on-failure
 ```
 
-Every CTest test carries one tier label: `unit`, or `audio` for the demo
-render checks; CI selects tiers with `ctest -L`. `-DACUSTRA_ENABLE_SANITIZERS=ON`
-(Clang or GCC) builds everything under ASan + UBSan, as the `sanitizers` job does.
+Every CTest test carries one tier label: `unit`, `audio` for the demo render
+checks, `render` for the editor screenshot, or `fuzz` for the parameter-extremes
+matrix (`Acustra.ParameterMatrix`, plug-in builds) and the libFuzzer run
+(`Acustra.DspFuzz`, Clang sanitizer builds); CI selects tiers with `ctest -L`.
+`-DACUSTRA_ENABLE_SANITIZERS=ON` (Clang or GCC) builds everything under
+ASan + UBSan, as the `sanitizers` and `parameter-matrix` jobs do. A fixed fuzz
+crash's input goes in `Tests/Fixtures/fuzz/`, which `Acustra.DspFuzzReplay`
+replays as a unit test.
 Select targets and an anchored test expression for the affected behavior.
 Choose parallelism for available memory; `ctest -N` lists registered tests.
 On non-MSVC builds, also build `AcustraDSPCxx17` for DSP/Performer changes.

@@ -267,7 +267,52 @@ jobs:
       - name: Build the C++17 DSP check
         run: cmake --build "build-san" --target AcustraDSPCxx17 --parallel
 
-      - name: Build and run the unit tests under the sanitizers
+      # The fuzz tier here is Acustra.DspFuzz, a two-minute libFuzzer run;
+      # the parameter matrix needs the plug-in and has its own job below.
+      - name: Build and run the unit and fuzz tiers under the sanitizers
         run: |
           cmake --build "build-san" --parallel
-          ctest --test-dir "build-san" -L unit --parallel 4 --output-on-failure
+          ctest --test-dir "build-san" -L "unit|fuzz" --parallel 4 --output-on-failure
+
+      - name: Upload fuzz reproducers
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-reproducers-acustra-${{ github.run_number }}
+          path: build-san/fuzz-artifacts/
+          if-no-files-found: ignore
+
+  parameter-matrix:
+    name: Parameter-extremes matrix (Acustra plug-in, ASan + UBSan, Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install JUCE Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build pkg-config \
+            libasound2-dev \
+            libfreetype-dev libfontconfig1-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev
+
+      - name: Configure
+        run: |
+          cmake -S "." -B "build-matrix" -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+            -DACUSTRA_BUILD_PLUGIN=ON -DACUSTRA_BUILD_CLAP=OFF \
+            -DACUSTRA_BUILD_TOOLS=OFF -DACUSTRA_ENABLE_SANITIZERS=ON \
+            -DBUILD_TESTING=ON
+
+      # Every parameter at its extremes, alone, in pairs and on every factory
+      # preset, at 44.1/48/96 kHz and blocks of 1/64/512 (Tests/ParameterMatrix.h).
+      - name: Build and run the parameter matrix
+        run: |
+          cmake --build "build-matrix" --parallel --target AcustraParameterMatrixTests
+          ctest --test-dir "build-matrix" -R "^Acustra[.]ParameterMatrix$" --no-tests=error --output-on-failure

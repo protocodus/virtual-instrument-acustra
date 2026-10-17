@@ -632,6 +632,35 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.ConstructionLoudness AcustraConstructionLoudnessTests)
     set_tests_properties(Acustra.ConstructionLoudness PROPERTIES TIMEOUT 600)
 
+    # U4 input fuzzing (Tests/DspFuzz.cpp). The replay build runs on every
+    # platform: committed reproducers in Tests/Fixtures/fuzz, then seeded
+    # random inputs. The libFuzzer build needs Clang and comes with the
+    # sanitizers; its short run is the fuzz tier, main-build.yml's the long one.
+    add_executable(AcustraDspFuzzReplay Tests/DspFuzz.cpp)
+    target_link_libraries(AcustraDspFuzzReplay PRIVATE AcustraDSP)
+    target_compile_definitions(AcustraDspFuzzReplay PRIVATE PROTOCODUS_FUZZ_MAIN)
+    target_compile_features(AcustraDspFuzzReplay PRIVATE cxx_std_20)
+    file(GLOB ACUSTRA_FUZZ_REPRODUCERS CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/Tests/Fixtures/fuzz/*")
+    acustra_add_suite(Acustra.DspFuzzReplay AcustraDspFuzzReplay
+        -seed=1 -runs=300 -max_len=1024 ${ACUSTRA_FUZZ_REPRODUCERS})
+    set_tests_properties(Acustra.DspFuzzReplay PROPERTIES TIMEOUT 300)
+    if(ACUSTRA_ENABLE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_executable(AcustraDspFuzz Tests/DspFuzz.cpp)
+        target_link_libraries(AcustraDspFuzz PRIVATE AcustraDSP)
+        target_compile_features(AcustraDspFuzz PRIVATE cxx_std_20)
+        target_compile_options(AcustraDspFuzz PRIVATE -fsanitize=fuzzer)
+        target_link_options(AcustraDspFuzz PRIVATE -fsanitize=fuzzer)
+        file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/fuzz-corpus"
+                            "${CMAKE_CURRENT_BINARY_DIR}/fuzz-artifacts")
+        add_test(NAME Acustra.DspFuzz
+                 COMMAND AcustraDspFuzz -max_total_time=120 -seed=1 -max_len=4096
+                         -rss_limit_mb=4096
+                         "-artifact_prefix=${CMAKE_CURRENT_BINARY_DIR}/fuzz-artifacts/"
+                         "${CMAKE_CURRENT_BINARY_DIR}/fuzz-corpus")
+        set_tests_properties(Acustra.DspFuzz PROPERTIES LABELS fuzz TIMEOUT 600)
+    endif()
+
     if(ACUSTRA_BUILD_TOOLS)
         add_executable(AcustraRecuerdosArticulationTests
             Tests/RecuerdosArticulationTests.cpp)
@@ -918,6 +947,20 @@ if(BUILD_TESTING)
                          "-DACUSTRA_SCREENSHOT=${CMAKE_CURRENT_BINARY_DIR}/screenshots/acustra.png"
                          -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/RenderEditorScreenshot.cmake")
         set_tests_properties(Acustra.EditorScreenshot PROPERTIES LABELS render TIMEOUT 180)
+
+        # The U4 parameter-extremes matrix (Tests/ParameterMatrix.h); the
+        # sanitizers job runs it under ASan + UBSan.
+        add_executable(AcustraParameterMatrixTests
+            Tests/ParameterMatrixTests.cpp)
+        target_link_libraries(AcustraParameterMatrixTests PRIVATE Acustra)
+        target_include_directories(AcustraParameterMatrixTests PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/Source"
+            "$<TARGET_PROPERTY:Acustra,JUCE_GENERATED_SOURCES_DIRECTORY>"
+            "$<TARGET_PROPERTY:Acustra,INCLUDE_DIRECTORIES>")
+        target_compile_features(AcustraParameterMatrixTests PRIVATE cxx_std_20)
+        add_test(NAME Acustra.ParameterMatrix
+                 COMMAND AcustraParameterMatrixTests --jobs 4)
+        set_tests_properties(Acustra.ParameterMatrix PROPERTIES LABELS fuzz TIMEOUT 1800)
 
         add_executable(AcustraPluginTempoReleaseTests
             Tests/PluginTempoReleaseTests.cpp)

@@ -74,8 +74,9 @@ fi
 cmake "${cmake_args[@]}"
 cmake --build "${BUILD_DIR}" --config "${CONFIG}" --parallel "${BUILD_JOBS:-3}"
 
-# Every tier; the render tier writes ${BUILD_DIR}/screenshots/acustra.png.
-ctest --test-dir "${BUILD_DIR}" -C "${CONFIG}" --output-on-failure --no-tests=error
+# Every tier but fuzz, which runs under the sanitizers in ci.yml; the render
+# tier writes ${BUILD_DIR}/screenshots/acustra.png.
+ctest --test-dir "${BUILD_DIR}" -C "${CONFIG}" -L "unit|audio|render" --output-on-failure --no-tests=error
 
 ARTIFACT_DIR="${BUILD_DIR}/Acustra_artefacts/${CONFIG}"
 artifacts=(
