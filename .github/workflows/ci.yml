@@ -242,6 +242,8 @@ jobs:
   sanitizers:
     name: Sanitizers (Acustra, ASan + UBSan, Linux)
     runs-on: ubuntu-24.04
+    # The instrumented suite takes several times the plain one.
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
         with:
@@ -284,4 +286,4 @@ jobs:
       - name: Build and run the unit tests under the sanitizers
         run: |
           cmake --build "build-san" --parallel
-          ctest --test-dir "build-san" -L unit --output-on-failure
+          ctest --test-dir "build-san" -L unit --parallel 4 --output-on-failure
