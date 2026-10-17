@@ -1491,6 +1491,24 @@ void testControllerResetSoundOffAndUiPanic()
                 + std::to_string (masterReset.getActiveVoiceCount()) + ")");
 }
 
+void testStateRestoresSwitchesAHostLeftBetweenSteps()
+{
+    // pluginval sets each parameter to a random 0..1 value, restores the
+    // saved state and reads the value back through the host.
+    namespace ids = acustra::parameters;
+    AcustraAudioProcessor processor;
+    juce::MemoryBlock stored;
+    processor.getStateInformation (stored);
+    for (const auto* id : { ids::sustain, ids::piezoPolarityInverted })
+    {
+        auto* parameter = processor.parameters.getParameter (id);
+        parameter->setValueNotifyingHost (0.3f);
+        processor.setStateInformation (stored.getData(), static_cast<int> (stored.getSize()));
+        expect (parameter->getValue() == 0.0f,
+                std::string { id } + " keeps a host's in-between value through a restore");
+    }
+}
+
 void testStateRoundTripAndMigration()
 {
     namespace ids = acustra::parameters;
@@ -3637,6 +3655,7 @@ int main()
 
     testParameterContract();
     testFactoryProgramsSetTheirSound();
+    testStateRestoresSwitchesAHostLeftBetweenSteps();
     testProcessorContractAndSampleAccurateMidi();
     testOptionalPiezoOutputBus();
     testSameSampleChordOrderIsCanonical();
