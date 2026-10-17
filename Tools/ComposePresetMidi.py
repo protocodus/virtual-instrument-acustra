@@ -118,10 +118,10 @@ def parlor_steel_fingerstyle():
     for bar, (_, bass, alt, melody) in enumerate(bars):
         t = 4 * bar
         for beat, n in ((0, bass), (1, alt), (2, bass), (3, alt)):
-            p.note(t + beat, 0.95, n, 70)
+            p.note(t + beat, 0.95, n, 100)
         for i, n in enumerate(melody):
-            p.note(t + 0.5 + i, 0.9, n, 64 + (8 if i == 0 else 0))
-    p.note(20, 4.0, STANDARD["C"], 58)
+            p.note(t + 0.5 + i, 0.9, n, 96 + (10 if i == 0 else 0))
+    p.note(20, 4.0, STANDARD["C"], 90)
     return p
 
 
@@ -131,10 +131,10 @@ def mahogany_steel_thumb():
     line = [40, 44, 47, 49, 45, 49, 52, 54, 47, 51, 54, 56, 40, 47, 44, 40]
     chords = [[56, 59, 64], [57, 61, 64], [59, 63, 66], [56, 59, 64]]
     for i, n in enumerate(line):
-        p.note(i, 0.9, n, 84 if i % 4 == 0 else 72)
+        p.note(i, 0.9, n, 112 if i % 4 == 0 else 100)
         if i % 2 == 1:
-            p.note(i + 0.5, 0.45, chords[i // 4], 60)
-    p.note(16, 4.0, STANDARD["E"], 76)
+            p.note(i + 0.5, 0.45, chords[i // 4], 88)
+    p.note(16, 4.0, STANDARD["E"], 104)
     return p
 
 
@@ -175,15 +175,15 @@ def dadgad_mono_mic():
     # Celtic-style DADGAD: open strings ringing against a modal melody.
     p = Phrase(96)
     drone = [38, 45, 50]
-    p.note(0, 7.8, drone, 74)
+    p.note(0, 7.8, drone, 104)
     melody = [(0.5, 62), (1, 64), (1.5, 66), (2, 69), (3, 67), (3.5, 66), (4, 64),
               (5, 62), (5.5, 57), (6, 62), (7, 55)]
     for beat, n in melody:
-        p.note(beat, 1.8, n, 70)
-    p.note(8, 7.8, [38, 45, 50, 55, 57, 62], 80)
+        p.note(beat, 1.8, n, 104)
+    p.note(8, 7.8, [38, 45, 50, 55, 57, 62], 108)
     for i, n in enumerate([69, 67, 66, 64, 62, 64, 66, 69, 74, 69, 66, 62]):
-        p.note(8.5 + 0.5 * i, 1.5, n, 66)
-    p.note(16, 4.0, [38, 45, 50, 55, 57, 62], 72)
+        p.note(8.5 + 0.5 * i, 1.5, n, 100)
+    p.note(16, 4.0, [38, 45, 50, 55, 57, 62], 104)
     return p
 
 
@@ -193,18 +193,18 @@ def open_g_slide_ready():
     p = Phrase(80)
     rng, slide = 12, 1
     p.bend_range(0, rng, slide)
-    p.note(0, 3.9, [43, 50], 70)
+    p.note(0, 3.9, [43, 50], 100)
     # (start beat, held MIDI note, slide from, slide to, length)
     phrases = [(0.5, 62, -2, 0, 1.4), (2, 67, -1, 0, 1.9), (4, 67, 0, 2, 1.8),
                (6, 71, -1, 0, 1.4), (7.5, 67, 0, -5, 0.4),
                (8.5, 74, -3, 0, 1.4), (10, 72, 0, -1, 1.8), (12, 67, -2, 0, 1.9)]
-    p.note(8, 3.9, [43, 50, 55], 72)
+    p.note(8, 3.9, [43, 50, 55], 100)
     for start, n, a, b, length in phrases:
         p.bend(start, a, rng, slide)
-        p.note(start, length, n, 84, slide)
+        p.note(start, length, n, 112, slide)
         p.glide(start, 0.35, a, b, rng, slide)
     p.bend(14, 0, rng, slide)
-    p.note(14, 4.0, [38, 43, 50, 55, 59, 62], 80)
+    p.note(14, 4.0, [38, 43, 50, 55, 59, 62], 108)
     return p
 
 
